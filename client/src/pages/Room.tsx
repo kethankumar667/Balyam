@@ -2,6 +2,12 @@ import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
+import {
+  enterFullscreen,
+  exitFullscreen,
+  isFullscreenActive,
+  isFullscreenSupported,
+} from "../lib/fullscreen";
 import PlayerList from "../components/PlayerList";
 import Chat from "../components/Chat";
 import RoomCode from "../components/RoomCode";
@@ -199,6 +205,11 @@ export default function Room() {
       socket.off("chat:message", addMessage);
       socket.off("room:error", setError);
       socket.off("game:error", setError);
+      // Belt-and-suspenders fullscreen exit: leaveRoom() already calls this,
+      // but the user can navigate away via browser back / tab close without
+      // ever clicking Leave. Drop fullscreen here too so they don't end up
+      // on the BHALYAM home page with the browser still in fullscreen mode.
+      if (isFullscreenActive()) void exitFullscreen();
     };
   }, [code]);
 
@@ -212,15 +223,30 @@ export default function Room() {
     [roomState?.players, playerId]
   );
 
+  /**
+   * Rummy is the only game we hard-route to fullscreen. The lobby gesture
+   * that triggers it (Start Game for host, I'm Ready for joiners) satisfies
+   * the browser's user-gesture requirement for `requestFullscreen()`. We
+   * silently no-op for every other game so this stays opt-in per table.
+   */
+  function maybeEnterFullscreenForRummy() {
+    if (roomState?.game !== "rummy") return;
+    if (!isFullscreenSupported() || isFullscreenActive()) return;
+    void enterFullscreen();
+  }
+
   function toggleReady() {
+    maybeEnterFullscreenForRummy();
     getSocket().emit("room:setReady", !selfPlayer?.isReady);
   }
 
   function startGame() {
+    maybeEnterFullscreenForRummy();
     getSocket().emit("room:startGame");
   }
 
   function leaveRoom() {
+    if (isFullscreenActive()) void exitFullscreen();
     getSocket().emit("room:leave");
     reset();
     navigate("/");
