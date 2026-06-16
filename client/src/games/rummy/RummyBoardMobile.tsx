@@ -20,6 +20,13 @@ import PlayerList from "../../components/PlayerList";
 import VoicePanel from "../../components/VoicePanel";
 import Chat from "../../components/Chat";
 import Avatar from "./Avatar";
+import {
+  enterFullscreen,
+  exitFullscreen,
+  isFullscreenActive,
+  isFullscreenSupported,
+  onFullscreenChange,
+} from "../../lib/fullscreen";
 
 type Layout = {
   groups: Array<{ id: string; cardIds: string[] }>;
@@ -301,6 +308,25 @@ export default function RummyBoardMobile({
   useEffect(() => {
     if (state.phase === "playing") setResultDismissed(false);
   }, [state.phase]);
+
+  // Fullscreen state — Rummy can be played in browser fullscreen so the
+  // URL bar / gesture bar don't eat the bottom action buttons. The lobby's
+  // Start Game / Ready buttons already attempt entry (those clicks satisfy
+  // the user-gesture requirement); this hook keeps the menu toggle in
+  // sync if the user exits via ESC / system swipe.
+  const fullscreenSupported = isFullscreenSupported();
+  const [fullscreenOn, setFullscreenOn] = useState<boolean>(() => isFullscreenActive());
+  useEffect(() => {
+    const off = onFullscreenChange(() => setFullscreenOn(isFullscreenActive()));
+    return off;
+  }, []);
+  async function toggleFullscreen() {
+    if (isFullscreenActive()) {
+      await exitFullscreen();
+    } else {
+      await enterFullscreen();
+    }
+  }
 
   // Game-over celebration — 30 seconds after the game truly ends, swap the
   // whole screen for a full-bleed victory artwork with a "Go to Lobby"
@@ -1006,6 +1032,16 @@ export default function RummyBoardMobile({
               label={soundOn ? "Sound: On" : "Sound: Off"}
               onClick={toggleSound}
             />
+            {fullscreenSupported && (
+              <MenuRow
+                emoji={fullscreenOn ? "🗗" : "⛶"}
+                label={fullscreenOn ? "Exit fullscreen" : "Enter fullscreen"}
+                onClick={() => {
+                  setMenuOpen(false);
+                  void toggleFullscreen();
+                }}
+              />
+            )}
           </div>
         </RummyModal>
       )}
