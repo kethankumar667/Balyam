@@ -15,8 +15,8 @@ import {
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import {
-  BALYAM_GAMES,
-  type BalyamGameSlug,
+  BHALYAM_GAMES,
+  type BhalyamGameSlug,
 } from "./data";
 import {
   ArrowRightIcon,
@@ -30,7 +30,7 @@ import {
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
- * BALYAM Game Room Sheet
+ * BHALYAM Game Room Sheet
  *
  * Opens when a game tile is tapped on the Home screen. Contains the full
  * room-creation flow that used to live on the standalone /play (Lobby)
@@ -47,11 +47,11 @@ import {
 
 export interface GameRoomSheetProps {
   /** Which game the user tapped. `null` means closed. */
-  game: BalyamGameSlug | null;
+  game: BhalyamGameSlug | null;
   onClose: () => void;
 }
 
-const GAME_GLYPHS: Record<BalyamGameSlug, React.ComponentType<{ className?: string }>> = {
+const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
   handcricket: HandCricketGlyph,
   snl: SnakeLadderGlyph,
   ludo: LudoGlyph,
@@ -205,14 +205,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     );
   }
 
-  const meta = BALYAM_GAMES.find((g) => g.slug === game)!;
+  const meta = BHALYAM_GAMES.find((g) => g.slug === game)!;
   const Glyph = GAME_GLYPHS[game];
 
   return (
     <div
       aria-hidden={false}
       className="fixed inset-0 z-50 flex items-end md:items-center justify-center
-                 bg-balyam-wood-dark/70 backdrop-blur-sm animate-fade-in"
+                 bg-bhalyam-wood-dark/70 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div
@@ -220,10 +220,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         aria-modal="true"
         aria-labelledby="game-room-sheet-title"
         onClick={(e) => e.stopPropagation()}
-        className="balyam-font relative w-full md:max-w-md
+        className="bhalyam-font relative w-full md:max-w-md
                    max-h-[92dvh] overflow-y-auto
-                   bg-balyam-cream-soft text-balyam-wood-dark
-                   border-2 border-balyam-cream-edge/70
+                   bg-bhalyam-cream-soft text-bhalyam-wood-dark
+                   border-2 border-bhalyam-cream-edge/70
                    rounded-t-3xl md:rounded-3xl
                    shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
                    md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)]"
@@ -231,13 +231,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       >
         {/* Pull handle (mobile bottom-sheet only) */}
         <div className="md:hidden flex justify-center pt-2.5">
-          <span aria-hidden className="w-10 h-1.5 rounded-full bg-balyam-wood/30" />
+          <span aria-hidden className="w-10 h-1.5 rounded-full bg-bhalyam-wood/30" />
         </div>
 
         {/* Header */}
-        <header className="flex items-center gap-3 p-4 pb-3 border-b-2 border-balyam-cream-edge/50">
+        <header className="flex items-center gap-3 p-4 pb-3 border-b-2 border-bhalyam-cream-edge/50">
           <span
-            className="inline-flex w-12 h-12 rounded-2xl items-center justify-center text-balyam-cream-soft flex-shrink-0"
+            className="inline-flex w-12 h-12 rounded-2xl items-center justify-center text-bhalyam-cream-soft flex-shrink-0"
             style={{
               background: `linear-gradient(135deg, ${meta.accent.from}, ${meta.accent.to})`,
               boxShadow: `0 6px 14px -4px ${meta.accent.to}66`,
@@ -249,16 +249,16 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           <div className="min-w-0 flex-1">
             <h2
               id="game-room-sheet-title"
-              className="font-bold text-balyam-wood-dark text-lg leading-tight truncate"
+              className="font-bold text-bhalyam-wood-dark text-lg leading-tight truncate"
             >
               {meta.title}
             </h2>
             {meta.teluguTitle ? (
-              <div className="text-[10px] uppercase tracking-widest font-bold text-balyam-wood">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood">
                 {meta.teluguTitle} · Quick Match
               </div>
             ) : (
-              <div className="text-[10px] uppercase tracking-widest font-bold text-balyam-wood">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood">
                 Quick Match
               </div>
             )}
@@ -268,8 +268,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             onClick={onClose}
             aria-label="Close"
             className="w-10 h-10 rounded-full inline-flex items-center justify-center
-                       bg-balyam-cream-warm text-balyam-wood-dark
-                       hover:bg-balyam-cream-edge active:scale-95 transition-all duration-150"
+                       bg-bhalyam-cream-warm text-bhalyam-wood-dark
+                       hover:bg-bhalyam-cream-edge active:scale-95 transition-all duration-150"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -286,11 +286,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               placeholder="e.g. Kethan"
               maxLength={20}
               className="w-full min-h-[44px] px-3 rounded-xl
-                         bg-balyam-cream-soft border-2 border-balyam-cream-edge/80
-                         text-balyam-wood-dark placeholder:text-balyam-wood-dark/40
+                         bg-bhalyam-cream-soft border-2 border-bhalyam-cream-edge/80
+                         text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
                          font-semibold
-                         focus:outline-none focus:border-balyam-gold-dark
-                         focus:ring-2 focus:ring-balyam-gold/40
+                         focus:outline-none focus:border-bhalyam-gold-dark
+                         focus:ring-2 focus:ring-bhalyam-gold/40
                          transition-all duration-150"
             />
           </Field>
@@ -343,12 +343,12 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
               {hcMode === "galli" && (
                 <Field label="Overs per innings">
-                  <div className="rounded-xl p-3 bg-balyam-gold/15 border-2 border-balyam-gold/40">
+                  <div className="rounded-xl p-3 bg-bhalyam-gold/15 border-2 border-bhalyam-gold/40">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[11px] font-bold text-balyam-gold-ink uppercase tracking-widest">
+                      <span className="text-[11px] font-bold text-bhalyam-gold-ink uppercase tracking-widest">
                         Street cricket
                       </span>
-                      <span className="text-lg font-black tabular-nums text-balyam-gold-ink">
+                      <span className="text-lg font-black tabular-nums text-bhalyam-gold-ink">
                         {hcGalliOvers}
                       </span>
                     </div>
@@ -358,14 +358,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                       max={HC_GALLI_MAX_OVERS}
                       value={hcGalliOvers}
                       onChange={(e) => setHcGalliOvers(Number(e.target.value))}
-                      className="w-full accent-balyam-gold-dark"
+                      className="w-full accent-bhalyam-gold-dark"
                     />
-                    <div className="flex justify-between text-[10px] text-balyam-wood-dark/70 mt-1">
+                    <div className="flex justify-between text-[10px] text-bhalyam-wood-dark/70 mt-1">
                       <span>{HC_GALLI_MIN_OVERS}</span>
                       <span>10</span>
                       <span>{HC_GALLI_MAX_OVERS}</span>
                     </div>
-                    <p className="text-[10px] italic text-balyam-wood-dark/70 mt-1">
+                    <p className="text-[10px] italic text-bhalyam-wood-dark/70 mt-1">
                       No composition rules, no bowler quota, no powerplay.
                     </p>
                   </div>
@@ -390,10 +390,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             disabled={busy}
             className="w-full inline-flex items-center justify-center gap-2
                        min-h-[52px] rounded-2xl
-                       balyam-gold-leaf text-balyam-wood-dark font-bold text-[15px]
-                       border border-balyam-gold-dark
+                       bhalyam-gold-leaf text-bhalyam-wood-dark font-bold text-[15px]
+                       border border-bhalyam-gold-dark
                        disabled:opacity-50 disabled:cursor-wait
-                       active:scale-[0.98] transition-all duration-150 balyam-press-feedback
+                       active:scale-[0.98] transition-all duration-150 bhalyam-press-feedback
                        shadow-[0_6px_14px_-4px_rgba(228,177,40,0.6)]"
           >
             {busy ? (
@@ -407,10 +407,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           </button>
 
           {/* Join divider */}
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest font-bold text-balyam-wood/60">
-            <span className="flex-1 h-px bg-balyam-cream-edge/80" />
+          <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood/60">
+            <span className="flex-1 h-px bg-bhalyam-cream-edge/80" />
             <span>Or join an existing room</span>
-            <span className="flex-1 h-px bg-balyam-cream-edge/80" />
+            <span className="flex-1 h-px bg-bhalyam-cream-edge/80" />
           </div>
 
           {/* Join by code */}
@@ -422,11 +422,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               placeholder="ROOM CODE"
               maxLength={6}
               className="w-full min-h-[44px] px-3 rounded-xl
-                         bg-balyam-cream-soft border-2 border-balyam-cream-edge/80
-                         text-balyam-wood-dark placeholder:text-balyam-wood-dark/40
+                         bg-bhalyam-cream-soft border-2 border-bhalyam-cream-edge/80
+                         text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
                          font-mono font-bold tracking-[0.3em] text-center
-                         focus:outline-none focus:border-balyam-gold-dark
-                         focus:ring-2 focus:ring-balyam-gold/40
+                         focus:outline-none focus:border-bhalyam-gold-dark
+                         focus:ring-2 focus:ring-bhalyam-gold/40
                          transition-all duration-150"
             />
             <button
@@ -435,10 +435,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               disabled={busy}
               className="w-full inline-flex items-center justify-center gap-2
                          min-h-[48px] rounded-2xl
-                         bg-balyam-wood-dark text-balyam-cream-soft font-bold text-[14px]
-                         border border-balyam-gold/30
+                         bg-bhalyam-wood-dark text-bhalyam-cream-soft font-bold text-[14px]
+                         border border-bhalyam-gold/30
                          disabled:opacity-50 disabled:cursor-wait
-                         active:scale-[0.98] transition-all duration-150 balyam-press-feedback
+                         active:scale-[0.98] transition-all duration-150 bhalyam-press-feedback
                          shadow-[0_4px_10px_-3px_rgba(74,44,22,0.55)]"
             >
               {busy ? "Working…" : (
@@ -452,8 +452,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           {error && (
             <div
               role="alert"
-              className="text-sm text-balyam-ludo-red font-bold text-center
-                         bg-balyam-ludo-red/10 border border-balyam-ludo-red/30
+              className="text-sm text-bhalyam-ludo-red font-bold text-center
+                         bg-bhalyam-ludo-red/10 border border-bhalyam-ludo-red/30
                          rounded-xl p-2"
             >
               {error}
@@ -470,7 +470,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-[11px] uppercase tracking-widest font-bold text-balyam-wood">
+      <label className="block text-[11px] uppercase tracking-widest font-bold text-bhalyam-wood">
         {label}
       </label>
       {children}
@@ -515,16 +515,16 @@ function OptionGrid<T extends string>({
             disabled={isDisabled}
             onClick={() => onChange(item.id)}
             className={`text-left rounded-xl p-2.5 border-2 min-h-[64px]
-                        active:scale-[0.98] transition-all duration-150 balyam-press-feedback
+                        active:scale-[0.98] transition-all duration-150 bhalyam-press-feedback
                         disabled:opacity-50 disabled:cursor-not-allowed
                         ${isActive
-                          ? "bg-balyam-gold/20 border-balyam-gold-dark shadow-[0_4px_10px_-3px_rgba(228,177,40,0.45)]"
-                          : "bg-balyam-cream-soft border-balyam-cream-edge/80 hover:border-balyam-wood/40"}`}
+                          ? "bg-bhalyam-gold/20 border-bhalyam-gold-dark shadow-[0_4px_10px_-3px_rgba(228,177,40,0.45)]"
+                          : "bg-bhalyam-cream-soft border-bhalyam-cream-edge/80 hover:border-bhalyam-wood/40"}`}
           >
-            <div className="font-bold text-balyam-wood-dark text-[13px] leading-tight">
+            <div className="font-bold text-bhalyam-wood-dark text-[13px] leading-tight">
               {item.label}
             </div>
-            <div className="text-[10px] text-balyam-wood-dark/70 mt-0.5 leading-tight">
+            <div className="text-[10px] text-bhalyam-wood-dark/70 mt-0.5 leading-tight">
               {item.blurb}
             </div>
           </button>

@@ -1,5 +1,5 @@
 /**
- * BALYAM game catalog.
+ * BHALYAM game catalog.
  *
  * Slimmed during the cleanup pass. Previously held mock data for friends
  * online, recent matches, daily rewards, badges, a player profile, landing
@@ -10,7 +10,7 @@
  * accents, used by the Home grid and the GameRoomSheet header.
  */
 
-export type BalyamGameSlug =
+export type BhalyamGameSlug =
   | "handcricket"
   | "snl"
   | "ludo"
@@ -18,16 +18,23 @@ export type BalyamGameSlug =
   | "rps"
   | "uno";
 
-export interface BalyamGameCard {
-  slug: BalyamGameSlug;
+export interface BhalyamGameCard {
+  slug: BhalyamGameSlug;
   title: string;
   teluguTitle?: string;
   blurb: string;
   /** Hex pair used as the card art gradient (light → dark). */
   accent: { from: string; to: string };
+  /**
+   * When true the home tile renders in a "coming soon" state — the tile is
+   * still visible (so players know it exists) but clicks are absorbed
+   * locally rather than opening the lobby sheet. Use this to feature a
+   * game that exists in code but is paused for content or balance work.
+   */
+  maintenance?: boolean;
 }
 
-export const BALYAM_GAMES: ReadonlyArray<BalyamGameCard> = [
+export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "handcricket",
     title: "Hand Cricket",
@@ -70,5 +77,6 @@ export const BALYAM_GAMES: ReadonlyArray<BalyamGameCard> = [
     blurb:
       "Color chaos with your gang. Match cards, drop action cards, and race to shout UNO first.",
     accent: { from: "#EC1C24", to: "#7B1E2B" },
+    maintenance: true,
   },
 ];

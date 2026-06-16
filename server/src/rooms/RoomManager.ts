@@ -31,10 +31,26 @@ import { HandCricketEngine } from "../games/handcricket/HandCricketEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
-const BOT_NAMES = ["Robo Aaravv", "Bit Bhavna", "Chip Chetan", "Deal Divya", "Eko Ekansh"];
+/**
+ * Per-game bot name pools. Each pool draws from the cultural texture of
+ * the game itself so a Hand Cricket bot reads like a cricket legend and
+ * a Ludo bot reads like a neighbourhood kid you'd actually play with.
+ *
+ * Order matters — the first bot at the table gets index 0. Lists are sized
+ * to comfortably cover the per-game max (Ludo 4, SnL 10, Rummy 6, others 2).
+ */
+const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
+  handcricket: ["Sachin", "Dhoni", "Kohli", "Yuvraj", "Sehwag", "Dravid"],
+  ludo: ["Pintu", "Chintu", "Bunty", "Babli"],
+  snl: ["Sneha", "Lalita", "Babu", "Chiklu", "Anu", "Gopi", "Ravi", "Suma", "Kiran", "Mounika"],
+  rummy: ["Anand", "Babji", "Chinna", "Damodar", "Eswari", "Lakshmi"],
+  rps: ["Rocky", "Bhola", "Chotu", "Dolly"],
+  uno: ["Red", "Blue", "Green", "Yellow"],
+};
 
-function pickBotName(idx: number): string {
-  return BOT_NAMES[idx % BOT_NAMES.length] ?? `Bot ${idx + 1}`;
+function pickBotName(game: GameKind, idx: number): string {
+  const pool = BOT_NAMES_BY_GAME[game];
+  return pool[idx % pool.length] ?? `Bot ${idx + 1}`;
 }
 
 interface Room {
@@ -217,7 +233,7 @@ export class RoomManager {
     }
     const botCount = [...room.players.values()].filter((p) => p.isBot).length;
     const botId = `bot_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-    const botName = pickBotName(botCount);
+    const botName = pickBotName(room.game, botCount);
     const bot: Player = {
       id: botId,
       name: botName,

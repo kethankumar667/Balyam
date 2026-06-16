@@ -180,7 +180,23 @@ export class LudoEngine implements GameEngine {
       this.advanceTurn();
       return { ok: true };
     }
+
     this.s.turnPhase = "moving";
+
+    // Auto-move when there's only one possible token to move — no point
+    // forcing a "pick a token" click when there's only one option. Real
+    // Ludo players do this at the table without thinking; the UI used to
+    // demand a click here, which felt clumsy especially when a player has
+    // exactly one piece in play.
+    if (movable.length === 1) {
+      const onlyToken = movable[0];
+      return this.handleMove({
+        playerId: this.currentPid(),
+        type: "move",
+        data: { tokenId: onlyToken.id },
+      } as MoveContext);
+    }
+
     return { ok: true };
   }
 

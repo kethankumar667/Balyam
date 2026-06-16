@@ -2,10 +2,10 @@ import { useState } from "react";
 import { KiteIcon } from "./icons";
 
 /**
- * BALYAM brand logo — the wooden treasure chest icon.
+ * BHALYAM brand logo — the wooden treasure chest icon.
  *
- * The actual art asset lives at `client/public/balyam-logo.png` so it is
- * served at the root URL `/balyam-logo.png` by Vite. Drop the file there
+ * The actual art asset lives at `client/public/bhalyam-logo.png` so it is
+ * served at the root URL `/bhalyam-logo.png` by Vite. Drop the file there
  * (no build step needed) and this component picks it up.
  *
  * If the file is missing, this component falls back to a gold-leaf chip
@@ -18,7 +18,7 @@ import { KiteIcon } from "./icons";
  * the accessible name).
  */
 
-export interface BalyamLogoProps {
+export interface BhalyamLogoProps {
   size?: number;
   className?: string;
   /** When the logo sits next to a label, the label IS the accessible name. */
@@ -30,14 +30,14 @@ export interface BalyamLogoProps {
 // Try every casing the asset might be saved under. Vite serves /public files
 // case-sensitively (Unix-style) even on Windows, so a single hard-coded URL
 // breaks the moment the file is committed with a different cap convention.
-const LOGO_SRC_CHAIN = ["/balyam-logo.png", "/Balyam-logo.png", "/BALYAM-logo.png"];
+const LOGO_SRC_CHAIN = ["/bhalyam-logo.png", "/Bhalyam-logo.png", "/BHALYAM-logo.png"];
 
-export default function BalyamLogo({
+export default function BhalyamLogo({
   size = 40,
   className,
   decorative = false,
   shadow = true,
-}: BalyamLogoProps) {
+}: BhalyamLogoProps) {
   const [srcIdx, setSrcIdx] = useState(0);
   const failed = srcIdx >= LOGO_SRC_CHAIN.length;
 
@@ -45,9 +45,9 @@ export default function BalyamLogo({
     return (
       <span
         role={decorative ? undefined : "img"}
-        aria-label={decorative ? undefined : "BALYAM"}
-        className={`inline-flex items-center justify-center balyam-gold-leaf
-                    text-balyam-wood-dark ${className ?? ""}`}
+        aria-label={decorative ? undefined : "BHALYAM"}
+        className={`inline-flex items-center justify-center bhalyam-gold-leaf
+                    text-bhalyam-wood-dark ${className ?? ""}`}
         style={{
           width: size,
           height: size,
@@ -67,7 +67,7 @@ export default function BalyamLogo({
       // `key` forces a fresh request when we step through the chain on error.
       key={srcIdx}
       src={LOGO_SRC_CHAIN[srcIdx]}
-      alt={decorative ? "" : "BALYAM"}
+      alt={decorative ? "" : "BHALYAM"}
       width={size}
       height={size}
       decoding="async"
