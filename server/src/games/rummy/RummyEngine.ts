@@ -1,0 +1,543 @@
+import type {
+  Card,
+  Player,
+  Rank,
+  RummyGameOptions,
+  RummyMatchMode,
+  RummyPlayerState,
+  RummyPublicState,
+} from "@shared/types.js";
+import { DEFAULT_RUMMY_OPTIONS } from "@shared/types.js";
+import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
+import { deal } from "./deck.js";
+import { validateDeclare } from "./declare.js";
+import { pointsOfHand, INVALID_DECLARE_PENALTY } from "./score.js";
+import { findValidDeclaration } from "./botArrange.js";
+
+interface InternalState {
+  phase: "playing" | "finished";
+  hands: Map<string, Card[]>;
+  closedDeck: Card[];
+  openPile: Card[];
+  wildJoker: Card;
+  playerOrder: string[];
+  turnIndex: number;
+  turnAction: "draw" | "discardOrDeclare";
+  winnerId: string | null;
+  invalidDeclareBy: string | null;
+  scores: Record<string, number>;
+  finalHands: Record<string, Card[]>;
+  droppedPlayers: Set<string>;
+  turnDeadline: number | null;
+  options: RummyGameOptions;
+  /** All players (kept for resetting between rounds). */
+  allPlayers: Player[];
+  matchMode: RummyMatchMode;
+  poolTarget: number | null;
+  cumulativeScores: Map<string, number>;
+  eliminatedInMatch: Set<string>;
+  roundNumber: number;
+  matchWinnerId: string | null;
+  matchOver: boolean;
+}
+
+function poolTargetFor(mode: RummyMatchMode): number | null {
+  if (mode === "pool101") return 101;
+  if (mode === "pool201") return 201;
+  return null;
+}
+
+const RANK_POINTS: Record<Rank, number> = {
+  A: 10, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
+  T: 10, J: 10, Q: 10, K: 10,
+};
+
+/** Drop penalty per the common Indian Rummy convention: first-drop = 20 points. */
+const DROP_PENALTY = 20;
+
+export class RummyEngine implements GameEngine {
+  readonly kind = "rummy" as const;
+  readonly minPlayers = 2;
+  readonly maxPlayers = 6;
+
+  private s!: InternalState;
+  private pendingOptions: RummyGameOptions = { ...DEFAULT_RUMMY_OPTIONS };
+
+  /** Set game options before init. */
+  setOptions(options: RummyGameOptions): void {
+    this.pendingOptions = { ...DEFAULT_RUMMY_OPTIONS, ...options };
+  }
+
+  setTurnDeadline(deadline: number): void {
+    this.s.turnDeadline = deadline;
+  }
+
+  clearTurnDeadline(): void {
+    this.s.turnDeadline = null;
+  }
+
+  getTurnTimerSeconds(): number {
+    return this.s?.options.turnTimerSeconds ?? DEFAULT_RUMMY_OPTIONS.turnTimerSeconds;
+  }
+
+  /**
+   * Apply a sensible auto-move when the turn timer expires:
+   *   • If the player still needs to draw → draw from the closed deck.
+   *   • If they've drawn → discard the highest-point non-joker card.
+   * Returns whether the auto-move was applied.
+   */
+  applyAutoMove(playerId: string): MoveResult {
+    if (this.s.phase === "finished") return { ok: false, error: "Game over" };
+    const current = this.s.playerOrder[this.s.turnIndex];
+    if (playerId !== current) return { ok: false, error: "Not current player" };
+    if (this.s.droppedPlayers.has(playerId)) return { ok: false, error: "Dropped" };
+
+    if (this.s.turnAction === "draw") {
+      return this.handleDraw({
+        playerId,
+        type: "draw",
+        data: { from: "closed" },
+      });
+    }
+    // discardOrDeclare: first try a real declaration — if the hand happens to
+    // be arrangeable into valid melds, the bot wins this round. Otherwise fall
+    // back to discarding the highest-point non-joker card.
+    const hand = this.s.hands.get(playerId);
+    if (!hand) return { ok: false, error: "No hand" };
+    const wildRank = this.s.wildJoker.rank;
+
+    const declaration = findValidDeclaration(hand, wildRank);
+    if (declaration) {
+      return this.handleDeclare({
+        playerId,
+        type: "declare",
+        data: {
+          discardCardId: declaration.discardCardId,
+          melds: declaration.melds.map((g) => g.map((c) => c.id)),
+        },
+      });
+    }
+
+    let bestId: string | null = null;
+    let bestPts = -1;
+    for (const c of hand) {
+      if (c.rank === wildRank) continue;
+      const p = RANK_POINTS[c.rank];
+      if (p > bestPts) {
+        bestPts = p;
+        bestId = c.id;
+      }
+    }
+    if (!bestId) bestId = hand[hand.length - 1].id; // all jokers; pick last
+    return this.handleDiscard({
+      playerId,
+      type: "discard",
+      data: { cardId: bestId },
+    });
+  }
+
+  init(players: Player[]): void {
+    if (players.length < this.minPlayers || players.length > this.maxPlayers) {
+      throw new Error(`Rummy requires ${this.minPlayers}-${this.maxPlayers} players`);
+    }
+    const ids = players.map((p) => p.id);
+    const { hands, closedDeck, openPile, wildJoker } = deal(ids);
+    const cumulativeScores = new Map<string, number>();
+    for (const id of ids) cumulativeScores.set(id, 0);
+    this.s = {
+      phase: "playing",
+      hands: new Map(Object.entries(hands)),
+      closedDeck,
+      openPile,
+      wildJoker,
+      playerOrder: ids,
+      turnIndex: 0,
+      turnAction: "draw",
+      winnerId: null,
+      invalidDeclareBy: null,
+      scores: {},
+      finalHands: {},
+      droppedPlayers: new Set(),
+      turnDeadline: null,
+      options: { ...this.pendingOptions },
+      allPlayers: players.slice(),
+      matchMode: this.pendingOptions.mode,
+      poolTarget: poolTargetFor(this.pendingOptions.mode),
+      cumulativeScores,
+      eliminatedInMatch: new Set(),
+      roundNumber: 1,
+      matchWinnerId: null,
+      matchOver: false,
+    };
+  }
+
+  /**
+   * Deal a fresh round in pool mode. Drops cards/closed deck/open pile state
+   * but preserves cumulativeScores, eliminatedInMatch, matchOver, etc.
+   * No-op if not in pool mode or if the match is already over.
+   */
+  private startNextRound(): MoveResult {
+    if (this.s.matchOver) return { ok: false, error: "Match is over" };
+    if (this.s.poolTarget == null) {
+      return { ok: false, error: "Next round only available in pool mode" };
+    }
+    if (this.s.phase !== "finished") {
+      return { ok: false, error: "Current round still in progress" };
+    }
+    // Active players = not eliminated.
+    const activeIds = this.s.playerOrder.filter(
+      (id) => !this.s.eliminatedInMatch.has(id),
+    );
+    if (activeIds.length < 2) {
+      return { ok: false, error: "Not enough active players to deal another round" };
+    }
+    const { hands, closedDeck, openPile, wildJoker } = deal(activeIds);
+    this.s.hands = new Map(Object.entries(hands));
+    this.s.closedDeck = closedDeck;
+    this.s.openPile = openPile;
+    this.s.wildJoker = wildJoker;
+    this.s.playerOrder = activeIds;
+    this.s.turnIndex = 0;
+    this.s.turnAction = "draw";
+    this.s.phase = "playing";
+    this.s.winnerId = null;
+    this.s.invalidDeclareBy = null;
+    this.s.scores = {};
+    this.s.finalHands = {};
+    this.s.droppedPlayers = new Set();
+    this.s.turnDeadline = null;
+    this.s.roundNumber += 1;
+    return { ok: true };
+  }
+
+  /**
+   * After a round ends, apply per-round scores to cumulativeScores and check
+   * for pool-mode eliminations + final match winner.
+   */
+  private updateMatchScoresAfterRound(): void {
+    if (this.s.poolTarget == null) return;
+    const target = this.s.poolTarget;
+    for (const id of this.s.playerOrder) {
+      const add = this.s.scores[id] ?? 0;
+      const prev = this.s.cumulativeScores.get(id) ?? 0;
+      this.s.cumulativeScores.set(id, prev + add);
+    }
+    // Mark eliminations.
+    for (const id of this.s.playerOrder) {
+      const cum = this.s.cumulativeScores.get(id) ?? 0;
+      if (cum >= target) this.s.eliminatedInMatch.add(id);
+    }
+    // Check if match is over (≤1 active).
+    const active = this.s.playerOrder.filter(
+      (id) => !this.s.eliminatedInMatch.has(id),
+    );
+    if (active.length <= 1) {
+      this.s.matchOver = true;
+      this.s.matchWinnerId = active[0] ?? null;
+    }
+  }
+
+  applyMove(move: MoveContext): MoveResult {
+    // newRound is special: allowed only when the round phase is "finished".
+    if (move.type === "newRound") {
+      if (!this.s.playerOrder.includes(move.playerId)) {
+        return { ok: false, error: "Not a player in this match" };
+      }
+      if (this.s.eliminatedInMatch.has(move.playerId)) {
+        return { ok: false, error: "You're eliminated" };
+      }
+      return this.startNextRound();
+    }
+
+    if (this.s.phase === "finished") return { ok: false, error: "Round is over" };
+
+    const currentPlayer = this.s.playerOrder[this.s.turnIndex];
+    if (move.playerId !== currentPlayer) {
+      return { ok: false, error: "Not your turn" };
+    }
+
+    switch (move.type) {
+      case "draw":
+        return this.handleDraw(move);
+      case "discard":
+        return this.handleDiscard(move);
+      case "declare":
+        return this.handleDeclare(move);
+      case "drop":
+        return this.handleDrop(move);
+      default:
+        return { ok: false, error: `Unknown move type: ${move.type}` };
+    }
+  }
+
+  private handleDrop(move: MoveContext): MoveResult {
+    if (this.s.droppedPlayers.has(move.playerId)) {
+      return { ok: false, error: "You already dropped" };
+    }
+    if (this.s.turnAction !== "draw") {
+      return { ok: false, error: "You can only drop before drawing" };
+    }
+    this.s.droppedPlayers.add(move.playerId);
+    this.s.scores[move.playerId] = DROP_PENALTY;
+    const hand = this.s.hands.get(move.playerId);
+    if (hand) this.s.finalHands[move.playerId] = hand.slice();
+
+    // If only one active (non-dropped) player remains, they win.
+    const active = this.s.playerOrder.filter(
+      (id) => !this.s.droppedPlayers.has(id) && this.s.hands.has(id),
+    );
+    if (active.length === 1) {
+      const winner = active[0];
+      this.s.winnerId = winner;
+      this.s.scores[winner] = 0;
+      const winnerHand = this.s.hands.get(winner) ?? [];
+      this.s.finalHands[winner] = winnerHand.slice();
+      this.s.phase = "finished";
+      this.updateMatchScoresAfterRound();
+      return { ok: true, isOver: true, winnerId: winner };
+    }
+    if (active.length === 0) {
+      this.s.phase = "finished";
+      this.updateMatchScoresAfterRound();
+      return { ok: true, isOver: true };
+    }
+    this.advanceTurn();
+    return { ok: true };
+  }
+
+  private handleDraw(move: MoveContext): MoveResult {
+    if (this.s.turnAction !== "draw") {
+      return { ok: false, error: "You already drew this turn" };
+    }
+    const data = move.data as { from?: "closed" | "open" } | undefined;
+    const from = data?.from;
+    if (from !== "closed" && from !== "open") {
+      return { ok: false, error: "Specify 'closed' or 'open' deck" };
+    }
+    const hand = this.s.hands.get(move.playerId);
+    if (!hand) return { ok: false, error: "Player has no hand" };
+
+    if (from === "closed") {
+      if (this.s.closedDeck.length === 0) {
+        this.reshuffleOpenIntoClosed();
+        if (this.s.closedDeck.length === 0) {
+          return { ok: false, error: "Deck exhausted" };
+        }
+      }
+      const drawn = this.s.closedDeck.shift()!;
+      hand.push(drawn);
+    } else {
+      if (this.s.openPile.length === 0) {
+        return { ok: false, error: "Open pile is empty" };
+      }
+      const drawn = this.s.openPile.pop()!;
+      hand.push(drawn);
+    }
+    this.s.turnAction = "discardOrDeclare";
+    return { ok: true };
+  }
+
+  private handleDiscard(move: MoveContext): MoveResult {
+    if (this.s.turnAction !== "discardOrDeclare") {
+      return { ok: false, error: "Draw before discarding" };
+    }
+    const data = move.data as { cardId?: string } | undefined;
+    const cardId = data?.cardId;
+    if (!cardId) return { ok: false, error: "Missing cardId" };
+
+    const hand = this.s.hands.get(move.playerId);
+    if (!hand) return { ok: false, error: "Player has no hand" };
+    const idx = hand.findIndex((c) => c.id === cardId);
+    if (idx < 0) return { ok: false, error: "Card not in hand" };
+
+    const [card] = hand.splice(idx, 1);
+    this.s.openPile.push(card);
+    this.advanceTurn();
+    return { ok: true };
+  }
+
+  private handleDeclare(move: MoveContext): MoveResult {
+    if (this.s.turnAction !== "discardOrDeclare") {
+      return { ok: false, error: "Draw before declaring" };
+    }
+    const data = move.data as
+      | { discardCardId?: string; melds?: string[][] }
+      | undefined;
+    const discardCardId = data?.discardCardId;
+    const meldGroupIds = data?.melds;
+    if (!discardCardId || !meldGroupIds) {
+      return { ok: false, error: "Provide discardCardId and melds" };
+    }
+
+    const hand = this.s.hands.get(move.playerId);
+    if (!hand) return { ok: false, error: "Player has no hand" };
+
+    if (hand.length !== 14) {
+      return { ok: false, error: "Internal: hand size must be 14 on declare" };
+    }
+
+    const byId = new Map(hand.map((c) => [c.id, c]));
+    const discard = byId.get(discardCardId);
+    if (!discard) return { ok: false, error: "Discard card not in hand" };
+
+    const meldGroups: Card[][] = [];
+    for (const group of meldGroupIds) {
+      const cards: Card[] = [];
+      for (const cid of group) {
+        if (cid === discardCardId) {
+          return { ok: false, error: "Discard card cannot appear in a meld" };
+        }
+        const c = byId.get(cid);
+        if (!c) return { ok: false, error: `Card ${cid} not in hand` };
+        cards.push(c);
+      }
+      meldGroups.push(cards);
+    }
+
+    const result = validateDeclare(meldGroups, this.s.wildJoker.rank);
+    if (!result.ok) {
+      this.finalizeWithInvalidDeclare(move.playerId);
+      return { ok: false, error: result.error, isOver: true };
+    }
+
+    this.finalizeWithWinner(move.playerId, discard);
+    return { ok: true, isOver: true, winnerId: move.playerId };
+  }
+
+  private finalizeWithWinner(winnerId: string, discard: Card): void {
+    const winnerHand = this.s.hands.get(winnerId)!;
+    winnerHand.splice(
+      winnerHand.findIndex((c) => c.id === discard.id),
+      1,
+    );
+    this.s.openPile.push(discard);
+
+    for (const pid of this.s.playerOrder) {
+      const hand = this.s.hands.get(pid) ?? [];
+      this.s.finalHands[pid] = hand.slice();
+      this.s.scores[pid] = pid === winnerId ? 0 : pointsOfHand(hand, this.s.wildJoker.rank);
+    }
+    this.s.phase = "finished";
+    this.s.winnerId = winnerId;
+    this.updateMatchScoresAfterRound();
+  }
+
+  private finalizeWithInvalidDeclare(declarerId: string): void {
+    this.s.invalidDeclareBy = declarerId;
+    let bestRivalId: string | null = null;
+    let bestRivalScore = Infinity;
+    for (const pid of this.s.playerOrder) {
+      const hand = this.s.hands.get(pid) ?? [];
+      this.s.finalHands[pid] = hand.slice();
+      if (pid === declarerId) {
+        this.s.scores[pid] = INVALID_DECLARE_PENALTY;
+      } else {
+        const score = pointsOfHand(hand, this.s.wildJoker.rank);
+        this.s.scores[pid] = score;
+        if (score < bestRivalScore) {
+          bestRivalScore = score;
+          bestRivalId = pid;
+        }
+      }
+    }
+    this.s.phase = "finished";
+    this.s.winnerId = bestRivalId;
+    this.updateMatchScoresAfterRound();
+  }
+
+  private advanceTurn(): void {
+    const total = this.s.playerOrder.length;
+    for (let i = 0; i < total; i++) {
+      this.s.turnIndex = (this.s.turnIndex + 1) % total;
+      const id = this.s.playerOrder[this.s.turnIndex];
+      if (this.s.hands.has(id) && !this.s.droppedPlayers.has(id)) {
+        this.s.turnAction = "draw";
+        return;
+      }
+    }
+    this.s.turnAction = "draw";
+  }
+
+  private reshuffleOpenIntoClosed(): void {
+    if (this.s.openPile.length <= 1) return;
+    const top = this.s.openPile.pop()!;
+    const toShuffle = this.s.openPile;
+    this.s.openPile = [top];
+    for (let i = toShuffle.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [toShuffle[i], toShuffle[j]] = [toShuffle[j], toShuffle[i]];
+    }
+    this.s.closedDeck = toShuffle;
+  }
+
+  getPublicState(): RummyPublicState {
+    const handSizes: Record<string, number> = {};
+    for (const pid of this.s.playerOrder) {
+      handSizes[pid] = (this.s.hands.get(pid) ?? []).length;
+    }
+    return {
+      kind: "rummy",
+      phase: this.s.phase,
+      turnPlayerId: this.s.playerOrder[this.s.turnIndex],
+      turnAction: this.s.turnAction,
+      turnIndex: this.s.turnIndex,
+      wildJoker: this.s.wildJoker,
+      closedDeckCount: this.s.closedDeck.length,
+      topOfOpenPile: this.s.openPile[this.s.openPile.length - 1] ?? null,
+      handSizes,
+      playerOrder: this.s.playerOrder,
+      openPile: this.s.openPile.slice(),
+      turnDeadline: this.s.turnDeadline,
+      droppedPlayers: [...this.s.droppedPlayers],
+      matchMode: this.s.matchMode,
+      cumulativeScores: Object.fromEntries(this.s.cumulativeScores),
+      eliminatedInMatch: [...this.s.eliminatedInMatch],
+      roundNumber: this.s.roundNumber,
+      matchWinnerId: this.s.matchWinnerId,
+      matchOver: this.s.matchOver,
+      poolTarget: this.s.poolTarget,
+      winnerId: this.s.phase === "finished" ? this.s.winnerId : undefined,
+      scores: this.s.phase === "finished" ? this.s.scores : undefined,
+      finalHands: this.s.phase === "finished" ? this.s.finalHands : undefined,
+      invalidDeclareBy: this.s.invalidDeclareBy ?? null,
+    };
+  }
+
+  getStateFor(playerId: string): RummyPlayerState {
+    return {
+      ...this.getPublicState(),
+      myHand: (this.s.hands.get(playerId) ?? []).slice(),
+    };
+  }
+
+  isOver(): boolean {
+    // Single-mode: round end = match end. Pool mode: only when match is fully over.
+    if (this.s.poolTarget == null) return this.s.phase === "finished";
+    return this.s.matchOver;
+  }
+
+  /**
+   * For the shared bot orchestration in RoomManager. Rummy is turn-based —
+   * the current player is the only one who can act.
+   */
+  pendingActors(): string[] {
+    if (this.s.phase !== "playing") return [];
+    const current = this.s.playerOrder[this.s.turnIndex];
+    if (!current) return [];
+    if (this.s.droppedPlayers.has(current)) return [];
+    return [current];
+  }
+
+  removePlayer(playerId: string): void {
+    if (!this.s.hands.has(playerId)) return;
+    this.s.hands.delete(playerId);
+    if (this.s.hands.size < 2 && this.s.phase === "playing") {
+      const remaining = [...this.s.hands.keys()];
+      this.s.phase = "finished";
+      this.s.winnerId = remaining[0] ?? null;
+      for (const pid of this.s.playerOrder) {
+        this.s.scores[pid] = pid === this.s.winnerId ? 0 : INVALID_DECLARE_PENALTY;
+      }
+    }
+  }
+}
