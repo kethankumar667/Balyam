@@ -86,4 +86,12 @@ export function registerSocketHandlers(
   socket.on("room:cursor", ({ x, y }) => {
     rooms.relayCursor(socket.id, x, y);
   });
+
+  socket.on("rematch:request", () => {
+    rooms.requestRematch(socket.id);
+  });
+
+  socket.on("rematch:respond", (response) => {
+    rooms.respondRematch(socket.id, response);
+  });
 }

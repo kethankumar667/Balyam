@@ -105,12 +105,19 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [hcGalliOvers, setHcGalliOvers] = useState<number>(5);
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Per-field validation lives directly under each input. `formError` is
+  // reserved for cross-field / server-side errors that don't belong on a
+  // single field (e.g. "Failed to create room", a network blip).
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Reset transient state every time a new game opens.
   useEffect(() => {
     if (game) {
-      setError(null);
+      setNameError(null);
+      setCodeError(null);
+      setFormError(null);
       setBusy(false);
       setJoinCode("");
       setName(playerName);
@@ -145,10 +152,15 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
   function createRoom() {
     const n = trimmedName();
-    if (!n) return setError("Enter your name first");
+    setNameError(null);
+    setCodeError(null);
+    setFormError(null);
+    if (!n) {
+      setNameError("Enter your name first");
+      return;
+    }
     if (!game) return;
     setBusy(true);
-    setError(null);
     setPlayerName(n);
     const socket = getSocket();
     socket.emit(
@@ -172,7 +184,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       (res) => {
         setBusy(false);
         if (!res.ok || !res.code) {
-          setError(res.error ?? "Failed to create room");
+          // Room creation failure is genuinely cross-field — the server
+          // rejected the whole request. Use the form-level fallback.
+          setFormError(res.error ?? "Failed to create room");
           return;
         }
         if (res.playerId) setPlayerId(res.playerId);
@@ -184,10 +198,15 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   function joinRoom() {
     const n = trimmedName();
     const code = joinCode.trim().toUpperCase();
-    if (!n) return setError("Enter your name first");
-    if (code.length !== 6) return setError("Room code must be 6 characters");
+    // Validate both fields together so the user sees every problem at once
+    // rather than one-at-a-time. The first offender wins focus.
+    const nextNameError = !n ? "Enter your name first" : null;
+    const nextCodeError = code.length !== 6 ? "Room code must be 6 characters" : null;
+    setNameError(nextNameError);
+    setCodeError(nextCodeError);
+    setFormError(null);
+    if (nextNameError || nextCodeError) return;
     setBusy(true);
-    setError(null);
     setPlayerName(n);
     const socket = getSocket();
     socket.emit(
@@ -196,7 +215,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       (res) => {
         setBusy(false);
         if (!res.ok) {
-          setError(res.error ?? "Failed to join");
+          // Server-side join failure ("Room not found", "Game already in
+          // progress", "Room is full") almost always points at the code
+          // field — that's the rejected room.
+          setCodeError(res.error ?? "Failed to join");
           return;
         }
         if (res.playerId) setPlayerId(res.playerId);
@@ -278,20 +300,28 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         {/* Body */}
         <div className="p-4 space-y-4">
           {/* Name input */}
-          <Field label="Your name">
+          <Field label="Your name" htmlFor="grs-name" error={nameError}>
             <input
+              id="grs-name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (nameError) setNameError(null);
+              }}
               placeholder="e.g. Kethan"
               maxLength={20}
-              className="w-full min-h-[44px] px-3 rounded-xl
-                         bg-bhalyam-cream-soft border-2 border-bhalyam-cream-edge/80
+              aria-invalid={nameError ? true : undefined}
+              aria-describedby={nameError ? "grs-name-error" : undefined}
+              className={`w-full min-h-[44px] px-3 rounded-xl
+                         bg-bhalyam-cream-soft border-2
                          text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
                          font-semibold
-                         focus:outline-none focus:border-bhalyam-gold-dark
-                         focus:ring-2 focus:ring-bhalyam-gold/40
-                         transition-all duration-150"
+                         focus:outline-none focus:ring-2
+                         transition-all duration-200
+                         ${nameError
+                           ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
+                           : "border-bhalyam-cream-edge/80 focus:border-bhalyam-gold-dark focus:ring-bhalyam-gold/40"}`}
             />
           </Field>
 
@@ -415,20 +445,30 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
           {/* Join by code */}
           <div className="space-y-2.5">
-            <input
-              type="text"
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              placeholder="ROOM CODE"
-              maxLength={6}
-              className="w-full min-h-[44px] px-3 rounded-xl
-                         bg-bhalyam-cream-soft border-2 border-bhalyam-cream-edge/80
-                         text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
-                         font-mono font-bold tracking-[0.3em] text-center
-                         focus:outline-none focus:border-bhalyam-gold-dark
-                         focus:ring-2 focus:ring-bhalyam-gold/40
-                         transition-all duration-150"
-            />
+            <Field label="Room code" htmlFor="grs-code" error={codeError}>
+              <input
+                id="grs-code"
+                type="text"
+                value={joinCode}
+                onChange={(e) => {
+                  setJoinCode(e.target.value.toUpperCase());
+                  if (codeError) setCodeError(null);
+                }}
+                placeholder="ROOM CODE"
+                maxLength={6}
+                aria-invalid={codeError ? true : undefined}
+                aria-describedby={codeError ? "grs-code-error" : undefined}
+                className={`w-full min-h-[44px] px-3 rounded-xl
+                           bg-bhalyam-cream-soft border-2
+                           text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
+                           font-mono font-bold tracking-[0.3em] text-center
+                           focus:outline-none focus:ring-2
+                           transition-all duration-200
+                           ${codeError
+                             ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
+                             : "border-bhalyam-cream-edge/80 focus:border-bhalyam-gold-dark focus:ring-bhalyam-gold/40"}`}
+              />
+            </Field>
             <button
               type="button"
               onClick={joinRoom}
@@ -449,14 +489,17 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             </button>
           </div>
 
-          {error && (
+          {/* Form-level error fallback — used only when the failure isn't
+              attributable to one input (e.g. server "Failed to create room"). */}
+          {formError && (
             <div
               role="alert"
+              aria-live="polite"
               className="text-sm text-bhalyam-ludo-red font-bold text-center
                          bg-bhalyam-ludo-red/10 border border-bhalyam-ludo-red/30
                          rounded-xl p-2"
             >
-              {error}
+              {formError}
             </div>
           )}
         </div>
@@ -467,13 +510,38 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
 /* ───────────────────────────── Helpers ───────────────────────────── */
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  htmlFor,
+  error,
+}: {
+  label: string;
+  children: React.ReactNode;
+  /** Required when there's an associated input — wires <label htmlFor> and the error's id. */
+  htmlFor?: string;
+  /** Field-level validation message rendered directly below the input. */
+  error?: string | null;
+}) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-[11px] uppercase tracking-widest font-bold text-bhalyam-wood">
+      <label
+        htmlFor={htmlFor}
+        className="block text-[11px] uppercase tracking-widest font-bold text-bhalyam-wood"
+      >
         {label}
       </label>
       {children}
+      {error && (
+        <p
+          id={htmlFor ? `${htmlFor}-error` : undefined}
+          role="alert"
+          aria-live="polite"
+          className="text-[12px] font-semibold text-bhalyam-ludo-red leading-tight pl-0.5"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }

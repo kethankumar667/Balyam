@@ -707,6 +707,35 @@ export interface WebRTCSignalRecvPayload {
   signal: WebRTCSignal;
 }
 
+/**
+ * Rematch flow.
+ *
+ * When a game finishes, the host can request another round in the same room
+ * with the same players. Every non-host (humans only — bots auto-accept) sees
+ * an accept/decline prompt. The match starts the moment all responses are in,
+ * or is cancelled if anyone declines / the timer expires.
+ *
+ * The status types:
+ *   - "idle"        : no rematch in progress
+ *   - "pending"     : host requested, waiting on responses
+ *   - "accepted"    : everyone accepted; brief countdown before restart
+ *   - "declined"    : someone said no (or timed out); rematch cancelled
+ */
+export type RematchStatus = "idle" | "pending" | "accepted" | "declined";
+
+export interface RematchState {
+  status: RematchStatus;
+  requesterId: string | null;
+  /** Map of playerId -> response. Bots are auto-accepted on request. */
+  responses: Record<string, "pending" | "accept" | "decline">;
+  /** Wall-clock ms when the pending request expires if not all responses are in. */
+  expiresAt: number | null;
+  /** When status === "accepted", wall-clock ms when the new game auto-starts. */
+  startsAt: number | null;
+  /** When status === "declined", the playerId who declined (or null if timed out). */
+  declinedBy: string | null;
+}
+
 export interface ServerToClientEvents {
   "room:state": (state: RoomPublicState) => void;
   "room:joined": (payload: { playerId: string; state: RoomPublicState }) => void;
@@ -717,6 +746,8 @@ export interface ServerToClientEvents {
   "webrtc:signal": (payload: WebRTCSignalRecvPayload) => void;
   "room:reaction": (payload: ReactionRecvPayload) => void;
   "room:cursor": (payload: CursorRecvPayload) => void;
+  /** Broadcasted whenever rematch state changes for the room. */
+  "rematch:state": (state: RematchState) => void;
 }
 
 export interface ClientToServerEvents {
@@ -741,4 +772,8 @@ export interface ClientToServerEvents {
   "webrtc:signal": (payload: WebRTCSignalSendPayload) => void;
   "room:reaction": (payload: ReactionSendPayload) => void;
   "room:cursor": (payload: CursorSendPayload) => void;
+  /** Host-only. Initiates a rematch request to all other players in the room. */
+  "rematch:request": () => void;
+  /** Any non-host response to a pending rematch request. */
+  "rematch:respond": (response: "accept" | "decline") => void;
 }
