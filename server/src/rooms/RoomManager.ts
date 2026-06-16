@@ -23,6 +23,7 @@ import {
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
+import type { RematchState } from "@shared/types.js";
 import type { GameEngine } from "../games/GameEngine.js";
 import { LudoEngine } from "../games/ludo/LudoEngine.js";
 import { SnlEngine } from "../games/snl/SnlEngine.js";
@@ -30,6 +31,10 @@ import { RummyEngine } from "../games/rummy/RummyEngine.js";
 import { HandCricketEngine } from "../games/handcricket/HandCricketEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
+/** How long the host's rematch request stays open before auto-cancelling. */
+const REMATCH_REQUEST_WINDOW_MS = 30_000;
+/** Countdown shown to everyone after all responses are in before the new game auto-starts. */
+const REMATCH_COUNTDOWN_MS = 3_000;
 
 /**
  * Per-game bot name pools. Each pool draws from the cultural texture of
@@ -67,6 +72,23 @@ interface Room {
   snlOptions: SnlGameOptions;
   rummyOptions: RummyGameOptions;
   hcOptions: HcGameOptions;
+  /** Active rematch negotiation (or idle). Refer to the RematchState type. */
+  rematch: RematchState;
+  /** Timer that auto-cancels a pending rematch when the window expires. */
+  rematchTimer: NodeJS.Timeout | null;
+  /** Timer that auto-starts the new game once everyone accepts. */
+  rematchStartTimer: NodeJS.Timeout | null;
+}
+
+function emptyRematchState(): RematchState {
+  return {
+    status: "idle",
+    requesterId: null,
+    responses: {},
+    expiresAt: null,
+    startsAt: null,
+    declinedBy: null,
+  };
 }
 
 type IO = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -125,6 +147,9 @@ export class RoomManager {
       snlOptions: { ...DEFAULT_SNL_OPTIONS, ...(snlOptions ?? {}) },
       rummyOptions: { ...DEFAULT_RUMMY_OPTIONS, ...(rummyOptions ?? {}) },
       hcOptions: { ...DEFAULT_HC_OPTIONS, ...(hcOptions ?? {}) },
+      rematch: emptyRematchState(),
+      rematchTimer: null,
+      rematchStartTimer: null,
     };
     this.rooms.set(code, room);
     this.socketToRoom.set(socketId, code);
@@ -162,6 +187,9 @@ export class RoomManager {
         const state = room.engine.getStateFor(existingPlayerId);
         this.io.sockets.sockets.get(socketId)?.emit("game:state", state);
       }
+      // Catch the rejoiner up on any rematch vote in progress so they don't
+      // see a stale "Game Over" with no prompt.
+      this.io.sockets.sockets.get(socketId)?.emit("rematch:state", room.rematch);
       return { ok: true, playerId: existingPlayerId };
     }
 
@@ -212,6 +240,18 @@ export class RoomManager {
       }
     }
     if (room.engine) room.engine.removePlayer(playerId);
+    // If the leaver was part of a pending rematch vote, cancel it —
+    // proceeding would either deadlock (waiting on someone who's gone) or
+    // start a game with a smaller table than the host requested.
+    if (
+      room.rematch.status === "pending" &&
+      playerId in room.rematch.responses
+    ) {
+      this.cancelRematch(room, playerId);
+    } else if (room.rematch.status === "accepted" && room.hostId !== playerId) {
+      // Already counted-down; if a non-host leaves at the last second, the
+      // start will still go through with current players.
+    }
     this.broadcastRoomState(room);
   }
 
@@ -674,5 +714,170 @@ export class RoomManager {
       const state = room.engine.getStateFor(playerId);
       this.io.sockets.sockets.get(socketId)?.emit("game:state", state);
     }
+  }
+
+  /* ───────────────────────────── Rematch flow ───────────────────────────── */
+
+  /**
+   * Host requests a rematch with the same players. Anyone connected (humans
+   * only — bots auto-accept) gets a prompt to accept/decline. If everyone
+   * accepts the new round starts after a short countdown; any decline (or
+   * timeout) cancels.
+   *
+   * Idempotent for the host: requesting again while pending just keeps the
+   * existing state and broadcasts. Quietly refused for non-hosts.
+   */
+  requestRematch(socketId: string): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (player.id !== room.hostId) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only host can request rematch");
+      return;
+    }
+    if (room.phase !== "finished") {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Can only rematch after a game ends");
+      return;
+    }
+    if (room.rematch.status === "pending" || room.rematch.status === "accepted") {
+      // Already pending — re-broadcast so the host's UI catches up if needed.
+      this.broadcastRematch(room);
+      return;
+    }
+    const responses: Record<string, "pending" | "accept" | "decline"> = {};
+    for (const p of room.players.values()) {
+      if (p.id === player.id) {
+        // The requester implicitly accepts their own request.
+        responses[p.id] = "accept";
+      } else if (p.isBot) {
+        // Bots are always willing to play another round.
+        responses[p.id] = "accept";
+      } else {
+        responses[p.id] = "pending";
+      }
+    }
+    room.rematch = {
+      status: "pending",
+      requesterId: player.id,
+      responses,
+      expiresAt: Date.now() + REMATCH_REQUEST_WINDOW_MS,
+      startsAt: null,
+      declinedBy: null,
+    };
+
+    this.clearRematchTimers(room);
+    room.rematchTimer = setTimeout(() => {
+      // Timeout = treat as a decline by "no one in particular".
+      this.cancelRematch(room, null);
+    }, REMATCH_REQUEST_WINDOW_MS);
+
+    this.broadcastRematch(room);
+    // Edge case: if everyone except host is a bot, all responses are already
+    // "accept" — settle immediately so the host doesn't see a no-op pending
+    // state.
+    this.maybeSettleRematch(room);
+  }
+
+  respondRematch(socketId: string, response: "accept" | "decline"): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (room.rematch.status !== "pending") return;
+    if (!(player.id in room.rematch.responses)) return;
+    if (room.rematch.responses[player.id] !== "pending") return;
+
+    room.rematch.responses[player.id] = response;
+    if (response === "decline") {
+      this.cancelRematch(room, player.id);
+      return;
+    }
+    this.broadcastRematch(room);
+    this.maybeSettleRematch(room);
+  }
+
+  /** Called after each acceptance — promotes to "accepted" once all are in. */
+  private maybeSettleRematch(room: Room): void {
+    if (room.rematch.status !== "pending") return;
+    const allAccepted = Object.values(room.rematch.responses).every(
+      (r) => r === "accept"
+    );
+    if (!allAccepted) return;
+
+    // Flip to "accepted" with a brief countdown so players get visual
+    // confirmation before the screen swaps to the next game's setup.
+    room.rematch = {
+      ...room.rematch,
+      status: "accepted",
+      expiresAt: null,
+      startsAt: Date.now() + REMATCH_COUNTDOWN_MS,
+    };
+    this.clearRematchTimers(room);
+    room.rematchStartTimer = setTimeout(() => {
+      this.startRematch(room);
+    }, REMATCH_COUNTDOWN_MS);
+    this.broadcastRematch(room);
+  }
+
+  private cancelRematch(room: Room, declinedBy: string | null): void {
+    if (room.rematch.status === "idle") return;
+    room.rematch = {
+      ...emptyRematchState(),
+      status: "declined",
+      declinedBy,
+    };
+    this.clearRematchTimers(room);
+    this.broadcastRematch(room);
+    // Short delay then return to idle so the UI has time to show the
+    // "declined" badge before clearing.
+    setTimeout(() => {
+      if (room.rematch.status === "declined") {
+        room.rematch = emptyRematchState();
+        this.broadcastRematch(room);
+      }
+    }, 2_500);
+  }
+
+  /** Actually start a new round — wraps the same flow as startGame() but skips
+   *  the ready-check (everyone has already opted in via the rematch vote). */
+  private startRematch(room: Room): void {
+    if (room.rematch.status !== "accepted") return;
+    const playersList = Array.from(room.players.values());
+    try {
+      const engine = createEngine(room.game);
+      if (engine instanceof LudoEngine) engine.setOptions(room.ludoOptions);
+      if (engine instanceof SnlEngine) engine.setOptions(room.snlOptions);
+      if (engine instanceof RummyEngine) engine.setOptions(room.rummyOptions);
+      if (engine instanceof HandCricketEngine) engine.setOptions(room.hcOptions);
+      engine.init(playersList);
+      room.engine = engine;
+      room.phase = "playing";
+      // Mark everyone "ready" so any UI that checks readiness behaves
+      // correctly post-restart.
+      for (const p of room.players.values()) p.isReady = true;
+      room.rematch = emptyRematchState();
+      this.clearRematchTimers(room);
+      this.broadcastRoomState(room);
+      this.broadcastGameState(room);
+      this.broadcastRematch(room);
+      this.scheduleTurnTimer(room);
+      this.scheduleBotMoveIfNeeded(room);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to start rematch";
+      this.io.to(room.code).emit("room:error", msg);
+      this.cancelRematch(room, null);
+    }
+  }
+
+  private clearRematchTimers(room: Room): void {
+    if (room.rematchTimer) {
+      clearTimeout(room.rematchTimer);
+      room.rematchTimer = null;
+    }
+    if (room.rematchStartTimer) {
+      clearTimeout(room.rematchStartTimer);
+      room.rematchStartTimer = null;
+    }
+  }
+
+  private broadcastRematch(room: Room): void {
+    this.io.to(room.code).emit("rematch:state", room.rematch);
   }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
+import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
 import { useTheme } from "../lib/useTheme";
 import {
   BHALYAM_GAMES,
@@ -45,10 +46,11 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
 
 export default function BhalyamHome() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
+  const [joinOpen, setJoinOpen] = useState(false);
 
   return (
     <div className="bhalyam-home bhalyam-font min-h-[100dvh] bhalyam-paper flex flex-col">
-      <Header />
+      <Header onOpenJoin={() => setJoinOpen(true)} />
       <main className="mx-auto w-full max-w-[1080px] px-4 sm:px-6 pb-10 flex-1">
         <Hero />
         <GamesSection onSelect={setSheetGame} />
@@ -58,6 +60,7 @@ export default function BhalyamHome() {
         <Footer />
       </main>
       <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
+      <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
       <DesktopThemeToggle />
     </div>
   );
@@ -92,7 +95,7 @@ function DesktopThemeToggle() {
 
 /* ───────────────────────────── Header ───────────────────────────── */
 
-function Header() {
+function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
   return (
     <header
       className="mx-auto w-full max-w-[1080px] px-4 sm:px-6 pt-4 sm:pt-5
@@ -131,9 +134,14 @@ function Header() {
             +129
           </span>
         </div>
+        <JoinRoomButton onClick={onOpenJoin} />
         <button
           type="button"
-          className="h-11 px-5 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] shadow-sm text-[14px] font-semibold inline-flex items-center gap-2"
+          className="h-11 px-5 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] shadow-sm
+                     text-[14px] font-semibold inline-flex items-center gap-2 cursor-pointer
+                     hover:bg-[#F8EEDB] active:translate-y-px
+                     focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
+                     transition-colors duration-200"
           aria-label="How to Play"
         >
           <span className="w-5 h-5 rounded-full border border-bhalyam-wood/35 text-bhalyam-wood text-[12px] leading-none inline-flex items-center justify-center">?</span>
@@ -141,10 +149,62 @@ function Header() {
         </button>
       </div>
 
-      <div className="md:hidden mt-4 flex justify-end">
+      <div className="md:hidden mt-4 flex justify-end items-center gap-2">
+        <JoinRoomButton onClick={onOpenJoin} compact />
         <MobileThemeToggle />
       </div>
     </header>
+  );
+}
+
+/**
+ * Primary "Join Room" CTA in the home header.
+ *
+ * Uses the BHALYAM gold-leaf treatment to read as the primary action without
+ * fighting the page's wood/cream palette. `compact` switches to a smaller pill
+ * for the mobile row where space is at a premium.
+ *
+ * Accessibility: ≥44px touch target, visible focus ring, descriptive aria-label,
+ * SVG door glyph (no emoji), 200ms color transition for hover feedback.
+ */
+function JoinRoomButton({
+  onClick,
+  compact = false,
+}: {
+  onClick: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Join a room with a code"
+      className={`${compact ? "h-10 px-3.5 text-[13px]" : "h-11 px-5 text-[14px]"}
+                  rounded-full inline-flex items-center gap-2 cursor-pointer
+                  bhalyam-gold-leaf text-bhalyam-wood-dark font-bold
+                  border border-bhalyam-gold-dark
+                  hover:brightness-[1.04] active:translate-y-px
+                  focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/70 focus:ring-offset-2 focus:ring-offset-bhalyam-cream-soft
+                  shadow-[0_4px_10px_-3px_rgba(228,177,40,0.55)]
+                  transition-all duration-200`}
+    >
+      <DoorPlusIcon className={compact ? "w-4 h-4" : "w-[18px] h-[18px]"} />
+      Join Room
+    </button>
+  );
+}
+
+function DoorPlusIcon({ className }: { className?: string }) {
+  // Door-with-plus glyph — signals "enter an existing space" without leaning
+  // on emoji. Matches the icon used inside the modal header for continuity.
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <path d="M4 21h12" />
+      <path d="M6 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16" />
+      <path d="M13 13h.01" />
+      <path d="M20 8v6M17 11h6" />
+    </svg>
   );
 }
 

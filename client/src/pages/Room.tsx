@@ -12,6 +12,7 @@ import PlayerList from "../components/PlayerList";
 import Chat from "../components/Chat";
 import RoomCode from "../components/RoomCode";
 import RoomCodeShare from "../components/RoomCodeShare";
+import RematchPanel from "../components/RematchPanel";
 import VoicePanel from "../components/VoicePanel";
 import LudoColorPicker from "../components/LudoColorPicker";
 import CoinColorPicker from "../components/CoinColorPicker";
@@ -142,12 +143,14 @@ export default function Room() {
     gameState,
     messages,
     lastError,
+    rematch,
     setPlayerId,
     setPlayerName,
     setRoomState,
     setGameState,
     addMessage,
     setError,
+    setRematch,
     reset,
   } = useRoomStore();
 
@@ -207,6 +210,7 @@ export default function Room() {
     socket.on("chat:message", addMessage);
     socket.on("room:error", setError);
     socket.on("game:error", setError);
+    socket.on("rematch:state", setRematch);
 
     return () => {
       socket.off("connect", onConnect);
@@ -215,6 +219,7 @@ export default function Room() {
       socket.off("chat:message", addMessage);
       socket.off("room:error", setError);
       socket.off("game:error", setError);
+      socket.off("rematch:state", setRematch);
       // Belt-and-suspenders fullscreen exit: leaveRoom() already calls this,
       // but the user can navigate away via browser back / tab close without
       // ever clicking Leave. Drop fullscreen here too so they don't end up
@@ -440,16 +445,13 @@ export default function Room() {
               />
             )}
 
-            {roomState.phase === "finished" && selfIsHost && (
-              <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-4 text-center">
-                <button
-                  onClick={() => {
-                    getSocket().emit("room:setReady", false);
-                  }}
-                  className="text-sm text-[#786350] underline"
-                >
-                  Ready up to play again
-                </button>
+            {/* Generic rematch panel — host sees "Play Again", non-hosts see
+                accept/decline when host requests, everyone sees the countdown.
+                Rummy renders its own end-game scorecard inline with the board,
+                so we skip this slot when Rummy is finished. */}
+            {roomState.phase === "finished" && roomState.game !== "rummy" && (
+              <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-4">
+                <RematchPanel players={roomState.players} selfId={playerId} />
               </div>
             )}
           </div>

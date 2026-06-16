@@ -19,6 +19,7 @@ import TutorialModal, { hasSeenTutorial } from "./TutorialModal";
 import PlayerList from "../../components/PlayerList";
 import VoicePanel from "../../components/VoicePanel";
 import Chat from "../../components/Chat";
+import RematchPanel from "../../components/RematchPanel";
 import Avatar from "./Avatar";
 import {
   enterFullscreen,
@@ -877,6 +878,9 @@ export default function RummyBoardMobile({
         onLeave={onLeave}
         onOpenMenu={() => setMenuOpen(true)}
         hasUnreadChat={hasUnreadChat}
+        fullscreenSupported={fullscreenSupported}
+        fullscreenOn={fullscreenOn}
+        onToggleFullscreen={toggleFullscreen}
       />
 
       {/* Opponents + Center deck on a single row. 3-column grid where the
@@ -973,7 +977,13 @@ export default function RummyBoardMobile({
           (resultDismissed resets when phase flips back to "playing"). */}
       {!resultDismissed && state.phase === "finished" && state.matchMode === "single" && (
         <ResultOverlay onClose={() => setResultDismissed(true)}>
-          <EndGameCard state={state} nameOf={nameOf} />
+          <RummyScoreCard
+            state={state}
+            players={players}
+            selfId={selfId}
+            roomCode={roomCode}
+            onLeave={onLeave}
+          />
         </ResultOverlay>
       )}
 
@@ -985,7 +995,12 @@ export default function RummyBoardMobile({
 
       {!resultDismissed && state.matchOver && (
         <ResultOverlay onClose={() => setResultDismissed(true)}>
-          <MatchOverCard state={state} nameOf={nameOf} />
+          <div className="space-y-3">
+            <MatchOverCard state={state} nameOf={nameOf} />
+            <div className="bg-amber-950/60 border border-amber-700/40 rounded-xl p-3">
+              <RematchPanel players={players} selfId={selfId} />
+            </div>
+          </div>
         </ResultOverlay>
       )}
 
@@ -1345,6 +1360,9 @@ function TopStrip({
   onLeave,
   onOpenMenu,
   hasUnreadChat,
+  fullscreenSupported,
+  fullscreenOn,
+  onToggleFullscreen,
 }: {
   gameLabel: string;
   roomCode?: string;
@@ -1352,6 +1370,9 @@ function TopStrip({
   onCopy: () => void;
   onLeave?: () => void;
   onOpenMenu: () => void;
+  fullscreenSupported: boolean;
+  fullscreenOn: boolean;
+  onToggleFullscreen: () => void;
   hasUnreadChat: boolean;
 }) {
   return (
@@ -1413,23 +1434,71 @@ function TopStrip({
         )}
       </button>
 
-      {/* Right — Hamburger */}
-      <button
-        onClick={onOpenMenu}
-        aria-label="Open menu"
-        title="Menu"
-        className="relative w-7 h-7 mt-1 rounded-full flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-sm flex-shrink-0"
-        style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.3)" }}
-      >
-        ☰
-        {hasUnreadChat && (
-          <span
-            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
-            style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px #052e16" }}
-          />
+      {/* Right — Fullscreen toggle + Hamburger. The fullscreen toggle is
+          always visible (not buried in the menu) because players reach for
+          it frequently — to swap orientation, to recover from an accidental
+          ESC, or because their device decided to show the URL bar mid-game.
+          Hidden on devices where the API isn't available (iPhone Safari). */}
+      <div className="flex items-center gap-1.5">
+        {fullscreenSupported && (
+          <button
+            onClick={onToggleFullscreen}
+            aria-label={fullscreenOn ? "Exit fullscreen" : "Enter fullscreen"}
+            aria-pressed={fullscreenOn}
+            title={fullscreenOn ? "Exit fullscreen" : "Enter fullscreen"}
+            className="w-7 h-7 mt-1 rounded-full flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-sm flex-shrink-0 text-amber-200 cursor-pointer transition-colors duration-200"
+            style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.3)" }}
+          >
+            {fullscreenOn ? (
+              <FsExitIcon className="w-3.5 h-3.5" />
+            ) : (
+              <FsEnterIcon className="w-3.5 h-3.5" />
+            )}
+          </button>
         )}
-      </button>
+        <button
+          onClick={onOpenMenu}
+          aria-label="Open menu"
+          title="Menu"
+          className="relative w-7 h-7 mt-1 rounded-full flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-sm flex-shrink-0"
+          style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.3)" }}
+        >
+          ☰
+          {hasUnreadChat && (
+            <span
+              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+              style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px #052e16" }}
+            />
+          )}
+        </button>
+      </div>
     </div>
+  );
+}
+
+function FsEnterIcon({ className }: { className?: string }) {
+  // Four diagonal arrows pointing outward — the universal "go fullscreen" glyph.
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <path d="M4 9V4h5" />
+      <path d="M20 9V4h-5" />
+      <path d="M4 15v5h5" />
+      <path d="M20 15v5h-5" />
+    </svg>
+  );
+}
+
+function FsExitIcon({ className }: { className?: string }) {
+  // Four diagonal arrows pointing inward — the universal "exit fullscreen" glyph.
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <path d="M9 4v5H4" />
+      <path d="M15 4v5h5" />
+      <path d="M9 20v-5H4" />
+      <path d="M15 20v-5h5" />
+    </svg>
   );
 }
 
@@ -2511,6 +2580,257 @@ function MatchOverCard({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * Final-round scorecard for single-mode Rummy.
+ *
+ * Replaces the old slate "Round ended" panel with the wine-red ranked
+ * scorecard from the design reference. Embeds the generic RematchPanel so
+ * the host can request another round + non-hosts can accept/decline + a
+ * countdown ticks when everyone's in.
+ *
+ * Layout: full-width red felt with a trophy/medal header, a ranked
+ * table (Rank · Player · Cards · Points · Chips), and a joker chip + game
+ * ID footer.
+ *
+ * We intentionally render players' final hands as a flat card row —
+ * non-winners' melds aren't carried over the wire (only the winner's
+ * declared groups are), so a per-meld classification badge would be
+ * dishonest for losers. The total points already convey "how bad was the
+ * hand at the end."
+ */
+function RummyScoreCard({
+  state,
+  players,
+  selfId,
+  roomCode,
+  onLeave,
+}: {
+  state: RummyPlayerState;
+  players: Player[];
+  selfId: string | null;
+  roomCode?: string;
+  onLeave?: () => void;
+}) {
+  const winnerId = state.winnerId ?? null;
+  const lossOf = (id: string) => Math.max(0, state.scores?.[id] ?? 0);
+  const winnerPot = winnerId
+    ? state.playerOrder.reduce(
+        (sum, id) => (id === winnerId ? sum : sum + lossOf(id)),
+        0,
+      )
+    : 0;
+
+  // Rank order: winner first, everyone else by ascending hand value
+  // (lower = better). Stable across ties.
+  const ranked = [...state.playerOrder].sort((a, b) => {
+    if (a === winnerId) return -1;
+    if (b === winnerId) return 1;
+    return lossOf(a) - lossOf(b);
+  });
+  const selfRank = selfId ? ranked.indexOf(selfId) + 1 : null;
+
+  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
+  const isMyId = (id: string) => id === selfId;
+
+  const matchLabel =
+    state.matchMode === "pool101" ? "101 Pool"
+    : state.matchMode === "pool201" ? "201 Pool"
+    : "Points";
+
+  return (
+    <div
+      className="relative w-full rounded-2xl overflow-hidden text-white shadow-2xl"
+      style={{
+        background:
+          "radial-gradient(ellipse at 50% 0%, #9b2a2a 0%, #6f1f1f 55%, #4a1212 100%)",
+        border: "2px solid rgba(0,0,0,0.45)",
+        boxShadow:
+          "0 24px 60px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(251,191,36,0.35) inset",
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 px-4 sm:px-5 pt-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <MedalIcon className="w-9 h-9 sm:w-10 sm:h-10 text-amber-300 flex-shrink-0 drop-shadow" />
+          <div className="min-w-0">
+            <div className="text-amber-200 italic font-black text-[19px] sm:text-[22px] leading-tight">
+              {state.invalidDeclareBy
+                ? "Invalid declare"
+                : selfRank
+                ? `You finished ${ordinal(selfRank)}!`
+                : "Round complete"}
+            </div>
+            {state.invalidDeclareBy && (
+              <div className="text-rose-200 text-[12px] font-semibold">
+                {nameOf(state.invalidDeclareBy)} mis-declared
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          {onLeave && (
+            <button
+              type="button"
+              onClick={onLeave}
+              className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800/95 hover:bg-zinc-700 active:translate-y-px
+                         text-zinc-100 text-[12px] sm:text-[13px] font-bold px-3 py-1.5 cursor-pointer
+                         focus:outline-none focus:ring-2 focus:ring-zinc-400/60 transition-colors duration-200"
+              aria-label="Leave game"
+            >
+              <LeaveIcon className="w-3.5 h-3.5" />
+              Leave Game
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Ranked table */}
+      <div className="px-2 sm:px-3 pt-3 pb-2">
+        <div
+          className="grid items-center gap-2 px-3 py-1.5 text-amber-100/80 uppercase tracking-widest font-bold text-[10px] sm:text-[11px]"
+          style={{ gridTemplateColumns: "44px 1.2fr 2.6fr 0.7fr 0.9fr" }}
+        >
+          <div>Rank</div>
+          <div>Username</div>
+          <div>Cards</div>
+          <div className="text-right">Points</div>
+          <div className="text-right">Chips Won</div>
+        </div>
+        <div className="space-y-1.5">
+          {ranked.map((id, idx) => {
+            const rank = idx + 1;
+            const isWin = id === winnerId;
+            const isMe = isMyId(id);
+            const points = lossOf(id);
+            const chips = isWin ? winnerPot : -points;
+            const hand = state.finalHands?.[id] ?? [];
+            return (
+              <div
+                key={id}
+                className={`grid items-center gap-2 px-3 py-2 rounded-xl text-[12px] sm:text-[13px]
+                            ${isMe
+                              ? "bg-gradient-to-r from-rose-600 to-rose-500 ring-1 ring-amber-300/50"
+                              : isWin
+                              ? "bg-gradient-to-r from-amber-500/30 to-amber-600/20 ring-1 ring-amber-300/40"
+                              : "bg-rose-900/35"}`}
+                style={{ gridTemplateColumns: "44px 1.2fr 2.6fr 0.7fr 0.9fr" }}
+              >
+                <div className="font-black tabular-nums text-amber-200 text-base sm:text-lg">
+                  {rank}
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-black italic truncate">
+                    {isMe ? "You" : nameOf(id)}
+                  </span>
+                  {isWin && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider"
+                      style={{
+                        background: "linear-gradient(135deg, #fbbf24, #d97706)",
+                        color: "#3a2400",
+                      }}
+                    >
+                      <CrownIcon className="w-3 h-3" />
+                      Winner
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+                  {hand.length === 0 ? (
+                    <span className="text-amber-100/60 text-[11px] italic">
+                      —
+                    </span>
+                  ) : (
+                    hand.map((c) => (
+                      <span key={c.id} className="flex-shrink-0 -mr-1.5 last:mr-0">
+                        <PlayingCard
+                          card={c}
+                          isWildJoker={c.rank === state.wildJoker.rank}
+                          small
+                        />
+                      </span>
+                    ))
+                  )}
+                </div>
+                <div className="text-right font-black tabular-nums">
+                  {points}
+                </div>
+                <div
+                  className={`text-right font-black tabular-nums ${
+                    chips >= 0 ? "text-emerald-300" : "text-rose-200"
+                  }`}
+                >
+                  {chips >= 0 ? `+${chips}` : chips}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Footer: joker + game ID + match mode */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-amber-300/20 bg-black/20">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex-shrink-0">
+            <PlayingCard card={state.wildJoker} isWildJoker small />
+          </div>
+          <div className="text-amber-100/90 text-[11px] sm:text-[12px] font-semibold">
+            Joker
+          </div>
+          {roomCode && (
+            <div className="text-amber-100/60 text-[11px] sm:text-[12px] font-mono">
+              #{roomCode}
+            </div>
+          )}
+          <div className="text-amber-100/60 text-[11px] sm:text-[12px] font-semibold">
+            · {matchLabel}
+          </div>
+        </div>
+      </div>
+
+      {/* Rematch — host requests, others accept/decline, everyone sees the
+          countdown. Lives inside the scorecard so the player doesn't have to
+          dismiss anything to invite another round. */}
+      <div className="px-4 pb-4">
+        <RematchPanel players={players} selfId={selfId} />
+      </div>
+    </div>
+  );
+}
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"] as const;
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
+}
+
+function MedalIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-2.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z" />
+      <path d="m8 3 1.5 3.5L7 4 5 5l2.5 2.5L4 9l3.5 1.5L5 13l3-.5L7 16l3-2.5L11 17l1-3 1 3 1-3.5 3 2.5-1-3.5 3 .5-3.5-2.5L20 9l-3-1L19.5 5.5 17 7 19 4l-3 1L14.5 1.5 13 5l-1-3-1 3-.5-2L8 3Z" />
+    </svg>
+  );
+}
+
+function CrownIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M3 18h18l-1.5-9-3.5 4-3-5-3 5-3.5-4L3 18ZM3 20h18v2H3z" />
+    </svg>
+  );
+}
+
+function LeaveIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5M21 12H9" />
+    </svg>
   );
 }
 

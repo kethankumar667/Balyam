@@ -1,5 +1,14 @@
 import { create } from "zustand";
-import type { ChatMessage, RoomPublicState } from "@shared/types";
+import type { ChatMessage, RematchState, RoomPublicState } from "@shared/types";
+
+const idleRematch: RematchState = {
+  status: "idle",
+  requesterId: null,
+  responses: {},
+  expiresAt: null,
+  startsAt: null,
+  declinedBy: null,
+};
 
 interface RoomStore {
   playerId: string | null;
@@ -8,6 +17,7 @@ interface RoomStore {
   gameState: unknown;
   messages: ChatMessage[];
   lastError: string | null;
+  rematch: RematchState;
 
   setPlayerId: (id: string | null) => void;
   setPlayerName: (name: string) => void;
@@ -15,6 +25,7 @@ interface RoomStore {
   setGameState: (state: unknown) => void;
   addMessage: (msg: ChatMessage) => void;
   setError: (err: string | null) => void;
+  setRematch: (state: RematchState) => void;
   reset: () => void;
 }
 
@@ -28,6 +39,7 @@ export const useRoomStore = create<RoomStore>((set) => ({
   gameState: null,
   messages: [],
   lastError: null,
+  rematch: idleRematch,
 
   setPlayerId: (id) => {
     if (id) localStorage.setItem(STORED_ID_KEY, id);
@@ -42,5 +54,13 @@ export const useRoomStore = create<RoomStore>((set) => ({
   setGameState: (state) => set({ gameState: state }),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages.slice(-199), msg] })),
   setError: (err) => set({ lastError: err }),
-  reset: () => set({ roomState: null, gameState: null, messages: [], lastError: null }),
+  setRematch: (state) => set({ rematch: state }),
+  reset: () =>
+    set({
+      roomState: null,
+      gameState: null,
+      messages: [],
+      lastError: null,
+      rematch: idleRematch,
+    }),
 }));
