@@ -1,0 +1,580 @@
+import type {
+  LudoColor,
+  LudoEvent,
+  LudoGameOptions,
+  LudoState,
+  LudoToken,
+  Player,
+} from "@shared/types.js";
+import { DEFAULT_LUDO_OPTIONS } from "@shared/types.js";
+import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
+import {
+  PLAYER_COLORS_ORDER,
+  STRETCH_LENGTH,
+  colorStartFor,
+  lastTrackPosFor,
+  safeSquaresFor,
+  trackLengthFor,
+} from "./track.js";
+
+interface Internal {
+  phase: "playing" | "finished";
+  turnIndex: number;
+  turnPhase: "rolling" | "moving" | "done";
+  diceValue: number | null;
+  consecutiveSixes: number;
+  movableTokenIds: string[];
+  tokens: Map<string, LudoToken[]>;
+  colorOf: Map<string, LudoColor>;
+  playerOrder: string[];
+  finishedCount: Map<string, number>;
+  winnerId: string | null;
+  hasCaptured: Map<string, boolean>;
+  lastEvent: LudoEvent | null;
+  rollCount: Map<string, number>;
+  captureCount: Map<string, number>;
+  sixCount: Map<string, number>;
+  biggestStreak: Map<string, number>;
+  startedAt: number;
+  endedAt: number | null;
+  turnDeadline: number | null;
+  options: LudoGameOptions;
+}
+
+const TOKENS_PER_PLAYER = 4;
+
+export class LudoEngine implements GameEngine {
+  readonly kind = "ludo" as const;
+  readonly minPlayers = 2;
+  readonly maxPlayers = 8;
+
+  private s!: Internal;
+  private rng: () => number = Math.random;
+  private pendingOptions: LudoGameOptions | null = null;
+
+  /** Test hook: inject a deterministic RNG (returns 0..1). */
+  setRng(fn: () => number): void {
+    this.rng = fn;
+  }
+
+  /** Set game options before init. Must be called before init(). */
+  setOptions(opts: Partial<LudoGameOptions>): void {
+    this.pendingOptions = { ...DEFAULT_LUDO_OPTIONS, ...opts };
+  }
+
+  /** Update the turn deadline (in wall-clock ms). Returns updated state. */
+  setTurnDeadline(deadline: number | null): void {
+    if (!this.s) return;
+    this.s.turnDeadline = deadline;
+  }
+
+  init(players: Player[]): void {
+    if (players.length < this.minPlayers || players.length > this.maxPlayers) {
+      throw new Error(`Ludo requires ${this.minPlayers}-${this.maxPlayers} players`);
+    }
+    const order = players.map((p) => p.id);
+    const colorOf = new Map<string, LudoColor>();
+    const tokens = new Map<string, LudoToken[]>();
+    // First pass: assign colors players explicitly chose (first-come stays).
+    const takenColors = new Set<LudoColor>();
+    for (const p of players) {
+      const chosen = p.chosenColor as LudoColor | undefined;
+      if (chosen && !takenColors.has(chosen)) {
+        colorOf.set(p.id, chosen);
+        takenColors.add(chosen);
+      }
+    }
+    // Second pass: assign remaining players the next free color in canonical order.
+    for (const p of players) {
+      if (colorOf.has(p.id)) continue;
+      const next = PLAYER_COLORS_ORDER.find((c) => !takenColors.has(c));
+      if (!next) throw new Error("Ran out of Ludo colors");
+      colorOf.set(p.id, next);
+      takenColors.add(next);
+    }
+    for (const pid of order) {
+      const color = colorOf.get(pid)!;
+      tokens.set(
+        pid,
+        Array.from({ length: TOKENS_PER_PLAYER }, (_, k) => ({
+          id: `${color}-${k}`,
+          color,
+          state: "yard" as const,
+        }))
+      );
+    }
+    this.s = {
+      phase: "playing",
+      turnIndex: 0,
+      turnPhase: "rolling",
+      diceValue: null,
+      consecutiveSixes: 0,
+      movableTokenIds: [],
+      tokens,
+      colorOf,
+      playerOrder: order,
+      finishedCount: new Map(order.map((p) => [p, 0])),
+      winnerId: null,
+      hasCaptured: new Map(order.map((p) => [p, false])),
+      lastEvent: null,
+      rollCount: new Map(order.map((p) => [p, 0])),
+      captureCount: new Map(order.map((p) => [p, 0])),
+      sixCount: new Map(order.map((p) => [p, 0])),
+      biggestStreak: new Map(order.map((p) => [p, 0])),
+      startedAt: Date.now(),
+      endedAt: null,
+      turnDeadline: null,
+      options: this.pendingOptions ?? { ...DEFAULT_LUDO_OPTIONS },
+    };
+    this.pendingOptions = null;
+  }
+
+  applyMove(move: MoveContext): MoveResult {
+    if (this.s.phase === "finished") return { ok: false, error: "Game is over" };
+    const turnPid = this.s.playerOrder[this.s.turnIndex];
+    if (move.playerId !== turnPid) return { ok: false, error: "Not your turn" };
+
+    switch (move.type) {
+      case "roll":
+        return this.handleRoll();
+      case "move":
+        return this.handleMove(move);
+      default:
+        return { ok: false, error: `Unknown move type: ${move.type}` };
+    }
+  }
+
+  private handleRoll(): MoveResult {
+    if (this.s.turnPhase !== "rolling") {
+      return { ok: false, error: "Cannot roll right now" };
+    }
+    const roll = 1 + Math.floor(this.rng() * 6);
+    this.s.diceValue = roll;
+    const pid = this.currentPid();
+    this.s.rollCount.set(pid, (this.s.rollCount.get(pid) ?? 0) + 1);
+    if (roll === 6) {
+      this.s.sixCount.set(pid, (this.s.sixCount.get(pid) ?? 0) + 1);
+    }
+
+    if (roll === 6) {
+      this.s.consecutiveSixes += 1;
+      const prevStreak = this.s.biggestStreak.get(pid) ?? 0;
+      if (this.s.consecutiveSixes > prevStreak) {
+        this.s.biggestStreak.set(pid, this.s.consecutiveSixes);
+      }
+      if (this.s.consecutiveSixes >= 3) {
+        // Three consecutive sixes: forfeit turn
+        this.s.lastEvent = { kind: "forfeit", byPlayerId: this.currentPid(), ts: Date.now() };
+        this.advanceTurn();
+        return { ok: true };
+      }
+    } else {
+      this.s.consecutiveSixes = 0;
+    }
+
+    const movable = this.computeMovableTokens(this.currentPid(), roll);
+    this.s.movableTokenIds = movable.map((t) => t.id);
+
+    if (movable.length === 0) {
+      this.s.lastEvent = { kind: "noMove", byPlayerId: this.currentPid(), ts: Date.now() };
+      this.advanceTurn();
+      return { ok: true };
+    }
+    this.s.turnPhase = "moving";
+    return { ok: true };
+  }
+
+  private handleMove(move: MoveContext): MoveResult {
+    if (this.s.turnPhase !== "moving" || this.s.diceValue == null) {
+      return { ok: false, error: "Roll the dice first" };
+    }
+    const data = move.data as { tokenId?: string } | undefined;
+    const tokenId = data?.tokenId;
+    if (!tokenId) return { ok: false, error: "Missing tokenId" };
+    if (!this.s.movableTokenIds.includes(tokenId)) {
+      return { ok: false, error: "That token cannot move with this roll" };
+    }
+    const pid = this.currentPid();
+    const token = this.findToken(pid, tokenId);
+    if (!token) return { ok: false, error: "Token not found" };
+
+    const eventTsBefore = this.s.lastEvent?.ts ?? 0;
+    const stateBeforeCapture = token.state;
+    this.executeMove(pid, token, this.s.diceValue);
+    const eventTsAfter = this.s.lastEvent?.ts ?? 0;
+
+    // If executeMove didn't already fire a capture/home event, emit a generic move event
+    // so the client can show an "end-of-turn summary" toast for plain moves too.
+    if (eventTsAfter === eventTsBefore) {
+      this.s.lastEvent = {
+        kind: "move",
+        byPlayerId: pid,
+        tokenId: token.id,
+        ts: Date.now(),
+        cellsMoved: this.s.diceValue,
+        capturedCount: 0,
+        destinationState: token.state as "track" | "stretch" | "home" | "yard",
+      };
+    } else if (this.s.lastEvent) {
+      // Enrich existing event (capture or home) with move details
+      this.s.lastEvent.cellsMoved = stateBeforeCapture === "yard" ? 1 : this.s.diceValue;
+      if (this.s.lastEvent.capturedCount == null) {
+        this.s.lastEvent.capturedCount = this.s.lastEvent.kind === "capture" ? 1 : 0;
+      }
+      this.s.lastEvent.destinationState = token.state as "track" | "stretch" | "home" | "yard";
+    }
+
+    // Check win
+    if ((this.s.finishedCount.get(pid) ?? 0) === TOKENS_PER_PLAYER) {
+      this.s.phase = "finished";
+      this.s.winnerId = pid;
+      this.s.endedAt = Date.now();
+      this.s.lastEvent = { kind: "win", byPlayerId: pid, ts: Date.now() };
+      return { ok: true, isOver: true, winnerId: pid };
+    }
+
+    // Bonus turn rules: 6 grants another roll
+    const rolledSix = this.s.diceValue === 6;
+    this.s.diceValue = null;
+    this.s.movableTokenIds = [];
+    if (rolledSix) {
+      this.s.turnPhase = "rolling";
+    } else {
+      this.advanceTurn();
+    }
+    return { ok: true };
+  }
+
+  private computeMovableTokens(pid: string, dice: number): LudoToken[] {
+    const list = this.s.tokens.get(pid) ?? [];
+    const out: LudoToken[] = [];
+    for (const t of list) {
+      if (t.state === "home") continue;
+      if (t.state === "yard") {
+        if (dice === 6) out.push(t);
+        continue;
+      }
+      // track or stretch: must fit
+      if (this.simulateMove(pid, t, dice) !== null) out.push(t);
+    }
+    return out;
+  }
+
+  /** Player count used to scale the track. */
+  private playerCount(): number {
+    return this.s.playerOrder.length;
+  }
+  private trackLen(): number {
+    return trackLengthFor(this.playerCount());
+  }
+  private startFor(color: LudoColor): number {
+    return colorStartFor(color, this.playerCount());
+  }
+  private safeSquares(): Set<number> {
+    const colors = this.s.playerOrder.map((pid) => this.s.colorOf.get(pid)!);
+    return safeSquaresFor(colors, this.playerCount());
+  }
+
+  /** Returns the post-move "destination state" without applying it, or null if illegal. */
+  private simulateMove(
+    pid: string,
+    token: LudoToken,
+    dice: number,
+  ): { state: "track" | "stretch" | "home"; trackPos?: number; stretchPos?: number } | null {
+    const color = this.s.colorOf.get(pid)!;
+    const TL = this.trackLen();
+    if (token.state === "yard") {
+      if (dice !== 6) return null;
+      return { state: "track", trackPos: this.startFor(color) };
+    }
+    if (token.state === "stretch") {
+      const next = (token.stretchPos ?? 0) + dice;
+      if (next > STRETCH_LENGTH) return null;
+      if (next === STRETCH_LENGTH) return { state: "home" };
+      return { state: "stretch", stretchPos: next };
+    }
+    // track
+    const last = lastTrackPosFor(color, this.playerCount());
+    const cur = token.trackPos ?? 0;
+    const distToLast = (last - cur + TL) % TL;
+    if (dice <= distToLast) {
+      return { state: "track", trackPos: (cur + dice) % TL };
+    }
+    if (this.s.options.mandatoryCapture && !this.s.hasCaptured.get(pid)) {
+      return { state: "track", trackPos: (cur + dice) % TL };
+    }
+    const intoStretch = dice - distToLast;
+    if (intoStretch > STRETCH_LENGTH) return null;
+    if (intoStretch === STRETCH_LENGTH) return { state: "home" };
+    return { state: "stretch", stretchPos: intoStretch - 1 };
+  }
+
+  private executeMove(pid: string, token: LudoToken, dice: number): void {
+    const dest = this.simulateMove(pid, token, dice);
+    if (!dest) return;
+    token.state = dest.state;
+    token.trackPos = dest.trackPos;
+    token.stretchPos = dest.stretchPos;
+    if (dest.state === "home") {
+      this.s.finishedCount.set(pid, (this.s.finishedCount.get(pid) ?? 0) + 1);
+      this.s.lastEvent = { kind: "home", byPlayerId: pid, tokenId: token.id, ts: Date.now() };
+    }
+    // Capture logic: only when landing on a track square that isn't safe.
+    // In "no safe squares" mode, only color start squares retain protection.
+    const isSafe =
+      this.s.options.noSafeSquares
+        ? this.s.playerOrder.some((p) => this.startFor(this.s.colorOf.get(p)!) === (dest.trackPos ?? -1))
+        : dest.trackPos != null && this.safeSquares().has(dest.trackPos);
+    if (dest.state === "track" && dest.trackPos != null && !isSafe) {
+      let capturedAny = false;
+      let firstVictim: { pid: string; tokenId: string } | null = null;
+      for (const [otherPid, list] of this.s.tokens.entries()) {
+        if (otherPid === pid) continue;
+        for (const ot of list) {
+          if (ot.state === "track" && ot.trackPos === dest.trackPos) {
+            ot.state = "yard";
+            delete ot.trackPos;
+            capturedAny = true;
+            if (!firstVictim) firstVictim = { pid: otherPid, tokenId: ot.id };
+          }
+        }
+      }
+      if (capturedAny) {
+        this.s.hasCaptured.set(pid, true);
+        this.s.captureCount.set(pid, (this.s.captureCount.get(pid) ?? 0) + 1);
+        this.s.lastEvent = {
+          kind: "capture",
+          byPlayerId: pid,
+          victimPlayerId: firstVictim?.pid,
+          tokenId: firstVictim?.tokenId,
+          ts: Date.now(),
+        };
+      }
+    }
+  }
+
+  private currentPid(): string {
+    return this.s.playerOrder[this.s.turnIndex];
+  }
+
+  private findToken(pid: string, tokenId: string): LudoToken | null {
+    return this.s.tokens.get(pid)?.find((t) => t.id === tokenId) ?? null;
+  }
+
+  private advanceTurn(): void {
+    this.s.diceValue = null;
+    this.s.movableTokenIds = [];
+    this.s.consecutiveSixes = 0;
+    this.s.turnPhase = "rolling";
+    const order = this.s.playerOrder;
+    for (let step = 1; step <= order.length; step++) {
+      const idx = (this.s.turnIndex + step) % order.length;
+      if (this.s.tokens.has(order[idx])) {
+        this.s.turnIndex = idx;
+        return;
+      }
+    }
+  }
+
+  getPublicState(): LudoState {
+    const tokens: Record<string, LudoToken[]> = {};
+    const playerColors: Record<string, LudoColor> = {};
+    const finishedCount: Record<string, number> = {};
+    const hasCaptured: Record<string, boolean> = {};
+    const rollCount: Record<string, number> = {};
+    const captureCount: Record<string, number> = {};
+    const sixCount: Record<string, number> = {};
+    const biggestStreak: Record<string, number> = {};
+    for (const pid of this.s.playerOrder) {
+      tokens[pid] = (this.s.tokens.get(pid) ?? []).map((t) => ({ ...t }));
+      const c = this.s.colorOf.get(pid);
+      if (c) playerColors[pid] = c;
+      finishedCount[pid] = this.s.finishedCount.get(pid) ?? 0;
+      hasCaptured[pid] = this.s.hasCaptured.get(pid) ?? false;
+      rollCount[pid] = this.s.rollCount.get(pid) ?? 0;
+      captureCount[pid] = this.s.captureCount.get(pid) ?? 0;
+      sixCount[pid] = this.s.sixCount.get(pid) ?? 0;
+      biggestStreak[pid] = this.s.biggestStreak.get(pid) ?? 0;
+    }
+    return {
+      kind: "ludo",
+      phase: this.s.phase,
+      turnPlayerId: this.s.playerOrder[this.s.turnIndex],
+      turnPhase: this.s.turnPhase,
+      diceValue: this.s.diceValue,
+      consecutiveSixes: this.s.consecutiveSixes,
+      movableTokenIds: [...this.s.movableTokenIds],
+      tokens,
+      playerColors,
+      playerOrder: this.s.playerOrder,
+      winnerId: this.s.winnerId,
+      finishedCount,
+      hasCaptured,
+      lastEvent: this.s.lastEvent,
+      stats: {
+        rollCount,
+        captureCount,
+        sixCount,
+        biggestStreak,
+        startedAt: this.s.startedAt,
+        endedAt: this.s.endedAt,
+      },
+      turnDeadline: this.s.turnDeadline,
+      options: this.s.options,
+    };
+  }
+
+  getStateFor(_playerId: string): LudoState {
+    return this.getPublicState();
+  }
+
+  isOver(): boolean {
+    return this.s.phase === "finished";
+  }
+
+  /**
+   * Heuristic AI move picker — used for auto-skip and disconnected players.
+   * Priority: capture an opponent > finish a token > bring a yard token out >
+   * advance the most-progressed token furthest.
+   */
+  pickAiMove(playerId: string): string | null {
+    const movable = this.s.movableTokenIds;
+    if (movable.length === 0) return null;
+    if (movable.length === 1) return movable[0];
+
+    const dice = this.s.diceValue ?? 0;
+    const list = this.s.tokens.get(playerId) ?? [];
+    const byId = new Map(list.map((t) => [t.id, t]));
+
+    // 1. Capture
+    for (const id of movable) {
+      const t = byId.get(id);
+      if (!t) continue;
+      const dest = this.simulateMove(playerId, t, dice);
+      if (dest?.state === "track" && dest.trackPos != null) {
+        const isSafe = this.s.options.noSafeSquares
+          ? this.s.playerOrder.some((p) => this.startFor(this.s.colorOf.get(p)!) === dest.trackPos)
+          : this.safeSquares().has(dest.trackPos);
+        if (!isSafe) {
+          for (const [opid, olist] of this.s.tokens.entries()) {
+            if (opid === playerId) continue;
+            for (const ot of olist) {
+              if (ot.state === "track" && ot.trackPos === dest.trackPos) {
+                return id;
+              }
+            }
+          }
+        }
+      }
+    }
+    // 2. Reach home
+    for (const id of movable) {
+      const t = byId.get(id);
+      if (!t) continue;
+      const dest = this.simulateMove(playerId, t, dice);
+      if (dest?.state === "home") return id;
+    }
+    // 3. Bring a yard token out (only when rolling 6 so a yard token is even movable)
+    if (dice === 6) {
+      for (const id of movable) {
+        const t = byId.get(id);
+        if (t?.state === "yard") return id;
+      }
+    }
+    // 4. Advance the most-progressed token
+    let best = movable[0];
+    let bestScore = -1;
+    for (const id of movable) {
+      const t = byId.get(id);
+      if (!t) continue;
+      let score = 0;
+      if (t.state === "track") score = 100 + (t.trackPos ?? 0);
+      if (t.state === "stretch") score = 1000 + (t.stretchPos ?? 0);
+      if (score > bestScore) {
+        bestScore = score;
+        best = id;
+      }
+    }
+    return best;
+  }
+
+  removePlayer(playerId: string): void {
+    if (!this.s.tokens.has(playerId)) return;
+    this.s.tokens.delete(playerId);
+    const remaining = [...this.s.tokens.keys()];
+    if (remaining.length < 2 && this.s.phase === "playing") {
+      this.s.phase = "finished";
+      this.s.winnerId = remaining[0] ?? null;
+    } else if (this.currentPid() === playerId) {
+      this.advanceTurn();
+    }
+  }
+
+  /* ── Bot support ── */
+
+  pendingActors(): string[] {
+    if (this.s.phase !== "playing") return [];
+    return [this.currentPid()];
+  }
+
+  applyAutoMove(playerId: string): MoveResult {
+    if (this.s.phase !== "playing") return { ok: false, error: "Not playing" };
+    if (playerId !== this.currentPid()) return { ok: false, error: "Not your turn" };
+
+    if (this.s.turnPhase === "rolling") {
+      return this.applyMove({ playerId, type: "roll" });
+    }
+    if (this.s.turnPhase === "moving") {
+      const tokenId = this.pickBestMovableToken(playerId);
+      if (!tokenId) return { ok: false, error: "No movable token" };
+      return this.applyMove({ playerId, type: "move", data: { tokenId } });
+    }
+    return { ok: false, error: "Nothing to do" };
+  }
+
+  /**
+   * Simple bot heuristic for choosing which token to move:
+   *
+   *   1. Prefer a move that finishes a token (lands on home).
+   *   2. Prefer a move that captures an opponent (lands on a non-safe track
+   *      square already occupied by an opponent).
+   *   3. Prefer moving a token that is FURTHEST along — finish it sooner.
+   *
+   * Falls back to the first movable id when no signal differentiates them.
+   */
+  private pickBestMovableToken(pid: string): string | null {
+    const movable = this.s.movableTokenIds;
+    if (movable.length === 0) return null;
+    const dice = this.s.diceValue ?? 0;
+    const list = this.s.tokens.get(pid) ?? [];
+    const safeSet = this.safeSquares();
+
+    let best: { id: string; score: number } | null = null;
+    for (const id of movable) {
+      const token = list.find((t) => t.id === id);
+      if (!token) continue;
+      const dest = this.simulateMove(pid, token, dice);
+      if (!dest) continue;
+      let score = 0;
+      // Finish bonus
+      if (dest.state === "home") score += 1000;
+      // Capture bonus
+      if (dest.state === "track" && dest.trackPos != null && !safeSet.has(dest.trackPos)) {
+        for (const [otherPid, otherList] of this.s.tokens.entries()) {
+          if (otherPid === pid) continue;
+          for (const ot of otherList) {
+            if (ot.state === "track" && ot.trackPos === dest.trackPos) {
+              score += 500;
+            }
+          }
+        }
+      }
+      // Distance progress — bigger trackPos / stretchPos is further along.
+      if (token.state === "track") score += 10 + (token.trackPos ?? 0) / 10;
+      else if (token.state === "stretch") score += 100 + (token.stretchPos ?? 0);
+      else if (token.state === "yard") score += 1; // de-prioritise unless it's the only option
+      if (!best || score > best.score) best = { id, score };
+    }
+    return best?.id ?? movable[0];
+  }
+}
