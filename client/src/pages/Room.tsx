@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
@@ -143,6 +143,7 @@ export default function Room() {
     messages,
     lastError,
     setPlayerId,
+    setPlayerName,
     setRoomState,
     setGameState,
     addMessage,
@@ -155,10 +156,11 @@ export default function Room() {
       navigate("/");
       return;
     }
-    if (!playerName) {
-      navigate("/");
-      return;
-    }
+    // Anyone arriving via a shared link or a fresh browser has no playerName
+    // in their local store. We can NOT silently bounce them to home — they
+    // came here on purpose. Render a name-entry block instead (see early
+    // return below). They'll come back through this effect once they submit.
+    if (!playerName) return;
     const socket = getSocket();
     const joinName = playerName;
     const joinCode = code;
@@ -169,15 +171,23 @@ export default function Room() {
         { name: joinName, code: joinCode, playerId: playerId ?? undefined },
         (res) => {
           if (!res.ok) {
+            // The room genuinely no longer exists on the server. This happens
+            // when: the server cold-started (Render free tier sleeps after
+            // 15min idle and wipes in-memory rooms), the host left and the
+            // 90s grace timer fired, or the player was kicked. There's no
+            // automatic recovery — they need a fresh code from a friend. We
+            // show a 4-second toast (used to be 1.6s, which was a confusing
+            // flash) so they actually have time to read the explanation
+            // before the redirect.
             const msg =
               res.error === "Room not found"
                 ? reason === "reconnect"
-                  ? "Room closed (server may have restarted). Returning to lobby…"
-                  : "Room not found. Returning to lobby…"
+                  ? "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
+                  : "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
                 : res.error ?? "Could not join room";
             setError(msg);
             reset();
-            setTimeout(() => navigate("/"), 1600);
+            setTimeout(() => navigate("/"), 4000);
             return;
           }
           if (res.playerId) setPlayerId(res.playerId);
@@ -250,6 +260,13 @@ export default function Room() {
     getSocket().emit("room:leave");
     reset();
     navigate("/");
+  }
+
+  // Shared-link / fresh-browser path: caller has a room code but we don't
+  // know who they are yet. Ask for their name; persist it; the useEffect
+  // above will then auto-attempt the join.
+  if (!playerName) {
+    return <NameEntryForRoom code={code ?? ""} onSubmit={setPlayerName} />;
   }
 
   if (!roomState) {
@@ -447,6 +464,75 @@ export default function Room() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Name-entry block for someone arriving at `/room/:code` with no name stored.
+ *
+ * Covers two real cases:
+ *   1. A friend opens the share link in a different browser.
+ *   2. A returning player whose localStorage was cleared (incognito, fresh
+ *      install, profile wipe).
+ *
+ * Submitting persists `playerName` to the store, which triggers Room's
+ * useEffect and starts the join handshake. If the room turns out to have
+ * evaporated server-side, the existing join error handler still fires,
+ * shows the toast, and bounces home — so we don't have to handle that
+ * case here.
+ */
+function NameEntryForRoom({
+  code,
+  onSubmit,
+}: {
+  code: string;
+  onSubmit: (name: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const trimmed = draft.trim().slice(0, 20);
+  const canSubmit = trimmed.length >= 1;
+  return (
+    <div className="bhalyam-font bhalyam-paper min-h-[100dvh] flex items-center justify-center p-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (canSubmit) onSubmit(trimmed);
+        }}
+        className="w-full max-w-md bg-[#F6EDDB] border border-[#E8D8BE] rounded-2xl p-6 sm:p-7 space-y-4 shadow-[0_18px_30px_-22px_rgba(74,44,22,0.45)]"
+      >
+        <div className="text-center">
+          <div className="text-[11px] uppercase tracking-widest font-bold text-[#A3886E]">
+            Joining room
+          </div>
+          <div className="font-mono text-[28px] sm:text-[32px] tracking-[0.35em] font-black text-[#2B3550] mt-1">
+            {code.toUpperCase()}
+          </div>
+          <p className="text-[#6E5E4D] text-sm mt-3">
+            Enter your name so your friends know who just walked in.
+          </p>
+        </div>
+        <input
+          autoFocus
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Your name"
+          maxLength={20}
+          className="w-full rounded-xl border border-[#D5BFA1] bg-white text-[#2A221B]
+                     text-lg px-4 py-3 outline-none focus:border-[#EA5A1F]
+                     focus:ring-2 focus:ring-[#EA5A1F]/30"
+        />
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="w-full rounded-xl bg-[#EA5A1F] hover:bg-[#D84F17]
+                     text-white font-bold text-base py-3 disabled:opacity-40
+                     disabled:cursor-not-allowed transition-colors"
+        >
+          Join Room
+        </button>
+      </form>
     </div>
   );
 }
