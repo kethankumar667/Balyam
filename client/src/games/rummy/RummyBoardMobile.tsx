@@ -812,10 +812,18 @@ export default function RummyBoardMobile({
 
   return (
     <div
-      className="rounded-none sm:rounded-[28px] px-3 sm:px-5 pt-3 sm:pt-4 pb-3 sm:pb-5 relative shadow-2xl flex flex-col gap-1 sm:gap-1.5 h-full overflow-hidden"
+      className="rounded-none sm:rounded-[28px] px-3 sm:px-5 pt-3 sm:pt-4 relative shadow-2xl flex flex-col gap-1 sm:gap-1.5 h-full overflow-hidden"
       style={{
         background:
           "radial-gradient(ellipse at 50% 38%, #1a8c4a 0%, #0d5e2e 55%, #052e16 95%)",
+        // Bottom padding has to clear the OS gesture bar / nav buttons on
+        // real phones — without this, the ACTION row (DROP/SORT/…/FINISH)
+        // sits flush with the bottom edge and the lower half of each button
+        // gets clipped by the device chrome (visible especially when the
+        // browser URL bar is showing). `env(safe-area-inset-bottom)` is
+        // iOS/modern-Android-aware; the `max(...)` floor keeps a sensible
+        // gap on devices that report 0 inset (older Chrome/Firefox).
+        paddingBottom: "max(env(safe-area-inset-bottom, 0px) + 6px, 18px)",
         boxShadow: [
           "0 0 0 1px #1a0f00 inset",
           "0 0 0 7px #d4a85a inset",
