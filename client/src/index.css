@@ -86,7 +86,7 @@ body {
   min-height: 100%;
 }
 
-body, #root, .balyam-paper {
+body, #root, .bhalyam-paper {
   transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
 }
 
@@ -112,14 +112,14 @@ body, #root, .balyam-paper {
   }
 }
 
-/* ── BALYAM treasure-chest primitives ───────────────────────────────────
+/* ── BHALYAM treasure-chest primitives ───────────────────────────────────
    Only the utilities that surviving surfaces still use. Wood-grain,
    bendays dot field, and the marquee keyframe were removed with the
    landing / bottom-nav / ticker sections during the cleanup pass. */
 
-/* Cream parchment texture — base for the BALYAM home page. Pure CSS
+/* Cream parchment texture — base for the BHALYAM home page. Pure CSS
    gradients, no raster fallback needed. */
-.balyam-paper {
+.bhalyam-paper {
   background-color: #F7E8C4;
   background-image:
     radial-gradient(rgba(228, 177, 40, 0.06) 1px, transparent 1px),
@@ -129,11 +129,11 @@ body, #root, .balyam-paper {
   background-position: 0 0, 7px 11px, 0 0;
 }
 
-.balyam-home {
+.bhalyam-home {
   color: #3f2a1d;
 }
 
-:root[data-theme="dark"] .balyam-paper {
+:root[data-theme="dark"] .bhalyam-paper {
   background-color: #23180f;
   background-image:
     radial-gradient(rgba(196, 142, 52, 0.14) 1px, transparent 1px),
@@ -141,130 +141,130 @@ body, #root, .balyam-paper {
     linear-gradient(135deg, rgba(86, 58, 32, 0.36), rgba(28, 18, 11, 0.82) 72%);
 }
 
-:root[data-theme="dark"] .balyam-home {
+:root[data-theme="dark"] .bhalyam-home {
   color: #f3eadb;
 }
 
-/* Dark mode readability tuning for BALYAM panels and headings. */
-:root[data-theme="dark"] .balyam-home .bg-\[\#F5ECE0\],
-:root[data-theme="dark"] .balyam-home .bg-\[\#F6EDDB\],
-:root[data-theme="dark"] .balyam-home .bg-\[\#F8EFDE\],
-:root[data-theme="dark"] .balyam-home .bg-\[\#FBF2E3\],
-:root[data-theme="dark"] .balyam-home .bg-\[\#FCF8EF\],
-:root[data-theme="dark"] .balyam-home .bg-\[\#FAF2E6\],
-:root[data-theme="dark"] .balyam-home .bg-\[\#F7EFE0\],
-:root[data-theme="dark"] .balyam-home .bg-\[\#EFE2CF\] {
+/* Dark mode readability tuning for BHALYAM panels and headings. */
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#F5ECE0\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#F6EDDB\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#F8EFDE\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#FBF2E3\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#FCF8EF\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#FAF2E6\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#F7EFE0\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#EFE2CF\] {
   background-color: #f7efdf !important;
 }
 
-:root[data-theme="dark"] .balyam-home .border-\[\#E8D9C1\],
-:root[data-theme="dark"] .balyam-home .border-\[\#E8D8BE\],
-:root[data-theme="dark"] .balyam-home .border-\[\#E6D4B8\],
-:root[data-theme="dark"] .balyam-home .border-\[\#E6D4B7\] {
+:root[data-theme="dark"] .bhalyam-home .border-\[\#E8D9C1\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#E8D8BE\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#E6D4B8\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#E6D4B7\] {
   border-color: #caa777 !important;
 }
 
-:root[data-theme="dark"] .balyam-home h2,
-:root[data-theme="dark"] .balyam-home h3,
-:root[data-theme="dark"] .balyam-home h4,
-:root[data-theme="dark"] .balyam-home .text-\[\#2A354D\],
-:root[data-theme="dark"] .balyam-home .text-\[\#2E3C57\],
-:root[data-theme="dark"] .balyam-home .text-\[\#3F2F24\],
-:root[data-theme="dark"] .balyam-home .text-\[\#3C2A1E\],
-:root[data-theme="dark"] .balyam-home .text-balyam-wood-dark {
+:root[data-theme="dark"] .bhalyam-home h2,
+:root[data-theme="dark"] .bhalyam-home h3,
+:root[data-theme="dark"] .bhalyam-home h4,
+:root[data-theme="dark"] .bhalyam-home .text-\[\#2A354D\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#2E3C57\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#3F2F24\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#3C2A1E\],
+:root[data-theme="dark"] .bhalyam-home .text-bhalyam-wood-dark {
   color: #1f1b16 !important;
 }
 
-:root[data-theme="dark"] .balyam-home .text-\[\#5B534A\],
-:root[data-theme="dark"] .balyam-home .text-\[\#5F6A79\],
-:root[data-theme="dark"] .balyam-home .text-\[\#6D7584\],
-:root[data-theme="dark"] .balyam-home .text-\[\#6E7482\],
-:root[data-theme="dark"] .balyam-home .text-\[\#5D4B3F\],
-:root[data-theme="dark"] .balyam-home .text-\[\#677080\] {
+:root[data-theme="dark"] .bhalyam-home .text-\[\#5B534A\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#5F6A79\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#6D7584\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#6E7482\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#5D4B3F\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#677080\] {
   color: #534131 !important;
 }
 
 /* Keep section title visible on dark parchment (e.g. "Pick a game"). */
-:root[data-theme="dark"] .balyam-home .text-\[\#1D2C4A\] {
+:root[data-theme="dark"] .bhalyam-home .text-\[\#1D2C4A\] {
   color: #f0dfc2 !important;
 }
 
 /* Dark-mode polish for the three middle cards:
    Continue Playing / Top Achievements / Invite Your Friends. */
-:root[data-theme="dark"] .balyam-home .middle-panels > article {
+:root[data-theme="dark"] .bhalyam-home .middle-panels > article {
   background: linear-gradient(165deg, #2a1f16 0%, #21170f 100%) !important;
   border-color: #8e653a !important;
   box-shadow: 0 16px 28px -18px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 234, 200, 0.08);
 }
 
-:root[data-theme="dark"] .balyam-home .middle-panels h3,
-:root[data-theme="dark"] .balyam-home .middle-panels .text-\[\#2A354D\] {
+:root[data-theme="dark"] .bhalyam-home .middle-panels h3,
+:root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#2A354D\] {
   color: #ffe8c3 !important;
 }
 
-:root[data-theme="dark"] .balyam-home .middle-panels .text-\[\#273248\],
-:root[data-theme="dark"] .balyam-home .middle-panels .text-\[\#2E3C57\] {
+:root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#273248\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#2E3C57\] {
   color: #f7e0bc !important;
 }
 
-:root[data-theme="dark"] .balyam-home .middle-panels .text-\[\#5F6A79\],
-:root[data-theme="dark"] .balyam-home .middle-panels .text-\[\#6D7584\],
-:root[data-theme="dark"] .balyam-home .middle-panels .text-\[\#6E7482\] {
+:root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#5F6A79\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#6D7584\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#6E7482\] {
   color: #e5c9a5 !important;
 }
 
-:root[data-theme="dark"] .balyam-home .middle-panels .bg-\[\#EFE2CF\],
-:root[data-theme="dark"] .balyam-home .middle-panels .bg-\[\#F7EFE0\],
-:root[data-theme="dark"] .balyam-home .middle-panels .bg-\[\#FAF2E6\] {
+:root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#EFE2CF\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#F7EFE0\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#FAF2E6\] {
   background: linear-gradient(180deg, #3a2a1d 0%, #322317 100%) !important;
 }
 
-:root[data-theme="dark"] .balyam-home .middle-panels .border-\[\#E6D4B8\],
-:root[data-theme="dark"] .balyam-home .middle-panels .border-\[\#E8D8BE\],
-:root[data-theme="dark"] .balyam-home .middle-panels .border-\[\#E3D2B5\] {
+:root[data-theme="dark"] .bhalyam-home .middle-panels .border-\[\#E6D4B8\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .border-\[\#E8D8BE\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .border-\[\#E3D2B5\] {
   border-color: #89613a !important;
 }
 
-:root[data-theme="dark"] .balyam-home .middle-panels .bg-\[\#F0C15F\] {
+:root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#F0C15F\] {
   background-color: #f2b84a !important;
   box-shadow: 0 0 0 3px rgba(242, 184, 74, 0.2);
 }
 
-:root[data-theme="dark"] .balyam-home .middle-panels .bg-\[\#25D366\],
-:root[data-theme="dark"] .balyam-home .middle-panels .bg-\[\#32B34F\] {
+:root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#25D366\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#32B34F\] {
   box-shadow: 0 10px 18px -12px rgba(37, 211, 102, 0.85);
 }
 
-:root[data-theme="dark"] .balyam-home .middle-panels button[class*="bg-\[\#FAF2E6\]"] {
+:root[data-theme="dark"] .bhalyam-home .middle-panels button[class*="bg-\[\#FAF2E6\]"] {
   background: linear-gradient(180deg, #4a3526 0%, #3e2d20 100%) !important;
   border-color: #b88c5c !important;
   color: #ffe6be !important;
   box-shadow: 0 8px 14px -10px rgba(0, 0, 0, 0.7);
 }
 
-/* Gold-leaf gradient for premium chips, primary CTAs, BalyamLogo fallback. */
-.balyam-gold-leaf {
+/* Gold-leaf gradient for premium chips, primary CTAs, BhalyamLogo fallback. */
+.bhalyam-gold-leaf {
   background-image: linear-gradient(135deg, #F4C430 0%, #E4B128 45%, #B38918 100%);
 }
 
-/* Typography root. Apply to the outermost BALYAM wrapper; every descendant
+/* Typography root. Apply to the outermost BHALYAM wrapper; every descendant
    inherits Poppins for Latin + Noto Sans Telugu for Telugu script. */
-.balyam-font {
+.bhalyam-font {
   font-family: 'Poppins', 'Noto Sans Telugu', system-ui, -apple-system, sans-serif;
   letter-spacing: -0.005em;
 }
-.balyam-font h1, .balyam-font h2, .balyam-font h3, .balyam-font h4 {
+.bhalyam-font h1, .bhalyam-font h2, .bhalyam-font h3, .bhalyam-font h4 {
   font-family: 'Poppins', 'Noto Sans Telugu', system-ui, -apple-system, sans-serif;
 }
 
 /* Card press feedback that feels like a physical board-game token. Used
    by game tiles and the GameRoomSheet primary actions. */
-@keyframes balyam-press {
+@keyframes bhalyam-press {
   0%   { transform: translateY(0)    scale(1); }
   50%  { transform: translateY(2px)  scale(0.97); }
   100% { transform: translateY(0)    scale(1); }
 }
-.balyam-press-feedback:active { animation: balyam-press 180ms ease-out; }
+.bhalyam-press-feedback:active { animation: bhalyam-press 180ms ease-out; }
 
 /* Movable Ludo token: gentle bobbing to invite clicking */
 @keyframes ludo-bob {

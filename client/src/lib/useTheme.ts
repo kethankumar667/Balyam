@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 
 export type AppTheme = "light" | "dark";
 
-const STORAGE_KEY = "balyam.theme";
-const EVENT_NAME = "balyam.theme.changed";
+const STORAGE_KEY = "bhalyam.theme";
+const EVENT_NAME = "bhalyam.theme.changed";
 
 function readTheme(): AppTheme {
   const attr = document.documentElement.getAttribute("data-theme");

@@ -49,12 +49,12 @@ export default {
         danger:  "var(--color-danger)",
         info:    "var(--color-info)",
 
-        // ── BALYAM treasure-chest palette ──────────────────────────────
-        // Scoped under `balyam.*` so the in-game UI (brand/gold tokens
+        // ── BHALYAM treasure-chest palette ──────────────────────────────
+        // Scoped under `bhalyam.*` so the in-game UI (brand/gold tokens
         // above) is never touched. The hero metaphor is a wooden treasure
         // chest with golden trim, so wood + gold are the structural anchors
         // and the ludo colours show up only inside game cards / accents.
-        balyam: {
+        bhalyam: {
           gold: {
             DEFAULT: "#E4B128",   // primary gold — CTAs, hinges, trim
             light:   "#F4C430",   // highlight + ludo yellow

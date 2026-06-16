@@ -5,6 +5,7 @@ import { useRoomStore } from "../store/roomStore";
 import PlayerList from "../components/PlayerList";
 import Chat from "../components/Chat";
 import RoomCode from "../components/RoomCode";
+import RoomCodeShare from "../components/RoomCodeShare";
 import VoicePanel from "../components/VoicePanel";
 import LudoColorPicker from "../components/LudoColorPicker";
 import CoinColorPicker from "../components/CoinColorPicker";
@@ -227,7 +228,7 @@ export default function Room() {
 
   if (!roomState) {
     return (
-      <div className="balyam-font balyam-paper min-h-screen flex items-center justify-center text-[#6C5A48] text-lg">
+      <div className="bhalyam-font bhalyam-paper min-h-screen flex items-center justify-center text-[#6C5A48] text-lg">
         Connecting to room...
       </div>
     );
@@ -243,8 +244,8 @@ export default function Room() {
     <div
       className={
         roomState.game === "rummy" && roomState.phase !== "lobby"
-          ? "balyam-font balyam-paper h-[100dvh] overflow-hidden p-0 sm:p-4"
-          : "balyam-font balyam-paper min-h-screen p-2 sm:p-4"
+          ? "bhalyam-font bhalyam-paper h-[100dvh] overflow-hidden p-0 sm:p-4"
+          : "bhalyam-font bhalyam-paper min-h-screen p-2 sm:p-4"
       }
     >
       <div
@@ -305,8 +306,9 @@ export default function Room() {
           >
             {roomState.phase === "lobby" && (
               <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-6 text-center space-y-4">
+                <RoomCodeShare code={roomState.code} game={roomState.game} />
                 <div className="text-[#6E5E4D]">
-                  Waiting for players to ready up. Share the code with friends.
+                  Waiting for players to ready up.
                 </div>
                 {roomState.game === "ludo" && (
                   <LudoColorPicker players={roomState.players} selfId={playerId} />

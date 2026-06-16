@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-const THEME_STORAGE_KEY = "balyam.theme";
+const THEME_STORAGE_KEY = "bhalyam.theme";
 const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
 const bootTheme =
   storedTheme === "light" || storedTheme === "dark"

@@ -2580,7 +2580,7 @@ function RummyCelebrationOverlay({ onLeave }: { onLeave: () => void }) {
         {!imageFailed ? (
           <img
             src="/rummy-victory.png"
-            alt="Rummy Balyam victory celebration"
+            alt="Rummy Bhalyam victory celebration"
             className="absolute inset-0 w-full h-full object-cover"
             onError={() => setImageFailed(true)}
             decoding="async"
@@ -2597,7 +2597,7 @@ function RummyCelebrationOverlay({ onLeave }: { onLeave: () => void }) {
               RUMMY
             </div>
             <div className="font-display italic text-[28px] sm:text-[40px] text-amber-200 mt-2">
-              Balyam!
+              Bhalyam!
             </div>
             <p className="text-amber-100/80 text-sm mt-4 max-w-md">
               Add <span className="font-mono">/rummy-victory.png</span> to

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import BalyamLogo from "../components/balyam/BalyamLogo";
-import GameRoomSheet from "../components/balyam/GameRoomSheet";
+import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
+import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import { useTheme } from "../lib/useTheme";
 import {
-  BALYAM_GAMES,
-  type BalyamGameCard,
-  type BalyamGameSlug,
-} from "../components/balyam/data";
+  BHALYAM_GAMES,
+  type BhalyamGameCard,
+  type BhalyamGameSlug,
+} from "../components/bhalyam/data";
 import {
   ArrowRightIcon,
   HandCricketGlyph,
@@ -15,10 +15,10 @@ import {
   RummyGlyph,
   SnakeLadderGlyph,
   UnoGlyph,
-} from "../components/balyam/icons";
+} from "../components/bhalyam/icons";
 
 /**
- * BALYAM home — the app's landing surface.
+ * BHALYAM home — the app's landing surface.
  *
  * Intentionally spartan. Only contains UI that wires to a working backend
  * flow: header, BALU greeting, the game tiles, and a footer. Tapping
@@ -34,7 +34,7 @@ import {
  * content the split was overhead with no payoff.
  */
 
-const GAME_GLYPHS: Record<BalyamGameSlug, React.ComponentType<{ className?: string }>> = {
+const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
   handcricket: HandCricketGlyph,
   snl: SnakeLadderGlyph,
   ludo: LudoGlyph,
@@ -43,11 +43,11 @@ const GAME_GLYPHS: Record<BalyamGameSlug, React.ComponentType<{ className?: stri
   uno: UnoGlyph,
 };
 
-export default function BalyamHome() {
-  const [sheetGame, setSheetGame] = useState<BalyamGameSlug | null>(null);
+export default function BhalyamHome() {
+  const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
 
   return (
-    <div className="balyam-home balyam-font min-h-[100dvh] balyam-paper flex flex-col">
+    <div className="bhalyam-home bhalyam-font min-h-[100dvh] bhalyam-paper flex flex-col">
       <Header />
       <main className="mx-auto w-full max-w-[1080px] px-4 sm:px-6 pb-10 flex-1">
         <Hero />
@@ -99,9 +99,9 @@ function Header() {
                  flex items-center justify-between gap-3"
     >
       <a href="/" className="flex items-center gap-2.5">
-        <BalyamLogo size={44} decorative />
+        <BhalyamLogo size={44} decorative />
         <span className="flex flex-col leading-none">
-          <span className="text-[30px] font-black tracking-tight">BALYAM</span>
+          <span className="text-[30px] font-black tracking-tight">BHALYAM</span>
           <span className="text-[12px] uppercase tracking-wider font-bold text-[#E95D21] -mt-0.5">
             Relive Childhood
           </span>
@@ -127,7 +127,7 @@ function Header() {
               </span>
             ))}
           </span>
-          <span className="px-2 py-1 rounded-full bg-white text-[11px] font-bold text-balyam-wood-dark/70">
+          <span className="px-2 py-1 rounded-full bg-white text-[11px] font-bold text-bhalyam-wood-dark/70">
             +129
           </span>
         </div>
@@ -136,7 +136,7 @@ function Header() {
           className="h-11 px-5 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] shadow-sm text-[14px] font-semibold inline-flex items-center gap-2"
           aria-label="How to Play"
         >
-          <span className="w-5 h-5 rounded-full border border-balyam-wood/35 text-balyam-wood text-[12px] leading-none inline-flex items-center justify-center">?</span>
+          <span className="w-5 h-5 rounded-full border border-bhalyam-wood/35 text-bhalyam-wood text-[12px] leading-none inline-flex items-center justify-center">?</span>
           How to Play
         </button>
       </div>
@@ -173,7 +173,7 @@ function MobileThemeToggle() {
 /* ───────────────────────────── Hero ───────────────────────────── */
 
 function Hero() {
-  const [heroImage, setHeroImage] = useState("/balyam-hero-clean.png");
+  const [heroImage, setHeroImage] = useState("/bhalyam-hero-clean.png");
 
   return (
     <section className="pt-2 pb-6 sm:pt-3 sm:pb-8">
@@ -188,8 +188,8 @@ function Hero() {
           loading="eager"
           decoding="async"
           onError={() => {
-            if (heroImage !== "/balyam-hero.png") {
-              setHeroImage("/balyam-hero.png");
+            if (heroImage !== "/bhalyam-hero.png") {
+              setHeroImage("/bhalyam-hero.png");
             }
           }}
         />
@@ -231,7 +231,7 @@ function Hero() {
 
 /* ───────────────────────────── Games grid ───────────────────────────── */
 
-function GamesSection({ onSelect }: { onSelect: (slug: BalyamGameSlug) => void }) {
+function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
   return (
     <section className="pb-12 sm:pb-14">
       <header className="mb-3 sm:mb-4 flex items-end justify-between gap-3">
@@ -246,7 +246,7 @@ function GamesSection({ onSelect }: { onSelect: (slug: BalyamGameSlug) => void }
       </header>
 
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-        {BALYAM_GAMES.map((game) => (
+        {BHALYAM_GAMES.map((game) => (
           <li key={game.slug}>
             <GameTile
               game={game}
@@ -266,14 +266,14 @@ function GameTile({
   className,
   compact = true,
 }: {
-  game: BalyamGameCard;
+  game: BhalyamGameCard;
   onSelect: () => void;
   className?: string;
   compact?: boolean;
 }) {
   const Glyph = GAME_GLYPHS[game.slug];
 
-  const livePlayersByGame: Record<BalyamGameSlug, string> = {
+  const livePlayersByGame: Record<BhalyamGameSlug, string> = {
     handcricket: "4.8K playing",
     snl: "3.2K playing",
     ludo: "5.6K playing",
@@ -286,7 +286,7 @@ function GameTile({
     ? "font-black text-[22px] sm:text-[30px] leading-[0.95] tracking-tight break-words"
     : "font-black text-[28px] sm:text-[34px] leading-[0.9] tracking-tight break-words";
 
-  const tileArtByGame: Record<BalyamGameSlug, string> = {
+  const tileArtByGame: Record<BhalyamGameSlug, string> = {
     handcricket: "/HandCricketTile.png",
     snl: "/S&LTile.png",
     ludo: "/LudoTile.png",
@@ -295,36 +295,51 @@ function GameTile({
     uno: "/UNOTile.png",
   };
 
+  const underMaintenance = game.maintenance === true;
+
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={underMaintenance ? undefined : onSelect}
+      disabled={underMaintenance}
       className={`group relative w-full ${compact ? "min-h-[220px]" : "min-h-[170px]"}
                  rounded-[22px] overflow-hidden text-left p-4 sm:p-5
                  flex flex-col gap-3
                  border border-[#F4D6B7]
-                 active:scale-[0.97] transition-all duration-200 balyam-press-feedback
+                 ${underMaintenance
+                   ? "cursor-not-allowed opacity-90"
+                   : "active:scale-[0.97] bhalyam-press-feedback"}
+                 transition-all duration-200
                  shadow-[0_13px_24px_-14px_rgba(74,44,22,0.45)] ${className ?? ""}`}
       style={{
-        background: `linear-gradient(145deg, ${game.accent.from}, ${game.accent.to})`,
+        background: underMaintenance
+          ? `linear-gradient(145deg, ${game.accent.from}99, ${game.accent.to}99)`
+          : `linear-gradient(145deg, ${game.accent.from}, ${game.accent.to})`,
         color: "#FFF7E7",
       }}
-      aria-label={`Play ${game.title}`}
+      aria-label={underMaintenance ? `${game.title} — under maintenance` : `Play ${game.title}`}
+      aria-disabled={underMaintenance || undefined}
     >
-      <span className="absolute right-3 top-3 rounded-full px-2 py-1 bg-white/20 text-white text-[11px] font-bold">
-        Trending
+      <span
+        className={`absolute right-3 top-3 rounded-full px-2 py-1 text-[11px] font-bold ${
+          underMaintenance
+            ? "bg-amber-300 text-zinc-900"
+            : "bg-white/20 text-white"
+        }`}
+      >
+        {underMaintenance ? "Maintenance" : "Trending"}
       </span>
 
       <span
         aria-hidden
         className="pointer-events-none absolute -top-10 -right-10 w-36 h-36 rounded-full
-                   bg-balyam-cream-soft/15 blur-3xl"
+                   bg-bhalyam-cream-soft/15 blur-3xl"
       />
 
       <GameTileArt src={tileArtByGame[game.slug]} title={game.title} compact={compact}>
         <span
           className="relative inline-flex w-14 h-14 rounded-2xl items-center justify-center
-                     bg-balyam-cream-soft/22 backdrop-blur-sm flex-shrink-0 mt-3"
+                     bg-bhalyam-cream-soft/22 backdrop-blur-sm flex-shrink-0 mt-3"
         >
           <Glyph className="w-8 h-8" />
         </span>
@@ -340,17 +355,30 @@ function GameTile({
           </span>
         )}
 
-        <span className="text-[13px] font-semibold opacity-95">{livePlayersByGame[game.slug]}</span>
-
-        <span
-          className="inline-flex items-center gap-1 w-fit
-                     rounded-full bg-balyam-cream-soft text-balyam-wood-dark
-                     px-4 py-1.5 text-[13px] font-bold
-                     shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
-                     group-active:translate-y-px transition-transform duration-150"
-        >
-          Quick Play <ArrowRightIcon className="w-3 h-3" />
+        <span className="text-[13px] font-semibold opacity-95">
+          {underMaintenance ? "Cooking it up" : livePlayersByGame[game.slug]}
         </span>
+
+        {underMaintenance ? (
+          <span
+            className="inline-flex items-center gap-1 w-fit
+                       rounded-full bg-amber-200/95 text-zinc-900
+                       px-4 py-1.5 text-[13px] font-bold
+                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]"
+          >
+            Coming Soon
+          </span>
+        ) : (
+          <span
+            className="inline-flex items-center gap-1 w-fit
+                       rounded-full bg-bhalyam-cream-soft text-bhalyam-wood-dark
+                       px-4 py-1.5 text-[13px] font-bold
+                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
+                       group-active:translate-y-px transition-transform duration-150"
+          >
+            Quick Play <ArrowRightIcon className="w-3 h-3" />
+          </span>
+        )}
       </div>
     </button>
   );
@@ -702,10 +730,10 @@ function Footer() {
             />
           </div>
 
-          {/* CENTER — BALYAM + tagline + social icons */}
+          {/* CENTER — BHALYAM + tagline + social icons */}
           <div className="text-center self-center">
             <h4 className="font-black text-[30px] sm:text-[38px] text-[#3C2A1E] leading-tight">
-              BALYAM
+              BHALYAM
               <span className="text-[#6B4A34] mx-2">•</span>
               <span className="font-semibold">Relive Childhood</span>
             </h4>

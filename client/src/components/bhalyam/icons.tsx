@@ -1,6 +1,6 @@
 /**
- * Inline SVG icons used across the BALYAM UI surfaces (Home + GameRoomSheet
- * + BalyamLogo fallback).
+ * Inline SVG icons used across the BHALYAM UI surfaces (Home + GameRoomSheet
+ * + BhalyamLogo fallback).
  *
  * Slimmed during the cleanup pass — bottom-nav, achievement-badge, daily-
  * reward, landing, and adda-step icons all went with their UI sections.
@@ -10,12 +10,12 @@
  * their original 24x24 viewBox too so they tint via Tailwind text-*.
  */
 
-export interface BalyamIconProps {
+export interface BhalyamIconProps {
   className?: string;
 }
 
 function makeIcon(path: React.ReactNode, viewBox = "0 0 24 24") {
-  return function Icon({ className }: BalyamIconProps) {
+  return function Icon({ className }: BhalyamIconProps) {
     return (
       <svg
         viewBox={viewBox}
@@ -33,7 +33,7 @@ function makeIcon(path: React.ReactNode, viewBox = "0 0 24 24") {
   };
 }
 
-/* ────────── Logo-fallback glyph (BalyamLogo.tsx) ────────── */
+/* ────────── Logo-fallback glyph (BhalyamLogo.tsx) ────────── */
 
 export const KiteIcon = makeIcon(
   <>
