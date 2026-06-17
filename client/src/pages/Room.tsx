@@ -13,6 +13,7 @@ import Chat from "../components/Chat";
 import RoomCode from "../components/RoomCode";
 import RoomCodeShare from "../components/RoomCodeShare";
 import RematchPanel from "../components/RematchPanel";
+import PassPhoneGate from "../components/PassPhoneGate";
 import VoicePanel from "../components/VoicePanel";
 import LudoColorPicker from "../components/LudoColorPicker";
 import CoinColorPicker from "../components/CoinColorPicker";
@@ -414,19 +415,56 @@ export default function Room() {
             )}
 
             {roomState.phase !== "lobby" && roomState.game === "ludo" && gameState != null && (
-              <LudoBoard
-                state={gameState as LudoState}
-                players={roomState.players}
-                selfId={playerId}
-              />
+              (() => {
+                // Pass & Play proxy: when the active turn belongs to a local
+                // seat and we're the host, present that seat's id to the
+                // board as `selfId` so the existing canRoll / can-move
+                // checks light up. The board's emit calls include the same
+                // id; the server validates and routes it to the right player.
+                const ls = gameState as LudoState;
+                const isHost = roomState.hostId === playerId;
+                const activePid = ls.turnPlayerId;
+                const activeP = roomState.players.find((p) => p.id === activePid);
+                const effectiveSelfId =
+                  isHost && activeP?.isLocal ? activePid : playerId;
+                return (
+                  <PassPhoneGate
+                    activePlayerId={activePid}
+                    players={roomState.players}
+                    isHost={isHost}
+                  >
+                    <LudoBoard
+                      state={ls}
+                      players={roomState.players}
+                      selfId={effectiveSelfId}
+                    />
+                  </PassPhoneGate>
+                );
+              })()
             )}
 
             {roomState.phase !== "lobby" && roomState.game === "snl" && gameState != null && (
-              <SnlBoard
-                state={gameState as SnlState}
-                players={roomState.players}
-                selfId={playerId}
-              />
+              (() => {
+                const ss = gameState as SnlState;
+                const isHost = roomState.hostId === playerId;
+                const activePid = ss.turnPlayerId;
+                const activeP = roomState.players.find((p) => p.id === activePid);
+                const effectiveSelfId =
+                  isHost && activeP?.isLocal ? activePid : playerId;
+                return (
+                  <PassPhoneGate
+                    activePlayerId={activePid}
+                    players={roomState.players}
+                    isHost={isHost}
+                  >
+                    <SnlBoard
+                      state={ss}
+                      players={roomState.players}
+                      selfId={effectiveSelfId}
+                    />
+                  </PassPhoneGate>
+                );
+              })()
             )}
 
             {roomState.phase !== "lobby" && roomState.game === "handcricket" && gameState != null && (

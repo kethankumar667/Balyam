@@ -2615,17 +2615,42 @@ function RummyScoreCard({
   onLeave?: () => void;
 }) {
   const winnerId = state.winnerId ?? null;
-  const lossOf = (id: string) => Math.max(0, state.scores?.[id] ?? 0);
-  const winnerPot = winnerId
-    ? state.playerOrder.reduce(
-        (sum, id) => (id === winnerId ? sum : sum + lossOf(id)),
-        0,
-      )
-    : 0;
+  const wrongShowerId = state.invalidDeclareBy ?? null;
+  const isWrongShow = wrongShowerId !== null;
 
-  // Rank order: winner first, everyone else by ascending hand value
-  // (lower = better). Stable across ties.
+  const lossOf = (id: string) => Math.max(0, state.scores?.[id] ?? 0);
+
+  // Chips accounting:
+  //   • Normal round → winner takes sum(losers' hand values); each loser
+  //     pays their own hand value.
+  //   • Wrong show / invalid declare → the wrong-shower eats the full
+  //     80-point penalty; each opponent splits that penalty as chips won.
+  //     There is NO single round winner in this branch.
+  const chipsOf = (id: string): number => {
+    if (isWrongShow) {
+      if (id === wrongShowerId) return -80;
+      const opponents = state.playerOrder.filter((pid) => pid !== wrongShowerId);
+      return opponents.length > 0 ? Math.round(80 / opponents.length) : 0;
+    }
+    if (id === winnerId) {
+      return state.playerOrder.reduce(
+        (sum, pid) => (pid === winnerId ? sum : sum + lossOf(pid)),
+        0,
+      );
+    }
+    return -lossOf(id);
+  };
+
+  // Rank order:
+  //   • Wrong show → opponents share rank 1 (winners), wrong-shower last.
+  //     Tied opponents keep `playerOrder` order for stability.
+  //   • Normal     → declared winner first, then losers by ascending hand value.
   const ranked = [...state.playerOrder].sort((a, b) => {
+    if (isWrongShow) {
+      if (a === wrongShowerId) return 1;
+      if (b === wrongShowerId) return -1;
+      return 0; // opponents tied — keep declared order
+    }
     if (a === winnerId) return -1;
     if (b === winnerId) return 1;
     return lossOf(a) - lossOf(b);
@@ -2634,6 +2659,15 @@ function RummyScoreCard({
 
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
   const isMyId = (id: string) => id === selfId;
+  const wrongShowerName = wrongShowerId ? nameOf(wrongShowerId) : null;
+  const headerText =
+    isWrongShow
+      ? wrongShowerId === selfId
+        ? "Wrong show — −80!"
+        : `${wrongShowerName} mis-declared`
+      : selfRank
+      ? `You finished ${ordinal(selfRank)}!`
+      : "Round complete";
 
   const matchLabel =
     state.matchMode === "pool101" ? "101 Pool"
@@ -2657,15 +2691,12 @@ function RummyScoreCard({
           <MedalIcon className="w-9 h-9 sm:w-10 sm:h-10 text-amber-300 flex-shrink-0 drop-shadow" />
           <div className="min-w-0">
             <div className="text-amber-200 italic font-black text-[19px] sm:text-[22px] leading-tight">
-              {state.invalidDeclareBy
-                ? "Invalid declare"
-                : selfRank
-                ? `You finished ${ordinal(selfRank)}!`
-                : "Round complete"}
+              {headerText}
             </div>
-            {state.invalidDeclareBy && (
+            {isWrongShow && wrongShowerId !== selfId && (
               <div className="text-rose-200 text-[12px] font-semibold">
-                {nameOf(state.invalidDeclareBy)} mis-declared
+                Penalty 80 split across {state.playerOrder.length - 1} opponent
+                {state.playerOrder.length - 1 === 1 ? "" : "s"}.
               </div>
             )}
           </div>
@@ -2703,15 +2734,21 @@ function RummyScoreCard({
           {ranked.map((id, idx) => {
             const rank = idx + 1;
             const isWin = id === winnerId;
+            const isWrongShower = id === wrongShowerId;
             const isMe = isMyId(id);
+            // Points column reflects what the engine booked: opponents
+            // in a wrong-show round get 0; everyone else shows their hand
+            // value. Chips column uses the helper for both branches.
             const points = lossOf(id);
-            const chips = isWin ? winnerPot : -points;
+            const chips = chipsOf(id);
             const hand = state.finalHands?.[id] ?? [];
             return (
               <div
                 key={id}
                 className={`grid items-center gap-2 px-3 py-2 rounded-xl text-[12px] sm:text-[13px]
-                            ${isMe
+                            ${isWrongShower
+                              ? "bg-zinc-900/70 ring-1 ring-rose-400/40"
+                              : isMe
                               ? "bg-gradient-to-r from-rose-600 to-rose-500 ring-1 ring-amber-300/50"
                               : isWin
                               ? "bg-gradient-to-r from-amber-500/30 to-amber-600/20 ring-1 ring-amber-300/40"
@@ -2719,7 +2756,7 @@ function RummyScoreCard({
                 style={{ gridTemplateColumns: "44px 1.2fr 2.6fr 0.7fr 0.9fr" }}
               >
                 <div className="font-black tabular-nums text-amber-200 text-base sm:text-lg">
-                  {rank}
+                  {isWrongShow ? (isWrongShower ? "—" : rank) : rank}
                 </div>
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-black italic truncate">
@@ -2735,6 +2772,13 @@ function RummyScoreCard({
                     >
                       <CrownIcon className="w-3 h-3" />
                       Winner
+                    </span>
+                  )}
+                  {isWrongShower && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-rose-700 text-rose-100"
+                    >
+                      Wrong Show
                     </span>
                   )}
                 </div>

@@ -53,13 +53,17 @@ export function classifyMeld(cards: Card[], wildRank: Rank): MeldClassification 
   return { kind: "invalid", label: "Not a meld", color: C_INV, valid: false };
 }
 
-function isPureSequence(cards: Card[], wildRank: Rank): boolean {
+function isPureSequence(cards: Card[], _wildRank: Rank): boolean {
+  // A pure run is 3+ cards of the same suit in consecutive rank order with
+  // NO PRINTED jokers. A card matching the wild-rank counts as its natural
+  // face value — Indian Rummy convention: using the actual 8♥ when 8 is
+  // the wild rank in a 6-7-8 hearts sequence is NOT invoking its wild
+  // property, so the run stays pure. Only printed jokers break purity.
   if (cards.length < 3) return false;
-  const natural = cards.filter((c) => !isWild(c, wildRank));
-  if (natural.length < 3) return false;
-  const suit = natural[0].suit;
-  if (!natural.every((c) => c.suit === suit)) return false;
-  return isConsecutiveRun(natural.map((c) => c.rank));
+  if (cards.some((c) => c.isPrintedJoker)) return false;
+  const suit = cards[0].suit;
+  if (!cards.every((c) => c.suit === suit)) return false;
+  return isConsecutiveRun(cards.map((c) => c.rank));
 }
 
 function isImpureSequence(cards: Card[], wildRank: Rank): boolean {

@@ -29,8 +29,20 @@ describe("isPureSequence", () => {
     expect(isPureSequence([c("H", "4"), c("H", "6"), c("H", "8")], WILD)).toBe(false);
   });
 
-  it("rejects when it contains the wild joker rank", () => {
-    expect(isPureSequence([c("H", "6"), c("H", "7"), c("H", "8")], WILD)).toBe(false);
+  it("ACCEPTS a wild-rank card used in its natural position", () => {
+    // House rule (matches RummyCircle / Junglee Rummy): a card whose rank
+    // matches the wild rank but is placed in its NATURAL slot in a
+    // consecutive same-suit run does not invoke its wild property — so
+    // the run stays pure. Here wild = 7, and 7H sits in the 6-7-8 hearts
+    // slot, so this is a pure 3-run.
+    expect(isPureSequence([c("H", "6"), c("H", "7"), c("H", "8")], WILD)).toBe(true);
+  });
+
+  it("rejects when a printed joker is in the run", () => {
+    // Printed jokers ALWAYS disqualify a pure sequence, no matter what
+    // suit/rank they "stand in for".
+    const printed: Card = { id: "PJ_0", suit: "H", rank: "8", isPrintedJoker: true };
+    expect(isPureSequence([c("H", "6"), c("H", "7"), printed], WILD)).toBe(false);
   });
 
   it("rejects K-A-2 wrap-around", () => {
@@ -96,6 +108,18 @@ describe("isSet", () => {
         WILD
       )
     ).toBe(false);
+  });
+
+  it("ACCEPTS 3 printed jokers as an all-wild set", () => {
+    const pj = (i: number): Card =>
+      ({ id: `PJ_${i}`, suit: "H", rank: "2", isPrintedJoker: true });
+    expect(isSet([pj(0), pj(1), pj(2)], WILD)).toBe(true);
+  });
+
+  it("ACCEPTS 4 printed jokers as an all-wild set", () => {
+    const pj = (i: number): Card =>
+      ({ id: `PJ_${i}`, suit: "H", rank: "2", isPrintedJoker: true });
+    expect(isSet([pj(0), pj(1), pj(2), pj(3)], WILD)).toBe(true);
   });
 });
 
