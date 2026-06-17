@@ -625,3 +625,47 @@ body, #root, .bhalyam-paper {
 .hc-number-pad button {
   touch-action: manipulation;
 }
+
+/* Hand Cricket celebration overlays */
+@keyframes hc-celebrate-pop {
+  0%   { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+  55%  { transform: scale(1.18) rotate(3deg); opacity: 1; }
+  72%  { transform: scale(0.96) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.hc-celebrate-pop { animation: hc-celebrate-pop 620ms cubic-bezier(.34,1.56,.64,1) both; }
+
+@keyframes hc-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  15%      { transform: translateX(-8px) rotate(-2deg); }
+  30%      { transform: translateX(7px) rotate(2deg); }
+  45%      { transform: translateX(-6px) rotate(-1.5deg); }
+  60%      { transform: translateX(5px) rotate(1deg); }
+  75%      { transform: translateX(-3px) rotate(-0.5deg); }
+}
+.hc-shake { animation: hc-shake 720ms ease-in-out both; }
+
+@keyframes hc-burst-out {
+  0%   { transform: translate(0,0) scale(0.4); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(var(--bx, 0), var(--by, 0)) scale(1.4) rotate(var(--brot, 0deg));
+         opacity: 0; }
+}
+.hc-burst-piece { animation: hc-burst-out 1.4s cubic-bezier(.16,.74,.4,1) forwards; }
+
+@keyframes hc-rays-spin {
+  from { transform: rotate(0deg); } to { transform: rotate(360deg); }
+}
+.hc-rays-spin { animation: hc-rays-spin 8s linear infinite; }
+
+@keyframes hc-glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(251,191,36,0.5)); }
+  50%      { filter: drop-shadow(0 0 28px rgba(251,191,36,1)); }
+}
+.hc-glow-pulse { animation: hc-glow-pulse 1.2s ease-in-out infinite; }
+
+@keyframes hc-fade-out {
+  0%, 70% { opacity: 1; } 100% { opacity: 0; }
+}
+.hc-fade-late { animation: hc-fade-out 600ms ease-out forwards; animation-delay: 1.1s; }
+

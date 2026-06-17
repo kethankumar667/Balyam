@@ -1204,7 +1204,7 @@ function ResultOverlay({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md"
+        className="relative w-[95vw] max-w-[1100px] max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button

@@ -49,7 +49,7 @@ export default function BhalyamHome() {
   const [joinOpen, setJoinOpen] = useState(false);
 
   return (
-    <div className="bhalyam-home bhalyam-font min-h-[100dvh] bhalyam-paper flex flex-col">
+    <div className="bhalyam-home bhalyam-font min-h-screen bhalyam-paper flex flex-col">
       <Header onOpenJoin={() => setJoinOpen(true)} />
       <main className="mx-auto w-full max-w-[1080px] px-4 sm:px-6 pb-10 flex-1">
         <Hero />
@@ -99,7 +99,7 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
   return (
     <header
       className="mx-auto w-full max-w-[1080px] px-4 sm:px-6 pt-4 sm:pt-5
-                 flex items-center justify-between gap-3"
+                 flex flex-col md:flex-row md:items-center justify-between gap-3"
     >
       <a href="/" className="flex items-center gap-2.5">
         <BhalyamLogo size={44} decorative />
@@ -149,7 +149,7 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
         </button>
       </div>
 
-      <div className="md:hidden mt-4 flex justify-end items-center gap-2">
+      <div className="md:hidden flex flex-wrap justify-end items-center gap-2 w-full">
         <JoinRoomButton onClick={onOpenJoin} compact />
         <MobileThemeToggle />
       </div>
