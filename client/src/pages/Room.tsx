@@ -293,7 +293,7 @@ export default function Room() {
     <div
       className={
         roomState.game === "rummy" && roomState.phase !== "lobby"
-          ? "bhalyam-font bhalyam-paper h-[100dvh] overflow-hidden p-0 sm:p-4"
+          ? "bhalyam-font bhalyam-paper h-screen overflow-hidden p-0 sm:p-4"
           : "bhalyam-font bhalyam-paper min-h-screen p-2 sm:p-4"
       }
     >
@@ -533,7 +533,7 @@ function NameEntryForRoom({
   const trimmed = draft.trim().slice(0, 20);
   const canSubmit = trimmed.length >= 1;
   return (
-    <div className="bhalyam-font bhalyam-paper min-h-[100dvh] flex items-center justify-center p-4">
+    <div className="bhalyam-font bhalyam-paper min-h-screen flex items-center justify-center p-4">
       <form
         onSubmit={(e) => {
           e.preventDefault();

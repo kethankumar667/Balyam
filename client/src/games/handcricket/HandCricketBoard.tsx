@@ -101,6 +101,8 @@ export default function HandCricketBoard({
       {state.phase === "finished" && (
         <MatchSummary state={state} players={players} selfId={selfId} />
       )}
+
+      <HcCelebrationLayer state={state} players={players} selfId={selfId} />
     </div>
   );
 }
@@ -1671,3 +1673,418 @@ function Stat({ label, value }: { label: string; value: number | string }) {
     </div>
   );
 }
+
+/* ───────────────────────────── Celebrations ───────────────────────────── */
+
+type HcCelebrationData =
+  | { kind: "four"; id: number; batter: string }
+  | { kind: "six"; id: number; batter: string }
+  | { kind: "wicket"; id: number; batter: string; bowler: string }
+  | { kind: "hattrickWickets"; id: number; bowler: string }
+  | { kind: "hattrickBoundaries"; id: number; batter: string }
+  | { kind: "winner"; id: number; youWon: boolean; winnerName: string; margin: string; isTie: boolean };
+
+function HcCelebrationLayer({
+  state,
+  players,
+  selfId,
+}: {
+  state: HcState;
+  players: Player[];
+  selfId: string;
+}) {
+  const [active, setActive] = useState<HcCelebrationData | null>(null);
+  const prevLensRef = useRef({
+    i1: state.innings1?.history.length ?? 0,
+    i2: state.innings2?.history.length ?? 0,
+  });
+  const prevPhaseRef = useRef(state.phase);
+
+  const nameOf = (id: string | null | undefined) =>
+    players.find((p) => p.id === id)?.name ?? "Player";
+
+  // Ball events
+  useEffect(() => {
+    const i1Len = state.innings1?.history.length ?? 0;
+    const i2Len = state.innings2?.history.length ?? 0;
+    const prev = prevLensRef.current;
+
+    let inn: HcInnings | null = null;
+    if (i1Len > prev.i1) inn = state.innings1!;
+    else if (i2Len > prev.i2) inn = state.innings2!;
+
+    if (inn) {
+      const last3 = inn.history.slice(-3);
+      const lastBall = last3[last3.length - 1];
+      const isBoundaryBall = (b: HcBall) =>
+        !b.wicket && (b.runs === 4 || b.runs === 6);
+      const allWickets = last3.length === 3 && last3.every((b) => b.wicket);
+      const allBoundaries = last3.length === 3 && last3.every(isBoundaryBall);
+
+      const batterName = nameOf(inn.battingPlayerId);
+      const bowlerName = nameOf(inn.bowlingPlayerId);
+      const stamp = Date.now();
+
+      if (allWickets) {
+        setActive({ kind: "hattrickWickets", id: stamp, bowler: bowlerName });
+      } else if (allBoundaries) {
+        setActive({ kind: "hattrickBoundaries", id: stamp, batter: batterName });
+      } else if (lastBall.wicket) {
+        setActive({ kind: "wicket", id: stamp, batter: batterName, bowler: bowlerName });
+      } else if (lastBall.runs === 6) {
+        setActive({ kind: "six", id: stamp, batter: batterName });
+      } else if (lastBall.runs === 4) {
+        setActive({ kind: "four", id: stamp, batter: batterName });
+      }
+    }
+
+    prevLensRef.current = { i1: i1Len, i2: i2Len };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.innings1?.history.length, state.innings2?.history.length]);
+
+  // Match-over winner celebration
+  useEffect(() => {
+    if (prevPhaseRef.current !== "finished" && state.phase === "finished") {
+      const isTie = state.result === "tie";
+      const youWon = !!state.winnerId && state.winnerId === selfId;
+      const winnerName = state.winnerId ? nameOf(state.winnerId) : "—";
+      let margin = "";
+      const i1 = state.innings1;
+      const i2 = state.innings2;
+      if (!isTie && i1 && i2) {
+        const winnerInn = i1.runs > i2.runs ? i1 : i2;
+        const gap = Math.abs(i1.runs - i2.runs);
+        if (winnerInn.number === 2) {
+          const wktsLeft = state.maxWickets - winnerInn.wickets;
+          margin = `by ${wktsLeft} wicket${wktsLeft === 1 ? "" : "s"}`;
+        } else {
+          margin = `by ${gap} run${gap === 1 ? "" : "s"}`;
+        }
+      }
+      setActive({
+        kind: "winner",
+        id: Date.now(),
+        youWon,
+        winnerName,
+        margin,
+        isTie,
+      });
+    }
+    prevPhaseRef.current = state.phase;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phase, state.winnerId, state.result]);
+
+  // Auto-dismiss
+  useEffect(() => {
+    if (!active) return;
+    const ms =
+      active.kind === "winner" ? 4800
+      : active.kind === "hattrickWickets" || active.kind === "hattrickBoundaries" ? 3200
+      : active.kind === "six" ? 2200
+      : active.kind === "wicket" ? 2000
+      : 1800;
+    const t = setTimeout(() => setActive(null), ms);
+    return () => clearTimeout(t);
+  }, [active]);
+
+  if (!active) return null;
+  return <HcCelebrationOverlay data={active} />;
+}
+
+function HcCelebrationOverlay({ data }: { data: HcCelebrationData }) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center px-4"
+      aria-live="polite"
+      aria-atomic="true"
+      role="status"
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            data.kind === "wicket" || data.kind === "hattrickWickets"
+              ? "radial-gradient(ellipse at center, rgba(127,29,29,0.45) 0%, rgba(0,0,0,0.55) 70%)"
+              : data.kind === "winner"
+              ? "radial-gradient(ellipse at center, rgba(217,119,6,0.4) 0%, rgba(0,0,0,0.6) 70%)"
+              : "radial-gradient(ellipse at center, rgba(180,83,9,0.35) 0%, rgba(0,0,0,0.45) 70%)",
+        }}
+      />
+      {(data.kind === "four" || data.kind === "six" || data.kind === "hattrickBoundaries") && (
+        <EmojiBurst emojis={data.kind === "four" ? ["4️⃣", "🏏", "💥"] : data.kind === "six" ? ["6️⃣", "🏏", "🎆", "⭐"] : ["4️⃣", "6️⃣", "🔥", "🏏"]} count={data.kind === "hattrickBoundaries" ? 22 : 14} />
+      )}
+      {(data.kind === "wicket" || data.kind === "hattrickWickets") && (
+        <EmojiBurst emojis={data.kind === "wicket" ? ["💥", "🎯"] : ["🎯", "💥", "🔥"]} count={data.kind === "hattrickWickets" ? 18 : 10} />
+      )}
+      {data.kind === "winner" && !data.isTie && <ConfettiRain count={60} />}
+
+      <HcCelebrationCard data={data} />
+    </div>
+  );
+}
+
+function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
+  switch (data.kind) {
+    case "four":
+      return (
+        <div className="relative hc-celebrate-pop text-center">
+          <div
+            className="font-black tracking-tight leading-none hc-glow-pulse"
+            style={{
+              fontSize: "clamp(72px, 18vw, 168px)",
+              background: "linear-gradient(180deg, #fde047 0%, #f59e0b 60%, #b45309 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              textShadow: "0 6px 22px rgba(0,0,0,0.55)",
+            }}
+          >
+            FOUR!
+          </div>
+          <div className="mt-2 text-amber-100 font-bold text-sm sm:text-base drop-shadow">
+            🏏 {data.batter} smashes a boundary!
+          </div>
+        </div>
+      );
+    case "six":
+      return (
+        <div className="relative hc-celebrate-pop text-center">
+          <div
+            className="absolute inset-0 -z-10 mx-auto hc-rays-spin"
+            aria-hidden
+            style={{
+              width: "min(120vw, 800px)",
+              height: "min(120vw, 800px)",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              background:
+                "conic-gradient(from 0deg, rgba(251,191,36,0.0) 0deg, rgba(251,191,36,0.35) 30deg, rgba(251,191,36,0) 60deg, rgba(251,191,36,0.35) 90deg, rgba(251,191,36,0) 120deg, rgba(251,191,36,0.35) 150deg, rgba(251,191,36,0) 180deg, rgba(251,191,36,0.35) 210deg, rgba(251,191,36,0) 240deg, rgba(251,191,36,0.35) 270deg, rgba(251,191,36,0) 300deg, rgba(251,191,36,0.35) 330deg, rgba(251,191,36,0) 360deg)",
+              filter: "blur(8px)",
+              opacity: 0.6,
+            }}
+          />
+          <div
+            className="font-black tracking-tight leading-none hc-glow-pulse"
+            style={{
+              fontSize: "clamp(80px, 22vw, 200px)",
+              background:
+                "linear-gradient(180deg, #fff3a0 0%, #f97316 55%, #b91c1c 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              textShadow: "0 8px 28px rgba(0,0,0,0.6)",
+            }}
+          >
+            SIX!
+          </div>
+          <div className="mt-2 text-amber-50 font-extrabold text-base sm:text-lg drop-shadow">
+            🚀 {data.batter} sends it out of the park!
+          </div>
+        </div>
+      );
+    case "wicket":
+      return (
+        <div className="relative hc-shake text-center">
+          <div
+            className="font-black tracking-tight leading-none"
+            style={{
+              fontSize: "clamp(72px, 20vw, 180px)",
+              background: "linear-gradient(180deg, #fecaca 0%, #ef4444 55%, #7f1d1d 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              textShadow: "0 6px 24px rgba(0,0,0,0.7)",
+            }}
+          >
+            WICKET!
+          </div>
+          <div className="mt-2 text-rose-100 font-extrabold text-base sm:text-lg drop-shadow">
+            🎯 {data.batter} OUT — {data.bowler} strikes!
+          </div>
+        </div>
+      );
+    case "hattrickWickets":
+      return (
+        <div className="relative hc-celebrate-pop text-center">
+          <div className="text-[28px] sm:text-[36px] mb-1">🔥🔥🔥</div>
+          <div
+            className="font-black tracking-tight leading-none uppercase hc-glow-pulse"
+            style={{
+              fontSize: "clamp(60px, 16vw, 140px)",
+              background:
+                "linear-gradient(180deg, #fef08a 0%, #f97316 50%, #b91c1c 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              letterSpacing: "0.02em",
+              textShadow: "0 8px 26px rgba(0,0,0,0.7)",
+            }}
+          >
+            HAT-TRICK!
+          </div>
+          <div className="mt-2 text-amber-100 font-extrabold text-base sm:text-lg drop-shadow">
+            🎯 {data.bowler} — three in a row!
+          </div>
+          <div className="mt-4 flex justify-center gap-3 text-3xl sm:text-4xl">
+            <span className="hc-celebrate-pop" style={{ animationDelay: "120ms" }}>🎯</span>
+            <span className="hc-celebrate-pop" style={{ animationDelay: "240ms" }}>🎯</span>
+            <span className="hc-celebrate-pop" style={{ animationDelay: "360ms" }}>🎯</span>
+          </div>
+        </div>
+      );
+    case "hattrickBoundaries":
+      return (
+        <div className="relative hc-celebrate-pop text-center">
+          <div className="text-[28px] sm:text-[36px] mb-1">⚡⚡⚡</div>
+          <div
+            className="font-black tracking-tight leading-none uppercase hc-glow-pulse"
+            style={{
+              fontSize: "clamp(54px, 14vw, 128px)",
+              background:
+                "linear-gradient(180deg, #fff3a0 0%, #f59e0b 50%, #9a3412 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              letterSpacing: "0.02em",
+              textShadow: "0 8px 26px rgba(0,0,0,0.65)",
+            }}
+          >
+            ON FIRE!
+          </div>
+          <div className="mt-2 text-amber-50 font-extrabold text-base sm:text-lg drop-shadow">
+            🏏 {data.batter} — boundary spree!
+          </div>
+          <div className="mt-4 flex justify-center gap-3 text-3xl sm:text-4xl font-black text-amber-200">
+            <span className="hc-celebrate-pop" style={{ animationDelay: "120ms" }}>4️⃣</span>
+            <span className="hc-celebrate-pop" style={{ animationDelay: "240ms" }}>6️⃣</span>
+            <span className="hc-celebrate-pop" style={{ animationDelay: "360ms" }}>4️⃣</span>
+          </div>
+        </div>
+      );
+    case "winner":
+      return (
+        <div className="relative text-center max-w-md mx-auto">
+          <div
+            className="absolute inset-0 -z-10 mx-auto hc-rays-spin"
+            aria-hidden
+            style={{
+              width: "min(140vw, 900px)",
+              height: "min(140vw, 900px)",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              background:
+                "conic-gradient(from 0deg, rgba(251,191,36,0) 0deg, rgba(251,191,36,0.5) 25deg, rgba(251,191,36,0) 50deg, rgba(251,191,36,0.5) 75deg, rgba(251,191,36,0) 100deg, rgba(251,191,36,0.5) 125deg, rgba(251,191,36,0) 150deg, rgba(251,191,36,0.5) 175deg, rgba(251,191,36,0) 200deg, rgba(251,191,36,0.5) 225deg, rgba(251,191,36,0) 250deg, rgba(251,191,36,0.5) 275deg, rgba(251,191,36,0) 300deg, rgba(251,191,36,0.5) 325deg, rgba(251,191,36,0) 360deg)",
+              filter: "blur(10px)",
+              opacity: data.isTie ? 0 : 0.7,
+            }}
+          />
+          <div className="winner-pop">
+            <div className="text-6xl sm:text-7xl winner-crown-bob mb-2">
+              {data.isTie ? "🤝" : "🏆"}
+            </div>
+            <div
+              className="font-black tracking-tight leading-none uppercase"
+              style={{
+                fontSize: "clamp(58px, 15vw, 130px)",
+                background: data.isTie
+                  ? "linear-gradient(180deg, #e5e7eb, #94a3b8)"
+                  : "linear-gradient(180deg, #fff3a0 0%, #f59e0b 50%, #b45309 100%)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                textShadow: "0 8px 28px rgba(0,0,0,0.65)",
+              }}
+            >
+              {data.isTie ? "TIED!" : data.youWon ? "VICTORY!" : "WELL PLAYED"}
+            </div>
+            <div className="mt-3 text-amber-50 font-extrabold text-base sm:text-xl drop-shadow">
+              {data.isTie
+                ? "Match tied — a thriller!"
+                : `${data.winnerName} wins ${data.margin}!`}
+            </div>
+          </div>
+        </div>
+      );
+  }
+}
+
+function EmojiBurst({ emojis, count }: { emojis: string[]; count: number }) {
+  const pieces = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.6;
+      const radius = 180 + Math.random() * 180;
+      const bx = Math.cos(angle) * radius;
+      const by = Math.sin(angle) * radius;
+      return {
+        emoji: emojis[i % emojis.length],
+        bx: `${bx.toFixed(0)}px`,
+        by: `${by.toFixed(0)}px`,
+        rot: `${(Math.random() * 720 - 360).toFixed(0)}deg`,
+        delay: `${(Math.random() * 250).toFixed(0)}ms`,
+        size: 22 + Math.floor(Math.random() * 22),
+      };
+    });
+  }, [emojis, count]);
+  return (
+    <div className="absolute inset-0 flex items-center justify-center" aria-hidden>
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          className="hc-burst-piece absolute"
+          style={
+            {
+              fontSize: `${p.size}px`,
+              "--bx": p.bx,
+              "--by": p.by,
+              "--brot": p.rot,
+              animationDelay: p.delay,
+              filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.55))",
+            } as React.CSSProperties
+          }
+        >
+          {p.emoji}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+const CONFETTI_COLORS = [
+  "#f59e0b", "#fbbf24", "#10b981", "#34d399",
+  "#3b82f6", "#60a5fa", "#ef4444", "#f472b6",
+];
+
+function ConfettiRain({ count }: { count: number }) {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => ({
+        left: `${(i / count) * 100 + Math.random() * (100 / count)}%`,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        delay: `${(Math.random() * 1500).toFixed(0)}ms`,
+        duration: `${(2.2 + Math.random() * 1.4).toFixed(2)}s`,
+        rot: `${(Math.random() * 360).toFixed(0)}deg`,
+      })),
+    [count],
+  );
+  return (
+    <div className="absolute inset-0 overflow-hidden" aria-hidden>
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          className="confetti-piece"
+          style={{
+            left: p.left,
+            top: "-2vh",
+            backgroundColor: p.color,
+            animationDelay: p.delay,
+            animationDuration: p.duration,
+            transform: `rotate(${p.rot})`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
