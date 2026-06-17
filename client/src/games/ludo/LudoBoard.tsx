@@ -373,12 +373,14 @@ export default function LudoBoard({
     if (!canRoll) return;
     if (soundOn) sfx.diceRoll();
     setRolling(true);
-    getSocket().emit("game:move", { type: "roll" });
+    // Include playerId so the server can proxy moves when Room.tsx has
+    // overridden `selfId` to a local pass-and-play seat. For normal play
+    // selfId === the caller's own id and the proxy is a no-op.
+    getSocket().emit("game:move", { type: "roll", playerId: selfId ?? undefined });
     setTimeout(() => setRolling(false), 550);
   }
   function move(tokenId: string) {
-    // Sound per step plays during the animation loop above — no need to play here.
-    getSocket().emit("game:move", { type: "move", data: { tokenId } });
+    getSocket().emit("game:move", { type: "move", data: { tokenId }, playerId: selfId ?? undefined });
   }
   function toggleSound() {
     const next = !soundOn;

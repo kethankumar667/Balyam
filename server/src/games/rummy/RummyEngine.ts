@@ -423,25 +423,29 @@ export class RummyEngine implements GameEngine {
   }
 
   private finalizeWithInvalidDeclare(declarerId: string): void {
+    // Wrong-show / invalid declare: the declarer eats the full 80-point
+    // penalty, and the opposing players each take a zero (they didn't get
+    // to play out their hands). The penalty's CHIP equivalent is split
+    // evenly across opponents by the scorecard, so opponents come out
+    // ahead even though their own hand value isn't booked.
+    //
+    // There is no single "round winner" in this scenario — the chips are
+    // distributed across every opponent — so we set winnerId to null and
+    // let the client recognise the wrong-show via invalidDeclareBy.
     this.s.invalidDeclareBy = declarerId;
-    let bestRivalId: string | null = null;
-    let bestRivalScore = Infinity;
     for (const pid of this.s.playerOrder) {
       const hand = this.s.hands.get(pid) ?? [];
       this.s.finalHands[pid] = hand.slice();
       if (pid === declarerId) {
         this.s.scores[pid] = INVALID_DECLARE_PENALTY;
       } else {
-        const score = pointsOfHand(hand, this.s.wildJoker.rank);
-        this.s.scores[pid] = score;
-        if (score < bestRivalScore) {
-          bestRivalScore = score;
-          bestRivalId = pid;
-        }
+        // Opponents book a clean zero — they didn't lose anything on this
+        // round and they share the declarer's 80-point penalty as chips.
+        this.s.scores[pid] = 0;
       }
     }
     this.s.phase = "finished";
-    this.s.winnerId = bestRivalId;
+    this.s.winnerId = null;
     this.updateMatchScoresAfterRound();
   }
 

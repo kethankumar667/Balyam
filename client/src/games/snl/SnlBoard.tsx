@@ -160,7 +160,10 @@ export default function SnlBoard({
 
   function doRoll() {
     if (!canRoll) return;
-    getSocket().emit("game:move", { type: "roll" });
+    // Include playerId so the server can proxy moves when Room.tsx has
+    // overridden `selfId` to a local pass-and-play seat. For normal play
+    // selfId === the caller's own id and the proxy is a no-op.
+    getSocket().emit("game:move", { type: "roll", playerId: selfId ?? undefined });
   }
 
   const turnPlayer = players.find((p) => p.id === state.turnPlayerId);

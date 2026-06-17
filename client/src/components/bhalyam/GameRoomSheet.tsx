@@ -105,6 +105,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [hcGalliOvers, setHcGalliOvers] = useState<number>(5);
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
+  /**
+   * Pass & Play: when the user toggles this on (Ludo + SnL only), we collect
+   * 1-3 extra "local" player names and start the game immediately on one
+   * device. No room code shared, no second connection — the host's socket
+   * drives every seat.
+   */
+  const [passPlay, setPassPlay] = useState<boolean>(false);
+  const [localNames, setLocalNames] = useState<string[]>(["", ""]);
   // Per-field validation lives directly under each input. `formError` is
   // reserved for cross-field / server-side errors that don't belong on a
   // single field (e.g. "Failed to create room", a network blip).
@@ -121,6 +129,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setBusy(false);
       setJoinCode("");
       setName(playerName);
+      setPassPlay(false);
+      setLocalNames(["", ""]);
     }
   }, [game, playerName]);
 
@@ -191,6 +201,66 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         }
         if (res.playerId) setPlayerId(res.playerId);
         navigate(`/room/${res.code}`);
+      },
+    );
+  }
+
+  /**
+   * Pass & Play start: create the room, add local seats for each filled
+   * name, then start the game immediately. All happens on one socket; no
+   * room code is shared because no second device is joining. The host's
+   * own color/coin is auto-assigned by the lobby auto-assign code; local
+   * seats are auto-assigned colors in `addLocalPlayer` server-side.
+   */
+  function startPassAndPlay() {
+    const n = trimmedName();
+    const filled = localNames.map((s) => s.trim()).filter((s) => s.length > 0);
+    setNameError(null);
+    setFormError(null);
+    if (!n) {
+      setNameError("Enter your name first");
+      return;
+    }
+    if (filled.length === 0) {
+      setFormError("Add at least one more player to play together");
+      return;
+    }
+    if (!game) return;
+    setBusy(true);
+    setPlayerName(n);
+    const socket = getSocket();
+    socket.emit(
+      "room:create",
+      {
+        name: n,
+        game: game as GameKind,
+        playerId: playerId ?? undefined,
+        snlOptions: game === "snl" ? { difficulty } : undefined,
+      },
+      (res) => {
+        if (!res.ok || !res.code) {
+          setBusy(false);
+          setFormError(res.error ?? "Failed to create room");
+          return;
+        }
+        if (res.playerId) setPlayerId(res.playerId);
+        const roomCode = res.code;
+        // Add each local seat sequentially. Server validates max-players
+        // per game; any overflow surfaces as a `room:error`.
+        for (const nm of filled) {
+          socket.emit("room:addLocalPlayer", nm);
+        }
+        // Give the server a tick to apply the addLocalPlayer ops and flush
+        // the resulting room:state broadcast, then mark the host ready and
+        // start. Room.tsx will pick up the state and render the game.
+        setTimeout(() => {
+          socket.emit("room:setReady", true);
+          setTimeout(() => {
+            socket.emit("room:startGame");
+            setBusy(false);
+            navigate(`/room/${roomCode}`);
+          }, 80);
+        }, 80);
       },
     );
   }
@@ -325,6 +395,18 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             />
           </Field>
 
+          {/* Pass & Play toggle — Ludo + SnL only, open-information games
+              where sharing a screen between players is fair. */}
+          {(game === "ludo" || game === "snl") && (
+            <PassPlayBlock
+              on={passPlay}
+              onToggle={() => setPassPlay((v) => !v)}
+              names={localNames}
+              onNamesChange={setLocalNames}
+              maxExtraSeats={game === "ludo" ? 3 : 9}
+            />
+          )}
+
           {/* Per-game options */}
           {game === "snl" && (
             <Field label="Difficulty">
@@ -413,10 +495,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             </>
           )}
 
-          {/* Create Room — primary CTA */}
+          {/* Primary CTA — swaps label/handler in Pass & Play mode */}
           <button
             type="button"
-            onClick={createRoom}
+            onClick={passPlay ? startPassAndPlay : createRoom}
             disabled={busy}
             className="w-full inline-flex items-center justify-center gap-2
                        min-h-[52px] rounded-2xl
@@ -428,6 +510,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           >
             {busy ? (
               "Working…"
+            ) : passPlay ? (
+              <>
+                <SparkIcon className="w-5 h-5" />
+                Start Pass &amp; Play
+              </>
             ) : (
               <>
                 <SparkIcon className="w-5 h-5" />
@@ -436,14 +523,17 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             )}
           </button>
 
-          {/* Join divider */}
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood/60">
-            <span className="flex-1 h-px bg-bhalyam-cream-edge/80" />
-            <span>Or join an existing room</span>
-            <span className="flex-1 h-px bg-bhalyam-cream-edge/80" />
-          </div>
+          {/* Join divider — hidden in Pass & Play (no second device joining) */}
+          {!passPlay && (
+            <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood/60">
+              <span className="flex-1 h-px bg-bhalyam-cream-edge/80" />
+              <span>Or join an existing room</span>
+              <span className="flex-1 h-px bg-bhalyam-cream-edge/80" />
+            </div>
+          )}
 
-          {/* Join by code */}
+          {/* Join by code — hidden in Pass & Play mode */}
+          {!passPlay && (
           <div className="space-y-2.5">
             <Field label="Room code" htmlFor="grs-code" error={codeError}>
               <input
@@ -488,6 +578,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               )}
             </button>
           </div>
+          )}
 
           {/* Form-level error fallback — used only when the failure isn't
               attributable to one input (e.g. server "Failed to create room"). */}
@@ -608,5 +699,121 @@ function CloseIcon({ className }: { className?: string }) {
          strokeLinecap="round" className={className} aria-hidden>
       <path d="m6 6 12 12M18 6 6 18" />
     </svg>
+  );
+}
+
+/**
+ * Pass & Play toggle + name inputs.
+ *
+ * When OFF: shows a single row with an explanatory subtitle and a checkbox-
+ * style toggle.
+ * When ON: expands to N name inputs (host already provided their own name
+ * up top) plus an Add Player row that appears while seats remain.
+ *
+ * `maxExtraSeats` reflects the per-game cap minus 1 (for the host) — Ludo
+ * allows 4 total → 3 extras; SnL allows 10 → 9 extras.
+ */
+function PassPlayBlock({
+  on,
+  onToggle,
+  names,
+  onNamesChange,
+  maxExtraSeats,
+}: {
+  on: boolean;
+  onToggle: () => void;
+  names: string[];
+  onNamesChange: (next: string[]) => void;
+  maxExtraSeats: number;
+}) {
+  function setAt(i: number, value: string) {
+    const next = names.slice();
+    next[i] = value;
+    onNamesChange(next);
+  }
+  function addSlot() {
+    if (names.length >= maxExtraSeats) return;
+    onNamesChange([...names, ""]);
+  }
+  function removeSlot(i: number) {
+    if (names.length <= 1) return;
+    onNamesChange(names.filter((_, idx) => idx !== i));
+  }
+  return (
+    <div
+      className={`rounded-xl border-2 p-3 transition-colors duration-200
+                  ${on
+                    ? "border-bhalyam-gold-dark bg-bhalyam-gold/10"
+                    : "border-bhalyam-cream-edge/80 bg-bhalyam-cream-soft"}`}
+    >
+      <label className="flex items-start gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={onToggle}
+          className="mt-0.5 w-5 h-5 accent-bhalyam-gold-dark cursor-pointer"
+          aria-label="Toggle Pass and Play mode"
+        />
+        <span className="flex-1 min-w-0">
+          <span className="block font-bold text-bhalyam-wood-dark text-[14px] leading-tight">
+            Pass &amp; Play (1 device)
+          </span>
+          <span className="block text-[11px] text-bhalyam-wood-dark/70 mt-0.5">
+            Two or more players share this phone and take turns. No room code
+            needed.
+          </span>
+        </span>
+      </label>
+
+      {on && (
+        <div className="mt-3 space-y-2 pl-8">
+          {names.map((nm, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={nm}
+                onChange={(e) => setAt(i, e.target.value)}
+                placeholder={`Player ${i + 2}`}
+                maxLength={20}
+                className="flex-1 min-h-[40px] px-3 rounded-lg
+                           bg-white border-2 border-bhalyam-cream-edge/80
+                           text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
+                           font-semibold text-[13px]
+                           focus:outline-none focus:border-bhalyam-gold-dark
+                           focus:ring-2 focus:ring-bhalyam-gold/40
+                           transition-all duration-200"
+                aria-label={`Name for player ${i + 2}`}
+              />
+              {names.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeSlot(i)}
+                  aria-label={`Remove player ${i + 2}`}
+                  className="w-9 h-9 rounded-full inline-flex items-center justify-center
+                             bg-bhalyam-cream-warm text-bhalyam-wood-dark
+                             hover:bg-bhalyam-cream-edge active:scale-95 cursor-pointer
+                             focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
+                             transition-all duration-200"
+                >
+                  <CloseIcon className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          ))}
+          {names.length < maxExtraSeats && (
+            <button
+              type="button"
+              onClick={addSlot}
+              className="w-full min-h-[36px] rounded-lg border-2 border-dashed
+                         border-bhalyam-gold-dark/40 text-bhalyam-wood-dark
+                         text-[12px] font-bold hover:bg-bhalyam-gold/10
+                         transition-colors duration-200 cursor-pointer"
+            >
+              + Add another player
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

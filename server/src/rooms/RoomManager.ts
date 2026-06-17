@@ -58,6 +58,10 @@ function pickBotName(game: GameKind, idx: number): string {
   return pool[idx % pool.length] ?? `Bot ${idx + 1}`;
 }
 
+const LUDO_COLOR_ORDER: ReadonlyArray<LudoColor> = [
+  "red", "green", "yellow", "blue", "purple", "cyan", "orange", "brown",
+];
+
 interface Room {
   code: string;
   game: GameKind;
@@ -297,6 +301,81 @@ export class RoomManager {
     this.broadcastRoomState(room);
   }
 
+  /**
+   * Pass & Play: host adds a local human seat. Unlike a bot, the seat will
+   * NOT auto-move — it just waits its turn while the host's UI shows a
+   * "pass the phone" overlay between turns. Local players are marked
+   * isLocal=true and are always considered "ready" so the host can start
+   * the game immediately without any other socket connecting.
+   *
+   * Supported only for open-information games (Ludo, Snakes & Ladders) where
+   * sharing the screen between players is fair. Other games would expose
+   * private hands to the wrong person on a shared device.
+   */
+  addLocalPlayer(socketId: string, name: string): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (player.id !== room.hostId) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only host can add local players");
+      return;
+    }
+    if (room.phase !== "lobby") {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot add local players mid-game");
+      return;
+    }
+    if (room.game !== "ludo" && room.game !== "snl") {
+      this.io.sockets.sockets.get(socketId)?.emit(
+        "room:error",
+        "Pass & Play is only available for Ludo and Snakes & Ladders"
+      );
+      return;
+    }
+    const { max } = getGameLimits(room.game);
+    if (room.players.size >= max) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Room is full");
+      return;
+    }
+    const cleanName = name.trim().slice(0, 20) || `Player ${room.players.size + 1}`;
+    const localId = `local_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const seat: Player = {
+      id: localId,
+      name: cleanName,
+      isHost: false,
+      isReady: true,
+      isConnected: true,
+      isLocal: true,
+    };
+    // Auto-assign a free color so the host doesn't have to pick separately
+    // for each pass-and-play seat. The host's own color is still picked
+    // through the normal lobby flow.
+    if (room.game === "ludo") {
+      const taken = new Set(
+        [...room.players.values()].map((p) => p.chosenColor).filter(Boolean) as string[]
+      );
+      const free = LUDO_COLOR_ORDER.find((c) => !taken.has(c));
+      if (free) seat.chosenColor = free;
+    } else if (room.game === "snl") {
+      const taken = new Set(
+        [...room.players.values()].map((p) => p.coinColor).filter(Boolean) as string[]
+      );
+      const free = (COIN_COLORS as readonly string[]).find((c) => !taken.has(c));
+      if (free) seat.coinColor = free as CoinColor;
+    }
+    room.players.set(localId, seat);
+    this.broadcastRoomState(room);
+  }
+
+  removeLocalPlayer(socketId: string, localId: string): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (player.id !== room.hostId) return;
+    if (room.phase !== "lobby") return;
+    const target = room.players.get(localId);
+    if (!target?.isLocal) return;
+    room.players.delete(localId);
+    this.broadcastRoomState(room);
+  }
+
   setReady(socketId: string, ready: boolean): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
@@ -406,10 +485,30 @@ export class RoomManager {
     }
   }
 
-  applyMove(socketId: string, type: string, data: unknown): void {
+  applyMove(socketId: string, type: string, data: unknown, onBehalfOf?: string): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player || !room.engine) return;
-    const result = room.engine.applyMove({ playerId: player.id, type, data });
+
+    // Pass & Play: the host's socket can play moves for any local seat in
+    // the room. Every other proxy attempt falls back to the caller's own id.
+    let effectivePlayerId = player.id;
+    if (onBehalfOf && onBehalfOf !== player.id) {
+      const target = room.players.get(onBehalfOf);
+      if (
+        player.id === room.hostId &&
+        target?.isLocal === true
+      ) {
+        effectivePlayerId = onBehalfOf;
+      } else {
+        this.io.sockets.sockets.get(socketId)?.emit(
+          "game:error",
+          "Not allowed to play for that seat"
+        );
+        return;
+      }
+    }
+
+    const result = room.engine.applyMove({ playerId: effectivePlayerId, type, data });
     if (!result.ok) {
       this.io.sockets.sockets.get(socketId)?.emit("game:error", result.error ?? "Invalid move");
       return;

@@ -9,6 +9,13 @@ export interface Player {
   awayUntil?: number;
   /** True if this is a server-controlled AI player (no real socket). */
   isBot?: boolean;
+  /**
+   * True if this is a "pass and play" local player — a human who is sharing
+   * the host's device. They have no socket of their own; the host's socket
+   * emits moves on their behalf. The server skips bot auto-move scheduling
+   * for these seats (they wait for human input just like a normal player).
+   */
+  isLocal?: boolean;
   /** For Ludo: player's selected color (first-come-first-served in the lobby). */
   chosenColor?: LudoColor;
   /** For Snakes & Ladders: player's selected coin color (10 distinct shades, first-come-first-served). */
@@ -662,6 +669,13 @@ export interface ChatSendPayload {
 export interface GameMovePayload {
   type: string;
   data?: unknown;
+  /**
+   * Optional override of the playerId the move is on behalf of. Only honored
+   * when the calling socket is the host AND the target playerId is a local
+   * (pass-and-play) seat in the same room. Used so a single device can drive
+   * multiple seats in Pass & Play mode for Ludo / Snakes & Ladders.
+   */
+  playerId?: string;
 }
 
 // ---- Ephemeral overlay events (reactions, cursors) ----
@@ -763,6 +777,10 @@ export interface ClientToServerEvents {
   "room:setReady": (ready: boolean) => void;
   "room:addBot": () => void;
   "room:removeBot": (botId: string) => void;
+  /** Pass & Play: host adds a local human seat with the given name. */
+  "room:addLocalPlayer": (name: string) => void;
+  /** Pass & Play: host removes a local seat by id. */
+  "room:removeLocalPlayer": (playerId: string) => void;
   "room:chooseColor": (color: LudoColor) => void;
   "room:chooseCoinColor": (color: CoinColor) => void;
   "room:setTokenNicknames": (payload: SetTokenNicknamesPayload) => void;

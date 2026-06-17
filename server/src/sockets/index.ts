@@ -71,8 +71,16 @@ export function registerSocketHandlers(
     rooms.sendChat(socket.id, text);
   });
 
-  socket.on("game:move", ({ type, data }) => {
-    rooms.applyMove(socket.id, type, data);
+  socket.on("game:move", ({ type, data, playerId }) => {
+    rooms.applyMove(socket.id, type, data, playerId);
+  });
+
+  socket.on("room:addLocalPlayer", (name) => {
+    rooms.addLocalPlayer(socket.id, name);
+  });
+
+  socket.on("room:removeLocalPlayer", (playerId) => {
+    rooms.removeLocalPlayer(socket.id, playerId);
   });
 
   socket.on("webrtc:signal", ({ toPlayerId, signal }) => {

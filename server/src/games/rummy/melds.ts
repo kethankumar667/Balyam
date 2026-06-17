@@ -16,12 +16,25 @@ export function isWildJoker(card: Card, wildJokerRank: Rank): boolean {
 
 /**
  * A pure sequence is 3+ cards of the same suit in consecutive rank order,
- * with NO jokers (wild or otherwise).
+ * with NO printed jokers.
+ *
+ * Wild-rank-matching cards — e.g. the 8♥ when 8 is this round's wild rank —
+ * count as their natural face value here. Indian Rummy variants (RummyCircle,
+ * Junglee) treat a wild-rank card used in its own slot as natural, since the
+ * player isn't invoking its "wild" property. Example: when 8 is wild,
+ * 6♥-7♥-8♥ is a pure run because the 8♥ is in its natural position, not
+ * substituting for a missing card. Only PRINTED jokers (the 4 dedicated
+ * joker cards in the double deck) disqualify a meld from purity.
+ *
  * Ace can be low (A-2-3) or high (Q-K-A) but does not wrap.
+ *
+ * @param _wildJokerRank kept for API parity but no longer consulted — pure
+ *   runs are about printed jokers only.
  */
-export function isPureSequence(cards: Card[], wildJokerRank: Rank): boolean {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function isPureSequence(cards: Card[], _wildJokerRank: Rank): boolean {
   if (cards.length < 3) return false;
-  if (cards.some((c) => isWildJoker(c, wildJokerRank))) return false;
+  if (cards.some((c) => c.isPrintedJoker)) return false;
 
   const suit = cards[0].suit;
   if (!cards.every((c) => c.suit === suit)) return false;
@@ -51,6 +64,10 @@ export function isImpureSequence(cards: Card[], wildJokerRank: Rank): boolean {
 /**
  * A set is 3 or 4 cards of the same rank, with all natural (non-joker) cards
  * having distinct suits. Wild jokers may substitute.
+ *
+ * Special case: a group of 3-4 cards that are ALL jokers (printed or
+ * wild-rank) also counts as a valid set — common house rule in Indian
+ * Rummy and what most online platforms recognise.
  */
 export function isSet(cards: Card[], wildJokerRank: Rank): boolean {
   if (cards.length < 3 || cards.length > 4) return false;
@@ -58,7 +75,9 @@ export function isSet(cards: Card[], wildJokerRank: Rank): boolean {
   const jokers = cards.filter((c) => isWildJoker(c, wildJokerRank));
   const natural = cards.filter((c) => !isWildJoker(c, wildJokerRank));
 
-  if (natural.length === 0) return false;
+  // All-joker set: 3-4 wilds with no natural cards is valid.
+  if (natural.length === 0) return jokers.length >= 3 && jokers.length <= 4;
+
   const rank = natural[0].rank;
   if (!natural.every((c) => c.rank === rank)) return false;
 
