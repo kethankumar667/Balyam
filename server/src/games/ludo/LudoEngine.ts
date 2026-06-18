@@ -257,7 +257,11 @@ export class LudoEngine implements GameEngine {
 
     // Bonus turn rules: 6 grants another roll
     const rolledSix = this.s.diceValue === 6;
-    this.s.diceValue = null;
+    // NOTE: deliberately NOT clearing diceValue here. The whole turn (roll →
+    // move) can resolve in one applyMove call when there's only one movable
+    // token; if we clear the value before the broadcast, the client never
+    // sees the rolled number. We leave the value visible until the next
+    // handleRoll overwrites it.
     this.s.movableTokenIds = [];
     if (rolledSix) {
       this.s.turnPhase = "rolling";
@@ -384,7 +388,10 @@ export class LudoEngine implements GameEngine {
   }
 
   private advanceTurn(): void {
-    this.s.diceValue = null;
+    // Keep diceValue alive so the player who just rolled can actually see
+    // their number — especially relevant when all tokens are still in the
+    // yard and a non-6 roll forces an immediate turn pass. The next
+    // handleRoll naturally overwrites the value.
     this.s.movableTokenIds = [];
     this.s.consecutiveSixes = 0;
     this.s.turnPhase = "rolling";
