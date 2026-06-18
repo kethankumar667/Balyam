@@ -297,6 +297,19 @@ body, #root, .bhalyam-paper {
   animation: bhalyam-gradient-shift 9s ease-in-out infinite;
   will-change: background-position;
 }
+/* Critical: when the GSAP split-headline drops in per-character <span>s
+   inside this gradient line, each child also needs its own copy of the
+   gradient. Without this rule the parent's background-clip works but the
+   children inherit only `color: transparent`, rendering invisible. */
+.bhalyam-gradient-text [data-glyph] {
+  background: linear-gradient(120deg, #EA5A1F 0%, #F4C430 25%, #E11D48 50%, #7C3AED 75%, #EA5A1F 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: bhalyam-gradient-shift 9s ease-in-out infinite;
+  will-change: background-position;
+}
 
 /* Card press feedback that feels like a physical board-game token. Used
    by game tiles and the GameRoomSheet primary actions. */
@@ -383,7 +396,8 @@ body, #root, .bhalyam-paper {
 .bhalyam-cta-shine:focus-visible::after {
   animation: bhalyam-shine-sweep 900ms cubic-bezier(.4,.2,.2,1) forwards;
 }
-.bhalyam-cta-shine > * { position: relative; z-index: 1; }
+.bhalyam-cta-shine > * { z-index: 1; }
+.bhalyam-cta-shine > *:not(.absolute) { position: relative; }
 
 /* Tile hover lift — used by GameTile. Adds a colored glow tinted to the
    tile's accent (read off a CSS variable). Pure transform/opacity so it
@@ -832,7 +846,10 @@ body, #root, .bhalyam-paper {
   box-shadow: 0 0 0 1px rgba(248,113,113,0.55), 0 0 18px rgba(239,68,68,0.22);
 }
 
-/* Rummy — shuffle + deal sequence shown once when a round opens. */
+/* Rummy — shuffle + deal sequence shown once when a round opens.
+   Phase 1 (0-5s): Deck shuffles continuously
+   Phase 2 (5-8s): Cards fly out to player positions
+   Total sequence: 8000ms */
 @keyframes rummy-deck-shuffle {
   0%   { transform: translate(0, 0) rotate(0deg); }
   20%  { transform: translate(-18px, -2px) rotate(-12deg); }
@@ -842,7 +859,7 @@ body, #root, .bhalyam-paper {
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 .rummy-deck-shuffle {
-  animation: rummy-deck-shuffle 360ms ease-in-out infinite;
+  animation: rummy-deck-shuffle 500ms ease-in-out infinite;
   transform-origin: center;
 }
 
@@ -855,12 +872,13 @@ body, #root, .bhalyam-paper {
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 .rummy-deck-shuffle-alt {
-  animation: rummy-deck-shuffle-alt 360ms ease-in-out infinite;
+  animation: rummy-deck-shuffle-alt 500ms ease-in-out infinite;
   transform-origin: center;
 }
 
 /* Deal-out: card travels from centre to its destination using CSS vars
-   --dx / --dy / --rot. Caller stamps delay + duration via inline styles. */
+   --dx / --dy / --rot. Caller stamps delay + duration via inline styles.
+   Cards start dealing at 5000ms and finish by 8000ms. */
 @keyframes rummy-deal-fly {
   0%   { transform: translate(0,0) rotate(0deg) scale(0.9); opacity: 0; }
   10%  { opacity: 1; }
@@ -870,7 +888,7 @@ body, #root, .bhalyam-paper {
   }
 }
 .rummy-deal-fly {
-  animation: rummy-deal-fly 480ms cubic-bezier(.18,.78,.43,1) both;
+  animation: rummy-deal-fly 600ms cubic-bezier(.18,.78,.43,1) both;
 }
 
 @keyframes rummy-deal-fade-out {
@@ -878,7 +896,17 @@ body, #root, .bhalyam-paper {
   100%    { opacity: 0; }
 }
 .rummy-deal-fade-out {
-  animation: rummy-deal-fade-out 600ms ease-out forwards;
+  animation: rummy-deal-fade-out 800ms ease-out forwards;
+}
+/* Fade tuned to the 3s deal phase — overlay stays fully opaque for
+   2.4s, then eases out only in the final 600ms so the board is revealed
+   right at the moment the deal animation completes. */
+@keyframes rummy-deal-fade-late {
+  0%, 80% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+.rummy-deal-fade-late {
+  animation: rummy-deal-fade-late 3000ms ease-out forwards;
 }
 
 @keyframes rummy-deal-banner {

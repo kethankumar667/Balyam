@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
@@ -234,6 +234,31 @@ export default function Room() {
     // the user reloads (which seeds playerName from localStorage on mount).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, playerName]);
+
+  // Detect the lobby → playing transition for Rummy and stash a
+  // sessionStorage flag the board reads exactly once on mount. The
+  // RummyBoardMobile uses this flag as the single source of truth for
+  // whether to play the 5 s shuffle + 3 s deal opener — so the animation
+  // never fires on refresh, mid-game rejoin, or any other case.
+  const prevRoomPhaseRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevRoomPhaseRef.current;
+    const next = roomState?.phase;
+    if (
+      next === "playing" &&
+      prev === "lobby" &&
+      roomState?.game === "rummy" &&
+      code
+    ) {
+      try {
+        window.sessionStorage.setItem(`bhalyam.rummy.justStarted.${code}`, "1");
+      } catch {
+        // sessionStorage may throw in private mode — board will silently
+        // skip the animation, which is the safer default.
+      }
+    }
+    prevRoomPhaseRef.current = next;
+  }, [roomState?.phase, roomState?.game, code]);
 
   const selfIsHost = useMemo(
     () => roomState?.hostId === playerId,
