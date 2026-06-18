@@ -54,13 +54,17 @@ export default function LudoBoard({
   const myTurn = state.turnPlayerId === selfId;
   const canRoll = myTurn && state.turnPhase === "rolling" && state.phase === "playing";
 
-  // Local "rolling animation" state — triggered when diceValue transitions from null to a number.
+  // Local "rolling animation" state — triggered whenever diceValue changes.
+  // The server now keeps the last roll alive until the next handleRoll, so
+  // consecutive rolls go number → different number rather than null → number;
+  // the old "from null" guard silently skipped every roll after the first.
   const [rolling, setRolling] = useState(false);
   const prevDice = useRef<number | null>(state.diceValue);
   useEffect(() => {
-    if (prevDice.current == null && state.diceValue != null) {
+    if (state.diceValue != null && state.diceValue !== prevDice.current) {
       setRolling(true);
       const t = setTimeout(() => setRolling(false), 550);
+      prevDice.current = state.diceValue;
       return () => clearTimeout(t);
     }
     prevDice.current = state.diceValue;

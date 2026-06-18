@@ -251,7 +251,13 @@ export class SnlEngine implements GameEngine {
       }
     }
     this.s.turnPhase = "rolling";
-    this.s.diceValue = null;
+    // Intentionally NOT resetting diceValue here. The whole turn (roll →
+    // move → snake/ladder → endTurn) happens in one synchronous applyMove
+    // call, so if we clear diceValue before the broadcast the client never
+    // sees the rolled number. Leave the last value visible; the next
+    // player's handleRoll overwrites it. The client uses `recentEvents`
+    // (which carries playerId) to know whose roll the visible value
+    // belongs to and animates accordingly.
   }
 
   private currentPlayerId(): string {

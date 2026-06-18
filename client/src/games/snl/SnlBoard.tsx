@@ -8,12 +8,19 @@ const BOARD_SIZE = 100;
 const CELL = BOARD_SIZE / 10;
 const START_ZONE_Y = 105.5;
 
-// Cell palette: warm parchment alternating with cream — classic board-game
-// feel that lets the snake/ladder graphics breathe instead of fighting four
-// saturated colours. Two-tone checker (row+col) % 2 keeps the layout
-// readable. Numbers print in deep walnut on both tones.
-const CELL_COLORS = ["#FBF4DE", "#F1D896"];
-const CELL_DARK   = ["#A88248", "#A88248"];
+// Cell palette: five muted jewel tones cycled across the grid. Bright
+// enough to read as a "real board" yet desaturated so they sit politely
+// under the snake/ladder graphics. Numbers print in deep walnut on every
+// tone — the palette is tuned so dark walnut hits ≥4.5:1 contrast across
+// all five cells.
+const CELL_COLORS = [
+  "#FBE7D2", // warm peach
+  "#D8E8C8", // soft sage
+  "#F8E1A0", // butter cream
+  "#C8DBE8", // dusty blue
+  "#E4D0E8", // soft lavender
+];
+const CELL_DARK   = ["#A88248", "#A88248", "#A88248", "#A88248", "#A88248"];
 const CELL_BORDER  = "#C8A66B";
 const CELL_INK     = "#2B1B0F";
 const FINISH_GOLD  = "#E0AE3B";
@@ -42,7 +49,7 @@ function cellInfo(n: number): { x: number; y: number; row: number; col: number; 
   const row = Math.floor(idx / 10);
   let col = idx % 10;
   if (row % 2 === 1) col = 9 - col;
-  const colorIdx = (row + col) % 2;
+  const colorIdx = (row + col) % CELL_COLORS.length;
   return {
     x: col * CELL + CELL / 2,
     y: (9 - row) * CELL + CELL / 2,
@@ -152,9 +159,18 @@ export default function SnlBoard({
   const [rolling, setRolling] = useState(false);
   const prevDice = useRef<number | null>(state.diceValue);
   useEffect(() => {
-    if (prevDice.current == null && state.diceValue != null) {
+    // Trigger the rolling animation on ANY change to diceValue — not just
+    // the first transition from null. The server now keeps the last rolled
+    // value alive between turns (so the player can actually see what they
+    // rolled), which means subsequent rolls go number → number rather than
+    // null → number. The old condition skipped them silently.
+    if (
+      state.diceValue != null &&
+      state.diceValue !== prevDice.current
+    ) {
       setRolling(true);
       const t = setTimeout(() => setRolling(false), 700);
+      prevDice.current = state.diceValue;
       return () => clearTimeout(t);
     }
     prevDice.current = state.diceValue;
