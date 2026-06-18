@@ -27,6 +27,7 @@ interface InternalState {
   invalidDeclareBy: string | null;
   scores: Record<string, number>;
   finalHands: Record<string, Card[]>;
+  finalMelds: Record<string, string[][]>;
   droppedPlayers: Set<string>;
   turnDeadline: number | null;
   options: RummyGameOptions;
@@ -157,6 +158,7 @@ export class RummyEngine implements GameEngine {
       invalidDeclareBy: null,
       scores: {},
       finalHands: {},
+      finalMelds: {},
       droppedPlayers: new Set(),
       turnDeadline: null,
       options: { ...this.pendingOptions },
@@ -204,6 +206,7 @@ export class RummyEngine implements GameEngine {
     this.s.invalidDeclareBy = null;
     this.s.scores = {};
     this.s.finalHands = {};
+    this.s.finalMelds = {};
     this.s.droppedPlayers = new Set();
     this.s.turnDeadline = null;
     this.s.roundNumber += 1;
@@ -403,15 +406,19 @@ export class RummyEngine implements GameEngine {
 
     const result = validateDeclare(meldGroups, this.s.wildJoker.rank);
     if (!result.ok) {
-      this.finalizeWithInvalidDeclare(move.playerId);
+      this.finalizeWithInvalidDeclare(move.playerId, meldGroupIds);
       return { ok: false, error: result.error, isOver: true };
     }
 
-    this.finalizeWithWinner(move.playerId, discard);
+    this.finalizeWithWinner(move.playerId, discard, meldGroupIds);
     return { ok: true, isOver: true, winnerId: move.playerId };
   }
 
-  private finalizeWithWinner(winnerId: string, discard: Card): void {
+  private finalizeWithWinner(
+    winnerId: string,
+    discard: Card,
+    winnerMelds: string[][],
+  ): void {
     const winnerHand = this.s.hands.get(winnerId)!;
     winnerHand.splice(
       winnerHand.findIndex((c) => c.id === discard.id),
@@ -424,12 +431,17 @@ export class RummyEngine implements GameEngine {
       this.s.finalHands[pid] = hand.slice();
       this.s.scores[pid] = pid === winnerId ? 0 : pointsOfHand(hand, this.s.wildJoker.rank);
     }
+    // Winner's exact melds — the proof of how they made the show.
+    this.s.finalMelds[winnerId] = winnerMelds.map((g) => g.slice());
     this.s.phase = "finished";
     this.s.winnerId = winnerId;
     this.updateMatchScoresAfterRound();
   }
 
-  private finalizeWithInvalidDeclare(declarerId: string): void {
+  private finalizeWithInvalidDeclare(
+    declarerId: string,
+    attemptedMelds?: string[][],
+  ): void {
     // Wrong-show / invalid declare: the declarer eats the full 80-point
     // penalty, and the opposing players each take a zero (they didn't get
     // to play out their hands). The penalty's CHIP equivalent is split
@@ -450,6 +462,11 @@ export class RummyEngine implements GameEngine {
         // round and they share the declarer's 80-point penalty as chips.
         this.s.scores[pid] = 0;
       }
+    }
+    // Capture the declarer's attempted (invalid) arrangement so the
+    // scorecard can show *why* it was a wrong show.
+    if (attemptedMelds) {
+      this.s.finalMelds[declarerId] = attemptedMelds.map((g) => g.slice());
     }
     this.s.phase = "finished";
     this.s.winnerId = null;
@@ -510,6 +527,7 @@ export class RummyEngine implements GameEngine {
       winnerId: this.s.phase === "finished" ? this.s.winnerId : undefined,
       scores: this.s.phase === "finished" ? this.s.scores : undefined,
       finalHands: this.s.phase === "finished" ? this.s.finalHands : undefined,
+      finalMelds: this.s.phase === "finished" ? this.s.finalMelds : undefined,
       invalidDeclareBy: this.s.invalidDeclareBy ?? null,
     };
   }
