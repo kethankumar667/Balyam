@@ -1063,52 +1063,172 @@ function BoardSVG({
     blue:   { row: 13, col: 7 },
   };
 
+  // Refined palette — keeps the cardinal hues identifiable while toning
+  // down the saturated primaries that made the old board read as cartoonish.
+  // Yard fills sit slightly below COLOR_HEX so the bright tokens pop against
+  // them, and the frame inherits COLOR_HEX_DARK for a coherent dark trim.
+  const YARD_FILL: Record<LudoColor, string> = {
+    red: "#D9534F", green: "#3E9A6B", yellow: "#E2A933", blue: "#3A7CCB",
+    purple: "#9F60D0", cyan: "#3DA8B9", orange: "#E08148", brown: "#8E5C2E",
+  };
+  const STRETCH_FILL: Record<LudoColor, string> = {
+    red: "#E89895", green: "#7CC59E", yellow: "#F2D08C", blue: "#85AEDA",
+    purple: "#C7A2E2", cyan: "#83CBD5", orange: "#EFB388", brown: "#B58A5E",
+  };
+  const PARCHMENT      = "#FBF4DE";
+  const PARCHMENT_DEEP = "#F1E3BC";
+  const TRACK_FILL     = "#FDF8E6";
+  const TRACK_BORDER   = "#C8A66B";
+  const WOOD_DARK      = "#3F2412";
+  const GOLD           = "#E0AE3B";
+  const GOLD_DEEP      = "#9A6E1A";
+
   return (
     <svg
       viewBox={`0 0 ${GRID} ${GRID}`}
-      className="absolute inset-0 w-full h-full rounded-md shadow-inner"
-      style={{ background: "#fafafa" }}
+      className="absolute inset-0 w-full h-full rounded-md"
+      style={{
+        background:
+          "radial-gradient(ellipse at 50% 35%, " + PARCHMENT + " 0%, " + PARCHMENT_DEEP + " 75%, #D9BE82 100%)",
+      }}
     >
+      <defs>
+        {/* Wood-grain stroke used as the outer board frame trim. */}
+        <linearGradient id="ludo-frame" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#5C3A1A" />
+          <stop offset="50%" stopColor="#8B5E2E" />
+          <stop offset="100%" stopColor="#3F2412" />
+        </linearGradient>
+        {/* Per-color radial gradient for yard quadrants — gives each yard a
+            soft "inset bowl" look instead of a flat block. */}
+        {orderedColors.map((color) => (
+          <radialGradient key={color + "-yard-grad"} id={`ludo-yard-${color}`} cx="50%" cy="50%" r="70%">
+            <stop offset="0%" stopColor={YARD_FILL[color]} />
+            <stop offset="80%" stopColor={YARD_FILL[color]} />
+            <stop offset="100%" stopColor={COLOR_HEX_DARK[color]} />
+          </radialGradient>
+        ))}
+        {/* Soft drop-shadow used for the center cross + name labels so they
+            sit above the board instead of flush with it. */}
+        <filter id="ludo-drop" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="0.18" />
+          <feOffset dx="0" dy="0.18" result="off" />
+          <feComponentTransfer><feFuncA type="linear" slope="0.55" /></feComponentTransfer>
+          <feMerge>
+            <feMergeNode />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Outer wood frame trim — sits at the very edge so the rest of the
+          drawing reads as the felt inside the box. */}
+      <rect
+        x={0.1}
+        y={0.1}
+        width={GRID - 0.2}
+        height={GRID - 0.2}
+        rx={0.5}
+        fill="none"
+        stroke="url(#ludo-frame)"
+        strokeWidth={0.4}
+      />
+      <rect
+        x={0.35}
+        y={0.35}
+        width={GRID - 0.7}
+        height={GRID - 0.7}
+        rx={0.35}
+        fill="none"
+        stroke={GOLD}
+        strokeWidth={0.12}
+        opacity={0.7}
+      />
+
       {/* 4 yard quadrants */}
       {orderedColors.map((color) => {
         const { r0, c0 } = YARD_REGIONS[color];
         const inactive = !playerColorsInRoom.includes(color);
         const name = nameFor(color);
         return (
-          <g key={color} opacity={inactive ? 0.35 : 1}>
-            <rect x={c0} y={r0} width={6} height={6} fill={COLOR_HEX[color]} />
-            <rect x={c0 + 1} y={r0 + 1} width={4} height={4} fill="#ffffff" />
+          <g key={color} opacity={inactive ? 0.45 : 1}>
+            {/* Outer colored frame with rounded corner */}
+            <rect
+              x={c0 + 0.2}
+              y={r0 + 0.2}
+              width={6 - 0.4}
+              height={6 - 0.4}
+              rx={0.4}
+              fill={`url(#ludo-yard-${color})`}
+              stroke={COLOR_HEX_DARK[color]}
+              strokeWidth={0.12}
+            />
+            {/* Inner cream pad where tokens park */}
+            <rect
+              x={c0 + 1}
+              y={r0 + 1}
+              width={4}
+              height={4}
+              rx={0.3}
+              fill={PARCHMENT}
+              stroke={COLOR_HEX_DARK[color]}
+              strokeWidth={0.08}
+            />
+            {/* Token slot circles — slightly darker so they read as a
+                landing pad rather than a faint ghost. */}
             {YARD_CELLS[color].map((cell, i) => (
-              <circle
-                key={i}
-                cx={cell.col + 0.5}
-                cy={cell.row + 0.5}
-                r={0.55}
-                fill={COLOR_HEX[color]}
-                opacity={0.18}
-              />
+              <g key={i}>
+                <circle
+                  cx={cell.col + 0.5}
+                  cy={cell.row + 0.5}
+                  r={0.62}
+                  fill={YARD_FILL[color]}
+                  opacity={0.2}
+                />
+                <circle
+                  cx={cell.col + 0.5}
+                  cy={cell.row + 0.5}
+                  r={0.62}
+                  fill="none"
+                  stroke={COLOR_HEX_DARK[color]}
+                  strokeWidth={0.06}
+                  opacity={0.45}
+                />
+              </g>
             ))}
             {/* Player name badge inside each yard */}
             {name && (
-              <g>
+              <g filter="url(#ludo-drop)">
                 <rect
                   x={c0 + 0.5}
-                  y={r0 + 0.15}
+                  y={r0 + 0.18}
                   width={5}
-                  height={0.7}
-                  rx={0.35}
-                  fill="rgba(255,255,255,0.92)"
-                  stroke={COLOR_HEX_DARK[color]}
-                  strokeWidth="0.05"
+                  height={0.75}
+                  rx={0.38}
+                  fill={PARCHMENT}
+                  stroke={GOLD_DEEP}
+                  strokeWidth={0.08}
+                />
+                {/* Inner gold trim line */}
+                <rect
+                  x={c0 + 0.62}
+                  y={r0 + 0.28}
+                  width={4.76}
+                  height={0.55}
+                  rx={0.3}
+                  fill="none"
+                  stroke={GOLD}
+                  strokeWidth={0.04}
+                  opacity={0.85}
                 />
                 <text
                   x={c0 + 3}
-                  y={r0 + 0.65}
+                  y={r0 + 0.72}
                   textAnchor="middle"
                   fontSize="0.5"
-                  fontWeight="bold"
+                  fontWeight="900"
                   fill={COLOR_HEX_DARK[color]}
-                  style={{ textTransform: "uppercase", letterSpacing: "0.04em" }}
+                  style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
                 >
                   {name.slice(0, 14)}
                 </text>
@@ -1118,88 +1238,127 @@ function BoardSVG({
         );
       })}
 
-      {/* Track cells (white squares with thin border) */}
+      {/* Track cells — warm off-white with hairline gold-tan border */}
       {TRACK_CELLS.map((cell, idx) => (
-        <rect
-          key={idx}
-          x={cell.col}
-          y={cell.row}
-          width={1}
-          height={1}
-          fill="#ffffff"
-          stroke="#475569"
-          strokeWidth={0.04}
-        />
+        <g key={idx}>
+          <rect
+            x={cell.col + 0.04}
+            y={cell.row + 0.04}
+            width={1 - 0.08}
+            height={1 - 0.08}
+            rx={0.12}
+            fill={TRACK_FILL}
+            stroke={TRACK_BORDER}
+            strokeWidth={0.07}
+          />
+          {/* Subtle top highlight for bevel */}
+          <line
+            x1={cell.col + 0.15}
+            y1={cell.row + 0.12}
+            x2={cell.col + 0.85}
+            y2={cell.row + 0.12}
+            stroke="#FFFFFF"
+            strokeOpacity={0.5}
+            strokeWidth={0.04}
+          />
+        </g>
       ))}
 
-      {/* Color the entry squares per color */}
+      {/* Entry squares — solid yard color so the start cell reads as
+          "your launch pad", not a faded ghost. */}
       {orderedColors.map((color) => {
         const startMap: Record<string, number> = { red: 0, green: 13, yellow: 26, blue: 39 };
         const startIdx = startMap[color];
         const cell = TRACK_CELLS[startIdx];
         return (
-          <rect
-            key={color + "-start"}
-            x={cell.col}
-            y={cell.row}
-            width={1}
-            height={1}
-            fill={COLOR_HEX[color]}
-            opacity={0.35}
-            stroke="#475569"
-            strokeWidth={0.04}
-          />
+          <g key={color + "-start"}>
+            <rect
+              x={cell.col + 0.04}
+              y={cell.row + 0.04}
+              width={1 - 0.08}
+              height={1 - 0.08}
+              rx={0.12}
+              fill={STRETCH_FILL[color]}
+              stroke={COLOR_HEX_DARK[color]}
+              strokeWidth={0.08}
+            />
+          </g>
         );
       })}
 
-      {/* Safe-square stars */}
+      {/* Safe-square stars — gold with deep-gold halo for premium feel */}
       {[...SAFE_SQUARES].map((pos) => {
         const cell = TRACK_CELLS[pos];
         return (
-          <text
-            key={"safe" + pos}
-            x={cell.col + 0.5}
-            y={cell.row + 0.78}
-            fontSize={0.7}
-            textAnchor="middle"
-            fill="#64748b"
-          >
-            ★
-          </text>
+          <g key={"safe" + pos}>
+            <text
+              x={cell.col + 0.5}
+              y={cell.row + 0.78}
+              fontSize={0.78}
+              textAnchor="middle"
+              fill={GOLD}
+              fontWeight="900"
+              style={{ paintOrder: "stroke", stroke: GOLD_DEEP, strokeWidth: 0.05 }}
+            >
+              ★
+            </text>
+          </g>
         );
       })}
 
-      {/* Home stretches */}
+      {/* Home stretches — gradient strip in stretch color with rounded
+          cells, dark trim inherited from the yard's frame. */}
       {orderedColors.map((color) => (
         <g key={color + "-stretch"}>
           {STRETCH_CELLS[color].map((cell, i) => (
-            <rect
-              key={i}
-              x={cell.col}
-              y={cell.row}
-              width={1}
-              height={1}
-              fill={COLOR_HEX[color]}
-              opacity={0.78}
-              stroke="#1e293b"
-              strokeWidth={0.04}
-            />
+            <g key={i}>
+              <rect
+                x={cell.col + 0.04}
+                y={cell.row + 0.04}
+                width={1 - 0.08}
+                height={1 - 0.08}
+                rx={0.12}
+                fill={STRETCH_FILL[color]}
+                stroke={COLOR_HEX_DARK[color]}
+                strokeWidth={0.06}
+              />
+              <line
+                x1={cell.col + 0.15}
+                y1={cell.row + 0.12}
+                x2={cell.col + 0.85}
+                y2={cell.row + 0.12}
+                stroke="#FFFFFF"
+                strokeOpacity={0.4}
+                strokeWidth={0.04}
+              />
+            </g>
           ))}
         </g>
       ))}
 
-      {/* Center: 4 triangles + central diamond */}
-      <g>
-        {/* Red triangle (left) */}
-        <polygon points="6,6 6,9 7.5,7.5" fill={COLOR_HEX.red} />
-        {/* Green triangle (top) */}
-        <polygon points="6,6 9,6 7.5,7.5" fill={COLOR_HEX.green} />
-        {/* Yellow triangle (right) */}
-        <polygon points="9,6 9,9 7.5,7.5" fill={COLOR_HEX.yellow} />
-        {/* Blue triangle (bottom) */}
-        <polygon points="6,9 9,9 7.5,7.5" fill={COLOR_HEX.blue} />
-        {/* Center outline */}
-        <rect x={6} y={6} width={3} height={3} fill="none" stroke="#1e293b" strokeWidth={0.06} />
+      {/* Center: 4 deeper-toned triangles + gold star crest */}
+      <g filter="url(#ludo-drop)">
+        <polygon points="6,6 6,9 7.5,7.5" fill={YARD_FILL.red} />
+        <polygon points="6,6 9,6 7.5,7.5" fill={YARD_FILL.green} />
+        <polygon points="9,6 9,9 7.5,7.5" fill={YARD_FILL.yellow} />
+        <polygon points="6,9 9,9 7.5,7.5" fill={YARD_FILL.blue} />
+        {/* Frame */}
+        <rect x={6} y={6} width={3} height={3} fill="none" stroke={WOOD_DARK} strokeWidth={0.1} />
+        {/* Gold inner trim */}
+        <rect x={6.12} y={6.12} width={2.76} height={2.76} fill="none" stroke={GOLD} strokeWidth={0.05} opacity={0.85} />
+        {/* Central gold disc + star — "finish" crest */}
+        <circle cx={7.5} cy={7.5} r={0.62} fill={GOLD} stroke={GOLD_DEEP} strokeWidth={0.08} />
+        <text
+          x={7.5}
+          y={7.78}
+          fontSize={0.92}
+          textAnchor="middle"
+          fill={WOOD_DARK}
+          fontWeight="900"
+          style={{ paintOrder: "stroke", stroke: GOLD_DEEP, strokeWidth: 0.03 }}
+        >
+          ★
+        </text>
       </g>
 
       {/* Arrows from each color's start square pointing into the track */}
