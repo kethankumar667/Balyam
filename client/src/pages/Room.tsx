@@ -227,7 +227,13 @@ export default function Room() {
       // on the BHALYAM home page with the browser still in fullscreen mode.
       if (isFullscreenActive()) void exitFullscreen();
     };
-  }, [code]);
+    // `playerName` is in the deps because shared-link visitors arrive with an
+    // empty name in the store and submit it via NameEntryForRoom. Without
+    // re-running on that transition the effect early-returns once, never
+    // registers socket listeners, and the join button appears to hang until
+    // the user reloads (which seeds playerName from localStorage on mount).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, playerName]);
 
   const selfIsHost = useMemo(
     () => roomState?.hostId === playerId,

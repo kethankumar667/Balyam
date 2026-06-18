@@ -86,8 +86,10 @@ type DropTarget =
   | "openpile"
   | "finishslot"
   | "ungrouped"
+  | "ungroupedEnd"
   | "new"
-  | `group:${string}`;
+  | `group:${string}`
+  | `before:${string}`;
 
 function resolveDropTarget(x: number, y: number): DropTarget | null {
   let el = document.elementFromPoint(x, y) as Element | null;
@@ -306,6 +308,22 @@ export default function RummyBoardMobile({
   // don't keep re-popping it. Resets when a new round starts (phase flips back
   // to "playing") so the NEXT round's result will still appear.
   const [resultDismissed, setResultDismissed] = useState(false);
+
+  // Shuffle + deal opening animation. Shown once per round when the engine
+  // flips into "playing" (covers the very first deal and every subsequent
+  // pool/points re-deal). Auto-dismisses after the sequence finishes.
+  const [showDealAnim, setShowDealAnim] = useState(state.phase === "playing");
+  const prevPhaseForDealRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevPhaseForDealRef.current;
+    if (state.phase === "playing" && prev !== "playing") {
+      setShowDealAnim(true);
+      const t = setTimeout(() => setShowDealAnim(false), 3000);
+      prevPhaseForDealRef.current = state.phase;
+      return () => clearTimeout(t);
+    }
+    prevPhaseForDealRef.current = state.phase;
+  }, [state.phase]);
   useEffect(() => {
     if (state.phase === "playing") setResultDismissed(false);
   }, [state.phase]);
@@ -559,10 +577,16 @@ export default function RummyBoardMobile({
       } else if (target === "finishslot") {
         const id = ids[0];
         if (id) dropOnFinishSlot(id);
-      } else if (target === "ungrouped") {
+      } else if (target === "ungrouped" || target === "ungroupedEnd") {
         moveCardsTo("ungrouped", null, null, ids);
       } else if (target === "new") {
         moveCardsTo("new", null, null, ids);
+      } else if (target.startsWith("before:")) {
+        // Within-lane reorder — insert before the specified card.
+        // moveCardsTo handles this whether the source was in ungrouped or a
+        // group, so the same handler covers cross-lane drops too.
+        const beforeCardId = target.slice("before:".length);
+        moveCardsTo("ungrouped", null, beforeCardId, ids);
       } else if (target.startsWith("group:")) {
         const groupId = target.slice("group:".length);
         moveCardsTo("group", groupId, null, ids);
@@ -579,6 +603,13 @@ export default function RummyBoardMobile({
   }
   function drawFromOpen() {
     if (!canDraw || !state.topOfOpenPile) return;
+    // House rule: printed jokers can't be lifted from the discard pile.
+    // Block the click client-side so the user gets a clear toast instead of
+    // a silent server rejection.
+    if (state.topOfOpenPile.isPrintedJoker) {
+      setError("Printed jokers can't be drawn from the discard pile");
+      return;
+    }
     getSocket().emit("game:move", { type: "draw", data: { from: "open" } });
   }
 
@@ -862,6 +893,8 @@ export default function RummyBoardMobile({
         ].join(", "),
       }}
     >
+      {showDealAnim && <RummyDealOverlay />}
+
       {/* 20px top strip — Leave · RoomPill · Hamburger.
           Everything else is the felt. */}
       <TopStrip
@@ -1750,11 +1783,22 @@ function CenterDeckArea({
         {state.topOfOpenPile ? (
           <button
             onClick={drawFromOpen}
-            disabled={!canDraw}
-            className={`transition ${
-              canDraw ? "hover:-translate-y-2 hover:scale-105 cursor-pointer" : "cursor-default"
+            disabled={!canDraw || state.topOfOpenPile.isPrintedJoker}
+            className={`relative transition ${
+              canDraw && !state.topOfOpenPile.isPrintedJoker
+                ? "hover:-translate-y-2 hover:scale-105 cursor-pointer"
+                : "cursor-default"
             } ${allowOpenDrop ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-emerald-950 rounded-md" : ""}`}
-            aria-label="Draw from open pile"
+            aria-label={
+              state.topOfOpenPile.isPrintedJoker
+                ? "Printed joker — not drawable from open pile"
+                : "Draw from open pile"
+            }
+            title={
+              state.topOfOpenPile.isPrintedJoker
+                ? "Printed jokers can't be drawn from the discard pile"
+                : undefined
+            }
           >
             <div key={discardPulseKey} className="rummy-discard-pulse rounded-md">
               <PlayingCard
@@ -1762,6 +1806,20 @@ function CenterDeckArea({
                 isWildJoker={state.topOfOpenPile.rank === state.wildJoker.rank}
               />
             </div>
+            {state.topOfOpenPile.isPrintedJoker && (
+              <span
+                className="absolute -top-1.5 -right-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider z-10"
+                style={{
+                  background: "linear-gradient(135deg, #dc2626, #7f1d1d)",
+                  color: "#fff",
+                  border: "1px solid #fee2e2",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.5)",
+                }}
+                aria-hidden
+              >
+                Locked
+              </span>
+            )}
           </button>
         ) : (
           <div
@@ -2032,29 +2090,85 @@ function UngroupedLane({
       <div className="px-0.5 text-[9px] uppercase tracking-wider font-extrabold text-amber-200">
         Ungrouped ({cardIds.length})
       </div>
-      <div className="flex">
+      <div className="flex relative">
         {cardIds.map((cid, idx) => {
           const card = byId.get(cid);
           if (!card) return null;
+          const draggingThis = draggingIds.includes(cid);
+          // Only show the "before:<cid>" slot when an actual drag is in
+          // progress — otherwise the indicator clutters the table at rest.
+          // The slot itself is a thin (~16px) absolute strip on the card's
+          // left edge so it doesn't disrupt the existing -18px overlap.
+          const showSlot = draggingIds.length > 0 && !draggingThis;
+          const isSlotHover = dragOverTarget === `before:${cid}`;
           return (
-            <DraggableHandCard
-              key={cid}
-              cardId={cid}
-              card={card}
-              wildRank={wildRank}
-              isSelected={selected.has(cid)}
-              isDragged={draggingIds.includes(cid)}
-              isFresh={cid === freshCardId}
-              marginLeft={idx === 0 ? 0 : -18}
-              zIndex={idx}
-              selected={selected}
-              onTap={onCardClick}
-              onDragBegin={onDragBegin}
-              onDragHover={onDragHover}
-              onDragRelease={onDragRelease}
-            />
+            <div key={cid} className="relative flex-shrink-0">
+              {showSlot && (
+                <div
+                  data-rummy-drop={`before:${cid}`}
+                  aria-hidden
+                  className="absolute -top-1 bottom-0 z-40 transition-all duration-100"
+                  style={{
+                    left: idx === 0 ? -2 : -20,
+                    width: 22,
+                    background: isSlotHover
+                      ? "linear-gradient(180deg, rgba(252,211,77,0.85), rgba(245,158,11,0.5))"
+                      : "transparent",
+                    borderLeft: isSlotHover
+                      ? "3px solid #fcd34d"
+                      : "3px solid transparent",
+                    borderRadius: 3,
+                    boxShadow: isSlotHover
+                      ? "0 0 14px rgba(252,211,77,0.7)"
+                      : undefined,
+                  }}
+                />
+              )}
+              <DraggableHandCard
+                cardId={cid}
+                card={card}
+                wildRank={wildRank}
+                isSelected={selected.has(cid)}
+                isDragged={draggingThis}
+                isFresh={cid === freshCardId}
+                marginLeft={idx === 0 ? 0 : -18}
+                zIndex={idx}
+                selected={selected}
+                onTap={onCardClick}
+                onDragBegin={onDragBegin}
+                onDragHover={onDragHover}
+                onDragRelease={onDragRelease}
+              />
+            </div>
           );
         })}
+        {/* Drop-at-end strip — appears after the last card so a user can drop
+            a dragged card at the far right of ungrouped without aiming at
+            the lane background (which would still work, but the dedicated
+            strip gives them clear visual feedback). */}
+        {cardIds.length > 0 && draggingIds.length > 0 && (
+          <div
+            data-rummy-drop="ungroupedEnd"
+            aria-hidden
+            className="ml-1 self-stretch transition-all duration-100"
+            style={{
+              width: 22,
+              borderLeft:
+                dragOverTarget === "ungroupedEnd"
+                  ? "3px solid #fcd34d"
+                  : "3px dashed rgba(255,255,255,0.18)",
+              borderRadius: 3,
+              background:
+                dragOverTarget === "ungroupedEnd"
+                  ? "linear-gradient(180deg, rgba(252,211,77,0.85), rgba(245,158,11,0.5))"
+                  : "transparent",
+              boxShadow:
+                dragOverTarget === "ungroupedEnd"
+                  ? "0 0 14px rgba(252,211,77,0.7)"
+                  : undefined,
+            }}
+          />
+        )}
         {cardIds.length === 0 && (
           <div className="text-[11px] italic text-emerald-300/60 px-1 py-2">
             All cards grouped.
@@ -3040,6 +3154,117 @@ function RummyCelebrationOverlay({ onLeave }: { onLeave: () => void }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Shuffle + deal opener shown at the start of every Rummy round.
+ *
+ * Sequence (~3 s, then auto-removed by the caller):
+ *   0.0 - 1.2 s   Centre deck riffles — two stacked face-down packs
+ *                 oscillate in a shuffle motion.
+ *   1.0 - 2.0 s   The shuffle settles and cards fan out radially toward
+ *                 every edge of the felt (player seats).
+ *   2.4 - 3.0 s   The overlay quietly fades so the game board takes over.
+ *
+ * Pure CSS — keyframes live in index.css so this component is just markup
+ * + a few inline transform vars per card. No external library.
+ */
+function RummyDealOverlay() {
+  const fanCards = Array.from({ length: 13 }, (_, i) => {
+    const t = i / 12;
+    const angle =
+      Math.PI * (0.15 + t * 0.7) + (i % 2 === 0 ? 0 : Math.PI);
+    const radius = 220 + (i % 3) * 35;
+    const dx = Math.cos(angle) * radius;
+    const dy = Math.abs(Math.sin(angle)) * (radius * 0.55) + 30;
+    const rot = (i * 23) % 80 - 40;
+    return {
+      dx: `${dx.toFixed(0)}px`,
+      dy: `${dy.toFixed(0)}px`,
+      rot: `${rot}deg`,
+      delay: `${1000 + i * 70}ms`,
+    };
+  });
+
+  return (
+    <div
+      className="absolute inset-0 z-[55] pointer-events-none rummy-deal-fade-out"
+      aria-hidden
+      style={{
+        background:
+          "radial-gradient(ellipse at center, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.75) 70%)",
+      }}
+    >
+      <div
+        className="rummy-deal-banner absolute top-1/2 left-1/2 px-5 py-2 rounded-full font-black uppercase tracking-[0.22em] text-[11px] sm:text-[13px]"
+        style={{
+          color: "#1f1300",
+          background: "linear-gradient(135deg, #fde68a, #f59e0b)",
+          border: "2px solid #b45309",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.4)",
+          marginTop: -110,
+          animationDelay: "0ms",
+        }}
+      >
+        Shuffling &amp; dealing…
+      </div>
+
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="relative w-[64px] h-[88px] sm:w-[72px] sm:h-[100px]">
+          <div className="absolute inset-0 rummy-deck-shuffle">
+            <FaceDownDealCard />
+          </div>
+          <div className="absolute inset-0 rummy-deck-shuffle-alt">
+            <FaceDownDealCard />
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute top-1/2 left-1/2">
+        {fanCards.map((c, i) => (
+          <div
+            key={i}
+            className="rummy-deal-fly absolute -translate-x-1/2 -translate-y-1/2"
+            style={
+              {
+                "--dx": c.dx,
+                "--dy": c.dy,
+                "--rot": c.rot,
+                animationDelay: c.delay,
+                animationFillMode: "forwards",
+              } as React.CSSProperties
+            }
+          >
+            <FaceDownDealCard />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FaceDownDealCard() {
+  return (
+    <div
+      className="relative w-[52px] h-[72px] sm:w-[58px] sm:h-[80px] rounded-[6px] overflow-hidden"
+      style={{
+        background:
+          "linear-gradient(140deg, #7f1d1d 0%, #991b1b 60%, #4c0519 100%)",
+        border: "1px solid #2c0507",
+        boxShadow:
+          "0 4px 9px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(251,191,36,0.55)",
+      }}
+    >
+      <div
+        className="absolute inset-1 rounded-[4px]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(45deg, rgba(251,191,36,0.18) 0 1.5px, transparent 1.5px 9px), repeating-linear-gradient(-45deg, rgba(251,191,36,0.18) 0 1.5px, transparent 1.5px 9px)",
+          border: "1px solid rgba(251,191,36,0.4)",
+        }}
+      />
     </div>
   );
 }
