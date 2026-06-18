@@ -615,6 +615,64 @@ body, #root, .bhalyam-paper {
   box-shadow: 0 0 0 1px rgba(248,113,113,0.55), 0 0 18px rgba(239,68,68,0.22);
 }
 
+/* Rummy — shuffle + deal sequence shown once when a round opens. */
+@keyframes rummy-deck-shuffle {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  20%  { transform: translate(-18px, -2px) rotate(-12deg); }
+  40%  { transform: translate(16px, 1px) rotate(10deg); }
+  60%  { transform: translate(-14px, -1px) rotate(-8deg); }
+  80%  { transform: translate(12px, 1px) rotate(6deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+.rummy-deck-shuffle {
+  animation: rummy-deck-shuffle 360ms ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes rummy-deck-shuffle-alt {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  20%  { transform: translate(18px, 2px) rotate(12deg); }
+  40%  { transform: translate(-16px, -1px) rotate(-10deg); }
+  60%  { transform: translate(14px, 1px) rotate(8deg); }
+  80%  { transform: translate(-12px, -1px) rotate(-6deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+.rummy-deck-shuffle-alt {
+  animation: rummy-deck-shuffle-alt 360ms ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Deal-out: card travels from centre to its destination using CSS vars
+   --dx / --dy / --rot. Caller stamps delay + duration via inline styles. */
+@keyframes rummy-deal-fly {
+  0%   { transform: translate(0,0) rotate(0deg) scale(0.9); opacity: 0; }
+  10%  { opacity: 1; }
+  100% {
+    transform: translate(var(--dx, 200px), var(--dy, 140px)) rotate(var(--rot, 0deg)) scale(1);
+    opacity: 1;
+  }
+}
+.rummy-deal-fly {
+  animation: rummy-deal-fly 480ms cubic-bezier(.18,.78,.43,1) both;
+}
+
+@keyframes rummy-deal-fade-out {
+  0%, 88% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+.rummy-deal-fade-out {
+  animation: rummy-deal-fade-out 600ms ease-out forwards;
+}
+
+@keyframes rummy-deal-banner {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+.rummy-deal-banner {
+  animation: rummy-deal-banner 420ms cubic-bezier(.34,1.56,.64,1) both;
+}
+
 @keyframes hc-feed-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -624,6 +682,28 @@ body, #root, .bhalyam-paper {
 }
 .hc-number-pad button {
   touch-action: manipulation;
+}
+
+/* 404 page — flip dark-text accents to cream on the dark paper background.
+   The colored numerals (orange 4, green 4) stay vivid as-is; only the
+   neutral logo/tagline/paragraph need to switch for contrast. */
+:root[data-theme="dark"] .bhalyam-404 .text-\[\#2A221B\] {
+  color: #f3eadb !important;
+}
+:root[data-theme="dark"] .bhalyam-404 h1 {
+  color: #ffe6be !important;
+}
+:root[data-theme="dark"] .bhalyam-404 p {
+  color: rgba(243, 234, 219, 0.78) !important;
+}
+:root[data-theme="dark"] .bhalyam-404 .text-\[\#5B534A\] {
+  color: #d6b58a !important;
+}
+/* The porthole frame ring around the hero image: switch the cream inner
+   fill to a warm dark so the artwork still pops on dark paper. */
+:root[data-theme="dark"] .bhalyam-404 [style*="background: rgb(255, 246, 226)"],
+:root[data-theme="dark"] .bhalyam-404 [style*="background:#FFF6E2"] {
+  background: #2a1c10 !important;
 }
 
 /* Hand Cricket celebration overlays */

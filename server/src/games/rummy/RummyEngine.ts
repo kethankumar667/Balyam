@@ -330,6 +330,13 @@ export class RummyEngine implements GameEngine {
       if (this.s.openPile.length === 0) {
         return { ok: false, error: "Open pile is empty" };
       }
+      const top = this.s.openPile[this.s.openPile.length - 1];
+      // House rule: printed jokers ("special jokers") cannot be picked up from
+      // the discard pile. They're only earned via the deal. This prevents a
+      // player from grabbing a misclick-discarded joker mid-round.
+      if (top.isPrintedJoker) {
+        return { ok: false, error: "Printed jokers cannot be drawn from the discard pile" };
+      }
       const drawn = this.s.openPile.pop()!;
       hand.push(drawn);
     }

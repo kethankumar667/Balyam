@@ -139,12 +139,13 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
           type="button"
           className="h-11 px-5 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] shadow-sm
                      text-[14px] font-semibold inline-flex items-center gap-2 cursor-pointer
+                     text-[#2A221B]
                      hover:bg-[#F8EEDB] active:translate-y-px
                      focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
                      transition-colors duration-200"
           aria-label="How to Play"
         >
-          <span className="w-5 h-5 rounded-full border border-bhalyam-wood/35 text-bhalyam-wood text-[12px] leading-none inline-flex items-center justify-center">?</span>
+          <span className="w-5 h-5 rounded-full border border-[#2A221B]/35 text-[#2A221B] text-[12px] leading-none inline-flex items-center justify-center">?</span>
           How to Play
         </button>
       </div>

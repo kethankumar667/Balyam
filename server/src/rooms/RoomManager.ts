@@ -572,7 +572,12 @@ export class RoomManager {
     const humansPending = pending.some((id) => !room.players.get(id)?.isBot);
     if (!humansPending) this.clearTurnTimer(room);
 
-    const delayMs = 1200 + Math.random() * 600;
+    // One sub-move per tick so multi-step turns (Ludo roll → move,
+    // Rummy draw → discard) feel like the bot is actually thinking between
+    // steps. After each sub-move we broadcast immediately and recurse via
+    // scheduleBotMoveIfNeeded, which adds a fresh humanised delay before
+    // the next sub-move fires.
+    const delayMs = 1200 + Math.random() * 800;
     setTimeout(() => {
       if (room.phase !== "playing") return;
       if (room.engine !== engine) return;
@@ -581,17 +586,21 @@ export class RoomManager {
       const actors = engine.pendingActors;
       if (typeof apply !== "function" || typeof actors !== "function") return;
 
-      for (const botId of botActors) {
-        // Bound the inner loop — multi-step turns shouldn't exceed a handful
-        // of sub-moves. The cap is defensive against any bot getting stuck
-        // looping forever on a degenerate engine state.
-        for (let safety = 0; safety < 32; safety++) {
-          if (engine.isOver()) break;
-          const cur = actors.call(engine);
-          if (!cur.includes(botId)) break;
-          const res = apply.call(engine, botId);
-          if (!res.ok) break;
-        }
+      // Pick the first bot still pending — same one we delayed for.
+      const stillPending = actors.call(engine).filter(
+        (id) => room.players.get(id)?.isBot,
+      );
+      const botId = stillPending[0];
+      if (!botId) {
+        // Pending bot list shifted between scheduling and firing (e.g. the
+        // human discarded into a different bot). Fall through to a fresh
+        // schedule pass to pick up whoever is next.
+        this.scheduleBotMoveIfNeeded(room);
+        return;
+      }
+
+      if (!engine.isOver()) {
+        apply.call(engine, botId);
       }
       this.broadcastGameState(room);
 
@@ -603,6 +612,8 @@ export class RoomManager {
         return;
       }
       this.scheduleTurnTimer(room);
+      // Recurse — if the same bot is still mid-turn (draw → discard) this
+      // schedules another paced sub-move; otherwise it picks up the next bot.
       this.scheduleBotMoveIfNeeded(room);
     }, delayMs);
   }
