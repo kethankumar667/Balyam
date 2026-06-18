@@ -8,25 +8,41 @@ const BOARD_SIZE = 100;
 const CELL = BOARD_SIZE / 10;
 const START_ZONE_Y = 105.5;
 
-// Five bright cell colors arranged in a (row+col) % 5 pattern.
-const CELL_COLORS = ["#b91c1c", "#facc15", "#15803d", "#1d4ed8", "#f8fafc"];
-const CELL_DARK   = ["#450a0a", "#713f12", "#052e16", "#172554", "#334155"];
+// Cell palette: warm parchment alternating with cream — classic board-game
+// feel that lets the snake/ladder graphics breathe instead of fighting four
+// saturated colours. Two-tone checker (row+col) % 2 keeps the layout
+// readable. Numbers print in deep walnut on both tones.
+const CELL_COLORS = ["#FBF4DE", "#F1D896"];
+const CELL_DARK   = ["#A88248", "#A88248"];
+const CELL_BORDER  = "#C8A66B";
+const CELL_INK     = "#2B1B0F";
+const FINISH_GOLD  = "#E0AE3B";
+const FINISH_GOLD_DEEP = "#9A6E1A";
 
-// 5 cartoon snake palettes cycled across the snake list.
+// Snake palettes — dignified, muted, scaled-creature feel.
+//   body+gradEnd → linear gradient down the spine
+//   outline      → thin dark contour
+//   spot         → small accent dots that hint at scale pattern
 const SNAKE_PALETTES = [
-  { body: "#fbbf24", outline: "#92400e", belly: "#fef3c7", spot: "#dc2626" }, // yellow / red spots
-  { body: "#22c55e", outline: "#14532d", belly: "#bbf7d0", spot: "#0f5132" }, // green / dark green spots
-  { body: "#3b82f6", outline: "#1e3a8a", belly: "#dbeafe", spot: "#facc15" }, // blue / yellow spots
-  { body: "#ef4444", outline: "#7f1d1d", belly: "#fecaca", spot: "#fbbf24" }, // red / yellow spots
-  { body: "#a855f7", outline: "#581c87", belly: "#f3e8ff", spot: "#ec4899" }, // purple / pink spots
+  { body: "#4D7C3A", gradEnd: "#22421E", outline: "#0F2A0E", spot: "#A8C879" }, // forest green
+  { body: "#A86E2F", gradEnd: "#5A3B16", outline: "#2F1A06", spot: "#E5BE7E" }, // bronze
+  { body: "#48556C", gradEnd: "#1F2937", outline: "#0F172A", spot: "#94A3B8" }, // slate
+  { body: "#7C5295", gradEnd: "#3F2A52", outline: "#1E0F2E", spot: "#D4B8E5" }, // plum
+  { body: "#B65441", gradEnd: "#6B2918", outline: "#2C0F08", spot: "#F5C4B5" }, // terracotta
 ];
+
+// Ladder wood tones.
+const LADDER_WOOD_TOP    = "#B07740";
+const LADDER_WOOD_BOTTOM = "#6E4422";
+const LADDER_WOOD_DARK   = "#3F2412";
+const LADDER_RUNG        = "#8E5B30";
 
 function cellInfo(n: number): { x: number; y: number; row: number; col: number; color: string; dark: string } {
   const idx = n - 1;
   const row = Math.floor(idx / 10);
   let col = idx % 10;
   if (row % 2 === 1) col = 9 - col;
-  const colorIdx = (row + col) % 5;
+  const colorIdx = (row + col) % 2;
   return {
     x: col * CELL + CELL / 2,
     y: (9 - row) * CELL + CELL / 2,
@@ -201,14 +217,17 @@ export default function SnlBoard({
         <div className="relative">
           <svg
             viewBox="0 0 100 112"
-            className="w-full max-w-[min(92vw,720px)] mx-auto block rounded-2xl shadow-2xl"
+            className="w-full max-w-[min(92vw,720px)] mx-auto block rounded-2xl"
             style={{
               aspectRatio: "100 / 112",
-              background: "#fff7ed",
-              border: "5px solid #0f172a",
-              boxShadow: "0 18px 48px rgba(0,0,0,0.55), inset 0 0 0 2px #ffffff",
+              background:
+                "radial-gradient(ellipse at 50% 35%, #FBF4DE 0%, #EFD7A6 65%, #DCBE83 100%)",
+              border: "6px solid #3F2412",
+              boxShadow:
+                "0 22px 58px rgba(0,0,0,0.55), inset 0 0 0 2px #E0AE3B, inset 0 0 0 4px #6B4422",
             }}
           >
+            <BoardDefs ladderCount={Object.keys(state.config.ladders).length} snakeCount={Object.keys(state.config.snakes).length} />
             <BoardGrid />
             <StartZone count={startCount} />
             <LaddersLayer ladders={state.config.ladders} />
@@ -298,42 +317,123 @@ function DifficultyBadge({ difficulty }: { difficulty: SnlState["config"]["diffi
   );
 }
 
+/**
+ * SVG <defs> block — gradients, filters, and patterns reused across the
+ * board so individual cells/snakes/ladders stay declarative.
+ */
+function BoardDefs({ ladderCount, snakeCount }: { ladderCount: number; snakeCount: number }) {
+  return (
+    <defs>
+      {/* Ladder wood — rails get a vertical gradient so they read as round
+          poles instead of flat lines. */}
+      <linearGradient id="snl-ladder-rail" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor={LADDER_WOOD_DARK} />
+        <stop offset="38%" stopColor={LADDER_WOOD_TOP} />
+        <stop offset="58%" stopColor="#D6A06A" />
+        <stop offset="100%" stopColor={LADDER_WOOD_BOTTOM} />
+      </linearGradient>
+
+      {/* Subtle drop shadow used by ladders + snakes so they appear to sit
+          ABOVE the board cells instead of flat with them. */}
+      <filter id="snl-drop" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="0.35" />
+        <feOffset dx="0" dy="0.45" result="off" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.45" /></feComponentTransfer>
+        <feMerge>
+          <feMergeNode />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+
+      {/* Square 100 — gold finish square uses a sun-burst gradient. */}
+      <radialGradient id="snl-finish" cx="50%" cy="50%" r="65%">
+        <stop offset="0%" stopColor="#FFF1B8" />
+        <stop offset="45%" stopColor={FINISH_GOLD} />
+        <stop offset="100%" stopColor={FINISH_GOLD_DEEP} />
+      </radialGradient>
+
+      {/* Per-snake body gradients — generated once for every snake in the
+          config so the body fades from head to tail. */}
+      {Array.from({ length: snakeCount }, (_, i) => {
+        const p = SNAKE_PALETTES[i % SNAKE_PALETTES.length];
+        return (
+          <linearGradient
+            key={`snake-grad-${i}`}
+            id={`snl-snake-${i}`}
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="1"
+          >
+            <stop offset="0%" stopColor={p.body} />
+            <stop offset="100%" stopColor={p.gradEnd} />
+          </linearGradient>
+        );
+      })}
+
+      {/* Reserved for ladder shadow indexing — keeps prop unused but ready. */}
+      <metadata>{ladderCount}</metadata>
+    </defs>
+  );
+}
+
 function BoardGrid() {
   const cells: JSX.Element[] = [];
   for (let n = 1; n <= 100; n++) {
     const info = cellInfo(n);
     const x = info.x - CELL / 2;
     const y = info.y - CELL / 2;
+    const isFinish = n === 100;
     cells.push(
       <g key={n}>
+        {/* Base cell — small inset so a hairline of board parchment shows
+            between cells, giving the grid a subtle relief. */}
         <rect
-          x={x + 0.15}
-          y={y + 0.15}
-          width={CELL - 0.3}
-          height={CELL - 0.3}
-          rx={0.5}
-          fill={info.color}
-          stroke="#1f2937"
+          x={x + 0.12}
+          y={y + 0.12}
+          width={CELL - 0.24}
+          height={CELL - 0.24}
+          rx={0.7}
+          fill={isFinish ? "url(#snl-finish)" : info.color}
+          stroke={CELL_BORDER}
           strokeWidth={0.18}
         />
-        {/* Number — bold, top-left corner with subtle outline for contrast */}
+        {/* Inner highlight — thin top stroke that suggests a beveled edge. */}
+        <line
+          x1={x + 0.5}
+          y1={y + 0.5}
+          x2={x + CELL - 0.5}
+          y2={y + 0.5}
+          stroke="#FFFFFF"
+          strokeOpacity={0.55}
+          strokeWidth={0.12}
+        />
+        {/* Number — top-left, deep walnut for both tones, hairline halo. */}
         <text
-          x={x + 1.4}
+          x={x + 1.2}
           y={y + 3.2}
-          fontSize="2.8"
-          fill={info.color === "#fbbf24" || info.color === "#f8fafc" ? "#1f2937" : "#ffffff"}
-          fontWeight="900"
+          fontSize="2.6"
+          fill={CELL_INK}
+          fontWeight="800"
           fontFamily="ui-sans-serif, system-ui, sans-serif"
           style={{
             paintOrder: "stroke",
-            stroke: info.color === "#fbbf24" || info.color === "#f8fafc" ? "#ffffff" : "#0f172a",
-            strokeWidth: 0.35,
+            stroke: "#FFFFFF",
+            strokeWidth: 0.45,
+            strokeOpacity: 0.7,
           }}
         >
           {n}
         </text>
-        {n === 100 && (
-          <text x={info.x} y={info.y + 2.6} fontSize="6" textAnchor="middle">🏁</text>
+        {isFinish && (
+          <>
+            {/* A simple flag glyph; sits in the lower-right so it doesn't
+                fight the "100" number. */}
+            <g transform={`translate(${info.x + 1.5}, ${info.y + 2.0})`}>
+              <line x1={0} y1={-1.8} x2={0} y2={2.4} stroke={FINISH_GOLD_DEEP} strokeWidth={0.35} strokeLinecap="round" />
+              <path d="M 0 -1.8 L 2.4 -1.2 L 0 -0.4 Z" fill={FINISH_GOLD_DEEP} />
+            </g>
+          </>
         )}
       </g>
     );
@@ -350,15 +450,34 @@ function StartZone({ count }: { count: number }) {
         width={97}
         height={9}
         rx={1.4}
-        fill="#fff"
-        stroke="#1f2937"
+        fill="#FBF4DE"
+        stroke="#6B4422"
         strokeWidth={0.35}
       />
-      <text x={3.5} y={107.6} fontSize="2.2" fill="#1f2937" fontWeight="900">
+      {/* Inner gold bevel */}
+      <rect
+        x={2.0}
+        y={102.0}
+        width={96}
+        height={8}
+        rx={1.1}
+        fill="none"
+        stroke={FINISH_GOLD}
+        strokeWidth={0.18}
+        opacity={0.85}
+      />
+      <text
+        x={3.5}
+        y={107.8}
+        fontSize="2.4"
+        fill={CELL_INK}
+        fontWeight="900"
+        letterSpacing="0.3"
+      >
         START
       </text>
       {count > 0 && (
-        <text x={96.5} y={107.6} fontSize="1.8" fill="#475569" fontWeight="700" textAnchor="end">
+        <text x={96.5} y={107.6} fontSize="1.8" fill="#5C3A1A" fontWeight="700" textAnchor="end">
           {count} waiting
         </text>
       )}
@@ -377,12 +496,13 @@ function LaddersLayer({ ladders }: { ladders: Record<number, number> }) {
     const len = Math.hypot(dx, dy);
     const nx = -dy / len;
     const ny = dx / len;
-    const w = 1.6;
+    // Rail separation (a touch wider than before for a sturdier look).
+    const w = 1.7;
     const ax1 = a.x + nx * w, ay1 = a.y + ny * w;
     const ax2 = a.x - nx * w, ay2 = a.y - ny * w;
     const bx1 = b.x + nx * w, by1 = b.y + ny * w;
     const bx2 = b.x - nx * w, by2 = b.y - ny * w;
-    const rungs = Math.max(3, Math.floor(len / 3.2));
+    const rungs = Math.max(3, Math.floor(len / 3.0));
     const rungLines: JSX.Element[] = [];
     for (let i = 1; i < rungs; i++) {
       const t = i / rungs;
@@ -391,23 +511,70 @@ function LaddersLayer({ ladders }: { ladders: Record<number, number> }) {
       const rx2 = ax2 + (bx2 - ax2) * t;
       const ry2 = ay2 + (by2 - ay2) * t;
       rungLines.push(
-        <line
-          key={`r-${startN}-${i}`}
-          x1={rx1}
-          y1={ry1}
-          x2={rx2}
-          y2={ry2}
-          stroke="#0f172a"
-          strokeWidth={0.7}
-          strokeLinecap="round"
-        />
+        <g key={`r-${startN}-${i}`}>
+          {/* Rung shadow under the rung gives it depth */}
+          <line
+            x1={rx1}
+            y1={ry1 + 0.18}
+            x2={rx2}
+            y2={ry2 + 0.18}
+            stroke={LADDER_WOOD_DARK}
+            strokeWidth={0.85}
+            strokeLinecap="round"
+            opacity={0.55}
+          />
+          <line
+            x1={rx1}
+            y1={ry1}
+            x2={rx2}
+            y2={ry2}
+            stroke={LADDER_RUNG}
+            strokeWidth={0.75}
+            strokeLinecap="round"
+          />
+          {/* Thin upper highlight on the rung */}
+          <line
+            x1={rx1}
+            y1={ry1 - 0.18}
+            x2={rx2}
+            y2={ry2 - 0.18}
+            stroke="#E0B981"
+            strokeWidth={0.18}
+            strokeLinecap="round"
+            opacity={0.7}
+          />
+        </g>
       );
     }
     parts.push(
-      <g key={`ladder-${startN}`}>
-        {/* Rails — solid dark */}
-        <line x1={ax1} y1={ay1} x2={bx1} y2={by1} stroke="#0f172a" strokeWidth={0.9} strokeLinecap="round" />
-        <line x1={ax2} y1={ay2} x2={bx2} y2={by2} stroke="#0f172a" strokeWidth={0.9} strokeLinecap="round" />
+      <g key={`ladder-${startN}`} filter="url(#snl-drop)">
+        {/* Rail outline */}
+        <line x1={ax1} y1={ay1} x2={bx1} y2={by1} stroke={LADDER_WOOD_DARK} strokeWidth={1.5} strokeLinecap="round" />
+        <line x1={ax2} y1={ay2} x2={bx2} y2={by2} stroke={LADDER_WOOD_DARK} strokeWidth={1.5} strokeLinecap="round" />
+        {/* Rail wood */}
+        <line x1={ax1} y1={ay1} x2={bx1} y2={by1} stroke="url(#snl-ladder-rail)" strokeWidth={1.1} strokeLinecap="round" />
+        <line x1={ax2} y1={ay2} x2={bx2} y2={by2} stroke="url(#snl-ladder-rail)" strokeWidth={1.1} strokeLinecap="round" />
+        {/* Subtle rail highlight strip on the lit edge */}
+        <line
+          x1={ax1 - nx * 0.18}
+          y1={ay1 - ny * 0.18}
+          x2={bx1 - nx * 0.18}
+          y2={by1 - ny * 0.18}
+          stroke="#F2C78A"
+          strokeWidth={0.18}
+          strokeLinecap="round"
+          opacity={0.7}
+        />
+        <line
+          x1={ax2 + nx * 0.18}
+          y1={ay2 + ny * 0.18}
+          x2={bx2 + nx * 0.18}
+          y2={by2 + ny * 0.18}
+          stroke="#F2C78A"
+          strokeWidth={0.18}
+          strokeLinecap="round"
+          opacity={0.7}
+        />
         {rungLines}
       </g>
     );
@@ -424,6 +591,7 @@ function SnakesLayer({ snakes }: { snakes: Record<number, number> }) {
     <>
       {entries.map(([headN, tailN], idx) => {
         const palette = SNAKE_PALETTES[idx % SNAKE_PALETTES.length];
+        const gradientId = `snl-snake-${idx}`;
         const head = cellInfo(headN);
         const tail = cellInfo(tailN);
         const mx = (head.x + tail.x) / 2;
@@ -440,65 +608,92 @@ function SnakesLayer({ snakes }: { snakes: Record<number, number> }) {
         const tailP = { x: tail.x, y: tail.y };
         const d = `M ${headP.x} ${headP.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${tailP.x} ${tailP.y}`;
 
-        // Spots along the body at fractions of the bezier.
-        const spotTs = [0.22, 0.42, 0.6, 0.78];
-        const spots = spotTs.map((t, i) => {
+        // Scale pattern — small offset dots paired along the spine give a
+        // subtle reptile texture without competing with the cell numbers.
+        const scaleTs = [0.18, 0.28, 0.4, 0.52, 0.62, 0.74, 0.84];
+        const scales = scaleTs.map((t, i) => {
           const p = bezierPoint(headP, c1, c2, tailP, t);
-          return <circle key={`sp-${headN}-${i}`} cx={p.x} cy={p.y} r={0.55} fill={palette.spot} />;
+          // Tangent for perpendicular offset
+          const ahead = bezierPoint(headP, c1, c2, tailP, Math.min(0.99, t + 0.01));
+          const tx = ahead.x - p.x;
+          const ty = ahead.y - p.y;
+          const tl = Math.hypot(tx, ty) || 1;
+          const px = -ty / tl;
+          const py = tx / tl;
+          return (
+            <g key={`scale-${headN}-${i}`}>
+              <ellipse
+                cx={p.x + px * 0.4}
+                cy={p.y + py * 0.4}
+                rx={0.4}
+                ry={0.22}
+                fill={palette.spot}
+                opacity={0.85}
+              />
+              <ellipse
+                cx={p.x - px * 0.4}
+                cy={p.y - py * 0.4}
+                rx={0.4}
+                ry={0.22}
+                fill={palette.spot}
+                opacity={0.55}
+              />
+            </g>
+          );
         });
 
-        // Eye direction: perpendicular to first tangent.
+        // Head orientation — used to align the head shape along the body.
         const tangent = bezierPoint(headP, c1, c2, tailP, 0.05);
-        const eyeAngle = Math.atan2(tangent.y - headP.y, tangent.x - headP.x);
-        const eyeNx = Math.cos(eyeAngle + Math.PI / 2);
-        const eyeNy = Math.sin(eyeAngle + Math.PI / 2);
-        const eye1 = { x: headP.x + eyeNx * 0.85 - Math.cos(eyeAngle) * 0.4, y: headP.y + eyeNy * 0.85 - Math.sin(eyeAngle) * 0.4 };
-        const eye2 = { x: headP.x - eyeNx * 0.85 - Math.cos(eyeAngle) * 0.4, y: headP.y - eyeNy * 0.85 - Math.sin(eyeAngle) * 0.4 };
-
-        // Smile: small arc below the eyes.
-        const mouthCenter = { x: headP.x + Math.cos(eyeAngle) * 0.6, y: headP.y + Math.sin(eyeAngle) * 0.6 };
-        const smileD = `M ${mouthCenter.x - eyeNx * 0.6} ${mouthCenter.y - eyeNy * 0.6}
-                        Q ${mouthCenter.x + Math.cos(eyeAngle) * 0.5} ${mouthCenter.y + Math.sin(eyeAngle) * 0.5},
-                          ${mouthCenter.x + eyeNx * 0.6} ${mouthCenter.y + eyeNy * 0.6}`;
+        const headAngle = Math.atan2(tangent.y - headP.y, tangent.x - headP.x);
+        const headDeg = (headAngle * 180) / Math.PI;
 
         return (
-          <g key={`snake-${headN}`}>
-            {/* Outline (slightly thicker, dark) */}
-            <path d={d} stroke={palette.outline} strokeWidth={3.0} fill="none" strokeLinecap="round" />
-            {/* Body */}
-            <path d={d} stroke={palette.body} strokeWidth={2.4} fill="none" strokeLinecap="round" />
-            {/* Belly stripe */}
-            <path d={d} stroke={palette.belly} strokeWidth={0.7} fill="none" strokeLinecap="round" opacity={0.7} />
-            {/* Spots */}
-            {spots}
-            {/* Tail tip */}
-            <circle cx={tailP.x} cy={tailP.y} r={0.6} fill={palette.outline} />
-            {/* Head — chunky oval slightly bigger than body */}
-            <circle cx={headP.x} cy={headP.y} r={2.4} fill={palette.outline} />
-            <circle cx={headP.x} cy={headP.y} r={2.05} fill={palette.body} />
-            {/* Cheek blush */}
-            <circle cx={headP.x + eyeNx * 1.2} cy={headP.y + eyeNy * 1.2} r={0.4} fill={palette.spot} opacity={0.55} />
-            <circle cx={headP.x - eyeNx * 1.2} cy={headP.y - eyeNy * 1.2} r={0.4} fill={palette.spot} opacity={0.55} />
-            {/* Eyes — big white circles + black pupils + tiny white highlight */}
-            <circle cx={eye1.x} cy={eye1.y} r={0.65} fill="#ffffff" stroke="#0f172a" strokeWidth={0.12} />
-            <circle cx={eye2.x} cy={eye2.y} r={0.65} fill="#ffffff" stroke="#0f172a" strokeWidth={0.12} />
-            <circle cx={eye1.x + 0.1} cy={eye1.y + 0.05} r={0.32} fill="#0f172a" />
-            <circle cx={eye2.x + 0.1} cy={eye2.y + 0.05} r={0.32} fill="#0f172a" />
-            <circle cx={eye1.x + 0.2} cy={eye1.y - 0.08} r={0.1} fill="#ffffff" />
-            <circle cx={eye2.x + 0.2} cy={eye2.y - 0.08} r={0.1} fill="#ffffff" />
-            {/* Smile */}
-            <path d={smileD} stroke="#0f172a" strokeWidth={0.18} fill="none" strokeLinecap="round" />
-            {/* Forked tongue */}
-            <path
-              d={`M ${headP.x + Math.cos(eyeAngle) * 2.0} ${headP.y + Math.sin(eyeAngle) * 2.0}
-                  l ${Math.cos(eyeAngle) * 1.2 - 0.35 * Math.sin(eyeAngle)} ${Math.sin(eyeAngle) * 1.2 + 0.35 * Math.cos(eyeAngle)}
-                  M ${headP.x + Math.cos(eyeAngle) * 2.0} ${headP.y + Math.sin(eyeAngle) * 2.0}
-                  l ${Math.cos(eyeAngle) * 1.2 + 0.35 * Math.sin(eyeAngle)} ${Math.sin(eyeAngle) * 1.2 - 0.35 * Math.cos(eyeAngle)}`}
-              stroke="#dc2626"
-              strokeWidth={0.28}
-              fill="none"
-              strokeLinecap="round"
-            />
+          <g key={`snake-${headN}`} filter="url(#snl-drop)">
+            {/* Outer outline — thin dark contour */}
+            <path d={d} stroke={palette.outline} strokeWidth={2.7} fill="none" strokeLinecap="round" />
+            {/* Body — gradient down the spine */}
+            <path d={d} stroke={`url(#${gradientId})`} strokeWidth={2.1} fill="none" strokeLinecap="round" />
+            {/* Belly stripe — thin lighter line on the lit edge */}
+            <path d={d} stroke="#FBF4DE" strokeWidth={0.45} fill="none" strokeLinecap="round" opacity={0.35} />
+            {scales}
+            {/* Tail taper */}
+            <circle cx={tailP.x} cy={tailP.y} r={0.55} fill={palette.outline} />
+            <circle cx={tailP.x} cy={tailP.y} r={0.32} fill={palette.body} />
+
+            {/* Head — refined teardrop: an outlined ellipse rotated to follow
+                the body direction, plus two small slit eyes. No blush, no
+                smile, no tongue — those were the cartoonish elements that
+                made the board look amateur. */}
+            <g transform={`translate(${headP.x}, ${headP.y}) rotate(${headDeg})`}>
+              <ellipse
+                cx={-0.4}
+                cy={0}
+                rx={2.6}
+                ry={1.7}
+                fill={palette.outline}
+              />
+              <ellipse
+                cx={-0.4}
+                cy={0}
+                rx={2.25}
+                ry={1.4}
+                fill={palette.body}
+              />
+              {/* Subtle dorsal stripe */}
+              <ellipse
+                cx={-0.4}
+                cy={-0.5}
+                rx={2.0}
+                ry={0.35}
+                fill={palette.gradEnd}
+                opacity={0.55}
+              />
+              {/* Eyes — tiny slits, not big cartoon circles */}
+              <ellipse cx={-1.4} cy={-0.55} rx={0.32} ry={0.22} fill="#FBF4DE" />
+              <ellipse cx={-1.4} cy={0.55} rx={0.32} ry={0.22} fill="#FBF4DE" />
+              <ellipse cx={-1.35} cy={-0.55} rx={0.14} ry={0.18} fill="#0F172A" />
+              <ellipse cx={-1.35} cy={0.55} rx={0.14} ry={0.18} fill="#0F172A" />
+            </g>
           </g>
         );
       })}
