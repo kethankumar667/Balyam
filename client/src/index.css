@@ -247,14 +247,55 @@ body, #root, .bhalyam-paper {
   background-image: linear-gradient(135deg, #F4C430 0%, #E4B128 45%, #B38918 100%);
 }
 
-/* Typography root. Apply to the outermost BHALYAM wrapper; every descendant
-   inherits Poppins for Latin + Noto Sans Telugu for Telugu script. */
+/* Typography root. Three-font system tuned via ui-ux-pro-max:
+     • Poppins for body voice (calm, modern, well-supported)
+     • Righteous for display headlines (energetic Entertainment pairing)
+     • Caveat for handwritten nostalgia accents
+   Applied via the `.bhalyam-font` wrapper plus `.font-display` / `.font-script`
+   utilities. Every descendant inherits Poppins for Latin + Noto Sans Telugu
+   for Telugu script. */
 .bhalyam-font {
   font-family: 'Poppins', 'Noto Sans Telugu', system-ui, -apple-system, sans-serif;
   letter-spacing: -0.005em;
 }
 .bhalyam-font h1, .bhalyam-font h2, .bhalyam-font h3, .bhalyam-font h4 {
   font-family: 'Poppins', 'Noto Sans Telugu', system-ui, -apple-system, sans-serif;
+}
+
+/* Display utility — Righteous geometric headline font. Reserved for the
+   hero line, big section CTAs, and the BHALYAM wordmark. Slight letter
+   spacing to keep tight rhythm at large sizes. */
+.bhalyam-display {
+  font-family: 'Righteous', 'Poppins', system-ui, sans-serif;
+  letter-spacing: 0.005em;
+  font-weight: 400;
+}
+
+/* Script utility — Caveat for "scribbled on the slate" accents. Used for
+   tagline rotators, nostalgia notes, friend invites. Tighter line-height
+   so multi-line scripts feel personal not loose. */
+.bhalyam-script {
+  font-family: 'Caveat', 'Poppins', cursive;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+/* Animated gradient text — for "Relive" callouts in the hero. Smooth
+   240% background that slowly drifts so the brand line feels alive
+   without being noisy. Honor reduced-motion at the bottom of the file. */
+@keyframes bhalyam-gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.bhalyam-gradient-text {
+  background: linear-gradient(120deg, #EA5A1F 0%, #F4C430 25%, #E11D48 50%, #7C3AED 75%, #EA5A1F 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: bhalyam-gradient-shift 9s ease-in-out infinite;
+  will-change: background-position;
 }
 
 /* Card press feedback that feels like a physical board-game token. Used
@@ -265,6 +306,182 @@ body, #root, .bhalyam-paper {
   100% { transform: translateY(0)    scale(1); }
 }
 .bhalyam-press-feedback:active { animation: bhalyam-press 180ms ease-out; }
+
+/* ─────────── Modern polish layer ───────────
+   Universal animation primitives used across Home, Lobby, Game rooms.
+   Goals: 150-300ms easing curves, transform/opacity only, scroll-reveal
+   pattern for sections, golden shine sweep for primary CTAs, hover-glow
+   for cards. All wrapped in a prefers-reduced-motion guard at the end so
+   accessibility settings disable the motion without killing color
+   transitions. */
+
+@keyframes bhalyam-fade-in-up {
+  0%   { opacity: 0; transform: translateY(18px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.bhalyam-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 520ms cubic-bezier(.2,.7,.3,1),
+              transform 520ms cubic-bezier(.2,.7,.3,1);
+  will-change: opacity, transform;
+}
+.bhalyam-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.bhalyam-reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 520ms cubic-bezier(.2,.7,.3,1),
+              transform 520ms cubic-bezier(.2,.7,.3,1);
+}
+.bhalyam-reveal-stagger.is-visible > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Staggered delays — first 8 children get a 60ms cascade. */
+.bhalyam-reveal-stagger.is-visible > *:nth-child(1) { transition-delay: 40ms; }
+.bhalyam-reveal-stagger.is-visible > *:nth-child(2) { transition-delay: 110ms; }
+.bhalyam-reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 180ms; }
+.bhalyam-reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 250ms; }
+.bhalyam-reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 320ms; }
+.bhalyam-reveal-stagger.is-visible > *:nth-child(6) { transition-delay: 390ms; }
+.bhalyam-reveal-stagger.is-visible > *:nth-child(7) { transition-delay: 460ms; }
+.bhalyam-reveal-stagger.is-visible > *:nth-child(8) { transition-delay: 530ms; }
+
+/* Golden shine sweep for primary CTA (Join Room, Start Game). Hover/focus
+   triggers a glossy band that sweeps across the surface. */
+@keyframes bhalyam-shine-sweep {
+  0%   { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translateX(220%) skewX(-18deg); opacity: 0; }
+}
+.bhalyam-cta-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.bhalyam-cta-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-130%) skewX(-18deg);
+  pointer-events: none;
+  z-index: 0;
+}
+.bhalyam-cta-shine:hover::after,
+.bhalyam-cta-shine:focus-visible::after {
+  animation: bhalyam-shine-sweep 900ms cubic-bezier(.4,.2,.2,1) forwards;
+}
+.bhalyam-cta-shine > * { position: relative; z-index: 1; }
+
+/* Tile hover lift — used by GameTile. Adds a colored glow tinted to the
+   tile's accent (read off a CSS variable). Pure transform/opacity so it
+   composites on the GPU. */
+.bhalyam-tile-lift {
+  transition:
+    transform 220ms cubic-bezier(.2,.7,.3,1),
+    box-shadow 220ms cubic-bezier(.2,.7,.3,1),
+    filter 220ms cubic-bezier(.2,.7,.3,1);
+  will-change: transform;
+}
+.bhalyam-tile-lift:hover,
+.bhalyam-tile-lift:focus-visible {
+  transform: translateY(-6px) scale(1.015);
+  box-shadow:
+    0 18px 32px -14px var(--tile-glow, rgba(234, 90, 31, 0.55)),
+    0 8px 18px -8px rgba(0, 0, 0, 0.45);
+}
+.bhalyam-tile-lift:active {
+  transform: translateY(-2px) scale(0.99);
+  transition-duration: 100ms;
+}
+
+/* Soft idle drift on the hero artwork — a slow 8s loop that feels like
+   the parchment is gently catching air. Disabled on reduced-motion. */
+@keyframes bhalyam-hero-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.02); }
+  50%      { transform: translate3d(0, -6px, 0) scale(1.025); }
+}
+.bhalyam-hero-drift {
+  animation: bhalyam-hero-drift 9s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Section title underline that draws in on reveal. */
+@keyframes bhalyam-underline-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.bhalyam-underline {
+  position: relative;
+  display: inline-block;
+}
+.bhalyam-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #EA5A1F 0%, #F4C430 100%);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 600ms cubic-bezier(.2,.7,.3,1);
+}
+.is-visible .bhalyam-underline::after,
+.bhalyam-reveal.is-visible .bhalyam-underline::after {
+  transform: scaleX(1);
+}
+
+/* Modern skeleton shimmer for loading rows. */
+@keyframes bhalyam-skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.bhalyam-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(232, 218, 192, 0.55) 0%,
+    rgba(252, 244, 224, 0.95) 50%,
+    rgba(232, 218, 192, 0.55) 100%
+  );
+  background-size: 200% 100%;
+  animation: bhalyam-skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 12px;
+}
+
+/* Respect users with vestibular / motion sensitivity. We keep opacity
+   transitions but disable all transforms + infinite loops so the page
+   stays readable and stable. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 100ms !important;
+    scroll-behavior: auto !important;
+  }
+  .bhalyam-reveal,
+  .bhalyam-reveal-stagger > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .bhalyam-hero-drift { animation: none !important; transform: none !important; }
+  .bhalyam-tile-lift:hover,
+  .bhalyam-tile-lift:focus-visible { transform: none !important; }
+  .bhalyam-underline::after { transform: scaleX(1) !important; }
+}
 
 /* Movable Ludo token: gentle bobbing to invite clicking */
 @keyframes ludo-bob {
