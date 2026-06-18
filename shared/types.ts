@@ -104,6 +104,18 @@ export interface RummyPublicState {
   winnerId?: string | null;
   scores?: Record<string, number>;
   finalHands?: Record<string, Card[]>;
+  /**
+   * End-of-round meld arrangement per player, in display order, as card IDs.
+   *
+   *   • Winner → the actual melds they declared (proof of how they made it).
+   *   • Invalid-declare player → the (rejected) melds they attempted.
+   *   • Other players → server's best-effort auto-arrangement of their hand
+   *     so the scorecard shows what they could have played.
+   *
+   * A flat array of all IDs in one group means "no meld grouping known" and
+   * the client renders it as a single ungrouped row.
+   */
+  finalMelds?: Record<string, string[][]>;
   invalidDeclareBy?: string | null;
 }
 

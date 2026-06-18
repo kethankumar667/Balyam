@@ -2698,6 +2698,150 @@ function MatchOverCard({
 }
 
 /**
+ * Scorecard cards row — renders each player's hand split into the meld
+ * groups they declared, with small labelled chips above each group so the
+ * scorecard reads as proof of HOW the show was made.
+ *
+ *   - Winner / wrong-show declarer → uses `declaredMelds` (the actual
+ *     groups submitted to the server).
+ *   - Everyone else → server doesn't send their melds, so we run the
+ *     existing `suggestArrangement` locally to show their best possible
+ *     arrangement. Mid-cards (jokers, would-have-been runs, sets) all get
+ *     classified by the same engine the live board uses, so the labels
+ *     are consistent with what they saw mid-game.
+ *
+ * Each group is rendered as a tight overlapping fan with a tiny pill above
+ * naming the meld type, and groups are separated by a thin gold divider so
+ * the eye can count "3 groups + ungrouped".
+ */
+function MeldGroupsRow({
+  hand,
+  declaredMelds,
+  wildRank,
+  isWrongShower,
+}: {
+  hand: Card[];
+  declaredMelds: string[][] | undefined;
+  wildRank: string;
+  isWrongShower: boolean;
+}) {
+  if (hand.length === 0) {
+    return <span className="text-amber-100/60 text-[11px] italic">—</span>;
+  }
+  const byId = new Map(hand.map((c) => [c.id, c]));
+
+  // Build the groups + ungrouped tray for display.
+  let groups: Card[][] = [];
+  let ungrouped: Card[] = [];
+
+  if (declaredMelds && declaredMelds.length > 0) {
+    const seen = new Set<string>();
+    for (const g of declaredMelds) {
+      const cards: Card[] = [];
+      for (const cid of g) {
+        const c = byId.get(cid);
+        if (c && !seen.has(cid)) {
+          cards.push(c);
+          seen.add(cid);
+        }
+      }
+      if (cards.length > 0) groups.push(cards);
+    }
+    // Anything left over (e.g. the 14th card that was discarded but still
+    // appears in finalHands for losers, or any stray card not referenced in
+    // the declared melds) lands in an ungrouped tray.
+    ungrouped = hand.filter((c) => !seen.has(c.id));
+  } else {
+    // No declared melds for this player — fall back to a best-effort
+    // arrangement so the scorecard still tells a story.
+    const arr = suggestArrangement(hand, wildRank as Rank);
+    groups = arr.groups;
+    ungrouped = arr.ungrouped;
+  }
+
+  function classifyForDisplay(group: Card[]) {
+    const cls = classifyMeld(group, wildRank as Rank);
+    // For the wrong-show declarer, every "valid" badge would lie about
+    // their intent — but the engine already rejected the show, so the
+    // honest framing is "this is what they SUBMITTED, here's how the
+    // engine classified each piece." classifyMeld returns invalid when
+    // the meld itself doesn't hold up; we surface that as the badge.
+    return cls;
+  }
+
+  return (
+    <div className="flex items-end gap-2 min-w-0">
+      {groups.map((g, gi) => {
+        const cls = classifyForDisplay(g);
+        return (
+          <div key={gi} className="flex flex-col items-start gap-0.5 flex-shrink-0">
+            <span
+              className="text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md leading-tight"
+              style={{
+                color: "#1f1300",
+                background: cls.valid
+                  ? `linear-gradient(135deg, ${cls.color}, ${cls.color}cc)`
+                  : "linear-gradient(135deg, #fda4af, #f87171)",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.35)",
+              }}
+              title={cls.label}
+            >
+              {cls.label}
+            </span>
+            <div className="flex">
+              {g.map((c, i) => (
+                <span
+                  key={c.id}
+                  className="flex-shrink-0"
+                  style={{ marginLeft: i === 0 ? 0 : -14 }}
+                >
+                  <PlayingCard
+                    card={c}
+                    isWildJoker={c.rank === wildRank}
+                    small
+                  />
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {ungrouped.length > 0 && (
+        <div className="flex flex-col items-start gap-0.5 flex-shrink-0">
+          <span
+            className="text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md leading-tight"
+            style={{
+              color: "#fff7ed",
+              background: isWrongShower
+                ? "linear-gradient(135deg, #ef4444, #b91c1c)"
+                : "linear-gradient(135deg, #57534e, #292524)",
+            }}
+            title={isWrongShower ? "Did not form a valid show" : "Cards left ungrouped"}
+          >
+            {isWrongShower ? "Loose" : "Ungrouped"}
+          </span>
+          <div className="flex">
+            {ungrouped.map((c, i) => (
+              <span
+                key={c.id}
+                className="flex-shrink-0"
+                style={{ marginLeft: i === 0 ? 0 : -14 }}
+              >
+                <PlayingCard
+                  card={c}
+                  isWildJoker={c.rank === wildRank}
+                  small
+                />
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Final-round scorecard for single-mode Rummy.
  *
  * Replaces the old slate "Round ended" panel with the wine-red ranked
@@ -2709,11 +2853,10 @@ function MatchOverCard({
  * table (Rank · Player · Cards · Points · Chips), and a joker chip + game
  * ID footer.
  *
- * We intentionally render players' final hands as a flat card row —
- * non-winners' melds aren't carried over the wire (only the winner's
- * declared groups are), so a per-meld classification badge would be
- * dishonest for losers. The total points already convey "how bad was the
- * hand at the end."
+ * Cards column uses `MeldGroupsRow` which shows each player's groups
+ * separately (winner → declared melds; others → best-effort auto-arranged)
+ * so the scorecard reads as proof of HOW the show was put together rather
+ * than a flat row of cards.
  */
 function RummyScoreCard({
   state,
@@ -2896,22 +3039,13 @@ function RummyScoreCard({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
-                  {hand.length === 0 ? (
-                    <span className="text-amber-100/60 text-[11px] italic">
-                      —
-                    </span>
-                  ) : (
-                    hand.map((c) => (
-                      <span key={c.id} className="flex-shrink-0 -mr-1.5 last:mr-0">
-                        <PlayingCard
-                          card={c}
-                          isWildJoker={c.rank === state.wildJoker.rank}
-                          small
-                        />
-                      </span>
-                    ))
-                  )}
+                <div className="overflow-x-auto scrollbar-none">
+                  <MeldGroupsRow
+                    hand={hand}
+                    declaredMelds={state.finalMelds?.[id]}
+                    wildRank={state.wildJoker.rank}
+                    isWrongShower={isWrongShower}
+                  />
                 </div>
                 <div className="text-right font-black tabular-nums">
                   {points}
