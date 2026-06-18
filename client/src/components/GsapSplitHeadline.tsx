@@ -22,12 +22,14 @@ export default function GsapSplitHeadline({
   lineClassName,
   charStagger = 0.025,
   lineDelay = 0.18,
+  style,
 }: {
   lines: { text: string; className?: string }[];
   className?: string;
   lineClassName?: string;
   charStagger?: number;
   lineDelay?: number;
+  style?: React.CSSProperties;
 }) {
   const root = useRef<HTMLDivElement | null>(null);
 
@@ -80,7 +82,7 @@ export default function GsapSplitHeadline({
   }, [lines, charStagger, lineDelay]);
 
   return (
-    <div ref={root} className={className}>
+    <div ref={root} className={className} style={style}>
       {lines.map((line, li) => (
         <span
           key={li}

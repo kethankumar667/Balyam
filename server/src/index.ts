@@ -36,8 +36,12 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`[server] listening on http://localhost:${PORT}`);
+// Bind to 0.0.0.0 so LAN devices (phones / tablets connected to the same
+// Wi-Fi) can reach the Socket.IO server too — not only the laptop's
+// browser via 127.0.0.1.
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`[server] listening on http://0.0.0.0:${PORT}`);
+  console.log(`[server] from your LAN: http://<your-PC-IP>:${PORT}`);
   console.log(`[server] allowing client origin ${CLIENT_ORIGIN}`);
 });
 

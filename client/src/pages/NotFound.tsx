@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 
 /**
@@ -44,17 +45,23 @@ export default function NotFound() {
         <div className="w-full max-w-[760px] text-center">
           {/* Stamp tag — a small "404" pill above the numerals,
               the way a ration shop would have a "OUT OF STOCK" sticker. */}
-          <span
+          <motion.span
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.2, 0.7, 0.3, 1] }}
             className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em]
                        bg-[#FFF4E4] text-[#E54D0D] border border-[#F2D5A9]"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#E54D0D]" aria-hidden />
             Game not found
-          </span>
+          </motion.span>
 
           {/* Big 404 with hero image inside the middle 0. */}
           <div className="mt-4 flex items-end justify-center gap-2 sm:gap-3 leading-none select-none">
-            <span
+            <motion.span
+              initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ duration: 0.6, delay: 0.1, ease: [0.2, 0.7, 0.3, 1] }}
               className="font-black drop-shadow-[0_2px_0_rgba(255,255,255,0.45)]"
               style={{
                 color: "#E54D0D",
@@ -62,10 +69,13 @@ export default function NotFound() {
               }}
             >
               4
-            </span>
+            </motion.span>
 
             {/* Middle "0" frames the hero image like a school-window porthole. */}
-            <span
+            <motion.span
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.2, ease: [0.2, 0.7, 0.3, 1] }}
               className="relative inline-flex items-center justify-center"
               style={{
                 width: "clamp(150px, 26vw, 260px)",
@@ -83,21 +93,27 @@ export default function NotFound() {
                 }}
               />
               {!heroFailed ? (
-                <img
-                  src={heroCandidates[heroIdx]}
-                  alt="A 90s schoolbag, sneaking off mid-route"
-                  loading="eager"
-                  decoding="async"
-                  className="relative w-[78%] h-[78%] object-contain z-10"
-                  style={{ filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.25))" }}
-                  onError={() => {
-                    if (heroIdx + 1 < heroCandidates.length) {
-                      setHeroIdx(heroIdx + 1);
-                    } else {
-                      setHeroFailed(true);
-                    }
+                <span
+                  className="absolute inset-[10px] sm:inset-[14px] rounded-full overflow-hidden z-10"
+                  style={{
+                    boxShadow: "0 8px 16px -10px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(244,196,48,0.35)",
                   }}
-                />
+                >
+                  <img
+                    src={heroCandidates[heroIdx]}
+                    alt="A 90s schoolbag, sneaking off mid-route"
+                    loading="eager"
+                    decoding="async"
+                    className="w-full h-full object-cover object-center"
+                    onError={() => {
+                      if (heroIdx + 1 < heroCandidates.length) {
+                        setHeroIdx(heroIdx + 1);
+                      } else {
+                        setHeroFailed(true);
+                      }
+                    }}
+                  />
+                </span>
               ) : (
                 <span
                   aria-hidden
@@ -112,10 +128,18 @@ export default function NotFound() {
                 </span>
               )}
               {/* Paper plane drifting across the porthole */}
-              <PaperPlane className="absolute -top-3 -right-4 w-12 h-12 sm:w-16 sm:h-16 z-20 -rotate-[18deg]" />
-            </span>
+              <motion.div
+                animate={{ x: [0, 12, 0], y: [0, -8, 0], rotate: [-18, -20, -18] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <PaperPlane className="absolute -top-3 -right-4 w-12 h-12 sm:w-16 sm:h-16 z-20 -rotate-[18deg]" />
+              </motion.div>
+            </motion.span>
 
-            <span
+            <motion.span
+              initial={{ opacity: 0, scale: 0.8, rotate: 10 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ duration: 0.6, delay: 0.3, ease: [0.2, 0.7, 0.3, 1] }}
               className="font-black drop-shadow-[0_2px_0_rgba(255,255,255,0.45)]"
               style={{
                 color: "#2E8E4C",
@@ -123,60 +147,91 @@ export default function NotFound() {
               }}
             >
               4
-            </span>
+            </motion.span>
           </div>
 
           {/* Tagline */}
-          <h1
+          <motion.h1
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4, ease: [0.2, 0.7, 0.3, 1] }}
             className="mt-6 font-black tracking-tight text-[28px] sm:text-[40px] leading-tight"
             style={{ color: "#0E2D66" }}
           >
             Looks like this room
             <span className="block text-[#E54D0D]">ran off to play hide-&-seek</span>
-          </h1>
+          </motion.h1>
 
-          <p className="mt-3 text-[14px] sm:text-[16px] text-[#2A221B]/80 max-w-md mx-auto">
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5, ease: [0.2, 0.7, 0.3, 1] }}
+            className="mt-3 text-[14px] sm:text-[16px] text-[#2A221B]/80 max-w-md mx-auto"
+          >
             The link you followed doesn't lead to a game anymore. The room may
             have ended, or the code might have a typo. Head back home and pick a
             game, or paste the code again to join.
-          </p>
+          </motion.p>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/"
-              aria-label="Go back to BHALYAM home"
-              className="h-12 px-6 rounded-full inline-flex items-center gap-2 cursor-pointer
-                         bhalyam-gold-leaf text-[#2A221B] font-bold text-[15px]
-                         border border-bhalyam-gold-dark
-                         hover:brightness-[1.04] active:translate-y-px
-                         focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/70 focus:ring-offset-2 focus:ring-offset-[#F8EFDE]
-                         shadow-[0_6px_14px_-4px_rgba(228,177,40,0.55)]
-                         transition-all duration-200"
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6, ease: [0.2, 0.7, 0.3, 1] }}
+            className="mt-6 flex flex-wrap items-center justify-center gap-3"
+          >
+            <motion.div
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 320, damping: 22 }}
             >
-              <HomeIcon className="w-[18px] h-[18px]" />
-              Take me home
-            </Link>
+              <Link
+                to="/"
+                aria-label="Go back to BHALYAM home"
+                className="h-12 px-6 rounded-full inline-flex items-center gap-2 cursor-pointer
+                           bhalyam-gold-leaf bhalyam-cta-shine text-[#2A221B] font-bold text-[15px]
+                           border border-bhalyam-gold-dark
+                           hover:brightness-[1.04] active:translate-y-px
+                           focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/70 focus:ring-offset-2 focus:ring-offset-[#F8EFDE]
+                           shadow-[0_6px_14px_-4px_rgba(228,177,40,0.55)]
+                           transition-all duration-200"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <HomeIcon className="w-[18px] h-[18px]" />
+                  Take me home
+                </span>
+              </Link>
+            </motion.div>
 
-            <a
+            <motion.a
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 320, damping: 22 }}
               href="https://bhalyam.onrender.com"
               className="h-12 px-5 rounded-full inline-flex items-center gap-2 cursor-pointer
-                         bg-[#FCF8EF] border border-[#EEDCC2] shadow-sm
-                         text-[#2A221B] font-semibold text-[14px]
-                         hover:bg-[#F8EEDB] active:translate-y-px
+                         bg-[#F7E7CE] border border-[#D5B581] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.35)]
+                         text-[#5A3714] font-bold text-[14px]
+                         hover:bg-[#F2DDBD] active:translate-y-px
                          focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
-                         transition-colors duration-200"
+                         transition-colors duration-200 bhalyam-cta-shine"
               aria-label="Reload BHALYAM"
             >
-              <ReloadIcon className="w-[16px] h-[16px]" />
-              Reload BHALYAM
-            </a>
-          </div>
+              <span className="inline-flex items-center gap-2">
+                <ReloadIcon className="w-[16px] h-[16px]" />
+                Reload BHALYAM
+              </span>
+            </motion.a>
+          </motion.div>
 
           {/* Footer note — small marker on the page that this is a real BHALYAM page,
               not a generic server 404 from the host. */}
-          <div className="mt-10 text-[11px] uppercase tracking-[0.2em] text-[#5B534A]">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
+            className="mt-10 text-[11px] uppercase tracking-[0.2em] text-[#5B534A]"
+          >
             BHALYAM · Error 404
-          </div>
+          </motion.div>
         </div>
       </main>
     </div>

@@ -289,6 +289,12 @@ export default function RummyBoardMobile({
   // Animation state — fresh card just drawn, and discard pile pulse trigger.
   const [freshCardId, setFreshCardId] = useState<string | null>(null);
   const [discardPulseKey, setDiscardPulseKey] = useState(0);
+  // Joker celebration overlay. Fires when the newly drawn card is a wild
+  // joker (matches the round's wild rank) or a printed (special) joker.
+  // Auto-dismisses after 2.4 s so play resumes without a click.
+  const [jokerCelebration, setJokerCelebration] = useState<
+    null | { kind: "wild" | "printed"; id: number }
+  >(null);
 
   // Tutorial — auto-opens on first ever Rummy game (per browser).
   const [tutorialOpen, setTutorialOpen] = useState(() => !hasSeenTutorial());
@@ -309,21 +315,34 @@ export default function RummyBoardMobile({
   // to "playing") so the NEXT round's result will still appear.
   const [resultDismissed, setResultDismissed] = useState(false);
 
-  // Shuffle + deal opening animation. Shown once per round when the engine
-  // flips into "playing" (covers the very first deal and every subsequent
-  // pool/points re-deal). Auto-dismisses after the sequence finishes.
-  const [showDealAnim, setShowDealAnim] = useState(state.phase === "playing");
-  const prevPhaseForDealRef = useRef<string | null>(null);
+  // Two-phase opening animation — STRICTLY shown only when the player is
+  // actually starting the game. NOT on rejoin, refresh, mid-game arrival,
+  // or pool-mode round 2+.
+  //
+  // Signal: a sessionStorage flag `bhalyam.rummy.justStarted.<roomCode>`
+  // that the room sets at the moment of lobby → playing transition (see
+  // Room.tsx). RummyBoardMobile reads the flag exactly once on mount,
+  // immediately clears it, and only then schedules the shuffle/deal
+  // timers. Any subsequent state.phase change inside this mount cycle is
+  // ignored — no more accidental triggers.
+  const [dealStage, setDealStage] = useState<"idle" | "shuffle" | "deal">("idle");
   useEffect(() => {
-    const prev = prevPhaseForDealRef.current;
-    if (state.phase === "playing" && prev !== "playing") {
-      setShowDealAnim(true);
-      const t = setTimeout(() => setShowDealAnim(false), 3000);
-      prevPhaseForDealRef.current = state.phase;
-      return () => clearTimeout(t);
-    }
-    prevPhaseForDealRef.current = state.phase;
-  }, [state.phase]);
+    if (typeof window === "undefined" || !roomCode) return;
+    const key = `bhalyam.rummy.justStarted.${roomCode}`;
+    const flag = window.sessionStorage.getItem(key);
+    if (flag !== "1") return;
+    window.sessionStorage.removeItem(key);
+    if (state.phase !== "playing") return;
+    setDealStage("shuffle");
+    // 3 s shuffle + 3 s deal = 6 s total. During this window the overlay
+    // fully hides the felt + hand so the player can never see cards in
+    // their deck before the deal animation finishes.
+    window.setTimeout(() => setDealStage("deal"), 3000);
+    window.setTimeout(() => setDealStage("idle"), 6000);
+    // Intentionally [] — runs exactly once per mount, the flag is the
+    // single source of truth.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (state.phase === "playing") setResultDismissed(false);
   }, [state.phase]);
@@ -401,6 +420,18 @@ export default function RummyBoardMobile({
       setTimeout(() => {
         setFreshCardId((cur) => (cur === id ? null : cur));
       }, 800);
+      // If the new card is a joker, fire a celebration overlay. Printed
+      // jokers get a richer treatment because they're rarer than wild
+      // jokers (one round can have 8 wild-rank cards but only 4 printed
+      // jokers in the entire deck).
+      const drawnCard = byId.get(id);
+      if (drawnCard) {
+        if (drawnCard.isPrintedJoker) {
+          setJokerCelebration({ kind: "printed", id: Date.now() });
+        } else if (drawnCard.rank === wildRank) {
+          setJokerCelebration({ kind: "wild", id: Date.now() });
+        }
+      }
     }
     // Drop selection for cards no longer in hand
     setSelected((prev) => new Set([...prev].filter((id) => handSet.has(id))));
@@ -893,7 +924,17 @@ export default function RummyBoardMobile({
         ].join(", "),
       }}
     >
-      {showDealAnim && <RummyDealOverlay />}
+      {dealStage !== "idle" && (
+        <RummyDealOverlay stage={dealStage} playerCount={state.playerOrder.length} />
+      )}
+
+      {jokerCelebration && (
+        <JokerDrawCelebration
+          key={jokerCelebration.id}
+          kind={jokerCelebration.kind}
+          onDone={() => setJokerCelebration(null)}
+        />
+      )}
 
       {/* 20px top strip — Leave · RoomPill · Hamburger.
           Everything else is the felt. */}
@@ -974,11 +1015,12 @@ export default function RummyBoardMobile({
         </div>
       )}
 
-      {/* Action bar — normal flex child at the bottom of the felt. Since the
-          felt itself is viewport-locked with overflow-hidden, the bar is always
-          visible without any fixed-positioning gymnastics. The horizontal
-          padding keeps the buttons off the gold rim. */}
-      <div className="flex-shrink-0 max-w-2xl w-full mx-auto px-2 sm:px-6">
+      {/* Action bar — normal flex child at the bottom of the felt. The
+          felt has a ~13 px gold-rim inset boxShadow, so we need ≥16 px of
+          horizontal padding to keep the buttons clear of the rim on every
+          viewport. Phones get more relative padding because the felt is
+          full-width edge-to-edge there. */}
+      <div className="flex-shrink-0 max-w-2xl w-full mx-auto px-4 sm:px-8">
         <ActionBar
           canGroup={canGroup}
           canDiscard={canDiscardBtn}
@@ -2363,7 +2405,7 @@ function ActionBar({
 }) {
   if (iDropped) return null;
   return (
-    <div className="flex justify-center items-stretch flex-wrap gap-1.5 sm:gap-2 pt-1">
+    <div className="flex justify-center items-stretch flex-wrap gap-1 sm:gap-2 pt-1 w-full">
       <ActionButton
         label="DROP"
         emoji="⏏"
@@ -2432,7 +2474,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={!enabled}
-      className={`px-2 sm:px-3 ${big ? "py-1.5 sm:py-2 text-xs sm:text-sm" : "py-1 sm:py-1.5 text-[11px] sm:text-xs"} rounded-md font-extrabold uppercase tracking-wider transition flex items-center gap-1 select-none`}
+      className={`px-1.5 sm:px-3 ${big ? "py-1.5 sm:py-2 text-xs sm:text-sm" : "py-1 sm:py-1.5 text-[10px] sm:text-xs"} rounded-md font-extrabold uppercase tracking-wider transition flex items-center gap-1 select-none whitespace-nowrap flex-shrink-0`}
       style={{
         background: enabled
           ? `linear-gradient(180deg, ${color} 0%, ${shade(color, -0.25)} 100%)`
@@ -3293,42 +3335,103 @@ function RummyCelebrationOverlay({ onLeave }: { onLeave: () => void }) {
 }
 
 /**
- * Shuffle + deal opener shown at the start of every Rummy round.
+ * Two-phase Rummy opening sequence.
  *
- * Sequence (~3 s, then auto-removed by the caller):
- *   0.0 - 1.2 s   Centre deck riffles — two stacked face-down packs
- *                 oscillate in a shuffle motion.
- *   1.0 - 2.0 s   The shuffle settles and cards fan out radially toward
- *                 every edge of the felt (player seats).
- *   2.4 - 3.0 s   The overlay quietly fades so the game board takes over.
+ * Stage "shuffle" (5 s):
+ *   The table is visible underneath, dimmed. Two stacked face-down packs
+ *   riffle across each other in the centre with an exaggerated motion so
+ *   the player can see "the dealer is shuffling". A gold pill labels the
+ *   phase as "Shuffling deck…".
  *
- * Pure CSS — keyframes live in index.css so this component is just markup
- * + a few inline transform vars per card. No external library.
+ * Stage "deal" (3 s):
+ *   The riffle stops, the centre deck stays in place, and 13 face-down
+ *   cards fly outward from the centre toward player seats with a staggered
+ *   220 ms cadence so the deal reads as "to each player". Banner switches
+ *   to "Dealing 13 cards…". The whole overlay quietly fades in the last
+ *   600 ms so the game board takes over without a jolt.
+ *
+ * Driven by the parent's `dealStage` state so the timings stay deterministic
+ * (not coupled to CSS animation-delay).
  */
-function RummyDealOverlay() {
-  const fanCards = Array.from({ length: 13 }, (_, i) => {
-    const t = i / 12;
-    const angle =
-      Math.PI * (0.15 + t * 0.7) + (i % 2 === 0 ? 0 : Math.PI);
-    const radius = 220 + (i % 3) * 35;
-    const dx = Math.cos(angle) * radius;
-    const dy = Math.abs(Math.sin(angle)) * (radius * 0.55) + 30;
-    const rot = (i * 23) % 80 - 40;
+function RummyDealOverlay({
+  stage,
+  playerCount,
+}: {
+  stage: "shuffle" | "deal";
+  playerCount: number;
+}) {
+  // Number of seats — clamp 2..6 so single-player practice doesn't break
+  // and pool-mode 6-player tables still get a clean visual.
+  const N = Math.max(2, Math.min(6, playerCount));
+
+  // Seat positions in CSS pixels relative to the centre deck. Self at the
+  // bottom; other players spread evenly clockwise. Standard math angles —
+  // we offset by 90° so seat 0 lands at +y (bottom of the felt).
+  const RADIUS = 280;
+  const seats = Array.from({ length: N }, (_, i) => {
+    const angle = Math.PI / 2 + (i * 2 * Math.PI) / N;
     return {
-      dx: `${dx.toFixed(0)}px`,
-      dy: `${dy.toFixed(0)}px`,
-      rot: `${rot}deg`,
-      delay: `${1000 + i * 70}ms`,
+      dx: Math.cos(angle) * RADIUS,
+      // sin is + for bottom in CSS coords. Slight vertical squash so
+      // top/bottom seats don't sit too far off the felt (most felts are
+      // wider than tall).
+      dy: Math.sin(angle) * RADIUS * 0.78,
     };
   });
 
+  // Real Indian Rummy deals 13 cards to each player in a single rotation,
+  // one card per player per pass. Visually we want every seat to receive
+  // its share so the player can "count" the deal — 13 cards × N seats =
+  // up to 78 cards total, which we cap at 52 for tabling visibility on
+  // the 6-player case. The cap only kicks in for N > 4.
+  const CARDS_PER_SEAT = N <= 4 ? 13 : Math.floor(52 / N); // 13/13/13/13/10/8
+  const TOTAL_CARDS = CARDS_PER_SEAT * N;
+
+  // Total deal window is 2.4 s (we keep 600 ms at the end for the
+  // overlay fade). Cards are dealt in round-robin order so each seat
+  // gets its first card, then second, etc., mirroring how a real dealer
+  // distributes.
+  const DEAL_WINDOW_MS = 2400;
+  const fanCards = Array.from({ length: TOTAL_CARDS }, (_, i) => {
+    const seatIdx = i % N;
+    const round = Math.floor(i / N);
+    const seat = seats[seatIdx];
+    // Stack the cards at each seat with tiny jitter so it reads as a
+    // pile rather than perfectly overlapping rectangles.
+    const jitterX = ((round * 17 + seatIdx * 11) % 18) - 9;
+    const jitterY = ((round * 13 + seatIdx * 7) % 14) - 7;
+    const rot = ((round * 23 + seatIdx * 19) % 70) - 35;
+    return {
+      dx: `${(seat.dx + jitterX).toFixed(0)}px`,
+      dy: `${(seat.dy + jitterY).toFixed(0)}px`,
+      rot: `${rot}deg`,
+      delay: `${Math.round((i / TOTAL_CARDS) * DEAL_WINDOW_MS)}ms`,
+    };
+  });
+
+  const banner =
+    stage === "shuffle"
+      ? "Shuffling deck…"
+      : `Dealing 13 cards to ${N} player${N === 1 ? "" : "s"}…`;
+
   return (
     <div
-      className="absolute inset-0 z-[55] pointer-events-none rummy-deal-fade-out"
-      aria-hidden
+      // `pointer-events: auto` (default for div) blocks ALL clicks on the
+      // felt and hand beneath while the overlay is up — no taps can sneak
+      // through to draw/discard until the deal sequence finishes.
+      className={`absolute inset-0 z-[55] ${
+        stage === "deal" ? "rummy-deal-fade-late" : ""
+      }`}
+      role="status"
+      aria-live="polite"
+      aria-label="Shuffling and dealing — please wait"
+      onClick={(e) => e.preventDefault()}
       style={{
+        // Fully opaque felt gradient — identical to the table felt below,
+        // so the player sees a clean green table during shuffle, not a
+        // dimmed view of their cards. Cards are completely hidden.
         background:
-          "radial-gradient(ellipse at center, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.75) 70%)",
+          "radial-gradient(ellipse at 50% 38%, #1a8c4a 0%, #0d5e2e 55%, #052e16 95%)",
       }}
     >
       <div
@@ -3342,39 +3445,46 @@ function RummyDealOverlay() {
           animationDelay: "0ms",
         }}
       >
-        Shuffling &amp; dealing…
+        {banner}
       </div>
 
+      {/* Centre deck — visible during both stages. During "shuffle" the two
+          stacked packs riffle opposite directions; during "deal" they sit
+          still as the source of the flying cards. */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         <div className="relative w-[64px] h-[88px] sm:w-[72px] sm:h-[100px]">
-          <div className="absolute inset-0 rummy-deck-shuffle">
+          <div className={`absolute inset-0 ${stage === "shuffle" ? "rummy-deck-shuffle" : ""}`}>
             <FaceDownDealCard />
           </div>
-          <div className="absolute inset-0 rummy-deck-shuffle-alt">
+          <div className={`absolute inset-0 ${stage === "shuffle" ? "rummy-deck-shuffle-alt" : ""}`}>
             <FaceDownDealCard />
           </div>
         </div>
       </div>
 
-      <div className="absolute top-1/2 left-1/2">
-        {fanCards.map((c, i) => (
-          <div
-            key={i}
-            className="rummy-deal-fly absolute -translate-x-1/2 -translate-y-1/2"
-            style={
-              {
-                "--dx": c.dx,
-                "--dy": c.dy,
-                "--rot": c.rot,
-                animationDelay: c.delay,
-                animationFillMode: "forwards",
-              } as React.CSSProperties
-            }
-          >
-            <FaceDownDealCard />
-          </div>
-        ))}
-      </div>
+      {/* Deal flight — only renders during the deal stage so the cards
+          start animating exactly when the riffle finishes. */}
+      {stage === "deal" && (
+        <div className="absolute top-1/2 left-1/2">
+          {fanCards.map((c, i) => (
+            <div
+              key={i}
+              className="rummy-deal-fly absolute -translate-x-1/2 -translate-y-1/2"
+              style={
+                {
+                  "--dx": c.dx,
+                  "--dy": c.dy,
+                  "--rot": c.rot,
+                  animationDelay: c.delay,
+                  animationFillMode: "forwards",
+                } as React.CSSProperties
+              }
+            >
+              <FaceDownDealCard />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -3399,6 +3509,152 @@ function FaceDownDealCard() {
           border: "1px solid rgba(251,191,36,0.4)",
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * Joker draw celebration — fires when the player draws a wild-rank card
+ * (the round's wild joker) or a printed joker. Distinct from the existing
+ * `rummy-card-arrive` animation on the card itself, this overlay is a
+ * full-felt flash centred on a "JOKER!" banner so the player can't miss
+ * the win. Auto-dismisses after ~2.4 s.
+ *
+ * Wild joker  → amber/gold palette, "JOKER!" label
+ * Printed joker → violet/gold palette, "SPECIAL JOKER!" label (rarer, so
+ * the visual sells the rarity).
+ */
+function JokerDrawCelebration({
+  kind,
+  onDone,
+}: {
+  kind: "wild" | "printed";
+  onDone: () => void;
+}) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2400);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  const isPrinted = kind === "printed";
+  const palette = isPrinted
+    ? {
+        bg: "radial-gradient(ellipse at center, rgba(124,58,237,0.32) 0%, rgba(0,0,0,0.62) 70%)",
+        ringFrom: "#FDE68A",
+        ringMid:  "#F59E0B",
+        ringEnd:  "#7C3AED",
+        labelTop: "Special Joker!",
+        labelBig: "★ JOKER ★",
+        sub:      "A rare one — keep it safe.",
+      }
+    : {
+        bg: "radial-gradient(ellipse at center, rgba(245,158,11,0.32) 0%, rgba(0,0,0,0.55) 70%)",
+        ringFrom: "#FEF3C7",
+        ringMid:  "#F59E0B",
+        ringEnd:  "#B45309",
+        labelTop: "Wild Joker!",
+        labelBig: "JOKER",
+        sub:      "Drop it into a meld where it belongs.",
+      };
+
+  // Burst of small star sparkles around the badge.
+  const sparkles = Array.from({ length: 14 }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / 14;
+    const r = 140 + (i % 3) * 30;
+    return {
+      dx: Math.cos(angle) * r,
+      dy: Math.sin(angle) * r,
+      rot: (i * 31) % 360,
+      delay: 80 + i * 35,
+    };
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-[58] pointer-events-none flex items-center justify-center"
+      role="status"
+      aria-live="polite"
+      aria-label={`${palette.labelTop} drawn`}
+    >
+      <div className="absolute inset-0 hc-fade-late" style={{ background: palette.bg }} />
+
+      {/* Sparkle burst — small gold stars fly outward */}
+      <div className="absolute" style={{ width: 0, height: 0 }} aria-hidden>
+        {sparkles.map((s, i) => (
+          <span
+            key={i}
+            className="absolute font-black"
+            style={{
+              left: 0,
+              top: 0,
+              transform: `translate(${s.dx}px, ${s.dy}px) rotate(${s.rot}deg)`,
+              color: palette.ringMid,
+              fontSize: 18 + (i % 3) * 4,
+              textShadow: `0 0 8px ${palette.ringMid}, 0 0 14px ${palette.ringEnd}`,
+              opacity: 0,
+              animation: "hc-celebrate-pop 700ms cubic-bezier(.34,1.56,.64,1) forwards",
+              animationDelay: `${s.delay}ms`,
+            }}
+          >
+            ★
+          </span>
+        ))}
+      </div>
+
+      {/* Badge — pulsing gold ring + Big Label */}
+      <div className="relative hc-celebrate-pop text-center" style={{ filter: "drop-shadow(0 18px 36px rgba(0,0,0,0.55))" }}>
+        <div
+          className="absolute inset-0 hc-rays-spin -z-10 mx-auto"
+          aria-hidden
+          style={{
+            width: "min(120vw, 720px)",
+            height: "min(120vw, 720px)",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            background: `conic-gradient(from 0deg,
+              ${palette.ringMid}00 0deg, ${palette.ringMid}88 30deg, ${palette.ringMid}00 60deg,
+              ${palette.ringMid}88 90deg, ${palette.ringMid}00 120deg, ${palette.ringMid}88 150deg,
+              ${palette.ringMid}00 180deg, ${palette.ringMid}88 210deg, ${palette.ringMid}00 240deg,
+              ${palette.ringMid}88 270deg, ${palette.ringMid}00 300deg, ${palette.ringMid}88 330deg,
+              ${palette.ringMid}00 360deg)`,
+            filter: "blur(10px)",
+            opacity: 0.65,
+          }}
+        />
+
+        <div
+          className="text-[12px] sm:text-[14px] uppercase tracking-[0.3em] font-extrabold mb-1"
+          style={{ color: palette.ringFrom }}
+        >
+          ✦ You just drew ✦
+        </div>
+        <div
+          className="bhalyam-display font-black tracking-tight leading-none uppercase"
+          style={{
+            fontSize: "clamp(54px, 14vw, 124px)",
+            background: `linear-gradient(180deg, ${palette.ringFrom} 0%, ${palette.ringMid} 55%, ${palette.ringEnd} 100%)`,
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+            letterSpacing: "0.04em",
+          }}
+        >
+          {palette.labelBig}
+        </div>
+        <div
+          className="text-[11px] sm:text-[13px] uppercase tracking-[0.18em] font-extrabold mt-3"
+          style={{ color: palette.ringFrom }}
+        >
+          {palette.labelTop}
+        </div>
+        <div
+          className="text-[12px] sm:text-[14px] mt-2 font-medium"
+          style={{ color: "rgba(255,247,225,0.85)" }}
+        >
+          {palette.sub}
+        </div>
+      </div>
     </div>
   );
 }
