@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
+import { RevealOnScroll, RevealItem } from "../components/RevealOnScroll";
+import GsapSplitHeadline from "../components/GsapSplitHeadline";
+import CountUp from "../components/CountUp";
 import { useTheme } from "../lib/useTheme";
+import { tileHover, ctaPress, bhalyamSpring } from "../lib/motion";
 import {
   BHALYAM_GAMES,
   type BhalyamGameCard,
@@ -176,22 +181,35 @@ function JoinRoomButton({
   compact?: boolean;
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
+      variants={ctaPress}
+      initial="rest"
+      whileHover="hover"
+      whileTap="tap"
+      transition={bhalyamSpring}
       aria-label="Join a room with a code"
       className={`${compact ? "h-10 px-3.5 text-[13px]" : "h-11 px-5 text-[14px]"}
                   rounded-full inline-flex items-center gap-2 cursor-pointer
-                  bhalyam-gold-leaf text-bhalyam-wood-dark font-bold
+                  bhalyam-gold-leaf bhalyam-cta-shine text-bhalyam-wood-dark font-bold
                   border border-bhalyam-gold-dark
-                  hover:brightness-[1.04] active:translate-y-px
+                  hover:brightness-[1.04]
                   focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/70 focus:ring-offset-2 focus:ring-offset-bhalyam-cream-soft
                   shadow-[0_4px_10px_-3px_rgba(228,177,40,0.55)]
-                  transition-all duration-200`}
+                  transition-[filter,box-shadow] duration-200`}
     >
       <DoorPlusIcon className={compact ? "w-4 h-4" : "w-[18px] h-[18px]"} />
-      Join Room
-    </button>
+      <span>Join Room</span>
+    </motion.button>
+  );
+}
+
+function WhatsappGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 2.1.55 4.14 1.6 5.95L2 22l4.27-1.12a9.91 9.91 0 004.77 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.51 2 12.04 2zm0 18.13c-1.49 0-2.95-.4-4.22-1.15l-.3-.18-2.53.66.68-2.47-.2-.32a7.99 7.99 0 01-1.23-4.26c0-4.41 3.59-8 8-8 4.41 0 8 3.59 8 8s-3.59 8-8 8zm4.39-5.99c-.24-.12-1.41-.7-1.63-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.02-.37.1-.49.1-.1.24-.27.36-.4.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.46-.4-.4-.54-.41h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2 0 1.18.86 2.32.98 2.48.12.16 1.7 2.6 4.13 3.64.58.25 1.03.4 1.38.51.58.18 1.11.16 1.53.1.47-.07 1.41-.58 1.61-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28z"/>
+    </svg>
   );
 }
 
@@ -237,7 +255,11 @@ function Hero() {
   const [heroImage, setHeroImage] = useState("/bhalyam-hero-clean.png");
 
   return (
-    <section className="pt-2 pb-6 sm:pt-3 sm:pb-8">
+    <RevealOnScroll
+      as="section"
+      amount={0.05}
+      className="pt-2 pb-6 sm:pt-3 sm:pb-8"
+    >
       <div
         className="relative overflow-hidden rounded-[30px] border border-[#E2D3BA]
                    shadow-[0_14px_26px_-18px_rgba(74,44,22,0.4)] min-h-[200px] sm:min-h-auto"
@@ -245,7 +267,7 @@ function Hero() {
         <img
           src={heroImage}
           alt="A wooden desk full of 90s Indian childhood memorabilia"
-          className="absolute inset-0 w-full h-full object-cover object-right"
+          className="bhalyam-hero-drift absolute inset-0 w-full h-full object-cover object-right"
           loading="eager"
           decoding="async"
           onError={() => {
@@ -256,37 +278,79 @@ function Hero() {
         />
 
         <div className="relative z-10 min-h-[360px] sm:min-h-[430px] lg:min-h-[470px] px-5 sm:px-7 lg:px-8 py-5 sm:py-6 hidden sm:flex items-start">
-          <div className="max-w-[320px] sm:max-w-[360px] md:max-w-[390px]">
-            <div className="text-[12px] sm:text-[13px] uppercase tracking-wider font-extrabold text-[#7B2F0E]">
-              Welcome to the adda
-            </div>
-            <h1 className="mt-1 leading-[0.92] font-black tracking-tight text-[#0E2D66] text-[36px] sm:text-[52px] md:text-[58px] drop-shadow-[0_1px_0_rgba(255,255,255,0.45)]">
-              <span className="block">Ready to</span>
-              <span className="block text-[#E54D0D]">relive</span>
-              <span className="block">your</span>
-              <span className="block text-[#2E8E4C]">childhood?</span>
-            </h1>
-            <p className="mt-4 max-w-[340px] text-[14px] sm:text-[17px] leading-[1.32] text-[#2E231B] font-medium">
+          <div className="max-w-[340px] sm:max-w-[390px] md:max-w-[420px]">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.2, 0.7, 0.3, 1] }}
+              className="text-[12px] sm:text-[13px] uppercase tracking-[0.22em] font-extrabold text-[#7B2F0E]"
+            >
+              ✦ Welcome to the adda ✦
+            </motion.div>
+
+            {/* GSAP character-by-character headline reveal — uses the
+                Righteous display font for that entertainment-poster feel,
+                tri-tone colors echoing the brand orange/red/green. */}
+            <GsapSplitHeadline
+              className="mt-2 bhalyam-display tracking-tight text-[36px] sm:text-[52px] md:text-[60px] drop-shadow-[0_1px_0_rgba(255,255,255,0.45)]"
+              lineClassName="leading-[0.95]"
+              charStagger={0.022}
+              lineDelay={0.16}
+              lines={[
+                { text: "Ready to",  className: "text-[#0E2D66]" },
+                { text: "relive",    className: "bhalyam-gradient-text" },
+                { text: "your",      className: "text-[#0E2D66]" },
+                { text: "childhood?", className: "text-[#2E8E4C]" },
+              ]}
+            />
+
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.85, ease: [0.2, 0.7, 0.3, 1] }}
+              className="mt-4 max-w-[360px] text-[14px] sm:text-[17px] leading-[1.4] text-[#2E231B] font-medium"
+            >
               Pick a game, send the room code to your school WhatsApp group,
               and play instantly.
-            </p>
+            </motion.p>
 
-            <button
-              type="button"
-              className="mt-5 sm:mt-6 min-h-[52px] sm:min-h-[56px] pl-5 pr-3 rounded-full border border-[#E7D9C1] bg-[#FFF8EE]
-                         shadow-[0_8px_16px_-12px_rgba(0,0,0,0.35)]
-                         inline-flex items-center justify-between gap-4 max-w-[330px] sm:max-w-[360px] w-full"
+            {/* Handwritten Caveat accent — the "school slate" feel asked for
+                by the ui-ux-pro-max Handwritten Charm pairing. */}
+            <motion.p
+              initial={{ opacity: 0, rotate: -2 }}
+              animate={{ opacity: 1, rotate: -1.5 }}
+              transition={{ duration: 0.6, delay: 1.05, ease: [0.34, 1.56, 0.64, 1] }}
+              className="bhalyam-script text-[#7B2F0E] text-[22px] sm:text-[28px] mt-2"
             >
-              <span className="text-left text-[13px] sm:text-[20px] leading-[1.02] font-extrabold text-[#2A221B]">
-                Bring your school gang
-                <span className="block">back together!</span>
+              ~ Bring your school gang back together!
+            </motion.p>
+
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 1.15, ease: [0.2, 0.7, 0.3, 1] }}
+              whileHover={{ scale: 1.03, y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              className="mt-5 sm:mt-6 min-h-[52px] sm:min-h-[56px] pl-5 pr-3 rounded-full border border-[#E7D9C1] bg-[#FFF8EE]
+                         shadow-[0_8px_16px_-12px_rgba(0,0,0,0.35)] cursor-pointer
+                         inline-flex items-center justify-between gap-4 max-w-[340px] sm:max-w-[380px] w-full
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/70"
+            >
+              <span className="text-left text-[13px] sm:text-[19px] leading-[1.05] font-extrabold text-[#2A221B]">
+                Share on WhatsApp
+                <span className="block text-[#5C4A38] font-semibold text-[11px] sm:text-[13px] mt-0.5">
+                  Send the code in seconds
+                </span>
               </span>
-              <span className="w-10 h-10 rounded-full bg-[#25D366] border-2 border-white/65 inline-flex items-center justify-center" aria-hidden />
-            </button>
+              <span className="w-10 h-10 rounded-full bg-[#25D366] border-2 border-white/65 inline-flex items-center justify-center" aria-hidden>
+                <WhatsappGlyph className="w-5 h-5 text-white" />
+              </span>
+            </motion.button>
           </div>
         </div>
       </div>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -295,28 +359,45 @@ function Hero() {
 function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
   return (
     <section className="pb-12 sm:pb-14">
-      <header className="mb-3 sm:mb-4 flex items-end justify-between gap-3">
+      <RevealOnScroll
+        as="header"
+        className="mb-3 sm:mb-4 flex items-end justify-between gap-3"
+      >
         <div>
-          <h2 className="font-black text-[#1D2C4A] text-[24px] sm:text-[42px] leading-tight">
-            Pick a game
+          <h2 className="bhalyam-display text-[#1D2C4A] text-[28px] sm:text-[44px] leading-tight">
+            <span className="bhalyam-underline">Pick a game</span>
           </h2>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#EA5A1F] border border-[#F2D5A9]">
+        <motion.span
+          initial={{ opacity: 0, scale: 0.85 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ ...bhalyamSpring, delay: 0.15 }}
+          className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#EA5A1F] border border-[#F2D5A9] shadow-[0_4px_10px_-3px_rgba(234,90,31,0.45)]"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-[#EA5A1F] animate-pulse" aria-hidden />
           Most Played Today
-        </span>
-      </header>
+        </motion.span>
+      </RevealOnScroll>
 
-      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+      <RevealOnScroll
+        as="ul"
+        staggerChildren
+        amount={0.08}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
+      >
         {BHALYAM_GAMES.map((game) => (
-          <li key={game.slug}>
-            <GameTile
-              game={game}
-              onSelect={() => onSelect(game.slug)}
-              compact
-            />
-          </li>
+          <RevealItem key={game.slug}>
+            <li>
+              <GameTile
+                game={game}
+                onSelect={() => onSelect(game.slug)}
+                compact
+              />
+            </li>
+          </RevealItem>
         ))}
-      </ul>
+      </RevealOnScroll>
     </section>
   );
 }
@@ -358,25 +439,36 @@ function GameTile({
 
   const underMaintenance = game.maintenance === true;
 
+  // Accent-tinted glow color for the hover shadow — pulled from the tile's
+  // gradient end-stop so each tile glows in its own brand color.
+  const tileGlowVar = { ["--tile-glow" as string]: `${game.accent.to}aa` } as React.CSSProperties;
+
   return (
-    <button
+    <motion.button
       type="button"
       onClick={underMaintenance ? undefined : onSelect}
       disabled={underMaintenance}
+      variants={underMaintenance ? undefined : tileHover}
+      initial="rest"
+      whileHover={underMaintenance ? undefined : "hover"}
+      whileTap={underMaintenance ? undefined : "tap"}
+      transition={bhalyamSpring}
       className={`group relative w-full ${compact ? "min-h-[220px]" : "min-h-[170px]"}
                  rounded-[22px] overflow-hidden text-left p-4 sm:p-5
                  flex flex-col gap-3
                  border border-[#F4D6B7]
-                 ${underMaintenance
-                   ? "cursor-not-allowed opacity-90"
-                   : "active:scale-[0.97] bhalyam-press-feedback"}
-                 transition-all duration-200
-                 shadow-[0_13px_24px_-14px_rgba(74,44,22,0.45)] ${className ?? ""}`}
+                 cursor-pointer
+                 focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bhalyam-cream-soft
+                 ${underMaintenance ? "cursor-not-allowed opacity-90" : "hover:shadow-[0_18px_32px_-14px_var(--tile-glow),_0_8px_18px_-8px_rgba(0,0,0,0.45)]"}
+                 shadow-[0_13px_24px_-14px_rgba(74,44,22,0.45)]
+                 transition-shadow duration-200
+                 ${className ?? ""}`}
       style={{
         background: underMaintenance
           ? `linear-gradient(145deg, ${game.accent.from}99, ${game.accent.to}99)`
           : `linear-gradient(145deg, ${game.accent.from}, ${game.accent.to})`,
         color: "#FFF7E7",
+        ...tileGlowVar,
       }}
       aria-label={underMaintenance ? `${game.title} — under maintenance` : `Play ${game.title}`}
       aria-disabled={underMaintenance || undefined}
@@ -441,7 +533,7 @@ function GameTile({
           </span>
         )}
       </div>
-    </button>
+    </motion.button>
   );
 }
 
@@ -480,42 +572,73 @@ function GameTileArt({
 }
 
 function StatsStrip() {
-  const items = [
-    { icon: "O", metric: "12,543", label: "Kids Reliving Childhood Today", tone: "#F6A23A" },
-    { icon: "T", metric: "98,765", label: "Games Played This Week", tone: "#F2C14E" },
-    { icon: "*", metric: "250+", label: "School Groups Connected", tone: "#9277E8" },
-    { icon: "<3", metric: "Made with love", label: "for 90s kids", tone: "#F27373" },
+  const items: {
+    icon: string;
+    metric: string;
+    label: string;
+    tone: string;
+    countTo?: number;
+    suffix?: string;
+  }[] = [
+    { icon: "O",  metric: "12543",        label: "Kids Reliving Childhood Today", tone: "#F6A23A", countTo: 12543 },
+    { icon: "T",  metric: "98765",        label: "Games Played This Week",        tone: "#F2C14E", countTo: 98765 },
+    { icon: "*",  metric: "250",          label: "School Groups Connected",       tone: "#9277E8", countTo: 250, suffix: "+" },
+    { icon: "<3", metric: "Made with love", label: "for 90s kids",                tone: "#F27373" },
   ];
 
   return (
-    <section className="mt-4 rounded-3xl border border-[#E8D8BE] bg-[#F8EEDB] px-3 sm:px-5 py-3 sm:py-4">
+    <RevealOnScroll
+      as="section"
+      amount={0.2}
+      className="mt-4 rounded-3xl border border-[#E8D8BE] bg-[#F8EEDB] px-3 sm:px-5 py-3 sm:py-4"
+    >
       <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {items.map((item, index) => (
-          <li
+          <motion.li
             key={item.metric}
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.45, delay: index * 0.08, ease: [0.2, 0.7, 0.3, 1] }}
             className={`flex items-center gap-2 sm:gap-2.5 ${index > 0 ? "lg:border-l lg:border-[#EBDDC7] lg:pl-4" : ""}`}
           >
-            <span
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full inline-flex items-center justify-center text-white font-bold text-[11px] sm:text-[12px]"
-              style={{ backgroundColor: item.tone }}
+            <motion.span
+              whileHover={{ scale: 1.12, rotate: -6 }}
+              transition={bhalyamSpring}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full inline-flex items-center justify-center text-white font-bold text-[11px] sm:text-[12px] cursor-default"
+              style={{
+                backgroundColor: item.tone,
+                boxShadow: `0 4px 12px -3px ${item.tone}99`,
+              }}
               aria-hidden
             >
               {item.icon}
-            </span>
+            </motion.span>
             <span className="leading-tight">
-              <span className="block text-[#2FA25A] font-black text-[18px] sm:text-[30px]">{item.metric}</span>
+              <span className="block text-[#2FA25A] font-black text-[18px] sm:text-[30px] tabular-nums">
+                {item.countTo != null ? (
+                  <CountUp to={item.countTo} suffix={item.suffix ?? ""} />
+                ) : (
+                  item.metric
+                )}
+              </span>
               <span className="block text-[#677080] text-[10px] sm:text-[14px]">{item.label}</span>
             </span>
-          </li>
+          </motion.li>
         ))}
       </ul>
-    </section>
+    </RevealOnScroll>
   );
 }
 
 function MiddlePanels() {
   return (
-    <section className="middle-panels mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+    <RevealOnScroll
+      as="section"
+      staggerChildren
+      amount={0.1}
+      className="middle-panels mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch"
+    >
       <article className="rounded-2xl border border-[#E8D9C1] bg-[#F5ECE0] p-4 sm:p-5">
         <div className="flex items-center gap-2.5">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#D8C4A3] bg-[#FBF4E8] text-[15px]" aria-hidden>
@@ -594,7 +717,7 @@ function MiddlePanels() {
           Invite on WhatsApp
         </button>
       </article>
-    </section>
+    </RevealOnScroll>
   );
 }
 
@@ -731,7 +854,25 @@ function UtilityStrip() {
   ];
 
   return (
-    <section
+    <UtilityStripBody entries={entries} />
+  );
+}
+
+function UtilityStripBody({
+  entries,
+}: {
+  entries: {
+    src: string;
+    title: string;
+    blurb: string;
+    imgClassName: string;
+  }[];
+}) {
+  return (
+    <RevealOnScroll
+      as="section"
+      staggerChildren
+      amount={0.15}
       className="mt-4 rounded-3xl border border-[#E6D4B7] bg-[#F8EFDE]
                  px-4 sm:px-6 py-3 sm:py-4
                  shadow-[0_10px_18px_-16px_rgba(63,38,19,0.35)]"
@@ -761,7 +902,7 @@ function UtilityStrip() {
           </li>
         ))}
       </ul>
-    </section>
+    </RevealOnScroll>
   );
 }
 

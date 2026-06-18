@@ -84,8 +84,15 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Fredoka', 'system-ui', 'sans-serif'],
-        body:    ['Nunito', 'system-ui', 'sans-serif'],
+        // BHALYAM type system, chosen via ui-ux-pro-max skill:
+        //   display → Righteous (Music/Entertainment pairing — bold, energetic)
+        //   sans/body → Poppins (existing brand body voice)
+        //   script → Caveat (handwritten nostalgia accent — "Bring your gang back")
+        //   mono → JetBrains Mono (kept for room codes / chat timestamps)
+        display: ['Righteous', 'system-ui', 'sans-serif'],
+        sans:    ['Poppins', 'system-ui', 'sans-serif'],
+        script:  ['Caveat', 'cursive'],
+        body:    ['Poppins', 'system-ui', 'sans-serif'],
         mono:    ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       borderRadius: {
@@ -108,6 +115,17 @@ export default {
       },
       backgroundImage: {
         "felt": "radial-gradient(ellipse at center, #0f5f43 0%, #064e3b 55%, #022c22 100%)",
+        // Vibrant gradient accents from ui-ux-pro-max — used by hero
+        // sections, CTAs, and section dividers. All anchored to the brand
+        // orange #EA5A1F so they coexist with the paper/wood/gold base.
+        "bhalyam-sunset": "linear-gradient(135deg, #EA5A1F 0%, #F4C430 100%)",
+        "bhalyam-ember":  "linear-gradient(135deg, #E11D48 0%, #EA5A1F 60%, #F4C430 100%)",
+        "bhalyam-festival": "linear-gradient(135deg, #7C3AED 0%, #E11D48 50%, #F97316 100%)",
+        "bhalyam-mint":   "linear-gradient(135deg, #10B981 0%, #34D399 100%)",
+        "bhalyam-royal":  "linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #60A5FA 100%)",
+        "bhalyam-gold-leaf": "linear-gradient(135deg, #F4C430 0%, #E4B128 45%, #B38918 100%)",
+        // Subtle vintage paper grain — light parchment with brown speckle.
+        "bhalyam-parchment": "radial-gradient(rgba(166, 124, 82, 0.10) 1px, transparent 1px), radial-gradient(rgba(255, 224, 178, 0.06) 1px, transparent 1px), linear-gradient(135deg, #FCF4DA 0%, #F2DFA8 100%)",
       },
       spacing: {
         18: "4.5rem",
