@@ -3,15 +3,16 @@ import { getSocket } from "../lib/socket";
 
 import type { LudoColor } from "@shared/types";
 
+// Only the four cardinal colors render on the standard Ludo board. Earlier
+// the picker also offered purple/cyan/orange/brown, but board-layout stubs
+// those to red's coordinates, which meant picking one made your yard
+// invisible and stacked your tokens under red's tokens. The polygon-board
+// variant (5+ players) accepts more colors, but its UI lives elsewhere.
 const COLORS: { id: LudoColor; label: string; hex: string }[] = [
   { id: "red", label: "Red", hex: "#ef4444" },
   { id: "green", label: "Green", hex: "#10b981" },
   { id: "yellow", label: "Yellow", hex: "#f59e0b" },
   { id: "blue", label: "Blue", hex: "#3b82f6" },
-  { id: "purple", label: "Purple", hex: "#a855f7" },
-  { id: "cyan", label: "Cyan", hex: "#06b6d4" },
-  { id: "orange", label: "Orange", hex: "#f97316" },
-  { id: "brown", label: "Brown", hex: "#92400e" },
 ];
 
 export default function LudoColorPicker({

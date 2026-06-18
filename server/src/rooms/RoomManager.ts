@@ -394,10 +394,13 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot change color during game");
       return;
     }
-    const validColors: string[] = [
-      "red", "green", "yellow", "blue",
-      "purple", "cyan", "orange", "brown",
-    ];
+    // The standard Ludo board only paints four cardinal yards (red / green
+    // / yellow / blue). Earlier this also accepted purple / cyan / orange /
+    // brown, but those fell through to red's coordinates in board-layout,
+    // so a player who picked one ended up with an invisible yard and four
+    // tokens rendered under the red player's tokens. Lock the picker to
+    // the four supported colors instead.
+    const validColors: string[] = ["red", "green", "yellow", "blue"];
     if (!validColors.includes(color)) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Invalid color");
       return;

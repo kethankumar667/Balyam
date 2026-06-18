@@ -76,10 +76,16 @@ export class LudoEngine implements GameEngine {
     const colorOf = new Map<string, LudoColor>();
     const tokens = new Map<string, LudoToken[]>();
     // First pass: assign colors players explicitly chose (first-come stays).
+    // Only the four cardinal colors render on the standard 4-yard board, so
+    // we ignore any historical "purple/cyan/orange/brown" picks and let
+    // those players fall through to auto-assignment below.
+    const STANDARD: ReadonlySet<LudoColor> = new Set([
+      "red", "green", "yellow", "blue",
+    ]);
     const takenColors = new Set<LudoColor>();
     for (const p of players) {
       const chosen = p.chosenColor as LudoColor | undefined;
-      if (chosen && !takenColors.has(chosen)) {
+      if (chosen && STANDARD.has(chosen) && !takenColors.has(chosen)) {
         colorOf.set(p.id, chosen);
         takenColors.add(chosen);
       }
