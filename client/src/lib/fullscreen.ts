@@ -44,12 +44,19 @@ export function isFullscreenActive(): boolean {
 }
 
 /**
- * Tries to enter fullscreen and lock to landscape. Must be called from a
- * user gesture. Returns true if fullscreen succeeded — orientation lock is
- * best-effort and never blocks the return value (it fails on desktop and
- * many browsers without throwing).
+ * Tries to enter fullscreen and (optionally) lock to a target orientation.
+ * Must be called from a user gesture. Returns true if fullscreen succeeded —
+ * orientation lock is best-effort and never blocks the return value (it
+ * fails on desktop and many browsers without throwing).
+ *
+ * Pass `orientation` per game:
+ *   - "landscape" → Rummy (the only landscape table)
+ *   - "portrait"  → Ludo, Snakes & Ladders, Hand Cricket, RPS, Uno
+ *   - "any" / undefined → no orientation lock, fullscreen only
  */
-export async function enterFullscreen(): Promise<boolean> {
+export async function enterFullscreen(
+  orientation: "landscape" | "portrait" | "any" = "any",
+): Promise<boolean> {
   if (typeof document === "undefined") return false;
   const el = document.documentElement as WebkitEl;
   try {
@@ -67,13 +74,15 @@ export async function enterFullscreen(): Promise<boolean> {
   // Orientation lock — best effort. Will throw on desktop (no orientation
   // to lock), on iOS (unsupported), and sometimes on Android Firefox.
   // None of that should fail the fullscreen call.
-  try {
-    const orient = (screen.orientation as OrientationLock | undefined);
-    if (orient?.lock) {
-      await orient.lock("landscape");
+  if (orientation === "landscape" || orientation === "portrait") {
+    try {
+      const orient = (screen.orientation as OrientationLock | undefined);
+      if (orient?.lock) {
+        await orient.lock(orientation);
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    // ignore
   }
 
   return true;

@@ -271,24 +271,56 @@ export default function Room() {
   );
 
   /**
-   * Rummy is the only game we hard-route to fullscreen. The lobby gesture
-   * that triggers it (Start Game for host, I'm Ready for joiners) satisfies
-   * the browser's user-gesture requirement for `requestFullscreen()`. We
-   * silently no-op for every other game so this stays opt-in per table.
+   * Every game auto-enters fullscreen at the moment the room transitions
+   * from "lobby" to "playing" — NOT on the Ready click. The host's Start
+   * Game click is the gesture, the server roundtrip arrives within a few
+   * hundred ms, and the browser's gesture activation window (~5 s) is
+   * still valid when the phase-transition effect fires.
+   *
+   * Orientation per game:
+   *   - Rummy → landscape (the table is wider than tall)
+   *   - Everything else → portrait (Ludo, SnL, Hand Cricket, RPS, Uno)
+   *
+   * For non-host players the gesture may have gone stale by the time the
+   * host actually starts. Browsers will silently block — they can use the
+   * in-game fullscreen toggle if they want it. Better than auto-flipping
+   * on Ready, which users found jarring.
    */
-  function maybeEnterFullscreenForRummy() {
-    if (roomState?.game !== "rummy") return;
-    if (!isFullscreenSupported() || isFullscreenActive()) return;
-    void enterFullscreen();
+  function orientationForGame(game: GameKind | undefined): "landscape" | "portrait" | "any" {
+    if (game === "rummy") return "landscape";
+    if (!game) return "any";
+    return "portrait";
   }
 
+  function maybeEnterFullscreenForGame() {
+    if (!roomState?.game) return;
+    if (!isFullscreenSupported() || isFullscreenActive()) return;
+    void enterFullscreen(orientationForGame(roomState.game));
+  }
+
+  // Watch for the lobby → playing transition and request fullscreen at
+  // that moment. `prevPhaseForFullscreenRef` survives the StrictMode
+  // double-mount and ensures we only attempt once per actual transition.
+  const prevPhaseForFullscreenRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevPhaseForFullscreenRef.current;
+    if (prev === "lobby" && roomState?.phase === "playing" && roomState?.game) {
+      maybeEnterFullscreenForGame();
+    }
+    prevPhaseForFullscreenRef.current = roomState?.phase;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomState?.phase, roomState?.game]);
+
   function toggleReady() {
-    maybeEnterFullscreenForRummy();
+    // No fullscreen on Ready — the trigger lives on the phase transition.
     getSocket().emit("room:setReady", !selfPlayer?.isReady);
   }
 
   function startGame() {
-    maybeEnterFullscreenForRummy();
+    // No fullscreen on the click either — the phase-transition effect
+    // above picks it up the moment the room flips to playing. The host's
+    // click gesture is still inside the browser's activation window when
+    // that effect fires.
     getSocket().emit("room:startGame");
   }
 
