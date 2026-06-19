@@ -114,7 +114,10 @@ export class HandCricketEngine implements GameEngine {
       phase: "teamSelect",
       playerOrder: order,
       options: { ...this.pendingOptions },
-      teamSelections: { [order[0]]: null, [order[1]]: null },
+      teamSelections: {
+        [order[0]]: null,
+        [order[1]]: null,
+      },
       tossPicks: { [order[0]]: null, [order[1]]: null },
       tossSum: null,
       tossWinnerId: null,
@@ -175,8 +178,13 @@ export class HandCricketEngine implements GameEngine {
     }
     const teamId = (move.data as { teamId?: HcTeamId } | undefined)?.teamId;
     if (!teamId) return { ok: false, error: "Missing teamId" };
-    // Setting/changing country resets squad to null (must re-pick squad for new team).
-    this.state.teamSelections[move.playerId] = { teamId, squadPlayerIds: null };
+    // Setting/changing country resets squad + captain/VC (must re-pick for new team).
+    this.state.teamSelections[move.playerId] = {
+      teamId,
+      squadPlayerIds: null,
+      captainId: null,
+      viceCaptainId: null,
+    };
     return { ok: true };
   }
 
@@ -188,7 +196,10 @@ export class HandCricketEngine implements GameEngine {
     if (!current) {
       return { ok: false, error: "Pick a country first" };
     }
-    const ids = (move.data as { playerIds?: string[] } | undefined)?.playerIds;
+    const data = move.data as
+      | { playerIds?: string[]; captainId?: string; viceCaptainId?: string }
+      | undefined;
+    const ids = data?.playerIds;
     if (!Array.isArray(ids)) {
       return { ok: false, error: "Provide your playing XI" };
     }
@@ -221,9 +232,24 @@ export class HandCricketEngine implements GameEngine {
       }
     }
 
+    // Captain + Vice-Captain are required and must be distinct members of the XI.
+    const captainId = data?.captainId;
+    const viceCaptainId = data?.viceCaptainId;
+    if (!captainId || !viceCaptainId) {
+      return { ok: false, error: "Pick a Captain and a Vice-Captain" };
+    }
+    if (captainId === viceCaptainId) {
+      return { ok: false, error: "Captain and Vice-Captain must be different players" };
+    }
+    if (!ids.includes(captainId) || !ids.includes(viceCaptainId)) {
+      return { ok: false, error: "Captain and Vice-Captain must be in your XI" };
+    }
+
     this.state.teamSelections[move.playerId] = {
       teamId: current.teamId,
       squadPlayerIds: ids.slice(),
+      captainId,
+      viceCaptainId,
     };
 
     // Advance to toss once both players have confirmed their squad.
@@ -673,10 +699,37 @@ export class HandCricketEngine implements GameEngine {
     if (!final?.teamId) return { ok: false, error: "Team picker failed" };
     if (final.squadPlayerIds) return { ok: false, error: "Squad already confirmed" };
     const squad = this.pickDefaultSquad(final.teamId);
+    // Pick captain + vice-captain. Prefer roster-tagged captain (isCaptain).
+    // Fallbacks: first all-rounder, then first batter, then first in squad.
+    const pool = getAllPlayersFor(final.teamId, this.state.options.format);
+    const profilesIn = squad
+      .map((id) => pool.find((p) => p.id === id))
+      .filter((p): p is NonNullable<typeof p> => !!p);
+    const pickByPredicate = (
+      pred: (p: (typeof profilesIn)[number]) => boolean,
+      exclude: string | null = null,
+    ): string | null => {
+      const hit = profilesIn.find((p) => p.id !== exclude && pred(p));
+      return hit?.id ?? null;
+    };
+    const captainId =
+      pickByPredicate((p) => !!p.isCaptain) ??
+      pickByPredicate((p) => p.role === "allrounder") ??
+      pickByPredicate((p) => p.role === "batter") ??
+      squad[0] ?? null;
+    const viceCaptainId =
+      pickByPredicate((p) => p.role === "allrounder", captainId) ??
+      pickByPredicate((p) => p.role === "batter", captainId) ??
+      pickByPredicate(() => true, captainId) ??
+      squad.find((id) => id !== captainId) ??
+      null;
+    if (!captainId || !viceCaptainId) {
+      return { ok: false, error: "Bot could not pick captain/VC" };
+    }
     return this.applyMove({
       playerId,
       type: "confirmSquad",
-      data: { playerIds: squad },
+      data: { playerIds: squad, captainId, viceCaptainId },
     });
   }
 

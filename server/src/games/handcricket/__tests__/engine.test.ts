@@ -32,12 +32,20 @@ function bothSelectTeams(
   engine.applyMove({
     playerId: "p0",
     type: "confirmSquad",
-    data: { playerIds: ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10"] },
+    data: {
+      playerIds: ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10"],
+      captainId: "a0",
+      viceCaptainId: "a1",
+    },
   });
   engine.applyMove({
     playerId: "p1",
     type: "confirmSquad",
-    data: { playerIds: ["b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9", "b10"] },
+    data: {
+      playerIds: ["b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9", "b10"],
+      captainId: "b0",
+      viceCaptainId: "b1",
+    },
   });
 }
 
@@ -124,14 +132,14 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: ["x", "y"] },
+      data: { playerIds: ["x", "y"], captainId: "x", viceCaptainId: "y" },
     });
     // Only one squad confirmed → still teamSelect
     expect(state(engine).phase).toBe("teamSelect");
     engine.applyMove({
       playerId: "p1",
       type: "confirmSquad",
-      data: { playerIds: ["a", "b"] },
+      data: { playerIds: ["a", "b"], captainId: "a", viceCaptainId: "b" },
     });
     const s = state(engine);
     expect(s.phase).toBe("toss");
@@ -146,7 +154,7 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: ["a", "b"] },
+      data: { playerIds: ["a", "b"], captainId: "a", viceCaptainId: "b" },
     });
     expect(state(engine).teamSelections["p0"]?.squadPlayerIds).toEqual(["a", "b"]);
     // Switch country.
@@ -218,7 +226,7 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     const r = engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: validIds },
+      data: { playerIds: validIds, captainId: "rohit-sharma", viceCaptainId: "virat-kohli" },
     });
     expect(r.ok).toBe(true);
   });
@@ -242,9 +250,17 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
       "josh-inglis",
       "pat-cummins", "mitchell-starc", "josh-hazlewood", "adam-zampa", "nathan-ellis",
     ];
-    const r0 = engine.applyMove({ playerId: "p0", type: "confirmSquad", data: { playerIds: indiaXI } });
+    const r0 = engine.applyMove({
+      playerId: "p0",
+      type: "confirmSquad",
+      data: { playerIds: indiaXI, captainId: "rohit-sharma", viceCaptainId: "virat-kohli" },
+    });
     expect(r0.ok).toBe(true);
-    const r1 = engine.applyMove({ playerId: "p1", type: "confirmSquad", data: { playerIds: ausXI } });
+    const r1 = engine.applyMove({
+      playerId: "p1",
+      type: "confirmSquad",
+      data: { playerIds: ausXI, captainId: "mitchell-marsh", viceCaptainId: "pat-cummins" },
+    });
     expect(r1.ok).toBe(true);
     // Sum 4 → even → p0 wins toss.
     engine.applyMove({ playerId: "p0", type: "tossPick", data: { pick: 2 } });
@@ -653,8 +669,16 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     // Galli accepts any squad of 1-15 valid pool members; no composition checks.
     const indiaSquad = ["rohit-sharma", "yashasvi-jaiswal", "virat-kohli", "suryakumar-yadav"];
     const ausSquad = ["mitchell-marsh", "david-warner", "travis-head", "tim-david"];
-    expect(engine.applyMove({ playerId: "p0", type: "confirmSquad", data: { playerIds: indiaSquad } }).ok).toBe(true);
-    expect(engine.applyMove({ playerId: "p1", type: "confirmSquad", data: { playerIds: ausSquad } }).ok).toBe(true);
+    expect(engine.applyMove({
+      playerId: "p0",
+      type: "confirmSquad",
+      data: { playerIds: indiaSquad, captainId: "rohit-sharma", viceCaptainId: "virat-kohli" },
+    }).ok).toBe(true);
+    expect(engine.applyMove({
+      playerId: "p1",
+      type: "confirmSquad",
+      data: { playerIds: ausSquad, captainId: "mitchell-marsh", viceCaptainId: "travis-head" },
+    }).ok).toBe(true);
     engine.applyMove({ playerId: "p0", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p1", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p0", type: "tossChoice", data: { choice: "bat" } });

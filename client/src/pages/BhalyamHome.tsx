@@ -889,14 +889,14 @@ function GameTile({
 }) {
   const Glyph = GAME_GLYPHS[game.slug];
 
-  const livePlayersByGame: Record<BhalyamGameSlug, string> = {
-    handcricket: "4.8K playing",
-    snl: "3.2K playing",
-    ludo: "5.6K playing",
-    rummy: "2.1K playing",
-    rps: "1.6K playing",
-    uno: "3.9K playing",
-  };
+  // const livePlayersByGame: Record<BhalyamGameSlug, string> = {
+  //   handcricket: "4.8K playing",
+  //   snl: "3.2K playing",
+  //   ludo: "5.6K playing",
+  //   rummy: "2.1K playing",
+  //   rps: "1.6K playing",
+  //   uno: "3.9K playing",
+  // };
 
   const titleClassName = game.title.length > 12
     ? "font-black text-[22px] sm:text-[30px] leading-[0.95] tracking-tight break-words"
@@ -983,9 +983,9 @@ function GameTile({
           </span>
         )}
 
-        <span className="text-[13px] font-semibold opacity-95">
+        {/* <span className="text-[13px] font-semibold opacity-95">
           {underMaintenance ? "Cooking it up" : livePlayersByGame[game.slug]}
-        </span>
+        </span> */}
 
         {underMaintenance ? (
           <span

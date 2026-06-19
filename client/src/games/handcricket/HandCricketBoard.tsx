@@ -329,10 +329,37 @@ function SquadPicker({
     return m;
   }, [sortedSquad, sortedExtras]);
 
-  // Default XI = first 11 squad players in role order.
+  // Default XI = first 11 squad players in role order. Captain defaults to the
+  // roster-tagged captain (if present in the picked XI); VC defaults to the
+  // first all-rounder/batter who isn't the captain. Both are user-changeable.
   const [selected, setSelected] = useState<Set<string>>(() => {
     return new Set(sortedSquad.slice(0, 11).map((p) => p.id));
   });
+  const [captainId, setCaptainId] = useState<string | null>(null);
+  const [viceCaptainId, setViceCaptainId] = useState<string | null>(null);
+
+  // Auto-clear C/VC when the player is dropped from the XI.
+  useEffect(() => {
+    if (captainId && !selected.has(captainId)) setCaptainId(null);
+    if (viceCaptainId && !selected.has(viceCaptainId)) setViceCaptainId(null);
+  }, [selected, captainId, viceCaptainId]);
+
+  // Seed captain/VC defaults once the XI is non-empty and nothing is picked yet.
+  useEffect(() => {
+    if (captainId || viceCaptainId) return;
+    if (selected.size === 0) return;
+    const inXI = [...selected]
+      .map((id) => profilesById.get(id))
+      .filter((p): p is HcPlayerProfile => !!p);
+    const tagged = inXI.find((p) => p.isCaptain);
+    const arOrBat = (p: HcPlayerProfile) => p.role === "allrounder" || p.role === "batter";
+    const cap = tagged ?? inXI.find(arOrBat) ?? inXI[0];
+    if (!cap) return;
+    const vc = inXI.find((p) => p.id !== cap.id && arOrBat(p)) ?? inXI.find((p) => p.id !== cap.id);
+    if (!vc) return;
+    setCaptainId(cap.id);
+    setViceCaptainId(vc.id);
+  }, [selected, profilesById, captainId, viceCaptainId]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -349,9 +376,15 @@ function SquadPicker({
 
   function confirm() {
     if (selected.size !== 11) return;
+    if (!captainId || !viceCaptainId) return;
+    if (captainId === viceCaptainId) return;
     getSocket().emit("game:move", {
       type: "confirmSquad",
-      data: { playerIds: [...selected] },
+      data: {
+        playerIds: [...selected],
+        captainId,
+        viceCaptainId,
+      },
     });
   }
 
@@ -455,28 +488,120 @@ function SquadPicker({
         />
       )}
 
-      <div className="flex justify-center pt-2">
-        <button
-          onClick={confirm}
-          disabled={!composition.isValid}
-          className="px-6 py-3 rounded-lg font-extrabold text-base transition uppercase tracking-wider"
-          style={{
-            background: composition.isValid
-              ? "linear-gradient(180deg, #10b981, #047857)"
-              : "linear-gradient(180deg, #475569, #334155)",
-            color: composition.isValid ? "#ecfdf5" : "#94a3b8",
-            boxShadow: composition.isValid
-              ? "0 4px 0 #064e3b, 0 8px 16px rgba(0,0,0,0.4)"
-              : "0 2px 0 #1e293b",
-            cursor: composition.isValid ? "pointer" : "not-allowed",
-          }}
-        >
-          {composition.isValid
-            ? "🏏 Confirm Playing XI"
-            : selected.size !== 11
-            ? `Select ${11 - selected.size} more`
-            : "Fix squad composition"}
-        </button>
+      {/* Captain + Vice-Captain selectors — required. */}
+      <LeadershipPicker
+        xi={xiPlayers}
+        captainId={captainId}
+        viceCaptainId={viceCaptainId}
+        onCaptainChange={(id) => {
+          setCaptainId(id);
+          if (id && viceCaptainId === id) setViceCaptainId(null);
+        }}
+        onViceCaptainChange={(id) => {
+          setViceCaptainId(id);
+          if (id && captainId === id) setCaptainId(null);
+        }}
+      />
+
+      <div className="flex flex-col items-center gap-1 pt-2">
+        {(() => {
+          const hasLeaders =
+            !!captainId && !!viceCaptainId && captainId !== viceCaptainId;
+          const ready = composition.isValid && hasLeaders;
+          const label = !composition.isValid
+            ? selected.size !== 11
+              ? `Select ${11 - selected.size} more`
+              : "Fix squad composition"
+            : !hasLeaders
+              ? "Pick Captain & Vice-Captain"
+              : "🏏 Confirm Playing XI";
+          return (
+            <button
+              onClick={confirm}
+              disabled={!ready}
+              className="px-6 py-3 rounded-lg font-extrabold text-base transition uppercase tracking-wider"
+              style={{
+                background: ready
+                  ? "linear-gradient(180deg, #10b981, #047857)"
+                  : "linear-gradient(180deg, #475569, #334155)",
+                color: ready ? "#ecfdf5" : "#94a3b8",
+                boxShadow: ready
+                  ? "0 4px 0 #064e3b, 0 8px 16px rgba(0,0,0,0.4)"
+                  : "0 2px 0 #1e293b",
+                cursor: ready ? "pointer" : "not-allowed",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })()}
+      </div>
+    </div>
+  );
+}
+
+function LeadershipPicker({
+  xi,
+  captainId,
+  viceCaptainId,
+  onCaptainChange,
+  onViceCaptainChange,
+}: {
+  xi: HcPlayerProfile[];
+  captainId: string | null;
+  viceCaptainId: string | null;
+  onCaptainChange: (id: string | null) => void;
+  onViceCaptainChange: (id: string | null) => void;
+}) {
+  const noPlayers = xi.length === 0;
+  return (
+    <div
+      className="rounded-lg p-3 space-y-2"
+      style={{
+        background: "rgba(251,191,36,0.08)",
+        border: "1px solid rgba(251,191,36,0.35)",
+      }}
+    >
+      <div className="text-center text-xs font-extrabold uppercase tracking-wider text-amber-300">
+        ★ Leadership · pick from your XI
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <label className="block text-[11px]">
+          <span className="block font-bold text-amber-200 mb-1">
+            Captain <span className="text-rose-300">*</span>
+          </span>
+          <select
+            value={captainId ?? ""}
+            disabled={noPlayers}
+            onChange={(e) => onCaptainChange(e.target.value || null)}
+            className="w-full rounded-md px-2 py-2 text-sm font-semibold bg-slate-900/80 text-amber-100 border border-amber-500/40 focus:outline-none focus:border-amber-300 disabled:opacity-50"
+          >
+            <option value="">Choose Captain</option>
+            {xi.map((p) => (
+              <option key={p.id} value={p.id} disabled={p.id === viceCaptainId}>
+                {p.name} ({p.role.toUpperCase()})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-[11px]">
+          <span className="block font-bold text-amber-200 mb-1">
+            Vice-Captain <span className="text-rose-300">*</span>
+          </span>
+          <select
+            value={viceCaptainId ?? ""}
+            disabled={noPlayers}
+            onChange={(e) => onViceCaptainChange(e.target.value || null)}
+            className="w-full rounded-md px-2 py-2 text-sm font-semibold bg-slate-900/80 text-amber-100 border border-amber-500/40 focus:outline-none focus:border-amber-300 disabled:opacity-50"
+          >
+            <option value="">Choose Vice-Captain</option>
+            {xi.map((p) => (
+              <option key={p.id} value={p.id} disabled={p.id === captainId}>
+                {p.name} ({p.role.toUpperCase()})
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
     </div>
   );
