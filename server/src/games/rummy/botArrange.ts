@@ -213,3 +213,113 @@ function findNearRun(cards: Card[]): Card[] | null {
   }
   return null;
 }
+
+/* =================================================================
+ * Bot in-round strategy — smarter draw + discard.
+ *
+ * The old auto-move was naive: always draw from the closed deck, always
+ * discard the highest-point non-joker card. That blew up perfectly good
+ * near-melds (e.g. a K that's part of a Q-K-A sequence-in-progress would
+ * get dumped just because Kings are worth 10) and never grabbed useful
+ * cards from the open pile. The score card the user looked at after a
+ * round was full of orphan high cards that should have been built into
+ * sets/sequences. These helpers fix that.
+ * ================================================================= */
+
+const STRONG_PARTNER_SCORE = 30;   // same-suit adjacent — pure-sequence partner
+const NEAR_PARTNER_SCORE   = 12;   // same-suit one-gap — fillable by a wild joker
+const SET_PARTNER_SCORE    = 25;   // same-rank different-suit — set partner
+
+/**
+ * Per-card "retain value": higher = more useful, harder to give up. Used
+ * as the primary signal for picking what to discard.
+ *
+ * Wild jokers (printed or wild-rank) score huge so they're never discarded.
+ * Everyone else's score is the sum of their partner contributions in hand,
+ * minus a small point-weight tiebreaker so the bot still prefers to dump
+ * a lonely King over a lonely 3.
+ */
+function scoreRetainValues(hand: Card[], wildJokerRank: Rank): Map<string, number> {
+  const isWild = (c: Card) => c.isPrintedJoker || c.rank === wildJokerRank;
+  const scores = new Map<string, number>();
+  for (const c of hand) {
+    if (isWild(c)) {
+      scores.set(c.id, 1000);
+      continue;
+    }
+    let s = 0;
+    for (const other of hand) {
+      if (other.id === c.id) continue;
+      if (isWild(other)) continue;
+      if (other.suit === c.suit) {
+        const diff = Math.abs(RANK_INDEX[c.rank] - RANK_INDEX[other.rank]);
+        if (diff === 1) s += STRONG_PARTNER_SCORE;
+        else if (diff === 2) s += NEAR_PARTNER_SCORE;
+      } else if (other.rank === c.rank) {
+        s += SET_PARTNER_SCORE;
+      }
+    }
+    // Mild bias toward dumping high-point lonely cards (so two equally-lonely
+    // cards resolve in favour of discarding the 10-pointer over the 3-pointer).
+    s -= RANK_POINTS[c.rank] * 0.5;
+    scores.set(c.id, s);
+  }
+  return scores;
+}
+
+/**
+ * Pick the best card to discard from a 14-card hand:
+ *   1. Never discard wild/printed jokers (we'll use them for impure melds).
+ *   2. Prefer the lowest-retain-value card (least useful for any meld).
+ *   3. Ties broken by highest point value (dump expensive deadweight first).
+ */
+export function pickBestDiscard(hand: Card[], wildJokerRank: Rank): string {
+  const scores = scoreRetainValues(hand, wildJokerRank);
+  const isWild = (c: Card) => c.isPrintedJoker || c.rank === wildJokerRank;
+  let bestId: string | null = null;
+  let bestScore = Infinity;
+  let bestPts = -1;
+  for (const c of hand) {
+    if (isWild(c)) continue;
+    const s = scores.get(c.id)!;
+    const pts = RANK_POINTS[c.rank];
+    if (s < bestScore || (s === bestScore && pts > bestPts)) {
+      bestScore = s;
+      bestPts = pts;
+      bestId = c.id;
+    }
+  }
+  // Fallback: all-joker hand (theoretically impossible at 14 cards, but be safe).
+  return bestId ?? hand[hand.length - 1].id;
+}
+
+/**
+ * Should the bot draw from the open (discard) pile this turn?
+ *
+ * Yes when the visible top card meaningfully helps the hand:
+ *   - It's a wild-rank card (functional joker).
+ *   - It has a same-rank partner of a different suit already in hand (set).
+ *   - It has a same-suit neighbour adjacent in rank (sequence partner).
+ *
+ * Printed jokers can't be drawn from the discard pile per the engine's
+ * house rule, so we skip them outright.
+ */
+export function shouldDrawFromOpen(
+  hand: Card[],
+  openTop: Card | null,
+  wildJokerRank: Rank,
+): boolean {
+  if (!openTop) return false;
+  if (openTop.isPrintedJoker) return false;          // engine refuses these anyway
+  if (openTop.rank === wildJokerRank) return true;   // free joker — always grab
+  const isWild = (c: Card) => c.isPrintedJoker || c.rank === wildJokerRank;
+  for (const c of hand) {
+    if (isWild(c)) continue;
+    if (c.rank === openTop.rank && c.suit !== openTop.suit) return true;
+    if (c.suit === openTop.suit) {
+      const diff = Math.abs(RANK_INDEX[c.rank] - RANK_INDEX[openTop.rank]);
+      if (diff === 1) return true;
+    }
+  }
+  return false;
+}

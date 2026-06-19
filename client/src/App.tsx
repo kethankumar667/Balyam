@@ -11,12 +11,34 @@ import NotFound from "./pages/NotFound";
  * page happened to be scrolled. Pair with the fullscreen helper, which
  * also scrolls to top right after entering fullscreen — together they
  * guarantee the top of the page is always what the player sees first.
+ *
+ * We also disable the browser's automatic scroll restoration on first run.
+ * Without that, Chrome/Firefox restore the previous scroll position on
+ * back/forward navigation AFTER our effect fires, silently undoing the
+ * scrollTo and leaving the user mid-page (which is the bug the screenshot
+ * captured on /room/:code).
  */
 function ScrollToTopOnRouteChange() {
   const { pathname } = useLocation();
   useEffect(() => {
     try {
+      if ("scrollRestoration" in window.history) {
+        window.history.scrollRestoration = "manual";
+      }
+    } catch {
+      // ignore — non-DOM environments (tests).
+    }
+  }, []);
+  useEffect(() => {
+    try {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      // Run again on the next frame too. Some pages render a lightweight
+      // shell first (e.g. Room's "Connecting…" state) and then expand once
+      // the room data arrives, which can push the previously-set scroll
+      // position forward before the user sees the layout settle.
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
     } catch {
       // ignore — non-DOM environments (tests).
     }

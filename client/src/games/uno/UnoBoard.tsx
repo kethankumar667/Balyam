@@ -1,13 +1,24 @@
-import type { Player, UnoState } from "@shared/types";
+import type { ChatMessage, Player, UnoState } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import InlineRoomRail from "../../components/InlineRoomRail";
 
 interface UnoBoardProps {
   state: UnoState;
   players: Player[];
   selfId: string | null;
+  messages: ChatMessage[];
+  roomCode: string;
+  roomPhase: string;
 }
 
-export default function UnoBoard({ state, players, selfId }: UnoBoardProps) {
+export default function UnoBoard({
+  state,
+  players,
+  selfId,
+  messages,
+  roomCode,
+  roomPhase,
+}: UnoBoardProps) {
   const myTurn = selfId != null && state.turnPlayerId === selfId && state.phase === "playing";
   const me = players.find((p) => p.id === selfId) ?? null;
 
@@ -23,6 +34,15 @@ export default function UnoBoard({ state, players, selfId }: UnoBoardProps) {
           {state.phase === "finished" ? "Finished" : "Playing"}
         </span>
       </header>
+
+      <InlineRoomRail
+        code={roomCode}
+        game="uno"
+        phase={roomPhase}
+        players={players}
+        selfId={selfId}
+        messages={messages}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard label="Top Card" value={state.topCard} />

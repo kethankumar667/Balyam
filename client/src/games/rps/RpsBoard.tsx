@@ -1,15 +1,16 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import type {
+  ChatMessage,
   Player,
   ReactionRecvPayload,
   RpsChoice,
   RpsState,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
-import ReactionBar from "../ludo/ReactionBar";
 import FloatingReactionsLayer from "../ludo/FloatingReactionsLayer";
 import EmojiRain from "../ludo/EmojiRain";
 import Confetti from "../ludo/Confetti";
+import InlineRoomRail from "../../components/InlineRoomRail";
 
 const LABEL: Record<RpsChoice, string> = {
   rock: "Rock",
@@ -33,10 +34,16 @@ export default function RpsBoard({
   state,
   players,
   selfId,
+  messages,
+  roomCode,
+  roomPhase,
 }: {
   state: ClientRpsState;
   players: Player[];
   selfId: string | null;
+  messages: ChatMessage[];
+  roomCode: string;
+  roomPhase: string;
 }) {
   const opponent = players.find((p) => p.id !== selfId);
   const me = players.find((p) => p.id === selfId);
@@ -206,9 +213,14 @@ export default function RpsBoard({
 
       <HistoryStrip state={state} myId={myId} />
 
-      <div className="flex justify-center">
-        <ReactionBar />
-      </div>
+      <InlineRoomRail
+        code={roomCode}
+        game="rps"
+        phase={roomPhase}
+        players={players}
+        selfId={selfId}
+        messages={messages}
+      />
 
       <FloatingReactionsLayer
         reactions={reactions}

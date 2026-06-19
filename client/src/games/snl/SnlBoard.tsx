@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CoinColor, Player, SnlEvent, SnlState } from "@shared/types";
+import type { ChatMessage, CoinColor, Player, SnlEvent, SnlState } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { COIN_COLOR_HEX } from "../../components/CoinColorPicker";
 import { Dice } from "../ludo/Dice";
+import InlineRoomRail from "../../components/InlineRoomRail";
 
 const BOARD_SIZE = 100;
 const CELL = BOARD_SIZE / 10;
@@ -121,10 +122,16 @@ export default function SnlBoard({
   state,
   players,
   selfId,
+  messages,
+  roomCode,
+  roomPhase,
 }: {
   state: SnlState;
   players: Player[];
   selfId: string | null;
+  messages: ChatMessage[];
+  roomCode: string;
+  roomPhase: string;
 }) {
   const myTurn = state.turnPlayerId === selfId;
   const canRoll = myTurn && state.turnPhase === "rolling" && state.phase === "playing";
@@ -227,6 +234,15 @@ export default function SnlBoard({
           )}
         </div>
       </div>
+
+      <InlineRoomRail
+        code={roomCode}
+        game="snl"
+        phase={roomPhase}
+        players={players}
+        selfId={selfId}
+        messages={messages}
+      />
 
       <div className="grid lg:grid-cols-[1fr_220px] gap-3">
         {/* MAIN BOARD — takes most of the width */}

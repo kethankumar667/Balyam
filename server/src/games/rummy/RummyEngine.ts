@@ -1,7 +1,6 @@
 import type {
   Card,
   Player,
-  Rank,
   RummyGameOptions,
   RummyMatchMode,
   RummyPlayerState,
@@ -12,7 +11,7 @@ import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import { deal } from "./deck.js";
 import { validateDeclare } from "./declare.js";
 import { pointsOfHand, INVALID_DECLARE_PENALTY } from "./score.js";
-import { findValidDeclaration } from "./botArrange.js";
+import { findValidDeclaration, pickBestDiscard, shouldDrawFromOpen } from "./botArrange.js";
 
 interface InternalState {
   phase: "playing" | "finished";
@@ -47,11 +46,6 @@ function poolTargetFor(mode: RummyMatchMode): number | null {
   if (mode === "pool201") return 201;
   return null;
 }
-
-const RANK_POINTS: Record<Rank, number> = {
-  A: 10, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
-  T: 10, J: 10, Q: 10, K: 10,
-};
 
 /** Drop penalty per the common Indian Rummy convention: first-drop = 20 points. */
 const DROP_PENALTY = 20;
@@ -93,20 +87,32 @@ export class RummyEngine implements GameEngine {
     if (playerId !== current) return { ok: false, error: "Not current player" };
     if (this.s.droppedPlayers.has(playerId)) return { ok: false, error: "Dropped" };
 
-    if (this.s.turnAction === "draw") {
-      return this.handleDraw({
-        playerId,
-        type: "draw",
-        data: { from: "closed" },
-      });
-    }
-    // discardOrDeclare: first try a real declaration — if the hand happens to
-    // be arrangeable into valid melds, the bot wins this round. Otherwise fall
-    // back to discarding the highest-point non-joker card.
     const hand = this.s.hands.get(playerId);
     if (!hand) return { ok: false, error: "No hand" };
     const wildRank = this.s.wildJoker.rank;
 
+    if (this.s.turnAction === "draw") {
+      // Opportunistically pick up the open-pile top when it slots into a
+      // near-meld. shouldDrawFromOpen handles the printed-joker / empty-pile
+      // edge cases and falls back to false, so a "closed" draw is always
+      // safe as the default.
+      const openTop =
+        this.s.openPile.length > 0
+          ? this.s.openPile[this.s.openPile.length - 1]
+          : null;
+      const from = shouldDrawFromOpen(hand, openTop, wildRank) ? "open" : "closed";
+      return this.handleDraw({
+        playerId,
+        type: "draw",
+        data: { from },
+      });
+    }
+
+    // discardOrDeclare: first try a real declaration — if the hand happens to
+    // be arrangeable into valid melds, the bot wins this round. Otherwise
+    // discard with retain-value awareness instead of blindly dumping the
+    // highest-point card (which used to break up near-melds the bot had been
+    // building — most visible on the score-card's leftover hand).
     const declaration = findValidDeclaration(hand, wildRank);
     if (declaration) {
       return this.handleDeclare({
@@ -119,21 +125,11 @@ export class RummyEngine implements GameEngine {
       });
     }
 
-    let bestId: string | null = null;
-    let bestPts = -1;
-    for (const c of hand) {
-      if (c.rank === wildRank) continue;
-      const p = RANK_POINTS[c.rank];
-      if (p > bestPts) {
-        bestPts = p;
-        bestId = c.id;
-      }
-    }
-    if (!bestId) bestId = hand[hand.length - 1].id; // all jokers; pick last
+    const discardId = pickBestDiscard(hand, wildRank);
     return this.handleDiscard({
       playerId,
       type: "discard",
-      data: { cardId: bestId },
+      data: { cardId: discardId },
     });
   }
 
