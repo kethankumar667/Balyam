@@ -236,6 +236,25 @@ export default function Room() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, playerName]);
 
+  // Snap to top once roomState lands — the page renders a slim "Connecting…"
+  // shell first and then expands to the full lobby card, which can leave the
+  // user scrolled past the header if their previous page was tall. Pair with
+  // App-level scrollRestoration=manual and route-change scrollTo.
+  const didInitialScrollRef = useRef(false);
+  useEffect(() => {
+    if (didInitialScrollRef.current) return;
+    if (!roomState) return;
+    didInitialScrollRef.current = true;
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      requestAnimationFrame(() =>
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" }),
+      );
+    } catch {
+      // ignore
+    }
+  }, [roomState]);
+
   // Detect the lobby → playing transition for Rummy and stash a
   // sessionStorage flag the board reads exactly once on mount. The
   // RummyBoardMobile uses this flag as the single source of truth for
@@ -370,14 +389,30 @@ export default function Room() {
             : "mx-auto space-y-3 sm:space-y-4 max-w-6xl"
         }
       >
-        {/* Room header — hidden during Rummy play; Leave moves into the board header. */}
-        {!(roomState.game === "rummy" && roomState.phase !== "lobby") && (
+        {/* Room header. Three shapes:
+              1. Rummy in play: hidden entirely — Rummy renders its own.
+              2. Any game during the lobby: full header with code + Leave.
+              3. Any non-Rummy game during play/finished: slim header — just
+                 a right-aligned Leave button. The room code, players, voice
+                 and chat have all moved into the FloatingRoomRail strip per
+                 the marked-area reference. */}
+        {roomState.phase === "lobby" && (
           <header className="flex items-center justify-between flex-wrap gap-3">
             <RoomCode code={roomState.code} />
             <div className="text-sm text-[#786350]">
               Game: <span className="text-[#2F3A54] font-semibold">{roomState.game.toUpperCase()}</span> ·
               Phase: <span className="text-[#2F3A54]">{roomState.phase}</span>
             </div>
+            <button
+              onClick={leaveRoom}
+              className="text-sm bg-[#4A3F35] hover:bg-[#3F352C] text-[#FFF3E3] px-3 py-1.5 rounded"
+            >
+              Leave
+            </button>
+          </header>
+        )}
+        {roomState.phase !== "lobby" && roomState.game !== "rummy" && (
+          <header className="flex items-center justify-end">
             <button
               onClick={leaveRoom}
               className="text-sm bg-[#4A3F35] hover:bg-[#3F352C] text-[#FFF3E3] px-3 py-1.5 rounded"
@@ -404,18 +439,24 @@ export default function Room() {
         )}
 
         <div
-          className={
-            roomState.game === "rummy" && roomState.phase !== "lobby"
-              ? "h-full"
-              : "grid md:grid-cols-3 gap-4"
-          }
+          className={(() => {
+            const rummyPlay = roomState.game === "rummy" && roomState.phase !== "lobby";
+            const compactPlay = !rummyPlay && roomState.phase !== "lobby";
+            if (rummyPlay) return "h-full";
+            // Compact gameplay: the side rail collapses into the floating
+            // right rail, so the board owns the full inner width.
+            if (compactPlay) return "block";
+            return "grid md:grid-cols-3 gap-4";
+          })()}
         >
           <div
-            className={
-              roomState.game === "rummy" && roomState.phase !== "lobby"
-                ? "h-full"
-                : "md:col-span-2 space-y-4"
-            }
+            className={(() => {
+              const rummyPlay = roomState.game === "rummy" && roomState.phase !== "lobby";
+              const compactPlay = !rummyPlay && roomState.phase !== "lobby";
+              if (rummyPlay) return "h-full";
+              if (compactPlay) return "w-full space-y-4";
+              return "md:col-span-2 space-y-4";
+            })()}
           >
             {roomState.phase === "lobby" && (
               <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-6 text-center space-y-4">
@@ -464,6 +505,9 @@ export default function Room() {
                 state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
                 players={roomState.players}
                 selfId={playerId}
+                messages={messages}
+                roomCode={roomState.code}
+                roomPhase={roomState.phase}
               />
             )}
 
@@ -501,6 +545,9 @@ export default function Room() {
                       state={ls}
                       players={roomState.players}
                       selfId={effectiveSelfId}
+                      messages={messages}
+                      roomCode={roomState.code}
+                      roomPhase={roomState.phase}
                     />
                   </PassPhoneGate>
                 );
@@ -525,6 +572,9 @@ export default function Room() {
                       state={ss}
                       players={roomState.players}
                       selfId={effectiveSelfId}
+                      messages={messages}
+                      roomCode={roomState.code}
+                      roomPhase={roomState.phase}
                     />
                   </PassPhoneGate>
                 );
@@ -536,6 +586,9 @@ export default function Room() {
                 state={gameState as HcState}
                 players={roomState.players}
                 selfId={playerId}
+                messages={messages}
+                roomCode={roomState.code}
+                roomPhase={roomState.phase}
               />
             )}
 
@@ -544,6 +597,9 @@ export default function Room() {
                 state={gameState as UnoState}
                 players={roomState.players}
                 selfId={playerId}
+                messages={messages}
+                roomCode={roomState.code}
+                roomPhase={roomState.phase}
               />
             )}
 
@@ -564,8 +620,17 @@ export default function Room() {
               this is the only way players reliably see a teammate ping. */}
           <ChatMessageToast messages={messages} selfId={playerId} />
 
-          {/* Side rail — hidden completely when Rummy is in play; access via header icons instead. */}
-          {!(roomState.game === "rummy" && roomState.phase !== "lobby") && (
+          {/* Every non-Rummy game now hosts its own InlineRoomRail inside
+              its board card (the floating right-edge strip overlapped the
+              play area on small viewports). Rummy still owns its header
+              icons; the lobby keeps the full inline side rail below so the
+              room code stays prominent while players join. */}
+
+          {/* Inline side rail — kept only during the lobby (or for Rummy
+              lobby) so the room code and player list are immediately visible
+              while everyone joins. During gameplay this collapses into the
+              FloatingRoomRail above. */}
+          {roomState.phase === "lobby" && (
             <div className="space-y-4">
               <PlayerList players={roomState.players} selfId={playerId} />
               <VoicePanel players={roomState.players} selfId={playerId} />

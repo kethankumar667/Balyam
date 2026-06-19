@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
+  ChatMessage,
   HcBall,
   HcBatterStats,
   HcBowlerStats,
@@ -19,6 +20,7 @@ import {
 } from "@shared/hc-rosters";
 import { HC_MAX_OVERS_PER_BOWLER } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import InlineRoomRail from "../../components/InlineRoomRail";
 
 const HAND_FACES = ["", "☝️", "✌️", "🤟", "🖖", "🖐️", "✊"];
 const COUNTRY_LIST: HcCountry[] = [
@@ -64,10 +66,16 @@ export default function HandCricketBoard({
   state,
   players,
   selfId,
+  messages,
+  roomCode,
+  roomPhase,
 }: {
   state: HcState;
   players: Player[];
   selfId: string | null;
+  messages: ChatMessage[];
+  roomCode: string;
+  roomPhase: string;
 }) {
   if (!selfId) return null;
 
@@ -81,6 +89,15 @@ export default function HandCricketBoard({
       }}
     >
       <MatchHeader state={state} players={players} selfId={selfId} />
+
+      <InlineRoomRail
+        code={roomCode}
+        game="handcricket"
+        phase={roomPhase}
+        players={players}
+        selfId={selfId}
+        messages={messages}
+      />
 
       {state.phase === "teamSelect" && (
         <TeamSelectPhase state={state} selfId={selfId} players={players} />
@@ -180,12 +197,35 @@ function TeamSelectPhase({
   players: Player[];
 }) {
   const mySelection = state.teamSelections[selfId];
+  // `forceTeamPicker` is local-only. Clicking "Change team" inside the squad
+  // picker can't actually clear the server state (selectTeam expects a teamId
+  // and re-emitting the same one wouldn't navigate anywhere). So we override
+  // the view client-side and reset the override the instant the user picks a
+  // team — letting the normal flow resume.
+  const [forceTeamPicker, setForceTeamPicker] = useState(false);
+  const prevTeamIdRef = useRef<string | null | undefined>(mySelection?.teamId);
+  useEffect(() => {
+    const prev = prevTeamIdRef.current;
+    const next = mySelection?.teamId ?? null;
+    if (forceTeamPicker && next && next !== prev) {
+      setForceTeamPicker(false);
+    }
+    prevTeamIdRef.current = next;
+  }, [mySelection?.teamId, forceTeamPicker]);
+
   // Two-step flow: pick team first, then pick squad.
-  if (!mySelection?.teamId) {
+  if (!mySelection?.teamId || forceTeamPicker) {
     return <TeamPicker state={state} selfId={selfId} players={players} />;
   }
   if (mySelection.squadPlayerIds == null) {
-    return <SquadPicker state={state} selfId={selfId} players={players} />;
+    return (
+      <SquadPicker
+        state={state}
+        selfId={selfId}
+        players={players}
+        onChangeTeam={() => setForceTeamPicker(true)}
+      />
+    );
   }
   return <WaitingForOpponentSquad state={state} selfId={selfId} players={players} />;
 }
@@ -302,10 +342,12 @@ function SquadPicker({
   state,
   selfId,
   players,
+  onChangeTeam,
 }: {
   state: HcState;
   selfId: string;
   players: Player[];
+  onChangeTeam: () => void;
 }) {
   const mySelection = state.teamSelections[selfId];
   if (!mySelection?.teamId) return null;
@@ -371,7 +413,10 @@ function SquadPicker({
   }
 
   function changeTeam() {
-    getSocket().emit("game:move", { type: "selectTeam", data: { teamId: myTeamId } });
+    // The "Change team" button takes the player back to the country picker.
+    // Driven by a parent-level UI override (see TeamSelectPhase) since
+    // selectTeam can't actually clear teamId on the server.
+    onChangeTeam();
   }
 
   function confirm() {

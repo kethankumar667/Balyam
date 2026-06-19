@@ -994,3 +994,13 @@ body, #root, .bhalyam-paper {
 }
 .hc-fade-late { animation: hc-fade-out 600ms ease-out forwards; animation-delay: 1.1s; }
 
+/* Room rail / chat toast — shared simple transitions. */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+

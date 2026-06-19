@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type {
+  ChatMessage,
   LudoColor,
   LudoEvent,
   LudoState,
@@ -14,7 +15,7 @@ import { Token } from "./Token";
 import InstructionsModal from "./InstructionsModal";
 import Toast from "./Toast";
 import Confetti from "./Confetti";
-import ReactionBar from "./ReactionBar";
+import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "./FloatingReactionsLayer";
 import CursorLayer, { type RemoteCursor } from "./CursorLayer";
 import EndGameCard from "./EndGameCard";
@@ -46,10 +47,16 @@ export default function LudoBoard({
   state,
   players,
   selfId,
+  messages,
+  roomCode,
+  roomPhase,
 }: {
   state: LudoState;
   players: Player[];
   selfId: string | null;
+  messages: ChatMessage[];
+  roomCode: string;
+  roomPhase: string;
 }) {
   const myTurn = state.turnPlayerId === selfId;
   const canRoll = myTurn && state.turnPhase === "rolling" && state.phase === "playing";
@@ -665,50 +672,20 @@ export default function LudoBoard({
         </div>
       </div>
 
-      {/* Player stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {state.playerOrder.map((pid) => {
-          const color = state.playerColors[pid];
-          const isTurn = pid === state.turnPlayerId;
-          const unlocked = state.hasCaptured?.[pid] ?? false;
-          return (
-            <div
-              key={pid}
-              ref={(el) => {
-                if (el) playerCardRefs.current.set(pid, el);
-                else playerCardRefs.current.delete(pid);
-              }}
-              className={`rounded-xl p-2 text-sm flex items-center gap-2 transition border ${
-                isTurn ? "active-player-pulse scale-[1.03] border-white/20" : "opacity-80 border-white/5"
-              }`}
-              style={{
-                background: isTurn
-                  ? `linear-gradient(135deg, ${COLOR_HEX_DARK[color]}, rgba(15,23,42,0.88))`
-                  : "rgba(15,23,42,0.62)",
-                outline: isTurn ? `2px solid ${COLOR_HEX[color]}` : "none",
-                ["--active-player-glow" as never]: `${COLOR_HEX[color]}66`,
-              }}
-            >
-              <Avatar name={nameOf(pid)} color={color} size={28} />
-              <span className="flex-1 truncate font-semibold">
-                {nameOf(pid)} {pid === selfId && <span className="text-xs opacity-70">(you)</span>}
-              </span>
-              <span
-                className="text-xs"
-                title={unlocked ? "Home column unlocked" : "Need first capture to unlock home column"}
-              >
-                {unlocked ? "🔓" : "🔒"}
-              </span>
-              <span className="text-xs">🏠 {state.finishedCount[pid] ?? 0}/4</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Reaction bar */}
-      <div className="flex justify-center">
-        <ReactionBar />
-      </div>
+      {/* Room rail — replaces the old player-chip strip and the standalone
+          ReactionBar. Holds Room/Players/Voice/Chat (with unread badge) and
+          a 🙂 emoji popover that fires the same room:reaction event the
+          ReactionBar used to. The per-player turn pulse lives on the seat
+          home labels in the board itself, so dropping the chip row here
+          doesn't lose anyone's at-a-glance progress. */}
+      <InlineRoomRail
+        code={roomCode}
+        game="ludo"
+        phase={roomPhase}
+        players={players}
+        selfId={selfId}
+        messages={messages}
+      />
 
       {/* Dice + roll */}
       <div
