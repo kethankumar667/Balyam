@@ -1,8 +1,28 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Room from "./pages/Room";
 import PreviewLudo from "./pages/PreviewLudo";
 import BhalyamHome from "./pages/BhalyamHome";
 import NotFound from "./pages/NotFound";
+
+/**
+ * On every route change, snap the window scroll back to the top so the
+ * incoming page lands at its header rather than wherever the previous
+ * page happened to be scrolled. Pair with the fullscreen helper, which
+ * also scrolls to top right after entering fullscreen — together they
+ * guarantee the top of the page is always what the player sees first.
+ */
+function ScrollToTopOnRouteChange() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    } catch {
+      // ignore — non-DOM environments (tests).
+    }
+  }, [pathname]);
+  return null;
+}
 
 /**
  * BHALYAM routes.
@@ -21,11 +41,14 @@ import NotFound from "./pages/NotFound";
  */
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<BhalyamHome />} />
-      <Route path="/room/:code" element={<Room />} />
-      <Route path="/preview/ludo" element={<PreviewLudo />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <ScrollToTopOnRouteChange />
+      <Routes>
+        <Route path="/" element={<BhalyamHome />} />
+        <Route path="/room/:code" element={<Room />} />
+        <Route path="/preview/ludo" element={<PreviewLudo />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from "../lib/fullscreen";
 import PlayerList from "../components/PlayerList";
 import Chat from "../components/Chat";
+import ChatMessageToast from "../components/ChatMessageToast";
 import RoomCode from "../components/RoomCode";
 import RoomCodeShare from "../components/RoomCodeShare";
 import RematchPanel from "../components/RematchPanel";
@@ -556,6 +557,12 @@ export default function Room() {
               </div>
             )}
           </div>
+
+          {/* Global incoming-message toast — every game, every phase. The
+              side rail's full Chat panel is hidden during Rummy gameplay and
+              gets pushed off-screen on mobile during other games' play, so
+              this is the only way players reliably see a teammate ping. */}
+          <ChatMessageToast messages={messages} selfId={playerId} />
 
           {/* Side rail — hidden completely when Rummy is in play; access via header icons instead. */}
           {!(roomState.game === "rummy" && roomState.phase !== "lobby") && (

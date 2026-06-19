@@ -85,6 +85,15 @@ export async function enterFullscreen(
     }
   }
 
+  // Always reveal the top of the page once fullscreen kicks in — otherwise
+  // a mid-page scroll position carries over and the player sees a slice of
+  // the body instead of the game header.
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  } catch {
+    // ignore
+  }
+
   return true;
 }
 
