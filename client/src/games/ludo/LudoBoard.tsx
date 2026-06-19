@@ -754,7 +754,10 @@ export default function LudoBoard({
         )}
       </div>
 
-      {/* Board */}
+      {/* Board — capped by BOTH viewport width and viewport height so it
+          always fits on a single screen without scrolling. The 300 px
+          reserve accounts for the chrome above the board (header + turn
+          chips + reactions row + dice tray). */}
       <div
         ref={boardWrapRef}
         onMouseMove={onBoardMouseMove}
@@ -762,7 +765,8 @@ export default function LudoBoard({
           onBoardMouseLeave();
           clearHoverPreview();
         }}
-        className={`ludo-board relative w-full max-w-[min(92vw,680px)] mx-auto aspect-square select-none rounded-2xl border-4 border-slate-950 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] theme-${settings.theme} ${settings.highContrast ? "hc" : ""}`}
+        className={`ludo-board relative w-full mx-auto aspect-square select-none rounded-2xl border-4 border-slate-950 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] theme-${settings.theme} ${settings.highContrast ? "hc" : ""}`}
+        style={{ maxWidth: "min(92vw, calc(100vh - 300px), 680px)" }}
       >
         {polygonGeo ? (
           <PolygonBoardSVG
