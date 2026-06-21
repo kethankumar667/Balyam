@@ -4,6 +4,7 @@ import { getSocket } from "../../lib/socket";
 import { COIN_COLOR_HEX } from "../../components/CoinColorPicker";
 import { Dice } from "../ludo/Dice";
 import InlineRoomRail from "../../components/InlineRoomRail";
+import { useTurnHaptics } from "../../hooks/useHaptics";
 
 const BOARD_SIZE = 100;
 const CELL = BOARD_SIZE / 10;
@@ -135,6 +136,7 @@ export default function SnlBoard({
 }) {
   const myTurn = state.turnPlayerId === selfId;
   const canRoll = myTurn && state.turnPhase === "rolling" && state.phase === "playing";
+  useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
 
   const coinColorOf = useMemo(
     () => resolveCoinColors(state.playerOrder, players),

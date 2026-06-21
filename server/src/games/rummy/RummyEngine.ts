@@ -10,7 +10,11 @@ import { DEFAULT_RUMMY_OPTIONS } from "@shared/types.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import { deal } from "./deck.js";
 import { validateDeclare } from "./declare.js";
-import { pointsOfHand, INVALID_DECLARE_PENALTY } from "./score.js";
+import {
+  pointsOfHand,
+  bestArrangementForScoring,
+  INVALID_DECLARE_PENALTY,
+} from "./score.js";
 import { findValidDeclaration, pickBestDiscard, shouldDrawFromOpen } from "./botArrange.js";
 
 interface InternalState {
@@ -425,7 +429,20 @@ export class RummyEngine implements GameEngine {
     for (const pid of this.s.playerOrder) {
       const hand = this.s.hands.get(pid) ?? [];
       this.s.finalHands[pid] = hand.slice();
-      this.s.scores[pid] = pid === winnerId ? 0 : pointsOfHand(hand, this.s.wildJoker.rank);
+      if (pid === winnerId) {
+        this.s.scores[pid] = 0;
+        continue;
+      }
+      // Losers: compute the best-credit arrangement so the scorecard
+      // shows the SAME groups that produced the points. Without the
+      // pure-sequence rule a loser holding K-Q-J♥ + 7-7-7 with one orphan
+      // would still book the full hand value — incorrect by Indian Rummy
+      // standards and the source of the inaccurate scorecard.
+      const arrangement = bestArrangementForScoring(hand, this.s.wildJoker.rank);
+      this.s.scores[pid] = arrangement.points;
+      if (arrangement.melds.length > 0) {
+        this.s.finalMelds[pid] = arrangement.melds.map((g) => g.map((c) => c.id));
+      }
     }
     // Winner's exact melds — the proof of how they made the show.
     this.s.finalMelds[winnerId] = winnerMelds.map((g) => g.slice());
@@ -454,9 +471,15 @@ export class RummyEngine implements GameEngine {
       if (pid === declarerId) {
         this.s.scores[pid] = INVALID_DECLARE_PENALTY;
       } else {
-        // Opponents book a clean zero — they didn't lose anything on this
-        // round and they share the declarer's 80-point penalty as chips.
+        // Opponents book a clean zero (penalty chips are distributed
+        // separately by the scorecard), but we still compute their
+        // best meld arrangement so the scorecard shows the groups they
+        // had been building instead of an unstructured pile.
         this.s.scores[pid] = 0;
+        const arrangement = bestArrangementForScoring(hand, this.s.wildJoker.rank);
+        if (arrangement.melds.length > 0) {
+          this.s.finalMelds[pid] = arrangement.melds.map((g) => g.map((c) => c.id));
+        }
       }
     }
     // Capture the declarer's attempted (invalid) arrangement so the

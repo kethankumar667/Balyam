@@ -16,6 +16,7 @@ import InstructionsModal from "./InstructionsModal";
 import Toast from "./Toast";
 import Confetti from "./Confetti";
 import InlineRoomRail from "../../components/InlineRoomRail";
+import { useTurnHaptics } from "../../hooks/useHaptics";
 import FloatingReactionsLayer from "./FloatingReactionsLayer";
 import CursorLayer, { type RemoteCursor } from "./CursorLayer";
 import EndGameCard from "./EndGameCard";
@@ -60,6 +61,8 @@ export default function LudoBoard({
 }) {
   const myTurn = state.turnPlayerId === selfId;
   const canRoll = myTurn && state.turnPhase === "rolling" && state.phase === "playing";
+  // Buzz the device once per lobby→playing → my-turn transition.
+  useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
 
   // Local "rolling animation" state — triggered whenever diceValue changes.
   // The server now keeps the last roll alive until the next handleRoll, so
