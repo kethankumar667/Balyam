@@ -2,13 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import type { Player } from "@shared/types";
 import { VoiceManager, type RemotePeerInfo } from "../lib/webrtc";
 import { getSocket } from "../lib/socket";
+import {
+  enterFullscreen,
+  isFullscreenActive,
+  isFullscreenSupported,
+} from "../lib/fullscreen";
 
 export default function VoicePanel({
   players,
   selfId,
+  restoreOrientation = "any",
 }: {
   players: Player[];
   selfId: string | null;
+  /**
+   * Orientation to re-lock after the mic-permission prompt closes
+   * fullscreen. Pass "landscape" from Rummy, "portrait" from other
+   * portrait-locked games. "any" (default) re-enters fullscreen
+   * without re-locking, which is right for desktop / loose games.
+   */
+  restoreOrientation?: "landscape" | "portrait" | "any";
 }) {
   const managerRef = useRef<VoiceManager | null>(null);
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
@@ -47,6 +60,11 @@ export default function VoicePanel({
 
   async function connectMic() {
     if (!selfId || busy || connected) return;
+    // Browsers exit fullscreen + drop the orientation lock when they show
+    // the mic-permission prompt. Snapshot whether we were in fullscreen so
+    // we can re-enter after the prompt resolves — otherwise opening the
+    // voice panel mid-Rummy collapses the room out of landscape.
+    const wasFullscreen = isFullscreenActive();
     setBusy(true);
     setError(null);
     try {
@@ -62,6 +80,18 @@ export default function VoicePanel({
       setError(msg);
     } finally {
       setBusy(false);
+      // Best-effort fullscreen restore. We're still inside a user gesture
+      // (the Connect-mic click), so the browser's activation window is
+      // usually still open. If it's been ≳5s (rare permission delays) the
+      // call will silently fail — the in-game fullscreen toggle remains
+      // the user's escape hatch in that case.
+      if (
+        wasFullscreen &&
+        !isFullscreenActive() &&
+        isFullscreenSupported()
+      ) {
+        void enterFullscreen(restoreOrientation);
+      }
     }
   }
 

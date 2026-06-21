@@ -253,3 +253,102 @@ function findNearRun(cards: Card[]): Card[] | null {
   }
   return null;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+ * Score from a submitted arrangement.
+ *
+ * When the player has been organising their hand into groups during
+ * play (drag-and-drop on the client), we want the scorecard to credit
+ * exactly THOSE groups — not a hypothetical "best" one the engine
+ * computes from scratch. That mismatch was the source of the
+ * scorecard discrepancy: live in-game points used the player's
+ * groups, but the round-end scorecard re-grouped from raw cards and
+ * showed different points + different decks.
+ *
+ * We still apply the credit hierarchy (pure required, sets need a
+ * second sequence) and we still validate every group — invalid groups
+ * (e.g. mixed-suit J-Q-K) fall through to "ungrouped" and their cards
+ * count toward the score, same as bestArrangementForScoring would.
+ *
+ * Groups marked as "set" are deferred until we've decided whether a
+ * second sequence exists, so we don't accidentally credit them when
+ * only a single pure sequence was played.
+ * ──────────────────────────────────────────────────────────────── */
+
+export function scoreFromArrangement(
+  hand: Card[],
+  groups: string[][],
+  wildJokerRank: Rank,
+): ScoringArrangement {
+  const byId = new Map(hand.map((c) => [c.id, c]));
+  const credited: Card[][] = [];
+  const seenIds = new Set<string>();
+  let pureCount = 0;
+  let sequenceCount = 0;
+  const pendingSets: Card[][] = [];
+
+  for (const group of groups) {
+    const cards: Card[] = [];
+    for (const id of group) {
+      // Skip dupes or cards that aren't in this hand (shouldn't happen,
+      // but never trust client input blindly).
+      if (seenIds.has(id)) continue;
+      const c = byId.get(id);
+      if (!c) continue;
+      cards.push(c);
+    }
+    if (cards.length < 3) {
+      // Too small to be any kind of meld — leave cards for ungrouped.
+      continue;
+    }
+    if (isPureSequence(cards, wildJokerRank)) {
+      credited.push(cards);
+      for (const c of cards) seenIds.add(c.id);
+      pureCount += 1;
+      sequenceCount += 1;
+      continue;
+    }
+    if (isImpureSequence(cards, wildJokerRank)) {
+      credited.push(cards);
+      for (const c of cards) seenIds.add(c.id);
+      sequenceCount += 1;
+      continue;
+    }
+    if (isSet(cards, wildJokerRank)) {
+      // Defer — sets only count if the player also has 2 sequences.
+      pendingSets.push(cards);
+      continue;
+    }
+    // Invalid group — its cards stay loose. seenIds doesn't get them.
+  }
+
+  // Pure required for ANY credit. If no pure sequence, drop everything
+  // — sequences, sets, the lot — and fall back to full hand value.
+  if (pureCount === 0) {
+    const loose = hand.slice();
+    return {
+      melds: [],
+      ungrouped: loose,
+      points: Math.min(rawHandPoints(loose, wildJokerRank), HAND_CAP),
+      hasPureSequence: false,
+      hasSecondSequence: false,
+    };
+  }
+
+  // Promote deferred sets only if a second sequence has unlocked them.
+  if (sequenceCount >= 2) {
+    for (const set of pendingSets) {
+      credited.push(set);
+      for (const c of set) seenIds.add(c.id);
+    }
+  }
+
+  const ungrouped = hand.filter((c) => !seenIds.has(c.id));
+  return {
+    melds: credited,
+    ungrouped,
+    points: Math.min(rawHandPoints(ungrouped, wildJokerRank), HAND_CAP),
+    hasPureSequence: true,
+    hasSecondSequence: sequenceCount >= 2,
+  };
+}
