@@ -7,6 +7,7 @@ import { RevealOnScroll, RevealItem } from "../components/RevealOnScroll";
 import GsapSplitHeadline from "../components/GsapSplitHeadline";
 import CountUp from "../components/CountUp";
 import { useTheme } from "../lib/useTheme";
+import GlobalSettings from "../components/GlobalSettings";
 import { tileHover, ctaPress, bhalyamSpring } from "../lib/motion";
 import {
   BHALYAM_GAMES,
@@ -456,6 +457,7 @@ function MenuSheet({
   onOpenJoin: () => void;
 }) {
   const [theme, toggleTheme] = useTheme();
+  const [showSettings, setShowSettings] = useState(false);
   return (
     <SheetShell
       open={open}
@@ -506,6 +508,13 @@ function MenuSheet({
           icon={theme === "light" ? <MoonGlyph className="w-5 h-5" /> : <SunGlyph className="w-5 h-5" />}
         />
         <SheetAction
+          label={showSettings ? "Hide settings" : "Sound & vibration"}
+          hint="Mute / theme / vibration toggle"
+          onClick={() => setShowSettings((v) => !v)}
+          icon={<GearGlyph className="w-5 h-5" />}
+        />
+        {showSettings && <GlobalSettings />}
+        <SheetAction
           label="About BHALYAM"
           hint="Crafted for 90s Telugu kids"
           onClick={onClose}
@@ -513,6 +522,16 @@ function MenuSheet({
         />
       </nav>
     </SheetShell>
+  );
+}
+
+function GearGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.05.24.31.51 1.6 1.05a2 2 0 1 1 0 4c-1.29.54-1.55.81-1.6 1.05z" />
+    </svg>
   );
 }
 

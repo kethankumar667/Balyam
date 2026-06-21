@@ -15,6 +15,7 @@ import EmojiRain from "../ludo/EmojiRain";
 import CardTracker from "./CardTracker";
 import { suggestArrangement } from "./autoArrange";
 import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
+import { useTurnHaptics } from "../../hooks/useHaptics";
 import TutorialModal, { hasSeenTutorial } from "./TutorialModal";
 import PlayerList from "../../components/PlayerList";
 import VoicePanel from "../../components/VoicePanel";
@@ -262,6 +263,8 @@ export default function RummyBoardMobile({
   const myTurn = state.turnPlayerId === selfId;
   const canDraw = myTurn && state.turnAction === "draw" && state.phase === "playing";
   const canDiscardOrDeclare = myTurn && state.turnAction === "discardOrDeclare" && state.phase === "playing";
+  // Buzz the device on each transition into your turn.
+  useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
   const iDropped = !!selfId && state.droppedPlayers.includes(selfId);
 
   const hand = state.myHand ?? [];
