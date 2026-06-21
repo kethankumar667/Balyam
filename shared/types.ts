@@ -162,13 +162,19 @@ export interface RummyNewRoundMove {
 export type RummyMatchMode = "single" | "pool101" | "pool201";
 
 export interface RummyGameOptions {
-  /** Seconds before the active player's turn auto-resolves. */
+  /** Legacy combined timer — kept for back-compat / fallback. */
   turnTimerSeconds: number;
+  /** Seconds to choose a pile (closed / open) and draw. */
+  drawTimerSeconds?: number;
+  /** Seconds to commit a discard or declare after drawing. */
+  discardTimerSeconds?: number;
   mode: RummyMatchMode;
 }
 
 export const DEFAULT_RUMMY_OPTIONS: RummyGameOptions = {
   turnTimerSeconds: 30,
+  drawTimerSeconds: 30,
+  discardTimerSeconds: 15,
   mode: "single",
 };
 

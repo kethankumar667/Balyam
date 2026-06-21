@@ -1004,3 +1004,9 @@ body, #root, .bhalyam-paper {
   to   { transform: translateX(0); }
 }
 
+/* Rummy last-10s warning — pulsing edge glow + chip throb. */
+@keyframes rummy-time-pulse {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 1; }
+}
+

@@ -176,48 +176,18 @@ export function PlayingCard({
         </div>
       </div>
 
-      {/* Centre — face cards get a stylised letter with watermark suit + decorative
-          crest framing. Numerics get a single large suit glyph. */}
+      {/* Centre — face cards (J/Q/K/A) get a single emblematic chess glyph
+          framed by a thin oval medallion. The previous design layered a
+          watermark suit + a giant serif letter + a heavy ornamental box,
+          which read as busy and cramped at every size. The new layout is
+          one bold symbol per rank, sized for instant recognition. */}
       {isFace ? (
-        <>
-          {/* Inner ornamental frame for face cards */}
-          <div
-            aria-hidden
-            className="absolute"
-            style={{
-              top: 9,
-              bottom: 9,
-              left: 4,
-              right: 4,
-              borderRadius: 4,
-              border: `1px solid ${red ? "rgba(185,28,28,0.45)" : "rgba(15,23,42,0.4)"}`,
-              boxShadow: `inset 0 0 0 1px ${red ? "rgba(220,38,38,0.18)" : "rgba(30,41,59,0.15)"}`,
-            }}
-          />
-          {/* Watermark suit */}
-          <div
-            className={`absolute inset-0 flex items-center justify-center font-extrabold ${centerSize}`}
-            style={{
-              color: red ? "#b91c1c" : "#0b1220",
-              opacity: 0.14,
-            }}
-            aria-hidden
-          >
-            {SUIT_GLYPHS[card.suit]}
-          </div>
-          {/* Big ornate letter */}
-          <div
-            className={`absolute inset-0 flex items-center justify-center font-black tracking-tight ${faceLetterSize}`}
-            style={{
-              color: red ? "#b91c1c" : "#0b1220",
-              textShadow:
-                "0 1px 0 rgba(212,165,116,0.5), 0 2px 4px rgba(0,0,0,0.18)",
-              fontFamily: "Georgia, 'Times New Roman', serif",
-            }}
-          >
-            {rankLabel(card.rank)}
-          </div>
-        </>
+        <FaceCardCenter
+          rank={card.rank}
+          suit={card.suit}
+          red={red}
+          small={small}
+        />
       ) : (
         <div
           className={`absolute inset-0 flex items-center justify-center font-black ${centerSize}`}
@@ -265,6 +235,74 @@ export function PlayingCard({
         </div>
       )}
     </Tag>
+  );
+}
+
+/**
+ * Centre artwork for face cards (J / Q / K / A). One bold emblem per rank
+ * inside a thin medallion ring. Tuned to read cleanly at the small and
+ * default card sizes used in hand + scorecard contexts.
+ *
+ *   J → ♞  (knight — the youthful court card)
+ *   Q → ♛  (queen — refined chess glyph)
+ *   K → ♚  (king — heavy filled chess glyph)
+ *   A → big suit pip with a subtle ace ring
+ *
+ * Letters are drawn alongside the emblem in a smaller scale so the rank
+ * stays unambiguous when cards overlap in a stack.
+ */
+function FaceCardCenter({
+  rank,
+  suit,
+  red,
+  small,
+}: {
+  rank: Rank;
+  suit: string;
+  red: boolean;
+  small: boolean;
+}) {
+  const emblem =
+    rank === "K" ? "♚" :        // ♚ king
+    rank === "Q" ? "♛" :        // ♛ queen
+    rank === "J" ? "♞" :        // ♞ knight
+    SUIT_GLYPHS[suit];               // Ace → big suit pip
+
+  const emblemSize = small ? 26 : 32;
+  const ringSize   = small ? 30 : 36;
+  const tone       = red ? "#b91c1c" : "#1e293b";
+  const tint       = red ? "rgba(185,28,28,0.10)" : "rgba(30,41,59,0.08)";
+  const ringColor  = red ? "rgba(185,28,28,0.55)" : "rgba(30,41,59,0.55)";
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center" aria-hidden>
+      {/* Soft medallion */}
+      <div
+        style={{
+          width: ringSize,
+          height: ringSize,
+          borderRadius: "50%",
+          background: `radial-gradient(circle at 50% 35%, ${tint}, transparent 75%)`,
+          border: `1px solid ${ringColor}`,
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.4)",
+        }}
+      />
+      {/* Emblem */}
+      <span
+        className="absolute font-black leading-none"
+        style={{
+          color: tone,
+          fontSize: emblemSize,
+          fontFamily:
+            rank === "A"
+              ? "Georgia, 'Times New Roman', serif"
+              : "'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols2', system-ui, sans-serif",
+          textShadow: "0 1px 2px rgba(0,0,0,0.18)",
+        }}
+      >
+        {emblem}
+      </span>
+    </div>
   );
 }
 

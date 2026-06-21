@@ -15,7 +15,7 @@ import EmojiRain from "../ludo/EmojiRain";
 import CardTracker from "./CardTracker";
 import { suggestArrangement } from "./autoArrange";
 import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
-import { useTurnHaptics } from "../../hooks/useHaptics";
+import { useTurnHaptics, useHaptics } from "../../hooks/useHaptics";
 import TutorialModal, { hasSeenTutorial } from "./TutorialModal";
 import PlayerList from "../../components/PlayerList";
 import VoicePanel from "../../components/VoicePanel";
@@ -356,11 +356,12 @@ export default function RummyBoardMobile({
     window.sessionStorage.removeItem(key);
     if (state.phase !== "playing") return;
     setDealStage("shuffle");
-    // 3 s shuffle + 3 s deal = 6 s total. During this window the overlay
-    // fully hides the felt + hand so the player can never see cards in
-    // their deck before the deal animation finishes.
-    window.setTimeout(() => setDealStage("deal"), 3000);
-    window.setTimeout(() => setDealStage("idle"), 6000);
+    // 0.9 s shuffle + 0.9 s deal = ~1.8 s total. Snappy enough not to
+    // make players wait, long enough to register the celebration of the
+    // joker reveal. (Down from the original 3 + 3 = 6 s — the user
+    // flagged the long opener as needlessly slowing entry into a hand.)
+    window.setTimeout(() => setDealStage("deal"), 900);
+    window.setTimeout(() => setDealStage("idle"), 1800);
     // Intentionally [] — runs exactly once per mount, the flag is the
     // single source of truth.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -949,6 +950,15 @@ export default function RummyBoardMobile({
       {dealStage !== "idle" && (
         <RummyDealOverlay stage={dealStage} playerCount={state.playerOrder.length} />
       )}
+
+      {/* Low-time warning — pulsing red screen border + countdown chip when
+          it's your turn and the timer has dropped to 10 s or less. The
+          chip stays in the viewport corner so the player notices even
+          when their attention is on the open pile or finish slot. */}
+      <RummyTimeWarning
+        deadline={state.turnDeadline}
+        active={state.phase === "playing" && state.turnPlayerId === selfId}
+      />
 
       {jokerCelebration && (
         <JokerDrawCelebration
@@ -1756,6 +1766,87 @@ function PlayerStrip({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * Pulsing red screen-edge warning + corner countdown chip for the last
+ * 10 s of the player's turn. Fires a haptic nudge at the moment the
+ * warning appears so the player feels the urgency even if their eye
+ * is elsewhere on the board.
+ *
+ * Renders nothing when:
+ *   • It isn't the player's turn.
+ *   • The deadline isn't set (between rounds, lobby, etc.).
+ *   • More than 10 s remain.
+ */
+function RummyTimeWarning({
+  deadline,
+  active,
+}: {
+  deadline: number | null | undefined;
+  active: boolean;
+}) {
+  const secondsLeft = useTurnSecondsLeft(deadline);
+  const haptics = useHaptics();
+  const warned = useRef(false);
+
+  const showWarning = active && deadline != null && secondsLeft <= 10 && secondsLeft > 0;
+  const critical = active && deadline != null && secondsLeft <= 5 && secondsLeft > 0;
+
+  useEffect(() => {
+    if (!active || deadline == null) {
+      warned.current = false;
+      return;
+    }
+    // One-shot nudge the moment we cross into the warning window.
+    if (showWarning && !warned.current) {
+      warned.current = true;
+      haptics.subtle();
+    }
+    if (!showWarning) warned.current = false;
+  }, [active, deadline, showWarning, haptics]);
+
+  if (!showWarning) return null;
+
+  const color = critical ? "#ef4444" : "#f59e0b";
+  return (
+    <>
+      {/* Pulsing edge border — fixed so it stays on screen regardless of
+          inner scroll, doesn't intercept taps, and stays above the felt
+          but below modals (z-40). */}
+      <div
+        aria-hidden
+        className="fixed inset-0 pointer-events-none z-40"
+        style={{
+          boxShadow: `inset 0 0 0 4px ${color}, inset 0 0 32px ${color}88`,
+          animation: "rummy-time-pulse 900ms ease-in-out infinite",
+        }}
+      />
+      {/* Corner countdown chip — high contrast so it reads at a glance. */}
+      <div
+        className="fixed z-50 pointer-events-none"
+        style={{
+          top: "max(0.75rem, env(safe-area-inset-top, 0))",
+          left: "50%",
+          transform: "translateX(-50%)",
+        }}
+      >
+        <div
+          className="px-3 py-1.5 rounded-full text-sm font-extrabold tabular-nums shadow-2xl flex items-center gap-2"
+          style={{
+            background: `linear-gradient(135deg, ${color}, #7f1d1d)`,
+            color: "#fff7ed",
+            border: "2px solid rgba(255,255,255,0.6)",
+            boxShadow: `0 6px 20px ${color}aa, 0 0 0 1px rgba(0,0,0,0.4)`,
+            animation: "rummy-time-pulse 900ms ease-in-out infinite",
+          }}
+        >
+          <span>⏱</span>
+          <span>{secondsLeft}s left</span>
+        </div>
+      </div>
+    </>
   );
 }
 

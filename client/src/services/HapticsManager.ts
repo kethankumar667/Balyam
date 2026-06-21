@@ -100,18 +100,22 @@ export class HapticsManager {
     }
   }
 
-  /** "It's your turn" — short, distinct double-pulse. */
+  /**
+   * "It's your turn" — strong, distinct triple pulse. Longer + harder
+   * than the original double-tap; the user reported the previous
+   * pattern was too easy to miss in their pocket or with a phone case.
+   */
   turn(): void {
-    this.fire([45, 60, 45]);
+    this.fire([120, 80, 120, 80, 120]);
   }
 
-  /** Round / match win — celebratory triple pulse. */
+  /** Round / match win — sustained celebratory cadence. */
   win(): void {
-    this.fire([30, 40, 30, 40, 80]);
+    this.fire([80, 60, 80, 60, 200]);
   }
 
-  /** Subtle confirmation tap. */
+  /** Subtle confirmation tap — short but firmer than the prior 18 ms. */
   subtle(): void {
-    this.fire(18);
+    this.fire(40);
   }
 }

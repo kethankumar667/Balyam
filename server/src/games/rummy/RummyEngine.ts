@@ -55,6 +55,10 @@ function poolTargetFor(mode: RummyMatchMode): number | null {
 /** Drop penalty per the common Indian Rummy convention: first-drop = 20 points. */
 const DROP_PENALTY = 20;
 
+/** Per-action turn timers. Draw gets a longer think; discard is committed quickly. */
+const RUMMY_DRAW_SECONDS = 30;
+const RUMMY_DISCARD_SECONDS = 15;
+
 export class RummyEngine implements GameEngine {
   readonly kind = "rummy" as const;
   readonly minPlayers = 2;
@@ -85,8 +89,25 @@ export class RummyEngine implements GameEngine {
     this.s.turnDeadline = null;
   }
 
+  /**
+   * Rummy uses TWO turn timers — draw and discard — instead of one
+   * combined window. The user gets a longer think on the draw decision
+   * (which pile, plan the build) and a shorter window to actually
+   * commit the discard / declare. Returns the appropriate timer for
+   * the current sub-action.
+   *
+   *   draw            → RUMMY_DRAW_SECONDS  (30s default)
+   *   discardOrDeclare → RUMMY_DISCARD_SECONDS (15s default)
+   *
+   * Falls back to the legacy combined option if a custom value was
+   * supplied via setOptions.
+   */
   getTurnTimerSeconds(): number {
-    return this.s?.options.turnTimerSeconds ?? DEFAULT_RUMMY_OPTIONS.turnTimerSeconds;
+    const opts = this.s?.options ?? DEFAULT_RUMMY_OPTIONS;
+    if (!this.s) return opts.turnTimerSeconds;
+    return this.s.turnAction === "draw"
+      ? opts.drawTimerSeconds ?? RUMMY_DRAW_SECONDS
+      : opts.discardTimerSeconds ?? RUMMY_DISCARD_SECONDS;
   }
 
   /**
