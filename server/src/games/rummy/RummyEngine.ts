@@ -13,6 +13,7 @@ import { validateDeclare } from "./declare.js";
 import {
   pointsOfHand,
   bestArrangementForScoring,
+  scoreFromArrangement,
   INVALID_DECLARE_PENALTY,
 } from "./score.js";
 import { findValidDeclaration, pickBestDiscard, shouldDrawFromOpen } from "./botArrange.js";
@@ -61,6 +62,15 @@ export class RummyEngine implements GameEngine {
 
   private s!: InternalState;
   private pendingOptions: RummyGameOptions = { ...DEFAULT_RUMMY_OPTIONS };
+  /**
+   * Last known client-side arrangement per player, keyed by player id.
+   * Each value is a list of groups; each group is a list of card ids in
+   * the order the player has placed them. Cards not listed in any group
+   * are considered "ungrouped". The server uses this to score losers on
+   * round end so the scorecard credits the SAME groups the player built
+   * during play. Cleared on each new round.
+   */
+  private arrangements = new Map<string, string[][]>();
 
   /** Set game options before init. */
   setOptions(options: RummyGameOptions): void {
@@ -77,6 +87,23 @@ export class RummyEngine implements GameEngine {
 
   getTurnTimerSeconds(): number {
     return this.s?.options.turnTimerSeconds ?? DEFAULT_RUMMY_OPTIONS.turnTimerSeconds;
+  }
+
+  /**
+   * Record the player's current hand arrangement (drag-and-drop groups).
+   * Called every time the client emits `rummy:arrangement`. We don't
+   * validate here — invalid groups fall through to ungrouped during
+   * scoreFromArrangement, so they don't earn the player free credit.
+   */
+  setArrangement(playerId: string, groups: string[][]): void {
+    if (!this.s) return;
+    if (!this.s.playerOrder.includes(playerId)) return;
+    if (!Array.isArray(groups)) return;
+    // Defensive copy + filter so a malformed payload can't crash later.
+    const normalised = groups
+      .filter((g) => Array.isArray(g))
+      .map((g) => g.filter((id) => typeof id === "string"));
+    this.arrangements.set(playerId, normalised);
   }
 
   /**
@@ -210,6 +237,9 @@ export class RummyEngine implements GameEngine {
     this.s.droppedPlayers = new Set();
     this.s.turnDeadline = null;
     this.s.roundNumber += 1;
+    // Wipe stale arrangements — last round's groups don't apply to the
+    // fresh hands dealt for this round.
+    this.arrangements.clear();
     return { ok: true };
   }
 
@@ -433,14 +463,23 @@ export class RummyEngine implements GameEngine {
         this.s.scores[pid] = 0;
         continue;
       }
-      // Losers: compute the best-credit arrangement so the scorecard
-      // shows the SAME groups that produced the points. Without the
-      // pure-sequence rule a loser holding K-Q-J♥ + 7-7-7 with one orphan
-      // would still book the full hand value — incorrect by Indian Rummy
-      // standards and the source of the inaccurate scorecard.
-      const arrangement = bestArrangementForScoring(hand, this.s.wildJoker.rank);
+      // Losers: score from the player's last submitted arrangement so
+      // the scorecard's groups + points match what the player saw during
+      // play. If no arrangement was received (e.g. a bot, or a stale
+      // round), fall back to the engine's best-credit auto-arrangement.
+      const submitted = this.arrangements.get(pid);
+      const arrangement = submitted
+        ? scoreFromArrangement(hand, submitted, this.s.wildJoker.rank)
+        : bestArrangementForScoring(hand, this.s.wildJoker.rank);
       this.s.scores[pid] = arrangement.points;
-      if (arrangement.melds.length > 0) {
+      // Display: show the FULL submitted arrangement (including invalid
+      // / short groups) so the scorecard mirrors what the player actually
+      // built. The badges on the client compute per-group points and
+      // mark credited vs uncredited — they need every group to do that.
+      // When no arrangement was sent, fall back to the credited melds.
+      if (submitted && submitted.length > 0) {
+        this.s.finalMelds[pid] = submitted.map((g) => g.slice());
+      } else if (arrangement.melds.length > 0) {
         this.s.finalMelds[pid] = arrangement.melds.map((g) => g.map((c) => c.id));
       }
     }
@@ -476,8 +515,13 @@ export class RummyEngine implements GameEngine {
         // best meld arrangement so the scorecard shows the groups they
         // had been building instead of an unstructured pile.
         this.s.scores[pid] = 0;
-        const arrangement = bestArrangementForScoring(hand, this.s.wildJoker.rank);
-        if (arrangement.melds.length > 0) {
+        const submitted = this.arrangements.get(pid);
+        const arrangement = submitted
+          ? scoreFromArrangement(hand, submitted, this.s.wildJoker.rank)
+          : bestArrangementForScoring(hand, this.s.wildJoker.rank);
+        if (submitted && submitted.length > 0) {
+          this.s.finalMelds[pid] = submitted.map((g) => g.slice());
+        } else if (arrangement.melds.length > 0) {
           this.s.finalMelds[pid] = arrangement.melds.map((g) => g.map((c) => c.id));
         }
       }

@@ -714,6 +714,35 @@ export class RoomManager {
     });
   }
 
+  /**
+   * Pass the player's Rummy hand arrangement (drag-and-drop groups) into
+   * the live engine. Only valid when the room is in a Rummy game; other
+   * games / phases silently ignore the event.
+   */
+  setRummyArrangement(socketId: string, groups: unknown): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (room.game !== "rummy") return;
+    if (!Array.isArray(groups)) return;
+    if (!room.engine) return;
+    const engine = room.engine as unknown as {
+      setArrangement?: (pid: string, groups: string[][]) => void;
+    };
+    if (!engine.setArrangement) return;
+    // Defensive shape check — the socket boundary is the right place to
+    // reject malformed payloads before they reach the engine.
+    const normalised: string[][] = [];
+    for (const g of groups as unknown[]) {
+      if (!Array.isArray(g)) continue;
+      const ids: string[] = [];
+      for (const id of g as unknown[]) {
+        if (typeof id === "string") ids.push(id);
+      }
+      normalised.push(ids);
+    }
+    engine.setArrangement(player.id, normalised);
+  }
+
   relayCursor(socketId: string, x: number | null, y: number | null): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;

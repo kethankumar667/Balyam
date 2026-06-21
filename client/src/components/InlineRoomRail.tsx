@@ -179,7 +179,11 @@ export default function InlineRoomRail({
               <PlayerList players={players} selfId={selfId} />
             )}
             {open === "voice" && (
-              <VoicePanel players={players} selfId={selfId} />
+              <VoicePanel
+                players={players}
+                selfId={selfId}
+                restoreOrientation="portrait"
+              />
             )}
             {open === "chat" && <Chat messages={messages} selfId={selfId} />}
           </div>

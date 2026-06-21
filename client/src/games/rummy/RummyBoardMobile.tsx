@@ -273,6 +273,25 @@ export default function RummyBoardMobile({
 
   // Layout — persistent client-side grouping. Reconciles on every server hand update.
   const [layout, setLayout] = useState<Layout>({ groups: [], ungrouped: [] });
+
+  // Stream the player's drag-and-drop arrangement to the server (debounced)
+  // so round-end scoring can credit THESE groups — keeping the in-game live
+  // points and the scorecard's points + decks in lockstep. Without this, the
+  // server re-grouped each loser's raw hand and the scorecard often showed
+  // different cards + different points than what the player was looking at.
+  useEffect(() => {
+    if (state.phase === "finished") return;
+    const t = window.setTimeout(() => {
+      try {
+        getSocket().emit("rummy:arrangement", {
+          groups: layout.groups.map((g) => g.cardIds.slice()),
+        });
+      } catch {
+        /* ignore — best-effort */
+      }
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [layout.groups, state.phase]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [confirmDrop, setConfirmDrop] = useState(false);
@@ -1149,7 +1168,7 @@ export default function RummyBoardMobile({
       {/* Voice overlay */}
       {voiceOpen && (
         <RummyModal title="Voice" onClose={() => setVoiceOpen(false)}>
-          <VoicePanel players={players} selfId={selfId} />
+          <VoicePanel players={players} selfId={selfId} restoreOrientation="landscape" />
         </RummyModal>
       )}
 
@@ -2743,21 +2762,24 @@ function MatchOverCard({
 }
 
 /**
- * Scorecard cards row — renders each player's hand split into the meld
- * groups they declared, with small labelled chips above each group so the
- * scorecard reads as proof of HOW the show was made.
+ * Scorecard cards row — renders each player's hand as the groups they
+ * had organised, with a small circular badge on each group showing the
+ * points it contributes to the score.
  *
- *   - Winner / wrong-show declarer → uses `declaredMelds` (the actual
- *     groups submitted to the server).
- *   - Everyone else → server doesn't send their melds, so we run the
- *     existing `suggestArrangement` locally to show their best possible
- *     arrangement. Mid-cards (jokers, would-have-been runs, sets) all get
- *     classified by the same engine the live board uses, so the labels
- *     are consistent with what they saw mid-game.
+ * Visual matches the reference design the user shared:
+ *   • Cards within a group overlap tightly.
+ *   • A small bright circle sits at the group's top-right corner.
+ *       - Green   → 0 points (this group is a credited valid meld).
+ *       - Amber   → N points (group is invalid, short, or a valid set
+ *         that isn't unlocked by a second sequence — so it counts
+ *         toward the score).
+ *   • Ungrouped leftovers render as their own group with the same badge
+ *     showing their summed point value.
  *
- * Each group is rendered as a tight overlapping fan with a tiny pill above
- * naming the meld type, and groups are separated by a thin gold divider so
- * the eye can count "3 groups + ungrouped".
+ * The badge colour is driven by the same rule the engine uses for
+ * scoring: pure required, sets need a second sequence. So a player's
+ * arrangement and the final points + decks always reconcile — the eye
+ * can sum the badges and match the POINTS column.
  */
 function MeldGroupsRow({
   hand,
@@ -2792,95 +2814,132 @@ function MeldGroupsRow({
       }
       if (cards.length > 0) groups.push(cards);
     }
-    // Anything left over (e.g. the 14th card that was discarded but still
-    // appears in finalHands for losers, or any stray card not referenced in
-    // the declared melds) lands in an ungrouped tray.
     ungrouped = hand.filter((c) => !seen.has(c.id));
   } else {
-    // No declared melds for this player — fall back to a best-effort
-    // arrangement so the scorecard still tells a story.
     const arr = suggestArrangement(hand, wildRank as Rank);
     groups = arr.groups;
     ungrouped = arr.ungrouped;
   }
 
-  function classifyForDisplay(group: Card[]) {
-    const cls = classifyMeld(group, wildRank as Rank);
-    // For the wrong-show declarer, every "valid" badge would lie about
-    // their intent — but the engine already rejected the show, so the
-    // honest framing is "this is what they SUBMITTED, here's how the
-    // engine classified each piece." classifyMeld returns invalid when
-    // the meld itself doesn't hold up; we surface that as the badge.
-    return cls;
+  // Summarise the player's valid sequences so we can tell whether a
+  // set group is "unlocked" (creditable) or still counts toward the
+  // score. Pure required → sets need 2 sequences total (pure+pure or
+  // pure+impure). Same rule the engine applies for scoring.
+  let hasPure = false;
+  let sequenceCount = 0;
+  for (const g of groups) {
+    const cls = classifyMeld(g, wildRank as Rank);
+    if (!cls.valid) continue;
+    if (cls.kind === "pureSequence") {
+      hasPure = true;
+      sequenceCount += 1;
+    } else if (cls.kind === "impureSequence") {
+      sequenceCount += 1;
+    }
+  }
+
+  function pointsForGroup(g: Card[]): number {
+    const cls = classifyMeld(g, wildRank as Rank);
+    if (!cls.valid) return sumCardPoints(g, wildRank as Rank);
+    if (cls.kind === "pureSequence") return 0;
+    if (cls.kind === "impureSequence") {
+      return hasPure ? 0 : sumCardPoints(g, wildRank as Rank);
+    }
+    if (cls.kind === "set") {
+      return hasPure && sequenceCount >= 2
+        ? 0
+        : sumCardPoints(g, wildRank as Rank);
+    }
+    return sumCardPoints(g, wildRank as Rank);
   }
 
   return (
-    <div className="flex items-end gap-2 min-w-0">
-      {groups.map((g, gi) => {
-        const cls = classifyForDisplay(g);
-        return (
-          <div key={gi} className="flex flex-col items-start gap-0.5 flex-shrink-0">
-            <span
-              className="text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md leading-tight"
-              style={{
-                color: "#1f1300",
-                background: cls.valid
-                  ? `linear-gradient(135deg, ${cls.color}, ${cls.color}cc)`
-                  : "linear-gradient(135deg, #fda4af, #f87171)",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.35)",
-              }}
-              title={cls.label}
-            >
-              {cls.label}
-            </span>
-            <div className="flex">
-              {g.map((c, i) => (
-                <span
-                  key={c.id}
-                  className="flex-shrink-0"
-                  style={{ marginLeft: i === 0 ? 0 : -14 }}
-                >
-                  <PlayingCard
-                    card={c}
-                    isWildJoker={c.rank === wildRank}
-                    small
-                  />
-                </span>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+      {groups.map((g, gi) => (
+        <ScoreGroup
+          key={gi}
+          cards={g}
+          points={pointsForGroup(g)}
+          wildRank={wildRank}
+        />
+      ))}
       {ungrouped.length > 0 && (
-        <div className="flex flex-col items-start gap-0.5 flex-shrink-0">
+        <ScoreGroup
+          cards={ungrouped}
+          points={sumCardPoints(ungrouped, wildRank as Rank)}
+          wildRank={wildRank}
+          isLooseTray
+          isWrongShower={isWrongShower}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * One labelled group on the scorecard — overlapping cards + a small
+ * circular points badge clipped to the top-right corner. Mirrors the
+ * reference scorecard the user showed: no big "Pure run" pill, the
+ * status is conveyed entirely by the badge's colour and number.
+ */
+function ScoreGroup({
+  cards,
+  points,
+  wildRank,
+  isLooseTray,
+  isWrongShower,
+}: {
+  cards: Card[];
+  points: number;
+  wildRank: string;
+  isLooseTray?: boolean;
+  isWrongShower?: boolean;
+}) {
+  if (cards.length === 0) return null;
+  const credited = points === 0;
+  const badgeBg = credited
+    ? "linear-gradient(135deg, #22c55e, #16a34a)"
+    : isWrongShower
+      ? "linear-gradient(135deg, #ef4444, #b91c1c)"
+      : "linear-gradient(135deg, #f59e0b, #d97706)";
+  const ariaLabel = credited
+    ? `Group of ${cards.length} cards — credited`
+    : `Group of ${cards.length} cards — ${points} points`;
+
+  return (
+    <div
+      className="relative flex-shrink-0"
+      aria-label={ariaLabel}
+      title={ariaLabel}
+    >
+      <div className="flex">
+        {cards.map((c, i) => (
           <span
-            className="text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md leading-tight"
-            style={{
-              color: "#fff7ed",
-              background: isWrongShower
-                ? "linear-gradient(135deg, #ef4444, #b91c1c)"
-                : "linear-gradient(135deg, #57534e, #292524)",
-            }}
-            title={isWrongShower ? "Did not form a valid show" : "Cards left ungrouped"}
+            key={c.id}
+            className="flex-shrink-0"
+            style={{ marginLeft: i === 0 ? 0 : -18 }}
           >
-            {isWrongShower ? "Loose" : "Ungrouped"}
+            <PlayingCard
+              card={c}
+              isWildJoker={c.rank === wildRank}
+              small
+            />
           </span>
-          <div className="flex">
-            {ungrouped.map((c, i) => (
-              <span
-                key={c.id}
-                className="flex-shrink-0"
-                style={{ marginLeft: i === 0 ? 0 : -14 }}
-              >
-                <PlayingCard
-                  card={c}
-                  isWildJoker={c.rank === wildRank}
-                  small
-                />
-              </span>
-            ))}
-          </div>
-        </div>
+        ))}
+      </div>
+      <span
+        className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 rounded-full flex items-center justify-center text-[11px] font-extrabold tabular-nums"
+        style={{
+          background: badgeBg,
+          color: "#ffffff",
+          border: "2px solid #ffffff",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.45)",
+        }}
+      >
+        {points}
+      </span>
+      {isLooseTray && !credited && (
+        <span className="sr-only">Ungrouped</span>
       )}
     </div>
   );

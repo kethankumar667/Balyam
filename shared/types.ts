@@ -814,4 +814,12 @@ export interface ClientToServerEvents {
   "rematch:request": () => void;
   /** Any non-host response to a pending rematch request. */
   "rematch:respond": (response: "accept" | "decline") => void;
+  /**
+   * Rummy-specific. The client streams the player's drag-and-drop hand
+   * arrangement so the server can score the player's actual groups on
+   * round end — keeping live in-game points and scorecard points in
+   * lockstep. Each group is an ordered list of card ids; anything not
+   * listed is treated as ungrouped.
+   */
+  "rummy:arrangement": (payload: { groups: string[][] }) => void;
 }

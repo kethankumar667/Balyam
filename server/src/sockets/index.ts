@@ -102,4 +102,13 @@ export function registerSocketHandlers(
   socket.on("rematch:respond", (response) => {
     rooms.respondRematch(socket.id, response);
   });
+
+  // Rummy-specific: client streams the player's drag-and-drop arrangement
+  // so the server can score the player's actual groups on round end —
+  // keeping the live in-game points and the scorecard's points + decks
+  // in lockstep. Payload is { groups: string[][] } where each group is
+  // an ordered list of card ids; anything not listed is ungrouped.
+  socket.on("rummy:arrangement", ({ groups }) => {
+    rooms.setRummyArrangement(socket.id, groups);
+  });
 }
