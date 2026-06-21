@@ -1509,6 +1509,21 @@ function Footer() {
             <span className="h-px w-12 sm:w-20 bg-gradient-to-l from-transparent to-[#C9A04C]" />
           </div>
 
+          {/* Game owner — the single human behind every pixel. Visually
+              treated as the colophon's centrepiece: gold-lettered "Built
+              by" overline, a script-styled name that swings in on scroll,
+              a small attribution line. Lifted off the rest of the
+              footer's flow so the eye lands here and lingers. */}
+          <GameOwnerSignature />
+
+          {/* Slim decorative pair to close the signature block before the
+              social row picks up below. */}
+          <div className="mt-7 flex items-center justify-center gap-2" aria-hidden>
+            <span className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent to-[#C9A04C]/70" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#E0AE3B]/85" />
+            <span className="h-px w-8 sm:w-12 bg-gradient-to-l from-transparent to-[#C9A04C]/70" />
+          </div>
+
           {/* Social pill row — three premium chips with spring hover. */}
           <div className="mt-6 flex justify-center items-center gap-3 sm:gap-4 flex-wrap">
             <SocialPill
@@ -1534,10 +1549,10 @@ function Footer() {
           {/* Fine print */}
           <div className="mt-9 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] sm:text-[13px] text-[#7B5024]">
             <div className="font-semibold">
-              © {new Date().getFullYear()} BHALYAM
+              © {new Date().getFullYear()} BHALYAM · A Kethan Kumar Gontla project
             </div>
-            <div className="inline-flex items-center gap-1.5 font-semibold  sm:text-[12px] text-[#7B5024]">
-              Made with
+            <div className="inline-flex items-center gap-1.5 font-semibold sm:text-[12px] text-[#7B5024]">
+              Built solo with
               <HeartGlyph className="w-3.5 h-3.5 text-[#E11D48]" />
               for every school-gang reunion
             </div>
@@ -1545,6 +1560,114 @@ function Footer() {
         </div>
       </RevealOnScroll>
     </footer>
+  );
+}
+
+/**
+ * Signature block for the builder. Sized to feel like a personally
+ * signed colophon — the "Built by" overline reads like a credit, the
+ * name itself lands in the same handwritten Caveat script the quote
+ * uses (so the human voice continues from the quote into the name),
+ * and the line underneath frames it as a labour of love rather than
+ * a corporate signoff.
+ *
+ *   • Whole block scroll-reveals.
+ *   • Name pops in with a small bounce + underline draw.
+ *   • The small sparkle row underneath connects the eye downward
+ *     into the social pills.
+ */
+function GameOwnerSignature() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.4 }}
+      transition={{ duration: 0.6, ease: [0.2, 0.7, 0.3, 1] }}
+      className="mt-7 relative"
+    >
+      <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.32em] font-bold text-[#A5743A]">
+        — Built &nbsp;·&nbsp; Designed &nbsp;·&nbsp; Loved by —
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, rotate: -2, scale: 0.94 }}
+        whileInView={{ opacity: 1, rotate: -1.5, scale: 1 }}
+        viewport={{ once: true, amount: 0.4 }}
+        transition={{ duration: 0.7, delay: 0.18, ease: [0.34, 1.56, 0.64, 1] }}
+        className="relative inline-block mt-3"
+      >
+        <span
+          className="bhalyam-script block text-[40px] sm:text-[56px] leading-[1.05]"
+          style={{
+            background:
+              "linear-gradient(120deg, #B45309 0%, #E0AE3B 40%, #B45309 60%, #7B2F0E 100%)",
+            backgroundClip: "text",
+            WebkitBackgroundClip: "text",
+            color: "transparent",
+            textShadow: "0 2px 0 rgba(255,246,226,0.4)",
+            filter: "drop-shadow(0 4px 6px rgba(122,77,28,0.25))",
+          }}
+        >
+          Kethan Kumar Gontla
+        </span>
+        {/* Hand-drawn underline */}
+        <motion.svg
+          aria-hidden
+          viewBox="0 0 320 14"
+          initial={{ pathLength: 0, opacity: 0 }}
+          whileInView={{ pathLength: 1, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.9, delay: 0.55, ease: [0.2, 0.7, 0.3, 1] }}
+          className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[80%] h-[14px]"
+        >
+          <motion.path
+            d="M4 8 C 60 1, 120 12, 180 5 S 290 11, 316 6"
+            stroke="#E0AE3B"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            whileInView={{ pathLength: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.9, delay: 0.55, ease: "easeOut" }}
+          />
+        </motion.svg>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.95 }}
+        className="mt-5 flex flex-col items-center gap-1.5"
+      >
+        <div className="inline-flex items-center gap-2 text-[12px] sm:text-[13px] font-bold text-[#5D3819]">
+          <SparkleGlyph className="w-3.5 h-3.5 text-[#E0AE3B]" />
+          <span>Game Owner · Architect · Solo Maker</span>
+          <SparkleGlyph className="w-3.5 h-3.5 text-[#E0AE3B]" />
+        </div>
+        <div
+          className="bhalyam-script text-[#7B5024] text-[18px] sm:text-[20px] leading-tight max-w-[480px] text-center px-3"
+          style={{ transform: "rotate(-1deg)" }}
+        >
+          “Every tile, every sound, every late-night fix —
+          <span className="block">handcrafted so a 90s kid could play again.”</span>
+        </div>
+        <div className="text-[10.5px] sm:text-[11px] uppercase tracking-[0.28em] font-bold text-[#A5743A] mt-1">
+          Hyderabad · India
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function SparkleGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6L12 2z" />
+      <circle cx="19" cy="18" r="1.2" />
+      <circle cx="5" cy="18" r="1" />
+    </svg>
   );
 }
 

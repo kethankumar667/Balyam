@@ -36,10 +36,18 @@ export default function RoomCodeShare({
     rps: "Rock Paper Scissors",
     uno: "UNO",
   };
+  /**
+   * Body of the share message — keeps the URL OUT of the text. The OS
+   * share sheet pastes the URL field separately into target apps
+   * (WhatsApp, Telegram, Messages, etc.), so embedding it in text too
+   * caused the link to appear twice on a single line in the receiver's
+   * chat. Apps that ignore the URL field still get a clickable URL
+   * because `share()` appends it as a separate fallback.
+   */
   const shareText =
     `🎮 Come play ${friendlyGameName[game]} on BHALYAM!\n\n` +
     `Room code: ${code}\n` +
-    `Join here: ${roomUrl}`;
+    `Join here:`;
 
   async function copyCode() {
     try {
@@ -75,7 +83,10 @@ export default function RoomCodeShare({
         // User dismissed or share failed — fall through to WhatsApp.
       }
     }
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    // WhatsApp fallback when the native share sheet is unavailable.
+    // wa.me uses a single `text` parameter so we splice the URL back in
+    // here (the native share path keeps them separate above).
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${roomUrl}`)}`;
     window.open(waUrl, "_blank", "noopener,noreferrer");
   }
 
