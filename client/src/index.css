@@ -1010,3 +1010,12 @@ body, #root, .bhalyam-paper {
   50%      { opacity: 1; }
 }
 
+/* Dark-mode override for the "BHALYAM" wordmark in the home header,
+   profile sheet, and menu sheet. The base colour #2A221B is a warm near-
+   black designed for the cream parchment background; on the dark theme
+   that swatch becomes invisible against the deep walnut surface. Use the
+   light parchment colour instead so the brand stays prominent. */
+:root[data-theme="dark"] .bhalyam-display.text-\[\#2A221B\] {
+  color: #F3EADB !important;
+}
+
