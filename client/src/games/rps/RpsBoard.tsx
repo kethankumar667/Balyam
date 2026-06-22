@@ -478,15 +478,21 @@ function RevealArena({
         label={meName}
       />
 
-      <div
-        className="rps-vs-pop relative z-10 flex h-16 w-16 sm:h-20 sm:w-20
-                   items-center justify-center rounded-pill bg-surface-0
-                   font-display font-black text-2xl sm:text-3xl text-gold-400
-                   select-none border-2 border-gold-500/60"
-        style={{ boxShadow: "0 0 30px rgba(245,158,11,0.35), inset 0 0 12px rgba(245,158,11,0.15)" }}
-      >
-        VS
-      </div>
+      {/* VS pill — decorative chip between the two hand slots. Hide
+          it the moment a round outcome banner is up, since the banner
+          spans the full width and the pill would otherwise punch
+          through "ROUND LOST" / "ROUND WIN" mid-text. */}
+      {!bannerOutcome && (
+        <div
+          className="rps-vs-pop relative z-10 flex h-16 w-16 sm:h-20 sm:w-20
+                     items-center justify-center rounded-pill bg-surface-0
+                     font-display font-black text-2xl sm:text-3xl text-gold-400
+                     select-none border-2 border-gold-500/60"
+          style={{ boxShadow: "0 0 30px rgba(245,158,11,0.35), inset 0 0 12px rgba(245,158,11,0.15)" }}
+        >
+          VS
+        </div>
+      )}
 
       <HandSlot
         key={`opp-${revealKey}`}

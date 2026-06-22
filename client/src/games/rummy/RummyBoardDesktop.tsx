@@ -249,6 +249,14 @@ export default function RummyBoardDesktop({
   const canDiscardOrDeclare =
     myTurn && state.turnAction === "discardOrDeclare" && state.phase === "playing";
 
+  /* ─── End-of-round scorecard dismissed flag ─── */
+  const [scorecardDismissed, setScorecardDismissed] = useState(false);
+  useEffect(() => {
+    // Re-arm the scorecard the next time the room flips back to playing
+    // (e.g. on a rematch). Otherwise it stays dismissed for the session.
+    if (state.phase === "playing") setScorecardDismissed(false);
+  }, [state.phase]);
+
   /* ─── 5-second winner burst ─── */
   const [winnerBurstKey, setWinnerBurstKey] = useState<number | null>(null);
   const prevPhaseForBurst = useRef(state.phase);
@@ -752,9 +760,12 @@ export default function RummyBoardDesktop({
             </div>
           </div>
 
-          {/* Action rail */}
+          {/* Action rail — wraps onto a second line when the center column
+              is narrow (typical when the right tab panel is open). Without
+              wrap the DECLARE button was clipped behind the side panel on
+              ~1075-px-wide screens. */}
           <div
-            className="flex items-center gap-3 px-4 py-3 rounded-xl"
+            className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl"
             style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,200,80,0.18)" }}
           >
             <ActionButton onClick={() => setConfirmDrop(true)} disabled={!canDraw} kbd="—">
@@ -848,9 +859,195 @@ export default function RummyBoardDesktop({
         />
       )}
 
+      {/* End-of-round scorecard — desktop version. Mobile uses a full
+          RummyScoreCard inside ResultOverlay; on desktop we keep it tight:
+          winner / wrong-show / disconnect message, per-player points and
+          chips, close + leave actions. Reuses scoring math from state. */}
+      {state.phase === "finished" && !scorecardDismissed && (
+        <DesktopRummyScorecard
+          state={state}
+          players={players}
+          selfId={selfId}
+          onClose={() => setScorecardDismissed(true)}
+          onLeave={onLeave}
+        />
+      )}
+
       {/* 5-second winner burst — pointer-events: none so the scorecard
           modal underneath stays interactive. */}
       {winnerBurstKey != null && <WinnerCelebrationBurst key={winnerBurstKey} />}
+    </div>
+  );
+}
+
+/* ─────────────────────────── Desktop scorecard ─────────────────────────── */
+
+function DesktopRummyScorecard({
+  state,
+  players,
+  selfId,
+  onClose,
+  onLeave,
+}: {
+  state: RummyPlayerState;
+  players: Player[];
+  selfId: string | null;
+  onClose: () => void;
+  onLeave?: () => void;
+}) {
+  const nameOf = (id: string): string =>
+    players.find((p) => p.id === id)?.name ?? "?";
+  const winnerId = state.winnerId ?? null;
+  const wrongShowerId = state.invalidDeclareBy ?? null;
+  const disconnectedId = state.endedByDisconnect ?? null;
+  const lossOf = (id: string) => Math.max(0, state.scores?.[id] ?? 0);
+  // Mirrors mobile's chip accounting: wrong show splits the 80 across
+  // opponents; otherwise winner takes the sum of opponents' hand values.
+  const chipsOf = (id: string): number => {
+    if (wrongShowerId) {
+      if (id === wrongShowerId) return -80;
+      const opp = state.playerOrder.filter((p) => p !== wrongShowerId);
+      return opp.length > 0 ? Math.round(80 / opp.length) : 0;
+    }
+    if (id === winnerId) {
+      return state.playerOrder.reduce(
+        (sum, pid) => (pid === winnerId ? sum : sum + lossOf(pid)),
+        0,
+      );
+    }
+    return -lossOf(id);
+  };
+  const ranked = [...state.playerOrder].sort((a, b) => {
+    if (wrongShowerId) {
+      if (a === wrongShowerId) return 1;
+      if (b === wrongShowerId) return -1;
+      return 0;
+    }
+    if (a === winnerId) return -1;
+    if (b === winnerId) return 1;
+    return lossOf(a) - lossOf(b);
+  });
+  const headerText =
+    disconnectedId
+      ? disconnectedId === selfId
+        ? "You disconnected"
+        : `${nameOf(disconnectedId)} disconnected`
+      : wrongShowerId
+      ? wrongShowerId === selfId
+        ? "Wrong show — −80!"
+        : `${nameOf(wrongShowerId)} mis-declared`
+      : winnerId === selfId
+      ? "You finished 1st! ★"
+      : winnerId
+      ? `${nameOf(winnerId)} wins this round`
+      : "Round complete";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.65)" }}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Rummy results"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-lg rounded-2xl overflow-hidden text-zinc-100"
+        style={{
+          backgroundColor: "#0d1f17",
+          backgroundImage:
+            "radial-gradient(ellipse at 50% 0%, #9b2a2a 0%, #6f1f1f 55%, #4a1212 100%)",
+          border: "1px solid rgba(251,191,36,0.35)",
+          boxShadow: "0 30px 60px -20px rgba(0,0,0,0.7)",
+        }}
+      >
+        {/* Header + close */}
+        <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-300 text-2xl" aria-hidden>🏆</span>
+            <div>
+              <div className="text-amber-200 italic font-black text-[20px] leading-tight">
+                {headerText}
+              </div>
+              {disconnectedId && (
+                <div className="text-rose-200 text-[12px] mt-1">
+                  Round ended — connection lost.
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {onLeave && (
+              <button
+                type="button"
+                onClick={onLeave}
+                className="rounded-md bg-zinc-800/95 hover:bg-zinc-700 text-zinc-100 font-bold text-[13px] px-3 py-1.5"
+              >
+                Leave Game
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close scorecard"
+              className="rounded-full w-9 h-9 inline-flex items-center justify-center bg-zinc-800/80 hover:bg-zinc-700 text-zinc-100 font-black text-lg"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* Ranked table */}
+        <div className="px-4 pb-4">
+          <div
+            className="grid items-center gap-2 px-3 py-1.5 text-amber-100/70 uppercase tracking-widest font-bold text-[10px]"
+            style={{ gridTemplateColumns: "36px 1.4fr 0.9fr 0.9fr" }}
+          >
+            <div>Rank</div>
+            <div>Player</div>
+            <div className="text-right">Points</div>
+            <div className="text-right">Chips</div>
+          </div>
+          <div className="space-y-1.5">
+            {ranked.map((id, idx) => {
+              const isWin = id === winnerId;
+              const isWrongShower = id === wrongShowerId;
+              const isMe = id === selfId;
+              const chips = chipsOf(id);
+              return (
+                <div
+                  key={id}
+                  className="grid items-center gap-2 rounded-xl px-3 py-2"
+                  style={{
+                    gridTemplateColumns: "36px 1.4fr 0.9fr 0.9fr",
+                    background: isWin
+                      ? "linear-gradient(90deg, rgba(245,158,11,0.22), rgba(245,158,11,0.05))"
+                      : isWrongShower
+                      ? "rgba(220,38,38,0.18)"
+                      : "rgba(0,0,0,0.25)",
+                    border: isMe ? "1px solid rgba(251,191,36,0.45)" : "1px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <div className="font-black text-amber-200">{idx + 1}</div>
+                  <div className="font-bold">
+                    {nameOf(id)} {isMe && <span className="text-amber-200/80 text-[12px]">(you)</span>}
+                    {isWin && <span className="ml-2 text-amber-300 text-[11px] font-black uppercase tracking-widest">Winner</span>}
+                    {isWrongShower && <span className="ml-2 text-rose-300 text-[11px] font-black uppercase tracking-widest">Wrong show</span>}
+                  </div>
+                  <div className="text-right tabular-nums font-bold">{lossOf(id)}</div>
+                  <div
+                    className="text-right tabular-nums font-black"
+                    style={{ color: chips >= 0 ? "#86efac" : "#fca5a5" }}
+                  >
+                    {chips >= 0 ? `+${chips}` : chips}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

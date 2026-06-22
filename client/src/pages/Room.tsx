@@ -43,6 +43,7 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   uno: 8,
   wordbuilding: 4,
   dotsboxes: 4,
+  memorymatch: 4,
 };
 
 /**
