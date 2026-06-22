@@ -219,20 +219,41 @@ export function PlayingCard({
         </div>
       </div>
 
-      {/* Wild-rank-match joker badge */}
+      {/* Wild-rank-match joker badges — top-right AND bottom-left so the
+          card reads as a joker regardless of how it's fanned/overlapped in
+          the player's hand. A card behind a sibling on its right is
+          covered on the right edge; one behind a sibling on its left is
+          covered on the left edge. Duplicating the marker into the
+          opposite corners means at least one is always visible. */}
       {isWildJoker && (
-        <div
-          className="absolute top-[1px] right-[1px] w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-black"
-          style={{
-            background: "linear-gradient(135deg, #fbbf24, #ea580c)",
-            color: "#1f1300",
-            boxShadow:
-              "0 0 0 1px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.45)",
-          }}
-          title="Wild Joker"
-        >
-          J
-        </div>
+        <>
+          <div
+            className="absolute top-[1px] right-[1px] w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-black"
+            style={{
+              background: "linear-gradient(135deg, #fbbf24, #ea580c)",
+              color: "#1f1300",
+              boxShadow:
+                "0 0 0 1px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.45)",
+            }}
+            title="Wild Joker"
+          >
+            J
+          </div>
+          <div
+            className="absolute bottom-[1px] left-[1px] w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-black"
+            style={{
+              background: "linear-gradient(135deg, #fbbf24, #ea580c)",
+              color: "#1f1300",
+              boxShadow:
+                "0 0 0 1px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.45)",
+              transform: "rotate(180deg)",
+            }}
+            title="Wild Joker"
+            aria-hidden
+          >
+            J
+          </div>
+        </>
       )}
     </Tag>
   );

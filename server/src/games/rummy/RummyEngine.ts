@@ -29,11 +29,32 @@ interface InternalState {
   turnAction: "draw" | "discardOrDeclare";
   winnerId: string | null;
   invalidDeclareBy: string | null;
+  /** Player id whose disconnect ended this round, or null if the round
+   *  ended normally (declare / wrong show). Drives the "Opponent
+   *  disconnected" overlay instead of a confusing scorecard. */
+  endedByDisconnect: string | null;
   scores: Record<string, number>;
   finalHands: Record<string, Card[]>;
   finalMelds: Record<string, string[][]>;
   droppedPlayers: Set<string>;
   turnDeadline: number | null;
+  /**
+   * Player id whose turn the current `turnDeadline` belongs to. Used so
+   * the within-turn draw → discard transition can preserve any unused
+   * seconds from the draw window instead of resetting the timer (which
+   * felt like "losing 5 seconds" the moment you picked a card).
+   */
+  deadlineOwnerId: string | null;
+  /**
+   * Extra milliseconds the next turn timer should add on top of the
+   * natural duration — used to pause the clock while the client plays
+   * an animation (joker celebration, etc.). The engine sets this when
+   * it processes a move that triggers a known animation; the room
+   * manager reads it once via {@link consumePendingAnimationPauseMs}
+   * and applies it to the scheduled deadline. Generic on purpose so
+   * future animations can plug in without reshaping the timer logic.
+   */
+  pendingAnimationPauseMs: number;
   options: RummyGameOptions;
   /** All players (kept for resetting between rounds). */
   allPlayers: Player[];
@@ -54,6 +75,17 @@ function poolTargetFor(mode: RummyMatchMode): number | null {
 
 /** Drop penalty per the common Indian Rummy convention: first-drop = 20 points. */
 const DROP_PENALTY = 20;
+
+/**
+ * Minimum points a non-winning player books when the round ends in a
+ * valid declare. House rule: a loser whose hand happens to score 0
+ * (every card landed in a credited meld) shouldn't walk away paying
+ * nothing — they still LOST the round. We charge them 2 chips as a
+ * token, which the winner correspondingly collects. Cards 2-9 are
+ * already worth ≥2 face value, so this only changes the booking for
+ * the rare 0-point natural outcome.
+ */
+const LOSER_MIN_SCORE_ON_DECLARE = 2;
 
 /** Per-action turn timers. Draw gets a longer think; discard is committed quickly. */
 const RUMMY_DRAW_SECONDS = 30;
@@ -81,12 +113,47 @@ export class RummyEngine implements GameEngine {
     this.pendingOptions = { ...DEFAULT_RUMMY_OPTIONS, ...options };
   }
 
-  setTurnDeadline(deadline: number): void {
+  setTurnDeadline(deadline: number, ownerId?: string): void {
     this.s.turnDeadline = deadline;
+    if (ownerId !== undefined) this.s.deadlineOwnerId = ownerId;
   }
 
   clearTurnDeadline(): void {
     this.s.turnDeadline = null;
+    this.s.deadlineOwnerId = null;
+  }
+
+  /**
+   * Read the pending animation pause and clear it in one step. Called
+   * by the room manager right before scheduling the next deadline; the
+   * returned ms are added on top of the natural timer so the player
+   * doesn't lose seconds while a celebration plays. Generic to keep
+   * future animations cheap to plug in — set the field in whichever
+   * move handler triggers a known animation.
+   */
+  consumePendingAnimationPauseMs(): number {
+    const v = this.s.pendingAnimationPauseMs ?? 0;
+    this.s.pendingAnimationPauseMs = 0;
+    return v;
+  }
+
+  /**
+   * Remaining ms on the current deadline if it still belongs to the
+   * player whose turn it is right now. Returns 0 when the deadline is
+   * stale (belonged to a previous player, or there was none) — that's
+   * the signal to the room manager that it should reset to the full
+   * timer instead of carrying anything over.
+   *
+   * Lets the draw → discard transition keep its unused seconds: a
+   * player who drew quickly within their 30 s draw window doesn't see
+   * the timer snap down to the 15 s discard window. They keep whatever
+   * was left, or the discard window — whichever is larger.
+   */
+  getRemainingForCurrentTurnOwner(now: number): number {
+    if (this.s.turnDeadline == null) return 0;
+    const cur = this.s.playerOrder[this.s.turnIndex];
+    if (!cur || this.s.deadlineOwnerId !== cur) return 0;
+    return Math.max(0, this.s.turnDeadline - now);
   }
 
   /**
@@ -204,11 +271,14 @@ export class RummyEngine implements GameEngine {
       turnAction: "draw",
       winnerId: null,
       invalidDeclareBy: null,
+      endedByDisconnect: null,
       scores: {},
       finalHands: {},
       finalMelds: {},
       droppedPlayers: new Set(),
       turnDeadline: null,
+      deadlineOwnerId: null,
+      pendingAnimationPauseMs: 0,
       options: { ...this.pendingOptions },
       allPlayers: players.slice(),
       matchMode: this.pendingOptions.mode,
@@ -252,11 +322,14 @@ export class RummyEngine implements GameEngine {
     this.s.phase = "playing";
     this.s.winnerId = null;
     this.s.invalidDeclareBy = null;
+    this.s.endedByDisconnect = null;
     this.s.scores = {};
     this.s.finalHands = {};
     this.s.finalMelds = {};
     this.s.droppedPlayers = new Set();
     this.s.turnDeadline = null;
+    this.s.deadlineOwnerId = null;
+    this.s.pendingAnimationPauseMs = 0;
     this.s.roundNumber += 1;
     // Wipe stale arrangements — last round's groups don't apply to the
     // fresh hands dealt for this round.
@@ -380,6 +453,7 @@ export class RummyEngine implements GameEngine {
       }
       const drawn = this.s.closedDeck.shift()!;
       hand.push(drawn);
+      this.maybeQueueJokerAnimation(drawn);
     } else {
       if (this.s.openPile.length === 0) {
         return { ok: false, error: "Open pile is empty" };
@@ -393,9 +467,27 @@ export class RummyEngine implements GameEngine {
       }
       const drawn = this.s.openPile.pop()!;
       hand.push(drawn);
+      this.maybeQueueJokerAnimation(drawn);
     }
     this.s.turnAction = "discardOrDeclare";
     return { ok: true };
+  }
+
+  /**
+   * If the just-drawn card triggers the wild/printed joker celebration on
+   * the client (a ~2.4 s overlay), pad the next scheduled deadline by the
+   * same duration so the player doesn't watch their timer drain behind
+   * an animation they can't dismiss.
+   */
+  private maybeQueueJokerAnimation(card: Card): void {
+    const isWild = card.rank === this.s.wildJoker.rank;
+    const isPrinted = card.isPrintedJoker === true;
+    if (isWild || isPrinted) {
+      this.s.pendingAnimationPauseMs = Math.max(
+        this.s.pendingAnimationPauseMs,
+        2400,
+      );
+    }
   }
 
   private handleDiscard(move: MoveContext): MoveResult {
@@ -492,7 +584,9 @@ export class RummyEngine implements GameEngine {
       const arrangement = submitted
         ? scoreFromArrangement(hand, submitted, this.s.wildJoker.rank)
         : bestArrangementForScoring(hand, this.s.wildJoker.rank);
-      this.s.scores[pid] = arrangement.points;
+      // Floor losers at the minimum token loss so a 0-point loser still
+      // pays the winner 2 chips. See LOSER_MIN_SCORE_ON_DECLARE.
+      this.s.scores[pid] = Math.max(LOSER_MIN_SCORE_ON_DECLARE, arrangement.points);
       // Display: show the FULL submitted arrangement (including invalid
       // / short groups) so the scorecard mirrors what the player actually
       // built. The badges on the client compute per-group points and
@@ -613,6 +707,7 @@ export class RummyEngine implements GameEngine {
       finalHands: this.s.phase === "finished" ? this.s.finalHands : undefined,
       finalMelds: this.s.phase === "finished" ? this.s.finalMelds : undefined,
       invalidDeclareBy: this.s.invalidDeclareBy ?? null,
+      endedByDisconnect: this.s.endedByDisconnect ?? null,
     };
   }
 
@@ -642,15 +737,35 @@ export class RummyEngine implements GameEngine {
   }
 
   removePlayer(playerId: string): void {
-    if (!this.s.hands.has(playerId)) return;
+    // Capture the leaving player's hand BEFORE we delete it so the
+    // scorecard can show their cards (otherwise the column reads as
+    // empty and players see a "winner" with no proof).
+    const removedHand = this.s.hands.get(playerId);
+    if (!removedHand) return;
     this.s.hands.delete(playerId);
+
     if (this.s.hands.size < 2 && this.s.phase === "playing") {
       const remaining = [...this.s.hands.keys()];
+      const winnerId = remaining[0] ?? null;
       this.s.phase = "finished";
-      this.s.winnerId = remaining[0] ?? null;
+      this.s.winnerId = winnerId;
+      this.s.endedByDisconnect = playerId;
+
       for (const pid of this.s.playerOrder) {
-        this.s.scores[pid] = pid === this.s.winnerId ? 0 : INVALID_DECLARE_PENALTY;
+        const hand = pid === playerId ? removedHand : this.s.hands.get(pid) ?? [];
+        this.s.finalHands[pid] = hand.slice();
+        this.s.scores[pid] = pid === winnerId ? 0 : INVALID_DECLARE_PENALTY;
+        // Prefer the last arrangement the player streamed up; fall back
+        // to a flat single-group dump so the scorecard never renders a
+        // ghost player.
+        const submitted = this.arrangements.get(pid);
+        if (submitted && submitted.length > 0) {
+          this.s.finalMelds[pid] = submitted.map((g) => g.slice());
+        } else if (hand.length > 0) {
+          this.s.finalMelds[pid] = [hand.map((c) => c.id)];
+        }
       }
+      this.updateMatchScoresAfterRound();
     }
   }
 }

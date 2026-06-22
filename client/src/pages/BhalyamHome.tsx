@@ -1654,7 +1654,7 @@ function GameOwnerSignature() {
           <span className="block">handcrafted so a 90s kid could play again.”</span>
         </div>
         <div className="text-[10.5px] sm:text-[11px] uppercase tracking-[0.28em] font-bold text-[#A5743A] mt-1">
-          Hyderabad · India
+          SPSR.Nellore · India
         </div>
       </motion.div>
     </motion.div>

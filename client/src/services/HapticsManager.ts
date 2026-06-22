@@ -118,4 +118,14 @@ export class HapticsManager {
   subtle(): void {
     this.fire(40);
   }
+
+  /**
+   * "Game is on" — fired when the room flips from lobby to playing.
+   * Two crisp hits separated by a beat so it doesn't get confused with
+   * the turn pulse. Host needs this most (they clicked Start Game and
+   * deserve an "OK, dealing" confirmation) but it lands for everyone.
+   */
+  gameStart(): void {
+    this.fire([160, 90, 160]);
+  }
 }

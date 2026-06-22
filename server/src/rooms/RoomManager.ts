@@ -647,8 +647,20 @@ export class RoomManager {
         this.broadcastGameState(room);
         return;
       }
-      const ms = Math.max(5, room.engine.getTurnTimerSeconds()) * 1000;
-      room.engine.setTurnDeadline(Date.now() + ms);
+      // Carry forward unused seconds when the SAME player is still on the
+      // clock (the draw → discard within-turn transition). If the turn
+      // just advanced, the engine returns 0 and we reset to the full
+      // window for the new player. Floor is the natural timer for the
+      // current action, so a slow drawer still gets a fresh 15 s discard.
+      //
+      // On top of that we add any pending animation pause the engine has
+      // queued (e.g. the 2.4 s joker celebration) so the player doesn't
+      // bleed seconds while a celebration covers the screen.
+      const baseMs = Math.max(5, room.engine.getTurnTimerSeconds()) * 1000;
+      const carryMs = room.engine.getRemainingForCurrentTurnOwner(Date.now());
+      const animMs = room.engine.consumePendingAnimationPauseMs();
+      const ms = Math.max(baseMs, carryMs) + animMs;
+      room.engine.setTurnDeadline(Date.now() + ms, pub.turnPlayerId);
       this.broadcastGameState(room);
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;

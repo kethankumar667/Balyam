@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { Card, ChatMessage, Player, Rank, ReactionRecvPayload, RummyPlayerState } from "@shared/types";
 import { PlayingCard, FaceDownCard, FinishSlot } from "./Card";
 import { getSocket } from "../../lib/socket";
@@ -63,6 +64,15 @@ function sortIds(ids: string[], byId: Map<string, Card>, wildJokerRank: string):
 function newGroupId(): string {
   return `g_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 }
+
+/**
+ * Player can hold at most this many groups at once. 14 cards / 7 groups
+ * averages 2 per group, which is below any valid meld size (3) — so this
+ * is intentionally generous and only blocks runaway fragmentation. The
+ * GROUP button, the "+ NEW MELD" drop zone, and cross-group drags all
+ * respect it.
+ */
+const MAX_GROUPS = 7;
 
 const NOOP: () => void = () => {};
 
@@ -408,6 +418,27 @@ export default function RummyBoardMobile({
     return () => window.clearTimeout(timer);
   }, [isGameOver]);
 
+  // 5-second winner-only celebration burst — fires the moment the round
+  // ends from a VALID declare with the local player as winner. Renders as
+  // a pointer-events-none overlay so the scorecard modal underneath stays
+  // interactive (the user can still tap "Leave Game" etc.). Filtered out
+  // for wrong shows and disconnect-driven endings — those have their own
+  // headers and shouldn't read as a victory.
+  const [winnerBurstKey, setWinnerBurstKey] = useState<number | null>(null);
+  const prevPhaseForBurst = useRef(state.phase);
+  useEffect(() => {
+    const wasPlaying = prevPhaseForBurst.current === "playing";
+    const justFinished = state.phase === "finished";
+    prevPhaseForBurst.current = state.phase;
+    if (!wasPlaying || !justFinished) return;
+    if (state.invalidDeclareBy) return;
+    if (state.endedByDisconnect) return;
+    if (state.winnerId !== selfId) return;
+    setWinnerBurstKey(Date.now());
+    const t = window.setTimeout(() => setWinnerBurstKey(null), 5_000);
+    return () => window.clearTimeout(t);
+  }, [state.phase, state.winnerId, state.invalidDeclareBy, state.endedByDisconnect, selfId]);
+
   // Mobile portrait detection — Rummy is designed for landscape; on portrait phones,
   // we show a rotate-device prompt instead of cramming the felt into a narrow column.
   const needsLandscape = useNeedsLandscape();
@@ -634,7 +665,18 @@ export default function RummyBoardMobile({
       } else if (target === "ungrouped" || target === "ungroupedEnd") {
         moveCardsTo("ungrouped", null, null, ids);
       } else if (target === "new") {
-        moveCardsTo("new", null, null, ids);
+        // Count how many groups would remain after the dragged cards
+        // are pulled out of their source. If the source group empties
+        // it'll be cleaned up, freeing a slot — so don't count it.
+        const idSet = new Set(ids);
+        const remaining = layout.groups.filter(
+          (g) => g.cardIds.some((cid) => !idSet.has(cid)),
+        ).length;
+        if (remaining >= MAX_GROUPS) {
+          setError(`Max ${MAX_GROUPS} groups — drop into an existing meld instead`);
+        } else {
+          moveCardsTo("new", null, null, ids);
+        }
       } else if (target.startsWith("before:")) {
         // Within-lane reorder — insert before the specified card.
         // moveCardsTo handles this whether the source was in ungrouped or a
@@ -689,6 +731,15 @@ export default function RummyBoardMobile({
   function groupSelected() {
     if (selected.size < 1) {
       setError("Select at least one card to group");
+      return;
+    }
+    // Pre-check the post-cleanup group count so we can bail with a clear
+    // toast before mutating state. Mirrors the "+ NEW MELD" drag guard.
+    const remainingGroups = layout.groups.filter(
+      (g) => g.cardIds.some((cid) => !selected.has(cid)),
+    ).length;
+    if (remainingGroups >= MAX_GROUPS) {
+      setError(`Max ${MAX_GROUPS} groups — merge into an existing meld first`);
       return;
     }
     setLayout((l) => {
@@ -1110,6 +1161,10 @@ export default function RummyBoardMobile({
           </div>
         </ResultOverlay>
       )}
+
+      {/* 5-second winner burst — sits above the scorecard with
+          pointer-events: none so the modal beneath stays clickable. */}
+      {winnerBurstKey != null && <WinnerCelebrationBurst key={winnerBurstKey} />}
 
       {/* Victory celebration — appears 30s after the game truly ends and
           covers everything until the player chooses to leave. */}
@@ -2079,25 +2134,38 @@ function HandArea({
           onDragHover={onDragHover}
           onDragRelease={onDragRelease}
         />
-        {dragging && <NewMeldZone active={dragOverTarget === "new"} />}
+        {dragging && (
+          <NewMeldZone
+            active={dragOverTarget === "new"}
+            atCap={layout.groups.length >= MAX_GROUPS}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function NewMeldZone({ active }: { active: boolean }) {
+function NewMeldZone({ active, atCap }: { active: boolean; atCap: boolean }) {
+  // At the 7-group cap the zone stays visible but greys out and stops
+  // signalling drop affordance, so the player sees the limit instead of
+  // bouncing off a missing target.
   return (
     <div
-      data-rummy-drop="new"
-      className="rounded-lg flex flex-col items-center justify-center text-emerald-100 font-extrabold text-[10px] px-2 py-2 self-stretch min-w-[60px] flex-shrink-0 transition"
+      data-rummy-drop={atCap ? undefined : "new"}
+      className="rounded-lg flex flex-col items-center justify-center font-extrabold text-[10px] px-2 py-2 self-stretch min-w-[60px] flex-shrink-0 transition"
       style={{
-        background: active ? "rgba(16,185,129,0.45)" : "rgba(16,185,129,0.15)",
-        border: active ? "2px dashed #34d399" : "2px dashed rgba(16,185,129,0.5)",
-        boxShadow: active ? "0 0 18px rgba(52,211,153,0.6)" : undefined,
+        background: atCap
+          ? "rgba(120,120,120,0.18)"
+          : active ? "rgba(16,185,129,0.45)" : "rgba(16,185,129,0.15)",
+        border: atCap
+          ? "2px dashed rgba(180,180,180,0.55)"
+          : active ? "2px dashed #34d399" : "2px dashed rgba(16,185,129,0.5)",
+        boxShadow: !atCap && active ? "0 0 18px rgba(52,211,153,0.6)" : undefined,
+        color: atCap ? "rgba(220,220,220,0.6)" : "#d1fae5",
       }}
     >
       <span className="text-2xl mb-1">＋</span>
-      NEW MELD
+      {atCap ? "MAX 7" : "NEW MELD"}
     </div>
   );
 }
@@ -3112,8 +3180,14 @@ function RummyScoreCard({
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
   const isMyId = (id: string) => id === selfId;
   const wrongShowerName = wrongShowerId ? nameOf(wrongShowerId) : null;
+  const disconnectedId = state.endedByDisconnect ?? null;
+  const disconnectedName = disconnectedId ? nameOf(disconnectedId) : null;
   const headerText =
-    isWrongShow
+    disconnectedId
+      ? disconnectedId === selfId
+        ? "You disconnected"
+        : `${disconnectedName} disconnected`
+      : isWrongShow
       ? wrongShowerId === selfId
         ? "Wrong show — −80!"
         : `${wrongShowerName} mis-declared`
@@ -3149,6 +3223,12 @@ function RummyScoreCard({
               <div className="text-rose-200 text-[12px] font-semibold">
                 Penalty 80 split across {state.playerOrder.length - 1} opponent
                 {state.playerOrder.length - 1 === 1 ? "" : "s"}.
+              </div>
+            )}
+            {disconnectedId && (
+              <div className="text-rose-200 text-[12px] font-semibold">
+                Round ended — connection lost. Cards shown are last known
+                arrangements.
               </div>
             )}
           </div>
@@ -3806,6 +3886,104 @@ function JokerDrawCelebration({
           style={{ color: "rgba(255,247,225,0.85)" }}
         >
           {palette.sub}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 5-second winner burst — confetti rain + "WINNER!" banner — fires on a
+ * valid declare for the local player. Pointer-events: none so the
+ * scorecard modal underneath stays interactive; the burst is purely
+ * cosmetic. Self-dismisses on its own without ever blocking input or
+ * pausing other overlays.
+ *
+ * Renders at z-index 60, just above the scorecard modal (z-50) and the
+ * joker draw celebration (z-58). The banner pulses in, holds, then fades
+ * out across the 5 s window; confetti pieces drift down with slightly
+ * randomised timings so the burst doesn't read as a stiff loop.
+ */
+function WinnerCelebrationBurst() {
+  // Pre-compute 36 confetti pieces with varied colors, x-offsets, delays.
+  const pieces = Array.from({ length: 36 }, (_, i) => ({
+    left: Math.random() * 100,
+    delay: Math.random() * 1400,
+    duration: 2200 + Math.random() * 1800,
+    color: ["#fbbf24", "#f97316", "#ef4444", "#10b981", "#3b82f6", "#a855f7"][
+      i % 6
+    ],
+    rotate: Math.random() * 360,
+    width: 6 + Math.floor(Math.random() * 6),
+    height: 10 + Math.floor(Math.random() * 8),
+  }));
+  return (
+    <div
+      className="fixed inset-0 z-[60] pointer-events-none overflow-hidden"
+      role="status"
+      aria-live="polite"
+      aria-label="You won this round"
+    >
+      <style>{`
+        @keyframes rummy-winner-fall {
+          0%   { transform: translate3d(0,-12vh,0) rotate(var(--r)); opacity: 0; }
+          10%  { opacity: 1; }
+          90%  { opacity: 1; }
+          100% { transform: translate3d(0,112vh,0) rotate(calc(var(--r) + 540deg)); opacity: 0; }
+        }
+        @keyframes rummy-winner-banner {
+          0%   { transform: scale(0.6) translateY(-20px); opacity: 0; }
+          12%  { transform: scale(1.08) translateY(0); opacity: 1; }
+          22%  { transform: scale(1.0)  translateY(0); opacity: 1; }
+          80%  { transform: scale(1.0)  translateY(0); opacity: 1; }
+          100% { transform: scale(0.95) translateY(-10px); opacity: 0; }
+        }
+      `}</style>
+      {/* Confetti pieces */}
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${p.left}%`,
+            top: 0,
+            width: p.width,
+            height: p.height,
+            background: p.color,
+            borderRadius: 2,
+            boxShadow: `0 0 6px ${p.color}55`,
+            ["--r" as string]: `${p.rotate}deg`,
+            animation: `rummy-winner-fall ${p.duration}ms cubic-bezier(.25,.46,.45,.94) ${p.delay}ms forwards`,
+            transform: `translate3d(0,-12vh,0) rotate(${p.rotate}deg)`,
+          } as CSSProperties}
+        />
+      ))}
+      {/* Winner banner — fades in, holds, fades out across 5 s */}
+      <div
+        className="absolute left-1/2 top-[18%] -translate-x-1/2 text-center"
+        style={{
+          animation: "rummy-winner-banner 5000ms ease-in-out forwards",
+          filter: "drop-shadow(0 12px 28px rgba(0,0,0,0.55))",
+        }}
+      >
+        <div
+          className="font-black tracking-[0.15em] uppercase"
+          style={{
+            fontSize: "clamp(36px, 8vw, 84px)",
+            background: "linear-gradient(180deg,#FEF3C7 0%,#F59E0B 55%,#B45309 100%)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+            textShadow: "0 2px 14px rgba(245,158,11,0.6)",
+          }}
+        >
+          ★ Winner ★
+        </div>
+        <div
+          className="mt-1 font-bold uppercase tracking-[0.4em]"
+          style={{ color: "#FEF3C7", fontSize: "clamp(11px,1.4vw,16px)" }}
+        >
+          Valid Declaration
         </div>
       </div>
     </div>
