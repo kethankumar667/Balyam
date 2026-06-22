@@ -183,12 +183,39 @@ export const TeluguCinemaluGlyph = makeIcon(
   </>,
 );
 
-export const JoystickGlyph = makeIcon(
+export const SamethaluGlyph = makeIcon(
   <>
-    {/* Arcade joystick — ball top, shaft, base */}
-    <circle cx="12" cy="5" r="2.5" />
-    <path d="M12 7.5v9" />
-    <ellipse cx="12" cy="18" rx="6" ry="2.5" />
-    <path d="M9 6.2L7 4M15 6.2L17 4" strokeWidth="1.4" />
+    {/* Palm-leaf manuscript — long horizontal leaves with a binding cord
+        and a faint script line. Reads as "grandma's wisdom book". */}
+    <rect x="3" y="6" width="18" height="4" rx="1" />
+    <rect x="3" y="13.5" width="18" height="4" rx="1" />
+    <path d="M5 8h14M5 15.5h14" strokeWidth="1.2" opacity="0.55" />
+    <circle cx="6.5" cy="11.8" r="0.7" fill="currentColor" stroke="none" />
+    <path d="M6.5 4.5v15" strokeWidth="1.2" />
   </>,
 );
+
+/**
+ * Gamepad — read as "games catalog" at every small size.
+ *
+ * All-currentColor design (no hard-coded fills) so the icon adapts to
+ * the button's text color in light + dark modes equally well. Body is a
+ * bold outlined controller silhouette; D-pad cross and two action dots
+ * are drawn inside in the same currentColor for solid visual weight
+ * without needing a punch-through against the parent background.
+ */
+export const GamepadGlyph = makeIcon(
+  <>
+    {/* Controller body */}
+    <path d="M5 8h14a3 3 0 0 1 3 3v3a3.5 3.5 0 0 1-6.4 1.9l-1.2-1.7a2 2 0 0 0-1.6-.8h-3.6a2 2 0 0 0-1.6.8l-1.2 1.7A3.5 3.5 0 0 1 2 14v-3a3 3 0 0 1 3-3z" />
+    {/* D-pad — chunky cross on the left */}
+    <path d="M7 11v2M6 12h2" strokeWidth="2" strokeLinecap="round" />
+    {/* Action buttons — two filled dots on the right */}
+    <circle cx="16.4" cy="11.2" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="17.9" cy="12.7" r="0.9" fill="currentColor" stroke="none" />
+  </>,
+);
+
+// Back-compat re-export: existing imports keep working while the home
+// header now uses GamepadGlyph for clearer "games" reading.
+export const JoystickGlyph = GamepadGlyph;

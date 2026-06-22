@@ -14,6 +14,7 @@ import type {
   SnlGameOptions,
   WebRTCSignal,
   WordBuildingOptions,
+  DotsBoxesOptions,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -22,6 +23,7 @@ import {
   DEFAULT_RUMMY_OPTIONS,
   DEFAULT_SNL_OPTIONS,
   DEFAULT_WORDBUILDING_OPTIONS,
+  DEFAULT_DOTSBOXES_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -32,6 +34,7 @@ import { SnlEngine } from "../games/snl/SnlEngine.js";
 import { RummyEngine } from "../games/rummy/RummyEngine.js";
 import { HandCricketEngine } from "../games/handcricket/HandCricketEngine.js";
 import { WordBuildingEngine } from "../games/wordbuilding/WordBuildingEngine.js";
+import { DotsBoxesEngine } from "../games/dotsboxes/DotsBoxesEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 /** How long the host's rematch request stays open before auto-cancelling. */
@@ -55,6 +58,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   rps: ["Rocky", "Bhola", "Chotu", "Dolly"],
   uno: ["Red", "Blue", "Green", "Yellow"],
   wordbuilding: ["Teacher Padma", "Master Ravi", "Miss Lakshmi", "Sir Krishna"],
+  dotsboxes: ["Pencil", "Eraser", "Sharpener", "Ruler"],
 };
 
 function pickBotName(game: GameKind, idx: number): string {
@@ -81,6 +85,7 @@ interface Room {
   rummyOptions: RummyGameOptions;
   hcOptions: HcGameOptions;
   wordBuildingOptions: WordBuildingOptions;
+  dotsBoxesOptions: DotsBoxesOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -129,7 +134,8 @@ export class RoomManager {
     snlOptions?: Partial<SnlGameOptions>,
     rummyOptions?: Partial<RummyGameOptions>,
     hcOptions?: Partial<HcGameOptions>,
-    wordBuildingOptions?: Partial<WordBuildingOptions>
+    wordBuildingOptions?: Partial<WordBuildingOptions>,
+    dotsBoxesOptions?: Partial<DotsBoxesOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -158,6 +164,7 @@ export class RoomManager {
       rummyOptions: { ...DEFAULT_RUMMY_OPTIONS, ...(rummyOptions ?? {}) },
       hcOptions: { ...DEFAULT_HC_OPTIONS, ...(hcOptions ?? {}) },
       wordBuildingOptions: { ...DEFAULT_WORDBUILDING_OPTIONS, ...(wordBuildingOptions ?? {}) },
+      dotsBoxesOptions: { ...DEFAULT_DOTSBOXES_OPTIONS, ...(dotsBoxesOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -333,15 +340,17 @@ export class RoomManager {
     if (
       room.game !== "ludo" &&
       room.game !== "snl" &&
-      room.game !== "wordbuilding"
+      room.game !== "wordbuilding" &&
+      room.game !== "dotsboxes"
     ) {
       // Pass & Play is fair only for open-information games — everyone
       // looks at the same board state, no private hands. Word Building
-      // qualifies (the whole grid is public). Rummy / UNO etc. would
-      // leak hidden information to the wrong player on a shared device.
+      // and Dots & Boxes qualify (the whole grid is public). Rummy /
+      // UNO etc. would leak hidden information to the wrong player on
+      // a shared device.
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
-        "Pass & Play is only available for Ludo, Snakes & Ladders, and Word Building"
+        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, and Dots & Boxes"
       );
       return;
     }
@@ -492,6 +501,9 @@ export class RoomManager {
       }
       if (engine instanceof WordBuildingEngine) {
         engine.setOptions(room.wordBuildingOptions);
+      }
+      if (engine instanceof DotsBoxesEngine) {
+        engine.setOptions(room.dotsBoxesOptions);
       }
       engine.init(playersList);
       room.engine = engine;
@@ -697,6 +709,19 @@ export class RoomManager {
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
     }
+    if (room.engine instanceof DotsBoxesEngine) {
+      const seconds = room.engine.getTurnTimerSeconds();
+      if (seconds <= 0) {
+        room.engine.clearTurnDeadline();
+        this.broadcastGameState(room);
+        return;
+      }
+      const ms = Math.max(5, seconds) * 1000;
+      room.engine.setTurnDeadline(Date.now() + ms);
+      this.broadcastGameState(room);
+      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      return;
+    }
   }
 
   private onTurnTimeout(room: Room): void {
@@ -728,6 +753,14 @@ export class RoomManager {
       return;
     }
     if (room.engine instanceof WordBuildingEngine) {
+      const engine = room.engine;
+      const state = engine.getPublicState();
+      if (state.phase !== "playing") return;
+      engine.applyAutoMove(state.turnPlayerId);
+      this.afterAutoMove(room, engine.isOver());
+      return;
+    }
+    if (room.engine instanceof DotsBoxesEngine) {
       const engine = room.engine;
       const state = engine.getPublicState();
       if (state.phase !== "playing") return;
@@ -1041,6 +1074,7 @@ export class RoomManager {
       if (engine instanceof RummyEngine) engine.setOptions(room.rummyOptions);
       if (engine instanceof HandCricketEngine) engine.setOptions(room.hcOptions);
       if (engine instanceof WordBuildingEngine) engine.setOptions(room.wordBuildingOptions);
+      if (engine instanceof DotsBoxesEngine) engine.setOptions(room.dotsBoxesOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

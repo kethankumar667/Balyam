@@ -18,7 +18,8 @@ export function registerSocketHandlers(
         payload.snlOptions,
         payload.rummyOptions,
         payload.hcOptions,
-        payload.wordBuildingOptions
+        payload.wordBuildingOptions,
+        payload.dotsBoxesOptions
       );
       ack({ ok: true, code, playerId });
     } catch (err) {

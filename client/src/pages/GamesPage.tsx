@@ -40,7 +40,11 @@ export default function GamesPage() {
   const comingSoon = BHALYAM_GAMES.filter((g) => g.maintenance);
 
   return (
-    <div className="bhalyam-paper min-h-screen pb-16">
+    // `bhalyam-home` is overloaded as the dark-mode override anchor (see
+    // index.css) — without it the dark theme leaves section titles in
+    // their dark-blue light-mode color against a dark walnut background.
+    // Sharing the hook keeps /games looking consistent with home.
+    <div className="bhalyam-home bhalyam-paper min-h-screen pb-16">
       {/* Header — back link + logo. Lean intentionally; the full home
           header has more chrome than this page needs. */}
       <header className="mx-auto w-full max-w-[1080px] px-4 sm:px-6 pt-4 sm:pt-6">
@@ -134,7 +138,7 @@ export default function GamesPage() {
             type="button"
             onClick={() => setJoinOpen(true)}
             className="inline-flex items-center gap-2 rounded-full px-5 py-2.5
-                       bg-[#FCF8EF] border border-[#EEDCC2] text-[#1D2C4A] font-extrabold text-[14px]
+                       bg-[#FCF8EF] border border-[#EEDCC2] text-[#2A221B] font-extrabold text-[14px]
                        hover:bg-[#F8EEDB] active:translate-y-px
                        focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
                        shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
