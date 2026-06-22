@@ -178,7 +178,6 @@ export class WordBuildingEngine implements GameEngine {
    * since the 3-letter sits inside it and would double-count.
    */
   private detectNewWords(r: number, c: number, scorerId: string): WordBuildingScoredWord[] {
-    const out: WordBuildingScoredWord[] = [];
     const minLen = this.s.options.minWordLength;
 
     const axes: Array<{
@@ -193,26 +192,41 @@ export class WordBuildingEngine implements GameEngine {
       { dr: 1, dc: -1, orientation: "diag-up",   tag: "du" },
     ];
 
+    // ONE word per move — find the best candidate across all 4 axes and
+    // credit only that. Length is the tiebreaker (longer beats shorter);
+    // axis priority (row > col > diag-down > diag-up) breaks ties on
+    // length deterministically. Previously we credited every axis hit
+    // which let a single placement book 3-4 words at once.
+    let best:
+      | {
+          letters: string;
+          cells: Array<{ r: number; c: number }>;
+          orientation: WordBuildingScoredWord["orientation"];
+          axisTag: string;
+        }
+      | null = null;
     for (const axis of axes) {
       const run = this.expandRun(r, c, axis.dr, axis.dc);
       if (run.length < minLen) continue;
       const match = this.bestDictionaryWordCovering(run, r, c);
       if (!match) continue;
-      const wordKey = match.letters.toLowerCase();
-      if (this.s.scoredWordSet.has(wordKey)) continue;
-      this.s.scoredWordSet.add(wordKey);
-      out.push({
-        id: `w_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_${axis.tag}`,
-        word: match.letters,
-        cells: match.cells,
-        scorerId,
-        points: match.letters.length,
-        ts: Date.now(),
-        orientation: axis.orientation,
-      });
+      if (best == null || match.letters.length > best.letters.length) {
+        best = { ...match, orientation: axis.orientation, axisTag: axis.tag };
+      }
     }
-
-    return out;
+    if (!best) return [];
+    const wordKey = best.letters.toLowerCase();
+    if (this.s.scoredWordSet.has(wordKey)) return [];
+    this.s.scoredWordSet.add(wordKey);
+    return [{
+      id: `w_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_${best.axisTag}`,
+      word: best.letters,
+      cells: best.cells,
+      scorerId,
+      points: best.letters.length,
+      ts: Date.now(),
+      orientation: best.orientation,
+    }];
   }
 
   /**
@@ -533,12 +547,14 @@ export class WordBuildingEngine implements GameEngine {
       return 0;
     };
 
+    // Only the best (longest) word across all 4 axes counts — matches
+    // the one-word-per-move rule the engine actually books.
     const axes: Array<[number, number]> = [
       [0, 1], [1, 0], [1, 1], [1, -1],
     ];
-    let total = 0;
-    for (const [dr, dc] of axes) total += findBest(expand(dr, dc));
-    return total;
+    let best = 0;
+    for (const [dr, dc] of axes) best = Math.max(best, findBest(expand(dr, dc)));
+    return best;
   }
 
   removePlayer(playerId: string): void {

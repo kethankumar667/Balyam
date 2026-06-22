@@ -37,6 +37,7 @@ export default function RoomCodeShare({
     uno: "UNO",
     wordbuilding: "Word Building",
     dotsboxes: "Dots & Boxes",
+    memorymatch: "Memory Match",
   };
   /**
    * Body of the share message — keeps the URL OUT of the text. The OS
