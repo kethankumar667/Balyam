@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
@@ -23,6 +24,12 @@ import {
   SnakeLadderGlyph,
   UnoGlyph,
   WordBuildingGlyph,
+  DotsBoxesGlyph,
+  MemoryMatchGlyph,
+  NamePlaceAnimalGlyph,
+  TambolaGlyph,
+  TeluguCinemaluGlyph,
+  JoystickGlyph,
 } from "../components/bhalyam/icons";
 
 /**
@@ -50,6 +57,11 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   rps: RpsGlyph,
   uno: UnoGlyph,
   wordbuilding: WordBuildingGlyph,
+  dotsboxes: DotsBoxesGlyph,
+  memorymatch: MemoryMatchGlyph,
+  namesplaceanimal: NamePlaceAnimalGlyph,
+  tambola: TambolaGlyph,
+  telugucinemalu: TeluguCinemaluGlyph,
 };
 
 export default function BhalyamHome() {
@@ -97,6 +109,7 @@ export default function BhalyamHome() {
 function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <>
@@ -114,6 +127,14 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
             </span>
           </a>
           <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+            {/* Joystick — quick jump to the full game catalog. Sits before
+                the profile icon as requested; visible at every breakpoint
+                (mobile is where it matters most but desktop benefits too). */}
+            <IconCircleButton
+              label="All games"
+              onClick={() => navigate("/games")}
+              icon={<JoystickGlyph className="w-[20px] h-[20px]" />}
+            />
             <IconCircleButton
               label="Your profile"
               onClick={() => setProfileOpen(true)}
@@ -881,7 +902,9 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
         amount={0.08}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
       >
-        {BHALYAM_GAMES.map((game) => (
+        {/* Home only shows the first 6 — order in BHALYAM_GAMES keeps the
+            playable games on top. Everything else lives at /games. */}
+        {BHALYAM_GAMES.slice(0, 6).map((game) => (
           <RevealItem key={game.slug}>
             <li>
               <GameTile
@@ -893,11 +916,30 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
           </RevealItem>
         ))}
       </RevealOnScroll>
+
+      {/* "View all games" overflow link — sends curious players to the
+          dedicated /games page where every tile (including coming-soon
+          maintenance ones) is laid out without the 6-tile cap. */}
+      <div className="mt-4 sm:mt-5 flex justify-center">
+        <Link
+          to="/games"
+          className="inline-flex items-center gap-2 rounded-full px-5 py-2.5
+                     bg-[#FCF8EF] border border-[#EEDCC2] text-[#1D2C4A] font-extrabold text-[14px]
+                     hover:bg-[#F8EEDB] active:translate-y-px
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                     shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
+                     transition-colors duration-200"
+        >
+          View all games
+          <ArrowRightIcon className="w-3.5 h-3.5" />
+        </Link>
+      </div>
     </section>
   );
 }
 
-function GameTile({
+// Exported so the dedicated /games page can render the same tile design.
+export function GameTile({
   game,
   onSelect,
   className,
@@ -930,9 +972,12 @@ function GameTile({
     rummy: "/RummyTile.png",
     rps: "/RPSTile.png",
     uno: "/UNOTile.png",
-    // Word Building has no bespoke tile art yet — falls through to the
-    // gradient + glyph layer (the empty path skips the <img>).
-    wordbuilding: "",
+    wordbuilding: "/words_building.png",
+    dotsboxes: "/Dots&boxes.png",
+    memorymatch: "/Memory match cards.png",
+    namesplaceanimal: "/Name-place-thing-animal.png",
+    tambola: "/Tambola.png",
+    telugucinemalu: "/telugu cinemalu.png",
   };
 
   const underMaintenance = game.maintenance === true;

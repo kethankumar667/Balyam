@@ -122,3 +122,73 @@ export const WordBuildingGlyph = makeIcon(
     <path d="m18 18 2 2-2 2-2-2z" transform="translate(-1 -1)" />
   </>,
 );
+
+export const DotsBoxesGlyph = makeIcon(
+  <>
+    {/* 3x3 dot grid + one closed box outlined */}
+    <circle cx="5" cy="5" r="1" />
+    <circle cx="12" cy="5" r="1" />
+    <circle cx="19" cy="5" r="1" />
+    <circle cx="5" cy="12" r="1" />
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="19" cy="12" r="1" />
+    <circle cx="5" cy="19" r="1" />
+    <circle cx="12" cy="19" r="1" />
+    <circle cx="19" cy="19" r="1" />
+    <path d="M5 5h7v7H5z" />
+  </>,
+);
+
+export const MemoryMatchGlyph = makeIcon(
+  <>
+    {/* Two overlapping cards, one face down, one revealed */}
+    <rect x="3" y="6" width="10" height="14" rx="1.5" transform="rotate(-8 8 13)" />
+    <rect x="11" y="4" width="10" height="14" rx="1.5" transform="rotate(8 16 11)" />
+    <path d="M14 7l3 3M17 7l-3 3" />
+  </>,
+);
+
+export const NamePlaceAnimalGlyph = makeIcon(
+  <>
+    {/* Grid of 4 letters — N P A T */}
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M12 3v18M3 12h18" />
+    <text x="7.5" y="10" fontSize="6" stroke="none" fill="currentColor"
+          textAnchor="middle" fontFamily="serif" fontWeight="700">N</text>
+    <text x="16.5" y="10" fontSize="6" stroke="none" fill="currentColor"
+          textAnchor="middle" fontFamily="serif" fontWeight="700">P</text>
+    <text x="7.5" y="19" fontSize="6" stroke="none" fill="currentColor"
+          textAnchor="middle" fontFamily="serif" fontWeight="700">A</text>
+    <text x="16.5" y="19" fontSize="6" stroke="none" fill="currentColor"
+          textAnchor="middle" fontFamily="serif" fontWeight="700">T</text>
+  </>,
+);
+
+export const TambolaGlyph = makeIcon(
+  <>
+    {/* Tambola/Bingo ticket — three rows of cells with a couple marked */}
+    <rect x="3" y="6" width="18" height="12" rx="1.5" />
+    <path d="M3 10h18M3 14h18M9 6v12M15 6v12" />
+    <circle cx="6" cy="8" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="18" cy="16" r="1.3" fill="currentColor" stroke="none" />
+  </>,
+);
+
+export const TeluguCinemaluGlyph = makeIcon(
+  <>
+    {/* Film clapboard with diagonal stripes */}
+    <path d="M3 9h18v12H3z" />
+    <path d="M3 5l4-2 3 4M9 4l4-2 3 4M15 3l4-2 3 4" />
+    <path d="M3 9l18-4" />
+  </>,
+);
+
+export const JoystickGlyph = makeIcon(
+  <>
+    {/* Arcade joystick — ball top, shaft, base */}
+    <circle cx="12" cy="5" r="2.5" />
+    <path d="M12 7.5v9" />
+    <ellipse cx="12" cy="18" rx="6" ry="2.5" />
+    <path d="M9 6.2L7 4M15 6.2L17 4" strokeWidth="1.4" />
+  </>,
+);

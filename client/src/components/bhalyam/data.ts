@@ -1,23 +1,32 @@
 /**
  * BHALYAM game catalog.
  *
- * Slimmed during the cleanup pass. Previously held mock data for friends
- * online, recent matches, daily rewards, badges, a player profile, landing
- * CTAs, adda steps, ticker lines — none of which were wired to real
- * state. They were removed with the UI sections that consumed them.
+ * The slug union is intentionally wider than the server's `GameKind`:
+ * "coming soon" games live here in the lobby with `maintenance: true`
+ * so players see them but can't open a room until the engine ships.
+ * The maintenance tile is a soft-disabled click — see `BhalyamHome`'s
+ * `underMaintenance` gate.
  *
- * What stays: the canonical list of supported games and their visual
- * accents, used by the Home grid and the GameRoomSheet header.
+ * Top-of-array order is also the order of the home page tile grid. The
+ * home grid is sliced to 6; everything else surfaces only on the
+ * dedicated `/games` route. Keep the playable games at the top.
  */
 
 export type BhalyamGameSlug =
+  // Playable — these slugs match the server's GameKind (see shared/types).
   | "handcricket"
   | "snl"
   | "ludo"
   | "rummy"
   | "rps"
+  | "wordbuilding"
   | "uno"
-  | "wordbuilding";
+  // Coming soon — NOT in GameKind. Maintenance tiles only.
+  | "dotsboxes"
+  | "memorymatch"
+  | "namesplaceanimal"
+  | "tambola"
+  | "telugucinemalu";
 
 export interface BhalyamGameCard {
   slug: BhalyamGameSlug;
@@ -36,6 +45,7 @@ export interface BhalyamGameCard {
 }
 
 export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
+  // ── Top 6 (playable) — these show on the home page ─────────────────
   {
     slug: "handcricket",
     title: "Hand Cricket",
@@ -46,7 +56,6 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "snl",
     title: "Snakes & Ladders",
-    // teluguTitle: "Paramapada Sopanam",
     blurb:
       "Watch out for the big snake at 99 that ruined neighborhood friendships.",
     accent: { from: "#43A047", to: "#1B5E20" },
@@ -73,6 +82,14 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     accent: { from: "#F4C430", to: "#B38918" },
   },
   {
+    slug: "wordbuilding",
+    title: "Word Building",
+    blurb:
+      "The English workbook revisited. Take turns writing letters and watch dictionary words light up like a teacher's tick.",
+    accent: { from: "#1E40AF", to: "#0F2A5A" },
+  },
+  // ── Below the fold — only on /games ───────────────────────────────
+  {
     slug: "uno",
     title: "UNO",
     blurb:
@@ -81,10 +98,43 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     maintenance: true,
   },
   {
-    slug: "wordbuilding",
-    title: "Word Building",
+    slug: "dotsboxes",
+    title: "Dots & Boxes",
     blurb:
-      "The English workbook revisited. Take turns writing letters and watch dictionary words light up like a teacher's tick.",
-    accent: { from: "#1E40AF", to: "#0F2A5A" },
+      "Connect the dots, close the box, claim the square. Maths-period nostalgia at its purest.",
+    accent: { from: "#8E24AA", to: "#4A148C" },
+    maintenance: true,
+  },
+  {
+    slug: "memorymatch",
+    title: "Memory Match",
+    blurb:
+      "Flip two cards, find the pair, win the round. Photographic memory required.",
+    accent: { from: "#00897B", to: "#004D40" },
+    maintenance: true,
+  },
+  {
+    slug: "namesplaceanimal",
+    title: "Name Place Animal Thing",
+    blurb:
+      "Pick a letter, beat the clock. Whose Bombay was the most legit?",
+    accent: { from: "#F57C00", to: "#BF360C" },
+    maintenance: true,
+  },
+  {
+    slug: "tambola",
+    title: "Tambola",
+    blurb:
+      "Eyes down, ticket out. Full house calling at the next wedding sangeet.",
+    accent: { from: "#C2185B", to: "#7B1B45" },
+    maintenance: true,
+  },
+  {
+    slug: "telugucinemalu",
+    title: "Telugu Cinemalu",
+    blurb:
+      "Guess the film. Hint by hint, dialogue by dialogue. Friday-release adda energy.",
+    accent: { from: "#D84315", to: "#7B1A0A" },
+    maintenance: true,
   },
 ];

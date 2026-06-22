@@ -19,7 +19,15 @@
 // survive both filters (caa, obs) plus all profanity / slurs. Both
 // modes filter the same blocklist before the lookup table is exposed.
 
-import allWords from "an-array-of-english-words";
+// `an-array-of-english-words` ships as a raw `index.json`. Modern Node
+// ESM (v22+) requires `import ... with { type: "json" }` for JSON
+// imports — which works in production but trips TypeScript's older
+// emit on some configs. `createRequire` sidesteps the whole syntax
+// issue: it loads JSON natively on every supported Node version.
+import { createRequire } from "node:module";
+const _require = createRequire(import.meta.url);
+const allWords: string[] = _require("an-array-of-english-words");
+
 import { words as popularWords } from "popular-english-words";
 import type { WordBuildingDictionaryMode } from "@shared/types.js";
 
