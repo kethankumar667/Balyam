@@ -58,7 +58,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "handcricket",
     title: "Hand Cricket",
-    theme: "Classroom Bench Edition",
+    // theme: "Classroom Bench Edition",
     blurb:
       "Odd or Even? The back-bench class champion simulator. Zero infrastructure, infinite intensity.",
     accent: { from: "#FF8F00", to: "#7B1E2B" },
@@ -66,7 +66,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "snl",
     title: "Snakes & Ladders",
-    theme: "Grandma's Cloth Board Edition",
+    // theme: "Grandma's Cloth Board Edition",
     blurb:
       "Watch out for the big snake at 99 that ruined neighborhood friendships.",
     accent: { from: "#43A047", to: "#1B5E20" },
@@ -74,7 +74,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "ludo",
     title: "Ludo",
-    theme: "Festival Holiday Edition",
+    // theme: "Festival Holiday Edition",
     blurb:
       "The ultimate hot summer afternoon time-killer while waiting for the current (power) to come back.",
     accent: { from: "#E53935", to: "#7B1E2B" },
@@ -82,7 +82,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "rummy",
     title: "Rummy",
-    theme: "Courtyard Evening Edition",
+    // theme: "Courtyard Evening Edition",
     blurb:
       "The family festival classic. Perfected during Sankranti gatherings, reimagined for your native gang.",
     accent: { from: "#1976D2", to: "#0D47A1" },
@@ -90,7 +90,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "rps",
     title: "Rock Paper Scissors",
-    theme: "School Corridor Edition",
+    // theme: "School Corridor Edition",
     blurb:
       "Stone-Paper-Scissor! The ultimate playground arbiter for deciding who bats first.",
     accent: { from: "#F4C430", to: "#B38918" },
@@ -98,7 +98,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "wordbuilding",
     title: "Word Building",
-    theme: "English Workbook Edition",
+    // theme: "English Workbook Edition",
     blurb:
       "The English workbook revisited. Take turns writing letters and watch dictionary words light up like a teacher's tick.",
     accent: { from: "#1E40AF", to: "#0F2A5A" },
@@ -107,7 +107,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "uno",
     title: "UNO",
-    theme: "Summer Vacation Edition",
+    // theme: "Summer Vacation Edition",
     blurb:
       "Color chaos with your gang. Match cards, drop action cards, and race to shout UNO first.",
     accent: { from: "#EC1C24", to: "#7B1E2B" },
@@ -116,7 +116,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "dotsboxes",
     title: "Dots & Boxes",
-    theme: "Rough Notebook Edition",
+    // theme: "Rough Notebook Edition",
     blurb:
       "Connect the dots, close the box, claim the square. Maths-period nostalgia at its purest.",
     accent: { from: "#8E24AA", to: "#4A148C" },
@@ -124,16 +124,15 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "memorymatch",
     title: "Memory Match Cards",
-    theme: "Old Photo Album Edition",
+    // theme: "Old Photo Album Edition",
     blurb:
       "Flip two cards, find the pair, win the round. Photographic memory required.",
     accent: { from: "#00897B", to: "#004D40" },
-    maintenance: true,
   },
   {
     slug: "namesplaceanimal",
     title: "Name Place Animal Thing",
-    theme: "Classroom Competition Edition",
+    // theme: "Classroom Competition Edition",
     blurb:
       "Pick a letter, beat the clock. Whose Bombay was the most legit?",
     accent: { from: "#F57C00", to: "#BF360C" },
@@ -143,7 +142,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     slug: "tambola",
     title: "Tambola",
     teluguTitle: "Housie",
-    theme: "Festival Night Edition",
+    // theme: "Festival Night Edition",
     blurb:
       "Eyes down, ticket out. Full house calling at the next wedding sangeet.",
     accent: { from: "#C2185B", to: "#7B1B45" },
@@ -152,7 +151,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "samethalu",
     title: "Samethalu Quiz",
-    theme: "Grandma's Wisdom Edition",
+    // theme: "Grandma's Wisdom Edition",
     blurb:
       "Telugu proverbs from Ammamma's verandah. Complete the saying, learn the lesson, win the round.",
     accent: { from: "#A57B23", to: "#5E3D0E" },
@@ -161,7 +160,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "telugucinemalu",
     title: "Telugu Cinema Quiz",
-    theme: "Video Cassette Edition",
+    // theme: "Video Cassette Edition",
     blurb:
       "Guess the film. Hint by hint, dialogue by dialogue. Friday-release adda energy.",
     accent: { from: "#D84315", to: "#7B1A0A" },
