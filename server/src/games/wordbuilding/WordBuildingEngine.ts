@@ -154,62 +154,62 @@ export class WordBuildingEngine implements GameEngine {
   }
 
   /**
-   * Scan the row and column that the just-placed letter sits in. Any
-   * maximal run of contiguous letters of length ≥ minWordLength that
-   * forms a valid dictionary word AND hasn't already scored gets
-   * credited to the placer.
+   * Scan every axis that runs through the just-placed letter for a
+   * newly-formed dictionary word. We check 4 axes:
    *
-   * "Maximal run" matters — a placement at (2,4) that completes both a
-   * 3-letter and a 5-letter word in the same row contributes the LONGEST
-   * one (the 5-letter), because the 3-letter is a substring of it and
-   * substring credit would double-count. We score only the longest
-   * dictionary word in each direction's run that INCLUDES the placed
-   * cell.
+   *   row        — horizontal  (dr=0,  dc=1)
+   *   col        — vertical    (dr=1,  dc=0)
+   *   diag-down  — top-left ↘  (dr=1,  dc=1)
+   *   diag-up    — bottom-left ↗ (dr=1, dc=-1)
+   *
+   * For each axis we collect the unbroken run of letters that contains
+   * the placed cell, then look up the LONGEST substring that:
+   *   • is ≥ minWordLength,
+   *   • contains the placed cell,
+   *   • matches the dictionary in EITHER reading direction (so the same
+   *     5 letters score whether the word is "STREAM" left-to-right or
+   *     "MAERTS" → reversed → "STREAM" right-to-left).
+   * Each direction-pair counts once per match (we dedupe by lowercased
+   * letters in `scoredWordSet`), so a palindrome like "RACECAR" still
+   * scores cleanly without double-credit.
+   *
+   * Longest-substring matters: a placement that completes both 3- and
+   * 5-letter words in the same run credits only the 5-letter one,
+   * since the 3-letter sits inside it and would double-count.
    */
   private detectNewWords(r: number, c: number, scorerId: string): WordBuildingScoredWord[] {
     const out: WordBuildingScoredWord[] = [];
     const minLen = this.s.options.minWordLength;
 
-    // Row run including (r, c).
-    const rowRun = this.expandRun(r, c, 0, 1);
-    if (rowRun.length >= minLen) {
-      const rowWord = this.bestDictionaryWordCovering(rowRun, c, "col");
-      if (rowWord) {
-        const wordKey = rowWord.letters.toLowerCase();
-        if (!this.s.scoredWordSet.has(wordKey)) {
-          this.s.scoredWordSet.add(wordKey);
-          out.push({
-            id: `w_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_r`,
-            word: rowWord.letters,
-            cells: rowWord.cells,
-            scorerId,
-            points: rowWord.letters.length,
-            ts: Date.now(),
-            orientation: "row",
-          });
-        }
-      }
-    }
+    const axes: Array<{
+      dr: number;
+      dc: number;
+      orientation: WordBuildingScoredWord["orientation"];
+      tag: string;
+    }> = [
+      { dr: 0, dc: 1,  orientation: "row",       tag: "r" },
+      { dr: 1, dc: 0,  orientation: "col",       tag: "c" },
+      { dr: 1, dc: 1,  orientation: "diag-down", tag: "dd" },
+      { dr: 1, dc: -1, orientation: "diag-up",   tag: "du" },
+    ];
 
-    // Column run including (r, c).
-    const colRun = this.expandRun(r, c, 1, 0);
-    if (colRun.length >= minLen) {
-      const colWord = this.bestDictionaryWordCovering(colRun, r, "row");
-      if (colWord) {
-        const wordKey = colWord.letters.toLowerCase();
-        if (!this.s.scoredWordSet.has(wordKey)) {
-          this.s.scoredWordSet.add(wordKey);
-          out.push({
-            id: `w_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_c`,
-            word: colWord.letters,
-            cells: colWord.cells,
-            scorerId,
-            points: colWord.letters.length,
-            ts: Date.now(),
-            orientation: "col",
-          });
-        }
-      }
+    for (const axis of axes) {
+      const run = this.expandRun(r, c, axis.dr, axis.dc);
+      if (run.length < minLen) continue;
+      const match = this.bestDictionaryWordCovering(run, r, c);
+      if (!match) continue;
+      const wordKey = match.letters.toLowerCase();
+      if (this.s.scoredWordSet.has(wordKey)) continue;
+      this.s.scoredWordSet.add(wordKey);
+      out.push({
+        id: `w_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_${axis.tag}`,
+        word: match.letters,
+        cells: match.cells,
+        scorerId,
+        points: match.letters.length,
+        ts: Date.now(),
+        orientation: axis.orientation,
+      });
     }
 
     return out;
@@ -248,38 +248,56 @@ export class WordBuildingEngine implements GameEngine {
   /**
    * Within a run of letters, find the LONGEST substring that:
    *   (a) is at least minWordLength,
-   *   (b) covers the placed cell (`covered` = its index along the
-   *       crosswise direction we don't care about),
-   *   (c) is a real dictionary word,
+   *   (b) contains the placed cell at (placedR, placedC),
+   *   (c) is a real dictionary word in EITHER reading direction
+   *       (forward letters OR reversed),
    *   (d) hasn't already been scored.
    *
-   * Returns the substring's letters + the cell list it covers.
-   *
-   * `pivotKind` is just bookkeeping — we use `covered` to identify the
-   * placed cell by checking each substring's cell range.
+   * Returns the substring as it should be CREDITED — i.e. the letters
+   * in dictionary-reading order and the cells in the same order.
+   * Symmetric across all 4 axes (row, col, diag-down, diag-up) so the
+   * caller doesn't need to know which one it's checking.
    */
   private bestDictionaryWordCovering(
     run: Array<{ r: number; c: number; letter: string }>,
-    placedCellIndex: number,
-    pivotKind: "row" | "col",
+    placedR: number,
+    placedC: number,
   ): { letters: string; cells: Array<{ r: number; c: number }> } | null {
     const minLen = this.s.options.minWordLength;
     // Try longest first so a 5-letter word beats a 3-letter substring.
     for (let len = run.length; len >= minLen; len--) {
       for (let start = 0; start + len <= run.length; start++) {
         const end = start + len;
-        // Must include the placed cell.
         const sliceCells = run.slice(start, end);
-        const includesPlaced = sliceCells.some((cell) =>
-          (pivotKind === "col" ? cell.c : cell.r) === placedCellIndex
+        const includesPlaced = sliceCells.some(
+          (cell) => cell.r === placedR && cell.c === placedC,
         );
         if (!includesPlaced) continue;
-        const letters = sliceCells.map((cell) => cell.letter).join("");
-        if (this.s.scoredWordSet.has(letters.toLowerCase())) continue;
-        if (isDictionaryWord(letters, this.s.options.dictionaryMode)) {
+        const forward = sliceCells.map((cell) => cell.letter).join("");
+        const reverse = sliceCells.map((cell) => cell.letter).reverse().join("");
+
+        // Try forward first — preserves the natural reading order when
+        // both directions happen to be valid English (rare but possible).
+        if (
+          !this.s.scoredWordSet.has(forward.toLowerCase()) &&
+          isDictionaryWord(forward, this.s.options.dictionaryMode)
+        ) {
           return {
-            letters,
+            letters: forward,
             cells: sliceCells.map((cell) => ({ r: cell.r, c: cell.c })),
+          };
+        }
+        // Then reverse — credits "STRESSED" if the player wrote
+        // "DESSERTS" running right-to-left etc.
+        if (
+          forward !== reverse && // skip palindromes (already matched as forward if valid)
+          !this.s.scoredWordSet.has(reverse.toLowerCase()) &&
+          isDictionaryWord(reverse, this.s.options.dictionaryMode)
+        ) {
+          const reversedCells = sliceCells.slice().reverse();
+          return {
+            letters: reverse,
+            cells: reversedCells.map((cell) => ({ r: cell.r, c: cell.c })),
           };
         }
       }
@@ -459,13 +477,14 @@ export class WordBuildingEngine implements GameEngine {
 
   /**
    * Compute the score a hypothetical (r,c,letter) placement would book,
-   * WITHOUT mutating engine state. Mirrors the row+column scan in
-   * detectNewWords but does it on a virtual board.
+   * WITHOUT mutating engine state. Mirrors detectNewWords's 4-axis +
+   * bidirectional scan on a virtual board where (r,c) holds `letter`.
    */
   private dryRunPlacementScore(r: number, c: number, letter: string): number {
     const size = this.s.options.boardSize;
     const minLen = this.s.options.minWordLength;
-    // Helper: walk along (dr,dc) on a virtual board where (r,c)=letter.
+    // Walk along (dr,dc) and -(dr,dc) on a virtual board where
+    // (r,c) = letter. Returns the unbroken run of letters covering it.
     const expand = (dr: number, dc: number): Array<{ r: number; c: number; letter: string }> => {
       const out: Array<{ r: number; c: number; letter: string }> = [];
       let sr = r, sc = c;
@@ -477,8 +496,7 @@ export class WordBuildingEngine implements GameEngine {
       }
       let cr = sr, cc = sc;
       while (cr >= 0 && cc >= 0 && cr < size && cc < size) {
-        const ch =
-          (cr === r && cc === c) ? letter : this.s.board[cr][cc];
+        const ch = cr === r && cc === c ? letter : this.s.board[cr][cc];
         if (ch === "") break;
         out.push({ r: cr, c: cc, letter: ch });
         cr += dr; cc += dc;
@@ -486,30 +504,41 @@ export class WordBuildingEngine implements GameEngine {
       return out;
     };
 
-    const findBest = (
-      run: Array<{ r: number; c: number; letter: string }>,
-      pivotKind: "row" | "col",
-    ): number => {
+    // For each axis: try longest substring containing (r,c) in either
+    // reading direction. Return its length (=points) or 0.
+    const findBest = (run: Array<{ r: number; c: number; letter: string }>): number => {
       if (run.length < minLen) return 0;
-      const pivot = pivotKind === "col" ? c : r;
       for (let len = run.length; len >= minLen; len--) {
         for (let start = 0; start + len <= run.length; start++) {
           const slice = run.slice(start, start + len);
-          const includes = slice.some((cell) =>
-            (pivotKind === "col" ? cell.c : cell.r) === pivot
-          );
+          const includes = slice.some((cell) => cell.r === r && cell.c === c);
           if (!includes) continue;
-          const letters = slice.map((cell) => cell.letter).join("");
-          if (this.s.scoredWordSet.has(letters.toLowerCase())) continue;
-          if (isDictionaryWord(letters, this.s.options.dictionaryMode)) return letters.length;
+          const forward = slice.map((cell) => cell.letter).join("");
+          const reverse = slice.map((cell) => cell.letter).reverse().join("");
+          if (
+            !this.s.scoredWordSet.has(forward.toLowerCase()) &&
+            isDictionaryWord(forward, this.s.options.dictionaryMode)
+          ) {
+            return forward.length;
+          }
+          if (
+            forward !== reverse &&
+            !this.s.scoredWordSet.has(reverse.toLowerCase()) &&
+            isDictionaryWord(reverse, this.s.options.dictionaryMode)
+          ) {
+            return reverse.length;
+          }
         }
       }
       return 0;
     };
 
-    const rowRun = expand(0, 1);
-    const colRun = expand(1, 0);
-    return findBest(rowRun, "col") + findBest(colRun, "row");
+    const axes: Array<[number, number]> = [
+      [0, 1], [1, 0], [1, 1], [1, -1],
+    ];
+    let total = 0;
+    for (const [dr, dc] of axes) total += findBest(expand(dr, dc));
+    return total;
   }
 
   removePlayer(playerId: string): void {

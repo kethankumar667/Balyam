@@ -15,6 +15,8 @@ import { getSocket } from "../../lib/socket";
 import WordBuildingTutorialModal, {
   hasSeenWordBuildingTutorial,
 } from "./TutorialModal";
+import { useTurnHaptics } from "../../hooks/useHaptics";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 
 /* ─────────────────────────── Workbook ink palette ───────────────────────────
  *
@@ -83,11 +85,22 @@ export default function WordBuildingBoard({
   const myTurn = state.turnPlayerId === selfId;
   const canPlay = myTurn && state.phase === "playing";
 
+  // Buzz the device once per transition into your turn — same hook
+  // Rummy / Ludo / SnL use, so the cue is consistent across BHALYAM.
+  useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
+
   // Auto-open the tutorial on the very first Word Building session (per
   // browser). The "?" button on the header re-opens it anytime.
   const [tutorialOpen, setTutorialOpen] = useState<boolean>(
     () => !hasSeenWordBuildingTutorial(),
   );
+
+  // End-of-round scorecard dismissed flag — re-opens automatically when
+  // the phase flips back to "playing" (a future pool-style rematch).
+  const [reportDismissed, setReportDismissed] = useState(false);
+  useEffect(() => {
+    if (state.phase === "playing") setReportDismissed(false);
+  }, [state.phase]);
 
   // Map playerId → ink based on seat order.
   const inkOf = useMemo(() => {
@@ -320,14 +333,25 @@ export default function WordBuildingBoard({
         selfId={selfId}
       />
 
-      {/* End-of-game report card */}
-      {state.phase === "finished" && (
-        <ReportCardOverlay state={state} nameOf={nameOf} inkOf={inkOf} />
+      {/* End-of-game report card — dismissable so players can inspect
+          the finished board behind it. Re-opens on the next round. */}
+      {state.phase === "finished" && !reportDismissed && (
+        <ReportCardOverlay
+          state={state}
+          nameOf={nameOf}
+          inkOf={inkOf}
+          onClose={() => setReportDismissed(true)}
+        />
       )}
 
       {tutorialOpen && (
         <WordBuildingTutorialModal onClose={() => setTutorialOpen(false)} />
       )}
+
+      {/* 10-second turn-out warning — only renders while it's MY turn and
+          the deadline is within the window. Pointer-events disabled so
+          interaction underneath stays available. */}
+      <TurnTimeWarning deadline={state.turnDeadline} active={myTurn && state.phase === "playing"} />
     </div>
   );
 }
@@ -925,10 +949,12 @@ function ReportCardOverlay({
   state,
   nameOf,
   inkOf,
+  onClose,
 }: {
   state: WordBuildingPublicState;
   nameOf: (id: string) => string;
   inkOf: Record<string, Ink>;
+  onClose: () => void;
 }) {
   const standings = state.playerOrder
     .map((pid) => ({ pid, score: state.scores[pid] ?? 0 }))
@@ -947,22 +973,55 @@ function ReportCardOverlay({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
       style={{ background: "rgba(0,0,0,0.55)" }}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Word Building report card"
     >
       <motion.div
         initial={{ scale: 0.85, opacity: 0, rotate: -2 }}
         animate={{ scale: 1, opacity: 1, rotate: 0 }}
         transition={{ type: "spring", stiffness: 180, damping: 22 }}
+        onClick={(e) => e.stopPropagation()}
         className="relative max-w-md w-full rounded-md overflow-hidden"
         style={{
-          background:
-            "linear-gradient(180deg, #fbf3df 0%, #f6ebd0 100%)",
+          // Solid base color so the felt + scored cells underneath don't
+          // bleed through. See TutorialModal for the same fix rationale.
+          backgroundColor: "#fbf3df",
           backgroundImage:
-            "repeating-linear-gradient(to bottom, transparent 0 26px, rgba(56,89,168,0.32) 26px 27px, transparent 27px 28px), linear-gradient(to right, transparent 0 38px, #c2403a 38px 39px, transparent 39px 100%)",
+            "linear-gradient(180deg, rgba(251,243,223,0) 0%, rgba(246,235,208,1) 100%), " +
+            "repeating-linear-gradient(to bottom, transparent 0 26px, rgba(56,89,168,0.32) 26px 27px, transparent 27px 28px), " +
+            "linear-gradient(to right, transparent 0 38px, #c2403a 38px 39px, transparent 39px 100%)",
           boxShadow: "0 30px 60px -20px rgba(0,0,0,0.6)",
           padding: "20px 22px 22px 50px",
           fontFamily: "'Caveat', 'Patrick Hand', cursive",
         }}
       >
+        {/* Close button — tap target outside the gutter so it doesn't
+            collide with the red margin line. Backdrop click also closes. */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close report card"
+          className="absolute right-2 top-2 rounded-full transition active:translate-y-px"
+          style={{
+            width: 30,
+            height: 30,
+            background: "rgba(124,45,18,0.12)",
+            border: "1px solid rgba(124,45,18,0.4)",
+            color: "#7c2d12",
+            fontFamily: "'Caveat', cursive",
+            fontSize: 20,
+            lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontWeight: 800,
+          }}
+        >
+          ×
+        </button>
         <div
           className="text-center mb-2"
           style={{

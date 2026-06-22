@@ -11,6 +11,8 @@ import type {
   Player,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import { useTurnHaptics } from "../../hooks/useHaptics";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 
 /* ─────────────────────────── Player pens ─────────────────────────── */
 /*
@@ -61,6 +63,17 @@ export default function DotsBoxesBoard({
   const boxesPerSide = size - 1;
   const myTurn = state.turnPlayerId === selfId;
   const canPlay = myTurn && state.phase === "playing";
+
+  // Same turn cue as every other BHALYAM board — fires once per
+  // transition into the local player's turn.
+  useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
+
+  // End-of-round scorecard dismissed flag. Re-opens automatically when
+  // the phase flips back to "playing" (rematch).
+  const [reportDismissed, setReportDismissed] = useState(false);
+  useEffect(() => {
+    if (state.phase === "playing") setReportDismissed(false);
+  }, [state.phase]);
 
   // Player → pen and initial.
   const penOf = useMemo(() => {
@@ -381,10 +394,20 @@ export default function DotsBoxesBoard({
         )}
       </AnimatePresence>
 
-      {/* End-of-game report */}
-      {state.phase === "finished" && (
-        <ReportCardOverlay state={state} nameOf={nameOf} penOf={penOf} initialOf={initialOf} />
+      {/* End-of-game report — dismissable so the finished board can be
+          inspected behind it. Re-opens on the next round. */}
+      {state.phase === "finished" && !reportDismissed && (
+        <ReportCardOverlay
+          state={state}
+          nameOf={nameOf}
+          penOf={penOf}
+          initialOf={initialOf}
+          onClose={() => setReportDismissed(true)}
+        />
       )}
+
+      {/* 10-second turn-out warning */}
+      <TurnTimeWarning deadline={state.turnDeadline} active={myTurn && state.phase === "playing"} />
     </div>
   );
 }
@@ -663,11 +686,13 @@ function ReportCardOverlay({
   nameOf,
   penOf,
   initialOf,
+  onClose,
 }: {
   state: DotsBoxesPublicState;
   nameOf: (id: string) => string;
   penOf: Record<string, Pen>;
   initialOf: (id: string) => string;
+  onClose: () => void;
 }) {
   const standings = state.playerOrder
     .map((pid) => ({ pid, score: state.scores[pid] ?? 0 }))
@@ -678,14 +703,22 @@ function ReportCardOverlay({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
       style={{ background: "rgba(0,0,0,0.55)" }}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Dots & Boxes results"
     >
       <motion.div
         initial={{ scale: 0.85, opacity: 0, rotate: -1.5 }}
         animate={{ scale: 1, opacity: 1, rotate: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
+        onClick={(e) => e.stopPropagation()}
         className="relative max-w-md w-full rounded-md overflow-hidden"
         style={{
-          background: "#f4f0e2",
+          // Solid base color so the board underneath doesn't bleed
+          // through. `background` shorthand was setting backgroundColor
+          // OK here but being explicit makes the intent clear.
+          backgroundColor: "#f4f0e2",
           backgroundImage: [
             "linear-gradient(to right, rgba(56,89,168,0.18) 1px, transparent 1px)",
             "linear-gradient(to bottom, rgba(56,89,168,0.18) 1px, transparent 1px)",
@@ -696,6 +729,30 @@ function ReportCardOverlay({
           fontFamily: "'Caveat', 'Patrick Hand', cursive",
         }}
       >
+        {/* Close button — backdrop click also closes. */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close results"
+          className="absolute right-2 top-2 rounded-full transition active:translate-y-px"
+          style={{
+            width: 30,
+            height: 30,
+            background: "rgba(59,58,54,0.10)",
+            border: "1px solid rgba(59,58,54,0.4)",
+            color: "#3b3a36",
+            fontFamily: "'Caveat', cursive",
+            fontSize: 20,
+            lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontWeight: 800,
+          }}
+        >
+          ×
+        </button>
         <div
           className="text-center mb-2"
           style={{
