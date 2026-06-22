@@ -81,9 +81,9 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  * GameKind at runtime. TypeScript can't see that proof; this helper
  * makes the narrowing explicit so callers don't need a wide cast.
  */
-const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
-  "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes",
-]);
+ const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
+   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "memorymatch",
+ ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
     throw new Error(`Cannot create room for non-playable slug: ${slug}`);

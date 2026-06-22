@@ -204,11 +204,83 @@ These are observations from the existing codebase, not inventions.
 - **Side-effect singletons** (`AudioManager`, `HapticsManager`, `VoiceManager`, the Socket.IO connection) live outside React and expose a `subscribe` API; hooks bridge them in via `useSyncExternalStore` or manual effects.
 - **Animations** are mostly `framer-motion`'s `motion.*` + `AnimatePresence`. One landing-page headline uses GSAP (`GsapSplitHeadline.tsx`).
 - **Pass-and-play** UI uses a `<PassPhoneGate>` wrapper component to gate the visible seat when multiple humans share a device.
-- **Per-game boards** are top-level components inside `Room.tsx`'s switch on `state.game`. The Rummy board picks between mobile and desktop variants based on viewport.
+- **Per-game boards** are top-level components inside `Room.tsx`'s switch on `state.game`. The Rummy board picks between mobile and desktop variants based on viewport — this is the reference pattern for every new game (see Section 6).
 
 ---
 
-## 6. Backend Guidelines
+## 6. Game Layout Standards (Mandatory)
+
+Every game implemented in BHALYAM **must** ship with two dedicated layouts. A game is not considered complete until both exist and have been verified in a browser. Rummy is the canonical example — see [`RummyBoard.tsx`](client/src/games/rummy/RummyBoard.tsx) selecting between [`RummyBoardMobile.tsx`](client/src/games/rummy/RummyBoardMobile.tsx) and [`RummyBoardDesktop.tsx`](client/src/games/rummy/RummyBoardDesktop.tsx) via `useViewport`.
+
+### 6.1 Mobile Layout (primary)
+
+Optimised for touch devices. This is the layout you design first.
+
+- Mobile-first implementation — write the mobile variant before the desktop one.
+- Portrait orientation is the target.
+- Must work across screen widths **320px – 768px**.
+- Touch targets minimum **44 × 44 px**.
+- Spacing comfortable for thumbs; primary controls reachable with one hand.
+- Use **bottom sheets and fullscreen dialogs**, not floating windows.
+- No hover-only interactions — every state must be reachable via tap.
+- Simplify UI density where needed; hide secondary info behind an explicit reveal.
+- Minimise in-game scrolling — the active board area should fit the viewport.
+- Animations must remain smooth on mid-range Android devices (test `framer-motion` overhead).
+
+### 6.2 Desktop Layout (dedicated, not stretched)
+
+A real desktop experience — not the mobile layout scaled up.
+
+- Optimised for widths **1024 px and above**.
+- Use the extra space deliberately: side panels for chat / scoreboards / history, wider boards, persistent action rails.
+- Surface more game information without cluttering the play area.
+- Support **mouse and keyboard** interactions (hover affordances, keyboard shortcuts where natural).
+- Maintain visual and brand consistency with the mobile layout — same palette, typography, motion language.
+
+### 6.3 Responsive Breakpoints
+
+| Range | Tier |
+|---|---|
+| 320 px – 767 px | Mobile |
+| 768 px – 1023 px | Tablet (pick the closer of mobile / desktop and tune) |
+| 1024 px+ | Desktop |
+
+Do not rely on CSS scaling alone. Components may be **rearranged or redesigned** between tiers — the goal is the best experience per tier, not the same DOM at every width. Use `client/src/lib/useViewport.ts` to branch in React; use Tailwind's `sm:` / `md:` / `lg:` prefixes for in-component tuning.
+
+### 6.4 Implementation Requirements
+
+Before writing a single line of code for a new game, you must:
+
+1. **Design the mobile layout** (wireframe or written description).
+2. **Design the desktop layout.**
+3. **Explain the differences** — what moves, what gets added on desktop, what hides on mobile.
+4. **Identify reusable sub-components** that both layouts share (cards, tokens, score chips, modals, dialogs).
+5. **Minimise duplicated code.** Game logic, state shape, server contracts, and presentational primitives stay shared; **only the layout shell differs**.
+
+The expected folder shape for a new game (`<kind>`) is:
+
+```
+client/src/games/<kind>/
+├── <Kind>Board.tsx          # picks mobile vs desktop via useViewport
+├── <Kind>BoardMobile.tsx    # mobile-only shell
+├── <Kind>BoardDesktop.tsx   # desktop-only shell
+└── shared sub-components / helpers (Card, Avatar, Tutorial, sound, autoArrange, etc.)
+```
+
+### 6.5 AI Development Rule for Layouts
+
+When implementing a new game (or porting an existing single-layout game), you must:
+
+- **Present both the mobile and desktop layouts before coding.**
+- **Explain how the two layouts differ** and what stays shared.
+- **Implement both layouts** in the same change set.
+- **Verify responsive behaviour in a browser** at 375 px, 768 px, 1024 px, and 1440 px before reporting the work as complete. Type-checks and unit tests do not count as verification of layout.
+
+A game implementation is **not complete** until both layouts exist, both have been opened in a browser, and the breakpoint switch has been confirmed visually.
+
+---
+
+## 7. Backend Guidelines
 
 - **Single Express + Socket.IO server.** `server/src/index.ts` builds the http server, sets CORS to `CLIENT_ORIGIN` (defaults to `http://localhost:5173`), exposes a `/health` endpoint, and binds to `0.0.0.0` so LAN devices can connect during development.
 - **`RoomManager`** is the only stateful class. It holds every room in an in-memory `Map<code, Room>` and a separate `Map<socketId, code>` index. There is no persistence layer — restarting the server drops all rooms.
@@ -226,7 +298,7 @@ These are observations from the existing codebase, not inventions.
 
 ---
 
-## 7. Styling Rules
+## 8. Styling Rules
 
 - **TailwindCSS** is the only styling system. Stay inside it.
 - **Design tokens** live in two places:
@@ -241,7 +313,7 @@ These are observations from the existing codebase, not inventions.
 
 ---
 
-## 8. State Management
+## 9. State Management
 
 - **Server is authoritative** for everything that affects gameplay (turn order, hands, scores, dice rolls, valid moves). Clients only emit intents (`game:move`) and re-render whatever state arrives via `game:state` / `room:state`.
 - **Client global state** lives in `useRoomStore` (`client/src/store/roomStore.ts`):
@@ -258,7 +330,7 @@ These are observations from the existing codebase, not inventions.
 
 ---
 
-## 9. API Conventions
+## 10. API Conventions
 
 - **There is no REST API.** The only HTTP endpoint is `GET /health` which returns `{ ok: true, ts: <epoch> }`. Everything else flows over Socket.IO.
 - **Service layer** on the client is the `lib/socket.ts` singleton (`getSocket()` / `disconnectSocket()`). Do not create additional socket instances.
@@ -266,7 +338,7 @@ These are observations from the existing codebase, not inventions.
 
 ---
 
-## 10. Socket.IO Conventions
+## 11. Socket.IO Conventions
 
 ### Event naming
 - Namespaced with `area:action`, lowercase, e.g. `room:create`, `room:join`, `game:move`, `game:state`, `chat:send`, `chat:message`, `webrtc:signal`, `rematch:request`, `rematch:respond`, `rematch:state`, `rummy:arrangement`.
@@ -298,7 +370,7 @@ These are observations from the existing codebase, not inventions.
 
 ---
 
-## 11. Performance Guidelines
+## 12. Performance Guidelines
 
 Based on choices already made:
 
@@ -310,7 +382,7 @@ Based on choices already made:
 
 ---
 
-## 12. Accessibility Standards (observed)
+## 13. Accessibility Standards (observed)
 
 - `aria-label` is used on icon-only buttons (copy room code, share, dismiss toast).
 - Keyboard focus styles fall back on Tailwind defaults plus the `--ring` token defined in `index.css`.
@@ -321,7 +393,7 @@ Based on choices already made:
 
 ---
 
-## 13. Error Handling
+## 14. Error Handling
 
 - **Server**: `try/catch` around `room:create` returning `{ ok: false, error }` through the ack; engine `applyMove` returns `MoveResult { ok, error?, isOver?, winnerId? }` rather than throwing; the RoomManager translates non-ok results into `game:error` strings.
 - **Client**: `lastError` in the store drives the floating Toast. Async helpers (`navigator.clipboard.writeText`, `navigator.share`) are guarded with `try/catch` and fall back to a manual selection (clipboard) or to WhatsApp `wa.me` (share).
@@ -330,7 +402,7 @@ Based on choices already made:
 
 ---
 
-## 14. Testing
+## 15. Testing
 
 - **Vitest** is configured on the **server only** (`server/vitest.config.ts`, `npm test` from `server/`).
 - Tests live next to engines in `__tests__/` folders. Detected suites:
@@ -343,7 +415,7 @@ Based on choices already made:
 
 ---
 
-## 15. AI Development Rules
+## 16. AI Development Rules
 
 These are **mandatory** for any AI working in this repo.
 
@@ -359,10 +431,11 @@ These are **mandatory** for any AI working in this repo.
 10. **Explain the plan before coding** when the change touches more than a couple of files or crosses the client/server boundary.
 11. **Keep commits focused.** One concern per commit message. The user copies commit blocks verbatim — always provide a clean message at the end of a code change.
 12. **Match the existing comment voice.** Block JSDoc for "why", inline `//` for short clarifications. Don't narrate "what" the code does — names already do that.
+13. **Every new game ships with both mobile and desktop layouts** — see Section 6. Present both designs and call out the differences before writing code; verify both in a browser before reporting the work as complete.
 
 ---
 
-## 16. Development Workflow (recommended for AI agents)
+## 17. Development Workflow (recommended for AI agents)
 
 1. **Analyse.** Read the relevant files. Run `Grep` for symbols. Check `shared/types.ts` for the wire shape if you're touching multiplayer state.
 2. **Search for reusable code.** Skim the folders listed in rule 2 above before writing anything new.
@@ -376,11 +449,12 @@ These are **mandatory** for any AI working in this repo.
    - `cd server && npm run typecheck` and `npm test`.
    - `cd client && npm run typecheck` and (for UI changes) `npm run build`.
    - For UI changes, **open the dev server in a browser and exercise the feature.** Type-checks alone are not proof a UI works.
+   - For a new game (or new board layout), verify at **375 px, 768 px, 1024 px, and 1440 px** — both the mobile and desktop shells must look and behave correctly. See Section 6.
 6. **Summarise.** End with a short summary of what changed and the commit-message block. Mention follow-ups if the change is partial (e.g. server is in place but client board is not yet wired — Memory Match's current state).
 
 ---
 
-## 17. Repository-Specific Rules
+## 18. Repository-Specific Rules
 
 Inferred from the actual code:
 
