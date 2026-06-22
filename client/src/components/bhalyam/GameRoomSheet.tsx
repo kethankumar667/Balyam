@@ -27,6 +27,7 @@ import {
   SnakeLadderGlyph,
   SparkIcon,
   UnoGlyph,
+  WordBuildingGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   rummy: RummyGlyph,
   rps: RpsGlyph,
   uno: UnoGlyph,
+  wordbuilding: WordBuildingGlyph,
 };
 
 /* ── Option catalogs (copied verbatim from old Lobby so behaviour matches) ── */
@@ -395,15 +397,18 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             />
           </Field>
 
-          {/* Pass & Play toggle — Ludo + SnL only, open-information games
-              where sharing a screen between players is fair. */}
-          {(game === "ludo" || game === "snl") && (
+          {/* Pass & Play toggle — open-information games only (the board
+              is fully visible to everyone, so screen-sharing is fair).
+              Word Building qualifies; Rummy/UNO/RPS/HC don't. */}
+          {(game === "ludo" || game === "snl" || game === "wordbuilding") && (
             <PassPlayBlock
               on={passPlay}
               onToggle={() => setPassPlay((v) => !v)}
               names={localNames}
               onNamesChange={setLocalNames}
-              maxExtraSeats={game === "ludo" ? 3 : 9}
+              maxExtraSeats={
+                game === "ludo" ? 3 : game === "wordbuilding" ? 3 : 9
+              }
             />
           )}
 

@@ -16,7 +16,8 @@ export type BhalyamGameSlug =
   | "ludo"
   | "rummy"
   | "rps"
-  | "uno";
+  | "uno"
+  | "wordbuilding";
 
 export interface BhalyamGameCard {
   slug: BhalyamGameSlug;
@@ -78,5 +79,12 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
       "Color chaos with your gang. Match cards, drop action cards, and race to shout UNO first.",
     accent: { from: "#EC1C24", to: "#7B1E2B" },
     maintenance: true,
+  },
+  {
+    slug: "wordbuilding",
+    title: "Word Building",
+    blurb:
+      "The English workbook revisited. Take turns writing letters and watch dictionary words light up like a teacher's tick.",
+    accent: { from: "#1E40AF", to: "#0F2A5A" },
   },
 ];

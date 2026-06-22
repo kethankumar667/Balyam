@@ -22,6 +22,7 @@ import {
   RummyGlyph,
   SnakeLadderGlyph,
   UnoGlyph,
+  WordBuildingGlyph,
 } from "../components/bhalyam/icons";
 
 /**
@@ -48,6 +49,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   rummy: RummyGlyph,
   rps: RpsGlyph,
   uno: UnoGlyph,
+  wordbuilding: WordBuildingGlyph,
 };
 
 export default function BhalyamHome() {
@@ -928,6 +930,9 @@ function GameTile({
     rummy: "/RummyTile.png",
     rps: "/RPSTile.png",
     uno: "/UNOTile.png",
+    // Word Building has no bespoke tile art yet — falls through to the
+    // gradient + glyph layer (the empty path skips the <img>).
+    wordbuilding: "",
   };
 
   const underMaintenance = game.maintenance === true;
@@ -1044,7 +1049,9 @@ function GameTileArt({
 }) {
   const [imageFailed, setImageFailed] = useState(false);
 
-  if (imageFailed) {
+  // No bespoke tile art (e.g. Word Building) — fall through to the glyph
+  // layer directly instead of rendering a broken <img>.
+  if (!src || imageFailed) {
     return <>{children}</>;
   }
 

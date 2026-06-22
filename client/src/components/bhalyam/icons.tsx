@@ -113,3 +113,12 @@ export const UnoGlyph = makeIcon(
     <path d="M8.5 10.5c1.8-1.8 4.7-1.8 6.5 0" />
   </>,
 );
+
+export const WordBuildingGlyph = makeIcon(
+  <>
+    {/* Workbook silhouette + grid + small pencil — reads as "english class". */}
+    <rect x="4" y="3.5" width="14" height="17" rx="1.5" />
+    <path d="M7 7h8M7 10h8M7 13h8M7 16h5" />
+    <path d="m18 18 2 2-2 2-2-2z" transform="translate(-1 -1)" />
+  </>,
+);

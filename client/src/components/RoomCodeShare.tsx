@@ -35,6 +35,7 @@ export default function RoomCodeShare({
     rummy: "Rummy",
     rps: "Rock Paper Scissors",
     uno: "UNO",
+    wordbuilding: "Word Building",
   };
   /**
    * Body of the share message — keeps the URL OUT of the text. The OS
