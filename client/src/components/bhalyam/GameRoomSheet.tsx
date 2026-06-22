@@ -83,6 +83,20 @@ const HC_MODES: { id: HcMode; label: string; blurb: string }[] = [
   { id: "galli",      label: "Galli",        blurb: "Street cricket — custom overs, no rules, pure fun." },
 ];
 
+// Word Building option catalogs.
+const WB_DICT_MODES: { id: "common" | "tournament"; label: string; blurb: string }[] = [
+  { id: "common",     label: "Classroom",  blurb: "Everyday English (~20k). Words a teacher would recognize." },
+  { id: "tournament", label: "Tournament", blurb: "Full Scrabble (~275k). Includes obscure entries like CAA, EDH, ABACA." },
+];
+
+// OptionGrid only takes string ids; we store the numeric board size as a
+// string here and parse on commit.
+const WB_BOARD_SIZES: { id: "8" | "10" | "15"; label: string; blurb: string }[] = [
+  { id: "8",  label: "8 × 8",   blurb: "Quick game. Fills up fast." },
+  { id: "10", label: "10 × 10", blurb: "Balanced — the default workbook page." },
+  { id: "15", label: "15 × 15", blurb: "Long match. Room for big words." },
+];
+
 const HC_FORMATS: { id: HcFormat; label: string; blurb: string }[] = [
   { id: "t20",  label: "T20",  blurb: "10 ov · 3 powerplay · 3-over bowler quota" },
   { id: "odi",  label: "ODI",  blurb: "15 ov · 3 powerplay · 4-over bowler quota" },
@@ -105,6 +119,12 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [hcFormat, setHcFormat] = useState<HcFormat>("t20");
   const [hcCategory, setHcCategory] = useState<HcCategory>("international");
   const [hcGalliOvers, setHcGalliOvers] = useState<number>(5);
+  // Word Building: which dictionary the engine validates against. Default
+  // is "common" — the curated ~20k everyday-English list — so casual
+  // players don't get tripped up by tournament Scrabble entries.
+  const [wbDictMode, setWbDictMode] =
+    useState<"common" | "tournament">("common");
+  const [wbBoardSize, setWbBoardSize] = useState<8 | 10 | 15>(10);
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   /**
@@ -133,6 +153,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setName(playerName);
       setPassPlay(false);
       setLocalNames(["", ""]);
+      setWbDictMode("common");
+      setWbBoardSize(10);
     }
   }, [game, playerName]);
 
@@ -192,6 +214,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 ...(hcMode === "galli" ? { galliOvers: hcGalliOvers } : {}),
               }
             : undefined,
+        wordBuildingOptions:
+          game === "wordbuilding"
+            ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize }
+            : undefined,
       },
       (res) => {
         setBusy(false);
@@ -238,6 +264,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         game: game as GameKind,
         playerId: playerId ?? undefined,
         snlOptions: game === "snl" ? { difficulty } : undefined,
+        wordBuildingOptions:
+          game === "wordbuilding"
+            ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize }
+            : undefined,
       },
       (res) => {
         if (!res.ok || !res.code) {
@@ -495,6 +525,27 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   value={hcCategory}
                   onChange={setHcCategory}
                   cols={2}
+                />
+              </Field>
+            </>
+          )}
+
+          {game === "wordbuilding" && (
+            <>
+              <Field label="Dictionary">
+                <OptionGrid
+                  items={WB_DICT_MODES}
+                  value={wbDictMode}
+                  onChange={setWbDictMode}
+                  cols={2}
+                />
+              </Field>
+              <Field label="Board size">
+                <OptionGrid
+                  items={WB_BOARD_SIZES}
+                  value={String(wbBoardSize) as "8" | "10" | "15"}
+                  onChange={(v) => setWbBoardSize(Number(v) as 8 | 10 | 15)}
+                  cols={3}
                 />
               </Field>
             </>

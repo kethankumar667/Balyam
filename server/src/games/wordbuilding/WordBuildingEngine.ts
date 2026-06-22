@@ -10,6 +10,12 @@ import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import { isDictionaryWord } from "./dictionary.js";
 
 /**
+ * Local helper — reads `this.s.options.dictionaryMode` and dispatches
+ * to the loader. Engine code stays terse and the mode threading sits
+ * in one place.
+ */
+
+/**
  * Word Building — English Workbook Edition (Phase 1+2).
  *
  * Turn-based shared-board vocab game. On each move the active player picks
@@ -270,7 +276,7 @@ export class WordBuildingEngine implements GameEngine {
         if (!includesPlaced) continue;
         const letters = sliceCells.map((cell) => cell.letter).join("");
         if (this.s.scoredWordSet.has(letters.toLowerCase())) continue;
-        if (isDictionaryWord(letters)) {
+        if (isDictionaryWord(letters, this.s.options.dictionaryMode)) {
           return {
             letters,
             cells: sliceCells.map((cell) => ({ r: cell.r, c: cell.c })),
@@ -495,7 +501,7 @@ export class WordBuildingEngine implements GameEngine {
           if (!includes) continue;
           const letters = slice.map((cell) => cell.letter).join("");
           if (this.s.scoredWordSet.has(letters.toLowerCase())) continue;
-          if (isDictionaryWord(letters)) return letters.length;
+          if (isDictionaryWord(letters, this.s.options.dictionaryMode)) return letters.length;
         }
       }
       return 0;

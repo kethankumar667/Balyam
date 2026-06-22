@@ -12,6 +12,9 @@ import type {
   WordBuildingScoredWord,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import WordBuildingTutorialModal, {
+  hasSeenWordBuildingTutorial,
+} from "./TutorialModal";
 
 /* ─────────────────────────── Workbook ink palette ───────────────────────────
  *
@@ -79,6 +82,12 @@ export default function WordBuildingBoard({
   const size = state.options.boardSize;
   const myTurn = state.turnPlayerId === selfId;
   const canPlay = myTurn && state.phase === "playing";
+
+  // Auto-open the tutorial on the very first Word Building session (per
+  // browser). The "?" button on the header re-opens it anytime.
+  const [tutorialOpen, setTutorialOpen] = useState<boolean>(
+    () => !hasSeenWordBuildingTutorial(),
+  );
 
   // Map playerId → ink based on seat order.
   const inkOf = useMemo(() => {
@@ -241,6 +250,7 @@ export default function WordBuildingBoard({
         nameOf={nameOf}
         selfId={selfId}
         remainingSec={remainingSec}
+        onOpenTutorial={() => setTutorialOpen(true)}
       />
 
       {/* Workbook page */}
@@ -313,6 +323,10 @@ export default function WordBuildingBoard({
       {/* End-of-game report card */}
       {state.phase === "finished" && (
         <ReportCardOverlay state={state} nameOf={nameOf} inkOf={inkOf} />
+      )}
+
+      {tutorialOpen && (
+        <WordBuildingTutorialModal onClose={() => setTutorialOpen(false)} />
       )}
     </div>
   );
@@ -648,12 +662,14 @@ function StudentBar({
   nameOf,
   selfId,
   remainingSec,
+  onOpenTutorial,
 }: {
   state: WordBuildingPublicState;
   inkOf: Record<string, Ink>;
   nameOf: (id: string) => string;
   selfId: string | null;
   remainingSec: number | null;
+  onOpenTutorial: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 px-2">
@@ -696,6 +712,23 @@ function StudentBar({
         );
       })}
       <div className="flex-1" />
+      <button
+        type="button"
+        onClick={onOpenTutorial}
+        className="rounded-full px-3 py-1.5 transition active:translate-y-px"
+        style={{
+          background: "rgba(255,255,255,0.7)",
+          border: "1px solid #c2a578",
+          color: "#7c2d12",
+          fontFamily: "'Caveat', 'Patrick Hand', cursive",
+          fontSize: 18,
+          cursor: "pointer",
+        }}
+        aria-label="How to play Word Building"
+        title="How to play"
+      >
+        ? Help
+      </button>
       {remainingSec != null && state.phase === "playing" && (
         <div
           className="rounded-full px-4 py-1.5 font-black"
