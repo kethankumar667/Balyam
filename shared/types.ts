@@ -672,6 +672,21 @@ export interface RpsState {
 
 export type WordBuildingBoardSize = 8 | 10 | 15;
 
+/**
+ * Which wordlist the engine validates placements against.
+ *
+ *   common     — top ~20k frequency-ranked English words intersected with
+ *                a Scrabble dictionary (filters out tournament weirdness
+ *                like CAA/KBAR/DIEB and acronym noise like OBS/RSA).
+ *                The right default for "feels like English class".
+ *
+ *   tournament — full ~275k Scrabble dictionary, like the original
+ *                an-array-of-english-words ship. Accepts every obscure
+ *                Scrabble-legal entry. Right for word-game enthusiasts
+ *                who already know the meta.
+ */
+export type WordBuildingDictionaryMode = "common" | "tournament";
+
 export interface WordBuildingOptions {
   /** Square grid edge length. */
   boardSize: WordBuildingBoardSize;
@@ -679,12 +694,15 @@ export interface WordBuildingOptions {
   turnTimerSeconds: number;
   /** Minimum word length that scores (spec: 3). */
   minWordLength: number;
+  /** See WordBuildingDictionaryMode. Defaults to "common". */
+  dictionaryMode: WordBuildingDictionaryMode;
 }
 
 export const DEFAULT_WORDBUILDING_OPTIONS: WordBuildingOptions = {
   boardSize: 10,
   turnTimerSeconds: 30,
   minWordLength: 3,
+  dictionaryMode: "common",
 };
 
 /** A scored word with the cells it occupies and who placed it. */

@@ -1,34 +1,38 @@
-// Dictionary singleton — loaded from the bundled an-array-of-english-words
-// package exactly once per process. The package ships a ~275k-word lowercase
-// array; we wrap it in a Set for O(1) lookups. Memory cost is ~5MB which is
-// fine for a node process; the alternative (per-word API calls) is hostile
-// for a turn-timer game.
+// Dictionary singletons — loaded lazily, once per process per mode.
 //
-// We strip a small blocklist of obvious slurs and 3-4 letter profanity at
-// load time so the classroom theme doesn't break the first time a player
-// tries to spell a rude word. The list is deliberately conservative — the
-// game is about vocabulary, not censorship — but every entry has been
-// audited as "not something a teacher would write a tick mark next to".
+// Two wordlists are bundled and cached separately:
+//
+//   TOURNAMENT — `an-array-of-english-words`, ~275k entries. Scrabble-
+//                tournament-legal. Includes obscure words like CAA, KBAR,
+//                DIEB, JOBE, EDH, ABACA, CESSER that frustrate casual
+//                players. Right for "vocabulary tournament" mode.
+//
+//   COMMON     — top-25k frequency-ranked English words intersected with
+//                the Scrabble dictionary, ~19.5k entries. Scrabble's
+//                proper-noun rejection naturally strips most acronyms
+//                that pollute pure-frequency lists (OBS, RSA, NMR, etc.)
+//                while keeping recognizable words (cricket, mango,
+//                zebra, school, teacher). The right default — this is
+//                what "feels like English class".
+//
+// A small EXTRAS_BLOCKLIST removes the handful of weird entries that
+// survive both filters (caa, obs) plus all profanity / slurs. Both
+// modes filter the same blocklist before the lookup table is exposed.
 
-import words from "an-array-of-english-words";
-
-let cache: Set<string> | null = null;
+import allWords from "an-array-of-english-words";
+import { words as popularWords } from "popular-english-words";
+import type { WordBuildingDictionaryMode } from "@shared/types.js";
 
 /**
- * Words filtered out of the dictionary at load time. Stored lowercase.
- * Keep this short and direct: 3–5 letter common-profanity + a few slurs.
- * If a word genuinely IS used in English class (e.g. medical / anatomy
- * terms) it shouldn't be on this list — those are valid even when blunt.
+ * Profanity / slurs filtered from BOTH dictionary modes. Audited
+ * individually — anything on this list is something a teacher would
+ * not write a tick mark next to.
  */
-const BLOCKLIST: ReadonlySet<string> = new Set([
-  // Common profanity — 3–4 letters
+const PROFANITY_BLOCKLIST: ReadonlySet<string> = new Set([
   "ass", "arse", "damn", "dick", "shit", "fuck", "cunt", "cock", "piss",
   "twat", "wank", "fag", "tit", "tits", "boobs",
-  // Slurs
   "nigger", "nigga", "spic", "kike", "chink", "gook", "wop", "dyke",
   "tranny", "retard", "retarded",
-  // Common extended forms (engine treats words case-insensitively; these
-  // cover the morphology variants the wordlist actually contains)
   "asses", "asshole", "assholes", "shits", "shitting", "shitty", "shitter",
   "fucks", "fucked", "fucking", "fucker", "fuckers", "motherfucker",
   "bitch", "bitches", "bitching", "bastard", "bastards",
@@ -39,27 +43,74 @@ const BLOCKLIST: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Returns true if `word` is in the BLOCKLIST. Exported for tests.
+ * Extra leak shield applied ONLY to common mode — tournament weirdness
+ * that survives the frequency-list intersection. These ARE valid
+ * Scrabble words so tournament mode still accepts them; we just block
+ * them from the casual default so a Classroom game never books CAA or
+ * OBS. Keep tiny — adding entries here narrows the casual dictionary.
  */
-export function isBlocked(word: string): boolean {
-  return BLOCKLIST.has(word.toLowerCase());
+const COMMON_MODE_LEAK_BLOCKLIST: ReadonlySet<string> = new Set([
+  "caa", "obs", "dso",
+]);
+
+export function isProfanity(word: string): boolean {
+  return PROFANITY_BLOCKLIST.has(word.toLowerCase());
 }
 
-function load(): Set<string> {
-  if (cache) return cache;
-  const set = new Set(words);
-  for (const bad of BLOCKLIST) set.delete(bad);
-  cache = set;
-  return cache;
+/** Cache slot per mode so we don't rebuild the Set on every move. */
+const caches: { common: Set<string> | null; tournament: Set<string> | null } = {
+  common: null,
+  tournament: null,
+};
+
+/**
+ * Size of the frequency-ranked head we intersect with the Scrabble
+ * dictionary. 25,000 is the sweet spot validated against probe words:
+ *   • Lower (15-20k) drops "zebra" and other animal/object words kids know
+ *   • Higher (30k+) starts pulling tournament weirdness back in
+ */
+const COMMON_TOP_N = 25_000;
+
+function loadTournament(): Set<string> {
+  if (caches.tournament) return caches.tournament;
+  const set = new Set(allWords);
+  for (const bad of PROFANITY_BLOCKLIST) set.delete(bad);
+  caches.tournament = set;
+  return set;
+}
+
+function loadCommon(): Set<string> {
+  if (caches.common) return caches.common;
+  const top = popularWords.getMostPopular(COMMON_TOP_N);
+  // Intersect with the Scrabble dictionary so acronyms and made-up
+  // pseudo-words from a Wikipedia frequency list don't slip in.
+  const tournamentSet = new Set(allWords);
+  const filtered = top.filter((w) => tournamentSet.has(w));
+  const set = new Set(filtered);
+  for (const bad of PROFANITY_BLOCKLIST) set.delete(bad);
+  for (const bad of COMMON_MODE_LEAK_BLOCKLIST) set.delete(bad);
+  caches.common = set;
+  return set;
 }
 
 /**
- * Look up a word — case-insensitive. Returns true if the word is in the
- * bundled English dictionary AND not on the BLOCKLIST. Used by
- * WordBuildingEngine on every newly formed run of letters along a row
- * or column.
+ * Look up a word — case-insensitive. `mode` defaults to "common" so
+ * callers that haven't been updated stay on the safer wordlist.
  */
-export function isDictionaryWord(word: string): boolean {
+export function isDictionaryWord(
+  word: string,
+  mode: WordBuildingDictionaryMode = "common",
+): boolean {
   if (!word) return false;
-  return load().has(word.toLowerCase());
+  const lc = word.toLowerCase();
+  // Profanity is filtered at load time — but double-check defensively
+  // in case a future code path bypasses the cache.
+  if (PROFANITY_BLOCKLIST.has(lc)) return false;
+  const set = mode === "tournament" ? loadTournament() : loadCommon();
+  return set.has(lc);
+}
+
+/** Size of the active wordlist for the mode — handy for telemetry. */
+export function dictionarySize(mode: WordBuildingDictionaryMode = "common"): number {
+  return (mode === "tournament" ? loadTournament() : loadCommon()).size;
 }
