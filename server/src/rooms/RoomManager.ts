@@ -13,6 +13,7 @@ import type {
   ServerToClientEvents,
   SnlGameOptions,
   WebRTCSignal,
+  WordBuildingOptions,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -20,6 +21,7 @@ import {
   DEFAULT_LUDO_OPTIONS,
   DEFAULT_RUMMY_OPTIONS,
   DEFAULT_SNL_OPTIONS,
+  DEFAULT_WORDBUILDING_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -29,6 +31,7 @@ import { LudoEngine } from "../games/ludo/LudoEngine.js";
 import { SnlEngine } from "../games/snl/SnlEngine.js";
 import { RummyEngine } from "../games/rummy/RummyEngine.js";
 import { HandCricketEngine } from "../games/handcricket/HandCricketEngine.js";
+import { WordBuildingEngine } from "../games/wordbuilding/WordBuildingEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 /** How long the host's rematch request stays open before auto-cancelling. */
@@ -51,6 +54,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   rummy: ["Anand", "Babji", "Chinna", "Damodar", "Eswari", "Lakshmi"],
   rps: ["Rocky", "Bhola", "Chotu", "Dolly"],
   uno: ["Red", "Blue", "Green", "Yellow"],
+  wordbuilding: ["Teacher Padma", "Master Ravi", "Miss Lakshmi", "Sir Krishna"],
 };
 
 function pickBotName(game: GameKind, idx: number): string {
@@ -76,6 +80,7 @@ interface Room {
   snlOptions: SnlGameOptions;
   rummyOptions: RummyGameOptions;
   hcOptions: HcGameOptions;
+  wordBuildingOptions: WordBuildingOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -123,7 +128,8 @@ export class RoomManager {
     ludoOptions?: Partial<LudoGameOptions>,
     snlOptions?: Partial<SnlGameOptions>,
     rummyOptions?: Partial<RummyGameOptions>,
-    hcOptions?: Partial<HcGameOptions>
+    hcOptions?: Partial<HcGameOptions>,
+    wordBuildingOptions?: Partial<WordBuildingOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -151,6 +157,7 @@ export class RoomManager {
       snlOptions: { ...DEFAULT_SNL_OPTIONS, ...(snlOptions ?? {}) },
       rummyOptions: { ...DEFAULT_RUMMY_OPTIONS, ...(rummyOptions ?? {}) },
       hcOptions: { ...DEFAULT_HC_OPTIONS, ...(hcOptions ?? {}) },
+      wordBuildingOptions: { ...DEFAULT_WORDBUILDING_OPTIONS, ...(wordBuildingOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -323,10 +330,18 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot add local players mid-game");
       return;
     }
-    if (room.game !== "ludo" && room.game !== "snl") {
+    if (
+      room.game !== "ludo" &&
+      room.game !== "snl" &&
+      room.game !== "wordbuilding"
+    ) {
+      // Pass & Play is fair only for open-information games — everyone
+      // looks at the same board state, no private hands. Word Building
+      // qualifies (the whole grid is public). Rummy / UNO etc. would
+      // leak hidden information to the wrong player on a shared device.
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
-        "Pass & Play is only available for Ludo and Snakes & Ladders"
+        "Pass & Play is only available for Ludo, Snakes & Ladders, and Word Building"
       );
       return;
     }
@@ -474,6 +489,9 @@ export class RoomManager {
       }
       if (engine instanceof HandCricketEngine) {
         engine.setOptions(room.hcOptions);
+      }
+      if (engine instanceof WordBuildingEngine) {
+        engine.setOptions(room.wordBuildingOptions);
       }
       engine.init(playersList);
       room.engine = engine;
@@ -665,6 +683,20 @@ export class RoomManager {
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
     }
+    if (room.engine instanceof WordBuildingEngine) {
+      const seconds = room.engine.getTurnTimerSeconds();
+      // 0 disables the timer entirely (player-friendly mode).
+      if (seconds <= 0) {
+        room.engine.clearTurnDeadline();
+        this.broadcastGameState(room);
+        return;
+      }
+      const ms = Math.max(5, seconds) * 1000;
+      room.engine.setTurnDeadline(Date.now() + ms);
+      this.broadcastGameState(room);
+      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      return;
+    }
   }
 
   private onTurnTimeout(room: Room): void {
@@ -688,6 +720,14 @@ export class RoomManager {
       return;
     }
     if (room.engine instanceof RummyEngine) {
+      const engine = room.engine;
+      const state = engine.getPublicState();
+      if (state.phase !== "playing") return;
+      engine.applyAutoMove(state.turnPlayerId);
+      this.afterAutoMove(room, engine.isOver());
+      return;
+    }
+    if (room.engine instanceof WordBuildingEngine) {
       const engine = room.engine;
       const state = engine.getPublicState();
       if (state.phase !== "playing") return;
@@ -1000,6 +1040,7 @@ export class RoomManager {
       if (engine instanceof SnlEngine) engine.setOptions(room.snlOptions);
       if (engine instanceof RummyEngine) engine.setOptions(room.rummyOptions);
       if (engine instanceof HandCricketEngine) engine.setOptions(room.hcOptions);
+      if (engine instanceof WordBuildingEngine) engine.setOptions(room.wordBuildingOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

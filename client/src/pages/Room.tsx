@@ -25,7 +25,8 @@ import LudoBoard from "../games/ludo/LudoBoard";
 import SnlBoard from "../games/snl/SnlBoard";
 import HandCricketBoard from "../games/handcricket/HandCricketBoard";
 import UnoBoard from "../games/uno/UnoBoard";
-import type { GameKind, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoState } from "@shared/types";
+import type { GameKind, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoState, WordBuildingPublicState } from "@shared/types";
+import WordBuildingBoard from "../games/wordbuilding/WordBuildingBoard";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -39,6 +40,7 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   snl: 10,
   handcricket: 2,
   uno: 8,
+  wordbuilding: 4,
 };
 
 /**
@@ -604,6 +606,36 @@ export default function Room() {
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
               />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "wordbuilding" && gameState != null && (
+              (() => {
+                const wbs = gameState as WordBuildingPublicState;
+                const isHost = roomState.hostId === playerId;
+                const activePid = wbs.turnPlayerId;
+                const activeP = roomState.players.find((p) => p.id === activePid);
+                // Pass-and-play: when the host's socket is the only one in
+                // the room and the active seat is marked `isLocal`, override
+                // selfId to that seat so the board's "myTurn" gate works.
+                const effectiveSelfId =
+                  isHost && activeP?.isLocal ? activePid : playerId;
+                return (
+                  <PassPhoneGate
+                    activePlayerId={activePid}
+                    players={roomState.players}
+                    isHost={isHost}
+                  >
+                    <WordBuildingBoard
+                      state={wbs}
+                      players={roomState.players}
+                      selfId={effectiveSelfId}
+                      messages={messages}
+                      roomCode={roomState.code}
+                      roomPhase={roomState.phase}
+                    />
+                  </PassPhoneGate>
+                );
+              })()
             )}
 
             {/* Generic rematch panel — host sees "Play Again", non-hosts see

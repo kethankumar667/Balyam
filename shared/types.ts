@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding";
 
 export interface Player {
   id: string;
@@ -659,6 +659,95 @@ export interface RpsState {
   ties: number;
 }
 
+// ---- Word Building (English Workbook Edition) ----
+//
+// 1990s English-classroom inspired vocab game. Players take turns placing a
+// single A–Z letter into any empty cell on a shared grid. After each move
+// the engine scans the row and column the letter landed in and credits any
+// newly-completed 3+ letter dictionary words to the placer. Each word can
+// only score once per match. Game ends when every cell is filled.
+//
+// Multiplayer model mirrors Ludo/SnL: turn-based on a shared board,
+// everyone sees the same grid in real time.
+
+export type WordBuildingBoardSize = 8 | 10 | 15;
+
+export interface WordBuildingOptions {
+  /** Square grid edge length. */
+  boardSize: WordBuildingBoardSize;
+  /** Seconds per turn. 0 disables the timer. */
+  turnTimerSeconds: number;
+  /** Minimum word length that scores (spec: 3). */
+  minWordLength: number;
+}
+
+export const DEFAULT_WORDBUILDING_OPTIONS: WordBuildingOptions = {
+  boardSize: 10,
+  turnTimerSeconds: 30,
+  minWordLength: 3,
+};
+
+/** A scored word with the cells it occupies and who placed it. */
+export interface WordBuildingScoredWord {
+  /** Stable id for animations + dedupe. */
+  id: string;
+  word: string;
+  /** Cells covered by this word, in reading order. */
+  cells: Array<{ r: number; c: number }>;
+  /** Player who completed (closed) the word. */
+  scorerId: string;
+  /** Points awarded (= word length). */
+  points: number;
+  /** Wall-clock ms when scored — drives reveal animations. */
+  ts: number;
+  /** "row" or "col" — used by the client to layer overlapping highlights. */
+  orientation: "row" | "col";
+}
+
+/** A single placement move recorded for history + move log. */
+export interface WordBuildingMoveRecord {
+  /** Player who placed the letter. */
+  playerId: string;
+  r: number;
+  c: number;
+  letter: string;
+  /** Words scored by this move (zero or more). */
+  scored: WordBuildingScoredWord[];
+  ts: number;
+}
+
+export interface WordBuildingPublicState {
+  kind: "wordbuilding";
+  phase: "playing" | "finished";
+  options: WordBuildingOptions;
+  /** Row-major grid: each cell is the placed letter or "" if empty. */
+  board: string[][];
+  /** Player ids in turn order. */
+  playerOrder: string[];
+  /** Current turn player id. */
+  turnPlayerId: string;
+  /** Per-player total points. */
+  scores: Record<string, number>;
+  /** All words scored this match, oldest first. Capped on render side. */
+  scoredWords: WordBuildingScoredWord[];
+  /** Last N moves for the move-history panel. */
+  recentMoves: WordBuildingMoveRecord[];
+  /** Wall-clock ms after which the turn auto-passes. null = timer disabled. */
+  turnDeadline: number | null;
+  /** Final winner — null until phase flips to finished. */
+  winnerId: string | null;
+  /** Cells filled count, for endgame check + UI progress. */
+  filledCells: number;
+  totalCells: number;
+}
+
+export type WordBuildingMoveType = "place";
+
+export interface WordBuildingPlaceMove {
+  type: "place";
+  data: { r: number; c: number; letter: string };
+}
+
 // ---- UNO (scaffold) ----
 export interface UnoState {
   kind: "uno";
@@ -684,6 +773,7 @@ export interface CreateRoomPayload {
   snlOptions?: Partial<SnlGameOptions>;
   rummyOptions?: Partial<RummyGameOptions>;
   hcOptions?: Partial<HcGameOptions>;
+  wordBuildingOptions?: Partial<WordBuildingOptions>;
 }
 
 export interface SetTokenNicknamesPayload {

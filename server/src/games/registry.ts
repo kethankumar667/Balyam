@@ -6,6 +6,7 @@ import { LudoEngine } from "./ludo/LudoEngine.js";
 import { SnlEngine } from "./snl/SnlEngine.js";
 import { HandCricketEngine } from "./handcricket/HandCricketEngine.js";
 import { UnoEngine } from "./uno/UnoEngine.js";
+import { WordBuildingEngine } from "./wordbuilding/WordBuildingEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
   switch (kind) {
@@ -21,6 +22,8 @@ export function createEngine(kind: GameKind): GameEngine {
       return new HandCricketEngine();
     case "uno":
       return new UnoEngine();
+    case "wordbuilding":
+      return new WordBuildingEngine();
     default:
       throw new Error(`Game not implemented yet: ${kind}`);
   }
@@ -40,5 +43,7 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
       return { min: 2, max: 2 };
     case "uno":
       return { min: 2, max: 8 };
+    case "wordbuilding":
+      return { min: 2, max: 4 };
   }
 }
