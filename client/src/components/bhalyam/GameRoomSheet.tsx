@@ -33,6 +33,7 @@ import {
   NamePlaceAnimalGlyph,
   TambolaGlyph,
   TeluguCinemaluGlyph,
+  SamethaluGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   memorymatch: MemoryMatchGlyph,
   namesplaceanimal: NamePlaceAnimalGlyph,
   tambola: TambolaGlyph,
+  samethalu: SamethaluGlyph,
   telugucinemalu: TeluguCinemaluGlyph,
 };
 
@@ -80,7 +82,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  * makes the narrowing explicit so callers don't need a wide cast.
  */
 const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
-  "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding",
+  "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes",
 ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
@@ -124,6 +126,13 @@ const WB_BOARD_SIZES: { id: "8" | "10" | "15"; label: string; blurb: string }[] 
   { id: "15", label: "15 × 15", blurb: "Long match. Room for big words." },
 ];
 
+// Dots & Boxes — dot-grid size. Box count = (n-1)^2 so 5→16, 7→36, 9→64.
+const DB_BOARD_SIZES: { id: "5" | "7" | "9"; label: string; blurb: string }[] = [
+  { id: "5", label: "5 × 5 dots", blurb: "16 boxes — quick recess round." },
+  { id: "7", label: "7 × 7 dots", blurb: "36 boxes — the maths-period sweet spot." },
+  { id: "9", label: "9 × 9 dots", blurb: "64 boxes — marathon notebook match." },
+];
+
 const HC_FORMATS: { id: HcFormat; label: string; blurb: string }[] = [
   { id: "t20",  label: "T20",  blurb: "10 ov · 3 powerplay · 3-over bowler quota" },
   { id: "odi",  label: "ODI",  blurb: "15 ov · 3 powerplay · 4-over bowler quota" },
@@ -152,6 +161,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [wbDictMode, setWbDictMode] =
     useState<"common" | "tournament">("common");
   const [wbBoardSize, setWbBoardSize] = useState<8 | 10 | 15>(10);
+  // Dots & Boxes: dot-grid edge length. Box count = (n-1)^2.
+  const [dbBoardSize, setDbBoardSize] = useState<5 | 7 | 9>(7);
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   /**
@@ -182,6 +193,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setLocalNames(["", ""]);
       setWbDictMode("common");
       setWbBoardSize(10);
+      setDbBoardSize(7);
     }
   }, [game, playerName]);
 
@@ -245,6 +257,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           game === "wordbuilding"
             ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize }
             : undefined,
+        dotsBoxesOptions:
+          game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
       },
       (res) => {
         setBusy(false);
@@ -295,6 +309,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           game === "wordbuilding"
             ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize }
             : undefined,
+        dotsBoxesOptions:
+          game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
       },
       (res) => {
         if (!res.ok || !res.code) {
@@ -457,14 +473,18 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           {/* Pass & Play toggle — open-information games only (the board
               is fully visible to everyone, so screen-sharing is fair).
               Word Building qualifies; Rummy/UNO/RPS/HC don't. */}
-          {(game === "ludo" || game === "snl" || game === "wordbuilding") && (
+          {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes") && (
             <PassPlayBlock
               on={passPlay}
               onToggle={() => setPassPlay((v) => !v)}
               names={localNames}
               onNamesChange={setLocalNames}
               maxExtraSeats={
-                game === "ludo" ? 3 : game === "wordbuilding" ? 3 : 9
+                game === "ludo"
+                  ? 3
+                  : game === "wordbuilding" || game === "dotsboxes"
+                  ? 3
+                  : 9
               }
             />
           )}
@@ -576,6 +596,17 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 />
               </Field>
             </>
+          )}
+
+          {game === "dotsboxes" && (
+            <Field label="Board size">
+              <OptionGrid
+                items={DB_BOARD_SIZES}
+                value={String(dbBoardSize) as "5" | "7" | "9"}
+                onChange={(v) => setDbBoardSize(Number(v) as 5 | 7 | 9)}
+                cols={3}
+              />
+            </Field>
           )}
 
           {/* Primary CTA — swaps label/handler in Pass & Play mode */}

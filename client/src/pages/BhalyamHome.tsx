@@ -29,7 +29,8 @@ import {
   NamePlaceAnimalGlyph,
   TambolaGlyph,
   TeluguCinemaluGlyph,
-  JoystickGlyph,
+  SamethaluGlyph,
+  GamepadGlyph,
 } from "../components/bhalyam/icons";
 
 /**
@@ -61,6 +62,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   memorymatch: MemoryMatchGlyph,
   namesplaceanimal: NamePlaceAnimalGlyph,
   tambola: TambolaGlyph,
+  samethalu: SamethaluGlyph,
   telugucinemalu: TeluguCinemaluGlyph,
 };
 
@@ -133,7 +135,7 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
             <IconCircleButton
               label="All games"
               onClick={() => navigate("/games")}
-              icon={<JoystickGlyph className="w-[20px] h-[20px]" />}
+              icon={<GamepadGlyph className="w-[20px] h-[20px]" />}
             />
             <IconCircleButton
               label="Your profile"
@@ -919,12 +921,20 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
 
       {/* "View all games" overflow link — sends curious players to the
           dedicated /games page where every tile (including coming-soon
-          maintenance ones) is laid out without the 6-tile cap. */}
+          maintenance ones) is laid out without the 6-tile cap.
+
+          Text color note: text-[#1D2C4A] gets force-mapped to cream by
+          the dark-mode override (so "Pick a game" titles stay readable
+          on dark parchment) — but THIS element has a cream background
+          even in dark mode, which made the label cream-on-cream and
+          invisible. text-[#2A221B] is only remapped when paired with
+          .bhalyam-display, so it stays warm-near-black here in both
+          themes — readable on cream in either mode. */}
       <div className="mt-4 sm:mt-5 flex justify-center">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 rounded-full px-5 py-2.5
-                     bg-[#FCF8EF] border border-[#EEDCC2] text-[#1D2C4A] font-extrabold text-[14px]
+                     bg-[#FCF8EF] border border-[#EEDCC2] text-[#2A221B] font-extrabold text-[14px]
                      hover:bg-[#F8EEDB] active:translate-y-px
                      focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
                      shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
@@ -977,6 +987,9 @@ export function GameTile({
     memorymatch: "/Memory match cards.png",
     namesplaceanimal: "/Name-place-thing-animal.png",
     tambola: "/Tambola.png",
+    // No bespoke art shipped yet for Samethalu — falls through to the
+    // gradient + glyph layer (palm-leaf manuscript icon).
+    samethalu: "",
     telugucinemalu: "/telugu cinemalu.png",
   };
 
@@ -1046,6 +1059,17 @@ export function GameTile({
         <span className={titleClassName}>
           {game.title}
         </span>
+        {/* Nostalgic edition label — italicised + small caps so it reads as
+            a book inscription, not a tagline. Phase 2 board treatments
+            derive their aesthetic from this label. */}
+        {game.theme && (
+          <span
+            className="text-[10.5px] tracking-[0.18em] uppercase font-bold leading-tight italic"
+            style={{ color: "rgba(255,247,231,0.85)", textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}
+          >
+            {game.theme}
+          </span>
+        )}
         {game.teluguTitle && (
           <span className="text-[11px] tracking-widest uppercase font-bold opacity-90 leading-tight">
             {game.teluguTitle}

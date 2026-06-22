@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes";
 
 export interface Player {
   id: string;
@@ -766,6 +766,84 @@ export interface WordBuildingPlaceMove {
   data: { r: number; c: number; letter: string };
 }
 
+// ---- Dots & Boxes (Rough Notebook Edition) ----
+//
+// Classic 2–4 player paper game. The board is an RxC grid of DOTS, which
+// implies an (R-1)x(C-1) grid of BOXES. Players take turns connecting
+// two orthogonally-adjacent dots with a line. Whenever a player closes
+// a box (4 edges drawn) they claim it AND keep the turn (bonus move).
+// Game ends when every box is owned. Highest box count wins.
+
+export type DotsBoxesBoardSize = 5 | 7 | 9;
+
+export interface DotsBoxesOptions {
+  /** Dot-grid edge length. Box count = (size-1)^2. 5=tiny/quick, 9=marathon. */
+  boardSize: DotsBoxesBoardSize;
+  /** Seconds per turn. 0 disables the timer. */
+  turnTimerSeconds: number;
+}
+
+export const DEFAULT_DOTSBOXES_OPTIONS: DotsBoxesOptions = {
+  boardSize: 7,
+  turnTimerSeconds: 30,
+};
+
+/** A drawn edge between two adjacent dots. */
+export interface DotsBoxesLine {
+  /**
+   * "h" = horizontal (between (r,c) and (r,c+1)),
+   * "v" = vertical   (between (r,c) and (r+1,c)).
+   */
+  kind: "h" | "v";
+  r: number;
+  c: number;
+  /** Player who drew this line. */
+  playerId: string;
+}
+
+/** A claimed box, indexed by its top-left dot. */
+export interface DotsBoxesClaim {
+  r: number;
+  c: number;
+  /** Player who closed the 4th edge. */
+  ownerId: string;
+  /** Move index at which this box was closed — drives fade-in order. */
+  closedAt: number;
+}
+
+export interface DotsBoxesPublicState {
+  kind: "dotsboxes";
+  phase: "playing" | "finished";
+  options: DotsBoxesOptions;
+  playerOrder: string[];
+  turnPlayerId: string;
+  /** All drawn horizontal lines, flat list. */
+  hLines: DotsBoxesLine[];
+  /** All drawn vertical lines, flat list. */
+  vLines: DotsBoxesLine[];
+  /** Boxes claimed by their closer. */
+  claims: DotsBoxesClaim[];
+  /** Per-player closed-box count. */
+  scores: Record<string, number>;
+  /** Wall-clock ms after which the turn auto-passes. null = timer off. */
+  turnDeadline: number | null;
+  /** Final winner id (or null on a tie). null until phase flips. */
+  winnerId: string | null;
+  /** Move counter — used for claim animations + telemetry. */
+  moveCount: number;
+  /** True when the just-completed move closed at least one box and the
+   *  same player keeps the turn. The board uses this to flash a brief
+   *  "Bonus move!" hint. */
+  lastMoveScored: boolean;
+}
+
+export type DotsBoxesMoveType = "draw";
+
+export interface DotsBoxesDrawMove {
+  type: "draw";
+  data: { kind: "h" | "v"; r: number; c: number };
+}
+
 // ---- UNO (scaffold) ----
 export interface UnoState {
   kind: "uno";
@@ -792,6 +870,7 @@ export interface CreateRoomPayload {
   rummyOptions?: Partial<RummyGameOptions>;
   hcOptions?: Partial<HcGameOptions>;
   wordBuildingOptions?: Partial<WordBuildingOptions>;
+  dotsBoxesOptions?: Partial<DotsBoxesOptions>;
 }
 
 export interface SetTokenNicknamesPayload {

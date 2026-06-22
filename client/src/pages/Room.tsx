@@ -25,8 +25,9 @@ import LudoBoard from "../games/ludo/LudoBoard";
 import SnlBoard from "../games/snl/SnlBoard";
 import HandCricketBoard from "../games/handcricket/HandCricketBoard";
 import UnoBoard from "../games/uno/UnoBoard";
-import type { GameKind, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoState, WordBuildingPublicState } from "@shared/types";
+import type { GameKind, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoState, WordBuildingPublicState, DotsBoxesPublicState } from "@shared/types";
 import WordBuildingBoard from "../games/wordbuilding/WordBuildingBoard";
+import DotsBoxesBoard from "../games/dotsboxes/DotsBoxesBoard";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -41,6 +42,7 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   handcricket: 2,
   uno: 8,
   wordbuilding: 4,
+  dotsboxes: 4,
 };
 
 /**
@@ -606,6 +608,33 @@ export default function Room() {
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
               />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "dotsboxes" && gameState != null && (
+              (() => {
+                const dbs = gameState as DotsBoxesPublicState;
+                const isHost = roomState.hostId === playerId;
+                const activePid = dbs.turnPlayerId;
+                const activeP = roomState.players.find((p) => p.id === activePid);
+                const effectiveSelfId =
+                  isHost && activeP?.isLocal ? activePid : playerId;
+                return (
+                  <PassPhoneGate
+                    activePlayerId={activePid}
+                    players={roomState.players}
+                    isHost={isHost}
+                  >
+                    <DotsBoxesBoard
+                      state={dbs}
+                      players={roomState.players}
+                      selfId={effectiveSelfId}
+                      messages={messages}
+                      roomCode={roomState.code}
+                      roomPhase={roomState.phase}
+                    />
+                  </PassPhoneGate>
+                );
+              })()
             )}
 
             {roomState.phase !== "lobby" && roomState.game === "wordbuilding" && gameState != null && (
