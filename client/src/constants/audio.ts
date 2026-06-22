@@ -70,6 +70,13 @@ export const AUDIO = {
   HC_CROWD:  "hc_crowd",
   HC_OUT:    "hc_out",
 
+  /* ── UNO ── */
+  UNO_PLAY:    "uno_play",
+  UNO_DRAW:    "uno_draw",
+  UNO_WILD:    "uno_wild",
+  UNO_DECLARED: "uno_declared",
+  UNO_WIN:     "uno_win",
+
   /* ── Rewards ── */
   REWARD_COIN:        "reward_coin",
   REWARD_COINS_RAIN:  "reward_coins_rain",

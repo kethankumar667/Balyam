@@ -925,21 +925,64 @@ export interface MemoryMatchFlipMove {
   data: { cardId: number };
 }
 
-// ---- UNO (scaffold) ----
-export interface UnoState {
+// ---- UNO ----
+
+export type UnoColor = "R" | "G" | "B" | "Y"; // Red, Green, Blue, Yellow
+export type UnoRank =
+  | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+  | "Skip" | "Reverse" | "+2"
+  | "Wild" | "Wild+4";
+
+export interface UnoCard {
+  id: string; // Unique per shuffle
+  color: UnoColor | null; // null for Wild/Wild+4
+  rank: UnoRank;
+}
+
+/**
+ * Public game state — sent to all players. Hides hand contents.
+ * Each player receives this plus their own hand via UnoPlayerState.
+ */
+export interface UnoPublicState {
   kind: "uno";
   phase: "playing" | "finished";
   playerOrder: string[];
   turnPlayerId: string;
-  direction: 1 | -1;
-  topCard: string;
-  handSizes: Record<string, number>;
-  drawPileCount: number;
+  direction: 1 | -1; // 1=clockwise, -1=counter-clockwise
+  topCard: UnoCard;
+  currentColor: UnoColor | null; // Chosen color for Wild cards
+  handSizes: Record<string, number>; // Hidden: only size, not contents
+  deckCount: number;
+  scores: Record<string, number>;
+  turnDeadline: number | null;
   winnerId: string | null;
-  lastAction: string | null;
+  lastAction: string | null; // "drew", "passed", "played", etc.
 }
 
-export type UnoMoveType = "playDemo" | "draw";
+/**
+ * Per-player game state — sent only to that player.
+ * Adds the player's own hand and list of valid moves.
+ */
+export interface UnoPlayerState extends UnoPublicState {
+  myHand: UnoCard[];
+  validMoves: UnoCard[]; // Pre-computed for UI
+}
+
+// Move types sent from client → server
+export interface UnoPlayMove {
+  type: "play";
+  data: { cardId: string; color?: UnoColor }; // color required for Wild/Wild+4
+}
+
+export interface UnoDrawMove {
+  type: "draw";
+}
+
+export interface UnoPassMove {
+  type: "pass";
+}
+
+export type UnoMoveType = "play" | "draw" | "pass";
 
 // ---- Socket event payloads ----
 export interface CreateRoomPayload {

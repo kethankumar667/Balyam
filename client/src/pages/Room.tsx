@@ -25,7 +25,7 @@ import LudoBoard from "../games/ludo/LudoBoard";
 import SnlBoard from "../games/snl/SnlBoard";
 import HandCricketBoard from "../games/handcricket/HandCricketBoard";
 import UnoBoard from "../games/uno/UnoBoard";
-import type { GameKind, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoState, WordBuildingPublicState, DotsBoxesPublicState, MemoryMatchPublicState } from "@shared/types";
+import type { GameKind, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, MemoryMatchPublicState } from "@shared/types";
 import WordBuildingBoard from "../games/wordbuilding/WordBuildingBoard";
 import DotsBoxesBoard from "../games/dotsboxes/DotsBoxesBoard";
 import MemoryMatchBoard from "../games/memorymatch/MemoryMatchBoard";
@@ -603,7 +603,7 @@ export default function Room() {
 
             {roomState.phase !== "lobby" && roomState.game === "uno" && gameState != null && (
               <UnoBoard
-                state={gameState as UnoState}
+                state={gameState as UnoPlayerState}
                 players={roomState.players}
                 selfId={playerId}
                 messages={messages}
