@@ -1,32 +1,37 @@
+import { useEffect, useState } from "react";
 import type {
   ChatMessage,
   Player,
   RummyPlayerState,
 } from "@shared/types";
 import RummyBoardMobile from "./RummyBoardMobile";
+import RummyBoardDesktop from "./RummyBoardDesktop";
 
 /**
  * Rummy table entry point.
  *
- * Always renders the mobile layout — regardless of viewport size, regardless
- * of orientation, regardless of device type. There is intentionally NO
- * viewport check here.
+ * Routes between the mobile and the desktop layouts based on a single
+ * deliberate gate. The gate is intentionally narrow — phones in landscape
+ * report widths well above 1024 px (iPhone 14 Pro Max landscape = 932 px,
+ * iPad mini landscape = 1133 px) and we MUST NOT show those players the
+ * desktop UI. The combined conditions:
  *
- * Why this is unconditional:
- *   - The product call is that Rummy is played on phones, and phones in
- *     landscape (the natural orientation for cards) report widths well above
- *     the 768px "desktop" breakpoint (iPhone 14 Pro Max landscape = 932px).
- *     Any width-based router will show the desktop UI to a player who is
- *     actively trying to play on their phone.
- *   - There is no separate desktop board planned; the mobile layout works at
- *     every width up to ~1080px and beyond. Keeping a viewport router around
- *     "just in case" only reopens the bug above.
+ *   - viewport ≥ 1280 px wide AND ≥ 720 px tall (rules out phone landscape)
+ *   - primary input is hover-capable + fine pointer (mouse / trackpad)
  *
- * Bulletproof rule: do NOT introduce `useViewport`, `matchMedia`, orientation
- * detection, or `window.innerWidth` checks in this file. If a future desktop
- * variant is built, route to it from a NEW entry point so the mobile path
- * stays the safe default.
+ * If any of those fail we fall back to the mobile board, which works at
+ * every width up to ~1080 px+.
+ *
+ * Do NOT widen this gate. If a future tablet variant is built, route to it
+ * from another conditional or a NEW entry point — never relax these three.
  */
+function isDesktopRummy(): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.innerWidth < 1280 || window.innerHeight < 720) return false;
+  if (typeof window.matchMedia !== "function") return false;
+  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
 export default function RummyBoard(props: {
   state: RummyPlayerState;
   players: Player[];
@@ -35,5 +40,18 @@ export default function RummyBoard(props: {
   roomCode?: string;
   onLeave?: () => void;
 }) {
-  return <RummyBoardMobile {...props} />;
+  // Re-check on resize so opening devtools, rotating an iPad, or dragging the
+  // window across monitors flips us to the correct layout.
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => isDesktopRummy());
+  useEffect(() => {
+    const onResize = () => setIsDesktop(isDesktopRummy());
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
+
+  return isDesktop ? <RummyBoardDesktop {...props} /> : <RummyBoardMobile {...props} />;
 }

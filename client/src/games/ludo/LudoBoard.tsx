@@ -60,7 +60,25 @@ export default function LudoBoard({
   roomPhase: string;
 }) {
   const myTurn = state.turnPlayerId === selfId;
-  const canRoll = myTurn && state.turnPhase === "rolling" && state.phase === "playing";
+  // 1-second "settle" gap between consecutive rolls. The previous turn's
+  // dice + capture animations need a beat to land before the next player
+  // can roll. Triggered on every turnPlayerId change.
+  const [rollCooldown, setRollCooldown] = useState(false);
+  const prevTurnIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevTurnIdRef.current;
+    prevTurnIdRef.current = state.turnPlayerId;
+    if (prev !== null && prev !== state.turnPlayerId) {
+      setRollCooldown(true);
+      const t = window.setTimeout(() => setRollCooldown(false), 1000);
+      return () => window.clearTimeout(t);
+    }
+  }, [state.turnPlayerId]);
+  const canRoll =
+    myTurn &&
+    state.turnPhase === "rolling" &&
+    state.phase === "playing" &&
+    !rollCooldown;
   // Buzz the device once per lobby→playing → my-turn transition.
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
 

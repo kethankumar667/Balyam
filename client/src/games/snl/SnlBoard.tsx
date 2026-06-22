@@ -135,7 +135,26 @@ export default function SnlBoard({
   roomPhase: string;
 }) {
   const myTurn = state.turnPlayerId === selfId;
-  const canRoll = myTurn && state.turnPhase === "rolling" && state.phase === "playing";
+  // 1-second "settle" gap between consecutive rolls. The previous turn's
+  // outcome (snake/ladder, dice animation, toast) needs a beat to land
+  // before the next player can spam the roll button. Triggered on every
+  // turnPlayerId change.
+  const [rollCooldown, setRollCooldown] = useState(false);
+  const prevTurnIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevTurnIdRef.current;
+    prevTurnIdRef.current = state.turnPlayerId;
+    if (prev !== null && prev !== state.turnPlayerId) {
+      setRollCooldown(true);
+      const t = window.setTimeout(() => setRollCooldown(false), 1000);
+      return () => window.clearTimeout(t);
+    }
+  }, [state.turnPlayerId]);
+  const canRoll =
+    myTurn &&
+    state.turnPhase === "rolling" &&
+    state.phase === "playing" &&
+    !rollCooldown;
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
 
   const coinColorOf = useMemo(

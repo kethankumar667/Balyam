@@ -117,6 +117,14 @@ export interface RummyPublicState {
    */
   finalMelds?: Record<string, string[][]>;
   invalidDeclareBy?: string | null;
+  /**
+   * When the round ended because a player was removed from the room
+   * (grace-period timeout after disconnect), this is set to their id.
+   * The client renders a distinct "Opponent disconnected" message so
+   * each remaining player doesn't see an empty-card scorecard claiming
+   * they were crowned by playing.
+   */
+  endedByDisconnect?: string | null;
 }
 
 export interface RummyPlayerState extends RummyPublicState {

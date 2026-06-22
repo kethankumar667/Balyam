@@ -8,6 +8,7 @@ import {
   isFullscreenActive,
   isFullscreenSupported,
 } from "../lib/fullscreen";
+import { HapticsManager } from "../services/HapticsManager";
 import PlayerList from "../components/PlayerList";
 import Chat from "../components/Chat";
 import ChatMessageToast from "../components/ChatMessageToast";
@@ -255,26 +256,30 @@ export default function Room() {
     }
   }, [roomState]);
 
-  // Detect the lobby → playing transition for Rummy and stash a
-  // sessionStorage flag the board reads exactly once on mount. The
-  // RummyBoardMobile uses this flag as the single source of truth for
-  // whether to play the 5 s shuffle + 3 s deal opener — so the animation
-  // never fires on refresh, mid-game rejoin, or any other case.
+  // Detect the lobby → playing transition. Two things happen here:
+  //   1. For Rummy, stash a sessionStorage flag the board reads exactly
+  //      once on mount as the single source of truth for whether to play
+  //      the shuffle + deal opener.
+  //   2. For ALL games, fire a "game start" haptic so the host (and every
+  //      other player) feels a confirmation buzz the moment dealing
+  //      begins. Mirrors the audio cue but works in silent mode.
   const prevRoomPhaseRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const prev = prevRoomPhaseRef.current;
     const next = roomState?.phase;
-    if (
-      next === "playing" &&
-      prev === "lobby" &&
-      roomState?.game === "rummy" &&
-      code
-    ) {
+    if (next === "playing" && prev === "lobby") {
       try {
-        window.sessionStorage.setItem(`bhalyam.rummy.justStarted.${code}`, "1");
+        HapticsManager.getInstance().gameStart();
       } catch {
-        // sessionStorage may throw in private mode — board will silently
-        // skip the animation, which is the safer default.
+        // navigator.vibrate may throw on some platforms; ignore.
+      }
+      if (roomState?.game === "rummy" && code) {
+        try {
+          window.sessionStorage.setItem(`bhalyam.rummy.justStarted.${code}`, "1");
+        } catch {
+          // sessionStorage may throw in private mode — board will silently
+          // skip the animation, which is the safer default.
+        }
       }
     }
     prevRoomPhaseRef.current = next;
@@ -292,24 +297,17 @@ export default function Room() {
 
   /**
    * Every game auto-enters fullscreen at the moment the room transitions
-   * from "lobby" to "playing" — NOT on the Ready click. The host's Start
-   * Game click is the gesture, the server roundtrip arrives within a few
-   * hundred ms, and the browser's gesture activation window (~5 s) is
-   * still valid when the phase-transition effect fires.
+   * from "lobby" to "playing". Orientation is left as "any" across every
+   * game so the device's auto-rotate setting decides — users wanted the
+   * board to follow their phone rotation instead of being locked to a
+   * single orientation.
    *
-   * Orientation per game:
-   *   - Rummy → landscape (the table is wider than tall)
-   *   - Everything else → portrait (Ludo, SnL, Hand Cricket, RPS, Uno)
-   *
-   * For non-host players the gesture may have gone stale by the time the
-   * host actually starts. Browsers will silently block — they can use the
-   * in-game fullscreen toggle if they want it. Better than auto-flipping
-   * on Ready, which users found jarring.
+   * Game-specific responsive layouts (Rummy's rotate-prompt for portrait,
+   * Ludo/SnL working at every aspect ratio) handle the actual UX. The
+   * fullscreen call still fires so the address/nav bars disappear.
    */
-  function orientationForGame(game: GameKind | undefined): "landscape" | "portrait" | "any" {
-    if (game === "rummy") return "landscape";
-    if (!game) return "any";
-    return "portrait";
+  function orientationForGame(_game: GameKind | undefined): "landscape" | "portrait" | "any" {
+    return "any";
   }
 
   function maybeEnterFullscreenForGame() {
@@ -337,10 +335,15 @@ export default function Room() {
   }
 
   function startGame() {
-    // No fullscreen on the click either — the phase-transition effect
-    // above picks it up the moment the room flips to playing. The host's
-    // click gesture is still inside the browser's activation window when
-    // that effect fires.
+    // Fire fullscreen synchronously inside the click handler so the
+    // request lands within the browser's user-activation window
+    // (~1 s on Chrome). The phase-transition effect above is a fallback
+    // for slow servers — Rummy in particular often missed the window
+    // because the deal/shuffle path adds a sessionStorage write that
+    // delays the lobby→playing render.
+    if (roomState?.game) {
+      maybeEnterFullscreenForGame();
+    }
     getSocket().emit("room:startGame");
   }
 
