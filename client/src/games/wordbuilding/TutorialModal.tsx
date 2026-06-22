@@ -155,10 +155,17 @@ export default function WordBuildingTutorialModal({
         className="relative w-full max-w-md rounded-md overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background:
-            "linear-gradient(180deg, #fbf3df 0%, #f6ebd0 100%)",
+          // Solid cream paper first — without this, the modal renders
+          // transparent because the next-line `backgroundImage` only
+          // sets *image* layers and there's no fallback color (the
+          // `background:` shorthand would reset background-color to
+          // initial). Stacking color + image keeps the workbook page
+          // behind the modal hidden so the tutorial copy actually reads.
+          backgroundColor: "#fbf3df",
           backgroundImage:
-            "repeating-linear-gradient(to bottom, transparent 0 26px, rgba(56,89,168,0.32) 26px 27px, transparent 27px 28px), linear-gradient(to right, transparent 0 38px, #c2403a 38px 39px, transparent 39px 100%)",
+            "linear-gradient(180deg, rgba(251,243,223,0) 0%, rgba(246,235,208,1) 100%), " +
+            "repeating-linear-gradient(to bottom, transparent 0 26px, rgba(56,89,168,0.32) 26px 27px, transparent 27px 28px), " +
+            "linear-gradient(to right, transparent 0 38px, #c2403a 38px 39px, transparent 39px 100%)",
           boxShadow: "0 30px 60px -20px rgba(0,0,0,0.6)",
           padding: "20px 22px 16px 50px",
           fontFamily: "'Caveat', 'Patrick Hand', cursive",

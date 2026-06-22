@@ -718,8 +718,17 @@ export interface WordBuildingScoredWord {
   points: number;
   /** Wall-clock ms when scored — drives reveal animations. */
   ts: number;
-  /** "row" or "col" — used by the client to layer overlapping highlights. */
-  orientation: "row" | "col";
+  /**
+   * The axis the word runs along — drives the client's pulse + underline
+   * layering. Words score in any of 8 directions (left↔right, top↔bottom,
+   * both diagonals + reverses), folded into 4 axes here.
+   *
+   *   row        — horizontal (left↔right)
+   *   col        — vertical   (top↔bottom)
+   *   diag-down  — top-left ↘ bottom-right
+   *   diag-up    — bottom-left ↗ top-right
+   */
+  orientation: "row" | "col" | "diag-down" | "diag-up";
 }
 
 /** A single placement move recorded for history + move log. */
