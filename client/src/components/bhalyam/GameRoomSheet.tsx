@@ -133,6 +133,13 @@ const DB_BOARD_SIZES: { id: "5" | "7" | "9"; label: string; blurb: string }[] = 
   { id: "9", label: "9 × 9 dots", blurb: "64 boxes — marathon notebook match." },
 ];
 
+// Memory Match — card grid size. 4 → 8 pairs, 6 → 18 pairs, 8 → 32 pairs.
+const MM_BOARD_SIZES: { id: "4" | "6" | "8"; label: string; blurb: string }[] = [
+  { id: "4", label: "4 × 4 grid", blurb: "8 pairs — quick warm-up." },
+  { id: "6", label: "6 × 6 grid", blurb: "18 pairs — classic challenge." },
+  { id: "8", label: "8 × 8 grid", blurb: "32 pairs — memory marathon." },
+];
+
 const HC_FORMATS: { id: HcFormat; label: string; blurb: string }[] = [
   { id: "t20",  label: "T20",  blurb: "10 ov · 3 powerplay · 3-over bowler quota" },
   { id: "odi",  label: "ODI",  blurb: "15 ov · 3 powerplay · 4-over bowler quota" },
@@ -163,6 +170,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [wbBoardSize, setWbBoardSize] = useState<8 | 10 | 15>(10);
   // Dots & Boxes: dot-grid edge length. Box count = (n-1)^2.
   const [dbBoardSize, setDbBoardSize] = useState<5 | 7 | 9>(7);
+  // Memory Match: card grid size (4, 6, or 8 cards per side)
+  const [mmBoardSize, setMmBoardSize] = useState<4 | 6 | 8>(6);
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   /**
@@ -190,10 +199,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setJoinCode("");
       setName(playerName);
       setPassPlay(false);
-      setLocalNames(["", ""]);
       setWbDictMode("common");
       setWbBoardSize(10);
       setDbBoardSize(7);
+      setMmBoardSize(6);
+
     }
   }, [game, playerName]);
 
@@ -259,6 +269,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             : undefined,
         dotsBoxesOptions:
           game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
+        memoryMatchOptions:
+          game === "memorymatch" ? { boardSize: mmBoardSize } : undefined,
       },
       (res) => {
         setBusy(false);
@@ -311,6 +323,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             : undefined,
         dotsBoxesOptions:
           game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
+        memoryMatchOptions:
+          game === "memorymatch" ? { boardSize: mmBoardSize } : undefined,
       },
       (res) => {
         if (!res.ok || !res.code) {
@@ -604,6 +618,18 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 items={DB_BOARD_SIZES}
                 value={String(dbBoardSize) as "5" | "7" | "9"}
                 onChange={(v) => setDbBoardSize(Number(v) as 5 | 7 | 9)}
+                cols={3}
+              />
+            </Field>
+          )}
+
+          {/* Memory Match: board size selector */}
+          {game === "memorymatch" && (
+            <Field label="Board size">
+              <OptionGrid
+                items={MM_BOARD_SIZES}
+                value={String(mmBoardSize) as "4" | "6" | "8"}
+                onChange={(v) => setMmBoardSize(Number(v) as 4 | 6 | 8)}
                 cols={3}
               />
             </Field>

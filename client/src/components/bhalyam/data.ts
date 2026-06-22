@@ -111,7 +111,6 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Color chaos with your gang. Match cards, drop action cards, and race to shout UNO first.",
     accent: { from: "#EC1C24", to: "#7B1E2B" },
-    maintenance: true,
   },
   {
     slug: "dotsboxes",
