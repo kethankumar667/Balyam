@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import Room from "./pages/Room";
 import PreviewLudo from "./pages/PreviewLudo";
 import BhalyamHome from "./pages/BhalyamHome";
+import GamesPage from "./pages/GamesPage";
 import NotFound from "./pages/NotFound";
 
 /**
@@ -50,6 +51,7 @@ function ScrollToTopOnRouteChange() {
  * BHALYAM routes.
  *
  *   "/"             → BhalyamHome   (the app — game tiles + room sheet)
+ *   "/games"        → GamesPage     (full catalog incl. coming-soon tiles)
  *   "/room/:code"   → Room          (an active match)
  *   "/preview/ludo" → PreviewLudo   (dev preview, kept around for QA)
  *   "*"             → NotFound      (creative 404 page; keeps the bad URL
@@ -67,6 +69,7 @@ export default function App() {
       <ScrollToTopOnRouteChange />
       <Routes>
         <Route path="/" element={<BhalyamHome />} />
+        <Route path="/games" element={<GamesPage />} />
         <Route path="/room/:code" element={<Room />} />
         <Route path="/preview/ludo" element={<PreviewLudo />} />
         <Route path="*" element={<NotFound />} />

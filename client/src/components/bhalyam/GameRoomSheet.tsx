@@ -28,6 +28,11 @@ import {
   SparkIcon,
   UnoGlyph,
   WordBuildingGlyph,
+  DotsBoxesGlyph,
+  MemoryMatchGlyph,
+  NamePlaceAnimalGlyph,
+  TambolaGlyph,
+  TeluguCinemaluGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -60,7 +65,29 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   rps: RpsGlyph,
   uno: UnoGlyph,
   wordbuilding: WordBuildingGlyph,
+  dotsboxes: DotsBoxesGlyph,
+  memorymatch: MemoryMatchGlyph,
+  namesplaceanimal: NamePlaceAnimalGlyph,
+  tambola: TambolaGlyph,
+  telugucinemalu: TeluguCinemaluGlyph,
 };
+
+/**
+ * The home tile gate (`maintenance: true`) prevents the sheet from
+ * opening with one of the "coming soon" slugs, so when we reach the
+ * room-creation path below, `game` is guaranteed to be a real
+ * GameKind at runtime. TypeScript can't see that proof; this helper
+ * makes the narrowing explicit so callers don't need a wide cast.
+ */
+const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
+  "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding",
+]);
+function asGameKind(slug: BhalyamGameSlug): GameKind {
+  if (!PLAYABLE_SLUGS.has(slug)) {
+    throw new Error(`Cannot create room for non-playable slug: ${slug}`);
+  }
+  return slug as GameKind;
+}
 
 /* ── Option catalogs (copied verbatim from old Lobby so behaviour matches) ── */
 
@@ -201,7 +228,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       "room:create",
       {
         name: n,
-        game: game as GameKind,
+        game: asGameKind(game),
         playerId: playerId ?? undefined,
         snlOptions: game === "snl" ? { difficulty } : undefined,
         rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
@@ -261,7 +288,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       "room:create",
       {
         name: n,
-        game: game as GameKind,
+        game: asGameKind(game),
         playerId: playerId ?? undefined,
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
