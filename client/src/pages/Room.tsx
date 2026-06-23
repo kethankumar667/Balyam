@@ -163,6 +163,18 @@ export default function Room() {
     reset,
   } = useRoomStore();
 
+  // Keeps the latest playerId reachable from inside the join effect's closure
+  // without re-subscribing socket listeners on every id change. A reconnect
+  // that fires after the first join resolved must rejoin with the REAL id
+  // (reclaim the seat) rather than the stale null it closed over (a ghost).
+  const playerIdRef = useRef(playerId);
+  playerIdRef.current = playerId;
+
+  // Blocks overlapping room:join emits before the first ack returns. Both
+  // StrictMode's double-invoked effect and the connect-event rejoin racing
+  // the synchronous initial join would otherwise each mint a duplicate player.
+  const joinInFlightRef = useRef(false);
+
   useEffect(() => {
     if (!code) {
       navigate("/");
@@ -178,10 +190,17 @@ export default function Room() {
     const joinCode = code;
 
     function attemptJoin(reason: "initial" | "reconnect"): void {
+      // Drop overlapping joins until the first ack settles (or a disconnect
+      // clears the flag). Reads the live id off the ref so a reconnect that
+      // lands after the initial join resolved reclaims the seat instead of
+      // joining as a brand-new ghost.
+      if (joinInFlightRef.current) return;
+      joinInFlightRef.current = true;
       socket.emit(
         "room:join",
-        { name: joinName, code: joinCode, playerId: playerId ?? undefined },
+        { name: joinName, code: joinCode, playerId: playerIdRef.current ?? undefined },
         (res) => {
+          joinInFlightRef.current = false;
           if (!res.ok) {
             // The room genuinely no longer exists on the server. This happens
             // when: the server cold-started (Render free tier sleeps after
@@ -213,7 +232,14 @@ export default function Room() {
       // Socket reconnect after a disconnect or server restart — re-attach to our room.
       attemptJoin("reconnect");
     };
+    const onDisconnect = () => {
+      // A drop abandons any in-flight join ack (socket.io won't call it), so
+      // clear the guard here — otherwise the reconnect rejoin above is blocked
+      // forever and the player is stranded on a dead seat.
+      joinInFlightRef.current = false;
+    };
     socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
     socket.on("room:state", setRoomState);
     socket.on("game:state", setGameState);
     socket.on("chat:message", addMessage);
@@ -223,6 +249,7 @@ export default function Room() {
 
     return () => {
       socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
       socket.off("room:state", setRoomState);
       socket.off("game:state", setGameState);
       socket.off("chat:message", addMessage);
@@ -385,7 +412,7 @@ export default function Room() {
     <div
       className={
         roomState.game === "rummy" && roomState.phase !== "lobby"
-          ? "bhalyam-font bhalyam-paper h-screen overflow-hidden p-0 sm:p-4"
+          ? "bhalyam-font bhalyam-paper h-dvh-safe overflow-hidden p-0 sm:p-4"
           : "bhalyam-font bhalyam-paper min-h-screen p-2 sm:p-4"
       }
     >

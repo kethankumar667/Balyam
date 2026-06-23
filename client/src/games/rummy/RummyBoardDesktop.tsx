@@ -19,6 +19,7 @@ import {
   computeLivePoints,
   evaluateFinishReadiness,
   sortMeldCards,
+  sumCardPoints,
   type MeldClassification,
 } from "./meldCheck";
 import { suggestArrangement } from "./autoArrange";
@@ -27,6 +28,11 @@ import Chat from "../../components/Chat";
 import VoicePanel from "../../components/VoicePanel";
 import PlayerList from "../../components/PlayerList";
 import { enterFullscreen, exitFullscreen, isFullscreenActive } from "../../lib/fullscreen";
+import {
+  useOrientationReport,
+  useRummyRotationGate,
+  WaitingForPlayersBanner,
+} from "./rotation-sync";
 
 /* ─────────────────────────── Types ─────────────────────────── */
 
@@ -159,6 +165,28 @@ export default function RummyBoardDesktop({
   const hand = state.myHand ?? [];
   const byId = useMemo(() => new Map(hand.map((c) => [c.id, c])), [hand]);
   const wildRank = state.wildJoker.rank;
+
+  // Desktop never needs to rotate itself in practice (the picker only
+  // mounts this shell on real desktop — large hover/fine-pointer
+  // viewports), but it still calls the SAME report hook mobile does so
+  // the server hears an explicit "false" from this client. Without an
+  // explicit report, this player's `needsRotation` field would sit at
+  // `undefined` forever, which the gate on every OTHER client would
+  // have to guess the meaning of (never-reported vs. confirmed ready) —
+  // reporting for real removes that ambiguity. It also tracks the same
+  // start-of-game gate so a non-blocking toast can tell a desktop player
+  // why mobile friends haven't appeared yet, and let them nudge whoever's
+  // still rotating. See `./rotation-sync` for the full synchronized-deal
+  // contract (mobile shells block on this; desktop stays fully
+  // interactive throughout).
+  const selfNeedsRotation = useOrientationReport();
+  const gate = useRummyRotationGate({
+    roomCode,
+    phase: state.phase,
+    players,
+    selfId,
+    selfNeedsRotation,
+  });
 
   const [layout, setLayout] = useState<Layout>({ groups: [], ungrouped: [] });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -612,6 +640,13 @@ export default function RummyBoardDesktop({
         fontFamily: "'Inter', system-ui, sans-serif",
       }}
     >
+      {gate.stage === "gating" && gate.blockers.length > 0 && (
+        <WaitingForPlayersBanner
+          blockers={gate.blockers}
+          showNames={gate.showBlockerNames}
+          variant="toast"
+        />
+      )}
       {/* ───── Top bar ───── */}
       <div
         className="flex items-center justify-between px-5 py-2 border-b border-emerald-900/60"
@@ -868,6 +903,7 @@ export default function RummyBoardDesktop({
           state={state}
           players={players}
           selfId={selfId}
+          roomCode={roomCode}
           onClose={() => setScorecardDismissed(true)}
           onLeave={onLeave}
         />
@@ -886,12 +922,14 @@ function DesktopRummyScorecard({
   state,
   players,
   selfId,
+  roomCode,
   onClose,
   onLeave,
 }: {
   state: RummyPlayerState;
   players: Player[];
   selfId: string | null;
+  roomCode?: string;
   onClose: () => void;
   onLeave?: () => void;
 }) {
@@ -941,6 +979,10 @@ function DesktopRummyScorecard({
       : winnerId
       ? `${nameOf(winnerId)} wins this round`
       : "Round complete";
+  const matchLabel =
+    state.matchMode === "pool101" ? "101 Pool"
+    : state.matchMode === "pool201" ? "201 Pool"
+    : "Points";
 
   return (
     <div
@@ -953,7 +995,7 @@ function DesktopRummyScorecard({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg rounded-2xl overflow-hidden text-zinc-100"
+        className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl text-zinc-100"
         style={{
           backgroundColor: "#0d1f17",
           backgroundImage:
@@ -998,56 +1040,235 @@ function DesktopRummyScorecard({
           </div>
         </div>
 
-        {/* Ranked table */}
-        <div className="px-4 pb-4">
-          <div
-            className="grid items-center gap-2 px-3 py-1.5 text-amber-100/70 uppercase tracking-widest font-bold text-[10px]"
-            style={{ gridTemplateColumns: "36px 1.4fr 0.9fr 0.9fr" }}
-          >
-            <div>Rank</div>
-            <div>Player</div>
-            <div className="text-right">Points</div>
-            <div className="text-right">Chips</div>
-          </div>
-          <div className="space-y-1.5">
-            {ranked.map((id, idx) => {
-              const isWin = id === winnerId;
-              const isWrongShower = id === wrongShowerId;
-              const isMe = id === selfId;
-              const chips = chipsOf(id);
-              return (
-                <div
-                  key={id}
-                  className="grid items-center gap-2 rounded-xl px-3 py-2"
-                  style={{
-                    gridTemplateColumns: "36px 1.4fr 0.9fr 0.9fr",
-                    background: isWin
-                      ? "linear-gradient(90deg, rgba(245,158,11,0.22), rgba(245,158,11,0.05))"
-                      : isWrongShower
-                      ? "rgba(220,38,38,0.18)"
-                      : "rgba(0,0,0,0.25)",
-                    border: isMe ? "1px solid rgba(251,191,36,0.45)" : "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-                  <div className="font-black text-amber-200">{idx + 1}</div>
-                  <div className="font-bold">
-                    {nameOf(id)} {isMe && <span className="text-amber-200/80 text-[12px]">(you)</span>}
-                    {isWin && <span className="ml-2 text-amber-300 text-[11px] font-black uppercase tracking-widest">Winner</span>}
-                    {isWrongShower && <span className="ml-2 text-rose-300 text-[11px] font-black uppercase tracking-widest">Wrong show</span>}
+        {/* Ranked list — same two-tier shape as mobile: a compact header
+            line (rank, name, points, chips) per player, then a full-width
+            row showing how their hand was actually grouped (winner's real
+            declared melds; everyone else best-effort auto-arranged). */}
+        <div className="px-4 pb-2 space-y-2">
+          {ranked.map((id, idx) => {
+            const isWin = id === winnerId;
+            const isWrongShower = id === wrongShowerId;
+            const isMe = id === selfId;
+            const chips = chipsOf(id);
+            const hand = state.finalHands?.[id] ?? [];
+            return (
+              <div
+                key={id}
+                className="rounded-xl px-3 py-2.5"
+                style={{
+                  background: isWin
+                    ? "linear-gradient(90deg, rgba(245,158,11,0.22), rgba(245,158,11,0.05))"
+                    : isWrongShower
+                    ? "rgba(220,38,38,0.18)"
+                    : "rgba(0,0,0,0.25)",
+                  border: isMe ? "1px solid rgba(251,191,36,0.45)" : "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="font-black text-amber-200 w-5 flex-shrink-0 text-center">
+                      {idx + 1}
+                    </div>
+                    <span className="font-bold truncate">
+                      {nameOf(id)} {isMe && <span className="text-amber-200/80 text-[12px]">(you)</span>}
+                    </span>
+                    {isWin && (
+                      <span className="text-amber-300 text-[11px] font-black uppercase tracking-widest flex-shrink-0">
+                        Winner
+                      </span>
+                    )}
+                    {isWrongShower && (
+                      <span className="text-rose-300 text-[11px] font-black uppercase tracking-widest flex-shrink-0">
+                        Wrong show
+                      </span>
+                    )}
                   </div>
-                  <div className="text-right tabular-nums font-bold">{lossOf(id)}</div>
-                  <div
-                    className="text-right tabular-nums font-black"
-                    style={{ color: chips >= 0 ? "#86efac" : "#fca5a5" }}
-                  >
-                    {chips >= 0 ? `+${chips}` : chips}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="text-right leading-tight">
+                      <div className="text-amber-100/55 text-[9px] uppercase tracking-wide">Points</div>
+                      <div className="font-bold tabular-nums">{lossOf(id)}</div>
+                    </div>
+                    <div className="text-right leading-tight">
+                      <div className="text-amber-100/55 text-[9px] uppercase tracking-wide">Chips</div>
+                      <div
+                        className="font-black tabular-nums"
+                        style={{ color: chips >= 0 ? "#86efac" : "#fca5a5" }}
+                      >
+                        {chips >= 0 ? `+${chips}` : chips}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
+                <div className="mt-2 overflow-x-auto scrollbar-none">
+                  <DesktopMeldGroupsRow
+                    hand={hand}
+                    declaredMelds={state.finalMelds?.[id]}
+                    wildRank={state.wildJoker.rank}
+                    isWrongShower={isWrongShower}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer: joker + room code + match mode — parity with mobile's
+            scorecard footer. */}
+        <div className="flex items-center gap-3 px-5 py-3 border-t border-amber-300/20 bg-black/20">
+          <div className="flex-shrink-0">
+            <PlayingCard card={state.wildJoker} isWildJoker small />
           </div>
+          <div className="text-amber-100/90 text-[12px] font-semibold">Joker</div>
+          {roomCode && (
+            <div className="text-amber-100/60 text-[12px] font-mono">#{roomCode}</div>
+          )}
+          <div className="text-amber-100/60 text-[12px] font-semibold">· {matchLabel}</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * One labelled meld group on the desktop scorecard — overlapping cards
+ * with a small circular points badge clipped to the top-right corner.
+ * Mirrors mobile's `ScoreGroup`; kept as its own copy here per the
+ * project's full-DOM-independence split for Rummy (see RummyBoard.tsx's
+ * picker comment) rather than importing across the mobile/desktop line.
+ */
+function DesktopScoreGroup({
+  cards,
+  points,
+  wildRank,
+  isWrongShower,
+}: {
+  cards: CardType[];
+  points: number;
+  wildRank: string;
+  isWrongShower?: boolean;
+}) {
+  if (cards.length === 0) return null;
+  const credited = points === 0;
+  const badgeBg = credited
+    ? "linear-gradient(135deg, #22c55e, #16a34a)"
+    : isWrongShower
+      ? "linear-gradient(135deg, #ef4444, #b91c1c)"
+      : "linear-gradient(135deg, #f59e0b, #d97706)";
+  const ariaLabel = credited
+    ? `Group of ${cards.length} cards — credited`
+    : `Group of ${cards.length} cards — ${points} points`;
+
+  return (
+    <div className="relative flex-shrink-0" aria-label={ariaLabel} title={ariaLabel}>
+      <div className="flex">
+        {cards.map((c, i) => (
+          <span key={c.id} className="flex-shrink-0" style={{ marginLeft: i === 0 ? 0 : -22 }}>
+            <PlayingCard card={c} isWildJoker={c.rank === wildRank} />
+          </span>
+        ))}
+      </div>
+      <span
+        className="absolute -top-2 -right-2 min-w-[24px] h-[24px] px-1.5 rounded-full flex items-center justify-center text-[12px] font-extrabold tabular-nums"
+        style={{
+          background: badgeBg,
+          color: "#ffffff",
+          border: "2px solid #ffffff",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.45)",
+        }}
+      >
+        {points}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Renders one player's final hand as their organised meld groups on the
+ * desktop scorecard — winner shows their actual declared melds, everyone
+ * else gets a best-effort auto-arrangement. Mirrors mobile's
+ * `MeldGroupsRow`.
+ */
+function DesktopMeldGroupsRow({
+  hand,
+  declaredMelds,
+  wildRank,
+  isWrongShower,
+}: {
+  hand: CardType[];
+  declaredMelds: string[][] | undefined;
+  wildRank: string;
+  isWrongShower: boolean;
+}) {
+  if (hand.length === 0) {
+    return <span className="text-amber-100/60 text-[11px] italic">—</span>;
+  }
+  const byId = new Map(hand.map((c) => [c.id, c]));
+
+  let groups: CardType[][] = [];
+  let ungrouped: CardType[] = [];
+
+  if (declaredMelds && declaredMelds.length > 0) {
+    const seen = new Set<string>();
+    for (const g of declaredMelds) {
+      const cards: CardType[] = [];
+      for (const cid of g) {
+        const c = byId.get(cid);
+        if (c && !seen.has(cid)) {
+          cards.push(c);
+          seen.add(cid);
+        }
+      }
+      if (cards.length > 0) groups.push(cards);
+    }
+    ungrouped = hand.filter((c) => !seen.has(c.id));
+  } else {
+    const arr = suggestArrangement(hand, wildRank as Rank);
+    groups = arr.groups;
+    ungrouped = arr.ungrouped;
+  }
+
+  // Same "is this set unlocked" rule the engine scores with — pure
+  // sequences are always free; sets/impure sequences need a second
+  // sequence in the hand before they're credited.
+  let hasPure = false;
+  let sequenceCount = 0;
+  for (const g of groups) {
+    const cls = classifyMeld(g, wildRank as Rank);
+    if (!cls.valid) continue;
+    if (cls.kind === "pureSequence") {
+      hasPure = true;
+      sequenceCount += 1;
+    } else if (cls.kind === "impureSequence") {
+      sequenceCount += 1;
+    }
+  }
+
+  function pointsForGroup(g: CardType[]): number {
+    const cls = classifyMeld(g, wildRank as Rank);
+    if (!cls.valid) return sumCardPoints(g, wildRank as Rank);
+    if (cls.kind === "pureSequence") return 0;
+    if (cls.kind === "impureSequence") {
+      return hasPure ? 0 : sumCardPoints(g, wildRank as Rank);
+    }
+    if (cls.kind === "set") {
+      return hasPure && sequenceCount >= 2 ? 0 : sumCardPoints(g, wildRank as Rank);
+    }
+    return sumCardPoints(g, wildRank as Rank);
+  }
+
+  return (
+    <div className="flex items-center gap-3 min-w-0">
+      {groups.map((g, gi) => (
+        <DesktopScoreGroup key={gi} cards={g} points={pointsForGroup(g)} wildRank={wildRank} />
+      ))}
+      {ungrouped.length > 0 && (
+        <DesktopScoreGroup
+          cards={ungrouped}
+          points={sumCardPoints(ungrouped, wildRank as Rank)}
+          wildRank={wildRank}
+          isWrongShower={isWrongShower}
+        />
+      )}
     </div>
   );
 }

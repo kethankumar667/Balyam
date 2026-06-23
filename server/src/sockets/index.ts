@@ -46,6 +46,10 @@ export function registerSocketHandlers(
     rooms.setReady(socket.id, ready);
   });
 
+  socket.on("room:setOrientation", (needsRotation) => {
+    rooms.setOrientation(socket.id, needsRotation);
+  });
+
   socket.on("room:addBot", () => {
     rooms.addBot(socket.id);
   });
