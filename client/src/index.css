@@ -1010,6 +1010,16 @@ body, #root, .bhalyam-paper {
   50%      { opacity: 1; }
 }
 
+/* Word Building — brief glow over freshly-scored cells. Moved out of the
+   board's render (<style> tag) so it lives with the other keyframes and
+   isn't re-parsed on every paint. */
+@keyframes wb-cell-pulse {
+  0%   { opacity: 0; transform: scale(0.7); }
+  25%  { opacity: 1; transform: scale(1.05); }
+  70%  { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
 /* Dark-mode override for the "BHALYAM" wordmark in the home header,
    profile sheet, and menu sheet. The base colour #2A221B is a warm near-
    black designed for the cream parchment background; on the dark theme
