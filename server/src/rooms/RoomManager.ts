@@ -226,6 +226,19 @@ export class RoomManager {
       return { ok: true, playerId: existingPlayerId };
     }
 
+    // Idempotency guard. A single socket maps to exactly one player in one
+    // room at a time, so a second join from a socket that's already seated
+    // here is never a new player — it's a duplicate emit (React StrictMode
+    // double-invokes the join effect in dev, and in prod the synchronous
+    // initial join races the async "connect" rejoin). Without this, each
+    // duplicate minted a fresh player and overwrote socketToPlayer, leaving
+    // the previous record orphaned: a ghost seat that never disconnects.
+    const seatedId = room.socketToPlayer.get(socketId);
+    if (seatedId && room.players.has(seatedId)) {
+      this.broadcastRoomState(room);
+      return { ok: true, playerId: seatedId };
+    }
+
     const { max } = getGameLimits(room.game);
     if (room.players.size >= max) return { ok: false, error: "Room is full" };
     if (room.phase !== "lobby") return { ok: false, error: "Game already in progress" };
@@ -420,6 +433,22 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     player.isReady = ready;
+    this.broadcastRoomState(room);
+  }
+
+  /**
+   * Reports whether a player's own client currently needs to rotate to
+   * landscape (small portrait viewport). Valid in any phase/game — only
+   * Rummy boards use it today, to gate the synchronized deal animation and
+   * surface who's still rotating to the rest of the room. No phase gate
+   * (unlike chooseColor/chooseCoinColor): players can drop their phone and
+   * pick it back up mid-round just as easily as at game start.
+   */
+  setOrientation(socketId: string, needsRotation: boolean): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (player.needsRotation === needsRotation) return;
+    player.needsRotation = needsRotation;
     this.broadcastRoomState(room);
   }
 

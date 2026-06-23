@@ -194,4 +194,91 @@ After each wave: `client` typecheck + `vite build`. Final: server `tsc` + vitest
 - The "monolith strategy" for Hand Cricket turned out **not to need a `variant` prop** on any grid: every grid in that file already used pure Tailwind `sm:`/`lg:` responsive prefixes, which adapt correctly to real viewport width regardless of which shell (mobile/desktop) is mounted. Adding a JS-driven variant switch on top would have been an unrequested behaviour change (discrete density tiers instead of the existing continuous one), so it was deliberately skipped. The actual mobile/desktop divergence for Hand Cricket is the room-rail placement (inline on mobile, persistent sticky side column on desktop) — consistent with the Ludo/SnL pattern.
 - Hand Cricket has **no `use<Kind>Board` hook** — the original top-level component had zero cross-cutting state (every phase component is already independently stateful), so there was nothing to extract into one. `hc-shared.tsx` holds the (now-exported) phase components + a tiny `HcPhaseBody` router instead.
 
+*Section 8 covers the original 9-game split. Follow-up hardening is in §9.*
+
+---
+
+## 9. Post-split hardening (follow-up session)
+
+Three feature/robustness requests landed after the split, plus one **pre-existing
+bug surfaced during their verification**. All four are browser-verified.
+
+### 9.1 Cross-device rotation gate (Rummy)
+- **What:** When a Rummy round starts, every mobile player must be in landscape
+  before the shuffle/deal animation runs. A portrait player sees a personal
+  *"ROTATE YOUR DEVICE"* prompt with a live *"X of Y players ready"* readiness
+  line; everyone else sees a *"Waiting for &lt;name&gt; to rotate"* banner. Once all
+  non-bot players are landscape (or a 5s grace + settle window elapses), the deal
+  plays **synchronized across devices**.
+- **Files:** `client/src/games/rummy/rotation-sync.tsx` (new — `useOrientationReport`,
+  `useRummyRotationGate`, `RotateDevicePrompt`, `WaitingForPlayersBanner`), wired
+  into `RummyBoardMobile.tsx` and `RummyBoardDesktop.tsx`. Server: `Player.needsRotation`
+  + a `room:setOrientation` event broadcast through `RoomManager`.
+- **Verified:** two tabs (portrait blocker + landscape ready) — blocker saw the
+  prompt + "1 of 2 players ready", the other saw "Waiting for Alice to rotate";
+  rotating the blocker to landscape resolved the gate → deal → live board, **0 errors**.
+
+### 9.2 `100vh` → dvh fix (ColorOS/Oppo overflow)
+- **What:** The Rummy in-play felt used `h-screen` (`100vh`). On Android WebViews
+  that over-report `100vh` while the address/gesture bar is visible (notably
+  ColorOS/Oppo F19), the felt extended below the visible viewport and pushed the
+  DROP/SORT/…/FINISH action row off-screen.
+- **Fix:** new `.h-dvh-safe { height: 100vh; height: 100dvh; }` utility in
+  `index.css` (cascade fallback — old browsers keep `100vh`, modern apply the
+  dynamic `100dvh`), applied to the Rummy wrapper in `Room.tsx`. Only Rummy used
+  the hard `h-screen overflow-hidden` clip; the other 8 games use `min-h-screen`
+  and can scroll, so they were left untouched.
+- **Verified:** at 820×360 (ColorOS-like aspect) the wrapper resolves to exactly
+  the visible viewport height with **no overflow**; `CSS.supports('height','100dvh')`
+  true.
+
+### 9.3 Round-end scorecard redesign (Rummy)
+- **What:** Replaced the flat ranked table with full-width two-tier player rows —
+  a compact header line (rank · name · points · chips) over a row of the player's
+  hand rendered as real playing-card **meld groups** with per-group point badges,
+  plus a Joker/room-code/match-mode footer. Card faces in `Card.tsx` were refined
+  (court cards use a framed letter + mirrored pips; numerics keep a single bold pip).
+- **Files:** `RummyBoardMobile.tsx` (`RummyScoreCard`/`ScoreGroup`/`MeldGroupsRow`),
+  `RummyBoardDesktop.tsx` (`DesktopRummyScorecard`/`DesktopScoreGroup`/`DesktopMeldGroupsRow`),
+  `Card.tsx`.
+- **Verified:** forced a round end (2-player drop) — both the mobile ("finished 2nd")
+  and desktop ("finished 1st") scorecards render the redesigned meld-group rows
+  with correct points/chips, **0 errors**.
+
+### 9.4 FLAGGED + FIXED — ghost players from duplicate `room:join`
+- **Symptom:** During the rotation-gate verification a fresh 2-player room showed
+  **`PLAYERS (4)`** — one real player plus up to three phantom duplicates of the
+  other — which also corrupted the rotation gate's readiness count.
+- **Root cause (two layers):**
+  1. **Client (`Room.tsx`):** the join effect emitted `room:join` more than once
+     before the first ack returned — the synchronous `attemptJoin("initial")` is
+     buffered while the socket is still connecting, then the async `connect` event
+     fires a second `attemptJoin("reconnect")`; React StrictMode double-invokes the
+     whole effect on top. Every emit carried the **stale closed-over `playerId`
+     (`null` on a fresh load)**, so the server couldn't dedupe them.
+  2. **Server (`RoomManager.joinRoom`):** with no `existingPlayerId` to match, each
+     call minted a brand-new player and **overwrote `socketToPlayer`**, orphaning the
+     previous record — a ghost seat that never disconnects. This was a real
+     production bug, not dev-only: the connect-event-vs-initial-join race exists
+     without StrictMode too.
+- **Fix (both layers):**
+  - Client: a `joinInFlightRef` guard drops overlapping emits until the first ack
+    settles (a `disconnect` listener clears it so a dropped ack can't strand the
+    player), and a `playerIdRef` feeds `attemptJoin` the **live** id so a genuine
+    reconnect reclaims the seat instead of joining as a new ghost.
+  - Server: an idempotency guard — if a socket is already seated in the room, a
+    repeat join returns the existing player instead of creating one.
+- **Tests:** `server/src/rooms/__tests__/joinDedup.test.ts` (2 new) — a duplicate
+  same-socket join reuses the seat (roster stays 2); distinct sockets still create
+  distinct players. Server suite **116/116**.
+- **Verified:** the same 2-player flow that produced 4 now shows exactly
+  `PLAYERS (2)` with 2 sockets, and the lobby→playing transition still works.
+
+### 9.5 Verification summary (follow-up)
+- `client tsc --noEmit` clean · `client vite build` clean (598 modules).
+- `server tsc --noEmit` clean · `server vitest` **116/116** (was 114; +2 dedup tests).
+- Live two-tab browser sweep against the dev server: rotation gate (both roles +
+  resolution), dvh wrapper height at a short landscape, both scorecards, and the
+  ghost-player fix — **zero console/page errors** throughout.
+
 *This section is updated as work lands.*

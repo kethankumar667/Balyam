@@ -6,12 +6,19 @@ const SUIT_GLYPHS: Record<string, string> = { S: "♠", H: "♥", D: "♦", C: "
 /**
  * Playing card.
  *
- * Visual goals: looks like a casino-quality card without a heavy library.
- *   - Ivory paper gradient with a faint speckle so it isn't flat white
- *   - Crisp double border (outer dark, inner gold-tinged) for depth
- *   - Tall, condensed corner rank using a serif so the "10" reads cleanly
- *   - Face cards (J/Q/K/A) get a colored interior border + decorative
- *     centred crest using the suit glyph behind a stylised letter
+ * Visual goals: read as a real, professional Rummy card at a glance, even
+ * at the tiny "small" size used inside the scorecard's meld groups.
+ *   - Crisp ivory/white cardstock gradient with a real double-line border
+ *     (solid outer hairline + inset highlight) for depth
+ *   - Tall, condensed corner rank using a serif so the "10" reads cleanly,
+ *     mirrored top-left / bottom-right per standard card convention
+ *   - Number cards (2–10) and the Ace show one big centred suit pip — the
+ *     same convention real-money Rummy apps use (full historical pip
+ *     counts don't survive being shrunk to phone-card size)
+ *   - Face cards (J/Q/K) get a slim suit-coloured frame holding the rank
+ *     letter between two mirrored pips — reads as a "court card" without
+ *     needing portrait artwork, and avoids relying on inconsistent
+ *     system chess glyphs (♚/♛/♞ render very differently across devices)
  *   - Printed jokers get a richer purple gradient with a fan-shaped JOKER
  *     ribbon that's visible at small sizes
  *   - Selected state lifts the card with a warm glow; hover gives a smaller
@@ -41,14 +48,15 @@ export function PlayingCard({
   const sizeCls = small ? "w-9 h-[3.25rem]" : "w-10 h-14 sm:w-12 sm:h-16";
   const rankSize = small ? "text-[13px]" : "text-[13px] sm:text-[15px]";
   const suitCornerSize = small ? "text-[11px]" : "text-[10px] sm:text-[12px]";
-  const centerSize = small ? "text-[24px]" : "text-[22px] sm:text-[28px]";
-  const isFace =
+  const isAce = !card.isPrintedJoker && card.rank === "A";
+  // Ace's single pip reads as the "big" card in the suit, same as a real
+  // deck — sized up a notch from the plain 2–10 centre pip.
+  const centerSize = isAce
+    ? small ? "text-[28px]" : "text-[26px] sm:text-[32px]"
+    : small ? "text-[24px]" : "text-[22px] sm:text-[28px]";
+  const isCourt =
     !card.isPrintedJoker &&
-    (card.rank === "J" ||
-      card.rank === "Q" ||
-      card.rank === "K" ||
-      card.rank === "A");
-  const faceLetterSize = small ? "text-[28px]" : "text-[30px] sm:text-[36px]";
+    (card.rank === "J" || card.rank === "Q" || card.rank === "K");
   const Tag: ElementType = draggable ? "div" : onClick ? "button" : "div";
   const ariaProps = draggable && onClick
     ? {
@@ -139,16 +147,16 @@ export function PlayingCard({
         ${onClick ? "hover:-translate-y-1 cursor-pointer" : "cursor-default"}`}
       style={{
         ...touchActionStyle,
-        // Subtle ivory gradient for face, cooler white for numerics.
-        background: isFace
+        // Warm ivory for court cards, crisp white cardstock for numerics/Ace.
+        background: isCourt
           ? "linear-gradient(168deg, #fff8e6 0%, #fff1cf 55%, #ffe7ad 100%)"
           : "linear-gradient(168deg, #ffffff 0%, #f7fafd 60%, #e9eef5 100%)",
-        border: isFace ? "1px solid #b88950" : "1px solid #9aa6b5",
+        border: isCourt ? "1.5px solid #a8793a" : "1.5px solid #8b97a8",
         boxShadow: selected
           ? "0 14px 26px rgba(245,158,11,0.5), 0 2px 4px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(252,211,77,0.7)"
-          : isFace
-          ? "0 4px 9px rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.7) inset, inset 0 0 0 1px rgba(184,137,80,0.4)"
-          : "0 4px 9px rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.85) inset, inset 0 0 0 1px rgba(154,166,181,0.35)",
+          : isCourt
+          ? "0 4px 9px rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.7) inset, inset 0 0 0 2px rgba(184,137,80,0.32)"
+          : "0 4px 9px rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.85) inset, inset 0 0 0 2px rgba(154,166,181,0.28)",
       }}
     >
       {/* Top glossy sheen */}
@@ -176,14 +184,16 @@ export function PlayingCard({
         </div>
       </div>
 
-      {/* Centre — face cards (J/Q/K/A) get a single emblematic chess glyph
-          framed by a thin oval medallion. The previous design layered a
-          watermark suit + a giant serif letter + a heavy ornamental box,
-          which read as busy and cramped at every size. The new layout is
-          one bold symbol per rank, sized for instant recognition. */}
-      {isFace ? (
+      {/* Centre — court cards (J/Q/K) get a slim suit-coloured frame with
+          the rank letter sandwiched between two mirrored pips, reading as
+          a real "court card" indicator without portrait artwork. Number
+          cards and the Ace share one big centred pip (Ace sized up a
+          notch) — the same fast-recognition convention real-money Rummy
+          apps use; full historical pip layouts don't survive shrinking
+          to phone-card size. */}
+      {isCourt ? (
         <FaceCardCenter
-          rank={card.rank}
+          rank={card.rank as "J" | "Q" | "K"}
           suit={card.suit}
           red={red}
           small={small}
@@ -260,17 +270,12 @@ export function PlayingCard({
 }
 
 /**
- * Centre artwork for face cards (J / Q / K / A). One bold emblem per rank
- * inside a thin medallion ring. Tuned to read cleanly at the small and
- * default card sizes used in hand + scorecard contexts.
- *
- *   J → ♞  (knight — the youthful court card)
- *   Q → ♛  (queen — refined chess glyph)
- *   K → ♚  (king — heavy filled chess glyph)
- *   A → big suit pip with a subtle ace ring
- *
- * Letters are drawn alongside the emblem in a smaller scale so the rank
- * stays unambiguous when cards overlap in a stack.
+ * Centre artwork for court cards (J / Q / K). A slim suit-coloured frame
+ * holds the rank letter sandwiched between two mirrored pips — reads
+ * unambiguously as a "court card" without needing portrait artwork, and
+ * renders identically on every device (unlike chess-piece glyphs, whose
+ * font coverage and stroke weight vary wildly across platforms — the
+ * previous design's biggest weakness).
  */
 function FaceCardCenter({
   rank,
@@ -278,51 +283,56 @@ function FaceCardCenter({
   red,
   small,
 }: {
-  rank: Rank;
+  rank: "J" | "Q" | "K";
   suit: string;
   red: boolean;
   small: boolean;
 }) {
-  const emblem =
-    rank === "K" ? "♚" :        // ♚ king
-    rank === "Q" ? "♛" :        // ♛ queen
-    rank === "J" ? "♞" :        // ♞ knight
-    SUIT_GLYPHS[suit];               // Ace → big suit pip
-
-  const emblemSize = small ? 26 : 32;
-  const ringSize   = small ? 30 : 36;
-  const tone       = red ? "#b91c1c" : "#1e293b";
-  const tint       = red ? "rgba(185,28,28,0.10)" : "rgba(30,41,59,0.08)";
-  const ringColor  = red ? "rgba(185,28,28,0.55)" : "rgba(30,41,59,0.55)";
+  const tone = red ? "#9b1c1c" : "#1c2733";
+  const frameW = small ? 28 : 34;
+  const frameH = small ? 38 : 46;
+  const letterSize = small ? 21 : 26;
+  const pipSize = small ? 8 : 9;
 
   return (
     <div className="absolute inset-0 flex items-center justify-center" aria-hidden>
-      {/* Soft medallion */}
       <div
+        className="flex flex-col items-center justify-center gap-0.5 rounded-[3px]"
         style={{
-          width: ringSize,
-          height: ringSize,
-          borderRadius: "50%",
-          background: `radial-gradient(circle at 50% 35%, ${tint}, transparent 75%)`,
-          border: `1px solid ${ringColor}`,
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.4)",
-        }}
-      />
-      {/* Emblem */}
-      <span
-        className="absolute font-black leading-none"
-        style={{
-          color: tone,
-          fontSize: emblemSize,
-          fontFamily:
-            rank === "A"
-              ? "Georgia, 'Times New Roman', serif"
-              : "'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols2', system-ui, sans-serif",
-          textShadow: "0 1px 2px rgba(0,0,0,0.18)",
+          width: frameW,
+          height: frameH,
+          border: `1.5px solid ${tone}`,
+          boxShadow: "inset 0 0 0 2px rgba(255,255,255,0.85)",
+          background: `linear-gradient(180deg, ${
+            red ? "rgba(185,28,28,0.07)" : "rgba(30,41,59,0.06)"
+          }, transparent)`,
         }}
       >
-        {emblem}
-      </span>
+        <span style={{ color: tone, fontSize: pipSize, lineHeight: 1 }}>
+          {SUIT_GLYPHS[suit]}
+        </span>
+        <span
+          className="font-black leading-none"
+          style={{
+            color: tone,
+            fontSize: letterSize,
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            textShadow: "0 1px 1px rgba(0,0,0,0.15)",
+          }}
+        >
+          {rank}
+        </span>
+        <span
+          style={{
+            color: tone,
+            fontSize: pipSize,
+            lineHeight: 1,
+            transform: "rotate(180deg)",
+          }}
+        >
+          {SUIT_GLYPHS[suit]}
+        </span>
+      </div>
     </div>
   );
 }
@@ -341,7 +351,7 @@ export function FaceDownCard({ small = false }: { small?: boolean }) {
       className={`${sizeCls} rounded-[7px] flex-shrink-0 relative overflow-hidden`}
       style={{
         background: "linear-gradient(140deg, #7f1d1d 0%, #991b1b 60%, #4c0519 100%)",
-        border: "1px solid #2c0507",
+        border: "1.5px solid #2c0507",
         boxShadow:
           "0 4px 9px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(251,191,36,0.55)",
       }}

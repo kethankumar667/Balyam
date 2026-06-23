@@ -22,6 +22,15 @@ export interface Player {
   coinColor?: CoinColor;
   /** For Ludo: optional per-token nicknames keyed by tokenId. */
   tokenNicknames?: Record<string, string>;
+  /**
+   * True when this player's own client has detected a small portrait
+   * viewport that needs rotating to landscape to play comfortably (Rummy).
+   * Reported by the client via `room:setOrientation` and re-broadcast to
+   * the whole room so a synchronized "wait for everyone to rotate" gate
+   * can show who's still blocking the deal. Always false/undefined for
+   * bots and pass-and-play local seats — they have no physical device.
+   */
+  needsRotation?: boolean;
 }
 
 export interface ChatMessage {
@@ -1130,6 +1139,14 @@ export interface ClientToServerEvents {
   "room:chooseColor": (color: LudoColor) => void;
   "room:chooseCoinColor": (color: CoinColor) => void;
   "room:setTokenNicknames": (payload: SetTokenNicknamesPayload) => void;
+  /**
+   * Reports whether THIS client currently needs to rotate to landscape to
+   * play comfortably (small portrait viewport). Generic on the wire, but
+   * only Rummy boards emit/consume it today — re-broadcast to the room via
+   * `room:state` so every player can see who's still rotating their device
+   * at game start. Valid in any phase (not gated to lobby).
+   */
+  "room:setOrientation": (needsRotation: boolean) => void;
   "room:startGame": () => void;
   "chat:send": (payload: ChatSendPayload) => void;
   "game:move": (payload: GameMovePayload) => void;

@@ -30,6 +30,12 @@ import {
   isFullscreenSupported,
   onFullscreenChange,
 } from "../../lib/fullscreen";
+import {
+  useOrientationReport,
+  useRummyRotationGate,
+  RotateDevicePrompt,
+  WaitingForPlayersBanner,
+} from "./rotation-sync";
 
 type Layout = {
   groups: Array<{ id: string; cardIds: string[] }>;
@@ -347,35 +353,25 @@ export default function RummyBoardMobile({
   // to "playing") so the NEXT round's result will still appear.
   const [resultDismissed, setResultDismissed] = useState(false);
 
+  // Mobile portrait detection — Rummy is designed for landscape; on portrait
+  // phones, we show a rotate-device prompt instead of cramming the felt
+  // into a narrow column. Declared before the gate below because the gate
+  // needs this value (not the server-echoed one) for the LOCAL player.
+  const needsLandscape = useOrientationReport();
+
   // Two-phase opening animation — STRICTLY shown only when the player is
   // actually starting the game. NOT on rejoin, refresh, mid-game arrival,
-  // or pool-mode round 2+.
-  //
-  // Signal: a sessionStorage flag `bhalyam.rummy.justStarted.<roomCode>`
-  // that the room sets at the moment of lobby → playing transition (see
-  // Room.tsx). RummyBoardMobile reads the flag exactly once on mount,
-  // immediately clears it, and only then schedules the shuffle/deal
-  // timers. Any subsequent state.phase change inside this mount cycle is
-  // ignored — no more accidental triggers.
-  const [dealStage, setDealStage] = useState<"idle" | "shuffle" | "deal">("idle");
-  useEffect(() => {
-    if (typeof window === "undefined" || !roomCode) return;
-    const key = `bhalyam.rummy.justStarted.${roomCode}`;
-    const flag = window.sessionStorage.getItem(key);
-    if (flag !== "1") return;
-    window.sessionStorage.removeItem(key);
-    if (state.phase !== "playing") return;
-    setDealStage("shuffle");
-    // 0.9 s shuffle + 0.9 s deal = ~1.8 s total. Snappy enough not to
-    // make players wait, long enough to register the celebration of the
-    // joker reveal. (Down from the original 3 + 3 = 6 s — the user
-    // flagged the long opener as needlessly slowing entry into a hand.)
-    window.setTimeout(() => setDealStage("deal"), 900);
-    window.setTimeout(() => setDealStage("idle"), 1800);
-    // Intentionally [] — runs exactly once per mount, the flag is the
-    // single source of truth.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // or pool-mode round 2+. Synchronized across every player's device — see
+  // `useRummyRotationGate` in `./rotation-sync` for the full gating
+  // contract (holds for everyone to rotate to landscape before the
+  // shuffle/deal opener plays for anyone).
+  const gate = useRummyRotationGate({
+    roomCode,
+    phase: state.phase,
+    players,
+    selfId,
+    selfNeedsRotation: needsLandscape,
+  });
   useEffect(() => {
     if (state.phase === "playing") setResultDismissed(false);
   }, [state.phase]);
@@ -439,9 +435,6 @@ export default function RummyBoardMobile({
     return () => window.clearTimeout(t);
   }, [state.phase, state.winnerId, state.invalidDeclareBy, state.endedByDisconnect, selfId]);
 
-  // Mobile portrait detection — Rummy is designed for landscape; on portrait phones,
-  // we show a rotate-device prompt instead of cramming the felt into a narrow column.
-  const needsLandscape = useNeedsLandscape();
   // New unread-chat indicator on the icon
   const lastSeenChatRef = useRef(messages.length);
   const hasUnreadChat = !chatOpen && messages.length > lastSeenChatRef.current;
@@ -998,8 +991,8 @@ export default function RummyBoardMobile({
         ].join(", "),
       }}
     >
-      {dealStage !== "idle" && (
-        <RummyDealOverlay stage={dealStage} playerCount={state.playerOrder.length} />
+      {(gate.stage === "shuffle" || gate.stage === "deal") && (
+        <RummyDealOverlay stage={gate.stage} playerCount={state.playerOrder.length} />
       )}
 
       {/* Low-time warning — pulsing red screen border + countdown chip when
@@ -1255,8 +1248,28 @@ export default function RummyBoardMobile({
         </RummyModal>
       )}
 
-      {/* Mobile portrait rotate prompt — covers the felt with a "rotate device" message */}
-      {needsLandscape && <RotateDevicePrompt />}
+      {/* Mobile portrait rotate prompt — covers the felt with a "rotate device"
+          message. During the start-of-game gate it doubles as the readiness
+          indicator; once the gate's resolved, a mid-game rotation just shows
+          the plain prompt. */}
+      {needsLandscape && (
+        <RotateDevicePrompt
+          readiness={
+            gate.stage === "gating"
+              ? { readyCount: gate.readyCount, totalCount: gate.totalCount }
+              : undefined
+          }
+        />
+      )}
+      {/* Third-person: I'm ready, but the table's waiting on someone else
+          to rotate before the synchronized deal can play for everyone. */}
+      {!needsLandscape && gate.stage === "gating" && gate.blockers.length > 0 && (
+        <WaitingForPlayersBanner
+          blockers={gate.blockers}
+          showNames={gate.showBlockerNames}
+          variant="overlay"
+        />
+      )}
 
       {/* Live points overlay */}
       {pointsOpen && (
@@ -1382,28 +1395,6 @@ function ResultOverlay({
           ✕
         </button>
         {children}
-      </div>
-    </div>
-  );
-}
-
-function RotateDevicePrompt() {
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-6 text-center"
-      style={{
-        background: "linear-gradient(180deg, #0f3a26 0%, #052e16 100%)",
-      }}
-    >
-      <div className="space-y-4 max-w-xs">
-        <div className="text-6xl animate-pulse">📱↻</div>
-        <div className="text-lg font-extrabold uppercase tracking-wider text-emerald-100">
-          Rotate your device
-        </div>
-        <div className="text-sm text-emerald-200/80">
-          Rummy is best played in landscape mode on mobile. Turn your phone
-          sideways to see the full table.
-        </div>
       </div>
     </div>
   );
@@ -1662,32 +1653,6 @@ function FsExitIcon({ className }: { className?: string }) {
       <path d="M15 20v-5h5" />
     </svg>
   );
-}
-
-// Tracks viewport orientation/size to detect "mobile portrait" — Rummy works best
-// in landscape, so we prompt the user to rotate before showing the felt.
-function useNeedsLandscape(): boolean {
-  const [needs, setNeeds] = useState(() => evalNeedsLandscape());
-  useEffect(() => {
-    function onResize() {
-      setNeeds(evalNeedsLandscape());
-    }
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
-    };
-  }, []);
-  return needs;
-}
-
-function evalNeedsLandscape(): boolean {
-  if (typeof window === "undefined") return false;
-  // Only nag on small viewports — desktop is fine in any aspect ratio.
-  const isMobile = window.innerWidth < 768;
-  const isPortrait = window.innerHeight > window.innerWidth;
-  return isMobile && isPortrait;
 }
 
 function TurnTimer({ deadline, myTurn }: { deadline: number; myTurn: boolean }) {
@@ -3076,18 +3041,14 @@ function ScoreGroup({
           <span
             key={c.id}
             className="flex-shrink-0"
-            style={{ marginLeft: i === 0 ? 0 : -18 }}
+            style={{ marginLeft: i === 0 ? 0 : -22 }}
           >
-            <PlayingCard
-              card={c}
-              isWildJoker={c.rank === wildRank}
-              small
-            />
+            <PlayingCard card={c} isWildJoker={c.rank === wildRank} />
           </span>
         ))}
       </div>
       <span
-        className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 rounded-full flex items-center justify-center text-[11px] font-extrabold tabular-nums"
+        className="absolute -top-2 -right-2 min-w-[24px] h-[24px] px-1.5 rounded-full flex items-center justify-center text-[12px] font-extrabold tabular-nums"
         style={{
           background: badgeBg,
           color: "#ffffff",
@@ -3112,14 +3073,15 @@ function ScoreGroup({
  * the host can request another round + non-hosts can accept/decline + a
  * countdown ticks when everyone's in.
  *
- * Layout: full-width red felt with a trophy/medal header, a ranked
- * table (Rank · Player · Cards · Points · Chips), and a joker chip + game
- * ID footer.
+ * Layout: full-width red felt with a trophy/medal header, then a ranked
+ * list where each player gets a compact header line (rank, name, points,
+ * chips) and a full-width row below for their card groups, and a joker
+ * chip + game ID footer.
  *
- * Cards column uses `MeldGroupsRow` which shows each player's groups
- * separately (winner → declared melds; others → best-effort auto-arranged)
- * so the scorecard reads as proof of HOW the show was put together rather
- * than a flat row of cards.
+ * The card-groups row uses `MeldGroupsRow`, which shows each player's
+ * groups separately (winner → declared melds; others → best-effort
+ * auto-arranged) so the scorecard reads as proof of HOW the show was put
+ * together rather than a flat row of cards.
  */
 function RummyScoreCard({
   state,
@@ -3250,53 +3212,45 @@ function RummyScoreCard({
         </div>
       </div>
 
-      {/* Ranked table */}
-      <div className="px-2 sm:px-3 pt-3 pb-2">
-        <div
-          className="grid items-center gap-2 px-3 py-1.5 text-amber-100/80 uppercase tracking-widest font-bold text-[10px] sm:text-[11px]"
-          style={{ gridTemplateColumns: "44px 1.2fr 2.6fr 0.7fr 0.9fr" }}
-        >
-          <div>Rank</div>
-          <div>Username</div>
-          <div>Cards</div>
-          <div className="text-right">Points</div>
-          <div className="text-right">Chips Won</div>
-        </div>
-        <div className="space-y-1.5">
-          {ranked.map((id, idx) => {
-            const rank = idx + 1;
-            const isWin = id === winnerId;
-            const isWrongShower = id === wrongShowerId;
-            const isMe = isMyId(id);
-            // Points column reflects what the engine booked: opponents
-            // in a wrong-show round get 0; everyone else shows their hand
-            // value. Chips column uses the helper for both branches.
-            const points = lossOf(id);
-            const chips = chipsOf(id);
-            const hand = state.finalHands?.[id] ?? [];
-            return (
-              <div
-                key={id}
-                className={`grid items-center gap-2 px-3 py-2 rounded-xl text-[12px] sm:text-[13px]
-                            ${isWrongShower
-                              ? "bg-zinc-900/70 ring-1 ring-rose-400/40"
-                              : isMe
-                              ? "bg-gradient-to-r from-rose-600 to-rose-500 ring-1 ring-amber-300/50"
-                              : isWin
-                              ? "bg-gradient-to-r from-amber-500/30 to-amber-600/20 ring-1 ring-amber-300/40"
-                              : "bg-rose-900/35"}`}
-                style={{ gridTemplateColumns: "44px 1.2fr 2.6fr 0.7fr 0.9fr" }}
-              >
-                <div className="font-black tabular-nums text-amber-200 text-base sm:text-lg">
-                  {isWrongShow ? (isWrongShower ? "—" : rank) : rank}
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-black italic truncate">
+      {/* Ranked list — each player gets a compact header line (rank,
+          name, points, chips) and a full-width row below for their card
+          groups, so melds get real breathing room instead of squeezing
+          into a shared grid column alongside four other fields. */}
+      <div className="px-2 sm:px-3 pt-3 pb-2 space-y-2">
+        {ranked.map((id, idx) => {
+          const rank = idx + 1;
+          const isWin = id === winnerId;
+          const isWrongShower = id === wrongShowerId;
+          const isMe = isMyId(id);
+          // Points reflects what the engine booked: opponents in a
+          // wrong-show round get 0; everyone else shows their hand value.
+          // Chips uses the helper for both branches.
+          const points = lossOf(id);
+          const chips = chipsOf(id);
+          const hand = state.finalHands?.[id] ?? [];
+          return (
+            <div
+              key={id}
+              className={`rounded-xl px-3 py-2.5
+                          ${isWrongShower
+                            ? "bg-zinc-900/70 ring-1 ring-rose-400/40"
+                            : isMe
+                            ? "bg-gradient-to-r from-rose-600 to-rose-500 ring-1 ring-amber-300/50"
+                            : isWin
+                            ? "bg-gradient-to-r from-amber-500/30 to-amber-600/20 ring-1 ring-amber-300/40"
+                            : "bg-rose-900/35"}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="font-black tabular-nums text-amber-200 text-base sm:text-lg w-5 flex-shrink-0 text-center">
+                    {isWrongShow ? (isWrongShower ? "—" : rank) : rank}
+                  </div>
+                  <span className="font-black italic truncate text-[13px] sm:text-[14px]">
                     {isMe ? "You" : nameOf(id)}
                   </span>
                   {isWin && (
                     <span
-                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider"
+                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider flex-shrink-0"
                       style={{
                         background: "linear-gradient(135deg, #fbbf24, #d97706)",
                         color: "#3a2400",
@@ -3307,35 +3261,45 @@ function RummyScoreCard({
                     </span>
                   )}
                   {isWrongShower && (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-rose-700 text-rose-100"
-                    >
+                    <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-rose-700 text-rose-100 flex-shrink-0">
                       Wrong Show
                     </span>
                   )}
                 </div>
-                <div className="overflow-x-auto scrollbar-none">
-                  <MeldGroupsRow
-                    hand={hand}
-                    declaredMelds={state.finalMelds?.[id]}
-                    wildRank={state.wildJoker.rank}
-                    isWrongShower={isWrongShower}
-                  />
-                </div>
-                <div className="text-right font-black tabular-nums">
-                  {points}
-                </div>
-                <div
-                  className={`text-right font-black tabular-nums ${
-                    chips >= 0 ? "text-emerald-300" : "text-rose-200"
-                  }`}
-                >
-                  {chips >= 0 ? `+${chips}` : chips}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="text-right leading-tight">
+                    <div className="text-amber-100/55 text-[8px] sm:text-[9px] uppercase tracking-wide">
+                      Points
+                    </div>
+                    <div className="font-black tabular-nums text-[13px] sm:text-[14px]">
+                      {points}
+                    </div>
+                  </div>
+                  <div className="text-right leading-tight">
+                    <div className="text-amber-100/55 text-[8px] sm:text-[9px] uppercase tracking-wide">
+                      Chips
+                    </div>
+                    <div
+                      className={`font-black tabular-nums text-[13px] sm:text-[14px] ${
+                        chips >= 0 ? "text-emerald-300" : "text-rose-200"
+                      }`}
+                    >
+                      {chips >= 0 ? `+${chips}` : chips}
+                    </div>
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+              <div className="mt-2 -mx-1 px-1 overflow-x-auto scrollbar-none">
+                <MeldGroupsRow
+                  hand={hand}
+                  declaredMelds={state.finalMelds?.[id]}
+                  wildRank={state.wildJoker.rank}
+                  isWrongShower={isWrongShower}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Footer: joker + game ID + match mode */}
@@ -3583,8 +3547,8 @@ function RummyCelebrationOverlay({ onLeave }: { onLeave: () => void }) {
  *   to "Dealing 13 cards…". The whole overlay quietly fades in the last
  *   600 ms so the game board takes over without a jolt.
  *
- * Driven by the parent's `dealStage` state so the timings stay deterministic
- * (not coupled to CSS animation-delay).
+ * Driven by the parent's synchronized `gate.stage` so the timings stay
+ * deterministic (not coupled to CSS animation-delay).
  */
 function RummyDealOverlay({
   stage,

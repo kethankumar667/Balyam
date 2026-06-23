@@ -4,6 +4,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * `100vh` on many Android WebViews (notably ColorOS/Oppo, but not limited
+ * to it) reports the viewport height with the browser's address bar and
+ * gesture-nav strip COLLAPSED, even while they're still visibly on
+ * screen — so a `h-screen` + `overflow-hidden` container (Rummy's in-play
+ * felt wrapper, see Room.tsx) ends up taller than what's actually visible,
+ * pushing the bottom action row off-screen on first load. `100dvh` is the
+ * viewport height that ACTUALLY accounts for that chrome, live, as it
+ * shows/hides — but it's a newer CSS value, so older WebViews that don't
+ * parse it must keep the `100vh` declaration above it (an unsupported
+ * value is dropped, not "wins" — CSS cascade still applies the last VALID
+ * declaration). Order here matters: vh first, dvh second.
+ */
+.h-dvh-safe {
+  height: 100vh;
+  height: 100dvh;
+}
+
 /* ===== Design tokens — MultiplayerGames v1.0 ===== */
 :root {
   /* Brand (felt-emerald) */
