@@ -10,6 +10,7 @@ import CountUp from "../components/CountUp";
 import { useTheme } from "../lib/useTheme";
 import GlobalSettings from "../components/GlobalSettings";
 import { tileHover, ctaPress, bhalyamSpring } from "../lib/motion";
+import { getSocket } from "../lib/socket";
 import {
   BHALYAM_GAMES,
   type BhalyamGameCard,
@@ -69,6 +70,13 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
 export default function BhalyamHome() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+
+  // Warm the socket connection on landing so the first room create/join
+  // doesn't pay the cold WebSocket handshake at click time (the emit was
+  // previously buffered until the very first connect).
+  useEffect(() => {
+    getSocket();
+  }, []);
 
   return (
     <div className="bhalyam-home bhalyam-font min-h-screen bhalyam-paper flex flex-col overflow-x-hidden">

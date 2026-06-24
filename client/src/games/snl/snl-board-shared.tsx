@@ -425,7 +425,10 @@ function LaddersLayer({ ladders }: { ladders: Record<number, number> }) {
 }
 
 function SnakesLayer({ snakes }: { snakes: Record<number, number> }) {
-  // Bezier spine + scale dots are a pure function of the snake config.
+  // A realistic serpent: a TAPERED filled body (thick at the head, thinning to
+  // the tail) winding along a multi-bend spine, with a dorsal diamond pattern,
+  // a belly highlight, a wedge head with eyes + nostrils, and a flicking forked
+  // tongue. Pure function of the snake config, so it's memoised.
   const parts = useMemo(() => {
     const entries = Object.entries(snakes)
       .map(([h, t]) => [Number(h), t] as const)
@@ -435,87 +438,124 @@ function SnakesLayer({ snakes }: { snakes: Record<number, number> }) {
       const gradientId = `snl-snake-${idx}`;
       const head = cellInfo(headN);
       const tail = cellInfo(tailN);
-      const mx = (head.x + tail.x) / 2;
-      const my = (head.y + tail.y) / 2;
       const dx = tail.x - head.x;
       const dy = tail.y - head.y;
       const len = Math.hypot(dx, dy) || 1;
-      const nx = -dy / len;
-      const ny = dx / len;
-      const sway = Math.min(8, len * 0.22);
-      const c1 = { x: mx + nx * sway, y: my + ny * sway };
-      const c2 = { x: mx - nx * sway, y: my - ny * sway };
-      const headP = { x: head.x, y: head.y };
-      const tailP = { x: tail.x, y: tail.y };
-      const d = `M ${headP.x} ${headP.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${tailP.x} ${tailP.y}`;
+      const ux = dx / len, uy = dy / len;       // head → tail unit
+      const px = -uy, py = ux;                   // left-perpendicular
 
-      // Scale pattern — small offset dots paired along the spine give a
-      // subtle reptile texture without competing with the cell numbers.
-      const scaleTs = [0.18, 0.28, 0.4, 0.52, 0.62, 0.74, 0.84];
-      const scales = scaleTs.map((t, i) => {
-        const p = bezierPoint(headP, c1, c2, tailP, t);
-        // Tangent for perpendicular offset
-        const ahead = bezierPoint(headP, c1, c2, tailP, Math.min(0.99, t + 0.01));
-        const tx = ahead.x - p.x;
-        const ty = ahead.y - p.y;
+      // Serpentine centreline: lerp head→tail + a sine sway that's zero at both
+      // ends (even number of half-waves), more bends for longer snakes.
+      const bends = Math.max(1, Math.round(len / 24));
+      const amp = Math.min(6.5, len * 0.15);
+      const STEPS = 30;
+      const center = (t: number) => {
+        const off = amp * Math.sin(t * Math.PI * 2 * bends);
+        return { x: head.x + dx * t + px * off, y: head.y + dy * t + py * off };
+      };
+      const pts = Array.from({ length: STEPS + 1 }, (_, s) => center(s / STEPS));
+
+      // Body width tapers from head to tail.
+      const wHead = 2.7, wTail = 0.45;
+      const widthAt = (t: number) => wTail + (wHead - wTail) * Math.pow(1 - t, 0.85);
+
+      // Local tangent/normal per sample (finite difference).
+      const norm = pts.map((p, i) => {
+        const a = pts[Math.max(0, i - 1)];
+        const b = pts[Math.min(STEPS, i + 1)];
+        const tx = b.x - a.x, ty = b.y - a.y;
         const tl = Math.hypot(tx, ty) || 1;
-        const px = -ty / tl;
-        const py = tx / tl;
+        return { x: -ty / tl, y: tx / tl };
+      });
+
+      // Tapered outline: left edge head→tail, then right edge tail→head.
+      const left = pts.map((p, i) => {
+        const w = widthAt(i / STEPS) / 2;
+        return `${(p.x + norm[i].x * w).toFixed(2)} ${(p.y + norm[i].y * w).toFixed(2)}`;
+      });
+      const right = pts
+        .map((p, i) => {
+          const w = widthAt(i / STEPS) / 2;
+          return `${(p.x - norm[i].x * w).toFixed(2)} ${(p.y - norm[i].y * w).toFixed(2)}`;
+        })
+        .reverse();
+      const bodyPath = `M ${left[0]} L ${left.slice(1).join(" L ")} L ${right.join(" L ")} Z`;
+
+      // Dorsal diamond pattern down the spine.
+      const diamonds = [0.2, 0.33, 0.46, 0.58, 0.7, 0.8].map((t, i) => {
+        const si = Math.round(t * STEPS);
+        const p = pts[si];
+        const n = norm[si];
+        const w = widthAt(t) * 0.34;
+        const fb = ux * (widthAt(t) * 0.55), fbq = uy * (widthAt(t) * 0.55);
+        const a = `${p.x + n.x * w},${p.y + n.y * w}`;
+        const b = `${p.x + fb},${p.y + fbq}`;
+        const c = `${p.x - n.x * w},${p.y - n.y * w}`;
+        const d2 = `${p.x - fb},${p.y - fbq}`;
         return (
-          <g key={`scale-${headN}-${i}`}>
-            <ellipse
-              cx={p.x + px * 0.4}
-              cy={p.y + py * 0.4}
-              rx={0.4}
-              ry={0.22}
-              fill={palette.spot}
-              opacity={0.85}
-            />
-            <ellipse
-              cx={p.x - px * 0.4}
-              cy={p.y - py * 0.4}
-              rx={0.4}
-              ry={0.22}
-              fill={palette.spot}
-              opacity={0.55}
-            />
-          </g>
+          <polygon
+            key={`dia-${headN}-${i}`}
+            points={`${a} ${b} ${c} ${d2}`}
+            fill={palette.gradEnd}
+            opacity={0.5}
+          />
         );
       });
 
-      // Head orientation — used to align the head shape along the body.
-      const tangent = bezierPoint(headP, c1, c2, tailP, 0.05);
-      const headAngle = Math.atan2(tangent.y - headP.y, tangent.x - headP.x);
-      const headDeg = (headAngle * 180) / Math.PI;
+      // Head frame: wedge oriented along the initial tangent.
+      const t0 = { x: pts[1].x - pts[0].x, y: pts[1].y - pts[0].y };
+      const headDeg = (Math.atan2(t0.y, t0.x) * 180) / Math.PI;
+      const n0 = norm[0];
+      // Tongue base sits just ahead of the head tip (opposite the body dir).
+      const tipX = head.x - ux * 2.6, tipY = head.y - uy * 2.6;
 
       return (
         <g key={`snake-${headN}`} filter="url(#snl-drop)">
-          {/* Outer outline — thin dark contour */}
-          <path d={d} stroke={palette.outline} strokeWidth={2.7} fill="none" strokeLinecap="round" />
-          {/* Body — gradient down the spine */}
-          <path d={d} stroke={`url(#${gradientId})`} strokeWidth={2.1} fill="none" strokeLinecap="round" />
-          {/* Belly stripe — thin lighter line on the lit edge */}
-          <path d={d} stroke="#FBF4DE" strokeWidth={0.45} fill="none" strokeLinecap="round" opacity={0.35} />
-          {scales}
-          {/* Tail taper */}
-          <circle cx={tailP.x} cy={tailP.y} r={0.55} fill={palette.outline} />
-          <circle cx={tailP.x} cy={tailP.y} r={0.32} fill={palette.body} />
-
-          {/* Head — refined teardrop: an outlined ellipse rotated to follow
-              the body direction, plus two small slit eyes. No blush, no
-              smile, no tongue — those were the cartoonish elements that
-              made the board look amateur. */}
-          <g transform={`translate(${headP.x}, ${headP.y}) rotate(${headDeg})`}>
-            <ellipse cx={-0.4} cy={0} rx={2.6} ry={1.7} fill={palette.outline} />
-            <ellipse cx={-0.4} cy={0} rx={2.25} ry={1.4} fill={palette.body} />
-            {/* Subtle dorsal stripe */}
-            <ellipse cx={-0.4} cy={-0.5} rx={2.0} ry={0.35} fill={palette.gradEnd} opacity={0.55} />
-            {/* Eyes — tiny slits, not big cartoon circles */}
-            <ellipse cx={-1.4} cy={-0.55} rx={0.32} ry={0.22} fill="#FBF4DE" />
-            <ellipse cx={-1.4} cy={0.55} rx={0.32} ry={0.22} fill="#FBF4DE" />
-            <ellipse cx={-1.35} cy={-0.55} rx={0.14} ry={0.18} fill="#0F172A" />
-            <ellipse cx={-1.35} cy={0.55} rx={0.14} ry={0.18} fill="#0F172A" />
+          {/* Forked tongue — drawn under the head so the head overlaps its base */}
+          <g stroke="#C2272D" strokeWidth={0.34} fill="none" strokeLinecap="round">
+            <path d={`M ${head.x - ux * 1.4} ${head.y - uy * 1.4} L ${tipX} ${tipY}`} />
+            <path d={`M ${tipX} ${tipY} L ${tipX - ux * 1.0 + n0.x * 0.9} ${tipY - uy * 1.0 + n0.y * 0.9}`} />
+            <path d={`M ${tipX} ${tipY} L ${tipX - ux * 1.0 - n0.x * 0.9} ${tipY - uy * 1.0 - n0.y * 0.9}`} />
           </g>
+
+          {/* Body: dark outline + gradient fill + belly highlight */}
+          <path d={bodyPath} fill={palette.outline} />
+          <path d={bodyPath} fill={`url(#${gradientId})`} transform="" />
+          <path
+            d={`M ${left[0]} L ${left.slice(1).join(" L ")}`}
+            fill="none"
+            stroke="#FBF4DE"
+            strokeWidth={0.3}
+            opacity={0.4}
+            strokeLinecap="round"
+          />
+          {diamonds}
+
+          {/* Head */}
+          <g transform={`translate(${head.x}, ${head.y}) rotate(${headDeg})`}>
+            {/* wedge: tip points away from the body (−x in local frame) */}
+            <path
+              d="M -2.9 0 L -0.6 -1.9 L 2.0 -1.5 L 2.0 1.5 L -0.6 1.9 Z"
+              fill={palette.outline}
+            />
+            <path
+              d="M -2.5 0 L -0.4 -1.55 L 1.7 -1.2 L 1.7 1.2 L -0.4 1.55 Z"
+              fill={palette.body}
+            />
+            <ellipse cx={0.4} cy={-0.95} rx={1.0} ry={0.42} fill={palette.gradEnd} opacity={0.5} />
+            <ellipse cx={0.4} cy={0.95} rx={1.0} ry={0.42} fill={palette.gradEnd} opacity={0.5} />
+            {/* eyes */}
+            <circle cx={-0.2} cy={-0.85} r={0.46} fill="#F8E9B0" />
+            <circle cx={-0.2} cy={0.85} r={0.46} fill="#F8E9B0" />
+            <ellipse cx={-0.25} cy={-0.85} rx={0.18} ry={0.3} fill="#0F172A" />
+            <ellipse cx={-0.25} cy={0.85} rx={0.18} ry={0.3} fill="#0F172A" />
+            {/* nostrils near the tip */}
+            <circle cx={-2.0} cy={-0.45} r={0.16} fill={palette.outline} />
+            <circle cx={-2.0} cy={0.45} r={0.16} fill={palette.outline} />
+          </g>
+
+          {/* Tail point */}
+          <circle cx={pts[STEPS].x} cy={pts[STEPS].y} r={0.3} fill={palette.outline} />
         </g>
       );
     });

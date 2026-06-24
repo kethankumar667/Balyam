@@ -78,37 +78,32 @@ function sideLocal(theta: number, lx: number, ly: number, apothem: number): Pt {
 
 export function buildPolygonGeometry(N: number, _activeColors: LudoColor[]): PolygonBoardGeometry {
   if (N < 2 || N > 8) throw new Error(`Polygon Ludo supports 2..8 players, got ${N}`);
-  const wedgeAngleDeg = 360 / N;
-  const alphaDeg = wedgeAngleDeg / 2;
-  const alpha = deg2rad(alphaDeg);
-  const apothem = R_OUTER * Math.cos(alpha);
-  const sideHalf = R_OUTER * Math.sin(alpha); // half polygon-side length
 
-  // -------------------------------------------------------------------------
-  // Layout constants (all measured *inward* from the polygon side)
-  // -------------------------------------------------------------------------
-  // The yard occupies y ∈ [0, yardDepth] outward from where we measure inward.
-  // Actually: the YARD lives BETWEEN the polygon side and the track. We use
-  // side-local coords where +ly goes inward, so yard ly is small.
-  const YARD_LY_OUTER = 0;             // at polygon side
-  const YARD_LY_INNER = 9;             // depth of yard band
-  // Track band sits just inside the yard.
-  const RAIL_LX_INSET = Math.max(2.4, sideHalf * 0.08); // distance from each vertex
-  const RAIL_LX = sideHalf - RAIL_LX_INSET; // x-coord of the rails
-  const RAIL_LY_OUTER = YARD_LY_INNER + 1.5; // outer end of each rail (near yard)
-  const RAIL_STEP = 3.6;               // distance between consecutive rail cells
-  const RAIL_LY_INNER = RAIL_LY_OUTER + RAIL_STEP * 4; // inner end after 5 cells
-  // Inner connector row (3 cells crossing the bottom of the U)
-  const CONNECTOR_LY = RAIL_LY_INNER + 3.0;
-  const CONNECTOR_STEP = (RAIL_LX * 2) / 4; // 3 cells across, step between them
-  // Stretch: 6 cells on the wedge axis (lx = 0) going deeper toward the center
-  const STRETCH_LY_OUTER = CONNECTOR_LY + 3.2;
-  const STRETCH_LY_INNER = Math.min(apothem - 3, STRETCH_LY_OUTER + 3.2 * 5);
-  const STRETCH_STEP = (STRETCH_LY_INNER - STRETCH_LY_OUTER) / 5;
+  // --- Authentic N-player Ludo as a gap-free "ring" board ----------------
+  // Outer colored yard sectors → one continuous tiled track ring → colored
+  // home-run cells per player → a central N-wedge home. Everything is placed
+  // on a polar grid so cells tile with NO gaps for any N (5..8). The index
+  // contract the engine depends on is preserved exactly:
+  //   colorStarts[i] = i*13 ; home-stretch entry = i*13+12 ; safe = i*13, i*13+8
+  const W = 360 / N;                 // angular width of one player's wedge
+  const TOTAL = 13 * N;              // track cells around the ring
+  const DELTA = 360 / TOTAL;         // angular step between track cells
+  const apothem = R_OUTER * Math.cos(deg2rad(W / 2));
 
-  const CELL = Math.min(3.0, RAIL_STEP * 0.78);
+  // Polar point: angle in degrees, 0 = straight up (12 o'clock), +clockwise.
+  const polar = (angleDeg: number, radius: number): Pt => {
+    const t = deg2rad(angleDeg);
+    return { x: CENTER + radius * Math.sin(t), y: CENTER - radius * Math.cos(t) };
+  };
 
-  const trackCells: Pt[] = new Array(13 * N);
+  // Solve the track radius so a square cell (tangential ≈ radial) tiles the
+  // ring AND leaves ~1.6 cells of yard depth outside it along the apothem.
+  const k = (2 * Math.PI) / TOTAL;        // radians per cell around the ring
+  const R_TRACK = apothem / (1 + 1.6 * k);
+  const CELL = R_TRACK * k;               // cell side length (tiles the ring)
+  const R_HOME = Math.max(9, R_TRACK - 8 * CELL); // central home radius
+
+  const trackCells: Pt[] = new Array(TOTAL);
   const stretchCells: Record<string, Pt[]> = {};
   const yardSlots: Record<string, Pt[]> = {};
   const yardPolygons: Record<string, string> = {};
@@ -118,84 +113,65 @@ export function buildPolygonGeometry(N: number, _activeColors: LudoColor[]): Pol
   const wedgeAngle: Record<string, number> = {};
   const nameAnchor: Record<string, Pt> = {};
 
-  // Polygon vertices (shared between adjacent wedges)
+  // Polygon vertices sit at the wedge BOUNDARIES (each wedge centered on a
+  // side midpoint), so vertex j is between wedge j and wedge j+1.
   const outerVertices: Pt[] = [];
-  for (let i = 0; i < N; i++) {
-    // Vertex i is the RIGHT vertex of wedge i (= left vertex of wedge i+1).
-    // In wedge i's local frame the right vertex is at (lx = +sideHalf, ly = 0).
-    const theta = i * wedgeAngleDeg;
-    outerVertices.push(sideLocal(theta, +sideHalf, 0, apothem));
+  for (let i = 0; i < N; i++) outerVertices.push(polar((i + 0.5) * W, R_OUTER));
+
+  // Track ring: cell k centered at angle (k - 6)*DELTA, so for wedge i the 13
+  // cells (i*13 .. i*13+12) are symmetric about the wedge axis θ_i = i*W:
+  // j=0 (start) at θ_i-6Δ, j=6 at the axis, j=12 (home entry) at θ_i+6Δ.
+  for (let k2 = 0; k2 < TOTAL; k2++) {
+    trackCells[k2] = polar((k2 - 6) * DELTA, R_TRACK);
   }
 
+  const R_YARD_IN = R_TRACK + CELL * 0.95;       // inner edge of the yard band
+  const R_STRETCH_OUT = R_TRACK - CELL;          // first home-run cell (near track)
+  const R_STRETCH_IN = R_HOME + CELL * 0.6;       // last home-run cell (near home)
+  const STRETCH_STEP = (R_STRETCH_OUT - R_STRETCH_IN) / 5;
+
   for (let i = 0; i < N; i++) {
-    const theta = i * wedgeAngleDeg;
+    const theta = i * W;
     const color = PLAYER_COLORS_ORDER[i];
     colorStarts[color] = i * 13;
     wedgeAngle[color] = theta;
     safeSquares.add(i * 13);
-    safeSquares.add((i * 13 + 8) % (13 * N));
+    safeSquares.add((i * 13 + 8) % TOTAL);
 
-    // ---- 13 track cells in a U-shape (left rail down, connector across, right rail up)
-    // cells 0..4: LEFT rail going inward (from outer-left at the polygon side to inner-left)
-    for (let j = 0; j < 5; j++) {
-      const ly = RAIL_LY_OUTER + j * RAIL_STEP;
-      trackCells[i * 13 + j] = sideLocal(theta, -RAIL_LX, ly, apothem);
-    }
-    // cells 5..7: CONNECTOR row across the bottom of the U (left → right)
-    for (let j = 0; j < 3; j++) {
-      const lx = -RAIL_LX + (j + 1) * CONNECTOR_STEP;
-      trackCells[i * 13 + 5 + j] = sideLocal(theta, lx, CONNECTOR_LY, apothem);
-    }
-    // cells 8..12: RIGHT rail going outward (inner-right back to outer-right)
-    for (let j = 0; j < 5; j++) {
-      const ly = RAIL_LY_INNER - j * RAIL_STEP;
-      trackCells[i * 13 + 8 + j] = sideLocal(theta, +RAIL_LX, ly, apothem);
-    }
-
-    // ---- Stretch (6 cells) on the wedge axis, INSIDE the U
+    // Home run: 6 colored cells along the home-entry ray (θ_i + 6Δ), marching
+    // inward from just inside the track to the rim of the central home.
+    const entryAngle = theta + 6 * DELTA;
     const stretch: Pt[] = [];
     for (let j = 0; j < 6; j++) {
-      // stretchPos 0 = entry (closer to track), stretchPos 5 = last cell before home
-      const ly = STRETCH_LY_OUTER + j * STRETCH_STEP;
-      stretch.push(sideLocal(theta, 0, ly, apothem));
+      stretch.push(polar(entryAngle, R_STRETCH_OUT - j * STRETCH_STEP));
     }
     stretchCells[color] = stretch;
 
-    // ---- Yard polygon (trapezoid hugging the polygon side)
-    const vL = outerVertices[(i - 1 + N) % N]; // left vertex of this wedge
-    const vR = outerVertices[i];               // right vertex
-    const yardInnerLeft = sideLocal(theta, -RAIL_LX - 0.5, YARD_LY_INNER, apothem);
-    const yardInnerRight = sideLocal(theta, +RAIL_LX + 0.5, YARD_LY_INNER, apothem);
-    yardPolygons[color] = [vL, yardInnerLeft, yardInnerRight, vR]
+    // Yard: the colored outer sector of this wedge (between the two polygon
+    // vertices and an inner arc), filled with 4 token slots in a 2×2.
+    const vL = outerVertices[(i - 1 + N) % N];
+    const vR = outerVertices[i];
+    const innerL = polar(theta - W * 0.42, R_YARD_IN);
+    const innerR = polar(theta + W * 0.42, R_YARD_IN);
+    yardPolygons[color] = [vL, vR, innerR, innerL]
       .map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`)
       .join(" ");
 
-    // ---- 4 token slots inside the yard (2 rows x 2 cols)
-    const slotLyA = YARD_LY_OUTER + (YARD_LY_INNER - YARD_LY_OUTER) * 0.34;
-    const slotLyB = YARD_LY_OUTER + (YARD_LY_INNER - YARD_LY_OUTER) * 0.72;
-    // Slot x positions, clamped to stay inside the wedge boundaries.
-    const slotLx = Math.min(RAIL_LX * 0.55, sideHalf * 0.42);
+    const yardR0 = R_YARD_IN + (R_OUTER - R_YARD_IN) * 0.30;
+    const yardR1 = R_YARD_IN + (R_OUTER - R_YARD_IN) * 0.62;
+    const yardDA = Math.min(W * 0.2, 14);
     yardSlots[color] = [
-      sideLocal(theta, -slotLx, slotLyA, apothem),
-      sideLocal(theta, +slotLx, slotLyA, apothem),
-      sideLocal(theta, -slotLx, slotLyB, apothem),
-      sideLocal(theta, +slotLx, slotLyB, apothem),
+      polar(theta - yardDA, yardR0),
+      polar(theta + yardDA, yardR0),
+      polar(theta - yardDA, yardR1),
+      polar(theta + yardDA, yardR1),
     ];
+    nameAnchor[color] = polar(theta, (yardR0 + yardR1) / 2);
 
-    // Label anchor: along the wedge axis between the two token rows
-    nameAnchor[color] = sideLocal(theta, 0, (slotLyA + slotLyB) / 2, apothem);
-
-    // ---- Center home triangle for this color
-    const innerR = STRETCH_LY_INNER + STRETCH_STEP * 0.7;
-    const capCenter = sideLocal(theta, 0, innerR, apothem);
-    const capLeft = sideLocal(theta, -1.6, innerR - 1.6, apothem);
-    const capRight = sideLocal(theta, +1.6, innerR - 1.6, apothem);
-    centerTriangles[color] = [
-      { x: CENTER, y: CENTER },
-      capLeft,
-      capCenter,
-      capRight,
-    ]
+    // Central home wedge for this color (slice of the inner N-gon).
+    const hL = polar(theta - W / 2, R_HOME);
+    const hR = polar(theta + W / 2, R_HOME);
+    centerTriangles[color] = [{ x: CENTER, y: CENTER }, hL, hR]
       .map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`)
       .join(" ");
   }
