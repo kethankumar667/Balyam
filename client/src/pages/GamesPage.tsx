@@ -10,6 +10,7 @@ import {
 } from "../components/bhalyam/data";
 import { GameTile } from "./BhalyamHome";
 import { ArrowRightIcon } from "../components/bhalyam/icons";
+import { getSocket } from "../lib/socket";
 
 /**
  * Dedicated catalog of every game in the BHALYAM lineup.
@@ -34,6 +35,13 @@ export default function GamesPage() {
     return () => {
       document.title = prev;
     };
+  }, []);
+
+  // Warm the socket connection the moment the catalog loads, so creating or
+  // quick-playing a room doesn't pay the cold WebSocket handshake at click
+  // time (the emit was previously buffered until the first connect).
+  useEffect(() => {
+    getSocket();
   }, []);
 
   const playable = BHALYAM_GAMES.filter((g) => !g.maintenance);
