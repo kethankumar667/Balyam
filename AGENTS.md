@@ -450,7 +450,7 @@ These are **mandatory** for any AI working in this repo.
    - `cd client && npm run typecheck` and (for UI changes) `npm run build`.
    - For UI changes, **open the dev server in a browser and exercise the feature.** Type-checks alone are not proof a UI works.
    - For a new game (or new board layout), verify at **375 px, 768 px, 1024 px, and 1440 px** — both the mobile and desktop shells must look and behave correctly. See Section 6.
-6. **Summarise.** End with a short summary of what changed and the commit-message block. Mention follow-ups if the change is partial (e.g. server is in place but client board is not yet wired — Memory Match's current state).
+6. **Summarise & close out.** End with a short summary of what changed, then follow the **Task Completion Protocol** (Section 19) — a task-specific verification checklist and a one-line commit message. Mention follow-ups if the change is partial (e.g. server is in place but client board is not yet wired).
 
 ---
 
@@ -470,6 +470,43 @@ Inferred from the actual code:
 - **Hand Cricket rosters** live in `shared/hc-rosters.ts` — both sides import the same data.
 - **README claims that the server "boots on Render with Node 24"**; the Word Building dictionary integration uses `createRequire` to import JSON in Node ESM specifically to dodge that environment's import-attribute requirement. Don't switch back to a bare `import "...json"` without retesting that target.
 - **Memory Match is half-finished.** Server engine, types, registry, and RoomManager wiring all exist. The client board (`MemoryMatchBoard.tsx`) and lobby integration are **not yet built**. If you're asked to "finish" Memory Match, you are building the client.
+
+---
+
+## 19. Task Completion Protocol (mandatory)
+
+Whenever a task is **completed**, close it out with these two things, in this
+order, at the end of the final message:
+
+### 1. Verification checklist (specific to *that* task)
+
+A short checklist of the checks you **actually ran** to prove the change works,
+each with its result. Tailor it to the task — list only what's relevant, and
+NEVER claim a check you didn't run.
+
+- `[x] cd client && npm run typecheck` → clean *(any client change)*
+- `[x] cd client && npm run build` → clean, N modules *(UI changes)*
+- `[x] cd server && npm run typecheck && npm test` → N/N passing *(server changes)*
+- `[x]` Browser-exercised the feature on the dev server *(UI changes)* — and for a
+  new game or layout, at **375 / 768 / 1024 / 1440 px**, both shells, **0 console errors**
+- `[x]` The exact behaviour the task changed, stated as what was *observed*
+  (e.g. "drew a card → Draw disabled, turn still live, no lock")
+
+Mark anything not verified as `[ ]` and say why. Type-checks alone are NOT proof a
+UI works (see Section 17 step 5).
+
+### 2. One-line commit message
+
+A single Conventional-Commits line the user can copy verbatim:
+`type(scope): summary` — imperative mood, ≤ ~72 chars, no body, one concern per
+commit (Section 16 rule 11). If the work spanned clearly separate concerns, give
+one line per concern.
+
+Examples:
+- `feat(uno): real card faces — solid colours, oval, corner indices`
+- `fix(uno): gate double-submit on server echo, not a sync no-op`
+- `feat(tutorials): shared GameTutorial + per-game how-to decks`
+- `feat(chat): add InlineRoomRail to Word Building & Dots & Boxes`
 
 ---
 

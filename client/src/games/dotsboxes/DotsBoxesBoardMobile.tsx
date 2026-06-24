@@ -9,6 +9,9 @@ import {
   ReportCardOverlay,
 } from "./dotsboxes-shared";
 import { useDotsBoxesBoard, type DotsBoxesBoardProps } from "./useDotsBoxesBoard";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { DOTSBOXES_TUTORIAL } from "../tutorials";
 
 /**
  * Touch-first single-column layout. The scoreboard wraps across the top,
@@ -35,6 +38,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
     setReportDismissed,
     drawLine,
   } = useDotsBoxesBoard(props);
+  const tut = useTutorialGate(DOTSBOXES_TUTORIAL.key);
 
   return (
     <div
@@ -44,6 +48,11 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
         fontFamily: "'Patrick Hand', 'Caveat', 'Georgia', serif",
       }}
     >
+      {/* Tutorial launcher — top-right above the scoreboard */}
+      <div className="flex justify-end mb-2">
+        <TutorialButton onClick={() => tut.setOpen(true)} />
+      </div>
+
       {/* Top: scoreboard + turn indicator (wraps on narrow phones) */}
       <ScoreBar state={state} penOf={penOf} nameOf={nameOf} selfId={props.selfId} />
 
@@ -82,6 +91,19 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
           {error}
         </div>
       )}
+
+      {/* In-board chat / players / voice / reactions rail — parity with the
+          other games (was missing; see REFACTOR_AUDIT.md B8/C1). */}
+      <div className="mt-3">
+        <InlineRoomRail
+          code={props.roomCode ?? ""}
+          game="dotsboxes"
+          phase={props.roomPhase ?? state.phase}
+          players={props.players}
+          selfId={props.selfId}
+          messages={props.messages ?? []}
+        />
+      </div>
 
       {/* Bonus move banner — brief, non-blocking */}
       <AnimatePresence>
@@ -125,6 +147,15 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
 
       {/* 10-second turn-out warning */}
       <TurnTimeWarning deadline={state.turnDeadline} active={myTurn && state.phase === "playing"} />
+
+      {tut.open && (
+        <GameTutorial
+          slides={DOTSBOXES_TUTORIAL.slides}
+          storageKey={DOTSBOXES_TUTORIAL.key}
+          accent={DOTSBOXES_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

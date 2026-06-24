@@ -139,7 +139,30 @@ export function useLudoBoard({
     prevDice.current = state.diceValue;
   }, [state.diceValue]);
 
-  const [showInstructions, setShowInstructions] = useState(false);
+  const LUDO_TUTORIAL_KEY = "ludo.tutorial.completed.v1";
+  const [showInstructions, setShowInstructionsRaw] = useState<boolean>(() => {
+    // Auto-open "How to play" once per browser — parity with every other game.
+    try {
+      return localStorage.getItem(LUDO_TUTORIAL_KEY) !== "1";
+    } catch {
+      return false;
+    }
+  });
+  const setShowInstructions = useCallback(
+    (v: boolean) => {
+      // Closing it (auto-opened or via the Rules button) marks it seen so it
+      // won't auto-open again — same contract as the shared GameTutorial.
+      if (!v) {
+        try {
+          localStorage.setItem(LUDO_TUTORIAL_KEY, "1");
+        } catch {
+          /* localStorage unavailable — silent */
+        }
+      }
+      setShowInstructionsRaw(v);
+    },
+    [],
+  );
   const [showSettings, setShowSettings] = useState(false);
   const [settings] = useLudoSettings();
   const [soundOn, setSoundOn] = useState(isSoundEnabled());

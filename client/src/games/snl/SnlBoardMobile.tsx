@@ -8,6 +8,8 @@ import {
   EventFeed,
   SnlFinishedBanner,
 } from "./snl-board-shared";
+import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { SNL_TUTORIAL } from "../tutorials";
 
 /**
  * Snakes & Ladders — mobile shell.
@@ -18,10 +20,16 @@ import {
 export default function SnlBoardMobile(props: SnlBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
   const m = useSnlBoard(props);
+  const tut = useTutorialGate(SNL_TUTORIAL.key);
 
   return (
     <div className="rounded-2xl border border-slate-700/80 bg-[radial-gradient(circle_at_50%_0%,rgba(250,204,21,0.16),transparent_34%),linear-gradient(135deg,#0f172a,#020617)] p-3 sm:p-4 space-y-3 shadow-2xl">
-      <SnlHeader state={state} turnPlayer={m.turnPlayer} turnColor={m.turnColor} />
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <SnlHeader state={state} turnPlayer={m.turnPlayer} turnColor={m.turnColor} />
+        </div>
+        <TutorialButton onClick={() => tut.setOpen(true)} />
+      </div>
 
       <InlineRoomRail
         code={roomCode}
@@ -63,6 +71,15 @@ export default function SnlBoardMobile(props: SnlBoardProps) {
 
       {state.phase === "finished" && (
         <SnlFinishedBanner players={players} winnerId={state.winnerId} />
+      )}
+
+      {tut.open && (
+        <GameTutorial
+          slides={SNL_TUTORIAL.slides}
+          storageKey={SNL_TUTORIAL.key}
+          accent={SNL_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
       )}
     </div>
   );

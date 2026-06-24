@@ -1,4 +1,5 @@
 import WordBuildingTutorialModal from "./TutorialModal";
+import InlineRoomRail from "../../components/InlineRoomRail";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useWordBuildingBoard, type WordBuildingBoardProps } from "./useWordBuildingBoard";
 import {
@@ -26,7 +27,7 @@ function desktopCellPx(size: number): number {
  * down. A real desktop arrangement rather than the stacked phone layout.
  */
 export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) {
-  const { state, selfId, roomCode } = props;
+  const { state, selfId, roomCode, players, messages, roomPhase } = props;
   const m = useWordBuildingBoard(props);
   const cellPx = desktopCellPx(m.size);
 
@@ -56,6 +57,14 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
             nameOf={m.nameOf}
             selfId={selfId}
             className="grid grid-cols-1 gap-3"
+          />
+          <InlineRoomRail
+            code={roomCode ?? ""}
+            game="wordbuilding"
+            phase={roomPhase ?? state.phase}
+            players={players}
+            selfId={selfId}
+            messages={messages ?? []}
           />
         </aside>
       </div>

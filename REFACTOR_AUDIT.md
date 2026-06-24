@@ -281,4 +281,69 @@ bug surfaced during their verification**. All four are browser-verified.
   resolution), dvh wrapper height at a short landscape, both scorecards, and the
   ghost-player fix — **zero console/page errors** throughout.
 
+### 9.6 Authentic UNO card art
+- **What:** UNO is a card game but rendered each card as a colour **emoji on a
+  pastel rectangle** (🔴🟢🔵 + a tiny rank) — a placeholder look next to Rummy's
+  real playing cards. Redesigned the faces to the genuine article: a solid vivid
+  body, the signature white **diagonal oval**, a large centre symbol, mirrored
+  corner indices, and a patterned **card back** for the draw pile.
+- **How:** one scalable SVG primitive (`UnoCardFace`, viewBox 100×150) + a
+  `UnoCardBack`, both in the shared `uno-shared.tsx` that *both* shells consume —
+  so the look is defined exactly once and scales crisply for the hand (md/lg),
+  the discard top, the draw pile, and the selected-card preview. Symbols are pure
+  SVG (no emoji/unicode font dependence): digits & `+2`/`+4` as bold italic text,
+  **Skip** = ring + diagonal bar, **Reverse** = two opposed arrows, **Wild** =
+  four-colour pinwheel. The Wild colour picker now uses the vivid body colours.
+  No game logic, hook, layout, or server-contract change — purely the card art.
+- **Files:** `client/src/games/uno/uno-shared.tsx` (`UnoCardFace`, `UnoCardBack`,
+  glyph helpers; rewired `Card`, `DeckPanel`, `HandInfoPanel`, `WildColorPicker`).
+  `getCardEmoji` is no longer used by the board (still exported from `deck.ts`).
+- **Verified:** live UNO vs the dev server at 1280 (desktop shell) and 375
+  (mobile shell) — every card type rendered on screen (numbers, Skip, Reverse,
+  Draw Two, Wild, Wild Draw Four, card back), valid/invalid dimming intact,
+  play/draw/wild-pick flow exercised, **zero console/page errors**. `client tsc`
+  + `vite build` clean (598 modules).
+
+---
+
+## 10. Chat parity, UNO guard & game tutorials (follow-up session)
+
+### 10.1 Chat parity — Word Building & Dots & Boxes (audit B8/B9/C1)
+- **What:** these were the only two boards with no in-game chat — they accepted
+  `messages`/`roomCode`/`roomPhase` and silently dropped them. Wired the shared
+  `InlineRoomRail` (chat/players/voice/reactions) into both shells of each, the
+  same component the other six boards already use.
+- **Files:** `WordBuildingBoardMobile/Desktop.tsx`, `DotsBoxesBoardMobile/Desktop.tsx`
+  (+ corrected the now-stale "deliberately no chat rail" comments in both hooks).
+  Mobile: rail stacked at the bottom of the column; desktop: in the persistent
+  side rail.
+- **Verified:** live — both boards now expose Chat/Players/Room, **0 errors**.
+
+### 10.2 UNO double-submit guard fixed (audit B1)
+- **Was:** `drawCard()`/`passTurn()` set `isSubmitting(true)` then **synchronously**
+  `false` (a no-op guard), and `playCard()` left it stuck `true` with no reset.
+- **Now:** each emit (play/draw/pass) sets `isSubmitting`; a single effect clears
+  it only when the server **echoes a fresh `state`** (the authoritative turn
+  transition). A double-tap between the emit and that echo is dropped because the
+  second tap still sees `isSubmitting === true`; the echo always releases it, so
+  the UI can never lock. `useUnoBoard.ts` only.
+- **Verified:** live — on-turn Draw enabled → after drawing, Draw correctly
+  disables (`drewThisTurn`) with the turn still live and no frozen state, **0 errors**.
+
+### 10.3 "How to play" tutorial for every game
+- **What:** every game now teaches new players. Built one shared
+  `components/GameTutorial.tsx` (slide-deck modal + `useTutorialGate` localStorage
+  gate that auto-opens once per browser + a `TutorialButton` "?" pill), fed by
+  per-game decks in `games/tutorials.tsx`. Wired into both shells of UNO, Hand
+  Cricket, Snakes & Ladders, RPS, Dots & Boxes and Memory Match. Rummy and Word
+  Building keep their richer bespoke decks; **Ludo** keeps its detailed
+  `InstructionsModal` — only gained first-time auto-open (parity) via the same
+  localStorage-gate contract in `useLudoBoard.ts`.
+- **Pattern:** auto-open on first play + a header "?" button to re-open; closing
+  marks the `<game>.tutorial.completed.v1` key seen so it won't nag again.
+- **Verified:** live, all eight — tutorial/instructions auto-open with the correct
+  per-game accent + slides, the "?" re-opens them, and Ludo marks-seen on close.
+  `client tsc` clean · `vite build` clean (600 modules). **0 console errors** across
+  the sweep.
+
 *This section is updated as work lands.*

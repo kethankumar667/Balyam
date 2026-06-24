@@ -9,6 +9,9 @@ import {
   ReportCardOverlay,
 } from "./dotsboxes-shared";
 import { useDotsBoxesBoard, type DotsBoxesBoardProps } from "./useDotsBoxesBoard";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { DOTSBOXES_TUTORIAL } from "../tutorials";
 
 /**
  * Dedicated desktop layout — not the mobile column stretched. The play
@@ -37,6 +40,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
     setReportDismissed,
     drawLine,
   } = useDotsBoxesBoard(props, 1.4);
+  const tut = useTutorialGate(DOTSBOXES_TUTORIAL.key);
 
   return (
     <div
@@ -81,7 +85,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
         }}
       >
         <div
-          className="text-center mb-3 select-none"
+          className="relative text-center mb-3 select-none"
           style={{
             fontFamily: "'Caveat', 'Patrick Hand', cursive",
             fontSize: 26,
@@ -91,6 +95,9 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
           }}
         >
           Scoreboard
+          <div className="absolute right-0 top-0">
+            <TutorialButton onClick={() => tut.setOpen(true)} />
+          </div>
         </div>
 
         {/* Stacked score chips + the live turn timer (vertical mode). */}
@@ -134,6 +141,19 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
             {error}
           </div>
         )}
+
+        {/* In-board chat / players / voice / reactions rail — parity with the
+            other games (was missing; see REFACTOR_AUDIT.md B8/C1). */}
+        <div className="mt-4">
+          <InlineRoomRail
+            code={props.roomCode ?? ""}
+            game="dotsboxes"
+            phase={props.roomPhase ?? state.phase}
+            players={props.players}
+            selfId={props.selfId}
+            messages={props.messages ?? []}
+          />
+        </div>
       </aside>
 
       {/* Bonus move banner — brief, non-blocking */}
@@ -178,6 +198,15 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
 
       {/* 10-second turn-out warning */}
       <TurnTimeWarning deadline={state.turnDeadline} active={myTurn && state.phase === "playing"} />
+
+      {tut.open && (
+        <GameTutorial
+          slides={DOTSBOXES_TUTORIAL.slides}
+          storageKey={DOTSBOXES_TUTORIAL.key}
+          accent={DOTSBOXES_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

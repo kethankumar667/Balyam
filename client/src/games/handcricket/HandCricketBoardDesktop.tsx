@@ -1,5 +1,7 @@
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { MatchHeader, HcPhaseBody, HcCelebrationLayer, type HandCricketBoardProps } from "./hc-shared";
+import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { HANDCRICKET_TUTORIAL } from "../tutorials";
 
 /**
  * Hand Cricket — desktop shell.
@@ -21,6 +23,7 @@ export default function HandCricketBoardDesktop({
 }: HandCricketBoardProps) {
   // selfId is guaranteed non-null by the picker's guard.
   const sid = selfId as string;
+  const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
   return (
     <div
       className="rounded-2xl p-4 lg:p-5 space-y-4"
@@ -30,7 +33,12 @@ export default function HandCricketBoardDesktop({
         boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
       }}
     >
-      <MatchHeader state={state} players={players} selfId={sid} />
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <MatchHeader state={state} players={players} selfId={sid} />
+        </div>
+        <TutorialButton onClick={() => tut.setOpen(true)} />
+      </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
         <div className="min-w-0 space-y-4">
@@ -50,6 +58,15 @@ export default function HandCricketBoardDesktop({
       </div>
 
       <HcCelebrationLayer state={state} players={players} selfId={sid} />
+
+      {tut.open && (
+        <GameTutorial
+          slides={HANDCRICKET_TUTORIAL.slides}
+          storageKey={HANDCRICKET_TUTORIAL.key}
+          accent={HANDCRICKET_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

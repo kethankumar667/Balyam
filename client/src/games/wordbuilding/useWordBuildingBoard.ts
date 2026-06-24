@@ -13,9 +13,9 @@ import { inkFor, type Ink } from "./inks";
 
 /**
  * Shared props for every Word Building shell (picker, mobile, desktop).
- * `messages`/`roomPhase` are accepted to match Room.tsx but intentionally
- * unused — the Word Building board has no in-board chat rail today (see
- * REFACTOR_AUDIT.md B9/C1). Preserved as-is; not wired.
+ * The shells render an InlineRoomRail off `messages`/`roomCode`/`roomPhase`;
+ * the hook itself doesn't read them, but they ride the bag so the picker can
+ * forward the full prop set unchanged.
  */
 export interface WordBuildingBoardProps {
   state: WordBuildingPublicState;

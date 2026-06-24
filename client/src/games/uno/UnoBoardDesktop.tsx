@@ -9,6 +9,8 @@ import {
   ActionBar,
   GameOverPanel,
 } from "./uno-shared";
+import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { UNO_TUTORIAL } from "../tutorials";
 
 /**
  * Desktop UNO board — a genuine multi-region layout, not the mobile column
@@ -20,6 +22,7 @@ import {
 export default function UnoBoardDesktop(props: UnoBoardProps) {
   const m = useUnoBoard(props);
   const { state, players, selfId, messages, roomCode, roomPhase } = m;
+  const tut = useTutorialGate(UNO_TUTORIAL.key);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
@@ -32,9 +35,12 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
               {m.myTurn ? "🎮 Your Turn" : `${m.currentPlayer}'s turn`}
               {state.direction === -1 ? " ↩️ Counter-clockwise" : " ➡️ Clockwise"}
             </div>
-            {state.turnDeadline && (
-              <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn} />
-            )}
+            <div className="flex items-center gap-2">
+              {state.turnDeadline && (
+                <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn} />
+              )}
+              <TutorialButton onClick={() => tut.setOpen(true)} />
+            </div>
           </div>
         </div>
 
@@ -102,6 +108,15 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
           messages={messages}
         />
       </aside>
+
+      {tut.open && (
+        <GameTutorial
+          slides={UNO_TUTORIAL.slides}
+          storageKey={UNO_TUTORIAL.key}
+          accent={UNO_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

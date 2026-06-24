@@ -10,10 +10,10 @@ import { penFor, type Pen } from "./dotsboxes-shared";
 
 /**
  * Shared prop contract for the Dots & Boxes board picker and both layout
- * shells. `messages` / `roomPhase` are accepted but deliberately ignored —
- * this board renders no chat rail (it never has) and reads phase straight
- * off `state.phase`. Kept on the interface only so the picker can splat the
- * full prop bag through unchanged.
+ * shells. The shells now render an InlineRoomRail (chat/players/voice/
+ * reactions) straight off `messages`/`roomCode`/`roomPhase`; the hook itself
+ * doesn't consume them, but they ride the same bag so the picker can splat the
+ * full prop set through unchanged.
  */
 export interface DotsBoxesBoardProps {
   state: DotsBoxesPublicState;
