@@ -9,6 +9,8 @@ import {
   ActionBar,
   GameOverPanel,
 } from "./uno-shared";
+import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { UNO_TUTORIAL } from "../tutorials";
 
 /**
  * Touch-first UNO board: a single scrolling column with the deck, scores, and
@@ -19,6 +21,7 @@ import {
 export default function UnoBoardMobile(props: UnoBoardProps) {
   const m = useUnoBoard(props);
   const { state, players, selfId, messages, roomCode, roomPhase } = m;
+  const tut = useTutorialGate(UNO_TUTORIAL.key);
 
   return (
     <div className="space-y-4">
@@ -29,9 +32,12 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
             {m.myTurn ? "🎮 Your Turn" : `${m.currentPlayer}'s turn`}
             {state.direction === -1 ? " ↩️ Counter-clockwise" : " ➡️ Clockwise"}
           </div>
-          {state.turnDeadline && (
-            <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn} />
-          )}
+          <div className="flex items-center gap-2">
+            {state.turnDeadline && (
+              <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn} />
+            )}
+            <TutorialButton onClick={() => tut.setOpen(true)} />
+          </div>
         </div>
       </div>
 
@@ -92,6 +98,15 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
         selfId={selfId}
         messages={messages}
       />
+
+      {tut.open && (
+        <GameTutorial
+          slides={UNO_TUTORIAL.slides}
+          storageKey={UNO_TUTORIAL.key}
+          accent={UNO_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { Player, UnoCard, UnoColor } from "@shared/types";
-import { getCardEmoji, getCardLabel, CARD_DISPLAY } from "./helpers/deck";
+import { getCardLabel, CARD_DISPLAY } from "./helpers/deck";
 
 /**
  * Dumb, presentation-only UNO building blocks shared by both shells. They hold
@@ -9,31 +9,206 @@ import { getCardEmoji, getCardLabel, CARD_DISPLAY } from "./helpers/deck";
  */
 
 /** Colours offered by the Wild picker, hoisted so it is not re-allocated. */
-const WILD_COLORS: ReadonlyArray<{ color: UnoColor; swatch: string }> = [
-  { color: "R", swatch: "bg-red-400" },
-  { color: "G", swatch: "bg-green-400" },
-  { color: "B", swatch: "bg-blue-400" },
-  { color: "Y", swatch: "bg-yellow-400" },
-];
+const WILD_COLORS: ReadonlyArray<UnoColor> = ["R", "G", "B", "Y"];
 
 /**
- * Single source of truth for a card's face tint. Wild/colourless cards fall
- * through to the rainbow gradient. Previously this ternary was copy-pasted into
- * the hand fan render.
+ * ----------------------------------------------------------------------------
+ * Authentic UNO card art
+ * ----------------------------------------------------------------------------
+ * UNO is a card game and should read like one — the old faces were a colour
+ * emoji on a pastel rectangle, which looked like a placeholder next to Rummy's
+ * real playing cards. These render the genuine article: a solid vivid body, the
+ * signature white diagonal oval, a large centre symbol, mirrored corner
+ * indices, and a patterned back for the draw pile. Everything is one scalable
+ * SVG (viewBox 100×150) so the hand (md/lg), the discard top, the draw pile and
+ * the selected-card preview all stay crisp at any size. Both shells consume
+ * these through `Card` / `DeckPanel`, so the look is defined exactly once.
  */
-function cardFaceClass(color: UnoColor | null): string {
-  switch (color) {
-    case "R":
-      return "bg-red-200";
-    case "G":
-      return "bg-green-200";
-    case "B":
-      return "bg-blue-200";
-    case "Y":
-      return "bg-yellow-200";
-    default:
-      return "bg-gradient-to-br from-purple-200 to-pink-200";
-  }
+
+/** Solid card-body colours. */
+const UNO_BODY: Record<UnoColor, string> = {
+  R: "#D22B27",
+  G: "#3AA03A",
+  B: "#1C6DD0",
+  Y: "#E8B100",
+};
+/** Same hues nudged darker for legibility as ink on the white oval. */
+const UNO_INK: Record<UnoColor, string> = {
+  R: "#C9241F",
+  G: "#2E8B2E",
+  B: "#1C5FC0",
+  Y: "#C98A00",
+};
+/** Wild cards: near-black body with a four-colour centre. */
+const WILD_BODY = "#17181d";
+
+const UNO_FONT = "'Nunito','Poppins',sans-serif";
+
+/** Bold italic text glyph (digits, "+2", "+4", the "UNO" wordmark). */
+function unoText(
+  x: number,
+  y: number,
+  size: number,
+  fill: string,
+  txt: string,
+  edge?: string
+) {
+  return (
+    <text
+      x={x}
+      y={y}
+      fontSize={size}
+      fontWeight={900}
+      fontStyle="italic"
+      fill={fill}
+      stroke={edge}
+      strokeWidth={edge ? size * 0.06 : 0}
+      paintOrder="stroke"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontFamily={UNO_FONT}
+    >
+      {txt}
+    </text>
+  );
+}
+
+/** Skip: a ring with a diagonal bar through it. */
+function SkipMark({ cx, cy, r, color, sw }: { cx: number; cy: number; r: number; color: string; sw: number }) {
+  return (
+    <g stroke={color} strokeWidth={sw} fill="none" strokeLinecap="round">
+      <circle cx={cx} cy={cy} r={r} />
+      <line x1={cx - r * 0.72} y1={cy - r * 0.72} x2={cx + r * 0.72} y2={cy + r * 0.72} />
+    </g>
+  );
+}
+
+/** One arrow polygon (shaft + head) pointing left/right from (cx,yc). */
+function arrowPts(cx: number, yc: number, half: number, th: number, dir: 1 | -1): string {
+  const tip = cx + dir * half;
+  const base = tip - dir * (th * 1.7);
+  const tail = cx - dir * half;
+  return [
+    [tip, yc],
+    [base, yc - th * 1.5],
+    [base, yc - th * 0.55],
+    [tail, yc - th * 0.55],
+    [tail, yc + th * 0.55],
+    [base, yc + th * 0.55],
+    [base, yc + th * 1.5],
+  ]
+    .map((p) => p.join(","))
+    .join(" ");
+}
+
+/** Reverse: two opposed arrows, tilted to echo the oval. */
+function ReverseMark({ cx, cy, r, color }: { cx: number; cy: number; r: number; color: string }) {
+  const half = r * 0.82;
+  const th = r * 0.24;
+  const off = r * 0.5;
+  return (
+    <g fill={color} transform={`rotate(-20 ${cx} ${cy})`}>
+      <polygon points={arrowPts(cx, cy - off, half, th, 1)} />
+      <polygon points={arrowPts(cx, cy + off, half, th, -1)} />
+    </g>
+  );
+}
+
+/** Four-colour pinwheel used by Wild faces. */
+function Pinwheel({ cx, cy, r }: { cx: number; cy: number; r: number }) {
+  const k = 0.7071;
+  const wedges: ReadonlyArray<{ c: string; d: string }> = [
+    { c: UNO_BODY.R, d: `M0 0 L${-k} ${-k} A1 1 0 0 1 ${k} ${-k} Z` },
+    { c: UNO_BODY.B, d: `M0 0 L${k} ${-k} A1 1 0 0 1 ${k} ${k} Z` },
+    { c: UNO_BODY.Y, d: `M0 0 L${k} ${k} A1 1 0 0 1 ${-k} ${k} Z` },
+    { c: UNO_BODY.G, d: `M0 0 L${-k} ${k} A1 1 0 0 1 ${-k} ${-k} Z` },
+  ];
+  return (
+    <g transform={`translate(${cx} ${cy}) scale(${r}) rotate(-20)`}>
+      {wedges.map((w, i) => (
+        <path key={i} d={w.d} fill={w.c} />
+      ))}
+      <circle cx={0} cy={0} r={1} fill="none" stroke="#fff" strokeWidth={2.4 / r} />
+    </g>
+  );
+}
+
+function isNumber(rank: string): boolean {
+  return /^[0-9]$/.test(rank);
+}
+
+/** Large centre symbol drawn in the card's ink colour on the white oval. */
+function CentreGlyph({ card, ink }: { card: UnoCard; ink: string }) {
+  const r = card.rank;
+  if (isNumber(r)) return unoText(50, 75, 64, ink, r);
+  if (r === "+2") return unoText(50, 75, 46, ink, "+2");
+  if (r === "Skip") return <SkipMark cx={50} cy={75} r={24} color={ink} sw={7} />;
+  if (r === "Reverse") return <ReverseMark cx={50} cy={75} r={26} color={ink} />;
+  if (r === "Wild") return <Pinwheel cx={50} cy={75} r={28} />;
+  if (r === "Wild+4")
+    return (
+      <>
+        <Pinwheel cx={50} cy={75} r={26} />
+        {unoText(50, 112, 22, "#fff", "+4", WILD_BODY)}
+      </>
+    );
+  return null;
+}
+
+/** Small mirrored index symbol (white with a dark edge). */
+function CornerGlyph({ card, x, y }: { card: UnoCard; x: number; y: number }) {
+  const r = card.rank;
+  const edge = "rgba(0,0,0,0.32)";
+  if (isNumber(r)) return unoText(x, y, 22, "#fff", r, edge);
+  if (r === "+2") return unoText(x, y, 16, "#fff", "+2", edge);
+  if (r === "Wild+4") return unoText(x, y, 15, "#fff", "+4", edge);
+  if (r === "Skip") return <SkipMark cx={x} cy={y} r={8} color="#fff" sw={2.4} />;
+  if (r === "Reverse") return <ReverseMark cx={x} cy={y} r={8} color="#fff" />;
+  if (r === "Wild") return <Pinwheel cx={x} cy={y} r={8} />;
+  return null;
+}
+
+/** A complete UNO card face. */
+export function UnoCardFace({ card, className }: { card: UnoCard; className?: string }) {
+  const isWild = card.rank === "Wild" || card.rank === "Wild+4";
+  const body = isWild || !card.color ? WILD_BODY : UNO_BODY[card.color];
+  const ink = card.color ? UNO_INK[card.color] : "#222";
+  return (
+    <svg
+      viewBox="0 0 100 150"
+      className={className}
+      role="img"
+      aria-label={getCardLabel(card)}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <rect x={0} y={0} width={100} height={150} rx={14} fill="#fff" />
+      <rect x={5} y={5} width={90} height={140} rx={10} fill={body} />
+      <ellipse cx={50} cy={75} rx={46} ry={29} fill="#fff" transform="rotate(-20 50 75)" />
+      <CentreGlyph card={card} ink={ink} />
+      <CornerGlyph card={card} x={20} y={26} />
+      <g transform="rotate(180 50 75)">
+        <CornerGlyph card={card} x={20} y={26} />
+      </g>
+    </svg>
+  );
+}
+
+/** The face-down draw-pile back: black body, red oval, slanted "UNO". */
+export function UnoCardBack({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 100 150"
+      className={className}
+      role="img"
+      aria-label="UNO card back"
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <rect x={0} y={0} width={100} height={150} rx={14} fill="#fff" />
+      <rect x={5} y={5} width={90} height={140} rx={10} fill={WILD_BODY} />
+      <ellipse cx={50} cy={75} rx={46} ry={29} fill="#D22B27" transform="rotate(-20 50 75)" />
+      <g transform="rotate(-20 50 75)">{unoText(50, 75, 30, "#F5C400", "UNO", "#fff")}</g>
+    </svg>
+  );
 }
 
 export interface CardProps {
@@ -49,9 +224,9 @@ export interface CardProps {
 }
 
 /**
- * A single hand card button. Encapsulates the colour-class logic so neither
- * shell re-implements it. Mobile uses the original `md` dimensions verbatim;
- * desktop opts into `lg` for a larger hand area plus a hover lift.
+ * A single hand card button. The face is the shared `UnoCardFace`; this wrapper
+ * only adds the selection ring, the valid-move hover lift, and the dimmed
+ * disabled state. Mobile uses `md` dimensions; desktop opts into `lg`.
  */
 export function Card({
   card,
@@ -67,28 +242,21 @@ export function Card({
     <button
       onClick={onClick}
       disabled={isDisabled}
+      aria-label={getCardLabel(card)}
       className={`
-        flex flex-col items-center justify-center
-        ${lg ? "w-20 h-28 text-3xl" : "w-16 h-24 text-2xl"} rounded-lg font-bold
+        relative ${lg ? "w-20 h-28" : "w-16 h-24"} rounded-lg
         transition-all duration-200
         ${
           isSelected
-            ? "ring-4 ring-[#E6A11E] shadow-lg"
+            ? "ring-4 ring-[#E6A11E] shadow-xl -translate-y-1 z-10"
             : isValid && interactive
-              ? `hover:shadow-md active:scale-95${lg ? " hover:-translate-y-1" : ""}`
+              ? `hover:shadow-lg ${lg ? "hover:-translate-y-1" : "hover:-translate-y-0.5"}`
               : ""
         }
-        ${isDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
-        ${cardFaceClass(card.color)}
-        border-2 border-gray-400
+        ${isDisabled ? "opacity-45 cursor-not-allowed" : "cursor-pointer"}
       `}
     >
-      <div>{getCardEmoji(card)}</div>
-      <div
-        className={`${lg ? "text-xs" : "text-[10px]"} font-semibold text-gray-700 mt-1`}
-      >
-        {card.rank === "0" ? "0" : card.rank.slice(0, 2)}
-      </div>
+      <UnoCardFace card={card} className="w-full h-full drop-shadow-sm" />
     </button>
   );
 }
@@ -99,34 +267,33 @@ export interface DeckPanelProps {
   deckCount: number;
 }
 
-/** Draw-pile count + discard top card. */
+/** Draw pile (face-down back + count) beside the discard top card. */
 export function DeckPanel({ topCard, currentColor, deckCount }: DeckPanelProps) {
   const wildTop = topCard.rank === "Wild" || topCard.rank === "Wild+4";
   return (
     <div className="bg-[#FFF9F0] border border-[#E8D8BE] rounded-lg p-4 space-y-3">
-      <h3 className="text-xs font-bold uppercase text-[#6E5E4D]">Deck Info</h3>
-
-      {/* Draw pile */}
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-[#8B7355]">Draw Pile</div>
-        <div className="bg-[#6D4323] text-[#F7E8C4] rounded px-2 py-1 text-sm font-bold">
-          {deckCount}
-        </div>
-      </div>
-
-      {/* Top card / discard pile */}
-      <div className="text-xs font-bold text-[#6E5E4D] mb-2">Top Card</div>
-      <div className="h-32 flex items-center justify-center bg-gradient-to-br from-[#F7E8C4] to-[#E4B128] border-2 border-[#E4B128] rounded-lg">
-        <div className="text-center">
-          <div className="text-5xl mb-1">{getCardEmoji(topCard)}</div>
-          <div className="text-xs font-semibold text-[#6E5E4D]">
-            {getCardLabel(topCard)}
+      <h3 className="text-xs font-bold uppercase text-[#6E5E4D]">Table</h3>
+      <div className="flex items-start justify-around gap-3">
+        {/* Draw pile */}
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="relative w-20 h-28">
+            <UnoCardBack className="w-full h-full drop-shadow-md" />
+            <span className="absolute -bottom-1.5 -right-1.5 min-w-[1.5rem] h-6 px-1.5 flex items-center justify-center rounded-full bg-[#6D4323] text-[#F7E8C4] text-xs font-bold ring-2 ring-[#FFF9F0]">
+              {deckCount}
+            </span>
           </div>
-          {currentColor && wildTop && (
-            <div className="text-xs text-[#C67C3C] mt-1">
-              {CARD_DISPLAY[currentColor]?.label}
-            </div>
-          )}
+          <div className="text-[10px] uppercase tracking-wide font-semibold text-[#8B7355]">
+            Draw
+          </div>
+        </div>
+        {/* Discard top card */}
+        <div className="flex flex-col items-center gap-1.5">
+          <UnoCardFace card={topCard} className="w-24 h-32 drop-shadow-md" />
+          <div className="text-[10px] uppercase tracking-wide font-semibold text-[#8B7355] text-center">
+            {wildTop && currentColor
+              ? `Wild → ${CARD_DISPLAY[currentColor]?.label}`
+              : getCardLabel(topCard)}
+          </div>
         </div>
       </div>
     </div>
@@ -194,9 +361,11 @@ export function HandInfoPanel({ handCount, selectedCard }: HandInfoPanelProps) {
       {selectedCard && (
         <div className="bg-[#E8D7C3] border border-[#6D4323] rounded p-2">
           <div className="text-xs font-semibold text-[#6E5E4D] mb-1">Selected</div>
-          <div className="text-center">
-            <div className="text-3xl mb-1">{getCardEmoji(selectedCard)}</div>
-            <div className="text-xs text-[#6E5E4D]">{getCardLabel(selectedCard)}</div>
+          <div className="flex items-center gap-2">
+            <UnoCardFace card={selectedCard} className="w-12 h-[4.5rem] shrink-0" />
+            <div className="text-xs font-semibold text-[#6E5E4D]">
+              {getCardLabel(selectedCard)}
+            </div>
           </div>
         </div>
       )}
@@ -215,20 +384,19 @@ function WildColorPicker({ selectedWildColor, onPick }: WildColorPickerProps) {
     <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded p-3 space-y-2">
       <div className="text-xs font-bold text-[#6E5E4D]">Choose Color</div>
       <div className="flex gap-2">
-        {WILD_COLORS.map(({ color, swatch }) => (
+        {WILD_COLORS.map((color) => (
           <button
             key={color}
             onClick={() => onPick(color)}
+            style={{ background: UNO_BODY[color] }}
             className={`
-              flex-1 py-2 rounded font-semibold text-sm
+              flex-1 py-2 rounded font-semibold text-sm text-white
               transition-all
               ${
                 selectedWildColor === color
-                  ? "ring-2 ring-offset-2 ring-[#E6A11E]"
-                  : "hover:opacity-80"
+                  ? "ring-2 ring-offset-2 ring-[#E6A11E] scale-105"
+                  : "hover:brightness-110"
               }
-              ${swatch}
-              text-white
             `}
           >
             {CARD_DISPLAY[color]?.label}

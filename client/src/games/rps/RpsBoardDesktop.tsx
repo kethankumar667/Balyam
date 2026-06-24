@@ -11,6 +11,8 @@ import {
 } from "./rps-shared";
 import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
+import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { RPS_TUTORIAL } from "../tutorials";
 
 /**
  * Desktop RPS shell — a dedicated wide-screen arrangement, not the mobile
@@ -22,6 +24,7 @@ import type { RpsBoardProps } from "./useRpsBoard";
  */
 export default function RpsBoardDesktop(props: RpsBoardProps) {
   const m = useRpsBoard(props);
+  const tut = useTutorialGate(RPS_TUTORIAL.key);
 
   const selfCard = (
     <PlayerScoreCard
@@ -52,7 +55,12 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
 
   return (
     <RpsFrame className="p-5 lg:p-7 space-y-5">
-      <Header round={m.state.round} target={m.target} match={m.state.matchNumber} />
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <Header round={m.state.round} target={m.target} match={m.state.matchNumber} />
+        </div>
+        <TutorialButton onClick={() => tut.setOpen(true)} />
+      </div>
 
       {/* Score cards flank a spacious arena across the full width. */}
       <div className="grid grid-cols-[minmax(200px,0.8fr)_minmax(0,2.4fr)_minmax(200px,0.8fr)] gap-4 items-center">
@@ -106,6 +114,15 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         rains={m.rains}
         confettiUntil={m.confettiUntil}
       />
+
+      {tut.open && (
+        <GameTutorial
+          slides={RPS_TUTORIAL.slides}
+          storageKey={RPS_TUTORIAL.key}
+          accent={RPS_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
+      )}
     </RpsFrame>
   );
 }

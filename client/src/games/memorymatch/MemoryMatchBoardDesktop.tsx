@@ -2,6 +2,8 @@ import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { CardGrid } from "./memorymatch-shared";
 import { useMemoryMatchBoard, type MemoryMatchBoardProps } from "./useMemoryMatchBoard";
+import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { MEMORYMATCH_TUTORIAL } from "../tutorials";
 
 const DESKTOP_CARD = 88; // px — larger fixed cards, mouse-targeted
 const DESKTOP_GAP = 8; // px between cards
@@ -28,6 +30,7 @@ export default function MemoryMatchBoardDesktop(props: MemoryMatchBoardProps) {
     panelDismissed,
     setPanelDismissed,
   } = useMemoryMatchBoard(props);
+  const tut = useTutorialGate(MEMORYMATCH_TUTORIAL.key);
 
   return (
     <div className="space-y-4">
@@ -56,16 +59,19 @@ export default function MemoryMatchBoardDesktop(props: MemoryMatchBoardProps) {
         <div className="flex-1 min-w-[260px] max-w-sm space-y-4">
           {/* Turn + progress */}
           <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded-lg p-4 space-y-3">
-            <div className="text-sm font-semibold text-[#6E5E4D]">
-              {state.playerOrder.length} Players
-              {state.phase !== "finished" && (
-                <>
-                  {" · "}
-                  <span className={myTurn ? "font-bold text-[#E6A11E]" : ""}>
-                    {myTurn ? "Your turn" : `${nameOf(state.turnPlayerId)}'s turn`}
-                  </span>
-                </>
-              )}
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-sm font-semibold text-[#6E5E4D]">
+                {state.playerOrder.length} Players
+                {state.phase !== "finished" && (
+                  <>
+                    {" · "}
+                    <span className={myTurn ? "font-bold text-[#E6A11E]" : ""}>
+                      {myTurn ? "Your turn" : `${nameOf(state.turnPlayerId)}'s turn`}
+                    </span>
+                  </>
+                )}
+              </div>
+              <TutorialButton onClick={() => tut.setOpen(true)} />
             </div>
             <div className="text-xs text-[#8B7355]">
               {state.matchedPairs} / {state.totalPairs} pairs matched
@@ -130,6 +136,15 @@ export default function MemoryMatchBoardDesktop(props: MemoryMatchBoardProps) {
         selfId={selfId}
         messages={messages}
       />
+
+      {tut.open && (
+        <GameTutorial
+          slides={MEMORYMATCH_TUTORIAL.slides}
+          storageKey={MEMORYMATCH_TUTORIAL.key}
+          accent={MEMORYMATCH_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

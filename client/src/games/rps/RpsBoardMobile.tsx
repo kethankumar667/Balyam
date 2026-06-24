@@ -11,6 +11,8 @@ import {
 } from "./rps-shared";
 import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
+import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { RPS_TUTORIAL } from "../tutorials";
 
 /**
  * Mobile / tablet RPS shell — single column, touch-first, board fits the
@@ -21,10 +23,16 @@ import type { RpsBoardProps } from "./useRpsBoard";
  */
 export default function RpsBoardMobile(props: RpsBoardProps) {
   const m = useRpsBoard(props);
+  const tut = useTutorialGate(RPS_TUTORIAL.key);
 
   return (
     <RpsFrame className="p-3 sm:p-5 space-y-4">
-      <Header round={m.state.round} target={m.target} match={m.state.matchNumber} />
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <Header round={m.state.round} target={m.target} match={m.state.matchNumber} />
+        </div>
+        <TutorialButton onClick={() => tut.setOpen(true)} />
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <PlayerScoreCard
@@ -90,6 +98,15 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
         rains={m.rains}
         confettiUntil={m.confettiUntil}
       />
+
+      {tut.open && (
+        <GameTutorial
+          slides={RPS_TUTORIAL.slides}
+          storageKey={RPS_TUTORIAL.key}
+          accent={RPS_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
+      )}
     </RpsFrame>
   );
 }

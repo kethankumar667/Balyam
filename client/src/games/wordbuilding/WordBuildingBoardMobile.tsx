@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import WordBuildingTutorialModal from "./TutorialModal";
+import InlineRoomRail from "../../components/InlineRoomRail";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useWordBuildingBoard, type WordBuildingBoardProps } from "./useWordBuildingBoard";
 import {
@@ -41,7 +42,7 @@ function useFitCellPx(size: number): number {
  * the viewport, on-screen letter pad) → vocabulary/standings footer below.
  */
 export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
-  const { state, selfId, roomCode } = props;
+  const { state, selfId, roomCode, players, messages, roomPhase } = props;
   const m = useWordBuildingBoard(props);
   const cellPx = useFitCellPx(m.size);
 
@@ -68,6 +69,19 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
         selfId={selfId}
         className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 px-1"
       />
+
+      {/* In-board chat / players / voice / reactions rail — parity with the
+          other games (was missing; see REFACTOR_AUDIT.md B9/C1). */}
+      <div className="mt-4 px-1">
+        <InlineRoomRail
+          code={roomCode ?? ""}
+          game="wordbuilding"
+          phase={roomPhase ?? state.phase}
+          players={players}
+          selfId={selfId}
+          messages={messages ?? []}
+        />
+      </div>
 
       {state.phase === "finished" && !m.reportDismissed && (
         <ReportCardOverlay

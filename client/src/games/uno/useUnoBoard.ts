@@ -121,6 +121,16 @@ export function useUnoBoard({
     }
   }, [state.phase, resetUIState]);
 
+  // The real double-submit guard. Each emit (play/draw/pass) sets `isSubmitting`;
+  // we clear it only once the server echoes a fresh `state` — the authoritative
+  // turn transition. A frantic double-tap between the emit and that echo is
+  // dropped because the second tap still sees `isSubmitting === true`. Replaces
+  // the old synchronous true→false in drawCard/passTurn (which never blocked
+  // anything) and also releases the play() lock that previously stuck on.
+  useEffect(() => {
+    setIsSubmitting(false);
+  }, [state]);
+
   // Player name lookup — Map built once per roster instead of a find per call.
   const nameById = useMemo(
     () => new Map(players.map((p) => [p.id, p.name])),
@@ -190,7 +200,6 @@ export function useUnoBoard({
       playerId: selfId ?? undefined,
     });
     setDrewThisTurn(true);
-    setIsSubmitting(false);
   }
 
   function passTurn() {
@@ -201,7 +210,6 @@ export function useUnoBoard({
       playerId: selfId ?? undefined,
     });
     setDrewThisTurn(false);
-    setIsSubmitting(false);
   }
 
   const currentPlayer = nameOf(state.turnPlayerId);
