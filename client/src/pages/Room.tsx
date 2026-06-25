@@ -330,16 +330,20 @@ export default function Room() {
 
   /**
    * Every game auto-enters fullscreen at the moment the room transitions
-   * from "lobby" to "playing". Orientation is left as "any" across every
-   * game so the device's auto-rotate setting decides — users wanted the
-   * board to follow their phone rotation instead of being locked to a
-   * single orientation.
+   * from "lobby" to "playing".
    *
-   * Game-specific responsive layouts (Rummy's rotate-prompt for portrait,
-   * Ludo/SnL working at every aspect ratio) handle the actual UX. The
-   * fullscreen call still fires so the address/nav bars disappear.
+   * Rummy is a landscape-only table, so we force the device into landscape
+   * via the Screen Orientation lock — this rotates the phone regardless of
+   * the user's auto-rotate setting (the lock works once fullscreen is active
+   * on Android Chrome). The rotate-device prompt in the Rummy board stays as
+   * the fallback for browsers that reject the lock (notably iOS Safari).
+   *
+   * Every other game stays "any" so the board simply follows the phone's own
+   * rotation; their responsive layouts (Ludo/SnL at any aspect ratio) handle
+   * the UX. The fullscreen call still fires so the address/nav bars disappear.
    */
-  function orientationForGame(_game: GameKind | undefined): "landscape" | "portrait" | "any" {
+  function orientationForGame(game: GameKind | undefined): "landscape" | "portrait" | "any" {
+    if (game === "rummy") return "landscape";
     return "any";
   }
 

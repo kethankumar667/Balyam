@@ -392,7 +392,7 @@ export default function RummyBoardMobile({
     if (isFullscreenActive()) {
       await exitFullscreen();
     } else {
-      await enterFullscreen();
+      await enterFullscreen("landscape");
     }
   }
 
