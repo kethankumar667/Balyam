@@ -395,11 +395,7 @@ export default function Room() {
   }
 
   if (!roomState) {
-    return (
-      <div className="bhalyam-font bhalyam-paper min-h-screen flex items-center justify-center text-[#6C5A48] text-lg">
-        Connecting to room...
-      </div>
-    );
+    return <ConnectingScreen code={code} />;
   }
 
   const canStart =
@@ -761,6 +757,54 @@ export default function Room() {
  * shows the toast, and bounces home — so we don't have to handle that
  * case here.
  */
+/**
+ * Branded loading state shown while the socket opens and the first room
+ * snapshot is in flight. Replaces the old static "Connecting to room..." text
+ * with an animated gold spinner + bouncing dots so the wait reads as "working"
+ * rather than "stuck". Pure Tailwind animations (spin / ping / bounce) — no
+ * extra keyframes or libraries.
+ */
+function ConnectingScreen({ code }: { code?: string }) {
+  return (
+    <div className="bhalyam-font bhalyam-paper min-h-screen flex flex-col items-center justify-center gap-7 p-6 text-center">
+      <div className="relative h-20 w-20" aria-hidden>
+        <span className="absolute inset-0 rounded-full border-4 border-[#E4B128]/25" />
+        <span className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#E4B128] animate-spin" />
+        <span className="absolute inset-[34%] rounded-full bg-[#E4B128]/70 animate-ping" />
+        <span className="absolute inset-[38%] rounded-full bg-[#E4B128]" />
+      </div>
+      <div>
+        <div
+          className="flex items-center justify-center gap-1 text-lg font-bold text-[#6C5A48]"
+          role="status"
+          aria-live="polite"
+        >
+          <span>Connecting to room</span>
+          <span className="ml-1 inline-flex gap-1">
+            <ConnectingDot delay="0ms" />
+            <ConnectingDot delay="160ms" />
+            <ConnectingDot delay="320ms" />
+          </span>
+        </div>
+        {code && (
+          <div className="mt-3 font-mono text-xl font-black tracking-[0.35em] text-[#2B3550]">
+            {code.toUpperCase()}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConnectingDot({ delay }: { delay: string }) {
+  return (
+    <span
+      className="h-1.5 w-1.5 rounded-full bg-[#6C5A48] animate-bounce"
+      style={{ animationDelay: delay }}
+    />
+  );
+}
+
 function NameEntryForRoom({
   code,
   onSubmit,

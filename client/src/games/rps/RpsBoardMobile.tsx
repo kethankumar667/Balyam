@@ -1,4 +1,5 @@
 import InlineRoomRail from "../../components/InlineRoomRail";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import {
   ChoiceRow,
   EndPanel,
@@ -61,13 +62,15 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
 
       <RevealArena
         revealKey={m.revealKey}
-        myChoice={m.myChoice}
-        oppChoice={m.oppChoice}
-        bothChose={m.bothChose}
+        myChoice={m.arenaMyChoice}
+        oppChoice={m.arenaOppChoice}
+        bothChose={m.arenaBothChose}
         meName={m.me?.name ?? "You"}
         oppName={m.opponent?.name ?? "Opponent"}
         bannerOutcome={m.bannerOutcome}
       />
+
+      <TurnTimeWarning deadline={m.roundDeadline} active={m.iNeedToChoose} />
 
       {m.state.isOver ? (
         <EndPanel

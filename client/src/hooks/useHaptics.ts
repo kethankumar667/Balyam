@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { HapticsManager } from "../services/HapticsManager";
+import { notifyDesktopTurn } from "../lib/turnNotifier";
 
 /**
  * Stable accessor — components read live `enabled` state, and the
@@ -28,10 +29,11 @@ export function useHaptics() {
 }
 
 /**
- * Fires the "your turn" haptic exactly once per transition into your
- * turn. Pass the currently-active player id and the player's own id;
- * the hook handles dedup, re-renders, refresh, and "still your turn
- * after a re-render" cases without re-buzzing the device.
+ * Fires the "your turn" cue exactly once per transition into your turn:
+ * a haptic buzz for mobile, plus a flashing browser-tab title for desktop
+ * players who've tabbed away (see lib/turnNotifier). Pass the currently-active
+ * player id and the player's own id; the hook handles dedup, re-renders,
+ * refresh, and "still your turn after a re-render" without re-firing.
  *
  *   useTurnHaptics(state.turnPlayerId, selfId);
  *
@@ -57,7 +59,8 @@ export function useTurnHaptics(
       return;
     }
     if (mine && !wasMineRef.current) {
-      manager.turn();
+      manager.turn(); // mobile: vibration motor
+      notifyDesktopTurn(); // desktop: flash the tab title when backgrounded
     }
     wasMineRef.current = mine;
   }, [manager, activePlayerId, selfId]);

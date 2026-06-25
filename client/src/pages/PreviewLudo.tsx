@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { LudoColor, Player } from "@shared/types";
-import { buildPolygonGeometry } from "../games/ludo/polygon-board";
-import PolygonBoardSVG from "../games/ludo/PolygonBoardSVG";
+import { buildLudoBoard, BoardView } from "../games/ludo/boards";
 import { Token } from "../games/ludo/Token";
 import { PLAYER_COLORS_ORDER } from "../games/ludo/board-layout";
 
@@ -116,7 +115,7 @@ function BoardPreview({ N, small = false }: { N: number; small?: boolean }) {
     players.map((p) => [p.id, false])
   );
 
-  const geo = useMemo(() => buildPolygonGeometry(N, activeColors), [N, activeColors]);
+  const board = useMemo(() => buildLudoBoard(N), [N]);
 
   const sizeClass = small
     ? "w-full max-w-[360px] aspect-square"
@@ -124,21 +123,20 @@ function BoardPreview({ N, small = false }: { N: number; small?: boolean }) {
 
   return (
     <div className={`relative ${sizeClass} mx-auto`}>
-      <PolygonBoardSVG
-        geo={geo}
+      <BoardView
+        board={board}
         players={players}
         playerOrder={playerOrder}
         playerColors={playerColors}
         activeColors={activeColors}
         hasCaptured={hasCaptured}
-        unlockBurst={{}}
       />
       <div className="absolute inset-0">
         {activeColors.flatMap((color) =>
           [0, 1, 2, 3].map((tokenIdx) => {
-            const slot = geo.yardSlots[color]?.[tokenIdx];
+            const slot = board.yardSlots[color]?.[tokenIdx];
             if (!slot) return null;
-            const baseSize = geo.cellSize * 1.7;
+            const baseSize = board.cellSize * 1.7;
             return (
               <Token
                 key={`${color}-${tokenIdx}`}

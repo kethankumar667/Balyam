@@ -1,4 +1,5 @@
 import InlineRoomRail from "../../components/InlineRoomRail";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import {
   ChoiceRow,
   EndPanel,
@@ -67,9 +68,9 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         {selfCard}
         <RevealArena
           revealKey={m.revealKey}
-          myChoice={m.myChoice}
-          oppChoice={m.oppChoice}
-          bothChose={m.bothChose}
+          myChoice={m.arenaMyChoice}
+          oppChoice={m.arenaOppChoice}
+          bothChose={m.arenaBothChose}
           meName={m.me?.name ?? "You"}
           oppName={m.opponent?.name ?? "Opponent"}
           bannerOutcome={m.bannerOutcome}
@@ -77,6 +78,8 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         />
         {oppCard}
       </div>
+
+      <TurnTimeWarning deadline={m.roundDeadline} active={m.iNeedToChoose} />
 
       {/* Action area beside a persistent history + room rail. */}
       <div className="grid grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)] gap-5 items-start">

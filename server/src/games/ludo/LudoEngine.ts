@@ -75,17 +75,16 @@ export class LudoEngine implements GameEngine {
     const order = players.map((p) => p.id);
     const colorOf = new Map<string, LudoColor>();
     const tokens = new Map<string, LudoToken[]>();
-    // First pass: assign colors players explicitly chose (first-come stays).
-    // Only the four cardinal colors render on the standard 4-yard board, so
-    // we ignore any historical "purple/cyan/orange/brown" picks and let
-    // those players fall through to auto-assignment below.
-    const STANDARD: ReadonlySet<LudoColor> = new Set([
-      "red", "green", "yellow", "blue",
-    ]);
+    // Each game uses exactly the first N canonical colors — one per wedge of
+    // the cross (≤4) / polygon (5–8) board. Honor a player's chosen color
+    // only when it's inside that pool; everyone else auto-assigns to the next
+    // free pool color so the board always has geometry for every player.
+    const pool = PLAYER_COLORS_ORDER.slice(0, players.length);
+    const poolSet = new Set<LudoColor>(pool);
     const takenColors = new Set<LudoColor>();
     for (const p of players) {
       const chosen = p.chosenColor as LudoColor | undefined;
-      if (chosen && STANDARD.has(chosen) && !takenColors.has(chosen)) {
+      if (chosen && poolSet.has(chosen) && !takenColors.has(chosen)) {
         colorOf.set(p.id, chosen);
         takenColors.add(chosen);
       }
@@ -93,7 +92,7 @@ export class LudoEngine implements GameEngine {
     // Second pass: assign remaining players the next free color in canonical order.
     for (const p of players) {
       if (colorOf.has(p.id)) continue;
-      const next = PLAYER_COLORS_ORDER.find((c) => !takenColors.has(c));
+      const next = pool.find((c) => !takenColors.has(c));
       if (!next) throw new Error("Ran out of Ludo colors");
       colorOf.set(p.id, next);
       takenColors.add(next);

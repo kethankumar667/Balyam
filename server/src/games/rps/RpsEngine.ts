@@ -3,6 +3,7 @@ import type { Player, RpsChoice, RpsRoundResult, RpsState } from "@shared/types.
 
 const VALID_CHOICES: RpsChoice[] = ["rock", "paper", "scissors"];
 const TARGET = 10;
+const ROUND_TIMER_SECONDS = 30;
 
 function decideRound(choices: Record<string, RpsChoice>): string | null {
   const entries = Object.entries(choices);
@@ -60,6 +61,7 @@ export class RpsEngine implements GameEngine {
       bestStreak,
       lastRevealTs: null,
       ties: 0,
+      roundDeadline: null,
     };
   }
 
@@ -139,11 +141,13 @@ export class RpsEngine implements GameEngine {
       if ((this.state.scores[id] ?? 0) >= this.state.target) {
         this.state.winnerId = id;
         this.state.isOver = true;
+        this.state.roundDeadline = null;
         return;
       }
     }
 
     this.state.round += 1;
+    this.state.roundDeadline = null;
     this.currentChoices = {};
     for (const id of this.playerIds) {
       this.state.pendingChoices[id] = true;
@@ -174,12 +178,50 @@ export class RpsEngine implements GameEngine {
     const opponent = this.playerIds.find((id) => id !== playerId);
     this.state.isOver = true;
     this.state.winnerId = opponent ?? null;
+    this.state.roundDeadline = null;
+  }
+
+  /* ── Round timer (30 s per round; both players throw simultaneously) ── */
+
+  getRoundTimerSeconds(): number {
+    return ROUND_TIMER_SECONDS;
+  }
+
+  /**
+   * Arm the current round's pick deadline if it isn't already set and return
+   * the ms remaining until it fires. Idempotent within a round, so a mid-round
+   * re-schedule (one player threw, the other hasn't) keeps the original
+   * deadline instead of granting a fresh 30 s.
+   */
+  armRoundDeadline(totalMs: number): number {
+    if (this.state.roundDeadline == null) {
+      this.state.roundDeadline = Date.now() + totalMs;
+    }
+    return Math.max(0, this.state.roundDeadline - Date.now());
+  }
+
+  clearRoundDeadline(): void {
+    this.state.roundDeadline = null;
   }
 
   /* ── Bot support ── */
 
   pendingActors(): string[] {
     if (this.state.isOver) return [];
+    // A bot deliberately waits for its opponent to commit before throwing, so
+    // it's only "ready" to auto-move once every OTHER player has chosen. This
+    // gives a human a genuine pick-then-suspense beat instead of the bot
+    // locking in before the round even begins (which made reveals instant).
+    return this.playerIds.filter(
+      (id) =>
+        this.state.pendingChoices[id] &&
+        this.playerIds.every((other) => other === id || !this.state.pendingChoices[other]),
+    );
+  }
+
+  /** Raw list of players who still owe a throw this round (ungated — used by
+   *  the round timeout to auto-pick for anyone who ran out the clock). */
+  choosersRemaining(): string[] {
     return this.playerIds.filter((id) => this.state.pendingChoices[id]);
   }
 
