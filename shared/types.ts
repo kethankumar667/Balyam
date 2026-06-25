@@ -666,6 +666,10 @@ export interface RpsState {
   lastRevealTs: number | null;
   /** Total ties this match — bragging rights only. */
   ties: number;
+  /** Wall-clock ms when the current round's pick window closes (30 s per
+   *  round). Null between matches / when finished. Drives the shared
+   *  TurnTimeWarning countdown for whoever still has to throw. */
+  roundDeadline: number | null;
 }
 
 // ---- Word Building (English Workbook Edition) ----

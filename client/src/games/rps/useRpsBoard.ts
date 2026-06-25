@@ -50,6 +50,15 @@ export interface RpsBoardModel {
   myChoice: RpsChoice | null;
   oppChoice: RpsChoice | null;
   bothChose: boolean;
+  // Arena display picks — the live picks normally, but the just-resolved
+  // throws (read from history) during the reveal window so what each player
+  // threw is actually visible before the next round clears it.
+  arenaMyChoice: RpsChoice | null;
+  arenaOppChoice: RpsChoice | null;
+  arenaBothChose: boolean;
+  // Round timer — 30 s shared per round; `iNeedToChoose` gates the warning.
+  roundDeadline: number | null;
+  iNeedToChoose: boolean;
   // Score / streak derivations.
   target: number;
   myScore: number;
@@ -187,6 +196,42 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
     }
   }, [state.winnerId, myId]);
 
+  // Reveal display: the engine clears currentChoices the instant a round
+  // resolves (to start the next round), so to actually SHOW what was thrown we
+  // read the just-resolved throws from history during the banner window. Out
+  // of that window we fall back to the live in-progress picks.
+  const inReveal = bannerOutcome != null && !!lastResult;
+  const arenaMyChoice = inReveal ? lastResult!.choices[myId] ?? myChoice : myChoice;
+  const arenaOppChoice =
+    inReveal && opponent ? lastResult!.choices[opponent.id] ?? oppChoice : oppChoice;
+  const arenaBothChose = inReveal ? true : bothChose;
+
+  const roundDeadline = state.roundDeadline ?? null;
+  const iNeedToChoose = !myChoice && !state.isOver;
+
+  // Keyboard shortcuts: R / P / S throw while it's still your move. Ignored
+  // once you've locked in, when the match is over, or while typing in chat.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (state.isOver || myChoice) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || el?.isContentEditable) return;
+      const c: RpsChoice | null =
+        e.key === "r" || e.key === "R" ? "rock"
+        : e.key === "p" || e.key === "P" ? "paper"
+        : e.key === "s" || e.key === "S" ? "scissors"
+        : null;
+      if (!c) return;
+      e.preventDefault();
+      pick(c);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myChoice, state.isOver]);
+
   return {
     state,
     players,
@@ -200,6 +245,11 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
     myChoice,
     oppChoice,
     bothChose,
+    arenaMyChoice,
+    arenaOppChoice,
+    arenaBothChose,
+    roundDeadline,
+    iNeedToChoose,
     target,
     myScore,
     oppScore,

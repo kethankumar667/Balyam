@@ -38,6 +38,7 @@ import { HandCricketEngine } from "../games/handcricket/HandCricketEngine.js";
 import { WordBuildingEngine } from "../games/wordbuilding/WordBuildingEngine.js";
 import { DotsBoxesEngine } from "../games/dotsboxes/DotsBoxesEngine.js";
 import { MemoryMatchEngine } from "../games/memorymatch/MemoryMatchEngine.js";
+import { RpsEngine } from "../games/rps/RpsEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 /** How long the host's rematch request stays open before auto-cancelling. */
@@ -55,7 +56,7 @@ const REMATCH_COUNTDOWN_MS = 3_000;
  */
 const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   handcricket: ["Sachin", "Dhoni", "Kohli", "Yuvraj", "Sehwag", "Dravid"],
-  ludo: ["Pintu", "Chintu", "Bunty", "Babli"],
+  ludo: ["Pintu", "Chintu", "Bunty", "Babli", "Raju", "Munna", "Golu", "Tinku"],
   snl: ["Sneha", "Lalita", "Babu", "Chiklu", "Anu", "Gopi", "Ravi", "Suma", "Kiran", "Mounika"],
   rummy: ["Anand", "Babji", "Chinna", "Damodar", "Eswari", "Lakshmi"],
   rps: ["Rocky", "Bhola", "Chotu", "Dolly"],
@@ -752,6 +753,22 @@ export class RoomManager {
   private scheduleTurnTimer(room: Room): void {
     this.clearTurnTimer(room);
     if (room.phase !== "playing") return;
+    if (room.engine instanceof RpsEngine) {
+      const engine = room.engine;
+      // RPS is simultaneous: one 30 s deadline per round shared by both
+      // players. armRoundDeadline keeps the same deadline if a round is
+      // already mid-flight (one player threw), so a slow opponent isn't gifted
+      // a fresh window. On timeout we auto-throw for whoever didn't pick.
+      if (engine.isOver()) {
+        engine.clearRoundDeadline();
+        this.broadcastGameState(room);
+        return;
+      }
+      const ms = engine.armRoundDeadline(engine.getRoundTimerSeconds() * 1000);
+      this.broadcastGameState(room);
+      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      return;
+    }
     if (room.engine instanceof LudoEngine) {
       const opts = room.ludoOptions;
       const ms = Math.max(5, opts.turnTimerSeconds) * 1000;
@@ -833,6 +850,19 @@ export class RoomManager {
 
   private onTurnTimeout(room: Room): void {
     if (room.phase !== "playing") return;
+    if (room.engine instanceof RpsEngine) {
+      const engine = room.engine;
+      if (engine.isOver()) return;
+      // Auto-throw a random move for every player who let the 30 s lapse
+      // (could be the human, the bot, or both). The last throw resolves the
+      // round; afterAutoMove broadcasts and arms the next round's timer.
+      for (const pid of engine.choosersRemaining()) {
+        if (engine.isOver()) break;
+        engine.applyAutoMove(pid);
+      }
+      this.afterAutoMove(room, engine.isOver());
+      return;
+    }
     if (room.engine instanceof LudoEngine) {
       const engine = room.engine;
       const state = engine.getPublicState();

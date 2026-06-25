@@ -38,6 +38,13 @@ export const TAGLINE: Record<RpsChoice, string> = {
   paper: "Wrap rock",
   scissors: "Slice paper",
 };
+
+/** Keyboard shortcut per throw (desktop): R / P / S. */
+const KEY_HINT: Record<RpsChoice, string> = {
+  rock: "R",
+  paper: "P",
+  scissors: "S",
+};
 export const CHOICES: RpsChoice[] = ["rock", "paper", "scissors"];
 
 /* ───────────────────────────── Frame + overlays ───────────────────────────── */
@@ -408,7 +415,7 @@ function OutcomeBanner({ outcome }: { outcome: RoundOutcome }) {
       ? { bg: "linear-gradient(135deg, #ef4444, #b91c1c)", label: "Round lost", icon: <XIcon className="w-7 h-7" /> }
       : { bg: "linear-gradient(135deg, #f59e0b, #b45309)", label: "Tie — replay", icon: <EqualIcon className="w-7 h-7" /> };
   return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div className="absolute inset-x-0 top-2 sm:top-3 z-30 flex items-start justify-center pointer-events-none">
       <div
         className="rps-banner rounded-2xl px-6 py-3.5 sm:px-8 sm:py-4
                    inline-flex items-center gap-3 font-display font-black
@@ -550,6 +557,16 @@ function ChoiceCard({
           background: `radial-gradient(ellipse at 50% 30%, ${accent}33 0%, transparent 60%)`,
         }}
       />
+
+      {/* Keyboard shortcut keycap — desktop discovery, harmless label on touch. */}
+      <span
+        aria-hidden
+        className="absolute left-2.5 top-2.5 inline-flex h-5 min-w-[1.25rem] items-center
+                   justify-center rounded-md border border-[var(--rim-soft)] bg-surface-0
+                   px-1 text-[10px] font-black text-ink-lo shadow-sm"
+      >
+        {KEY_HINT[choice]}
+      </span>
 
       {selected && (
         <span

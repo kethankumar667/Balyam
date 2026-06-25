@@ -642,20 +642,8 @@ export function useLudoBoard({
         if (slot) return { left: slot.x, top: slot.y };
       }
       if (token.state === "home") {
-        // Spread 4 home tokens around the center wedge for this color
-        const pts = polygonGeo.centerTriangles[color]
-          ?.split(" ")
-          .map((s) => {
-            const [x, y] = s.split(",").map(Number);
-            return { x, y };
-          });
-        if (pts && pts.length >= 3) {
-          const cx = (pts[0].x + pts[1].x + pts[2].x) / 3;
-          const cy = (pts[0].y + pts[1].y + pts[2].y) / 3;
-          const offX = (tokenIdx % 2 === 0 ? -1 : 1) * 1.4;
-          const offY = (tokenIdx < 2 ? -1 : 1) * 1.4;
-          return { left: cx + offX, top: cy + offY };
-        }
+        const slot = polygonGeo.homeSlots[color]?.[tokenIdx];
+        if (slot) return { left: slot.x, top: slot.y };
       }
       if (token.state === "stretch") {
         const cell = polygonGeo.stretchCells[color]?.[token.stretchPos ?? 0];
