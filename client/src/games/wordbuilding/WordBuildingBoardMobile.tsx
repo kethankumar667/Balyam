@@ -42,13 +42,13 @@ function useFitCellPx(size: number): number {
  * the viewport, on-screen letter pad) → vocabulary/standings footer below.
  */
 export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
-  const { state, selfId, roomCode, players, messages, roomPhase } = props;
+  const { state, selfId, roomCode, players, messages, roomPhase, onLeave } = props;
   const m = useWordBuildingBoard(props);
   const cellPx = useFitCellPx(m.size);
 
   return (
     <div
-      className="relative w-full mx-auto"
+      className="relative w-full mx-auto px-2 pt-3 pb-2"
       style={{ maxWidth: 980, fontFamily: "'Caveat', 'Patrick Hand', 'Georgia', serif" }}
     >
       <StudentBar
@@ -58,6 +58,7 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
         selfId={selfId}
         remainingSec={m.remainingSec}
         onOpenTutorial={() => m.setTutorialOpen(true)}
+        onLeave={onLeave}
       />
 
       <WorkbookBoard m={m} state={state} cellPx={cellPx} roomCode={roomCode} />

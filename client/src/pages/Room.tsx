@@ -29,6 +29,8 @@ import type { GameKind, RpsState, RummyPlayerState, LudoState, SnlState, HcState
 import WordBuildingBoard from "../games/wordbuilding/WordBuildingBoard";
 import DotsBoxesBoard from "../games/dotsboxes/DotsBoxesBoard";
 import MemoryMatchBoard from "../games/memorymatch/MemoryMatchBoard";
+import StarBoard from "../games/stargame/StarBoard";
+import type { StarPlayerView } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -45,6 +47,7 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   wordbuilding: 4,
   dotsboxes: 4,
   memorymatch: 4,
+  stargame: 8,
 };
 
 /**
@@ -411,17 +414,17 @@ export default function Room() {
   return (
     <div
       className={
-        roomState.game === "rummy" && roomState.phase !== "lobby"
-          ? "bhalyam-font bhalyam-paper h-dvh-safe overflow-hidden p-0 sm:p-4"
+        (roomState.game === "rummy" || roomState.game === "dotsboxes") && roomState.phase !== "lobby"
+          ? "bhalyam-font bhalyam-paper h-dvh-safe overflow-hidden p-0"
           : "bhalyam-font bhalyam-paper min-h-screen p-2 sm:p-4"
       }
     >
       <div
         className={
-          roomState.game === "rummy" && roomState.phase !== "lobby"
-            ? // No space-y here — the RummyBoard fills the whole inner area
+          (roomState.game === "rummy" || roomState.game === "dotsboxes") && roomState.phase !== "lobby"
+            ? // No space-y here — the board fills the whole inner area
               // and any lastError banner overlays it via fixed positioning.
-              "mx-auto h-full max-w-none sm:max-w-6xl"
+              "mx-auto h-full max-w-none"
             : "mx-auto space-y-3 sm:space-y-4 max-w-6xl"
         }
       >
@@ -447,7 +450,7 @@ export default function Room() {
             </button>
           </header>
         )}
-        {roomState.phase !== "lobby" && roomState.game !== "rummy" && (
+        {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && (
           <header className="flex items-center justify-end">
             <button
               onClick={leaveRoom}
@@ -476,9 +479,9 @@ export default function Room() {
 
         <div
           className={(() => {
-            const rummyPlay = roomState.game === "rummy" && roomState.phase !== "lobby";
-            const compactPlay = !rummyPlay && roomState.phase !== "lobby";
-            if (rummyPlay) return "h-full";
+            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes") && roomState.phase !== "lobby";
+            const compactPlay = !fullPlay && roomState.phase !== "lobby";
+            if (fullPlay) return "h-full";
             // Compact gameplay: the side rail collapses into the floating
             // right rail, so the board owns the full inner width.
             if (compactPlay) return "block";
@@ -487,9 +490,9 @@ export default function Room() {
         >
           <div
             className={(() => {
-              const rummyPlay = roomState.game === "rummy" && roomState.phase !== "lobby";
-              const compactPlay = !rummyPlay && roomState.phase !== "lobby";
-              if (rummyPlay) return "h-full";
+              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes") && roomState.phase !== "lobby";
+              const compactPlay = !fullPlay && roomState.phase !== "lobby";
+              if (fullPlay) return "h-full";
               if (compactPlay) return "w-full space-y-4";
               return "md:col-span-2 space-y-4";
             })()}
@@ -660,6 +663,7 @@ export default function Room() {
                       messages={messages}
                       roomCode={roomState.code}
                       roomPhase={roomState.phase}
+                      onLeave={leaveRoom}
                     />
                   </PassPhoneGate>
                 );
@@ -690,6 +694,7 @@ export default function Room() {
                       messages={messages}
                       roomCode={roomState.code}
                       roomPhase={roomState.phase}
+                      onLeave={leaveRoom}
                     />
                   </PassPhoneGate>
                 );
@@ -707,11 +712,22 @@ export default function Room() {
               />
             )}
 
+            {roomState.phase !== "lobby" && roomState.game === "stargame" && gameState != null && (
+              <StarBoard
+                state={gameState as StarPlayerView}
+                players={roomState.players}
+                selfId={playerId}
+                roomCode={roomState.code}
+                messages={messages}
+                roomPhase={roomState.phase}
+              />
+            )}
+
             {/* Generic rematch panel — host sees "Play Again", non-hosts see
                 accept/decline when host requests, everyone sees the countdown.
                 Rummy renders its own end-game scorecard inline with the board,
                 so we skip this slot when Rummy is finished. */}
-            {roomState.phase === "finished" && roomState.game !== "rummy" && (
+            {roomState.phase === "finished" && roomState.game !== "rummy" && roomState.game !== "dotsboxes" && (
               <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-4">
                 <RematchPanel players={roomState.players} selfId={playerId} />
               </div>

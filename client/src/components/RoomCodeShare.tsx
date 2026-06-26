@@ -38,6 +38,7 @@ export default function RoomCodeShare({
     wordbuilding: "Word Building",
     dotsboxes: "Dots & Boxes",
     memorymatch: "Memory Match",
+    stargame: "Star Game",
   };
   /**
    * Body of the share message — keeps the URL OUT of the text. The OS

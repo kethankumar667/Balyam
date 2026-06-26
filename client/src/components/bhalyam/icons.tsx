@@ -216,6 +216,12 @@ export const GamepadGlyph = makeIcon(
   </>,
 );
 
+export const StarGameGlyph = makeIcon(
+  <>
+    <path d="m12 3 2.4 5.1 5.6.5-4.2 3.7 1.3 5.5L12 20.4 6.9 23.3l1.3-5.5L4 14.1l5.6-.5z" />
+  </>,
+);
+
 // Back-compat re-export: existing imports keep working while the home
 // header now uses GamepadGlyph for clearer "games" reading.
 export const JoystickGlyph = GamepadGlyph;

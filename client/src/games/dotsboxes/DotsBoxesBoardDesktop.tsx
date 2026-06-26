@@ -7,11 +7,13 @@ import {
   NotebookBoard,
   ScoreBar,
   ReportCardOverlay,
+  ClassroomScene,
 } from "./dotsboxes-shared";
 import { useDotsBoxesBoard, type DotsBoxesBoardProps } from "./useDotsBoxesBoard";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
 import { DOTSBOXES_TUTORIAL } from "../tutorials";
+import RematchPanel from "../../components/RematchPanel";
 
 /**
  * Dedicated desktop layout — not the mobile column stretched. The play
@@ -43,6 +45,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
   const tut = useTutorialGate(DOTSBOXES_TUTORIAL.key);
 
   return (
+    <ClassroomScene footer={state.phase === "finished" ? <RematchPanel players={props.players} selfId={props.selfId} className="bg-[#fef9f0]/90 border-2 border-amber-700/40 rounded-lg" /> : undefined}>
     <div
       className="relative w-full mx-auto flex flex-row items-start justify-center gap-6"
       style={{
@@ -97,6 +100,15 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
           Scoreboard
           <div className="absolute right-0 top-0">
             <TutorialButton onClick={() => tut.setOpen(true)} />
+          </div>
+          <div className="absolute left-0 top-0">
+            <button
+              onClick={props.onLeave}
+              className="text-xs font-semibold px-2 py-1 rounded"
+              style={{ background: "rgba(74,63,53,0.85)", color: "#FFF3E3", fontFamily: "'Caveat','Patrick Hand',cursive", fontSize: 13 }}
+            >
+              ← Leave
+            </button>
           </div>
         </div>
 
@@ -208,5 +220,6 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
         />
       )}
     </div>
+    </ClassroomScene>
   );
 }

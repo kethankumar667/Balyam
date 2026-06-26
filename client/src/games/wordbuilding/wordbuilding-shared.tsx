@@ -24,12 +24,12 @@ export function WorkbookPaper({ children }: { children: React.ReactNode }) {
     <div
       className="relative mx-auto rounded-md overflow-hidden mt-3"
       style={{
-        background: "linear-gradient(180deg, #fbf3df 0%, #f6ebd0 100%)",
+        background: "linear-gradient(180deg, #fdf6e3 0%, #f0debb 100%)",
         boxShadow:
           "0 14px 26px -10px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(120,82,40,0.10)",
-        // Blue rules every 28px + the teacher's red margin line at 56px.
+        // Sepia rules every 28px + the teacher's red margin line at 56px.
         backgroundImage:
-          "repeating-linear-gradient(to bottom, transparent 0 26px, rgba(56,89,168,0.32) 26px 27px, transparent 27px 28px), linear-gradient(to right, transparent 0 54px, #c2403a 54px 55px, transparent 55px 100%)",
+          "repeating-linear-gradient(to bottom, transparent 0 26px, rgba(150,108,58,0.34) 26px 27px, transparent 27px 28px), linear-gradient(to right, transparent 0 54px, #c2403a 54px 55px, transparent 55px 100%)",
         backgroundBlendMode: "multiply",
       }}
     >
@@ -54,7 +54,7 @@ export function WorkbookPaper({ children }: { children: React.ReactNode }) {
           width: 14,
           height: 14,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(30,58,138,0.55) 0%, rgba(30,58,138,0) 70%)",
+          background: "radial-gradient(circle, rgba(124,45,18,0.5) 0%, rgba(124,45,18,0) 70%)",
           filter: "blur(0.4px)",
         }}
         aria-hidden
@@ -82,9 +82,9 @@ export function MarginDoodles() {
       >
         <path
           d="M2 11 L30 3 L18 21 L14 14 Z"
-          stroke="#1e3a8a" strokeWidth="1.2" fill="none" strokeLinejoin="round"
+          stroke="#a8531f" strokeWidth="1.2" fill="none" strokeLinejoin="round"
         />
-        <path d="M14 14 L30 3" stroke="#1e3a8a" strokeWidth="0.8" />
+        <path d="M14 14 L30 3" stroke="#a8531f" strokeWidth="0.8" />
       </svg>
       {/* Smiley */}
       <svg
@@ -339,6 +339,7 @@ export function StudentBar({
   selfId,
   remainingSec,
   onOpenTutorial,
+  onLeave,
 }: {
   state: WordBuildingPublicState;
   inkOf: Record<string, Ink>;
@@ -346,9 +347,29 @@ export function StudentBar({
   selfId: string | null;
   remainingSec: number | null;
   onOpenTutorial: () => void;
+  onLeave?: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 px-2">
+    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 px-1 sm:px-2">
+      {/* Leave — top-left */}
+      {onLeave && (
+        <button
+          type="button"
+          onClick={onLeave}
+          className="rounded-full px-3 py-1.5 transition active:translate-y-px"
+          style={{
+            background: "#4A3F35",
+            border: "1px solid #3a3028",
+            color: "#FFF3E3",
+            fontFamily: "'Caveat', 'Patrick Hand', cursive",
+            fontSize: 18,
+            cursor: "pointer",
+          }}
+          aria-label="Leave game"
+        >
+          Leave
+        </button>
+      )}
       {state.playerOrder.map((pid) => {
         const ink = inkOf[pid];
         const isTurn = state.turnPlayerId === pid;
@@ -356,25 +377,24 @@ export function StudentBar({
         return (
           <div
             key={pid}
-            className="rounded-lg px-3 py-1.5 transition"
+            className="rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 transition min-w-[96px] sm:min-w-[130px]"
             style={{
               background: isTurn ? "rgba(251,191,36,0.22)" : "rgba(255,255,255,0.55)",
               border: isTurn ? `2px solid ${ink.inkColor}` : "1px solid rgba(120,82,40,0.22)",
               boxShadow: isTurn ? `0 0 0 2px ${ink.inkColor}22 inset` : undefined,
               fontFamily: "'Caveat', 'Patrick Hand', cursive",
-              minWidth: 130,
             }}
           >
             <div className="flex items-baseline gap-2">
-              <span className="font-black" style={{ color: ink.inkColor, fontSize: 22 }}>
+              <span className="font-black text-[17px] sm:text-[22px]" style={{ color: ink.inkColor }}>
                 {nameOf(pid)}{me ? " (you)" : ""}
               </span>
             </div>
             <div className="flex items-baseline justify-between">
               <span style={{ fontSize: 14, color: "#6b5b48" }}>Marks</span>
               <span
-                className="font-black"
-                style={{ color: ink.inkColor, fontSize: 28, lineHeight: 1 }}
+                className="font-black text-[22px] sm:text-[28px]"
+                style={{ color: ink.inkColor, lineHeight: 1 }}
               >
                 {state.scores[pid] ?? 0}
               </span>
@@ -383,6 +403,22 @@ export function StudentBar({
         );
       })}
       <div className="flex-1" />
+      {/* Timer */}
+      {remainingSec != null && state.phase === "playing" && (
+        <div
+          className="rounded-full px-3 py-1 font-black text-[17px] sm:text-[22px]"
+          style={{
+            background: remainingSec <= 5 ? "rgba(220,38,38,0.18)" : "rgba(124,45,18,0.12)",
+            color: remainingSec <= 5 ? "#7f1d1d" : "#7c2d12",
+            border: `1.5px solid ${remainingSec <= 5 ? "#7f1d1d" : "#7c2d12"}`,
+            fontFamily: "'Caveat', 'Patrick Hand', cursive",
+            textAlign: "center",
+          }}
+        >
+          ⏱ {remainingSec}s
+        </div>
+      )}
+      {/* Help — top-right */}
       <button
         type="button"
         onClick={onOpenTutorial}
@@ -400,29 +436,13 @@ export function StudentBar({
       >
         ? Help
       </button>
-      {remainingSec != null && state.phase === "playing" && (
-        <div
-          className="rounded-full px-4 py-1.5 font-black"
-          style={{
-            background: remainingSec <= 5 ? "rgba(220,38,38,0.18)" : "rgba(30,58,138,0.12)",
-            color: remainingSec <= 5 ? "#7f1d1d" : "#1e3a8a",
-            border: `1.5px solid ${remainingSec <= 5 ? "#7f1d1d" : "#1e3a8a"}`,
-            fontFamily: "'Caveat', 'Patrick Hand', cursive",
-            fontSize: 22,
-            minWidth: 90,
-            textAlign: "center",
-          }}
-        >
-          ⏱ {remainingSec}s
-        </div>
-      )}
     </div>
   );
 }
 
 /* ─────────────────────────── Letter pad ─────────────────────────── */
 
-const LETTER_PAD_ROWS = ["ABCDEFGHIJKLM", "NOPQRSTUVWXYZ"];
+const LETTER_PAD_ROWS = ["ABCDEFGHI", "JKLMNOPQR", "STUVWXYZ"];
 
 export function LetterPad({
   onPick,
@@ -517,7 +537,7 @@ export function FooterRow({
             No words yet. Open a row or column with a letter and watch it light up.
           </div>
         )}
-        <ul className="space-y-1">
+        <ul className="space-y-1" style={{ maxHeight: 90, overflowY: "auto" }}>
           {vocab.map((w) => (
             <li key={w.id} className="flex items-baseline justify-between" style={{ fontSize: 20 }}>
               <span>
@@ -776,16 +796,16 @@ export function WorkbookBoard({
     <WorkbookPaper>
       {/* Page header — handwritten subject + date line */}
       <div
-        className="flex justify-between items-baseline px-6 pt-4 pb-2 select-none"
-        style={{ fontSize: 20, color: "#1e3a8a" }}
+        className="flex flex-wrap justify-between items-baseline gap-x-3 gap-y-0.5 px-3 sm:px-6 pt-3 sm:pt-4 pb-2 select-none text-[14px] sm:text-[20px]"
+        style={{ color: "#7c2d12" }}
       >
         <div>
           <span style={{ fontWeight: 700, letterSpacing: 1 }}>Subject:</span>{" "}
-          <span style={{ borderBottom: "1px dotted #1e3a8a55" }}>English Vocabulary</span>
+          <span style={{ borderBottom: "1px dotted #7c2d1255" }}>English Vocabulary</span>
         </div>
         <div>
           <span style={{ fontWeight: 700 }}>Room:</span>{" "}
-          <span style={{ borderBottom: "1px dotted #1e3a8a55" }}>{roomCode ?? "—"}</span>
+          <span style={{ borderBottom: "1px dotted #7c2d1255" }}>{roomCode ?? "—"}</span>
         </div>
       </div>
 

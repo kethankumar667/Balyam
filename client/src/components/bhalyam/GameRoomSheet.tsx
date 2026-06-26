@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { STAR_THEMES } from "@shared/star-themes";
 import { useNavigate } from "react-router-dom";
 import type {
   GameKind,
@@ -34,6 +35,7 @@ import {
   TambolaGlyph,
   TeluguCinemaluGlyph,
   SamethaluGlyph,
+  StarGameGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -72,6 +74,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   tambola: TambolaGlyph,
   samethalu: SamethaluGlyph,
   telugucinemalu: TeluguCinemaluGlyph,
+  stargame: StarGameGlyph,
 };
 
 /**
@@ -82,7 +85,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  * makes the narrowing explicit so callers don't need a wide cast.
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
-   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "memorymatch",
+  "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "memorymatch", "stargame",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
@@ -140,6 +143,18 @@ const MM_BOARD_SIZES: { id: "4" | "6" | "8"; label: string; blurb: string }[] = 
   { id: "8", label: "8 × 8 grid", blurb: "32 pairs — memory marathon." },
 ];
 
+// Star Game — round count + pass-window pacing (theme list comes from STAR_THEMES).
+const STAR_ROUNDS: { id: string; label: string; blurb: string }[] = [
+  { id: "3", label: "3", blurb: "quick" },
+  { id: "5", label: "5", blurb: "classic" },
+  { id: "7", label: "7", blurb: "long" },
+  { id: "10", label: "10", blurb: "marathon" },
+];
+const STAR_PASS_SPEEDS: { id: string; label: string; blurb: string }[] = [
+  { id: "normal", label: "Normal", blurb: "16s pass" },
+  { id: "fast", label: "Fast", blurb: "9s pass" },
+];
+
 const HC_FORMATS: { id: HcFormat; label: string; blurb: string }[] = [
   { id: "t20",  label: "T20",  blurb: "10 ov · 3 powerplay · 3-over bowler quota" },
   { id: "odi",  label: "ODI",  blurb: "15 ov · 3 powerplay · 4-over bowler quota" },
@@ -172,6 +187,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [dbBoardSize, setDbBoardSize] = useState<5 | 7 | 9>(7);
   // Memory Match: card grid size (4, 6, or 8 cards per side)
   const [mmBoardSize, setMmBoardSize] = useState<4 | 6 | 8>(6);
+  const [starTheme, setStarTheme] = useState<string>("colors");
+  const [starRounds, setStarRounds] = useState<number>(5);
+  const [starPassSpeed, setStarPassSpeed] = useState<"normal" | "fast">("normal");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   /**
@@ -271,6 +289,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
         memoryMatchOptions:
           game === "memorymatch" ? { boardSize: mmBoardSize } : undefined,
+        starGameOptions:
+          game === "stargame"
+            ? { themeId: starTheme, totalRounds: starRounds, passSpeed: starPassSpeed }
+            : undefined,
       },
       (res) => {
         setBusy(false);
@@ -325,6 +347,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
         memoryMatchOptions:
           game === "memorymatch" ? { boardSize: mmBoardSize } : undefined,
+        starGameOptions:
+          game === "stargame"
+            ? { themeId: starTheme, totalRounds: starRounds, passSpeed: starPassSpeed }
+            : undefined,
       },
       (res) => {
         if (!res.ok || !res.code) {
@@ -633,6 +659,35 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 cols={3}
               />
             </Field>
+          )}
+
+          {game === "stargame" && (
+            <>
+              <Field label="Theme">
+                <OptionGrid
+                  items={STAR_THEMES.map((t) => ({ id: t.id, label: t.label, blurb: t.glyph }))}
+                  value={starTheme}
+                  onChange={setStarTheme}
+                  cols={3}
+                />
+              </Field>
+              <Field label="Rounds">
+                <OptionGrid
+                  items={STAR_ROUNDS}
+                  value={String(starRounds)}
+                  onChange={(v) => setStarRounds(Number(v))}
+                  cols={2}
+                />
+              </Field>
+              <Field label="Pass speed">
+                <OptionGrid
+                  items={STAR_PASS_SPEEDS}
+                  value={starPassSpeed}
+                  onChange={(v) => setStarPassSpeed(v as "normal" | "fast")}
+                  cols={2}
+                />
+              </Field>
+            </>
           )}
 
           {/* Primary CTA — swaps label/handler in Pass & Play mode */}

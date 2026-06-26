@@ -16,6 +16,8 @@ import { getSocket } from "../../lib/socket";
 import { PlayingCard } from "./Card";
 import {
   classifyMeld,
+  handMeldContext,
+  withHandContext,
   computeLivePoints,
   evaluateFinishReadiness,
   sortMeldCards,
@@ -34,6 +36,7 @@ import {
   useRummyRotationGate,
   WaitingForPlayersBanner,
 } from "./rotation-sync";
+import { RummyDealOverlay } from "./RummyBoardMobile";
 
 /* ─────────────────────────── Types ─────────────────────────── */
 
@@ -243,10 +246,17 @@ export default function RummyBoardDesktop({
 
   /* ─── Derived: meld classifications + live point bookkeeping ─── */
   const meldByGroupId = useMemo(() => {
-    const m: Record<string, MeldClassification> = {};
+    const base: Record<string, MeldClassification> = {};
     for (const g of layout.groups) {
       const cards = g.cardIds.map((id) => byId.get(id)!).filter(Boolean);
-      m[g.id] = classifyMeld(cards, wildRank as Rank);
+      base[g.id] = classifyMeld(cards, wildRank as Rank);
+    }
+    // Life-aware re-stamp: a set / impure run only counts once the two-life
+    // rule is met, so lanes read amber (not green) until they're credited.
+    const ctx = handMeldContext(Object.values(base).map((c) => c.kind));
+    const m: Record<string, MeldClassification> = {};
+    for (const g of layout.groups) {
+      m[g.id] = withHandContext(base[g.id], ctx);
     }
     return m;
   }, [layout.groups, byId, wildRank]);
@@ -319,7 +329,7 @@ export default function RummyBoardDesktop({
   }
   function drawFromOpen() {
     if (!canDraw || !state.topOfOpenPile) return;
-    if (state.topOfOpenPile.isPrintedJoker) {
+    if (state.topOfOpenPile.isPrintedJoker && !state.openJokerDrawable) {
       setError("Printed jokers can't be drawn from the discard pile");
       return;
     }
@@ -633,7 +643,7 @@ export default function RummyBoardDesktop({
   /* ─────────────────────────── Render ─────────────────────────── */
   return (
     <div
-      className="w-full text-[#F3EADB]"
+      className="relative w-full text-[#F3EADB]"
       style={{
         minHeight: "100vh",
         background:
@@ -647,6 +657,9 @@ export default function RummyBoardDesktop({
           showNames={gate.showBlockerNames}
           variant="toast"
         />
+      )}
+      {(gate.stage === "shuffle" || gate.stage === "deal") && (
+        <RummyDealOverlay stage={gate.stage} playerCount={state.playerOrder.length} />
       )}
       {/* ───── Top bar ───── */}
       <div

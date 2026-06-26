@@ -77,6 +77,15 @@ export const AUDIO = {
   UNO_DECLARED: "uno_declared",
   UNO_WIN:     "uno_win",
 
+  /* ── Star Game (90's paper-slip; keys wired, assets pending) ── */
+  STAR_SHUFFLE:   "star_shuffle",
+  STAR_DEAL:      "star_deal",
+  STAR_PASS:      "star_pass",
+  STAR_COUNTDOWN: "star_countdown",
+  STAR_WHISTLE:   "star_whistle",
+  STAR_STACK:     "star_stack",
+  STAR_WIN:       "star_win",
+
   /* ── Rewards ── */
   REWARD_COIN:        "reward_coin",
   REWARD_COINS_RAIN:  "reward_coins_rain",

@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "memorymatch";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "memorymatch" | "stargame";
 
 export interface Player {
   id: string;
@@ -88,6 +88,13 @@ export interface RummyPublicState {
   wildJoker: Card;
   closedDeckCount: number;
   topOfOpenPile: Card | null;
+  /**
+   * True only while the round's first draw is still available AND the
+   * open-pile top is a printed ("special") joker — the one moment that
+   * seeded special joker may be lifted from the discard pile. False
+   * otherwise (the standard house rule blocks printed jokers there).
+   */
+  openJokerDrawable: boolean;
   /** Full discard pile in chronological order (oldest first). Public information. */
   openPile: Card[];
   handSizes: Record<string, number>;
@@ -997,6 +1004,172 @@ export interface UnoPassMove {
 
 export type UnoMoveType = "play" | "draw" | "pass";
 
+// ---- Star Game (90's Paper-Slip Edition) ----
+//
+// The folded paper-chit reflex game from Indian childhoods. Every player
+// SECRETLY picks one value from a shared THEME (Colors, Fruits, Gods, ...).
+// The deck is exactly 4 copies of each picked value (N players -> 4N cards,
+// dealt 4 each). Each pass-cycle everyone simultaneously slides one card
+// CLOCKWISE; the first player to hold 4-of-a-kind slaps the STAR, then
+// everyone races to "stack hands" for the remaining places. The server is the
+// sole authority for card ownership, pass validity, 4-of-a-kind detection, and
+// the STAR / hand-stack ORDER (always server receive-time, never client clocks).
+
+export type StarPassSpeed = "normal" | "fast";
+
+export interface StarGameOptions {
+  /** Theme id from STAR_THEMES (shared/star-themes.ts). */
+  themeId: string;
+  /** Rounds to play before the podium (1-20). */
+  totalRounds: number;
+  /** Pass-window pacing. "fast" shortens the per-cycle clock. */
+  passSpeed: StarPassSpeed;
+  /** Optional alt end condition - first to this score ends the game early. */
+  winningPoints?: number;
+}
+
+export const DEFAULT_STARGAME_OPTIONS: StarGameOptions = {
+  themeId: "colors",
+  totalRounds: 5,
+  passSpeed: "normal",
+};
+
+export type StarPhase =
+  | "themeSelect"
+  | "shuffle"
+  | "deal"
+  | "pass"
+  | "star"
+  | "handstack"
+  | "roundSummary"
+  | "finished";
+
+/** One folded paper slip carrying a single theme value. */
+export interface StarCard {
+  id: string;
+  value: string;
+}
+
+/** Public, non-secret per-player projection (no card values, no secret pick). */
+export interface StarPlayerPublic {
+  id: string;
+  /** themeSelect: locked a secret value. */
+  hasSelected: boolean;
+  /** shuffle: completed their shuffle turn. */
+  hasShuffled: boolean;
+  /** pass: committed a card to slide this cycle. */
+  hasPassed: boolean;
+  /** handstack: placed their hand this cycle. */
+  hasStacked: boolean;
+  /** cumulative score across rounds. */
+  score: number;
+  /** rounds won (STAR presses) - primary tiebreaker. */
+  roundWins: number;
+  /** cards held (4 mid-round). */
+  cardCount: number;
+  /** server-verified 4-of-a-kind right now (drives the STAR button). */
+  starEligible: boolean;
+  /** live hand-stack placement this cycle (0 = first), or null. */
+  stackRank: number | null;
+}
+
+/** A finished round's result, shown on the summary interstitial. */
+export interface StarRoundResult {
+  round: number;
+  winnerId: string | null;
+  winningValue: string | null;
+  /** final placement order (playerIds), index 0 = winner. */
+  order: string[];
+  /** points credited this round, by playerId. */
+  points: Record<string, number>;
+}
+
+/** Activity-feed entry - fractional-indexed so historical inserts / replay /
+ *  future spectator catch-up keep a stable total order. */
+export interface StarActivityEntry {
+  /** lexicographically-sortable fractional key. */
+  idx: string;
+  ts: number;
+  kind: "info" | "shuffle" | "deal" | "pass" | "match" | "star" | "stack" | "round";
+  text: string;
+  playerId?: string;
+}
+
+/** Final standing with medal + tiebreaker metrics. */
+export interface StarStanding {
+  playerId: string;
+  rank: number;
+  score: number;
+  roundWins: number;
+  avgStarMs: number | null;
+  avgStackMs: number | null;
+  medal: "gold" | "silver" | "bronze" | null;
+}
+
+/** Public game state - broadcast to everyone (hides hands + secret picks). */
+export interface StarPublicState {
+  kind: "stargame";
+  phase: StarPhase;
+  themeId: string;
+  round: number;
+  totalRounds: number;
+  passSpeed: StarPassSpeed;
+  winningPoints: number | null;
+  /** clockwise seating (playerIds). Pass direction is seatOrder[i] -> [i+1]. */
+  seatOrder: string[];
+  players: StarPlayerPublic[];
+  /** whose shuffle turn (shuffle phase), else null. */
+  shuffleTurnId: string | null;
+  /** wall-clock ms when the current phase's action window closes, or null. */
+  deadline: number | null;
+  /** distinct theme values in play this game (revealed once dealt). */
+  valuesInPlay: string[];
+  /** STAR winner of the in-flight cycle (rank 0), or null. */
+  starWinnerId: string | null;
+  /** live hand-stack order so far (playerIds, tap order). */
+  stackOrder: string[];
+  /** last completed round (summary screen). */
+  lastResult: StarRoundResult | null;
+  /** optional nostalgic interstitial line. */
+  nostalgiaMessage: string | null;
+  /** capped activity feed (fractional-indexed). */
+  activity: StarActivityEntry[];
+  /** final podium once finished, else null. */
+  standings: StarStanding[] | null;
+  isOver: boolean;
+  winnerId: string | null;
+}
+
+/** Per-player private view - adds the owner's hand + secret pick. */
+export interface StarPlayerView extends StarPublicState {
+  myHand: StarCard[];
+  mySelectedValue: string | null;
+  /** card armed (not yet committed) to pass this cycle, or null. */
+  myArmedCardId: string | null;
+  /** all selectable theme values (themeSelect picker). */
+  themeValues: string[];
+  /** values already locked by others - grayed out, identities hidden. */
+  takenValues: string[];
+}
+
+/** Move types (all flow through game:move with { type, data }). */
+export interface StarSelectValueMove { type: "selectValue"; data: { value: string }; }
+export interface StarShuffleMove { type: "shuffle"; }
+export interface StarSelectCardMove { type: "selectCard"; data: { cardId: string }; }
+export interface StarPassMove { type: "pass"; }
+export interface StarPressStarMove { type: "pressStar"; }
+export interface StarPlaceHandMove { type: "placeHand"; }
+export interface StarNextRoundMove { type: "nextRound"; }
+
+export type StarMove =
+  | StarSelectValueMove
+  | StarShuffleMove
+  | StarSelectCardMove
+  | StarPassMove
+  | StarPressStarMove
+  | StarPlaceHandMove
+  | StarNextRoundMove;
+
 // ---- Socket event payloads ----
 export interface CreateRoomPayload {
   name: string;
@@ -1009,6 +1182,7 @@ export interface CreateRoomPayload {
   wordBuildingOptions?: Partial<WordBuildingOptions>;
   dotsBoxesOptions?: Partial<DotsBoxesOptions>;
   memoryMatchOptions?: Partial<MemoryMatchOptions>;
+  starGameOptions?: Partial<StarGameOptions>;
 }
 
 export interface SetTokenNicknamesPayload {

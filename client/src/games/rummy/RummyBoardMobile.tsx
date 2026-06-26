@@ -5,6 +5,8 @@ import { PlayingCard, FaceDownCard, FinishSlot } from "./Card";
 import { getSocket } from "../../lib/socket";
 import {
   classifyMeld,
+  handMeldContext,
+  withHandContext,
   computeLivePoints,
   evaluateFinishReadiness,
   sortMeldCards,
@@ -328,12 +330,6 @@ export default function RummyBoardMobile({
   // Animation state — fresh card just drawn, and discard pile pulse trigger.
   const [freshCardId, setFreshCardId] = useState<string | null>(null);
   const [discardPulseKey, setDiscardPulseKey] = useState(0);
-  // Joker celebration overlay. Fires when the newly drawn card is a wild
-  // joker (matches the round's wild rank) or a printed (special) joker.
-  // Auto-dismisses after 2.4 s so play resumes without a click.
-  const [jokerCelebration, setJokerCelebration] = useState<
-    null | { kind: "wild" | "printed"; id: number }
-  >(null);
 
   // Tutorial — auto-opens on first ever Rummy game (per browser).
   const [tutorialOpen, setTutorialOpen] = useState(() => !hasSeenTutorial());
@@ -468,18 +464,6 @@ export default function RummyBoardMobile({
       setTimeout(() => {
         setFreshCardId((cur) => (cur === id ? null : cur));
       }, 800);
-      // If the new card is a joker, fire a celebration overlay. Printed
-      // jokers get a richer treatment because they're rarer than wild
-      // jokers (one round can have 8 wild-rank cards but only 4 printed
-      // jokers in the entire deck).
-      const drawnCard = byId.get(id);
-      if (drawnCard) {
-        if (drawnCard.isPrintedJoker) {
-          setJokerCelebration({ kind: "printed", id: Date.now() });
-        } else if (drawnCard.rank === wildRank) {
-          setJokerCelebration({ kind: "wild", id: Date.now() });
-        }
-      }
     }
     // Drop selection for cards no longer in hand
     setSelected((prev) => new Set([...prev].filter((id) => handSet.has(id))));
@@ -693,10 +677,11 @@ export default function RummyBoardMobile({
   }
   function drawFromOpen() {
     if (!canDraw || !state.topOfOpenPile) return;
-    // House rule: printed jokers can't be lifted from the discard pile.
-    // Block the click client-side so the user gets a clear toast instead of
-    // a silent server rejection.
-    if (state.topOfOpenPile.isPrintedJoker) {
+    // House rule: printed jokers can't be lifted from the discard pile,
+    // EXCEPT on the round's first draw (server flags this via
+    // openJokerDrawable). Block the click client-side otherwise so the
+    // user gets a clear toast instead of a silent server rejection.
+    if (state.topOfOpenPile.isPrintedJoker && !state.openJokerDrawable) {
       setError("Printed jokers can't be drawn from the discard pile");
       return;
     }
@@ -930,10 +915,18 @@ export default function RummyBoardMobile({
   // === Live meld classification + finish readiness ===
 
   const meldByGroupId = useMemo(() => {
-    const map: Record<string, MeldClassification> = {};
+    const base: Record<string, MeldClassification> = {};
     for (const g of layout.groups) {
       const cards = g.cardIds.map((id) => byId.get(id)).filter(Boolean) as Card[];
-      map[g.id] = classifyMeld(cards, wildRank as Rank);
+      base[g.id] = classifyMeld(cards, wildRank as Rank);
+    }
+    // Re-stamp each lane with its life-aware `counts` (a set / impure run
+    // only counts once the two-life rule is met) so badges + valid count
+    // match the score the server would actually credit.
+    const ctx = handMeldContext(Object.values(base).map((c) => c.kind));
+    const map: Record<string, MeldClassification> = {};
+    for (const g of layout.groups) {
+      map[g.id] = withHandContext(base[g.id], ctx);
     }
     return map;
   }, [layout.groups, byId, wildRank]);
@@ -1004,14 +997,6 @@ export default function RummyBoardMobile({
         deadline={state.turnDeadline}
         active={state.phase === "playing" && state.turnPlayerId === selfId}
       />
-
-      {jokerCelebration && (
-        <JokerDrawCelebration
-          key={jokerCelebration.id}
-          kind={jokerCelebration.kind}
-          onDone={() => setJokerCelebration(null)}
-        />
-      )}
 
       {/* 20px top strip — Leave · RoomPill · Hamburger.
           Everything else is the felt. */}
@@ -1907,6 +1892,11 @@ function CenterDeckArea({
   // these flags are now purely visual (highlight while a drag is in flight).
   const allowOpenDrop = isDragging && canDiscard;
   const allowFinishDrop = isDragging && canDiscard;
+  // A printed ("special") joker on the open pile is only liftable on the
+  // round's first draw (server-authoritative via openJokerDrawable); after
+  // that it's locked there per the house rule.
+  const openJokerLocked =
+    state.topOfOpenPile?.isPrintedJoker === true && !state.openJokerDrawable;
   return (
     <div
       className="rounded-lg p-1 sm:p-1.5 flex items-center justify-center gap-1.5 sm:gap-2.5 flex-wrap flex-shrink-0"
@@ -1958,19 +1948,19 @@ function CenterDeckArea({
         {state.topOfOpenPile ? (
           <button
             onClick={drawFromOpen}
-            disabled={!canDraw || state.topOfOpenPile.isPrintedJoker}
+            disabled={!canDraw || openJokerLocked}
             className={`relative transition ${
-              canDraw && !state.topOfOpenPile.isPrintedJoker
+              canDraw && !openJokerLocked
                 ? "hover:-translate-y-2 hover:scale-105 cursor-pointer"
                 : "cursor-default"
             } ${allowOpenDrop ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-emerald-950 rounded-md" : ""}`}
             aria-label={
-              state.topOfOpenPile.isPrintedJoker
+              openJokerLocked
                 ? "Printed joker — not drawable from open pile"
                 : "Draw from open pile"
             }
             title={
-              state.topOfOpenPile.isPrintedJoker
+              openJokerLocked
                 ? "Printed jokers can't be drawn from the discard pile"
                 : undefined
             }
@@ -1981,7 +1971,7 @@ function CenterDeckArea({
                 isWildJoker={state.topOfOpenPile.rank === state.wildJoker.rank}
               />
             </div>
-            {state.topOfOpenPile.isPrintedJoker && (
+            {openJokerLocked && (
               <span
                 className="absolute -top-1.5 -right-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider z-10"
                 style={{
@@ -2170,18 +2160,27 @@ function GroupLane({
   const target: DropTarget = `group:${laneId}`;
   const isOver = dragOverTarget === target;
   const classColor = classification?.color ?? "#f97316";
-  const isValid = !!classification?.valid;
-  // Per-lane card-point total (jokers count 0) so we can show "X Points" for invalid lanes.
+  const structurallyValid = !!classification?.valid;
+  const counts = !!classification?.counts;
+  // Per-lane card-point total (jokers count 0) so we can show "X Points".
   const laneCards = cardIds.map((cid) => byId.get(cid)).filter(Boolean) as Card[];
   const laneTotal = sumCardPoints(laneCards, wildRank as Rank);
-  // Junglee-style top badge: ❌ "X Points" for invalid lanes, ✓ "Label (0)" for valid
-  const badgeText = isValid
+  // Three badge states:
+  //   counts        → ✓ green  "Label (0)"  credited toward the show
+  //   valid !counts → ⚠ amber  "Label"      a real meld, no life yet
+  //   neither       → ✕ red    "N Points"   not a meld
+  const badgeIcon = counts ? "✓" : structurallyValid ? "⚠" : "✕";
+  const badgeText = counts
     ? `${classification?.label.replace(/\s*✓\s*$/, "")} (0)`
+    : structurallyValid
+    ? `${classification?.label}`
     : `${laneTotal} Points`;
+  const badgeFg = counts ? "#34d399" : structurallyValid ? "#fcd34d" : "#fca5a5";
+  const badgeBorder = counts ? "#10b981" : structurallyValid ? "#f59e0b" : "#dc2626";
   return (
     <div
       data-rummy-drop={target}
-      className={`flex flex-col items-center gap-0.5 transition flex-shrink-0 ${isValid ? "rummy-zone-valid" : "rummy-zone-invalid"}`}
+      className={`flex flex-col items-center gap-0.5 transition flex-shrink-0 ${counts ? "rummy-zone-valid" : "rummy-zone-invalid"}`}
       style={{
         background: isOver ? "rgba(252,211,77,0.10)" : "transparent",
         borderRadius: 10,
@@ -2194,12 +2193,12 @@ function GroupLane({
           className="text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 whitespace-nowrap"
           style={{
             background: "rgba(0,0,0,0.55)",
-            color: isValid ? "#34d399" : "#fca5a5",
-            border: `1px solid ${isValid ? "#10b981" : "#dc2626"}`,
-            boxShadow: isValid ? `0 0 6px ${classColor}66` : undefined,
+            color: badgeFg,
+            border: `1px solid ${badgeBorder}`,
+            boxShadow: counts ? `0 0 6px ${classColor}66` : undefined,
           }}
         >
-          <span>{isValid ? "✓" : "✕"}</span>
+          <span>{badgeIcon}</span>
           {badgeText}
         </span>
         <button
@@ -3071,7 +3070,7 @@ function RummyCelebrationOverlay({ onLeave }: { onLeave: () => void }) {
  * Driven by the parent's synchronized `gate.stage` so the timings stay
  * deterministic (not coupled to CSS animation-delay).
  */
-function RummyDealOverlay({
+export function RummyDealOverlay({
   stage,
   playerCount,
 }: {
@@ -3207,7 +3206,7 @@ function RummyDealOverlay({
   );
 }
 
-function FaceDownDealCard() {
+export function FaceDownDealCard() {
   return (
     <div
       className="relative w-[52px] h-[72px] sm:w-[58px] sm:h-[80px] rounded-[6px] overflow-hidden"
@@ -3227,152 +3226,6 @@ function FaceDownDealCard() {
           border: "1px solid rgba(251,191,36,0.4)",
         }}
       />
-    </div>
-  );
-}
-
-/**
- * Joker draw celebration — fires when the player draws a wild-rank card
- * (the round's wild joker) or a printed joker. Distinct from the existing
- * `rummy-card-arrive` animation on the card itself, this overlay is a
- * full-felt flash centred on a "JOKER!" banner so the player can't miss
- * the win. Auto-dismisses after ~2.4 s.
- *
- * Wild joker  → amber/gold palette, "JOKER!" label
- * Printed joker → violet/gold palette, "SPECIAL JOKER!" label (rarer, so
- * the visual sells the rarity).
- */
-function JokerDrawCelebration({
-  kind,
-  onDone,
-}: {
-  kind: "wild" | "printed";
-  onDone: () => void;
-}) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 2400);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
-  const isPrinted = kind === "printed";
-  const palette = isPrinted
-    ? {
-        bg: "radial-gradient(ellipse at center, rgba(124,58,237,0.32) 0%, rgba(0,0,0,0.62) 70%)",
-        ringFrom: "#FDE68A",
-        ringMid:  "#F59E0B",
-        ringEnd:  "#7C3AED",
-        labelTop: "Special Joker!",
-        labelBig: "★ JOKER ★",
-        sub:      "A rare one — keep it safe.",
-      }
-    : {
-        bg: "radial-gradient(ellipse at center, rgba(245,158,11,0.32) 0%, rgba(0,0,0,0.55) 70%)",
-        ringFrom: "#FEF3C7",
-        ringMid:  "#F59E0B",
-        ringEnd:  "#B45309",
-        labelTop: "Wild Joker!",
-        labelBig: "JOKER",
-        sub:      "Drop it into a meld where it belongs.",
-      };
-
-  // Burst of small star sparkles around the badge.
-  const sparkles = Array.from({ length: 14 }, (_, i) => {
-    const angle = (Math.PI * 2 * i) / 14;
-    const r = 140 + (i % 3) * 30;
-    return {
-      dx: Math.cos(angle) * r,
-      dy: Math.sin(angle) * r,
-      rot: (i * 31) % 360,
-      delay: 80 + i * 35,
-    };
-  });
-
-  return (
-    <div
-      className="fixed inset-0 z-[58] pointer-events-none flex items-center justify-center"
-      role="status"
-      aria-live="polite"
-      aria-label={`${palette.labelTop} drawn`}
-    >
-      <div className="absolute inset-0 hc-fade-late" style={{ background: palette.bg }} />
-
-      {/* Sparkle burst — small gold stars fly outward */}
-      <div className="absolute" style={{ width: 0, height: 0 }} aria-hidden>
-        {sparkles.map((s, i) => (
-          <span
-            key={i}
-            className="absolute font-black"
-            style={{
-              left: 0,
-              top: 0,
-              transform: `translate(${s.dx}px, ${s.dy}px) rotate(${s.rot}deg)`,
-              color: palette.ringMid,
-              fontSize: 18 + (i % 3) * 4,
-              textShadow: `0 0 8px ${palette.ringMid}, 0 0 14px ${palette.ringEnd}`,
-              opacity: 0,
-              animation: "hc-celebrate-pop 700ms cubic-bezier(.34,1.56,.64,1) forwards",
-              animationDelay: `${s.delay}ms`,
-            }}
-          >
-            ★
-          </span>
-        ))}
-      </div>
-
-      {/* Badge — pulsing gold ring + Big Label */}
-      <div className="relative hc-celebrate-pop text-center" style={{ filter: "drop-shadow(0 18px 36px rgba(0,0,0,0.55))" }}>
-        <div
-          className="absolute inset-0 hc-rays-spin -z-10 mx-auto"
-          aria-hidden
-          style={{
-            width: "min(120vw, 720px)",
-            height: "min(120vw, 720px)",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            background: `conic-gradient(from 0deg,
-              ${palette.ringMid}00 0deg, ${palette.ringMid}88 30deg, ${palette.ringMid}00 60deg,
-              ${palette.ringMid}88 90deg, ${palette.ringMid}00 120deg, ${palette.ringMid}88 150deg,
-              ${palette.ringMid}00 180deg, ${palette.ringMid}88 210deg, ${palette.ringMid}00 240deg,
-              ${palette.ringMid}88 270deg, ${palette.ringMid}00 300deg, ${palette.ringMid}88 330deg,
-              ${palette.ringMid}00 360deg)`,
-            filter: "blur(10px)",
-            opacity: 0.65,
-          }}
-        />
-
-        <div
-          className="text-[12px] sm:text-[14px] uppercase tracking-[0.3em] font-extrabold mb-1"
-          style={{ color: palette.ringFrom }}
-        >
-          ✦ You just drew ✦
-        </div>
-        <div
-          className="bhalyam-display font-black tracking-tight leading-none uppercase"
-          style={{
-            fontSize: "clamp(54px, 14vw, 124px)",
-            background: `linear-gradient(180deg, ${palette.ringFrom} 0%, ${palette.ringMid} 55%, ${palette.ringEnd} 100%)`,
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            color: "transparent",
-            letterSpacing: "0.04em",
-          }}
-        >
-          {palette.labelBig}
-        </div>
-        <div
-          className="text-[11px] sm:text-[13px] uppercase tracking-[0.18em] font-extrabold mt-3"
-          style={{ color: palette.ringFrom }}
-        >
-          {palette.labelTop}
-        </div>
-        <div
-          className="text-[12px] sm:text-[14px] mt-2 font-medium"
-          style={{ color: "rgba(255,247,225,0.85)" }}
-        >
-          {palette.sub}
-        </div>
-      </div>
     </div>
   );
 }
