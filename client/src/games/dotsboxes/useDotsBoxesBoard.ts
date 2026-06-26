@@ -22,6 +22,7 @@ export interface DotsBoxesBoardProps {
   messages?: ChatMessage[];
   roomCode?: string;
   roomPhase?: string;
+  onLeave?: () => void;
 }
 
 /** Everything both shells need to render. Pure data + handlers, no JSX. */

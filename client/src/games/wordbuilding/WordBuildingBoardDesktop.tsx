@@ -27,7 +27,7 @@ function desktopCellPx(size: number): number {
  * down. A real desktop arrangement rather than the stacked phone layout.
  */
 export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) {
-  const { state, selfId, roomCode, players, messages, roomPhase } = props;
+  const { state, selfId, roomCode, players, messages, roomPhase, onLeave } = props;
   const m = useWordBuildingBoard(props);
   const cellPx = desktopCellPx(m.size);
 
@@ -43,6 +43,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
         selfId={selfId}
         remainingSec={m.remainingSec}
         onOpenTutorial={() => m.setTutorialOpen(true)}
+        onLeave={onLeave}
       />
 
       <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 items-start mt-1">

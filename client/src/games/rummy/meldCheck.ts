@@ -20,8 +20,16 @@ export interface MeldClassification {
   label: string;
   /** Border / badge color hex. */
   color: string;
-  /** True for any valid meld (pureSequence, impureSequence, set). */
+  /** True for any structurally well-formed meld (pureSequence, impureSequence, set). */
   valid: boolean;
+  /**
+   * Whether this meld counts toward a valid declaration under the two-life
+   * rule (set by `withHandContext`; defaults to `valid` for context-free
+   * callers). Pure run always counts; impure run counts only once a pure
+   * run exists; a set counts only once there are two runs (≥1 pure). Mirrors
+   * the server's loser-scoring credit so the live display never over-promises.
+   */
+  counts: boolean;
 }
 
 const C_PURE  = "#10b981"; // emerald
@@ -36,21 +44,85 @@ function isWild(card: Card, wildRank: Rank): boolean {
 }
 
 export function classifyMeld(cards: Card[], wildRank: Rank): MeldClassification {
-  if (cards.length === 0) return { kind: "incomplete", label: "Empty", color: C_INC, valid: false };
+  if (cards.length === 0)
+    return { kind: "incomplete", label: "Empty", color: C_INC, valid: false, counts: false };
   if (cards.length < 3) {
     const needed = 3 - cards.length;
-    return { kind: "incomplete", label: `Need ${needed} more`, color: C_INC, valid: false };
+    return { kind: "incomplete", label: `Need ${needed} more`, color: C_INC, valid: false, counts: false };
   }
   if (isPureSequence(cards, wildRank)) {
-    return { kind: "pureSequence", label: "Pure run ✓", color: C_PURE, valid: true };
+    return { kind: "pureSequence", label: "Pure run ✓", color: C_PURE, valid: true, counts: true };
   }
   if (isImpureSequence(cards, wildRank)) {
-    return { kind: "impureSequence", label: "Impure run ✓", color: C_IMP, valid: true };
+    return { kind: "impureSequence", label: "Impure run ✓", color: C_IMP, valid: true, counts: true };
   }
   if (isSet(cards, wildRank)) {
-    return { kind: "set", label: "Set ✓", color: C_SET, valid: true };
+    return { kind: "set", label: "Set ✓", color: C_SET, valid: true, counts: true };
   }
-  return { kind: "invalid", label: "Not a meld", color: C_INV, valid: false };
+  return { kind: "invalid", label: "Not a meld", color: C_INV, valid: false, counts: false };
+}
+
+export interface HandMeldContext {
+  pureCount: number;
+  sequenceCount: number;
+  /** A pure sequence exists — the "first life". */
+  firstLifeDone: boolean;
+  /** Two sequences with ≥1 pure — the "second life" that unlocks sets. */
+  secondLifeDone: boolean;
+}
+
+/** Two-life context derived from the kinds of every group in the hand. */
+export function handMeldContext(kinds: MeldKindClient[]): HandMeldContext {
+  let pureCount = 0;
+  let sequenceCount = 0;
+  for (const k of kinds) {
+    if (k === "pureSequence") {
+      pureCount += 1;
+      sequenceCount += 1;
+    } else if (k === "impureSequence") {
+      sequenceCount += 1;
+    }
+  }
+  return {
+    pureCount,
+    sequenceCount,
+    firstLifeDone: pureCount >= 1,
+    secondLifeDone: pureCount >= 1 && sequenceCount >= 2,
+  };
+}
+
+/**
+ * Does a structurally-valid meld count toward a valid declaration given the
+ * whole-hand two-life context? Pure run always counts; impure run needs a
+ * pure run first; a set needs two runs (≥1 pure). Mirrors server scoring.
+ */
+export function meldCounts(kind: MeldKindClient, ctx: HandMeldContext): boolean {
+  switch (kind) {
+    case "pureSequence":
+      return true;
+    case "impureSequence":
+      return ctx.firstLifeDone;
+    case "set":
+      return ctx.secondLifeDone;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Re-stamp a per-group classification with its life-aware `counts` flag, and
+ * when a structurally-valid meld doesn't satisfy the life rule yet, recolour
+ * it amber and annotate WHY so the player can see it isn't being credited.
+ */
+export function withHandContext(
+  c: MeldClassification,
+  ctx: HandMeldContext,
+): MeldClassification {
+  const counts = meldCounts(c.kind, ctx);
+  if (counts || !c.valid) return { ...c, counts };
+  const base = c.kind === "impureSequence" ? "Impure run" : "Set";
+  const hint = c.kind === "impureSequence" ? "needs pure run" : "needs 2 runs";
+  return { ...c, counts: false, color: C_INC, label: `${base} · ${hint}` };
 }
 
 function isPureSequence(cards: Card[], _wildRank: Rank): boolean {
@@ -214,21 +286,16 @@ export function computeLivePoints(
 ): LivePoints {
   const allCards = [...groups.flatMap((g) => g.cards), ...ungroupedCards];
   const handTotal = Math.min(sumCardPoints(allCards, wildRank), HAND_CAP);
-  const protectedByPure = groups.some((g) => g.classification.kind === "pureSequence");
+  const ctx = handMeldContext(groups.map((g) => g.classification.kind));
+  const protectedByPure = ctx.firstLifeDone;
 
-  if (!protectedByPure) {
-    return {
-      handTotal,
-      caughtNow: handTotal,
-      protectedByPure: false,
-      unmeldedCount: ungroupedCards.length +
-        groups.filter((g) => !g.classification.valid).reduce((s, g) => s + g.cards.length, 0),
-      dropNow: DROP_PENALTY,
-    };
-  }
-
+  // Only melds that actually COUNT under the two-life rule protect their
+  // cards — a set or impure run that hasn't earned its life yet saves
+  // nothing if you're caught, exactly as the server scores it.
   const protectedIds = new Set(
-    groups.filter((g) => g.classification.valid).flatMap((g) => g.cards.map((c) => c.id)),
+    groups
+      .filter((g) => meldCounts(g.classification.kind, ctx))
+      .flatMap((g) => g.cards.map((c) => c.id)),
   );
   const unprotected = allCards.filter((c) => !protectedIds.has(c.id));
   const caughtNow = Math.min(sumCardPoints(unprotected, wildRank), HAND_CAP);
@@ -236,7 +303,7 @@ export function computeLivePoints(
   return {
     handTotal,
     caughtNow,
-    protectedByPure: true,
+    protectedByPure,
     unmeldedCount: unprotected.length,
     dropNow: DROP_PENALTY,
   };
@@ -263,25 +330,25 @@ export function evaluateFinishReadiness(
   totalCardsInGroups: number,
   totalNonGroupedCards: number,
 ): FinishReadiness {
+  const kinds = groups.map((g) => classifyMeld(g.cards, wildRank).kind);
   let pureCount = 0;
   let sequenceCount = 0;
   let invalidGroups = 0;
-  let validGroups = 0;
-  for (const g of groups) {
-    const c = classifyMeld(g.cards, wildRank);
-    if (c.kind === "pureSequence") {
+  for (const k of kinds) {
+    if (k === "pureSequence") {
       pureCount += 1;
       sequenceCount += 1;
-      validGroups += 1;
-    } else if (c.kind === "impureSequence") {
+    } else if (k === "impureSequence") {
       sequenceCount += 1;
-      validGroups += 1;
-    } else if (c.kind === "set") {
-      validGroups += 1;
-    } else {
+    } else if (k !== "set") {
       invalidGroups += 1;
     }
   }
+  // "Valid" means life-credited, not merely well-formed: a set or impure
+  // run that hasn't earned its life is NOT counted, matching the protection
+  // the score actually grants.
+  const ctx = handMeldContext(kinds);
+  const validGroups = kinds.filter((k) => meldCounts(k, ctx)).length;
   const reasons: string[] = [];
   if (totalCardsInGroups !== 13) {
     reasons.push(`Need exactly 13 cards in groups (have ${totalCardsInGroups})`);

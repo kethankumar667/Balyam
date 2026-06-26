@@ -55,6 +55,13 @@ interface InternalState {
    * future animations can plug in without reshaping the timer logic.
    */
   pendingAnimationPauseMs: number;
+  /**
+   * Whether the round's very first draw has been taken. The seeded
+   * open-pile card may be a printed ("special") joker; the house rule lets
+   * whoever draws FIRST lift it from the open pile, but once that first
+   * draw happens no player may pick a printed joker off the pile again.
+   */
+  firstDrawTaken: boolean;
   options: RummyGameOptions;
   /** All players (kept for resetting between rounds). */
   allPlayers: Player[];
@@ -211,15 +218,20 @@ export class RummyEngine implements GameEngine {
     const wildRank = this.s.wildJoker.rank;
 
     if (this.s.turnAction === "draw") {
-      // Opportunistically pick up the open-pile top when it slots into a
-      // near-meld. shouldDrawFromOpen handles the printed-joker / empty-pile
-      // edge cases and falls back to false, so a "closed" draw is always
-      // safe as the default.
+      // shouldDrawFromOpen runs the open-vs-closed heuristic (printed
+      // jokers / empty pile fall back to false), so a "closed" draw is the
+      // safe default. One exception: on the round's first draw, grab the
+      // seeded special joker off the open pile if it's sitting there.
       const openTop =
         this.s.openPile.length > 0
           ? this.s.openPile[this.s.openPile.length - 1]
           : null;
-      const from = shouldDrawFromOpen(hand, openTop, wildRank) ? "open" : "closed";
+      const from =
+        !this.s.firstDrawTaken && openTop?.isPrintedJoker
+          ? "open"
+          : shouldDrawFromOpen(hand, openTop, wildRank)
+          ? "open"
+          : "closed";
       return this.handleDraw({
         playerId,
         type: "draw",
@@ -279,6 +291,7 @@ export class RummyEngine implements GameEngine {
       turnDeadline: null,
       deadlineOwnerId: null,
       pendingAnimationPauseMs: 0,
+      firstDrawTaken: false,
       options: { ...this.pendingOptions },
       allPlayers: players.slice(),
       matchMode: this.pendingOptions.mode,
@@ -330,6 +343,7 @@ export class RummyEngine implements GameEngine {
     this.s.turnDeadline = null;
     this.s.deadlineOwnerId = null;
     this.s.pendingAnimationPauseMs = 0;
+    this.s.firstDrawTaken = false;
     this.s.roundNumber += 1;
     // Wipe stale arrangements — last round's groups don't apply to the
     // fresh hands dealt for this round.
@@ -453,41 +467,24 @@ export class RummyEngine implements GameEngine {
       }
       const drawn = this.s.closedDeck.shift()!;
       hand.push(drawn);
-      this.maybeQueueJokerAnimation(drawn);
     } else {
       if (this.s.openPile.length === 0) {
         return { ok: false, error: "Open pile is empty" };
       }
       const top = this.s.openPile[this.s.openPile.length - 1];
-      // House rule: printed jokers ("special jokers") cannot be picked up from
-      // the discard pile. They're only earned via the deal. This prevents a
-      // player from grabbing a misclick-discarded joker mid-round.
-      if (top.isPrintedJoker) {
+      // House rule: printed ("special") jokers can't be lifted off the
+      // discard pile — EXCEPT on the round's very first draw, when the
+      // seeded open card may be claimed by whoever picks first. After that
+      // first draw no player may take a printed joker from the pile.
+      if (top.isPrintedJoker && this.s.firstDrawTaken) {
         return { ok: false, error: "Printed jokers cannot be drawn from the discard pile" };
       }
       const drawn = this.s.openPile.pop()!;
       hand.push(drawn);
-      this.maybeQueueJokerAnimation(drawn);
     }
+    this.s.firstDrawTaken = true;
     this.s.turnAction = "discardOrDeclare";
     return { ok: true };
-  }
-
-  /**
-   * If the just-drawn card triggers the wild/printed joker celebration on
-   * the client (a ~2.4 s overlay), pad the next scheduled deadline by the
-   * same duration so the player doesn't watch their timer drain behind
-   * an animation they can't dismiss.
-   */
-  private maybeQueueJokerAnimation(card: Card): void {
-    const isWild = card.rank === this.s.wildJoker.rank;
-    const isPrinted = card.isPrintedJoker === true;
-    if (isWild || isPrinted) {
-      this.s.pendingAnimationPauseMs = Math.max(
-        this.s.pendingAnimationPauseMs,
-        2400,
-      );
-    }
   }
 
   private handleDiscard(move: MoveContext): MoveResult {
@@ -690,6 +687,9 @@ export class RummyEngine implements GameEngine {
       wildJoker: this.s.wildJoker,
       closedDeckCount: this.s.closedDeck.length,
       topOfOpenPile: this.s.openPile[this.s.openPile.length - 1] ?? null,
+      openJokerDrawable:
+        this.s.openPile[this.s.openPile.length - 1]?.isPrintedJoker === true &&
+        !this.s.firstDrawTaken,
       handSizes,
       playerOrder: this.s.playerOrder,
       openPile: this.s.openPile.slice(),

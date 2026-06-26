@@ -24,6 +24,7 @@ export interface WordBuildingBoardProps {
   messages?: ChatMessage[];
   roomCode?: string;
   roomPhase?: string;
+  onLeave?: () => void;
 }
 
 export interface WordBuildingBoardModel {
@@ -139,7 +140,7 @@ export function useWordBuildingBoard({
     setActivePulse(top);
     const aT = window.setTimeout(() => {
       setActiveAnnotation((cur) => (cur?.id === top.id ? null : cur));
-    }, 2200);
+    }, 1000);
     const pT = window.setTimeout(() => {
       setActivePulse((cur) => (cur?.id === top.id ? null : cur));
     }, 1400);

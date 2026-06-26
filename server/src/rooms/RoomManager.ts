@@ -16,6 +16,7 @@ import type {
   WordBuildingOptions,
   DotsBoxesOptions,
   MemoryMatchOptions,
+  StarGameOptions,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -26,6 +27,7 @@ import {
   DEFAULT_WORDBUILDING_OPTIONS,
   DEFAULT_DOTSBOXES_OPTIONS,
   DEFAULT_MEMORYMATCH_OPTIONS,
+  DEFAULT_STARGAME_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -39,6 +41,7 @@ import { WordBuildingEngine } from "../games/wordbuilding/WordBuildingEngine.js"
 import { DotsBoxesEngine } from "../games/dotsboxes/DotsBoxesEngine.js";
 import { MemoryMatchEngine } from "../games/memorymatch/MemoryMatchEngine.js";
 import { RpsEngine } from "../games/rps/RpsEngine.js";
+import { StarGameEngine } from "../games/stargame/StarGameEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 /** How long the host's rematch request stays open before auto-cancelling. */
@@ -64,6 +67,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   wordbuilding: ["Teacher Padma", "Master Ravi", "Miss Lakshmi", "Sir Krishna"],
   dotsboxes: ["Pencil", "Eraser", "Sharpener", "Ruler"],
   memorymatch: ["Polaroid", "Kodak", "Snapshot", "Album"],
+  stargame: ["Pinky", "Chinnu", "Guddu", "Sweety", "Bujji", "Chitti", "Lucky", "Appu"],
 };
 
 function pickBotName(game: GameKind, idx: number): string {
@@ -92,6 +96,7 @@ interface Room {
   wordBuildingOptions: WordBuildingOptions;
   dotsBoxesOptions: DotsBoxesOptions;
   memoryMatchOptions: MemoryMatchOptions;
+  starGameOptions: StarGameOptions;
   /**
    * Memory Match's reveal-phase flip-back timer. After a non-matching
    * pair is flipped the engine enters REVEAL state with a deadline; we
@@ -149,7 +154,8 @@ export class RoomManager {
     hcOptions?: Partial<HcGameOptions>,
     wordBuildingOptions?: Partial<WordBuildingOptions>,
     dotsBoxesOptions?: Partial<DotsBoxesOptions>,
-    memoryMatchOptions?: Partial<MemoryMatchOptions>
+    memoryMatchOptions?: Partial<MemoryMatchOptions>,
+    starGameOptions?: Partial<StarGameOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -180,6 +186,7 @@ export class RoomManager {
       wordBuildingOptions: { ...DEFAULT_WORDBUILDING_OPTIONS, ...(wordBuildingOptions ?? {}) },
       dotsBoxesOptions: { ...DEFAULT_DOTSBOXES_OPTIONS, ...(dotsBoxesOptions ?? {}) },
       memoryMatchOptions: { ...DEFAULT_MEMORYMATCH_OPTIONS, ...(memoryMatchOptions ?? {}) },
+      starGameOptions: { ...DEFAULT_STARGAME_OPTIONS, ...(starGameOptions ?? {}) },
       memoryMatchRevealTimer: null,
       rematch: emptyRematchState(),
       rematchTimer: null,
@@ -554,6 +561,9 @@ export class RoomManager {
       if (engine instanceof MemoryMatchEngine) {
         engine.setOptions(room.memoryMatchOptions);
       }
+      if (engine instanceof StarGameEngine) {
+        engine.setOptions(room.starGameOptions);
+      }
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
@@ -846,6 +856,18 @@ export class RoomManager {
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
     }
+    if (room.engine instanceof StarGameEngine) {
+      const engine = room.engine;
+      if (engine.isOver()) {
+        engine.clearDeadline();
+        this.broadcastGameState(room);
+        return;
+      }
+      const ms = engine.armDeadline(engine.getPhaseTimerSeconds() * 1000);
+      this.broadcastGameState(room);
+      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      return;
+    }
   }
 
   private onTurnTimeout(room: Room): void {
@@ -927,6 +949,13 @@ export class RoomManager {
         this.scheduleTurnTimer(room);
         this.scheduleBotMoveIfNeeded(room);
       }
+      return;
+    }
+    if (room.engine instanceof StarGameEngine) {
+      const engine = room.engine;
+      if (engine.isOver()) return;
+      engine.resolveDeadline();
+      this.afterAutoMove(room, engine.isOver());
       return;
     }
   }
@@ -1237,6 +1266,7 @@ export class RoomManager {
       if (engine instanceof WordBuildingEngine) engine.setOptions(room.wordBuildingOptions);
       if (engine instanceof DotsBoxesEngine) engine.setOptions(room.dotsBoxesOptions);
       if (engine instanceof MemoryMatchEngine) engine.setOptions(room.memoryMatchOptions);
+      if (engine instanceof StarGameEngine) engine.setOptions(room.starGameOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

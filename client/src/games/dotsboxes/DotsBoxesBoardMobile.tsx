@@ -7,11 +7,13 @@ import {
   NotebookBoard,
   ScoreBar,
   ReportCardOverlay,
+  ClassroomScene,
 } from "./dotsboxes-shared";
 import { useDotsBoxesBoard, type DotsBoxesBoardProps } from "./useDotsBoxesBoard";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
 import { DOTSBOXES_TUTORIAL } from "../tutorials";
+import RematchPanel from "../../components/RematchPanel";
 
 /**
  * Touch-first single-column layout. The scoreboard wraps across the top,
@@ -41,6 +43,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
   const tut = useTutorialGate(DOTSBOXES_TUTORIAL.key);
 
   return (
+    <ClassroomScene footer={state.phase === "finished" ? <RematchPanel players={props.players} selfId={props.selfId} className="bg-[#fef9f0]/90 border-2 border-amber-700/40 rounded-lg" /> : undefined}>
     <div
       className="relative w-full mx-auto"
       style={{
@@ -48,8 +51,15 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
         fontFamily: "'Patrick Hand', 'Caveat', 'Georgia', serif",
       }}
     >
-      {/* Tutorial launcher — top-right above the scoreboard */}
-      <div className="flex justify-end mb-2">
+      {/* Leave (top-left) + Tutorial (top-right) */}
+      <div className="flex items-center justify-between mb-2">
+        <button
+          onClick={props.onLeave}
+          className="text-sm font-semibold px-3 py-1 rounded"
+          style={{ background: "rgba(74,63,53,0.88)", color: "#FFF3E3", fontFamily: "'Caveat','Patrick Hand',cursive", fontSize: 15 }}
+        >
+          ← Leave
+        </button>
         <TutorialButton onClick={() => tut.setOpen(true)} />
       </div>
 
@@ -157,5 +167,6 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
         />
       )}
     </div>
+    </ClassroomScene>
   );
 }

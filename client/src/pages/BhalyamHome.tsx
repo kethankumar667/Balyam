@@ -13,6 +13,7 @@ import { tileHover, ctaPress, bhalyamSpring } from "../lib/motion";
 import { getSocket } from "../lib/socket";
 import {
   BHALYAM_GAMES,
+  isLocked,
   type BhalyamGameCard,
   type BhalyamGameSlug,
 } from "../components/bhalyam/data";
@@ -32,6 +33,7 @@ import {
   TeluguCinemaluGlyph,
   SamethaluGlyph,
   GamepadGlyph,
+  StarGameGlyph,
 } from "../components/bhalyam/icons";
 
 /**
@@ -65,6 +67,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   tambola: TambolaGlyph,
   samethalu: SamethaluGlyph,
   telugucinemalu: TeluguCinemaluGlyph,
+  stargame: StarGameGlyph,
 };
 
 export default function BhalyamHome() {
@@ -999,9 +1002,12 @@ export function GameTile({
     // gradient + glyph layer (palm-leaf manuscript icon).
     samethalu: "",
     telugucinemalu: "/telugu cinemalu.png",
+    // No bespoke art shipped yet — falls through to the gradient + star glyph.
+    stargame: "",
   };
 
-  const underMaintenance = game.maintenance === true;
+  const underMaintenance = isLocked(game);
+  const showMaintenance = game.maintenance === true;
 
   // Accent-tinted glow color for the hover shadow — pulled from the tile's
   // gradient end-stop so each tile glows in its own brand color.
@@ -1040,12 +1046,12 @@ export function GameTile({
     >
       <span
         className={`absolute right-3 top-3 rounded-full px-2.5 py-[3px] text-[10.5px] font-bold tracking-tight shadow-[0_2px_6px_-2px_rgba(0,0,0,0.4)] ${
-          underMaintenance
+          showMaintenance
             ? "bg-amber-200/95 text-amber-900 border border-amber-400/60"
             : " text-white border border-white/15"
         }`}
       >
-        {underMaintenance ? "Maintenance" : "Trending"}
+        {showMaintenance ? "Maintenance" : "Trending"}
       </span>
 
       <span

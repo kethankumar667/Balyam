@@ -20,7 +20,8 @@ export function registerSocketHandlers(
         payload.hcOptions,
         payload.wordBuildingOptions,
         payload.dotsBoxesOptions,
-        payload.memoryMatchOptions
+        payload.memoryMatchOptions,
+        payload.starGameOptions
       );
       ack({ ok: true, code, playerId });
     } catch (err) {

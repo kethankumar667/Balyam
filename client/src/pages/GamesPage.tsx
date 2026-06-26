@@ -6,6 +6,7 @@ import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
 import {
   BHALYAM_GAMES,
+  isLocked,
   type BhalyamGameSlug,
 } from "../components/bhalyam/data";
 import { GameTile } from "./BhalyamHome";
@@ -44,8 +45,8 @@ export default function GamesPage() {
     getSocket();
   }, []);
 
-  const playable = BHALYAM_GAMES.filter((g) => !g.maintenance);
-  const comingSoon = BHALYAM_GAMES.filter((g) => g.maintenance);
+  const playable = BHALYAM_GAMES.filter((g) => !isLocked(g));
+  const comingSoon = BHALYAM_GAMES.filter((g) => isLocked(g));
 
   return (
     // `bhalyam-home` is overloaded as the dark-mode override anchor (see
