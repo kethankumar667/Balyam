@@ -95,8 +95,8 @@ export function registerSocketHandlers(
     rooms.relayWebRtcSignal(socket.id, toPlayerId, signal);
   });
 
-  socket.on("room:reaction", ({ emoji }) => {
-    rooms.sendReaction(socket.id, emoji);
+  socket.on("room:reaction", ({ emoji, targetPlayerId }) => {
+    rooms.sendReaction(socket.id, emoji, targetPlayerId);
   });
 
   socket.on("room:cursor", ({ x, y }) => {

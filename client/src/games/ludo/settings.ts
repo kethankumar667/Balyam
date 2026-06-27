@@ -5,6 +5,9 @@ export interface LudoSettings {
   highContrast: boolean;
   theme: "classic" | "neon" | "paper";
   showHoverPreview: boolean;
+  reducedMotion: boolean;
+  goldenTokens: boolean;
+  woodenDice: boolean;
 }
 
 const KEY = "mpg.ludo.settings";
@@ -13,6 +16,9 @@ const DEFAULTS: LudoSettings = {
   highContrast: false,
   theme: "classic",
   showHoverPreview: true,
+  reducedMotion: false,
+  goldenTokens: false,
+  woodenDice: false,
 };
 
 function load(): LudoSettings {
@@ -50,4 +56,11 @@ export function useLudoSettings(): [
     for (const fn of _listeners) fn(_settings);
   }
   return [s, update];
+}
+
+/** OS preference OR the in-app override — calms confetti, emoji rain, and
+ * the step-by-step token walk. Not reactive to a live OS-pref change
+ * mid-session (Ludo settings aren't reactive to that either); fine for one match. */
+export function prefersReducedMotion(s: LudoSettings): boolean {
+  return s.reducedMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

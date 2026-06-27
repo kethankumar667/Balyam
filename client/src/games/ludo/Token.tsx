@@ -28,6 +28,7 @@ export function Token({
   onMouseLeave,
   label,
   cbMode = false,
+  golden = false,
   celebrating = false,
 }: {
   color: LudoColor;
@@ -40,10 +41,11 @@ export function Token({
   onMouseLeave?: () => void;
   label?: string;
   cbMode?: boolean;
+  golden?: boolean;
   celebrating?: boolean;
 }) {
-  const main = COLOR_HEX[color];
-  const dark = COLOR_HEX_DARK[color];
+  const main = golden ? "#D4AF37" : COLOR_HEX[color];
+  const dark = golden ? "#8B6914" : COLOR_HEX_DARK[color];
   return (
     <button
       onClick={onClick}

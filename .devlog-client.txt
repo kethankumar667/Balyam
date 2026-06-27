@@ -1,0 +1,40 @@
+
+> multiplayer-games-client@0.1.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 1019 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.229.1:5173/
+  ➜  Network: http://192.168.203.1:5173/
+  ➜  Network: http://192.168.29.127:5173/
+10:40:56 PM [vite] hmr update /src/games/ludo/Dice.tsx, /src/index.css
+10:40:57 PM [vite] hmr invalidate /src/games/ludo/Dice.tsx Could not Fast Refresh (new export)
+10:40:57 PM [vite] hmr update /src/index.css, /src/games/ludo/ludo-board-composites.tsx, /src/games/snl/snl-board-shared.tsx
+10:40:57 PM [vite] hmr invalidate /src/games/snl/snl-board-shared.tsx Could not Fast Refresh ("resolveCoinColors" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+10:40:57 PM [vite] hmr update /src/index.css, /src/games/snl/SnlBoardMobile.tsx, /src/games/snl/SnlBoardDesktop.tsx
+10:41:16 PM [vite] hmr update /src/index.css
+10:41:16 PM [vite] hmr update /src/games/ludo/ludo-board-composites.tsx
+10:41:16 PM [vite] hmr update /src/games/ludo/LudoBoardMobile.tsx
+10:41:16 PM [vite] hmr update /src/games/ludo/LudoBoardDesktop.tsx
+10:41:16 PM [vite] hmr update /src/games/ludo/LudoBoardMobile.tsx, /src/games/ludo/LudoBoardDesktop.tsx
+10:41:16 PM [vite] hmr update /src/index.css
+10:41:44 PM [vite] hmr update /src/games/ludo/LudoBoardMobile.tsx, /src/index.css
+10:42:05 PM [vite] hmr update /src/games/ludo/LudoBoardDesktop.tsx, /src/index.css
+10:42:46 PM [vite] hmr update /src/games/ludo/LudoBoardMobile.tsx, /src/index.css
+12:57:43 AM [vite] hmr update /src/games/ludo/Dice.tsx, /src/index.css
+12:57:43 AM [vite] hmr update /src/games/ludo/ludo-board-composites.tsx, /src/index.css, /src/games/snl/snl-board-shared.tsx, /src/games/ludo/LudoBoardMobile.tsx, /src/games/ludo/LudoBoardDesktop.tsx
+12:57:43 AM [vite] hmr update /src/games/ludo/ludo-board-composites.tsx, /src/index.css
+12:57:43 AM [vite] hmr update /src/games/ludo/LudoBoardMobile.tsx, /src/index.css, /src/games/ludo/LudoBoardDesktop.tsx
+12:57:43 AM [vite] hmr invalidate /src/games/snl/snl-board-shared.tsx Could not Fast Refresh ("resolveCoinColors" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+12:57:43 AM [vite] hmr update /src/games/snl/SnlBoardMobile.tsx, /src/index.css, /src/games/snl/SnlBoardDesktop.tsx
+1:19:41 AM [vite] hmr update /src/games/rps/RpsBoardDesktop.tsx, /src/index.css, /src/games/rps/RpsBoardMobile.tsx
+1:34:35 AM [vite] hmr update /src/games/ludo/ludo-board-shared.tsx, /src/index.css
+1:34:35 AM [vite] hmr update /src/games/ludo/LudoBoardMobile.tsx, /src/index.css, /src/games/ludo/LudoBoardDesktop.tsx
+1:34:35 AM [vite] hmr update /src/games/ludo/LudoBoardMobile.tsx, /src/index.css, /src/games/ludo/LudoBoardDesktop.tsx
+1:34:35 AM [vite] hmr update /src/components/InlineRoomRail.tsx, /src/index.css
+1:34:35 AM [vite] hmr update /src/games/ludo/ludo-board-composites.tsx, /src/index.css
+1:34:36 AM [vite] hmr update /src/games/ludo/InstructionsModal.tsx, /src/index.css
+1:34:36 AM [vite] hmr invalidate /src/games/ludo/ludo-board-shared.tsx Could not Fast Refresh (new export)
+1:34:36 AM [vite] hmr update /src/games/ludo/ludo-board-composites.tsx, /src/index.css, /src/games/ludo/LudoBoardMobile.tsx, /src/games/ludo/LudoBoardDesktop.tsx

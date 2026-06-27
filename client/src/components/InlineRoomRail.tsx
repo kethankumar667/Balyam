@@ -39,6 +39,7 @@ export default function InlineRoomRail({
 }) {
   const [open, setOpen] = useState<Panel | null>(null);
   const [emojiCooldown, setEmojiCooldown] = useState(false);
+  const [reactionTarget, setReactionTarget] = useState<string | null>(null);
 
   // Unread chat tracking — same logic as FloatingRoomRail.
   const [lastReadCount, setLastReadCount] = useState(messages.length);
@@ -60,9 +61,25 @@ export default function InlineRoomRail({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Lets a game board fire a custom event (tapping a player's name plate
+  // directly on the felt, e.g. Ludo's yard badge) to open the reaction
+  // picker pre-targeted at that player - same targeting the Players-panel
+  // rows below already do, just reachable without detouring through a
+  // side panel first.
+  useEffect(() => {
+    function onBoardTarget(e: Event) {
+      const id = (e as CustomEvent<{ playerId: string }>).detail?.playerId;
+      if (!id || id === selfId) return;
+      setReactionTarget(id);
+      setOpen("emoji");
+    }
+    window.addEventListener("bhalyam:react-at-player", onBoardTarget);
+    return () => window.removeEventListener("bhalyam:react-at-player", onBoardTarget);
+  }, [selfId]);
+
   function sendReaction(emoji: string) {
     if (emojiCooldown) return;
-    getSocket().emit("room:reaction", { emoji });
+    getSocket().emit("room:reaction", { emoji, targetPlayerId: reactionTarget ?? undefined });
     setEmojiCooldown(true);
     window.setTimeout(() => setEmojiCooldown(false), 400);
   }
@@ -115,7 +132,7 @@ export default function InlineRoomRail({
           <InlineButton
             label="Reactions"
             active={open === "emoji"}
-            onClick={() => setOpen(open === "emoji" ? null : "emoji")}
+            onClick={() => { setReactionTarget(null); setOpen(open === "emoji" ? null : "emoji"); }}
           >
             <span className="text-lg leading-none">🙂</span>
           </InlineButton>
@@ -129,10 +146,18 @@ export default function InlineRoomRail({
         <EmojiPopover
           onPick={(e) => {
             sendReaction(e);
-            // Stay open so the player can fire off several reactions in a row.
+            if (reactionTarget) {
+              setOpen(null);
+              setReactionTarget(null);
+            }
+            // else: stay open so the player can fire off several reactions in a row.
           }}
-          onClose={() => setOpen(null)}
+          onClose={() => {
+            setOpen(null);
+            setReactionTarget(null);
+          }}
           cooldown={emojiCooldown}
+          targetName={reactionTarget ? players.find((p) => p.id === reactionTarget)?.name ?? null : null}
         />
       )}
 
@@ -176,7 +201,14 @@ export default function InlineRoomRail({
               <RoomInfo code={code} game={game} phase={phase} />
             )}
             {open === "players" && (
-              <PlayerList players={players} selfId={selfId} />
+            <PlayerList
+              players={players}
+              selfId={selfId}
+              onTapPlayer={(id) => {
+                setReactionTarget(id);
+                setOpen("emoji");
+              }}
+            />
             )}
             {open === "voice" && (
               <VoicePanel
@@ -243,10 +275,12 @@ function EmojiPopover({
   onPick,
   onClose,
   cooldown,
+  targetName,
 }: {
   onPick: (e: string) => void;
   onClose: () => void;
   cooldown: boolean;
+  targetName: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -268,6 +302,14 @@ function EmojiPopover({
           border: "1px solid rgba(148,163,184,0.22)",
         }}
       >
+        {targetName && (
+          <div
+            className="flex items-center gap-1.5 pr-1.5 mr-1 border-r text-xs font-semibold text-amber-300"
+            style={{ borderColor: "rgba(148,163,184,0.25)" }}
+          >
+            🎯 {targetName}
+          </div>
+        )}
         {QUICK_EMOJIS.map((e) => (
           <button
             key={e}

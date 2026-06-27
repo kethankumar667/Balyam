@@ -629,6 +629,18 @@ body, #root, .bhalyam-paper {
   animation: lucky-flash 1.8s ease-out forwards;
 }
 
+/* Capture "CUT!" callout — pop in, then hold visible (no fade-out keyframe so
+   the prefers-reduced-motion guard above leaves it readable). Auto-removed by
+   a timer in useLudoBoard, not by the animation. */
+@keyframes cut-pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.ludo-cut-flash {
+  animation: cut-pop 320ms cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
 /* Turn timer ring pulse near deadline */
 @keyframes timer-warn {
   0%, 100% { filter: drop-shadow(0 0 0 #ef4444); }
@@ -797,15 +809,22 @@ body, #root, .bhalyam-paper {
 }
 
 @keyframes dice-physics-roll {
-  0%   { transform: rotateX(0deg) rotateY(0deg) translateY(0) scale(1); }
-  18%  { transform: rotateX(120deg) rotateY(-60deg) translateY(-10px) scale(1.08); }
-  42%  { transform: rotateX(260deg) rotateY(140deg) translateY(2px) scale(0.98); }
-  68%  { transform: rotateX(390deg) rotateY(270deg) translateY(-5px) scale(1.04); }
-  100% { transform: rotateX(360deg) rotateY(360deg) translateY(0) scale(1); }
+  0%   { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) translateY(0) scale(1); }
+  16%  { transform: rotateX(calc(var(--dice-rx) * 0.32)) rotateY(calc(var(--dice-ry) * -0.28)) rotateZ(calc(var(--dice-rz) * 0.5)) translateY(var(--dice-arc)) scale(1.1); }
+  40%  { transform: rotateX(calc(var(--dice-rx) * 0.68)) rotateY(calc(var(--dice-ry) * 0.62)) rotateZ(var(--dice-rz)) translateY(calc(var(--dice-arc) * -0.2)) scale(0.96); }
+  64%  { transform: rotateX(calc(var(--dice-rx) * 0.9)) rotateY(calc(var(--dice-ry) * 0.85)) rotateZ(calc(var(--dice-rz) * 0.3)) translateY(calc(var(--dice-arc) * 0.4)) scale(1.05); }
+  82%  { transform: rotateX(var(--dice-rx)) rotateY(var(--dice-ry)) rotateZ(0deg) translateY(2px) scale(0.97); }
+  92%  { transform: rotateX(var(--dice-rx)) rotateY(var(--dice-ry)) rotateZ(0deg) translateY(-1px) scale(1.02); }
+  100% { transform: rotateX(var(--dice-rx)) rotateY(var(--dice-ry)) rotateZ(0deg) translateY(0) scale(1); }
 }
 .dice-physics-roll {
-  animation: dice-physics-roll 720ms cubic-bezier(.2,.9,.35,1.25) both;
+  --dice-rx: 380deg;
+  --dice-ry: 340deg;
+  --dice-rz: 6deg;
+  --dice-arc: -12px;
+  animation: dice-physics-roll 640ms cubic-bezier(.22,.86,.32,1.24) both;
   transform-style: preserve-3d;
+  will-change: transform;
 }
 
 @keyframes active-player-pulse {

@@ -91,6 +91,65 @@ describe("LudoEngine", () => {
     expect(state).toBeDefined();
   });
 
+  it("capturing an opponent's token on a non-six roll still grants a bonus turn", () => {
+    function rollFor(pid: string, tokenId?: string) {
+      engine.applyMove({ playerId: pid, type: "roll" });
+      if (engine.getPublicState().movableTokenIds.length > 1 && tokenId) {
+        engine.applyMove({ playerId: pid, type: "move", data: { tokenId } });
+      }
+    }
+    rigDice(engine, [6, 6, 2, 6, 2, 6, 1]);
+    rollFor("p0", "red-0");   // yard -> track 0 (six, bonus)
+    rollFor("p0", "red-0");   // 0 -> 6 (six, bonus)
+    rollFor("p0");            // 6 -> 8 (two, turn passes to p1)
+    rollFor("p1", "green-0"); // yard -> track 13 (six, bonus)
+    rollFor("p1");            // 13 -> 15 (two, turn passes to p0)
+    rollFor("p0", "red-0");   // 8 -> 14 (six, bonus)
+    rollFor("p0");            // 14 -> 15: captures green-0 with a ONE (not six)
+
+    const state = engine.getPublicState();
+    expect(state.lastEvent?.kind).toBe("capture");
+    expect(state.tokens["p1"][0].state).toBe("yard"); // green-0 sent back
+    // The capturing roll was a 1, not a 6 - bonus must come from the capture itself.
+    expect(state.turnPlayerId).toBe("p0");
+    expect(state.turnPhase).toBe("rolling");
+  });
+
+  it("getting a token all the way home on a non-six roll still grants a bonus turn", () => {
+    function rollFor(pid: string, tokenId?: string) {
+      engine.applyMove({ playerId: pid, type: "roll" });
+      if (engine.getPublicState().movableTokenIds.length > 1 && tokenId) {
+        engine.applyMove({ playerId: pid, type: "move", data: { tokenId } });
+      }
+    }
+    // Mandatory Capture is irrelevant to this test and would block stretch
+    // entry without a prior capture - disable it to isolate the home bonus.
+    engine.setOptions({ mandatoryCapture: false });
+    engine.init(makePlayers(2));
+    rigDice(engine, [6, 6, 2, 1, 6, 6, 2, 1, 6, 6, 2, 1, 6, 6, 4, 1, 2, 1, 4]);
+    for (let i = 0; i < 3; i++) {
+      rollFor("p0", "red-0"); // six: bonus
+      rollFor("p0", "red-0"); // six: bonus
+      rollFor("p0");          // two: turn passes to p1
+      rollFor("p1");          // p1 has nothing out -> noMove, turn passes back
+    }
+    // red-0 is now at track pos 36.
+    rollFor("p0", "red-0"); // six: 36 -> 42 (bonus)
+    rollFor("p0", "red-0"); // six: 42 -> 48 (bonus)
+    rollFor("p0");          // four: 48 -> stretch pos 0, turn passes to p1
+    rollFor("p1");          // noMove, back to p0
+    rollFor("p0");          // two: stretch 0 -> 2, turn passes to p1
+    rollFor("p1");          // noMove, back to p0
+    rollFor("p0");          // four: stretch 2 -> HOME, with a FOUR (not six)
+
+    const state = engine.getPublicState();
+    expect(state.lastEvent?.kind).toBe("home");
+    expect(state.tokens["p0"].find((t) => t.id === "red-0")?.state).toBe("home");
+    // The finishing roll was a 4, not a 6 - bonus must come from reaching home itself.
+    expect(state.turnPlayerId).toBe("p0");
+    expect(state.turnPhase).toBe("rolling");
+  });
+
   it("rolls 6 grants a bonus roll", () => {
     rigDice(engine, [6, 6, 3]);
     engine.applyMove({ playerId: "p0", type: "roll" });

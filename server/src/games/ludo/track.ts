@@ -46,18 +46,3 @@ export function lastTrackPosFor(color: LudoColor, playerCount: number): number {
   const tl = trackLengthFor(playerCount);
   return (colorStartFor(color, playerCount) + tl - 1) % tl;
 }
-
-// ------------------------- Backwards-compat exports -------------------------
-// Constants used by older code paths that only support 4-player Ludo.
-export const TRACK_LENGTH = 52;
-export const COLOR_START_POSITION: Record<LudoColor, number> = {
-  red: 0,
-  green: 13,
-  yellow: 26,
-  blue: 39,
-  purple: 52, // unused on cross board, included for type completeness
-  cyan: 65,
-  orange: 78,
-  brown: 91,
-};
-export const SAFE_SQUARES = new Set<number>([0, 8, 13, 21, 26, 34, 39, 47]);

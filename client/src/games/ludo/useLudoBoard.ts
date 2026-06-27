@@ -10,13 +10,14 @@ import type {
   CursorRecvPayload,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
-import { useTurnHaptics } from "../../hooks/useHaptics";
+import { useHaptics, useTurnHaptics } from "../../hooks/useHaptics";
 import { type RemoteCursor } from "./CursorLayer";
-import { useLudoSettings, type LudoSettings } from "./settings";
+import { useLudoSettings, prefersReducedMotion, type LudoSettings } from "./settings";
 import { predictDestination } from "./predict";
 import { sfx, setSoundEnabled, isSoundEnabled } from "./sound";
 import { computeStepPath, isSameTokenState } from "./animation";
 import { buildPolygonGeometry, type PolygonBoardGeometry } from "./polygon-board";
+import { DICE_ROLL_MS } from "./Dice";
 import {
   COLOR_HEX,
   HOME_SLOTS,
@@ -24,7 +25,7 @@ import {
   TRACK_CELLS,
   YARD_CELLS,
 } from "./board-layout";
-import { cellToPct, colorOffset, type LudoHoverPreview } from "./ludo-board-shared";
+import { cellToPct, colorOffset, stackOffset, type LudoHoverPreview } from "./ludo-board-shared";
 
 /**
  * Shared props for every Ludo shell (picker, mobile, desktop). Identical to
@@ -58,12 +59,14 @@ export interface LudoBoardModel {
   showSettings: boolean;
   setShowSettings: (v: boolean) => void;
   settings: LudoSettings;
+  reduceMotion: boolean;
   soundOn: boolean;
   toggleSound: () => void;
   toast: LudoToast | null;
   confettiUntil: number;
   reactions: ReactionRecvPayload[];
   reactionAnchor: (playerId: string) => { left: number; top: number } | null;
+  registerPlayerCard: (playerId: string, el: Element | null) => void;
   rains: { id: string; emoji: string }[];
   cursors: Record<string, RemoteCursor>;
   boardWrapRef: React.RefObject<HTMLDivElement>;
@@ -80,6 +83,7 @@ export interface LudoBoardModel {
   onHoverToken: (pid: string, token: LudoToken) => void;
   clearHoverPreview: () => void;
   luckyBanner: string | null;
+  cutFlash: number | null;
   unlockBurst: Record<string, number>;
   allTokens: { pid: string; token: LudoToken }[];
   playerCount: number;
@@ -126,13 +130,14 @@ export function useLudoBoard({
     state.phase === "playing" &&
     !rollCooldown;
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
+  const haptics = useHaptics();
 
   const [rolling, setRolling] = useState(false);
   const prevDice = useRef<number | null>(state.diceValue);
   useEffect(() => {
     if (state.diceValue != null && state.diceValue !== prevDice.current) {
       setRolling(true);
-      const t = setTimeout(() => setRolling(false), 550);
+      const t = setTimeout(() => setRolling(false), DICE_ROLL_MS);
       prevDice.current = state.diceValue;
       return () => clearTimeout(t);
     }
@@ -165,9 +170,11 @@ export function useLudoBoard({
   );
   const [showSettings, setShowSettings] = useState(false);
   const [settings] = useLudoSettings();
+  const reduceMotion = prefersReducedMotion(settings);
   const [soundOn, setSoundOn] = useState(isSoundEnabled());
   const [toast, setToast] = useState<LudoToast | null>(null);
   const [confettiUntil, setConfettiUntil] = useState<number>(0);
+  const [cutFlash, setCutFlash] = useState<number | null>(null);
 
   // React to server events: play sound, show toast, confetti on win
   const lastEventTs = useRef<number>(0);
@@ -186,6 +193,7 @@ export function useLudoBoard({
     switch (e.kind) {
       case "capture":
         if (soundOn) sfx.capture();
+        setCutFlash(e.ts);
         setToast({
           text: `${byName} captured ${victimName}'s token! Home column unlocked 🔓`,
           emoji: "💥",
@@ -198,6 +206,7 @@ export function useLudoBoard({
         break;
       case "win":
         if (soundOn) sfx.win();
+        haptics.win();
         setConfettiUntil(Date.now() + 5000);
         setToast({ text: `${byName} wins the game! 🎉`, emoji: "🏆", color: byColor });
         break;
@@ -216,15 +225,32 @@ export function useLudoBoard({
     return () => clearTimeout(id);
   }, [toast]);
 
+  // Auto-clear the capture "CUT!" callout (the lucky banner takes over the
+  // center for the rarer 6-then-capture case — see render guard).
+  useEffect(() => {
+    if (cutFlash == null) return;
+    const id = setTimeout(() => setCutFlash(null), 1300);
+    return () => clearTimeout(id);
+  }, [cutFlash]);
+
   // ---- Floating reactions + emoji rain ----
   const [reactions, setReactions] = useState<ReactionRecvPayload[]>([]);
   const [rains, setRains] = useState<{ id: string; emoji: string }[]>([]);
-  const playerCardRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const playerCardRefs = useRef<Map<string, Element>>(new Map());
+  const registerPlayerCard = useCallback((playerId: string, el: Element | null) => {
+    if (el) playerCardRefs.current.set(playerId, el);
+    else playerCardRefs.current.delete(playerId);
+  }, []);
   useEffect(() => {
     const socket = getSocket();
     const onReaction = (r: ReactionRecvPayload) => {
       setReactions((prev) => [...prev, r]);
-      setRains((prev) => [...prev.slice(-2), { id: r.id, emoji: r.emoji }]);
+      // Targeted "shoot at one player" reactions stay exclusive to that
+      // player's floating reaction - a screen-wide rain would defeat the
+      // point of aiming it at one person. Untargeted reactions keep the rain.
+      if (!r.targetPlayerId) {
+        setRains((prev) => [...prev.slice(-2), { id: r.id, emoji: r.emoji }]);
+      }
       setTimeout(() => {
         setReactions((prev) => prev.filter((x) => x.id !== r.id));
       }, 2000);
@@ -448,11 +474,12 @@ export function useLudoBoard({
   function roll() {
     if (!canRoll) return;
     if (soundOn) sfx.diceRoll();
+    haptics.subtle();
     setRolling(true);
     // Include playerId so the server can proxy moves when Room.tsx has
     // overridden `selfId` to a local pass-and-play seat.
     getSocket().emit("game:move", { type: "roll", playerId: selfId ?? undefined });
-    setTimeout(() => setRolling(false), 550);
+    setTimeout(() => setRolling(false), DICE_ROLL_MS);
   }
   function move(tokenId: string) {
     getSocket().emit("game:move", { type: "move", data: { tokenId }, playerId: selfId ?? undefined });
@@ -502,6 +529,12 @@ export function useLudoBoard({
         continue;
       }
       if (isSameTokenState(cur, serverToken)) continue;
+      if (reduceMotion) {
+        clearTimeout(animationTimersRef.current.get(id));
+        animationTimersRef.current.delete(id);
+        setDisplayed((s) => ({ ...s, [id]: serverToken }));
+        continue;
+      }
 
       clearTimeout(animationTimersRef.current.get(id));
       animationTimersRef.current.delete(id);
@@ -672,7 +705,8 @@ export function useLudoBoard({
     }
     const cell = TRACK_CELLS[token.trackPos ?? 0];
     const off = colorOffset(color);
-    return cellToPct(cell.row + off.r * 0.18, cell.col + off.c * 0.18);
+    const stack = stackOffset(tokenIdx);
+    return cellToPct(cell.row + off.r * 0.18 + stack.r, cell.col + off.c * 0.18 + stack.c);
   }
 
   return {
@@ -685,12 +719,14 @@ export function useLudoBoard({
     showSettings,
     setShowSettings,
     settings,
+    reduceMotion,
     soundOn,
     toggleSound,
     toast,
     confettiUntil,
     reactions,
     reactionAnchor,
+    registerPlayerCard,
     rains,
     cursors,
     boardWrapRef,
@@ -707,6 +743,7 @@ export function useLudoBoard({
     onHoverToken,
     clearHoverPreview,
     luckyBanner,
+    cutFlash,
     unlockBurst,
     allTokens,
     playerCount,

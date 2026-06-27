@@ -48,6 +48,24 @@ export default function SettingsMenu({ onClose }: { onClose: () => void }) {
           value={s.showHoverPreview}
           onChange={(v) => update({ showHoverPreview: v })}
         />
+        <Toggle
+          label="Reduce motion"
+          desc="Calms confetti, emoji rain, and the step-by-step token walk."
+          value={s.reducedMotion}
+          onChange={(v) => update({ reducedMotion: v })}
+        />
+        <Toggle
+          label="Golden tokens"
+          desc="Brass/gold finish on every token, regardless of color."
+          value={s.goldenTokens}
+          onChange={(v) => update({ goldenTokens: v })}
+        />
+        <Toggle
+          label="Wooden dice"
+          desc="Warm wood-tone dice instead of the classic white face."
+          value={s.woodenDice}
+          onChange={(v) => update({ woodenDice: v })}
+        />
       </div>
     </div>
   );

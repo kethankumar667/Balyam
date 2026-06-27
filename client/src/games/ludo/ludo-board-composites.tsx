@@ -11,6 +11,7 @@ import EmojiRain from "./EmojiRain";
 import WinnerCelebration from "./WinnerCelebration";
 import SettingsMenu from "./SettingsMenu";
 import PolygonBoardSVG from "./PolygonBoardSVG";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { COLOR_HEX } from "./board-layout";
 import { BoardSVG, HoverPreviewMarker, MiniBurst, polygonTokenSize } from "./ludo-board-shared";
 import type { LudoBoardModel } from "./useLudoBoard";
@@ -70,40 +71,31 @@ export function LudoStatusBar({ m, state }: { m: LudoBoardModel; state: LudoStat
   );
 }
 
+/**
+ * The dice "sits on the board" - a compact overlay pinned to the board's
+ * center cross (the same spot a physical Ludo board's home triangles meet),
+ * not a separate bordered toolbar above/beside the felt. Turn text already
+ * lives in LudoStatusBar, so this stays purely the dice (now the roll control itself) + streak.
+ */
 export function LudoDiceTray({ m, state }: { m: LudoBoardModel; state: LudoState }) {
+  const sixesActive = state.consecutiveSixes > 0 && state.consecutiveSixes < 3;
   return (
     <div
-      className={`flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 rounded-2xl border border-slate-700/70 bg-slate-950/70 p-3 transition ${
-        m.myTurn ? "" : "opacity-60"
-      }`}
+      className="absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 pointer-events-none"
+      style={{ width: "clamp(44px, 12%, 92px)" }}
     >
-      <div className="flex flex-col items-center gap-1">
-        <span
-          className="text-[10px] uppercase tracking-wider font-bold"
-          style={{ color: COLOR_HEX[state.playerColors[state.turnPlayerId]] ?? "#94a3b8" }}
-        >
-          {m.myTurn ? "Your dice" : `${m.nameOf(state.turnPlayerId)}'s dice`}
-        </span>
-        <Dice value={state.diceValue} rolling={m.rolling} highlight={m.myTurn && m.canRoll} />
+      <div className="pointer-events-auto w-full" style={{ aspectRatio: "1" }}>
+        <Dice
+          value={state.diceValue}
+          rolling={m.rolling}
+          highlight={m.myTurn && m.canRoll}
+          wooden={m.settings.woodenDice}
+          size="100%"
+          onClick={m.canRoll && !m.rolling ? m.roll : undefined}
+        />
       </div>
-      {m.myTurn ? (
-        <button
-          onClick={m.roll}
-          disabled={!m.canRoll || m.rolling}
-          className="rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-40 px-5 py-3 font-bold transition"
-        >
-          🎲 Roll
-        </button>
-      ) : (
-        <div className="text-sm text-slate-300 max-w-[12rem]">
-          <span className="block font-semibold">{m.nameOf(state.turnPlayerId)}'s turn</span>
-          <span className="block text-xs text-slate-400">
-            {state.turnPhase === "rolling" ? "Waiting for them to roll…" : "Waiting for them to move…"}
-          </span>
-        </div>
-      )}
-      {state.consecutiveSixes > 0 && state.consecutiveSixes < 3 && (
-        <span className="text-amber-300 text-xs whitespace-nowrap">
+      {sixesActive && (
+        <span className="pointer-events-auto rounded-full bg-amber-400/90 px-2 py-0.5 text-[10px] font-bold text-slate-900 shadow">
           {state.consecutiveSixes}/3 sixes
         </span>
       )}
@@ -157,6 +149,9 @@ export function LudoBoardArea({
           playerColors={state.playerColors}
           hasCaptured={state.hasCaptured ?? {}}
           unlockBurst={m.unlockBurst}
+          registerCard={m.registerPlayerCard}
+          selfId={m.selfId}
+          finishedCount={state.finishedCount}
         />
       )}
       {/* Live opponent cursors */}
@@ -195,11 +190,15 @@ export function LudoBoardArea({
               onMouseLeave={m.clearHoverPreview}
               label={String(idx + 1)}
               cbMode={m.settings.colorBlindMode}
+              golden={m.settings.goldenTokens}
               celebrating={m.celebratingIds.has(token.id)}
             />
           );
         })}
       </div>
+
+      {/* The dice "sits on" the board's center cross like a real board. */}
+      <LudoDiceTray m={m} state={state} />
 
       {/* Capture sad-faces (briefly visible at the victim's last position) */}
       {m.captureFaces.map((cf) => (
@@ -228,6 +227,7 @@ export function LudoOverlays({
 }) {
   return (
     <>
+      <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn && state.phase === "playing"} />
       {m.showInstructions && <InstructionsModal onClose={() => m.setShowInstructions(false)} />}
       {m.showSettings && <SettingsMenu onClose={() => m.setShowSettings(false)} />}
       {m.luckyBanner && (
@@ -240,16 +240,25 @@ export function LudoOverlays({
           </div>
         </div>
       )}
+      {m.cutFlash != null && !m.luckyBanner && (
+        <div key={m.cutFlash} className="fixed inset-0 z-40 pointer-events-none flex items-center justify-center">
+          <div
+            className="ludo-cut-flash bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 text-white text-5xl font-black px-10 py-5 rounded-2xl shadow-2xl"
+            style={{ textShadow: "0 3px 8px rgba(0,0,0,0.5)" }}
+          >
+            💥 CUT!
+          </div>
+        </div>
+      )}
       {m.toast && <Toast text={m.toast.text} emoji={m.toast.emoji} color={m.toast.color} />}
-      {Date.now() < m.confettiUntil && <Confetti />}
+      {!m.reduceMotion && Date.now() < m.confettiUntil && <Confetti />}
       <FloatingReactionsLayer
         reactions={m.reactions}
         anchorOf={m.reactionAnchor}
         playerColors={state.playerColors}
       />
-      {m.rains.map((r) => (
-        <EmojiRain key={r.id} emoji={r.emoji} />
-      ))}
+      {!m.reduceMotion &&
+        m.rains.map((r) => <EmojiRain key={r.id} emoji={r.emoji} />)}
       {m.showCelebration && state.winnerId && (
         <WinnerCelebration
           winner={

@@ -1214,12 +1214,14 @@ export interface GameMovePayload {
 // ---- Ephemeral overlay events (reactions, cursors) ----
 export interface ReactionSendPayload {
   emoji: string;
+  targetPlayerId?: string;
 }
 
 export interface ReactionRecvPayload {
   id: string;
   fromPlayerId: string;
   emoji: string;
+  targetPlayerId?: string;
   ts: number;
 }
 

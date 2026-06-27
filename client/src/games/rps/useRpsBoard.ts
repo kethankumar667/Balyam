@@ -144,7 +144,10 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
     const socket = getSocket();
     const onReaction = (r: ReactionRecvPayload) => {
       setReactions((prev) => [...prev, r]);
-      setRains((prev) => [...prev.slice(-2), { id: r.id, emoji: r.emoji }]);
+      // Targeted reactions stay exclusive to that player - see ludo/useLudoBoard.ts.
+      if (!r.targetPlayerId) {
+        setRains((prev) => [...prev.slice(-2), { id: r.id, emoji: r.emoji }]);
+      }
       setTimeout(() => setReactions((p) => p.filter((x) => x.id !== r.id)), 2000);
       setTimeout(() => setRains((p) => p.filter((x) => x.id !== r.id)), 3200);
     };

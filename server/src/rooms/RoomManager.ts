@@ -973,7 +973,7 @@ export class RoomManager {
     this.scheduleBotMoveIfNeeded(room);
   }
 
-  sendReaction(socketId: string, emoji: string): void {
+  sendReaction(socketId: string, emoji: string, targetPlayerId?: string): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     const ALLOWED = new Set([
@@ -981,10 +981,12 @@ export class RoomManager {
       "🤔", "😭", "😡", "🙌", "💪", "🎯", "🤝", "💔",
     ]);
     if (!ALLOWED.has(emoji)) return;
+    const validTarget = targetPlayerId && room.players.has(targetPlayerId) ? targetPlayerId : undefined;
     this.io.to(room.code).emit("room:reaction", {
       id: `r_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       fromPlayerId: player.id,
       emoji,
+      targetPlayerId: validTarget,
       ts: Date.now(),
     });
   }

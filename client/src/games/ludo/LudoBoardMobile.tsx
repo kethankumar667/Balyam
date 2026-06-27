@@ -1,13 +1,14 @@
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { useLudoBoard, type LudoBoardProps } from "./useLudoBoard";
-import { LudoStatusBar, LudoDiceTray, LudoBoardArea, LudoOverlays } from "./ludo-board-composites";
+import { LudoStatusBar, LudoBoardArea, LudoOverlays } from "./ludo-board-composites";
 
 /**
  * Ludo — mobile shell.
  *
- * Single column, touch-first: status bar → room rail → dice tray (stacks
- * vertically below `sm`) → board (capped by viewport width AND height so it
- * never needs scrolling) → all modals/overlays.
+ * Single column, touch-first: status bar → room rail → board (the dice now
+ * sits on the board itself, not a separate stacked section) → all
+ * modals/overlays. Capped by viewport width AND height so it never needs
+ * scrolling.
  */
 export default function LudoBoardMobile(props: LudoBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
@@ -26,12 +27,10 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
         messages={messages}
       />
 
-      <LudoDiceTray m={m} state={state} />
-
       {/* Board — capped by BOTH viewport width and viewport height so it
           always fits on a single screen without scrolling. The 300 px
           reserve accounts for the chrome above the board (header + turn
-          chips + reactions row + dice tray). */}
+          chips + reactions row). Dice now lives on the board itself. */}
       <LudoBoardArea m={m} state={state} players={players} maxWidth="min(92vw, calc(100vh - 300px), 680px)" />
 
       <LudoOverlays m={m} state={state} players={players} />

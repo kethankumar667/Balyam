@@ -1,14 +1,14 @@
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { useLudoBoard, type LudoBoardProps } from "./useLudoBoard";
-import { LudoStatusBar, LudoDiceTray, LudoBoardArea, LudoOverlays } from "./ludo-board-composites";
+import { LudoStatusBar, LudoBoardArea, LudoOverlays } from "./ludo-board-composites";
 
 /**
  * Ludo — desktop shell.
  *
- * Two-column: a larger board on the left, a persistent right rail carrying
- * the dice tray + controls + room rail (chat/players/voice) on the right —
- * the extra width goes to a bigger board AND visible controls instead of
- * stretching the phone layout.
+ * Two-column: a larger board on the left (the dice now sits on the board
+ * itself, not in a side rail), a persistent right rail carrying the room
+ * rail (chat/players/voice) on the right — the extra width goes to a bigger
+ * board instead of stretching the phone layout.
  */
 export default function LudoBoardDesktop(props: LudoBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
@@ -19,15 +19,14 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
       <LudoStatusBar m={m} state={state} />
 
       <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
-        {/* Board column — taller cap than mobile since the dice tray has
-            moved into the side rail, freeing vertical space. */}
+        {/* Board column — taller cap than mobile; nothing else competes for
+            vertical space in this column. */}
         <div className="min-w-0">
           <LudoBoardArea m={m} state={state} players={players} maxWidth="min(60vw, calc(100vh - 180px), 760px)" />
         </div>
 
         {/* Persistent right rail */}
         <aside className="space-y-3 lg:sticky lg:top-4">
-          <LudoDiceTray m={m} state={state} />
           <InlineRoomRail
             code={roomCode}
             game="ludo"
