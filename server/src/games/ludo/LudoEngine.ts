@@ -219,14 +219,19 @@ export class LudoEngine implements GameEngine {
     const token = this.findToken(pid, tokenId);
     if (!token) return { ok: false, error: "Token not found" };
 
-    const eventTsBefore = this.s.lastEvent?.ts ?? 0;
+    // Reference identity, NOT a `ts` comparison: two moves resolved within
+    // the same millisecond (routine under fast bots/tests, possible in real
+    // play) would otherwise read as "no new event fired" and clobber a real
+    // capture/home event below with a generic "move" one - silently eating
+    // the bonus-turn grant that's keyed off lastEvent.kind.
+    const eventBefore = this.s.lastEvent;
     const stateBeforeCapture = token.state;
     this.executeMove(pid, token, this.s.diceValue);
-    const eventTsAfter = this.s.lastEvent?.ts ?? 0;
+    const eventAfter = this.s.lastEvent;
 
     // If executeMove didn't already fire a capture/home event, emit a generic move event
     // so the client can show an "end-of-turn summary" toast for plain moves too.
-    if (eventTsAfter === eventTsBefore) {
+    if (eventAfter === eventBefore) {
       this.s.lastEvent = {
         kind: "move",
         byPlayerId: pid,
@@ -254,15 +259,18 @@ export class LudoEngine implements GameEngine {
       return { ok: true, isOver: true, winnerId: pid };
     }
 
-    // Bonus turn rules: 6 grants another roll
+    // Bonus turn rules: rolling a 6, capturing an opponent's token, or
+    // getting a token all the way home all grant another roll - matches
+    // the house rule players expect beyond the dice-only "roll a 6" case.
     const rolledSix = this.s.diceValue === 6;
+    const bonusFromEvent = this.s.lastEvent?.kind === "capture" || this.s.lastEvent?.kind === "home";
     // NOTE: deliberately NOT clearing diceValue here. The whole turn (roll →
     // move) can resolve in one applyMove call when there's only one movable
     // token; if we clear the value before the broadcast, the client never
     // sees the rolled number. We leave the value visible until the next
     // handleRoll overwrites it.
     this.s.movableTokenIds = [];
-    if (rolledSix) {
+    if (rolledSix || bonusFromEvent) {
       this.s.turnPhase = "rolling";
     } else {
       this.advanceTurn();

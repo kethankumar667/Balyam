@@ -3,9 +3,11 @@ import type { Player } from "@shared/types";
 export default function PlayerList({
   players,
   selfId,
+  onTapPlayer,
 }: {
   players: Player[];
   selfId: string | null;
+  onTapPlayer?: (id: string) => void;
 }) {
   return (
     <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4">
@@ -14,7 +16,12 @@ export default function PlayerList({
         {players.map((p) => (
           <li
             key={p.id}
-            className="flex items-center gap-2 bg-[#F1E6D3] border border-[#E1CFB1] rounded-lg px-3 py-2"
+            onClick={p.id !== selfId && onTapPlayer ? () => onTapPlayer(p.id) : undefined}
+            role={p.id !== selfId && onTapPlayer ? "button" : undefined}
+            tabIndex={p.id !== selfId && onTapPlayer ? 0 : undefined}
+            className={`flex items-center gap-2 bg-[#F1E6D3] border border-[#E1CFB1] rounded-lg px-3 py-2 ${
+              p.id !== selfId && onTapPlayer ? "cursor-pointer hover:bg-[#EAD9BC] active:scale-[0.99] transition" : ""
+            }`}
           >
             <span
               className={`w-2 h-2 rounded-full ${
@@ -33,6 +40,9 @@ export default function PlayerList({
               <span className="text-xs text-emerald-400">READY</span>
             ) : (
               <span className="text-xs text-[#8C7A67]">…</span>
+            )}
+            {p.id !== selfId && onTapPlayer && (
+              <span className="text-sm" title={`React at ${p.name}`}>🎯</span>
             )}
           </li>
         ))}

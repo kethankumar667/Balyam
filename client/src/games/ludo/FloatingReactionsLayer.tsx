@@ -19,7 +19,7 @@ export default function FloatingReactionsLayer({
   return (
     <div className="pointer-events-none fixed inset-0 z-40">
       {reactions.map((r, i) => {
-        const anchor = anchorOf(r.fromPlayerId);
+        const anchor = anchorOf(r.targetPlayerId ?? r.fromPlayerId);
         if (!anchor) return null;
         const drift = ((i % 3) - 1) * 8; // small lateral spread when multiple stack
         const color = playerColors[r.fromPlayerId];

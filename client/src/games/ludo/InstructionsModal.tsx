@@ -38,6 +38,7 @@ export default function InstructionsModal({ onClose }: { onClose: () => void }) 
           <ul className="list-disc pl-5 space-y-1">
             <li>Land on an opponent's token on a <b>regular square</b> — their token returns to their yard.</li>
             <li><b>Safe squares</b> (marked with ★) protect tokens: the 4 starting squares plus 4 mid-track stars.</li>
+            <li>Capturing also grants you a <b>bonus turn</b> — roll again right after.</li>
           </ul>
         </Section>
 
@@ -58,6 +59,7 @@ export default function InstructionsModal({ onClose }: { onClose: () => void }) 
             <li>After 51 track squares, your token enters its colored home stretch (6 cells).</li>
             <li>You need the <b>exact roll</b> to reach the final home cell — overshooting isn't allowed.</li>
             <li>Each token in home earns a 🏠 on your player card.</li>
+            <li>Getting a token all the way home also grants you a <b>bonus turn</b>.</li>
           </ul>
         </Section>
 

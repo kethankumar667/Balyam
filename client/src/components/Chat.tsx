@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@shared/types";
 import { getSocket } from "../lib/socket";
 
+/**
+ * Quick-chat presets — one tap fires a friendly, desi-flavoured line as a
+ * normal chat message. Shared by every game that mounts the room rail.
+ */
+const QUICK_PHRASES = ["Nice move! 👏", "All the best 🤞", "Well played 🙌", "So close! 😅", "Haar gaya 😄", "Mast! 🔥"];
+
 export default function Chat({
   messages,
   selfId,
@@ -16,10 +22,13 @@ export default function Chat({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  function send() {
-    const trimmed = text.trim();
+  function sendText(raw: string) {
+    const trimmed = raw.trim();
     if (!trimmed) return;
     getSocket().emit("chat:send", { text: trimmed });
+  }
+  function send() {
+    sendText(text);
     setText("");
   }
 
@@ -40,6 +49,17 @@ export default function Chat({
         ))}
         <div ref={bottomRef} />
       </div>
+        <div className="px-2 pt-2 flex flex-wrap gap-1.5">
+          {QUICK_PHRASES.map((p) => (
+            <button
+              key={p}
+              onClick={() => sendText(p)}
+              className="rounded-full bg-[#EFE2C7] hover:bg-[#E5D4B2] active:scale-95 text-[#5C4A38] text-xs font-semibold px-2.5 py-1 transition"
+            >
+              {p}
+            </button>
+          ))}
+        </div>
       <div className="p-2 border-t border-[#E2CFB0] flex gap-2">
         <input
           type="text"

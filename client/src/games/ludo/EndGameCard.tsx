@@ -2,6 +2,32 @@ import { useRef } from "react";
 import type { LudoColor, LudoStats, Player } from "@shared/types";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
 
+/** Serializes the recap SVG to a PNG Blob at the given pixel-density scale.
+ * Shared by download, clipboard-copy, and share so the three don't each
+ * carry their own SVG→canvas conversion. */
+function svgToPngBlob(svg: SVGSVGElement, scale: number): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const xml = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const w = svg.viewBox.baseVal.width || 800;
+      const h = svg.viewBox.baseVal.height || 600;
+      canvas.width = w * scale;
+      canvas.height = h * scale;
+      const ctx = canvas.getContext("2d");
+      URL.revokeObjectURL(url);
+      if (!ctx) return resolve(null);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(resolve, "image/png");
+    };
+    img.src = url;
+  });
+}
+
 export default function EndGameCard({
   winnerId,
   players,
@@ -33,67 +59,61 @@ export default function EndGameCard({
     .slice()
     .sort((a, b) => (finishedCount[b.id] ?? 0) - (finishedCount[a.id] ?? 0));
 
-  function downloadPNG() {
+  async function downloadPNG() {
     const svg = svgRef.current;
     if (!svg) return;
-    const xml = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const w = svg.viewBox.baseVal.width || 800;
-      const h = svg.viewBox.baseVal.height || 600;
-      const dpr = window.devicePixelRatio || 2;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.scale(dpr, dpr);
-      ctx.drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((b) => {
-        if (!b) return;
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(b);
-        a.download = `ludo-recap-${Date.now()}.png`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      }, "image/png");
-    };
-    img.src = url;
+    const blob = await svgToPngBlob(svg, window.devicePixelRatio || 2);
+    if (!blob) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `ludo-recap-${Date.now()}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
   async function copyImageToClipboard() {
     const svg = svgRef.current;
     if (!svg) return;
-    const xml = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = async () => {
-      const canvas = document.createElement("canvas");
-      const w = svg.viewBox.baseVal.width || 800;
-      const h = svg.viewBox.baseVal.height || 600;
-      canvas.width = w * 2;
-      canvas.height = h * 2;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.scale(2, 2);
-      ctx.drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(url);
-      canvas.toBlob(async (b) => {
-        if (!b) return;
-        try {
-          await navigator.clipboard.write([
-            new ClipboardItem({ "image/png": b }),
-          ]);
-        } catch {
-          /* clipboard not allowed - silently ignore */
-        }
-      }, "image/png");
-    };
-    img.src = url;
+    const blob = await svgToPngBlob(svg, 2);
+    if (!blob) return;
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    } catch {
+      /* clipboard not allowed - silently ignore */
+    }
+  }
+
+  /**
+   * One-tap share — prefers the OS share sheet (carries the actual PNG, same
+   * pattern RoomCodeShare uses for room invites) so the recap lands directly
+   * in WhatsApp/whatever the player picks. wa.me text links can't carry a
+   * file attachment, so the fallback downloads the image and opens WhatsApp
+   * with just the celebratory text — the same two-step a user would do by hand.
+   */
+  async function share() {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const blob = await svgToPngBlob(svg, 2);
+    if (!blob) return;
+    const file = new File([blob], `ludo-recap-${Date.now()}.png`, { type: "image/png" });
+    const text = winnerId
+      ? `🏆 ${nameOf(winnerId)} won our Ludo match on BHALYAM!`
+      : `🎲 Just finished a Ludo match on BHALYAM!`;
+    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+    if (nav.canShare?.({ files: [file] }) && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ files: [file], title: "BHALYAM Ludo recap", text });
+        return;
+      } catch {
+        /* dismissed or failed — fall through to the download+WhatsApp fallback */
+      }
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -210,6 +230,12 @@ export default function EndGameCard({
         </div>
 
         <div className="flex justify-end gap-2 flex-wrap">
+          <button
+            onClick={share}
+            className="bg-emerald-600 hover:bg-emerald-500 rounded-lg px-4 py-2 text-sm font-semibold"
+          >
+            📤 Share
+          </button>
           <button
             onClick={copyImageToClipboard}
             className="bg-slate-700 hover:bg-slate-600 rounded-lg px-4 py-2 text-sm font-semibold"

@@ -73,12 +73,6 @@ export const STAR_THEMES: ReadonlyArray<StarTheme> = [
     values: ["Tiger", "Elephant", "Lion", "Deer", "Monkey", "Cow", "Horse", "Bear"],
   },
   {
-    id: "villages",
-    label: "Villages",
-    glyph: "🏡",
-    values: ["Bhimavaram", "Tanuku", "Narsapur", "Palakollu", "Tadepalligudem", "Nidadavole", "Kovvur", "Eluru"],
-  },
-  {
     id: "states",
     label: "States",
     glyph: "🗺️",
@@ -89,12 +83,6 @@ export const STAR_THEMES: ReadonlyArray<StarTheme> = [
     label: "Festivals",
     glyph: "🎉",
     values: ["Sankranti", "Diwali", "Holi", "Ugadi", "Dussehra", "Vinayaka Chavithi", "Pongal", "Bonalu"],
-  },
-  {
-    id: "planets",
-    label: "Planets",
-    glyph: "🪐",
-    values: ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"],
   },
   {
     id: "teluguHeroes",
@@ -150,3 +138,5 @@ export const STAR_THEMES: ReadonlyArray<StarTheme> = [
 export function getStarTheme(themeId: string): StarTheme {
   return STAR_THEMES.find((t) => t.id === themeId) ?? STAR_THEMES[0];
 }
+
+

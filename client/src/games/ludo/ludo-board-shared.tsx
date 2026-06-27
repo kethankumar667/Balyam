@@ -34,6 +34,20 @@ export function colorOffset(color: LudoColor): { r: number; c: number } {
   }
 }
 
+/** Small per-token nudge layered on top of colorOffset so 2+ tokens of the
+ * SAME player stacked on one track cell fan out instead of fully
+ * overlapping - colorOffset alone only separates different colors sharing
+ * a cell, not same-color stacks. */
+export function stackOffset(tokenIdx: number): { r: number; c: number } {
+  const FAN: { r: number; c: number }[] = [
+    { r: 0, c: 0 },
+    { r: -0.13, c: 0.13 },
+    { r: 0.13, c: 0.13 },
+    { r: 0.13, c: -0.13 },
+  ];
+  return FAN[tokenIdx % 4] ?? FAN[0];
+}
+
 export type LudoHoverPreview =
   | { kind: "track"; trackPos: number }
   | { kind: "stretch"; stretchPos: number; color: LudoColor }
@@ -199,6 +213,9 @@ export function BoardSVG({
   playerColors,
   hasCaptured,
   unlockBurst,
+  registerCard,
+  selfId,
+  finishedCount,
 }: {
   playerColorsInRoom: LudoColor[];
   players: Player[];
@@ -206,6 +223,11 @@ export function BoardSVG({
   playerColors: Record<string, LudoColor>;
   hasCaptured: Record<string, boolean>;
   unlockBurst: Record<string, number>;
+  registerCard?: (playerId: string, el: SVGGElement | null) => void;
+  /** Used to hide the "react at" affordance on the viewer's own name plate. */
+  selfId: string | null;
+  /** Home-token count per playerId - drives the live "N/4" corner badge. */
+  finishedCount: Record<string, number>;
 }) {
   // Map color -> playerId for this room
   const playerIdByColor: Partial<Record<LudoColor, string | null>> = {};
@@ -277,14 +299,35 @@ export function BoardSVG({
                 <circle cx={cell.col + 0.5} cy={cell.row + 0.5} r={0.62} fill="none" stroke={COLOR_HEX_DARK[color]} strokeWidth={0.06} opacity={0.45} />
               </g>
             ))}
-            {/* Player name badge inside each yard */}
+            {/* Player name badge inside each yard. Clicking a teammate's
+                badge fires a custom event that opens InlineRoomRail's
+                emoji picker pre-targeted at them - lets "shoot this
+                player" happen straight from the board, not just the
+                buried Players side-panel. Also carries a small "N/4"
+                home-progress pill so everyone can see at a glance how
+                many of this player's tokens have made it home. */}
             {name && (
-              <g filter="url(#ludo-drop)">
+              <g
+                filter="url(#ludo-drop)"
+                ref={(el) => registerCard?.(pid!, el)}
+                onClick={
+                  pid && pid !== selfId
+                    ? () => window.dispatchEvent(new CustomEvent("bhalyam:react-at-player", { detail: { playerId: pid } }))
+                    : undefined
+                }
+                style={pid && pid !== selfId ? { cursor: "pointer" } : undefined}
+              >
+                {pid && pid !== selfId && <title>React at {name}</title>}
                 <rect x={c0 + 0.5} y={r0 + 0.18} width={5} height={0.75} rx={0.38} fill={PARCHMENT} stroke={GOLD_DEEP} strokeWidth={0.08} />
                 {/* Inner gold trim line */}
                 <rect x={c0 + 0.62} y={r0 + 0.28} width={4.76} height={0.55} rx={0.3} fill="none" stroke={GOLD} strokeWidth={0.04} opacity={0.85} />
-                <text x={c0 + 3} y={r0 + 0.72} textAnchor="middle" fontSize="0.5" fontWeight="900" fill={COLOR_HEX_DARK[color]} style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  {name.slice(0, 14)}
+                <text x={c0 + 2.85} y={r0 + 0.72} textAnchor="middle" fontSize="0.5" fontWeight="900" fill={COLOR_HEX_DARK[color]} style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {name.slice(0, 12)}
+                </text>
+                {/* Home-progress corner badge: "N/4" tokens home, live during play. */}
+                <circle cx={c0 + 5.5} cy={r0 + 0.18} r={0.34} fill={COLOR_HEX_DARK[color]} stroke={PARCHMENT} strokeWidth={0.05} />
+                <text x={c0 + 5.5} y={r0 + 0.29} textAnchor="middle" fontSize="0.3" fontWeight="800" fill="#FFF">
+                  {finishedCount[pid!] ?? 0}/4
                 </text>
               </g>
             )}
