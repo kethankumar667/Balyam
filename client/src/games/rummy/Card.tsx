@@ -1,7 +1,7 @@
 import type { CSSProperties, ElementType, KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Card as CardType, Rank } from "@shared/types";
 
-const SUIT_GLYPHS: Record<string, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
+export const SUIT_GLYPHS: Record<string, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
 
 /** Suit-specific ink color — Bhalyam Indian theme:
  *  Hearts=red, Diamonds=saffron/orange, Clubs=navy, Spades=black */

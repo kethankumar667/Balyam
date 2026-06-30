@@ -9,6 +9,8 @@ import type {
   LudoGameOptions,
   Player,
   RoomPublicState,
+  RummyChampion,
+  RummyRoundRecap,
   RummyGameOptions,
   ServerToClientEvents,
   SnlGameOptions,
@@ -48,6 +50,8 @@ const GRACE_PERIOD_MS = 90_000;
 const REMATCH_REQUEST_WINDOW_MS = 30_000;
 /** Countdown shown to everyone after all responses are in before the new game auto-starts. */
 const REMATCH_COUNTDOWN_MS = 3_000;
+/** Last N finished rounds kept per room (docs/rummy/roadmap.md B.1). */
+const MAX_RUMMY_HISTORY = 20;
 
 /**
  * Per-game bot name pools. Each pool draws from the cultural texture of
@@ -75,6 +79,23 @@ function pickBotName(game: GameKind, idx: number): string {
   return pool[idx % pool.length] ?? `Bot ${idx + 1}`;
 }
 
+/**
+ * One static "tell" per Rummy bot — surfaced once in chat at the start of
+ * a match the bot is seated in (docs/rummy/roadmap.md A.6; brief's
+ * "Belonging" pillar: bot names already feel like family, lean further
+ * in with a tiny personality quirk). Pure cosmetic — the bot's actual
+ * play (botArrange.ts) doesn't change to match these yet; see roadmap D.5.
+ * One line per match, never a chat torrent (anti-patterns.md).
+ */
+const RUMMY_BOT_TELLS: Record<string, string> = {
+  Anand: "Anand always hoards jokers. Old habits.",
+  Babji: "Babji discards spades first. Every single time.",
+  Chinna: "Chinna never drops early. Stubborn as ever.",
+  Damodar: "Damodar counts cards out loud. Can't help it.",
+  Eswari: "Eswari always goes for the pure sequence first.",
+  Lakshmi: "Lakshmi remembers every card you've discarded.",
+};
+
 const LUDO_COLOR_ORDER: ReadonlyArray<LudoColor> = [
   "red", "green", "yellow", "blue", "purple", "cyan", "orange", "brown",
 ];
@@ -84,6 +105,10 @@ interface Room {
   game: GameKind;
   phase: "lobby" | "playing" | "finished";
   hostId: string;
+  /** Host-chosen table name ("Friday Rummy Nights") — null until set via room:setName. */
+  name: string | null;
+  /** Finished rounds this room has played, oldest first (Rummy only). docs/rummy/roadmap.md B.1. */
+  history: RummyRoundRecap[];
   players: Map<string, Player>;
   socketToPlayer: Map<string, string>;
   engine: GameEngine | null;
@@ -128,6 +153,10 @@ type IO = Server<ClientToServerEvents, ServerToClientEvents>;
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private socketToRoom = new Map<string, string>();
+  /** "House Champion" per room table name — outlives any single room/code. docs/rummy/roadmap.md B.3. */
+  private champions = new Map<string, RummyChampion>();
+  /** Last round number recorded into room.history per engine instance, so a fresh rematch's round 1 isn't mistaken for an already-seen round 1. */
+  private lastRecordedRound = new WeakMap<RummyEngine, number>();
 
   constructor(private io: IO) {}
 
@@ -140,6 +169,9 @@ export class RoomManager {
       players: Array.from(room.players.values()),
       hostId: room.hostId,
       maxPlayers: max,
+      name: room.name,
+      history: room.history,
+      champion: room.name ? this.champions.get(room.name) ?? null : null,
     };
   }
 
@@ -174,6 +206,8 @@ export class RoomManager {
       game,
       phase: "lobby",
       hostId: playerId,
+      name: null,
+      history: [],
       players: new Map([[playerId, player]]),
       socketToPlayer: new Map([[socketId, playerId]]),
       engine: null,
@@ -460,6 +494,20 @@ export class RoomManager {
     this.broadcastRoomState(room);
   }
 
+  /**
+   * Host-only. Names (or renames) the room — "Friday Rummy Nights" etc.
+   * Not game-specific: the field lives on every Room, any host can set it.
+   * Empty/whitespace-only input clears the name back to null.
+   */
+  setRoomName(socketId: string, name: string): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (player.id !== room.hostId) return;
+    const cleaned = name.trim().slice(0, 40);
+    room.name = cleaned.length > 0 ? cleaned : null;
+    this.broadcastRoomState(room);
+  }
+
   chooseColor(socketId: string, color: string): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
@@ -567,6 +615,7 @@ export class RoomManager {
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
+      this.emitRummyBotTells(room);
       this.broadcastRoomState(room);
       this.broadcastGameState(room);
       this.scheduleTurnTimer(room);
@@ -1127,11 +1176,77 @@ export class RoomManager {
     this.io.to(room.code).emit("room:state", this.toPublicState(room));
   }
 
+  /**
+   * Emits each seated bot's static "tell" to room chat, once per match
+   * start (fresh game or rematch). Rummy only; no-op for every other game
+   * and for rooms with no bots. See RUMMY_BOT_TELLS above.
+   */
+  private emitRummyBotTells(room: Room): void {
+    if (room.game !== "rummy") return;
+    for (const p of room.players.values()) {
+      if (!p.isBot) continue;
+      const tell = RUMMY_BOT_TELLS[p.name];
+      if (!tell) continue;
+      const msg: ChatMessage = {
+        id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        playerId: p.id,
+        playerName: p.name,
+        text: tell,
+        ts: Date.now(),
+      };
+      this.io.to(room.code).emit("chat:message", msg);
+    }
+  }
+
   private broadcastGameState(room: Room): void {
     if (!room.engine) return;
     for (const [socketId, playerId] of room.socketToPlayer.entries()) {
       const state = room.engine.getStateFor(playerId);
       this.io.sockets.sockets.get(socketId)?.emit("game:state", state);
+    }
+    this.recordRummyRoundIfFinished(room);
+  }
+
+  /**
+   * Append a finished Rummy round to room.history (docs/rummy/roadmap.md
+   * B.1) and, once a pool match is fully decided, crown the room's table
+   * name a "House Champion" (B.3). Idempotent per engine instance + round
+   * number, so it's safe to call after every broadcast rather than chasing
+   * down every call site that can end a round (direct move, bot auto-move,
+   * disconnect-forced finish all funnel through here).
+   */
+  private recordRummyRoundIfFinished(room: Room): void {
+    if (!(room.engine instanceof RummyEngine)) return;
+    const engine = room.engine;
+    const state = engine.getPublicState();
+    if (state.phase !== "finished") return;
+    if (this.lastRecordedRound.get(engine) === state.roundNumber) return;
+    this.lastRecordedRound.set(engine, state.roundNumber);
+
+    const playerNames: Record<string, string> = {};
+    for (const p of room.players.values()) playerNames[p.id] = p.name;
+
+    room.history.push({
+      roundNumber: state.roundNumber,
+      winnerId: state.winnerId ?? null,
+      invalidDeclareBy: state.invalidDeclareBy ?? null,
+      scores: state.scores ?? {},
+      playerNames,
+      ts: Date.now(),
+      wildJoker: state.wildJoker ?? null,
+      finalHands: state.finalHands ?? {},
+      finalMelds: state.finalMelds ?? {},
+      endedByDisconnect: state.endedByDisconnect ?? null,
+    });
+    if (room.history.length > MAX_RUMMY_HISTORY) room.history.shift();
+
+    if (state.matchOver && state.matchWinnerId && room.name) {
+      const winner = room.players.get(state.matchWinnerId);
+      this.champions.set(room.name, {
+        playerId: state.matchWinnerId,
+        playerName: winner?.name ?? "Unknown",
+        date: new Date().toISOString().slice(0, 10),
+      });
     }
   }
 
@@ -1272,6 +1387,7 @@ export class RoomManager {
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
+      this.emitRummyBotTells(room);
       // Mark everyone "ready" so any UI that checks readiness behaves
       // correctly post-restart.
       for (const p of room.players.values()) p.isReady = true;

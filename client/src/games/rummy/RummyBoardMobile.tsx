@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { Card, ChatMessage, Player, Rank, ReactionRecvPayload, RummyPlayerState } from "@shared/types";
+import type { Card, ChatMessage, Player, Rank, ReactionRecvPayload, RummyChampion, RummyPlayerState, RummyRoundRecap } from "@shared/types";
 import { PlayingCard, FaceDownCard, FinishSlot } from "./Card";
 import { getSocket } from "../../lib/socket";
 import {
@@ -26,6 +26,8 @@ import Chat from "../../components/Chat";
 import RematchPanel from "../../components/RematchPanel";
 import Avatar from "./Avatar";
 import RummyResultModal from "./RummyResultModal";
+import RummyRoomHistory from "../../components/nostalgia/RummyRoomHistory";
+import { RUMMY_COPY } from "./copy";
 import {
   enterFullscreen,
   exitFullscreen,
@@ -271,6 +273,8 @@ export default function RummyBoardMobile({
   messages = [],
   roomCode,
   onLeave,
+  history,
+  champion,
 }: {
   state: RummyPlayerState;
   players: Player[];
@@ -278,6 +282,8 @@ export default function RummyBoardMobile({
   messages?: ChatMessage[];
   roomCode?: string;
   onLeave?: () => void;
+  history: RummyRoundRecap[];
+  champion: RummyChampion | null;
 }) {
   const myTurn = state.turnPlayerId === selfId;
   const canDraw = myTurn && state.turnAction === "draw" && state.phase === "playing";
@@ -340,6 +346,7 @@ export default function RummyBoardMobile({
   const [playersOpen, setPlayersOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   // Hamburger menu (consolidates every secondary action behind a single ☰ icon
   // so the top strip can stay 20px tall).
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1182,6 +1189,9 @@ export default function RummyBoardMobile({
             <MenuRow emoji="🔍" label="Card tracker" onClick={() => { setMenuOpen(false); setTrackerOpen(true); }} />
             <MenuRow emoji="📊" label="Live points" onClick={() => { setMenuOpen(false); setPointsOpen(true); }} />
             <MenuRow emoji="📘" label="Tutorial" onClick={() => { setMenuOpen(false); setTutorialOpen(true); }} />
+            {(history.length > 0 || champion) && (
+              <MenuRow emoji="📖" label="Room history" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }} />
+            )}
             <MenuRow
               emoji={soundOn ? "🔊" : "🔇"}
               label={soundOn ? "Sound: On" : "Sound: Off"}
@@ -1219,6 +1229,13 @@ export default function RummyBoardMobile({
       {chatOpen && (
         <RummyModal title="Chat" onClose={() => setChatOpen(false)}>
           <Chat messages={messages} selfId={selfId} />
+        </RummyModal>
+      )}
+
+      {/* Room history overlay (docs/rummy/roadmap.md B.2) */}
+      {historyOpen && (
+        <RummyModal title="Room History" onClose={() => setHistoryOpen(false)}>
+          <RummyRoomHistory variant="panel" density="mobile" history={history} champion={champion} players={players} showTitle={false} />
         </RummyModal>
       )}
 
@@ -1848,7 +1865,7 @@ function RummyTimeWarning({
           }}
         >
           <span>⏱</span>
-          <span>{secondsLeft}s left</span>
+          <span>{RUMMY_COPY.idleWarning(secondsLeft)}</span>
         </div>
       </div>
     </>
@@ -2759,6 +2776,12 @@ function PoolBetweenRounds({
   selfId: string | null;
 }) {
   const iEliminated = !!selfId && state.eliminatedInMatch.includes(selfId);
+  // Distant kettle between rounds — fires once per round-complete screen,
+  // not on every re-render (nostalgia-brief.md "Ritual": the quiet moment
+  // between hands, not another fanfare on top of the round's win sound).
+  useEffect(() => {
+    rummySfx.kettle();
+  }, []);
   function nextRound() {
     getSocket().emit("game:move", { type: "newRound" });
   }
@@ -2766,7 +2789,7 @@ function PoolBetweenRounds({
     <div className="bg-slate-900/80 rounded-xl p-4 space-y-3 border border-amber-700">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-lg font-extrabold text-amber-200">
-          🎴 Round {state.roundNumber} complete
+          🎴 {RUMMY_COPY.roundComplete(state.roundNumber)}
         </div>
         <div className="text-xs text-slate-400">
           Next: Round {state.roundNumber + 1} · target {state.poolTarget}
@@ -3126,10 +3149,7 @@ export function RummyDealOverlay({
     };
   });
 
-  const banner =
-    stage === "shuffle"
-      ? "Shuffling deck…"
-      : `Dealing 13 cards to ${N} player${N === 1 ? "" : "s"}…`;
+  const banner = stage === "shuffle" ? RUMMY_COPY.shuffling : RUMMY_COPY.dealing(N);
 
   return (
     <div

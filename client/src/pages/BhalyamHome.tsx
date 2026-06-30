@@ -11,6 +11,7 @@ import { useTheme } from "../lib/useTheme";
 import GlobalSettings from "../components/GlobalSettings";
 import { tileHover, ctaPress, bhalyamSpring } from "../lib/motion";
 import { getSocket } from "../lib/socket";
+import { useRoomStore } from "../store/roomStore";
 import {
   BHALYAM_GAMES,
   isLocked,
@@ -1216,6 +1217,22 @@ function StatsStrip() {
 }
 
 function MiddlePanels() {
+  const lastGangs = useRoomStore((s) => s.lastGangs);
+
+  // "Last gang" memory (docs/rummy/roadmap.md A.5) — re-invite a
+  // previously-named Rummy table straight to WhatsApp. No room exists yet
+  // at this point (home screen, pre-creation), so the message invites the
+  // gang back to start a fresh one rather than carrying a stale code.
+  function shareGang(roomName: string): void {
+    const text = `🎴 "${roomName}" — same gang, one more round? Let's play on BHALYAM!\n${window.location.origin}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  }
+
+  function shareGeneric(): void {
+    const text = `🎮 Come play with me on BHALYAM — pick a game and I'll send you the room code!\n${window.location.origin}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <RevealOnScroll
       as="section"
@@ -1301,6 +1318,24 @@ function MiddlePanels() {
           Invite Your Friends
         </h3>
         <p className="mt-1 text-[14px] sm:text-[16px] text-[#5F6A79]">Relive old memories with your school gang</p>
+        {lastGangs.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {lastGangs.map((g) => (
+              <button
+                key={g.roomName}
+                type="button"
+                onClick={() => shareGang(g.roomName)}
+                title={`Re-invite ${g.roomName} (last played with ${g.playerNames.join(", ")})`}
+                className="rounded-full px-3 py-1.5 bg-[#FAF2E6] border border-[#E8D8BE] text-[12px] sm:text-[13px]
+                           font-bold text-[#2A354D] hover:bg-[#F0E6D2] active:translate-y-px transition-colors
+                           inline-flex items-center gap-1.5"
+              >
+                <span aria-hidden>🔁</span>
+                Re-invite {g.roomName}
+              </button>
+            ))}
+          </div>
+        )}
         <AssetImg
           src="/gangoffriends.png"
           alt="Group of school friends"
@@ -1310,6 +1345,7 @@ function MiddlePanels() {
         />
         <motion.button
           type="button"
+          onClick={shareGeneric}
           variants={ctaPress}
           initial="rest"
           whileHover="hover"

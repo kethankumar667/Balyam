@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import type {
   ChatMessage,
   Player,
+  RummyChampion,
   RummyPlayerState,
+  RummyRoundRecap,
 } from "@shared/types";
 import RummyBoardMobile from "./RummyBoardMobile";
 import RummyBoardDesktop from "./RummyBoardDesktop";
@@ -39,6 +41,8 @@ export default function RummyBoard(props: {
   messages?: ChatMessage[];
   roomCode?: string;
   onLeave?: () => void;
+  history: RummyRoundRecap[];
+  champion: RummyChampion | null;
 }) {
   // Re-check on resize so opening devtools, rotating an iPad, or dragging the
   // window across monitors flips us to the correct layout.

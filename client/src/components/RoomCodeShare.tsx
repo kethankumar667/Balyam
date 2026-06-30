@@ -21,9 +21,11 @@ import type { GameKind } from "@shared/types";
 export default function RoomCodeShare({
   code,
   game,
+  name,
 }: {
   code: string;
   game: GameKind;
+  name?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -49,6 +51,7 @@ export default function RoomCodeShare({
    * because `share()` appends it as a separate fallback.
    */
   const shareText =
+    (name ? `"${name}" — ` : "") +
     `🎮 Come play ${friendlyGameName[game]} on BHALYAM!\n\n` +
     `Room code: ${code}\n` +
     `Join here:`;
@@ -96,6 +99,9 @@ export default function RoomCodeShare({
 
   return (
     <div className="flex flex-col items-center gap-3">
+      {name && (
+        <div className="font-script text-2xl text-[#2B3550] -mb-1">{name}</div>
+      )}
       <div className="text-[11px] uppercase tracking-widest font-bold text-[#A3886E]">
         Room Code
       </div>
