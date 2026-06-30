@@ -1,32 +1,7 @@
 import { useRef } from "react";
 import type { LudoColor, LudoStats, Player } from "@shared/types";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
-
-/** Serializes the recap SVG to a PNG Blob at the given pixel-density scale.
- * Shared by download, clipboard-copy, and share so the three don't each
- * carry their own SVG→canvas conversion. */
-function svgToPngBlob(svg: SVGSVGElement, scale: number): Promise<Blob | null> {
-  return new Promise((resolve) => {
-    const xml = new XMLSerializer().serializeToString(svg);
-    const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const w = svg.viewBox.baseVal.width || 800;
-      const h = svg.viewBox.baseVal.height || 600;
-      canvas.width = w * scale;
-      canvas.height = h * scale;
-      const ctx = canvas.getContext("2d");
-      URL.revokeObjectURL(url);
-      if (!ctx) return resolve(null);
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0, w, h);
-      canvas.toBlob(resolve, "image/png");
-    };
-    img.src = url;
-  });
-}
+import { svgToPngBlob } from "../../lib/svgExport";
 
 export default function EndGameCard({
   winnerId,

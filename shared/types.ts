@@ -50,6 +50,39 @@ export interface RoomPublicState {
   players: Player[];
   hostId: string;
   maxPlayers: number;
+  /** Host-chosen table name ("Friday Rummy Nights") — null until set. Persists for the room's lifetime; not game-specific. */
+  name: string | null;
+  /** Last finished rounds this room has played, oldest first (Rummy only — empty elsewhere). docs/rummy/roadmap.md B.1. */
+  history: RummyRoundRecap[];
+  /** "House Champion" of this room's table name, if a pool match has been won under it (Rummy only). Keyed by name, not room code, so it survives room collapse and resurfaces if the same gang reconvenes under the same name. docs/rummy/roadmap.md B.3. */
+  champion: RummyChampion | null;
+}
+
+/** One row of the room's "photo album" — a finished round's recap. Rummy only. */
+export interface RummyRoundRecap {
+  roundNumber: number;
+  winnerId: string | null;
+  invalidDeclareBy: string | null;
+  scores: Record<string, number>;
+  /** Names as they were when the round ended, so history still reads right after a player leaves or renames. */
+  playerNames: Record<string, string>;
+  ts: number;
+  /** Round's wild joker — needed to classify the winner's melds for narration ("a pure 7-8-9 of hearts"). */
+  wildJoker: Card | null;
+  /** End-of-round hands, same shape as RummyPublicState.finalHands. Empty when the round ended by drop (no melds were ever played). */
+  finalHands: Record<string, Card[]>;
+  /** End-of-round meld groupings (card IDs), same shape as RummyPublicState.finalMelds. */
+  finalMelds: Record<string, string[][]>;
+  /** Set when the round ended because a player was removed (disconnect grace expired), not by play. */
+  endedByDisconnect: string | null;
+}
+
+/** Pool-match winner crowned for a room's table name. Rummy only. */
+export interface RummyChampion {
+  playerId: string;
+  playerName: string;
+  /** YYYY-MM-DD the pool match was won. */
+  date: string;
 }
 
 // ---- Rummy ----
@@ -1327,6 +1360,8 @@ export interface ClientToServerEvents {
    * at game start. Valid in any phase (not gated to lobby).
    */
   "room:setOrientation": (needsRotation: boolean) => void;
+  /** Host-only. Names (or renames) the room — "Friday Rummy Nights" etc. Trimmed/capped server-side. */
+  "room:setName": (name: string) => void;
   "room:startGame": () => void;
   "chat:send": (payload: ChatSendPayload) => void;
   "game:move": (payload: GameMovePayload) => void;

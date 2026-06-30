@@ -298,6 +298,33 @@ body, #root, .bhalyam-paper {
   font-weight: 700;
 }
 
+/* ── Rummy nostalgia accents (docs/rummy/roadmap.md Phase 0.1) ───────────
+   Paper-grain primitive for the NotebookSheet primitive (Phase 0.2) and
+   the Rummy score sheet / declaration moment. Same speckle-dot technique
+   as `.bhalyam-paper` above, new palette (`nostalgia.*` in
+   tailwind.config.js), scoped so it never touches the landing-page
+   bhalyam.* surfaces. Unused until Phase 0.2/A.1 import it — zero visible
+   change from this commit alone. */
+.nostalgia-paper {
+  background-color: #F5E9C9;
+  background-image:
+    radial-gradient(rgba(156, 122, 60, 0.12) 1px, transparent 1px),
+    radial-gradient(rgba(255, 247, 224, 0.10) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(224, 204, 156, 0.14), transparent 60%);
+  background-size: 14px 14px, 22px 22px, 100% 100%;
+  background-position: 0 0, 7px 11px, 0 0;
+}
+
+:root[data-theme="dark"] .nostalgia-paper {
+  background-color: #2A2114;
+  background-image:
+    radial-gradient(rgba(255, 196, 102, 0.12) 1px, transparent 1px),
+    radial-gradient(rgba(255, 224, 178, 0.05) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(86, 58, 32, 0.40), rgba(28, 18, 11, 0.85) 72%);
+  background-size: 14px 14px, 22px 22px, 100% 100%;
+  background-position: 0 0, 7px 11px, 0 0;
+}
+
 /* Animated gradient text — for "Relive" callouts in the hero. Smooth
    240% background that slowly drifts so the brand line feels alive
    without being noisy. Honor reduced-motion at the bottom of the file. */

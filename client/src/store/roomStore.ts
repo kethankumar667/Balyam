@@ -18,6 +18,9 @@ interface RoomStore {
   messages: ChatMessage[];
   lastError: string | null;
   rematch: RematchState;
+  /** Last 3 distinct named Rummy rosters the player joined — "Friday Rummy
+   *  Nights" memory (docs/rummy/roadmap.md A.5). Most recent first. */
+  lastGangs: LastGangEntry[];
 
   setPlayerId: (id: string | null) => void;
   setPlayerName: (name: string) => void;
@@ -26,11 +29,38 @@ interface RoomStore {
   addMessage: (msg: ChatMessage) => void;
   setError: (err: string | null) => void;
   setRematch: (state: RematchState) => void;
+  recordLastGang: (roomName: string, playerNames: string[]) => void;
   reset: () => void;
+}
+
+export interface LastGangEntry {
+  roomName: string;
+  playerNames: string[];
+  joinedAt: number;
 }
 
 const STORED_NAME_KEY = "mpg.playerName";
 const STORED_ID_KEY = "mpg.playerId";
+const LAST_GANGS_KEY = "mpg.rummy.lastGangs";
+
+function loadLastGangs(): LastGangEntry[] {
+  try {
+    const raw = localStorage.getItem(LAST_GANGS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(0, 3) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLastGangs(list: LastGangEntry[]): void {
+  try {
+    localStorage.setItem(LAST_GANGS_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore — private browsing / quota */
+  }
+}
 
 export const useRoomStore = create<RoomStore>((set) => ({
   playerId: localStorage.getItem(STORED_ID_KEY),
@@ -40,6 +70,7 @@ export const useRoomStore = create<RoomStore>((set) => ({
   messages: [],
   lastError: null,
   rematch: idleRematch,
+  lastGangs: loadLastGangs(),
 
   setPlayerId: (id) => {
     if (id) localStorage.setItem(STORED_ID_KEY, id);
@@ -55,6 +86,15 @@ export const useRoomStore = create<RoomStore>((set) => ({
   addMessage: (msg) => set((s) => ({ messages: [...s.messages.slice(-199), msg] })),
   setError: (err) => set({ lastError: err }),
   setRematch: (state) => set({ rematch: state }),
+  recordLastGang: (roomName, playerNames) =>
+    set((s) => {
+      const next = [
+        { roomName, playerNames, joinedAt: Date.now() },
+        ...s.lastGangs.filter((g) => g.roomName !== roomName),
+      ].slice(0, 3);
+      saveLastGangs(next);
+      return { lastGangs: next };
+    }),
   reset: () =>
     set({
       roomState: null,

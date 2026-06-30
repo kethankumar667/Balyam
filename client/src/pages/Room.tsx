@@ -14,6 +14,8 @@ import Chat from "../components/Chat";
 import ChatMessageToast from "../components/ChatMessageToast";
 import RoomCode from "../components/RoomCode";
 import RoomCodeShare from "../components/RoomCodeShare";
+import RoomNameEditor from "../components/RoomNameEditor";
+import RummyRoomHistory from "../components/nostalgia/RummyRoomHistory";
 import RematchPanel from "../components/RematchPanel";
 import PassPhoneGate from "../components/PassPhoneGate";
 import VoicePanel from "../components/VoicePanel";
@@ -163,8 +165,22 @@ export default function Room() {
     addMessage,
     setError,
     setRematch,
+    recordLastGang,
     reset,
   } = useRoomStore();
+
+  // "Last gang" memory (docs/rummy/roadmap.md A.5) — once the host names a
+  // Rummy table, remember who was at it so the home screen can offer a
+  // one-tap WhatsApp re-invite next time. Keyed on the name itself so
+  // re-fires only when it's actually set/changed, not on every roster tick.
+  useEffect(() => {
+    if (roomState?.game !== "rummy" || !roomState.name || !playerId) return;
+    const others = roomState.players
+      .filter((p) => p.id !== playerId && !p.isBot)
+      .map((p) => p.name);
+    if (others.length === 0) return;
+    recordLastGang(roomState.name, others);
+  }, [roomState?.game, roomState?.name, playerId, recordLastGang]);
 
   // Keeps the latest playerId reachable from inside the join effect's closure
   // without re-subscribing socket listeners on every id change. A reconnect
@@ -437,7 +453,19 @@ export default function Room() {
                  the marked-area reference. */}
         {roomState.phase === "lobby" && (
           <header className="flex items-center justify-between flex-wrap gap-3">
-            <RoomCode code={roomState.code} />
+            <div className="flex items-center gap-3 flex-wrap">
+              <RoomCode code={roomState.code} />
+              <RoomNameEditor name={roomState.name} isHost={selfIsHost} />
+              {roomState.game === "rummy" && (
+                <RummyRoomHistory
+                  variant="teaser"
+                  density="mobile"
+                  history={roomState.history}
+                  champion={roomState.champion}
+                  players={roomState.players}
+                />
+              )}
+            </div>
             <div className="text-sm text-[#786350]">
               Game: <span className="text-[#2F3A54] font-semibold">{roomState.game.toUpperCase()}</span> ·
               Phase: <span className="text-[#2F3A54]">{roomState.phase}</span>
@@ -499,7 +527,7 @@ export default function Room() {
           >
             {roomState.phase === "lobby" && (
               <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-6 text-center space-y-4">
-                <RoomCodeShare code={roomState.code} game={roomState.game} />
+                <RoomCodeShare code={roomState.code} game={roomState.game} name={roomState.name} />
                 <div className="text-[#6E5E4D]">
                   Waiting for players to ready up.
                 </div>
@@ -558,6 +586,8 @@ export default function Room() {
                 messages={messages}
                 roomCode={roomState.code}
                 onLeave={leaveRoom}
+                history={roomState.history}
+                champion={roomState.champion}
               />
             )}
 

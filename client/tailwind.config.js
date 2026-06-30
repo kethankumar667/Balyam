@@ -82,6 +82,24 @@ export default {
             yellow: "#F4C430",
           },
         },
+        // ── Rummy nostalgia accents (docs/rummy/roadmap.md Phase 0.1) ───
+        // Scoped under `nostalgia.*` — separate from the in-game brand/gold
+        // tokens above AND the landing-page `bhalyam.*` chest palette. This
+        // is the family card-table accent set, consumed only inside
+        // client/src/games/rummy/ (NotebookSheet, score sheet, declaration
+        // moment). Nothing references these yet — Phase 0 ships with zero
+        // visible change by design.
+        nostalgia: {
+          paper: {
+            DEFAULT: "#F5E9C9",   // ruled notebook page — warmer/older than bhalyam.cream
+            edge:    "#E0CC9C",   // page edge / fold shadow
+          },
+          pen: {
+            DEFAULT: "#2E2419",   // handwriting ink — dark sepia ballpoint
+            red:     "#A8332B",   // red-pen circle around the winner's name
+          },
+          brass: "#9C7A3C",       // coin-tray / hinge metal — duller than bhalyam.gold
+        },
       },
       fontFamily: {
         // BHALYAM type system, chosen via ui-ux-pro-max skill:
@@ -126,6 +144,8 @@ export default {
         "bhalyam-gold-leaf": "linear-gradient(135deg, #F4C430 0%, #E4B128 45%, #B38918 100%)",
         // Subtle vintage paper grain — light parchment with brown speckle.
         "bhalyam-parchment": "radial-gradient(rgba(166, 124, 82, 0.10) 1px, transparent 1px), radial-gradient(rgba(255, 224, 178, 0.06) 1px, transparent 1px), linear-gradient(135deg, #FCF4DA 0%, #F2DFA8 100%)",
+        // Rummy nostalgia accents — see `colors.nostalgia` above.
+        "nostalgia-lamp": "radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255,179,71,0.35) 0%, rgba(255,179,71,0.08) 45%, transparent 75%)",
       },
       spacing: {
         18: "4.5rem",

@@ -1,12 +1,18 @@
 /**
  * Rummy sound effects — Web Audio synths, no asset files.
  * Mirrors the pattern from games/ludo/sound.ts so settings can be shared.
+ * getCtx() also gates on the global AudioManager mute (Phase 0.3) so a
+ * player who muted sound everywhere doesn't keep hearing Rummy cues even
+ * though the per-Rummy `enabled` toggle (setRummySoundEnabled) is local,
+ * separate UI state for this game's own sound switch.
  */
+import { AudioManager } from "../../services/AudioManager";
+
 let ctx: AudioContext | null = null;
 let enabled = false;
 
 function getCtx(): AudioContext | null {
-  if (!enabled) return null;
+  if (!enabled || AudioManager.getInstance().getSettings().isMuted) return null;
   if (!ctx) {
     const Ctor =
       window.AudioContext ||
@@ -85,11 +91,34 @@ export const rummySfx = {
     tone(660, 120, "triangle", 0.14);
     tone(990, 160, "triangle", 0.12, 80);
   },
+  /**
+   * "Rummy!" call on a valid declare — a small bank of variations,
+   * randomly picked, so the table doesn't hear the exact same chord every
+   * round (docs/rummy/roadmap.md A.7).
+   * ponytail: synthesized chords, matching every other cue in this file
+   * (zero asset files, zero licensing risk) — swap the array for 3-4 real
+   * familial voice clips (Howl-based playback) if/when the team sources
+   * them; callers (rummySfx.declare()) don't need to change either way.
+   */
   declare(): void {
-    // longer celebratory chord
-    tone(523, 240, "triangle", 0.16);
-    tone(659, 240, "triangle", 0.16, 0);
-    tone(784, 240, "triangle", 0.16, 0);
+    const calls: Array<() => void> = [
+      () => {
+        tone(523, 240, "triangle", 0.16);
+        tone(659, 240, "triangle", 0.16, 0);
+        tone(784, 240, "triangle", 0.16, 0);
+      },
+      () => {
+        tone(659, 160, "triangle", 0.17);
+        tone(784, 160, "triangle", 0.17, 90);
+        tone(988, 220, "triangle", 0.15, 180);
+      },
+      () => {
+        tone(440, 200, "sine", 0.18);
+        tone(554, 200, "sine", 0.16, 110);
+        tone(659, 260, "triangle", 0.15, 220);
+      },
+    ];
+    calls[Math.floor(Math.random() * calls.length)]();
   },
   win(): void {
     // ascending fanfare
@@ -109,5 +138,28 @@ export const rummySfx = {
   tick(): void {
     // turn timer tick
     tone(880, 30, "square", 0.06);
+  },
+  kettle(): void {
+    // Distant kettle whistle between rounds — soft, ambient, never alarming.
+    // ponytail: synthesized sweep, matching every other cue in this file
+    // (zero asset files, zero licensing risk). Swap for a real sampled
+    // whistle clip if/when the team sources one (docs/rummy/roadmap.md
+    // Phase A.3) — getCtx() stays the single integration point either way.
+    const c = getCtx();
+    if (!c) return;
+    const start = c.currentTime + 0.05;
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1800, start);
+    osc.frequency.linearRampToValueAtTime(2100, start + 1.1);
+    g.gain.setValueAtTime(0.0001, start);
+    g.gain.linearRampToValueAtTime(0.05, start + 0.25);
+    g.gain.linearRampToValueAtTime(0.05, start + 0.85);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + 1.2);
+    osc.connect(g);
+    g.connect(c.destination);
+    osc.start(start);
+    osc.stop(start + 1.25);
   },
 };
