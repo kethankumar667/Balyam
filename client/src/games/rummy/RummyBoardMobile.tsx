@@ -1264,10 +1264,19 @@ export default function RummyBoardMobile({
         </RummyModal>
       )}
 
-      {/* Mobile portrait rotate prompt — covers the felt with a "rotate device"
-          message. During the start-of-game gate it doubles as the readiness
-          indicator; once the gate's resolved, a mid-game rotation just shows
-          the plain prompt. */}
+      {/* ─── Gating stage overlays ───────────────────────────────────────
+          The lazy initializer in useRummyRotationGate starts at "gating"
+          (not "idle") if the sessionStorage flag is set, so the first
+          render is already in gating. BUT we still need a blocking overlay
+          here so the game board is never visible before the deal animation.
+
+          Three cases:
+           1. needsLandscape  → RotateDevicePrompt blocks the board.
+           2. !needsLandscape + blockers > 0 → wood blocking overlay with
+              "waiting for players to rotate" banner.
+           3. !needsLandscape + no blockers → wood "Setting up…" overlay
+              for the settle window (ROTATION_SETTLE_MS ≈ 600 ms).
+          All three cases prevent the board flashing before the shuffle. */}
       {needsLandscape && (
         <RotateDevicePrompt
           readiness={
@@ -1277,14 +1286,68 @@ export default function RummyBoardMobile({
           }
         />
       )}
-      {/* Third-person: I'm ready, but the table's waiting on someone else
-          to rotate before the synchronized deal can play for everyone. */}
-      {!needsLandscape && gate.stage === "gating" && gate.blockers.length > 0 && (
-        <WaitingForPlayersBanner
-          blockers={gate.blockers}
-          showNames={gate.showBlockerNames}
-          variant="overlay"
-        />
+      {gate.stage === "gating" && !needsLandscape && (
+        /* Full-screen blocking overlay — same dark-wood background as the
+           felt so there is zero flash of green behind it. z-[55] sits above
+           all in-game panels (z ≤ 50) but under the deal overlay (z-[55]
+           fires next, replacing this one cleanly). */
+        <div
+          className="absolute inset-0 z-[55] flex flex-col items-center justify-center gap-4"
+          style={{ background: "linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%)" }}
+        >
+          {gate.blockers.length > 0 ? (
+            <WaitingForPlayersBanner
+              blockers={gate.blockers}
+              showNames={gate.showBlockerNames}
+              variant="overlay"
+            />
+          ) : (
+            <>
+              {/* Animated deck stack while settle-window ticks */}
+              <div className="relative w-16 h-20 flex items-center justify-center">
+                {[2, 1, 0].map((z) => (
+                  <div
+                    key={z}
+                    className="absolute rounded-lg"
+                    style={{
+                      width: 52 - z * 4, height: 72 - z * 4,
+                      background: "linear-gradient(140deg, #7f1d1d 0%, #991b1b 60%, #4c0519 100%)",
+                      border: "1px solid rgba(201,162,39,0.6)",
+                      boxShadow: "0 4px 14px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(251,191,36,0.35)",
+                      transform: `rotate(${(z - 1) * 5}deg)`,
+                      zIndex: z,
+                    }}
+                  />
+                ))}
+                <div
+                  className="absolute w-8 h-8 rounded-full flex items-center justify-center z-10 font-black text-sm"
+                  style={{
+                    background: "linear-gradient(135deg, #C9A227, #8A6220)",
+                    color: "#1f1300",
+                    boxShadow: "0 2px 12px rgba(201,162,39,0.60)",
+                    animation: "rummy-glow 1.4s ease-in-out infinite",
+                  }}
+                >
+                  B
+                </div>
+              </div>
+              <div
+                className="px-5 py-2 rounded-full font-black uppercase tracking-[0.18em] text-xs"
+                style={{
+                  background: "linear-gradient(135deg, #fde68a, #f59e0b)",
+                  color: "#1f1300",
+                  border: "2px solid #b45309",
+                  boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
+                }}
+              >
+                Setting up the table…
+              </div>
+              <div className="flex gap-4 text-xl" style={{ opacity: 0.22, color: "#F5E9C9" }} aria-hidden>
+                <span>♠</span><span>♥</span><span>♦</span><span>♣</span>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {/* Live points overlay */}

@@ -26,7 +26,7 @@ const P2_C = "#8B1A1A";
 export default function RpsBoardMobile(props: RpsBoardProps) {
   const m = useRpsBoard(props);
   const tut = useTutorialGate(RPS_TUTORIAL.key);
-  const showScorecard = m.state.isOver && props.roomPhase === "finished";
+  const showScorecard = m.state.isOver;
 
   return (
     <NotebookPage className="min-h-screen">
@@ -140,25 +140,6 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
             bothChose={m.bothChose}
             onPick={m.pick}
           />
-        </div>
-      )}
-
-      {/* Between rematches — small result message */}
-      {m.state.isOver && !showScorecard && (
-        <div className="px-4 pt-4 text-center">
-          <div
-            className="font-script font-bold text-base"
-            style={{ color: m.state.winnerId === m.myId ? P1_C : P2_C }}
-          >
-            {m.state.winnerId === m.myId
-              ? "🎉 You win the match!"
-              : m.state.winnerId
-              ? `${m.nameOf(m.state.winnerId)} wins!`
-              : "Match draw!"}
-          </div>
-          <div className="text-xs font-semibold mt-1" style={{ color: "#9e9e9e" }}>
-            Waiting for next match…
-          </div>
         </div>
       )}
 

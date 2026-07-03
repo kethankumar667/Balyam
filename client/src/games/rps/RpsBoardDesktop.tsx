@@ -15,7 +15,6 @@ import {
   NotebookHistoryPanel,
   NotebookHistoryStrip,
   NotebookDoodles,
-  ChoiceSketch,
 } from "./rps-notebook";
 
 const P1_C = "#2e7d32";
@@ -30,7 +29,7 @@ const P2_C = "#8B1A1A";
 export default function RpsBoardDesktop(props: RpsBoardProps) {
   const m = useRpsBoard(props);
   const tut = useTutorialGate(RPS_TUTORIAL.key);
-  const showScorecard = m.state.isOver && props.roomPhase === "finished";
+  const showScorecard = m.state.isOver;
 
   return (
     <NotebookPage className="h-full">
@@ -108,22 +107,12 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
           alignItems: "start",
         }}
       >
-        {/* Choice row or "waiting" state */}
-        {!showScorecard && !m.state.isOver ? (
+        {/* Choice row — hidden once scorecard is visible */}
+        {!showScorecard ? (
           <NotebookChoiceRow
             myChoice={m.myChoice}
             bothChose={m.bothChose}
             onPick={m.pick}
-          />
-        ) : !showScorecard ? (
-          /* Between rematches — show disabled choice cards */
-          <WaitingForRematch
-            oppName={m.opponent?.name ?? "Opponent"}
-            myName={m.me?.name ?? "You"}
-            iWon={m.state.winnerId === m.myId}
-            target={m.target}
-            myScore={m.myScore}
-            oppScore={m.oppScore}
           />
         ) : (
           <div className="h-12" />
@@ -179,52 +168,5 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         />
       )}
     </NotebookPage>
-  );
-}
-
-/** Between-rematch waiting panel shown after a match ends inside a session. */
-function WaitingForRematch({
-  oppName,
-  myName,
-  iWon,
-  target,
-  myScore,
-  oppScore,
-}: {
-  oppName: string;
-  myName: string;
-  iWon: boolean;
-  target: number;
-  myScore: number;
-  oppScore: number;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-4">
-      <div
-        className="font-script text-center"
-        style={{ color: iWon ? "#2e7d32" : "#8B1A1A", fontSize: 18, fontWeight: 700 }}
-      >
-        {iWon ? `🎉 ${myName} wins the match!` : `${oppName} wins the match!`}
-      </div>
-      <div className="flex items-center gap-8">
-        <div className="text-center">
-          <div className="font-black text-2xl" style={{ color: "#2e7d32" }}>{myScore}</div>
-          <div className="text-xs font-bold" style={{ color: "#6b6b6b" }}>{myName}</div>
-        </div>
-        <div className="font-bold text-lg" style={{ color: "#9e9e9e" }}>vs</div>
-        <div className="text-center">
-          <div className="font-black text-2xl" style={{ color: "#8B1A1A" }}>{oppScore}</div>
-          <div className="text-xs font-bold" style={{ color: "#6b6b6b" }}>{oppName}</div>
-        </div>
-      </div>
-      <div className="flex gap-4 mt-1">
-        {(["rock","paper","scissors"] as const).map(c => (
-          <ChoiceSketch key={c} choice={c} size={40} />
-        ))}
-      </div>
-      <div className="font-script text-sm mt-1" style={{ color: "#9e9e9e" }}>
-        Waiting for host to start next match…
-      </div>
-    </div>
   );
 }

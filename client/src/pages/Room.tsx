@@ -498,12 +498,15 @@ export default function Room() {
   const gameOverGameName = roomState
     ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)
     : undefined;
-  const gameOverWinnerId =
-    gameState &&
-    typeof gameState === "object" &&
-    "winnerId" in gameState
-      ? (gameState as { winnerId?: string | null }).winnerId ?? null
+  // Read winnerId from opaque gameState without an inline cast.
+  // After "winnerId" in gameState the property exists but is `unknown`;
+  // a typeof guard narrows it to string before use.
+  const gameOverWinnerIdRaw =
+    gameState && typeof gameState === "object" && "winnerId" in gameState
+      ? gameState.winnerId
       : null;
+  const gameOverWinnerId =
+    typeof gameOverWinnerIdRaw === "string" ? gameOverWinnerIdRaw : null;
   const gameOverWinnerName = gameOverWinnerId
     ? (roomState?.players.find((p) => p.id === gameOverWinnerId)?.name ?? null)
     : null;
