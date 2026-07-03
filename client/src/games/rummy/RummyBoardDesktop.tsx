@@ -1105,13 +1105,11 @@ export default function RummyBoardDesktop({
           roomCode={roomCode}
           onClose={() => {
             setScorecardDismissed(true);
-            // Notify Room.tsx so it can replace the board with the
-            // GameOverScreen. For pool-mode between-round dismissals the
-            // game continues (host will rematch), so we only fire the
-            // callback when this is truly a terminal state.
-            if (state.matchMode === "single" || state.matchOver) {
-              onScorecardClose?.();
-            }
+            // Always fire — Room.tsx resets showGameOver when phase flips
+            // back to "playing" (rematch), so pool between-round dismissals
+            // briefly show GameOverScreen then auto-clear. Simpler and more
+            // reliable than guarding on matchMode/matchOver.
+            onScorecardClose?.();
           }}
           onLeave={onLeave}
         />
