@@ -9,6 +9,7 @@ import {
   RevealArena,
   RpsFrame,
   RpsOverlays,
+  RpsScorecardModal,
 } from "./rps-shared";
 import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
@@ -25,6 +26,7 @@ import { RPS_TUTORIAL } from "../tutorials";
 export default function RpsBoardMobile(props: RpsBoardProps) {
   const m = useRpsBoard(props);
   const tut = useTutorialGate(RPS_TUTORIAL.key);
+  const showScorecard = m.state.isOver && props.roomPhase === "finished";
 
   return (
     <RpsFrame className="p-3 sm:p-5 space-y-4">
@@ -72,16 +74,19 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
 
       <TurnTimeWarning deadline={m.roundDeadline} active={m.iNeedToChoose} />
 
-      {m.state.isOver ? (
-        <EndPanel
-          winner={m.state.winnerId ? m.nameOf(m.state.winnerId) : null}
-          youWon={m.state.winnerId === m.myId}
-          finalScores={{ me: m.myScore, opp: m.oppScore }}
-          ties={m.state.ties}
-          onRematch={m.rematch}
-        />
-      ) : (
-        <ChoiceRow myChoice={m.myChoice} bothChose={m.bothChose} onPick={m.pick} />
+      {/* During a live match — show choice row or mid-round EndPanel for rematches */}
+      {!showScorecard && (
+        m.state.isOver ? (
+          <EndPanel
+            winner={m.state.winnerId ? m.nameOf(m.state.winnerId) : null}
+            youWon={m.state.winnerId === m.myId}
+            finalScores={{ me: m.myScore, opp: m.oppScore }}
+            ties={m.state.ties}
+            onRematch={m.rematch}
+          />
+        ) : (
+          <ChoiceRow myChoice={m.myChoice} bothChose={m.bothChose} onPick={m.pick} />
+        )
       )}
 
       <HistoryStrip state={m.state} myId={m.myId} />
@@ -108,6 +113,21 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           storageKey={RPS_TUTORIAL.key}
           accent={RPS_TUTORIAL.accent}
           onClose={() => tut.setOpen(false)}
+        />
+      )}
+
+      {/* Session-end scorecard modal — fixed overlay, shown when roomPhase
+          is "finished" (whole match over). Dismissal hands off to Room.tsx
+          which shows the generic GameOverScreen. */}
+      {showScorecard && (
+        <RpsScorecardModal
+          state={m.state}
+          myId={m.myId}
+          myName={m.me?.name ?? "You"}
+          oppName={m.opponent?.name ?? "Opponent"}
+          myScore={m.myScore}
+          oppScore={m.oppScore}
+          onClose={() => props.onScorecardClose?.()}
         />
       )}
     </RpsFrame>

@@ -3,16 +3,17 @@ import type { Player } from "@shared/types";
 import RematchPanel from "./RematchPanel";
 
 /**
- * Full-viewport end-of-session screen.
+ * Full-viewport end-of-session screen — game-agnostic.
  *
- * Shown to every player immediately after a game finishes (non-Rummy games)
- * or after the Rummy scorecard modal is dismissed. It:
+ * Works for every game (RPS, Ludo, SnL, UNO, WordBuilding, DotsBoxes,
+ * MemoryMatch, StarGame, HandCricket, Rummy). No card-table metaphor; the
+ * design centres on a golden trophy that is universally understood as "winner".
  *
- *  - Shows an illustrated SVG table-scene so the screen feels alive.
- *  - Displays a visible circular countdown (100 s) to auto-leave.
- *  - Has a very prominent "Leave Room" CTA as the primary action.
- *  - Embeds the shared RematchPanel so the host can still start another
- *    round without needing to navigate elsewhere.
+ * Props:
+ *   winnerName  — optional name of the session winner; shows a "🏆 X won!"
+ *                 badge. Omit when the winner isn't known (draw / disconnect).
+ *   gameName    — optional friendly name of the game (e.g. "Ludo"); shown as
+ *                 a small label under the headline.
  *
  * z-index 70 — above every board overlay (z-50), result modal (z-50),
  * deal overlay (z-55), and winner burst (z-60).
@@ -24,12 +25,18 @@ export default function GameOverScreen({
   selfId,
   onLeave,
   deadlineMs,
+  winnerName,
+  gameName,
 }: {
   players: Player[];
   selfId: string | null;
   onLeave: () => void;
-  /** Unix-ms timestamp when auto-leave fires. Set once at component mount. */
+  /** Unix-ms timestamp when auto-leave fires. Set once when the screen first mounts. */
   deadlineMs: number;
+  /** Name of the player who won (null = draw / no winner yet). */
+  winnerName?: string | null;
+  /** Friendly name of the game being played. */
+  gameName?: string;
 }) {
   const [secondsLeft, setSecondsLeft] = useState(() =>
     Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000)),
@@ -46,87 +53,120 @@ export default function GameOverScreen({
       }
     }, 200);
     return () => window.clearInterval(id);
-    // onLeave is stable (leaveRoom from Room.tsx never changes identity)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deadlineMs]);
 
-  // Circular progress: 0 → full, 100 → empty
+  // Circular progress: full at 100 s → empty at 0 s
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
   const dash = circumference * (secondsLeft / total);
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-5 overflow-y-auto"
+      className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-4 overflow-y-auto py-6 px-4"
       style={{
         background:
-          "radial-gradient(ellipse at 50% 0%, #3a2010 0%, #1a0e07 55%, #0d0804 100%)",
+          "radial-gradient(ellipse 90% 70% at 50% 0%, #1a1040 0%, #0d0820 50%, #06030f 100%)",
       }}
     >
-      {/* Decorative top glow */}
+      {/* Top radial glow — brand brand-gold halo behind trophy */}
       <div
-        className="absolute top-0 left-0 right-0 h-48 pointer-events-none"
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-64 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 70% 100% at 50% 0%, rgba(201,162,39,0.18) 0%, transparent 70%)",
+            "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(228,177,40,0.22) 0%, transparent 70%)",
         }}
       />
 
-      {/* Illustration */}
-      <GameOverIllustration />
+      {/* Trophy illustration — fully generic */}
+      <TrophyIllustration />
 
-      {/* Headline */}
-      <div className="text-center px-4">
+      {/* Headline + game label */}
+      <div className="text-center z-10">
         <div
           className="font-display font-black uppercase tracking-wide"
           style={{
-            fontSize: "clamp(36px, 7vw, 88px)",
+            fontSize: "clamp(34px, 6.5vw, 80px)",
             background:
-              "linear-gradient(180deg,#FEF3C7 0%,#F59E0B 50%,#92400E 100%)",
+              "linear-gradient(180deg, #FFF7C2 0%, #E4B128 45%, #92660A 100%)",
             WebkitBackgroundClip: "text",
             backgroundClip: "text",
             color: "transparent",
-            filter: "drop-shadow(0 4px 16px rgba(245,158,11,0.40))",
+            filter: "drop-shadow(0 4px 20px rgba(228,177,40,0.45))",
             lineHeight: 1.05,
           }}
         >
           Game Over
         </div>
-        <div
-          className="mt-2 text-sm font-medium"
-          style={{ color: "rgba(245,233,201,0.55)" }}
-        >
-          This session has ended. Want to play another round?
-        </div>
+        {gameName && (
+          <div
+            className="mt-1 text-xs uppercase tracking-[0.25em] font-bold"
+            style={{ color: "rgba(255,247,194,0.40)" }}
+          >
+            {gameName}
+          </div>
+        )}
       </div>
 
+      {/* Winner badge — shown only when there is a clear winner */}
+      {winnerName ? (
+        <div
+          className="flex items-center gap-2.5 px-5 py-2.5 rounded-full z-10"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(228,177,40,0.25) 0%, rgba(146,102,10,0.35) 100%)",
+            border: "1.5px solid rgba(228,177,40,0.50)",
+            boxShadow: "0 0 20px rgba(228,177,40,0.25)",
+          }}
+        >
+          <span className="text-xl" aria-hidden>🏆</span>
+          <span
+            className="font-black text-base tracking-wide"
+            style={{ color: "#FFF7C2" }}
+          >
+            {winnerName} won!
+          </span>
+        </div>
+      ) : (
+        <div
+          className="text-sm font-semibold z-10"
+          style={{ color: "rgba(255,247,194,0.40)" }}
+        >
+          Session ended
+        </div>
+      )}
+
       {/* Countdown ring */}
-      <div className="flex flex-col items-center gap-1.5">
-        <div className="relative" style={{ width: 96, height: 96 }}>
+      <div className="flex flex-col items-center gap-1 z-10">
+        <div className="relative" style={{ width: 88, height: 88 }}>
           <svg
             viewBox="0 0 96 96"
-            width={96}
-            height={96}
+            width={88}
+            height={88}
             className="absolute inset-0"
             style={{ transform: "rotate(-90deg)" }}
             aria-hidden
           >
-            {/* Track */}
             <circle
               cx={48}
               cy={48}
               r={radius}
               fill="none"
-              stroke="rgba(201,162,39,0.15)"
+              stroke="rgba(228,177,40,0.12)"
               strokeWidth={6}
             />
-            {/* Progress */}
             <circle
               cx={48}
               cy={48}
               r={radius}
               fill="none"
-              stroke={secondsLeft <= 10 ? "#ef4444" : secondsLeft <= 30 ? "#f97316" : "#F59E0B"}
+              stroke={
+                secondsLeft <= 10
+                  ? "#ef4444"
+                  : secondsLeft <= 30
+                  ? "#f97316"
+                  : "#E4B128"
+              }
               strokeWidth={6}
               strokeLinecap="round"
               strokeDasharray={circumference}
@@ -138,15 +178,15 @@ export default function GameOverScreen({
             <span
               className="font-black tabular-nums leading-none"
               style={{
-                fontSize: secondsLeft >= 100 ? 26 : 30,
-                color: secondsLeft <= 10 ? "#ef4444" : "#FEF3C7",
+                fontSize: secondsLeft >= 100 ? 24 : 28,
+                color: secondsLeft <= 10 ? "#ef4444" : "#FFF7C2",
               }}
             >
               {secondsLeft}
             </span>
             <span
               className="uppercase tracking-widest font-bold"
-              style={{ fontSize: 9, color: "rgba(245,233,201,0.45)" }}
+              style={{ fontSize: 8, color: "rgba(255,247,194,0.40)" }}
             >
               sec
             </span>
@@ -154,7 +194,7 @@ export default function GameOverScreen({
         </div>
         <p
           className="text-center text-xs font-medium"
-          style={{ color: "rgba(245,233,201,0.40)" }}
+          style={{ color: "rgba(255,247,194,0.35)" }}
         >
           Room closes automatically
         </p>
@@ -163,33 +203,21 @@ export default function GameOverScreen({
       {/* Primary CTA — Leave Room */}
       <LeaveButton onLeave={onLeave} urgent={secondsLeft <= 15} />
 
-      {/* Rematch panel — host sees "Play Again"; others see accept/decline */}
+      {/* Rematch / play-again panel */}
       <div
-        className="rounded-2xl px-5 py-4 w-full max-w-sm mx-4"
+        className="rounded-2xl px-5 py-4 w-full max-w-sm z-10"
         style={{
-          background: "rgba(245,233,201,0.06)",
-          border: "1px solid rgba(245,233,201,0.10)",
+          background: "rgba(255,247,194,0.05)",
+          border: "1px solid rgba(255,247,194,0.10)",
         }}
       >
         <div
-          className="text-center text-xs uppercase tracking-widest font-bold mb-3"
-          style={{ color: "rgba(245,233,201,0.35)" }}
+          className="text-center text-xs uppercase tracking-[0.2em] font-bold mb-3"
+          style={{ color: "rgba(255,247,194,0.30)" }}
         >
           Or play again
         </div>
         <RematchPanel players={players} selfId={selfId} />
-      </div>
-
-      {/* Suit strip — decorative */}
-      <div
-        className="flex gap-5 text-2xl pointer-events-none select-none"
-        style={{ color: "rgba(245,233,201,0.12)" }}
-        aria-hidden
-      >
-        <span>♠</span>
-        <span>♥</span>
-        <span>♦</span>
-        <span>♣</span>
       </div>
     </div>
   );
@@ -206,236 +234,215 @@ function LeaveButton({
   return (
     <button
       onClick={onLeave}
-      className="relative group focus:outline-none"
+      className="relative group focus:outline-none z-10"
       aria-label="Leave Room"
     >
       {/* Glow halo */}
       <div
-        className="absolute -inset-2 rounded-2xl blur-lg opacity-60 group-hover:opacity-90 transition-opacity"
+        className="absolute -inset-2 rounded-2xl blur-lg opacity-60 group-hover:opacity-95 transition-opacity duration-200"
         style={{
           background: urgent
-            ? "linear-gradient(135deg,#ef4444,#b91c1c)"
-            : "linear-gradient(135deg,#F59E0B,#EA5A1F)",
-          animation: "rummy-glow 1.8s ease-in-out infinite",
+            ? "linear-gradient(135deg, #ef4444, #991b1b)"
+            : "linear-gradient(135deg, #E4B128, #FF8F00)",
         }}
       />
-      {/* Button face */}
+      {/* Face */}
       <div
-        className="relative flex items-center gap-3 px-10 py-4 rounded-xl font-black text-xl uppercase tracking-wider select-none"
+        className="relative flex items-center gap-3 px-10 py-4 rounded-xl font-black text-xl uppercase tracking-wider select-none transition-transform duration-150 active:scale-[0.97]"
         style={{
           background: urgent
-            ? "linear-gradient(135deg,#dc2626 0%,#991b1b 100%)"
-            : "linear-gradient(135deg,#F59E0B 0%,#D97706 100%)",
-          color: urgent ? "#fee2e2" : "#1f1300",
+            ? "linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%)"
+            : "linear-gradient(135deg, #E4B128 0%, #B38918 100%)",
+          color: urgent ? "#fee2e2" : "#1a0e00",
           boxShadow: urgent
-            ? "0 10px 32px rgba(220,38,38,0.45), inset 0 1px 0 rgba(255,255,255,0.15)"
-            : "0 10px 32px rgba(245,158,11,0.45), inset 0 1px 0 rgba(255,255,255,0.25)",
+            ? "0 8px 28px rgba(220,38,38,0.45), inset 0 1px 0 rgba(255,255,255,0.10)"
+            : "0 8px 28px rgba(228,177,40,0.40), inset 0 1px 0 rgba(255,255,255,0.22)",
         }}
       >
-        <DoorIcon />
+        <DoorIcon urgent={urgent} />
         Leave Room
       </div>
     </button>
   );
 }
 
-/* ── Door SVG icon ── */
-function DoorIcon() {
+function DoorIcon({ urgent }: { urgent: boolean }) {
   return (
     <svg
-      width={24}
-      height={24}
+      width={22}
+      height={22}
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden
       className="flex-shrink-0"
+      style={{ color: urgent ? "#fca5a5" : "#1a0e00" }}
     >
       <rect
-        x={3}
-        y={2}
-        width={13}
-        height={20}
-        rx={2}
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinejoin="round"
+        x={3} y={2} width={13} height={20} rx={2}
+        stroke="currentColor" strokeWidth={2} strokeLinejoin="round"
       />
       <path
         d="M16 8 L21 12 L16 16"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
       />
       <line
-        x1={21}
-        y1={12}
-        x2={9}
-        y2={12}
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
+        x1={21} y1={12} x2={9} y2={12}
+        stroke="currentColor" strokeWidth={2} strokeLinecap="round"
       />
-      <circle cx={14} cy={12} r={1.5} fill="currentColor" />
     </svg>
   );
 }
 
-/* ── Illustration ── */
-function GameOverIllustration() {
+/* ── Trophy illustration — no card-game elements ── */
+function TrophyIllustration() {
   return (
     <svg
-      width={300}
-      height={180}
-      viewBox="0 0 300 180"
+      width={220}
+      height={200}
+      viewBox="0 0 220 200"
       fill="none"
       aria-hidden
-      className="max-w-[90vw]"
+      className="z-10 max-w-[60vw]"
     >
-      {/* Felt oval */}
-      <ellipse cx={150} cy={115} rx={120} ry={54} fill="#082b18" opacity={0.9} />
-      <ellipse
-        cx={150}
-        cy={115}
-        rx={116}
-        ry={50}
-        fill="none"
-        stroke="#155e3a"
-        strokeWidth={1.5}
-      />
+      {/* Radial glow behind trophy */}
+      <defs>
+        <radialGradient id="tg-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#E4B128" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="#E4B128" stopOpacity={0} />
+        </radialGradient>
+        <radialGradient id="cup-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FFF7C2" />
+          <stop offset="40%" stopColor="#E4B128" />
+          <stop offset="100%" stopColor="#7A5C0E" />
+        </radialGradient>
+        <linearGradient id="cup-grad-lin" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FFF7C2" />
+          <stop offset="35%" stopColor="#E4B128" />
+          <stop offset="100%" stopColor="#7A5C0E" />
+        </linearGradient>
+      </defs>
 
-      {/* Scattered face-down cards */}
-      <CardBack x={35} y={78} rotate={-18} dark />
-      <CardBack x={230} y={74} rotate={22} dark={false} />
-      <CardBack x={100} y={68} rotate={-7} dark />
-      <CardBack x={170} y={70} rotate={11} dark={false} />
+      {/* Background glow circle */}
+      <ellipse cx={110} cy={105} rx={80} ry={70} fill="url(#tg-glow)" />
 
-      {/* Chip stack center-table */}
+      {/* Confetti dots scattered */}
       {([
-        ["#C9A227", 5],
-        ["#1e2a5c", 4],
-        ["#7f1d1d", 3],
-        ["#C9A227", 2],
-        ["#155e3a", 1],
-      ] as const).map(([fill, layer], i) => (
-        <ellipse
+        [28, 38, "#E4B128"], [192, 42, "#FF8F00"], [15, 120, "#7C3AED"],
+        [200, 130, "#10B981"], [45, 175, "#3B82F6"], [175, 170, "#E4B128"],
+        [70, 20, "#ef4444"], [155, 18, "#10B981"], [95, 185, "#FF8F00"],
+        [130, 188, "#7C3AED"], [8, 68, "#3B82F6"], [210, 85, "#ef4444"],
+      ] as const).map(([x, y, fill], i) => (
+        <rect
           key={i}
-          cx={150}
-          cy={122 - layer * 4}
-          rx={16}
-          ry={6}
+          x={x - 4}
+          y={y - 4}
+          width={i % 3 === 0 ? 8 : 6}
+          height={i % 3 === 0 ? 6 : 8}
+          rx={1.5}
           fill={fill}
-          stroke="rgba(255,255,255,0.15)"
-          strokeWidth={0.6}
+          opacity={0.75}
+          transform={`rotate(${(i * 37) % 60 - 30} ${x} ${y})`}
         />
       ))}
 
-      {/* Crown */}
-      <g transform="translate(119 8)">
-        <path
-          d="M0 30 L10 10 L31 24 L31 6 L52 10 L62 30 Z"
-          fill="#C9A227"
-          stroke="#8A6220"
-          strokeWidth={1.5}
-          strokeLinejoin="round"
-        />
-        {/* Jewels */}
-        <circle cx={0} cy={30} r={4} fill="#A8332B" />
-        <circle cx={31} cy={6} r={5} fill="#A8332B" />
-        <circle cx={62} cy={30} r={4} fill="#A8332B" />
-        {/* Band */}
-        <rect x={0} y={30} width={62} height={9} rx={2} fill="#C9A227" stroke="#8A6220" strokeWidth={1} />
-        {/* Crown shine */}
-        <path d="M14 18 L22 12 L26 18" stroke="rgba(255,255,255,0.35)" strokeWidth={1.5} strokeLinecap="round" fill="none" />
-      </g>
-
-      {/* Stars scattered */}
+      {/* Stars radiating around trophy */}
       {([
-        [30, 22, 14, 0.75],
-        [270, 18, 14, 0.70],
-        [150, 9, 18, 0.90],
-        [60, 50, 10, 0.55],
-        [240, 48, 10, 0.55],
-        [105, 30, 8, 0.45],
-        [195, 28, 8, 0.45],
-      ] as const).map(([x, y, size, op], i) => (
-        <text
-          key={i}
-          x={x}
-          y={y}
-          fontSize={size}
-          fill="#F59E0B"
-          opacity={op}
-          textAnchor="middle"
-          dominantBaseline="middle"
-        >
-          ★
-        </text>
+        [110, 20, 7, 1.0],
+        [44, 55, 5, 0.85],
+        [176, 52, 5, 0.85],
+        [22, 100, 4, 0.65],
+        [198, 100, 4, 0.65],
+        [58, 158, 4, 0.60],
+        [162, 158, 4, 0.60],
+      ] as const).map(([cx, cy, r, op], i) => (
+        <Star key={i} cx={cx} cy={cy} r={r} opacity={op} />
       ))}
 
-      {/* Ground sparkle line */}
+      {/* Burst lines emanating from trophy centre */}
+      {Array.from({ length: 12 }, (_, i) => {
+        const angle = (i * 30 * Math.PI) / 180;
+        const x1 = 110 + Math.cos(angle) * 50;
+        const y1 = 95 + Math.sin(angle) * 50;
+        const x2 = 110 + Math.cos(angle) * 68;
+        const y2 = 95 + Math.sin(angle) * 68;
+        return (
+          <line
+            key={i}
+            x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="#E4B128"
+            strokeWidth={i % 2 === 0 ? 1.5 : 1}
+            strokeLinecap="round"
+            opacity={0.35}
+          />
+        );
+      })}
+
+      {/* ─── Trophy cup ─── */}
+      {/* Base plate */}
+      <rect x={80} y={164} width={60} height={8} rx={4} fill="url(#cup-grad-lin)" />
+      {/* Stem */}
+      <rect x={100} y={148} width={20} height={18} rx={3} fill="url(#cup-grad-lin)" />
+      {/* Stem connector */}
+      <ellipse cx={110} cy={148} rx={24} ry={5} fill="url(#cup-grad-lin)" />
+      {/* Cup body */}
       <path
-        d="M38 165 Q90 161 150 163 Q210 165 262 162"
-        stroke="rgba(201,162,39,0.18)"
-        strokeWidth={1}
-        strokeLinecap="round"
+        d="M70 80 Q68 130 110 148 Q152 130 150 80 Z"
+        fill="url(#cup-grad-lin)"
       />
+      {/* Cup rim */}
+      <ellipse cx={110} cy={80} rx={40} ry={9} fill="#FFF7C2" opacity={0.9} />
+      {/* Left handle */}
+      <path
+        d="M70 88 Q44 88 44 110 Q44 132 70 132"
+        stroke="url(#cup-grad-lin)"
+        strokeWidth={7}
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Right handle */}
+      <path
+        d="M150 88 Q176 88 176 110 Q176 132 150 132"
+        stroke="url(#cup-grad-lin)"
+        strokeWidth={7}
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Cup shine highlight */}
+      <path
+        d="M84 90 Q82 105 86 118"
+        stroke="rgba(255,255,255,0.45)"
+        strokeWidth={5}
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Star inside cup */}
+      <Star cx={110} cy={112} r={14} opacity={0.25} fill="#FFF7C2" />
     </svg>
   );
 }
 
-function CardBack({
-  x,
-  y,
-  rotate,
-  dark,
+/** 5-point star primitive. */
+function Star({
+  cx,
+  cy,
+  r,
+  opacity = 1,
+  fill = "#E4B128",
 }: {
-  x: number;
-  y: number;
-  rotate: number;
-  dark: boolean;
+  cx: number;
+  cy: number;
+  r: number;
+  opacity?: number;
+  fill?: string;
 }) {
-  const id = `cb-${x}-${dark}`;
-  return (
-    <g transform={`rotate(${rotate} ${x + 18} ${y + 25})`}>
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={dark ? "#7f1d1d" : "#1e2a5c"} />
-          <stop offset="100%" stopColor={dark ? "#4c0519" : "#0d1530"} />
-        </linearGradient>
-      </defs>
-      <rect
-        x={x}
-        y={y}
-        width={36}
-        height={50}
-        rx={4}
-        fill={`url(#${id})`}
-        stroke="rgba(201,162,39,0.55)"
-        strokeWidth={1.5}
-      />
-      <rect
-        x={x + 3}
-        y={y + 3}
-        width={30}
-        height={44}
-        rx={2}
-        fill="none"
-        stroke="rgba(201,162,39,0.28)"
-        strokeWidth={0.75}
-      />
-      <circle cx={x + 18} cy={y + 25} r={7} fill="rgba(201,162,39,0.85)" />
-      <text
-        x={x + 18}
-        y={y + 28}
-        textAnchor="middle"
-        fontSize={8}
-        fontWeight="700"
-        fill={dark ? "#7f1d1d" : "#1e2a5c"}
-        fontFamily="Georgia, serif"
-      >
-        B
-      </text>
-    </g>
-  );
+  const pts = Array.from({ length: 5 }, (_, i) => {
+    const outer = ((i * 72 - 90) * Math.PI) / 180;
+    const inner = (((i * 72 + 36) - 90) * Math.PI) / 180;
+    const ox = cx + Math.cos(outer) * r;
+    const oy = cy + Math.sin(outer) * r;
+    const ix = cx + Math.cos(inner) * (r * 0.42);
+    const iy = cy + Math.sin(inner) * (r * 0.42);
+    return `${ox},${oy} ${ix},${iy}`;
+  }).join(" ");
+  return <polygon points={pts} fill={fill} opacity={opacity} />;
 }

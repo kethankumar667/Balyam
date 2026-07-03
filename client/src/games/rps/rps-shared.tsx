@@ -702,3 +702,214 @@ export function EndPanel({
     </div>
   );
 }
+
+/* ───────────────────────── Scorecard Modal ───────────────────────── */
+
+/**
+ * Full-screen scorecard modal for RPS, shown when `roomPhase === "finished"`.
+ * Replaces the inline EndPanel at match end so the player sees a proper
+ * result summary before the generic GameOverScreen appears.
+ *
+ * Design mirrors the RPS board palette (dark surface, brand green / ruby red)
+ * so it feels native to the game, not bolted-on.
+ */
+export function RpsScorecardModal({
+  state,
+  myId,
+  myName,
+  oppName,
+  myScore,
+  oppScore,
+  onClose,
+}: {
+  state: ClientRpsState;
+  myId: string;
+  myName: string;
+  oppName: string;
+  myScore: number;
+  oppScore: number;
+  onClose: () => void;
+}) {
+  const winner = state.winnerId;
+  const iWon = winner === myId;
+  const isDraw = !winner;
+
+  return (
+    <div
+      className="fixed inset-0 z-[65] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.80)", backdropFilter: "blur(4px)" }}
+    >
+      <div
+        className="relative w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        style={{
+          background:
+            "linear-gradient(160deg, #0f172a 0%, #1e1b4b 55%, #0a0a1a 100%)",
+          border: iWon
+            ? "1.5px solid rgba(16,185,129,0.55)"
+            : isDraw
+            ? "1.5px solid rgba(245,158,11,0.45)"
+            : "1.5px solid rgba(239,68,68,0.45)",
+          boxShadow: iWon
+            ? "0 0 40px rgba(16,185,129,0.30)"
+            : "0 0 30px rgba(0,0,0,0.80)",
+        }}
+      >
+        {/* Header band */}
+        <div
+          className="px-6 pt-7 pb-4 text-center"
+          style={{
+            background: iWon
+              ? "linear-gradient(135deg, rgba(16,185,129,0.22) 0%, rgba(4,120,87,0.32) 100%)"
+              : isDraw
+              ? "linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(120,53,15,0.22) 100%)"
+              : "linear-gradient(135deg, rgba(239,68,68,0.18) 0%, rgba(127,29,29,0.28) 100%)",
+          }}
+        >
+          {/* Trophy / icon */}
+          <div className="flex justify-center mb-3">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{
+                background: iWon
+                  ? "rgba(16,185,129,0.18)"
+                  : isDraw
+                  ? "rgba(245,158,11,0.18)"
+                  : "rgba(239,68,68,0.15)",
+                border: `2px solid ${iWon ? "rgba(16,185,129,0.5)" : isDraw ? "rgba(245,158,11,0.45)" : "rgba(239,68,68,0.45)"}`,
+              }}
+            >
+              {iWon ? (
+                <TrophyIcon className="w-9 h-9 text-emerald-400" />
+              ) : isDraw ? (
+                <EqualIcon className="w-9 h-9 text-amber-400" />
+              ) : (
+                <HandshakeIcon className="w-9 h-9 text-rose-400" />
+              )}
+            </div>
+          </div>
+
+          <div
+            className="font-display font-black text-3xl leading-tight"
+            style={{
+              color: iWon ? "#34d399" : isDraw ? "#fbbf24" : "#f87171",
+            }}
+          >
+            {iWon ? "You Won!" : isDraw ? "It's a Draw" : `${oppName} Wins`}
+          </div>
+
+          {state.matchNumber > 1 && (
+            <div
+              className="mt-1 text-xs font-semibold uppercase tracking-widest"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              Match {state.matchNumber}
+            </div>
+          )}
+        </div>
+
+        {/* Score row */}
+        <div className="flex items-stretch divide-x divide-white/10 mx-6 mt-5 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.10)" }}>
+          <div
+            className="flex-1 flex flex-col items-center py-4 gap-0.5"
+            style={{ background: iWon ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.04)" }}
+          >
+            <span className="text-4xl font-black tabular-nums" style={{ color: iWon ? "#34d399" : "#f1f5f9" }}>
+              {myScore}
+            </span>
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.45)" }}>
+              {myName}
+            </span>
+          </div>
+          <div className="flex items-center px-4" style={{ background: "rgba(255,255,255,0.03)" }}>
+            <span className="font-black text-lg" style={{ color: "rgba(255,255,255,0.25)" }}>vs</span>
+          </div>
+          <div
+            className="flex-1 flex flex-col items-center py-4 gap-0.5"
+            style={{ background: !iWon && !isDraw ? "rgba(239,68,68,0.10)" : "rgba(255,255,255,0.04)" }}
+          >
+            <span className="text-4xl font-black tabular-nums" style={{ color: !iWon && !isDraw ? "#f87171" : "#f1f5f9" }}>
+              {oppScore}
+            </span>
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.45)" }}>
+              {oppName}
+            </span>
+          </div>
+        </div>
+
+        {/* Stats row: target + ties */}
+        <div className="flex justify-center gap-8 mt-4 px-6">
+          <div className="text-center">
+            <div className="text-xs uppercase tracking-widest font-bold" style={{ color: "rgba(255,255,255,0.30)" }}>First to</div>
+            <div className="text-xl font-black" style={{ color: "#fbbf24" }}>{state.target}</div>
+          </div>
+          {state.ties > 0 && (
+            <div className="text-center">
+              <div className="text-xs uppercase tracking-widest font-bold" style={{ color: "rgba(255,255,255,0.30)" }}>Ties</div>
+              <div className="text-xl font-black" style={{ color: "rgba(255,255,255,0.60)" }}>{state.ties}</div>
+            </div>
+          )}
+          <div className="text-center">
+            <div className="text-xs uppercase tracking-widest font-bold" style={{ color: "rgba(255,255,255,0.30)" }}>Rounds</div>
+            <div className="text-xl font-black" style={{ color: "rgba(255,255,255,0.60)" }}>{state.history.length}</div>
+          </div>
+        </div>
+
+        {/* Round-by-round history */}
+        {state.history.length > 0 && (
+          <div className="mt-4 mx-6">
+            <div className="text-xs uppercase tracking-widest font-bold mb-2" style={{ color: "rgba(255,255,255,0.30)" }}>
+              Round history
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {state.history.map((h, i) => {
+                const myC = h.choices[myId] as RpsChoice | undefined;
+                const win = h.winnerId === myId;
+                const tie = !h.winnerId;
+                return (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center gap-0.5"
+                    title={`Round ${h.round}: ${myC ?? "?"} — ${tie ? "Tie" : win ? "Won" : "Lost"}`}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black"
+                      style={{
+                        background: win
+                          ? "rgba(16,185,129,0.25)"
+                          : tie
+                          ? "rgba(245,158,11,0.20)"
+                          : "rgba(239,68,68,0.22)",
+                        border: `1px solid ${win ? "rgba(16,185,129,0.45)" : tie ? "rgba(245,158,11,0.40)" : "rgba(239,68,68,0.40)"}`,
+                        color: win ? "#34d399" : tie ? "#fbbf24" : "#f87171",
+                      }}
+                    >
+                      {myC ? LABEL[myC][0] : "?"}
+                    </div>
+                    <span className="text-[9px] font-bold" style={{ color: "rgba(255,255,255,0.30)" }}>
+                      R{h.round}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Close button */}
+        <div className="p-6 pt-5">
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl font-black text-base uppercase tracking-wider transition-all duration-150 active:scale-[0.98]"
+            style={{
+              background: "linear-gradient(135deg, #E4B128 0%, #92660A 100%)",
+              color: "#1a0e00",
+              boxShadow: "0 4px 18px rgba(228,177,40,0.40)",
+            }}
+          >
+            Continue →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
