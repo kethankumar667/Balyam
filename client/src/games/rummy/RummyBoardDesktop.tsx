@@ -33,8 +33,9 @@ import Chat from "../../components/Chat";
 import VoicePanel from "../../components/VoicePanel";
 import PlayerList from "../../components/PlayerList";
 import { enterFullscreen, exitFullscreen, isFullscreenActive } from "../../lib/fullscreen";
-import RummyResultModal from "./RummyResultModal";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import RummyRoomHistory from "../../components/nostalgia/RummyRoomHistory";
+import RummyResultModal from "./RummyResultModal";
 import {
   useOrientationReport,
   useRummyRotationGate,
@@ -209,6 +210,8 @@ export default function RummyBoardDesktop({
   const [activeTab, setActiveTab] = useState<RightTab>("chat");
   const [soundOn, setSoundOn] = useState<boolean>(() => isRummySoundEnabled());
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  /* controlsOpen drives the collapsible action rail (Fix 3) */
+  const [controlsOpen, setControlsOpen] = useState(false);
   const initialized = useRef(false);
 
   /* ─── Reconcile hand → layout on every server update ─── */
@@ -706,15 +709,35 @@ export default function RummyBoardDesktop({
         <CornerCricketCoffee />
       </div>
 
-      {gate.stage === "gating" && gate.blockers.length > 0 && (
-        <WaitingForPlayersBanner
-          blockers={gate.blockers}
-          showNames={gate.showBlockerNames}
-          variant="toast"
-        />
+      {/* Gate overlays — block the board during every non-idle stage so no
+          game content flashes before the deal animation. During "gating" we
+          show a simple wood-toned holding screen while waiting for mobile
+          players to rotate. During "shuffle"/"deal" the full animated
+          RummyDealOverlay takes over (desktop-wood variant via the wrapper). */}
+      {gate.stage === "gating" && (
+        <>
+          {/* Full-viewport blocking overlay so the board is never visible during gating */}
+          <div
+            className="absolute inset-0 z-[55] flex flex-col items-center justify-center"
+            style={{
+              background: "linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%)",
+            }}
+          >
+            <DeskGatingScreen
+              blockers={gate.blockers}
+              showNames={gate.showBlockerNames}
+              readyCount={gate.readyCount}
+              totalCount={gate.totalCount}
+            />
+          </div>
+        </>
       )}
       {(gate.stage === "shuffle" || gate.stage === "deal") && (
-        <RummyDealOverlay stage={gate.stage} playerCount={state.playerOrder.length} />
+        <RummyDealOverlay
+          stage={gate.stage}
+          playerCount={state.playerOrder.length}
+          bg="linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%)"
+        />
       )}
 
       {/* ───── Top bar — torn-paper "Bhalyam" tag + turn note ───── */}
@@ -793,6 +816,12 @@ export default function RummyBoardDesktop({
             {/* ── The page — the felt ── */}
             <main className="nostalgia-paper relative flex flex-col px-6 py-5 gap-3 rounded-2xl shadow-lift-3 flex-1 max-w-[920px] overflow-hidden">
               <BackgroundDoodle />
+              {/* Corner suit watermarks — poker-table authenticity without
+                  cluttering the play area. pointer-events: none. */}
+              <span aria-hidden className="absolute top-3 left-3 text-2xl font-black pointer-events-none select-none" style={{ color: "#2E2419", opacity: 0.07 }}>♠</span>
+              <span aria-hidden className="absolute top-3 right-3 text-2xl font-black pointer-events-none select-none" style={{ color: "#A8332B", opacity: 0.07 }}>♥</span>
+              <span aria-hidden className="absolute bottom-3 left-3 text-2xl font-black pointer-events-none select-none" style={{ color: "#A8332B", opacity: 0.07 }}>♦</span>
+              <span aria-hidden className="absolute bottom-3 right-3 text-2xl font-black pointer-events-none select-none" style={{ color: "#2E2419", opacity: 0.07 }}>♣</span>
 
               {/* Decks + wild joker + finish slot — framed like a page clipping */}
               <div
@@ -863,9 +892,38 @@ export default function RummyBoardDesktop({
                 Good cards. Good friends. Great memories! :)
               </div>
 
-              {/* Hand row: self pad + ungrouped lane */}
-              <div className="relative flex items-stretch gap-3">
-                <SelfPad name={selfName} cumulativeScore={selfCumulative} poolTarget={state.poolTarget} />
+              {/* Hand row: self pad + ungrouped lane.
+                  Fix 5: A vivid glow border wraps the whole self-hand area
+                  whenever it is the local player's turn, making it instantly
+                  obvious whose action is expected. */}
+              <div
+                className="relative flex items-stretch gap-3 rounded-xl transition-all duration-300"
+                style={myTurn ? {
+                  boxShadow: "0 0 0 3px #C9A227, 0 0 24px rgba(201,162,39,0.50)",
+                  border: "2px solid #C9A227",
+                  padding: "6px",
+                  background: "rgba(201,162,39,0.06)",
+                  animation: "rummy-glow 1.4s ease-in-out infinite",
+                } : { border: "2px solid transparent", padding: "6px" }}
+              >
+                {myTurn && (
+                  <div
+                    className="absolute -top-5 left-0 right-0 text-center pointer-events-none"
+                    style={{ zIndex: 1 }}
+                  >
+                    <span
+                      className="inline-block text-[10px] font-black uppercase tracking-[0.2em] px-3 py-0.5 rounded-full"
+                      style={{
+                        background: "linear-gradient(135deg, #C9A227, #8A6220)",
+                        color: "#1f1300",
+                        boxShadow: "0 2px 8px rgba(201,162,39,0.55)",
+                      }}
+                    >
+                      ✦ Your Hand
+                    </span>
+                  </div>
+                )}
+                <SelfPad name={selfName} cumulativeScore={selfCumulative} poolTarget={state.poolTarget} isTurn={myTurn} />
                 <div className="flex-1">
                   <UngroupedLane
                     cardIds={layout.ungrouped}
@@ -882,49 +940,89 @@ export default function RummyBoardDesktop({
                 </div>
               </div>
 
-              {/* Action rail — dark-wood ribbon */}
+              {/* Fix 3 & 6: Collapsible action rail.
+                  Critical actions (DISCARD / DECLARE) are always visible.
+                  Secondary tools (DROP / SORT / AUTO / GROUP) live behind a
+                  toggle so the board doesn't feel cluttered by default. */}
               <div
-                className="relative flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl"
+                className="relative rounded-xl overflow-hidden"
                 style={{
                   background: "linear-gradient(180deg, #6D4323 0%, #4A2C16 100%)",
                   border: "1px solid rgba(0,0,0,0.35)",
                 }}
               >
-                <ActionButton onClick={() => setConfirmDrop(true)} disabled={!canDraw} kbd="—">
-                  DROP
-                </ActionButton>
-                <ActionButton onClick={sortUngrouped} kbd="S">
-                  SORT
-                </ActionButton>
-                <ActionButton onClick={autoArrange} kbd="A">
-                  AUTO
-                </ActionButton>
-                <ActionButton onClick={groupSelected} kbd="G">
-                  GROUP
-                </ActionButton>
-                <div className="flex-1" />
-                <div className="text-nostalgia-paper/80 text-sm">
-                  <span className="uppercase tracking-widest text-[11px]">Total · </span>
-                  <span className="text-nostalgia-paper font-black text-base">{livePoints.handTotal}</span>
-                  <span className="text-nostalgia-paper/50 text-xs ml-1">caught {livePoints.caughtNow}</span>
+                {/* Always-visible primary row */}
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
+                  {/* Fix 6: Redesigned score chip — clear hierarchy, two values easy to read */}
+                  <div
+                    className="flex items-center gap-0 rounded-lg overflow-hidden mr-1 flex-shrink-0"
+                    style={{ border: "1px solid rgba(201,162,39,0.40)", background: "rgba(0,0,0,0.30)" }}
+                  >
+                    <div className="flex flex-col items-center px-3 py-1.5" style={{ borderRight: "1px solid rgba(201,162,39,0.25)" }}>
+                      <span className="text-[9px] uppercase tracking-widest text-nostalgia-paper/50 font-bold leading-none">Hand pts</span>
+                      <span className="text-nostalgia-paper font-black text-xl leading-tight tabular-nums">{livePoints.handTotal}</span>
+                    </div>
+                    <div className="flex flex-col items-center px-3 py-1.5">
+                      <span className="text-[9px] uppercase tracking-widest text-nostalgia-paper/50 font-bold leading-none">If caught</span>
+                      <span className="font-black text-lg leading-tight tabular-nums" style={{ color: livePoints.caughtNow >= 80 ? "#ef4444" : livePoints.caughtNow >= 50 ? "#f97316" : "#86efac" }}>
+                        {livePoints.caughtNow}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1" />
+                  {/* Expand/collapse toggle (Fix 3) */}
+                  <button
+                    onClick={() => setControlsOpen((o) => !o)}
+                    className="rounded-full bg-black/25 hover:bg-black/40 px-3 py-1.5 text-nostalgia-paper/70 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition"
+                    title="Toggle tools"
+                  >
+                    <span>{controlsOpen ? "▾" : "▸"}</span>
+                    <span>Tools</span>
+                  </button>
+                  <ActionButton
+                    onClick={discardSelected}
+                    disabled={!canDiscardOrDeclare || selected.size !== 1}
+                    kbd="Space"
+                    variant="warn"
+                  >
+                    DISCARD
+                  </ActionButton>
+                  <ActionButton
+                    onClick={declareViaButton}
+                    disabled={!canDiscardOrDeclare || !finishReadiness.ready}
+                    kbd="Enter"
+                    variant="primary"
+                  >
+                    DECLARE ▸
+                  </ActionButton>
                 </div>
-                <ActionButton
-                  onClick={discardSelected}
-                  disabled={!canDiscardOrDeclare || selected.size !== 1}
-                  kbd="Space"
-                  variant="warn"
-                >
-                  DISCARD
-                </ActionButton>
-                <ActionButton
-                  onClick={declareViaButton}
-                  disabled={!canDiscardOrDeclare || !finishReadiness.ready}
-                  kbd="Enter"
-                  variant="primary"
-                >
-                  DECLARE ▸
-                </ActionButton>
+                {/* Collapsible secondary tools row */}
+                {controlsOpen && (
+                  <div
+                    className="flex flex-wrap items-center gap-2 px-4 pb-2.5 pt-1"
+                    style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
+                  >
+                    <ActionButton onClick={() => setConfirmDrop(true)} disabled={!canDraw} kbd="—">
+                      DROP
+                    </ActionButton>
+                    <ActionButton onClick={sortUngrouped} kbd="S">
+                      SORT
+                    </ActionButton>
+                    <ActionButton onClick={autoArrange} kbd="A">
+                      AUTO
+                    </ActionButton>
+                    <ActionButton onClick={groupSelected} kbd="G">
+                      GROUP
+                    </ActionButton>
+                    <div className="ml-2 text-nostalgia-paper/40 text-[10px] font-mono italic">
+                      Keyboard: D draw · O open · G group · S sort · A auto · Space discard · Enter declare
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Fix 4: Turn-time warning — pulsing border + countdown chip */}
+              <TurnTimeWarning deadline={state.turnDeadline} active={myTurn} />
 
               {error && (
                 <div className="relative mx-auto rounded-md bg-nostalgia-pen-red/90 border border-nostalgia-pen-red text-nostalgia-paper text-sm px-4 py-2 mt-1">
@@ -1016,14 +1114,24 @@ export default function RummyBoardDesktop({
 
 
 function WinnerCelebrationBurst() {
-  const pieces = Array.from({ length: 36 }, (_, i) => ({
+  // Confetti palette aligned with the desktop wood+gold theme. We use
+  // warm golds, ambers, deep reds, and cream — no cool blues/greens that
+  // would clash with the nostalgia aesthetic.
+  const pieces = Array.from({ length: 48 }, (_, i) => ({
     left: Math.random() * 100,
-    delay: Math.random() * 1400,
-    duration: 2200 + Math.random() * 1800,
-    color: ["#fbbf24", "#f97316", "#ef4444", "#10b981", "#3b82f6", "#a855f7"][i % 6],
+    delay: Math.random() * 1600,
+    duration: 2000 + Math.random() * 2000,
+    color: [
+      "#E4B128", "#F4C430", "#C9A227", // golds
+      "#F7E8C4", "#F5E9C9", "#E0CC9C", // creams
+      "#A8332B", "#7B1E2B",             // reds
+      "#9C7A3C", "#6D4323",             // wood/brass
+      "#fde68a", "#fbbf24",             // bright amber
+    ][i % 12],
     rotate: Math.random() * 360,
-    width: 6 + Math.floor(Math.random() * 6),
-    height: 10 + Math.floor(Math.random() * 8),
+    width: 6 + Math.floor(Math.random() * 8),
+    height: 10 + Math.floor(Math.random() * 10),
+    shape: i % 3 === 0 ? "circle" : "rect",
   }));
   return (
     <div
@@ -1055,10 +1163,10 @@ function WinnerCelebrationBurst() {
             left: `${p.left}%`,
             top: 0,
             width: p.width,
-            height: p.height,
+            height: p.shape === "circle" ? p.width : p.height,
             background: p.color,
-            borderRadius: 2,
-            boxShadow: `0 0 6px ${p.color}55`,
+            borderRadius: p.shape === "circle" ? "50%" : 2,
+            boxShadow: `0 0 8px ${p.color}66`,
             ["--r" as string]: `${p.rotate}deg`,
             animation: `rummy-winner-fall ${p.duration}ms cubic-bezier(.25,.46,.45,.94) ${p.delay}ms forwards`,
             transform: `translate3d(0,-12vh,0) rotate(${p.rotate}deg)`,
@@ -1095,6 +1203,87 @@ function WinnerCelebrationBurst() {
     </div>
   );
 }
+/** Full-viewport holding screen shown during the "gating" stage on desktop.
+ *  Desktop never needs to rotate (the isDesktopRummy gate rules that out),
+ *  so gating resolves fast — this just prevents any board content flashing
+ *  while the settle window ticks. Shows a simple amber "Setting up…" pill
+ *  plus optional "waiting for X to rotate" copy when mobile players are
+ *  still on the same table. */
+function DeskGatingScreen({
+  blockers,
+  showNames,
+  readyCount,
+  totalCount,
+}: {
+  blockers: import("@shared/types").Player[];
+  showNames: boolean;
+  readyCount: number;
+  totalCount: number;
+}) {
+  const waiting = blockers.length > 0;
+  return (
+    <div className="flex flex-col items-center justify-center gap-6 px-8 text-center">
+      {/* Animated deck icon */}
+      <div className="relative w-20 h-28 flex items-center justify-center">
+        {[2, 1, 0].map((z) => (
+          <div
+            key={z}
+            className="absolute rounded-lg"
+            style={{
+              width: 60 - z * 4,
+              height: 84 - z * 4,
+              background: "linear-gradient(140deg, #7f1d1d 0%, #991b1b 60%, #4c0519 100%)",
+              border: "1px solid rgba(201,162,39,0.6)",
+              boxShadow: "0 4px 14px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(251,191,36,0.35)",
+              transform: `rotate(${(z - 1) * 5}deg)`,
+              zIndex: z,
+            }}
+          />
+        ))}
+        <div
+          className="absolute w-10 h-10 rounded-full flex items-center justify-center z-10"
+          style={{
+            background: "linear-gradient(135deg, #C9A227, #8A6220)",
+            boxShadow: "0 2px 12px rgba(201,162,39,0.60)",
+            animation: "rummy-glow 1.4s ease-in-out infinite",
+          }}
+        >
+          <span className="text-xl font-black" style={{ color: "#1f1300" }}>B</span>
+        </div>
+      </div>
+
+      <div
+        className="px-6 py-2.5 rounded-full font-black uppercase tracking-[0.22em] text-sm"
+        style={{
+          background: "linear-gradient(135deg, #fde68a, #f59e0b)",
+          color: "#1f1300",
+          border: "2px solid #b45309",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.50), inset 0 0 0 1px rgba(255,255,255,0.4)",
+          animation: "rummy-glow 1.4s ease-in-out infinite",
+        }}
+      >
+        {waiting ? "Waiting for players…" : "Setting up the table…"}
+      </div>
+
+      {totalCount > 0 && (
+        <div className="text-nostalgia-paper/50 text-sm font-semibold">
+          {readyCount} / {totalCount} ready
+          {waiting && showNames && (
+            <span className="block mt-1 text-[12px] text-nostalgia-paper/40">
+              Waiting for {blockers.map((b) => b.name).join(", ")} to rotate their device
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Decorative card suits strip */}
+      <div className="flex gap-6 text-3xl" style={{ opacity: 0.25, color: "#F5E9C9" }}>
+        <span>♠</span><span>♥</span><span>♦</span><span>♣</span>
+      </div>
+    </div>
+  );
+}
+
 
 /* ─────────────────────────── Sub-components ─────────────────────────── */
 
@@ -1150,10 +1339,13 @@ function Notepad({
   const fanCount = Math.min(handSize, isVertical ? 13 : 6);
   return (
     <div
-      className={`relative flex-shrink-0 bg-nostalgia-paper rounded-md shadow-lift-2 ${opacity} ${isVertical ? "px-3 py-3 w-[120px]" : "px-3 py-2 w-[150px]"}`}
+      className={`relative flex-shrink-0 bg-nostalgia-paper rounded-md shadow-lift-2 ${opacity} ${isVertical ? "px-3 py-3 w-[120px]" : "px-3 py-2 w-[150px]"} transition-all duration-300`}
       style={{
-        border: isTurn ? "2px solid #9C7A3C" : "1px solid rgba(46,36,25,0.18)",
-        boxShadow: isTurn ? "0 0 0 3px rgba(156,122,60,0.25)" : undefined,
+        border: isTurn ? "2px solid #C9A227" : "1px solid rgba(46,36,25,0.18)",
+        boxShadow: isTurn
+          ? "0 0 0 4px rgba(201,162,39,0.30), 0 0 20px rgba(201,162,39,0.25)"
+          : undefined,
+        animation: isTurn ? "rummy-glow 1.4s ease-in-out infinite" : undefined,
         backgroundImage:
           "radial-gradient(circle at 4px center, rgba(46,36,25,0.25) 1.6px, transparent 1.6px)",
         backgroundSize: "100% 14px",
@@ -1161,8 +1353,25 @@ function Notepad({
         backgroundRepeat: "repeat-y",
       }}
     >
+      {/* Turn badge pinned above the notepad */}
+      {isTurn && (
+        <div className="absolute -top-4 left-0 right-0 flex justify-center pointer-events-none" style={{ zIndex: 2 }}>
+          <span
+            className="text-[8px] font-black uppercase tracking-[0.18em] px-2 py-0.5 rounded-full"
+            style={{ background: "linear-gradient(135deg, #C9A227, #8A6220)", color: "#1f1300", boxShadow: "0 2px 6px rgba(201,162,39,0.5)" }}
+          >
+            ▸ Playing
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-1.5 pl-2">
-        <div className="w-7 h-7 rounded-full bg-nostalgia-brass/30 flex items-center justify-center font-black text-nostalgia-pen text-xs flex-shrink-0">
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0 transition-all duration-300"
+          style={{
+            background: isTurn ? "linear-gradient(135deg, #C9A227, #8A6220)" : "rgba(156,122,60,0.30)",
+            color: isTurn ? "#1f1300" : "#2E2419",
+          }}
+        >
           {name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
@@ -1208,21 +1417,37 @@ function SelfPad({
   name,
   cumulativeScore,
   poolTarget,
+  isTurn,
 }: {
   name: string;
   cumulativeScore?: number;
   poolTarget: number | null;
+  isTurn?: boolean;
 }) {
   const showsPool = poolTarget != null && cumulativeScore != null;
   return (
-    <div className="flex-shrink-0 bg-nostalgia-paper rounded-md shadow-lift-2 px-3 py-2.5 w-[110px] flex flex-col items-center justify-center text-center">
+    <div
+      className="flex-shrink-0 bg-nostalgia-paper rounded-md shadow-lift-2 px-3 py-2.5 w-[110px] flex flex-col items-center justify-center text-center transition-all duration-300"
+      style={isTurn ? {
+        border: "2px solid #C9A227",
+        boxShadow: "0 0 0 3px rgba(201,162,39,0.30)",
+      } : { border: "2px solid transparent" }}
+    >
       <div
+        className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm flex-shrink-0 transition-all duration-300"
+        style={{
+          background: isTurn ? "linear-gradient(135deg, #C9A227, #8A6220)" : "rgba(156,122,60,0.40)",
+          color: isTurn ? "#1f1300" : "#2E2419",
+          boxShadow: isTurn ? "0 0 12px rgba(201,162,39,0.60)" : undefined,
+          animation: isTurn ? "rummy-glow 1.4s ease-in-out infinite" : undefined,
+        }}
         title={name}
-        className="w-9 h-9 rounded-full bg-nostalgia-brass/40 flex items-center justify-center font-black text-nostalgia-pen text-sm"
       >
         {name.charAt(0).toUpperCase()}
       </div>
-      <div className="font-script text-sm text-nostalgia-pen mt-1 truncate w-full">You</div>
+      <div className="font-script text-sm text-nostalgia-pen mt-1 truncate w-full">
+        {isTurn ? "▸ Your turn" : "You"}
+      </div>
       {showsPool && (
         <div className="text-[10px] text-nostalgia-pen/55 font-semibold mt-0.5">
           {cumulativeScore} / {poolTarget}
@@ -1280,42 +1505,75 @@ function PaperclipIcon() {
   );
 }
 
-/** Faint pencil-doodle watermark behind the deck — house, tree, two kids
- * holding hands, a bird, a kite. Hand-coded SVG line art (no raster
- * asset / image-generation API available in this environment). */
+/** Paper watermark: doodle scene + scattered card-suit symbols for richer
+ *  table feel. Kept faint (opacity 0.08) so it never competes with cards.
+ *  Pure SVG — no raster or external asset. */
 function BackgroundDoodle() {
   return (
     <svg
-      viewBox="0 0 800 280"
-      className="absolute w-[90%] max-w-[640px] h-auto text-nostalgia-pen pointer-events-none"
-      style={{ opacity: 0.07, top: "4%", left: "50%", transform: "translateX(-50%)" }}
+      viewBox="0 0 860 290"
+      className="absolute w-[95%] max-w-[700px] h-auto pointer-events-none"
+      style={{ opacity: 0.08, top: "3%", left: "50%", transform: "translateX(-50%)" }}
       fill="none"
-      stroke="currentColor"
+      stroke="#2E2419"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d="M120 180 L120 130 L160 100 L200 130 L200 180 Z" />
-      <rect x="150" y="155" width="18" height="25" />
-      <circle cx="260" cy="120" r="26" />
-      <line x1="260" y1="146" x2="260" y2="180" />
-      <circle cx="380" cy="140" r="10" />
-      <line x1="380" y1="150" x2="380" y2="178" />
-      <line x1="380" y1="158" x2="365" y2="170" />
-      <line x1="380" y1="158" x2="398" y2="168" />
-      <line x1="380" y1="178" x2="368" y2="195" />
-      <line x1="380" y1="178" x2="392" y2="195" />
-      <circle cx="412" cy="148" r="9" />
-      <line x1="412" y1="157" x2="412" y2="182" />
-      <line x1="412" y1="164" x2="398" y2="168" />
-      <line x1="412" y1="164" x2="426" y2="172" />
-      <line x1="412" y1="182" x2="400" y2="198" />
-      <line x1="412" y1="182" x2="424" y2="198" />
-      <path d="M520 90 Q530 80 540 90 Q550 80 560 90" />
-      <path d="M640 70 L660 95 L640 135 L620 95 Z" />
-      <line x1="640" y1="135" x2="640" y2="175" />
-      <path d="M640 145 q6 4 0 8 q-6 4 0 8" />
+      {/* House */}
+      <path d="M80 190 L80 140 L120 108 L160 140 L160 190 Z" />
+      <rect x="108" y="162" width="20" height="28" />
+      {/* Tree */}
+      <circle cx="220" cy="128" r="28" />
+      <line x1="220" y1="156" x2="220" y2="192" />
+      {/* Two children holding hands */}
+      <circle cx="310" cy="145" r="10" />
+      <line x1="310" y1="155" x2="310" y2="182" />
+      <line x1="310" y1="163" x2="295" y2="175" />
+      <line x1="310" y1="163" x2="327" y2="172" />
+      <line x1="310" y1="182" x2="298" y2="200" />
+      <line x1="310" y1="182" x2="322" y2="200" />
+      <circle cx="344" cy="152" r="9" />
+      <line x1="344" y1="161" x2="344" y2="186" />
+      <line x1="344" y1="168" x2="327" y2="172" />
+      <line x1="344" y1="168" x2="360" y2="175" />
+      <line x1="344" y1="186" x2="332" y2="203" />
+      <line x1="344" y1="186" x2="356" y2="203" />
+      {/* Bird in flight */}
+      <path d="M440 92 Q452 82 464 92 Q476 82 488 92" />
+      {/* Kite */}
+      <path d="M580 70 L600 95 L580 140 L560 95 Z" />
+      <line x1="580" y1="140" x2="580" y2="182" />
+      <path d="M580 148 q6 4 0 8 q-6 4 0 8" />
+      {/* Sun */}
+      <circle cx="730" cy="70" r="22" strokeWidth="1.8" />
+      {[0,45,90,135,180,225,270,315].map((a, i) => (
+        <line
+          key={i}
+          x1={730 + Math.cos((a * Math.PI) / 180) * 26}
+          y1={70 + Math.sin((a * Math.PI) / 180) * 26}
+          x2={730 + Math.cos((a * Math.PI) / 180) * 34}
+          y2={70 + Math.sin((a * Math.PI) / 180) * 34}
+          strokeWidth="1.5"
+        />
+      ))}
+      {/* Ground line */}
+      <path d="M50 210 Q200 205 350 212 Q500 218 700 210 Q780 207 820 212" strokeWidth="1.2" opacity="0.5" />
+
+      {/* Scattered card suit symbols — larger, purely decorative */}
+      {/* Spade ♠ */}
+      <path d="M42 55 Q42 40 55 40 Q68 40 68 55 Q68 66 55 73 Q42 66 42 55 Z M49 73 L49 82 L61 82 L61 73" strokeWidth="1.5" />
+      {/* Heart ♥ */}
+      <path d="M780 155 Q780 143 791 143 Q802 143 802 155 Q802 166 791 175 Q780 166 780 155 Z M769 143 Q769 131 780 131 Q791 131 791 143" strokeWidth="1.5" />
+      {/* Diamond ♦ */}
+      <path d="M790 235 L808 252 L790 269 L772 252 Z" strokeWidth="1.5" />
+      {/* Club ♣ */}
+      <circle cx="56" cy="242" r="8" strokeWidth="1.5" />
+      <circle cx="70" cy="249" r="8" strokeWidth="1.5" />
+      <circle cx="42" cy="249" r="8" strokeWidth="1.5" />
+      <line x1="56" y1="257" x2="56" y2="270" strokeWidth="1.5" />
+      <line x1="48" y1="270" x2="64" y2="270" strokeWidth="1.5" />
     </svg>
   );
 }
