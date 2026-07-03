@@ -656,6 +656,7 @@ export default function Room() {
                 messages={messages}
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
+                onLeave={leaveRoom}
                 onScorecardClose={triggerGameOver}
               />
             )}
