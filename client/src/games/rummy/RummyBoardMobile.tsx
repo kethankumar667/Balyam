@@ -974,8 +974,7 @@ export default function RummyBoardMobile({
     <div
       className="rounded-none sm:rounded-[28px] px-3 sm:px-5 pt-3 sm:pt-4 relative shadow-2xl flex flex-col gap-1 sm:gap-1.5 h-full overflow-hidden"
       style={{
-        background:
-          "radial-gradient(ellipse at 50% 38%, #1a8c4a 0%, #0d5e2e 55%, #052e16 95%)",
+        background: "linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%)",
         // Bottom padding has to clear the OS gesture bar / nav buttons on
         // real phones — without this, the ACTION row (DROP/SORT/…/FINISH)
         // sits flush with the bottom edge and the lower half of each button
@@ -1317,17 +1316,17 @@ function RummyModal({
         onClick={(e) => e.stopPropagation()}
         className="rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto p-3 sm:p-4 space-y-3"
         style={{
-          background: "linear-gradient(180deg, #0f3a26, #052e16)",
-          border: "2px solid #422006",
+          background: "linear-gradient(180deg, #6D4323 0%, #4A2C16 100%)",
+          border: "2px solid #9C7A3C",
         }}
       >
         <div className="flex items-center justify-between">
-          <div className="text-sm font-extrabold uppercase tracking-wider text-emerald-100">
+          <div className="text-sm font-extrabold uppercase tracking-wider text-nostalgia-paper">
             {title}
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold"
+            className="w-8 h-8 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/45 text-nostalgia-paper font-bold"
             aria-label="Close"
           >
             ✕
@@ -1401,9 +1400,7 @@ function ResultOverlay({
       >
         <button
           onClick={onClose}
-          aria-label="Close"
-          title="Close"
-          className="absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-slate-100 font-extrabold z-10"
+          className="absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center bg-[#2E2419] hover:bg-[#4A2C16] text-nostalgia-paper font-extrabold z-10"
           style={{
             border: "2px solid #fcd34d",
             boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
@@ -1431,18 +1428,18 @@ function MenuRow({
   return (
     <button
       onClick={onClick}
-      className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-left text-emerald-100"
-      style={{ border: "1px solid rgba(255,255,255,0.07)" }}
+      className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-nostalgia-paper"
+      style={{ background: "rgba(0,0,0,0.25)", border: "1px solid rgba(201,162,39,0.20)" }}
     >
       <span className="text-xl" aria-hidden>{emoji}</span>
       <span className="text-sm font-bold flex-1">{label}</span>
       {badge && (
         <span
           className="w-2.5 h-2.5 rounded-full"
-          style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px #052e16" }}
+          style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px #3a2010" }}
         />
       )}
-      <span className="text-emerald-300/50">›</span>
+      <span style={{ color: "rgba(201,162,39,0.55)" }}>›</span>
     </button>
   );
 }
@@ -1586,14 +1583,14 @@ function TopStrip({
         title={roomCode ? "Tap to copy room code" : ""}
         className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold tracking-wide truncate max-w-[70%] disabled:cursor-default"
         style={{
-          background: "linear-gradient(180deg, #1f2937 0%, #0f172a 100%)",
-          border: "1px solid rgba(251, 191, 36, 0.45)",
+          background: "linear-gradient(180deg, #4A2C16 0%, #3a2010 100%)",
+          border: "1px solid rgba(201,162,39,0.50)",
           boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
           color: "#fde68a",
           height: 22,
         }}
       >
-        <span className="text-emerald-400 text-[9px]">📶</span>
+        <span className="text-[#C9A227] text-[9px]">🃏</span>
         <span className="truncate">{gameLabel}</span>
         {roomCode && (
           <>
@@ -1616,7 +1613,7 @@ function TopStrip({
             aria-label={fullscreenOn ? "Exit fullscreen" : "Enter fullscreen"}
             aria-pressed={fullscreenOn}
             title={fullscreenOn ? "Exit fullscreen" : "Enter fullscreen"}
-            className="w-7 h-7 mt-1 rounded-full flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-sm flex-shrink-0 text-amber-200 cursor-pointer transition-colors duration-200"
+            className="w-7 h-7 mt-1 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/45 text-sm flex-shrink-0 text-[#fde68a] cursor-pointer transition-colors duration-200"
             style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.3)" }}
           >
             {fullscreenOn ? (
@@ -1630,14 +1627,14 @@ function TopStrip({
           onClick={onOpenMenu}
           aria-label="Open menu"
           title="Menu"
-          className="relative w-7 h-7 mt-1 rounded-full flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-sm flex-shrink-0"
+          className="relative w-7 h-7 mt-1 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/45 text-sm flex-shrink-0 text-nostalgia-paper"
           style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.3)" }}
         >
           ☰
           {hasUnreadChat && (
             <span
               className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
-              style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px #052e16" }}
+              style={{ background: "#ef4444", boxShadow: "0 0 0 1.5px #3a2010" }}
             />
           )}
         </button>
@@ -1773,7 +1770,7 @@ function PlayerStrip({
       />
       <span
         className={`text-[11px] font-extrabold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
-          myTurn ? "bg-amber-500 text-slate-900" : "bg-black/60 text-emerald-100"
+          myTurn ? "bg-amber-500 text-slate-900" : "bg-black/60 text-nostalgia-paper"
         }`}
         style={{
           border: myTurn ? "1px solid #fcd34d" : "1px solid rgba(255,255,255,0.12)",
@@ -2446,7 +2443,7 @@ function PointsPanel({ points }: { points: LivePoints }) {
       {/* Subtext: protection status / hint */}
       <div className="w-full flex items-center justify-between flex-wrap gap-2 text-[11px]">
         {points.protectedByPure ? (
-          <span className="text-emerald-300">
+          <span className="text-[#C9A227]">
             ✓ Pure sequence protects {points.unmeldedCount > 0
               ? `${points.unmeldedCount} card${points.unmeldedCount === 1 ? "" : "s"} unmelded`
               : "your full hand"}
@@ -2462,7 +2459,7 @@ function PointsPanel({ points }: { points: LivePoints }) {
           </span>
         )}
         {!shouldConsiderDrop && risk > 0 && risk < points.dropNow && (
-          <span className="text-emerald-300">
+          <span className="text-[#C9A227]">
             👍 Stay in — dropping would cost {points.dropNow - risk} more
           </span>
         )}
@@ -2688,22 +2685,25 @@ function DropConfirm({
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
-        <div className="text-lg font-bold">Drop out of this round?</div>
-        <div className="text-sm text-slate-300">
+      <div
+        className="rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4"
+        style={{ background: "linear-gradient(180deg, #6D4323 0%, #4A2C16 100%)", border: "2px solid #9C7A3C" }}
+      >
+        <div className="text-lg font-bold text-nostalgia-paper">Drop out of this round?</div>
+        <div className="text-sm text-nostalgia-paper/75">
           You'll take a <span className="font-bold text-rose-300">20-point penalty</span> and stop
           playing this round. Game continues for everyone else.
         </div>
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="bg-slate-700 hover:bg-slate-600 rounded px-4 py-2 text-sm font-semibold"
+            className="bg-black/30 hover:bg-black/45 text-nostalgia-paper rounded px-4 py-2 text-sm font-semibold"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="bg-rose-600 hover:bg-rose-500 rounded px-4 py-2 text-sm font-extrabold"
+            className="bg-rose-700 hover:bg-rose-600 text-white rounded px-4 py-2 text-sm font-extrabold"
           >
             DROP
           </button>
@@ -2735,7 +2735,7 @@ function PoolStandings({
         <div className="text-[10px] uppercase tracking-[0.2em] font-extrabold text-amber-200">
           🏆 Pool Standings · Round {state.roundNumber}
         </div>
-        <div className="text-[10px] text-emerald-200/70">
+        <div className="text-[10px] text-[#E0CC9C]/70">
           Eliminate at {target}
         </div>
       </div>
@@ -2749,19 +2749,19 @@ function PoolStandings({
               key={id}
               className={`rounded p-1.5 text-xs ${isOut ? "opacity-50" : ""}`}
               style={{
-                background: isOut ? "rgba(127,29,29,0.45)" : "rgba(15,23,42,0.65)",
-                border: `1px solid ${isOut ? "#7f1d1d" : "rgba(255,255,255,0.1)"}`,
+                background: isOut ? "rgba(127,29,29,0.45)" : "rgba(46,36,25,0.65)",
+                border: `1px solid ${isOut ? "#7f1d1d" : "rgba(201,162,39,0.20)"}`,
               }}
             >
               <div className="flex items-center justify-between gap-1">
-                <span className="font-bold text-slate-100 truncate">
+                <span className="font-bold text-nostalgia-paper truncate">
                   {nameOf(id)}{id === selfId && " (you)"}
                 </span>
                 <span className="tabular-nums font-extrabold text-amber-200">
                   {score}
                 </span>
               </div>
-              <div className="h-1 rounded mt-1 overflow-hidden bg-slate-700/40">
+              <div className="h-1 rounded mt-1 overflow-hidden bg-[#2E2419]/60">
                 <div
                   className="h-full"
                   style={{
@@ -2801,19 +2801,19 @@ function PoolBetweenRounds({
     getSocket().emit("game:move", { type: "newRound" });
   }
   return (
-    <div className="bg-slate-900/80 rounded-xl p-4 space-y-3 border border-amber-700">
+    <div className="rounded-xl p-4 space-y-3 border border-[#9C7A3C]" style={{ background: "linear-gradient(160deg, #6D4323 0%, #4A2C16 100%)" }}>
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-lg font-extrabold text-amber-200">
           🎴 {RUMMY_COPY.roundComplete(state.roundNumber)}
         </div>
-        <div className="text-xs text-slate-400">
+        <div className="text-xs text-nostalgia-paper/60">
           Next: Round {state.roundNumber + 1} · target {state.poolTarget}
         </div>
       </div>
 
       <table className="text-sm w-full">
         <thead>
-          <tr className="text-slate-400">
+          <tr className="text-nostalgia-paper/55">
             <th className="text-left py-1">Player</th>
             <th className="text-right">This round</th>
             <th className="text-right">Total</th>
@@ -2833,8 +2833,8 @@ function PoolBetweenRounds({
                   isRoundWinner
                     ? "text-amber-300 font-bold"
                     : isOut
-                    ? "text-slate-500 line-through"
-                    : "text-slate-200"
+                    ? "text-nostalgia-paper/40 line-through"
+                    : "text-nostalgia-paper"
                 }
               >
                 <td className="py-0.5">
@@ -2857,7 +2857,7 @@ function PoolBetweenRounds({
       {!iEliminated && (
         <button
           onClick={nextRound}
-          className="w-full bg-emerald-600 hover:bg-emerald-500 rounded-lg py-2 font-extrabold tracking-wider uppercase"
+          className="w-full bg-nostalgia-brass hover:brightness-110 text-[#2E2419] font-extrabold rounded-lg py-2 tracking-wider uppercase"
         >
           Deal Round {state.roundNumber + 1}
         </button>
@@ -2943,7 +2943,7 @@ function EndGameCard({
       )
     : 0;
   return (
-    <div className="bg-slate-900/90 rounded-xl p-4 space-y-3 border border-emerald-700 shadow-2xl">
+    <div className="rounded-xl p-4 space-y-3 border border-nostalgia-brass shadow-2xl" style={{ background: "linear-gradient(160deg, #6D4323 0%, #4A2C16 100%)" }}>
       <div className="text-lg font-bold">
         {state.invalidDeclareBy ? (
           <>❌ <span className="text-rose-300">{nameOf(state.invalidDeclareBy)}</span> made an invalid declaration</>
@@ -2956,7 +2956,7 @@ function EndGameCard({
       {state.scores && (
         <table className="text-sm w-full">
           <thead>
-            <tr className="text-slate-400 border-b border-slate-700">
+            <tr className="text-nostalgia-paper/55 border-b border-nostalgia-paper-edge/40">
               <th className="text-left py-1">Player</th>
               <th className="text-right py-1">Points</th>
             </tr>
@@ -2968,7 +2968,7 @@ function EndGameCard({
               return (
                 <tr
                   key={id}
-                  className={`${isWinner ? "text-amber-300 font-bold" : "text-emerald-100"} border-b border-slate-800/60 last:border-0`}
+                  className={`${isWinner ? "text-amber-300 font-bold" : "text-nostalgia-paper"} border-b border-nostalgia-paper-edge/30 last:border-0`}
                 >
                   <td className="py-1.5">
                     {nameOf(id)}
@@ -2991,7 +2991,7 @@ function EndGameCard({
                   </td>
                   <td className="text-right py-1.5 tabular-nums">
                     <span
-                      className={isWinner ? "text-emerald-300" : "text-rose-300"}
+                      className={isWinner ? "text-[#C9A227]" : "text-rose-300"}
                     >
                       {isWinner ? `+${points}` : points}
                     </span>
@@ -3185,7 +3185,7 @@ export function RummyDealOverlay({
       style={{
         // Fully opaque felt gradient. Mobile: green casino felt (default).
         // Desktop: passes bg prop with wood gradient to match its table.
-        background: bg ?? "radial-gradient(ellipse at 50% 38%, #1a8c4a 0%, #0d5e2e 55%, #052e16 95%)",
+        background: bg ?? "linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%)",
       }}
     >
       <div

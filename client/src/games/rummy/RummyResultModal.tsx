@@ -5,7 +5,6 @@ import { PlayingCard, SUIT_GLYPHS } from "./Card";
 import { classifyMeld, sumCardPoints } from "./meldCheck";
 import { suggestArrangement } from "./autoArrange";
 import RematchPanel from "../../components/RematchPanel";
-import NotebookSheet from "../../components/nostalgia/NotebookSheet";
 import { svgToPngBlob } from "../../lib/svgExport";
 
 /**
@@ -147,19 +146,15 @@ export default function RummyResultModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4"
-      style={{ background: "rgba(20,14,8,0.62)" }}
+      className="fixed inset-0 z-[60] flex items-center justify-center"
+      style={{ background: "rgba(20,14,8,0.72)", inset: 0 }}
       role="dialog"
       aria-modal="true"
     >
-      {/* Soft overhead-bulb wash behind the page — not a casino spotlight. */}
+      {/* Soft overhead-bulb lamp wash */}
       <div className="absolute inset-0 bg-nostalgia-lamp pointer-events-none" aria-hidden />
 
-      {/* Hidden export-only SVG — notebook-styled score sheet rasterised to
-          PNG by `saveSheet()` via the shared svgToPngBlob (docs/rummy/roadmap.md
-          B.4). Not the same markup as the live HTML table above; this is a
-          purpose-built, self-contained drawing so it serialises cleanly
-          without needing the page's Tailwind/Google-Fonts styles. */}
+      {/* Hidden export-only SVG */}
       <div className="hidden">
         <svg
           ref={svgRef}
@@ -169,7 +164,6 @@ export default function RummyResultModal({
           xmlns="http://www.w3.org/2000/svg"
         >
           <rect x="0" y="0" width={sheetW} height={sheetH} rx="14" fill="#F5E9C9" />
-
           <text x="32" y="44" fontFamily="cursive" fontWeight="700" fontSize="28" fill="#2E2419">
             BHALYAM Rummy
           </text>
@@ -182,220 +176,192 @@ export default function RummyResultModal({
               .filter(Boolean)
               .join("  ·  ")}
           </text>
-
           <line x1="24" y1={sheetRowsTop - 16} x2={sheetW - 24} y2={sheetRowsTop - 16} stroke="#E0CC9C" strokeWidth="1.5" />
           <text x="32" y={sheetRowsTop - 28} fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="700" letterSpacing="0.08em" fill="#2E2419" opacity="0.55">RANK</text>
           <text x="80" y={sheetRowsTop - 28} fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="700" letterSpacing="0.08em" fill="#2E2419" opacity="0.55">NAME</text>
           <text x={sheetW - 200} y={sheetRowsTop - 28} textAnchor="end" fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="700" letterSpacing="0.08em" fill="#2E2419" opacity="0.55">POINTS</text>
           <text x={sheetW - 32} y={sheetRowsTop - 28} textAnchor="end" fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="700" letterSpacing="0.08em" fill="#2E2419" opacity="0.55">CHIPS</text>
-
           {rows.map((row, idx) => {
             const cy = sheetRowsTop + idx * sheetRowH + sheetRowH / 2;
             const textY = cy + 6;
             const nameColor = row.isWrongShower ? "#A8332B" : "#2E2419";
-            // No live DOM to measure against (this SVG only exists for export) —
-            // approximate the name's width from its length, good enough to size
-            // a hand-drawn ellipse that reads as "circled", not pixel-exact.
             const estHalfW = row.name.length * 5 + 10;
             const ellipseCx = 80 + estHalfW;
             return (
               <g key={row.id}>
                 {idx > 0 && (
-                  <line
-                    x1="24"
-                    y1={sheetRowsTop + idx * sheetRowH}
-                    x2={sheetW - 24}
-                    y2={sheetRowsTop + idx * sheetRowH}
-                    stroke="#E0CC9C"
-                    strokeWidth="1"
-                    opacity="0.6"
-                  />
+                  <line x1="24" y1={sheetRowsTop + idx * sheetRowH} x2={sheetW - 24} y2={sheetRowsTop + idx * sheetRowH} stroke="#E0CC9C" strokeWidth="1" opacity="0.6" />
                 )}
                 {row.isWin && (
-                  <ellipse
-                    cx={ellipseCx}
-                    cy={cy - 1}
-                    rx={estHalfW + 14}
-                    ry="19"
-                    fill="none"
-                    stroke="#A8332B"
-                    strokeWidth="2.5"
-                    transform={`rotate(-4 ${ellipseCx} ${cy - 1})`}
-                  />
+                  <ellipse cx={ellipseCx} cy={cy - 1} rx={estHalfW + 14} ry="19" fill="none" stroke="#A8332B" strokeWidth="2.5" transform={`rotate(-4 ${ellipseCx} ${cy - 1})`} />
                 )}
-                <text x="32" y={textY} fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="15" fill="#2E2419" opacity="0.7">
-                  {row.isWrongShower ? "—" : row.rank}
-                </text>
-                <text x="80" y={textY} fontFamily="cursive" fontWeight="700" fontSize="18" fill={nameColor}>
-                  {row.name}
-                </text>
+                <text x="32" y={textY} fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="15" fill="#2E2419" opacity="0.7">{row.isWrongShower ? "—" : row.rank}</text>
+                <text x="80" y={textY} fontFamily="cursive" fontWeight="700" fontSize="18" fill={nameColor}>{row.name}</text>
                 {row.isWrongShower && (
-                  <text
-                    x={80 + estHalfW * 2 + 14}
-                    y={textY}
-                    fontFamily="system-ui, sans-serif"
-                    fontSize="10"
-                    fontWeight="700"
-                    letterSpacing="0.06em"
-                    fill="#A8332B"
-                    opacity="0.85"
-                  >
-                    WRONG SHOW
-                  </text>
+                  <text x={80 + estHalfW * 2 + 14} y={textY} fontFamily="system-ui, sans-serif" fontSize="10" fontWeight="700" letterSpacing="0.06em" fill="#A8332B" opacity="0.85">WRONG SHOW</text>
                 )}
-                <text x={sheetW - 200} y={textY} textAnchor="end" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="15" fill="#2E2419">
-                  {row.points}
-                </text>
-                <text x={sheetW - 32} y={textY} textAnchor="end" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="15" fill="#2E2419">
-                  {row.chips > 0 ? `+${row.chips}` : row.chips}
-                </text>
+                <text x={sheetW - 200} y={textY} textAnchor="end" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="15" fill="#2E2419">{row.points}</text>
+                <text x={sheetW - 32} y={textY} textAnchor="end" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="15" fill="#2E2419">{row.chips > 0 ? `+${row.chips}` : row.chips}</text>
               </g>
             );
           })}
-
-          <line
-            x1="24"
-            y1={sheetRowsTop + rows.length * sheetRowH + 14}
-            x2={sheetW - 24}
-            y2={sheetRowsTop + rows.length * sheetRowH + 14}
-            stroke="#E0CC9C"
-            strokeWidth="1.5"
-          />
-          <text x="32" y={sheetRowsTop + rows.length * sheetRowH + 38} fontFamily="system-ui, sans-serif" fontSize="12" fill="#2E2419" opacity="0.7">
-            {`Joker ${state.wildJoker.rank}${SUIT_GLYPHS[state.wildJoker.suit] ?? ""}`}
-          </text>
-          <text x={sheetW / 2} y={sheetH - 14} textAnchor="middle" fontFamily="cursive" fontStyle="italic" fontSize="11" fill="#9C7A3C" opacity="0.85">
-            BHALYAM · Relive Childhood
-          </text>
+          <line x1="24" y1={sheetRowsTop + rows.length * sheetRowH + 14} x2={sheetW - 24} y2={sheetRowsTop + rows.length * sheetRowH + 14} stroke="#E0CC9C" strokeWidth="1.5" />
+          <text x="32" y={sheetRowsTop + rows.length * sheetRowH + 38} fontFamily="system-ui, sans-serif" fontSize="12" fill="#2E2419" opacity="0.7">{`Joker ${state.wildJoker.rank}${SUIT_GLYPHS[state.wildJoker.suit] ?? ""}`}</text>
+          <text x={sheetW / 2} y={sheetH - 14} textAnchor="middle" fontFamily="cursive" fontStyle="italic" fontSize="11" fill="#9C7A3C" opacity="0.85">BHALYAM · Relive Childhood</text>
         </svg>
       </div>
 
-      <NotebookSheet layout="mobile" className="relative w-full max-w-[1120px] shadow-lift-3">
-        {/* Close ✕ — small ink-circle tab, top-right corner */}
+      {/* ── The notebook page ───────────────────────────────────────────────
+          Sized to exactly 90% of the viewport on all sides (5% inset each).
+          Uses a flex-column interior so the header and footer are pinned and
+          only the player rows scroll — nothing overlaps. */}
+      <div
+        className="nostalgia-paper relative rounded-lg border border-nostalgia-paper-edge/60 shadow-lift-3
+                   flex flex-col overflow-hidden"
+        style={{
+          width: "90vw",
+          height: "90vh",
+          maxWidth: "none",
+        }}
+      >
+        {/* Ruled lines overlay — clipped by overflow-hidden on the container */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: "repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(46,36,25,0.16) 31px, rgba(46,36,25,0.16) 32px)",
+            backgroundPositionY: "10px",
+          }}
+        />
+
+        {/* Close ✕ */}
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center
+          className="absolute top-2 right-2 z-10 w-9 h-9 rounded-full flex items-center justify-center
                      text-nostalgia-paper text-base font-black shadow-lift-2 active:translate-y-px font-sans"
           style={{ background: "#2E2419" }}
         >
           ✕
         </button>
 
-        {/* Header — the handwritten note at the top of the page */}
-        <div className="flex items-start justify-between gap-3 pr-6">
-          <span className="text-[22px] sm:text-[28px] leading-tight">{headerText}</span>
-          {onLeave && (
+        {/* ── All content: relative, flex-column, fills the paper ── */}
+        <div className="relative font-script text-nostalgia-pen text-base flex flex-col h-full p-4 gap-0 min-h-0">
+
+          {/* Header — flex-shrink-0 so it never gets squeezed */}
+          <div className="flex-shrink-0 flex items-start justify-between gap-3 pr-10 pb-2">
+            <span className="text-[20px] sm:text-[26px] leading-tight">{headerText}</span>
+            {onLeave && (
+              <button
+                type="button"
+                onClick={onLeave}
+                className="inline-flex items-center gap-1.5 rounded-md border border-nostalgia-paper-edge
+                           text-nostalgia-pen/80 text-[11px] sm:text-[12px] font-sans font-semibold px-2.5 py-1.5
+                           flex-shrink-0 active:translate-y-px hover:bg-nostalgia-paper-edge/30 transition-colors"
+                aria-label="Leave game"
+              >
+                <LeaveIcon className="w-3.5 h-3.5" />
+                Leave
+              </button>
+            )}
+          </div>
+
+          {/* Column labels — flex-shrink-0 */}
+          <div
+            className={`flex-shrink-0 grid ${COLS} items-center gap-x-2 py-1.5 px-1
+                        text-[10px] sm:text-[11px] font-sans font-bold uppercase tracking-[0.1em]
+                        text-nostalgia-pen/55 border-b border-nostalgia-paper-edge`}
+          >
+            <div>Rank</div>
+            <div>Name</div>
+            <div>Cards</div>
+            <div className="text-right">Points</div>
+            <div className="text-right">Chips</div>
+          </div>
+
+          {/* Rows — flex-1 + min-h-0 allows them to shrink and scroll */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {rows.map((row) => {
+              const { id, rank, isWin, isWrongShower, isMe, name, points, chips, hand } = row;
+              return (
+                <div
+                  key={id}
+                  className={`grid ${COLS} items-center gap-x-2 px-1 py-2 border-b border-nostalgia-paper-edge/60
+                              ${isMe ? "bg-nostalgia-paper-edge/25" : ""}`}
+                >
+                  {/* Rank */}
+                  <div className="flex items-center gap-1 font-sans font-bold tabular-nums text-[13px] sm:text-[15px] text-nostalgia-pen/70">
+                    {isMe && <span className="text-nostalgia-brass text-[10px] sm:text-xs">»</span>}
+                    <span>{isWrongShower ? "—" : rank}</span>
+                  </div>
+
+                  {/* Name */}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {isWin ? (
+                      <WinnerCircle>
+                        <span className="font-bold truncate text-[15px] sm:text-[18px]">{name}</span>
+                      </WinnerCircle>
+                    ) : (
+                      <span className="font-bold truncate text-[15px] sm:text-[18px]">{name}</span>
+                    )}
+                    {isWrongShower && (
+                      <span className="rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-sans font-bold uppercase tracking-wide
+                                        bg-nostalgia-pen-red/15 text-nostalgia-pen-red flex-shrink-0">
+                        Wrong Show
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Cards */}
+                  <div className="min-w-0 overflow-x-auto scrollbar-none py-0.5">
+                    <MeldGroups hand={hand} declaredMelds={state.finalMelds?.[id]} wildRank={wildRank} isWrongShower={isWrongShower} />
+                  </div>
+
+                  {/* Points */}
+                  <div className="text-right font-sans font-bold tabular-nums text-[13px] sm:text-[16px] text-nostalgia-pen">
+                    {points}
+                  </div>
+
+                  {/* Chips */}
+                  <div className="text-right font-sans font-bold tabular-nums text-[13px] sm:text-[16px] text-nostalgia-pen">
+                    {chips > 0 ? `+${chips}` : chips}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer — flex-shrink-0 so it's always visible at the bottom */}
+          <div className="flex-shrink-0 flex items-center flex-wrap gap-3 pt-3 mt-1 border-t border-nostalgia-paper-edge font-sans">
+            <div className="flex-shrink-0">
+              <PlayingCard card={state.wildJoker} isWildJoker small />
+            </div>
+            <div className="text-nostalgia-pen/70 text-[11px] sm:text-[12px] font-semibold">Joker</div>
+            <div className="w-px h-5 bg-nostalgia-paper-edge" />
+            {roomCode && (
+              <div className="text-nostalgia-pen/50 text-[11px] sm:text-[12px] font-mono">#{roomCode}</div>
+            )}
+            <div className="w-px h-5 bg-nostalgia-paper-edge" />
+            <div className="text-nostalgia-pen/60 text-[11px] sm:text-[12px] font-semibold">{matchLabel}</div>
             <button
               type="button"
-              onClick={onLeave}
-              className="inline-flex items-center gap-1.5 rounded-md border border-nostalgia-paper-edge
+              onClick={saveSheet}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-nostalgia-paper-edge
                          text-nostalgia-pen/80 text-[11px] sm:text-[12px] font-sans font-semibold px-2.5 py-1.5
                          flex-shrink-0 active:translate-y-px hover:bg-nostalgia-paper-edge/30 transition-colors"
-              aria-label="Leave game"
             >
-              <LeaveIcon className="w-3.5 h-3.5" />
-              Leave
+              <SaveIcon className="w-3.5 h-3.5" />
+              Save sheet
             </button>
-          )}
-        </div>
-
-        {/* Column labels — system voice (Poppins), small and muted */}
-        <div
-          className={`grid ${COLS} items-center gap-x-2 mt-3 py-1.5 px-1
-                      text-[10px] sm:text-[11px] font-sans font-bold uppercase tracking-[0.1em]
-                      text-nostalgia-pen/55 border-b border-nostalgia-paper-edge`}
-        >
-          <div>Rank</div>
-          <div>Name</div>
-          <div>Cards</div>
-          <div className="text-right">Points</div>
-          <div className="text-right">Chips</div>
-        </div>
-
-        {/* Rows — one ruled line per player */}
-        <div className="max-h-[58vh] overflow-y-auto">
-          {rows.map((row) => {
-            const { id, rank, isWin, isWrongShower, isMe, name, points, chips, hand } = row;
-
-            return (
-              <div
-                key={id}
-                className={`grid ${COLS} items-center gap-x-2 px-1 py-2.5 border-b border-nostalgia-paper-edge/60
-                            ${isMe ? "bg-nostalgia-paper-edge/25" : ""}`}
-              >
-                {/* Rank */}
-                <div className="flex items-center gap-1 font-sans font-bold tabular-nums text-[14px] sm:text-[16px] text-nostalgia-pen/70">
-                  {isMe && <span className="text-nostalgia-brass text-[10px] sm:text-xs">»</span>}
-                  <span>{isWrongShower ? "—" : rank}</span>
-                </div>
-
-                {/* Name — winner circled in red pen, no crown/badge */}
-                <div className="flex items-center gap-1.5 min-w-0">
-                  {isWin ? (
-                    <WinnerCircle>
-                      <span className="font-bold truncate text-[16px] sm:text-[19px]">{name}</span>
-                    </WinnerCircle>
-                  ) : (
-                    <span className="font-bold truncate text-[16px] sm:text-[19px]">{name}</span>
-                  )}
-                  {isWrongShower && (
-                    <span className="rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-sans font-bold uppercase tracking-wide
-                                      bg-nostalgia-pen-red/15 text-nostalgia-pen-red flex-shrink-0">
-                      Wrong Show
-                    </span>
-                  )}
-                </div>
-
-                {/* Cards */}
-                <div className="min-w-0 overflow-x-auto scrollbar-none py-0.5">
-                  <MeldGroups hand={hand} declaredMelds={state.finalMelds?.[id]} wildRank={wildRank} isWrongShower={isWrongShower} />
-                </div>
-
-                {/* Points */}
-                <div className="text-right font-sans font-bold tabular-nums text-[14px] sm:text-[17px] text-nostalgia-pen">
-                  {points}
-                </div>
-
-                {/* Chips */}
-                <div className="text-right font-sans font-bold tabular-nums text-[14px] sm:text-[17px] text-nostalgia-pen">
-                  {chips > 0 ? `+${chips}` : chips}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Footer: joker + table id + mode — quiet, system voice */}
-        <div className="flex items-center flex-wrap gap-3 pt-3 mt-1 border-t border-nostalgia-paper-edge font-sans">
-          <div className="flex-shrink-0">
-            <PlayingCard card={state.wildJoker} isWildJoker small />
           </div>
-          <div className="text-nostalgia-pen/70 text-[11px] sm:text-[12px] font-semibold">Joker</div>
-          <div className="w-px h-5 bg-nostalgia-paper-edge" />
-          {roomCode && (
-            <div className="text-nostalgia-pen/50 text-[11px] sm:text-[12px] font-mono">#{roomCode}</div>
-          )}
-          <div className="w-px h-5 bg-nostalgia-paper-edge" />
-          <div className="text-nostalgia-pen/60 text-[11px] sm:text-[12px] font-semibold">{matchLabel}</div>
-          <button
-            type="button"
-            onClick={saveSheet}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-nostalgia-paper-edge
-                       text-nostalgia-pen/80 text-[11px] sm:text-[12px] font-sans font-semibold px-2.5 py-1.5
-                       flex-shrink-0 active:translate-y-px hover:bg-nostalgia-paper-edge/30 transition-colors"
-          >
-            <SaveIcon className="w-3.5 h-3.5" />
-            Save the sheet
-          </button>
-        </div>
 
-        {/* Rematch — host requests / others accept / countdown when active */}
-        <div className="pt-3 font-sans">
-          <RematchPanel players={players} selfId={selfId} />
+          {/* Rematch — flex-shrink-0, always below footer */}
+          <div className="flex-shrink-0 pt-2 font-sans">
+            <RematchPanel players={players} selfId={selfId} />
+          </div>
         </div>
-      </NotebookSheet>
+      </div>
     </div>
   );
 }
