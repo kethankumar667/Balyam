@@ -6,8 +6,8 @@ import RematchPanel from "./RematchPanel";
  * Full-viewport end-of-session screen — game-agnostic.
  *
  * Works for every game (RPS, Ludo, SnL, UNO, WordBuilding, DotsBoxes,
- * MemoryMatch, StarGame, HandCricket, Rummy). No card-table metaphor; the
- * design centres on a golden trophy that is universally understood as "winner".
+ * MemoryMatch, StarGame, HandCricket, Rummy). BHALYAM brand palette:
+ * warm amber-to-deep-maroon; no card-table metaphor, no purple/navy.
  *
  * Props:
  *   winnerName  — optional name of the session winner; shows a "🏆 X won!"
@@ -33,7 +33,7 @@ export default function GameOverScreen({
   onLeave: () => void;
   /** Unix-ms timestamp when auto-leave fires. Set once when the screen first mounts. */
   deadlineMs: number;
-  /** Name of the player who won (null = draw / no winner yet). */
+  /** Name of the player who won (null/undefined = draw / no winner). */
   winnerName?: string | null;
   /** Friendly name of the game being played. */
   gameName?: string;
@@ -66,19 +66,19 @@ export default function GameOverScreen({
       className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-4 overflow-y-auto py-6 px-4"
       style={{
         background:
-          "radial-gradient(ellipse 90% 70% at 50% 0%, #1a1040 0%, #0d0820 50%, #06030f 100%)",
+          "radial-gradient(ellipse 100% 80% at 50% 0%, #FF8F00 0%, #6D2400 40%, #1a0800 100%)",
       }}
     >
-      {/* Top radial glow — brand brand-gold halo behind trophy */}
+      {/* Top orange-gold glow halo behind trophy */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-64 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(228,177,40,0.22) 0%, transparent 70%)",
+            "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(255,143,0,0.30) 0%, transparent 70%)",
         }}
       />
 
-      {/* Trophy illustration — fully generic */}
+      {/* Trophy illustration — circular dots + sparkles; no card symbols */}
       <TrophyIllustration />
 
       {/* Headline + game label */}
@@ -92,7 +92,7 @@ export default function GameOverScreen({
             WebkitBackgroundClip: "text",
             backgroundClip: "text",
             color: "transparent",
-            filter: "drop-shadow(0 4px 20px rgba(228,177,40,0.45))",
+            filter: "drop-shadow(0 4px 20px rgba(255,143,0,0.55))",
             lineHeight: 1.05,
           }}
         >
@@ -100,29 +100,27 @@ export default function GameOverScreen({
         </div>
         {gameName && (
           <div
-            className="mt-1 text-xs uppercase tracking-[0.25em] font-bold"
-            style={{ color: "rgba(255,247,194,0.40)" }}
+            className="mt-1 text-xs uppercase tracking-[0.25em] font-bold font-mono"
+            style={{ color: "#ffa726" }}
           >
             {gameName}
           </div>
         )}
       </div>
 
-      {/* Winner badge — shown only when there is a clear winner */}
+      {/* Winner badge — orange-amber gradient with dark ink */}
       {winnerName ? (
         <div
           className="flex items-center gap-2.5 px-5 py-2.5 rounded-full z-10"
           style={{
-            background:
-              "linear-gradient(135deg, rgba(228,177,40,0.25) 0%, rgba(146,102,10,0.35) 100%)",
-            border: "1.5px solid rgba(228,177,40,0.50)",
-            boxShadow: "0 0 20px rgba(228,177,40,0.25)",
+            background: "linear-gradient(135deg, #FF8F00 0%, #b45309 100%)",
+            boxShadow: "0 0 24px rgba(255,143,0,0.45)",
           }}
         >
           <span className="text-xl" aria-hidden>🏆</span>
           <span
             className="font-black text-base tracking-wide"
-            style={{ color: "#FFF7C2" }}
+            style={{ color: "#1a0800" }}
           >
             {winnerName} won!
           </span>
@@ -130,13 +128,13 @@ export default function GameOverScreen({
       ) : (
         <div
           className="text-sm font-semibold z-10"
-          style={{ color: "rgba(255,247,194,0.40)" }}
+          style={{ color: "rgba(255,247,194,0.45)" }}
         >
           Session ended
         </div>
       )}
 
-      {/* Countdown ring */}
+      {/* Countdown ring — amber → orange → red as time runs out */}
       <div className="flex flex-col items-center gap-1 z-10">
         <div className="relative" style={{ width: 88, height: 88 }}>
           <svg
@@ -152,7 +150,7 @@ export default function GameOverScreen({
               cy={48}
               r={radius}
               fill="none"
-              stroke="rgba(228,177,40,0.12)"
+              stroke="rgba(255,143,0,0.14)"
               strokeWidth={6}
             />
             <circle
@@ -165,7 +163,7 @@ export default function GameOverScreen({
                   ? "#ef4444"
                   : secondsLeft <= 30
                   ? "#f97316"
-                  : "#E4B128"
+                  : "#FF8F00"
               }
               strokeWidth={6}
               strokeLinecap="round"
@@ -203,17 +201,17 @@ export default function GameOverScreen({
       {/* Primary CTA — Leave Room */}
       <LeaveButton onLeave={onLeave} urgent={secondsLeft <= 15} />
 
-      {/* Rematch / play-again panel */}
+      {/* Rematch / play-again panel — amber-tinted surface */}
       <div
         className="rounded-2xl px-5 py-4 w-full max-w-sm z-10"
         style={{
-          background: "rgba(255,247,194,0.05)",
-          border: "1px solid rgba(255,247,194,0.10)",
+          background: "rgba(255,143,0,0.10)",
+          border: "1px solid rgba(255,143,0,0.22)",
         }}
       >
         <div
           className="text-center text-xs uppercase tracking-[0.2em] font-bold mb-3"
-          style={{ color: "rgba(255,247,194,0.30)" }}
+          style={{ color: "rgba(255,247,194,0.55)" }}
         >
           Or play again
         </div>
@@ -243,7 +241,7 @@ function LeaveButton({
         style={{
           background: urgent
             ? "linear-gradient(135deg, #ef4444, #991b1b)"
-            : "linear-gradient(135deg, #E4B128, #FF8F00)",
+            : "linear-gradient(135deg, #FF8F00, #c0580a)",
         }}
       />
       {/* Face */}
@@ -252,11 +250,11 @@ function LeaveButton({
         style={{
           background: urgent
             ? "linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%)"
-            : "linear-gradient(135deg, #E4B128 0%, #B38918 100%)",
-          color: urgent ? "#fee2e2" : "#1a0e00",
+            : "linear-gradient(135deg, #FF8F00 0%, #c0580a 100%)",
+          color: urgent ? "#fee2e2" : "#1a0800",
           boxShadow: urgent
             ? "0 8px 28px rgba(220,38,38,0.45), inset 0 1px 0 rgba(255,255,255,0.10)"
-            : "0 8px 28px rgba(228,177,40,0.40), inset 0 1px 0 rgba(255,255,255,0.22)",
+            : "0 8px 28px rgba(255,143,0,0.45), inset 0 1px 0 rgba(255,255,255,0.22)",
         }}
       >
         <DoorIcon urgent={urgent} />
@@ -275,7 +273,7 @@ function DoorIcon({ urgent }: { urgent: boolean }) {
       fill="none"
       aria-hidden
       className="flex-shrink-0"
-      style={{ color: urgent ? "#fca5a5" : "#1a0e00" }}
+      style={{ color: urgent ? "#fca5a5" : "#1a0800" }}
     >
       <rect
         x={3} y={2} width={13} height={20} rx={2}
@@ -293,7 +291,12 @@ function DoorIcon({ urgent }: { urgent: boolean }) {
   );
 }
 
-/* ── Trophy illustration — no card-game elements ── */
+/* ── Trophy illustration — BHALYAM brand ── */
+/*
+ * Confetti: circular dots + 4-point sparkles — no rectangles, no card backs.
+ * Burst lines: kept (universally celebratory).
+ * Glow: orange-gold (#FF8F00).
+ */
 function TrophyIllustration() {
   return (
     <svg
@@ -304,16 +307,10 @@ function TrophyIllustration() {
       aria-hidden
       className="z-10 max-w-[60vw]"
     >
-      {/* Radial glow behind trophy */}
       <defs>
         <radialGradient id="tg-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#E4B128" stopOpacity={0.35} />
-          <stop offset="100%" stopColor="#E4B128" stopOpacity={0} />
-        </radialGradient>
-        <radialGradient id="cup-grad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FFF7C2" />
-          <stop offset="40%" stopColor="#E4B128" />
-          <stop offset="100%" stopColor="#7A5C0E" />
+          <stop offset="0%" stopColor="#FF8F00" stopOpacity={0.40} />
+          <stop offset="100%" stopColor="#FF8F00" stopOpacity={0} />
         </radialGradient>
         <linearGradient id="cup-grad-lin" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#FFF7C2" />
@@ -322,37 +319,46 @@ function TrophyIllustration() {
         </linearGradient>
       </defs>
 
-      {/* Background glow circle */}
+      {/* Orange-gold background glow */}
       <ellipse cx={110} cy={105} rx={80} ry={70} fill="url(#tg-glow)" />
 
-      {/* Confetti dots scattered */}
+      {/* Circular dot confetti — NOT rectangles */}
       {([
-        [28, 38, "#E4B128"], [192, 42, "#FF8F00"], [15, 120, "#7C3AED"],
-        [200, 130, "#10B981"], [45, 175, "#3B82F6"], [175, 170, "#E4B128"],
-        [70, 20, "#ef4444"], [155, 18, "#10B981"], [95, 185, "#FF8F00"],
-        [130, 188, "#7C3AED"], [8, 68, "#3B82F6"], [210, 85, "#ef4444"],
-      ] as const).map(([x, y, fill], i) => (
-        <rect
-          key={i}
-          x={x - 4}
-          y={y - 4}
-          width={i % 3 === 0 ? 8 : 6}
-          height={i % 3 === 0 ? 6 : 8}
-          rx={1.5}
-          fill={fill}
-          opacity={0.75}
-          transform={`rotate(${(i * 37) % 60 - 30} ${x} ${y})`}
-        />
+        [28,  38,  "#FF8F00", 5  ],
+        [192, 42,  "#ffa726", 4  ],
+        [15,  120, "#f97316", 5  ],
+        [200, 130, "#10B981", 4  ],
+        [45,  175, "#3B82F6", 4.5],
+        [175, 170, "#E4B128", 5  ],
+        [70,  20,  "#ef4444", 3.5],
+        [155, 18,  "#10B981", 4  ],
+        [95,  185, "#FF8F00", 3.5],
+        [130, 188, "#ffa726", 4  ],
+        [8,   68,  "#3B82F6", 3  ],
+        [210, 85,  "#ef4444", 3.5],
+      ] as const).map(([x, y, fill, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill={fill} opacity={0.75} />
       ))}
 
-      {/* Stars radiating around trophy */}
+      {/* 4-point sparkle confetti — festive, not card-shaped */}
       {([
-        [110, 20, 7, 1.0],
-        [44, 55, 5, 0.85],
+        [35,  65,  4.5, "#ffa726", 0.80],
+        [185, 72,  4.0, "#FF8F00", 0.75],
+        [180, 155, 3.5, "#E4B128", 0.70],
+        [38,  155, 3.5, "#f97316", 0.70],
+        [110, 10,  3.0, "#ffa726", 0.65],
+      ] as const).map(([cx, cy, r, fill, op], i) => (
+        <Sparkle key={i} cx={cx} cy={cy} r={r} fill={fill} opacity={op} />
+      ))}
+
+      {/* 5-point stars radiating around trophy */}
+      {([
+        [110, 20, 7, 1.0 ],
+        [44,  55, 5, 0.85],
         [176, 52, 5, 0.85],
-        [22, 100, 4, 0.65],
+        [22,  100, 4, 0.65],
         [198, 100, 4, 0.65],
-        [58, 158, 4, 0.60],
+        [58,  158, 4, 0.60],
         [162, 158, 4, 0.60],
       ] as const).map(([cx, cy, r, op], i) => (
         <Star key={i} cx={cx} cy={cy} r={r} opacity={op} />
@@ -362,9 +368,9 @@ function TrophyIllustration() {
       {Array.from({ length: 12 }, (_, i) => {
         const angle = (i * 30 * Math.PI) / 180;
         const x1 = 110 + Math.cos(angle) * 50;
-        const y1 = 95 + Math.sin(angle) * 50;
+        const y1 = 95  + Math.sin(angle) * 50;
         const x2 = 110 + Math.cos(angle) * 68;
-        const y2 = 95 + Math.sin(angle) * 68;
+        const y2 = 95  + Math.sin(angle) * 68;
         return (
           <line
             key={i}
@@ -415,10 +421,42 @@ function TrophyIllustration() {
         strokeLinecap="round"
         fill="none"
       />
-      {/* Star inside cup */}
+      {/* Star emblem inside cup */}
       <Star cx={110} cy={112} r={14} opacity={0.25} fill="#FFF7C2" />
     </svg>
   );
+}
+
+/**
+ * 4-point diamond sparkle — distinct from rectangles (card backs) and from
+ * the 5-point star, making the confetti set unmistakably celebratory.
+ */
+function Sparkle({
+  cx,
+  cy,
+  r,
+  fill = "#FF8F00",
+  opacity = 1,
+}: {
+  cx: number;
+  cy: number;
+  r: number;
+  fill?: string;
+  opacity?: number;
+}) {
+  const arm = r;
+  const thin = r * 0.25;
+  const pts = [
+    `${cx},${cy - arm}`,
+    `${cx + thin},${cy - thin}`,
+    `${cx + arm},${cy}`,
+    `${cx + thin},${cy + thin}`,
+    `${cx},${cy + arm}`,
+    `${cx - thin},${cy + thin}`,
+    `${cx - arm},${cy}`,
+    `${cx - thin},${cy - thin}`,
+  ].join(" ");
+  return <polygon points={pts} fill={fill} opacity={opacity} />;
 }
 
 /** 5-point star primitive. */
