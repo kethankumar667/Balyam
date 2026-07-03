@@ -1,121 +1,154 @@
-import InlineRoomRail from "../../components/InlineRoomRail";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
-import {
-  ChoiceRow,
-  EndPanel,
-  Header,
-  HistoryStrip,
-  PlayerScoreCard,
-  RevealArena,
-  RpsFrame,
-  RpsOverlays,
-  RpsScorecardModal,
-} from "./rps-shared";
-import { useRpsBoard } from "./useRpsBoard";
-import type { RpsBoardProps } from "./useRpsBoard";
+import InlineRoomRail from "../../components/InlineRoomRail";
 import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
 import { RPS_TUTORIAL } from "../tutorials";
+import { RpsScorecardModal } from "./rps-shared";
+import { RpsOverlays } from "./rps-shared";
+import { useRpsBoard } from "./useRpsBoard";
+import type { RpsBoardProps } from "./useRpsBoard";
+import {
+  NotebookPage,
+  NotebookTopBar,
+  NotebookPlayerCard,
+  NotebookArena,
+  NotebookChoiceRow,
+  NotebookHistoryPanel,
+  NotebookHistoryStrip,
+  NotebookDoodles,
+  ChoiceSketch,
+} from "./rps-notebook";
+
+const P1_C = "#2e7d32";
+const P2_C = "#8B1A1A";
 
 /**
- * Desktop RPS shell — a dedicated wide-screen arrangement, not the mobile
- * column stretched. The two score cards flank a spacious arena in a 3-column
- * row; below it the action area (choice row / end panel) sits beside a
- * persistent right rail holding round history and the room/chat rail. Hover
- * lift on the choice cards is the desktop affordance (already in the shared
- * card). This shell owns the single hook call when the desktop gate passes.
+ * Desktop RPS shell — full notebook / scrapbook aesthetic.
+ * Matches the reference design: parchment paper, ruled lines,
+ * washi-tape player cards, pencil-box arena, sketch choice cards,
+ * history strip with room rail.
  */
 export default function RpsBoardDesktop(props: RpsBoardProps) {
   const m = useRpsBoard(props);
   const tut = useTutorialGate(RPS_TUTORIAL.key);
   const showScorecard = m.state.isOver && props.roomPhase === "finished";
 
-  const selfCard = (
-    <PlayerScoreCard
-      ref={m.registerCardRef(m.myId)}
-      name={m.me?.name ?? "You"}
-      isSelf
-      score={m.myScore}
-      target={m.target}
-      streak={m.myStreak}
-      best={m.state.bestStreak[m.myId] ?? 0}
-      matchPoint={m.myMatchPoint && !m.state.isOver}
-      accent="brand"
-    />
-  );
-  const oppCard = (
-    <PlayerScoreCard
-      ref={m.registerCardRef(m.opponent?.id ?? null)}
-      name={m.opponent?.name ?? "Opponent"}
-      score={m.oppScore}
-      target={m.target}
-      streak={m.oppStreak}
-      best={m.opponent ? m.state.bestStreak[m.opponent.id] ?? 0 : 0}
-      matchPoint={m.oppMatchPoint && !m.state.isOver}
-      accent="ruby"
-      rightAligned
-    />
-  );
-
   return (
-    <RpsFrame className="p-5 lg:p-7 space-y-5">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <Header round={m.state.round} target={m.target} match={m.state.matchNumber} />
-        </div>
-        <TutorialButton onClick={() => tut.setOpen(true)} />
-      </div>
+    <NotebookPage className="h-full">
+      <NotebookDoodles />
 
-      <div className="grid grid-cols-[minmax(200px,0.8fr)_minmax(0,2.4fr)_minmax(200px,0.8fr)] gap-4 items-center">
-        {selfCard}
-        <RevealArena
-          revealKey={m.revealKey}
+      {/* ── Top bar ─────────────────────────────────────────────────── */}
+      <NotebookTopBar
+        match={m.state.matchNumber}
+        round={m.state.round}
+        target={m.target}
+        onLeave={props.onLeave ? props.onLeave : undefined}
+        onHelp={() => tut.setOpen(true)}
+      />
+
+      {/* ── Main 3-column layout ───────────────────────────────────── */}
+      <div
+        className="relative grid gap-5 px-6 pt-3 pb-4"
+        style={{
+          gridTemplateColumns:
+            "minmax(180px,0.85fr) minmax(0,2.4fr) minmax(180px,0.85fr)",
+          alignItems: "center",
+        }}
+      >
+        {/* ── Player 1 card (left) ── */}
+        <NotebookPlayerCard
+          name={m.me?.name ?? "You"}
+          isSelf
+          score={m.myScore}
+          target={m.target}
+          streak={m.myStreak}
+          best={m.state.bestStreak[m.myId] ?? 0}
+          matchPoint={m.myMatchPoint && !m.state.isOver}
+          color={P1_C}
+          tapeColor="green"
+          side="left"
+          cardRef={m.registerCardRef(m.myId)}
+        />
+
+        {/* ── Arena ── */}
+        <NotebookArena
+          myName={m.me?.name ?? "You"}
+          oppName={m.opponent?.name ?? "Opponent"}
           myChoice={m.arenaMyChoice}
           oppChoice={m.arenaOppChoice}
           bothChose={m.arenaBothChose}
-          meName={m.me?.name ?? "You"}
-          oppName={m.opponent?.name ?? "Opponent"}
+          revealKey={m.revealKey}
           bannerOutcome={m.bannerOutcome}
-          size="spacious"
+          myColor={P1_C}
+          oppColor={P2_C}
         />
-        {oppCard}
+
+        {/* ── Player 2 card (right) ── */}
+        <NotebookPlayerCard
+          name={m.opponent?.name ?? "Opponent"}
+          score={m.oppScore}
+          target={m.target}
+          streak={m.oppStreak}
+          best={m.opponent ? m.state.bestStreak[m.opponent.id] ?? 0 : 0}
+          matchPoint={m.oppMatchPoint && !m.state.isOver}
+          color={P2_C}
+          tapeColor="red-dots"
+          side="right"
+          cardRef={m.registerCardRef(m.opponent?.id ?? null)}
+        />
       </div>
 
+      {/* ── Turn time warning */}
       <TurnTimeWarning deadline={m.roundDeadline} active={m.iNeedToChoose} />
 
-      <div className="grid grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)] gap-5 items-start">
-        <div>
-          {/* During live match: choice row or between-match EndPanel */}
-          {!showScorecard && (
-            m.state.isOver ? (
-              <EndPanel
-                winner={m.state.winnerId ? m.nameOf(m.state.winnerId) : null}
-                youWon={m.state.winnerId === m.myId}
-                finalScores={{ me: m.myScore, opp: m.oppScore }}
-                ties={m.state.ties}
-                onRematch={m.rematch}
-              />
-            ) : (
-              <ChoiceRow myChoice={m.myChoice} bothChose={m.bothChose} onPick={m.pick} />
-            )
-          )}
-          {/* Placeholder so the grid doesn't collapse when scorecard shows */}
-          {showScorecard && <div className="h-32" />}
-        </div>
-
-        <aside className="space-y-4 rounded-2xl border border-[var(--rim-soft)] bg-surface-1/60 p-4">
-          <HistoryStrip state={m.state} myId={m.myId} />
-          <div className="h-px bg-[var(--rim-soft)]" />
-          <InlineRoomRail
-            code={m.roomCode}
-            game="rps"
-            phase={m.roomPhase}
-            players={m.players}
-            selfId={m.selfId}
-            messages={m.messages}
+      {/* ── Bottom section: choice row left + history panel right ──── */}
+      <div
+        className="grid gap-5 px-6 pb-5"
+        style={{
+          gridTemplateColumns: "minmax(0,1.55fr) minmax(260px,1fr)",
+          alignItems: "start",
+        }}
+      >
+        {/* Choice row or "waiting" state */}
+        {!showScorecard && !m.state.isOver ? (
+          <NotebookChoiceRow
+            myChoice={m.myChoice}
+            bothChose={m.bothChose}
+            onPick={m.pick}
           />
-        </aside>
+        ) : !showScorecard ? (
+          /* Between rematches — show disabled choice cards */
+          <WaitingForRematch
+            oppName={m.opponent?.name ?? "Opponent"}
+            myName={m.me?.name ?? "You"}
+            iWon={m.state.winnerId === m.myId}
+            target={m.target}
+            myScore={m.myScore}
+            oppScore={m.oppScore}
+          />
+        ) : (
+          <div className="h-12" />
+        )}
+
+        {/* History + room rail */}
+        <NotebookHistoryPanel>
+          <NotebookHistoryStrip
+            history={m.state.history}
+            myId={m.myId}
+          />
+          <div className="mt-4 pt-3" style={{ borderTop: "1px solid rgba(100,115,180,0.20)" }}>
+            <InlineRoomRail
+              code={m.roomCode}
+              game="rps"
+              phase={m.roomPhase}
+              players={m.players}
+              selfId={m.selfId}
+              messages={m.messages}
+            />
+          </div>
+        </NotebookHistoryPanel>
       </div>
 
+      {/* Overlays: reactions, emoji rain, confetti */}
       <RpsOverlays
         reactions={m.reactions}
         anchorOf={m.reactionAnchor}
@@ -123,6 +156,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         confettiUntil={m.confettiUntil}
       />
 
+      {/* Tutorial */}
       {tut.open && (
         <GameTutorial
           slides={RPS_TUTORIAL.slides}
@@ -132,7 +166,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         />
       )}
 
-      {/* Session-end scorecard — fixed overlay when roomPhase === "finished" */}
+      {/* Session-end scorecard modal */}
       {showScorecard && (
         <RpsScorecardModal
           state={m.state}
@@ -144,6 +178,53 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
           onClose={() => props.onScorecardClose?.()}
         />
       )}
-    </RpsFrame>
+    </NotebookPage>
+  );
+}
+
+/** Between-rematch waiting panel shown after a match ends inside a session. */
+function WaitingForRematch({
+  oppName,
+  myName,
+  iWon,
+  target,
+  myScore,
+  oppScore,
+}: {
+  oppName: string;
+  myName: string;
+  iWon: boolean;
+  target: number;
+  myScore: number;
+  oppScore: number;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-4">
+      <div
+        className="font-script text-center"
+        style={{ color: iWon ? "#2e7d32" : "#8B1A1A", fontSize: 18, fontWeight: 700 }}
+      >
+        {iWon ? `🎉 ${myName} wins the match!` : `${oppName} wins the match!`}
+      </div>
+      <div className="flex items-center gap-8">
+        <div className="text-center">
+          <div className="font-black text-2xl" style={{ color: "#2e7d32" }}>{myScore}</div>
+          <div className="text-xs font-bold" style={{ color: "#6b6b6b" }}>{myName}</div>
+        </div>
+        <div className="font-bold text-lg" style={{ color: "#9e9e9e" }}>vs</div>
+        <div className="text-center">
+          <div className="font-black text-2xl" style={{ color: "#8B1A1A" }}>{oppScore}</div>
+          <div className="text-xs font-bold" style={{ color: "#6b6b6b" }}>{oppName}</div>
+        </div>
+      </div>
+      <div className="flex gap-4 mt-1">
+        {(["rock","paper","scissors"] as const).map(c => (
+          <ChoiceSketch key={c} choice={c} size={40} />
+        ))}
+      </div>
+      <div className="font-script text-sm mt-1" style={{ color: "#9e9e9e" }}>
+        Waiting for host to start next match…
+      </div>
+    </div>
   );
 }

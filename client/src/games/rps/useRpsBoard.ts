@@ -27,11 +27,9 @@ export interface RpsBoardProps {
   messages: ChatMessage[];
   roomCode: string;
   roomPhase: string;
-  /**
-   * Called when the match-end scorecard is dismissed. Room.tsx uses this to
-   * replace the board with GameOverScreen — same contract as Rummy's
-   * onScorecardClose. Only fires when roomPhase === "finished".
-   */
+  /** Optional leave handler. The notebook shells surface a Leave button when supplied. */
+  onLeave?: () => void;
+  /** Called when the match-end scorecard is dismissed — see rps-notebook doc. */
   onScorecardClose?: () => void;
 }
 

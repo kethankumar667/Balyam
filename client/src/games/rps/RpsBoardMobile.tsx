@@ -1,27 +1,27 @@
-import InlineRoomRail from "../../components/InlineRoomRail";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
-import {
-  ChoiceRow,
-  EndPanel,
-  Header,
-  HistoryStrip,
-  PlayerScoreCard,
-  RevealArena,
-  RpsFrame,
-  RpsOverlays,
-  RpsScorecardModal,
-} from "./rps-shared";
-import { useRpsBoard } from "./useRpsBoard";
-import type { RpsBoardProps } from "./useRpsBoard";
+import InlineRoomRail from "../../components/InlineRoomRail";
 import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
 import { RPS_TUTORIAL } from "../tutorials";
+import { RpsScorecardModal, RpsOverlays } from "./rps-shared";
+import { useRpsBoard } from "./useRpsBoard";
+import type { RpsBoardProps } from "./useRpsBoard";
+import {
+  NotebookPage,
+  NotebookPlayerCard,
+  NotebookArena,
+  NotebookChoiceRow,
+  NotebookHistoryPanel,
+  NotebookHistoryStrip,
+  NotebookDoodles,
+} from "./rps-notebook";
+
+const P1_C = "#2e7d32";
+const P2_C = "#8B1A1A";
 
 /**
- * Mobile / tablet RPS shell — single column, touch-first, board fits the
- * viewport down to 360px. Score cards stack (side-by-side once there's room at
- * `sm`), the compact arena sits above a 3-up choice grid with 44px+ targets,
- * and the chat rail lives at the bottom of the scroll. This is the shell the
- * picker mounts for every non-desktop tier, so it owns the single hook call.
+ * Mobile RPS shell — portrait notebook aesthetic.
+ * Vertical single-column layout: title → side-by-side compact score cards →
+ * arena → choice row → history + room rail.
  */
 export default function RpsBoardMobile(props: RpsBoardProps) {
   const m = useRpsBoard(props);
@@ -29,17 +29,65 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
   const showScorecard = m.state.isOver && props.roomPhase === "finished";
 
   return (
-    <RpsFrame className="p-3 sm:p-5 space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <Header round={m.state.round} target={m.target} match={m.state.matchNumber} />
+    <NotebookPage className="min-h-screen">
+      <NotebookDoodles />
+
+      {/* ── Compact top bar ─────────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between px-4 pt-3 pb-1"
+        style={{ position: "relative" }}
+      >
+        <div>
+          <div
+            className="font-display font-black leading-tight"
+            style={{ color: "#1a2952", fontSize: 15 }}
+          >
+            Rock · Paper · Scissors
+          </div>
+          <div className="font-script text-xs" style={{ color: "#4a5a82" }}>
+            Match #{m.state.matchNumber}
+          </div>
         </div>
-        <TutorialButton onClick={() => tut.setOpen(true)} />
+
+        <div className="flex items-center gap-2">
+          <div
+            className="flex items-baseline gap-1 px-2 py-1 rounded"
+            style={{
+              background: "#f0e04a",
+              border: "1.5px solid rgba(140,120,0,0.4)",
+              transform: "rotate(-1.5deg)",
+            }}
+          >
+            <span className="font-script text-[11px] font-bold" style={{ color: "#1a2952" }}>
+              Rd
+            </span>
+            <span className="font-black text-base" style={{ color: "#1a2952" }}>
+              #{m.state.round}
+            </span>
+          </div>
+          <span className="text-xs font-bold" style={{ color: "#4a5a82" }}>
+            to <span style={{ color: "#c0392b", fontWeight: 900 }}>{m.target}</span>
+          </span>
+          <TutorialButton onClick={() => tut.setOpen(true)} />
+          {props.onLeave && (
+            <button
+              onClick={props.onLeave}
+              className="px-2 py-1 rounded text-xs font-bold"
+              style={{
+                background: "#FBF5E0",
+                border: "1.5px solid rgba(46,40,25,0.5)",
+                color: "#1a2952",
+              }}
+            >
+              ← Leave
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <PlayerScoreCard
-          ref={m.registerCardRef(m.myId)}
+      {/* ── Score cards: side-by-side compact ───────────────────────── */}
+      <div className="grid grid-cols-2 gap-2.5 px-4 pt-2">
+        <NotebookPlayerCard
           name={m.me?.name ?? "You"}
           isSelf
           score={m.myScore}
@@ -47,59 +95,94 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           streak={m.myStreak}
           best={m.state.bestStreak[m.myId] ?? 0}
           matchPoint={m.myMatchPoint && !m.state.isOver}
-          accent="brand"
+          color={P1_C}
+          tapeColor="green"
+          side="left"
+          cardRef={m.registerCardRef(m.myId)}
         />
-        <PlayerScoreCard
-          ref={m.registerCardRef(m.opponent?.id ?? null)}
-          name={m.opponent?.name ?? "Opponent"}
+        <NotebookPlayerCard
+          name={m.opponent?.name ?? "Opp"}
           score={m.oppScore}
           target={m.target}
           streak={m.oppStreak}
           best={m.opponent ? m.state.bestStreak[m.opponent.id] ?? 0 : 0}
           matchPoint={m.oppMatchPoint && !m.state.isOver}
-          accent="ruby"
-          rightAligned
+          color={P2_C}
+          tapeColor="red-dots"
+          side="right"
+          cardRef={m.registerCardRef(m.opponent?.id ?? null)}
         />
       </div>
 
-      <RevealArena
-        revealKey={m.revealKey}
-        myChoice={m.arenaMyChoice}
-        oppChoice={m.arenaOppChoice}
-        bothChose={m.arenaBothChose}
-        meName={m.me?.name ?? "You"}
-        oppName={m.opponent?.name ?? "Opponent"}
-        bannerOutcome={m.bannerOutcome}
-      />
+      {/* ── Arena ───────────────────────────────────────────────────── */}
+      <div className="px-4 pt-4">
+        <NotebookArena
+          myName={m.me?.name ?? "You"}
+          oppName={m.opponent?.name ?? "Opp"}
+          myChoice={m.arenaMyChoice}
+          oppChoice={m.arenaOppChoice}
+          bothChose={m.arenaBothChose}
+          revealKey={m.revealKey}
+          bannerOutcome={m.bannerOutcome}
+          myColor={P1_C}
+          oppColor={P2_C}
+        />
+      </div>
 
+      {/* ── Turn warning ─────────────────────────────────────────────── */}
       <TurnTimeWarning deadline={m.roundDeadline} active={m.iNeedToChoose} />
 
-      {/* During a live match — show choice row or mid-round EndPanel for rematches */}
-      {!showScorecard && (
-        m.state.isOver ? (
-          <EndPanel
-            winner={m.state.winnerId ? m.nameOf(m.state.winnerId) : null}
-            youWon={m.state.winnerId === m.myId}
-            finalScores={{ me: m.myScore, opp: m.oppScore }}
-            ties={m.state.ties}
-            onRematch={m.rematch}
+      {/* ── Choice row ───────────────────────────────────────────────── */}
+      {!m.state.isOver && (
+        <div className="px-4 pt-4">
+          <NotebookChoiceRow
+            myChoice={m.myChoice}
+            bothChose={m.bothChose}
+            onPick={m.pick}
           />
-        ) : (
-          <ChoiceRow myChoice={m.myChoice} bothChose={m.bothChose} onPick={m.pick} />
-        )
+        </div>
       )}
 
-      <HistoryStrip state={m.state} myId={m.myId} />
+      {/* Between rematches — small result message */}
+      {m.state.isOver && !showScorecard && (
+        <div className="px-4 pt-4 text-center">
+          <div
+            className="font-script font-bold text-base"
+            style={{ color: m.state.winnerId === m.myId ? P1_C : P2_C }}
+          >
+            {m.state.winnerId === m.myId
+              ? "🎉 You win the match!"
+              : m.state.winnerId
+              ? `${m.nameOf(m.state.winnerId)} wins!`
+              : "Match draw!"}
+          </div>
+          <div className="text-xs font-semibold mt-1" style={{ color: "#9e9e9e" }}>
+            Waiting for next match…
+          </div>
+        </div>
+      )}
 
-      <InlineRoomRail
-        code={m.roomCode}
-        game="rps"
-        phase={m.roomPhase}
-        players={m.players}
-        selfId={m.selfId}
-        messages={m.messages}
-      />
+      {/* ── History + room rail ──────────────────────────────────────── */}
+      <div className="px-4 pt-4 pb-5">
+        <NotebookHistoryPanel>
+          <NotebookHistoryStrip
+            history={m.state.history}
+            myId={m.myId}
+          />
+          <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(100,115,180,0.18)" }}>
+            <InlineRoomRail
+              code={m.roomCode}
+              game="rps"
+              phase={m.roomPhase}
+              players={m.players}
+              selfId={m.selfId}
+              messages={m.messages}
+            />
+          </div>
+        </NotebookHistoryPanel>
+      </div>
 
+      {/* Reaction / rain / confetti overlays */}
       <RpsOverlays
         reactions={m.reactions}
         anchorOf={m.reactionAnchor}
@@ -116,9 +199,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
         />
       )}
 
-      {/* Session-end scorecard modal — fixed overlay, shown when roomPhase
-          is "finished" (whole match over). Dismissal hands off to Room.tsx
-          which shows the generic GameOverScreen. */}
+      {/* Session-end scorecard */}
       {showScorecard && (
         <RpsScorecardModal
           state={m.state}
@@ -130,6 +211,6 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           onClose={() => props.onScorecardClose?.()}
         />
       )}
-    </RpsFrame>
+    </NotebookPage>
   );
 }
