@@ -43,6 +43,13 @@ export default function RummyBoard(props: {
   onLeave?: () => void;
   history: RummyRoundRecap[];
   champion: RummyChampion | null;
+  /**
+   * Called once the final end-of-round/match result card has been
+   * dismissed by the player. Room.tsx uses this to replace the board
+   * with the GameOverScreen. NOT called for pool-mode between-round
+   * dismissals (the game continues) — only for true session endings.
+   */
+  onScorecardClose?: () => void;
 }) {
   // Re-check on resize so opening devtools, rotating an iPad, or dragging the
   // window across monitors flips us to the correct layout.

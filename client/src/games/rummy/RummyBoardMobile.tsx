@@ -275,6 +275,7 @@ export default function RummyBoardMobile({
   onLeave,
   history,
   champion,
+  onScorecardClose,
 }: {
   state: RummyPlayerState;
   players: Player[];
@@ -284,6 +285,8 @@ export default function RummyBoardMobile({
   onLeave?: () => void;
   history: RummyRoundRecap[];
   champion: RummyChampion | null;
+  /** Called when the final scorecard/result is dismissed — see RummyBoard.tsx for contract. */
+  onScorecardClose?: () => void;
 }) {
   const myTurn = state.turnPlayerId === selfId;
   const canDraw = myTurn && state.turnAction === "draw" && state.phase === "playing";
@@ -1119,25 +1122,37 @@ export default function RummyBoardMobile({
           so they sit ON TOP of the table. Closing them lets the player inspect
           the board behind; the modal returns automatically on the next round
           (resultDismissed resets when phase flips back to "playing"). */}
+      {/* Single-mode end-of-round scorecard — game over, fire callback. */}
       {!resultDismissed && state.phase === "finished" && state.matchMode === "single" && (
         <RummyResultModal
           state={state}
           players={players}
           selfId={selfId}
           roomCode={roomCode}
-          onClose={() => setResultDismissed(true)}
+          onClose={() => {
+            setResultDismissed(true);
+            onScorecardClose?.();
+          }}
           onLeave={onLeave}
         />
       )}
 
+      {/* Pool mode — between rounds (game continues). Do NOT fire the
+          GameOverScreen callback here; the room stays alive for the rematch. */}
       {!resultDismissed && state.phase === "finished" && state.matchMode !== "single" && !state.matchOver && (
         <ResultOverlay onClose={() => setResultDismissed(true)}>
           <PoolBetweenRounds state={state} nameOf={nameOf} selfId={selfId} />
         </ResultOverlay>
       )}
 
+      {/* Pool match truly over — fire callback so GameOverScreen replaces board. */}
       {!resultDismissed && state.matchOver && (
-        <ResultOverlay onClose={() => setResultDismissed(true)}>
+        <ResultOverlay
+          onClose={() => {
+            setResultDismissed(true);
+            onScorecardClose?.();
+          }}
+        >
           <div className="space-y-3">
             <MatchOverCard state={state} nameOf={nameOf} />
             <div className="bg-amber-950/60 border border-amber-700/40 rounded-xl p-3">

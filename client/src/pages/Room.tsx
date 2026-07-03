@@ -17,6 +17,7 @@ import RoomCodeShare from "../components/RoomCodeShare";
 import RoomNameEditor from "../components/RoomNameEditor";
 import RummyRoomHistory from "../components/nostalgia/RummyRoomHistory";
 import RematchPanel from "../components/RematchPanel";
+import GameOverScreen, { AUTO_LEAVE_MS } from "../components/GameOverScreen";
 import PassPhoneGate from "../components/PassPhoneGate";
 import VoicePanel from "../components/VoicePanel";
 import LudoColorPicker from "../components/LudoColorPicker";
@@ -385,6 +386,60 @@ export default function Room() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomState?.phase, roomState?.game]);
 
+  /* ─── GameOverScreen state ────────────────────────────────────────
+   * `showGameOver`   — whether the GameOverScreen should be visible.
+   * `gameOverDeadlineMs` — the epoch-ms timestamp 100 s after the screen
+   *   first appeared; passed straight to GameOverScreen so the countdown
+   *   ring stays accurate even across React re-renders.
+   *
+   * For non-Rummy games the screen shows immediately when phase → "finished".
+   * For Rummy it shows after the player dismisses the scorecard modal (via
+   * the `onScorecardClose` callback threaded through RummyBoard). Either way,
+   * when a rematch fires and phase flips back to "playing" the screen hides
+   * and the deadline resets, ready for the next round.
+   * ──────────────────────────────────────────────────────────────── */
+  const [showGameOver, setShowGameOver] = useState(false);
+  const gameOverDeadlineMsRef = useRef<number | null>(null);
+  const [gameOverDeadlineMs, setGameOverDeadlineMs] = useState<number>(0);
+
+  /** Call this to show the GameOverScreen; idempotent on repeated calls. */
+  function triggerGameOver() {
+    if (showGameOver) return; // already visible — don't reset the timer
+    const deadline = Date.now() + AUTO_LEAVE_MS;
+    gameOverDeadlineMsRef.current = deadline;
+    setGameOverDeadlineMs(deadline);
+    setShowGameOver(true);
+  }
+
+  // Watch for phase transitions:
+  //   "playing" → "finished"  : trigger for non-Rummy games immediately;
+  //                             Rummy games wait for modal close (callback).
+  //   * → "playing"           : a rematch started — hide the screen and
+  //                             reset the deadline so the next round's
+  //                             screen gets a fresh 100 s.
+  const prevPhaseForGameOverRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevPhaseForGameOverRef.current;
+    const next = roomState?.phase;
+    prevPhaseForGameOverRef.current = next;
+
+    if (next === "playing") {
+      // Rematch or new round started — reset everything.
+      setShowGameOver(false);
+      gameOverDeadlineMsRef.current = null;
+      return;
+    }
+    if (next === "finished" && prev !== "finished") {
+      // Game just ended. For non-Rummy games show immediately.
+      // Rummy shows after its own scorecard modal is dismissed (see callback below).
+      if (roomState?.game !== "rummy") {
+        triggerGameOver();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomState?.phase, roomState?.game]);
+
+
   function toggleReady() {
     // No fullscreen on Ready — the trigger lives on the phase transition.
     getSocket().emit("room:setReady", !selfPlayer?.isReady);
@@ -578,7 +633,7 @@ export default function Room() {
               />
             )}
 
-            {roomState.phase !== "lobby" && roomState.game === "rummy" && gameState != null && (
+            {roomState.phase !== "lobby" && roomState.game === "rummy" && gameState != null && !showGameOver && (
               <RummyBoard
                 state={gameState as RummyPlayerState}
                 players={roomState.players}
@@ -588,6 +643,7 @@ export default function Room() {
                 onLeave={leaveRoom}
                 history={roomState.history}
                 champion={roomState.champion}
+                onScorecardClose={triggerGameOver}
               />
             )}
 
@@ -753,15 +809,9 @@ export default function Room() {
               />
             )}
 
-            {/* Generic rematch panel — host sees "Play Again", non-hosts see
-                accept/decline when host requests, everyone sees the countdown.
-                Rummy renders its own end-game scorecard inline with the board,
-                so we skip this slot when Rummy is finished. */}
-            {roomState.phase === "finished" && roomState.game !== "rummy" && roomState.game !== "dotsboxes" && (
-              <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-4">
-                <RematchPanel players={roomState.players} selfId={playerId} />
-              </div>
-            )}
+            {/* Generic rematch panel is removed — it has moved into
+                GameOverScreen, which renders as a fixed full-screen overlay
+                once the game finishes. Keep this slot to avoid a dead gap. */}
           </div>
 
           {/* Global incoming-message toast — every game, every phase. The
@@ -789,6 +839,21 @@ export default function Room() {
           )}
         </div>
       </div>
+
+      {/* ── GameOverScreen — fixed full-viewport overlay, z-70 ──────────
+          Appears when the game session ends. For non-Rummy games it shows
+          immediately on phase → "finished". For Rummy it shows after the
+          in-board scorecard modal is dismissed (RummyBoard calls the
+          `onScorecardClose` callback above, which calls `triggerGameOver`).
+          A rematch (phase → "playing") hides it and resets the deadline. */}
+      {showGameOver && gameOverDeadlineMs > 0 && (
+        <GameOverScreen
+          players={roomState.players}
+          selfId={playerId}
+          onLeave={leaveRoom}
+          deadlineMs={gameOverDeadlineMs}
+        />
+      )}
     </div>
   );
 }

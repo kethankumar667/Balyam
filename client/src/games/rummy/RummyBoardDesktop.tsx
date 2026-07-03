@@ -161,6 +161,8 @@ interface BoardProps {
   onLeave?: () => void;
   history: RummyRoundRecap[];
   champion: RummyChampion | null;
+  /** Called when the final scorecard is dismissed — see RummyBoard.tsx for contract. */
+  onScorecardClose?: () => void;
 }
 
 type RightTab = "chat" | "voice" | "players" | "points" | "history";
@@ -174,6 +176,7 @@ export default function RummyBoardDesktop({
   onLeave,
   history,
   champion,
+  onScorecardClose,
 }: BoardProps) {
   const hand = state.myHand ?? [];
   const byId = useMemo(() => new Map(hand.map((c) => [c.id, c])), [hand]);
@@ -1100,7 +1103,16 @@ export default function RummyBoardDesktop({
           players={players}
           selfId={selfId}
           roomCode={roomCode}
-          onClose={() => setScorecardDismissed(true)}
+          onClose={() => {
+            setScorecardDismissed(true);
+            // Notify Room.tsx so it can replace the board with the
+            // GameOverScreen. For pool-mode between-round dismissals the
+            // game continues (host will rematch), so we only fire the
+            // callback when this is truly a terminal state.
+            if (state.matchMode === "single" || state.matchOver) {
+              onScorecardClose?.();
+            }
+          }}
           onLeave={onLeave}
         />
       )}
