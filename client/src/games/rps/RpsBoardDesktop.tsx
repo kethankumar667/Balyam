@@ -9,6 +9,7 @@ import {
   RevealArena,
   RpsFrame,
   RpsOverlays,
+  RpsScorecardModal,
 } from "./rps-shared";
 import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
@@ -26,6 +27,7 @@ import { RPS_TUTORIAL } from "../tutorials";
 export default function RpsBoardDesktop(props: RpsBoardProps) {
   const m = useRpsBoard(props);
   const tut = useTutorialGate(RPS_TUTORIAL.key);
+  const showScorecard = m.state.isOver && props.roomPhase === "finished";
 
   const selfCard = (
     <PlayerScoreCard
@@ -63,7 +65,6 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         <TutorialButton onClick={() => tut.setOpen(true)} />
       </div>
 
-      {/* Score cards flank a spacious arena across the full width. */}
       <div className="grid grid-cols-[minmax(200px,0.8fr)_minmax(0,2.4fr)_minmax(200px,0.8fr)] gap-4 items-center">
         {selfCard}
         <RevealArena
@@ -81,20 +82,24 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
 
       <TurnTimeWarning deadline={m.roundDeadline} active={m.iNeedToChoose} />
 
-      {/* Action area beside a persistent history + room rail. */}
       <div className="grid grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)] gap-5 items-start">
         <div>
-          {m.state.isOver ? (
-            <EndPanel
-              winner={m.state.winnerId ? m.nameOf(m.state.winnerId) : null}
-              youWon={m.state.winnerId === m.myId}
-              finalScores={{ me: m.myScore, opp: m.oppScore }}
-              ties={m.state.ties}
-              onRematch={m.rematch}
-            />
-          ) : (
-            <ChoiceRow myChoice={m.myChoice} bothChose={m.bothChose} onPick={m.pick} />
+          {/* During live match: choice row or between-match EndPanel */}
+          {!showScorecard && (
+            m.state.isOver ? (
+              <EndPanel
+                winner={m.state.winnerId ? m.nameOf(m.state.winnerId) : null}
+                youWon={m.state.winnerId === m.myId}
+                finalScores={{ me: m.myScore, opp: m.oppScore }}
+                ties={m.state.ties}
+                onRematch={m.rematch}
+              />
+            ) : (
+              <ChoiceRow myChoice={m.myChoice} bothChose={m.bothChose} onPick={m.pick} />
+            )
           )}
+          {/* Placeholder so the grid doesn't collapse when scorecard shows */}
+          {showScorecard && <div className="h-32" />}
         </div>
 
         <aside className="space-y-4 rounded-2xl border border-[var(--rim-soft)] bg-surface-1/60 p-4">
@@ -124,6 +129,19 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
           storageKey={RPS_TUTORIAL.key}
           accent={RPS_TUTORIAL.accent}
           onClose={() => tut.setOpen(false)}
+        />
+      )}
+
+      {/* Session-end scorecard — fixed overlay when roomPhase === "finished" */}
+      {showScorecard && (
+        <RpsScorecardModal
+          state={m.state}
+          myId={m.myId}
+          myName={m.me?.name ?? "You"}
+          oppName={m.opponent?.name ?? "Opponent"}
+          myScore={m.myScore}
+          oppScore={m.oppScore}
+          onClose={() => props.onScorecardClose?.()}
         />
       )}
     </RpsFrame>

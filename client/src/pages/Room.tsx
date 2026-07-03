@@ -388,35 +388,34 @@ export default function Room() {
 
   /* ─── GameOverScreen state ────────────────────────────────────────
    * `showGameOver`   — whether the GameOverScreen should be visible.
-   * `gameOverDeadlineMs` — the epoch-ms timestamp 100 s after the screen
-   *   first appeared; passed straight to GameOverScreen so the countdown
-   *   ring stays accurate even across React re-renders.
+   * `gameOverDeadlineMs` — epoch-ms timestamp 100 s after the screen
+   *   first appeared; passed straight to GameOverScreen for the ring.
    *
-   * For non-Rummy games the screen shows immediately when phase → "finished".
-   * For Rummy it shows after the player dismisses the scorecard modal (via
-   * the `onScorecardClose` callback threaded through RummyBoard). Either way,
-   * when a rematch fires and phase flips back to "playing" the screen hides
-   * and the deadline resets, ready for the next round.
+   * Games that show their OWN scorecard modal first (Rummy, RPS) wait for
+   * the modal's `onScorecardClose` callback before showing GameOverScreen.
+   * Every other game shows it immediately on phase → "finished".
+   *
+   * A rematch (phase → "playing") always hides the screen and resets
+   * the deadline so the next session gets a fresh 100 s countdown.
    * ──────────────────────────────────────────────────────────────── */
   const [showGameOver, setShowGameOver] = useState(false);
   const gameOverDeadlineMsRef = useRef<number | null>(null);
   const [gameOverDeadlineMs, setGameOverDeadlineMs] = useState<number>(0);
 
-  /** Call this to show the GameOverScreen; idempotent on repeated calls. */
+  /** Show the GameOverScreen; idempotent — repeated calls are ignored. */
   function triggerGameOver() {
-    if (showGameOver) return; // already visible — don't reset the timer
+    if (showGameOver) return;
     const deadline = Date.now() + AUTO_LEAVE_MS;
     gameOverDeadlineMsRef.current = deadline;
     setGameOverDeadlineMs(deadline);
     setShowGameOver(true);
   }
 
-  // Watch for phase transitions:
-  //   "playing" → "finished"  : trigger for non-Rummy games immediately;
-  //                             Rummy games wait for modal close (callback).
-  //   * → "playing"           : a rematch started — hide the screen and
-  //                             reset the deadline so the next round's
-  //                             screen gets a fresh 100 s.
+  // Games whose boards handle their own end-of-session scorecard modal and
+  // call back into `triggerGameOver` via `onScorecardClose`. For all other
+  // games, GameOverScreen fires immediately on phase → "finished".
+  const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps"]);
+
   const prevPhaseForGameOverRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const prev = prevPhaseForGameOverRef.current;
@@ -424,15 +423,12 @@ export default function Room() {
     prevPhaseForGameOverRef.current = next;
 
     if (next === "playing") {
-      // Rematch or new round started — reset everything.
       setShowGameOver(false);
       gameOverDeadlineMsRef.current = null;
       return;
     }
     if (next === "finished" && prev !== "finished") {
-      // Game just ended. For non-Rummy games show immediately.
-      // Rummy shows after its own scorecard modal is dismissed (see callback below).
-      if (roomState?.game !== "rummy") {
+      if (!GAMES_WITH_OWN_SCORECARD.has(roomState?.game ?? "")) {
         triggerGameOver();
       }
     }
@@ -481,6 +477,36 @@ export default function Room() {
     roomState.phase === "lobby" &&
     roomState.players.length >= 2 &&
     roomState.players.every((p) => p.isReady);
+
+  /* ─── GameOverScreen meta ───────────────────────────────────────────
+   * Derive the winner's display name and a friendly game title so
+   * GameOverScreen can show "🏆 X won!" and "Rock Paper Scissors" etc.
+   * Uses a loose duck-type on gameState (most engines include winnerId).
+   * ──────────────────────────────────────────────────────────────── */
+  const FRIENDLY_GAME_NAMES: Record<string, string> = {
+    rps:          "Rock Paper Scissors",
+    rummy:        "Rummy",
+    ludo:         "Ludo",
+    snl:          "Snakes & Ladders",
+    handcricket:  "Hand Cricket",
+    uno:          "UNO",
+    wordbuilding: "Word Building",
+    dotsboxes:    "Dots & Boxes",
+    memorymatch:  "Memory Match",
+    stargame:     "Star Game",
+  };
+  const gameOverGameName = roomState
+    ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)
+    : undefined;
+  const gameOverWinnerId =
+    gameState &&
+    typeof gameState === "object" &&
+    "winnerId" in gameState
+      ? (gameState as { winnerId?: string | null }).winnerId ?? null
+      : null;
+  const gameOverWinnerName = gameOverWinnerId
+    ? (roomState?.players.find((p) => p.id === gameOverWinnerId)?.name ?? null)
+    : null;
 
   return (
     <div
@@ -622,7 +648,7 @@ export default function Room() {
               </div>
             )}
 
-            {roomState.phase !== "lobby" && roomState.game === "rps" && gameState != null && (
+            {roomState.phase !== "lobby" && roomState.game === "rps" && gameState != null && !showGameOver && (
               <RpsBoard
                 state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
                 players={roomState.players}
@@ -630,6 +656,7 @@ export default function Room() {
                 messages={messages}
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
+                onScorecardClose={triggerGameOver}
               />
             )}
 
@@ -852,6 +879,8 @@ export default function Room() {
           selfId={playerId}
           onLeave={leaveRoom}
           deadlineMs={gameOverDeadlineMs}
+          winnerName={gameOverWinnerName}
+          gameName={gameOverGameName}
         />
       )}
     </div>
