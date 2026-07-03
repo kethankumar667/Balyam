@@ -3096,9 +3096,13 @@ function RummyCelebrationOverlay({ onLeave }: { onLeave: () => void }) {
 export function RummyDealOverlay({
   stage,
   playerCount,
+  bg,
 }: {
   stage: "shuffle" | "deal";
   playerCount: number;
+  /** Optional background override. Mobile passes nothing (green felt default);
+   *  Desktop passes its wood gradient so the overlay matches the table. */
+  bg?: string;
 }) {
   // Number of seats — clamp 2..6 so single-player practice doesn't break
   // and pool-mode 6-player tables still get a clean visual.
@@ -3164,11 +3168,9 @@ export function RummyDealOverlay({
       aria-label="Shuffling and dealing — please wait"
       onClick={(e) => e.preventDefault()}
       style={{
-        // Fully opaque felt gradient — identical to the table felt below,
-        // so the player sees a clean green table during shuffle, not a
-        // dimmed view of their cards. Cards are completely hidden.
-        background:
-          "radial-gradient(ellipse at 50% 38%, #1a8c4a 0%, #0d5e2e 55%, #052e16 95%)",
+        // Fully opaque felt gradient. Mobile: green casino felt (default).
+        // Desktop: passes bg prop with wood gradient to match its table.
+        background: bg ?? "radial-gradient(ellipse at 50% 38%, #1a8c4a 0%, #0d5e2e 55%, #052e16 95%)",
       }}
     >
       <div

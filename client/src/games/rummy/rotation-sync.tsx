@@ -132,7 +132,24 @@ export function useRummyRotationGate(opts: {
   selfNeedsRotation: boolean;
 }): RummyRotationGate {
   const { roomCode, phase, players, selfId, selfNeedsRotation } = opts;
-  const [stage, setStage] = useState<RummyDealStage>("idle");
+
+  // Peek at the sessionStorage flag SYNCHRONOUSLY in the lazy initializer so
+  // the very first render already starts in "gating" (not "idle") when a
+  // fresh game has just been started. Without this, the component renders
+  // once with stage="idle" (full board visible), then the useEffect fires and
+  // flips to "gating" — causing the 1-frame flash the user sees.
+  //
+  // IMPORTANT: we only PEEK here (do NOT consume/remove the key). The
+  // useEffect below is still responsible for removing the key so the flag is
+  // consumed exactly once. This is safe across React StrictMode double-invoke
+  // because both initializer calls find the same key and both return "gating";
+  // React keeps the result of the second call, and the first useEffect run
+  // then removes the key normally.
+  const [stage, setStage] = useState<RummyDealStage>(() => {
+    if (typeof window === "undefined" || !roomCode || phase !== "playing") return "idle";
+    const key = `bhalyam.rummy.justStarted.${roomCode}`;
+    return window.sessionStorage.getItem(key) === "1" ? "gating" : "idle";
+  });
   const gateStartRef = useRef<number | null>(null);
   const [, tick] = useState(0);
 
@@ -140,7 +157,14 @@ export function useRummyRotationGate(opts: {
     if (typeof window === "undefined" || !roomCode) return;
     const key = `bhalyam.rummy.justStarted.${roomCode}`;
     const flag = window.sessionStorage.getItem(key);
-    if (flag !== "1") return;
+    if (flag !== "1") {
+      // The lazy initializer already consumed-or-peeked this; if stage is
+      // already "gating" we still need to record the gate start time.
+      if (stage === "gating" && gateStartRef.current === null) {
+        gateStartRef.current = Date.now();
+      }
+      return;
+    }
     window.sessionStorage.removeItem(key);
     if (phase !== "playing") return;
     gateStartRef.current = Date.now();
