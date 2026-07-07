@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { LudoState, Player } from "@shared/types";
 import { Dice } from "./Dice";
 import { Token } from "./Token";
@@ -27,7 +28,7 @@ import type { LudoBoardModel } from "./useLudoBoard";
  * ludo-board-shared.tsx, never from this file).
  */
 
-export function LudoStatusBar({ m, state }: { m: LudoBoardModel; state: LudoState }) {
+export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; state: LudoState; rightSlot?: ReactNode }) {
   return (
     <div className="flex justify-between items-center flex-wrap gap-2">
       <h2 className="text-xl font-black tracking-tight">Ludo</h2>
@@ -45,6 +46,7 @@ export function LudoStatusBar({ m, state }: { m: LudoBoardModel; state: LudoStat
         )}
       </div>
       <div className="flex items-center gap-1.5">
+        {rightSlot}
         <button
           onClick={m.toggleSound}
           className="rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 px-2.5 py-1.5 text-sm transition"

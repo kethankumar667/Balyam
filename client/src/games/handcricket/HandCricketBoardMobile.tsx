@@ -65,7 +65,7 @@ export default function HandCricketBoardMobile({
     }
     if (mySelection.squadPlayerIds == null) {
       return (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 12px 80px" }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "8px 12px 80px" }}>
           <SquadPicker
             state={state}
             selfId={sid}
@@ -99,7 +99,7 @@ export default function HandCricketBoardMobile({
       {isTeamSelect ? (
         teamSelectContent()
       ) : (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 12px 80px" }} className="space-y-3">
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "8px 12px 80px" }} className="space-y-3">
           {state.phase === "toss" && (
             <TossPhase state={state} selfId={sid} players={players} />
           )}
