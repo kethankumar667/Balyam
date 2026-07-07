@@ -64,14 +64,20 @@ describe("RummyEngine DROP", () => {
     expect(afterDrop.turnAction).toBe("draw");
   });
 
-  it("dropping after drawing (mid-turn) is rejected — can only drop before draw", () => {
+  it("middle-drop (after drawing) is allowed and scores card points not 20", () => {
     engine.init(makePlayers(2));
     const id = state(engine).turnPlayerId;
     const draw = engine.applyMove({ playerId: id, type: "draw", data: { from: "closed" } });
     expect(draw.ok).toBe(true);
+    // Middle-drop: after drawing, drop should now succeed (not be rejected).
     const drop = engine.applyMove({ playerId: id, type: "drop" });
-    expect(drop.ok).toBe(false);
-    expect(drop.error).toMatch(/only drop before drawing/i);
+    expect(drop.ok).toBe(true);
+    expect(drop.isOver).toBe(true); // 2-player: last player wins
+    const after = state(engine);
+    // Score = raw card points (1–80), NOT the flat 20-pt first-drop penalty.
+    const score = after.scores?.[id] ?? -1;
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBeLessThanOrEqual(80);
   });
 
   it("dropping by a non-turn player is rejected", () => {

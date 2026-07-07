@@ -437,13 +437,19 @@ export class RummyEngine implements GameEngine {
     if (this.s.droppedPlayers.has(move.playerId)) {
       return { ok: false, error: "You already dropped" };
     }
-    if (this.s.turnAction !== "draw") {
-      return { ok: false, error: "You can only drop before drawing" };
-    }
+    // Both first-drop (before drawing this turn) and middle-drop (after drawing)
+    // are valid. Not-your-turn is already caught in applyMove.
     this.s.droppedPlayers.add(move.playerId);
-    this.s.scores[move.playerId] = DROP_PENALTY;
     const hand = this.s.hands.get(move.playerId);
     if (hand) this.s.finalHands[move.playerId] = hand.slice();
+    // First-drop (turnAction === "draw"): fixed 20-point penalty.
+    // Middle-drop (turnAction === "discardOrDeclare"): raw card points, capped
+    // at 80 by pointsOfHand's own HAND_CAP guard.
+    const dropScore =
+      this.s.turnAction === "draw"
+        ? DROP_PENALTY
+        : pointsOfHand(hand ?? [], this.s.wildJoker.rank);
+    this.s.scores[move.playerId] = dropScore;
 
     // If only one active (non-dropped) player remains, they win.
     const active = this.s.playerOrder.filter(
