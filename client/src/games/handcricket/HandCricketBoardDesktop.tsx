@@ -84,12 +84,15 @@ export default function HandCricketBoardDesktop({
               position: "relative",
               height: "100%",
               overflowY: "auto",
+              overflowX: "hidden",
               display: "flex",
+              flexDirection: "column",
               justifyContent: "center",
+              alignItems: "center",
               padding: "12px 24px 20px",
             }}
           >
-            <div style={{ width: "100%", maxWidth: 1180 }}>
+            <div style={{ width: "100%", maxWidth: 1180, margin: "auto" }}>
               <SquadPicker
                 state={state}
                 selfId={sid}
@@ -183,6 +186,7 @@ function PhaseStage({
           position: "relative",
           height: "100%",
           overflowY: "auto",
+          overflowX: "hidden",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",

@@ -564,8 +564,9 @@ export function SquadPicker({
           <CompositionChecklist composition={composition} />
         </div>
 
-        {/* Scrollable sections */}
-        <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 250px)", paddingRight: 2 }}>
+        {/* Sections — the shell owns the single scroll container, so this
+            block flows naturally (no nested scrollbar / double-scroll). */}
+        <div>
           {/* YOUR XI — ruled-paper panel */}
           <PaperPanel
             pad="none"

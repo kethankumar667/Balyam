@@ -5,10 +5,11 @@ import { LudoStatusBar, LudoBoardArea, LudoOverlays } from "./ludo-board-composi
 /**
  * Ludo — desktop shell.
  *
- * Two-column: a larger board on the left (the dice now sits on the board
- * itself, not in a side rail), a persistent right rail carrying the room
- * rail (chat/players/voice) on the right — the extra width goes to a bigger
- * board instead of stretching the phone layout.
+ * Single centred column. The room rail (link/players/voice/chat/emoji) is a
+ * compact horizontal strip that now lives in the top status bar next to the
+ * Rules/settings controls, so the board is free to centre across the FULL
+ * width instead of being pushed left by a fixed side column that left a large
+ * empty void to its right. The dice sits on the board itself.
  */
 export default function LudoBoardDesktop(props: LudoBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
@@ -16,17 +17,10 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
 
   return (
     <div className="rounded-2xl border border-slate-700/80 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.16),transparent_32%),linear-gradient(135deg,#111827,#020617)] p-4 lg:p-5 space-y-4 shadow-2xl">
-      <LudoStatusBar m={m} state={state} />
-
-      <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
-        {/* Board column — taller cap than mobile; nothing else competes for
-            vertical space in this column. */}
-        <div className="min-w-0">
-          <LudoBoardArea m={m} state={state} players={players} maxWidth="min(60vw, calc(100vh - 180px), 760px)" />
-        </div>
-
-        {/* Persistent right rail */}
-        <aside className="space-y-3 lg:sticky lg:top-4">
+      <LudoStatusBar
+        m={m}
+        state={state}
+        rightSlot={
           <InlineRoomRail
             code={roomCode}
             game="ludo"
@@ -35,7 +29,13 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
             selfId={selfId}
             messages={messages}
           />
-        </aside>
+        }
+      />
+
+      {/* Board centred across the full width — no side column, symmetric
+          margins on both sides. */}
+      <div className="flex justify-center">
+        <LudoBoardArea m={m} state={state} players={players} maxWidth="min(82vw, calc(100vh - 170px), 860px)" />
       </div>
 
       <LudoOverlays m={m} state={state} players={players} />
