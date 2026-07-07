@@ -212,16 +212,17 @@ export default function RummyResultModal({
       </div>
 
       {/* ── The notebook page ───────────────────────────────────────────────
-          Sized to exactly 90% of the viewport on all sides (5% inset each).
-          Uses a flex-column interior so the header and footer are pinned and
-          only the player rows scroll — nothing overlaps. */}
+          Sized to its CONTENT and capped at 90vh — a 2-player round is a short
+          card, a 6-player round grows until it hits the cap and then the rows
+          scroll. This kills the "tall modal with empty space below the names"
+          problem. Width is capped so it never stretches edge-to-edge on wide
+          desktops while still giving the card melds room to breathe. */}
       <div
-        className="nostalgia-paper relative rounded-lg border border-nostalgia-paper-edge/60 shadow-lift-3
+        className="nostalgia-paper rummy-result-pop relative rounded-lg border border-nostalgia-paper-edge/60 shadow-lift-3
                    flex flex-col overflow-hidden"
         style={{
-          width: "90vw",
-          height: "90vh",
-          maxWidth: "none",
+          width: "min(94vw, 1180px)",
+          maxHeight: "90vh",
         }}
       >
         {/* Ruled lines overlay — clipped by overflow-hidden on the container */}
@@ -247,7 +248,7 @@ export default function RummyResultModal({
         </button>
 
         {/* ── All content: relative, flex-column, fills the paper ── */}
-        <div className="relative font-script text-nostalgia-pen text-base flex flex-col h-full p-4 gap-0 min-h-0">
+        <div className="relative font-script text-nostalgia-pen text-base flex flex-col flex-1 p-4 gap-0 min-h-0">
 
           {/* Header — flex-shrink-0 so it never gets squeezed */}
           <div className="flex-shrink-0 flex items-start justify-between gap-3 pr-10 pb-2">
@@ -281,14 +282,15 @@ export default function RummyResultModal({
           </div>
 
           {/* Rows — flex-1 + min-h-0 allows them to shrink and scroll */}
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {rows.map((row) => {
+          <div className="flex-1 min-h-0 overflow-y-auto rummy-scroll-soft">
+            {rows.map((row, idx) => {
               const { id, rank, isWin, isWrongShower, isMe, name, points, chips, hand } = row;
               return (
                 <div
                   key={id}
-                  className={`grid ${COLS} items-center gap-x-2 px-1 py-2 border-b border-nostalgia-paper-edge/60
+                  className={`rummy-row-in grid ${COLS} items-center gap-x-2 px-1 py-2 border-b border-nostalgia-paper-edge/60
                               ${isMe ? "bg-nostalgia-paper-edge/25" : ""}`}
+                  style={{ animationDelay: `${180 + idx * 120}ms` }}
                 >
                   {/* Rank */}
                   <div className="flex items-center gap-1 font-sans font-bold tabular-nums text-[13px] sm:text-[15px] text-nostalgia-pen/70">
@@ -314,7 +316,7 @@ export default function RummyResultModal({
                   </div>
 
                   {/* Cards */}
-                  <div className="min-w-0 overflow-x-auto scrollbar-none py-0.5">
+                  <div className="min-w-0 overflow-x-auto scrollbar-none pt-1 pb-3">
                     <MeldGroups hand={hand} declaredMelds={state.finalMelds?.[id]} wildRank={wildRank} isWrongShower={isWrongShower} />
                   </div>
 
@@ -440,38 +442,68 @@ function MeldGroups({
     return sumCardPoints(g, wildRank as Rank);
   };
 
+  // A readable label + colour per group so a glance tells you WHY it scored:
+  // pure/impure sequences and valid sets are the "safe" melds; anything else
+  // is deadwood the player is paying points for.
+  const describeGroup = (g: Card[], pts: number): { label: string; kind: GroupKind } => {
+    const cls = classifyMeld(g, wildRank as Rank);
+    if (cls.valid && cls.kind === "pureSequence") return { label: "Pure", kind: "pure" };
+    if (cls.valid && cls.kind === "impureSequence") return { label: pts === 0 ? "Run" : "Run ✗", kind: pts === 0 ? "run" : "dead" };
+    if (cls.valid && cls.kind === "set") return { label: pts === 0 ? "Set" : "Set ✗", kind: pts === 0 ? "set" : "dead" };
+    return { label: "Deadwood", kind: "dead" };
+  };
+
   return (
-    <div className="flex items-center gap-2 w-max">
-      {groups.map((g, gi) => (
-        <ScoreGroup key={gi} cards={g} points={pointsForGroup(g)} wildRank={wildRank} />
-      ))}
+    <div className="flex items-center gap-2.5 w-max">
+      {groups.map((g, gi) => {
+        const pts = pointsForGroup(g);
+        const d = describeGroup(g, pts);
+        return <ScoreGroup key={gi} cards={g} points={pts} label={d.label} kind={d.kind} wildRank={wildRank} />;
+      })}
       {ungrouped.length > 0 && (
-        <ScoreGroup cards={ungrouped} points={sumCardPoints(ungrouped, wildRank as Rank)} wildRank={wildRank} isWrongShower={isWrongShower} />
+        <ScoreGroup
+          cards={ungrouped}
+          points={sumCardPoints(ungrouped, wildRank as Rank)}
+          label="Deadwood"
+          kind="dead"
+          wildRank={wildRank}
+        />
       )}
     </div>
   );
 }
 
+type GroupKind = "pure" | "run" | "set" | "dead";
+
+const GROUP_STYLES: Record<GroupKind, { badge: string; chip: string; ring: string }> = {
+  pure: { badge: "linear-gradient(135deg,#16a34a,#15803d)", chip: "#166534", ring: "rgba(22,163,74,0.55)" },
+  run:  { badge: "linear-gradient(135deg,#0ea5e9,#0369a1)", chip: "#075985", ring: "rgba(14,165,233,0.55)" },
+  set:  { badge: "linear-gradient(135deg,#8b5cf6,#6d28d9)", chip: "#5b21b6", ring: "rgba(139,92,246,0.55)" },
+  dead: { badge: "linear-gradient(135deg,#ef4444,#b91c1c)", chip: "#b91c1c", ring: "rgba(239,68,68,0.55)" },
+};
+
 function ScoreGroup({
   cards,
   points,
+  label,
+  kind,
   wildRank,
-  isWrongShower,
 }: {
   cards: Card[];
   points: number;
+  label: string;
+  kind: GroupKind;
   wildRank: string;
-  isWrongShower?: boolean;
 }) {
   if (cards.length === 0) return null;
+  const st = GROUP_STYLES[kind];
   const credited = points === 0;
-  const badgeBg = credited
-    ? "linear-gradient(135deg,#22c55e,#16a34a)"
-    : isWrongShower
-      ? "linear-gradient(135deg,#ef4444,#b91c1c)"
-      : "linear-gradient(135deg,#f59e0b,#d97706)";
   return (
-    <div className="relative flex-shrink-0" title={credited ? "Valid meld" : `${points} points`}>
+    <div
+      className="relative flex-shrink-0 rounded-lg px-1.5 pt-1.5 pb-4"
+      style={{ border: `1.5px solid ${st.ring}`, background: "rgba(255,255,255,0.28)" }}
+      title={credited ? `${label} · counts 0` : `${label} · ${points} points`}
+    >
       <div className="flex">
         {cards.map((c, i) => (
           <span key={c.id} className="flex-shrink-0" style={{ marginLeft: i === 0 ? 0 : -16 }}>
@@ -479,11 +511,14 @@ function ScoreGroup({
           </span>
         ))}
       </div>
+      {/* Type + points chip pinned along the group's bottom edge. */}
       <span
-        className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-extrabold tabular-nums"
-        style={{ background: badgeBg, color: "#fff", border: "1.5px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}
+        className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap inline-flex items-center gap-1
+                   px-1.5 h-[16px] rounded-full text-[9px] font-sans font-extrabold uppercase tracking-wide"
+        style={{ background: st.badge, color: "#fff", border: "1.5px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.45)" }}
       >
-        {points}
+        {label}
+        <span className="tabular-nums opacity-95">· {credited ? "0" : `+${points}`}</span>
       </span>
     </div>
   );

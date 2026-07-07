@@ -12,7 +12,12 @@ export default function PlayerList({
   return (
     <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4 dark:bg-slate-900 dark:border-slate-700">
       <h3 className="text-sm uppercase text-[#796651] mb-3 dark:text-slate-400">Players ({players.length})</h3>
-      <ul className="space-y-2">
+      {/* Cap the visible list to ~3 rows; the rest scroll. Keeps the lobby
+          card compact instead of growing tall with a 6-player table. */}
+      <ul
+        className="space-y-2 overflow-y-auto pr-1 rummy-scroll-soft"
+        style={{ maxHeight: "13.5rem" }}
+      >
         {players.map((p) => (
           <li
             key={p.id}

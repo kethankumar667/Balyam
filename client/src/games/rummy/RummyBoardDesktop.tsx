@@ -27,7 +27,7 @@ import {
   sumCardPoints,
   type MeldClassification,
 } from "./meldCheck";
-import { suggestArrangement } from "./autoArrange";
+import { splitBySuit } from "./autoArrange";
 import { isRummySoundEnabled, rummySfx, setRummySoundEnabled } from "./sound";
 import Chat from "../../components/Chat";
 import VoicePanel from "../../components/VoicePanel";
@@ -298,10 +298,14 @@ export default function RummyBoardDesktop({
   }, [layout, wildRank]);
 
   /* ─── Turn / phase helpers ─── */
-  const myTurn = state.turnPlayerId === selfId;
+  const isArranging = state.phase === "arranging";
+  const myTurn = state.turnPlayerId === selfId && state.phase === "playing";
   const canDraw = myTurn && state.turnAction === "draw" && state.phase === "playing";
   const canDiscardOrDeclare =
     myTurn && state.turnAction === "discardOrDeclare" && state.phase === "playing";
+  // During the post-show window the declarer is a pure spectator; everyone
+  // else may still rearrange (drag/drop, group, sort, auto) to cut points.
+  const iAmDeclarer = isArranging && state.winnerId === selfId;
 
   /* ─── End-of-round scorecard dismissed flag ─── */
   const [scorecardDismissed, setScorecardDismissed] = useState(false);
@@ -315,10 +319,13 @@ export default function RummyBoardDesktop({
   const [winnerBurstKey, setWinnerBurstKey] = useState<number | null>(null);
   const prevPhaseForBurst = useRef(state.phase);
   useEffect(() => {
-    const wasPlaying = prevPhaseForBurst.current === "playing";
+    // The round now goes playing → arranging → finished, so "just finished"
+    // means the previous phase was arranging (or playing, for instant wins
+    // like a drop-out). Fire whenever we land on finished from either.
+    const wasInRound = prevPhaseForBurst.current !== "finished";
     const justFinished = state.phase === "finished";
     prevPhaseForBurst.current = state.phase;
-    if (!wasPlaying || !justFinished) return;
+    if (!wasInRound || !justFinished) return;
     if (state.invalidDeclareBy) return;
     if (state.endedByDisconnect) return;
     if (state.winnerId !== selfId) return;
@@ -335,6 +342,9 @@ export default function RummyBoardDesktop({
   }, []);
   const remainingMs = state.turnDeadline ? Math.max(0, state.turnDeadline - now) : null;
   const remainingSec = remainingMs == null ? null : Math.ceil(remainingMs / 1000);
+  const arrangeRemainingSec = state.arrangeDeadline
+    ? Math.max(0, Math.ceil((state.arrangeDeadline - now) / 1000))
+    : null;
 
   /* ─── Game actions ─── */
   function drawFromClosed() {
@@ -501,30 +511,22 @@ export default function RummyBoardDesktop({
   function sortUngrouped() {
     setLayout((l) => ({ ...l, ungrouped: sortIds(l.ungrouped, byId, wildRank) }));
   }
+  // AUTO only tidies the hand into suit lanes (♠♥♦♣ + jokers) — it never forms
+  // melds for the player. They must build their own sequences/sets, which is
+  // what makes the post-show rearrange window meaningful.
   function autoArrange() {
-    const preserved: Group[] = [];
-    const pool: CardType[] = [];
-    for (const g of layout.groups) {
-      const cls = meldByGroupId[g.id];
-      if (cls?.valid) preserved.push(g);
-      else for (const cid of g.cardIds) {
-        const c = byId.get(cid);
-        if (c) pool.push(c);
-      }
-    }
-    for (const cid of layout.ungrouped) {
-      const c = byId.get(cid);
-      if (c) pool.push(c);
-    }
-    if (pool.length === 0) return;
-    const arr = suggestArrangement(pool, wildRank as Rank);
-    const fresh: Group[] = arr.groups.map((cards) => ({
-      id: newGroupId(),
-      cardIds: cards.map((c) => c.id),
-    }));
+    const all: CardType[] = [
+      ...layout.groups.flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is CardType => !!c)),
+      ...layout.ungrouped.map((id) => byId.get(id)).filter((c): c is CardType => !!c),
+    ];
+    if (all.length === 0) return;
+    const lanes = splitBySuit(all);
     setLayout({
-      groups: [...preserved, ...fresh].slice(0, MAX_GROUPS),
-      ungrouped: arr.ungrouped.map((c) => c.id),
+      groups: lanes.slice(0, MAX_GROUPS).map((cards) => ({
+        id: newGroupId(),
+        cardIds: cards.map((c) => c.id),
+      })),
+      ungrouped: lanes.slice(MAX_GROUPS).flat().map((c) => c.id),
     });
     setSelected(new Set());
     rummySfx.meldFormed();
@@ -654,6 +656,21 @@ export default function RummyBoardDesktop({
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
   const totalUngroupedPlusGrouped =
     layout.ungrouped.length + layout.groups.reduce((s, g) => s + g.cardIds.length, 0);
+
+  /* ─── Drop announcement — a card slams down when anyone drops the round ─── */
+  const [dropAnnounce, setDropAnnounce] = useState<{ name: string; mine: boolean } | null>(null);
+  const prevDroppedRef = useRef<string[]>(state.droppedPlayers);
+  useEffect(() => {
+    const prev = new Set(prevDroppedRef.current);
+    const added = state.droppedPlayers.filter((id) => !prev.has(id));
+    prevDroppedRef.current = state.droppedPlayers;
+    if (added.length === 0) return;
+    const id = added[added.length - 1];
+    setDropAnnounce({ name: id === selfId ? "You" : nameOf(id), mine: id === selfId });
+    const t = window.setTimeout(() => setDropAnnounce(null), 2600);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.droppedPlayers.join(",")]);
 
   /* ─── Seat assignment — generalizes the reference mock's top/left/right
      3-seat composition to any opponent count (rummy seats up to 6 total,
@@ -1060,7 +1077,7 @@ export default function RummyBoardDesktop({
               </button>
             ))}
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="flex-1 overflow-y-auto p-3 min-h-0">
             {activeTab === "chat" && <Chat messages={messages} selfId={selfId} />}
             {activeTab === "voice" && (
               <VoicePanel players={players} selfId={selfId} restoreOrientation="any" />
@@ -1077,8 +1094,25 @@ export default function RummyBoardDesktop({
               <RummyRoomHistory variant="panel" density="desktop" history={history} champion={champion} players={players} showTitle={false} />
             )}
           </div>
+
+          {/* Always-on vertical room rail — fills the sidebar's dead space and
+              keeps every player, whose-turn, hand count and running score in
+              view no matter which tab is open. */}
+          <SidePlayersRail state={state} players={players} selfId={selfId} nameOf={nameOf} />
         </aside>
       </div>
+
+      {/* Post-show 15s rearrange window — prominent countdown banner. */}
+      {isArranging && (
+        <ArrangingBanner
+          remainingSec={arrangeRemainingSec}
+          iAmDeclarer={iAmDeclarer}
+          declarerName={nameOf(state.winnerId ?? "")}
+        />
+      )}
+
+      {/* Drop announcement — a card slams down when a player drops. */}
+      {dropAnnounce && <DropAnnounce name={dropAnnounce.name} mine={dropAnnounce.mine} />}
 
       {/* Drop confirm */}
       {confirmDrop && (
@@ -1296,6 +1330,176 @@ function DeskGatingScreen({
 
 
 /* ─────────────────────────── Sub-components ─────────────────────────── */
+
+/**
+ * Centre-screen "dropped" flourish — a face-down card slams onto the table with
+ * the player's name. Pointer-events-none, self-dismissing; purely cosmetic.
+ */
+function DropAnnounce({ name, mine }: { name: string; mine: boolean }) {
+  return (
+    <div
+      className="fixed inset-0 z-[59] flex items-center justify-center pointer-events-none"
+      style={{ animation: "rummy-drop-fade 2600ms ease-out forwards" }}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="rummy-drop-slam flex flex-col items-center gap-3">
+        <div
+          className="w-20 h-28 rounded-xl flex items-center justify-center text-4xl"
+          style={{
+            background: "linear-gradient(140deg, #7f1d1d 0%, #991b1b 60%, #4c0519 100%)",
+            border: "2px solid rgba(201,162,39,0.7)",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(251,191,36,0.35)",
+          }}
+        >
+          🃏
+        </div>
+        <div
+          className="px-5 py-2 rounded-full font-black uppercase tracking-[0.15em] text-sm"
+          style={{
+            background: "linear-gradient(135deg,#b45309,#7c2d12)",
+            color: "#fef3c7",
+            border: "2px solid #fbbf24",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
+          }}
+        >
+          {mine ? "You dropped" : `${name} dropped`}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Top-centred banner during the post-show 15-second rearrange window. For the
+ * player who made the show it reads as a calm spectator note; for everyone else
+ * it's an urgent "arrange to cut your points" call with a live countdown (and a
+ * red pulse in the final 5 seconds). Non-modal so players keep dragging cards.
+ */
+function ArrangingBanner({
+  remainingSec,
+  iAmDeclarer,
+  declarerName,
+}: {
+  remainingSec: number | null;
+  iAmDeclarer: boolean;
+  declarerName: string;
+}) {
+  const urgent = remainingSec != null && remainingSec <= 5 && !iAmDeclarer;
+  return (
+    <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[58] pointer-events-none rummy-result-pop">
+      <div
+        className="flex items-center gap-3 rounded-full pl-4 pr-2 py-2 shadow-lift-3 border"
+        style={{
+          background: iAmDeclarer
+            ? "linear-gradient(135deg,#166534,#15803d)"
+            : "linear-gradient(135deg,#7c2d12,#b45309)",
+          borderColor: iAmDeclarer ? "#22c55e" : "#fbbf24",
+          animation: urgent ? "rummy-glow 0.7s ease-in-out infinite" : undefined,
+        }}
+      >
+        <span className="text-lg">{iAmDeclarer ? "🏆" : "⏱️"}</span>
+        <div className="text-left leading-tight">
+          <div className="text-[13px] font-black text-white">
+            {iAmDeclarer
+              ? "You made the show!"
+              : `${declarerName || "Someone"} declared — arrange to cut your points!`}
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-white/70">
+            {iAmDeclarer ? "Waiting for others to arrange…" : "Group your cards — un-melded cards count full"}
+          </div>
+        </div>
+        <span
+          className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-black tabular-nums text-lg"
+          style={{
+            background: "rgba(0,0,0,0.30)",
+            color: urgent ? "#fecaca" : "#fef3c7",
+            border: `2px solid ${urgent ? "#ef4444" : "rgba(255,255,255,0.35)"}`,
+          }}
+        >
+          {remainingSec ?? "—"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vertical "at the table" rail pinned to the bottom of the right sidebar.
+ * Always visible (independent of the active tab) so the otherwise-empty lower
+ * half of the sidebar earns its keep: live turn highlight, per-player hand
+ * count and running score, plus dropped / out flags.
+ */
+function SidePlayersRail({
+  state,
+  players,
+  selfId,
+  nameOf,
+}: {
+  state: RummyPlayerState;
+  players: Player[];
+  selfId: string | null;
+  nameOf: (id: string) => string;
+}) {
+  const order = state.playerOrder;
+  return (
+    <div
+      className="flex-shrink-0 border-t px-3 py-2.5"
+      style={{ borderColor: "#E6D4B7", background: "rgba(255,255,255,0.35)", maxHeight: "42%", overflowY: "auto" }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[#9C8568]">At the table</span>
+        <span className="text-[10px] font-bold text-[#B0A084]">{order.length} players</span>
+      </div>
+      <ul className="space-y-1.5">
+        {order.map((id) => {
+          const isSelf = id === selfId;
+          const isTurn = state.turnPlayerId === id;
+          const dropped = state.droppedPlayers.includes(id);
+          const out = state.eliminatedInMatch.includes(id);
+          const conn = players.find((p) => p.id === id)?.isConnected ?? true;
+          const hand = state.handSizes[id] ?? 0;
+          const score = state.cumulativeScores?.[id];
+          return (
+            <li
+              key={id}
+              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition"
+              style={{
+                background: isTurn ? "rgba(201,162,39,0.20)" : "rgba(241,230,211,0.7)",
+                border: `1px solid ${isTurn ? "#C9A227" : "#E1CFB1"}`,
+                opacity: out || dropped ? 0.55 : 1,
+                boxShadow: isTurn ? "0 0 10px rgba(201,162,39,0.35)" : undefined,
+              }}
+            >
+              <span
+                className={`w-2 h-2 rounded-full flex-shrink-0 ${conn ? "bg-emerald-500" : "bg-amber-500"}`}
+                title={conn ? "Online" : "Reconnecting…"}
+              />
+              <span className="flex-1 min-w-0 truncate text-[13px] font-semibold text-[#332A22]">
+                {isSelf ? "You" : nameOf(id)}
+                {isTurn && <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider text-nostalgia-brass">• turn</span>}
+                {dropped && <span className="ml-1.5 text-[9px] font-bold uppercase text-nostalgia-pen-red">dropped</span>}
+                {out && !dropped && <span className="ml-1.5 text-[9px] font-bold uppercase text-nostalgia-pen-red">out</span>}
+              </span>
+              <span className="flex-shrink-0 text-[10px] font-mono text-[#8C7A67] tabular-nums" title="Cards in hand">
+                🂠{hand}
+              </span>
+              {score != null && (
+                <span
+                  className="flex-shrink-0 text-[11px] font-bold tabular-nums px-1.5 rounded"
+                  style={{ background: "rgba(46,36,25,0.08)", color: "#2E2419" }}
+                  title="Running score"
+                >
+                  {score}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 function TurnIndicator({
   myTurn,

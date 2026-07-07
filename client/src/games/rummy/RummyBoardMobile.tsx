@@ -16,7 +16,7 @@ import {
 } from "./meldCheck";
 import EmojiRain from "../ludo/EmojiRain";
 import CardTracker from "./CardTracker";
-import { suggestArrangement } from "./autoArrange";
+import { splitBySuit } from "./autoArrange";
 import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
 import { useTurnHaptics, useHaptics } from "../../hooks/useHaptics";
 import TutorialModal, { hasSeenTutorial } from "./TutorialModal";
@@ -288,9 +288,13 @@ export default function RummyBoardMobile({
   /** Called when the final scorecard/result is dismissed — see RummyBoard.tsx for contract. */
   onScorecardClose?: () => void;
 }) {
-  const myTurn = state.turnPlayerId === selfId;
+  const isArranging = state.phase === "arranging";
+  const myTurn = state.turnPlayerId === selfId && state.phase === "playing";
   const canDraw = myTurn && state.turnAction === "draw" && state.phase === "playing";
   const canDiscardOrDeclare = myTurn && state.turnAction === "discardOrDeclare" && state.phase === "playing";
+  // During the post-show window the declarer just spectates; everyone else
+  // rearranges to cut points.
+  const iAmDeclarer = isArranging && state.winnerId === selfId;
   // Buzz the device on each transition into your turn.
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
   const iDropped = !!selfId && state.droppedPlayers.includes(selfId);
@@ -430,10 +434,12 @@ export default function RummyBoardMobile({
   const [winnerBurstKey, setWinnerBurstKey] = useState<number | null>(null);
   const prevPhaseForBurst = useRef(state.phase);
   useEffect(() => {
-    const wasPlaying = prevPhaseForBurst.current === "playing";
+    // playing → arranging → finished: fire on landing at finished from either
+    // (arranging for a normal show, playing for an instant drop-out win).
+    const wasInRound = prevPhaseForBurst.current !== "finished";
     const justFinished = state.phase === "finished";
     prevPhaseForBurst.current = state.phase;
-    if (!wasPlaying || !justFinished) return;
+    if (!wasInRound || !justFinished) return;
     if (state.invalidDeclareBy) return;
     if (state.endedByDisconnect) return;
     if (state.winnerId !== selfId) return;
@@ -540,6 +546,21 @@ export default function RummyBoardMobile({
   function nameOf(id: string): string {
     return players.find((p) => p.id === id)?.name ?? "?";
   }
+
+  /* ─── Drop announcement — flourish when anyone drops the round ─── */
+  const [dropAnnounce, setDropAnnounce] = useState<{ name: string; mine: boolean } | null>(null);
+  const prevDroppedRef = useRef<string[]>(state.droppedPlayers);
+  useEffect(() => {
+    const prev = new Set(prevDroppedRef.current);
+    const added = state.droppedPlayers.filter((id) => !prev.has(id));
+    prevDroppedRef.current = state.droppedPlayers;
+    if (added.length === 0) return;
+    const id = added[added.length - 1];
+    setDropAnnounce({ name: id === selfId ? "You" : nameOf(id), mine: id === selfId });
+    const t = window.setTimeout(() => setDropAnnounce(null), 2600);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.droppedPlayers.join(",")]);
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -844,42 +865,25 @@ export default function RummyBoardMobile({
     getSocket().emit("game:move", { type: "drop" });
   }
 
+  // AUTO only tidies the hand into suit lanes (♠♥♦♣ + jokers) — it never builds
+  // melds. The player must form their own sequences/sets, which is what makes
+  // the post-show 15-second rearrange window matter.
   function autoArrange() {
-    // Preserve every group that is already a valid meld — the user spent effort
-    // assembling them and the engine has nothing better to offer. Throw only
-    // invalid-group cards plus ungrouped cards into the rearrangement pool.
-    const preservedGroups: typeof layout.groups = [];
-    const pool: Card[] = [];
-    for (const g of layout.groups) {
-      const cls = meldByGroupId[g.id];
-      if (cls?.valid) {
-        preservedGroups.push(g);
-      } else {
-        for (const cid of g.cardIds) {
-          const c = byId.get(cid);
-          if (c) pool.push(c);
-        }
-      }
-    }
-    for (const cid of layout.ungrouped) {
-      const c = byId.get(cid);
-      if (c) pool.push(c);
-    }
-
-    // If the pool is empty, every meld is already valid — nothing to do.
-    if (pool.length === 0) {
+    const all: Card[] = [
+      ...layout.groups.flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c)),
+      ...layout.ungrouped.map((id) => byId.get(id)).filter((c): c is Card => !!c),
+    ];
+    if (all.length === 0) {
       setError(null);
       return;
     }
-
-    const arr = suggestArrangement(pool, wildRank as Rank);
-    const newGroupsFromSuggestion = arr.groups.map((cards) => ({
-      id: newGroupId(),
-      cardIds: cards.map((c) => c.id),
-    }));
+    const lanes = splitBySuit(all);
     setLayout({
-      groups: [...preservedGroups, ...newGroupsFromSuggestion],
-      ungrouped: arr.ungrouped.map((c) => c.id),
+      groups: lanes.slice(0, MAX_GROUPS).map((cards) => ({
+        id: newGroupId(),
+        cardIds: cards.map((c) => c.id),
+      })),
+      ungrouped: lanes.slice(MAX_GROUPS).flat().map((c) => c.id),
     });
     setSelected(new Set());
     setError(null);
@@ -961,7 +965,9 @@ export default function RummyBoardMobile({
   // === Derived flags for button states ===
 
   const canSort = layout.ungrouped.length > 1;
-  const canGroup = selected.size >= 1 && state.phase === "playing";
+  // Rearranging (group/sort/auto/drag) is allowed both during normal play AND
+  // the post-show window — only blocked once the round is fully scored.
+  const canGroup = selected.size >= 1 && state.phase !== "finished";
   const canDiscardBtn = canDiscardOrDeclare && selected.size === 1;
   const canDropBtn = canDraw && !iDropped;
   const canFinish = canDiscardOrDeclare && hand.length === 14 &&
@@ -1097,7 +1103,7 @@ export default function RummyBoardMobile({
           canDiscard={canDiscardBtn}
           canDrop={canDropBtn}
           canFinish={canFinish}
-          canAutoArrange={hand.length > 0 && state.phase === "playing"}
+          canAutoArrange={hand.length > 0 && state.phase !== "finished"}
           canSort={canSort}
           iDropped={iDropped}
           onGroup={groupSelected}
@@ -1175,6 +1181,18 @@ export default function RummyBoardMobile({
       {state.matchMode !== "single" && state.phase === "playing" && (
         <PoolStandings state={state} nameOf={nameOf} selfId={selfId} />
       )}
+
+      {/* Post-show 15s rearrange window — countdown banner. */}
+      {isArranging && (
+        <ArrangingBannerMobile
+          deadline={state.arrangeDeadline ?? null}
+          iAmDeclarer={iAmDeclarer}
+          declarerName={nameOf(state.winnerId ?? "")}
+        />
+      )}
+
+      {/* Drop flourish — a card slams down when a player drops. */}
+      {dropAnnounce && <DropAnnounceMobile name={dropAnnounce.name} mine={dropAnnounce.mine} />}
 
       {/* Floating reactions — small bubbles bouncing up from below the player names */}
       <FloatingRummyReactions reactions={reactions} players={players} selfId={selfId} />
@@ -3326,6 +3344,102 @@ export function FaceDownDealCard() {
           border: "1px solid rgba(251,191,36,0.4)",
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * Centre-screen "dropped" flourish (mobile) — a face-down card slams down with
+ * the player's name. Pointer-events-none, self-dismissing; purely cosmetic.
+ */
+function DropAnnounceMobile({ name, mine }: { name: string; mine: boolean }) {
+  return (
+    <div
+      className="fixed inset-0 z-[59] flex items-center justify-center pointer-events-none px-4"
+      style={{ animation: "rummy-drop-fade 2600ms ease-out forwards" }}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="rummy-drop-slam flex flex-col items-center gap-2.5">
+        <div
+          className="w-16 h-24 rounded-xl flex items-center justify-center text-3xl"
+          style={{
+            background: "linear-gradient(140deg, #7f1d1d 0%, #991b1b 60%, #4c0519 100%)",
+            border: "2px solid rgba(201,162,39,0.7)",
+            boxShadow: "0 10px 26px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(251,191,36,0.35)",
+          }}
+        >
+          🃏
+        </div>
+        <div
+          className="px-4 py-1.5 rounded-full font-black uppercase tracking-[0.14em] text-xs"
+          style={{
+            background: "linear-gradient(135deg,#b45309,#7c2d12)",
+            color: "#fef3c7",
+            border: "2px solid #fbbf24",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.5)",
+          }}
+        >
+          {mine ? "You dropped" : `${name} dropped`}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Post-show rearrange countdown banner (mobile). Ticks its own clock against
+ * the arrange deadline so the host component doesn't need a top-level ticker.
+ * Pinned top-centre, non-modal so the player keeps rearranging their hand.
+ */
+function ArrangingBannerMobile({
+  deadline,
+  iAmDeclarer,
+  declarerName,
+}: {
+  deadline: number | null;
+  iAmDeclarer: boolean;
+  declarerName: string;
+}) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, []);
+  const remainingSec = deadline != null ? Math.max(0, Math.ceil((deadline - now) / 1000)) : null;
+  const urgent = remainingSec != null && remainingSec <= 5 && !iAmDeclarer;
+  return (
+    <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[59] pointer-events-none px-3 w-full max-w-sm">
+      <div
+        className="flex items-center gap-2.5 rounded-2xl px-3 py-2 shadow-lg border"
+        style={{
+          background: iAmDeclarer
+            ? "linear-gradient(135deg,#166534,#15803d)"
+            : "linear-gradient(135deg,#7c2d12,#b45309)",
+          borderColor: iAmDeclarer ? "#22c55e" : "#fbbf24",
+          animation: urgent ? "rummy-glow 0.7s ease-in-out infinite" : undefined,
+        }}
+      >
+        <span className="text-base">{iAmDeclarer ? "🏆" : "⏱️"}</span>
+        <div className="flex-1 min-w-0 text-left leading-tight">
+          <div className="text-[12px] font-black text-white truncate">
+            {iAmDeclarer ? "You made the show!" : `${declarerName || "Someone"} declared!`}
+          </div>
+          <div className="text-[9px] font-semibold uppercase tracking-wider text-white/70 truncate">
+            {iAmDeclarer ? "Others are arranging…" : "Arrange to cut your points"}
+          </div>
+        </div>
+        <span
+          className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-black tabular-nums"
+          style={{
+            background: "rgba(0,0,0,0.30)",
+            color: urgent ? "#fecaca" : "#fef3c7",
+            border: `2px solid ${urgent ? "#ef4444" : "rgba(255,255,255,0.35)"}`,
+          }}
+        >
+          {remainingSec ?? "—"}
+        </span>
+      </div>
     </div>
   );
 }

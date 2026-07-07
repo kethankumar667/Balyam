@@ -138,13 +138,13 @@ export default function HandCricketBoardDesktop({
           <TossChoicePhase state={state} selfId={sid} players={players} />
         </PhaseStage>
       ) : state.phase === "innings1" || state.phase === "innings2" ? (
-        <PhaseStage maxWidth={980}>
+        <PhaseStage maxWidth={980} compact>
           <HcPhaseCard>
             <InningsPhase state={state} selfId={sid} players={players} isDesktop />
           </HcPhaseCard>
         </PhaseStage>
       ) : state.phase === "finished" ? (
-        <PhaseStage maxWidth={760}>
+        <PhaseStage maxWidth={1160}>
           <MatchSummary state={state} players={players} selfId={sid} onContinue={onScorecardClose} />
         </PhaseStage>
       ) : null}
@@ -173,10 +173,14 @@ function PhaseStage({
   children,
   maxWidth,
   centred = false,
+  compact = false,
 }: {
   children: ReactNode;
   maxWidth: number;
   centred?: boolean;
+  /** Tighter vertical padding — used by the innings stage so the taller
+   *  second-innings layout (target + powerplay banner) fits without scrolling. */
+  compact?: boolean;
 }) {
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}>
@@ -191,7 +195,7 @@ function PhaseStage({
           flexDirection: "column",
           alignItems: "center",
           justifyContent: centred ? "center" : "flex-start",
-          padding: "22px 28px 40px",
+          padding: compact ? "12px 28px 16px" : "22px 28px 40px",
         }}
       >
         <div style={{ width: "100%", maxWidth }}>{children}</div>
