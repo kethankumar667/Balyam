@@ -147,6 +147,11 @@ function BotControls({
     </div>
   );
 }
+/** Scorecard is shown for 90 s after a game ends; GameOverScreen follows. */
+const SCORECARD_WINDOW_MS = 90_000;
+/** Games that render their own end-of-round scorecard modal and call back
+ *  via onScorecardClose. GenericScorecardModal is suppressed for these. */
+const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket"]);
 
 export default function Room() {
   const { code } = useParams<{ code: string }>();
@@ -386,35 +391,34 @@ export default function Room() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomState?.phase, roomState?.game]);
 
-  /* ─── GameOverScreen state ────────────────────────────────────────
-   * `showGameOver`   — whether the GameOverScreen should be visible.
-   * `gameOverDeadlineMs` — epoch-ms timestamp 100 s after the screen
-   *   first appeared; passed straight to GameOverScreen for the ring.
-   *
-   * Games that show their OWN scorecard modal first (Rummy, RPS) wait for
-   * the modal's `onScorecardClose` callback before showing GameOverScreen.
-   * Every other game shows it immediately on phase → "finished".
-   *
-   * A rematch (phase → "playing") always hides the screen and resets
-   * the deadline so the next session gets a fresh 100 s countdown.
-   * ──────────────────────────────────────────────────────────────── */
+  /* ─── Scorecard + GameOverScreen state ───────────────────────────────────
+   * Flow for ALL games after phase → "finished":
+   *   1. Scorecard shows for up to 90 s (GenericScorecardModal for games
+   *      without their own, or the board's own modal for rummy/rps/hc).
+   *   2. On dismiss (user or 90 s auto-fire) → GameOverScreen for 100 s.
+   * A rematch (phase → "playing") cancels all timers and resets both states.
+   * ─────────────────────────────────────────────────────────────────────── */
   const [showGameOver, setShowGameOver] = useState(false);
   const gameOverDeadlineMsRef = useRef<number | null>(null);
   const [gameOverDeadlineMs, setGameOverDeadlineMs] = useState<number>(0);
 
-  /** Show the GameOverScreen; idempotent — repeated calls are ignored. */
+  const [showScorecard, setShowScorecard] = useState(false);
+  const [scorecardDeadlineMs, setScorecardDeadlineMs] = useState<number>(0);
+  const scorecardTimerRef = useRef<number | null>(null);
+
+  /** Dismiss the scorecard and show GameOverScreen. Idempotent. */
   function triggerGameOver() {
     if (showGameOver) return;
+    if (scorecardTimerRef.current != null) {
+      window.clearTimeout(scorecardTimerRef.current);
+      scorecardTimerRef.current = null;
+    }
+    setShowScorecard(false);
     const deadline = Date.now() + AUTO_LEAVE_MS;
     gameOverDeadlineMsRef.current = deadline;
     setGameOverDeadlineMs(deadline);
     setShowGameOver(true);
   }
-
-  // Games whose boards handle their own end-of-session scorecard modal and
-  // call back into `triggerGameOver` via `onScorecardClose`. For all other
-  // games, GameOverScreen fires immediately on phase → "finished".
-  const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket"]);
 
   const prevPhaseForGameOverRef = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -423,14 +427,27 @@ export default function Room() {
     prevPhaseForGameOverRef.current = next;
 
     if (next === "playing") {
+      // Rematch / next pool round — reset everything.
       setShowGameOver(false);
+      setShowScorecard(false);
+      if (scorecardTimerRef.current != null) {
+        window.clearTimeout(scorecardTimerRef.current);
+        scorecardTimerRef.current = null;
+      }
       gameOverDeadlineMsRef.current = null;
       return;
     }
     if (next === "finished" && prev !== "finished") {
-      if (!GAMES_WITH_OWN_SCORECARD.has(roomState?.game ?? "")) {
-        triggerGameOver();
-      }
+      // Start 90 s scorecard window for all games.
+      // Games with own scorecards (rummy/rps/hc) call onScorecardClose →
+      // triggerGameOver() which clears this timer early.
+      const deadline = Date.now() + SCORECARD_WINDOW_MS;
+      setScorecardDeadlineMs(deadline);
+      setShowScorecard(true);
+      scorecardTimerRef.current = window.setTimeout(
+        () => { triggerGameOver(); },
+        SCORECARD_WINDOW_MS,
+      ) as unknown as number;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomState?.phase, roomState?.game]);
@@ -889,6 +906,22 @@ export default function Room() {
           gameName={gameOverGameName}
         />
       )}
+
+      {/* Generic scorecard modal — 90 s window for games without their own
+          scorecard (Ludo, SnL, UNO, Word Building, Dots & Boxes, etc.).
+          Rummy / RPS / HandCricket are excluded — they own their scorecard. */}
+      {showScorecard && !showGameOver && roomState && !GAMES_WITH_OWN_SCORECARD.has(roomState.game) && (
+        <GenericScorecardModal
+          players={roomState.players}
+          selfId={playerId}
+          winnerName={gameOverWinnerName}
+          winnerId={gameOverWinnerId}
+          gameName={gameOverGameName}
+          deadlineMs={scorecardDeadlineMs}
+          onClose={triggerGameOver}
+          onLeave={leaveRoom}
+        />
+      )}
     </div>
   );
 }
@@ -1006,6 +1039,146 @@ function NameEntryForRoom({
           Join Room
         </button>
       </form>
+    </div>
+  );
+}
+
+/** Generic end-of-session scorecard — shown for 90 s for all games that
+ *  don't have their own in-board scorecard modal (Ludo, SnL, UNO, etc.).
+ *  After 90 s or when the player taps "Continue", GameOverScreen takes over.
+ *  The player can also leave directly. */
+function GenericScorecardModal({
+  players,
+  selfId,
+  winnerName,
+  winnerId,
+  gameName,
+  deadlineMs,
+  onClose,
+  onLeave,
+}: {
+  players: { id: string; name: string }[];
+  selfId: string | null;
+  winnerName?: string | null;
+  winnerId?: string | null;
+  gameName?: string;
+  deadlineMs: number;
+  onClose: () => void;
+  onLeave: () => void;
+}) {
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000)),
+  );
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setSecondsLeft(Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000)));
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [deadlineMs]);
+
+  const pct = Math.max(0, secondsLeft / (SCORECARD_WINDOW_MS / 1000));
+  const radius = 10;
+  const circ = 2 * Math.PI * radius;
+
+  return (
+    <div className="fixed inset-0 z-[65] bg-black/75 flex items-center justify-center p-4">
+      <div
+        className="rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-4"
+        style={{
+          background: "linear-gradient(160deg, #2F3A54 0%, #1a2236 100%)",
+          border: "1px solid rgba(228,177,40,0.35)",
+        }}
+      >
+        {/* Header — game name + circular countdown */}
+        <div className="flex items-center justify-between">
+          <div className="text-xs uppercase tracking-widest font-bold text-amber-400/70">
+            {gameName ?? "Game"} · Results
+          </div>
+          <div className="flex items-center gap-1.5">
+            <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
+              <circle cx="14" cy="14" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="2.5" />
+              <circle
+                cx="14" cy="14" r={radius} fill="none"
+                stroke="#E4B128" strokeWidth="2.5"
+                strokeDasharray={`${circ * pct} ${circ}`}
+                strokeLinecap="round"
+                transform="rotate(-90 14 14)"
+              />
+            </svg>
+            <span className="text-xs font-mono text-slate-400 w-7 text-right">{secondsLeft}s</span>
+          </div>
+        </div>
+
+        {/* Winner headline */}
+        <div className="text-xl font-extrabold text-center text-white py-1">
+          {winnerName ? `🏆 ${winnerName} wins!` : "Game Over!"}
+        </div>
+
+        {/* Player list */}
+        <div className="space-y-1.5">
+          {players.map((p) => {
+            const isWinner = p.id === winnerId;
+            const isSelf = p.id === selfId;
+            return (
+              <div
+                key={p.id}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
+                style={{
+                  background: isWinner
+                    ? "rgba(228,177,40,0.15)"
+                    : isSelf
+                    ? "rgba(255,255,255,0.07)"
+                    : "rgba(255,255,255,0.04)",
+                  border: isWinner
+                    ? "1px solid rgba(228,177,40,0.35)"
+                    : "1px solid transparent",
+                }}
+              >
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0"
+                  style={{
+                    background: isWinner
+                      ? "linear-gradient(135deg, #E4B128, #9A7410)"
+                      : "rgba(255,255,255,0.12)",
+                    color: isWinner ? "#1a0e00" : "#e2d9cb",
+                  }}
+                >
+                  {p.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="flex-1 text-sm font-semibold text-white/90 truncate">
+                  {isSelf ? "You" : p.name}
+                </span>
+                {isWinner && <span className="text-base">🏆</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={onLeave}
+            className="flex-1 rounded-lg py-2.5 text-sm font-semibold transition"
+            style={{
+              background: "rgba(255,255,255,0.07)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              color: "rgba(255,255,255,0.70)",
+            }}
+          >
+            Leave
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-lg py-2.5 text-sm font-extrabold transition"
+            style={{
+              background: "linear-gradient(135deg, #E4B128, #9A7410)",
+              color: "#1a0e00",
+            }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

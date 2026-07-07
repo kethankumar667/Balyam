@@ -969,7 +969,9 @@ export default function RummyBoardMobile({
   // the post-show window — only blocked once the round is fully scored.
   const canGroup = selected.size >= 1 && state.phase !== "finished";
   const canDiscardBtn = canDiscardOrDeclare && selected.size === 1;
-  const canDropBtn = canDraw && !iDropped;
+  // Allow drop both before drawing (first-drop, 20 pts) and after drawing
+  // (middle-drop, card points). Not dropped, playing phase, and my turn.
+  const canDropBtn = myTurn && !iDropped && state.phase === "playing";
   const canFinish = canDiscardOrDeclare && hand.length === 14 &&
     layout.ungrouped.length === 1 &&
     layout.groups.reduce((s, g) => s + g.cardIds.length, 0) === 13;
@@ -1057,22 +1059,38 @@ export default function RummyBoardMobile({
         <div aria-hidden />
       </div>
 
-      {/* My hand: groups + ungrouped */}
-      <HandArea
-        layout={layout}
-        byId={byId}
-        wildRank={wildRank}
-        selected={selected}
-        draggingIds={draggingIds}
-        dragOverTarget={dragOverTarget}
-        meldByGroupId={meldByGroupId}
-        freshCardId={freshCardId}
-        onCardClick={toggleSelect}
-        onUngroup={ungroupGroup}
-        onDragBegin={onDragBegin}
-        onDragHover={onDragHover}
-        onDragRelease={onDragRelease}
-      />
+      {/* My hand: hidden/replaced when dropped — dropped player spectates */}
+      {iDropped ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-4">
+          <div className="text-5xl opacity-30 tracking-widest">🂠🂠🂠</div>
+          <div
+            className="px-5 py-2.5 rounded-full text-sm font-extrabold uppercase tracking-[0.15em]"
+            style={{
+              background: "rgba(0,0,0,0.40)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              color: "rgba(255,255,255,0.45)",
+            }}
+          >
+            Spectating this round
+          </div>
+        </div>
+      ) : (
+        <HandArea
+          layout={layout}
+          byId={byId}
+          wildRank={wildRank}
+          selected={selected}
+          draggingIds={draggingIds}
+          dragOverTarget={dragOverTarget}
+          meldByGroupId={meldByGroupId}
+          freshCardId={freshCardId}
+          onCardClick={toggleSelect}
+          onUngroup={ungroupGroup}
+          onDragBegin={onDragBegin}
+          onDragHover={onDragHover}
+          onDragRelease={onDragRelease}
+        />
+      )}
 
       {/* Self player strip + finish-readiness chips on a single row to save
           vertical space. The PlayerStrip floats left, checklist chips float
@@ -1120,7 +1138,12 @@ export default function RummyBoardMobile({
       {error && <BoardToast message={error} onClose={() => setError(null)} />}
 
       {confirmDrop && (
-        <DropConfirm onCancel={() => setConfirmDrop(false)} onConfirm={drop} />
+        <DropConfirm
+          onCancel={() => setConfirmDrop(false)}
+          onConfirm={drop}
+          isFirstDrop={state.turnAction === "draw"}
+          handPts={livePoints.handTotal}
+        />
       )}
 
       {/* End-of-round / end-of-match cards render as dismissable modal overlays
@@ -2760,9 +2783,13 @@ function shade(hex: string, amt: number): string {
 function DropConfirm({
   onCancel,
   onConfirm,
+  isFirstDrop,
+  handPts,
 }: {
   onCancel: () => void;
   onConfirm: () => void;
+  isFirstDrop: boolean;
+  handPts: number;
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
@@ -2772,8 +2799,12 @@ function DropConfirm({
       >
         <div className="text-lg font-bold text-nostalgia-paper">Drop out of this round?</div>
         <div className="text-sm text-nostalgia-paper/75">
-          You'll take a <span className="font-bold text-rose-300">20-point penalty</span> and stop
-          playing this round. Game continues for everyone else.
+          {isFirstDrop ? (
+            <>You'll take a <span className="font-bold text-rose-300">20-point first-drop penalty</span> and stop playing this round.</>
+          ) : (
+            <>You'll be scored on your current hand (~<span className="font-bold text-rose-300">{handPts} pts</span>) and stop playing this round.</>
+          )}
+          {" "}Game continues for everyone else.
         </div>
         <div className="flex justify-end gap-2">
           <button
@@ -2921,7 +2952,16 @@ function PoolBetweenRounds({
                 <td className="py-0.5">
                   {nameOf(id)}
                   {state.droppedPlayers.includes(id) && (
-                    <span className="text-rose-400 text-[10px] ml-1">dropped</span>
+                    <span
+                      className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase"
+                      style={{
+                        background: "rgba(239,68,68,0.18)",
+                        border: "1px solid rgba(239,68,68,0.45)",
+                        color: "#f87171",
+                      }}
+                    >
+                      ⏏ Dropped
+                    </span>
                   )}
                 </td>
                 <td className="text-right tabular-nums">{roundPts}</td>
@@ -3067,7 +3107,16 @@ function EndGameCard({
                       </span>
                     )}
                     {state.droppedPlayers.includes(id) && !isWinner && (
-                      <span className="text-slate-500 text-[10px] ml-1">(dropped)</span>
+                      <span
+                        className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider align-middle"
+                        style={{
+                          background: "rgba(239,68,68,0.18)",
+                          border: "1px solid rgba(239,68,68,0.45)",
+                          color: "#f87171",
+                        }}
+                      >
+                        ⏏ Dropped
+                      </span>
                     )}
                   </td>
                   <td className="text-right py-1.5 tabular-nums">

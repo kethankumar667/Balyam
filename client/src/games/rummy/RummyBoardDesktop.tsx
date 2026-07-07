@@ -306,6 +306,8 @@ export default function RummyBoardDesktop({
   // During the post-show window the declarer is a pure spectator; everyone
   // else may still rearrange (drag/drop, group, sort, auto) to cut points.
   const iAmDeclarer = isArranging && state.winnerId === selfId;
+  /** True once selfId has dropped out of this round. */
+  const iDropped = !!selfId && state.droppedPlayers.includes(selfId);
 
   /* ─── End-of-round scorecard dismissed flag ─── */
   const [scorecardDismissed, setScorecardDismissed] = useState(false);
@@ -912,53 +914,72 @@ export default function RummyBoardDesktop({
                 Good cards. Good friends. Great memories! :)
               </div>
 
-              {/* Hand row: self pad + ungrouped lane.
-                  Fix 5: A vivid glow border wraps the whole self-hand area
-                  whenever it is the local player's turn, making it instantly
-                  obvious whose action is expected. */}
-              <div
-                className="relative flex items-stretch gap-3 rounded-xl transition-all duration-300"
-                style={myTurn ? {
-                  boxShadow: "0 0 0 3px #C9A227, 0 0 24px rgba(201,162,39,0.50)",
-                  border: "2px solid #C9A227",
-                  padding: "6px",
-                  background: "rgba(201,162,39,0.06)",
-                  animation: "rummy-glow 1.4s ease-in-out infinite",
-                } : { border: "2px solid transparent", padding: "6px" }}
-              >
-                {myTurn && (
-                  <div
-                    className="absolute -top-5 left-0 right-0 text-center pointer-events-none"
-                    style={{ zIndex: 1 }}
+              {/* Hand row: replaced by spectating banner when self has dropped. */}
+              {iDropped ? (
+                <div
+                  className="flex items-center justify-center gap-4 rounded-xl py-6 px-8"
+                  style={{
+                    background: "rgba(0,0,0,0.20)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <span className="text-4xl opacity-25">🂠🂠🂠</span>
+                  <span
+                    className="px-5 py-2 rounded-full text-sm font-extrabold uppercase tracking-[0.15em]"
+                    style={{
+                      background: "rgba(0,0,0,0.35)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "rgba(255,255,255,0.40)",
+                    }}
                   >
-                    <span
-                      className="inline-block text-[10px] font-black uppercase tracking-[0.2em] px-3 py-0.5 rounded-full"
-                      style={{
-                        background: "linear-gradient(135deg, #C9A227, #8A6220)",
-                        color: "#1f1300",
-                        boxShadow: "0 2px 8px rgba(201,162,39,0.55)",
-                      }}
-                    >
-                      ✦ Your Hand
-                    </span>
-                  </div>
-                )}
-                <SelfPad name={selfName} cumulativeScore={selfCumulative} poolTarget={state.poolTarget} isTurn={myTurn} />
-                <div className="flex-1">
-                  <UngroupedLane
-                    cardIds={layout.ungrouped}
-                    byId={byId}
-                    wildRank={wildRank}
-                    selected={selected}
-                    draggingIds={draggingIds}
-                    dragOver={dragOverTarget === "ungrouped"}
-                    onTap={onCardTap}
-                    onDragBegin={onDragBegin}
-                    onDragHover={onDragHover}
-                    onDragRelease={onDragRelease}
-                  />
+                    You dropped — spectating
+                  </span>
                 </div>
-              </div>
+              ) : (
+                <div
+                  className="relative flex items-stretch gap-3 rounded-xl transition-all duration-300"
+                  style={myTurn ? {
+                    boxShadow: "0 0 0 3px #C9A227, 0 0 24px rgba(201,162,39,0.50)",
+                    border: "2px solid #C9A227",
+                    padding: "6px",
+                    background: "rgba(201,162,39,0.06)",
+                    animation: "rummy-glow 1.4s ease-in-out infinite",
+                  } : { border: "2px solid transparent", padding: "6px" }}
+                >
+                  {myTurn && (
+                    <div
+                      className="absolute -top-5 left-0 right-0 text-center pointer-events-none"
+                      style={{ zIndex: 1 }}
+                    >
+                      <span
+                        className="inline-block text-[10px] font-black uppercase tracking-[0.2em] px-3 py-0.5 rounded-full"
+                        style={{
+                          background: "linear-gradient(135deg, #C9A227, #8A6220)",
+                          color: "#1f1300",
+                          boxShadow: "0 2px 8px rgba(201,162,39,0.55)",
+                        }}
+                      >
+                        ✦ Your Hand
+                      </span>
+                    </div>
+                  )}
+                  <SelfPad name={selfName} cumulativeScore={selfCumulative} poolTarget={state.poolTarget} isTurn={myTurn} />
+                  <div className="flex-1">
+                    <UngroupedLane
+                      cardIds={layout.ungrouped}
+                      byId={byId}
+                      wildRank={wildRank}
+                      selected={selected}
+                      draggingIds={draggingIds}
+                      dragOver={dragOverTarget === "ungrouped"}
+                      onTap={onCardTap}
+                      onDragBegin={onDragBegin}
+                      onDragHover={onDragHover}
+                      onDragRelease={onDragRelease}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Fix 3 & 6: Collapsible action rail.
                   Critical actions (DISCARD / DECLARE) are always visible.
@@ -1022,7 +1043,11 @@ export default function RummyBoardDesktop({
                     className="flex flex-wrap items-center gap-2 px-4 pb-2.5 pt-1"
                     style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
                   >
-                    <ActionButton onClick={() => setConfirmDrop(true)} disabled={!canDraw} kbd="—">
+                    <ActionButton
+                      onClick={() => setConfirmDrop(true)}
+                      disabled={!(myTurn && !iDropped && state.phase === "playing")}
+                      kbd="—"
+                    >
                       DROP
                     </ActionButton>
                     <ActionButton onClick={sortUngrouped} kbd="S">
@@ -1118,7 +1143,11 @@ export default function RummyBoardDesktop({
       {confirmDrop && (
         <ConfirmOverlay
           title="Drop this round?"
-          body="You forfeit 20 points and skip the rest of this round."
+          body={
+            state.turnAction === "draw"
+              ? "You forfeit 20 points (first-drop penalty) and skip the rest of this round."
+              : `You forfeit your current card points (~${livePoints.handTotal} pts) and skip the rest of this round.`
+          }
           confirmLabel="Drop"
           onConfirm={dropFromHand}
           onCancel={() => setConfirmDrop(false)}
