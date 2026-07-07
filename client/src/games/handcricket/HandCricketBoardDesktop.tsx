@@ -1,8 +1,10 @@
-import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import GameTutorial, { useTutorialGate } from "../../components/GameTutorial";
 import { HANDCRICKET_TUTORIAL } from "../tutorials";
 import {
   HcCelebrationLayer,
-  TeamSelectPhase,
+  SquadPicker,
+  WaitingForOpponentSquad,
   TossPhase,
   TossChoicePhase,
   InningsPhase,
@@ -15,20 +17,24 @@ import {
   HcCountryPickerNotebook,
   HcFranchisePickerNotebook,
   HcPhaseCard,
+  HcScrapbookDoodles,
 } from "./hc-notebook";
 
 /**
  * Hand Cricket — desktop notebook shell.
  *
- * Two-panel layout that matches the reference screenshot:
+ * Every phase is a full-viewport ruled-parchment sheet (spiral binding on the
+ * left) with a compact header across the top. Post-teamSelect phases render
+ * their active content in a single centred column with a comfortable max-width;
+ * the surrounding page margins are filled by a non-interactive scrapbook doodle
+ * layer (stumps, ball, trophy, bat, backpack, stars) so the sheet reads like a
+ * hand-decorated notebook page instead of a small card floating in dead space.
  *
- *  • teamSelect  — full-width parchment country/franchise picker.
- *  • All other phases — left column holds the active phase content (toss,
- *    innings, summary); right column keeps the room rail and a match
- *    status strip. This reuses the right-panel visual the reference shows
- *    during the XI selection phase.
+ *  • teamSelect  — full-width parchment country/franchise/squad picker.
+ *  • toss / tossChoice — small card, vertically centred on the sheet.
+ *  • innings / finished — taller content, top-aligned and scrollable.
  *
- * The header ("HAND CRICKET" + format pills + matchup chips + room rail)
+ * The header ("HAND CRICKET" + format pills + matchup chips + room rail + Leave)
  * spans full width at the top of every phase.
  */
 export default function HandCricketBoardDesktop({
@@ -38,12 +44,69 @@ export default function HandCricketBoardDesktop({
   messages,
   roomCode,
   roomPhase,
+  onLeave,
 }: HandCricketBoardProps) {
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
 
   const isTeamSelect = state.phase === "teamSelect";
   const isIpl = state.options.category === "ipl";
+  const mySelection = state.teamSelections[sid];
+
+  // Mirror TeamSelectPhase logic: allow user to go back to the team picker.
+  const [forceTeamPicker, setForceTeamPicker] = useState(false);
+  const prevTeamIdRef = useRef<string | null | undefined>(mySelection?.teamId);
+  useEffect(() => {
+    const prev = prevTeamIdRef.current;
+    const next = mySelection?.teamId ?? null;
+    if (forceTeamPicker && next && next !== prev) setForceTeamPicker(false);
+    prevTeamIdRef.current = next;
+  }, [mySelection?.teamId, forceTeamPicker]);
+
+  /** Derive which teamSelect sub-step we're on. */
+  function teamSelectContent() {
+    if (!mySelection?.teamId || forceTeamPicker) {
+      return isIpl ? (
+        <HcFranchisePickerNotebook state={state} selfId={sid} players={players} />
+      ) : (
+        <HcCountryPickerNotebook state={state} selfId={sid} players={players} />
+      );
+    }
+    if (mySelection.squadPlayerIds == null) {
+      // Squad picker: centred with a generous max-width so it never stretches
+      // edge-to-edge on ultrawide displays. Doodles fill the outer margins.
+      return (
+        <div style={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <HcScrapbookDoodles />
+          <div
+            style={{
+              position: "relative",
+              height: "100%",
+              overflowY: "auto",
+              display: "flex",
+              justifyContent: "center",
+              padding: "12px 24px 20px",
+            }}
+          >
+            <div style={{ width: "100%", maxWidth: 1180 }}>
+              <SquadPicker
+                state={state}
+                selfId={sid}
+                players={players}
+                onChangeTeam={() => setForceTeamPicker(true)}
+                isDesktop
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <PhaseStage centred maxWidth={560}>
+        <WaitingForOpponentSquad state={state} selfId={sid} players={players} />
+      </PhaseStage>
+    );
+  }
 
   return (
     <HcNotebookPage>
@@ -56,53 +119,31 @@ export default function HandCricketBoardDesktop({
         roomPhase={roomPhase}
         messages={messages}
         onHelp={() => tut.setOpen(true)}
+        onLeave={onLeave}
       />
 
       {/* ── Phase content ── */}
       {isTeamSelect ? (
-        /* Country/franchise picker — full width */
-        isIpl ? (
-          <HcFranchisePickerNotebook state={state} selfId={sid} players={players} />
-        ) : (
-          <HcCountryPickerNotebook state={state} selfId={sid} players={players} />
-        )
-      ) : (
-        /* Two-column: content left, info right */
-        <div
-          className="grid gap-5 px-5 pb-6 pt-2"
-          style={{ gridTemplateColumns: "minmax(0,1.65fr) minmax(280px,1fr)" }}
-        >
-          {/* Left column — active phase body */}
-          <div className="space-y-4 min-w-0">
-            {(state.phase === "toss") && (
-              <HcPhaseCard>
-                <TossPhase state={state} selfId={sid} players={players} />
-              </HcPhaseCard>
-            )}
-            {state.phase === "tossChoice" && (
-              <HcPhaseCard>
-                <TossChoicePhase state={state} selfId={sid} players={players} />
-              </HcPhaseCard>
-            )}
-            {(state.phase === "innings1" || state.phase === "innings2") && (
-              <HcPhaseCard>
-                <InningsPhase state={state} selfId={sid} players={players} />
-              </HcPhaseCard>
-            )}
-            {state.phase === "finished" && (
-              <HcPhaseCard>
-                <MatchSummary state={state} players={players} selfId={sid} />
-              </HcPhaseCard>
-            )}
-          </div>
-
-          {/* Right column — cricket doodles placeholder (InlineRoomRail
-              is already embedded in the header; this keeps visual balance). */}
-          <aside className="hidden lg:flex flex-col items-center justify-end gap-3 pointer-events-none select-none pb-4" aria-hidden>
-            <RightPanelDoodles />
-          </aside>
-        </div>
-      )}
+        teamSelectContent()
+      ) : state.phase === "toss" ? (
+        <PhaseStage centred maxWidth={620}>
+          <TossPhase state={state} selfId={sid} players={players} />
+        </PhaseStage>
+      ) : state.phase === "tossChoice" ? (
+        <PhaseStage centred maxWidth={620}>
+          <TossChoicePhase state={state} selfId={sid} players={players} />
+        </PhaseStage>
+      ) : state.phase === "innings1" || state.phase === "innings2" ? (
+        <PhaseStage maxWidth={900}>
+          <HcPhaseCard>
+            <InningsPhase state={state} selfId={sid} players={players} />
+          </HcPhaseCard>
+        </PhaseStage>
+      ) : state.phase === "finished" ? (
+        <PhaseStage maxWidth={760}>
+          <MatchSummary state={state} players={players} selfId={sid} />
+        </PhaseStage>
+      ) : null}
 
       <HcCelebrationLayer state={state} players={players} selfId={sid} />
 
@@ -118,59 +159,38 @@ export default function HandCricketBoardDesktop({
   );
 }
 
-/** Cricket-themed sketch doodles for the right panel (matches reference). */
-function RightPanelDoodles() {
+/**
+ * The shared content stage for every post-teamSelect phase. Fills the whole
+ * sheet, paints the scrapbook doodle margins, then centres a single column of
+ * the given max-width. `centred` also vertically centres short content (toss)
+ * so it never sits marooned at the top with a sea of empty ruled paper below.
+ */
+function PhaseStage({
+  children,
+  maxWidth,
+  centred = false,
+}: {
+  children: ReactNode;
+  maxWidth: number;
+  centred?: boolean;
+}) {
   return (
-    <svg
-      viewBox="0 0 200 280"
-      width={200}
-      height={280}
-      fill="none"
-      aria-hidden
-      style={{ opacity: 0.20 }}
-    >
-      {/* Trophy */}
-      <path
-        d="M76 200 Q76 216 100 216 Q124 216 124 200"
-        stroke="#1a2952" strokeWidth={2.5} strokeLinejoin="round"
-      />
-      <path
-        d="M76 136 Q62 136 62 156 Q62 176 78 178 Q78 188 76 200 L124 200 Q122 188 122 178 Q138 176 138 156 Q138 136 124 136 Z"
-        stroke="#1a2952" strokeWidth={2.5} strokeLinejoin="round"
-      />
-      <line x1={90} y1={216} x2={90} y2={230} stroke="#1a2952" strokeWidth={2} strokeLinecap="round" />
-      <line x1={110} y1={216} x2={110} y2={230} stroke="#1a2952" strokeWidth={2} strokeLinecap="round" />
-      <line x1={82} y1={230} x2={118} y2={230} stroke="#1a2952" strokeWidth={2} strokeLinecap="round" />
-
-      {/* Cricket ball */}
-      <circle cx={162} cy={52} r={24} stroke="#c0392b" strokeWidth={2.5} />
-      <path d="M144 40 Q148 52 144 64" stroke="#c0392b" strokeWidth={2} fill="none" strokeLinecap="round" />
-      <path d="M180 40 Q176 52 180 64" stroke="#c0392b" strokeWidth={2} fill="none" strokeLinecap="round" />
-
-      {/* Stumps + bat */}
-      {[28, 44, 60].map((x, i) => (
-        <g key={i}>
-          <line x1={x} y1={30} x2={x} y2={90} stroke="#1a2952" strokeWidth={3} strokeLinecap="round" />
-          <rect x={x - 3} y={28} width={6} height={5} rx={1} fill="#1a2952" />
-        </g>
-      ))}
-      <line x1={27} y1={38} x2={45} y2={38} stroke="#1a2952" strokeWidth={2.5} strokeLinecap="round" />
-      <line x1={43} y1={38} x2={61} y2={38} stroke="#1a2952" strokeWidth={2.5} strokeLinecap="round" />
-      {/* Bat */}
-      <path d="M72 32 L68 88" stroke="#1a2952" strokeWidth={4} strokeLinecap="round" />
-      <path d="M68 76 Q68 96 80 96 Q92 96 92 76 Z" fill="#1a2952" opacity={0.7} />
-
-      {/* Scattered stars */}
-      {([[100, 58, 14], [40, 130, 11], [160, 168, 12], [75, 260, 10], [145, 240, 9]] as const).map(
-        ([x, y, s], i) => (
-          <text key={i} x={x} y={y} fontSize={s} fill="#E4B128" textAnchor="middle">★</text>
-        )
-      )}
-
-      {/* Bag / backpack */}
-      <rect x={130} y={230} width={36} height={44} rx={8} stroke="#1a2952" strokeWidth={2} />
-      <path d="M142 230 Q148 218 154 230" stroke="#1a2952" strokeWidth={2} fill="none" strokeLinecap="round" />
-      <line x1={130} y1={246} x2={166} y2={246} stroke="#1a2952" strokeWidth={1.5} />
-    </svg>
+    <div style={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}>
+      <HcScrapbookDoodles />
+      <div
+        style={{
+          position: "relative",
+          height: "100%",
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: centred ? "center" : "flex-start",
+          padding: "22px 28px 40px",
+        }}
+      >
+        <div style={{ width: "100%", maxWidth }}>{children}</div>
+      </div>
+    </div>
   );
 }
