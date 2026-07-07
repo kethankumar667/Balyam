@@ -678,13 +678,23 @@ export interface HcSelectBowlerMove {
   type: "selectBowler";
   data: { playerId: string };
 }
+/** Reorder upcoming batters in the live batting squad.
+ *  Only the batting player may issue this during a live innings.
+ *  Positions already at the crease (strikerIdx, nonStrikerIdx) are locked;
+ *  only positions ≥ nextBatterIdx may be shuffled. */
+export interface HcReorderBattingMove {
+  type: "reorderBatting";
+  /** Full squad array; positions before nextBatterIdx must be unchanged. */
+  data: { newOrder: string[] };
+}
 export type HcMove =
   | HcTossPickMove
   | HcTossChoiceMove
   | HcPickMove
   | HcSelectTeamMove
   | HcConfirmSquadMove
-  | HcSelectBowlerMove;
+  | HcSelectBowlerMove
+  | HcReorderBattingMove;
 
 // ---- RPS ----
 export type RpsChoice = "rock" | "paper" | "scissors";

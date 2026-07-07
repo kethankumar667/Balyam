@@ -167,6 +167,8 @@ export class HandCricketEngine implements GameEngine {
         return this.handleSelectBowler(move);
       case "pick":
         return this.handlePick(move);
+      case "reorderBatting":
+        return this.handleReorderBatting(move);
       default:
         return { ok: false, error: `Unknown move type: ${move.type}` };
     }
@@ -420,6 +422,45 @@ export class HandCricketEngine implements GameEngine {
     if (batterPick != null && bowlerPick != null) {
       this.resolveBall(innings, batterPick, bowlerPick);
     }
+    return { ok: true };
+  }
+
+  private handleReorderBatting(move: MoveContext): MoveResult {
+    if (this.state.phase !== "innings1" && this.state.phase !== "innings2") {
+      return { ok: false, error: "No live innings" };
+    }
+    const innings = this.currentInnings();
+    if (innings.battingPlayerId !== move.playerId) {
+      return { ok: false, error: "Only the batting team can reorder" };
+    }
+    if (innings.endedReason) {
+      return { ok: false, error: "Innings has ended" };
+    }
+    const sel = this.state.teamSelections[move.playerId];
+    if (!sel?.squadPlayerIds) return { ok: false, error: "No squad confirmed" };
+
+    const newOrder: unknown = (move.data as { newOrder?: unknown } | undefined)?.newOrder;
+    if (!Array.isArray(newOrder) || newOrder.some((x) => typeof x !== "string")) {
+      return { ok: false, error: "newOrder must be an array of player ids" };
+    }
+    const order = newOrder as string[];
+    const oldOrder = sel.squadPlayerIds;
+    if (order.length !== oldOrder.length) {
+      return { ok: false, error: "Player count mismatch" };
+    }
+    // Positions before nextBatterIdx (already at crease or dismissed) must be unchanged.
+    const lockCount = innings.nextBatterIdx;
+    for (let i = 0; i < lockCount; i++) {
+      if (order[i] !== oldOrder[i]) {
+        return { ok: false, error: "Cannot move batters already at or past the crease" };
+      }
+    }
+    // Must contain exactly the same players.
+    const oldSet = new Set(oldOrder);
+    if (!order.every((id) => oldSet.has(id))) {
+      return { ok: false, error: "New order contains unknown players" };
+    }
+    sel.squadPlayerIds = order;
     return { ok: true };
   }
 

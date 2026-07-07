@@ -103,6 +103,7 @@ export default function RummyResultModal({
     rank: idx + 1,
     isWin: id === winnerId && !isWrongShow,
     isWrongShower: id === wrongShowerId,
+    isDropped: state.droppedPlayers.includes(id) && id !== winnerId,
     isMe: id === selfId,
     name: id === selfId ? "You" : nameOf(id),
     points: lossOf(id),
@@ -284,7 +285,7 @@ export default function RummyResultModal({
           {/* Rows — flex-1 + min-h-0 allows them to shrink and scroll */}
           <div className="flex-1 min-h-0 overflow-y-auto rummy-scroll-soft">
             {rows.map((row, idx) => {
-              const { id, rank, isWin, isWrongShower, isMe, name, points, chips, hand } = row;
+              const { id, rank, isWin, isWrongShower, isDropped, isMe, name, points, chips, hand } = row;
               return (
                 <div
                   key={id}
@@ -299,7 +300,7 @@ export default function RummyResultModal({
                   </div>
 
                   {/* Name */}
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                     {isWin ? (
                       <WinnerCircle>
                         <span className="font-bold truncate text-[15px] sm:text-[18px]">{name}</span>
@@ -311,6 +312,19 @@ export default function RummyResultModal({
                       <span className="rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-sans font-bold uppercase tracking-wide
                                         bg-nostalgia-pen-red/15 text-nostalgia-pen-red flex-shrink-0">
                         Wrong Show
+                      </span>
+                    )}
+                    {isDropped && (
+                      <span
+                        className="rounded-full px-3 py-1 text-[11px] sm:text-[13px] font-sans font-extrabold uppercase tracking-wider flex-shrink-0"
+                        style={{
+                          background: "rgba(239,68,68,0.15)",
+                          border: "1.5px solid rgba(239,68,68,0.50)",
+                          color: "#e05252",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        ⏏ Dropped
                       </span>
                     )}
                   </div>
