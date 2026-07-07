@@ -119,7 +119,7 @@ type (`User`, `GameHistory`, `Room`, `FriendLink`) gets its own repo with
 
 - Friends list (mutual add via username or invite link)
 - Private rooms with reusable codes (no need to share a fresh code each time)
-- Online presence ("Kethan is in a Ludo lobby — join")
+- Online presence ("Sri Krishna is in a Ludo lobby — join")
 - Achievements / badges (per-game and cross-game)
 - ELO-style ratings per game
 - Daily / weekly challenges

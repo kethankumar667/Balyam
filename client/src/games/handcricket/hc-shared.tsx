@@ -257,7 +257,7 @@ export function TeamPicker({
         </div>
         <div className="text-center text-xs text-emerald-300/80">
           Same franchise? No problem — we'll show it as{" "}
-          <span className="text-amber-300">CSK(Kethan) vs CSK(Monica)</span>.
+          <span className="text-amber-300">CSK(Sri Krishna) vs CSK(Radha)</span>.
         </div>
       </div>
     );
@@ -302,7 +302,7 @@ export function TeamPicker({
       </div>
       <div className="text-center text-xs text-emerald-300/80">
         Same country? No problem — we'll show it as{" "}
-        <span className="text-amber-300">India(Kethan) vs India(Monica)</span>.
+        <span className="text-amber-300">India(Sri Krishna) vs India(Radha)</span>.
       </div>
     </div>
   );

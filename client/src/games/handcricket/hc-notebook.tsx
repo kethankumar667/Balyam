@@ -723,8 +723,8 @@ export function HcCountryPickerNotebook({
           {/* Bottom note */}
           <div className="font-hand text-center text-xs mt-2 shrink-0" style={{ color: INK_LT }}>
             Same country? No problem — we&#39;ll show it as{" "}
-            <span className="font-bold" style={{ color: STAMP_G }}>India (Kethan)</span>{" vs "}
-            <span className="font-bold" style={{ color: "#c0392b" }}>India (Monica)</span>.
+            <span className="font-bold" style={{ color: STAMP_G }}>India (Sri Krishna)</span>{" vs "}
+            <span className="font-bold" style={{ color: "#c0392b" }}>India (Radha)</span>.
           </div>
 
           {/* Ink doodles along the base of the sheet */}
@@ -958,9 +958,9 @@ export function HcFranchisePickerNotebook({
           }}
         >
           Same franchise? No problem — we'll show it as{" "}
-          <span style={{ color: STAMP_G, fontWeight: 700 }}>CSK (Kethan)</span>
+          <span style={{ color: STAMP_G, fontWeight: 700 }}>CSK (Sri Krishna)</span>
           {" "}vs{" "}
-          <span style={{ color: INK_RED, fontWeight: 700 }}>CSK (Monica)</span>.
+          <span style={{ color: INK_RED, fontWeight: 700 }}>CSK (Radha)</span>.
         </div>
       </div>
 
