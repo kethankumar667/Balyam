@@ -45,6 +45,7 @@ export default function HandCricketBoardDesktop({
   roomCode,
   roomPhase,
   onLeave,
+  onScorecardClose,
 }: HandCricketBoardProps) {
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
@@ -134,14 +135,14 @@ export default function HandCricketBoardDesktop({
           <TossChoicePhase state={state} selfId={sid} players={players} />
         </PhaseStage>
       ) : state.phase === "innings1" || state.phase === "innings2" ? (
-        <PhaseStage maxWidth={900}>
+        <PhaseStage maxWidth={980}>
           <HcPhaseCard>
-            <InningsPhase state={state} selfId={sid} players={players} />
+            <InningsPhase state={state} selfId={sid} players={players} isDesktop />
           </HcPhaseCard>
         </PhaseStage>
       ) : state.phase === "finished" ? (
         <PhaseStage maxWidth={760}>
-          <MatchSummary state={state} players={players} selfId={sid} />
+          <MatchSummary state={state} players={players} selfId={sid} onContinue={onScorecardClose} />
         </PhaseStage>
       ) : null}
 

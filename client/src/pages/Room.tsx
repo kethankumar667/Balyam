@@ -414,7 +414,7 @@ export default function Room() {
   // Games whose boards handle their own end-of-session scorecard modal and
   // call back into `triggerGameOver` via `onScorecardClose`. For all other
   // games, GameOverScreen fires immediately on phase → "finished".
-  const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps"]);
+  const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket"]);
 
   const prevPhaseForGameOverRef = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -737,7 +737,7 @@ export default function Room() {
               })()
             )}
 
-            {roomState.phase !== "lobby" && roomState.game === "handcricket" && gameState != null && (
+            {roomState.phase !== "lobby" && roomState.game === "handcricket" && gameState != null && !showGameOver && (
               <HandCricketBoard
                 state={gameState as HcState}
                 players={roomState.players}
@@ -746,6 +746,7 @@ export default function Room() {
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
                 onLeave={leaveRoom}
+                onScorecardClose={triggerGameOver}
               />
             )}
 
