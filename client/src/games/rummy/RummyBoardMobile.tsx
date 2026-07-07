@@ -3437,9 +3437,10 @@ function DropAnnounceMobile({ name, mine }: { name: string; mine: boolean }) {
 }
 
 /**
- * Post-show rearrange countdown banner (mobile). Ticks its own clock against
- * the arrange deadline so the host component doesn't need a top-level ticker.
- * Pinned top-centre, non-modal so the player keeps rearranging their hand.
+ * Post-show rearrange window (mobile) — a countdown ring in the MIDDLE of the
+ * table. For the declarer it also locks the whole board with a blocking dim
+ * layer (they're spectating). For a loser it's pointer-events-none so they keep
+ * rearranging the cards underneath; the pile/actions are already disabled.
  */
 function ArrangingBannerMobile({
   deadline,
@@ -3457,37 +3458,45 @@ function ArrangingBannerMobile({
   }, []);
   const remainingSec = deadline != null ? Math.max(0, Math.ceil((deadline - now) / 1000)) : null;
   const urgent = remainingSec != null && remainingSec <= 5 && !iAmDeclarer;
+  const accent = iAmDeclarer ? "#22c55e" : urgent ? "#ef4444" : "#fbbf24";
   return (
-    <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[59] pointer-events-none px-3 w-full max-w-sm">
+    <div
+      className="fixed inset-0 z-[59] flex flex-col items-center justify-center px-6 text-center"
+      style={{
+        // Declarer: block the whole board (spectating). Loser: let taps through
+        // to the cards below so they can still rearrange.
+        pointerEvents: iAmDeclarer ? "auto" : "none",
+        background: iAmDeclarer ? "rgba(20,14,8,0.55)" : "transparent",
+      }}
+    >
       <div
-        className="flex items-center gap-2.5 rounded-2xl px-3 py-2 shadow-lg border"
+        className="flex items-center justify-center rounded-full font-black tabular-nums rummy-result-pop"
         style={{
-          background: iAmDeclarer
-            ? "linear-gradient(135deg,#166534,#15803d)"
-            : "linear-gradient(135deg,#7c2d12,#b45309)",
-          borderColor: iAmDeclarer ? "#22c55e" : "#fbbf24",
+          width: 84,
+          height: 84,
+          fontSize: 38,
+          color: "#fff",
+          background: "radial-gradient(circle at 50% 35%, rgba(0,0,0,0.55), rgba(0,0,0,0.8))",
+          border: `4px solid ${accent}`,
+          boxShadow: `0 0 24px ${accent}88, inset 0 0 14px rgba(0,0,0,0.6)`,
           animation: urgent ? "rummy-glow 0.7s ease-in-out infinite" : undefined,
         }}
       >
-        <span className="text-base">{iAmDeclarer ? "🏆" : "⏱️"}</span>
-        <div className="flex-1 min-w-0 text-left leading-tight">
-          <div className="text-[12px] font-black text-white truncate">
-            {iAmDeclarer ? "You made the show!" : `${declarerName || "Someone"} declared!`}
-          </div>
-          <div className="text-[9px] font-semibold uppercase tracking-wider text-white/70 truncate">
-            {iAmDeclarer ? "Others are arranging…" : "Arrange to cut your points"}
-          </div>
-        </div>
-        <span
-          className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-black tabular-nums"
-          style={{
-            background: "rgba(0,0,0,0.30)",
-            color: urgent ? "#fecaca" : "#fef3c7",
-            border: `2px solid ${urgent ? "#ef4444" : "rgba(255,255,255,0.35)"}`,
-          }}
-        >
-          {remainingSec ?? "—"}
-        </span>
+        {remainingSec ?? "—"}
+      </div>
+      <div
+        className="mt-2 px-4 py-1 rounded-full text-[12px] font-black uppercase tracking-[0.1em]"
+        style={{
+          background: iAmDeclarer ? "linear-gradient(135deg,#166534,#15803d)" : "linear-gradient(135deg,#7c2d12,#b45309)",
+          color: "#fff",
+          border: `1.5px solid ${accent}`,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.5)",
+        }}
+      >
+        {iAmDeclarer ? "🏆 You made the show" : `⏱️ ${declarerName || "Someone"} declared`}
+      </div>
+      <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/85">
+        {iAmDeclarer ? "Board locked — waiting for others…" : "Arrange to cut your points"}
       </div>
     </div>
   );

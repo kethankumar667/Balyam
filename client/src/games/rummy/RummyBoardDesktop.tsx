@@ -845,25 +845,39 @@ export default function RummyBoardDesktop({
               <span aria-hidden className="absolute bottom-3 left-3 text-2xl font-black pointer-events-none select-none" style={{ color: "#A8332B", opacity: 0.07 }}>♦</span>
               <span aria-hidden className="absolute bottom-3 right-3 text-2xl font-black pointer-events-none select-none" style={{ color: "#2E2419", opacity: 0.07 }}>♣</span>
 
-              {/* Decks + wild joker + finish slot — framed like a page clipping */}
+              {/* Decks + wild joker + finish slot — framed like a page clipping.
+                  During the post-show window the whole pile zone is locked and a
+                  countdown takes centre stage in the middle of the table. */}
               <div
                 className="relative flex items-start justify-center gap-8 mt-2 mx-auto px-8 py-4 rounded-2xl"
                 style={{ border: "2px dashed rgba(46,36,25,0.28)" }}
               >
-                <ClosedDeck
-                  count={state.closedDeckCount}
-                  canDraw={canDraw}
-                  onDraw={drawFromClosed}
-                />
-                <WildJokerDisplay card={state.wildJoker} />
-                <OpenPile
-                  top={state.topOfOpenPile}
-                  canDraw={canDraw}
-                  onDraw={drawFromOpen}
-                  dragOver={dragOverTarget === "openpile"}
-                  wildRank={wildRank}
-                />
-                <FinishSlot dragOver={dragOverTarget === "finishslot"} />
+                <div
+                  className="flex items-start gap-8 transition-opacity"
+                  style={isArranging ? { opacity: 0.28, pointerEvents: "none", filter: "grayscale(0.4)" } : undefined}
+                >
+                  <ClosedDeck
+                    count={state.closedDeckCount}
+                    canDraw={canDraw}
+                    onDraw={drawFromClosed}
+                  />
+                  <WildJokerDisplay card={state.wildJoker} />
+                  <OpenPile
+                    top={state.topOfOpenPile}
+                    canDraw={canDraw}
+                    onDraw={drawFromOpen}
+                    dragOver={dragOverTarget === "openpile"}
+                    wildRank={wildRank}
+                  />
+                  <FinishSlot dragOver={dragOverTarget === "finishslot"} />
+                </div>
+                {isArranging && (
+                  <ArrangeCenterTimer
+                    remainingSec={arrangeRemainingSec}
+                    spectator={iAmDeclarer}
+                    declarerName={nameOf(state.winnerId ?? "")}
+                  />
+                )}
               </div>
 
               {handHint && (
@@ -872,12 +886,14 @@ export default function RummyBoardDesktop({
                 </div>
               )}
 
-              {/* Group lanes */}
+              {/* Group lanes — locked for the declarer (they're spectating);
+                  losers keep them live to rearrange and cut their points. */}
               <div
-                className="relative flex-1 mt-1 rounded-xl px-4 py-4 overflow-x-auto"
+                className="relative flex-1 mt-1 rounded-xl px-4 py-4 overflow-x-auto transition-opacity"
                 style={{
                   background: "rgba(255,255,255,0.32)",
                   border: "1px solid rgba(46,36,25,0.18)",
+                  ...(iAmDeclarer ? { opacity: 0.4, pointerEvents: "none" as const } : {}),
                 }}
               >
                 <div className="flex items-stretch gap-3 flex-wrap min-h-[120px]">
@@ -938,13 +954,19 @@ export default function RummyBoardDesktop({
               ) : (
                 <div
                   className="relative flex items-stretch gap-3 rounded-xl transition-all duration-300"
-                  style={myTurn ? {
-                    boxShadow: "0 0 0 3px #C9A227, 0 0 24px rgba(201,162,39,0.50)",
-                    border: "2px solid #C9A227",
-                    padding: "6px",
-                    background: "rgba(201,162,39,0.06)",
-                    animation: "rummy-glow 1.4s ease-in-out infinite",
-                  } : { border: "2px solid transparent", padding: "6px" }}
+                  style={
+                    iAmDeclarer
+                      ? { border: "2px solid transparent", padding: "6px", opacity: 0.4, pointerEvents: "none" }
+                      : myTurn
+                      ? {
+                          boxShadow: "0 0 0 3px #C9A227, 0 0 24px rgba(201,162,39,0.50)",
+                          border: "2px solid #C9A227",
+                          padding: "6px",
+                          background: "rgba(201,162,39,0.06)",
+                          animation: "rummy-glow 1.4s ease-in-out infinite",
+                        }
+                      : { border: "2px solid transparent", padding: "6px" }
+                  }
                 >
                   {myTurn && (
                     <div
@@ -986,10 +1008,11 @@ export default function RummyBoardDesktop({
                   Secondary tools (DROP / SORT / AUTO / GROUP) live behind a
                   toggle so the board doesn't feel cluttered by default. */}
               <div
-                className="relative rounded-xl overflow-hidden"
+                className="relative rounded-xl overflow-hidden transition-opacity"
                 style={{
                   background: "linear-gradient(180deg, #6D4323 0%, #4A2C16 100%)",
                   border: "1px solid rgba(0,0,0,0.35)",
+                  ...(iAmDeclarer ? { opacity: 0.4, pointerEvents: "none" as const } : {}),
                 }}
               >
                 {/* Always-visible primary row */}
@@ -1126,15 +1149,6 @@ export default function RummyBoardDesktop({
           <SidePlayersRail state={state} players={players} selfId={selfId} nameOf={nameOf} />
         </aside>
       </div>
-
-      {/* Post-show 15s rearrange window — prominent countdown banner. */}
-      {isArranging && (
-        <ArrangingBanner
-          remainingSec={arrangeRemainingSec}
-          iAmDeclarer={iAmDeclarer}
-          declarerName={nameOf(state.winnerId ?? "")}
-        />
-      )}
 
       {/* Drop announcement — a card slams down when a player drops. */}
       {dropAnnounce && <DropAnnounce name={dropAnnounce.name} mine={dropAnnounce.mine} />}
@@ -1400,54 +1414,54 @@ function DropAnnounce({ name, mine }: { name: string; mine: boolean }) {
 }
 
 /**
- * Top-centred banner during the post-show 15-second rearrange window. For the
- * player who made the show it reads as a calm spectator note; for everyone else
- * it's an urgent "arrange to cut your points" call with a live countdown (and a
- * red pulse in the final 5 seconds). Non-modal so players keep dragging cards.
+ * Centre-of-table countdown for the post-show rearrange window. Sits over the
+ * (now locked) deck/pile zone — the middle of the table — as a big ring with a
+ * role-aware caption. For the declarer it's a calm "you made the show / waiting"
+ * note; for a loser it's an urgent "arrange to cut your points" prompt that
+ * pulses red in the final 5 seconds. pointer-events-none so a loser can still
+ * drag cards in the lanes below.
  */
-function ArrangingBanner({
+function ArrangeCenterTimer({
   remainingSec,
-  iAmDeclarer,
+  spectator,
   declarerName,
 }: {
   remainingSec: number | null;
-  iAmDeclarer: boolean;
+  spectator: boolean;
   declarerName: string;
 }) {
-  const urgent = remainingSec != null && remainingSec <= 5 && !iAmDeclarer;
+  const urgent = remainingSec != null && remainingSec <= 5 && !spectator;
+  const accent = spectator ? "#22c55e" : urgent ? "#ef4444" : "#fbbf24";
   return (
-    <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[58] pointer-events-none rummy-result-pop">
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none rummy-result-pop">
       <div
-        className="flex items-center gap-3 rounded-full pl-4 pr-2 py-2 shadow-lift-3 border"
+        className="flex items-center justify-center rounded-full font-black tabular-nums"
         style={{
-          background: iAmDeclarer
-            ? "linear-gradient(135deg,#166534,#15803d)"
-            : "linear-gradient(135deg,#7c2d12,#b45309)",
-          borderColor: iAmDeclarer ? "#22c55e" : "#fbbf24",
+          width: 88,
+          height: 88,
+          fontSize: 40,
+          color: "#fff",
+          background: "radial-gradient(circle at 50% 35%, rgba(0,0,0,0.55), rgba(0,0,0,0.78))",
+          border: `4px solid ${accent}`,
+          boxShadow: `0 0 26px ${accent}88, inset 0 0 14px rgba(0,0,0,0.6)`,
           animation: urgent ? "rummy-glow 0.7s ease-in-out infinite" : undefined,
         }}
       >
-        <span className="text-lg">{iAmDeclarer ? "🏆" : "⏱️"}</span>
-        <div className="text-left leading-tight">
-          <div className="text-[13px] font-black text-white">
-            {iAmDeclarer
-              ? "You made the show!"
-              : `${declarerName || "Someone"} declared — arrange to cut your points!`}
-          </div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-white/70">
-            {iAmDeclarer ? "Waiting for others to arrange…" : "Group your cards — un-melded cards count full"}
-          </div>
-        </div>
-        <span
-          className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-black tabular-nums text-lg"
-          style={{
-            background: "rgba(0,0,0,0.30)",
-            color: urgent ? "#fecaca" : "#fef3c7",
-            border: `2px solid ${urgent ? "#ef4444" : "rgba(255,255,255,0.35)"}`,
-          }}
-        >
-          {remainingSec ?? "—"}
-        </span>
+        {remainingSec ?? "—"}
+      </div>
+      <div
+        className="mt-2 px-4 py-1 rounded-full text-[12px] font-black uppercase tracking-[0.12em] text-center"
+        style={{
+          background: spectator ? "linear-gradient(135deg,#166534,#15803d)" : "linear-gradient(135deg,#7c2d12,#b45309)",
+          color: "#fff",
+          border: `1.5px solid ${accent}`,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.5)",
+        }}
+      >
+        {spectator ? "🏆 You made the show" : `⏱️ ${declarerName || "Someone"} declared`}
+      </div>
+      <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/80 text-center px-2">
+        {spectator ? "Board locked — waiting for others to arrange…" : "Arrange to cut your points"}
       </div>
     </div>
   );
