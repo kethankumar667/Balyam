@@ -210,7 +210,7 @@ function PendingResponseAvatars({
         return (
           <span
             key={p.id}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white border border-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 px-2 py-0.5 text-xs font-bold text-amber-900 dark:text-amber-300"
             title={`${p.name} — ${r}`}
           >
             <span className={`w-2 h-2 rounded-full ${dot}`} aria-hidden />

@@ -100,6 +100,24 @@ export default {
           },
           brass: "#9C7A3C",       // coin-tray / hinge metal — duller than bhalyam.gold
         },
+        // ── Hand Cricket notebook skin (client/src/games/handcricket) ────
+        // The scrapbook/ruled-paper aesthetic shared by the team-select,
+        // squad, toss and innings sheets. Consumed by components/paper/*.
+        // Kept separate from nostalgia.* (rummy) so tuning one never shifts
+        // the other.
+        hc: {
+          paper:    "#F5E9C4",   // page base
+          "paper-l":"#FBF5E0",   // raised card fill
+          "paper-d":"#EDE0C0",   // header / recessed strip
+          ink:      "#1a2952",   // primary handwriting ink (navy)
+          "ink-lt": "#4a5a82",   // secondary ink
+          "ink-red":"#8B1A1A",   // red pen
+          wood:     "#4a2c12",   // notebook cover / binding
+          border:   "rgba(46,40,25,0.55)", // sketch stroke
+          stamp:    "#166534",   // green "selected" stamp
+          amber:    "#92400e",   // amber accent
+          gold:     "#C5963A",   // legends / stars
+        },
       },
       fontFamily: {
         // BHALYAM type system, chosen via ui-ux-pro-max skill:
@@ -112,6 +130,11 @@ export default {
         script:  ['Caveat', 'cursive'],
         body:    ['Poppins', 'system-ui', 'sans-serif'],
         mono:    ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        kalam:   ['Kalam', 'cursive'],
+        hand:    ['"Patrick Hand"', 'Kalam', 'cursive'],
+        notebook: ['Kalam', '"Patrick Hand"', 'Caveat', 'cursive'],
+        // Sketchy marker for Hand Cricket headings (loaded in index.html).
+        sketch:  ['"Architects Daughter"', 'Kalam', 'cursive'],
       },
       borderRadius: {
         xs: "4px",

@@ -745,6 +745,7 @@ export default function Room() {
                 messages={messages}
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
+                onLeave={leaveRoom}
               />
             )}
 
@@ -990,9 +991,9 @@ function NameEntryForRoom({
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Your name"
           maxLength={20}
-          className="w-full rounded-xl border border-[#D5BFA1] bg-white text-[#2A221B]
+          className="w-full rounded-xl border border-[#D5BFA1] dark:border-slate-600 bg-white dark:bg-slate-800 text-[#2A221B] dark:text-slate-100
                      text-lg px-4 py-3 outline-none focus:border-[#EA5A1F]
-                     focus:ring-2 focus:ring-[#EA5A1F]/30"
+                     focus:ring-2 focus:ring-[#EA5A1F]/30 dark:placeholder:text-slate-500"
         />
         <button
           type="submit"

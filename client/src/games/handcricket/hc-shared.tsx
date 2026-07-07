@@ -20,6 +20,18 @@ import {
 } from "@shared/hc-rosters";
 import { HC_MAX_OVERS_PER_BOWLER } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import { motion } from "framer-motion";
+import { cn } from "../../lib/cn";
+import { RoughBorder, HcSketchHeading } from "./hc-notebook";
+import {
+  PaperPanel,
+  PaperButton,
+  PaperCard,
+  PaperBadge,
+  SketchHeading,
+  ROLE_BADGE_TONE,
+  ROLE_BADGE_LABEL,
+} from "../../components/paper";
 
 /**
  * Shared props for every Hand Cricket shell (picker, mobile, desktop).
@@ -32,6 +44,10 @@ export interface HandCricketBoardProps {
   messages: ChatMessage[];
   roomCode: string;
   roomPhase: string;
+  /** Leaves the room. Threaded from Room.tsx so the fixed-viewport notebook
+   *  shell can render its own Leave control (Room.tsx's header is covered by
+   *  the z-50 notebook overlay). */
+  onLeave?: () => void;
 }
 
 const HAND_FACES = ["", "☝️", "✌️", "🤟", "🖖", "🖐️", "✊"];
@@ -288,22 +304,131 @@ export function TeamPicker({
   );
 }
 
+// ── Notebook palette (squad picker section) ──────────────────────────────
+const PAPER   = "#F5E9C4";
+const PAPER_L = "#FBF5E0";
+const INK     = "#1a2952";
+const INK_LT  = "#4a5a82";
+const BORDER  = "rgba(46,40,25,0.50)";
+const STAMP_G = "#166534";
+const STAMP_A = "#92400e";
+const GOLD    = "#C5963A";
+
+const _ROLE_COLORS: Record<HcPlayerProfile["role"], string> = {
+  batter: "#166534", keeper: "#92400e", allrounder: "#6d28d9", bowler: "#991b1b",
+};
+const _ROLE_LABELS: Record<HcPlayerProfile["role"], string> = {
+  batter: "BAT", keeper: "WK", allrounder: "AR", bowler: "BOWL",
+};
+
+function PlayerCardMini({
+  p,
+  isSelected,
+  isCaptain,
+  isVC,
+  onToggle,
+  onCaptain,
+  onVC,
+  disabled,
+  isLegend = false,
+  big = false,
+}: {
+  p: HcPlayerProfile;
+  isSelected: boolean;
+  isCaptain: boolean;
+  isVC: boolean;
+  onToggle: () => void;
+  onCaptain: () => void;
+  onVC: () => void;
+  disabled: boolean;
+  isLegend?: boolean;
+  big?: boolean;
+}) {
+  const nameSize = big ? 14 : 11;
+  const leadSize = big ? 10 : 8;
+  const isDisabledLook = disabled && !isSelected;
+  const leadPad = big ? "2px 7px" : "1px 5px";
+  return (
+    <PaperCard
+      tone={isSelected ? "selected" : isLegend ? "legend" : "default"}
+      disabled={isDisabledLook}
+      interactive={!isDisabledLook}
+      onClick={() => { if (!disabled || isSelected) onToggle(); }}
+      ariaPressed={isSelected}
+      ariaLabel={p.name}
+      className="min-w-0"
+    >
+      <div className={cn("relative", big ? "px-2.5 py-2.5" : "px-2 py-2")}>
+        <div className="flex items-center gap-1 flex-wrap" style={{ marginBottom: big ? 4 : 2 }}>
+          <PaperBadge tone={ROLE_BADGE_TONE[p.role]} size={big ? "md" : "sm"}>
+            {ROLE_BADGE_LABEL[p.role]}
+          </PaperBadge>
+          {isCaptain && <PaperBadge tone="captain" size={big ? "md" : "sm"}>C</PaperBadge>}
+          {isVC && <PaperBadge tone="vice" size={big ? "md" : "sm"}>VC</PaperBadge>}
+        </div>
+        <div className="font-hand font-bold text-hc-ink leading-tight" style={{ fontSize: nameSize }}>
+          {isLegend ? `★ ${p.name}` : p.name}
+        </div>
+        {isSelected && (
+          <span className="absolute top-0.5 right-1 text-hc-stamp font-bold" style={{ fontSize: big ? 13 : 11 }}>✓</span>
+        )}
+        {isSelected && (
+          <div className="flex gap-1" style={{ marginTop: big ? 5 : 3 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onCaptain(); }}
+              className="font-kalam font-extrabold rounded-[2px] cursor-pointer"
+              style={{
+                background: isCaptain ? GOLD : "rgba(197,150,58,0.15)",
+                color: isCaptain ? "#fff" : GOLD,
+                border: `1px solid ${GOLD}`,
+                fontSize: leadSize,
+                padding: leadPad,
+              }}
+            >
+              C
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onVC(); }}
+              className="font-kalam font-extrabold rounded-[2px] cursor-pointer"
+              style={{
+                background: isVC ? STAMP_A : "rgba(146,64,14,0.12)",
+                color: isVC ? "#fff" : STAMP_A,
+                border: `1px solid ${STAMP_A}`,
+                fontSize: leadSize,
+                padding: leadPad,
+              }}
+            >
+              VC
+            </button>
+          </div>
+        )}
+      </div>
+    </PaperCard>
+  );
+}
+
 export function SquadPicker({
   state,
   selfId,
   players,
   onChangeTeam,
+  isDesktop = false,
 }: {
   state: HcState;
   selfId: string;
   players: Player[];
   onChangeTeam: () => void;
+  /** Desktop shell passes true so the (shared) picker uses larger type and
+   *  wider cards — there's far more room than on a phone. */
+  isDesktop?: boolean;
 }) {
   const mySelection = state.teamSelections[selfId];
   if (!mySelection?.teamId) return null;
   const myTeamId = mySelection.teamId;
   const roster = getRosterFor(myTeamId, state.options.format);
-  if (!roster) return <div className="text-rose-300">Roster unavailable.</div>;
+  if (!roster) return (
+    <div style={{ color: "#991b1b", fontFamily: "'Kalam', cursive", fontSize: 14 }}>Roster unavailable.</div>
+  );
 
   const sortedSquad = useMemo(
     () => roster.squad.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]),
@@ -313,7 +438,6 @@ export function SquadPicker({
     () => roster.extras.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]),
     [roster],
   );
-  // For lookup of a profile by id across both pools.
   const profilesById = useMemo(() => {
     const m = new Map<string, HcPlayerProfile>();
     for (const p of sortedSquad) m.set(p.id, p);
@@ -321,22 +445,17 @@ export function SquadPicker({
     return m;
   }, [sortedSquad, sortedExtras]);
 
-  // Default XI = first 11 squad players in role order. Captain defaults to the
-  // roster-tagged captain (if present in the picked XI); VC defaults to the
-  // first all-rounder/batter who isn't the captain. Both are user-changeable.
   const [selected, setSelected] = useState<Set<string>>(() => {
     return new Set(sortedSquad.slice(0, 11).map((p) => p.id));
   });
   const [captainId, setCaptainId] = useState<string | null>(null);
   const [viceCaptainId, setViceCaptainId] = useState<string | null>(null);
 
-  // Auto-clear C/VC when the player is dropped from the XI.
   useEffect(() => {
     if (captainId && !selected.has(captainId)) setCaptainId(null);
     if (viceCaptainId && !selected.has(viceCaptainId)) setViceCaptainId(null);
   }, [selected, captainId, viceCaptainId]);
 
-  // Seed captain/VC defaults once the XI is non-empty and nothing is picked yet.
   useEffect(() => {
     if (captainId || viceCaptainId) return;
     if (selected.size === 0) return;
@@ -362,28 +481,16 @@ export function SquadPicker({
     });
   }
 
-  function changeTeam() {
-    // The "Change team" button takes the player back to the country picker.
-    // Driven by a parent-level UI override (see TeamSelectPhase) since
-    // selectTeam can't actually clear teamId on the server.
-    onChangeTeam();
-  }
-
   function confirm() {
     if (selected.size !== 11) return;
     if (!captainId || !viceCaptainId) return;
     if (captainId === viceCaptainId) return;
     getSocket().emit("game:move", {
       type: "confirmSquad",
-      data: {
-        playerIds: [...selected],
-        captainId,
-        viceCaptainId,
-      },
+      data: { playerIds: [...selected], captainId, viceCaptainId },
     });
   }
 
-  // Derived lists.
   const xiPlayers = useMemo(() => {
     return [...selected]
       .map((id) => profilesById.get(id))
@@ -398,10 +505,7 @@ export function SquadPicker({
     () => sortedExtras.filter((p) => !selected.has(p.id)),
     [sortedExtras, selected],
   );
-  const composition = useMemo(
-    () => evaluateSquadComposition(xiPlayers),
-    [xiPlayers],
-  );
+  const composition = useMemo(() => evaluateSquadComposition(xiPlayers), [xiPlayers]);
 
   const profile = (HC_COUNTRIES as Record<string, typeof HC_COUNTRIES.india | undefined>)[myTeamId];
   const franchise = (HC_FRANCHISES as Record<string, typeof HC_FRANCHISES.csk | undefined>)[myTeamId];
@@ -420,187 +524,144 @@ export function SquadPicker({
     ? "Picking squad…"
     : "Picking country…";
 
+  const hasLeaders = !!captainId && !!viceCaptainId && captainId !== viceCaptainId;
+  const ready = composition.isValid && hasLeaders;
+  const confirmLabel = !composition.isValid
+    ? selected.size !== 11
+      ? `Select ${11 - selected.size} more player${11 - selected.size === 1 ? "" : "s"}`
+      : "Fix squad composition"
+    : !hasLeaders
+    ? "Pick Captain & Vice-Captain"
+    : "🖊 CONFIRM PLAYING XI";
+
   return (
-    <div className="bg-emerald-950/50 rounded-lg p-4 space-y-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="text-emerald-100 font-bold">
-          Pick your XI for <span className="text-amber-300">{teamDisplay}</span>
-        </div>
-        <button
-          onClick={changeTeam}
-          className="text-xs px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-200 font-bold"
+    <PaperPanel tone="sheet" strong pad="none" className="font-notebook px-5 pt-4 pb-3.5">
+        {/* Change team — top-right */}
+        <PaperButton
+          variant="ghost"
+          size="sm"
+          onClick={onChangeTeam}
+          className="absolute -top-1 right-0 font-kalam normal-case tracking-normal"
         >
-          ← Change team
-        </button>
-      </div>
+          ← Change Team
+        </PaperButton>
 
-      <div className="bg-slate-900/40 rounded-lg p-2.5 text-center space-y-1">
-        <div className="text-xs text-emerald-300/80">
-          Selected <span className="font-extrabold text-amber-300 text-base">{selected.size}/11</span> · format:{" "}
-          <span className="font-bold uppercase">{state.options.format}</span>
+        <HcSketchHeading size={isDesktop ? "26px" : "clamp(14px,1.8vw,20px)"}>
+          Pick Your XI — {teamDisplay}
+        </HcSketchHeading>
+
+        {/* Status + composition checklist */}
+        <div className="flex justify-center items-center flex-wrap gap-2.5 my-2.5 mb-3">
+          <span className="font-hand text-hc-ink-lt" style={{ fontSize: isDesktop ? 14 : 12 }}>
+            Selected <strong className="text-hc-ink">{selected.size}/11</strong>
+            {" · "}Format: <strong className="text-hc-ink">{state.options.format.toUpperCase()}</strong>
+            {" · "}{oppName}: <em>{oppStatus}</em>
+          </span>
+          <CompositionChecklist composition={composition} />
         </div>
-        <div className="text-[11px] text-emerald-200/70">
-          Tap a player in <span className="text-emerald-300 font-bold">Your XI</span> to drop them to the bench.
-          Tap any <span className="text-slate-300 font-bold">Bench</span> or <span className="text-violet-300 font-bold">Legend</span> to swap them in.
+
+        {/* Scrollable sections */}
+        <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 250px)", paddingRight: 2 }}>
+          {/* YOUR XI — ruled-paper panel */}
+          <PaperPanel
+            pad="none"
+            className="mb-2.5 pl-12 pr-2.5 py-2.5"
+            style={{
+              backgroundImage: [
+                "repeating-linear-gradient(to bottom, transparent, transparent 26px, rgba(50,80,160,0.13) 26px, rgba(50,80,160,0.13) 27px)",
+                "linear-gradient(to right, rgba(180,30,30,0.32) 0px, rgba(180,30,30,0.32) 1.5px, transparent 1.5px)",
+              ].join(", "),
+              backgroundPosition: "0 15px, 48px 0",
+            }}
+          >
+            <div className="mb-2">
+              <span
+                className="font-sketch font-bold text-hc-ink tracking-[0.03em]"
+                style={{ fontSize: isDesktop ? 19 : 15 }}
+              >
+                🏏 Your XI ({xiPlayers.length}/11)
+              </span>{" "}
+              <span className="italic text-hc-ink-lt" style={{ fontSize: isDesktop ? 13 : 11 }}>
+                Click [C] / [VC] on a card to assign captain roles · Click card to drop to bench
+              </span>
+            </div>
+            {xiPlayers.length === 0 ? (
+              <div className="italic text-hc-ink-lt py-1" style={{ fontSize: isDesktop ? 13 : 11 }}>
+                No players selected yet.
+              </div>
+            ) : (
+              <div
+                className="grid"
+                style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${isDesktop ? 156 : 116}px, 1fr))`, gap: isDesktop ? 10 : 8 }}
+              >
+                {xiPlayers.map((p) => (
+                  <PlayerCardMini
+                    key={p.id}
+                    p={p}
+                    isSelected
+                    big={isDesktop}
+                    isCaptain={captainId === p.id}
+                    isVC={viceCaptainId === p.id}
+                    onToggle={() => toggle(p.id)}
+                    onCaptain={() => {
+                      setCaptainId(p.id);
+                      if (viceCaptainId === p.id) setViceCaptainId(null);
+                    }}
+                    onVC={() => {
+                      setViceCaptainId(p.id);
+                      if (captainId === p.id) setCaptainId(null);
+                    }}
+                    disabled={false}
+                  />
+                ))}
+              </div>
+            )}
+          </PaperPanel>
+
+          {/* BENCH */}
+          {benchPlayers.length > 0 && (
+            <SquadGroup
+              title={`🪑 Bench (${benchPlayers.length})`}
+              subtitle="Current squad members not in your XI"
+              players={benchPlayers}
+              selected={selected}
+              onToggle={toggle}
+              disabledHint={selected.size >= 11}
+              big={isDesktop}
+            />
+          )}
+
+          {/* LEGENDS */}
+          {legendsBench.length > 0 && (
+            <SquadGroup
+              title={`★ Legends (${legendsBench.length})`}
+              subtitle="Popular past players from this team's history"
+              players={legendsBench}
+              selected={selected}
+              onToggle={toggle}
+              disabledHint={selected.size >= 11}
+              isLegend
+              big={isDesktop}
+            />
+          )}
+
+          {/* Confirm button */}
+          <PaperButton
+            variant="confirm"
+            size="block"
+            onClick={confirm}
+            disabled={!ready}
+            muted={!ready}
+            className={cn("mt-3 tracking-[0.08em]", isDesktop ? "text-lg py-3.5" : "text-[15px]")}
+          >
+            {confirmLabel}
+          </PaperButton>
         </div>
-        <CompositionChecklist composition={composition} />
-        <div className="text-[10px] text-emerald-300/70">{oppName}: {oppStatus}</div>
-      </div>
-
-      {/* YOUR XI — selected players */}
-      <SquadGroup
-        title={`🏏 Your XI (${xiPlayers.length}/11)`}
-        subtitle="Click any to drop to bench"
-        players={xiPlayers}
-        selected={selected}
-        onToggle={toggle}
-        accentColor="#10b981"
-      />
-
-      {/* BENCH — unselected squad members */}
-      {benchPlayers.length > 0 && (
-        <SquadGroup
-          title={`🪑 Bench (${benchPlayers.length})`}
-          subtitle="Current squad members not in your XI"
-          players={benchPlayers}
-          selected={selected}
-          onToggle={toggle}
-          accentColor="#64748b"
-          disabledHint={selected.size >= 11}
-        />
-      )}
-
-      {/* LEGENDS — extras pool */}
-      {legendsBench.length > 0 && (
-        <SquadGroup
-          title={`★ Legends (${legendsBench.length})`}
-          subtitle="Popular past players from this team's history"
-          players={legendsBench}
-          selected={selected}
-          onToggle={toggle}
-          accentColor="#a855f7"
-          disabledHint={selected.size >= 11}
-        />
-      )}
-
-      {/* Captain + Vice-Captain selectors — required. */}
-      <LeadershipPicker
-        xi={xiPlayers}
-        captainId={captainId}
-        viceCaptainId={viceCaptainId}
-        onCaptainChange={(id) => {
-          setCaptainId(id);
-          if (id && viceCaptainId === id) setViceCaptainId(null);
-        }}
-        onViceCaptainChange={(id) => {
-          setViceCaptainId(id);
-          if (id && captainId === id) setCaptainId(null);
-        }}
-      />
-
-      <div className="flex flex-col items-center gap-1 pt-2">
-        {(() => {
-          const hasLeaders =
-            !!captainId && !!viceCaptainId && captainId !== viceCaptainId;
-          const ready = composition.isValid && hasLeaders;
-          const label = !composition.isValid
-            ? selected.size !== 11
-              ? `Select ${11 - selected.size} more`
-              : "Fix squad composition"
-            : !hasLeaders
-              ? "Pick Captain & Vice-Captain"
-              : "🏏 Confirm Playing XI";
-          return (
-            <button
-              onClick={confirm}
-              disabled={!ready}
-              className="px-6 py-3 rounded-lg font-extrabold text-base transition uppercase tracking-wider"
-              style={{
-                background: ready
-                  ? "linear-gradient(180deg, #10b981, #047857)"
-                  : "linear-gradient(180deg, #475569, #334155)",
-                color: ready ? "#ecfdf5" : "#94a3b8",
-                boxShadow: ready
-                  ? "0 4px 0 #064e3b, 0 8px 16px rgba(0,0,0,0.4)"
-                  : "0 2px 0 #1e293b",
-                cursor: ready ? "pointer" : "not-allowed",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })()}
-      </div>
-    </div>
+    </PaperPanel>
   );
 }
 
-export function LeadershipPicker({
-  xi,
-  captainId,
-  viceCaptainId,
-  onCaptainChange,
-  onViceCaptainChange,
-}: {
-  xi: HcPlayerProfile[];
-  captainId: string | null;
-  viceCaptainId: string | null;
-  onCaptainChange: (id: string | null) => void;
-  onViceCaptainChange: (id: string | null) => void;
-}) {
-  const noPlayers = xi.length === 0;
-  return (
-    <div
-      className="rounded-lg p-3 space-y-2"
-      style={{
-        background: "rgba(251,191,36,0.08)",
-        border: "1px solid rgba(251,191,36,0.35)",
-      }}
-    >
-      <div className="text-center text-xs font-extrabold uppercase tracking-wider text-amber-300">
-        ★ Leadership · pick from your XI
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label className="block text-[11px]">
-          <span className="block font-bold text-amber-200 mb-1">
-            Captain <span className="text-rose-300">*</span>
-          </span>
-          <select
-            value={captainId ?? ""}
-            disabled={noPlayers}
-            onChange={(e) => onCaptainChange(e.target.value || null)}
-            className="w-full rounded-md px-2 py-2 text-sm font-semibold bg-slate-900/80 text-amber-100 border border-amber-500/40 focus:outline-none focus:border-amber-300 disabled:opacity-50"
-          >
-            <option value="">Choose Captain</option>
-            {xi.map((p) => (
-              <option key={p.id} value={p.id} disabled={p.id === viceCaptainId}>
-                {p.name} ({p.role.toUpperCase()})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-[11px]">
-          <span className="block font-bold text-amber-200 mb-1">
-            Vice-Captain <span className="text-rose-300">*</span>
-          </span>
-          <select
-            value={viceCaptainId ?? ""}
-            disabled={noPlayers}
-            onChange={(e) => onViceCaptainChange(e.target.value || null)}
-            className="w-full rounded-md px-2 py-2 text-sm font-semibold bg-slate-900/80 text-amber-100 border border-amber-500/40 focus:outline-none focus:border-amber-300 disabled:opacity-50"
-          >
-            <option value="">Choose Vice-Captain</option>
-            {xi.map((p) => (
-              <option key={p.id} value={p.id} disabled={p.id === captainId}>
-                {p.name} ({p.role.toUpperCase()})
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-    </div>
-  );
-}
+// LeadershipPicker removed — captain/VC are now set via [C]/[VC] buttons on XI cards.
 
 export function CompositionChecklist({
   composition,
@@ -610,21 +671,25 @@ export function CompositionChecklist({
   const items = [
     { label: "11 players", ok: composition.total === 11, count: `${composition.total}/11` },
     { label: "Keeper", ok: composition.keepers >= 1, count: `${composition.keepers}` },
-    { label: "Bowling options (bowlers + AR)", ok: composition.bowlingOptions >= 4, count: `${composition.bowlingOptions}/4` },
+    { label: "Bowling options", ok: composition.bowlingOptions >= 4, count: `${composition.bowlingOptions}/4` },
   ];
   return (
-    <div className="flex flex-wrap justify-center gap-1.5 pt-1">
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
       {items.map((item) => (
         <span
           key={item.label}
-          className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full"
           style={{
-            background: item.ok ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.18)",
-            color: item.ok ? "#a7f3d0" : "#fcd34d",
-            border: `1px solid ${item.ok ? "#10b981" : "#f59e0b"}`,
+            border: `1.5px solid ${item.ok ? STAMP_G : "#b45309"}`,
+            background: item.ok ? "rgba(22,101,52,0.08)" : "rgba(180,83,9,0.08)",
+            color: item.ok ? STAMP_G : "#b45309",
+            borderRadius: 3,
+            fontSize: 10,
+            fontWeight: 800,
+            padding: "1px 7px",
+            fontFamily: "'Kalam', cursive",
           }}
         >
-          {item.ok ? "✓" : "·"} {item.label} <span className="opacity-80">({item.count})</span>
+          {item.ok ? "✓" : "·"} {item.label} ({item.count})
         </span>
       ))}
     </div>
@@ -637,8 +702,10 @@ export function SquadGroup({
   players,
   selected,
   onToggle,
-  accentColor = "#10b981",
+  accentColor: _accentColor = "#10b981",
   disabledHint = false,
+  isLegend = false,
+  big = false,
 }: {
   title: string;
   subtitle?: string;
@@ -647,97 +714,48 @@ export function SquadGroup({
   onToggle: (id: string) => void;
   accentColor?: string;
   disabledHint?: boolean;
+  isLegend?: boolean;
+  big?: boolean;
 }) {
-  const roleLabel: Record<HcPlayerProfile["role"], string> = {
-    batter: "BAT", bowler: "BOWL", allrounder: "AR", keeper: "WK",
-  };
-  const roleColor: Record<HcPlayerProfile["role"], string> = {
-    batter: "#3b82f6", bowler: "#ef4444", allrounder: "#a855f7", keeper: "#f59e0b",
-  };
   return (
-    <div
-      className="space-y-1.5 rounded-lg p-2"
-      style={{
-        background: `${accentColor}11`,
-        border: `1px solid ${accentColor}33`,
-      }}
-    >
-      <div className="flex items-baseline justify-between gap-2 px-1">
-        <h4
-          className="text-xs uppercase tracking-wider font-extrabold"
-          style={{ color: accentColor }}
-        >
+    <PaperPanel tone={isLegend ? "legend" : "soft"} pad="sm" className="mb-2.5">
+      <div className="flex items-baseline justify-between gap-2 mb-2 pl-0.5">
+        <h4 className="font-sketch font-bold text-hc-ink m-0 tracking-[0.03em]" style={{ fontSize: big ? 19 : 15 }}>
           {title}
         </h4>
         {subtitle && (
-          <span className="text-[10px] text-emerald-300/70 text-right">{subtitle}</span>
+          <span className="italic text-hc-ink-lt" style={{ fontSize: big ? 13 : 11 }}>{subtitle}</span>
         )}
       </div>
       {players.length === 0 ? (
-        <div className="text-[11px] italic text-emerald-300/50 px-1 py-2">
-          Empty.
-        </div>
+        <div className="italic text-hc-ink-lt px-0.5 py-1" style={{ fontSize: big ? 13 : 11 }}>Empty.</div>
       ) : (
         <div
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 overflow-y-auto"
-          style={{ maxHeight: "min(50vh, 28rem)" }}
+          className="grid"
+          style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${big ? 156 : 116}px, 1fr))`, gap: big ? 10 : 8 }}
         >
           {players.map((p) => {
             const isSel = selected.has(p.id);
             const isDisabled = !isSel && disabledHint;
             return (
-              <button
+              <PlayerCardMini
                 key={p.id}
-                onClick={() => onToggle(p.id)}
+                p={p}
+                isSelected={isSel}
+                isCaptain={false}
+                isVC={false}
+                onToggle={() => onToggle(p.id)}
+                onCaptain={() => {}}
+                onVC={() => {}}
                 disabled={isDisabled}
-                title={isDisabled ? "XI is full — drop someone first" : undefined}
-                className={`relative text-left rounded-lg p-2 border transition ${
-                  isSel
-                    ? "scale-[1.02]"
-                    : isDisabled
-                    ? "opacity-40 cursor-not-allowed"
-                    : "hover:scale-[1.02]"
-                }`}
-                style={{
-                  background: isSel ? `${accentColor}33` : "rgba(15,23,42,0.6)",
-                  borderColor: isSel ? accentColor : "rgba(255,255,255,0.1)",
-                }}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="text-[9px] font-extrabold px-1.5 py-0.5 rounded leading-none"
-                    style={{ background: roleColor[p.role], color: "#0f172a" }}
-                  >
-                    {roleLabel[p.role]}
-                  </span>
-                  {p.isCaptain && (
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500 text-slate-900">
-                      C
-                    </span>
-                  )}
-                  {p.isExtra && (
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-violet-600 text-white">
-                      ★
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs font-bold text-slate-100 mt-1 leading-tight">
-                  {p.name}
-                </div>
-                {isSel && (
-                  <span
-                    className="absolute top-1 right-1 text-xs"
-                    style={{ color: accentColor }}
-                  >
-                    ✓
-                  </span>
-                )}
-              </button>
+                isLegend={isLegend}
+                big={big}
+              />
             );
           })}
         </div>
       )}
-    </div>
+    </PaperPanel>
   );
 }
 
@@ -756,7 +774,6 @@ export function WaitingForOpponentSquad({
   const t0 = teamLabel(state, selfId, players);
 
   function reopen() {
-    // Re-emit selectTeam with same team to allow editing squad.
     if (state.teamSelections[selfId]?.teamId) {
       getSocket().emit("game:move", {
         type: "selectTeam",
@@ -766,23 +783,20 @@ export function WaitingForOpponentSquad({
   }
 
   return (
-    <div className="bg-emerald-950/50 rounded-lg p-4 space-y-3 text-center">
-      <div className="text-emerald-200">
-        <span className="text-4xl">{t0.flag}</span>
-        <div className="text-base font-extrabold mt-1">{t0.name}</div>
-        <div className="text-xs text-emerald-300">XI confirmed — {state.teamSelections[selfId]?.squadPlayerIds?.length ?? 0} players</div>
+    <PaperPanel tone="soft" strong pad="lg" className="text-center font-notebook">
+      <div className="text-[2.4rem] mb-1">{t0.flag}</div>
+      <div className="font-sketch font-bold text-[18px] text-hc-ink mb-0.5">{t0.name}</div>
+      <div className="text-xs text-hc-ink-lt mb-2.5">
+        XI confirmed · {state.teamSelections[selfId]?.squadPlayerIds?.length ?? 0} players
       </div>
-      <div className="text-emerald-100">
-        Waiting for <span className="font-bold text-amber-300">{oppName}</span>
+      <div className="text-[13px] text-hc-ink mb-3.5">
+        Waiting for <strong>{oppName}</strong>
         {oppSelection?.teamId ? " to confirm their XI…" : " to pick a team…"}
       </div>
-      <button
-        onClick={reopen}
-        className="text-xs px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-200 font-bold"
-      >
+      <PaperButton variant="ghost" size="sm" onClick={reopen} className="font-kalam normal-case tracking-normal">
         ← Edit my XI
-      </button>
-    </div>
+      </PaperButton>
+    </PaperPanel>
   );
 }
 
@@ -807,18 +821,55 @@ export function TossPhase({
   }
 
   return (
-    <div className="bg-emerald-950/50 rounded-lg p-4 space-y-3">
-      <div className="text-center text-emerald-100">
-        🎲 <strong>Toss</strong> — both pick 1-6. Sum even = first player wins, odd = second player wins.
+    <PaperPanel tone="soft" pad="lg" className="font-notebook">
+      <div className="space-y-4">
+        <div className="text-center space-y-1">
+          <div className="text-[34px] leading-none">🎲</div>
+          <SketchHeading arrows={false} className="text-[20px] tracking-[0.04em]">The Toss</SketchHeading>
+          <p className="text-hc-ink-lt text-[13px] max-w-[380px] mx-auto leading-snug">
+            Both players pick <strong>1–6</strong>. Even sum → first player wins · odd sum → second player wins.
+          </p>
+        </div>
+
+        <PickRow disabled={myPick != null} onPick={pick} selected={myPick ?? null} />
+
+        <div className="flex justify-center gap-3">
+          <TossStatusPill label="You" value={myPick != null ? String(myPick) : "…"} ready={myPick != null} mine />
+          <TossStatusPill label={oppName} value={oppLockedIn ? "✓ ready" : "thinking…"} ready={oppLockedIn} />
+        </div>
       </div>
-      <PickRow disabled={myPick != null} onPick={pick} selected={myPick ?? null} />
-      <div className="flex justify-center gap-6 text-sm">
-        <div className="text-slate-300">
-          You: <span className="text-amber-300 font-bold">{myPick ?? "—"}</span>
-        </div>
-        <div className="text-slate-300">
-          {oppName}: <span className="text-amber-300 font-bold">{oppLockedIn ? "✓ ready" : "thinking…"}</span>
-        </div>
+    </PaperPanel>
+  );
+}
+
+function TossStatusPill({
+  label,
+  value,
+  ready,
+  mine = false,
+}: {
+  label: string;
+  value: string;
+  ready: boolean;
+  mine?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        minWidth: 130,
+        textAlign: "center",
+        background: mine ? "rgba(22,101,52,0.08)" : "rgba(245,233,196,0.7)",
+        border: `1.5px ${ready ? "solid" : "dashed"} ${ready ? "#166534" : "rgba(46,40,25,0.45)"}`,
+        borderRadius: 8,
+        padding: "6px 12px",
+        fontFamily: "'Kalam', cursive",
+      }}
+    >
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#4a5a82", fontWeight: 800 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 800, color: ready ? "#166534" : "#1a2952", lineHeight: 1.2 }}>
+        {value}
       </div>
     </div>
   );
@@ -842,31 +893,59 @@ export function TossChoicePhase({
 
   if (!isWinner) {
     return (
-      <div className="bg-emerald-950/50 rounded-lg p-4 text-center text-emerald-100">
-        🪙 {winnerName} won the toss (sum {state.tossSum}) — choosing bat or bowl…
-      </div>
+      <PaperPanel tone="soft" pad="lg" className="font-notebook text-hc-ink-lt">
+        <div className="text-center space-y-2">
+          <div className="text-[34px] leading-none">🪙</div>
+          <div className="font-kalam font-extrabold text-[18px] text-hc-ink">
+            {winnerName} won the toss
+          </div>
+          <div className="text-[13px]">
+            Sum was <strong>{state.tossSum}</strong> — they're choosing to bat or bowl…
+          </div>
+        </div>
+      </PaperPanel>
     );
   }
   return (
-    <div className="bg-emerald-950/50 rounded-lg p-4 text-center space-y-3">
-      <div className="text-emerald-100">
-        🎉 You won the toss (sum {state.tossSum}). What do you want to do?
+    <PaperPanel tone="soft" pad="lg" className="font-notebook">
+      <div className="text-center space-y-5">
+        <div className="space-y-1">
+          <div className="text-[34px] leading-none">🎉</div>
+          <SketchHeading arrows={false} className="text-[20px] tracking-normal">You won the toss!</SketchHeading>
+          <div className="text-hc-ink-lt text-[13px]">
+            Sum was <strong>{state.tossSum}</strong>. What would you like to do?
+          </div>
+        </div>
+        <div className="flex justify-center gap-4 flex-wrap">
+          <TossChoiceButton emoji="🏏" label="BAT first" sub="Set a target" variant="solidGreen" onClick={() => choose("bat")} />
+          <TossChoiceButton emoji="⚾" label="BOWL first" sub="Chase it down" variant="solidBlue" onClick={() => choose("bowl")} />
+        </div>
       </div>
-      <div className="flex justify-center gap-3">
-        <button
-          onClick={() => choose("bat")}
-          className="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-lg font-extrabold text-lg shadow-lg"
-        >
-          🏏 BAT first
-        </button>
-        <button
-          onClick={() => choose("bowl")}
-          className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-lg font-extrabold text-lg shadow-lg"
-        >
-          ⚾ BOWL first
-        </button>
-      </div>
-    </div>
+    </PaperPanel>
+  );
+}
+
+function TossChoiceButton({
+  emoji,
+  label,
+  sub,
+  variant,
+  onClick,
+}: {
+  emoji: string;
+  label: string;
+  sub: string;
+  variant: "solidGreen" | "solidBlue";
+  onClick: () => void;
+}) {
+  return (
+    <PaperButton variant={variant} onClick={onClick} className="min-w-[150px] px-6 py-4 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.22)]">
+      <span className="flex flex-col items-center">
+        <span className="text-[30px] leading-none">{emoji}</span>
+        <span className="font-black text-[17px] tracking-[0.04em] mt-1">{label}</span>
+        <span className="text-[11px] opacity-85 mt-0.5 font-normal">{sub}</span>
+      </span>
+    </PaperButton>
   );
 }
 
@@ -947,9 +1026,10 @@ export function InningsPhase({
       {/* Role badge */}
       {myRole && (
         <div className="text-center">
-          <span className={`inline-block px-3 py-1 rounded-full font-bold text-xs ${
-            myRole === "batter" ? "bg-emerald-700 text-emerald-50" : "bg-indigo-700 text-indigo-50"
-          }`}>
+          <span style={myRole === "batter"
+            ? { background: "rgba(22,101,52,0.15)", color: "#166534", border: "1px solid #166534", borderRadius: 20, padding: "3px 10px", fontWeight: 700, fontSize: 12 }
+            : { background: "rgba(153,27,27,0.15)", color: "#991b1b", border: "1px solid #991b1b", borderRadius: 20, padding: "3px 10px", fontWeight: 700, fontSize: 12 }
+          }>
             {myRole === "batter" ? "🏏 You are BATTING" : "⚾ You are BOWLING"}
           </span>
         </div>
@@ -975,7 +1055,7 @@ export function InningsPhase({
             restrictedNote={bowlerRestricted ? "Powerplay — bowler limited to 1, 2 or 3" : null}
           />
 
-          <div className="flex justify-center gap-6 text-xs text-emerald-200/70">
+          <div className="flex justify-center gap-6 text-xs" style={{ color: "#4a5a82" }}>
             <div>You: {myPick != null && typeof myPick === "number" && myPick > 0 ? "✓ locked" : "thinking…"}</div>
             <div>Opp: {oppLockedIn ? "✓ locked" : "thinking…"}</div>
           </div>
@@ -983,7 +1063,7 @@ export function InningsPhase({
       )}
 
       {target != null && (
-        <div className="text-center text-sm text-amber-300">
+        <div className="text-center text-sm" style={{ color: "#92400e", fontWeight: 700, fontSize: 13 }}>
           Target: <b>{target}</b> · Need {Math.max(0, target - innings.runs)} more from{" "}
           {Math.max(0, innings.overs * 6 - innings.balls)} balls
         </div>
@@ -1091,21 +1171,14 @@ export function PlayerCard({
   dimmed?: boolean;
 }) {
   return (
-    <div
-      className="rounded-lg px-3 py-2"
-      style={{
-        background: dimmed ? "rgba(0,0,0,0.28)" : "rgba(0,0,0,0.42)",
-        border: `1px solid ${isMine && !dimmed ? accent : "rgba(255,255,255,0.1)"}`,
-        boxShadow: isMine && !dimmed ? `0 0 12px ${accent}55` : undefined,
-        opacity: dimmed ? 0.78 : 1,
-      }}
-    >
-      <div className="text-[9px] uppercase tracking-wider font-extrabold" style={{ color: accent }}>
-        {label}{isMine && <span className="ml-1 text-amber-300">· YOU</span>}
+    <PaperPanel tone="soft" pad="none" className={cn("px-2.5 py-1.5", dimmed && "opacity-80")}>
+      <div className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-hc-ink-lt">
+        {label}
+        {isMine && <span className="ml-1 text-hc-stamp text-[9px] font-extrabold">· YOU</span>}
       </div>
-      <div className="text-sm font-bold text-emerald-50 leading-tight">{name}</div>
-      <div className="text-[11px] text-emerald-200/80 tabular-nums">{sub}</div>
-    </div>
+      <div className="leading-tight font-bold text-[13px] text-hc-ink">{name}</div>
+      <div className="tabular-nums text-[11px] text-hc-ink-lt">{sub}</div>
+    </PaperPanel>
   );
 }
 
@@ -1139,10 +1212,11 @@ export function BowlerPicker({
 
   if (!amBowling) {
     return (
-      <div className="bg-indigo-950/50 rounded-lg p-4 text-center text-indigo-100">
-        ⚾ Waiting for <span className="font-bold text-amber-300">{bowlingName}</span> to pick the bowler for over{" "}
-        {Math.floor(innings.balls / 6) + 1}…
-      </div>
+      <PaperPanel tone="soft" pad="md" className="text-center font-notebook">
+        <span className="text-hc-ink-lt">⚾ Waiting for </span>
+        <span className="font-bold text-hc-ink">{bowlingName}</span>
+        <span className="text-hc-ink-lt"> to pick the bowler for over {Math.floor(innings.balls / 6) + 1}…</span>
+      </PaperPanel>
     );
   }
 
@@ -1154,82 +1228,62 @@ export function BowlerPicker({
   const quotaLabel = maxOvers == null ? "no limit" : `${maxOvers} overs max`;
 
   return (
-    <div className="bg-indigo-950/60 rounded-lg p-4 space-y-3">
-      <div className="text-center text-indigo-100 font-bold">
-        ⚾ Pick your bowler for over {Math.floor(innings.balls / 6) + 1}
+    <PaperPanel tone="soft" pad="md" className="space-y-3 font-notebook">
+      <div className="text-center font-sketch font-bold text-hc-ink text-[15px]">
+        🏏 Pick your bowler for over {Math.floor(innings.balls / 6) + 1}
       </div>
       {bowlersOnly.length === 0 ? (
-        <div className="text-center text-amber-300 text-sm font-bold py-4">
+        <div className="text-center text-sm font-bold py-4 text-hc-amber">
           No bowlers or all-rounders in your XI. (This shouldn't happen if composition rules held.)
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {bowlersOnly.map((p) => {
             const stats = innings.bowlerStats[p.id];
             const completedOvers = stats ? Math.floor(stats.balls / 6) : 0;
             const atQuota = maxOvers != null && completedOvers >= maxOvers;
-            const remaining = maxOvers != null ? maxOvers - completedOvers : null;
             return (
-              <button
+              <PaperCard
                 key={p.id}
-                onClick={() => !atQuota && pickBowler(p.id)}
+                tone="default"
                 disabled={atQuota}
-                title={atQuota ? `Quota reached (${maxOvers} overs)` : undefined}
-                className={`text-left rounded-lg p-2 border transition ${
-                  atQuota
-                    ? "border-slate-800 bg-slate-900/30 opacity-40 cursor-not-allowed"
-                    : "border-slate-700 bg-slate-900/60 hover:border-indigo-400 hover:scale-[1.03]"
-                }`}
+                interactive={!atQuota}
+                onClick={() => !atQuota && pickBowler(p.id)}
+                ariaLabel={p.name}
               >
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="text-[9px] font-extrabold px-1.5 py-0.5 rounded leading-none"
-                    style={{
-                      background: p.role === "bowler" ? "#ef4444" : "#a855f7",
-                      color: "#0f172a",
-                    }}
-                  >
-                    {p.role === "bowler" ? "BOWL" : "AR"}
-                  </span>
-                  {p.isCaptain && (
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500 text-slate-900">C</span>
-                  )}
-                  {atQuota && (
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-rose-700 text-white ml-auto">
-                      MAX
-                    </span>
-                  )}
+                <div className="px-2 py-1.5 text-left">
+                  <div className="flex items-center gap-1.5">
+                    <PaperBadge tone={p.role === "bowler" ? "bowler" : "allrounder"}>
+                      {p.role === "bowler" ? "BOWL" : "AR"}
+                    </PaperBadge>
+                    {p.isCaptain && <PaperBadge tone="captain">C</PaperBadge>}
+                    {atQuota && <PaperBadge tone="bowler" className="ml-auto">MAX</PaperBadge>}
+                  </div>
+                  <div className="text-xs font-bold mt-1 leading-tight text-hc-ink">{p.name}</div>
+                  <div className="flex items-center justify-between mt-0.5 gap-2">
+                    {stats && (stats.balls > 0 || stats.wickets > 0) ? (
+                      <span className="tabular-nums text-[10px] text-hc-ink-lt">
+                        {Math.floor(stats.balls / 6)}.{stats.balls % 6}-{stats.wickets}-{stats.runs}
+                      </span>
+                    ) : (
+                      <span className="italic text-[10px] text-hc-ink-lt">unused</span>
+                    )}
+                    {maxOvers != null && (
+                      <span className="font-bold tabular-nums text-[9px] px-1.5 rounded-[3px] bg-hc-ink/10 text-hc-ink-lt">
+                        {completedOvers}/{maxOvers}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-xs font-bold text-slate-100 mt-1 leading-tight">{p.name}</div>
-                <div className="flex items-center justify-between mt-0.5 gap-2">
-                  {stats && (stats.balls > 0 || stats.wickets > 0) ? (
-                    <span className="text-[10px] text-emerald-300/80 tabular-nums">
-                      {Math.floor(stats.balls / 6)}.{stats.balls % 6}-{stats.wickets}-{stats.runs}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-500 italic">unused</span>
-                  )}
-                  {maxOvers != null && (
-                    <span
-                      className="text-[9px] font-bold tabular-nums px-1.5 rounded"
-                      style={{
-                        background: atQuota ? "#7f1d1d" : remaining! <= 1 ? "#78350f" : "rgba(0,0,0,0.4)",
-                        color: atQuota ? "#fecaca" : remaining! <= 1 ? "#fed7aa" : "#a7f3d0",
-                      }}
-                    >
-                      {completedOvers}/{maxOvers}
-                    </span>
-                  )}
-                </div>
-              </button>
+              </PaperCard>
             );
           })}
         </div>
       )}
-      <div className="text-center text-[11px] text-indigo-300/70">
+      <div className="text-center text-[11px] text-hc-ink-lt">
         Only bowlers and all-rounders can bowl · format quota: {quotaLabel}
       </div>
-    </div>
+    </PaperPanel>
   );
 }
 
@@ -1248,34 +1302,28 @@ export function Scoreboard({
   const oversBowled = Math.floor(innings.balls / 6);
   const ballsThisOver = innings.balls % 6;
   return (
-    <div
-      className="rounded-lg p-3 flex items-center justify-between gap-3"
-      style={{
-        background: "rgba(0,0,0,0.45)",
-        border: "1px solid #16a34a",
-      }}
-    >
+    <PaperPanel tone="soft" strong pad="none" className="flex items-center justify-between gap-3 px-3.5 py-2.5 font-notebook">
       <div className="flex items-center gap-2">
         <span className="text-2xl">{batterTeam.flag}</span>
         <div>
-          <div className="text-xs uppercase tracking-wider text-emerald-300 font-bold">
+          <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-hc-ink-lt">
             Innings {innings.number} · {batterTeam.short} ({batterTeam.playerName}) batting
           </div>
-          <div className="text-3xl font-extrabold text-emerald-100 leading-none tabular-nums">
-            {innings.runs}<span className="text-rose-300">/{innings.wickets}</span>
+          <div className="text-5xl font-black tabular-nums leading-none text-hc-ink">
+            {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
           </div>
-          <div className="text-xs text-emerald-200/80 tabular-nums">
+          <div className="text-xs tabular-nums text-hc-ink-lt">
             Overs {oversBowled}.{ballsThisOver} / {innings.overs}
           </div>
         </div>
       </div>
       {target != null && (
-        <div className="text-right">
-          <div className="text-[10px] uppercase tracking-wider text-amber-300 font-bold">Target</div>
-          <div className="text-2xl font-extrabold text-amber-200 tabular-nums">{target}</div>
+        <div className="text-right text-hc-amber">
+          <div className="text-[10px] uppercase tracking-wider font-bold">Target</div>
+          <div className="text-2xl font-extrabold tabular-nums">{target}</div>
         </div>
       )}
-    </div>
+    </PaperPanel>
   );
 }
 
@@ -1299,9 +1347,10 @@ export function RevealStage({
     return (
       <div className="flex items-center justify-center gap-6 py-3">
         <RevealHand label="You" pick={myShown} side="left" />
-        <div className={`text-3xl font-extrabold ${
-          reveal.wicket ? "text-rose-400" : reveal.isBoundary ? "text-amber-300" : "text-emerald-300"
-        }`}>
+        <div
+          className="text-3xl font-extrabold"
+          style={{ color: reveal.wicket ? "#f43f5e" : reveal.isBoundary ? "#d97706" : "#1a2952" }}
+        >
           {reveal.wicket ? "WICKET!" : reveal.runs === 4 ? "FOUR!" : reveal.runs === 6 ? "SIX!" : `+${reveal.runs}`}
         </div>
         <RevealHand label="Opp" pick={oppShown} side="right" />
@@ -1311,7 +1360,7 @@ export function RevealStage({
   return (
     <div className="flex items-center justify-center gap-6 py-3">
       <RevealHand label="You" pick={myPick} side="left" pending={myPick == null} />
-      <div className="text-xl text-emerald-300/70">vs</div>
+      <div className="text-xl" style={{ color: "#4a5a82" }}>vs</div>
       <RevealHand label="Opp" pick={null} side="right" pending={!oppLockedIn} hidden={oppLockedIn} />
     </div>
   );
@@ -1335,10 +1384,11 @@ export function RevealHand({
       <div
         className={`text-5xl ${side === "left" ? "rps-slam-left" : "rps-slam-right"}`}
         key={pick ?? (hidden ? "h" : "p")}
+        style={{ color: "#1a2952" }}
       >
         {pick != null ? HAND_FACES[pick] ?? pick : hidden ? "🤐" : pending ? "❓" : "—"}
       </div>
-      <div className="text-xs text-emerald-200 mt-1">{label}{pick != null ? ` · ${pick}` : ""}</div>
+      <div className="text-xs mt-1" style={{ color: "#4a5a82" }}>{label}{pick != null ? ` · ${pick}` : ""}</div>
     </div>
   );
 }
@@ -1362,9 +1412,9 @@ export function PickRow({
         <div
           className="text-center text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full mx-auto inline-block"
           style={{
-            background: "linear-gradient(90deg, #b45309, #f59e0b, #b45309)",
-            color: "#fef3c7",
-            border: "1px solid #fbbf24",
+            background: "rgba(180,120,0,0.12)",
+            color: "#b45309",
+            border: "1px solid rgba(180,120,0,0.4)",
             display: "block",
             maxWidth: "fit-content",
             margin: "0 auto",
@@ -1383,20 +1433,20 @@ export function PickRow({
               onClick={() => isAllowed && onPick(n)}
               disabled={isDisabled}
               title={!isAllowed ? "Restricted during powerplay" : undefined}
-              className={`relative w-14 h-16 rounded-lg text-2xl flex flex-col items-center justify-center font-bold transition ${
-                selected === n
-                  ? "bg-amber-500 text-slate-900 scale-110"
-                  : !isAllowed
-                  ? "bg-slate-900/50 text-slate-700 cursor-not-allowed opacity-50"
-                  : disabled
-                  ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                  : "bg-slate-700 hover:bg-slate-600 text-slate-100"
-              }`}
+              className="relative flex flex-col items-center justify-center font-bold transition"
+              style={selected === n
+                ? { background: "rgba(22,101,52,0.15)", border: "1.5px solid #166534", color: "#166534", borderRadius: 6, width: 44, height: 44, fontWeight: 800, fontSize: 18 }
+                : !isAllowed
+                ? { background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952", borderRadius: 6, width: 44, height: 44, fontWeight: 800, fontSize: 18, opacity: 0.45, cursor: "not-allowed" }
+                : disabled
+                ? { background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952", borderRadius: 6, width: 44, height: 44, fontWeight: 800, fontSize: 18, opacity: 0.45, cursor: "not-allowed" }
+                : { background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952", borderRadius: 6, width: 44, height: 44, fontWeight: 800, fontSize: 18 }
+              }
             >
               <span className="text-base leading-none">{HAND_FACES[n] ?? n}</span>
               <span className="text-xs mt-1 opacity-80">{n}</span>
               {!isAllowed && (
-                <span className="absolute top-0.5 right-1 text-[8px] text-rose-300 font-extrabold">
+                <span className="absolute top-0.5 right-1 text-[8px] font-extrabold" style={{ color: "#991b1b" }}>
                   ✕
                 </span>
               )}
@@ -1475,12 +1525,12 @@ export function PowerplayBanner({
         </div>
       </div>
       {bowlerRestricted && myRole === "bowler" && (
-        <div className="text-center mt-1 text-[11px] font-extrabold text-amber-100">
+        <div className="text-center mt-1 text-[11px] font-extrabold" style={{ color: "#92400e" }}>
           ⚠ This ball is restricted — you may only pick 1, 2, or 3
         </div>
       )}
       {bowlerRestricted && myRole === "batter" && (
-        <div className="text-center mt-1 text-[11px] font-extrabold text-emerald-200">
+        <div className="text-center mt-1 text-[11px] font-extrabold" style={{ color: "#166534" }}>
           ✨ This ball: bowler can only pick 1-3. Pick 4, 5, or 6 to score big risk-free!
         </div>
       )}
@@ -1490,31 +1540,29 @@ export function PowerplayBanner({
 
 export function RecentBalls({ history }: { history: HcBall[] }) {
   return (
-    <div className="bg-emerald-950/50 rounded-lg p-2">
-      <div className="text-[10px] uppercase tracking-wider text-emerald-200/70 mb-1 px-1">
+    <PaperPanel tone="soft" pad="sm" className="font-notebook">
+      <div className="text-[10px] uppercase tracking-[0.12em] text-hc-ink-lt mb-1 pl-1">
         This over
       </div>
       <div className="flex flex-wrap gap-1">
         {history.map((b, i) => (
           <span
             key={`${b.overNumber}-${b.ballInOver}-${i}`}
-            className="text-xs px-2 py-1 rounded font-bold tabular-nums"
-            style={{
-              background: b.wicket ? "rgba(127,29,29,0.7)"
-                : b.isBoundary ? "rgba(245,158,11,0.7)"
-                : b.runs === 0 ? "rgba(51,65,85,0.7)"
-                : "rgba(6,95,70,0.7)",
-              color: b.wicket ? "#fecaca"
-                : b.isBoundary ? "#fef3c7"
-                : "#ecfdf5",
-            }}
+            className={cn(
+              "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold font-kalam border-[1.5px] border-dashed border-hc-border",
+              b.wicket
+                ? "bg-hc-ink-red/15 text-hc-ink-red"
+                : b.isBoundary
+                ? "bg-hc-gold/15 text-hc-amber"
+                : "bg-hc-paper/80 text-hc-ink",
+            )}
             title={`Over ${b.overNumber}.${b.ballInOver}: batter ${b.batterPick} vs bowler ${b.bowlerPick}`}
           >
             {b.wicket ? "W" : b.runs}
           </span>
         ))}
       </div>
-    </div>
+    </PaperPanel>
   );
 }
 
@@ -1527,40 +1575,37 @@ export function MatchSummary({
   players: Player[];
   selfId: string;
 }) {
+  const INK = "#1a2952";
+  const INK_LT = "#4a5a82";
+  const PAPER_L = "#FBF5E0";
+  const STAMP_G = "#166534";
+  const STAMP_R = "#991b1b";
+
   const youWon = state.winnerId === selfId;
   const winnerName = players.find((p) => p.id === state.winnerId)?.name ?? "—";
   const winnerTeam = state.winnerId
     ? teamLabel(state, state.winnerId, players)
     : null;
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 font-notebook">
       <div
-        className="rounded-xl p-4 text-center"
+        className="rounded-xl p-4 text-center bg-hc-paper-l border-2"
         style={{
-          background: state.result === "tie"
-            ? "linear-gradient(135deg, #475569, #1e293b)"
-            : youWon
-            ? "linear-gradient(135deg, #047857, #052e16)"
-            : "linear-gradient(135deg, #7f1d1d, #1e293b)",
-          border: state.result === "tie"
-            ? "2px solid #94a3b8"
-            : youWon
-            ? "2px solid #10b981"
-            : "2px solid #ef4444",
-          boxShadow: youWon ? "0 0 30px rgba(16,185,129,0.5)" : undefined,
+          borderColor: state.result === "tie" ? INK_LT : youWon ? STAMP_G : STAMP_R,
+          boxShadow: youWon ? "0 0 18px rgba(22,101,52,0.20)" : undefined,
         }}
       >
         <div className="text-4xl mb-1">
           {state.result === "tie" ? "🤝" : youWon ? "🏆" : "👏"}
         </div>
-        <div className="text-xl font-extrabold text-white">
+        <div className="font-sketch text-[20px] font-bold text-hc-ink">
           {state.result === "tie"
             ? "Match tied!"
             : winnerTeam
             ? `${winnerTeam.flag} ${winnerTeam.name} (${winnerName}) win!`
             : "Match over"}
         </div>
-        <div className="text-sm text-white/80 mt-1">
+        <div className="text-sm text-hc-ink-lt mt-1">
           {summarizeMatch(state)}
         </div>
       </div>
@@ -1650,26 +1695,24 @@ export function InningsScorecard({
     .sort((a, b) => b.stats.wickets - a.stats.wickets || a.stats.runs - b.stats.runs);
 
   return (
-    <div className="bg-slate-900/70 rounded-lg p-3 border border-emerald-800 space-y-3">
+    <PaperPanel tone="default" pad="none" className="space-y-3 p-2.5 font-notebook">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xl">{batter.flag}</span>
           <div>
-            <div className="text-xs uppercase tracking-wider text-emerald-300 font-bold">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-hc-ink-lt">
               Innings {innings.number} · {batter.short} ({batter.playerName})
             </div>
-            <div className="text-2xl font-extrabold text-emerald-100 tabular-nums">
-              {innings.runs}/{innings.wickets}{" "}
-              <span className="text-xs text-emerald-300 font-normal">
-                ({oversBowled}.{ballsThisOver} ov)
-              </span>
+            <div className="tabular-nums font-extrabold text-2xl leading-none text-hc-ink">
+              {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
+              {" "}<span className="text-xs font-normal text-hc-ink-lt">({oversBowled}.{ballsThisOver} ov)</span>
             </div>
           </div>
         </div>
-        <div className="text-xs text-emerald-200/70 text-right">
+        <div className="text-[11px] text-hc-ink-lt text-right">
           <div>Bowled by {bowler.short} ({bowler.playerName})</div>
           {innings.endedReason && (
-            <div className="text-amber-300 font-bold">
+            <div className="text-hc-amber font-bold">
               {reasonLabel[innings.endedReason] ?? innings.endedReason}
             </div>
           )}
@@ -1681,14 +1724,13 @@ export function InningsScorecard({
         <Stat label="Dots" value={dots} />
         <Stat label="SR" value={strikeRate} />
       </div>
-
       {batterRows.length > 0 && (
         <BatterTable rows={batterRows} nameOf={nameOfBatter} nameOfBowler={nameOfBowler} />
       )}
       {bowlerRows.length > 0 && (
         <BowlerTable rows={bowlerRows} nameOf={nameOfBowler} />
       )}
-    </div>
+    </PaperPanel>
   );
 }
 
@@ -1702,13 +1744,13 @@ export function BatterTable({
   nameOfBowler: (id: string) => string;
 }) {
   return (
-    <div className="rounded bg-emerald-950/50 p-2">
-      <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-extrabold mb-1 px-1">
+    <div style={{ background: "rgba(245,233,196,0.70)", border: "1.5px dashed rgba(46,40,25,0.35)", borderRadius: 6, padding: 8 }}>
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#166534", fontWeight: 800, marginBottom: 4, paddingLeft: 4, fontFamily: "'Kalam', cursive" }}>
         🏏 Batting
       </div>
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-emerald-300/70 text-[10px]">
+          <tr style={{ color: "#4a5a82", fontSize: 10, fontFamily: "'Kalam', cursive" }}>
             <th className="text-left py-0.5">Batter</th>
             <th className="text-right">R</th>
             <th className="text-right">B</th>
@@ -1722,11 +1764,11 @@ export function BatterTable({
             if (!stats) return null;
             const sr = stats.balls > 0 ? ((stats.runs / stats.balls) * 100).toFixed(0) : "—";
             return (
-              <tr key={id} className="text-emerald-100">
+              <tr key={id} style={{ color: "#1a2952", fontFamily: "'Kalam', cursive" }}>
                 <td className="py-0.5">
                   <div className="font-bold">{nameOf(id)}{!stats.isOut ? "*" : ""}</div>
                   {stats.isOut && stats.dismissedBy && (
-                    <div className="text-[10px] text-rose-300/70">b {nameOfBowler(stats.dismissedBy)}</div>
+                    <div style={{ fontSize: 10, color: "#991b1b", opacity: 0.75 }}>b {nameOfBowler(stats.dismissedBy)}</div>
                   )}
                 </td>
                 <td className="text-right tabular-nums font-bold">{stats.runs}</td>
@@ -1751,13 +1793,13 @@ export function BowlerTable({
   nameOf: (id: string) => string;
 }) {
   return (
-    <div className="rounded bg-indigo-950/50 p-2">
-      <div className="text-[10px] uppercase tracking-wider text-indigo-300 font-extrabold mb-1 px-1">
+    <div style={{ background: "rgba(245,233,196,0.70)", border: "1.5px dashed rgba(46,40,25,0.35)", borderRadius: 6, padding: 8 }}>
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1d4ed8", fontWeight: 800, marginBottom: 4, paddingLeft: 4, fontFamily: "'Kalam', cursive" }}>
         ⚾ Bowling
       </div>
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-indigo-300/70 text-[10px]">
+          <tr style={{ color: "#4a5a82", fontSize: 10, fontFamily: "'Kalam', cursive" }}>
             <th className="text-left py-0.5">Bowler</th>
             <th className="text-right">O</th>
             <th className="text-right">R</th>
@@ -1770,11 +1812,11 @@ export function BowlerTable({
             const overs = `${Math.floor(stats.balls / 6)}.${stats.balls % 6}`;
             const econ = stats.balls > 0 ? ((stats.runs / stats.balls) * 6).toFixed(1) : "—";
             return (
-              <tr key={id} className="text-emerald-100">
+              <tr key={id} style={{ color: "#1a2952", fontFamily: "'Kalam', cursive" }}>
                 <td className="py-0.5 font-bold">{nameOf(id)}</td>
                 <td className="text-right tabular-nums">{overs}</td>
                 <td className="text-right tabular-nums">{stats.runs}</td>
-                <td className="text-right tabular-nums font-bold text-amber-300">{stats.wickets}</td>
+                <td className="text-right tabular-nums font-bold" style={{ color: "#92400e" }}>{stats.wickets}</td>
                 <td className="text-right tabular-nums">{econ}</td>
               </tr>
             );
@@ -1787,10 +1829,10 @@ export function BowlerTable({
 
 export function Stat({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="bg-emerald-950/60 rounded p-1.5 text-center">
-      <div className="text-[10px] uppercase text-emerald-300/70 font-bold">{label}</div>
-      <div className="text-base text-emerald-100 font-extrabold tabular-nums">{value}</div>
-    </div>
+    <PaperPanel tone="soft" pad="none" className="px-1.5 py-1 text-center font-notebook">
+      <div className="text-[9px] uppercase tracking-[0.10em] font-extrabold text-hc-ink-lt">{label}</div>
+      <div className="tabular-nums font-extrabold text-base text-hc-ink">{value}</div>
+    </PaperPanel>
   );
 }
 

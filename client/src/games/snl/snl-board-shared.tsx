@@ -811,7 +811,7 @@ export function SnlPlayerRail({
         border: "1px solid #334155",
       }}
     >
-      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 px-1 pt-1">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300 px-1 pt-1">
         Players ({state.playerOrder.length})
       </div>
       {state.playerOrder.map((id) => {
@@ -845,7 +845,7 @@ export function SnlPlayerRail({
             <div className="flex-1 min-w-0">
               <div className="text-xs text-slate-100 font-semibold truncate flex items-center gap-1">
                 {p?.name ?? "—"}
-                {id === selfId && <span className="text-[9px] text-slate-500 font-normal">(you)</span>}
+                {id === selfId && <span className="text-[9px] text-slate-400 dark:text-slate-300 font-normal">(you)</span>}
                 {finished && <span title="Finished">🏁</span>}
               </div>
               <div className="text-[9px] text-slate-400 flex gap-1.5">
@@ -884,9 +884,9 @@ export function EventFeed({
         border: "1px solid #334155",
       }}
     >
-      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 px-1 pt-1">Feed</div>
+      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300 px-1 pt-1">Feed</div>
       {recent.length === 0 ? (
-        <div className="text-[11px] text-slate-600 italic px-1 py-2">Waiting for first roll…</div>
+        <div className="text-[11px] text-slate-500 dark:text-slate-300 italic px-1 py-2">Waiting for first roll…</div>
       ) : (
         recent.map((e, i) => (
           <div key={`${e.ts}-${i}`} className="text-[11px] text-slate-300 px-1 py-0.5 leading-snug">

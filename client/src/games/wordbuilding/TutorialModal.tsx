@@ -198,7 +198,7 @@ export default function WordBuildingTutorialModal({
         </div>
 
         <div
-          className="text-zinc-800 leading-relaxed"
+          className="text-zinc-800 leading-relaxed dark:text-slate-200"
           style={{
             fontSize: 19,
             color: "#1f2937",

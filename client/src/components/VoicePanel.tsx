@@ -113,9 +113,9 @@ export default function VoicePanel({
   }
 
   return (
-    <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4">
+    <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4 dark:bg-slate-900 dark:border-slate-700">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm uppercase text-[#7A6652]">Voice</h3>
+        <h3 className="text-sm uppercase text-[#7A6652] dark:text-slate-400">Voice</h3>
         {connected && (
           <span className="text-xs text-emerald-400">● Live</span>
         )}
@@ -136,8 +136,8 @@ export default function VoicePanel({
               onClick={toggleMute}
               className={`flex-1 rounded py-2 text-sm font-semibold ${
                 muted
-                  ? "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118]"
-                  : "bg-[#E5D6BD] hover:bg-[#DBC8AA] text-[#3A3027]"
+                  ? "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118] dark:text-slate-300"
+                  : "bg-[#E5D6BD] hover:bg-[#DBC8AA] text-[#3A3027] dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100"
               }`}
             >
               {muted ? "🔇 Muted" : "🎙 Mic on"}
@@ -152,12 +152,12 @@ export default function VoicePanel({
           </div>
           <ul className="space-y-1 text-xs">
             {peers.length === 0 && (
-              <li className="text-[#8A7865]">Waiting for others to connect mic…</li>
+              <li className="text-[#8A7865] dark:text-slate-500">Waiting for others to connect mic…</li>
             )}
             {peers.map((p) => (
               <li
                 key={p.playerId}
-                className="flex items-center gap-2 bg-[#F1E6D3] border border-[#E1CFB1] rounded px-2 py-1"
+                className="flex items-center gap-2 bg-[#F1E6D3] border border-[#E1CFB1] rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-700"
               >
                 <span
                   className={`w-2 h-2 rounded-full ${
@@ -168,8 +168,8 @@ export default function VoicePanel({
                       : "bg-amber-400"
                   }`}
                 />
-                <span className="flex-1 truncate text-[#3A3027]">{nameOf(p.playerId)}</span>
-                <span className="text-[#8A7865]">{p.connectionState}</span>
+                <span className="flex-1 truncate text-[#3A3027] dark:text-slate-200">{nameOf(p.playerId)}</span>
+                <span className="text-[#8A7865] dark:text-slate-500">{p.connectionState}</span>
                 <audio
                   autoPlay
                   playsInline
