@@ -48,6 +48,10 @@ export interface HandCricketBoardProps {
    *  shell can render its own Leave control (Room.tsx's header is covered by
    *  the z-50 notebook overlay). */
   onLeave?: () => void;
+  /** Called when the end-of-match scorecard is dismissed (Continue button or
+   *  the 90 s auto-advance). Room.tsx shows the GameOverScreen only after this,
+   *  so the scorecard isn't blown away within a second of the match ending. */
+  onScorecardClose?: () => void;
 }
 
 const HAND_FACES = ["", "☝️", "✌️", "🤟", "🖖", "🖐️", "✊"];
@@ -953,10 +957,12 @@ export function InningsPhase({
   state,
   selfId,
   players,
+  isDesktop = false,
 }: {
   state: HcState;
   selfId: string;
   players: Player[];
+  isDesktop?: boolean;
 }) {
   const innings = state.phase === "innings1" ? state.innings1! : state.innings2!;
   const myRole = innings.battingPlayerId === selfId ? "batter"
@@ -1002,12 +1008,13 @@ export function InningsPhase({
   const needsBowler = innings.currentBowlerId == null;
 
   return (
-    <div className="space-y-3">
+    <div className={isDesktop ? "space-y-4" : "space-y-3"}>
       <Scoreboard
         state={state}
         innings={innings}
         target={target}
         players={players}
+        big={isDesktop}
       />
 
       {isPowerplayOver && innings.currentBowlerId != null && (
@@ -1021,15 +1028,20 @@ export function InningsPhase({
         />
       )}
 
-      <CurrentPlayersBar state={state} innings={innings} selfId={selfId} />
+      <CurrentPlayersBar state={state} innings={innings} selfId={selfId} big={isDesktop} />
 
       {/* Role badge */}
       {myRole && (
         <div className="text-center">
-          <span style={myRole === "batter"
-            ? { background: "rgba(22,101,52,0.15)", color: "#166534", border: "1px solid #166534", borderRadius: 20, padding: "3px 10px", fontWeight: 700, fontSize: 12 }
-            : { background: "rgba(153,27,27,0.15)", color: "#991b1b", border: "1px solid #991b1b", borderRadius: 20, padding: "3px 10px", fontWeight: 700, fontSize: 12 }
-          }>
+          <span
+            className={cn(
+              "inline-block rounded-full font-bold font-notebook border",
+              myRole === "batter"
+                ? "bg-hc-stamp/15 text-hc-stamp border-hc-stamp"
+                : "bg-hc-ink-red/15 text-hc-ink-red border-hc-ink-red",
+            )}
+            style={{ padding: isDesktop ? "5px 16px" : "3px 10px", fontSize: isDesktop ? 15 : 12 }}
+          >
             {myRole === "batter" ? "🏏 You are BATTING" : "⚾ You are BOWLING"}
           </span>
         </div>
@@ -1045,6 +1057,7 @@ export function InningsPhase({
             myId={selfId}
             oppLockedIn={oppLockedIn}
             myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+            big={isDesktop}
           />
 
           <PickRow
@@ -1053,9 +1066,13 @@ export function InningsPhase({
             selected={typeof myPick === "number" && myPick > 0 ? myPick : null}
             allowedPicks={myRole === "bowler" ? allowedBowlerPicks : [1, 2, 3, 4, 5, 6]}
             restrictedNote={bowlerRestricted ? "Powerplay — bowler limited to 1, 2 or 3" : null}
+            big={isDesktop}
           />
 
-          <div className="flex justify-center gap-6 text-xs" style={{ color: "#4a5a82" }}>
+          <div
+            className="flex justify-center gap-6 text-hc-ink-lt"
+            style={{ fontSize: isDesktop ? 14 : 12 }}
+          >
             <div>You: {myPick != null && typeof myPick === "number" && myPick > 0 ? "✓ locked" : "thinking…"}</div>
             <div>Opp: {oppLockedIn ? "✓ locked" : "thinking…"}</div>
           </div>
@@ -1063,7 +1080,10 @@ export function InningsPhase({
       )}
 
       {target != null && (
-        <div className="text-center text-sm" style={{ color: "#92400e", fontWeight: 700, fontSize: 13 }}>
+        <div
+          className="text-center text-hc-amber font-bold"
+          style={{ fontSize: isDesktop ? 15 : 13 }}
+        >
           Target: <b>{target}</b> · Need {Math.max(0, target - innings.runs)} more from{" "}
           {Math.max(0, innings.overs * 6 - innings.balls)} balls
         </div>
@@ -1080,10 +1100,12 @@ export function CurrentPlayersBar({
   state,
   innings,
   selfId,
+  big = false,
 }: {
   state: HcState;
   innings: HcInnings;
   selfId: string;
+  big?: boolean;
 }) {
   const battingSelection = state.teamSelections[innings.battingPlayerId];
   const bowlingSelection = state.teamSelections[innings.bowlingPlayerId];
@@ -1131,6 +1153,7 @@ export function CurrentPlayersBar({
         sub={batterStatSub(strikerStats)}
         isMine={innings.battingPlayerId === selfId}
         accent="#10b981"
+        big={big}
       />
       <PlayerCard
         label="🏃 Non-striker"
@@ -1139,6 +1162,7 @@ export function CurrentPlayersBar({
         isMine={innings.battingPlayerId === selfId}
         accent="#34d399"
         dimmed
+        big={big}
       />
       <PlayerCard
         label="⚾ Bowling"
@@ -1150,6 +1174,7 @@ export function CurrentPlayersBar({
         }
         isMine={innings.bowlingPlayerId === selfId}
         accent="#6366f1"
+        big={big}
       />
     </div>
   );
@@ -1162,6 +1187,7 @@ export function PlayerCard({
   isMine,
   accent,
   dimmed = false,
+  big = false,
 }: {
   label: string;
   name: string;
@@ -1169,15 +1195,19 @@ export function PlayerCard({
   isMine: boolean;
   accent: string;
   dimmed?: boolean;
+  big?: boolean;
 }) {
   return (
-    <PaperPanel tone="soft" pad="none" className={cn("px-2.5 py-1.5", dimmed && "opacity-80")}>
-      <div className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-hc-ink-lt">
+    <PaperPanel tone="soft" pad="none" className={cn(big ? "px-3.5 py-2.5" : "px-2.5 py-1.5", dimmed && "opacity-80")}>
+      <div
+        className="font-extrabold uppercase tracking-[0.12em] text-hc-ink-lt"
+        style={{ fontSize: big ? 11 : 9 }}
+      >
         {label}
-        {isMine && <span className="ml-1 text-hc-stamp text-[9px] font-extrabold">· YOU</span>}
+        {isMine && <span className="ml-1 text-hc-stamp font-extrabold" style={{ fontSize: big ? 11 : 9 }}>· YOU</span>}
       </div>
-      <div className="leading-tight font-bold text-[13px] text-hc-ink">{name}</div>
-      <div className="tabular-nums text-[11px] text-hc-ink-lt">{sub}</div>
+      <div className="leading-tight font-bold text-hc-ink" style={{ fontSize: big ? 18 : 13 }}>{name}</div>
+      <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 14 : 11 }}>{sub}</div>
     </PaperPanel>
   );
 }
@@ -1292,35 +1322,48 @@ export function Scoreboard({
   innings,
   target,
   players,
+  big = false,
 }: {
   state: HcState;
   innings: HcInnings;
   target: number | null;
   players: Player[];
+  big?: boolean;
 }) {
   const batterTeam = teamLabel(state, innings.battingPlayerId, players);
   const oversBowled = Math.floor(innings.balls / 6);
   const ballsThisOver = innings.balls % 6;
   return (
-    <PaperPanel tone="soft" strong pad="none" className="flex items-center justify-between gap-3 px-3.5 py-2.5 font-notebook">
-      <div className="flex items-center gap-2">
-        <span className="text-2xl">{batterTeam.flag}</span>
+    <PaperPanel
+      tone="soft"
+      strong
+      pad="none"
+      className={cn("flex items-center justify-between gap-3 font-notebook", big ? "px-5 py-4" : "px-3.5 py-2.5")}
+    >
+      <div className="flex items-center gap-3">
+        <span className={big ? "text-4xl" : "text-2xl"}>{batterTeam.flag}</span>
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-hc-ink-lt">
+          <div
+            className="font-bold uppercase tracking-[0.12em] text-hc-ink-lt"
+            style={{ fontSize: big ? 13 : 11 }}
+          >
             Innings {innings.number} · {batterTeam.short} ({batterTeam.playerName}) batting
           </div>
-          <div className="text-5xl font-black tabular-nums leading-none text-hc-ink">
+          <div
+            className="font-black tabular-nums leading-none text-hc-ink"
+            style={{ fontSize: big ? 88 : 48 }}
+          >
             {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
           </div>
-          <div className="text-xs tabular-nums text-hc-ink-lt">
+          <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 15 : 12 }}>
             Overs {oversBowled}.{ballsThisOver} / {innings.overs}
           </div>
         </div>
       </div>
       {target != null && (
         <div className="text-right text-hc-amber">
-          <div className="text-[10px] uppercase tracking-wider font-bold">Target</div>
-          <div className="text-2xl font-extrabold tabular-nums">{target}</div>
+          <div className="uppercase tracking-wider font-bold" style={{ fontSize: big ? 12 : 10 }}>Target</div>
+          <div className="font-extrabold tabular-nums" style={{ fontSize: big ? 40 : 24 }}>{target}</div>
         </div>
       )}
     </PaperPanel>
@@ -1333,35 +1376,37 @@ export function RevealStage({
   myId,
   oppLockedIn,
   myPick,
+  big = false,
 }: {
   reveal: HcBall | null;
   innings: HcInnings;
   myId: string;
   oppLockedIn: boolean;
   myPick: number | null;
+  big?: boolean;
 }) {
   const meIsBatter = innings.battingPlayerId === myId;
   if (reveal) {
     const myShown = meIsBatter ? reveal.batterPick : reveal.bowlerPick;
     const oppShown = meIsBatter ? reveal.bowlerPick : reveal.batterPick;
     return (
-      <div className="flex items-center justify-center gap-6 py-3">
-        <RevealHand label="You" pick={myShown} side="left" />
+      <div className={cn("flex items-center justify-center py-3", big ? "gap-10" : "gap-6")}>
+        <RevealHand label="You" pick={myShown} side="left" big={big} />
         <div
-          className="text-3xl font-extrabold"
-          style={{ color: reveal.wicket ? "#f43f5e" : reveal.isBoundary ? "#d97706" : "#1a2952" }}
+          className="font-extrabold"
+          style={{ fontSize: big ? 40 : 28, color: reveal.wicket ? "#f43f5e" : reveal.isBoundary ? "#d97706" : "#1a2952" }}
         >
           {reveal.wicket ? "WICKET!" : reveal.runs === 4 ? "FOUR!" : reveal.runs === 6 ? "SIX!" : `+${reveal.runs}`}
         </div>
-        <RevealHand label="Opp" pick={oppShown} side="right" />
+        <RevealHand label="Opp" pick={oppShown} side="right" big={big} />
       </div>
     );
   }
   return (
-    <div className="flex items-center justify-center gap-6 py-3">
-      <RevealHand label="You" pick={myPick} side="left" pending={myPick == null} />
-      <div className="text-xl" style={{ color: "#4a5a82" }}>vs</div>
-      <RevealHand label="Opp" pick={null} side="right" pending={!oppLockedIn} hidden={oppLockedIn} />
+    <div className={cn("flex items-center justify-center py-3", big ? "gap-10" : "gap-6")}>
+      <RevealHand label="You" pick={myPick} side="left" pending={myPick == null} big={big} />
+      <div className="text-hc-ink-lt" style={{ fontSize: big ? 26 : 20 }}>vs</div>
+      <RevealHand label="Opp" pick={null} side="right" pending={!oppLockedIn} hidden={oppLockedIn} big={big} />
     </div>
   );
 }
@@ -1372,23 +1417,25 @@ export function RevealHand({
   side,
   pending,
   hidden,
+  big = false,
 }: {
   label: string;
   pick: number | null;
   side: "left" | "right";
   pending?: boolean;
   hidden?: boolean;
+  big?: boolean;
 }) {
   return (
     <div className="flex flex-col items-center">
       <div
-        className={`text-5xl ${side === "left" ? "rps-slam-left" : "rps-slam-right"}`}
+        className={`${side === "left" ? "rps-slam-left" : "rps-slam-right"} text-hc-ink`}
         key={pick ?? (hidden ? "h" : "p")}
-        style={{ color: "#1a2952" }}
+        style={{ fontSize: big ? 76 : 48 }}
       >
         {pick != null ? HAND_FACES[pick] ?? pick : hidden ? "🤐" : pending ? "❓" : "—"}
       </div>
-      <div className="text-xs mt-1" style={{ color: "#4a5a82" }}>{label}{pick != null ? ` · ${pick}` : ""}</div>
+      <div className="mt-1 text-hc-ink-lt" style={{ fontSize: big ? 15 : 12 }}>{label}{pick != null ? ` · ${pick}` : ""}</div>
     </div>
   );
 }
@@ -1399,13 +1446,16 @@ export function PickRow({
   selected,
   allowedPicks = [1, 2, 3, 4, 5, 6],
   restrictedNote = null,
+  big = false,
 }: {
   disabled: boolean;
   onPick: (n: number) => void;
   selected: number | null;
   allowedPicks?: number[];
   restrictedNote?: string | null;
+  big?: boolean;
 }) {
+  const side = big ? 60 : 44;
   return (
     <div className="space-y-2">
       {restrictedNote && (
@@ -1423,28 +1473,27 @@ export function PickRow({
           🔥 {restrictedNote}
         </div>
       )}
-      <div className="flex flex-wrap justify-center gap-2">
+      <div className={cn("flex flex-wrap justify-center", big ? "gap-3" : "gap-2")}>
         {[1, 2, 3, 4, 5, 6].map((n) => {
           const isAllowed = allowedPicks.includes(n);
           const isDisabled = disabled || !isAllowed;
+          const base = { borderRadius: 8, width: side, height: side, fontWeight: 800, fontSize: big ? 22 : 18 } as const;
           return (
             <button
               key={n}
               onClick={() => isAllowed && onPick(n)}
               disabled={isDisabled}
               title={!isAllowed ? "Restricted during powerplay" : undefined}
-              className="relative flex flex-col items-center justify-center font-bold transition"
+              className="relative flex flex-col items-center justify-center font-bold transition hover:scale-[1.05]"
               style={selected === n
-                ? { background: "rgba(22,101,52,0.15)", border: "1.5px solid #166534", color: "#166534", borderRadius: 6, width: 44, height: 44, fontWeight: 800, fontSize: 18 }
-                : !isAllowed
-                ? { background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952", borderRadius: 6, width: 44, height: 44, fontWeight: 800, fontSize: 18, opacity: 0.45, cursor: "not-allowed" }
-                : disabled
-                ? { background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952", borderRadius: 6, width: 44, height: 44, fontWeight: 800, fontSize: 18, opacity: 0.45, cursor: "not-allowed" }
-                : { background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952", borderRadius: 6, width: 44, height: 44, fontWeight: 800, fontSize: 18 }
+                ? { ...base, background: "rgba(22,101,52,0.15)", border: "1.5px solid #166534", color: "#166534" }
+                : isDisabled
+                ? { ...base, background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952", opacity: 0.45, cursor: "not-allowed" }
+                : { ...base, background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952" }
               }
             >
-              <span className="text-base leading-none">{HAND_FACES[n] ?? n}</span>
-              <span className="text-xs mt-1 opacity-80">{n}</span>
+              <span className="leading-none" style={{ fontSize: big ? 22 : 16 }}>{HAND_FACES[n] ?? n}</span>
+              <span className="mt-1 opacity-80" style={{ fontSize: big ? 13 : 11 }}>{n}</span>
               {!isAllowed && (
                 <span className="absolute top-0.5 right-1 text-[8px] font-extrabold" style={{ color: "#991b1b" }}>
                   ✕
@@ -1566,14 +1615,116 @@ export function RecentBalls({ history }: { history: HcBall[] }) {
   );
 }
 
+/** Aggregated match contribution for one cricketer, used to pick MoM. */
+interface MomAgg {
+  id: string;
+  name: string;
+  teamPlayerId: string;
+  teamShort: string;
+  runs: number;
+  balls: number;
+  fours: number;
+  sixes: number;
+  wickets: number;
+  conceded: number;
+  ballsBowled: number;
+}
+
+export interface ManOfTheMatch {
+  name: string;
+  teamShort: string;
+  playerName: string;
+  line: string;
+}
+
+/**
+ * Man of the Match — pure analysis over both innings' batter/bowler stats.
+ * A cricketer's impact = batting (runs + boundary bonus) + bowling
+ * (wickets heavily weighted, minus a small economy penalty). Aggregates a
+ * player's contribution across the whole match (they bat in one innings and
+ * may bowl in the other) and returns the single best performer, or null if
+ * nobody actually did anything (e.g. a 0–0 washout).
+ */
+export function computeManOfTheMatch(state: HcState, players: Player[]): ManOfTheMatch | null {
+  const innings = [state.innings1, state.innings2].filter((i): i is HcInnings => !!i);
+  if (innings.length === 0) return null;
+
+  const agg = new Map<string, MomAgg>();
+  const nameOfPlayer = (pid: string) => players.find((p) => p.id === pid)?.name ?? "Player";
+
+  const ensure = (id: string, teamPlayerId: string): MomAgg => {
+    let a = agg.get(id);
+    if (!a) {
+      const sel = state.teamSelections[teamPlayerId];
+      const roster = sel?.teamId ? getRosterFor(sel.teamId, state.options.format) : null;
+      const profile = roster ? [...roster.squad, ...roster.extras].find((p) => p.id === id) : null;
+      a = {
+        id,
+        name: profile?.name ?? "Batsman",
+        teamPlayerId,
+        teamShort: teamLabel(state, teamPlayerId, players).short,
+        runs: 0, balls: 0, fours: 0, sixes: 0, wickets: 0, conceded: 0, ballsBowled: 0,
+      };
+      agg.set(id, a);
+    }
+    return a;
+  };
+
+  for (const inn of innings) {
+    for (const [pid, s] of Object.entries(inn.batterStats)) {
+      const a = ensure(pid, inn.battingPlayerId);
+      a.runs += s.runs; a.balls += s.balls; a.fours += s.fours; a.sixes += s.sixes;
+    }
+    for (const [pid, s] of Object.entries(inn.bowlerStats)) {
+      const a = ensure(pid, inn.bowlingPlayerId);
+      a.wickets += s.wickets; a.conceded += s.runs; a.ballsBowled += s.balls;
+    }
+  }
+
+  let best: MomAgg | null = null;
+  let bestScore = 0;
+  for (const a of agg.values()) {
+    const batScore = a.runs + a.fours + a.sixes * 2;
+    const bowlScore = a.ballsBowled > 0 ? a.wickets * 20 - a.conceded * 0.4 : 0;
+    const total = batScore + bowlScore;
+    if (
+      total > bestScore ||
+      (best != null && total === bestScore &&
+        (a.wickets > best.wickets || (a.wickets === best.wickets && a.runs > best.runs)))
+    ) {
+      bestScore = total;
+      best = a;
+    }
+  }
+  if (!best || bestScore <= 0) return null;
+
+  const parts: string[] = [];
+  if (best.balls > 0 || best.runs > 0) {
+    parts.push(`${best.runs} (${best.balls})${best.sixes ? ` · ${best.sixes}×6` : ""}${best.fours ? ` · ${best.fours}×4` : ""}`);
+  }
+  if (best.ballsBowled > 0 && best.wickets > 0) {
+    parts.push(`${best.wickets}/${best.conceded}`);
+  }
+  return {
+    name: best.name,
+    teamShort: best.teamShort,
+    playerName: nameOfPlayer(best.teamPlayerId),
+    line: parts.join("  ·  "),
+  };
+}
+
 export function MatchSummary({
   state,
   players,
   selfId,
+  onContinue,
 }: {
   state: HcState;
   players: Player[];
   selfId: string;
+  /** When provided, renders the end-of-match "page" chrome: a Man-of-the-Match
+   *  banner, a Continue button and a 90 s auto-advance countdown. */
+  onContinue?: () => void;
 }) {
   const INK = "#1a2952";
   const INK_LT = "#4a5a82";
@@ -1586,6 +1737,34 @@ export function MatchSummary({
   const winnerTeam = state.winnerId
     ? teamLabel(state, state.winnerId, players)
     : null;
+
+  const mom = useMemo(() => computeManOfTheMatch(state, players), [state, players]);
+
+  // 90 s auto-advance to the Game Over screen — only when this is the
+  // end-of-match "page" (onContinue provided). Closable early via the button.
+  const [secondsLeft, setSecondsLeft] = useState(SCORECARD_HOLD_SECONDS);
+  const continueRef = useRef(onContinue);
+  continueRef.current = onContinue;
+  const hasContinue = !!onContinue;
+  // Mount-only: `onContinue`'s identity changes on every Room re-render, so
+  // depending on it would reset the countdown constantly. The ref keeps the
+  // latest callback; we only care whether one exists at mount.
+  useEffect(() => {
+    if (!hasContinue) return;
+    const iv = setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          clearInterval(iv);
+          continueRef.current?.();
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="space-y-3 font-notebook">
       <div
@@ -1610,6 +1789,24 @@ export function MatchSummary({
         </div>
       </div>
 
+      {/* Man of the Match */}
+      {mom && (
+        <div className="relative rounded-xl px-4 py-3 text-center bg-hc-gold/10">
+          <RoughBorder roughness={1.7} strokeWidth={2} stroke="rgba(197,150,58,0.9)" padding={3} />
+          <div className="relative">
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-hc-amber">
+              🏅 Player of the Match
+            </div>
+            <div className="font-sketch text-[19px] font-bold text-hc-ink mt-0.5">
+              {mom.name}
+            </div>
+            <div className="text-xs text-hc-ink-lt">
+              {mom.teamShort} ({mom.playerName}){mom.line ? ` — ${mom.line}` : ""}
+            </div>
+          </div>
+        </div>
+      )}
+
       {state.innings1 && (
         <InningsScorecard
           innings={state.innings1}
@@ -1624,9 +1821,24 @@ export function MatchSummary({
           players={players}
         />
       )}
+
+      {/* End-of-match page chrome: Continue + 90 s auto-advance countdown. */}
+      {onContinue && (
+        <div className="flex flex-col items-center gap-2 pt-1">
+          <PaperButton variant="confirm" size="block" onClick={onContinue} className="max-w-xs tracking-[0.08em]">
+            Continue →
+          </PaperButton>
+          <div className="text-[11px] text-hc-ink-lt">
+            Auto-continues in {secondsLeft}s · tap Continue to skip
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+/** How long the end-of-match scorecard stays up before auto-advancing. */
+const SCORECARD_HOLD_SECONDS = 90;
 
 export function summarizeMatch(state: HcState): string {
   const i1 = state.innings1;
@@ -1839,12 +2051,75 @@ export function Stat({ label, value }: { label: string; value: number | string }
 /* ───────────────────────────── Celebrations ───────────────────────────── */
 
 type HcCelebrationData =
-  | { kind: "four"; id: number; batter: string }
-  | { kind: "six"; id: number; batter: string }
-  | { kind: "wicket"; id: number; batter: string; bowler: string }
-  | { kind: "hattrickWickets"; id: number; bowler: string }
-  | { kind: "hattrickBoundaries"; id: number; batter: string }
+  | { kind: "four"; id: number; batter: string; message: string }
+  | { kind: "six"; id: number; batter: string; message: string }
+  | { kind: "wicket"; id: number; batter: string; bowler: string; message: string }
+  | { kind: "hattrickWickets"; id: number; bowler: string; message: string }
+  | { kind: "streak"; id: number; batter: string; title: string; message: string; variant: "sixes" | "fours" | "mixed" }
   | { kind: "winner"; id: number; youWon: boolean; winnerName: string; margin: string; isTie: boolean };
+
+/** Resolve a batter/bowler profile id to the real player's name (e.g. "Pathum
+ *  Nissanka"), not the socket player's display name. Falls back gracefully. */
+function profileNameFor(
+  state: HcState,
+  teamPlayerId: string,
+  profileId: string | undefined,
+  fallback: string,
+): string {
+  if (!profileId) return fallback;
+  const sel = state.teamSelections[teamPlayerId];
+  const roster = sel?.teamId ? getRosterFor(sel.teamId, state.options.format) : null;
+  if (!roster) return fallback;
+  const found = [...roster.squad, ...roster.extras].find((p) => p.id === profileId);
+  return found?.name ?? fallback;
+}
+
+/** Pick a random flavour line — keeps the boundary/wicket call-outs from
+ *  reading as the same static string every time. */
+function pickLine(lines: string[]): string {
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
+/** Build a dynamic commentary line for a 3-ball big-hitting streak. */
+function describeBoundaryStreak(
+  last3: HcBall[],
+  batter: string,
+): { title: string; message: string; variant: "sixes" | "fours" | "mixed" } {
+  const runs = last3.map((b) => b.runs);
+  if (runs.every((r) => r === 6)) {
+    return {
+      variant: "sixes",
+      title: "HAT-TRICK OF SIXES!",
+      message: pickLine([
+        `🚀 ${batter} — three maximums in a row! Monstrous hitting!`,
+        `💥 ${batter} clears the ropes three times on the trot!`,
+        `🔥 ${batter} is launching everything into the stands!`,
+      ]),
+    };
+  }
+  if (runs.every((r) => r === 4)) {
+    return {
+      variant: "fours",
+      title: "THREE IN A ROW!",
+      message: pickLine([
+        `🏏 ${batter} — three cracking fours on the bounce!`,
+        `⚡ ${batter} is finding the fence at will!`,
+        `✨ ${batter} rattles off a hat-trick of boundaries!`,
+      ]),
+    };
+  }
+  const sum = runs.reduce((a, b) => a + b, 0);
+  return {
+    variant: "mixed",
+    title: "ON FIRE!",
+    message: pickLine([
+      `🔥 ${batter} is on fire with great shots — ${runs.join(", ")} off the last three!`,
+      `💫 ${batter} is dealing in big hits — ${sum} runs in three balls!`,
+      `😤 ${batter} has the bowler on the ropes!`,
+      `🌟 ${batter} is middling everything right now!`,
+    ]),
+  };
+}
 
 export function HcCelebrationLayer({
   state,
@@ -1878,25 +2153,65 @@ export function HcCelebrationLayer({
     if (inn) {
       const last3 = inn.history.slice(-3);
       const lastBall = last3[last3.length - 1];
-      const isBoundaryBall = (b: HcBall) =>
-        !b.wicket && (b.runs === 4 || b.runs === 6);
+      // A "big shot" is any non-wicket ball worth 4+ — so 4,5,6 counts as a
+      // hot streak even though a 5 isn't a boundary.
+      const isBigShot = (b: HcBall) => !b.wicket && b.runs >= 4;
       const allWickets = last3.length === 3 && last3.every((b) => b.wicket);
-      const allBoundaries = last3.length === 3 && last3.every(isBoundaryBall);
+      const bigStreak = last3.length === 3 && last3.every(isBigShot);
 
-      const batterName = nameOf(inn.battingPlayerId);
-      const bowlerName = nameOf(inn.bowlingPlayerId);
+      // Real batsman/bowler names for THIS ball (profile ids on the ball),
+      // not the socket player's display name.
+      const batterName = profileNameFor(state, inn.battingPlayerId, lastBall.batterId, nameOf(inn.battingPlayerId));
+      const bowlerName = profileNameFor(state, inn.bowlingPlayerId, lastBall.bowlerId, nameOf(inn.bowlingPlayerId));
       const stamp = Date.now();
 
       if (allWickets) {
-        setActive({ kind: "hattrickWickets", id: stamp, bowler: bowlerName });
-      } else if (allBoundaries) {
-        setActive({ kind: "hattrickBoundaries", id: stamp, batter: batterName });
+        setActive({
+          kind: "hattrickWickets",
+          id: stamp,
+          bowler: bowlerName,
+          message: pickLine([
+            `🎯 ${bowlerName} is unplayable — three in a row!`,
+            `🔥 ${bowlerName} rips the heart out of the innings!`,
+          ]),
+        });
+      } else if (bigStreak) {
+        const s = describeBoundaryStreak(last3, batterName);
+        setActive({ kind: "streak", id: stamp, batter: batterName, ...s });
       } else if (lastBall.wicket) {
-        setActive({ kind: "wicket", id: stamp, batter: batterName, bowler: bowlerName });
+        setActive({
+          kind: "wicket",
+          id: stamp,
+          batter: batterName,
+          bowler: bowlerName,
+          message: pickLine([
+            `🎯 ${batterName} has to go — ${bowlerName} strikes!`,
+            `💥 ${bowlerName} gets his man! ${batterName} departs.`,
+            `😱 Big wicket! ${batterName} is dismissed by ${bowlerName}.`,
+          ]),
+        });
       } else if (lastBall.runs === 6) {
-        setActive({ kind: "six", id: stamp, batter: batterName });
+        setActive({
+          kind: "six",
+          id: stamp,
+          batter: batterName,
+          message: pickLine([
+            `🚀 ${batterName} sends it out of the park!`,
+            `💥 ${batterName} goes big — that's a maximum!`,
+            `🔥 ${batterName} deposits it into the stands!`,
+          ]),
+        });
       } else if (lastBall.runs === 4) {
-        setActive({ kind: "four", id: stamp, batter: batterName });
+        setActive({
+          kind: "four",
+          id: stamp,
+          batter: batterName,
+          message: pickLine([
+            `🏏 ${batterName} finds the fence — cracking shot!`,
+            `⚡ ${batterName} pierces the gap for four!`,
+            `✨ ${batterName} times it beautifully to the boundary!`,
+          ]),
+        });
       }
     }
 
@@ -1941,7 +2256,7 @@ export function HcCelebrationLayer({
     if (!active) return;
     const ms =
       active.kind === "winner" ? 4800
-      : active.kind === "hattrickWickets" || active.kind === "hattrickBoundaries" ? 3200
+      : active.kind === "hattrickWickets" || active.kind === "streak" ? 3200
       : active.kind === "six" ? 2200
       : active.kind === "wicket" ? 2000
       : 1800;
@@ -1972,8 +2287,8 @@ export function HcCelebrationOverlay({ data }: { data: HcCelebrationData }) {
               : "radial-gradient(ellipse at center, rgba(180,83,9,0.35) 0%, rgba(0,0,0,0.45) 70%)",
         }}
       />
-      {(data.kind === "four" || data.kind === "six" || data.kind === "hattrickBoundaries") && (
-        <EmojiBurst emojis={data.kind === "four" ? ["4️⃣", "🏏", "💥"] : data.kind === "six" ? ["6️⃣", "🏏", "🎆", "⭐"] : ["4️⃣", "6️⃣", "🔥", "🏏"]} count={data.kind === "hattrickBoundaries" ? 22 : 14} />
+      {(data.kind === "four" || data.kind === "six" || data.kind === "streak") && (
+        <EmojiBurst emojis={data.kind === "four" ? ["4️⃣", "🏏", "💥"] : data.kind === "six" ? ["6️⃣", "🏏", "🎆", "⭐"] : ["4️⃣", "6️⃣", "🔥", "🏏"]} count={data.kind === "streak" ? 22 : 14} />
       )}
       {(data.kind === "wicket" || data.kind === "hattrickWickets") && (
         <EmojiBurst emojis={data.kind === "wicket" ? ["💥", "🎯"] : ["🎯", "💥", "🔥"]} count={data.kind === "hattrickWickets" ? 18 : 10} />
@@ -2003,8 +2318,8 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
           >
             FOUR!
           </div>
-          <div className="mt-2 text-amber-100 font-bold text-sm sm:text-base drop-shadow">
-            🏏 {data.batter} smashes a boundary!
+          <div className="mt-2 text-amber-100 font-bold text-base sm:text-lg drop-shadow">
+            {data.message}
           </div>
         </div>
       );
@@ -2040,8 +2355,8 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
           >
             SIX!
           </div>
-          <div className="mt-2 text-amber-50 font-extrabold text-base sm:text-lg drop-shadow">
-            🚀 {data.batter} sends it out of the park!
+          <div className="mt-2 text-amber-50 font-extrabold text-base sm:text-xl drop-shadow">
+            {data.message}
           </div>
         </div>
       );
@@ -2061,8 +2376,8 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
           >
             WICKET!
           </div>
-          <div className="mt-2 text-rose-100 font-extrabold text-base sm:text-lg drop-shadow">
-            🎯 {data.batter} OUT — {data.bowler} strikes!
+          <div className="mt-2 text-rose-100 font-extrabold text-base sm:text-xl drop-shadow">
+            {data.message}
           </div>
         </div>
       );
@@ -2085,8 +2400,8 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
           >
             HAT-TRICK!
           </div>
-          <div className="mt-2 text-amber-100 font-extrabold text-base sm:text-lg drop-shadow">
-            🎯 {data.bowler} — three in a row!
+          <div className="mt-2 text-amber-100 font-extrabold text-base sm:text-xl drop-shadow">
+            {data.message}
           </div>
           <div className="mt-4 flex justify-center gap-3 text-3xl sm:text-4xl">
             <span className="hc-celebrate-pop" style={{ animationDelay: "120ms" }}>🎯</span>
@@ -2095,16 +2410,23 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
           </div>
         </div>
       );
-    case "hattrickBoundaries":
+    case "streak": {
+      const emojiRow =
+        data.variant === "sixes" ? ["6️⃣", "6️⃣", "6️⃣"]
+        : data.variant === "fours" ? ["4️⃣", "4️⃣", "4️⃣"]
+        : ["4️⃣", "5️⃣", "6️⃣"];
+      const topEmoji = data.variant === "sixes" ? "🚀🚀🚀" : "⚡⚡⚡";
       return (
-        <div className="relative hc-celebrate-pop text-center">
-          <div className="text-[28px] sm:text-[36px] mb-1">⚡⚡⚡</div>
+        <div className="relative hc-celebrate-pop text-center px-4">
+          <div className="text-[28px] sm:text-[36px] mb-1">{topEmoji}</div>
           <div
             className="font-black tracking-tight leading-none uppercase hc-glow-pulse"
             style={{
-              fontSize: "clamp(54px, 14vw, 128px)",
+              fontSize: "clamp(44px, 12vw, 120px)",
               background:
-                "linear-gradient(180deg, #fff3a0 0%, #f59e0b 50%, #9a3412 100%)",
+                data.variant === "sixes"
+                  ? "linear-gradient(180deg, #fff3a0 0%, #f97316 55%, #b91c1c 100%)"
+                  : "linear-gradient(180deg, #fff3a0 0%, #f59e0b 50%, #9a3412 100%)",
               WebkitBackgroundClip: "text",
               backgroundClip: "text",
               color: "transparent",
@@ -2112,18 +2434,19 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
               textShadow: "0 8px 26px rgba(0,0,0,0.65)",
             }}
           >
-            ON FIRE!
+            {data.title}
           </div>
-          <div className="mt-2 text-amber-50 font-extrabold text-base sm:text-lg drop-shadow">
-            🏏 {data.batter} — boundary spree!
+          <div className="mt-2 text-amber-50 font-extrabold text-base sm:text-xl drop-shadow max-w-xl mx-auto">
+            {data.message}
           </div>
           <div className="mt-4 flex justify-center gap-3 text-3xl sm:text-4xl font-black text-amber-200">
-            <span className="hc-celebrate-pop" style={{ animationDelay: "120ms" }}>4️⃣</span>
-            <span className="hc-celebrate-pop" style={{ animationDelay: "240ms" }}>6️⃣</span>
-            <span className="hc-celebrate-pop" style={{ animationDelay: "360ms" }}>4️⃣</span>
+            {emojiRow.map((e, i) => (
+              <span key={i} className="hc-celebrate-pop" style={{ animationDelay: `${120 * (i + 1)}ms` }}>{e}</span>
+            ))}
           </div>
         </div>
       );
+    }
     case "winner":
       return (
         <div className="relative text-center max-w-md mx-auto">

@@ -36,6 +36,7 @@ export default function HandCricketBoardMobile({
   roomCode,
   roomPhase,
   onLeave,
+  onScorecardClose,
 }: HandCricketBoardProps) {
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
@@ -112,7 +113,7 @@ export default function HandCricketBoardMobile({
           )}
           {state.phase === "finished" && (
             <HcPhaseCard>
-              <MatchSummary state={state} players={players} selfId={sid} />
+              <MatchSummary state={state} players={players} selfId={sid} onContinue={onScorecardClose} />
             </HcPhaseCard>
           )}
         </div>
