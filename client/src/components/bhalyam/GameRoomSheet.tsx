@@ -494,7 +494,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 setName(e.target.value);
                 if (nameError) setNameError(null);
               }}
-              placeholder="e.g. Kethan"
+              placeholder="e.g. Sri Krishna"
               maxLength={20}
               aria-invalid={nameError ? true : undefined}
               aria-describedby={nameError ? "grs-name-error" : undefined}
