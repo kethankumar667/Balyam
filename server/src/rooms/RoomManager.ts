@@ -315,8 +315,11 @@ export class RoomManager {
     this.socketToRoom.delete(socketId);
     this.io.sockets.sockets.get(socketId)?.leave(code);
 
-    if (room.players.size === 0) {
-      this.rooms.delete(code);
+    // No humans left (empty, or only bots remain) → abandon the room rather
+    // than have the engine crown a leftover bot the winner. A remaining HUMAN
+    // is still a legit forfeit win, so that path is untouched below.
+    if (!this.hasHumanPlayer(room)) {
+      this.abandonRoom(room);
       return;
     }
 
@@ -809,6 +812,29 @@ export class RoomManager {
     }
   }
 
+  /**
+   * Tear a room down with no result. Used when the last HUMAN leaves a game in
+   * progress: the engine's `removePlayer` awards the win to the remaining
+   * opponent, and when that opponent is a bot this produced the "bot declared
+   * winner mid-match" bug. There's nobody left to watch a bot win, so we abandon
+   * the room instead — no `removePlayer`, no bot-win broadcast.
+   *
+   * Setting `phase = "finished"` also makes any in-flight bot-move closures bail
+   * (they guard on `phase === "playing"`), so no stray timers fire after delete.
+   */
+  private abandonRoom(room: Room): void {
+    room.phase = "finished";
+    this.clearTurnTimer(room);
+    for (const t of room.cleanupTimers.values()) clearTimeout(t);
+    room.cleanupTimers.clear();
+    this.rooms.delete(room.code);
+  }
+
+  /** True while at least one seated player is a real human (not a bot). */
+  private hasHumanPlayer(room: Room): boolean {
+    return [...room.players.values()].some((p) => !p.isBot);
+  }
+
   private scheduleTurnTimer(room: Room): void {
     this.clearTurnTimer(room);
     if (room.phase !== "playing") return;
@@ -1135,11 +1161,15 @@ export class RoomManager {
       const stillPlayer = stillRoom.players.get(playerId);
       if (stillPlayer && !stillPlayer.isConnected) {
         stillRoom.players.delete(playerId);
-        if (stillRoom.engine) stillRoom.engine.removePlayer(playerId);
-        if (stillRoom.players.size === 0) {
-          this.rooms.delete(code);
+        // If the departing human was the last human in the room, abandon it —
+        // never let the grace-timeout resolve into a bot being crowned winner.
+        // Only a REMAINING human counts as a forfeit win, so removePlayer runs
+        // solely in that case.
+        if (!this.hasHumanPlayer(stillRoom)) {
+          this.abandonRoom(stillRoom);
           return;
         }
+        if (stillRoom.engine) stillRoom.engine.removePlayer(playerId);
         if (stillRoom.hostId === playerId) {
           const next = stillRoom.players.values().next().value;
           if (next) {
