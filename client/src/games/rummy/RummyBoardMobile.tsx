@@ -2953,11 +2953,12 @@ function PoolBetweenRounds({
                   {nameOf(id)}
                   {state.droppedPlayers.includes(id) && (
                     <span
-                      className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase"
+                      className="ml-2 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase"
                       style={{
                         background: "rgba(239,68,68,0.18)",
                         border: "1px solid rgba(239,68,68,0.45)",
                         color: "#f87171",
+                        letterSpacing: "0.06em",
                       }}
                     >
                       ⏏ Dropped

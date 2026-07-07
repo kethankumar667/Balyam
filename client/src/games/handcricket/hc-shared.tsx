@@ -996,6 +996,44 @@ export function InningsPhase({
     lastBallCount.current = innings.history.length;
   }, [innings.history.length]);
 
+  // ─── Wicket announcement ─────────────────────────────────────────────
+  /** Brief card shown when a batter is dismissed and the next walks in. */
+  const [wicketAnnounce, setWicketAnnounce] = useState<{ outName: string; inName: string } | null>(null);
+  const prevWicketsRef = useRef(innings.wickets);
+  // Effect 1: detect a new wicket and set the announcement state.
+  // Deliberately does NOT start the timer — a separate effect handles that
+  // so the timer restarts correctly under React Strict Mode's double-invoke.
+  useEffect(() => {
+    if (innings.wickets <= prevWicketsRef.current) return;
+    prevWicketsRef.current = innings.wickets;
+    // Resolve player names from batting team roster.
+    const sel = state.teamSelections[innings.battingPlayerId];
+    const squad = sel?.squadPlayerIds ?? [];
+    const pool: HcPlayerProfile[] = (() => {
+      if (!sel?.teamId) return [];
+      const r = getRosterFor(sel.teamId, state.options.format);
+      return r ? [...r.squad, ...r.extras] : [];
+    })();
+    const nameOf = (id: string) => pool.find((p) => p.id === id)?.name ?? id;
+    const lastWicket = [...innings.history].reverse().find((b) => b.wicket);
+    const outName = lastWicket ? nameOf(lastWicket.batterId) : "Batter";
+    const inId = squad[innings.strikerIdx];
+    const inName = inId ? nameOf(inId) : "New Batter";
+    setWicketAnnounce({ outName, inName });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [innings.wickets]);
+  // Effect 2: 4-second auto-dismiss timer. Separated so StrictMode's cleanup +
+  // re-invoke correctly restarts the timer after the state has settled.
+  useEffect(() => {
+    if (!wicketAnnounce) return;
+    const t = setTimeout(() => setWicketAnnounce(null), 4000);
+    return () => clearTimeout(t);
+  }, [wicketAnnounce]);
+
+  // ─── Batting order panel ──────────────────────────────────────────────
+  const isBattingPlayer = innings.battingPlayerId === selfId;
+  const [battingOrderOpen, setBattingOrderOpen] = useState(false);
+
   function pick(n: number) {
     if (myPick != null) return;
     if (innings.currentBowlerId == null) return; // wait for bowler
@@ -1031,6 +1069,15 @@ export function InningsPhase({
 
       <CurrentPlayersBar state={state} innings={innings} selfId={selfId} big={isDesktop} />
 
+      {/* Wicket + new batter announcement — shows for 4 s when a wicket falls. */}
+      {wicketAnnounce && (
+        <WicketNotification
+          outName={wicketAnnounce.outName}
+          inName={wicketAnnounce.inName}
+          onDismiss={() => setWicketAnnounce(null)}
+        />
+      )}
+
       {/* Role badge */}
       {myRole && (
         <div className="text-center">
@@ -1048,6 +1095,27 @@ export function InningsPhase({
         </div>
       )}
 
+      {/* Batting order panel — batting player can shuffle upcoming batters. */}
+      {isBattingPlayer && !innings.endedReason && (
+        <div>
+          <button
+            onClick={() => setBattingOrderOpen((o) => !o)}
+            className="w-full flex items-center justify-between text-xs font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-lg transition"
+            style={{
+              background: battingOrderOpen ? "rgba(22,101,52,0.14)" : "rgba(22,101,52,0.07)",
+              border: "1px solid rgba(22,101,52,0.28)",
+              color: "#166534",
+            }}
+          >
+            <span>🏏 Batting Order</span>
+            <span style={{ fontSize: 10 }}>{battingOrderOpen ? "▲ hide" : "▼ show"}</span>
+          </button>
+          {battingOrderOpen && (
+            <BattingOrderPanel innings={innings} state={state} />
+          )}
+        </div>
+      )}
+
       {needsBowler ? (
         <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} />
       ) : (
@@ -1062,7 +1130,7 @@ export function InningsPhase({
           />
 
           <PickRow
-            disabled={myPick != null}
+            disabled={myPick != null || reveal !== null}
             onPick={pick}
             selected={typeof myPick === "number" && myPick > 0 ? myPick : null}
             allowedPicks={myRole === "bowler" ? allowedBowlerPicks : [1, 2, 3, 4, 5, 6]}
@@ -1840,7 +1908,7 @@ export function MatchSummary({
 
       {/* End-of-match page chrome: Continue + 90 s auto-advance countdown. */}
       {onContinue && (
-        <div className="flex flex-col items-center gap-2 pt-1">
+        <div className="sticky bottom-0 flex flex-col items-center gap-2 pt-2 pb-1 bg-[#F5F0E4]/90 backdrop-blur-sm rounded-b-xl">
           <PaperButton variant="confirm" size="block" onClick={onContinue} className="max-w-xs tracking-[0.08em]">
             Continue →
           </PaperButton>
@@ -1939,7 +2007,7 @@ export function InningsScorecard({
     .sort((a, b) => b.stats.wickets - a.stats.wickets || a.stats.runs - b.stats.runs);
 
   return (
-    <PaperPanel tone="default" pad="none" className="space-y-2.5 overflow-hidden font-notebook">
+    <PaperPanel tone="default" pad="none" className="space-y-2.5 overflow-hidden font-notebook min-w-0">
       {/* Coloured innings header bar */}
       <div
         className="flex items-center justify-between flex-wrap gap-2 px-3 py-2"
@@ -1994,7 +2062,7 @@ export function BatterTable({
   nameOfBowler: (id: string) => string;
 }) {
   return (
-    <div style={{ background: "rgba(245,233,196,0.70)", border: "1.5px dashed rgba(46,40,25,0.35)", borderRadius: 6, padding: 8 }}>
+    <div style={{ background: "rgba(245,233,196,0.70)", border: "1.5px dashed rgba(46,40,25,0.35)", borderRadius: 6, padding: 8, overflowX: "auto" }}>
       <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#166534", fontWeight: 800, marginBottom: 4, paddingLeft: 4, fontFamily: "'Kalam', cursive" }}>
         🏏 Batting
       </div>
@@ -2043,7 +2111,7 @@ export function BowlerTable({
   nameOf: (id: string) => string;
 }) {
   return (
-    <div style={{ background: "rgba(245,233,196,0.70)", border: "1.5px dashed rgba(46,40,25,0.35)", borderRadius: 6, padding: 8 }}>
+    <div style={{ background: "rgba(245,233,196,0.70)", border: "1.5px dashed rgba(46,40,25,0.35)", borderRadius: 6, padding: 8, overflowX: "auto" }}>
       <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1d4ed8", fontWeight: 800, marginBottom: 4, paddingLeft: 4, fontFamily: "'Kalam', cursive" }}>
         ⚾ Bowling
       </div>
@@ -2325,7 +2393,7 @@ export function HcCelebrationLayer({
 export function HcCelebrationOverlay({ data }: { data: HcCelebrationData }) {
   return (
     <div
-      className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center px-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4"
       aria-live="polite"
       aria-atomic="true"
       role="status"
@@ -2613,6 +2681,163 @@ export function ConfettiRain({ count }: { count: number }) {
             transform: `rotate(${p.rot})`,
           }}
         />
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────── Wicket notification ────────────────────────────
+ * Shown for 4 s (with manual dismiss) when a batter is dismissed and the
+ * next player walks in. Placed inline just below CurrentPlayersBar.
+ * ─────────────────────────────────────────────────────────────────────── */
+function WicketNotification({
+  outName,
+  inName,
+  onDismiss,
+}: {
+  outName: string;
+  inName: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="relative rounded-xl border-2 px-4 pt-3 pb-3 text-center"
+      style={{
+        background: "linear-gradient(135deg, #fef2f2 0%, #fef9c3 100%)",
+        borderColor: "#991b1b",
+      }}
+    >
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-[10px] hover:bg-black/10"
+        style={{ color: "#6b7280" }}
+      >
+        ✕
+      </button>
+      <div
+        className="font-extrabold uppercase tracking-widest mb-1"
+        style={{ fontSize: 11, color: "#991b1b" }}
+      >
+        💥 Wicket!
+      </div>
+      <div
+        className="font-sketch font-bold leading-tight"
+        style={{ fontSize: 16, color: "#1a2952" }}
+      >
+        <span style={{ color: "#991b1b" }}>{outName}</span> is out
+      </div>
+      <div
+        className="font-bold mt-1.5"
+        style={{ fontSize: 14, color: "#166534" }}
+      >
+        ✦ <span className="font-sketch">{inName}</span> comes in to bat
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─────────────────────── Batting order panel ───────────────────────────
+ * Shown only to the batting player. Lists upcoming batters with ▲/▼ swap
+ * buttons; emits reorderBatting on each tap.
+ * ─────────────────────────────────────────────────────────────────────── */
+function BattingOrderPanel({
+  innings,
+  state,
+}: {
+  innings: HcInnings;
+  state: HcState;
+}) {
+  const sel = state.teamSelections[innings.battingPlayerId];
+  const squad = sel?.squadPlayerIds ?? [];
+  const pool: HcPlayerProfile[] = useMemo(() => {
+    if (!sel?.teamId) return [];
+    const r = getRosterFor(sel.teamId, state.options.format);
+    return r ? [...r.squad, ...r.extras] : [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel?.teamId, state.options.format]);
+
+  const nameOf = (id: string) => pool.find((p) => p.id === id)?.name ?? id;
+  const roleTag = (id: string) => {
+    const r = pool.find((p) => p.id === id)?.role;
+    return r === "batter" ? "BAT" : r === "bowler" ? "BOWL" : r === "keeper" ? "WK" : "AR";
+  };
+
+  // Positions 0..nextBatterIdx-1 are locked (already played or at crease).
+  const lockCount = innings.nextBatterIdx;
+  const upcomingIds = squad.slice(lockCount);
+
+  function swap(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= upcomingIds.length) return;
+    const newUpcoming = [...upcomingIds];
+    [newUpcoming[i], newUpcoming[j]] = [newUpcoming[j], newUpcoming[i]];
+    const newOrder = [...squad.slice(0, lockCount), ...newUpcoming];
+    getSocket().emit("game:move", { type: "reorderBatting", data: { newOrder } });
+  }
+
+  if (upcomingIds.length === 0) {
+    return (
+      <div className="text-xs text-hc-ink-lt text-center py-1.5">
+        No upcoming batters to reorder.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mt-1 rounded-lg overflow-hidden"
+      style={{ border: "1px solid rgba(22,101,52,0.22)" }}
+    >
+      {upcomingIds.map((id, i) => (
+        <div
+          key={id}
+          className="flex items-center gap-2 px-2.5 py-1.5"
+          style={{
+            background: i % 2 ? "rgba(22,101,52,0.04)" : "transparent",
+            borderBottom: i < upcomingIds.length - 1 ? "1px solid rgba(22,101,52,0.10)" : undefined,
+          }}
+        >
+          {/* Position number */}
+          <span className="w-5 text-center tabular-nums font-bold text-hc-ink-lt" style={{ fontSize: 10 }}>
+            {lockCount + i + 1}
+          </span>
+          {/* Name */}
+          <span className="flex-1 font-notebook font-bold text-hc-ink" style={{ fontSize: 13 }}>
+            {nameOf(id)}
+          </span>
+          {/* Role chip */}
+          <span
+            className="rounded px-1 py-0.5 font-bold uppercase"
+            style={{ fontSize: 9, background: "rgba(46,40,25,0.08)", color: "#4a5a82" }}
+          >
+            {roleTag(id)}
+          </span>
+          {/* Swap buttons */}
+          <div className="flex gap-0.5">
+            <button
+              onClick={() => swap(i, -1)}
+              disabled={i === 0}
+              className="w-6 h-6 flex items-center justify-center rounded hover:bg-hc-ink/10 disabled:opacity-25"
+              style={{ fontSize: 12, color: "#166534" }}
+              title="Move up"
+            >
+              ▲
+            </button>
+            <button
+              onClick={() => swap(i, 1)}
+              disabled={i === upcomingIds.length - 1}
+              className="w-6 h-6 flex items-center justify-center rounded hover:bg-hc-ink/10 disabled:opacity-25"
+              style={{ fontSize: 12, color: "#166534" }}
+              title="Move down"
+            >
+              ▼
+            </button>
+          </div>
+        </div>
       ))}
     </div>
   );
