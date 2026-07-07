@@ -19,7 +19,7 @@ import {
 import { findValidDeclaration, pickBestDiscard, shouldDrawFromOpen } from "./botArrange.js";
 
 interface InternalState {
-  phase: "playing" | "finished";
+  phase: "playing" | "arranging" | "finished";
   hands: Map<string, Card[]>;
   closedDeck: Card[];
   openPile: Card[];
@@ -38,6 +38,12 @@ interface InternalState {
   finalMelds: Record<string, string[][]>;
   droppedPlayers: Set<string>;
   turnDeadline: number | null;
+  /**
+   * When phase === "arranging", the wall-clock ms at which the 15-second
+   * post-show rearrange window closes. null otherwise. The room manager
+   * schedules the finalize timer from this; the client counts down to it.
+   */
+  arrangeDeadline: number | null;
   /**
    * Player id whose turn the current `turnDeadline` belongs to. Used so
    * the within-turn draw → discard transition can preserve any unused
@@ -82,6 +88,15 @@ function poolTargetFor(mode: RummyMatchMode): number | null {
 
 /** Drop penalty per the common Indian Rummy convention: first-drop = 20 points. */
 const DROP_PENALTY = 20;
+
+/**
+ * After a valid show, the round doesn't end instantly. Every OTHER player gets
+ * this fixed window to rearrange their hand into melds and cut their score —
+ * the declarer becomes a spectator, and no one may draw. When it elapses the
+ * room manager calls {@link RummyEngine.finalizeArrangingRound}, which scores
+ * each remaining player on the arrangement they actually built.
+ */
+const ARRANGE_WINDOW_MS = 15_000;
 
 /**
  * Minimum points a non-winning player books when the round ends in a
@@ -208,7 +223,7 @@ export class RummyEngine implements GameEngine {
    * Returns whether the auto-move was applied.
    */
   applyAutoMove(playerId: string): MoveResult {
-    if (this.s.phase === "finished") return { ok: false, error: "Game over" };
+    if (this.s.phase !== "playing") return { ok: false, error: "Not in play" };
     const current = this.s.playerOrder[this.s.turnIndex];
     if (playerId !== current) return { ok: false, error: "Not current player" };
     if (this.s.droppedPlayers.has(playerId)) return { ok: false, error: "Dropped" };
@@ -289,6 +304,7 @@ export class RummyEngine implements GameEngine {
       finalMelds: {},
       droppedPlayers: new Set(),
       turnDeadline: null,
+      arrangeDeadline: null,
       deadlineOwnerId: null,
       pendingAnimationPauseMs: 0,
       firstDrawTaken: false,
@@ -341,6 +357,7 @@ export class RummyEngine implements GameEngine {
     this.s.finalMelds = {};
     this.s.droppedPlayers = new Set();
     this.s.turnDeadline = null;
+    this.s.arrangeDeadline = null;
     this.s.deadlineOwnerId = null;
     this.s.pendingAnimationPauseMs = 0;
     this.s.firstDrawTaken = false;
@@ -391,6 +408,11 @@ export class RummyEngine implements GameEngine {
     }
 
     if (this.s.phase === "finished") return { ok: false, error: "Round is over" };
+    // Post-show rearrange window: no deck access, no turns. Players may only
+    // rearrange (streamed via setArrangement), which isn't an applyMove.
+    if (this.s.phase === "arranging") {
+      return { ok: false, error: "Rearrange your hand — scoring in progress" };
+    }
 
     const currentPlayer = this.s.playerOrder[this.s.turnIndex];
     if (move.playerId !== currentPlayer) {
@@ -550,11 +572,19 @@ export class RummyEngine implements GameEngine {
       return { ok: false, error: result.error, isOver: true };
     }
 
-    this.finalizeWithWinner(move.playerId, discard, meldGroupIds);
-    return { ok: true, isOver: true, winnerId: move.playerId };
+    // Valid show — DON'T finish yet. Open the 15-second rearrange window; the
+    // room manager schedules finalizeArrangingRound() when arrangeDeadline hits.
+    this.enterArrangingPhase(move.playerId, discard, meldGroupIds);
+    return { ok: true, winnerId: move.playerId };
   }
 
-  private finalizeWithWinner(
+  /**
+   * A valid show has been made. Lock in the winner (remove their discard, credit
+   * their melds, score them 0) and open the fixed rearrange window for everyone
+   * else. Nobody is scored yet — losers keep streaming arrangements until the
+   * window closes and {@link finalizeArrangingRound} runs.
+   */
+  private enterArrangingPhase(
     winnerId: string,
     discard: Card,
     winnerMelds: string[][],
@@ -566,39 +596,55 @@ export class RummyEngine implements GameEngine {
     );
     this.s.openPile.push(discard);
 
+    this.s.winnerId = winnerId;
+    this.s.scores[winnerId] = 0;
+    this.s.finalHands[winnerId] = winnerHand.slice();
+    // Winner's exact melds — the proof of how they made the show.
+    this.s.finalMelds[winnerId] = winnerMelds.map((g) => g.slice());
+
+    this.s.phase = "arranging";
+    this.s.arrangeDeadline = Date.now() + ARRANGE_WINDOW_MS;
+    this.clearTurnDeadline();
+  }
+
+  /** Wall-clock ms the rearrange window closes at, or null when not arranging. */
+  getArrangeDeadline(): number | null {
+    return this.s?.phase === "arranging" ? this.s.arrangeDeadline : null;
+  }
+
+  /**
+   * Close the rearrange window and score the round. Each non-winner is scored
+   * on the arrangement THEY built during the window (their streamed groups) —
+   * un-melded cards count full, so the timer genuinely mattered. Idempotent:
+   * a no-op unless we're actually in the arranging phase.
+   */
+  finalizeArrangingRound(): void {
+    if (this.s.phase !== "arranging") return;
+    const winnerId = this.s.winnerId;
+
     for (const pid of this.s.playerOrder) {
+      if (pid === winnerId) continue;
       const hand = this.s.hands.get(pid) ?? [];
       this.s.finalHands[pid] = hand.slice();
-      if (pid === winnerId) {
-        this.s.scores[pid] = 0;
-        continue;
-      }
-      // Losers: score from the player's last submitted arrangement so
-      // the scorecard's groups + points match what the player saw during
-      // play. If no arrangement was received (e.g. a bot, or a stale
-      // round), fall back to the engine's best-credit auto-arrangement.
+      // Score from the player's actual arrangement built during the window.
+      // A bot (or anyone who never streamed groups) falls back to the engine's
+      // best-credit arrangement so it isn't punished for having no client.
       const submitted = this.arrangements.get(pid);
       const arrangement = submitted
         ? scoreFromArrangement(hand, submitted, this.s.wildJoker.rank)
         : bestArrangementForScoring(hand, this.s.wildJoker.rank);
-      // Floor losers at the minimum token loss so a 0-point loser still
-      // pays the winner 2 chips. See LOSER_MIN_SCORE_ON_DECLARE.
       this.s.scores[pid] = Math.max(LOSER_MIN_SCORE_ON_DECLARE, arrangement.points);
-      // Display: show the FULL submitted arrangement (including invalid
-      // / short groups) so the scorecard mirrors what the player actually
-      // built. The badges on the client compute per-group points and
-      // mark credited vs uncredited — they need every group to do that.
-      // When no arrangement was sent, fall back to the credited melds.
+      // Display the FULL arrangement the player built (incl. short/invalid
+      // groups) so the scorecard's per-group badges mirror their hand.
       if (submitted && submitted.length > 0) {
         this.s.finalMelds[pid] = submitted.map((g) => g.slice());
       } else if (arrangement.melds.length > 0) {
         this.s.finalMelds[pid] = arrangement.melds.map((g) => g.map((c) => c.id));
       }
     }
-    // Winner's exact melds — the proof of how they made the show.
-    this.s.finalMelds[winnerId] = winnerMelds.map((g) => g.slice());
+
     this.s.phase = "finished";
-    this.s.winnerId = winnerId;
+    this.s.arrangeDeadline = null;
     this.updateMatchScoresAfterRound();
   }
 
@@ -694,6 +740,7 @@ export class RummyEngine implements GameEngine {
       playerOrder: this.s.playerOrder,
       openPile: this.s.openPile.slice(),
       turnDeadline: this.s.turnDeadline,
+      arrangeDeadline: this.s.phase === "arranging" ? this.s.arrangeDeadline : null,
       droppedPlayers: [...this.s.droppedPlayers],
       matchMode: this.s.matchMode,
       cumulativeScores: Object.fromEntries(this.s.cumulativeScores),
@@ -702,7 +749,10 @@ export class RummyEngine implements GameEngine {
       matchWinnerId: this.s.matchWinnerId,
       matchOver: this.s.matchOver,
       poolTarget: this.s.poolTarget,
-      winnerId: this.s.phase === "finished" ? this.s.winnerId : undefined,
+      // Reveal the winner as soon as the show is made (arranging) so clients can
+      // announce it and show the spectator/countdown state; scores/hands/melds
+      // stay hidden until the round is actually scored (finished).
+      winnerId: this.s.phase !== "playing" ? this.s.winnerId : undefined,
       scores: this.s.phase === "finished" ? this.s.scores : undefined,
       finalHands: this.s.phase === "finished" ? this.s.finalHands : undefined,
       finalMelds: this.s.phase === "finished" ? this.s.finalMelds : undefined,

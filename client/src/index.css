@@ -862,6 +862,44 @@ body, #root, .bhalyam-paper {
   animation: active-player-pulse 1.5s ease-in-out infinite;
 }
 
+/* Rummy — result scorecard entrance: the notebook page drops in and settles. */
+@keyframes rummy-result-pop {
+  0%   { transform: translateY(28px) scale(0.94); opacity: 0; }
+  60%  { transform: translateY(-4px) scale(1.01); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.rummy-result-pop { animation: rummy-result-pop 460ms cubic-bezier(.22,1.1,.36,1) both; }
+
+/* Rummy — each scorecard row wipes in from the left, staggered top-to-bottom
+   so the ranking reads as it's revealed rather than appearing all at once. */
+@keyframes rummy-row-in {
+  0%   { transform: translateX(-22px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+.rummy-row-in { animation: rummy-row-in 420ms cubic-bezier(.2,.8,.3,1) both; }
+
+/* Rummy — "X dropped" announcement: a card slammed onto the table. */
+@keyframes rummy-drop-slam {
+  0%   { transform: translateY(-46px) rotate(-9deg) scale(0.65); opacity: 0; }
+  42%  { transform: translateY(0) rotate(5deg) scale(1.1); opacity: 1; }
+  60%  { transform: rotate(-2.5deg) scale(0.97); }
+  78%  { transform: rotate(1.5deg) scale(1.02); }
+  100% { transform: rotate(0) scale(1); opacity: 1; }
+}
+.rummy-drop-slam { animation: rummy-drop-slam 560ms cubic-bezier(.28,1.35,.5,1) both; }
+
+/* Rummy — the drop announcement fades away after holding briefly. */
+@keyframes rummy-drop-fade {
+  0%, 62% { opacity: 1; }
+  100%    { opacity: 0; transform: translateY(-8px) scale(0.96); }
+}
+
+/* Soft, thin scrollbar for Rummy lists/scorecards (parchment-friendly). */
+.rummy-scroll-soft { scrollbar-width: thin; scrollbar-color: rgba(120,95,60,0.45) transparent; }
+.rummy-scroll-soft::-webkit-scrollbar { width: 7px; height: 7px; }
+.rummy-scroll-soft::-webkit-scrollbar-thumb { background: rgba(120,95,60,0.40); border-radius: 999px; }
+.rummy-scroll-soft::-webkit-scrollbar-track { background: transparent; }
+
 /* Rummy — closed deck glow when it's your turn to draw */
 @keyframes rummy-glow {
   0%, 100% { opacity: 0.65; }
@@ -1033,6 +1071,50 @@ body, #root, .bhalyam-paper {
   75%      { transform: translateX(-3px) rotate(-0.5deg); }
 }
 .hc-shake { animation: hc-shake 720ms ease-in-out both; }
+
+/* ── Per-celebration signature entrances (each type animates differently) ── */
+
+/* FOUR — races in from the left like the ball speeding to the fence, skids to a stop. */
+@keyframes hc-four-slide {
+  0%   { transform: translateX(-65vw) scale(0.7) rotate(-7deg); opacity: 0; }
+  55%  { transform: translateX(4vw)  scale(1.14) rotate(3deg);  opacity: 1; }
+  74%  { transform: translateX(-1.2vw) scale(0.97) rotate(-1deg); }
+  100% { transform: translateX(0) scale(1) rotate(0); opacity: 1; }
+}
+.hc-four-slide { animation: hc-four-slide 660ms cubic-bezier(.2,.85,.3,1) both; }
+
+/* SIX — launches up from below with hang-time, like a towering maximum. */
+@keyframes hc-six-launch {
+  0%   { transform: translateY(48vh) scale(0.45); opacity: 0; }
+  50%  { transform: translateY(-6vh) scale(1.22); opacity: 1; }
+  68%  { transform: translateY(2.5vh) scale(0.95); }
+  84%  { transform: translateY(-1vh) scale(1.02); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.hc-six-launch { animation: hc-six-launch 820ms cubic-bezier(.16,.7,.28,1.15) both; }
+
+/* HAT-TRICK of wickets — a hard, strobing zoom that punches in three times. */
+@keyframes hc-hattrick-strobe {
+  0%   { transform: scale(0.35); opacity: 0; }
+  25%  { transform: scale(1.18); opacity: 1; }
+  38%  { transform: scale(1.0); }
+  52%  { transform: scale(1.14); }
+  66%  { transform: scale(1.0); }
+  80%  { transform: scale(1.09); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.hc-hattrick-strobe { animation: hc-hattrick-strobe 920ms ease-out both; }
+
+/* STREAK — energetic side-to-side wobble, "on a roll" swagger. */
+@keyframes hc-streak-wobble {
+  0%   { transform: scale(0.5) rotate(0); opacity: 0; }
+  40%  { transform: scale(1.13) rotate(-4deg); opacity: 1; }
+  56%  { transform: scale(1.04) rotate(4deg); }
+  70%  { transform: rotate(-2.5deg); }
+  85%  { transform: rotate(1.5deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.hc-streak-wobble { animation: hc-streak-wobble 840ms ease-out both; }
 
 @keyframes hc-burst-out {
   0%   { transform: translate(0,0) scale(0.4); opacity: 0; }

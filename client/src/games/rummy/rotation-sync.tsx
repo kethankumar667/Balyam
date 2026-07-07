@@ -116,7 +116,9 @@ const IDLE_GATE: RummyRotationGate = {
  */
 export function useRummyRotationGate(opts: {
   roomCode: string | undefined;
-  phase: "playing" | "finished";
+  // "arranging" is mid-round (post-show window) — treated like any non-"playing"
+  // phase here: the deal already happened, so the gate stays idle.
+  phase: "playing" | "arranging" | "finished";
   players: Player[];
   selfId: string | null;
   /**

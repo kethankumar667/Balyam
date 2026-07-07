@@ -114,7 +114,14 @@ export type RummyTurnAction = "draw" | "discardOrDeclare";
 
 export interface RummyPublicState {
   kind: "rummy";
-  phase: "playing" | "finished";
+  /**
+   * "playing"   — normal turns.
+   * "arranging" — a valid show has been made; the winner is a spectator and
+   *               everyone else has a fixed window (see `arrangeDeadline`) to
+   *               rearrange their hand and minimise their score. No draws.
+   * "finished"  — round scored; scorecard is shown.
+   */
+  phase: "playing" | "arranging" | "finished";
   turnPlayerId: string;
   turnAction: RummyTurnAction;
   turnIndex: number;
@@ -133,6 +140,11 @@ export interface RummyPublicState {
   handSizes: Record<string, number>;
   /** Wall-clock ms after which the active player's turn auto-resolves. null when not playing. */
   turnDeadline: number | null;
+  /**
+   * During the "arranging" phase, the wall-clock ms at which the 15-second
+   * rearrange window closes and the round is scored. null in every other phase.
+   */
+  arrangeDeadline?: number | null;
   /** Match-level state for pool modes. */
   matchMode: RummyMatchMode;
   /** Cumulative points across rounds (only used in pool modes). */

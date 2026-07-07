@@ -1009,7 +1009,7 @@ export function InningsPhase({
   const needsBowler = innings.currentBowlerId == null;
 
   return (
-    <div className={isDesktop ? "space-y-4" : "space-y-3"}>
+    <div className={isDesktop ? "space-y-2.5" : "space-y-3"}>
       <Scoreboard
         state={state}
         innings={innings}
@@ -1339,10 +1339,10 @@ export function Scoreboard({
       tone="soft"
       strong
       pad="none"
-      className={cn("flex items-center justify-between gap-3 font-notebook", big ? "px-5 py-4" : "px-3.5 py-2.5")}
+      className={cn("flex items-center justify-between gap-3 font-notebook", big ? "px-5 py-3" : "px-3.5 py-2.5")}
     >
       <div className="flex items-center gap-3">
-        <span className={big ? "text-4xl" : "text-2xl"}>{batterTeam.flag}</span>
+        <span className={big ? "text-3xl" : "text-2xl"}>{batterTeam.flag}</span>
         <div>
           <div
             className="font-bold uppercase tracking-[0.12em] text-hc-ink-lt"
@@ -1352,11 +1352,11 @@ export function Scoreboard({
           </div>
           <div
             className="font-black tabular-nums leading-none text-hc-ink"
-            style={{ fontSize: big ? 88 : 48 }}
+            style={{ fontSize: big ? 64 : 48 }}
           >
             {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
           </div>
-          <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 15 : 12 }}>
+          <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 14 : 12 }}>
             Overs {oversBowled}.{ballsThisOver} / {innings.overs}
           </div>
         </div>
@@ -1364,7 +1364,7 @@ export function Scoreboard({
       {target != null && (
         <div className="text-right text-hc-amber">
           <div className="uppercase tracking-wider font-bold" style={{ fontSize: big ? 12 : 10 }}>Target</div>
-          <div className="font-extrabold tabular-nums" style={{ fontSize: big ? 40 : 24 }}>{target}</div>
+          <div className="font-extrabold tabular-nums" style={{ fontSize: big ? 32 : 24 }}>{target}</div>
         </div>
       )}
     </PaperPanel>
@@ -1729,7 +1729,6 @@ export function MatchSummary({
 }) {
   const INK = "#1a2952";
   const INK_LT = "#4a5a82";
-  const PAPER_L = "#FBF5E0";
   const STAMP_G = "#166534";
   const STAMP_R = "#991b1b";
 
@@ -1766,62 +1765,78 @@ export function MatchSummary({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const bannerBg = state.result === "tie"
+    ? "linear-gradient(135deg, #e7e2cf 0%, #cbd5e1 100%)"
+    : youWon
+    ? "linear-gradient(135deg, #dcfce7 0%, #fef9c3 55%, #fde68a 100%)"
+    : "linear-gradient(135deg, #fee2e2 0%, #fef3c7 100%)";
+
   return (
     <div className="space-y-3 font-notebook">
       <div
-        className="rounded-xl p-4 text-center bg-hc-paper-l border-2"
+        className="rounded-xl p-4 text-center border-2"
         style={{
+          background: bannerBg,
           borderColor: state.result === "tie" ? INK_LT : youWon ? STAMP_G : STAMP_R,
-          boxShadow: youWon ? "0 0 18px rgba(22,101,52,0.20)" : undefined,
+          boxShadow: youWon ? "0 4px 22px rgba(22,101,52,0.22)" : "0 4px 16px rgba(0,0,0,0.10)",
         }}
       >
         <div className="text-4xl mb-1">
           {state.result === "tie" ? "🤝" : youWon ? "🏆" : "👏"}
         </div>
-        <div className="font-sketch text-[20px] font-bold text-hc-ink">
+        <div className="font-sketch text-[22px] font-bold" style={{ color: state.result === "tie" ? INK : youWon ? STAMP_G : STAMP_R }}>
           {state.result === "tie"
             ? "Match tied!"
             : winnerTeam
             ? `${winnerTeam.flag} ${winnerTeam.name} (${winnerName}) win!`
             : "Match over"}
         </div>
-        <div className="text-sm text-hc-ink-lt mt-1">
+        <div className="text-sm text-hc-ink-lt mt-1 font-bold">
           {summarizeMatch(state)}
         </div>
       </div>
 
       {/* Man of the Match */}
       {mom && (
-        <div className="relative rounded-xl px-4 py-3 text-center bg-hc-gold/10">
-          <RoughBorder roughness={1.7} strokeWidth={2} stroke="rgba(197,150,58,0.9)" padding={3} />
+        <div
+          className="relative rounded-xl px-4 py-3 text-center"
+          style={{ background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 55%, #fcd34d 100%)" }}
+        >
+          <RoughBorder roughness={1.7} strokeWidth={2} stroke="rgba(180,120,20,0.95)" padding={3} />
           <div className="relative">
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-hc-amber">
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "#92400e" }}>
               🏅 Player of the Match
             </div>
-            <div className="font-sketch text-[19px] font-bold text-hc-ink mt-0.5">
+            <div className="font-sketch text-[20px] font-bold text-hc-ink mt-0.5">
               {mom.name}
             </div>
-            <div className="text-xs text-hc-ink-lt">
+            <div className="text-xs font-bold" style={{ color: "#78350f" }}>
               {mom.teamShort} ({mom.playerName}){mom.line ? ` — ${mom.line}` : ""}
             </div>
           </div>
         </div>
       )}
 
-      {state.innings1 && (
-        <InningsScorecard
-          innings={state.innings1}
-          state={state}
-          players={players}
-        />
-      )}
-      {state.innings2 && (
-        <InningsScorecard
-          innings={state.innings2}
-          state={state}
-          players={players}
-        />
-      )}
+      {/* Innings scorecards — side by side on desktop to keep the page from
+          overflowing; stacked on narrow (mobile) shells. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+        {state.innings1 && (
+          <InningsScorecard
+            innings={state.innings1}
+            state={state}
+            players={players}
+            accent="green"
+          />
+        )}
+        {state.innings2 && (
+          <InningsScorecard
+            innings={state.innings2}
+            state={state}
+            players={players}
+            accent="blue"
+          />
+        )}
+      </div>
 
       {/* End-of-match page chrome: Continue + 90 s auto-advance countdown. */}
       {onContinue && (
@@ -1858,15 +1873,31 @@ export function summarizeMatch(state: HcState): string {
   return `Won by ${margin} run${margin === 1 ? "" : "s"}.`;
 }
 
+const SCORECARD_ACCENTS = {
+  green: {
+    bar: "linear-gradient(135deg, #166534 0%, #15803d 60%, #22c55e 100%)",
+    soft: "rgba(22,101,52,0.10)",
+    ring: "rgba(22,101,52,0.45)",
+  },
+  blue: {
+    bar: "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #3b82f6 100%)",
+    soft: "rgba(29,78,216,0.10)",
+    ring: "rgba(29,78,216,0.40)",
+  },
+} as const;
+
 export function InningsScorecard({
   innings,
   state,
   players,
+  accent = "green",
 }: {
   innings: HcInnings;
   state: HcState;
   players: Player[];
+  accent?: keyof typeof SCORECARD_ACCENTS;
 }) {
+  const acc = SCORECARD_ACCENTS[accent];
   const batter = teamLabel(state, innings.battingPlayerId, players);
   const bowler = teamLabel(state, innings.bowlingPlayerId, players);
   const oversBowled = Math.floor(innings.balls / 6);
@@ -1908,41 +1939,47 @@ export function InningsScorecard({
     .sort((a, b) => b.stats.wickets - a.stats.wickets || a.stats.runs - b.stats.runs);
 
   return (
-    <PaperPanel tone="default" pad="none" className="space-y-3 p-2.5 font-notebook">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+    <PaperPanel tone="default" pad="none" className="space-y-2.5 overflow-hidden font-notebook">
+      {/* Coloured innings header bar */}
+      <div
+        className="flex items-center justify-between flex-wrap gap-2 px-3 py-2"
+        style={{ background: acc.bar, color: "#fff" }}
+      >
         <div className="flex items-center gap-2">
-          <span className="text-xl">{batter.flag}</span>
+          <span className="text-xl drop-shadow">{batter.flag}</span>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-hc-ink-lt">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/85">
               Innings {innings.number} · {batter.short} ({batter.playerName})
             </div>
-            <div className="tabular-nums font-extrabold text-2xl leading-none text-hc-ink">
-              {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
-              {" "}<span className="text-xs font-normal text-hc-ink-lt">({oversBowled}.{ballsThisOver} ov)</span>
+            <div className="tabular-nums font-extrabold text-2xl leading-none text-white">
+              {innings.runs}<span className="text-amber-200">/{innings.wickets}</span>
+              {" "}<span className="text-xs font-normal text-white/80">({oversBowled}.{ballsThisOver} ov)</span>
             </div>
           </div>
         </div>
-        <div className="text-[11px] text-hc-ink-lt text-right">
+        <div className="text-[11px] text-white/85 text-right">
           <div>Bowled by {bowler.short} ({bowler.playerName})</div>
           {innings.endedReason && (
-            <div className="text-hc-amber font-bold">
+            <div className="font-bold text-amber-200">
               {reasonLabel[innings.endedReason] ?? innings.endedReason}
             </div>
           )}
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-2 text-xs">
-        <Stat label="4s" value={fours} />
-        <Stat label="6s" value={sixes} />
-        <Stat label="Dots" value={dots} />
-        <Stat label="SR" value={strikeRate} />
+      <div className="grid grid-cols-4 gap-2 text-xs px-2.5">
+        <Stat label="4s" value={fours} color="#166534" bg="rgba(22,101,52,0.12)" />
+        <Stat label="6s" value={sixes} color="#6d28d9" bg="rgba(109,40,217,0.12)" />
+        <Stat label="Dots" value={dots} color="#475569" bg="rgba(71,85,105,0.12)" />
+        <Stat label="SR" value={strikeRate} color="#b45309" bg="rgba(180,83,9,0.12)" />
       </div>
-      {batterRows.length > 0 && (
-        <BatterTable rows={batterRows} nameOf={nameOfBatter} nameOfBowler={nameOfBowler} />
-      )}
-      {bowlerRows.length > 0 && (
-        <BowlerTable rows={bowlerRows} nameOf={nameOfBowler} />
-      )}
+      <div className="space-y-2.5 px-2.5 pb-2.5">
+        {batterRows.length > 0 && (
+          <BatterTable rows={batterRows} nameOf={nameOfBatter} nameOfBowler={nameOfBowler} />
+        )}
+        {bowlerRows.length > 0 && (
+          <BowlerTable rows={bowlerRows} nameOf={nameOfBowler} />
+        )}
+      </div>
     </PaperPanel>
   );
 }
@@ -1973,12 +2010,12 @@ export function BatterTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ id, stats }) => {
+          {rows.map(({ id, stats }, i) => {
             if (!stats) return null;
             const sr = stats.balls > 0 ? ((stats.runs / stats.balls) * 100).toFixed(0) : "—";
             return (
-              <tr key={id} style={{ color: "#1a2952", fontFamily: "'Kalam', cursive" }}>
-                <td className="py-0.5">
+              <tr key={id} style={{ color: "#1a2952", fontFamily: "'Kalam', cursive", background: i % 2 ? "rgba(22,101,52,0.06)" : "transparent" }}>
+                <td className="py-0.5 pl-1 rounded-l">
                   <div className="font-bold">{nameOf(id)}{!stats.isOut ? "*" : ""}</div>
                   {stats.isOut && stats.dismissedBy && (
                     <div style={{ fontSize: 10, color: "#991b1b", opacity: 0.75 }}>b {nameOfBowler(stats.dismissedBy)}</div>
@@ -2021,12 +2058,12 @@ export function BowlerTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ id, stats }) => {
+          {rows.map(({ id, stats }, i) => {
             const overs = `${Math.floor(stats.balls / 6)}.${stats.balls % 6}`;
             const econ = stats.balls > 0 ? ((stats.runs / stats.balls) * 6).toFixed(1) : "—";
             return (
-              <tr key={id} style={{ color: "#1a2952", fontFamily: "'Kalam', cursive" }}>
-                <td className="py-0.5 font-bold">{nameOf(id)}</td>
+              <tr key={id} style={{ color: "#1a2952", fontFamily: "'Kalam', cursive", background: i % 2 ? "rgba(29,78,216,0.06)" : "transparent" }}>
+                <td className="py-0.5 pl-1 font-bold rounded-l">{nameOf(id)}</td>
                 <td className="text-right tabular-nums">{overs}</td>
                 <td className="text-right tabular-nums">{stats.runs}</td>
                 <td className="text-right tabular-nums font-bold" style={{ color: "#92400e" }}>{stats.wickets}</td>
@@ -2040,12 +2077,28 @@ export function BowlerTable({
   );
 }
 
-export function Stat({ label, value }: { label: string; value: number | string }) {
+export function Stat({
+  label,
+  value,
+  color,
+  bg,
+}: {
+  label: string;
+  value: number | string;
+  color?: string;
+  bg?: string;
+}) {
   return (
-    <PaperPanel tone="soft" pad="none" className="px-1.5 py-1 text-center font-notebook">
-      <div className="text-[9px] uppercase tracking-[0.10em] font-extrabold text-hc-ink-lt">{label}</div>
-      <div className="tabular-nums font-extrabold text-base text-hc-ink">{value}</div>
-    </PaperPanel>
+    <div
+      className="px-1.5 py-1 text-center rounded-md font-notebook"
+      style={{
+        background: bg ?? "rgba(245,233,196,0.7)",
+        border: `1.5px solid ${color ? `${color}55` : "rgba(46,40,25,0.30)"}`,
+      }}
+    >
+      <div className="text-[9px] uppercase tracking-[0.10em] font-extrabold" style={{ color: color ?? "#4a5a82" }}>{label}</div>
+      <div className="tabular-nums font-extrabold text-base" style={{ color: color ?? "#1a2952" }}>{value}</div>
+    </div>
   );
 }
 
@@ -2305,9 +2358,9 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
   switch (data.kind) {
     case "four":
       return (
-        <div className="relative hc-celebrate-pop text-center">
+        <div className="relative hc-four-slide text-center">
           <div
-            className="font-black tracking-tight leading-none hc-glow-pulse"
+            className="font-black tracking-tight leading-none"
             style={{
               fontSize: "clamp(72px, 18vw, 168px)",
               background: "linear-gradient(180deg, #fde047 0%, #f59e0b 60%, #b45309 100%)",
@@ -2326,7 +2379,7 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
       );
     case "six":
       return (
-        <div className="relative hc-celebrate-pop text-center">
+        <div className="relative hc-six-launch text-center">
           <div
             className="absolute inset-0 -z-10 mx-auto hc-rays-spin"
             aria-hidden
@@ -2384,10 +2437,10 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
       );
     case "hattrickWickets":
       return (
-        <div className="relative hc-celebrate-pop text-center">
+        <div className="relative hc-hattrick-strobe text-center">
           <div className="text-[28px] sm:text-[36px] mb-1">🔥🔥🔥</div>
           <div
-            className="font-black tracking-tight leading-none uppercase hc-glow-pulse"
+            className="font-black tracking-tight leading-none uppercase"
             style={{
               fontSize: "clamp(60px, 16vw, 140px)",
               background:
@@ -2412,16 +2465,12 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
         </div>
       );
     case "streak": {
-      const emojiRow =
-        data.variant === "sixes" ? ["6️⃣", "6️⃣", "6️⃣"]
-        : data.variant === "fours" ? ["4️⃣", "4️⃣", "4️⃣"]
-        : ["4️⃣", "5️⃣", "6️⃣"];
       const topEmoji = data.variant === "sixes" ? "🚀🚀🚀" : "⚡⚡⚡";
       return (
-        <div className="relative hc-celebrate-pop text-center px-4">
+        <div className="relative hc-streak-wobble text-center px-4">
           <div className="text-[28px] sm:text-[36px] mb-1">{topEmoji}</div>
           <div
-            className="font-black tracking-tight leading-none uppercase hc-glow-pulse"
+            className="font-black tracking-tight leading-none uppercase"
             style={{
               fontSize: "clamp(44px, 12vw, 120px)",
               background:
@@ -2439,11 +2488,6 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
           </div>
           <div className="mt-2 text-amber-50 font-extrabold text-base sm:text-xl drop-shadow max-w-xl mx-auto">
             {data.message}
-          </div>
-          <div className="mt-4 flex justify-center gap-3 text-3xl sm:text-4xl font-black text-amber-200">
-            {emojiRow.map((e, i) => (
-              <span key={i} className="hc-celebrate-pop" style={{ animationDelay: `${120 * (i + 1)}ms` }}>{e}</span>
-            ))}
           </div>
         </div>
       );

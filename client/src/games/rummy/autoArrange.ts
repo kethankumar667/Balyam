@@ -120,6 +120,33 @@ export function suggestArrangement(hand: Card[], wildRank: Rank): ArrangementSug
 }
 
 /**
+ * "Split by symbols" — the AUTO button's behaviour. Groups the whole hand into
+ * one lane per suit (♠ ♥ ♦ ♣), each sorted by rank, with printed jokers
+ * collected into their own trailing lane. It deliberately does NOT build
+ * sequences or sets: AUTO only tidies the hand by symbol, so the player still
+ * has to form their own melds (which is what makes the post-show 15-second
+ * window matter). Empty suits are skipped.
+ */
+export function splitBySuit(hand: Card[]): Card[][] {
+  const bySuit: Record<string, Card[]> = { S: [], H: [], D: [], C: [] };
+  const jokers: Card[] = [];
+  for (const c of hand) {
+    if (c.isPrintedJoker) jokers.push(c);
+    else (bySuit[c.suit] ??= []).push(c);
+  }
+  const lanes: Card[][] = [];
+  for (const suit of ["S", "H", "D", "C"] as const) {
+    const cards = bySuit[suit];
+    if (cards.length > 0) {
+      cards.sort((a, b) => RANK_INDEX[a.rank] - RANK_INDEX[b.rank]);
+      lanes.push(cards);
+    }
+  }
+  if (jokers.length > 0) lanes.push(jokers);
+  return lanes;
+}
+
+/**
  * Find the longest same-suit consecutive run within a single suit. No jokers.
  */
 function findLongestRun(cards: Card[]): Card[] {

@@ -864,6 +864,17 @@ export class RoomManager {
     }
     if (room.engine instanceof RummyEngine) {
       const pub = room.engine.getPublicState();
+      // Post-show rearrange window: no turn timer — instead a single timer that
+      // fires when the 15 s window closes and scores the round.
+      if (pub.phase === "arranging") {
+        const deadline = room.engine.getArrangeDeadline() ?? Date.now() + 15_000;
+        this.broadcastGameState(room);
+        room.turnTimer = setTimeout(
+          () => this.onTurnTimeout(room),
+          Math.max(0, deadline - Date.now()),
+        );
+        return;
+      }
       // Don't schedule between rounds in pool mode (or in a finished single-round game).
       if (pub.phase !== "playing") {
         room.engine.clearTurnDeadline();
@@ -981,6 +992,12 @@ export class RoomManager {
     if (room.engine instanceof RummyEngine) {
       const engine = room.engine;
       const state = engine.getPublicState();
+      // Rearrange window elapsed → score the round on players' actual hands.
+      if (state.phase === "arranging") {
+        engine.finalizeArrangingRound();
+        this.afterAutoMove(room, engine.isOver());
+        return;
+      }
       if (state.phase !== "playing") return;
       engine.applyAutoMove(state.turnPlayerId);
       this.afterAutoMove(room, engine.isOver());
