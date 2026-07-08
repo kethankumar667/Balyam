@@ -62,11 +62,18 @@ const RULED_BG = [
  *  ruled lines so the page reads like a well-thumbed 90s school notebook rather
  *  than flat cream card stock. Sits on the page frame, behind all content. */
 const VINTAGE_BG = [
-  "radial-gradient(120% 80% at 8% 4%, rgba(120,80,20,0.10) 0%, transparent 42%)",
-  "radial-gradient(120% 90% at 96% 8%, rgba(120,80,20,0.09) 0%, transparent 40%)",
-  "radial-gradient(140% 90% at 92% 98%, rgba(90,55,15,0.11) 0%, transparent 46%)",
-  "radial-gradient(120% 80% at 4% 96%, rgba(90,55,15,0.08) 0%, transparent 42%)",
-  "radial-gradient(60% 50% at 50% 45%, rgba(255,250,225,0.35) 0%, transparent 70%)",
+  // Four-corner tea staining — more pronounced amber aging than the original
+  "radial-gradient(130% 90% at 3% 3%, rgba(140,90,25,0.18) 0%, transparent 44%)",
+  "radial-gradient(130% 90% at 97% 3%, rgba(130,80,20,0.16) 0%, transparent 44%)",
+  "radial-gradient(140% 90% at 97% 97%, rgba(100,60,18,0.20) 0%, transparent 48%)",
+  "radial-gradient(130% 80% at 3% 97%, rgba(100,60,18,0.16) 0%, transparent 42%)",
+  // Foxing spots — random ink-like blotches mimic genuinely aged paper
+  "radial-gradient(8px 8px at 23% 36%, rgba(120,80,30,0.12) 0%, transparent 100%)",
+  "radial-gradient(7px 9px at 68% 27%, rgba(100,65,25,0.10) 0%, transparent 100%)",
+  "radial-gradient(10px 7px at 76% 67%, rgba(110,70,25,0.08) 0%, transparent 100%)",
+  "radial-gradient(7px 10px at 36% 73%, rgba(115,75,28,0.09) 0%, transparent 100%)",
+  // Centre lift — subtle 3-D curvature that makes the page feel physical
+  "radial-gradient(65% 56% at 50% 48%, rgba(255,252,230,0.40) 0%, transparent 72%)",
 ].join(", ");
 
 /** Country display code + ink colour */
@@ -121,6 +128,8 @@ function NotebookSvgFilters() {
       aria-hidden
     >
       <defs>
+        {/* Heading-strip torn-paper edge — stronger displacement visibly
+            roughens the strip boundary while text inside stays crisp */}
         <filter id="rough-torn" x="-5%" y="-10%" width="110%" height="120%">
           <feTurbulence
             type="fractalNoise"
@@ -132,15 +141,16 @@ function NotebookSvgFilters() {
           <feDisplacementMap
             in="SourceGraphic"
             in2="noise"
-            scale={5}
+            scale={8}
             xChannelSelector="R"
             yChannelSelector="G"
           />
         </filter>
+        {/* Card/container edge wobble — subtler than the torn heading */}
         <filter id="rough-card" x="-2%" y="-2%" width="104%" height="104%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.05"
+            baseFrequency="0.045"
             numOctaves={3}
             seed={7}
             result="noise"
@@ -148,7 +158,25 @@ function NotebookSvgFilters() {
           <feDisplacementMap
             in="SourceGraphic"
             in2="noise"
-            scale={2.5}
+            scale={3.5}
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+        {/* Paper-page ambient crinkle — very subtle displacement across the
+            whole page to break the perfectly-flat digital rectangle look */}
+        <filter id="paper-crinkle" x="-2%" y="-2%" width="104%" height="104%">
+          <feTurbulence
+            type="turbulence"
+            baseFrequency="0.012"
+            numOctaves={5}
+            seed={12}
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale={1.8}
             xChannelSelector="R"
             yChannelSelector="G"
           />
@@ -171,10 +199,12 @@ export function HcNotebookPage({
         position: "fixed",
         inset: 0,
         zIndex: 50,
-        background: WOOD,
+        // Richer wood spine: radial dark-to-medium gradient with subtle
+        // horizontal grain streaks — replaces the flat #4a2c12 constant.
+        background: "radial-gradient(ellipse 60% 100% at 20% 50%, #3a1c08 0%, #4a2c12 50%, #5a3418 100%), repeating-linear-gradient(178deg, transparent, transparent 9px, rgba(0,0,0,0.06) 9px, rgba(0,0,0,0.06) 10px)",
         display: "flex",
-        padding: "8px 8px 8px 52px",
-        boxShadow: "0 0 80px rgba(0,0,0,0.70)",
+        padding: "10px 10px 10px 54px",
+        boxShadow: "0 0 100px rgba(0,0,0,0.85), inset 0 0 24px rgba(0,0,0,0.35)",
       }}
     >
       <NotebookSvgFilters />
@@ -188,12 +218,13 @@ export function HcNotebookPage({
           minWidth: 0,
           display: "flex",
           flexDirection: "column",
-          borderRadius: 6,
+          borderRadius: "3px 6px 6px 3px",
           overflow: "hidden",
           background: PAPER,
           backgroundImage: `${RULED_BG}, ${VINTAGE_BG}`,
-          backgroundPosition: "0 13px, 48px 0, 0 0, 0 0, 0 0, 0 0, 0 0",
-          boxShadow: "inset 0 0 60px rgba(90,55,15,0.14)",
+          backgroundPosition: "0 13px, 48px 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0",
+          // Tri-layer inset: binding-side cast shadow + top-edge stain + ambient depth
+          boxShadow: "inset 14px 0 28px rgba(50,20,5,0.26), inset 0 6px 16px rgba(50,20,5,0.14), inset 0 0 70px rgba(90,55,15,0.16)",
         }}
       >
         {children}
@@ -211,7 +242,7 @@ function BindingHoles() {
         left: 0,
         top: 0,
         bottom: 0,
-        width: 52,
+        width: 54,
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-evenly",
@@ -221,38 +252,85 @@ function BindingHoles() {
         pointerEvents: "none",
       }}
     >
+      {/* Cast-shadow strip — the binding bleeds a warm shadow onto the paper edge */}
+      <div
+        style={{
+          position: "absolute",
+          right: -10,
+          top: 0,
+          bottom: 0,
+          width: 18,
+          background: "linear-gradient(to right, rgba(50,20,5,0.28) 0%, rgba(50,20,5,0.06) 70%, transparent 100%)",
+          pointerEvents: "none",
+        }}
+      />
+
       {Array.from({ length: 13 }).map((_, i) => (
         <div
           key={i}
           style={{
             position: "relative",
-            width: 22,
-            height: 22,
+            width: 26,
+            height: 26,
             borderRadius: "50%",
-            background: "#5c3418",
-            border: "2.5px solid rgba(255,255,255,0.15)",
+            // Near-black punched hole — maximum contrast against wood
+            background: "radial-gradient(circle at 38% 32%, #2e1408 0%, #0e0401 48%, #070100 100%)",
+            border: "2px solid rgba(255,210,150,0.10)",
             boxShadow:
-              "inset 0 2px 4px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.08)",
+              "inset 0 3px 7px rgba(0,0,0,0.85), inset 0 -1px 3px rgba(255,190,120,0.08), 0 1px 0 rgba(255,230,180,0.07)",
           }}
         >
-          {/* SVG arc to mimic wire spiral */}
+          {/* Rim highlight — ambient light catching the top of the hole */}
+          <div
+            style={{
+              position: "absolute",
+              top: 3,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 11,
+              height: 4,
+              borderRadius: "50%",
+              background: "rgba(255,210,140,0.16)",
+              filter: "blur(1.5px)",
+            }}
+          />
+          {/* Spiral wire — thicker, high-contrast arcs: back arc + front arc + sheen */}
           <svg
-            width={32}
-            height={14}
+            width={46}
+            height={22}
             style={{
               position: "absolute",
               top: "50%",
               left: "50%",
               transform: "translate(-50%,-50%)",
               pointerEvents: "none",
+              overflow: "visible",
             }}
             aria-hidden
           >
+            {/* Back arc — dark, passes behind the hole */}
             <path
-              d="M4 7 C 4 2, 28 2, 28 7 C 28 12, 4 12, 4 7"
-              stroke="rgba(100,60,20,0.7)"
-              strokeWidth="1.5"
+              d="M3 11 C 3 3, 43 3, 43 11"
+              stroke="rgba(30,12,3,0.95)"
+              strokeWidth="2.8"
               fill="none"
+              strokeLinecap="round"
+            />
+            {/* Front arc — mid-tone, passes in front of hole */}
+            <path
+              d="M3 11 C 3 19, 43 19, 43 11"
+              stroke="rgba(55,26,8,0.88)"
+              strokeWidth="2.4"
+              fill="none"
+              strokeLinecap="round"
+            />
+            {/* Sheen — specular highlight on the top wire */}
+            <path
+              d="M9 5.5 C 16 2.5, 30 2.5, 37 5.5"
+              stroke="rgba(180,120,55,0.50)"
+              strokeWidth="1.2"
+              fill="none"
+              strokeLinecap="round"
             />
           </svg>
         </div>
@@ -314,7 +392,7 @@ export function HcNotebookHeader({
         <CricketBallIcon />
         <div style={{ minWidth: 0 }}>
           <span
-            className="font-notebook"
+            className="font-sketch"
             style={{
               color: INK,
               fontSize: "clamp(15px,2vw,22px)",
@@ -1000,12 +1078,16 @@ export function HcPhaseCard({
       className={className}
       style={{
         position: "relative",
-        background: "rgba(245,233,196,0.55)",
-        borderRadius: 8,
+        background: "rgba(245,233,196,0.60)",
+        // Organic hand-cut corner warp — asymmetric radii break the digital
+        // rectangle; the unevenness reads as physically torn / cut paper.
+        borderRadius: "255px 14px 228px 16px / 14px 230px 12px 258px",
         padding: 16,
+        // Torn-paper lift — the cast shadow grounds the "floating paper" metaphor
+        filter: "drop-shadow(2px 4px 8px rgba(50,28,8,0.20)) drop-shadow(0 1px 2px rgba(50,28,8,0.10))",
       }}
     >
-      <RoughBorder roughness={1.7} stroke="rgba(46,40,25,0.52)" strokeWidth={1.5} padding={3} />
+      <RoughBorder roughness={2.4} stroke="rgba(46,40,25,0.68)" strokeWidth={2.0} padding={4} bowing={1.5} />
       <div style={{ position: "relative", zIndex: 1 }}>{children}</div>
     </div>
   );

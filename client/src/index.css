@@ -1175,3 +1175,68 @@ body, #root, .bhalyam-paper {
   color: #F3EADB !important;
 }
 
+
+/* ── Hand Cricket skeuomorphic utilities ──────────────────────────────────────
+   CSS-only augmentations for HC surfaces. Four rules from the design spec:
+   1. Organic border warp (paper-corner CSS trick)
+   2. Torn-paper drop-shadow (floating panels)
+   3. Hand-drawn controls wrapper
+   4. Architects Daughter headings with variable spacing
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Organic "hand-cut" border — the asymmetric radii simulate paper that was
+   torn or cut along a wobbly line rather than ruled with a straight edge.
+   Apply to containers that do NOT already use RoughFrame (phase wrappers,
+   squad section boxes, any flat div that feels too digitally perfect). */
+.hc-sketch-border {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+}
+.hc-sketch-border-alt {
+  border-radius: 15px 225px 15px 255px / 225px 15px 255px 15px !important;
+}
+
+/* Floating panel — torn paper lifted off the notebook page.
+   Prefer filter: drop-shadow over box-shadow on non-rectangular shapes so
+   the shadow follows the actual painted outline (roughjs, organic radii). */
+.hc-floating-panel {
+  filter: drop-shadow(2px 4px 8px rgba(50,28,8,0.20))
+          drop-shadow(0 1px 2px rgba(50,28,8,0.10));
+}
+
+/* Hand-drawn controls wrapper — replaces a clean CSS border with an organic
+   warp. Use around the pick-number row, the DropConfirm dialog body, or
+   any rectangular action container that reads too digitally precise. */
+.hc-controls-wrap {
+  position: relative;
+  border-radius: 255px 18px 230px 12px / 12px 230px 15px 255px;
+  border: none !important;
+}
+
+/* Ink heading — Architects Daughter with generous letter-spacing so each
+   uppercase letter reads as if individually hand-printed rather than typed.
+   Used for dynamic section headers inside the notebook (innings title,
+   match summary heading, player-name labels). */
+.hc-ink-heading {
+  font-family: "Architects Daughter", "Kalam", cursive;
+  letter-spacing: 0.16em;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+/* Aged paper — more aggressively textured surface for HC containers that
+   need extra character. Layered: grain speckle + four-corner staining +
+   foxing spots + centre lift. Sits behind all content (no z-index). */
+.hc-aged-paper {
+  background-color: #F3E4B0;
+  background-image:
+    radial-gradient(rgba(100,70,20,0.10) 1px, transparent 1px),
+    radial-gradient(rgba(200,170,100,0.08) 1px, transparent 1px),
+    radial-gradient(110% 70% at 0% 0%,   rgba(110,75,20,0.16) 0%, transparent 48%),
+    radial-gradient(110% 70% at 100% 0%, rgba(110,75,20,0.14) 0%, transparent 48%),
+    radial-gradient(110% 70% at 100% 100%, rgba(80,50,15,0.18) 0%, transparent 48%),
+    radial-gradient(110% 70% at 0% 100%, rgba(80,50,15,0.15) 0%, transparent 48%),
+    radial-gradient(60% 50% at 50% 50%, rgba(255,252,230,0.45) 0%, transparent 70%),
+    linear-gradient(170deg, #FBF3DC 0%, #EDD99A 100%);
+  background-size: 16px 16px, 24px 24px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-position: 0 0, 8px 12px, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+}

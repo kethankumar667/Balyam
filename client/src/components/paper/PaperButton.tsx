@@ -17,8 +17,8 @@ const paperButton = cva(
         confirm: "bg-hc-stamp/10 text-hc-stamp",
         ghost: "bg-hc-paper-l text-hc-ink",
         danger: "bg-hc-ink-red/10 text-hc-ink-red",
-        solidGreen: "bg-hc-stamp text-white border-2 border-white/25",
-        solidBlue: "bg-[#1d4ed8] text-white border-2 border-white/25",
+        solidGreen: "bg-hc-stamp text-white",
+        solidBlue: "bg-[#1d4ed8] text-white",
       },
       size: {
         sm: "px-3 py-1.5 text-xs",
@@ -37,8 +37,8 @@ const STROKE: Record<string, string | null> = {
   confirm: "rgba(22,101,52,0.85)",
   ghost: "rgba(46,40,25,0.6)",
   danger: "rgba(139,26,26,0.7)",
-  solidGreen: null,
-  solidBlue: null,
+  solidGreen: "rgba(255,255,255,0.50)",
+  solidBlue:  "rgba(255,255,255,0.45)",
 };
 
 export interface PaperButtonProps extends VariantProps<typeof paperButton> {
@@ -72,7 +72,7 @@ export function PaperButton({
       whileTap={disabled ? undefined : { scale: 0.98 }}
       className={cn(paperButton({ variant, size, muted }), className)}
     >
-      {stroke && <RoughFrame stroke={stroke} strokeWidth={2.2} roughness={1.7} padding={3} />}
+      {stroke && <RoughFrame stroke={stroke} strokeWidth={2.4} roughness={2.0} padding={3} bowing={1.3} />}
       <span className="relative z-[1] inline-flex items-center gap-1.5">{children}</span>
     </motion.button>
   );

@@ -144,15 +144,25 @@ export default {
         xl: "20px",
         "2xl": "28px",
         pill: "9999px",
+        // Organic "hand-cut" corners — asymmetric radii simulate a paper edge
+        // that was physically torn or cut rather than drawn with a ruler.
+        // Applied to HC panels and phase wrappers that don't use RoughFrame.
+        sketch: "255px 15px 225px 15px / 15px 225px 15px 255px",
+        "sketch-alt": "15px 225px 15px 255px / 225px 15px 255px 15px",
       },
       boxShadow: {
-        "rim-gold":    "inset 0 0 0 2px var(--rim-gold), 0 8px 28px rgba(0,0,0,0.45)",
-        "lift-1":      "0 1px 2px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.2)",
-        "lift-2":      "0 4px 12px rgba(0,0,0,0.35)",
-        "lift-3":      "0 12px 32px rgba(0,0,0,0.45)",
-        "glow-brand":  "0 0 24px rgba(16,185,129,0.45)",
-        "glow-gold":   "0 0 24px rgba(245,158,11,0.55)",
-        "glow-danger": "0 0 18px rgba(239,68,68,0.45)",
+        "rim-gold":     "inset 0 0 0 2px var(--rim-gold), 0 8px 28px rgba(0,0,0,0.45)",
+        "lift-1":       "0 1px 2px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.2)",
+        "lift-2":       "0 4px 12px rgba(0,0,0,0.35)",
+        "lift-3":       "0 12px 32px rgba(0,0,0,0.45)",
+        "glow-brand":   "0 0 24px rgba(16,185,129,0.45)",
+        "glow-gold":    "0 0 24px rgba(245,158,11,0.55)",
+        "glow-danger":  "0 0 18px rgba(239,68,68,0.45)",
+        // Torn-paper lift — grounds a floating paper fragment with a warm cast shadow.
+        // Use as box-shadow (not filter: drop-shadow) on rectangular containers.
+        "paper-lift":   "3px 5px 16px rgba(74,44,18,0.22), 0 1px 3px rgba(74,44,18,0.14)",
+        // Binding cast — warm shadow bleeds from the spine onto the paper edge.
+        "binding-cast": "inset 8px 0 20px rgba(50,20,5,0.20)",
       },
       backgroundImage: {
         "felt": "radial-gradient(ellipse at center, #0f5f43 0%, #064e3b 55%, #022c22 100%)",
