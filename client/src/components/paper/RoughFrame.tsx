@@ -9,14 +9,18 @@ import rough from "roughjs";
  * changes via a ResizeObserver, and never intercepts pointer events. This is
  * the single source of the "sketchy ink border" used across every Hand Cricket
  * paper surface — cards, panels, buttons.
+ *
+ * `dual` — when true, draws a second lighter inner stroke for the
+ * "dual-layered hand-ruled line" look (pencil under-sketch + ink over-stroke).
  */
 export function RoughFrame({
-  roughness = 1.7,
-  stroke = "rgba(46,40,25,0.6)",
-  strokeWidth = 1.8,
-  bowing = 1,
+  roughness = 2.2,
+  stroke = "rgba(46,40,25,0.68)",
+  strokeWidth = 2.2,
+  bowing = 1.5,
   padding = 3,
   seed = 42,
+  dual = false,
 }: {
   roughness?: number;
   stroke?: string;
@@ -24,6 +28,8 @@ export function RoughFrame({
   bowing?: number;
   padding?: number;
   seed?: number;
+  /** Draw a second, lighter inner stroke for a dual-layered hand-ruled look. */
+  dual?: boolean;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -50,6 +56,7 @@ export function RoughFrame({
       while (svg.firstChild) svg.removeChild(svg.firstChild);
 
       const rc = rough.svg(svg);
+      // Primary ink stroke — main hand-drawn outline
       const rect = rc.rectangle(
         padding,
         padding,
@@ -58,13 +65,34 @@ export function RoughFrame({
         { roughness, strokeWidth, stroke, fill: "none", bowing, seed },
       );
       svg.appendChild(rect);
+
+      if (dual) {
+        // Secondary inner stroke — a lighter pencil under-sketch that sits
+        // inside the main ink line, creating the "two-pass hand-drawn" look
+        // where the artist first sketched in pencil, then inked over it.
+        const inner = rc.rectangle(
+          padding + 4,
+          padding + 4,
+          width - (padding + 4) * 2,
+          height - (padding + 4) * 2,
+          {
+            roughness: roughness * 0.65,
+            strokeWidth: strokeWidth * 0.48,
+            stroke,
+            fill: "none",
+            bowing: bowing * 0.6,
+            seed: seed + 17,
+          },
+        );
+        svg.appendChild(inner);
+      }
     };
 
     draw();
     const ro = new ResizeObserver(draw);
     ro.observe(parent);
     return () => ro.disconnect();
-  }, [roughness, stroke, strokeWidth, bowing, padding, seed]);
+  }, [roughness, stroke, strokeWidth, bowing, padding, seed, dual]);
 
   return (
     <svg

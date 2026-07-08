@@ -15,10 +15,10 @@ const paperCard = cva(
   {
     variants: {
       tone: {
-        default: "bg-hc-paper-l shadow-[2px_3px_8px_rgba(74,44,18,0.14)]",
+        default: "bg-hc-paper-l shadow-[3px_5px_14px_rgba(74,44,18,0.22)]",
         selected:
           "bg-hc-stamp/12 border-[2.5px] border-hc-stamp shadow-[0_4px_14px_rgba(22,101,52,0.2)]",
-        legend: "bg-hc-gold/10 shadow-[2px_3px_8px_rgba(74,44,18,0.14)]",
+        legend: "bg-hc-gold/10 shadow-[3px_5px_14px_rgba(74,44,18,0.22)]",
       },
       disabled: {
         true: "opacity-50 cursor-not-allowed",
@@ -78,7 +78,7 @@ export function PaperCard({
       transition={{ type: "spring", stiffness: 380, damping: 22 }}
       className={cn(paperCard({ tone, disabled }), onClick && !disabled && "cursor-pointer", className)}
     >
-      {!selected && <RoughFrame stroke={STROKE[tone ?? "default"]} strokeWidth={2} roughness={1.8} bowing={1.1} padding={3} />}
+      {!selected && <RoughFrame stroke={STROKE[tone ?? "default"]} strokeWidth={2.4} roughness={2.2} bowing={1.4} padding={3} />}
       <div className="relative z-[1] h-full">{children}</div>
     </motion.div>
   );
