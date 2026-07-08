@@ -33,7 +33,7 @@ import {
 } from "../../components/paper";
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  IN, AU, GB, NZ, ZA, PK, LK, BD, AF,
+  IN, AU, GB, NZ, ZA, PK, LK, BD, AF, IE, ZW,
 } from 'country-flag-icons/react/3x2';
 import PlayerList from "../../components/PlayerList";
 import VoicePanel from "../../components/VoicePanel";
@@ -92,6 +92,8 @@ const COUNTRY_META: Record<HcCountry, { code: string; color: string }> = {
   srilanka:    { code: "LK",  color: "#1e3a8a" },
   bangladesh:  { code: "BD",  color: "#6b7280" },
   afghanistan: { code: "AF",  color: "#6b7280" },
+  ireland:     { code: "IE",  color: "#166534" },
+  zimbabwe:    { code: "ZW",  color: "#166534" },
 };
 
 type FlagComponent = ComponentType<SVGProps<SVGSVGElement> & { title?: string }>;
@@ -106,11 +108,14 @@ const FLAG_COMPONENTS: Partial<Record<HcCountry, FlagComponent>> = {
   srilanka:    LK  as FlagComponent,
   bangladesh:  BD  as FlagComponent,
   afghanistan: AF  as FlagComponent,
+  ireland:     IE  as FlagComponent,
+  zimbabwe:    ZW  as FlagComponent,
 };
 
 const COUNTRY_ORDER: HcCountry[] = [
   "india", "australia", "england", "newzealand", "southafrica",
   "pakistan", "westindies", "srilanka", "bangladesh", "afghanistan",
+  "ireland", "zimbabwe",
 ];
 
 /* ═══════════════════════════════════════════════════════════════

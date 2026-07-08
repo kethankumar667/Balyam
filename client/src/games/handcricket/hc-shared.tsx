@@ -18,6 +18,7 @@ import {
   getRosterFor,
   type HcPlayerProfile,
 } from "@shared/hc-rosters";
+import { getJsonTeamMeta, getJsonPlayerStyleMap, type JsonPlayerStyle } from "./hc-json-data";
 import { HC_MAX_OVERS_PER_BOWLER } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { motion } from "framer-motion";
@@ -68,6 +69,7 @@ const HAND_FACES = ["", "☝️", "✌️", "🤟", "🖖", "🖐️", "✊"];
 const COUNTRY_LIST: HcCountry[] = [
   "india", "australia", "england", "newzealand", "southafrica",
   "pakistan", "westindies", "srilanka", "bangladesh", "afghanistan",
+  "ireland", "zimbabwe",
 ];
 const FRANCHISE_LIST: HcFranchise[] = [
   "csk", "mi", "rcb", "kkr", "srh", "dc", "pbks", "rr", "gt", "lsg",
@@ -237,15 +239,14 @@ export function TeamPicker({
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           {FRANCHISE_LIST.map((id) => {
             const f = HC_FRANCHISES[id];
+            const meta = getJsonTeamMeta(id, state.options.format);
             const isOpp = oppPick === id;
             return (
               <button
                 key={id}
                 onClick={() => pick(id)}
                 className="relative rounded-lg p-3 border-2 transition flex flex-col items-center gap-1 border-slate-700 bg-slate-900/40 hover:scale-105"
-                style={{
-                  borderColor: oppPick === id ? "#06b6d4" : undefined,
-                }}
+                style={{ borderColor: oppPick === id ? "#06b6d4" : undefined }}
               >
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-extrabold"
@@ -256,6 +257,12 @@ export function TeamPicker({
                 <span className="text-xs font-bold text-slate-100 text-center leading-tight">
                   {f.name}
                 </span>
+                {meta?.homeCity && (
+                  <span className="text-[9px] text-slate-400 leading-tight">📍 {meta.homeCity}</span>
+                )}
+                {meta?.coach && (
+                  <span className="text-[9px] text-slate-400 leading-tight">🎽 {meta.coach}</span>
+                )}
                 {isOpp && (
                   <span className="absolute top-1 left-1 text-[9px] bg-cyan-600 text-white rounded px-1 font-extrabold truncate max-w-[80%]">
                     {oppName}
@@ -284,6 +291,7 @@ export function TeamPicker({
           const profile = HC_COUNTRIES[id];
           const hasRoster = profile.squads[state.options.format].length > 0;
           const isOpp = oppPick === id;
+          const meta = hasRoster ? getJsonTeamMeta(id, state.options.format) : null;
           return (
             <button
               key={id}
@@ -298,6 +306,9 @@ export function TeamPicker({
               <span className="text-3xl">{profile.flag}</span>
               <span className="text-xs font-bold text-slate-100">{profile.name}</span>
               <span className="text-[10px] text-slate-400">{profile.short}</span>
+              {meta?.coach && (
+                <span className="text-[9px] text-slate-400 leading-tight">🎽 {meta.coach}</span>
+              )}
               {!hasRoster && (
                 <span className="text-[9px] text-amber-300 italic">No roster yet</span>
               )}
@@ -492,6 +503,7 @@ function PlayerCardMini({
   disabled,
   isLegend = false,
   big = false,
+  style,
 }: {
   p: HcPlayerProfile;
   isSelected: boolean;
@@ -503,6 +515,8 @@ function PlayerCardMini({
   disabled: boolean;
   isLegend?: boolean;
   big?: boolean;
+  /** Rich player metadata from the JSON files (batting/bowling style). */
+  style?: JsonPlayerStyle;
 }) {
   const nameSize = big ? 14 : 11;
   const leadSize = big ? 10 : 8;
@@ -558,6 +572,18 @@ function PlayerCardMini({
         <div className="font-hand font-bold text-hc-ink leading-tight" style={{ fontSize: nameSize }}>
           {isLegend ? `★ ${p.name}` : p.name}
         </div>
+
+        {/* Batting / bowling style from JSON — compact ink-pencil metadata */}
+        {style && (style.battingStyle || style.bowlingStyle) && (
+          <div
+            className="text-hc-ink-lt mt-0.5 leading-tight truncate"
+            style={{ fontSize: big ? 9 : 7.5, fontFamily: "'Kalam', cursive" }}
+          >
+            {style.battingStyle}
+            {style.battingStyle && style.bowlingStyle ? " · " : ""}
+            {style.bowlingStyle}
+          </div>
+        )}
 
         {/* Pencil checkmark in top-right corner for XI members */}
         {isSelected && (
@@ -641,6 +667,12 @@ export function SquadPicker({
     <div style={{ color: "#991b1b", fontFamily: "'Kalam', cursive", fontSize: 14 }}>Roster unavailable.</div>
   );
 
+  /** Stable reference to the JSON-derived playing XI + captain names. */
+  const jsonMeta = useMemo(
+    () => getJsonTeamMeta(myTeamId, state.options.format),
+    [myTeamId, state.options.format],
+  );
+
   const sortedSquad = useMemo(
     () => roster.squad.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]),
     [roster],
@@ -656,7 +688,34 @@ export function SquadPicker({
     return m;
   }, [sortedSquad, sortedExtras]);
 
+  /**
+   * Name-keyed index (lowercase) for matching the JSON's plain string lists
+   * (playingXI, captain, viceCaptain) to their typed HcPlayerProfile entries.
+   * Extras are included so legends listed as captain elsewhere can still match.
+   */
+  const profilesByName = useMemo(() => {
+    const m = new Map<string, HcPlayerProfile>();
+    for (const p of sortedSquad) m.set(p.name.toLowerCase(), p);
+    for (const p of sortedExtras) m.set(p.name.toLowerCase(), p);
+    return m;
+  }, [sortedSquad, sortedExtras]);
+
+  /** JSON player-style lookup keyed by lowercase name for card display. */
+  const styleMap = useMemo(
+    () => getJsonPlayerStyleMap(myTeamId, state.options.format),
+    [myTeamId, state.options.format],
+  );
+
   const [selected, setSelected] = useState<Set<string>>(() => {
+    // Pre-select the JSON's declared playing XI when available.
+    // Falls back to first 11 by role order if the JSON lookup yields < 11 matches.
+    if (jsonMeta && jsonMeta.playingXI.length > 0) {
+      const ids = jsonMeta.playingXI
+        .map((name) => profilesByName.get(name.toLowerCase()))
+        .filter((p): p is HcPlayerProfile => p !== undefined)
+        .map((p) => p.id);
+      if (ids.length === 11) return new Set(ids);
+    }
     return new Set(sortedSquad.slice(0, 11).map((p) => p.id));
   });
   const [captainId, setCaptainId] = useState<string | null>(null);
@@ -670,9 +729,28 @@ export function SquadPicker({
   useEffect(() => {
     if (captainId || viceCaptainId) return;
     if (selected.size === 0) return;
+
+    // Prefer the JSON-declared captain / VC when both are in the selected XI.
+    if (jsonMeta) {
+      const cap = jsonMeta.captain
+        ? profilesByName.get(jsonMeta.captain.toLowerCase())
+        : undefined;
+      const vc = jsonMeta.viceCaptain
+        ? profilesByName.get(jsonMeta.viceCaptain.toLowerCase())
+        : undefined;
+      if (cap && selected.has(cap.id)) {
+        setCaptainId(cap.id);
+        if (vc && selected.has(vc.id) && vc.id !== cap.id) {
+          setViceCaptainId(vc.id);
+          return;
+        }
+      }
+    }
+
+    // Fallback: derive from role-sorted XI (existing logic).
     const inXI = [...selected]
       .map((id) => profilesById.get(id))
-      .filter((p): p is HcPlayerProfile => !!p);
+      .filter((p): p is HcPlayerProfile => p !== undefined);
     const tagged = inXI.find((p) => p.isCaptain);
     const arOrBat = (p: HcPlayerProfile) => p.role === "allrounder" || p.role === "batter";
     const cap = tagged ?? inXI.find(arOrBat) ?? inXI[0];
@@ -681,7 +759,7 @@ export function SquadPicker({
     if (!vc) return;
     setCaptainId(cap.id);
     setViceCaptainId(vc.id);
-  }, [selected, profilesById, captainId, viceCaptainId]);
+  }, [selected, profilesById, profilesByName, jsonMeta, captainId, viceCaptainId]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -845,6 +923,7 @@ export function SquadPicker({
                       if (captainId === p.id) setCaptainId(null);
                     }}
                     disabled={false}
+                    style={styleMap.get(p.name.toLowerCase())}
                   />
                 ))}
               </div>
@@ -861,6 +940,7 @@ export function SquadPicker({
               onToggle={toggle}
               disabledHint={selected.size >= 11}
               big={isDesktop}
+              styleMap={styleMap}
             />
           )}
 
@@ -875,6 +955,7 @@ export function SquadPicker({
               disabledHint={selected.size >= 11}
               isLegend
               big={isDesktop}
+              styleMap={styleMap}
             />
           )}
 
@@ -937,7 +1018,6 @@ export function CompositionChecklist({
     </div>
   );
 }
-
 export function SquadGroup({
   title,
   subtitle,
@@ -948,6 +1028,7 @@ export function SquadGroup({
   disabledHint = false,
   isLegend = false,
   big = false,
+  styleMap,
 }: {
   title: string;
   subtitle?: string;
@@ -958,6 +1039,8 @@ export function SquadGroup({
   disabledHint?: boolean;
   isLegend?: boolean;
   big?: boolean;
+  /** Optional batting/bowling style lookup from JSON data. */
+  styleMap?: Map<string, JsonPlayerStyle>;
 }) {
   return (
     <PaperPanel tone={isLegend ? "legend" : "soft"} pad="sm" className="mb-2.5">
@@ -992,6 +1075,7 @@ export function SquadGroup({
                 disabled={isDisabled}
                 isLegend={isLegend}
                 big={big}
+                style={styleMap?.get(p.name.toLowerCase())}
               />
             );
           })}
@@ -1191,6 +1275,118 @@ function TossChoiceButton({
   );
 }
 
+/**
+ * Shown to the batting player immediately after a wicket falls.
+ * Lists every remaining squad member (from pendingBatterSlot onward) and
+ * lets them choose who walks in. Blocks play until a selection is made.
+ */
+function NextBatterPicker({
+  state,
+  innings,
+  big = false,
+}: {
+  state: HcState;
+  innings: HcInnings;
+  big?: boolean;
+}) {
+  const sel = state.teamSelections[innings.battingPlayerId];
+  const squad = sel?.squadPlayerIds ?? [];
+  const slot = innings.pendingBatterSlot ?? innings.nextBatterIdx - 1;
+  const remaining = squad.slice(slot);
+
+  // Build profile lookup from roster
+  const roster = sel?.teamId ? getRosterFor(sel.teamId, state.options.format) : null;
+  const allProfiles: HcPlayerProfile[] = roster ? [...roster.squad, ...roster.extras] : [];
+  const profileOf = (id: string) => allProfiles.find((p) => p.id === id) ?? null;
+
+  function select(profileId: string) {
+    getSocket().emit("game:move", { type: "selectNextBatter", data: { profileId } });
+  }
+
+  return (
+    <div
+      className="rounded-lg overflow-hidden"
+      style={{
+        background: "rgba(245,233,196,0.92)",
+        border: "2px solid rgba(46,40,25,0.55)",
+        boxShadow: "0 4px 16px rgba(74,44,18,0.18)",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="px-4 py-2.5 flex items-center gap-2"
+        style={{ background: "rgba(153,27,27,0.10)", borderBottom: "1px solid rgba(46,40,25,0.22)" }}
+      >
+        <span className="text-[22px]">🏏</span>
+        <div>
+          <div
+            className="font-extrabold text-hc-ink tracking-[0.04em]"
+            style={{ fontSize: big ? 16 : 14, fontFamily: "'Kalam', cursive" }}
+          >
+            Wicket! Choose your next batter
+          </div>
+          <div className="text-hc-ink-lt" style={{ fontSize: big ? 12 : 10, fontFamily: "'Kalam', cursive" }}>
+            Tap a player to send them in
+          </div>
+        </div>
+      </div>
+
+      {/* Remaining batters grid */}
+      <div
+        className="p-3 grid"
+        style={{
+          gridTemplateColumns: `repeat(auto-fill, minmax(${big ? 150 : 120}px, 1fr))`,
+          gap: big ? 10 : 8,
+        }}
+      >
+        {remaining.length === 0 ? (
+          <div
+            className="col-span-full text-center text-hc-ink-lt py-2"
+            style={{ fontSize: 13, fontFamily: "'Kalam', cursive" }}
+          >
+            No batters remaining
+          </div>
+        ) : (
+          remaining.map((profileId, idx) => {
+            const profile = profileOf(profileId);
+            const isDefault = idx === 0; // first in remaining = the "natural" next batter
+            if (!profile) return null;
+            return (
+              <button
+                key={profileId}
+                onClick={() => select(profileId)}
+                className="rounded-md text-left transition hover:scale-[1.03] active:scale-[0.97]"
+                style={{
+                  background: isDefault ? "rgba(22,101,52,0.08)" : "rgba(245,233,196,0.6)",
+                  border: `1.5px solid ${isDefault ? "rgba(22,101,52,0.6)" : "rgba(46,40,25,0.35)"}`,
+                  padding: big ? "8px 10px" : "6px 8px",
+                  cursor: "pointer",
+                }}
+              >
+                <SketchRoleBadge role={profile.role} big={big} />
+                <div
+                  className="font-bold text-hc-ink leading-tight mt-1"
+                  style={{ fontSize: big ? 14 : 12, fontFamily: "'Kalam', cursive" }}
+                >
+                  {profile.name}
+                </div>
+                {isDefault && (
+                  <div
+                    className="text-hc-ink-lt mt-0.5"
+                    style={{ fontSize: big ? 10 : 8.5, fontFamily: "'Kalam', cursive" }}
+                  >
+                    Next in order
+                  </div>
+                )}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function InningsPhase({
   state,
   selfId,
@@ -1254,8 +1450,9 @@ export function InningsPhase({
     const nameOf = (id: string) => pool.find((p) => p.id === id)?.name ?? id;
     const lastWicket = [...innings.history].reverse().find((b) => b.wicket);
     const outName = lastWicket ? nameOf(lastWicket.batterId) : "Batter";
-    const inId = squad[innings.strikerIdx];
-    const inName = inId ? nameOf(inId) : "New Batter";
+    // The next batter is now chosen manually — announcement reflects this.
+    const isBattingTeam = innings.battingPlayerId === selfId;
+    const inName = isBattingTeam ? "Pick your next batter!" : "Opponent is picking…";
     setWicketAnnounce({ outName, inName });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [innings.wickets]);
@@ -1344,7 +1541,37 @@ export function InningsPhase({
         </div>
       )}
 
-      {needsBowler ? (
+      {/* ── Action area ─────────────────────────────────────────────────
+           Three mutually-exclusive states:
+           1. Wicket pending → show NextBatterPicker (batting) / waiting (bowling)
+           2. No bowler yet  → show BowlerPicker
+           3. Live ball      → show RevealStage + PickRow                       */}
+      {innings.needsNextBatterPick ? (
+        <>
+          {isBattingPlayer ? (
+            <NextBatterPicker state={state} innings={innings} big={isDesktop} />
+          ) : (
+            <div
+              className="rounded-lg text-center py-5 font-notebook"
+              style={{
+                background: "rgba(245,233,196,0.6)",
+                border: "1.5px dashed rgba(46,40,25,0.45)",
+                fontFamily: "'Kalam', cursive",
+              }}
+            >
+              <div className="text-[28px] mb-1">🏏</div>
+              <div className="font-bold text-hc-ink" style={{ fontSize: isDesktop ? 16 : 14 }}>
+                Opponent is selecting the next batter…
+              </div>
+            </div>
+          )}
+          {/* Concurrent: bowling player may also need to pick a bowler
+               if the wicket fell on the last ball of an over. */}
+          {needsBowler && (
+            <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} />
+          )}
+        </>
+      ) : needsBowler ? (
         <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} />
       ) : (
         <>

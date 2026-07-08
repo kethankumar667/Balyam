@@ -60,12 +60,35 @@ function selectBowler(engine: HandCricketEngine, bowlerProfileId: string) {
   });
 }
 
+/**
+ * Resolve a pending next-batter selection by automatically choosing the player
+ * already queued at pendingBatterSlot (matches the old auto-advance behaviour).
+ * Called at the start of any helper that might run into a post-wicket state.
+ */
+function resolveNextBatterIfPending(engine: HandCricketEngine) {
+  const s = state(engine);
+  const innings = s.phase === "innings1" ? s.innings1 : s.phase === "innings2" ? s.innings2 : null;
+  if (!innings?.needsNextBatterPick || innings.pendingBatterSlot == null) return;
+  const sel = s.teamSelections[innings.battingPlayerId];
+  const squad = sel?.squadPlayerIds ?? [];
+  const profileId = squad[innings.pendingBatterSlot];
+  if (profileId) {
+    engine.applyMove({
+      playerId: innings.battingPlayerId,
+      type: "selectNextBatter",
+      data: { profileId },
+    });
+  }
+}
+
 /** Bowl one ball with the given picks; assumes a bowler is already set. */
 function ballWithBowler(
   engine: HandCricketEngine,
   bat: number,
   bowl: number,
 ) {
+  // If the previous ball was a wicket, select the default next batter first.
+  resolveNextBatterIfPending(engine);
   const s = state(engine);
   const innings = s.phase === "innings1" ? s.innings1! : s.innings2!;
   engine.applyMove({ playerId: innings.battingPlayerId, type: "pick", data: { pick: bat } });
@@ -88,8 +111,11 @@ function tossThen(
 /**
  * Bowl one ball end-to-end: ensures a bowler is selected, then submits both picks.
  * Rotates through the squad if the first-pick bowler has hit their per-format quota.
+ * Auto-resolves any pending next-batter selection before bowling.
  */
 function ball(engine: HandCricketEngine, bat: number, bowl: number) {
+  // If a wicket was pending (needsNextBatterPick), pick the default next batter.
+  resolveNextBatterIfPending(engine);
   const s = state(engine);
   const innings = s.phase === "innings1" ? s.innings1! : s.innings2!;
   if (innings.currentBowlerId == null) {

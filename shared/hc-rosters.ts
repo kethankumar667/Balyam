@@ -379,7 +379,10 @@ export const HC_COUNTRIES: Record<HcCountry, HcCountryProfile> = {
     },
     extras: SL_LEGENDS,
   },
-  // Bangladesh and Afghanistan: no 2024 roster data yet (Phase 2.1).
+  // Bangladesh — squad data lives in the client JSON (data/t20.json etc.).
+  // Server pool stays empty: the engine accepts any 1-15 player IDs when
+  // the pool is empty, so human-chosen JSON-sourced IDs pass validation.
+  // Bot play against Bangladesh will use galli-style random selection.
   bangladesh: {
     id: "bangladesh",
     name: "Bangladesh",
@@ -388,6 +391,7 @@ export const HC_COUNTRIES: Record<HcCountry, HcCountryProfile> = {
     squads: { ...EMPTY_SQUADS },
     extras: [],
   },
+  // Afghanistan — same rationale as Bangladesh above.
   afghanistan: {
     id: "afghanistan",
     name: "Afghanistan",
@@ -395,6 +399,76 @@ export const HC_COUNTRIES: Record<HcCountry, HcCountryProfile> = {
     short: "AFG",
     squads: { ...EMPTY_SQUADS },
     extras: [],
+  },
+  // Ireland — sourced from client JSON (T20 squad used across all formats).
+  ireland: {
+    id: "ireland",
+    name: "Ireland",
+    flag: "🇮🇪",
+    short: "IRE",
+    squads: {
+      test: squadOf(
+        ["Paul Stirling (c)", "Andrew Balbirnie", "Harry Tector", "Ross Adair"],
+        ["Curtis Campher", "George Dockrell", "Gareth Delany"],
+        ["Lorcan Tucker", "Neil Rock"],
+        ["Mark Adair", "Barry McCarthy", "Josh Little", "Ben White", "Craig Young", "Graham Hume"],
+      ),
+      odi: squadOf(
+        ["Paul Stirling (c)", "Andrew Balbirnie", "Harry Tector", "Ross Adair"],
+        ["Curtis Campher", "George Dockrell", "Gareth Delany"],
+        ["Lorcan Tucker", "Neil Rock"],
+        ["Mark Adair", "Barry McCarthy", "Josh Little", "Ben White", "Craig Young", "Graham Hume"],
+      ),
+      t20: squadOf(
+        ["Paul Stirling (c)", "Andrew Balbirnie", "Harry Tector", "Ross Adair"],
+        ["Curtis Campher", "George Dockrell", "Gareth Delany"],
+        ["Lorcan Tucker", "Neil Rock"],
+        ["Mark Adair", "Barry McCarthy", "Josh Little", "Ben White", "Craig Young", "Graham Hume"],
+      ),
+    },
+    extras: [
+      legend("Kevin O'Brien", "allrounder"),
+      legend("William Porterfield", "batter"),
+      legend("Niall O'Brien", "keeper"),
+      legend("Alex Cusack", "allrounder"),
+      legend("John Mooney", "allrounder"),
+      legend("Boyd Rankin", "bowler"),
+    ],
+  },
+  // Zimbabwe — sourced from client JSON (T20 squad used across all formats).
+  zimbabwe: {
+    id: "zimbabwe",
+    name: "Zimbabwe",
+    flag: "🇿🇼",
+    short: "ZIM",
+    squads: {
+      test: squadOf(
+        ["Craig Ervine", "Tadiwanashe Marumani", "Innocent Kaia"],
+        ["Sikandar Raza (c)", "Sean Williams", "Ryan Burl", "Brian Bennett", "Luke Jongwe", "Faraz Akram"],
+        ["Clive Madande", "Joylord Gumbie"],
+        ["Blessing Muzarabani", "Richard Ngarava", "Tendai Chatara", "Wellington Masakadza"],
+      ),
+      odi: squadOf(
+        ["Craig Ervine", "Tadiwanashe Marumani", "Innocent Kaia"],
+        ["Sikandar Raza (c)", "Sean Williams", "Ryan Burl", "Brian Bennett", "Luke Jongwe", "Faraz Akram"],
+        ["Clive Madande", "Joylord Gumbie"],
+        ["Blessing Muzarabani", "Richard Ngarava", "Tendai Chatara", "Wellington Masakadza"],
+      ),
+      t20: squadOf(
+        ["Craig Ervine", "Tadiwanashe Marumani", "Innocent Kaia"],
+        ["Sikandar Raza (c)", "Sean Williams", "Ryan Burl", "Brian Bennett", "Luke Jongwe", "Faraz Akram"],
+        ["Clive Madande", "Joylord Gumbie"],
+        ["Blessing Muzarabani", "Richard Ngarava", "Tendai Chatara", "Wellington Masakadza"],
+      ),
+    },
+    extras: [
+      legend("Andy Flower", "keeper"),
+      legend("Grant Flower", "allrounder"),
+      legend("Heath Streak", "allrounder"),
+      legend("Brendan Taylor", "keeper"),
+      legend("Tatenda Taibu", "keeper"),
+      legend("Hamilton Masakadza", "batter"),
+    ],
   },
 };
 
