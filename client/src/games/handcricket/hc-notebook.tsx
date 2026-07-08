@@ -1559,26 +1559,33 @@ export function HcScrapbookDoodles() {
       </div>
       <SketchStar x="90%" y="40%" size={13} />
 
-      {/* bottom-left: trophy on a little grass tuft */}
-      <div style={{ position: "absolute", bottom: 20, left: 22, opacity: 0.9 }}>
-        <TrophyDoodle />
-        <svg width={70} height={12} viewBox="0 0 70 12" style={{ position: "absolute", bottom: -4, left: -8 }} aria-hidden>
-          <path d="M4 10 q3 -8 6 0 M14 10 q3 -9 6 0 M24 10 q3 -8 6 0" stroke={BORDER} strokeWidth={1.4} fill="none" strokeLinecap="round" opacity={0.5} />
+      {/* bottom-right desk cluster: trophy, bat resting on a ball, backpack,
+          and stars scattered over a scribbled grass line — everything the
+          gameplay screen's footer whitespace asks for, grouped in one corner
+          instead of scattered, so it reads as a little "desk corner" scene. */}
+      <div style={{ position: "absolute", right: 18, bottom: 8, width: 190, height: 78, opacity: 0.88 }}>
+        <div style={{ position: "absolute", left: 0, bottom: 2 }}><TrophyDoodle /></div>
+        <div style={{ position: "absolute", left: 62, bottom: 0 }}>
+          <div style={{ position: "relative", width: 48, height: 60 }}>
+            <div style={{ position: "absolute", left: 0, top: 0, transform: "rotate(16deg)" }}>
+              <BatDoodle size={46} />
+            </div>
+            <div style={{ position: "absolute", left: 16, bottom: 2 }}>
+              <CricketBallDoodle size={22} />
+            </div>
+          </div>
+        </div>
+        <div style={{ position: "absolute", left: 130, bottom: 2 }}><BackpackDoodle /></div>
+        <SketchStar x="10%" y="2%" size={11} />
+        <SketchStar x="52%" y="-4%" size={9} />
+        <SketchStar x="88%" y="6%" size={13} />
+        <svg width={190} height={12} viewBox="0 0 190 12" style={{ position: "absolute", left: 0, bottom: -4 }} aria-hidden>
+          <path
+            d="M2 10 q3 -8 6 0 M12 10 q3 -9 6 0 M22 10 q3 -8 6 0 M32 10 q3 -10 6 0 M42 10 q3 -8 6 0 M52 10 q3 -9 6 0 M62 10 q3 -8 6 0 M72 10 q3 -10 6 0 M82 10 q3 -8 6 0 M92 10 q3 -9 6 0 M102 10 q3 -8 6 0 M112 10 q3 -10 6 0 M122 10 q3 -8 6 0 M132 10 q3 -9 6 0 M142 10 q3 -8 6 0 M152 10 q3 -10 6 0 M162 10 q3 -8 6 0 M172 10 q3 -9 6 0 M182 10 q3 -8 6 0"
+            stroke={BORDER} strokeWidth={1.3} fill="none" strokeLinecap="round" opacity={0.45}
+          />
         </svg>
       </div>
-      <SketchStar x="16%" y="82%" size={12} />
-
-      {/* bottom-center: leaning bat + ball */}
-      <div style={{ position: "absolute", bottom: 16, left: "48%", opacity: 0.85, transform: "translateX(-50%) rotate(4deg)" }}>
-        <BatDoodle size={60} />
-      </div>
-
-      {/* bottom-right: backpack + stars */}
-      <div style={{ position: "absolute", bottom: 22, right: 26, opacity: 0.85 }}>
-        <BackpackDoodle />
-      </div>
-      <SketchStar x="86%" y="72%" size={14} />
-      <SketchStar x="93%" y="88%" size={10} />
     </div>
   );
 }
@@ -2140,45 +2147,3 @@ export function HcRibbonBanner({
   );
 }
 
-/** Bat leaning against a ball — reuses the existing BatDoodle/CricketBallDoodle
- *  at an angle so the bottom-right desk cluster stays visually consistent
- *  with every other doodle on the page. */
-function BatRestingOnBallDoodle() {
-  return (
-    <div style={{ position: "relative", width: 48, height: 60 }} aria-hidden>
-      <div style={{ position: "absolute", left: 0, top: 0, transform: "rotate(16deg)" }}>
-        <BatDoodle size={46} />
-      </div>
-      <div style={{ position: "absolute", left: 16, bottom: 2 }}>
-        <CricketBallDoodle size={22} />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Bottom-right "desk corner" — a trophy, a bat resting on a ball, a
- * backpack, and pencil stars scattered over a scribbled grass line. Faint,
- * fine-lined, non-interactive; sits in the whitespace under the bowler card.
- */
-export function HcGameplayCornerDoodles() {
-  return (
-    <div
-      aria-hidden
-      style={{ position: "absolute", right: 12, bottom: 6, width: 168, height: 92, pointerEvents: "none", opacity: 0.9 }}
-    >
-      <div style={{ position: "absolute", left: 0, bottom: 4 }}><TrophyDoodle /></div>
-      <div style={{ position: "absolute", left: 58, bottom: 2 }}><BatRestingOnBallDoodle /></div>
-      <div style={{ position: "absolute", left: 118, bottom: 4 }}><BackpackDoodle /></div>
-      <SketchStar x="6%" y="4%" size={11} />
-      <SketchStar x="48%" y="0%" size={9} />
-      <SketchStar x="86%" y="8%" size={13} />
-      <svg width={168} height={14} viewBox="0 0 168 14" style={{ position: "absolute", left: 0, bottom: -4 }} aria-hidden>
-        <path
-          d={Array.from({ length: 15 }, (_, i) => `M${i * 12} 12 q4 -${9 + (i % 3) * 1.4} 8 0`).join(" ")}
-          stroke={STAMP_G} strokeWidth={1.1} fill="none" strokeLinecap="round" opacity={0.42}
-        />
-      </svg>
-    </div>
-  );
-}
