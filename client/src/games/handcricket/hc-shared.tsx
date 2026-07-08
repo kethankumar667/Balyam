@@ -22,7 +22,18 @@ import { HC_MAX_OVERS_PER_BOWLER } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { motion } from "framer-motion";
 import { cn } from "../../lib/cn";
-import { RoughBorder, HcSketchHeading } from "./hc-notebook";
+import {
+  RoughBorder,
+  HcSketchHeading,
+  MaskingTapeCorner,
+  StumpsInGrassSketch,
+  CricketBallStitchSketch,
+  BallInMotionIcon,
+  PaperclipGraphic,
+  CurledCornerFold,
+  HcRibbonBanner,
+  HcGameplayCornerDoodles,
+} from "./hc-notebook";
 import {
   PaperPanel,
   PaperButton,
@@ -325,6 +336,152 @@ const _ROLE_LABELS: Record<HcPlayerProfile["role"], string> = {
   batter: "BAT", keeper: "WK", allrounder: "AR", bowler: "BOWL",
 };
 
+/* ── Squad sketchbook paper-physics helpers ──────────────────────────────
+   All components below are local to the squad-picker section. They are
+   intentionally not exported — they encode the "hand-drawn roster sheet"
+   visual language and should never drift out of this context.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/** Pencil-style hand-drawn checkmark — replaces the plain ✓ glyph on XI members. */
+function PencilCheck({ size = 12, color = "#166534" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" aria-hidden>
+      <path
+        d="M1 6.5 L4.5 10 L11 2"
+        stroke={color}
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Role → border colour per the brief's strict coding (blue/orange/purple/red). */
+const SKETCH_ROLE: Record<HcPlayerProfile["role"], { label: string; color: string }> = {
+  batter:     { label: "BAT",  color: "#1d4ed8" }, // blue
+  keeper:     { label: "WK",   color: "#c2410c" }, // orange
+  allrounder: { label: "AR",   color: "#6d28d9" }, // purple
+  bowler:     { label: "BOWL", color: "#991b1b" }, // red
+};
+
+/**
+ * Square-edged, border-only role badge in the brief's strict colour coding.
+ * Replaces the filled PaperBadge — border-only reads as hand-ruled ink box
+ * rather than a production sticker.
+ */
+function SketchRoleBadge({ role, big = false }: { role: HcPlayerProfile["role"]; big?: boolean }) {
+  const { label, color } = SKETCH_ROLE[role];
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: `1.5px solid ${color}`,
+        color,
+        fontFamily: "'Kalam', cursive",
+        fontWeight: 800,
+        fontSize: big ? 9 : 7.5,
+        padding: big ? "2px 5px" : "1px 4px",
+        borderRadius: 2,
+        letterSpacing: "0.04em",
+        lineHeight: 1,
+        background: `${color}12`,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Thin sketch capsule status pill — border-only oval with a pencil checkmark
+ * when the condition is satisfied. Used in CompositionChecklist.
+ */
+function SketchPill({ ok, label, count }: { ok: boolean; label: string; count: string }) {
+  const clr = ok ? STAMP_G : "#b45309";
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        border: `1.3px solid ${clr}`,
+        borderRadius: 999,
+        padding: "2px 9px 2px 7px",
+        background: ok ? "rgba(22,101,52,0.06)" : "rgba(180,83,9,0.06)",
+        fontFamily: "'Kalam', cursive",
+        fontSize: 10,
+        fontWeight: 800,
+        color: clr,
+        whiteSpace: "nowrap",
+        lineHeight: 1.3,
+      }}
+    >
+      {ok
+        ? <PencilCheck size={9} color={clr} />
+        : <span style={{ opacity: 0.45, fontSize: 11, lineHeight: 1 }}>·</span>
+      }
+      {label}{" "}<span style={{ fontSize: 9, opacity: 0.72 }}>({count})</span>
+    </span>
+  );
+}
+
+/**
+ * Washi/masking-tape strip taped at the top corners of the squad sheet.
+ * The two strips are intentionally misaligned (-3° / +4°) — real tape never
+ * lands perfectly straight, and the asymmetry grounds the paper illusion.
+ */
+function TapeStrip({ right = false }: { right?: boolean }) {
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        top: -10,
+        ...(right ? { right: 20 } : { left: 20 }),
+        width: 44,
+        height: 17,
+        transform: `rotate(${right ? 4 : -3}deg)`,
+        zIndex: 5,
+        pointerEvents: "none",
+      }}
+    >
+      <svg width={44} height={17} viewBox="0 0 44 17" fill="none">
+        <rect x="0" y="0" width="44" height="17" rx="1.5" fill="rgba(245,228,168,0.82)" />
+        {Array.from({ length: 10 }, (_, i) => (i + 1) * 4).map((x, wi) => (
+          <line key={wi} x1={x} y1="0" x2={x} y2="17"
+            stroke="rgba(170,130,40,0.09)" strokeWidth="1" />
+        ))}
+        <path d="M0 1 Q11 -0.6 22 1 Q33 -0.6 44 1"
+          stroke="rgba(255,255,255,0.5)" strokeWidth="0.7" fill="none" />
+        <path d="M0 16 Q11 17.5 22 16 Q33 17.5 44 16"
+          stroke="rgba(0,0,0,0.13)" strokeWidth="0.7" fill="none" />
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Compact cricket bat line-art doodle for the confirm button.
+ * Handle at top with grip-tape wraps, blade body, and a faint grain line.
+ */
+function BatDoodleInline({ color = "#166534" }: { color?: string }) {
+  return (
+    <svg width={16} height={20} viewBox="0 0 16 20" fill="none" aria-hidden>
+      <line x1="8" y1="1.5" x2="8" y2="5.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="6.5" y1="2.8" x2="9.5" y2="3.5" stroke={color} strokeWidth="0.65" strokeLinecap="round" opacity="0.55" />
+      <line x1="6.5" y1="4.4" x2="9.5" y2="5.1" stroke={color} strokeWidth="0.65" strokeLinecap="round" opacity="0.55" />
+      <path
+        d="M5.5 5.5 Q5 7 5 10.5 Q5 16 7 18.5 Q8 19 9 18.5 Q11 16 11 10.5 Q11 7 10.5 5.5 Z"
+        stroke={color} strokeWidth="1.3" fill="none" strokeLinejoin="round"
+      />
+      <line x1="8" y1="7" x2="8" y2="17" stroke={color} strokeWidth="0.5" strokeLinecap="round" opacity="0.28" />
+    </svg>
+  );
+}
+
 function PlayerCardMini({
   p,
   isSelected,
@@ -362,47 +519,98 @@ function PlayerCardMini({
       ariaLabel={p.name}
       className="min-w-0"
     >
-      <div className={cn("relative", big ? "px-2.5 py-2.5" : "px-2 py-2")}>
-        <div className="flex items-center gap-1 flex-wrap" style={{ marginBottom: big ? 4 : 2 }}>
-          <PaperBadge tone={ROLE_BADGE_TONE[p.role]} size={big ? "md" : "sm"}>
-            {ROLE_BADGE_LABEL[p.role]}
-          </PaperBadge>
-          {isCaptain && <PaperBadge tone="captain" size={big ? "md" : "sm"}>C</PaperBadge>}
-          {isVC && <PaperBadge tone="vice" size={big ? "md" : "sm"}>VC</PaperBadge>}
+      <div className={cn("relative", big ? "px-2.5 py-2" : "px-2 py-1.5")}>
+        {/* Badge row: sketch role square + captain/VC status indicators */}
+        <div className="flex items-center gap-1 flex-wrap" style={{ marginBottom: big ? 3 : 2 }}>
+          <SketchRoleBadge role={p.role} big={big} />
+          {isCaptain && (
+            <span
+              style={{
+                border: `1.5px solid ${GOLD}`,
+                color: GOLD,
+                background: `${GOLD}18`,
+                fontFamily: "'Kalam', cursive",
+                fontWeight: 800,
+                fontSize: big ? 8 : 7,
+                padding: big ? "2px 5px" : "1px 3px",
+                borderRadius: 2,
+                lineHeight: 1,
+              }}
+            >C</span>
+          )}
+          {isVC && (
+            <span
+              style={{
+                border: `1.5px solid ${STAMP_A}`,
+                color: STAMP_A,
+                background: `${STAMP_A}18`,
+                fontFamily: "'Kalam', cursive",
+                fontWeight: 800,
+                fontSize: big ? 8 : 7,
+                padding: big ? "2px 5px" : "1px 3px",
+                borderRadius: 2,
+                lineHeight: 1,
+              }}
+            >VC</span>
+          )}
         </div>
+
+        {/* Player name */}
         <div className="font-hand font-bold text-hc-ink leading-tight" style={{ fontSize: nameSize }}>
           {isLegend ? `★ ${p.name}` : p.name}
         </div>
+
+        {/* Pencil checkmark in top-right corner for XI members */}
         {isSelected && (
-          <span className="absolute top-0.5 right-1 text-hc-stamp font-bold" style={{ fontSize: big ? 13 : 11 }}>✓</span>
+          <span className="absolute top-1 right-1">
+            <PencilCheck size={big ? 13 : 11} />
+          </span>
         )}
+
+        {/* Captain / VC sketch-rectangle toggles with hand-drawn dropdown caret */}
         {isSelected && (
-          <div className="flex gap-1" style={{ marginTop: big ? 5 : 3 }}>
+          <div className="flex gap-1" style={{ marginTop: big ? 4 : 3 }}>
             <button
               onClick={(e) => { e.stopPropagation(); onCaptain(); }}
-              className="font-kalam font-extrabold rounded-[2px] cursor-pointer"
+              className="cursor-pointer inline-flex items-center"
               style={{
-                background: isCaptain ? GOLD : "rgba(197,150,58,0.15)",
+                gap: 2,
+                background: isCaptain ? GOLD : "rgba(197,150,58,0.10)",
                 color: isCaptain ? "#fff" : GOLD,
-                border: `1px solid ${GOLD}`,
+                border: `1.5px solid ${GOLD}`,
+                borderRadius: 2,
+                fontFamily: "'Kalam', cursive",
+                fontWeight: 800,
                 fontSize: leadSize,
                 padding: leadPad,
+                lineHeight: 1,
               }}
             >
               C
+              <svg width={5} height={4} viewBox="0 0 5 4" fill="none" aria-hidden>
+                <path d="M0.5 1 L2.5 3 L4.5 1" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onVC(); }}
-              className="font-kalam font-extrabold rounded-[2px] cursor-pointer"
+              className="cursor-pointer inline-flex items-center"
               style={{
-                background: isVC ? STAMP_A : "rgba(146,64,14,0.12)",
+                gap: 2,
+                background: isVC ? STAMP_A : "rgba(146,64,14,0.10)",
                 color: isVC ? "#fff" : STAMP_A,
-                border: `1px solid ${STAMP_A}`,
+                border: `1.5px solid ${STAMP_A}`,
+                borderRadius: 2,
+                fontFamily: "'Kalam', cursive",
+                fontWeight: 800,
                 fontSize: leadSize,
                 padding: leadPad,
+                lineHeight: 1,
               }}
             >
               VC
+              <svg width={5} height={4} viewBox="0 0 5 4" fill="none" aria-hidden>
+                <path d="M0.5 1 L2.5 3 L4.5 1" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           </div>
         )}
@@ -539,7 +747,28 @@ export function SquadPicker({
     : "🖊 CONFIRM PLAYING XI";
 
   return (
-    <PaperPanel tone="sheet" strong pad="none" className="font-notebook px-5 pt-4 pb-3.5">
+    <div
+      className="relative rounded-sm overflow-visible font-notebook"
+      style={{
+        background: PAPER_L,
+        boxShadow: "5px 9px 28px rgba(74,44,18,0.22), 0 2px 6px rgba(74,44,18,0.10)",
+      }}
+    >
+      {/* Double-lined hand-sketched border: dual draws the outer ink stroke
+          plus a lighter inner pencil ghost line ~9px inside it. */}
+      <RoughBorder
+        dual
+        stroke="rgba(46,40,25,0.78)"
+        strokeWidth={2.8}
+        roughness={2.4}
+        bowing={1.5}
+        padding={3}
+        seed={99}
+      />
+      {/* Tape strips — mismatched tilts (-3° / +4°) sell the physical illusion */}
+      <TapeStrip />
+      <TapeStrip right />
+      <div className="relative z-[1] px-5 pt-5 pb-3.5">
         {/* Change team — top-right */}
         <PaperButton
           variant="ghost"
@@ -651,18 +880,41 @@ export function SquadPicker({
           )}
 
           {/* Confirm button */}
-          <PaperButton
-            variant="confirm"
-            size="block"
+          {/* Thick-bordered confirm button with cricket bat line-art doodle */}
+          <button
             onClick={confirm}
             disabled={!ready}
-            muted={!ready}
-            className={cn("mt-3 tracking-[0.08em]", isDesktop ? "text-lg py-3.5" : "text-[15px]")}
+            className={cn(
+              "relative mt-3 w-full inline-flex items-center justify-center gap-2.5 rounded-sm overflow-visible",
+              isDesktop ? "py-3.5 text-base" : "py-3 text-[15px]",
+            )}
+            style={{
+              fontFamily: "'Architects Daughter', 'Kalam', cursive",
+              fontWeight: 800,
+              letterSpacing: "0.08em",
+              background: ready ? "rgba(22,101,52,0.08)" : "rgba(0,0,0,0.02)",
+              color: ready ? STAMP_G : "#9ca3af",
+              border: "none",
+              cursor: ready ? "pointer" : "not-allowed",
+              opacity: ready ? 1 : 0.48,
+            }}
           >
-            {confirmLabel}
-          </PaperButton>
+            <RoughBorder
+              stroke={ready ? "rgba(22,101,52,0.88)" : "rgba(0,0,0,0.18)"}
+              strokeWidth={ready ? 2.8 : 2.0}
+              roughness={2.2}
+              bowing={1.4}
+              padding={2}
+              seed={7}
+            />
+            <span className="relative z-[1] inline-flex items-center gap-2">
+              <BatDoodleInline color={ready ? STAMP_G : "#9ca3af"} />
+              {confirmLabel.replace("🖊 ", "")}
+            </span>
+          </button>
         </div>
-    </PaperPanel>
+      </div>
+    </div>
   );
 }
 
@@ -674,28 +926,14 @@ export function CompositionChecklist({
   composition: ReturnType<typeof evaluateSquadComposition>;
 }) {
   const items = [
-    { label: "11 players", ok: composition.total === 11, count: `${composition.total}/11` },
-    { label: "Keeper", ok: composition.keepers >= 1, count: `${composition.keepers}` },
+    { label: "11 Players",      ok: composition.total === 11,        count: `${composition.total}/11` },
+    { label: "Keeper",          ok: composition.keepers >= 1,        count: `${composition.keepers}` },
     { label: "Bowling options", ok: composition.bowlingOptions >= 4, count: `${composition.bowlingOptions}/4` },
   ];
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
       {items.map((item) => (
-        <span
-          key={item.label}
-          style={{
-            border: `1.5px solid ${item.ok ? STAMP_G : "#b45309"}`,
-            background: item.ok ? "rgba(22,101,52,0.08)" : "rgba(180,83,9,0.08)",
-            color: item.ok ? STAMP_G : "#b45309",
-            borderRadius: 3,
-            fontSize: 10,
-            fontWeight: 800,
-            padding: "1px 7px",
-            fontFamily: "'Kalam', cursive",
-          }}
-        >
-          {item.ok ? "✓" : "·"} {item.label} ({item.count})
-        </span>
+        <SketchPill key={item.label} ok={item.ok} label={item.label} count={item.count} />
       ))}
     </div>
   );
@@ -1214,37 +1452,70 @@ export function CurrentPlayersBar({
         }${stats.sixes ? ` · ${stats.sixes}×6` : ""}`
       : "Yet to face";
 
+  const bowlingIsMine = innings.bowlingPlayerId === selfId;
+  const waitingForBowler = !currentBowler;
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-      <PlayerCard
-        label="🏏 Striker ●"
-        name={striker?.name ?? "—"}
-        sub={batterStatSub(strikerStats)}
-        isMine={innings.battingPlayerId === selfId}
-        accent="#10b981"
-        big={big}
-      />
-      <PlayerCard
-        label="🏃 Non-striker"
-        name={nonStriker?.name ?? "—"}
-        sub={batterStatSub(nonStrikerStats)}
-        isMine={innings.battingPlayerId === selfId}
-        accent="#34d399"
-        dimmed
-        big={big}
-      />
-      <PlayerCard
-        label="⚾ Bowling"
-        name={currentBowler?.name ?? "Waiting…"}
-        sub={
-          bowlerStats
-            ? `${Math.floor(bowlerStats.balls / 6)}.${bowlerStats.balls % 6}-${bowlerStats.wickets}-${bowlerStats.runs}`
-            : "Pick a bowler"
-        }
-        isMine={innings.bowlingPlayerId === selfId}
-        accent="#6366f1"
-        big={big}
-      />
+    // One organic single-stroke sketch box holds all three columns — divided
+    // internally by hairlines rather than three separately-bordered cards.
+    <div className="relative rounded-lg bg-hc-paper-l/70">
+      <RoughBorder roughness={1.6} stroke="rgba(46,40,25,0.5)" strokeWidth={1.6} padding={3} />
+      <div className={cn("relative z-[1] grid grid-cols-1 sm:grid-cols-3", big ? "divide-y sm:divide-y-0 sm:divide-x" : "divide-y sm:divide-y-0 sm:divide-x")} style={{ borderColor: "rgba(46,40,25,0.22)" }}>
+        <PlayerCard
+          label="🏏 Striker ●"
+          name={striker?.name ?? "—"}
+          sub={batterStatSub(strikerStats)}
+          isMine={innings.battingPlayerId === selfId}
+          big={big}
+        />
+        <PlayerCard
+          label="🏃 Non-striker"
+          name={nonStriker?.name ?? "—"}
+          sub={batterStatSub(nonStrikerStats)}
+          isMine={innings.battingPlayerId === selfId}
+          dimmed
+          big={big}
+        />
+        {/* Bowling column — orange/red hand-inked flag + pulsing "waiting"
+            state and a detailed stitched ball while no bowler is picked yet. */}
+        <div className={cn("flex items-center justify-between gap-2", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")}>
+          <div className="min-w-0">
+            <div
+              className="font-extrabold uppercase tracking-[0.12em]"
+              style={{ fontSize: big ? 11 : 9, color: waitingForBowler ? "#c2410c" : "#4a5a82" }}
+            >
+              ⚾ Bowling
+              {bowlingIsMine && (
+                <span className="ml-1 font-extrabold" style={{ fontSize: big ? 11 : 9, color: "#c2410c" }}>· YOU</span>
+              )}
+            </div>
+            {waitingForBowler ? (
+              <div
+                className="font-bold leading-tight animate-pulse"
+                style={{ fontSize: big ? 15 : 12, color: "#c2410c" }}
+              >
+                Waiting… Pick a bowler
+              </div>
+            ) : (
+              <>
+                <div className="leading-tight font-bold text-hc-ink truncate" style={{ fontSize: big ? 18 : 13 }}>
+                  {currentBowler?.name}
+                </div>
+                <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 14 : 11 }}>
+                  {bowlerStats
+                    ? `${Math.floor(bowlerStats.balls / 6)}.${bowlerStats.balls % 6}-${bowlerStats.wickets}-${bowlerStats.runs}`
+                    : "0.0-0-0"}
+                </div>
+              </>
+            )}
+          </div>
+          {waitingForBowler && (
+            <div className="flex-shrink-0" style={{ animation: "hc-glow-pulse 1.6s ease-in-out infinite" }}>
+              <CricketBallStitchSketch size={big ? 34 : 28} />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1254,7 +1525,6 @@ export function PlayerCard({
   name,
   sub,
   isMine,
-  accent,
   dimmed = false,
   big = false,
 }: {
@@ -1262,12 +1532,11 @@ export function PlayerCard({
   name: string;
   sub: string;
   isMine: boolean;
-  accent: string;
   dimmed?: boolean;
   big?: boolean;
 }) {
   return (
-    <PaperPanel tone="soft" pad="none" className={cn(big ? "px-3.5 py-2.5" : "px-2.5 py-1.5", dimmed && "opacity-80")}>
+    <div className={cn(big ? "px-3.5 py-2.5" : "px-2.5 py-1.5", dimmed && "opacity-80")}>
       <div
         className="font-extrabold uppercase tracking-[0.12em] text-hc-ink-lt"
         style={{ fontSize: big ? 11 : 9 }}
@@ -1277,7 +1546,7 @@ export function PlayerCard({
       </div>
       <div className="leading-tight font-bold text-hc-ink" style={{ fontSize: big ? 18 : 13 }}>{name}</div>
       <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 14 : 11 }}>{sub}</div>
-    </PaperPanel>
+    </div>
   );
 }
 
@@ -1407,8 +1676,13 @@ export function Scoreboard({
       tone="soft"
       strong
       pad="none"
-      className={cn("flex items-center justify-between gap-3 font-notebook", big ? "px-5 py-3" : "px-3.5 py-2.5")}
+      className={cn("relative flex items-center justify-between gap-3 font-notebook", big ? "px-5 py-3" : "px-3.5 py-2.5")}
     >
+      {/* "Taped down" corners — the scoreboard reads as a thick piece of
+          cardstock pinned onto the notebook page rather than a flat panel. */}
+      <MaskingTapeCorner side="left" />
+      <MaskingTapeCorner side="right" />
+
       <div className="flex items-center gap-3">
         <span className={big ? "text-3xl" : "text-2xl"}>{batterTeam.flag}</span>
         <div>
@@ -1418,9 +1692,10 @@ export function Scoreboard({
           >
             Innings {innings.number} · {batterTeam.short} ({batterTeam.playerName}) batting
           </div>
+          {/* Giant organic handwritten score — runs in ink, wickets in red pen. */}
           <div
-            className="font-black tabular-nums leading-none text-hc-ink"
-            style={{ fontSize: big ? 64 : 48 }}
+            className="font-sketch tabular-nums leading-none text-hc-ink"
+            style={{ fontSize: big ? 66 : 48, fontWeight: 700 }}
           >
             {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
           </div>
@@ -1429,8 +1704,16 @@ export function Scoreboard({
           </div>
         </div>
       </div>
+
+      {/* Three stumps pitched in a scribbled patch of grass — sits between
+          the score and the target chip so the card reads as illustrated,
+          not just typeset. */}
+      <div className="flex-shrink-0 hidden sm:block" style={{ opacity: 0.9 }}>
+        <StumpsInGrassSketch size={big ? 58 : 44} />
+      </div>
+
       {target != null && (
-        <div className="text-right text-hc-amber">
+        <div className="text-right text-hc-amber flex-shrink-0">
           <div className="uppercase tracking-wider font-bold" style={{ fontSize: big ? 12 : 10 }}>Target</div>
           <div className="font-extrabold tabular-nums" style={{ fontSize: big ? 32 : 24 }}>{target}</div>
         </div>

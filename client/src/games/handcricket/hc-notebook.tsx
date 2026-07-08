@@ -9,6 +9,7 @@
  * Content that overflows uses overflow-y: auto inside flex-1 min-h-0 containers.
  */
 
+import { useState, useEffect, useRef } from "react";
 import type { ReactNode, CSSProperties, SVGProps, ComponentType } from "react";
 import type {
   HcCountry,
@@ -34,6 +35,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   IN, AU, GB, NZ, ZA, PK, LK, BD, AF,
 } from 'country-flag-icons/react/3x2';
+import PlayerList from "../../components/PlayerList";
+import VoicePanel from "../../components/VoicePanel";
+import Chat from "../../components/Chat";
 
 /* ─── palette ─── */
 const PAPER      = "#F5E9C4";
@@ -372,6 +376,7 @@ export function HcNotebookHeader({
   const categoryLabel = state.options.category === "ipl" ? "IPL" : "INTERNATIONAL";
 
   return (
+    <div style={{ flexShrink: 0 }}>
     <div
       style={{
         display: "flex",
@@ -473,6 +478,15 @@ export function HcNotebookHeader({
         {onLeave && <HcLeaveButton onLeave={onLeave} />}
       </div>
     </div>
+
+      {/* ── Floating utility strip — a torn-paper scrap pinned just under the
+          header, holding the room's social actions (link / team / voice /
+          chat / react). Kept compact and centred so it never pushes the page
+          into overflow. ── */}
+      <div style={{ display: "flex", justifyContent: "center", padding: "6px 12px 2px" }}>
+        <HcActionBarStrip roomCode={roomCode} players={players} selfId={selfId} messages={messages} />
+      </div>
+    </div>
   );
 }
 
@@ -518,6 +532,298 @@ export function HcLeaveButton({ onLeave }: { onLeave: () => void }) {
       </svg>
       Leave
     </button>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACTION BAR STRIP — torn-paper scrap of utility icons
+═══════════════════════════════════════════════════════════════ */
+
+type StripPanel = "room" | "players" | "voice" | "chat" | "emoji" | null;
+const QUICK_EMOJIS = ["👍", "😂", "🔥", "🎉", "😮", "💯"];
+
+/**
+ * The "Top Floating Action Bar" — a single torn-paper strip holding five
+ * hand-drawn outline icon buttons (link / team / voice / chat / react).
+ * Functionally this is Hand Cricket's own skin over the same room actions
+ * InlineRoomRail exposes elsewhere (room code, players, voice, chat,
+ * quick-react) — reimplemented here so the icon language and panel chrome
+ * match the notebook rather than the app's default dark UI.
+ */
+function HcActionBarStrip({
+  roomCode,
+  players,
+  selfId,
+  messages,
+}: {
+  roomCode: string;
+  players: Player[];
+  selfId: string;
+  messages: ChatMessage[];
+}) {
+  const [open, setOpen] = useState<StripPanel>(null);
+  const [lastReadCount, setLastReadCount] = useState(messages.length);
+  useEffect(() => {
+    if (open === "chat") setLastReadCount(messages.length);
+  }, [open, messages.length]);
+  const unread = messages.slice(lastReadCount).filter((m) => m.playerId !== selfId).length;
+
+  const [cooldown, setCooldown] = useState(false);
+  function react(emoji: string) {
+    if (cooldown) return;
+    getSocket().emit("room:reaction", { emoji });
+    setCooldown(true);
+    window.setTimeout(() => setCooldown(false), 400);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const [copied, setCopied] = useState(false);
+  function copyCode() {
+    navigator.clipboard.writeText(roomCode).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  return (
+    <>
+      <div style={{ position: "relative", display: "inline-flex" }}>
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: -5,
+            background: PAPER_L,
+            filter: "url(#rough-torn)",
+            boxShadow: "0 3px 8px rgba(46,25,8,0.22)",
+            borderRadius: 3,
+          }}
+        />
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 3, padding: "5px 9px" }}>
+          <StripIconBtn label="Copy room link" active={open === "room"} onClick={() => setOpen(open === "room" ? null : "room")}>
+            <IconLinkSketch />
+          </StripIconBtn>
+          <StripDivider />
+          <StripIconBtn label="Players" active={open === "players"} onClick={() => setOpen(open === "players" ? null : "players")}>
+            <IconTeamSketch />
+          </StripIconBtn>
+          <StripIconBtn label="Voice chat" active={open === "voice"} onClick={() => setOpen(open === "voice" ? null : "voice")}>
+            <IconMicSketch />
+          </StripIconBtn>
+          <StripIconBtn label="Chat" active={open === "chat"} badge={unread} onClick={() => setOpen(open === "chat" ? null : "chat")}>
+            <IconChatSketch />
+          </StripIconBtn>
+          <StripDivider />
+          <StripIconBtn label="React" active={open === "emoji"} onClick={() => setOpen(open === "emoji" ? null : "emoji")}>
+            <IconSmileySketch />
+          </StripIconBtn>
+        </div>
+      </div>
+
+      {/* Quick-react popover — sits right under the strip, no backdrop. */}
+      {open === "emoji" && (
+        <div style={{ position: "fixed", zIndex: 57, left: "50%", top: 108, transform: "translateX(-50%)" }}>
+          <div
+            style={{
+              position: "relative",
+              display: "flex",
+              gap: 2,
+              padding: "6px 8px",
+              background: PAPER_L,
+              border: `1.5px solid ${BORDER}`,
+              borderRadius: 10,
+              boxShadow: "0 6px 18px rgba(46,25,8,0.28)",
+            }}
+          >
+            {QUICK_EMOJIS.map((e) => (
+              <button
+                key={e}
+                onClick={() => react(e)}
+                disabled={cooldown}
+                style={{
+                  width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 18, background: "transparent", border: "none", borderRadius: 6, cursor: "pointer",
+                  opacity: cooldown ? 0.5 : 1,
+                }}
+                title={`React with ${e}`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Side-sheet for the heavier panels — Room / Players / Voice / Chat. */}
+      {(open === "room" || open === "players" || open === "voice" || open === "chat") && (
+        <>
+          <button
+            aria-label="Close panel"
+            onClick={() => setOpen(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 56, background: "rgba(20,14,8,0.35)", border: "none" }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed", zIndex: 57, right: 0, top: 0, bottom: 0,
+              width: "min(92vw,22rem)", overflowY: "auto", padding: 14,
+              background: PAPER_L, borderLeft: `2px solid ${BORDER}`,
+              boxShadow: "-8px 0 24px rgba(0,0,0,0.25)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <span className="font-notebook" style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: INK }}>
+                {open === "room" && "Room"}
+                {open === "players" && "Players"}
+                {open === "voice" && "Voice"}
+                {open === "chat" && "Chat"}
+              </span>
+              <button
+                onClick={() => setOpen(null)}
+                aria-label="Close"
+                style={{
+                  width: 30, height: 30, borderRadius: "50%", fontWeight: 800,
+                  background: PAPER_D, color: INK, border: `1px solid ${BORDER}`, cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            {open === "room" && (
+              <div style={{ textAlign: "center" }}>
+                <div className="font-notebook" style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: INK_LT, fontWeight: 700 }}>
+                  Room code
+                </div>
+                <div className="font-mono" style={{ fontSize: 26, letterSpacing: "0.3em", fontWeight: 900, color: INK, marginTop: 4 }}>
+                  {roomCode}
+                </div>
+                <button
+                  onClick={copyCode}
+                  className="font-notebook"
+                  style={{
+                    marginTop: 12, padding: "8px 16px", borderRadius: 8, fontWeight: 800, fontSize: 12,
+                    background: STAMP_G, color: "#fff", border: "none", cursor: "pointer",
+                  }}
+                >
+                  {copied ? "✓ Copied" : "Copy code"}
+                </button>
+              </div>
+            )}
+            {open === "players" && <PlayerList players={players} selfId={selfId} />}
+            {open === "voice" && <VoicePanel players={players} selfId={selfId} restoreOrientation="any" />}
+            {open === "chat" && <Chat messages={messages} selfId={selfId} />}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function StripDivider() {
+  return <span aria-hidden style={{ width: 1, alignSelf: "stretch", background: BORDER, opacity: 0.35, margin: "0 2px" }} />;
+}
+
+function StripIconBtn({
+  label,
+  active,
+  badge,
+  onClick,
+  children,
+}: {
+  label: string;
+  active: boolean;
+  badge?: number;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      style={{
+        position: "relative",
+        width: 30, height: 30, borderRadius: "50%",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: active ? "rgba(139,26,26,0.14)" : "transparent",
+        border: active ? `1.5px solid ${INK_RED}` : "1.5px solid transparent",
+        color: INK,
+        cursor: "pointer",
+        transition: "background 120ms ease",
+      }}
+    >
+      {children}
+      {badge != null && badge > 0 && (
+        <span
+          style={{
+            position: "absolute", top: -3, right: -3, minWidth: 15, height: 15, padding: "0 3px",
+            borderRadius: 999, fontSize: 9, fontWeight: 800, color: "#fff",
+            background: INK_RED, border: `1.5px solid ${PAPER_L}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          {badge > 9 ? "9+" : badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/* Hand-inked outline icons — thin strokes, slightly organic curves so they
+   read as sketched rather than a stock icon font. */
+function IconLinkSketch() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10.3 13.3a5 5 0 0 0 7.4.4l2.6-2.7a5 5 0 0 0-7-7l-1.5 1.5" />
+      <path d="M13.7 10.7a5 5 0 0 0-7.4-.4L3.7 13a5 5 0 0 0 7 7l1.5-1.5" />
+    </svg>
+  );
+}
+function IconTeamSketch() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-6A3.5 3.5 0 0 0 4 18.5V20" />
+      <circle cx={10} cy={8} r={3.5} />
+      <path d="M20 20v-1.5a3.3 3.3 0 0 0-2.4-3.2" />
+      <path d="M15 4.3a3.5 3.5 0 0 1 0 6.8" />
+    </svg>
+  );
+}
+function IconMicSketch() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x={9} y={2.5} width={6} height={11} rx={3} />
+      <path d="M18.5 10.5v1.2a6.5 6.5 0 0 1-13 0v-1.2" />
+      <line x1={12} y1={18.5} x2={12} y2={22} />
+      <line x1={8.3} y1={22} x2={15.7} y2={22} />
+    </svg>
+  );
+}
+function IconChatSketch() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 14.8a2.2 2.2 0 0 1-2.2 2.2H8L3.5 21V5.2A2.2 2.2 0 0 1 5.7 3h13.1A2.2 2.2 0 0 1 21 5.2Z" />
+    </svg>
+  );
+}
+function IconSmileySketch() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx={12} cy={12} r={9.2} />
+      <circle cx={8.6} cy={10.2} r={0.9} fill={INK} stroke="none" />
+      <circle cx={15.4} cy={10.2} r={0.9} fill={INK} stroke="none" />
+      <path d="M7.8 14.3q4.2 3.4 8.4 0" />
+    </svg>
   );
 }
 
@@ -1074,218 +1380,99 @@ export function HcFranchisePickerNotebook({
   ];
 
   return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        padding: "10px 14px 6px",
-      }}
-    >
-      {/* Pencil border box */}
-      <div
-        style={{
-          position: "relative",
-          border: `1.5px dashed ${BORDER}`,
-          borderRadius: 10,
-          padding: "10px 12px 8px",
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <CornerTick corner="tl" />
-        <CornerTick corner="tr" />
-        <CornerTick corner="bl" />
-        <CornerTick corner="br" />
-
-        {/* Heading */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            marginBottom: 10,
-            flexShrink: 0,
-          }}
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-3 pb-2.5 pt-1">
+      {/* Vertically-centred scroll area — keeps the framed sheet mid-page;
+          overflow-x-hidden clips the card-corner tape/chip overflows. */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col items-center py-2">
+        <PaperPanel
+          tone="sheet"
+          strong
+          pad="none"
+          className="w-full max-w-[1000px] m-auto flex flex-col px-[18px] pt-[18px] pb-3.5"
         >
-          <RadiatingArrow />
-          <h2
-            className="font-notebook"
-            style={{
-              color: INK,
-              fontSize: "clamp(13px,1.8vw,18px)",
-              fontWeight: 900,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              textAlign: "center",
-              margin: 0,
-            }}
-          >
-            Pick Your IPL Franchise
-          </h2>
-          <RadiatingArrow flip />
-        </div>
+          <CornerTick corner="tl" />
+          <CornerTick corner="tr" />
+          <CornerTick corner="bl" />
+          <CornerTick corner="br" />
 
-        {/* 5×2 franchise grid */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-          <div className="grid grid-cols-2 sm:grid-cols-5" style={{ gap: 8 }}>
+          <SketchHeading className="mb-2.5">Pick Your IPL Franchise</SketchHeading>
+
+          {/* 5×2 franchise grid — identical structure to the country grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {franchises.map((id) => {
               const f = HC_FRANCHISES[id];
               const isOpp = oppPick === id;
               const isSelected = state.teamSelections[selfId]?.teamId === id;
+
               return (
-                <button
+                <PaperCard
                   key={id}
+                  tone={isSelected ? "selected" : "default"}
+                  interactive
                   onClick={() => pick(id)}
-                  aria-pressed={isSelected}
-                  style={{
-                    background: isSelected ? "rgba(22,101,52,0.10)" : PAPER_L,
-                    border: `2px ${isSelected ? "solid" : "dashed"} ${
-                      isSelected ? STAMP_G : BORDER
-                    }`,
-                    borderRadius: 8,
-                    padding: "10px 6px",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    transform: isSelected
-                      ? "translateY(-3px) rotate(-0.5deg)"
-                      : "none",
-                    transition: "all 180ms cubic-bezier(0.34,1.56,0.64,1)",
-                    cursor: "pointer",
-                    boxShadow: isSelected
-                      ? "0 4px 16px rgba(22,101,52,0.25), 2px 4px 12px rgba(0,0,0,0.18)"
-                      : "2px 3px 8px rgba(0,0,0,0.12)",
-                    position: "relative",
-                    minHeight: 44,
-                  }}
+                  ariaPressed={isSelected}
+                  ariaLabel={f.name}
+                  className="min-h-[148px]"
                 >
-                  {/* ★ SELECTED stamp */}
-                  {isSelected && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: -10,
-                        left: "50%",
-                        transform: "translateX(-50%) rotate(-2deg)",
-                        background: STAMP_G,
-                        color: "#fff",
-                        fontSize: 8,
-                        fontWeight: 800,
-                        padding: "1px 6px",
-                        borderRadius: 2,
-                        whiteSpace: "nowrap",
-                        border: "1px solid rgba(255,255,255,0.25)",
-                        fontFamily: "'Kalam', cursive",
-                        letterSpacing: "0.05em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      ★ SELECTED
-                    </div>
-                  )}
+                  {/* Washi-tape SELECTED sticker — top-left, spring-animated */}
+                  <WashiTapeSticker show={isSelected} />
 
-                  {/* Opponent badge */}
+                  {/* Opponent chip */}
                   {isOpp && !isSelected && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: -8,
-                        right: -8,
-                        background: "#1d4ed8",
-                        color: "#fff",
-                        fontSize: 8,
-                        fontWeight: 800,
-                        padding: "1px 5px",
-                        borderRadius: 2,
-                        maxWidth: 54,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        fontFamily: "'Kalam', cursive",
-                      }}
-                    >
+                    <StickyNote show tone="opponent" place="corner" className="max-w-[54px] overflow-hidden text-ellipsis">
                       {oppName}
-                    </div>
+                    </StickyNote>
                   )}
 
-                  {/* Franchise colour circle */}
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: f.color,
-                      color: "#fff",
-                      fontFamily: "'Kalam', cursive",
-                      fontWeight: 900,
-                      fontSize: 12,
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.35)",
-                      marginBottom: 4,
-                    }}
-                  >
-                    {f.short}
+                  {/* Faint pencil doodles behind the card content */}
+                  <CardDoodleLayer />
+
+                  <div className="relative z-[2] flex h-full flex-col items-center justify-center gap-1 px-2 py-4 text-center">
+                    {/* Franchise colour stamp circle — brand-colour swatch in place of a flag */}
+                    <div
+                      aria-hidden
+                      className="shrink-0 mb-0.5 rounded-full"
+                      style={{
+                        width: 38,
+                        height: 38,
+                        background: f.color,
+                        boxShadow: "inset 0 1px 3px rgba(255,255,255,0.30), 0 2px 5px rgba(0,0,0,0.28)",
+                        border: "1.5px solid rgba(255,255,255,0.18)",
+                      }}
+                    />
+
+                    {/* Thick hand-inked franchise code + organic double pencil underline */}
+                    <InkCountryCode code={f.short} color={f.color} hasRoster />
+
+                    {/* Full franchise name — small font to handle long names */}
+                    <span
+                      className="font-hand font-bold leading-tight text-center"
+                      style={{ color: INK, fontSize: 8.5 }}
+                    >
+                      {f.name}
+                    </span>
                   </div>
-                  <span
-                    className="font-notebook"
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: INK,
-                      textAlign: "center",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {f.name}
-                  </span>
-                </button>
+                </PaperCard>
               );
             })}
           </div>
-        </div>
 
-        {/* Same-franchise note */}
-        <div
-          className="font-hand"
-          style={{
-            textAlign: "center",
-            marginTop: 8,
-            fontSize: 12,
-            color: INK_LT,
-            flexShrink: 0,
-          }}
-        >
-          Same franchise? No problem — we'll show it as{" "}
-          <span style={{ color: STAMP_G, fontWeight: 700 }}>CSK (Sri Krishna)</span>
-          {" "}vs{" "}
-          <span style={{ color: INK_RED, fontWeight: 700 }}>CSK (Radha)</span>.
-        </div>
-      </div>
+          {/* Bottom note */}
+          <div className="font-hand text-center text-xs mt-2 shrink-0" style={{ color: INK_LT }}>
+            Same franchise? No problem — we'll show it as{" "}
+            <span className="font-bold" style={{ color: STAMP_G }}>CSK (Sri Krishna)</span>{" vs "}
+            <span className="font-bold" style={{ color: INK_RED }}>CSK (Radha)</span>.
+          </div>
 
-      {/* Bottom doodles */}
-      <div
-        aria-hidden
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          padding: "4px 12px 0",
-          pointerEvents: "none",
-          flexShrink: 0,
-        }}
-      >
-        <TrophyDoodle />
-        <CricketBallDoodle />
-        <StumpsDoodle />
+          {/* Ink doodles along the base of the sheet */}
+          <div className="flex items-end justify-between mt-0.5 px-1.5 pointer-events-none shrink-0" aria-hidden>
+            <TrophyDoodle />
+            <StarScatter />
+            <CricketBallDoodle size={44} />
+            <BatDoodle size={48} />
+            <StumpsDoodle />
+          </div>
+        </PaperPanel>
       </div>
     </div>
   );
@@ -1792,4 +1979,206 @@ function CornerTick({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
       : { bottom: -1, right: -1, borderWidth: "0 2px 2px 0" }),
   };
   return <div style={style} aria-hidden />;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GAMEPLAY SCREEN — skeuomorphic detail pieces for the innings screen:
+   masking-tape scoreboard corners, stumps-in-grass, a stitched ball, the
+   ripped-parchment role ribbon, a paperclip + curled-corner bowler card,
+   and the bottom-right desk-doodle cluster.
+═══════════════════════════════════════════════════════════════ */
+
+/** Translucent masking-tape strip pinned at a card's top-left/top-right
+ *  corner — woven thread lines + a torn top edge read as real tape, not a
+ *  digital sticker. */
+export function MaskingTapeCorner({ side }: { side: "left" | "right" }) {
+  const rotate = side === "left" ? -7 : 7;
+  const pos: CSSProperties =
+    side === "left" ? { left: -14, top: -13 } : { right: -14, top: -13 };
+  return (
+    <svg
+      width={72}
+      height={26}
+      viewBox="0 0 72 26"
+      aria-hidden
+      style={{ position: "absolute", ...pos, transform: `rotate(${rotate}deg)`, pointerEvents: "none" }}
+    >
+      <rect x={1} y={1} width={70} height={22} rx={1.5} fill="rgba(251,245,224,0.62)" stroke="rgba(46,40,25,0.22)" strokeWidth={0.75} />
+      {Array.from({ length: 13 }, (_, i) => (i + 1) * 5).map((x, i) => (
+        <line key={i} x1={x} y1={1} x2={x} y2={23} stroke="rgba(46,40,25,0.07)" strokeWidth={1} />
+      ))}
+      <path d="M1 1 Q11 -0.6 21 1 Q35 2.3 47 1 Q59 -0.5 71 1" stroke="rgba(255,255,255,0.4)" strokeWidth={0.8} fill="none" />
+      <path d="M1 23 Q17 24.4 33 23 Q49 24.2 71 23" stroke="rgba(0,0,0,0.14)" strokeWidth={0.8} fill="none" />
+    </svg>
+  );
+}
+
+/** Three stumps + bails pitched in a scribbled tuft of grass — the graphic
+ *  element that sits beside the giant score on the match status card. */
+export function StumpsInGrassSketch({ size = 56 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 56 56" fill="none" aria-hidden>
+      {[16, 28, 40].map((x, i) => (
+        <line key={i} x1={x} y1={8} x2={x} y2={40} stroke={INK} strokeWidth={2.4} strokeLinecap="round" />
+      ))}
+      <line x1={15} y1={12} x2={29} y2={12} stroke={INK} strokeWidth={2} strokeLinecap="round" />
+      <line x1={27} y1={12} x2={41} y2={12} stroke={INK} strokeWidth={2} strokeLinecap="round" />
+      <path
+        d="M4 42 q3 -10 6 0 M10 42 q3 -11 6 0 M16 42 q3 -9 6 0 M22 42 q3 -12 6 0 M28 42 q3 -9 6 0 M34 42 q3 -11 6 0 M40 42 q3 -9 6 0 M46 42 q3 -10 6 0"
+        stroke={STAMP_G} strokeWidth={1.4} fill="none" strokeLinecap="round" opacity={0.72}
+      />
+      <path d="M2 43 Q28 47 54 43" stroke={STAMP_G} strokeWidth={1.6} fill="none" strokeLinecap="round" opacity={0.5} />
+    </svg>
+  );
+}
+
+/** Leather cricket ball with visible seam stitching — used in the bowling
+ *  column while the "You are BOWLING · Waiting…" state is shown. */
+export function CricketBallStitchSketch({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 34 34" fill="none" aria-hidden>
+      <circle cx={17} cy={17} r={14.5} fill="#A9362B" stroke="#5E1B14" strokeWidth={1.4} />
+      <circle cx={13} cy={13} r={5} fill="rgba(255,255,255,0.16)" />
+      <path d="M9 6 Q14.5 17 9 28" stroke="#F5E9C4" strokeWidth={1.3} fill="none" strokeLinecap="round" />
+      <path d="M25 6 Q19.5 17 25 28" stroke="#F5E9C4" strokeWidth={1.3} fill="none" strokeLinecap="round" />
+      {[-8, -4, 0, 4, 8].map((y, i) => (
+        <g key={i}>
+          <line x1={7.6} y1={17 + y} x2={11.2} y2={17 + y * 0.94} stroke="#F5E9C4" strokeWidth={0.85} strokeLinecap="round" />
+          <line x1={22.8} y1={17 + y} x2={26.4} y2={17 + y * 0.94} stroke="#F5E9C4" strokeWidth={0.85} strokeLinecap="round" />
+        </g>
+      ))}
+      <ellipse cx={17} cy={17} rx={4.2} ry={13.5} fill="none" stroke="#F5E9C4" strokeWidth={0.9} opacity={0.5} />
+    </svg>
+  );
+}
+
+/** Tiny cricket ball with motion streaks — sits beside "PICK YOUR BOWLER…". */
+export function BallInMotionIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 26 24" fill="none" aria-hidden>
+      <circle cx={16} cy={12} r={7.4} fill="#A9362B" stroke="#5E1B14" strokeWidth={1.2} />
+      <path d="M12 6 Q15.5 12 12 18" stroke="#F5E9C4" strokeWidth={1} fill="none" strokeLinecap="round" />
+      <path d="M1 8 h6 M0 12 h7 M1 16 h6" stroke={INK} strokeWidth={1.5} strokeLinecap="round" opacity={0.55} />
+    </svg>
+  );
+}
+
+/** Small metallic paperclip "clipping" a bowler card to the page. */
+export function PaperclipGraphic() {
+  return (
+    <svg
+      width={20} height={28} viewBox="0 0 20 28" fill="none" aria-hidden
+      style={{ position: "absolute", top: -11, left: 10, transform: "rotate(-9deg)", filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.38))" }}
+    >
+      <defs>
+        <linearGradient id="hc-clip-metal" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#E2E8F0" />
+          <stop offset="50%" stopColor="#94A3B8" />
+          <stop offset="100%" stopColor="#5B6675" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M7 4 v15 a4.5 4.5 0 0 0 9 0 v-13 a3 3 0 0 0 -6 0 v11"
+        stroke="url(#hc-clip-metal)" strokeWidth={2.4} fill="none" strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Subtle curled-page shading at a card's bottom-right corner — reads as a
+ *  distressed sheet whose corner has lifted, without a full 3-D fold. */
+export function CurledCornerFold({ size = 40 }: { size?: number }) {
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 40 40" aria-hidden
+      style={{ position: "absolute", right: 0, bottom: 0, pointerEvents: "none" }}
+    >
+      <path d="M40 6 Q39 22 27 30 Q17 37 0 40 L40 40 Z" fill="rgba(46,40,25,0.10)" />
+      <path d="M40 6 Q38 22 27 30 Q17 37 2 40" fill="none" stroke="rgba(46,40,25,0.32)" strokeWidth={1} />
+      <path d="M40 9 Q33 22 24 28" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth={1} opacity={0.4} />
+    </svg>
+  );
+}
+
+/**
+ * Ripped-parchment ribbon banner — floats between the scoreboard and the
+ * bowler-selection card, dynamically announcing the local player's role
+ * ("YOU ARE BOWLING" / "YOU ARE BATTING"). Jagged top+bottom edge via a
+ * percentage-based clip-path (scales to any label), lifted off the page
+ * with a real drop-shadow (clip-path elements ignore box-shadow).
+ */
+const RIBBON_CLIP =
+  "polygon(0% 30%, 5% 4%, 10% 30%, 15% 4%, 20% 30%, 25% 4%, 30% 30%, 35% 4%, 40% 30%, 45% 4%, 50% 30%, 55% 4%, 60% 30%, 65% 4%, 70% 30%, 75% 4%, 80% 30%, 85% 4%, 90% 30%, 95% 4%, 100% 30%, 100% 70%, 95% 96%, 90% 70%, 85% 96%, 80% 70%, 75% 96%, 70% 70%, 65% 96%, 60% 70%, 55% 96%, 50% 70%, 45% 96%, 40% 70%, 35% 96%, 30% 70%, 25% 96%, 20% 70%, 15% 96%, 10% 70%, 5% 96%, 0% 70%)";
+
+export function HcRibbonBanner({
+  children,
+  tone = "bowling",
+}: {
+  children: ReactNode;
+  tone?: "batting" | "bowling";
+}) {
+  const ink = tone === "batting" ? STAMP_G : INK_RED;
+  return (
+    <div style={{ display: "flex", justifyContent: "center", margin: "2px 0" }}>
+      <div
+        style={{
+          position: "relative",
+          padding: "11px 30px 13px",
+          background: PAPER_L,
+          clipPath: RIBBON_CLIP,
+          filter: "drop-shadow(0 6px 8px rgba(40,24,8,0.32)) drop-shadow(0 1px 2px rgba(40,24,8,0.2))",
+        }}
+      >
+        <span
+          className="font-notebook"
+          style={{ color: ink, fontWeight: 900, fontSize: 13, letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap" }}
+        >
+          {children}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Bat leaning against a ball — reuses the existing BatDoodle/CricketBallDoodle
+ *  at an angle so the bottom-right desk cluster stays visually consistent
+ *  with every other doodle on the page. */
+function BatRestingOnBallDoodle() {
+  return (
+    <div style={{ position: "relative", width: 48, height: 60 }} aria-hidden>
+      <div style={{ position: "absolute", left: 0, top: 0, transform: "rotate(16deg)" }}>
+        <BatDoodle size={46} />
+      </div>
+      <div style={{ position: "absolute", left: 16, bottom: 2 }}>
+        <CricketBallDoodle size={22} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Bottom-right "desk corner" — a trophy, a bat resting on a ball, a
+ * backpack, and pencil stars scattered over a scribbled grass line. Faint,
+ * fine-lined, non-interactive; sits in the whitespace under the bowler card.
+ */
+export function HcGameplayCornerDoodles() {
+  return (
+    <div
+      aria-hidden
+      style={{ position: "absolute", right: 12, bottom: 6, width: 168, height: 92, pointerEvents: "none", opacity: 0.9 }}
+    >
+      <div style={{ position: "absolute", left: 0, bottom: 4 }}><TrophyDoodle /></div>
+      <div style={{ position: "absolute", left: 58, bottom: 2 }}><BatRestingOnBallDoodle /></div>
+      <div style={{ position: "absolute", left: 118, bottom: 4 }}><BackpackDoodle /></div>
+      <SketchStar x="6%" y="4%" size={11} />
+      <SketchStar x="48%" y="0%" size={9} />
+      <SketchStar x="86%" y="8%" size={13} />
+      <svg width={168} height={14} viewBox="0 0 168 14" style={{ position: "absolute", left: 0, bottom: -4 }} aria-hidden>
+        <path
+          d={Array.from({ length: 15 }, (_, i) => `M${i * 12} 12 q4 -${9 + (i % 3) * 1.4} 8 0`).join(" ")}
+          stroke={STAMP_G} strokeWidth={1.1} fill="none" strokeLinecap="round" opacity={0.42}
+        />
+      </svg>
+    </div>
+  );
 }
