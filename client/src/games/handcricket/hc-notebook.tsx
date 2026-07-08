@@ -689,6 +689,227 @@ export { RoughBorder };
    COUNTRY PICKER (Team Select — International)
 ═══════════════════════════════════════════════════════════════ */
 
+/**
+ * Realistic green washi/masking-tape sticker for the selected country card.
+ * Positioned at the top-left corner, tilted ~-4°, so it reads as a physical
+ * paper strip pressed onto the card rather than a digital badge.
+ */
+function WashiTapeSticker({ show }: { show: boolean }) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ scale: 0.6, rotate: 10, opacity: 0 }}
+          animate={{ scale: 1, rotate: -4, opacity: 1 }}
+          exit={{ scale: 0.4, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 420, damping: 22 }}
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: "-6px",
+            left: "-6px",
+            zIndex: 5,
+            pointerEvents: "none",
+            transformOrigin: "8px 12px",
+          }}
+        >
+          <svg width="88" height="22" viewBox="0 0 88 22" fill="none" aria-hidden>
+            {/* Tape body */}
+            <rect x="0" y="1" width="88" height="20" rx="1.5" fill="rgba(22,101,52,0.88)" />
+            {/* Washi-weave thread lines */}
+            {Array.from({ length: 16 }, (_, i) => (i + 1) * 5).map((x, wi) => (
+              <line key={wi} x1={x} y1="1" x2={x} y2="21"
+                stroke="rgba(255,255,255,0.065)" strokeWidth="1" />
+            ))}
+            {/* Top torn/irregular edge */}
+            <path
+              d="M0 1 Q9 0 18 1.5 Q27 0.5 38 1 Q50 -0.3 60 1.2 Q72 0.3 80 1 Q84 0.5 88 1"
+              stroke="rgba(255,255,255,0.28)" strokeWidth="0.9" fill="none"
+            />
+            {/* Bottom shadow edge */}
+            <path
+              d="M0 21 Q16 22.3 32 21 Q48 22 64 21.2 Q76 22 88 21"
+              stroke="rgba(0,0,0,0.22)" strokeWidth="0.9" fill="none"
+            />
+            {/* Centre fold-crease highlight */}
+            <line x1="0" y1="11" x2="88" y2="11" stroke="rgba(255,255,255,0.09)" strokeWidth="1.5" />
+            {/* Label */}
+            <text
+              x="44" y="12.5"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontFamily="'Kalam', 'Caveat', cursive"
+              fontSize="8"
+              fontWeight="800"
+              fill="rgba(255,255,255,0.96)"
+              letterSpacing="0.7"
+            >★ SELECTED</text>
+          </svg>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/**
+ * Faint pencil-sketch doodles rendered at z:0 behind each country card's content.
+ * Trophy outline in the bottom-left, cricket ball stitches in the centre,
+ * scattered stars in the top-right. Opacity 0.10 → reads as light pencil margin art.
+ */
+function CardDoodleLayer() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 100 148"
+      preserveAspectRatio="xMidYMid meet"
+      fill="none"
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        opacity: 0.1,
+        pointerEvents: "none",
+        zIndex: 0,
+      }}
+    >
+      {/* Trophy outline — bottom-left corner */}
+      <g transform="translate(5, 96)">
+        <path
+          d="M8 0 Q2 0 2 10 Q2 20 9 21 L9 24 L7 26 L23 26 L21 24 L21 21 Q28 20 28 10 Q28 0 22 0 Z"
+          stroke={BORDER} strokeWidth="1.5" fill="none" strokeLinejoin="round"
+        />
+        <line x1="11" y1="26" x2="19" y2="26" stroke={BORDER} strokeWidth="1.4" strokeLinecap="round" />
+        <line x1="13" y1="26" x2="13" y2="30" stroke={BORDER} strokeWidth="1.4" strokeLinecap="round" />
+        <line x1="17" y1="26" x2="17" y2="30" stroke={BORDER} strokeWidth="1.4" strokeLinecap="round" />
+        <line x1="10" y1="30" x2="20" y2="30" stroke={BORDER} strokeWidth="1.4" strokeLinecap="round" />
+      </g>
+      {/* Cricket ball stitches — centre */}
+      <g transform="translate(50, 68)">
+        <circle cx="0" cy="0" r="13" stroke={BORDER} strokeWidth="1.2" strokeDasharray="2 1.5" />
+        <path d="M-7 -8 Q-12 0 -7 8" stroke={BORDER} strokeWidth="1" fill="none" strokeLinecap="round" />
+        <path d="M7 -8 Q12 0 7 8" stroke={BORDER} strokeWidth="1" fill="none" strokeLinecap="round" />
+        {([-5, -1, 3, 7] as number[]).map((y, i) => (
+          <g key={i}>
+            <line x1="-10" y1={y} x2="-5" y2={y + 0.5} stroke={BORDER} strokeWidth="0.8" strokeLinecap="round" />
+            <line x1="5"   y1={y} x2="10" y2={y + 0.5} stroke={BORDER} strokeWidth="0.8" strokeLinecap="round" />
+          </g>
+        ))}
+      </g>
+      {/* Scattered pencil stars — top-right */}
+      {([
+        [80, 16, 7,   8],
+        [90, 32, 4,  -5],
+        [74, 30, 5,   3],
+        [86, 48, 3.5, 7],
+      ] as [number, number, number, number][]).map(([x, y, sz, rot], i) => (
+        <text
+          key={i} x={x} y={y} fontSize={sz} fill={GOLD}
+          transform={`rotate(${rot}, ${x}, ${y})`}
+          style={{ fontFamily: "sans-serif" }}
+        >★</text>
+      ))}
+    </svg>
+  );
+}
+
+/**
+ * Country code as thick hand-inked SVG text — fill + matching thin stroke give
+ * the ink-bleed weight of a dipped pen nib. Below it, two organically-wobbly
+ * pencil paths replace the flat CSS border underlines. Greyed for locked cards.
+ */
+function InkCountryCode({
+  code,
+  color,
+  hasRoster,
+}: {
+  code: string;
+  color: string;
+  hasRoster: boolean;
+}) {
+  const inkColor = hasRoster ? color : "#9ca3af";
+  const filterId = `ink-${code}`;
+  return (
+    <div aria-hidden style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <svg viewBox="0 0 80 38" width="80" height="38" style={{ overflow: "visible" }} aria-hidden>
+        <defs>
+          <filter id={filterId} x="-25%" y="-25%" width="150%" height="150%">
+            <feDropShadow dx="0" dy="1" stdDeviation="0.9" floodColor={inkColor} floodOpacity="0.32" />
+          </filter>
+        </defs>
+        <text
+          x="40" y="30"
+          textAnchor="middle"
+          fontFamily="'Kalam', 'Caveat', cursive"
+          fontSize="28"
+          fontWeight="900"
+          fill={inkColor}
+          stroke={inkColor}
+          strokeWidth="0.5"
+          paintOrder="stroke fill"
+          filter={hasRoster ? `url(#${filterId})` : undefined}
+          letterSpacing="-0.5"
+        >
+          {code}
+        </text>
+      </svg>
+      {/* Organic double pencil underline */}
+      {hasRoster && (
+        <svg width="58" height="10" viewBox="0 0 58 10" fill="none" aria-hidden
+          style={{ marginTop: "-5px" }}>
+          <path
+            d="M2 3 Q10 1.8 20 3 Q30 4.2 40 3 Q50 1.8 56 3"
+            stroke={inkColor} strokeWidth="1.8" strokeLinecap="round"
+            opacity="0.58" fill="none"
+          />
+          <path
+            d="M5 6.5 Q16 5.2 28 6.5 Q40 7.8 53 6.2"
+            stroke={inkColor} strokeWidth="1" strokeLinecap="round"
+            opacity="0.28" fill="none"
+          />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Red hand-scrawled "NO ROSTER YET" label pinned to the bottom of locked cards.
+ * SVG renders the text at a slight tilt so it reads as urgently scratched in red ink.
+ */
+function NoRosterScrawl() {
+  return (
+    <svg
+      width="100%"
+      height="28"
+      viewBox="0 0 96 28"
+      fill="none"
+      aria-hidden
+      style={{ display: "block" }}
+    >
+      {/* Rough scribble underline */}
+      <path
+        d="M8 23 Q24 25 48 23 Q70 21 88 23"
+        stroke={INK_RED} strokeWidth="1.4" strokeLinecap="round"
+        opacity="0.45" fill="none"
+      />
+      <text
+        x="48" y="16"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontFamily="'Kalam', 'Caveat', cursive"
+        fontSize="9"
+        fontWeight="900"
+        fill={INK_RED}
+        letterSpacing="0.2"
+        transform="rotate(-2.5, 48, 16)"
+      >
+        NO ROSTER YET
+      </text>
+    </svg>
+  );
+}
+
 export function HcCountryPickerNotebook({
   state,
   selfId,
@@ -746,30 +967,39 @@ export function HcCountryPickerNotebook({
                   ariaLabel={profile.name}
                   className="min-h-[148px]"
                 >
-                  <StickyNote show={isSelected} tone="selected" place="top">★ Selected</StickyNote>
+                  {/* ① Washi-tape SELECTED sticker — top-left corner, spring-animated tilt */}
+                  <WashiTapeSticker show={isSelected} />
+
+                  {/* Opponent chip — only when this card isn't also the player's pick */}
                   {isOpp && !isSelected && (
                     <StickyNote show tone="opponent" place="corner" className="max-w-[54px] overflow-hidden text-ellipsis">
                       {oppName}
                     </StickyNote>
                   )}
 
-                  <div className="flex h-full flex-col items-center justify-center gap-1 px-2 py-4 text-center">
-                    {/* Flag — real SVG when available, emoji fallback (WI palm) */}
+                  {/* ③ Faint pencil doodles behind the card content (trophy, ball, stars) */}
+                  <CardDoodleLayer />
+
+                  <div className="relative z-[2] flex h-full flex-col items-center justify-center gap-1 px-2 py-4 text-center">
+                    {/* Flag — real SVG when available, emoji fallback (WI palm).
+                        Greyscale + dim for locked cards so the red scrawl pops. */}
                     {FlagSvg ? (
                       <FlagSvg
                         title={profile.name}
                         className="w-10 h-auto rounded-[3px] shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.25)] mb-0.5"
+                        style={!hasRoster ? { filter: "grayscale(0.65) opacity(0.55)" } : undefined}
                       />
                     ) : (
-                      <span className="text-[28px] leading-tight">{profile.flag}</span>
+                      <span
+                        className="text-[28px] leading-tight"
+                        style={!hasRoster ? { filter: "grayscale(0.65)", opacity: 0.55 } : undefined}
+                      >
+                        {profile.flag}
+                      </span>
                     )}
 
-                    <span
-                      className="font-kalam font-bold text-[32px] leading-none tracking-tight"
-                      style={{ color: hasRoster ? meta.color : "#9ca3af" }}
-                    >
-                      {meta.code}
-                    </span>
+                    {/* ④ Thick hand-inked code + organic double pencil underline */}
+                    <InkCountryCode code={meta.code} color={meta.color} hasRoster={hasRoster} />
 
                     <span
                       className="font-hand font-bold text-xs leading-tight"
@@ -778,18 +1008,17 @@ export function HcCountryPickerNotebook({
                       {profile.name}
                     </span>
 
-                    <span
-                      className="font-hand text-[10px] tracking-wider"
-                      style={{ color: hasRoster ? INK_LT : "#c0392b", fontWeight: hasRoster ? 400 : 700 }}
-                    >
-                      {hasRoster ? profile.short : "NO ROSTER YET"}
-                    </span>
-
-                    {/* Team-colour ruled underline accent */}
-                    {hasRoster && (
-                      <div aria-hidden className="w-[56%] mt-1.5 flex flex-col gap-0.5">
-                        <div className="h-0 border-t-2 opacity-55" style={{ borderColor: meta.color }} />
-                        <div className="h-0 border-t opacity-30" style={{ borderColor: meta.color }} />
+                    {hasRoster ? (
+                      <span
+                        className="font-hand text-[10px] tracking-wider"
+                        style={{ color: INK_LT }}
+                      >
+                        {profile.short}
+                      </span>
+                    ) : (
+                      /* ② Red hand-scribbled "NO ROSTER YET" pinned to card bottom */
+                      <div className="absolute bottom-2 left-0 right-0">
+                        <NoRosterScrawl />
                       </div>
                     )}
                   </div>
