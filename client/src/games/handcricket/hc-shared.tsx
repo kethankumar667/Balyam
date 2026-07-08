@@ -32,7 +32,6 @@ import {
   PaperclipGraphic,
   CurledCornerFold,
   HcRibbonBanner,
-  HcGameplayCornerDoodles,
 } from "./hc-notebook";
 import {
   PaperPanel,
@@ -1316,21 +1315,12 @@ export function InningsPhase({
         />
       )}
 
-      {/* Role badge */}
+      {/* Ripped-parchment ribbon — dynamically announces the local player's
+          role, floating between the scoreboard and the action card below. */}
       {myRole && (
-        <div className="text-center">
-          <span
-            className={cn(
-              "inline-block rounded-full font-bold font-notebook border",
-              myRole === "batter"
-                ? "bg-hc-stamp/15 text-hc-stamp border-hc-stamp"
-                : "bg-hc-ink-red/15 text-hc-ink-red border-hc-ink-red",
-            )}
-            style={{ padding: isDesktop ? "5px 16px" : "3px 10px", fontSize: isDesktop ? 15 : 12 }}
-          >
-            {myRole === "batter" ? "🏏 You are BATTING" : "⚾ You are BOWLING"}
-          </span>
-        </div>
+        <HcRibbonBanner tone={myRole === "batter" ? "batting" : "bowling"}>
+          You are {myRole === "batter" ? "Batting" : "Bowling"}
+        </HcRibbonBanner>
       )}
 
       {/* Batting order panel — batting player can shuffle upcoming batters. */}
@@ -1596,16 +1586,24 @@ export function BowlerPicker({
   const quotaLabel = maxOvers == null ? "no limit" : `${maxOvers} overs max`;
 
   return (
-    <PaperPanel tone="soft" pad="md" className="space-y-3 font-notebook">
-      <div className="text-center font-sketch font-bold text-hc-ink text-[15px]">
-        🏏 Pick your bowler for over {Math.floor(innings.balls / 6) + 1}
+    // Distressed parchment card with a curled bottom-right corner — the
+    // "Lower Action Box" of the reference layout.
+    <PaperPanel tone="soft" pad="md" className="relative space-y-3 font-notebook overflow-visible">
+      <CurledCornerFold size={40} />
+
+      <div className="flex items-center justify-center gap-2">
+        <BallInMotionIcon size={22} />
+        <span className="font-sketch font-bold text-hc-ink text-[15px]">
+          Pick your bowler for over {Math.floor(innings.balls / 6) + 1}
+        </span>
       </div>
+
       {bowlersOnly.length === 0 ? (
         <div className="text-center text-sm font-bold py-4 text-hc-amber">
           No bowlers or all-rounders in your XI. (This shouldn't happen if composition rules held.)
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-2">
           {bowlersOnly.map((p) => {
             const stats = innings.bowlerStats[p.id];
             const completedOvers = stats ? Math.floor(stats.balls / 6) : 0;
@@ -1619,6 +1617,8 @@ export function BowlerPicker({
                 onClick={() => !atQuota && pickBowler(p.id)}
                 ariaLabel={p.name}
               >
+                {/* Metal paperclip "pinning" this card to the page. */}
+                <PaperclipGraphic />
                 <div className="px-2 py-1.5 text-left">
                   <div className="flex items-center gap-1.5">
                     <PaperBadge tone={p.role === "bowler" ? "bowler" : "allrounder"}>
@@ -1648,8 +1648,10 @@ export function BowlerPicker({
           })}
         </div>
       )}
-      <div className="text-center text-[11px] text-hc-ink-lt">
-        Only bowlers and all-rounders can bowl · format quota: {quotaLabel}
+
+      {/* Hand-scrawled red warning caption. */}
+      <div className="text-center font-hand font-bold text-hc-ink-red" style={{ fontSize: 12 }}>
+        Only bowlers and all-rounders can bowl · Format quota: {quotaLabel}
       </div>
     </PaperPanel>
   );
