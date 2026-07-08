@@ -524,7 +524,9 @@ export type HcCountry =
   | "westindies"
   | "srilanka"
   | "bangladesh"
-  | "afghanistan";
+  | "afghanistan"
+  | "ireland"
+  | "zimbabwe";
 
 /** IPL franchise IDs for national play. */
 export type HcFranchise =
@@ -610,6 +612,18 @@ export interface HcInnings {
   restrictedBallsByOver: Record<number, number[]>;
   /** Total powerplay overs this innings (derived from format). */
   powerplayOvers: number;
+  /**
+   * Set true after a wicket falls (when the innings is not yet over) to
+   * block the next ball until the batting player manually selects who comes
+   * in. Cleared by a `selectNextBatter` move.
+   */
+  needsNextBatterPick: boolean;
+  /**
+   * Squad index where the next chosen batter will be placed. Equals
+   * `nextBatterIdx` at the moment the wicket fell; null when no pick is
+   * pending.
+   */
+  pendingBatterSlot: number | null;
 }
 
 export interface HcTeamSelection {
@@ -687,6 +701,15 @@ export interface HcReorderBattingMove {
   /** Full squad array; positions before nextBatterIdx must be unchanged. */
   data: { newOrder: string[] };
 }
+/**
+ * After a wicket falls the batting player picks which remaining squad member
+ * walks in next. Only the batting player may issue this; only valid when
+ * `innings.needsNextBatterPick` is true.
+ */
+export interface HcSelectNextBatterMove {
+  type: "selectNextBatter";
+  data: { profileId: string };
+}
 export type HcMove =
   | HcTossPickMove
   | HcTossChoiceMove
@@ -694,7 +717,8 @@ export type HcMove =
   | HcSelectTeamMove
   | HcConfirmSquadMove
   | HcSelectBowlerMove
-  | HcReorderBattingMove;
+  | HcReorderBattingMove
+  | HcSelectNextBatterMove;
 
 // ---- RPS ----
 export type RpsChoice = "rock" | "paper" | "scissors";

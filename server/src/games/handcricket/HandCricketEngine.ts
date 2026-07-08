@@ -74,6 +74,8 @@ function freshInnings(
     bowlerStats,
     restrictedBallsByOver: {},
     powerplayOvers,
+    needsNextBatterPick: false,
+    pendingBatterSlot: null,
   };
 }
 
@@ -169,6 +171,8 @@ export class HandCricketEngine implements GameEngine {
         return this.handlePick(move);
       case "reorderBatting":
         return this.handleReorderBatting(move);
+      case "selectNextBatter":
+        return this.handleSelectNextBatter(move);
       default:
         return { ok: false, error: `Unknown move type: ${move.type}` };
     }
@@ -390,6 +394,9 @@ export class HandCricketEngine implements GameEngine {
       return { ok: false, error: "Not in a live innings" };
     }
     const innings = this.currentInnings();
+    if (innings.needsNextBatterPick) {
+      return { ok: false, error: "Pick your next batter before the next ball" };
+    }
     if (innings.currentBowlerId == null) {
       return { ok: false, error: "Bowling team must pick a bowler first" };
     }
@@ -461,6 +468,50 @@ export class HandCricketEngine implements GameEngine {
       return { ok: false, error: "New order contains unknown players" };
     }
     sel.squadPlayerIds = order;
+    return { ok: true };
+  }
+
+  private handleSelectNextBatter(move: MoveContext): MoveResult {
+    if (this.state.phase !== "innings1" && this.state.phase !== "innings2") {
+      return { ok: false, error: "No live innings" };
+    }
+    const innings = this.currentInnings();
+    if (innings.battingPlayerId !== move.playerId) {
+      return { ok: false, error: "Only the batting player selects the next batter" };
+    }
+    if (!innings.needsNextBatterPick) {
+      return { ok: false, error: "No wicket is pending a batter selection" };
+    }
+    if (innings.pendingBatterSlot == null) {
+      return { ok: false, error: "Internal error: pending slot missing" };
+    }
+    const sel = this.state.teamSelections[move.playerId];
+    if (!sel?.squadPlayerIds) return { ok: false, error: "No squad confirmed" };
+
+    const profileId = (move.data as { profileId?: string } | undefined)?.profileId;
+    if (!profileId) return { ok: false, error: "Missing profileId" };
+
+    const squad = sel.squadPlayerIds;
+    const slot = innings.pendingBatterSlot;
+    const currentPos = squad.indexOf(profileId);
+
+    if (currentPos === -1) {
+      return { ok: false, error: "Player not found in squad" };
+    }
+    // Batters before `slot` have already batted or are currently at the crease.
+    if (currentPos < slot) {
+      return { ok: false, error: "That player has already batted or is at the crease" };
+    }
+
+    // Swap chosen batter to the reserved slot so strikerIdx points to them.
+    if (currentPos !== slot) {
+      const newOrder = [...squad];
+      [newOrder[slot], newOrder[currentPos]] = [newOrder[currentPos], newOrder[slot]];
+      sel.squadPlayerIds = newOrder;
+    }
+
+    innings.needsNextBatterPick = false;
+    innings.pendingBatterSlot = null;
     return { ok: true };
   }
 
@@ -556,12 +607,16 @@ export class HandCricketEngine implements GameEngine {
     }
 
     // Strike rotation rules:
-    //   • Wicket: striker is out; bring in the next batter (non-striker stays put).
+    //   • Wicket: batting player must manually select the next batter (needsNextBatterPick).
+    //             Reserve the incoming slot (strikerIdx = nextBatterIdx) and record it in
+    //             pendingBatterSlot so selectNextBatter knows where to put the chosen player.
     //   • Odd runs (1, 3, 5): batters cross — striker and non-striker swap ends.
     //   • End of over: bowler switches end, so striker/non-striker swap mechanically.
     if (wicket) {
-      innings.strikerIdx = innings.nextBatterIdx;
+      innings.pendingBatterSlot = innings.nextBatterIdx;
+      innings.strikerIdx = innings.nextBatterIdx;   // reserve slot; selectNextBatter fills it
       innings.nextBatterIdx += 1;
+      innings.needsNextBatterPick = true;
     } else if (runs % 2 === 1) {
       [innings.strikerIdx, innings.nonStrikerIdx] =
         [innings.nonStrikerIdx, innings.strikerIdx];
@@ -686,6 +741,13 @@ export class HandCricketEngine implements GameEngine {
       case "innings1":
       case "innings2": {
         const innings = this.currentInnings();
+        // When a wicket has fallen, the batting player must pick the next batter.
+        // The bowling player may still need to pick a bowler (end of over concurrent).
+        if (innings.needsNextBatterPick) {
+          out.push(innings.battingPlayerId);
+          if (innings.currentBowlerId == null) out.push(innings.bowlingPlayerId);
+          return out;
+        }
         if (innings.currentBowlerId == null) {
           out.push(innings.bowlingPlayerId);
           return out;
@@ -823,6 +885,20 @@ export class HandCricketEngine implements GameEngine {
 
   private botInningsMove(playerId: string): MoveResult {
     const innings = this.currentInnings();
+    // 0. If a wicket just fell and this bot is the batting player → auto-pick
+    //    the next batter in squad order (same as the old auto-advance behaviour).
+    if (innings.needsNextBatterPick && playerId === innings.battingPlayerId) {
+      const sel = this.state.teamSelections[playerId];
+      const slot = innings.pendingBatterSlot;
+      if (sel?.squadPlayerIds && slot != null && slot < sel.squadPlayerIds.length) {
+        return this.applyMove({
+          playerId,
+          type: "selectNextBatter",
+          data: { profileId: sel.squadPlayerIds[slot] },
+        });
+      }
+      return { ok: false, error: "Bot: no batter available for auto-pick" };
+    }
     // 1. If bowler isn't picked yet AND we're the bowling team → pick a bowler.
     if (innings.currentBowlerId == null) {
       if (playerId !== innings.bowlingPlayerId) {
