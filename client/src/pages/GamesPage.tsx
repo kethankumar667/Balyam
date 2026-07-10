@@ -83,6 +83,22 @@ export default function GamesPage() {
         </div>
       </header>
 
+      {/* Games catalog shelf illustration — a hand-drawn wooden shelf
+          bearing one silhouette prop per game, rendered with screen
+          blend so the dark vignette becomes transparent and only the
+          cobalt-blue linework sits over the cream paper background. */}
+      <div className="mx-auto w-full max-w-[1080px] overflow-hidden -mt-2">
+        <img
+          src="/illustrations/Games Catalog Shelf.png"
+          alt=""
+          aria-hidden
+          className="w-full h-auto select-none"
+          style={{ mixBlendMode: "screen", opacity: 0.88 }}
+          loading="eager"
+          decoding="async"
+        />
+      </div>
+
       <main className="mx-auto w-full max-w-[1080px] px-4 sm:px-6 mt-6 sm:mt-8 space-y-10">
         {/* Playable section */}
         <section>

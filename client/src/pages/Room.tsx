@@ -632,6 +632,34 @@ export default function Room() {
                 <div className="text-[#6E5E4D]">
                   Waiting for players to ready up.
                 </div>
+                {/* Per-game lobby illustration — a transparent-background
+                    WebP prop drawn in cobalt ballpoint ink, dropped between
+                    the "Waiting" line and the color pickers / bot controls
+                    so it decorates the dead-air wait without obscuring any
+                    interactive controls. Only four games have illustrations
+                    today; the slot renders nothing for the rest. */}
+                {(() => {
+                  const LOBBY_PROPS: Partial<Record<string, string>> = {
+                    handcricket: "/illustrations/Cricket bat and ball doodle.png",
+                    rummy:       "/illustrations/Rummy.png",
+                    rps:         "/illustrations/Rock Paper Scissor.png",
+                    ludo:        "/illustrations/Rolling dice and game pawns.png",
+                  };
+                  const src = LOBBY_PROPS[roomState.game];
+                  if (!src) return null;
+                  return (
+                    <div className="flex justify-center py-2">
+                      <img
+                        src={src}
+                        alt=""
+                        aria-hidden
+                        className="h-32 sm:h-40 w-auto object-contain select-none"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  );
+                })()}
                 {roomState.game === "ludo" && (
                   <LudoColorPicker players={roomState.players} selfId={playerId} />
                 )}
@@ -950,11 +978,19 @@ export default function Room() {
 function ConnectingScreen({ code }: { code?: string }) {
   return (
     <div className="bhalyam-font bhalyam-paper min-h-screen flex flex-col items-center justify-center gap-7 p-6 text-center">
-      <div className="relative h-20 w-20" aria-hidden>
-        <span className="absolute inset-0 rounded-full border-4 border-[#E4B128]/25" />
-        <span className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#E4B128] animate-spin" />
-        <span className="absolute inset-[34%] rounded-full bg-[#E4B128]/70 animate-ping" />
-        <span className="absolute inset-[38%] rounded-full bg-[#E4B128]" />
+      {/* Pencil-circle illustration replaces the abstract gold spinner —
+          same center position, same visual rhythm, but now the spinner
+          reads as "someone is still circling your room code in their
+          notebook" rather than a generic loading widget. The gray vignette
+          background of the image multiplies against the cream paper to
+          produce a natural paper-tone halo. */}
+      <div className="relative h-24 w-24 flex items-center justify-center" aria-hidden>
+        <img
+          src="/illustrations/Connecting Screen Spinner.png"
+          alt=""
+          className="w-full h-full object-contain select-none"
+          style={{ mixBlendMode: "multiply", opacity: 0.85 }}
+        />
       </div>
       <div>
         <div
@@ -999,7 +1035,20 @@ function NameEntryForRoom({
   const trimmed = draft.trim().slice(0, 20);
   const canSubmit = trimmed.length >= 1;
   return (
-    <div className="bhalyam-font bhalyam-paper min-h-screen flex items-center justify-center p-4">
+    <div className="bhalyam-font bhalyam-paper min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background vignette — two glowing kid silhouettes in the bottom
+          corners, facing inward, waiting for the newcomer to enter their
+          name. The dark portrait image uses screen blend so only the
+          luminous cobalt-ink figures and stars read through. */}
+      <img
+        src="/illustrations/Name Entry Background Vignette.png"
+        alt=""
+        aria-hidden
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        style={{ mixBlendMode: "screen", opacity: 0.55 }}
+        loading="lazy"
+        decoding="async"
+      />
       <form
         onSubmit={(e) => {
           e.preventDefault();
