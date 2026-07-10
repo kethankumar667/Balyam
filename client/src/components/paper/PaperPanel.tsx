@@ -51,6 +51,7 @@ export function PaperPanel({ children, className, tone = "default", pad, strong,
         strokeWidth={strong ? 2 : 1.8}
         roughness={strong ? 2 : 1.7}
         padding={strong ? 4 : 3}
+        dual={strong}
       />
       <div className="relative z-[1] h-full">{children}</div>
     </div>

@@ -484,13 +484,8 @@ export function HcNotebookHeader({
       </div>
     </div>
 
-      {/* ── Floating utility strip — a torn-paper scrap pinned just under the
-          header, holding the room's social actions (link / team / voice /
-          chat / react). Kept compact and centred so it never pushes the page
-          into overflow. ── */}
-      <div style={{ display: "flex", justifyContent: "center", padding: "6px 12px 2px" }}>
-        <HcActionBarStrip roomCode={roomCode} players={players} selfId={selfId} messages={messages} />
-      </div>
+      {/* Inline room rail removed for this notebook composition to keep
+          the team-selection board as the primary focal area. */}
     </div>
   );
 }
@@ -1406,99 +1401,380 @@ export function HcFranchisePickerNotebook({
     "csk", "mi", "rcb", "kkr", "srh", "dc", "pbks", "rr", "gt", "lsg",
   ];
 
+  const fullNames: Record<HcFranchise, string> = {
+    csk: "Chennai Super Kings",
+    mi: "Mumbai Indians",
+    rcb: "Royal Challengers Bengaluru",
+    kkr: "Kolkata Knight Riders",
+    srh: "Sunrisers Hyderabad",
+    dc: "Delhi Capitals",
+    pbks: "Punjab Kings",
+    rr: "Rajasthan Royals",
+    gt: "Gujarat Titans",
+    lsg: "Lucknow Super Giants",
+  };
+
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-3 pb-2.5 pt-1">
-      {/* Vertically-centred scroll area — keeps the framed sheet mid-page;
-          overflow-x-hidden clips the card-corner tape/chip overflows. */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col items-center py-2">
+    <div className="flex-1 min-h-0" style={{ position: "relative", overflow: "hidden" }}>
+
+      {/* ══════════════════════════════════════════════════════
+          ILLUSTRATION LAYER — absolutely fills the whole paper
+          area, sitting behind the scrollable content (z:0).
+          All sizes are percentage-relative to the container so
+          they scale naturally with viewport width.
+          Visible only on lg+ (1024px+).
+      ══════════════════════════════════════════════════════ */}
+      <div
+        aria-hidden
+        className="hidden lg:block"
+        style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}
+      >
+        {/* ─── LEFT SIDE ─── */}
+
+        {/* Cricket bat — bottom-left, tilted similar to the reference sheet. */}
+        <img
+          src="/illustrations/Handcricket/CricketBat.png"
+          alt=""
+          style={{
+            position: "absolute", left: "1%", bottom: "1%",
+            height: "39%", maxHeight: 365,
+            objectFit: "contain", objectPosition: "bottom left",
+            transform: "scaleX(-1)",
+            filter: "drop-shadow(-4px 8px 16px rgba(0,0,0,0.20))",
+            opacity: 0.9,
+          }}
+        />
+
+        {/* Sketched red hearts — mid-left, above the bat handle */}
+        <IplHeartDoodle
+          style={{ position: "absolute", left: "10%", top: "41%" }}
+          size={42}
+          opacity={0.5}
+        />
+        <IplHeartDoodle
+          style={{ position: "absolute", left: "12.5%", top: "52%", transform: "rotate(7deg)" }}
+          size={26}
+          opacity={0.36}
+        />
+
+        {/* Cricket ball — bottom-left corner */}
+        <img
+          src="/illustrations/Handcricket/cricket_ball.png"
+          alt=""
+          style={{
+            position: "absolute", left: "1.5%", bottom: "3.5%",
+            width: 84,
+            objectFit: "contain",
+            filter: "drop-shadow(2px 5px 10px rgba(0,0,0,0.24))",
+            opacity: 0.9,
+          }}
+        />
+
+        {/* Clouds around the left hero zone */}
+        <img src="/illustrations/Handcricket/clouds.png" alt="" style={{ position: "absolute", left: "6.6%", top: "7.4%", width: "22%", maxWidth: 248, objectFit: "contain", opacity: 0.74 }} />
+
+        {/* ─── RIGHT SIDE ─── */}
+
+        {/* Cricket helmet — replaces stadium in the top-left hero zone. */}
+        <img
+          src="/illustrations/Handcricket/Cricket_Helmet.png"
+          alt=""
+          style={{
+            position: "absolute", left: "3.8%", top: "17.6%",
+            width: "9.9%", maxWidth: 144,
+            objectFit: "contain", objectPosition: "top left",
+            opacity: 0.88,
+            transform: "scaleX(-1) rotate(6deg)",
+            filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))",
+          }}
+        />
+
+        {/* "IPL is not just a game, it's an emotion." — hand-lettered quote */}
+        <div
+          style={{
+            position: "absolute", right: "3.2%", top: "19.6%",
+            textAlign: "right",
+            fontFamily: "'Caveat', cursive",
+            lineHeight: 1.1,
+          }}
+        >
+          {/* Cloud accent above IPL text */}
+          <img
+            src="/illustrations/Handcricket/clouds.png"
+            alt=""
+            style={{
+              position: "absolute", top: -98, right: -12,
+              width: 186,
+              objectFit: "contain",
+              opacity: 0.86,
+            }}
+          />
+          <img
+            src="/illustrations/Handcricket/clouds.png"
+            alt=""
+            style={{
+              position: "absolute", top: -68, right: 102,
+              width: 124,
+              objectFit: "contain",
+              opacity: 0.78,
+            }}
+          />
+
+          <span
+            style={{
+              display: "block",
+              fontSize: "clamp(76px, 7.2vw, 104px)",
+              fontWeight: 900,
+              color: "#1e3a8a",
+              lineHeight: 0.86,
+              letterSpacing: "-1px",
+            }}
+          >
+            IPL
+          </span>
+          <span style={{ display: "block", fontSize: "clamp(19px, 1.55vw, 26px)", color: "#1a2952", fontWeight: 700, marginTop: 2 }}>
+            is not just a game,
+          </span>
+          <span style={{ display: "block", fontSize: "clamp(19px, 1.55vw, 26px)", color: "#1a2952", fontWeight: 700 }}>
+            {"it's an "}
+            <span style={{ color: "#dc2626", fontWeight: 900, fontSize: "clamp(24px, 1.9vw, 32px)" }}>emotion.</span>
+            {" ❤"}
+          </span>
+        </div>
+
+        {/* Celebrating kid — lower right, large and prominent */}
+        <img
+          src="/illustrations/Handcricket/Boy_cheering.png"
+          alt=""
+          style={{
+            position: "absolute", right: "2.2%", bottom: "10%",
+            width: "18%",
+            objectFit: "contain", objectPosition: "bottom right",
+            filter: "drop-shadow(2px 4px 12px rgba(0,0,0,0.16))",
+            opacity: 0.91,
+          }}
+        />
+
+        {/* Champions Cup trophy — centred below the table */}
+        <img
+          src="/illustrations/Handcricket/Champions_cup.png"
+          alt=""
+          style={{
+            position: "absolute", left: "50%", bottom: "calc(7.4% - 25px)",
+            transform: "translateX(-50%)",
+            width: "15.2%", minWidth: 126, maxWidth: 220,
+            objectFit: "contain",
+            filter: "drop-shadow(3px 6px 14px rgba(0,0,0,0.22))",
+            opacity: 0.93,
+          }}
+        />
+
+        {/* Decorative stars moved away so the cup stays the clear focal point */}
+        <img
+          src="/illustrations/Handcricket/stars.png"
+          alt=""
+          style={{
+            position: "absolute", left: "29.2%", bottom: "4.6%",
+            width: 126,
+            objectFit: "contain",
+            opacity: 0.9,
+            transform: "rotate(-16deg)",
+            filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.26))",
+          }}
+        />
+        <img
+          src="/illustrations/Handcricket/stars.png"
+          alt=""
+          style={{
+            position: "absolute", right: "28.6%", bottom: "4.4%",
+            width: 132,
+            objectFit: "contain",
+            opacity: 0.9,
+            transform: "rotate(13deg)",
+            filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.28))",
+          }}
+        />
+      </div>
+
+      {/* ══════════════════════════════════════════════════════
+          SCROLLABLE CENTER CONTENT — transparent background so
+          the illustration layer bleeds through the side margins.
+          z:10 puts it above the illustrations.
+      ══════════════════════════════════════════════════════ */}
+      <div
+        style={{
+          position: "absolute", inset: 0,
+          overflowY: "auto", overflowX: "hidden",
+          display: "flex", flexDirection: "column", alignItems: "center",
+          padding: "20px 0 16px",
+          zIndex: 10,
+        }}
+      >
         <PaperPanel
           tone="sheet"
           strong
           pad="none"
-          className="w-full max-w-[1000px] m-auto flex flex-col px-[18px] pt-[18px] pb-3.5"
+          className="w-full max-w-[920px] m-auto flex flex-col px-[18px] pt-[18px] pb-3.5"
+          style={{
+            marginTop: 42,
+            marginBottom: 6,
+          }}
         >
           <CornerTick corner="tl" />
           <CornerTick corner="tr" />
           <CornerTick corner="bl" />
           <CornerTick corner="br" />
 
-          <SketchHeading className="mb-2.5">Pick Your IPL Franchise</SketchHeading>
+          {/* Heading with radiating arrows */}
+          <div className="mb-2.5">
+            <HcSketchHeading size="clamp(15px,2vw,22px)">
+              Pick Your IPL Franchise
+            </HcSketchHeading>
+          </div>
 
-          {/* 5×2 franchise grid — identical structure to the country grid */}
+          {/* 5 × 2 franchise grid — stagger-in + hover lift */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {franchises.map((id) => {
+            {franchises.map((id, idx) => {
               const f = HC_FRANCHISES[id];
               const isOpp = oppPick === id;
               const isSelected = state.teamSelections[selfId]?.teamId === id;
 
               return (
-                <PaperCard
+                <motion.div
                   key={id}
-                  tone={isSelected ? "selected" : "default"}
-                  interactive
-                  onClick={() => pick(id)}
-                  ariaPressed={isSelected}
-                  ariaLabel={f.name}
-                  className="min-h-[148px]"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.045, duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ y: -5, scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  style={{ transformOrigin: "center bottom" }}
                 >
-                  {/* Washi-tape SELECTED sticker — top-left, spring-animated */}
-                  <WashiTapeSticker show={isSelected} />
+                  <button
+                    onClick={() => pick(id)}
+                    aria-pressed={isSelected}
+                    aria-label={f.name}
+                    className="relative w-full min-h-[162px] rounded-none border bg-[#fffdf5]"
+                    style={{
+                      borderColor: "rgba(70,60,40,0.75)",
+                      boxShadow: isSelected
+                        ? "0 0 0 2px rgba(30,58,138,0.20), 0 3px 8px rgba(0,0,0,0.20)"
+                        : "0 2px 7px rgba(0,0,0,0.16)",
+                    }}
+                  >
+                    {isOpp && (
+                      <span
+                        className="font-notebook"
+                        style={{
+                          position: "absolute",
+                          top: -10,
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          background: "#2563eb",
+                          color: "#fff",
+                          fontSize: 9,
+                          fontWeight: 900,
+                          letterSpacing: "0.03em",
+                          padding: "2px 7px",
+                          borderRadius: 2,
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.22)",
+                          textTransform: "uppercase",
+                          maxWidth: "82%",
+                          overflow: "hidden",
+                          whiteSpace: "nowrap",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {oppName}
+                      </span>
+                    )}
 
-                  {/* Opponent chip */}
-                  {isOpp && !isSelected && (
-                    <StickyNote show tone="opponent" place="corner" className="max-w-[54px] overflow-hidden text-ellipsis">
-                      {oppName}
-                    </StickyNote>
-                  )}
+                    {isSelected && (
+                      <span
+                        className="font-notebook"
+                        style={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          background: "rgba(22,101,52,0.12)",
+                          border: "1px solid rgba(22,101,52,0.45)",
+                          color: "#166534",
+                          fontSize: 9,
+                          fontWeight: 800,
+                          padding: "1px 5px",
+                          borderRadius: 10,
+                          letterSpacing: "0.03em",
+                        }}
+                      >
+                        PICKED
+                      </span>
+                    )}
 
-                  {/* Faint pencil doodles behind the card content */}
-                  <CardDoodleLayer />
+                    <div className="flex h-full flex-col items-center justify-center gap-1 px-2 py-4 text-center">
+                      <div
+                        aria-hidden
+                        className="rounded-full"
+                        style={{
+                          width: 48,
+                          height: 48,
+                          background: f.color,
+                          boxShadow: "inset 0 1px 4px rgba(255,255,255,0.32), 0 2px 6px rgba(0,0,0,0.20)",
+                          border: "1.3px solid rgba(255,255,255,0.22)",
+                        }}
+                      />
 
-                  <div className="relative z-[2] flex h-full flex-col items-center justify-center gap-1 px-2 py-4 text-center">
-                    {/* Franchise colour stamp circle — brand-colour swatch in place of a flag */}
-                    <div
-                      aria-hidden
-                      className="shrink-0 mb-0.5 rounded-full"
-                      style={{
-                        width: 38,
-                        height: 38,
-                        background: f.color,
-                        boxShadow: "inset 0 1px 3px rgba(255,255,255,0.30), 0 2px 5px rgba(0,0,0,0.28)",
-                        border: "1.5px solid rgba(255,255,255,0.18)",
-                      }}
-                    />
+                      <span
+                        className="font-hand"
+                        style={{
+                          color: f.color,
+                          fontSize: 46,
+                          lineHeight: 1,
+                          fontWeight: 900,
+                          letterSpacing: "-0.03em",
+                          marginTop: 3,
+                        }}
+                      >
+                        {f.short}
+                      </span>
 
-                    {/* Thick hand-inked franchise code + organic double pencil underline */}
-                    <InkCountryCode code={f.short} color={f.color} hasRoster />
+                      <span
+                        aria-hidden
+                        style={{
+                          width: 52,
+                          height: 2,
+                          background: f.color,
+                          opacity: 0.8,
+                          borderRadius: 99,
+                          marginTop: -1,
+                          marginBottom: 2,
+                        }}
+                      />
 
-                    {/* Full franchise name — small font to handle long names */}
-                    <span
-                      className="font-hand font-bold leading-tight text-center"
-                      style={{ color: INK, fontSize: 8.5 }}
-                    >
-                      {f.name}
-                    </span>
-                  </div>
-                </PaperCard>
+                      <span
+                        className="font-notebook"
+                        style={{
+                          color: INK,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {fullNames[id]}
+                      </span>
+                    </div>
+                  </button>
+                </motion.div>
               );
             })}
           </div>
 
-          {/* Bottom note */}
+          {/* Same-franchise note */}
           <div className="font-hand text-center text-xs mt-2 shrink-0" style={{ color: INK_LT }}>
             Same franchise? No problem — we'll show it as{" "}
             <span className="font-bold" style={{ color: STAMP_G }}>CSK (Sri Krishna)</span>{" vs "}
             <span className="font-bold" style={{ color: INK_RED }}>CSK (Radha)</span>.
           </div>
 
-          {/* Ink doodles along the base of the sheet */}
-          <div className="flex items-end justify-between mt-0.5 px-1.5 pointer-events-none shrink-0" aria-hidden>
-            <TrophyDoodle />
-            <StarScatter />
-            <CricketBallDoodle size={44} />
-            <BatDoodle size={48} />
-            <StumpsDoodle />
-          </div>
+          {/* Removed inline bottom props strip to keep the board clean. */}
         </PaperPanel>
       </div>
     </div>
@@ -1646,6 +1922,44 @@ function BackpackDoodle() {
       <rect x={15} y={28} width={14} height={14} rx={4} stroke={BORDER} strokeWidth={1.4} />
       <line x1={8} y1={24} x2={36} y2={24} stroke={BORDER} strokeWidth={1.2} opacity={0.6} />
       <line x1={22} y1={42} x2={22} y2={48} stroke={BORDER} strokeWidth={1.2} opacity={0.6} />
+    </svg>
+  );
+}
+
+/** Hand-sketched red heart — decorates the left margin of the IPL franchise picker. */
+function IplHeartDoodle({
+  style,
+  size = 30,
+  opacity = 0.82,
+}: {
+  style?: CSSProperties;
+  size?: number;
+  opacity?: number;
+}) {
+  return (
+    <svg
+      width={size}
+      height={Math.round(size * 0.9)}
+      viewBox="0 0 30 27"
+      fill="none"
+      aria-hidden
+      style={{ opacity, ...style }}
+    >
+      <path
+        d="M15 25 C15 25 2.5 16 2.5 8.5C2.5 5 5.2 2.2 8.5 2.2C10.7 2.2 12.8 3.4 14 5.2C15.2 3.4 17.3 2.2 19.5 2.2C22.8 2.2 25.5 5 25.5 8.5C25.5 16 15 25 15 25Z"
+        fill="#dc2626"
+        fillOpacity="0.76"
+        stroke="#9b1c1c"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.5 7 Q11.5 5 13.5 7.5"
+        stroke="rgba(255,255,255,0.45)"
+        strokeWidth="1"
+        fill="none"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
