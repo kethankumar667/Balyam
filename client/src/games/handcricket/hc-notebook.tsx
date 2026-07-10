@@ -1255,11 +1255,21 @@ export function HcCountryPickerNotebook({
           <CornerTick corner="bl" />
           <CornerTick corner="br" />
 
-          <SketchHeading className="mb-2.5">Pick The Country You'll Represent</SketchHeading>
+          {/* HcSketchHeading (with radiating arrows) replaces the plain
+              SketchHeading — the arrows give this moment the authority
+              it deserves: you're choosing a NATION, not a dropdown item. */}
+          <div className="mb-3">
+            <HcSketchHeading size="clamp(17px,2.4vw,26px)">
+              Pick Your Nation
+            </HcSketchHeading>
+          </div>
 
-          {/* 5×2 country grid */}
+          {/* 5-column country grid — each card staggers in from below,
+              then lifts on hover so it feels like picking up a match ticket
+              from a pile. Taller cards (172 px) give the flag and code
+              room to breathe. */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {COUNTRY_ORDER.map((id) => {
+            {COUNTRY_ORDER.map((id, idx) => {
               const profile = HC_COUNTRIES[id];
               const meta = COUNTRY_META[id];
               const hasRoster = getRosterFor(id, state.options.format) !== null;
@@ -1268,72 +1278,84 @@ export function HcCountryPickerNotebook({
               const FlagSvg = FLAG_COMPONENTS[id];
 
               return (
-                <PaperCard
+                <motion.div
                   key={id}
-                  tone={isSelected ? "selected" : "default"}
-                  disabled={!hasRoster}
-                  interactive={hasRoster}
-                  onClick={() => hasRoster && pick(id)}
-                  ariaPressed={isSelected}
-                  ariaLabel={profile.name}
-                  className="min-h-[148px]"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: idx * 0.045,
+                    duration: 0.32,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  whileHover={hasRoster ? { y: -5, scale: 1.04 } : {}}
+                  whileTap={hasRoster ? { scale: 0.96 } : {}}
+                  style={{ transformOrigin: "center bottom" }}
                 >
-                  {/* ① Washi-tape SELECTED sticker — top-left corner, spring-animated tilt */}
-                  <WashiTapeSticker show={isSelected} />
+                  <PaperCard
+                    tone={isSelected ? "selected" : "default"}
+                    disabled={!hasRoster}
+                    interactive={hasRoster}
+                    onClick={() => hasRoster && pick(id)}
+                    ariaPressed={isSelected}
+                    ariaLabel={profile.name}
+                    className="min-h-[172px]"
+                  >
+                    {/* Washi-tape SELECTED sticker — top-left, spring-animated tilt */}
+                    <WashiTapeSticker show={isSelected} />
 
-                  {/* Opponent chip — only when this card isn't also the player's pick */}
-                  {isOpp && !isSelected && (
-                    <StickyNote show tone="opponent" place="corner" className="max-w-[54px] overflow-hidden text-ellipsis">
-                      {oppName}
-                    </StickyNote>
-                  )}
-
-                  {/* ③ Faint pencil doodles behind the card content (trophy, ball, stars) */}
-                  <CardDoodleLayer />
-
-                  <div className="relative z-[2] flex h-full flex-col items-center justify-center gap-1 px-2 py-4 text-center">
-                    {/* Flag — real SVG when available, emoji fallback (WI palm).
-                        Greyscale + dim for locked cards so the red scrawl pops. */}
-                    {FlagSvg ? (
-                      <FlagSvg
-                        title={profile.name}
-                        className="w-10 h-auto rounded-[3px] shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.25)] mb-0.5"
-                        style={!hasRoster ? { filter: "grayscale(0.65) opacity(0.55)" } : undefined}
-                      />
-                    ) : (
-                      <span
-                        className="text-[28px] leading-tight"
-                        style={!hasRoster ? { filter: "grayscale(0.65)", opacity: 0.55 } : undefined}
-                      >
-                        {profile.flag}
-                      </span>
+                    {/* Opponent chip — only when this card isn't also our pick */}
+                    {isOpp && !isSelected && (
+                      <StickyNote show tone="opponent" place="corner" className="max-w-[54px] overflow-hidden text-ellipsis">
+                        {oppName}
+                      </StickyNote>
                     )}
 
-                    {/* ④ Thick hand-inked code + organic double pencil underline */}
-                    <InkCountryCode code={meta.code} color={meta.color} hasRoster={hasRoster} />
+                    {/* Faint pencil doodles behind the card content */}
+                    <CardDoodleLayer />
 
-                    <span
-                      className="font-hand font-bold text-xs leading-tight"
-                      style={{ color: hasRoster ? INK : "#9ca3af" }}
-                    >
-                      {profile.name}
-                    </span>
+                    <div className="relative z-[2] flex h-full flex-col items-center justify-center gap-1 px-2 py-4 text-center">
+                      {/* Flag — w-12 (up from w-10) so it reads as an
+                          identity emblem, not a metadata thumbnail. */}
+                      {FlagSvg ? (
+                        <FlagSvg
+                          title={profile.name}
+                          className="w-12 h-auto rounded-[3px] shrink-0 shadow-[0_1px_4px_rgba(0,0,0,0.28)] mb-0.5"
+                          style={!hasRoster ? { filter: "grayscale(0.65) opacity(0.55)" } : undefined}
+                        />
+                      ) : (
+                        <span
+                          className="text-[32px] leading-tight"
+                          style={!hasRoster ? { filter: "grayscale(0.65)", opacity: 0.55 } : undefined}
+                        >
+                          {profile.flag}
+                        </span>
+                      )}
 
-                    {hasRoster ? (
+                      {/* Thick hand-inked code + organic double pencil underline */}
+                      <InkCountryCode code={meta.code} color={meta.color} hasRoster={hasRoster} />
+
                       <span
-                        className="font-hand text-[10px] tracking-wider"
-                        style={{ color: INK_LT }}
+                        className="font-hand font-bold text-xs leading-tight"
+                        style={{ color: hasRoster ? INK : "#9ca3af" }}
                       >
-                        {profile.short}
+                        {profile.name}
                       </span>
-                    ) : (
-                      /* ② Red hand-scribbled "NO ROSTER YET" pinned to card bottom */
-                      <div className="absolute bottom-2 left-0 right-0">
-                        <NoRosterScrawl />
-                      </div>
-                    )}
-                  </div>
-                </PaperCard>
+
+                      {hasRoster ? (
+                        <span
+                          className="font-hand text-[10px] tracking-wider"
+                          style={{ color: INK_LT }}
+                        >
+                          {profile.short}
+                        </span>
+                      ) : (
+                        <div className="absolute bottom-2 left-0 right-0">
+                          <NoRosterScrawl />
+                        </div>
+                      )}
+                    </div>
+                  </PaperCard>
+                </motion.div>
               );
             })}
           </div>

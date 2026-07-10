@@ -783,22 +783,6 @@ function Hero() {
           }}
         />
 
-        {/* Notebook illustration overlay — the cobalt-blue ink figures
-            and props concentrate on the right side of the image; the
-            dark vignette fades to nothing via screen blend, leaving
-            only the glowing linework on top of the cream hero background.
-            Placed above the gradient scrim so ink reads through the
-            cream-to-transparent transition exactly where the scrim ends. */}
-        <img
-          src="/illustrations/Home Hero.png"
-          alt=""
-          aria-hidden
-          className="absolute inset-0 w-full h-full object-cover object-right pointer-events-none select-none"
-          style={{ mixBlendMode: "screen", opacity: 0.9 }}
-          loading="eager"
-          decoding="async"
-        />
-
         {/* Text overlay — shown at EVERY breakpoint. Mobile font sizes are
             tuned proportionally so the same hierarchy reads cleanly on a
             320 px viewport. `min-w-0` on the inner container is critical:

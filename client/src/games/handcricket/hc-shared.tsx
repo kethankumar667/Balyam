@@ -960,38 +960,45 @@ export function SquadPicker({
           )}
 
           {/* Confirm button */}
-          {/* Thick-bordered confirm button with cricket bat line-art doodle */}
-          <button
+          {/* Captain's seal — the confirm button is the single most important
+              tap in the squad-building flow. When ready it gets a bold green
+              fill + larger shadow. motion.button + whileTap gives the
+              physical "signing the scorecard" press sensation. */}
+          <motion.button
             onClick={confirm}
             disabled={!ready}
+            whileTap={ready ? { scale: 0.965, y: 1 } : {}}
             className={cn(
               "relative mt-3 w-full inline-flex items-center justify-center gap-2.5 rounded-sm overflow-visible",
-              isDesktop ? "py-3.5 text-base" : "py-3 text-[15px]",
+              isDesktop ? "py-4 text-base" : "py-3 text-[15px]",
             )}
             style={{
               fontFamily: "'Architects Daughter', 'Kalam', cursive",
               fontWeight: 800,
-              letterSpacing: "0.08em",
-              background: ready ? "rgba(22,101,52,0.08)" : "rgba(0,0,0,0.02)",
+              letterSpacing: "0.09em",
+              background: ready
+                ? "linear-gradient(170deg, rgba(22,101,52,0.16) 0%, rgba(22,101,52,0.09) 100%)"
+                : "rgba(0,0,0,0.02)",
               color: ready ? STAMP_G : "#9ca3af",
               border: "none",
               cursor: ready ? "pointer" : "not-allowed",
-              opacity: ready ? 1 : 0.48,
+              opacity: ready ? 1 : 0.45,
+              boxShadow: ready ? "0 3px 14px rgba(22,101,52,0.18)" : "none",
             }}
           >
             <RoughBorder
-              stroke={ready ? "rgba(22,101,52,0.88)" : "rgba(0,0,0,0.18)"}
-              strokeWidth={ready ? 2.8 : 2.0}
+              stroke={ready ? "rgba(22,101,52,0.94)" : "rgba(0,0,0,0.18)"}
+              strokeWidth={ready ? 3.2 : 2.0}
               roughness={2.2}
               bowing={1.4}
               padding={2}
               seed={7}
             />
-            <span className="relative z-[1] inline-flex items-center gap-2">
+            <span className="relative z-[1] inline-flex items-center gap-2.5">
               <BatDoodleInline color={ready ? STAMP_G : "#9ca3af"} />
               {confirmLabel.replace("🖊 ", "")}
             </span>
-          </button>
+          </motion.button>
         </div>
       </div>
     </div>
@@ -1148,20 +1155,56 @@ export function TossPhase({
 
   return (
     <PaperPanel tone="soft" pad="lg" className="font-notebook">
-      <div className="space-y-4">
-        <div className="text-center space-y-1">
-          <div className="text-[34px] leading-none">🎲</div>
-          <SketchHeading arrows={false} className="text-[20px] tracking-[0.04em]">The Toss</SketchHeading>
-          <p className="text-hc-ink-lt text-[13px] max-w-[380px] mx-auto leading-snug">
-            Both players pick <strong>1–6</strong>. Even sum → first player wins · odd sum → second player wins.
+      <div className="flex flex-col items-center gap-5">
+        {/* Kinetic dice — 52 px + bounce + rotation makes the coin feel
+            airborne rather than decorative. Size step alone (34 → 52) is
+            the single biggest emotional lift; the animation seals it. */}
+        <motion.div
+          aria-hidden
+          animate={{ y: [0, -14, 0], rotate: [0, 16, -16, 0] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+          style={{ fontSize: 52, lineHeight: 1 }}
+        >
+          🎲
+        </motion.div>
+
+        <div className="text-center space-y-1.5">
+          {/* 32 px heading vs the previous 20 px — the toss deserves
+              the same prominence as the scoreboard headline. */}
+          <SketchHeading arrows={false} className="text-[32px] tracking-[0.08em]">
+            The Toss
+          </SketchHeading>
+          <p className="font-hand text-hc-ink-lt text-[12px] max-w-[340px] mx-auto leading-snug">
+            Both players pick 1-6. Even sum: first player wins. Odd sum: second player wins.
           </p>
         </div>
 
         <PickRow disabled={myPick != null} onPick={pick} selected={myPick ?? null} />
 
-        <div className="flex justify-center gap-3">
-          <TossStatusPill label="You" value={myPick != null ? String(myPick) : "…"} ready={myPick != null} mine />
-          <TossStatusPill label={oppName} value={oppLockedIn ? "✓ ready" : "thinking…"} ready={oppLockedIn} />
+        {/* Bilateral tension — YOU on left, OPPONENT on right, VS divider
+            mirrors two captains walking to the pitch for the coin toss. */}
+        <div className="flex items-stretch w-full max-w-[380px]">
+          <TossStatusPill
+            label="You"
+            value={myPick != null ? String(myPick) : "…"}
+            ready={myPick != null}
+            mine
+          />
+          <div className="flex flex-col items-center justify-center px-4 flex-shrink-0" aria-hidden>
+            <div style={{ width: 1, flexGrow: 1, background: "rgba(26,41,82,0.18)" }} />
+            <span
+              className="font-sketch font-extrabold text-hc-ink-lt"
+              style={{ fontSize: 9, letterSpacing: "0.22em", padding: "5px 0" }}
+            >
+              VS
+            </span>
+            <div style={{ width: 1, flexGrow: 1, background: "rgba(26,41,82,0.18)" }} />
+          </div>
+          <TossStatusPill
+            label={oppName}
+            value={oppLockedIn ? "✓ ready" : "thinking…"}
+            ready={oppLockedIn}
+          />
         </div>
       </div>
     </PaperPanel>
@@ -1180,26 +1223,48 @@ function TossStatusPill({
   mine?: boolean;
 }) {
   return (
-    <div
+    <motion.div
+      animate={ready ? { scale: [1, 1.08, 0.97, 1] } : { scale: 1 }}
+      transition={{ duration: 0.4, ease: "backOut" }}
       style={{
-        minWidth: 130,
+        flex: 1,
+        minWidth: 0,
         textAlign: "center",
-        background: mine ? "rgba(22,101,52,0.08)" : "rgba(245,233,196,0.7)",
-        border: `1.5px ${ready ? "solid" : "dashed"} ${ready ? "#166534" : "rgba(46,40,25,0.45)"}`,
-        borderRadius: 8,
-        padding: "6px 12px",
+        background: ready && mine
+          ? "rgba(22,101,52,0.13)"
+          : ready
+          ? "rgba(22,101,52,0.07)"
+          : mine
+          ? "rgba(245,233,196,0.85)"
+          : "rgba(245,233,196,0.5)",
+        border: `2px ${ready ? "solid" : "dashed"} ${ready ? "#166534" : "rgba(46,40,25,0.35)"}`,
+        borderRadius: 10,
+        padding: "10px 14px",
         fontFamily: "'Kalam', cursive",
       }}
     >
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#4a5a82", fontWeight: 800 }}>
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", color: "#4a5a82", fontWeight: 800 }}>
         {label}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 800, color: ready ? "#166534" : "#1a2952", lineHeight: 1.2 }}>
-        {value}
+      <div style={{ fontSize: 22, fontWeight: 800, color: ready ? "#166534" : "#1a2952", lineHeight: 1.25 }}>
+        {value === "thinking…" ? (
+          /* Bouncing dots — opponent suspense made legible */
+          <span className="inline-flex gap-1 items-center" aria-label="thinking">
+            {([0, 1, 2] as const).map((i) => (
+              <motion.span
+                key={i}
+                style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#1a2952" }}
+                animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 0.85, repeat: Infinity, delay: i * 0.18, ease: "easeInOut" }}
+              />
+            ))}
+          </span>
+        ) : value}
       </div>
-    </div>
+    </motion.div>
   );
 }
+
 
 export function TossChoicePhase({
   state,

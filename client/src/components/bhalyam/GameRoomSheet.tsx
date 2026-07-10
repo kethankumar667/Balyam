@@ -470,16 +470,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               </div>
             )}
           </div>
-          {/* Corner pencil doodle — "sign your name into the notebook"
-              moment; sits between the title block and the close button.
-              Small enough to never compete with the form fields below. */}
-          <img
-            src="/illustrations/Room Creation Corner Doodle.png"
-            alt=""
-            aria-hidden
-            className="w-9 h-9 object-contain select-none flex-shrink-0"
-            style={{ mixBlendMode: "multiply", opacity: 0.75 }}
-          />
           <button
             type="button"
             onClick={onClose}
