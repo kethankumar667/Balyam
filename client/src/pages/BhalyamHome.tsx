@@ -1675,7 +1675,7 @@ function Footer() {
           {/* Fine print */}
           <div className="mt-9 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] sm:text-[13px] text-[#7B5024]">
             <div className="font-semibold">
-              © {new Date().getFullYear()} BHALYAM · A Sri Krishna Kumar Gontla project
+              © {new Date().getFullYear()} BHALYAM · A Kethan Kumar Gontla project
             </div>
             <div className="inline-flex items-center gap-1.5 font-semibold sm:text-[12px] text-[#7B5024]">
               Built solo with
@@ -1734,7 +1734,7 @@ function GameOwnerSignature() {
             filter: "drop-shadow(0 4px 6px rgba(122,77,28,0.25))",
           }}
         >
-          Sri Krishna Kumar Gontla
+          Kethan Kumar Gontla
         </span>
         {/* Hand-drawn underline */}
         <motion.svg

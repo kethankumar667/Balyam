@@ -7,6 +7,12 @@
       "skillPath": "skills/browser-use/SKILL.md",
       "computedHash": "ecd2c948085080a69d769432f2512c3246bb91061aed34894c81b439e37b7598"
     },
+    "design-taste-frontend": {
+      "source": "leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "899b84384f74f540ea5284d9b2e9234e050998b42eacc805410b518d4226c0b3"
+    },
     "excalidraw-diagram": {
       "source": "coleam00/excalidraw-diagram-skill",
       "sourceType": "github",
