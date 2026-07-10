@@ -14,6 +14,29 @@
  *   NotebookChoiceRow    — "Pick your move" choice cards with sketch icons
  *   NotebookHistoryPanel — round history + room rail
  *   NotebookOutcomeBanner— win / lose / tie banner that pulses then fades
+ *
+ * DIALECT NOTE — migration target
+ * ─────────────────────────────────────────────────────────────────────────
+ * This file is an independent notebook dialect. The shared kit lives in
+ * `components/paper/` (RoughFrame, PaperCard, PaperButton, SketchHeading,
+ * StickyNote, TornChip, PaperBadge, PaperPanel) and
+ * `components/nostalgia/NotebookSheet`.
+ *
+ * To unify the dialect:
+ *   1. Replace `NotebookPage`'s inline background/border/line-rule logic
+ *      with `<NotebookSheet>` as the outer shell. The binding holes SVG
+ *      (`BindingHoles`) can remain as an absolute-positioned overlay.
+ *   2. Source PAPER and INK from the same CSS custom properties as the
+ *      shared kit: `--nostalgia-paper-bg` and `--nostalgia-pen-color`
+ *      (defined in `index.css`), rather than the hardcoded hex values below.
+ *   3. Player cards (`NotebookPlayerCard`) can then adopt `StickyNote` from
+ *      the shared kit as their base, with only the washi-tape decoration
+ *      remaining here as an overlay.
+ *
+ * Until that migration lands, keep changes in this file minimal so the
+ * dialect stays close to Hand Cricket's reference rather than diverging
+ * further. Do NOT add new hardcoded paper/ink values outside this file.
+ * ─────────────────────────────────────────────────────────────────────────
  */
 
 import type { ReactNode } from "react";
