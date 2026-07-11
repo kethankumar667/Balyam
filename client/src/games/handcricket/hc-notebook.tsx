@@ -1960,6 +1960,23 @@ export function HcCountryPickerNotebook({
             .
           </div>
         </PaperPanel>
+
+        <p
+          className="font-hand text-center px-5"
+          style={{
+            color: "rgba(26,41,82,0.88)",
+            fontSize: "clamp(24px, 1.25vw, 120px)",
+            lineHeight: 1.25,
+            letterSpacing: "0.01em",
+            textShadow: "0 1px 0 rgba(255,255,255,0.45)",
+            marginTop: 4,
+            marginBottom: 2,
+            maxWidth: 920,
+          }}
+        >
+          Some matches are scored in runs, but the best ones are remembered in
+          smiles, cheers, and heart.
+        </p>
       </div>
     </div>
   );
