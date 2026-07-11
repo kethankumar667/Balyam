@@ -1020,6 +1020,70 @@ body, #root, .bhalyam-paper {
   animation: rummy-deal-banner 420ms cubic-bezier(.34,1.56,.64,1) both;
 }
 
+/* UNO — shuffle + deal sequence shown once when a round opens.
+   Phase 1 (0-900ms): deck riffles in place.
+   Phase 2 (900-1900ms): 7 cards per player fan out to seat positions,
+   overlay fading out in the final ~180ms.
+   Same shape as Rummy's opener above, minus the landscape-rotation gate —
+   UNO plays at any orientation. Driven by ./uno-deal.tsx's useUnoDealGate. */
+@keyframes uno-deck-shuffle {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  20%  { transform: translate(-18px, -2px) rotate(-12deg); }
+  40%  { transform: translate(16px, 1px) rotate(10deg); }
+  60%  { transform: translate(-14px, -1px) rotate(-8deg); }
+  80%  { transform: translate(12px, 1px) rotate(6deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+.uno-deck-shuffle {
+  animation: uno-deck-shuffle 500ms ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes uno-deck-shuffle-alt {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  20%  { transform: translate(18px, 2px) rotate(12deg); }
+  40%  { transform: translate(-16px, -1px) rotate(-10deg); }
+  60%  { transform: translate(14px, 1px) rotate(8deg); }
+  80%  { transform: translate(-12px, -1px) rotate(-6deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+.uno-deck-shuffle-alt {
+  animation: uno-deck-shuffle-alt 500ms ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Deal-out: card travels from centre to its destination using CSS vars
+   --dx / --dy / --rot. Duration + stagger are tuned so every card (up to
+   56 on an 8-player table) lands before the 1000ms deal stage ends. */
+@keyframes uno-deal-fly {
+  0%   { transform: translate(0,0) rotate(0deg) scale(0.9); opacity: 0; }
+  10%  { opacity: 1; }
+  100% {
+    transform: translate(var(--dx, 160px), var(--dy, 120px)) rotate(var(--rot, 0deg)) scale(1);
+    opacity: 1;
+  }
+}
+.uno-deal-fly {
+  animation: uno-deal-fly 380ms cubic-bezier(.18,.78,.43,1) both;
+}
+
+@keyframes uno-deal-fade-late {
+  0%, 82% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+.uno-deal-fade-late {
+  animation: uno-deal-fade-late 1000ms ease-out forwards;
+}
+
+@keyframes uno-deal-banner {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+.uno-deal-banner {
+  animation: uno-deal-banner 420ms cubic-bezier(.34,1.56,.64,1) both;
+}
+
 @keyframes hc-feed-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

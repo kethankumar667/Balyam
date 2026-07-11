@@ -1,5 +1,6 @@
 import type { Player, UnoCard, UnoColor } from "@shared/types";
 import { getCardLabel, CARD_DISPLAY } from "./helpers/deck";
+import Avatar from "../rummy/Avatar";
 
 /**
  * Dumb, presentation-only UNO building blocks shared by both shells. They hold
@@ -267,12 +268,25 @@ export interface DeckPanelProps {
   deckCount: number;
 }
 
-/** Draw pile (face-down back + count) beside the discard top card. */
+/**
+ * Draw pile (face-down back + count) beside the discard top card. Styled as a
+ * sunken "mat" (deeper cream, thicker border, inset shadow) rather than a flat
+ * dashboard card, so the table reads as a play surface — same structural idea
+ * as Rummy's felt, in UNO's own cream/gold palette rather than Rummy's wood/green.
+ */
 export function DeckPanel({ topCard, currentColor, deckCount }: DeckPanelProps) {
   const wildTop = topCard.rank === "Wild" || topCard.rank === "Wild+4";
   return (
-    <div className="bg-[#FFF9F0] border border-[#E8D8BE] rounded-lg p-4 space-y-3">
-      <h3 className="text-xs font-bold uppercase text-[#6E5E4D]">Table</h3>
+    <div
+      className="rounded-xl p-4 space-y-3"
+      style={{
+        background: "#FBF3E3",
+        border: "2px solid #E0CBA0",
+        boxShadow:
+          "inset 0 2px 6px rgba(109,67,35,0.10), inset 0 -2px 6px rgba(109,67,35,0.06)",
+      }}
+    >
+      <h3 className="text-xs font-bold uppercase text-[#6E5E4D] tracking-wide">Table</h3>
       <div className="flex items-start justify-around gap-3">
         {/* Draw pile */}
         <div className="flex flex-col items-center gap-1.5">
@@ -296,6 +310,101 @@ export function DeckPanel({ topCard, currentColor, deckCount }: DeckPanelProps) 
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export interface UnoOpponentSeatProps {
+  name: string;
+  handSize: number;
+  isTurn: boolean;
+  /** "sm" = mobile horizontal-scroll row; "md" = desktop opponent row. */
+  size?: "sm" | "md";
+  /** True when this opponent has exactly 1 undeclared card — catchable. */
+  canCatch?: boolean;
+  onCatch?: () => void;
+}
+
+/**
+ * One opponent's seat at the table: avatar, name, live card count, and a
+ * fanned stack of face-down cards. Modeled on Rummy's `Notepad` seat
+ * (client/src/games/rummy/RummyBoardDesktop.tsx) — same fan technique, UNO's
+ * own gold turn-glow instead of Rummy's brass. Reads `state.handSizes`, which
+ * exists on the wire already but wasn't rendered anywhere before this.
+ *
+ * `canCatch`/`onCatch` (added for the UNO declaration mechanic, Phase 3):
+ * an undeclared 1-card opponent gets a small pulsing "Catch!" button right
+ * on their seat — the lowest-friction place to put it, since catching is
+ * meant to feel like spotting something, not navigating to it.
+ */
+export function UnoOpponentSeat({
+  name,
+  handSize,
+  isTurn,
+  size = "md",
+  canCatch = false,
+  onCatch,
+}: UnoOpponentSeatProps) {
+  const isSmall = size === "sm";
+  const fanCount = Math.min(handSize, isSmall ? 5 : 7);
+  return (
+    <div
+      className={`relative flex-shrink-0 rounded-lg bg-[#FFF9F0] transition-all duration-300 ${
+        isSmall ? "px-2.5 py-2" : "px-3 py-2.5"
+      }`}
+      style={{
+        border: canCatch ? "2px solid #DC2626" : isTurn ? "2px solid #E6A11E" : "1px solid #E8D8BE",
+        boxShadow: canCatch
+          ? "0 0 0 3px rgba(220,38,38,0.22), 0 0 16px rgba(220,38,38,0.2)"
+          : isTurn
+            ? "0 0 0 3px rgba(230,161,30,0.28), 0 0 16px rgba(230,161,30,0.22)"
+            : undefined,
+      }}
+    >
+      {isTurn && !canCatch && (
+        <div className="absolute -top-3 left-0 right-0 flex justify-center pointer-events-none">
+          <span
+            className="text-[8px] font-black uppercase tracking-[0.18em] px-2 py-0.5 rounded-full text-[#2B2118]"
+            style={{ background: "linear-gradient(135deg, #F7DA8B, #E6A11E)" }}
+          >
+            ▸ Playing
+          </span>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <Avatar name={name} size={isSmall ? 28 : 36} />
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-[#6E5E4D] truncate leading-tight">
+            {name}
+          </div>
+          <div className="text-[10px] uppercase tracking-wide font-semibold text-[#8B7355]">
+            {handSize} card{handSize === 1 ? "" : "s"}
+          </div>
+        </div>
+      </div>
+      {fanCount > 0 && (
+        <div className="flex items-center mt-1.5 pl-1" aria-hidden>
+          {Array.from({ length: fanCount }).map((_, i) => (
+            <div
+              key={i}
+              className={isSmall ? "w-4 h-6" : "w-5 h-7"}
+              style={{ marginLeft: i === 0 ? 0 : isSmall ? -10 : -13 }}
+            >
+              <UnoCardBack className="w-full h-full drop-shadow-sm" />
+            </div>
+          ))}
+        </div>
+      )}
+      {canCatch && (
+        <button
+          onClick={onCatch}
+          className="mt-1.5 w-full rounded-md py-1 text-[10px] font-black uppercase tracking-wide text-white animate-pulse"
+          style={{ background: "#DC2626" }}
+          aria-label={`Catch ${name} without UNO — they draw 2`}
+        >
+          Catch! +2
+        </button>
+      )}
     </div>
   );
 }

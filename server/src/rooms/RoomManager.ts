@@ -19,6 +19,7 @@ import type {
   DotsBoxesOptions,
   MemoryMatchOptions,
   StarGameOptions,
+  UnoGameOptions,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -30,6 +31,7 @@ import {
   DEFAULT_DOTSBOXES_OPTIONS,
   DEFAULT_MEMORYMATCH_OPTIONS,
   DEFAULT_STARGAME_OPTIONS,
+  DEFAULT_UNO_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -44,6 +46,7 @@ import { DotsBoxesEngine } from "../games/dotsboxes/DotsBoxesEngine.js";
 import { MemoryMatchEngine } from "../games/memorymatch/MemoryMatchEngine.js";
 import { RpsEngine } from "../games/rps/RpsEngine.js";
 import { StarGameEngine } from "../games/stargame/StarGameEngine.js";
+import { UnoEngine } from "../games/uno/UnoEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 /** How long the host's rematch request stays open before auto-cancelling. */
@@ -122,6 +125,7 @@ interface Room {
   dotsBoxesOptions: DotsBoxesOptions;
   memoryMatchOptions: MemoryMatchOptions;
   starGameOptions: StarGameOptions;
+  unoOptions: UnoGameOptions;
   /**
    * Memory Match's reveal-phase flip-back timer. After a non-matching
    * pair is flipped the engine enters REVEAL state with a deadline; we
@@ -187,7 +191,8 @@ export class RoomManager {
     wordBuildingOptions?: Partial<WordBuildingOptions>,
     dotsBoxesOptions?: Partial<DotsBoxesOptions>,
     memoryMatchOptions?: Partial<MemoryMatchOptions>,
-    starGameOptions?: Partial<StarGameOptions>
+    starGameOptions?: Partial<StarGameOptions>,
+    unoOptions?: Partial<UnoGameOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -221,6 +226,7 @@ export class RoomManager {
       dotsBoxesOptions: { ...DEFAULT_DOTSBOXES_OPTIONS, ...(dotsBoxesOptions ?? {}) },
       memoryMatchOptions: { ...DEFAULT_MEMORYMATCH_OPTIONS, ...(memoryMatchOptions ?? {}) },
       starGameOptions: { ...DEFAULT_STARGAME_OPTIONS, ...(starGameOptions ?? {}) },
+      unoOptions: { ...DEFAULT_UNO_OPTIONS, ...(unoOptions ?? {}) },
       memoryMatchRevealTimer: null,
       rematch: emptyRematchState(),
       rematchTimer: null,
@@ -615,6 +621,9 @@ export class RoomManager {
       if (engine instanceof StarGameEngine) {
         engine.setOptions(room.starGameOptions);
       }
+      if (engine instanceof UnoEngine) {
+        engine.setOptions(room.unoOptions);
+      }
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
@@ -954,6 +963,20 @@ export class RoomManager {
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
     }
+    if (room.engine instanceof UnoEngine) {
+      const engine = room.engine;
+      const seconds = engine.getTurnTimerSeconds();
+      if (seconds <= 0) {
+        engine.clearTurnDeadline();
+        this.broadcastGameState(room);
+        return;
+      }
+      const ms = Math.max(5, seconds) * 1000;
+      engine.setTurnDeadline(Date.now() + ms);
+      this.broadcastGameState(room);
+      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      return;
+    }
   }
 
   private onTurnTimeout(room: Room): void {
@@ -1047,6 +1070,18 @@ export class RoomManager {
       const engine = room.engine;
       if (engine.isOver()) return;
       engine.resolveDeadline();
+      this.afterAutoMove(room, engine.isOver());
+      return;
+    }
+    if (room.engine instanceof UnoEngine) {
+      const engine = room.engine;
+      if (engine.isOver()) return;
+      // getTimeoutActor(), not pendingActors() — forces the real turn/
+      // challenge holder's move, never auto-declares UNO for a human who
+      // merely hasn't declared yet (that must stay a social "catch"
+      // mechanic, not something the clock does for them).
+      const actorId = engine.getTimeoutActor();
+      if (actorId) engine.applyAutoMove(actorId);
       this.afterAutoMove(room, engine.isOver());
       return;
     }
@@ -1431,6 +1466,7 @@ export class RoomManager {
       if (engine instanceof DotsBoxesEngine) engine.setOptions(room.dotsBoxesOptions);
       if (engine instanceof MemoryMatchEngine) engine.setOptions(room.memoryMatchOptions);
       if (engine instanceof StarGameEngine) engine.setOptions(room.starGameOptions);
+      if (engine instanceof UnoEngine) engine.setOptions(room.unoOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

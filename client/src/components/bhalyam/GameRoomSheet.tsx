@@ -115,6 +115,19 @@ const HC_MODES: { id: HcMode; label: string; blurb: string }[] = [
   { id: "galli",      label: "Galli",        blurb: "Street cricket — custom overs, no rules, pure fun." },
 ];
 
+// UNO turn timer, stored as a string id so it fits OptionGrid<T extends
+// string>; parsed back to a number when building the room-create payload.
+// Only the timer is exposed here — the house-rule toggles in
+// UnoGameOptions (stacking, jump-in, etc.) stay scaffolding-only until the
+// engine actually reads them (Phase C); shipping a toggle for something
+// with zero gameplay effect would be a worse UX than not offering it yet.
+const UNO_TURN_TIMERS: { id: "10" | "20" | "30" | "0"; label: string; blurb: string }[] = [
+  { id: "10", label: "Fast",      blurb: "10s per turn — keeps the table moving." },
+  { id: "20", label: "Standard",  blurb: "20s per turn — the official default." },
+  { id: "30", label: "Relaxed",   blurb: "30s per turn — more time to think." },
+  { id: "0",  label: "No timer",  blurb: "Untimed — casual/family friendly." },
+];
+
 // Word Building option catalogs.
 const WB_DICT_MODES: { id: "common" | "tournament"; label: string; blurb: string }[] = [
   { id: "common",     label: "Classroom",  blurb: "Everyday English (~20k). Words a teacher would recognize." },
@@ -190,6 +203,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [starTheme, setStarTheme] = useState<string>("colors");
   const [starRounds, setStarRounds] = useState<number>(5);
   const [starPassSpeed, setStarPassSpeed] = useState<"normal" | "fast">("normal");
+  const [unoTurnTimer, setUnoTurnTimer] = useState<"10" | "20" | "30" | "0">("20");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   /**
@@ -221,6 +235,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setWbBoardSize(10);
       setDbBoardSize(7);
       setMmBoardSize(6);
+      setUnoTurnTimer("20");
 
     }
   }, [game, playerName]);
@@ -293,6 +308,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           game === "stargame"
             ? { themeId: starTheme, totalRounds: starRounds, passSpeed: starPassSpeed }
             : undefined,
+        unoOptions:
+          game === "uno" ? { turnTimerSeconds: Number(unoTurnTimer) } : undefined,
       },
       (res) => {
         setBusy(false);
@@ -548,6 +565,17 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 value={rummyMode}
                 onChange={setRummyMode}
                 cols={1}
+              />
+            </Field>
+          )}
+
+          {game === "uno" && (
+            <Field label="Turn timer">
+              <OptionGrid
+                items={UNO_TURN_TIMERS}
+                value={unoTurnTimer}
+                onChange={setUnoTurnTimer}
+                cols={2}
               />
             </Field>
           )}
