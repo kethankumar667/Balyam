@@ -315,9 +315,9 @@ export default function Room() {
   }, [roomState]);
 
   // Detect the lobby → playing transition. Two things happen here:
-  //   1. For Rummy, stash a sessionStorage flag the board reads exactly
-  //      once on mount as the single source of truth for whether to play
-  //      the shuffle + deal opener.
+  //   1. For Rummy and UNO, stash a sessionStorage flag the board reads
+  //      exactly once on mount as the single source of truth for whether
+  //      to play the shuffle + deal opener.
   //   2. For ALL games, fire a "game start" haptic so the host (and every
   //      other player) feels a confirmation buzz the moment dealing
   //      begins. Mirrors the audio cue but works in silent mode.
@@ -334,6 +334,14 @@ export default function Room() {
       if (roomState?.game === "rummy" && code) {
         try {
           window.sessionStorage.setItem(`bhalyam.rummy.justStarted.${code}`, "1");
+        } catch {
+          // sessionStorage may throw in private mode — board will silently
+          // skip the animation, which is the safer default.
+        }
+      }
+      if (roomState?.game === "uno" && code) {
+        try {
+          window.sessionStorage.setItem(`bhalyam.uno.justStarted.${code}`, "1");
         } catch {
           // sessionStorage may throw in private mode — board will silently
           // skip the animation, which is the safer default.
@@ -531,14 +539,14 @@ export default function Room() {
   return (
     <div
       className={
-        (roomState.game === "rummy" || roomState.game === "dotsboxes") && roomState.phase !== "lobby"
+        (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby"
           ? "bhalyam-font bhalyam-paper h-dvh-safe overflow-hidden p-0"
           : "bhalyam-font bhalyam-paper min-h-screen p-2 sm:p-4"
       }
     >
       <div
         className={
-          (roomState.game === "rummy" || roomState.game === "dotsboxes") && roomState.phase !== "lobby"
+          (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby"
             ? // No space-y here — the board fills the whole inner area
               // and any lastError banner overlays it via fixed positioning.
               "mx-auto h-full max-w-none"
@@ -546,12 +554,14 @@ export default function Room() {
         }
       >
         {/* Room header. Three shapes:
-              1. Rummy in play: hidden entirely — Rummy renders its own.
+              1. Rummy/wordbuilding/dotsboxes/UNO in play: hidden entirely —
+                 each of these renders its own full in-board header (room
+                 code, Leave, etc.) instead.
               2. Any game during the lobby: full header with code + Leave.
-              3. Any non-Rummy game during play/finished: slim header — just
+              3. Every other game during play/finished: slim header — just
                  a right-aligned Leave button. The room code, players, voice
-                 and chat have all moved into the FloatingRoomRail strip per
-                 the marked-area reference. */}
+                 and chat have all moved into that game's own inline room
+                 rail. */}
         {roomState.phase === "lobby" && (
           <header className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3 flex-wrap">
@@ -579,7 +589,7 @@ export default function Room() {
             </button>
           </header>
         )}
-        {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && (
+        {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && (
           <header className="flex items-center justify-end">
             <button
               onClick={leaveRoom}
@@ -608,7 +618,7 @@ export default function Room() {
 
         <div
           className={(() => {
-            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes") && roomState.phase !== "lobby";
+            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby";
             const compactPlay = !fullPlay && roomState.phase !== "lobby";
             if (fullPlay) return "h-full";
             // Compact gameplay: the side rail collapses into the floating
@@ -619,7 +629,7 @@ export default function Room() {
         >
           <div
             className={(() => {
-              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes") && roomState.phase !== "lobby";
+              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby";
               const compactPlay = !fullPlay && roomState.phase !== "lobby";
               if (fullPlay) return "h-full";
               if (compactPlay) return "w-full space-y-4";
@@ -775,6 +785,7 @@ export default function Room() {
                 messages={messages}
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
+                onLeave={leaveRoom}
               />
             )}
 

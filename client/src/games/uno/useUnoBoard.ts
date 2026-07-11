@@ -29,6 +29,7 @@ export interface UnoBoardProps {
   messages: ChatMessage[];
   roomCode: string;
   roomPhase: string;
+  onLeave: () => void;
 }
 
 /**
@@ -44,6 +45,7 @@ export interface UnoBoardModel {
   messages: ChatMessage[];
   roomCode: string;
   roomPhase: string;
+  onLeave: () => void;
 
   myTurn: boolean;
   /** Display name for the player whose turn it currently is. */
@@ -65,11 +67,24 @@ export interface UnoBoardModel {
   canPassTurn: boolean;
   drewThisTurn: boolean;
 
+  /** True when the caller's own hand is exactly 1 card and not yet declared. */
+  canDeclareUno: boolean;
+  /** Opponent ids currently sitting on an undeclared 1-card hand — catchable. */
+  catchableOpponents: string[];
+  /** Non-null while a Wild Draw Four decision is outstanding (server-driven). */
+  pendingChallenge: { challengerId: string; playedById: string } | null;
+  /** True when the caller is the player who must accept or challenge right now. */
+  isChallengeTarget: boolean;
+
   setSelectedCard: (cardId: string | null) => void;
   setWildColor: (color: UnoColor | null) => void;
   playCard: () => void;
   drawCard: () => void;
   passTurn: () => void;
+  declareUno: () => void;
+  catchUno: (targetId: string) => void;
+  challengeWildFour: () => void;
+  acceptWildFourDraw: () => void;
 }
 
 /**
@@ -84,6 +99,7 @@ export function useUnoBoard({
   messages,
   roomCode,
   roomPhase,
+  onLeave,
 }: UnoBoardProps): UnoBoardModel {
   const myTurn = state.turnPlayerId === selfId && state.phase === "playing";
 
@@ -212,6 +228,64 @@ export function useUnoBoard({
     setDrewThisTurn(false);
   }
 
+  // Declare / catch / challenge — none of these are gated by "myTurn": the
+  // server (UnoEngine.applyMove) accepts them from any seated player at any
+  // time, matching official UNO's "before the next turn begins" / "any
+  // player may notice" rules. Gating the UI the same way (not on isSubmitting-
+  // free turn state) keeps the client's affordances honest about what the
+  // server will actually accept.
+  const canDeclareUno =
+    selfId !== null &&
+    state.myHand.length === 1 &&
+    !state.unoDeclaredBy.includes(selfId) &&
+    !isSubmitting;
+
+  const catchableOpponents = state.playerOrder.filter(
+    (id) => id !== selfId && state.handSizes[id] === 1 && !state.unoDeclaredBy.includes(id)
+  );
+
+  const pendingChallenge = state.pendingChallenge;
+  const isChallengeTarget = pendingChallenge?.challengerId === selfId;
+
+  function declareUno() {
+    if (!canDeclareUno) return;
+    playSound(AUDIO.UNO_DECLARED);
+    setIsSubmitting(true);
+    getSocket().emit("game:move", {
+      type: "declareUno",
+      playerId: selfId ?? undefined,
+    });
+  }
+
+  function catchUno(targetId: string) {
+    if (isSubmitting) return;
+    if (!catchableOpponents.includes(targetId)) return;
+    setIsSubmitting(true);
+    getSocket().emit("game:move", {
+      type: "catchUno",
+      data: { targetId },
+      playerId: selfId ?? undefined,
+    });
+  }
+
+  function challengeWildFour() {
+    if (!isChallengeTarget || isSubmitting) return;
+    setIsSubmitting(true);
+    getSocket().emit("game:move", {
+      type: "challenge",
+      playerId: selfId ?? undefined,
+    });
+  }
+
+  function acceptWildFourDraw() {
+    if (!isChallengeTarget || isSubmitting) return;
+    setIsSubmitting(true);
+    getSocket().emit("game:move", {
+      type: "acceptDraw",
+      playerId: selfId ?? undefined,
+    });
+  }
+
   const currentPlayer = nameOf(state.turnPlayerId);
   const winner = state.winnerId
     ? players.find((p) => p.id === state.winnerId) ?? null
@@ -224,6 +298,7 @@ export function useUnoBoard({
     messages,
     roomCode,
     roomPhase,
+    onLeave,
     myTurn,
     currentPlayer,
     winner,
@@ -238,10 +313,18 @@ export function useUnoBoard({
     canDraw,
     canPassTurn,
     drewThisTurn,
+    canDeclareUno,
+    catchableOpponents,
+    pendingChallenge,
+    isChallengeTarget,
     setSelectedCard,
     setWildColor,
     playCard,
     drawCard,
     passTurn,
+    declareUno,
+    catchUno,
+    challengeWildFour,
+    acceptWildFourDraw,
   };
 }

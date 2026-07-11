@@ -1056,6 +1056,17 @@ export interface UnoPublicState {
   turnDeadline: number | null;
   winnerId: string | null;
   lastAction: string | null; // "drew", "passed", "played", etc.
+  /** Player ids currently sitting at exactly 1 card who have correctly
+   *  declared UNO for that hand. Cleared automatically the moment a
+   *  player's hand size changes away from 1 (see UnoEngine.syncUnoDeclaration). */
+  unoDeclaredBy: string[];
+  /**
+   * Set the instant a Wild Draw Four is played; the game pauses (no other
+   * turn-gated move is accepted) until `challengerId` sends "challenge" or
+   * "acceptDraw". Deliberately omits whether the play was actually legal —
+   * that must stay hidden until resolved, or the challenge has no purpose.
+   */
+  pendingChallenge: { challengerId: string; playedById: string } | null;
 }
 
 /**
@@ -1081,7 +1092,71 @@ export interface UnoPassMove {
   type: "pass";
 }
 
-export type UnoMoveType = "play" | "draw" | "pass";
+/** Declares UNO for the sender's own hand (must currently hold exactly 1 card). */
+export interface UnoDeclareUnoMove {
+  type: "declareUno";
+}
+
+/** Catches another player who has 1 card and hasn't declared — that player draws 2. */
+export interface UnoCatchUnoMove {
+  type: "catchUno";
+  data: { targetId: string };
+}
+
+/** Sent by the player targeted by a Wild Draw Four: disputes its legality. */
+export interface UnoChallengeMove {
+  type: "challenge";
+}
+
+/** Sent by the player targeted by a Wild Draw Four: accepts the draw without disputing it. */
+export interface UnoAcceptDrawMove {
+  type: "acceptDraw";
+}
+
+export type UnoMoveType =
+  | "play"
+  | "draw"
+  | "pass"
+  | "declareUno"
+  | "catchUno"
+  | "challenge"
+  | "acceptDraw";
+
+/**
+ * Room-configurable options — mirrors the RummyGameOptions/LudoGameOptions
+ * pattern. `turnTimerSeconds` is wired as of Phase 2 (see
+ * PLAN_REVIEW_REPORT.md); the house-rule flags below remain scaffolding —
+ * `UnoEngine` does not read them yet. Every house-rule flag defaults to
+ * `false` so the default options object is always the official ruleset —
+ * the same "off = official, ranked-locked" shape Volume 4's rule matrix
+ * requires once ranked play exists.
+ */
+export interface UnoGameOptions {
+  /** Seconds per turn before auto-draw. Volume 4 §3's official default is 20. */
+  turnTimerSeconds: number;
+  /** House rule: Draw Two / Wild Draw Four penalties may be stacked onto the next player. */
+  stackDrawCards: boolean;
+  /** House rule: a player holding an exact match to the top card may play out of turn. */
+  jumpIn: boolean;
+  /** House rule: playing a 7 lets the player swap hands with another player. */
+  sevenSwap: boolean;
+  /** House rule: playing a 0 rotates every player's hand around the table. */
+  zeroRotate: boolean;
+  /** House rule: a player with no valid card keeps drawing until one is playable. */
+  keepDrawing: boolean;
+  /** House rule: a drawn card that is playable is played automatically. */
+  forcePlay: boolean;
+}
+
+export const DEFAULT_UNO_OPTIONS: UnoGameOptions = {
+  turnTimerSeconds: 20,
+  stackDrawCards: false,
+  jumpIn: false,
+  sevenSwap: false,
+  zeroRotate: false,
+  keepDrawing: false,
+  forcePlay: false,
+};
 
 // ---- Star Game (90's Paper-Slip Edition) ----
 //
@@ -1262,6 +1337,7 @@ export interface CreateRoomPayload {
   dotsBoxesOptions?: Partial<DotsBoxesOptions>;
   memoryMatchOptions?: Partial<MemoryMatchOptions>;
   starGameOptions?: Partial<StarGameOptions>;
+  unoOptions?: Partial<UnoGameOptions>;
 }
 
 export interface SetTokenNicknamesPayload {

@@ -15,7 +15,11 @@ export interface TutorialDeck {
 }
 
 export const UNO_TUTORIAL: TutorialDeck = {
-  key: "uno.tutorial.completed.v1",
+  // Bumped v1 -> v2: the declare/challenge slides below are new content, not
+  // a wording tweak, so returning players whose localStorage already marked
+  // v1 "completed" still see this update once (same versioning convention
+  // the file header describes) instead of the deck silently going stale.
+  key: "uno.tutorial.completed.v2",
   accent: "#D22B27",
   slides: [
     {
@@ -34,9 +38,19 @@ export const UNO_TUTORIAL: TutorialDeck = {
       body: "A Wild lets you choose the next colour. Wild Draw Four also makes the next player draw four cards — play it only when you have no matching colour.",
     },
     {
+      emoji: "🤔",
+      title: "Challenge a Wild Draw Four",
+      body: "Think someone played Wild Draw Four illegally — they actually had a matching-colour card? Challenge it! Guess right and they draw 4 instead of you. Guess wrong and you draw 6.",
+    },
+    {
       emoji: "🃏",
       title: "Stuck? Draw",
       body: "No playable card? Draw one from the pile. If it can be played you may play it, otherwise pass your turn.",
+    },
+    {
+      emoji: "❗",
+      title: "Down to one card? Say UNO!",
+      body: "The moment you have one card left, tap UNO! before anyone else notices. Miss it and another player can catch you — you'll draw two penalty cards.",
     },
     {
       emoji: "🏆",
