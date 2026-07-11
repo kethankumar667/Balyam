@@ -18,7 +18,12 @@ import {
   getRosterFor,
   type HcPlayerProfile,
 } from "@shared/hc-rosters";
-import { getJsonTeamMeta, getJsonPlayerStyleMap, type JsonPlayerStyle } from "./hc-json-data";
+import {
+  getJsonTeamMeta,
+  getJsonPlayerStyleMap,
+  getJsonPlayers,
+  type JsonPlayerStyle,
+} from "./hc-json-data";
 import { HC_MAX_OVERS_PER_BOWLER } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { motion } from "framer-motion";
@@ -286,12 +291,14 @@ export function TeamPicker({
       <div className="text-center text-emerald-100 font-bold">
         Pick the country you'll represent
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        {COUNTRY_LIST.map((id) => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        {COUNTRY_LIST.map((id, idx) => {
           const profile = HC_COUNTRIES[id];
-          const hasRoster = profile.squads[state.options.format].length > 0;
+          const jsonPlayers = getJsonPlayers(id, state.options.format);
+          const hasRoster = profile.squads[state.options.format].length > 0 || jsonPlayers.length > 0;
           const isOpp = oppPick === id;
-          const meta = hasRoster ? getJsonTeamMeta(id, state.options.format) : null;
+          const meta = getJsonTeamMeta(id, state.options.format);
+          const isMobileOnly = idx >= COUNTRY_LIST.length - 2; // last two teams visible only on small screens
           return (
             <button
               key={id}
@@ -301,7 +308,7 @@ export function TeamPicker({
                 hasRoster
                   ? "border-slate-700 bg-slate-900/40 hover:border-emerald-400 hover:scale-105"
                   : "border-slate-800 bg-slate-900/20 opacity-50 cursor-not-allowed"
-              }`}
+              } ${isMobileOnly ? "lg:hidden" : ""}`}
             >
               <span className="text-3xl">{profile.flag}</span>
               <span className="text-xs font-bold text-slate-100">{profile.name}</span>
@@ -667,6 +674,22 @@ export function SquadPicker({
     <div style={{ color: "#991b1b", fontFamily: "'Kalam', cursive", fontSize: 14 }}>Roster unavailable.</div>
   );
 
+  // When the shared `HC_COUNTRIES` pool is empty (server-side), the canonical
+  // JSON files in `client/src/games/handcricket/data` are the source of truth
+  // for international teams such as Bangladesh and Afghanistan. If the
+  // shared roster is empty, build a client-side squad from the JSON players
+  // so the UI can present a selectable XI.
+  const _jsonPlayersForTeam = getJsonPlayers(myTeamId, state.options.format);
+  let rosterToUse = roster;
+  if (roster.squad.length === 0 && _jsonPlayersForTeam.length > 0) {
+    const squad = _jsonPlayersForTeam.map((j) => ({
+      id: j.id,
+      name: j.name,
+      role: j.isWicketKeeper ? ("keeper" as const) : j.isAllRounder ? ("allrounder" as const) : j.isBowler ? ("bowler" as const) : ("batter" as const),
+    }));
+    rosterToUse = { ...roster, squad, extras: [] };
+  }
+
   /** Stable reference to the JSON-derived playing XI + captain names. */
   const jsonMeta = useMemo(
     () => getJsonTeamMeta(myTeamId, state.options.format),
@@ -674,12 +697,12 @@ export function SquadPicker({
   );
 
   const sortedSquad = useMemo(
-    () => roster.squad.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]),
-    [roster],
+    () => rosterToUse.squad.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]),
+    [rosterToUse],
   );
   const sortedExtras = useMemo(
-    () => roster.extras.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]),
-    [roster],
+    () => rosterToUse.extras.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]),
+    [rosterToUse],
   );
   const profilesById = useMemo(() => {
     const m = new Map<string, HcPlayerProfile>();
