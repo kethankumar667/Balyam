@@ -596,77 +596,45 @@ export function HandPanel({
 }
 
 export interface ActionBarProps {
-  playCard: () => void;
-  drawCard: () => void;
   passTurn: () => void;
-  canSubmitPlay: boolean;
-  canDraw: boolean;
   canPassTurn: boolean;
   drewThisTurn: boolean;
+  /** Shows the "P" kbd badge — desktop only, where the keyboard shortcut
+   *  actually exists (see UnoBoardDesktop.tsx's keydown handler). */
+  showKbdHint?: boolean;
 }
 
-/** Play / Draw / (conditional) Pass buttons. Shells position the wrapper. */
-export function ActionBar({
-  playCard,
-  drawCard,
-  passTurn,
-  canSubmitPlay,
-  canDraw,
-  canPassTurn,
-  drewThisTurn,
-}: ActionBarProps) {
+/** Just the (conditional) Pass button now — Play and Draw are both
+ *  automated: tapping/dragging a valid card plays it directly
+ *  (useUnoBoard.ts's dropCardOnDiscard), and the draw pile itself is
+ *  tappable (UnoTableCenter's canDraw/onDraw), mirroring Rummy's own
+ *  button-free draw. Pass is the one action that still needs an explicit
+ *  control — the player has a real choice, once they've drawn, between
+ *  playing what they can and passing anyway. See useUnoBoard.ts's
+ *  auto-pass effect for the case where they have no choice at all. */
+export function ActionBar({ passTurn, canPassTurn, drewThisTurn, showKbdHint = false }: ActionBarProps) {
+  if (!drewThisTurn) return null;
   return (
-    <div className="flex gap-2 flex-wrap">
-      <button
-        onClick={playCard}
-        disabled={!canSubmitPlay}
-        className={`
-          flex-1 py-3 rounded-lg font-bold text-white
-          transition-all
-          ${
-            canSubmitPlay
-              ? "bg-green-500 hover:bg-green-600 active:scale-95"
-              : "bg-gray-400 cursor-not-allowed opacity-50"
-          }
-        `}
-      >
-        Play Card
-      </button>
-
-      <button
-        onClick={drawCard}
-        disabled={!canDraw}
-        className={`
-          flex-1 py-3 rounded-lg font-bold text-white
-          transition-all
-          ${
-            canDraw
-              ? "bg-blue-500 hover:bg-blue-600 active:scale-95"
-              : "bg-gray-400 cursor-not-allowed opacity-50"
-          }
-        `}
-      >
-        Draw Card
-      </button>
-
-      {drewThisTurn && (
-        <button
-          onClick={passTurn}
-          disabled={!canPassTurn}
-          className={`
-            flex-1 py-3 rounded-lg font-bold text-white
-            transition-all
-            ${
-              canPassTurn
-                ? "bg-orange-500 hover:bg-orange-600 active:scale-95"
-                : "bg-gray-400 cursor-not-allowed opacity-50"
-            }
-          `}
-        >
-          Pass
-        </button>
+    <button
+      onClick={passTurn}
+      disabled={!canPassTurn}
+      className={`
+        w-full py-3 rounded-lg font-bold text-white
+        transition-all flex items-center justify-center gap-2
+        ${
+          canPassTurn
+            ? "bg-orange-500 hover:bg-orange-600 active:scale-95"
+            : "bg-gray-400 cursor-not-allowed opacity-50"
+        }
+      `}
+    >
+      <span>Pass</span>
+      {showKbdHint && (
+        <span className="font-mono text-[10px] opacity-70 border border-current rounded px-1 py-0.5">
+          P
+        </span>
       )}
-    </div>
+    </button>
   );
 }
 

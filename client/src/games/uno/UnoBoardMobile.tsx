@@ -1,6 +1,14 @@
+import { useEffect, useState } from "react";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useUnoBoard, type UnoBoardProps } from "./useUnoBoard";
 import { ActionBar } from "./uno-shared";
+import { useAudio } from "../../hooks/useAudio";
+import {
+  enterFullscreen,
+  exitFullscreen,
+  isFullscreenActive,
+  onFullscreenChange,
+} from "../../lib/fullscreen";
 import {
   UnoTableMat,
   UnoDirectionArc,
@@ -35,12 +43,27 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const tut = useTutorialGate(UNO_TUTORIAL.key);
   const dealStage = useUnoDealGate(roomCode);
   const flourish = useUnoEventFlourish(state.lastAction);
+  // Drag-to-play: true while a hand card is mid-drag, so the discard pile
+  // can show its "Drop to play" affordance. See uno-table.tsx's UnoHandFan.
+  const [isDraggingCard, setIsDraggingCard] = useState(false);
 
   const directionLabel = state.direction === -1 ? "Counter-clockwise" : "Clockwise";
   const turnLabel = m.myTurn ? `Your Turn · ${directionLabel}` : `${m.currentPlayer}'s Turn · ${directionLabel}`;
   const opponents = state.playerOrder.filter((id) => id !== selfId);
   const selfDeclared = selfId != null && state.unoDeclaredBy.includes(selfId);
   const selfName = selfId ? m.nameOf(selfId) : "You";
+
+  /* ─── Sound + fullscreen header controls — same global toggles as
+     desktop. No keyboard shortcuts here, matching Rummy's own scoping:
+     RummyBoardMobile.tsx has no keydown handler either, since touch
+     devices rarely have a physical keyboard attached. ─── */
+  const { settings: audioSettings, toggleMute } = useAudio();
+  const [isFs, setIsFs] = useState<boolean>(() => isFullscreenActive());
+  useEffect(() => onFullscreenChange(() => setIsFs(isFullscreenActive())), []);
+  function toggleFullscreen() {
+    if (isFs) void exitFullscreen();
+    else void enterFullscreen("any");
+  }
 
   return (
     <div className="relative h-full flex flex-col overflow-hidden">
@@ -77,7 +100,25 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
             <span className="text-[9px] font-bold uppercase tracking-widest text-[#8B7355]">UNO</span>
             <span className="font-mono text-[10px] text-[#8B7355]">· {roomCode}</span>
           </div>
-          <TutorialButton onClick={() => tut.setOpen(true)} />
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleMute}
+              className="rounded-md px-2 py-1 text-xs bg-[#EFE2C7] hover:bg-[#E5D4B2]"
+              title="Sound"
+              aria-label={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
+            >
+              {audioSettings.isMuted ? "🔇" : "🔊"}
+            </button>
+            <button
+              onClick={toggleFullscreen}
+              className="rounded-md px-2 py-1 text-xs bg-[#EFE2C7] hover:bg-[#E5D4B2]"
+              title="Fullscreen"
+              aria-label={isFs ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              ⛶
+            </button>
+            <TutorialButton onClick={() => tut.setOpen(true)} />
+          </div>
         </div>
         <div
           className={`flex items-center justify-between gap-2 border rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
@@ -122,6 +163,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                     canCatch={m.catchableOpponents.includes(id)}
                     onCatch={() => m.catchUno(id)}
                     compact={opponents.length > 4}
+                    isConnected={players.find((p) => p.id === id)?.isConnected}
                   />
                 </div>
               );
@@ -132,6 +174,9 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                 topCard={state.topCard}
                 currentColor={state.currentColor}
                 deckCount={state.deckCount}
+                isDragging={isDraggingCard}
+                canDraw={m.canDraw}
+                onDraw={m.drawCard}
               />
             </div>
 
@@ -144,6 +189,15 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           </UnoTableMat>
         </div>
 
+        {/* UNO declare button — centred above the hand, not a floating
+            corner button anymore. It used to sit fixed bottom-left, easy to
+            miss and awkward to reach; right above the cards is exactly
+            where the player is already looking once their hand gets down
+            to one. */}
+        <div className="flex justify-center">
+          <UnoCallButton visible={m.canDeclareUno} onDeclare={m.declareUno} />
+        </div>
+
         {/* Full-width card fan */}
         <UnoHandFan
           sortedHand={m.sortedHand}
@@ -151,21 +205,19 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           selectedCardId={m.selectedCardId}
           myTurn={m.myTurn}
           phase={state.phase}
-          onSelectCard={m.setSelectedCard}
+          onSelectCard={m.dropCardOnDiscard}
           needsColorChoice={m.needsColorChoice}
           selectedWildColor={m.selectedWildColor}
-          onPickColor={m.setWildColor}
+          onPickColor={m.pickColorAndPlay}
+          onDropOnDiscard={m.dropCardOnDiscard}
+          onDragStateChange={setIsDraggingCard}
         />
 
         {/* Action bar pinned to the bottom of the scroll area */}
         {m.myTurn && state.phase === "playing" && (
           <div className="sticky bottom-0 z-20 -mx-1 px-1 pt-2 pb-2 bg-gradient-to-t from-[#F6EDDB] via-[#F6EDDB]/95 to-transparent">
             <ActionBar
-              playCard={m.playCard}
-              drawCard={m.drawCard}
               passTurn={m.passTurn}
-              canSubmitPlay={m.canSubmitPlay}
-              canDraw={m.canDraw}
               canPassTurn={m.canPassTurn}
               drewThisTurn={m.drewThisTurn}
             />
@@ -204,12 +256,6 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           onClose={() => tut.setOpen(false)}
         />
       )}
-
-      {/* Floating declare button — bottom-left, clear of the room-rail
-          trigger (bottom-right) and the sticky action bar underneath it. */}
-      <div className="fixed bottom-20 left-4 z-30">
-        <UnoCallButton visible={m.canDeclareUno} onDeclare={m.declareUno} />
-      </div>
 
       {m.isChallengeTarget && m.pendingChallenge && (
         <WildDrawFourChallengePrompt
