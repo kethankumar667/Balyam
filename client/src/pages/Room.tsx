@@ -151,7 +151,7 @@ function BotControls({
 const SCORECARD_WINDOW_MS = 90_000;
 /** Games that render their own end-of-round scorecard modal and call back
  *  via onScorecardClose. GenericScorecardModal is suppressed for these. */
-const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket"]);
+const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket", "uno"]);
 
 export default function Room() {
   const { code } = useParams<{ code: string }>();
@@ -786,6 +786,7 @@ export default function Room() {
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
                 onLeave={leaveRoom}
+                onScorecardClose={triggerGameOver}
               />
             )}
 

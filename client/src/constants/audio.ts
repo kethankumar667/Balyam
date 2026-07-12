@@ -70,12 +70,18 @@ export const AUDIO = {
   HC_CROWD:  "hc_crowd",
   HC_OUT:    "hc_out",
 
-  /* ── UNO ── */
-  UNO_PLAY:    "uno_play",
-  UNO_DRAW:    "uno_draw",
-  UNO_WILD:    "uno_wild",
+  /* ── UNO (keys wired, assets pending — see manifests.ts's header comment;
+     no uno_* entry exists in any theme manifest yet, matching Star Game's
+     "keys wired, assets pending" precedent below) ── */
+  UNO_PLAY:     "uno_play",
+  UNO_DRAW:     "uno_draw",
+  UNO_WILD:     "uno_wild",
   UNO_DECLARED: "uno_declared",
-  UNO_WIN:     "uno_win",
+  UNO_WIN:      "uno_win",
+  UNO_SHUFFLE:  "uno_shuffle",
+  UNO_DEAL:     "uno_deal",
+  UNO_REVERSE:  "uno_reverse",
+  UNO_SKIP:     "uno_skip",
 
   /* ── Star Game (90's paper-slip; keys wired, assets pending) ── */
   STAR_SHUFFLE:   "star_shuffle",

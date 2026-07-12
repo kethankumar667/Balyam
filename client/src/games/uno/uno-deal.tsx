@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { UnoCardBack } from "./uno-shared";
+import { useAudio } from "../../hooks/useAudio";
+import { AUDIO } from "../../constants/audio";
 
 /**
  * UNO's shuffle + deal opener — same trigger contract as Rummy's
@@ -25,6 +27,8 @@ const DEAL_MS = 1000;
  * (Mobile or Desktop both call this identically).
  */
 export function useUnoDealGate(roomCode: string): UnoDealStage {
+  const { play: playSound } = useAudio();
+
   // Peek (never remove) in the lazy initializer so the very first render
   // already starts on "shuffle" instead of flashing the real board for one
   // frame while a later effect catches up.
@@ -48,9 +52,24 @@ export function useUnoDealGate(roomCode: string): UnoDealStage {
 
   useEffect(() => {
     if (!triggered) return;
+    // The app-wide `prefers-reduced-motion` rule (index.css) already
+    // collapses the CSS keyframes themselves to near-zero duration, but
+    // that doesn't shrink these JS setTimeout stage lengths — without this
+    // check a motion-sensitive player would still stare at a static overlay
+    // for ~1.9s with nothing moving. Collapse the stage lengths to match.
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const shuffleMs = reduceMotion ? 80 : SHUFFLE_MS;
+    const dealMs = reduceMotion ? 80 : DEAL_MS;
+
     setStage("shuffle");
-    const toDeal = window.setTimeout(() => setStage("deal"), SHUFFLE_MS);
-    const toIdle = window.setTimeout(() => setStage("idle"), SHUFFLE_MS + DEAL_MS);
+    playSound(AUDIO.UNO_SHUFFLE);
+    const toDeal = window.setTimeout(() => {
+      setStage("deal");
+      playSound(AUDIO.UNO_DEAL);
+    }, shuffleMs);
+    const toIdle = window.setTimeout(() => setStage("idle"), shuffleMs + dealMs);
     return () => {
       window.clearTimeout(toDeal);
       window.clearTimeout(toIdle);

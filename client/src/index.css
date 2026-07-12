@@ -1084,6 +1084,32 @@ body, #root, .bhalyam-paper {
   animation: uno-deal-banner 420ms cubic-bezier(.34,1.56,.64,1) both;
 }
 
+/* Phase 4 — table redesign polish (uno-table.tsx, UnoBoardDesktop/Mobile).
+   Card-land: the discard pile's top card "settles" in when a new card is
+   played — a lightweight stand-in for a true hand-to-pile flight animation
+   (which would need DOM position measurement between two components that
+   don't currently share layout coordinates). Retriggered by giving the
+   wrapper a `key={topCard.id}` so React remounts it on every play. */
+@keyframes uno-card-land {
+  0%   { transform: scale(1.22) rotate(-10deg); opacity: 0.4; }
+  60%  { transform: scale(0.96) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(7deg); opacity: 1; }
+}
+.uno-card-land {
+  animation: uno-card-land 260ms cubic-bezier(.22,.9,.37,1) both;
+}
+
+/* Flourish: a brief glow/scale pulse on the direction arc when a Reverse or
+   Skip resolves — see useUnoEventFlourish in uno-table.tsx for the trigger. */
+@keyframes uno-flourish-pulse {
+  0%   { opacity: 0.5; transform: scale(1); }
+  40%  { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0.5; transform: scale(1); }
+}
+.uno-flourish-pulse {
+  animation: uno-flourish-pulse 650ms ease-in-out both;
+}
+
 @keyframes hc-feed-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

@@ -75,6 +75,9 @@ export class UnoEngine implements GameEngine {
   readonly maxPlayers = 8;
 
   private state!: InternalUnoState;
+  /** id -> display name, captured at init() — `lastAction` strings need a
+   *  human-readable name, but the engine otherwise only ever stores ids. */
+  private names: Record<string, string> = {};
   /** Injectable RNG, same contract as LudoEngine.setRng — real Math.random()
    *  in production, deterministic in tests. */
   private rng: () => number = Math.random;
@@ -89,6 +92,12 @@ export class UnoEngine implements GameEngine {
 
   setOptions(options: UnoGameOptions): void {
     this.pendingOptions = { ...DEFAULT_UNO_OPTIONS, ...options };
+  }
+
+  /** `this.names[id]`, falling back to the raw id — defensive only; every
+   *  id in play should have been captured by init(). */
+  private nameOf(id: string): string {
+    return this.names[id] ?? id;
   }
 
   setTurnDeadline(deadline: number): void {
@@ -127,6 +136,8 @@ export class UnoEngine implements GameEngine {
     const playerIds = players.map((p) => p.id);
     const scores: Record<string, number> = {};
     for (const id of playerIds) scores[id] = 0;
+    this.names = {};
+    for (const p of players) this.names[p.id] = p.name;
 
     // Create and shuffle deck
     const deck = this.createDeck();
@@ -178,7 +189,7 @@ export class UnoEngine implements GameEngine {
       scores,
       turnDeadline: null,
       winnerId: null,
-      lastAction: `Dealt 7 cards. ${playerIds[0] || "Player"} to play.`,
+      lastAction: `Dealt 7 cards. ${playerIds[0] ? this.nameOf(playerIds[0]) : "Player"} to play.`,
       drewLastTurn: false,
       unoDeclaredBy: new Set(),
       pendingChallenge: null,
@@ -258,7 +269,7 @@ export class UnoEngine implements GameEngine {
       return { ok: false, error: "Nothing to declare" };
     }
     this.state.unoDeclaredBy.add(playerId);
-    this.state.lastAction = `${playerId} declared UNO!`;
+    this.state.lastAction = `${this.nameOf(playerId)} declared UNO!`;
     return { ok: true };
   }
 
@@ -275,7 +286,7 @@ export class UnoEngine implements GameEngine {
     const drawn = this.drawCards(2);
     this.state.hands[targetId]!.push(...drawn);
     this.syncUnoDeclaration(targetId);
-    this.state.lastAction = `${playerId} caught ${targetId} without UNO! +2 penalty.`;
+    this.state.lastAction = `${this.nameOf(playerId)} caught ${this.nameOf(targetId)} without UNO! +2 penalty.`;
     return { ok: true };
   }
 
@@ -302,7 +313,7 @@ export class UnoEngine implements GameEngine {
       const drawn = this.drawCards(4);
       this.state.hands[pending.challengerId]!.push(...drawn);
       this.syncUnoDeclaration(pending.challengerId);
-      this.state.lastAction = `${pending.challengerId} accepted the Wild Draw Four and drew 4.`;
+      this.state.lastAction = `${this.nameOf(pending.challengerId)} accepted the Wild Draw Four and drew 4.`;
       this.state.turnIndex = this.stepIndex(this.state.turnIndex, 2);
       return { ok: true };
     }
@@ -314,7 +325,7 @@ export class UnoEngine implements GameEngine {
       const drawn = this.drawCards(4);
       this.state.hands[pending.playedById]!.push(...drawn);
       this.syncUnoDeclaration(pending.playedById);
-      this.state.lastAction = `${pending.challengerId} challenged successfully — ${pending.playedById} draws 4.`;
+      this.state.lastAction = `${this.nameOf(pending.challengerId)} challenged successfully — ${this.nameOf(pending.playedById)} draws 4.`;
       this.state.turnIndex = this.stepIndex(this.state.turnIndex, 1);
       return { ok: true };
     }
@@ -324,7 +335,7 @@ export class UnoEngine implements GameEngine {
     const drawn = this.drawCards(6);
     this.state.hands[pending.challengerId]!.push(...drawn);
     this.syncUnoDeclaration(pending.challengerId);
-    this.state.lastAction = `${pending.challengerId} challenged and lost — draws 6.`;
+    this.state.lastAction = `${this.nameOf(pending.challengerId)} challenged and lost — draws 6.`;
     this.state.turnIndex = this.stepIndex(this.state.turnIndex, 2);
     return { ok: true };
   }
@@ -339,7 +350,7 @@ export class UnoEngine implements GameEngine {
       this.state.hands[playerId].push(drawn[0]!);
       this.syncUnoDeclaration(playerId);
       this.state.drewLastTurn = true;
-      this.state.lastAction = `${playerId} drew a card`;
+      this.state.lastAction = `${this.nameOf(playerId)} drew a card`;
     }
 
     return { ok: true };
@@ -404,7 +415,7 @@ export class UnoEngine implements GameEngine {
         playedById: playerId,
         wasLegal: wasLegalWildFour,
       };
-      this.state.lastAction = `Wild Draw Four! Waiting for ${targetId} to accept or challenge.`;
+      this.state.lastAction = `Wild Draw Four! Waiting for ${this.nameOf(targetId)} to accept or challenge.`;
       return { ok: true };
     }
 
@@ -429,7 +440,7 @@ export class UnoEngine implements GameEngine {
 
     this.state.drewLastTurn = false;
     this.advanceTurn();
-    this.state.lastAction = `${playerId} passed`;
+    this.state.lastAction = `${this.nameOf(playerId)} passed`;
 
     return { ok: true };
   }

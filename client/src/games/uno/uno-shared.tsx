@@ -7,6 +7,13 @@ import Avatar from "../rummy/Avatar";
  * no game logic — every handler/value is passed down from {@link useUnoBoard}.
  * Centralising them here is what kills the per-card colour-class duplication the
  * original inline board carried.
+ *
+ * `DeckPanel`/`HandInfoPanel`/`HandPanel`/`UnoOpponentSeat` are no longer
+ * imported by either board shell as of the circular-table redesign
+ * (uno-table.tsx) — deliberately left in place rather than deleted, as a
+ * known-working rollback path for a redesign that couldn't be visually
+ * verified in a live browser during implementation. Remove once the new
+ * table layout has been confirmed against a real device/browser.
  */
 
 /** Colours offered by the Wild picker, hoisted so it is not re-allocated. */
@@ -482,13 +489,15 @@ export function HandInfoPanel({ handCount, selectedCard }: HandInfoPanelProps) {
   );
 }
 
-interface WildColorPickerProps {
+export interface WildColorPickerProps {
   selectedWildColor: UnoColor | null;
   onPick: (color: UnoColor) => void;
 }
 
-/** Colour swatches shown when a Wild card is selected. */
-function WildColorPicker({ selectedWildColor, onPick }: WildColorPickerProps) {
+/** Colour swatches shown when a Wild card is selected. Exported (not just
+ *  HandPanel-internal) so the circular-table hand fan (uno-table.tsx) can
+ *  reuse the exact same picker rather than duplicating it. */
+export function WildColorPicker({ selectedWildColor, onPick }: WildColorPickerProps) {
   return (
     <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded p-3 space-y-2">
       <div className="text-xs font-bold text-[#6E5E4D]">Choose Color</div>
