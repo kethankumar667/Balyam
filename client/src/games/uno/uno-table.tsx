@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import type { Transition } from "framer-motion";
 import { useSpring, animated } from "@react-spring/web";
 import type { UnoCard, UnoColor } from "@shared/types";
 import { UnoCardFace, UnoCardBack, WildColorPicker } from "./uno-shared";
@@ -211,30 +212,92 @@ export interface UnoTableCenterProps {
   topCard: UnoCard;
   currentColor: UnoColor | null;
   deckCount: number;
+  /** True while a hand card is being dragged (any card, anywhere) — shows
+   *  the "Drop to play" affordance. Mirrors Rummy's Open Pile drop zone:
+   *  a single "is a drag in flight" flag, not per-pixel hover tracking —
+   *  there's only one drop target here, so that's all that's needed. */
+  isDragging?: boolean;
+  /** True when it's this player's turn and they haven't drawn yet — ported
+   *  from Rummy's ClosedDeck: the pile itself is the primary way to draw
+   *  (glowing to invite a tap), the "D" keyboard shortcut is the secondary
+   *  one, matching Rummy's own draw-pile-tap-only design (no separate
+   *  "Draw Card" button exists there either). */
+  canDraw?: boolean;
+  onDraw?: () => void;
 }
 
-export function UnoTableCenter({ topCard, currentColor, deckCount }: UnoTableCenterProps) {
+export function UnoTableCenter({
+  topCard,
+  currentColor,
+  deckCount,
+  isDragging = false,
+  canDraw = false,
+  onDraw,
+}: UnoTableCenterProps) {
   const wildTop = topCard.rank === "Wild" || topCard.rank === "Wild+4";
   return (
     <div className="flex items-center gap-4">
-      <div className="relative w-14 h-20 sm:w-16 sm:h-24">
-        <UnoCardBack className="w-full h-full drop-shadow-lg" />
-        <span className="absolute -bottom-1.5 -right-1.5 min-w-[1.4rem] h-5 px-1 flex items-center justify-center rounded-full bg-[#6D4323] text-[#F7E8C4] text-[10px] font-bold ring-2 ring-[#FFF9F0]">
-          {deckCount}
-        </span>
+      <div className="flex flex-col items-center gap-1">
+        <button
+          onClick={onDraw}
+          disabled={!canDraw}
+          aria-label="Draw a card"
+          title={canDraw ? "Draw a card (D)" : "Draw pile"}
+          className={`relative w-14 h-20 sm:w-16 sm:h-24 rounded-lg transition ${
+            canDraw ? "cursor-pointer hover:-translate-y-1" : "cursor-default"
+          }`}
+        >
+          {canDraw && (
+            <div
+              className="absolute -inset-1.5 rounded-lg pointer-events-none animate-pulse"
+              style={{ boxShadow: "0 0 0 3px #E6A11E, 0 0 14px 2px rgba(230,161,30,0.6)" }}
+              aria-hidden
+            />
+          )}
+          <UnoCardBack className="w-full h-full drop-shadow-lg" />
+          <span className="absolute -bottom-1.5 -right-1.5 min-w-[1.4rem] h-5 px-1 flex items-center justify-center rounded-full bg-[#6D4323] text-[#F7E8C4] text-[10px] font-bold ring-2 ring-[#FFF9F0]">
+            {deckCount}
+          </span>
+        </button>
+        {canDraw && (
+          <div className="text-[9px] uppercase tracking-wide font-bold text-[#E6A11E] whitespace-nowrap">
+            Tap to draw
+          </div>
+        )}
       </div>
-      <div className="relative w-16 h-24 sm:w-20 sm:h-28">
-        <div className="absolute inset-0 -rotate-[10deg] opacity-50" aria-hidden>
-          <UnoCardBack className="w-full h-full" />
+      <div className="flex flex-col items-center gap-1.5">
+        {/* data-uno-drop tags this as the discard drop zone, resolved via
+            elementFromPoint from UnoHandFan's pointer-drag handlers — same
+            pattern as Rummy's data-rummy-drop. Always present (unlike
+            Rummy's conditional attribute) since there's only ever this one
+            drop target — no risk of a stray resolveUnoDropTarget hit
+            elsewhere, and it gives tooling/tests a stable selector at rest. */}
+        <div
+          className="relative w-16 h-24 sm:w-20 sm:h-28 rounded-lg transition-shadow"
+          data-uno-drop="discard"
+          style={{
+            boxShadow: isDragging
+              ? "0 0 0 3px #E6A11E, 0 0 16px 4px rgba(230,161,30,0.5)"
+              : undefined,
+          }}
+        >
+          <div className="absolute inset-0 -rotate-[10deg] opacity-50" aria-hidden>
+            <UnoCardBack className="w-full h-full" />
+          </div>
+          {/* `key={topCard.id}` forces a remount on every play, so the spring's
+              `from` -> `to` run fires fresh each time — a proper 3D flip
+              (face-down edge-on -> face-up) rather than the earlier
+              uno-card-land CSS keyframe's flat scale/rotate settle. */}
+          <UnoCardFlipFace key={topCard.id} card={topCard} />
+          {wildTop && currentColor && (
+            <div className="absolute -bottom-6 inset-x-0 text-center text-[10px] font-bold uppercase tracking-wide text-[#6E5E4D] whitespace-nowrap">
+              → {CARD_DISPLAY[currentColor]?.label}
+            </div>
+          )}
         </div>
-        {/* `key={topCard.id}` forces a remount on every play, so the spring's
-            `from` -> `to` run fires fresh each time — a proper 3D flip
-            (face-down edge-on -> face-up) rather than the earlier
-            uno-card-land CSS keyframe's flat scale/rotate settle. */}
-        <UnoCardFlipFace key={topCard.id} card={topCard} />
-        {wildTop && currentColor && (
-          <div className="absolute -bottom-6 inset-x-0 text-center text-[10px] font-bold uppercase tracking-wide text-[#6E5E4D] whitespace-nowrap">
-            → {CARD_DISPLAY[currentColor]?.label}
+        {isDragging && (
+          <div className="text-[9px] uppercase tracking-wide font-bold text-[#E6A11E] whitespace-nowrap">
+            Drop to play
           </div>
         )}
       </div>
@@ -291,6 +354,11 @@ export interface UnoPlayerChipProps {
    *  gap on a narrow viewport, so this is opt-in per shell rather than
    *  always-on. */
   compact?: boolean;
+  /** Undefined when unknown (e.g. no Player record resolved yet) — only
+   *  renders the dot once we actually know a connection state, same
+   *  optional-prop shape Rummy's own player-list connection dot assumes
+   *  implicitly by always having `Player.isConnected` in scope. */
+  isConnected?: boolean;
 }
 
 export function UnoPlayerChip({
@@ -301,6 +369,7 @@ export function UnoPlayerChip({
   canCatch = false,
   onCatch,
   compact = false,
+  isConnected,
 }: UnoPlayerChipProps) {
   const fanCount = Math.min(handSize, 6);
   const fanRow = fanDir === "left" ? "flex-row-reverse" : "flex-row";
@@ -325,6 +394,14 @@ export function UnoPlayerChip({
       )}
       <div className="relative">
         <Avatar name={name} size={compact ? 38 : 52} />
+        {isConnected === false && (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-[#FFF9F0]"
+            style={{ background: "#F59E0B" }}
+            title="Reconnecting…"
+            aria-label="Reconnecting"
+          />
+        )}
         {isTurn && (
           <>
             <div
@@ -374,7 +451,180 @@ export function UnoPlayerChip({
 // grid for the circular-table layout; HandPanel itself is untouched and
 // still used wherever the panel-based layout survives, e.g. GameOverPanel
 // context or a future compact view).
+//
+// Drag-to-play: ported from Rummy's Pointer Events drag system
+// (RummyBoardMobile.tsx's useCardPointerDrag/resolveDropTarget) — same
+// gesture grammar (6px move threshold distinguishes a tap from a drag,
+// setPointerCapture so the gesture tracks even if the finger leaves the
+// card, elementFromPoint + a data-uno-drop attribute resolve the drop
+// target), trimmed to UNO's simpler single-card/single-target case (no
+// multi-select, no reorder lanes — UNO always plays exactly one card onto
+// exactly one pile). Deliberately NOT extracted into a shared hook: this
+// version is meaningfully smaller than Rummy's (no selection set, no
+// per-target hover), and the two games' drop-target vocabularies don't
+// overlap — duplicating ~30 lines beat forcing a shared abstraction across
+// two genuinely different gesture grammars.
 // ---------------------------------------------------------------------
+
+function resolveUnoDropTarget(x: number, y: number): string | null {
+  let el = document.elementFromPoint(x, y) as Element | null;
+  while (el) {
+    const dt = el.getAttribute("data-uno-drop");
+    if (dt) return dt;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+function useUnoCardDrag(opts: {
+  cardId: string;
+  enabled: boolean;
+  onDragStateChange: (dragging: boolean) => void;
+  onDrop: (cardId: string, target: string | null) => void;
+  onTap: (cardId: string) => void;
+}) {
+  const stRef = useRef<{ pointerId: number; x0: number; y0: number; dragging: boolean } | null>(
+    null
+  );
+  return {
+    onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+      if (!opts.enabled) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      stRef.current = { pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, dragging: false };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+      const st = stRef.current;
+      if (!st || st.pointerId !== e.pointerId || st.dragging) return;
+      const dist = Math.hypot(e.clientX - st.x0, e.clientY - st.y0);
+      if (dist < 6) return;
+      st.dragging = true;
+      opts.onDragStateChange(true);
+    },
+    onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+      const st = stRef.current;
+      stRef.current = null;
+      if (!st || st.pointerId !== e.pointerId) return;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* element may already have lost capture */
+      }
+      if (st.dragging) {
+        opts.onDragStateChange(false);
+        opts.onDrop(opts.cardId, resolveUnoDropTarget(e.clientX, e.clientY));
+      } else {
+        opts.onTap(opts.cardId);
+      }
+    },
+    onPointerCancel(e: React.PointerEvent<HTMLDivElement>) {
+      const st = stRef.current;
+      stRef.current = null;
+      if (!st || st.pointerId !== e.pointerId) return;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      if (st.dragging) opts.onDragStateChange(false);
+    },
+  };
+}
+
+/** One hand card, wrapping useUnoCardDrag. Pulled out of UnoHandFan's map()
+ *  because a custom hook (useUnoCardDrag calls useRef) can't be called
+ *  inside a loop/callback — Rules of Hooks — it needs its own component's
+ *  top level, same reason Rummy's DraggableHandCard exists as a component
+ *  rather than inline JSX inside RummyBoardMobile's card map.
+ *
+ *  Rendered as a motion.div, not a motion.button: the outer element owns
+ *  both the pointer-drag gesture AND keyboard access (role="button"
+ *  tabIndex + Enter/Space → onTap) so Tab+Enter card selection — confirmed
+ *  working pre-drag and worth not regressing — keeps working for players
+ *  who aren't dragging. */
+function UnoDraggableHandCard({
+  card,
+  isSelected,
+  isDisabled,
+  isDragged,
+  canDrag,
+  rotate,
+  lift,
+  marginLeft,
+  zIndex,
+  springTransition,
+  onTap,
+  onDragStart,
+  onDragStop,
+  onDrop,
+}: {
+  card: UnoCard;
+  isSelected: boolean;
+  isDisabled: boolean;
+  isDragged: boolean;
+  canDrag: boolean;
+  rotate: number;
+  lift: number;
+  marginLeft: number;
+  zIndex: number;
+  springTransition: Transition;
+  onTap: () => void;
+  onDragStart: () => void;
+  onDragStop: () => void;
+  onDrop: (target: string | null) => void;
+}) {
+  const dragHandlers = useUnoCardDrag({
+    cardId: card.id,
+    enabled: canDrag,
+    onDragStateChange: (dragging) => (dragging ? onDragStart() : onDragStop()),
+    onDrop: (_id, target) => onDrop(target),
+    onTap,
+  });
+
+  return (
+    <motion.div
+      {...dragHandlers}
+      layout
+      role="button"
+      tabIndex={isDisabled ? -1 : 0}
+      aria-label={getCardLabel(card)}
+      aria-disabled={isDisabled}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onTap();
+        }
+      }}
+      initial={{ opacity: 0, scale: 0.7, y: 24 }}
+      animate={{ opacity: isDragged ? 0.35 : 1, scale: 1, rotate, y: lift }}
+      exit={{ opacity: 0, scale: 0.6, y: -36, transition: { duration: 0.16 } }}
+      transition={springTransition}
+      className={`relative w-16 h-24 sm:w-[4.5rem] sm:h-[6.5rem] rounded-lg ${
+        isDisabled
+          ? "opacity-45 cursor-not-allowed"
+          : canDrag
+            ? "cursor-grab hover:z-30"
+            : "cursor-pointer hover:z-30"
+      }`}
+      style={{
+        marginLeft: `${marginLeft}rem`,
+        zIndex: isDragged ? 60 : zIndex,
+        touchAction: canDrag ? "none" : undefined,
+      }}
+    >
+      <div
+        className="w-full h-full rounded-lg"
+        style={{
+          boxShadow: isSelected
+            ? "0 0 0 3px #E6A11E, 0 10px 20px rgba(0,0,0,0.35)"
+            : "0 3px 8px rgba(0,0,0,0.25)",
+        }}
+      >
+        <UnoCardFace card={card} className="w-full h-full" />
+      </div>
+    </motion.div>
+  );
+}
 
 export interface UnoHandFanProps {
   sortedHand: UnoCard[];
@@ -386,6 +636,10 @@ export interface UnoHandFanProps {
   needsColorChoice: boolean;
   selectedWildColor: UnoColor | null;
   onPickColor: (color: UnoColor) => void;
+  /** Drop-to-play — dragging a card onto the discard pile plays it directly.
+   *  Optional so any future caller of UnoHandFan can opt out. */
+  onDropOnDiscard?: (cardId: string) => void;
+  onDragStateChange?: (dragging: boolean) => void;
 }
 
 export function UnoHandFan({
@@ -398,6 +652,8 @@ export function UnoHandFan({
   needsColorChoice,
   selectedWildColor,
   onPickColor,
+  onDropOnDiscard,
+  onDragStateChange,
 }: UnoHandFanProps) {
   const n = sortedHand.length;
   // Framer Motion's own reduced-motion signal, not the global CSS rule
@@ -406,6 +662,9 @@ export function UnoHandFan({
   // so the blanket rule doesn't reliably reach them. Same hook IllustrationSlot
   // already uses.
   const prefersReducedMotion = useReducedMotion();
+  // Which card (if any) is currently mid-drag — drives the fade + raised
+  // z-index while lifted, same visual cue Rummy uses (opacity ~0.35).
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
 
   if (n === 0) {
     return <div className="text-center py-4 font-bold text-[#6E5E4D]">You win! 🎉</div>;
@@ -437,35 +696,31 @@ export function UnoHandFan({
             const rotate = offset * spreadDeg;
             const lift = isSelected ? -20 : Math.abs(offset) * Math.min(1.5, 10 / n);
             return (
-              <motion.button
+              <UnoDraggableHandCard
                 key={card.id}
-                layout
-                onClick={() => (myTurn ? onSelectCard(card.id) : undefined)}
-                disabled={isDisabled}
-                aria-label={getCardLabel(card)}
-                initial={{ opacity: 0, scale: 0.7, y: 24 }}
-                animate={{ opacity: 1, scale: 1, rotate, y: lift }}
-                exit={{ opacity: 0, scale: 0.6, y: -36, transition: { duration: 0.16 } }}
-                transition={springTransition}
-                className={`relative w-16 h-24 sm:w-[4.5rem] sm:h-[6.5rem] rounded-lg ${
-                  isDisabled ? "opacity-45 cursor-not-allowed" : "cursor-pointer hover:z-30"
-                }`}
-                style={{
-                  marginLeft: i === 0 ? 0 : `-${overlapRem}rem`,
-                  zIndex: isSelected ? 50 : i,
+                card={card}
+                isSelected={isSelected}
+                isDisabled={isDisabled}
+                isDragged={draggedCardId === card.id}
+                canDrag={isValid && myTurn && phase === "playing" && !!onDropOnDiscard}
+                rotate={rotate}
+                lift={lift}
+                marginLeft={i === 0 ? 0 : -overlapRem}
+                zIndex={isSelected ? 50 : i}
+                springTransition={springTransition}
+                onTap={() => (myTurn ? onSelectCard(card.id) : undefined)}
+                onDragStart={() => {
+                  setDraggedCardId(card.id);
+                  onDragStateChange?.(true);
                 }}
-              >
-                <div
-                  className="w-full h-full rounded-lg"
-                  style={{
-                    boxShadow: isSelected
-                      ? "0 0 0 3px #E6A11E, 0 10px 20px rgba(0,0,0,0.35)"
-                      : "0 3px 8px rgba(0,0,0,0.25)",
-                  }}
-                >
-                  <UnoCardFace card={card} className="w-full h-full" />
-                </div>
-              </motion.button>
+                onDragStop={() => {
+                  setDraggedCardId(null);
+                  onDragStateChange?.(false);
+                }}
+                onDrop={(target) => {
+                  if (target === "discard") onDropOnDiscard?.(card.id);
+                }}
+              />
             );
           })}
         </AnimatePresence>

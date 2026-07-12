@@ -87,6 +87,10 @@ export interface UnoBoardModel {
   setSelectedCard: (cardId: string | null) => void;
   setWildColor: (color: UnoColor | null) => void;
   playCard: () => void;
+  /** Drag-and-drop entry point — see the implementation for the Wild-color caveat. */
+  dropCardOnDiscard: (cardId: string) => void;
+  /** Wild color picker's tap handler — picks the color AND submits immediately. */
+  pickColorAndPlay: (color: UnoColor) => void;
   drawCard: () => void;
   passTurn: () => void;
   declareUno: () => void;
@@ -211,28 +215,59 @@ export function useUnoBoard({
   // Sorted hand for display
   const sortedHand = useMemo(() => sortHand(state.myHand), [state.myHand]);
 
-  // Send move
-  function playCard() {
-    if (!canSubmitPlay || !selectedCard) return;
-
+  // Send move — shared by the tap-select-then-submit flow (playCard) and the
+  // drag-to-discard flow (dropCardOnDiscard), which resolves its own card
+  // and color directly rather than going through selectedCard/selectedWildColor.
+  function submitPlay(card: UnoCard, color: UnoColor | null) {
     playSound(
-      selectedCard.rank === "Wild" || selectedCard.rank === "Wild+4"
-        ? AUDIO.UNO_WILD
-        : AUDIO.UNO_PLAY
+      card.rank === "Wild" || card.rank === "Wild+4" ? AUDIO.UNO_WILD : AUDIO.UNO_PLAY
     );
-
     setIsSubmitting(true);
     getSocket().emit("game:move", {
       type: "play",
       data: {
-        cardId: selectedCard.id,
-        color: selectedWildColor || selectedCard.color,
+        cardId: card.id,
+        color: color || card.color,
       },
       playerId: selfId ?? undefined,
     });
-
     setSelectedCard(null);
     setWildColor(null);
+  }
+
+  function playCard() {
+    if (!canSubmitPlay || !selectedCard) return;
+    submitPlay(selectedCard, selectedWildColor);
+  }
+
+  /** Wild color picker's entry point — picking a color now submits
+   *  immediately instead of requiring a separate "Play Card" click
+   *  afterward. Takes the color as an argument rather than reading
+   *  selectedWildColor from state, same stale-closure reasoning as
+   *  dropCardOnDiscard: setWildColor(color) and reading it back in the same
+   *  tick would see the pre-update value. selectedCard itself is safe to
+   *  read directly — it was already set by the tap/drag that opened this
+   *  picker, in an earlier render. */
+  function pickColorAndPlay(color: UnoColor) {
+    if (!selectedCard || isSubmitting) return;
+    submitPlay(selectedCard, color);
+  }
+
+  /** Drag-and-drop entry point — dropping a hand card directly onto the
+   *  discard pile plays it in one gesture, mirroring Rummy's drag-to-Open-Pile
+   *  interaction, skipping the tap-select-then-tap-Play-Card flow. Wild cards
+   *  still need an explicit colour, so a dropped Wild only selects itself
+   *  (opening the existing colour picker) rather than submitting immediately —
+   *  the user still taps a colour and Play Card from there, unchanged. */
+  function dropCardOnDiscard(cardId: string) {
+    if (!myTurn || isSubmitting) return;
+    const card = state.myHand.find((c) => c.id === cardId);
+    if (!card || !validMoveIds.has(cardId)) return;
+    if (requiresColorChoice(card)) {
+      setSelectedCard(cardId);
+      return;
+    }
+    submitPlay(card, null);
   }
 
   function drawCard() {
@@ -255,6 +290,23 @@ export function useUnoBoard({
     });
     setDrewThisTurn(false);
   }
+
+  // Auto-pass — once a player has drawn and STILL has no legal move
+  // (including the card they just drew), Pass is the only thing they can
+  // legally do, so there's no real decision being skipped by doing it for
+  // them. This is deliberately narrower than "auto-pass whenever you could
+  // pass": if the draw produced a playable card, the player still gets a
+  // real choice (play it now, or hold it and pass manually) — the effect
+  // only fires when validMoveIds is empty, i.e. passing is the only option.
+  // The short delay lets the player actually see what they drew before the
+  // turn moves on.
+  useEffect(() => {
+    if (!myTurn || !drewThisTurn || isSubmitting) return;
+    if (validMoveIds.size > 0) return;
+    const t = window.setTimeout(() => passTurn(), 900);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myTurn, drewThisTurn, isSubmitting, validMoveIds]);
 
   // Declare / catch / challenge — none of these are gated by "myTurn": the
   // server (UnoEngine.applyMove) accepts them from any seated player at any
@@ -350,6 +402,8 @@ export function useUnoBoard({
     setSelectedCard,
     setWildColor,
     playCard,
+    dropCardOnDiscard,
+    pickColorAndPlay,
     drawCard,
     passTurn,
     declareUno,

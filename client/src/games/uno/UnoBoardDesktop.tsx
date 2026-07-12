@@ -1,6 +1,14 @@
+import { useEffect, useState } from "react";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useUnoBoard, type UnoBoardProps } from "./useUnoBoard";
 import { ActionBar } from "./uno-shared";
+import { useAudio } from "../../hooks/useAudio";
+import {
+  enterFullscreen,
+  exitFullscreen,
+  isFullscreenActive,
+  onFullscreenChange,
+} from "../../lib/fullscreen";
 import {
   UnoTableMat,
   UnoDirectionArc,
@@ -38,10 +46,57 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   const tut = useTutorialGate(UNO_TUTORIAL.key);
   const dealStage = useUnoDealGate(roomCode);
   const flourish = useUnoEventFlourish(state.lastAction);
+  // Drag-to-play: true while a hand card is mid-drag, so the discard pile
+  // can show its "Drop to play" affordance. See uno-table.tsx's UnoHandFan.
+  const [isDraggingCard, setIsDraggingCard] = useState(false);
 
   const opponents = state.playerOrder.filter((id) => id !== selfId);
   const selfDeclared = selfId != null && state.unoDeclaredBy.includes(selfId);
   const selfName = selfId ? m.nameOf(selfId) : "You";
+
+  /* ─── Sound + fullscreen header controls — ported from Rummy's own
+     header buttons. Sound is the app-wide AudioManager mute (UNO has no
+     Rummy-style per-game synth layer to toggle separately, just the
+     shared AUDIO.* asset player useUnoBoard.ts already calls). ─── */
+  const { settings: audioSettings, toggleMute } = useAudio();
+  const [isFs, setIsFs] = useState<boolean>(() => isFullscreenActive());
+  useEffect(() => onFullscreenChange(() => setIsFs(isFullscreenActive())), []);
+  function toggleFullscreen() {
+    if (isFs) void exitFullscreen();
+    else void enterFullscreen("any");
+  }
+
+  /* ─── Keyboard shortcuts — desktop only, matching Rummy's own scoping
+     (RummyBoardMobile.tsx has no keydown handler; touch devices rarely
+     have a physical keyboard). D draw, P pass, U declare UNO, Escape
+     deselects/cancels the Wild colour picker. There's no "confirm play"
+     shortcut because there's nothing left to confirm — tapping/dragging a
+     card (or Tab+Enter on it, see uno-table.tsx) plays it directly. ─── */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      switch (e.key.toLowerCase()) {
+        case "d":
+          if (m.canDraw) { e.preventDefault(); m.drawCard(); }
+          break;
+        case "p":
+          if (m.canPassTurn) { e.preventDefault(); m.passTurn(); }
+          break;
+        case "u":
+          if (m.canDeclareUno) { e.preventDefault(); m.declareUno(); }
+          break;
+        case "escape":
+          e.preventDefault();
+          m.setSelectedCard(null);
+          break;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.canDraw, m.canPassTurn, m.canDeclareUno]);
 
   return (
     <div
@@ -81,6 +136,22 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
       </div>
       <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
         {state.turnDeadline && <UnoTimerBadge deadline={state.turnDeadline} />}
+        <button
+          onClick={toggleMute}
+          className="rounded-md px-2.5 py-1.5 text-sm bg-[#FFF9F0] shadow-md hover:bg-[#F0E1D0]"
+          title="Sound"
+          aria-label={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
+        >
+          {audioSettings.isMuted ? "🔇" : "🔊"}
+        </button>
+        <button
+          onClick={toggleFullscreen}
+          className="rounded-md px-2.5 py-1.5 text-sm bg-[#FFF9F0] shadow-md hover:bg-[#F0E1D0]"
+          title="Fullscreen"
+          aria-label={isFs ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          ⛶
+        </button>
         <TutorialButton onClick={() => tut.setOpen(true)} />
       </div>
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-baseline gap-2 bg-[#FFF9F0]/90 border border-[#E8D8BE] px-3 py-1 rounded-md shadow-sm">
@@ -112,6 +183,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                     fanDir={pos.fanDir}
                     canCatch={m.catchableOpponents.includes(id)}
                     onCatch={() => m.catchUno(id)}
+                    isConnected={players.find((p) => p.id === id)?.isConnected}
                   />
                 </div>
               );
@@ -122,6 +194,9 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                 topCard={state.topCard}
                 currentColor={state.currentColor}
                 deckCount={state.deckCount}
+                isDragging={isDraggingCard}
+                canDraw={m.canDraw}
+                onDraw={m.drawCard}
               />
             </div>
 
@@ -161,35 +236,44 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         </div>
       </div>
 
-      {/* Bottom: hand fan + action row */}
+      {/* Bottom: UNO declare button (centred, above the hand — impossible to
+          miss right where the player is already looking at their shrinking
+          hand) + hand fan + Pass row. Previously wedged into a corner beside
+          the action row, which is exactly the "not good UX" complaint this
+          reposition fixes. */}
       <div className="flex-shrink-0 px-4 pb-4">
+        <div className="flex justify-center">
+          <UnoCallButton visible={m.canDeclareUno} onDeclare={m.declareUno} />
+        </div>
+
         <UnoHandFan
           sortedHand={m.sortedHand}
           validMoveIds={m.validMoveIds}
           selectedCardId={m.selectedCardId}
           myTurn={m.myTurn}
           phase={state.phase}
-          onSelectCard={m.setSelectedCard}
+          onSelectCard={m.dropCardOnDiscard}
           needsColorChoice={m.needsColorChoice}
           selectedWildColor={m.selectedWildColor}
-          onPickColor={m.setWildColor}
+          onPickColor={m.pickColorAndPlay}
+          onDropOnDiscard={m.dropCardOnDiscard}
+          onDragStateChange={setIsDraggingCard}
         />
 
-        <div className="flex items-end justify-between gap-3 mt-2">
+        <div className="flex items-center justify-between gap-3 mt-2">
           <div className="flex-1 max-w-md">
             {m.myTurn && state.phase === "playing" && (
               <ActionBar
-                playCard={m.playCard}
-                drawCard={m.drawCard}
                 passTurn={m.passTurn}
-                canSubmitPlay={m.canSubmitPlay}
-                canDraw={m.canDraw}
                 canPassTurn={m.canPassTurn}
                 drewThisTurn={m.drewThisTurn}
+                showKbdHint
               />
             )}
           </div>
-          <UnoCallButton visible={m.canDeclareUno} onDeclare={m.declareUno} />
+          <div className="hidden lg:block text-[10px] font-mono text-[#8B7355]/80 italic whitespace-nowrap">
+            D draw · P pass · U declare · Esc cancel
+          </div>
         </div>
       </div>
 
