@@ -30,6 +30,10 @@ export interface UnoBoardProps {
   roomCode: string;
   roomPhase: string;
   onLeave: () => void;
+  /** Fired once the player dismisses UnoResultModal — lets Room.tsx run its
+   *  generic post-match flow (GameOverScreen) afterward, same contract as
+   *  RummyBoard/RpsBoard/HandCricketBoard's own scorecards. */
+  onScorecardClose?: () => void;
 }
 
 /**
@@ -76,6 +80,10 @@ export interface UnoBoardModel {
   /** True when the caller is the player who must accept or challenge right now. */
   isChallengeTarget: boolean;
 
+  /** True once the player has dismissed UnoResultModal for this round. */
+  scorecardDismissed: boolean;
+  dismissScorecard: () => void;
+
   setSelectedCard: (cardId: string | null) => void;
   setWildColor: (color: UnoColor | null) => void;
   playCard: () => void;
@@ -100,6 +108,7 @@ export function useUnoBoard({
   roomCode,
   roomPhase,
   onLeave,
+  onScorecardClose,
 }: UnoBoardProps): UnoBoardModel {
   const myTurn = state.turnPlayerId === selfId && state.phase === "playing";
 
@@ -121,6 +130,18 @@ export function useUnoBoard({
   // Game loop state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [drewThisTurn, setDrewThisTurn] = useState(false);
+  const [scorecardDismissed, setScorecardDismissed] = useState(false);
+
+  // A rematch starts a fresh round (`phase` flips back to "playing") — reset
+  // so UnoResultModal is ready to show again next time the round ends.
+  useEffect(() => {
+    if (state.phase === "playing") setScorecardDismissed(false);
+  }, [state.phase]);
+
+  function dismissScorecard() {
+    setScorecardDismissed(true);
+    onScorecardClose?.();
+  }
 
   // Reset UI state on new turn
   useEffect(() => {
@@ -130,11 +151,18 @@ export function useUnoBoard({
     }
   }, [state.turnPlayerId, myTurn, resetUIState]);
 
-  // Reset UI on game over
+  // Reset UI on game over. Only the winner gets a sound — Volume 8 §25
+  // ("defeat should remain respectful... avoid negative effects") argues
+  // against a "you lost" sting, so everyone else stays silent here rather
+  // than getting a defeat-flavoured cue.
   useEffect(() => {
     if (state.phase === "finished") {
       resetUIState();
+      if (state.winnerId != null && state.winnerId === selfId) {
+        playSound(AUDIO.UNO_WIN);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase, resetUIState]);
 
   // The real double-submit guard. Each emit (play/draw/pass) sets `isSubmitting`;
@@ -317,6 +345,8 @@ export function useUnoBoard({
     catchableOpponents,
     pendingChallenge,
     isChallengeTarget,
+    scorecardDismissed,
+    dismissScorecard,
     setSelectedCard,
     setWildColor,
     playCard,

@@ -32,12 +32,22 @@ export function registerSocketHandlers(
   });
 
   socket.on("room:join", (payload, ack) => {
-    const result = rooms.joinRoom(socket.id, payload.name, payload.code, payload.playerId);
-    if (!result.ok) {
-      ack({ ok: false, error: result.error });
-      return;
+    try {
+      const result = rooms.joinRoom(socket.id, payload.name, payload.code, payload.playerId);
+      if (!result.ok) {
+        ack({ ok: false, error: result.error });
+        return;
+      }
+      ack({ ok: true, playerId: result.playerId });
+    } catch (err) {
+      // Without this, a thrown error here (e.g. a stale engine reference on
+      // a room left mid-rematch-failure) never calls `ack` — the client has
+      // no timeout of its own on this call, so it spins on "Connecting to
+      // room" forever with no error and no escape. `room:create` already
+      // guards the same way; this brings `room:join` in line with it.
+      const error = err instanceof Error ? err.message : "Failed to join room";
+      ack({ ok: false, error });
     }
-    ack({ ok: true, playerId: result.playerId });
   });
 
   socket.on("room:leave", () => {

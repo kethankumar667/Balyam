@@ -663,6 +663,15 @@ export class RoomManager {
 
     const result = room.engine.applyMove({ playerId: effectivePlayerId, type, data });
     if (!result.ok) {
+      // Structured-logging gap closed for PLAN_REVIEW_REPORT.md §6.13 (Phase
+      // 5) — a rejected move was previously invisible outside the client's
+      // own toast. Generic (every game shares this one applyMove path, not
+      // just UNO), following the existing `[tag] message` console.log
+      // convention (server/src/index.ts) rather than introducing a logging
+      // library this codebase doesn't otherwise use.
+      console.log(
+        `[move] rejected room=${room.code} game=${room.game} type=${type} player=${effectivePlayerId} error=${result.error ?? "Invalid move"}`
+      );
       this.io.sockets.sockets.get(socketId)?.emit("game:error", result.error ?? "Invalid move");
       return;
     }
@@ -673,6 +682,12 @@ export class RoomManager {
       this.clearTurnTimer(room);
       this.clearMemoryMatchRevealTimer(room);
       this.broadcastRoomState(room);
+      // Cheapest possible version of UNO_GAME_PLAN.md §3's "measurable now"
+      // match-completion metric — a queryable log line, not a real
+      // analytics pipeline (still correctly deferred, needs accounts/
+      // persistence). Generic across every game for the same reason as the
+      // move-rejection log above.
+      console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
     } else {
       // Memory Match: if the engine entered the REVEAL phase (a
       // non-matching pair is face-up), schedule the auto-flip-back here

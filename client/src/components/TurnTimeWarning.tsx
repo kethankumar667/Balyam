@@ -18,9 +18,16 @@ import { useHaptics } from "../hooks/useHaptics";
 export function TurnTimeWarning({
   deadline,
   active,
+  topOffsetRem = 0.75,
 }: {
   deadline: number | null | undefined;
   active: boolean;
+  /** Distance from the viewport top for the countdown chip, in rem. Defaults
+   *  to the original 0.75rem every existing caller (Rummy, Word Building,
+   *  Dots & Boxes) relies on — only pass this when a board's own header
+   *  already occupies that exact top-center slot (see UNO's boards, which
+   *  centre their own room-code pill there and would otherwise collide). */
+  topOffsetRem?: number;
 }) {
   const secondsLeft = useTurnSecondsLeft(deadline);
   const haptics = useHaptics();
@@ -57,7 +64,7 @@ export function TurnTimeWarning({
       <div
         className="fixed z-50 pointer-events-none"
         style={{
-          top: "max(0.75rem, env(safe-area-inset-top, 0))",
+          top: `max(${topOffsetRem}rem, env(safe-area-inset-top, 0))`,
           left: "50%",
           transform: "translateX(-50%)",
         }}

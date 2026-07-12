@@ -236,10 +236,10 @@ This already matches Volume 3 §4's player lifecycle shape and Volume 2 §3's co
 - **Current:** 5 slides (match the pile, action cards, wild cards, stuck→draw, empty hand→win), gated by a `localStorage`-style `uno.tutorial.completed.v1` key, opened via a header button on both shells.
 - **Gap:** no slide mentions UNO declaration or the Wild Draw Four challenge — **must add slides once Phase B ships those mechanics**, otherwise the tutorial actively under-informs players about the game's most dramatic moments.
 
-### 7.9 Results screen — 🔴 the biggest UX gap
-- **Current:** UNO is **not** in `GAMES_WITH_OWN_SCORECARD` (`Room.tsx`) — Rummy/RPS/Hand Cricket have bespoke result modals, UNO falls through to the generic 90-second scorecard + the in-board `GameOverPanel` banner (`"🎉 You won! 🎉"` / `"{name} wins!"` + a score line that, per §4.9, always reads 0 today).
-- **Required per Volume 3 §19 / Volume 8 §24:** winner highlight → card-clear flourish → confetti → statistics (turns played, cards played, Wild cards used, UNO calls) → rematch CTA. None of this is UNO-flavored today.
-- **Recommendation:** once scoring (Phase D) lands, give UNO its own result modal (own file, e.g. `UnoResultModal.tsx`) following the Rummy precedent (`RummyResultModal.tsx`) rather than continuing to rely on the generic scorecard — this is the single highest-leverage "feels premium" investment left. → Phase D/E.
+### 7.9 Results screen — ✅ shipped (Phase 4)
+- **Was:** UNO wasn't in `GAMES_WITH_OWN_SCORECARD` (`Room.tsx`) — Rummy/RPS/Hand Cricket had bespoke result modals, UNO fell through to the generic 90-second scorecard + the in-board `GameOverPanel` banner, whose score line always read 0 before Phase 3's scoring landed.
+- **Now:** `UnoResultModal.tsx` — winner banner, real per-player scores, `RematchPanel`, Continue/Leave — wired into `Room.tsx` (`"uno"` added to `GAMES_WITH_OWN_SCORECARD`) via the identical `onScorecardClose` contract `RummyResultModal` uses. `GameOverPanel`'s old inline banner is no longer rendered by either board shell (left in place in `uno-shared.tsx` as part of the redesign's rollback-safety net, see §11).
+- **Not fully matching Volume 3 §19 / Volume 8 §24 yet:** no confetti, no per-match stats (turns played, Wild cards used, UNO calls) — the volumes' full "celebration sequence" is still aspirational polish beyond what shipped. What shipped is the structural fix (real modal, real scores) that was the actual blocker; confetti/stats are a cheap follow-up once someone's watched this render for real.
 
 ### 7.10 Reconnect / disconnect states
 - Generic Bhalyam `awayUntil` grace-period banner applies uniformly; no UNO-specific work needed unless product wants UNO to visually differentiate (not recommended — consistency > novelty here, per Volume 3 §3.4).
@@ -413,7 +413,7 @@ Documenting what exists (accurate today) plus what Phase B/C/D need to add.
 | `WildDrawFourChallengePrompt` | ✅ shipped | `uno-challenge.tsx` — full-screen modal shown only to the targeted player; Accept/Challenge choice, never reveals legality |
 | `UnoActionToast` | ✅ shipped | Surfaces `state.lastAction` as a transient banner — `client/src/games/uno/uno-action-toast.tsx`. Also now covers "waiting for X to decide" during a pending challenge, for every player who isn't the target — no separate banner needed |
 | ~~`UnoHouseRuleOptions`~~ (not built — see §11's scope-correction note) | deferred to Phase C | No in-lobby options-panel pattern exists for any Bhalyam game; a `turnTimerSeconds` selector was added to `GameRoomSheet.tsx` instead (the actual, established per-game-options location), and the non-functional house-rule toggles are correctly withheld until Phase C's engine work exists to back them |
-| `UnoResultModal` | D/E | Dedicated results screen replacing the generic scorecard for UNO — scoring itself (§4.9) now ships real numbers even without this component; the modal is the remaining "premium feel" gap |
+| `UnoResultModal` | ✅ shipped | `UnoResultModal.tsx` — dedicated results screen replacing the generic scorecard for UNO, showing the real scores §4.9 now computes |
 
 ---
 
@@ -597,39 +597,27 @@ See §15 — `applyAutoMove()` already exists but is a single fixed heuristic, n
 |---|---|---|
 | Shuffle | 🟢 built (`uno-deck-shuffle`/`-alt` keyframes, `index.css:1029-1053`) | Two card backs riffle opposite directions, 500ms loop |
 | Deal | 🟢 built (`uno-deal-fly`, `index.css:1058-1068`) | Up to 56-card staggered fan-out, 380ms per card + stagger window |
-| Card hover/select | 🟢 built (`Card` component: lift, ring, shadow via Tailwind transitions) | Matches Volume 8 §11-12 |
-| Card play | 🟡 partial | Selection→submit exists; no explicit "card travels from hand to discard pile" flight animation — currently an instant state swap on the next server echo. Volume 8 §13 wants a travel sequence. |
-| Draw | 🟡 partial | No "card leaves deck, travels to hand" animation — instant append on state update. Volume 8 §14. |
-| Turn change | 🟢 built | Gold glow + "▸ Playing" pill transitions via CSS `transition-all duration-300` |
-| UNO moment | 🔴 doesn't exist | Needs the full Phase B feature first (§14.4) before it can be animated per Volume 8 §19 |
-| Wild card choice | 🟢 mostly built | Picker appears/confirms instantly; Volume 8 §20's "background dims, chosen color fills table" flourish not present — nice-to-have polish |
-| Draw Four drama | 🔴 doesn't exist | Depends on Phase B challenge flow existing first |
-| Reverse direction | 🟡 minimal | Direction label text updates (`"Clockwise"`/`"Counter-clockwise"`); no visual arrow-rotation per Volume 8 §22 |
-| Skip | 🟡 minimal | `lastAction` text produced but unsurfaced (§8.4); no skipped-player visual highlight per Volume 8 §23 |
-| Victory | 🟡 minimal | `GameOverPanel` banner only; no confetti/card-clear sequence — folds into the §7.9 results-screen gap |
-| Defeat | 🟡 minimal | Same banner, respectful tone already correct (no negative effects), just visually flat |
+| Card hover/select | 🟢 built (`Card`/`UnoHandFan`: lift, ring, shadow) | Matches Volume 8 §11-12 |
+| Card play | 🟢 shipped (Phase 4, `uno-card-land` keyframe) | Discard-pile top card does a scale/rotate "settle" on every play, retriggered via `key={topCard.id}` remount. **Not** true FLIP-style hand-to-pile flight (would need cross-component DOM position measurement) — a deliberate, cheaper stand-in, not the full Volume 8 §13 travel sequence. |
+| Draw | 🔴 still not built | No "card leaves deck, travels to hand" animation — instant append on state update. Volume 8 §14. Lower priority than the discard-side cue since the drawn card isn't publicly visible anyway. |
+| Turn change | 🟢 built | Gold glow + "▸ Playing"/"▸ Your Turn" pill, now also on the table-redesign's `UnoPlayerChip`/self-seat avatar |
+| UNO moment | 🟢 shipped (Phase 3) | `UnoCallButton` (pulsing circular button) + `UnoDeclareBubble` (speech-bubble pop on declare) + seat-level "Catch! +2" affordance |
+| Wild card choice | 🟢 mostly built | Picker appears/confirms instantly; Volume 8 §20's "background dims, chosen color fills table" flourish still not present — nice-to-have polish |
+| Draw Four drama | 🟢 shipped (Phase 3) | `WildDrawFourChallengePrompt` full-screen modal for the targeted player |
+| Reverse direction | 🟢 shipped (Phase 4) | `UnoDirectionArc` (curved SVG arrows on the table mat, flips with `state.direction`) plus a `uno-flourish-pulse` glow triggered by `useUnoEventFlourish` watching `lastAction` for "Reverse!" |
+| Skip | 🟢 shipped (Phase 4) | Same `useUnoEventFlourish`/`uno-flourish-pulse` mechanism, triggered on "Skip!" — a shared table-wide pulse rather than a per-seat highlight, since `lastAction`'s text doesn't name who was skipped |
+| Victory | 🟢 shipped (Phase 4) | `UnoResultModal` (§7.9) + `UNO_WIN` sound for the winner. No confetti/card-clear sequence yet — the volumes' full celebration beat remains aspirational. |
+| Defeat | 🟢 correct by design | No sound, no negative visual — `UnoResultModal` shows the same modal to everyone, respectful tone per Volume 8 §25 |
 
-**Priority order for animation work:** (1) surface `lastAction` as toasts — cheapest, highest information value; (2) UNO declaration sequence — can't be built before Phase B mechanics exist, but should be co-designed with them; (3) card play/draw travel animations — pure polish, do after mechanics are complete so the animation targets don't have to be redesigned; (4) Wild/Draw-Four dramatic flourishes — last, purely decorative.
-
-All new animations must respect `prefers-reduced-motion` the same way `IllustrationSlot` already does (`useReducedMotion` from `framer-motion`) — that hook is already a dependency and used elsewhere, so this is a pattern to follow, not a new capability to add.
+Reduced-motion: **already covered globally**, not per-animation — `index.css` has two overlapping `@media (prefers-reduced-motion: reduce)` blocks forcing near-zero animation/transition duration on every element app-wide. This was discovered during Phase 4, not previously known to this document. The one gap that global rule can't reach (`uno-deal.tsx`'s JS `setTimeout` stage lengths, not CSS) is fixed with an explicit `matchMedia` check.
 
 ---
 
 ## 17. Audio Planning
 
-**Current (`useAudio` + `AUDIO.*` constants, Howler-backed):** `UNO_PLAY`, `UNO_DRAW`, `UNO_WILD` already wired in `useUnoBoard.ts` (`playCard`/`drawCard`). That's 3 of Volume 8 §33's ~9 suggested distinct sounds.
+**Current (`useAudio` + `AUDIO.*` constants, Howler-backed):** `UNO_PLAY`, `UNO_DRAW`, `UNO_WILD`, `UNO_DECLARED`, `UNO_WIN`, `UNO_SHUFFLE`, `UNO_DEAL`, `UNO_REVERSE`, `UNO_SKIP` are all now wired at their trigger points (`useUnoBoard.ts`, `uno-deal.tsx`, `uno-table.tsx`'s `useUnoEventFlourish`). That's every sound Volume 8 §33 suggested except a dedicated "catch" cue (no `AUDIO.UNO_CAUGHT` key exists; `catchUno`'s penalty currently plays no sound — small, easy follow-up) and background music (see below).
 
-**Missing, to add alongside their respective mechanics:**
-| Sound | Trigger | Phase |
-|---|---|---|
-| Shuffle | `uno-deal.tsx` shuffle stage start | E (cosmetic, cheap) |
-| Deal (per-card or single swoosh) | `uno-deal.tsx` deal stage | E |
-| Reverse | Reverse card resolves | E |
-| Skip | Skip card resolves | E |
-| UNO declaration | Successful `declareUno` | B (co-ships with the feature) |
-| UNO missed/caught | Successful `catchUno` | B |
-| Victory | `phase === "finished"`, self is winner | D/E, pairs with results screen |
-| Defeat (soft/respectful) | `phase === "finished"`, self is not winner | D/E |
+**🔴 Critical caveat discovered in Phase 4, applies to every key above, old and new:** `client/src/assets/audio/themes/manifests.ts` has **zero** `uno_*` entries in any theme (Classic/Modern/Festival), unlike Rummy/Ludo/SnL/Hand Cricket, which all have real `.mp3` files mapped. Every `playSound(AUDIO.UNO_*)` call in the codebase has been silently no-op-ing (the `AudioManager`'s `onloaderror` swallows missing files with a dev-only warning) since the day it was written — this was true before this session too, not something introduced here, just not previously documented. The code plumbing is now complete and correct; **no UNO sound will actually be heard until someone supplies audio files into the manifest**, structurally the same gap as the illustration art below.
 
 No background music infra was found anywhere in the app during this review — Volume 8 §34's music recommendations are 🔴 platform-level (would apply to all games, not a UNO-specific decision) and out of scope here.
 
@@ -763,12 +751,13 @@ Epic: House Rules & Room Options (Phase C)
  └─ UI: house-rule toggles in GameRoomSheet.tsx once the engine actually reads them
          (no separate UnoHouseRuleOptions component — see §12's scope-correction note)
 
-Epic: Scoring & Results (Phase 3/4)
+Epic: Scoring & Results (Phase 3/4) — ALL DONE except art
  ├─ [DONE] Engine: point-table scoring on win (§4.9) — pulled forward from Phase D
- ├─ [DONE] Client mirror: helpers/scoring.ts (cardPoints/handPoints, unused until a
- │         results screen consumes it)
- ├─ UI: UnoResultModal, remove UNO from generic-scorecard fallback path (§7.9) — Phase 4
- └─ Illustration: request/commission gameover art or reuse generic pair — Phase 4
+ ├─ [DONE] Client mirror: helpers/scoring.ts (cardPoints/handPoints), still unconsumed —
+ │         a future stats/preview surface can use it, nothing requires it today
+ ├─ [DONE] UI: UnoResultModal.tsx, "uno" added to Room.tsx's GAMES_WITH_OWN_SCORECARD (§7.9)
+ └─ Illustration: gameover-trophy-win/-loss confirmed still null — deliberately not
+         wired into UnoResultModal for a null asset; revisit once art exists
 
 Epic: Game Feel Polish (Phase 3/4)
  ├─ [DONE] UnoActionToast surfacing state.lastAction (§8.4) — also now covers the
@@ -776,10 +765,13 @@ Epic: Game Feel Polish (Phase 3/4)
  ├─ [DONE] UnoCallButton (uno-declare.tsx) + seat-level catch affordance (uno-shared.tsx)
  ├─ [DONE] WildDrawFourChallengePrompt (uno-challenge.tsx)
  ├─ [DONE] Tutorial slides for declaration + challenge, UNO_TUTORIAL bumped v1 → v2
- ├─ Card play/draw travel animations (§16) — Phase 4
- ├─ Reverse/Skip visual flourishes (§16) — Phase 4
- ├─ Remaining audio cues: shuffle, deal, reverse, skip, victory, defeat (§17) — Phase 4
- └─ Reduced-motion pass across uno-deal.tsx (§19) — Phase 4
+ ├─ [DONE] Card-land settle animation on discard pile (§16) — not true FLIP-style
+ │         hand-to-pile flight, a deliberate cheaper stand-in
+ ├─ [DONE] Reverse/Skip visual flourishes (§16) — useUnoEventFlourish + UnoDirectionArc
+ ├─ [DONE] Audio cues: UNO_SHUFFLE/UNO_DEAL/UNO_REVERSE/UNO_SKIP/UNO_WIN wired (§17) —
+ │         **but silent in practice**, no uno_* entries exist in any audio theme manifest
+ └─ [DONE] Reduced-motion — turned out already covered by a pre-existing global CSS rule;
+         only uno-deal.tsx's JS setTimeout stage lengths needed an explicit fix (§19)
 
 Epic: Onboarding Refresh (Phase F)
  └─ Add tutorial slides for UNO declaration + Wild+4 challenge once B ships (§7.8)
@@ -794,25 +786,66 @@ Epic: Illustration & Theme Completion (cross-cutting, not gated to a phase)
 
 ## 24. Definition of Done
 
+*Updated 2026-07-11 after Phases 1-4 — several rows below were stale (written when they were aspirational; corrected now that the work has actually landed). Struck-through text shows what changed.*
+
 **Product:**
-- Every row in §4.11's rule matrix reads 🟢.
-- A player can complete a full match start-to-results without hitting a single 🔴-marked gap from this document.
-- House rules are host-configurable in a private room and never available in any future ranked context (forward-compatible with Phase I, even though ranked doesn't exist yet).
+- Every row in §4.11's rule matrix reads 🟢. **✅ True as of Phase 2** — scoring (§4.9) also 🟢 as of Phase 3, ahead of its original Phase D placement.
+- A player can complete a full match start-to-results without hitting a single 🔴-marked gap from this document. **✅ True** — the only remaining 🔴 items (house-rule engine enforcement, Phase C) are opt-in flags that default off, not a blocking gap in normal play.
+- House rules are host-configurable in a private room ~~and never available in any future ranked context~~ — **still 🔴, correctly deferred to Phase C.** Not done yet; not a regression, just not reached.
 
 **Technical:**
-- `server/src/games/uno/__tests__/engine.test.ts` covers every item in §20.1/§20.2.
-- No client-side optimistic validation (`helpers/validation.ts`) diverges from server-side `isValidPlay` — verified by a shared-fixture test if feasible, or a manual audit checklist otherwise.
-- `state.turnDeadline` and `state.lastAction` are both actually consumed by the UI. `state.lastAction` ✅ done (§8.4, `UnoActionToast`). `state.turnDeadline` still not set server-side (§4.8) — the client-side `TurnTimeWarning` wiring remains dead code until Phase B.
-- No new route was added — everything lives inside the existing `Room.tsx` → `UnoBoard` tree (§10).
+- `server/src/games/uno/__tests__/engine.test.ts` covers every item in §20.1/§20.2. **✅ True** — 55 tests, plus 1 RoomManager-level integration test (`unoTimer.test.ts`) §20.1/20.2 didn't originally call for but turned out to matter.
+- No client-side optimistic validation (`helpers/validation.ts`) diverges from server-side `isValidPlay`. **✅ True and deliberately unchanged** — Wild+4's "always playable, legality enforced only via challenge" design (§4.3) means the client-side mirror was correctly never touched.
+- `state.turnDeadline` and `state.lastAction` are both actually consumed by the UI. **✅ Both true as of Phase 2/Foundation** — this row was stale, previously said `turnDeadline` was still dead code; `RoomManager.scheduleTurnTimer`'s `UnoEngine` branch (Phase 2) fixed that.
+- No new route was added — everything lives inside the existing `Room.tsx` → `UnoBoard` tree (§10). **✅ Still true**, including all of Phase 3/4's additions.
 
 **Design:**
-- UNO has its own results screen, no longer falling through to the generic scorecard (§7.9).
-- `lobby-prop-uno` and `corner-uno` illustration keys are non-null in `illustrations.ts`.
-- Reduced-motion is respected across every UNO-specific animation, matching the platform-wide pattern already set by `IllustrationSlot`.
+- UNO has its own results screen, no longer falling through to the generic scorecard (§7.9). **✅ True as of Phase 4** — `UnoResultModal`.
+- `lobby-prop-uno` and `corner-uno` illustration keys are non-null in `illustrations.ts`. **Still 🔴** — confirmed still null as of Phase 4; genuinely blocked on external art delivery, not a code gap.
+- Reduced-motion is respected across every UNO-specific animation. **✅ True**, and turned out to already be true globally (a pre-existing `index.css` rule neither this document nor the review report knew about until Phase 4) — the only code change needed was `uno-deal.tsx`'s JS-timed stage lengths, which the global CSS rule can't reach.
 
 **QA:**
-- Manual pass at 375 / 768 / 1024 / 1440 on both shells, covering: normal play, Wild, Wild+4 + challenge, UNO declare + missed-declare-caught, house rules on/off, bot-filled room, mid-match disconnect/reconnect, draw-pile exhaustion.
-- Accessibility checklist from §19 signed off (color-blind safe, screen-reader labels, keyboard path, contrast, touch targets).
+- Manual pass at 375 / 768 / 1024 / 1440 on both shells. **🟢 Mostly done as of 2026-07-12** — a real headless-browser pass (first one this project had working tooling for) ran the full breakpoint sweep on both shells, found the actual desktop cutover is 1280px (not 1024), and found+fixed two real layout bugs along the way (a timer/header pill collision, and opponent-chip overlap at high player counts on mobile). See §25.1/25.2 for exactly what is and isn't confirmed — several gameplay scenarios (Wild's colour picker, a manually-clicked challenge decision, declare/catch, Reverse/Skip in isolation) still weren't pinned down to the letter.
+- Accessibility checklist from §19 signed off. **🟢 Mostly done as of 2026-07-12** — building on Phase 5's static self-audit (still valid: the `aria-live` and touch-target fixes), this session added live confirmation via CDP emulation: `prefers-reduced-motion` genuinely engages Motion's reduced-motion path (not just present in code), full achromatopsia/greyscale leaves every card identifiable by number alone, and a real Tab-key trace reaches every control in a sane order. Still open: an actual screen reader (VoiceOver/NVDA/TalkBack) and a full keyboard-only turn completed end-to-end — see §25.4.
+
+---
+
+## 25. Manual QA Checklist (Phase 5)
+
+*Concrete execution checklist for the "QA" row above. Written because no browser-automation tool was available in this environment (`browser-use` CLI not found) — everything below needs a human (or a future session with real browser access) actually driving the app. Check off what's been run; this list is the source of truth for "has Phase 5 actually happened," not a narrative summary.*
+
+*Updated 2026-07-12 (two sessions) — first real-browser pass (headless Chrome + CDP, built this session; `browser-use` was still unavailable). See PLAN_REVIEW_REPORT.md §9's 2026-07-12 entries for the full session logs. Session 1 found and fixed four real bugs under timer-pressured play; session 2 used a No-timer room for deliberate, unhurried play and closed out most of the scenarios session 1 left partial. Checked items were genuinely observed live; `[~]` items were partially exercised but not confirmed to the letter of the scenario.*
+
+### 25.1 Gameplay scenarios (run on both shells)
+- [x] Normal play: a full match start-to-finish with only number/action cards, no Wild. — Confirmed deliberately in a No-timer room: played number cards, a `Draw Two`, two Skip cards, drew/passed when nothing was playable, all the way to `UnoResultModal` with a correct final score.
+- [x] Wild: play a Wild, confirm the color picker appears, confirm the chosen color becomes the active color for the next player. — Confirmed live: selecting a Wild opens the "Choose Color" swatch panel, picking Green and confirming shows the discard pile's Wild card labelled "→ GREEN", and the next turn's valid-move gating correctly used Green as the active color.
+- [~] Wild Draw Four, accepted / challenged (legal or illegal): — The prompt renders correctly with the real opponent name (confirmed session 1). Session 2 played a Wild+4 myself (making the bot the decider) twice and confirmed the bot's own decision resolves correctly and hands the turn back appropriately either way — the same `handleChallengeDecision` code path a human's click would hit. Still not confirmed: a human manually clicking "Accept" or "Challenge!" — both live sightings of the prompt (session 1's timeout, this session's bot-decides-not-me setup) resolved without my own click landing first.
+- [x] UNO declared correctly: `UnoCallButton` appears at 1 card, tap it, `UnoDeclareBubble` pops, button disappears. — Confirmed live in a No-timer room: played down to 1 card, the pulsing "UNO" button appeared, tapping it popped the "UNO!" speech bubble *and* fired the confetti burst together (the confetti work from the prior session, now confirmed through real gameplay, not just a direct function call), then played the final card to win — `UnoResultModal` showed "You win! +14 points" with the win-confetti burst too.
+- [ ] UNO missed and caught — **likely untestable against bots specifically**: the engine's bot auto-move always self-declares instantly (`applyAutoMove`, confirmed in code and never once seen missing a declare across several full matches this session), so a bot never sits in the catchable undeclared-1-card state a `catchUno` call needs. This scenario may only be exercisable with a second human player who deliberately doesn't declare.
+- [x] Skip: confirmed live, twice, in a 2-player game — playing a Skip card correctly gave the same player (me) another turn rather than passing to the only opponent, matching the "Skip skips the only other player" rule.
+- [ ] Reverse in a 3+/2-player game — not isolated as its own scenario this session (no Reverse card was drawn); covered by Phase 1's `stepIndex` unit tests, not re-confirmed visually.
+- [ ] Draw pile exhaustion / reshuffle — not exercised (low-probability to hit deliberately in a short session).
+- [x] Bot-filled room: confirmed at 2, 3, and 8 players — bots played, played Wild/Wild+4, resolved challenge decisions, and every match ran to completion with correct scores without stalling.
+- [x] Mid-match disconnect/reconnect — exercised extensively (many full-page reloads back into the same room under the same persisted identity); also surfaced and fixed a real bug (see below) where a corrupted room could leave a reconnect hanging forever on "Connecting to room" with no error or timeout.
+- [x] Turn timer: `UnoTimerBadge` counts down, `TurnTimeWarning`'s pulse kicks in at ≤10s (confirmed at 9s/4s/1s, including the ≤5s critical/red state), and a timeout forces a move via `getTimeoutActor` — all confirmed, repeatedly.
+- [x] Match end → `UnoResultModal`: confirmed real, correctly-computed non-zero scores on both shells for both a loss (0 points) and a declared win (+14, with win-confetti), confirmed rematch starts a fresh round with a new 7-card deal and `UnoResultModal` ready to show again.
+
+### 25.2 Layout/visual (four breakpoints × two shells = 8 passes)
+- [x] 375px (mobile shell) — confirmed; found and fixed a header/timer-pill overlap bug (see below).
+- [x] 768px (mobile shell — tablet-ish) — confirmed, including the compact-chip fix at high player counts.
+- [x] 1024px — **correction, not a pass/fail**: `UnoBoard.tsx`'s actual desktop gate is 1280px width (+ `hover:hover`/`pointer:fine`), not 1024 — confirmed precisely (1279px stays mobile, 1280px flips to desktop, live on resize with no reload needed). 1024px itself renders the mobile shell correctly, as the code's own 1280 threshold predicts.
+- [x] 1440px (desktop shell) — confirmed.
+- [x] Opponent seats don't overlap/clip at 2, 3, and 8 players — confirmed at those counts; not separately isolated at exactly 4. **Found and fixed a real bug**: at 8 players on the mobile shell (≤1279px), `UnoPlayerChip`'s full name+count pill overlapped its neighbours illegibly. Fixed with an opt-in `compact` mode (avatar-only + count, no name) applied on the mobile shell above 4 opponents; desktop was unaffected and left as-is.
+- [~] Hand fan doesn't overflow at a full 7-card hand — confirmed clean at 7 cards on both shells at every tested breakpoint; not tested after drawing several extra cards past 7.
+
+### 25.3 Audio (needs real audio files first — see §17)
+- [ ] Still blocked — `manifests.ts` still has no `uno_*` entries. **New observation**: in this headless-Chrome test environment, several *other* games' audio files also failed to decode (`[Audio] Failed to load .../cassette-close.mp3 Decoding audio data failed.`, etc.) — possibly a headless-environment codec limitation rather than a production bug; not confirmed either way, since no headed-browser/real-speaker test was available.
+
+### 25.4 Accessibility (live, not just static code review)
+- [ ] Screen reader (VoiceOver/NVDA/TalkBack) — no real AT tool available. Confirmed via DOM inspection that the `aria-live="polite"` region's text does update correctly on turn changes (e.g. to "Red's turn"), which is the mechanical prerequisite for a screen reader to announce it — not the same as an actual AT test.
+- [~] Keyboard-only — confirmed a real Tab-key trace reaches every meaningful control in a sane order (Leave → tutorial → hand cards → Draw Card, once Play Card is legally enabled → room reactions), and that disabled buttons are correctly excluded from the tab order. Did not confirm completing a full turn end-to-end via Enter/Space alone — an Enter press didn't reliably land on a programmatically-focused element in the automation harness used, which may be a harness artifact rather than an app bug.
+- [x] `prefers-reduced-motion` — confirmed via `Emulation.setEmulatedMedia`: `matchMedia` correctly reports `true`, and Motion's own library logged its internal reduced-motion notice, confirming `useReducedMotion()` in `uno-table.tsx` is actually engaged, not just present in the code.
+- [x] Color-blind simulation — confirmed via CDP's vision-deficiency emulation (deuteranopia and full achromatopsia/greyscale): every card in hand and on the discard pile remained identifiable by its number alone even with zero colour information.
 
 ---
 

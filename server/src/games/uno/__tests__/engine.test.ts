@@ -114,6 +114,12 @@ describe("UnoEngine", () => {
     });
 
     it("should return valid moves for current player", () => {
+      // A real shuffle gives no rule guarantee p1's opening hand contains a
+      // playable card — Wild is the one card that's always legal regardless
+      // of the top card, so rig one into the hand rather than asserting on
+      // the unseeded deal (this flaked in a full-suite run: an unlucky
+      // shuffle can legitimately leave a 7-card hand with zero matches).
+      stateOf(engine).hands["p1"] = [card("R", "5"), card(null, "Wild")];
       const p1State = engine.getStateFor("p1");
       expect(p1State.validMoves).toBeDefined();
       expect(p1State.validMoves.length).toBeGreaterThan(0);
