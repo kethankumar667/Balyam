@@ -14,19 +14,26 @@ import {
   UnoDirectionArc,
   UnoTableCenter,
   UnoPlayerChip,
+  UnoNamePlate,
   UnoHandFan,
   UnoTimerBadge,
   computeSeatPosition,
   useUnoEventFlourish,
 } from "./uno-table";
+import {
+  UnoRoomCodePlate,
+  UnoIvoryButton,
+  UnoDeclareCluster,
+  UnoPolaroidPlaceholder,
+  UnoNotebookPlaceholder,
+} from "./uno-scene";
 import { UnoRoomRail } from "./uno-rail";
 import { useUnoDealGate, UnoDealOverlay } from "./uno-deal";
 import { UnoActionToast } from "./uno-action-toast";
-import { UnoCallButton, UnoDeclareBubble } from "./uno-declare";
+import { UnoDeclareBubble } from "./uno-declare";
 import { WildDrawFourChallengePrompt } from "./uno-challenge";
 import UnoResultModal from "./UnoResultModal";
-import Avatar from "../rummy/Avatar";
-import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
+import GameTutorial, { useTutorialGate } from "../../components/GameTutorial";
 import { UNO_TUTORIAL } from "../tutorials";
 
 /**
@@ -99,10 +106,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   }, [m.canDraw, m.canPassTurn, m.canDeclareUno]);
 
   return (
-    <div
-      className="relative h-full flex flex-col overflow-hidden"
-      style={{ background: "linear-gradient(160deg, #EFE0BE 0%, #E4CE9E 55%, #D8BD84 100%)" }}
-    >
+    <div className="uno-wood-surface relative h-full flex flex-col overflow-hidden">
       {dealStage !== "idle" && (
         <UnoDealOverlay stage={dealStage} playerCount={state.playerOrder.length} />
       )}
@@ -125,46 +129,53 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
           : ""}
       </div>
 
-      {/* Minimal top chrome */}
-      <div className="absolute top-3 left-3 z-20">
-        <button
-          onClick={onLeave}
-          className="rounded-md px-3 py-1.5 text-sm font-semibold text-[#6E5E4D] bg-[#FFF9F0] shadow-md hover:bg-[#F0E1D0]"
-        >
-          ← Leave
-        </button>
+      {/* Top-left: leave + room-code plate + turn timer */}
+      <div className="absolute top-3 left-3 z-30 flex items-start gap-2">
+        <UnoIvoryButton shape="round" ariaLabel="Leave game" title="Leave" onClick={onLeave}>
+          <span className="text-lg leading-none">←</span>
+        </UnoIvoryButton>
+        <div className="flex flex-col gap-2">
+          <UnoRoomCodePlate code={roomCode} />
+          {state.turnDeadline && <UnoTimerBadge deadline={state.turnDeadline} />}
+        </div>
       </div>
-      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-        {state.turnDeadline && <UnoTimerBadge deadline={state.turnDeadline} />}
-        <button
-          onClick={toggleMute}
-          className="rounded-md px-2.5 py-1.5 text-sm bg-[#FFF9F0] shadow-md hover:bg-[#F0E1D0]"
+
+      {/* Top-right: sound / fullscreen / help */}
+      <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
+        <UnoIvoryButton
+          shape="round"
+          ariaLabel={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
           title="Sound"
-          aria-label={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
+          onClick={toggleMute}
         >
           {audioSettings.isMuted ? "🔇" : "🔊"}
-        </button>
-        <button
-          onClick={toggleFullscreen}
-          className="rounded-md px-2.5 py-1.5 text-sm bg-[#FFF9F0] shadow-md hover:bg-[#F0E1D0]"
+        </UnoIvoryButton>
+        <UnoIvoryButton
+          shape="round"
+          ariaLabel={isFs ? "Exit fullscreen" : "Enter fullscreen"}
           title="Fullscreen"
-          aria-label={isFs ? "Exit fullscreen" : "Enter fullscreen"}
+          onClick={toggleFullscreen}
         >
           ⛶
-        </button>
-        <TutorialButton onClick={() => tut.setOpen(true)} />
+        </UnoIvoryButton>
+        <UnoIvoryButton shape="round" ariaLabel="How to play" title="How to play" onClick={() => tut.setOpen(true)}>
+          <span className="font-black">?</span>
+        </UnoIvoryButton>
       </div>
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-baseline gap-2 bg-[#FFF9F0]/90 border border-[#E8D8BE] px-3 py-1 rounded-md shadow-sm">
-        <span className="font-script text-lg leading-none text-[#B91C1C]">Bhalyam</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-[#8B7355]">UNO</span>
-        <span className="font-mono text-xs text-[#8B7355]">· {roomCode}</span>
+
+      {/* Decorative asset-placeholder props — real art drops in later */}
+      <div className="absolute top-[4.5rem] right-4 z-20 hidden xl:block">
+        <UnoPolaroidPlaceholder />
+      </div>
+      <div className="absolute bottom-3 left-4 z-20 hidden xl:block">
+        <UnoNotebookPlaceholder />
       </div>
 
       <UnoActionToast lastAction={state.lastAction} />
 
-      {/* The table */}
-      <div className="flex-1 min-h-0 flex items-center justify-center p-4 pt-16">
-        <div className="relative w-full" style={{ maxWidth: 760, aspectRatio: "1.55" }}>
+      {/* The felt table */}
+      <div className="flex-1 min-h-0 flex items-center justify-center px-4 pt-16 pb-1">
+        <div className="relative w-full" style={{ maxWidth: 1140, aspectRatio: "1.8" }}>
           <UnoTableMat>
             <UnoDirectionArc direction={state.direction} flourish={flourish !== null} />
 
@@ -173,7 +184,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
               return (
                 <div
                   key={id}
-                  className="absolute"
+                  className="absolute z-[2]"
                   style={{ left: pos.left, top: pos.top, transform: "translate(-50%, -50%)" }}
                 >
                   <UnoPlayerChip
@@ -189,7 +200,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
               );
             })}
 
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center z-[2]">
               <UnoTableCenter
                 topCard={state.topCard}
                 currentColor={state.currentColor}
@@ -200,52 +211,25 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
               />
             </div>
 
-            {/* Self seat, anchored at the base of the mat */}
-            <div className="absolute left-1/2 bottom-[4%] -translate-x-1/2">
-              <div className="relative flex flex-col items-center gap-1">
+            {/* Self plate, anchored at the base of the felt */}
+            <div className="absolute left-1/2 bottom-[3%] -translate-x-1/2 z-[3]">
+              <div className="relative flex flex-col items-center">
                 <UnoDeclareBubble declared={selfDeclared} />
-                <div className="relative">
-                  <Avatar name={selfName} size={56} />
-                  {m.myTurn && (
-                    <>
-                      <div
-                        className="absolute -inset-1.5 rounded-full pointer-events-none animate-pulse"
-                        style={{ boxShadow: "0 0 0 3px #E6A11E, 0 0 14px 2px rgba(230,161,30,0.65)" }}
-                        aria-hidden
-                      />
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 pointer-events-none" aria-hidden>
-                        <span
-                          className="text-[8px] font-black uppercase tracking-[0.16em] px-1.5 py-0.5 rounded-full text-[#2B2118] whitespace-nowrap"
-                          style={{ background: "linear-gradient(135deg, #F7DA8B, #E6A11E)" }}
-                        >
-                          ▸ Your Turn
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-                <div
-                  className="px-2 py-0.5 rounded-full text-[11px] font-bold text-white whitespace-nowrap"
-                  style={{ background: "rgba(43,33,24,0.82)" }}
-                >
-                  {selfName} (you)
-                </div>
+                <UnoNamePlate name={selfName} isSelf isTurn={m.myTurn} />
               </div>
             </div>
           </UnoTableMat>
+
+          {/* UNO! declare cluster — right edge of the felt (reference position) */}
+          <div className="absolute right-[-1.5%] top-1/2 -translate-y-1/2 z-30">
+            <UnoDeclareCluster visible={m.canDeclareUno} onDeclare={m.declareUno} />
+          </div>
         </div>
       </div>
 
-      {/* Bottom: UNO declare button (centred, above the hand — impossible to
-          miss right where the player is already looking at their shrinking
-          hand) + hand fan + Pass row. Previously wedged into a corner beside
-          the action row, which is exactly the "not good UX" complaint this
-          reposition fixes. */}
-      <div className="flex-shrink-0 px-4 pb-4">
-        <div className="flex justify-center">
-          <UnoCallButton visible={m.canDeclareUno} onDeclare={m.declareUno} />
-        </div>
-
+      {/* Bottom: own hand fan + Pass row. The UNO! declare button now lives on
+          the right edge of the felt (UnoDeclareCluster), matching the reference. */}
+      <div className="flex-shrink-0 px-4 pb-3 -mt-1">
         <UnoHandFan
           sortedHand={m.sortedHand}
           validMoveIds={m.validMoveIds}
@@ -271,7 +255,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
               />
             )}
           </div>
-          <div className="hidden lg:block text-[10px] font-mono text-[#8B7355]/80 italic whitespace-nowrap">
+          <div className="hidden lg:block text-[10px] font-mono text-[#E9C892]/70 italic whitespace-nowrap">
             D draw · P pass · U declare · Esc cancel
           </div>
         </div>
