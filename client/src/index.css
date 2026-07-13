@@ -1110,6 +1110,98 @@ body, #root, .bhalyam-paper {
   animation: uno-flourish-pulse 650ms ease-in-out both;
 }
 
+/* UNO — glass-morphic header chrome (Leave / sound / fullscreen / room pill).
+   A flat cream fill reads inconsistently against the new photographic table
+   background, whose brightness varies by crop/seat. backdrop-blur alone
+   looks like a rendering bug; the inner border + inset highlight below
+   simulate a physical glass edge. Falls back to a solid fill under
+   prefers-reduced-transparency. */
+.uno-glass-chrome {
+  background: rgba(255, 249, 240, 0.55);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 6px 18px rgba(43, 28, 12, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  transition: background-color 160ms ease;
+}
+.uno-glass-chrome:hover {
+  background: rgba(255, 249, 240, 0.75);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .uno-glass-chrome {
+    background: #FFF9F0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .uno-glass-chrome:hover {
+    background: #F0E1D0;
+  }
+}
+
+/* ── UNO table-scene redesign (reference-match) ──────────────────────────
+   A skeuomorphic cartoon board: a dark-walnut table surface framing a
+   brass-rimmed red-felt playing surface. All CSS-built (no raster art) so
+   it stays crisp at any size and both shells share one material system.
+   Asset placeholders (polaroid / notebook) sit on top, ready for real art. */
+
+/* Dark walnut table surround — fills the whole board behind the felt. */
+.uno-wood-surface {
+  background-color: #3a2213;
+  background-image:
+    radial-gradient(ellipse at 50% 26%, rgba(126, 79, 40, 0.55), transparent 62%),
+    repeating-linear-gradient(91deg, rgba(0, 0, 0, 0.15) 0 2px, transparent 2px 8px),
+    repeating-linear-gradient(89deg, rgba(255, 196, 128, 0.045) 0 3px, transparent 3px 12px),
+    linear-gradient(158deg, #4c2d18 0%, #35200f 55%, #24150a 100%);
+}
+
+/* Engraved dark-wood control plate (room-code plate, timer). Warm brass rim
+   + inset top highlight so it reads as a routed wooden nameplate. */
+.uno-wood-plate {
+  background-image: linear-gradient(165deg, #4a2c16 0%, #35200f 100%);
+  border: 1.5px solid #7c5626;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 214, 150, 0.35),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+/* Ivory tactile control button (sound / fullscreen / help / copy). Cream
+   dome with a brass ring — the reference's round top-corner buttons. */
+.uno-ivory-btn {
+  background-image: radial-gradient(circle at 38% 28%, #fff8ea 0%, #f2e0ba 70%, #e6cf9f 100%);
+  border: 2px solid #c9a96a;
+  color: #7a5326;
+  box-shadow:
+    0 3px 7px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -2px 4px rgba(122, 83, 38, 0.18);
+  transition: transform 120ms ease, filter 120ms ease;
+}
+.uno-ivory-btn:hover {
+  filter: brightness(1.05);
+}
+.uno-ivory-btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+/* Glossy colored player nameplate — the top layer highlight is a pseudo so
+   any accent gradient can sit underneath via inline style. */
+.uno-plate-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.uno-plate-sheen::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 55% 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .uno-plate-sheen::before { display: none; }
+}
+
 @keyframes hc-feed-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useReducedMotion,
+  useMotionValue,
+  useTransform,
+  useSpring as useMotionSpring,
+} from "framer-motion";
 import type { Transition } from "framer-motion";
-import { useSpring, animated } from "@react-spring/web";
+import { useSpring, animated, to } from "@react-spring/web";
 import type { UnoCard, UnoColor } from "@shared/types";
 import { UnoCardFace, UnoCardBack, WildColorPicker } from "./uno-shared";
 import { getCardLabel, CARD_DISPLAY } from "./helpers/deck";
@@ -131,23 +138,78 @@ export function computeSeatPosition(index: number, total: number): SeatPosition 
 // The oval mat itself.
 // ---------------------------------------------------------------------
 
+/** Faint five-point stars scattered across the felt — the reference's
+ *  watermark. Each is a fixed-size SVG at a percentage position so the
+ *  stars never distort with the table's aspect ratio (a single stretched
+ *  viewBox would). Kept very low-opacity so they read as a texture, not
+ *  decoration competing with the cards. */
+const STAR_PATH =
+  "M12 1.6l2.94 6.36 6.96.72-5.2 4.66 1.46 6.86L12 23.2l-6.12 3.66 1.46-6.86-5.2-4.66 6.96-.72z";
+const FELT_STARS: ReadonlyArray<{ x: number; y: number; s: number }> = [
+  { x: 13, y: 24, s: 15 }, { x: 84, y: 19, s: 20 }, { x: 50, y: 11, s: 12 },
+  { x: 24, y: 72, s: 17 }, { x: 76, y: 74, s: 15 }, { x: 91, y: 50, s: 13 },
+  { x: 8, y: 52, s: 13 }, { x: 62, y: 84, s: 16 }, { x: 40, y: 44, s: 11 },
+];
+
+function UnoFeltStars() {
+  return (
+    <div className="absolute inset-0 pointer-events-none" aria-hidden>
+      {FELT_STARS.map((st, i) => (
+        <svg
+          key={i}
+          viewBox="0 0 24 24"
+          width={st.s}
+          height={st.s}
+          className="absolute"
+          style={{ left: `${st.x}%`, top: `${st.y}%`, transform: "translate(-50%,-50%)" }}
+        >
+          <path d={STAR_PATH} fill="rgba(255,255,255,0.055)" />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The play surface — a dark-walnut wood frame with a brass bevel around a
+ * star-watermarked red felt (the reference's table). Rounded-rectangle, not
+ * the old oval, matching the reference. Seats/piles are positioned by the
+ * caller as absolute children of this box (percentage math unchanged from
+ * the oval version — see computeSeatPosition), layered above the felt.
+ */
 export function UnoTableMat({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="relative w-full h-full rounded-full"
+      className="relative w-full h-full"
       style={{
-        background: "radial-gradient(ellipse at 50% 40%, #E8B96B 0%, #D9A05B 55%, #B9793A 100%)",
-        boxShadow:
-          "inset 0 0 0 10px rgba(109,67,35,0.35), inset 0 10px 46px rgba(46,26,10,0.35), 0 24px 60px -18px rgba(0,0,0,0.55)",
+        borderRadius: "9% / 15%",
+        background: "linear-gradient(158deg, #6d4626 0%, #4a2c16 60%, #3a2210 100%)",
+        padding: "2.3%",
+        boxShadow: "0 34px 66px -22px rgba(0,0,0,0.72)",
       }}
     >
+      {/* Brass bevel ring between wood frame and felt */}
       <div
-        className="absolute inset-[9%] rounded-full"
+        className="absolute inset-[1.1%] pointer-events-none z-[1]"
         style={{
-          background: "radial-gradient(ellipse at 50% 40%, #FBF3E3 0%, #F0DFC0 100%)",
-          boxShadow: "inset 0 4px 20px rgba(109,67,35,0.28)",
+          borderRadius: "8% / 13.5%",
+          boxShadow:
+            "inset 0 0 0 3px rgba(228,192,110,0.9), inset 0 0 0 6px rgba(120,80,36,0.85), inset 0 2px 10px rgba(0,0,0,0.35)",
         }}
+        aria-hidden
       />
+      {/* Red felt */}
+      <div
+        className="absolute inset-[2.3%] overflow-hidden"
+        style={{
+          borderRadius: "7.6% / 12.6%",
+          background:
+            "radial-gradient(ellipse at 50% 42%, #C62D22 0%, #A81E17 58%, #8A130D 100%)",
+          boxShadow: "inset 0 8px 30px rgba(58,6,4,0.5), inset 0 0 70px rgba(58,6,4,0.32)",
+        }}
+      >
+        <UnoFeltStars />
+      </div>
       {children}
     </div>
   );
@@ -175,29 +237,33 @@ export function UnoDirectionArc({
       aria-hidden
     >
       <defs>
+        {/* Warm gold, not the old muted brown — this read fine against the
+            board's original cream/gold felt, but got lost against the red
+            felt background image. Gold-on-red is a real casino-table
+            contrast pairing, not an arbitrary pick. */}
         <marker id="uno-dir-arrowhead" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#8B5E34" />
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#F7DA8B" />
         </marker>
       </defs>
       <path
         d="M 26 66 A 96 96 0 0 1 96 10"
         fill="none"
-        stroke="#8B5E34"
+        stroke="#F7DA8B"
         strokeWidth="3.5"
         strokeLinecap="round"
         strokeDasharray="2 7"
         markerEnd="url(#uno-dir-arrowhead)"
-        opacity="0.5"
+        opacity="0.75"
       />
       <path
         d="M 174 134 A 96 96 0 0 1 104 190"
         fill="none"
-        stroke="#8B5E34"
+        stroke="#F7DA8B"
         strokeWidth="3.5"
         strokeLinecap="round"
         strokeDasharray="2 7"
         markerEnd="url(#uno-dir-arrowhead)"
-        opacity="0.5"
+        opacity="0.75"
       />
     </svg>
   );
@@ -226,6 +292,37 @@ export interface UnoTableCenterProps {
   onDraw?: () => void;
 }
 
+/** A few colored cards scattered under the discard top — the "pile of
+ *  already-played cards" look from the reference. Purely decorative (fixed
+ *  angles/colours, not the real discard history, which isn't on the wire),
+ *  so it's aria-hidden and sits behind the live top card. */
+const DISCARD_SCATTER: ReadonlyArray<{ c: string; rot: number; x: number; y: number }> = [
+  { c: "#3AA03A", rot: -24, x: -18, y: 4 },
+  { c: "#1C6DD0", rot: 18, x: 16, y: 7 },
+  { c: "#E8B100", rot: -6, x: -4, y: -9 },
+];
+
+function UnoDiscardScatter() {
+  return (
+    <div className="absolute inset-0 pointer-events-none" aria-hidden>
+      {DISCARD_SCATTER.map((cd, i) => (
+        <div
+          key={i}
+          className="absolute left-1/2 top-1/2 rounded-lg"
+          style={{
+            width: "86%",
+            height: "90%",
+            background: cd.c,
+            border: "3px solid #fff",
+            transform: `translate(-50%,-50%) translate(${cd.x}px,${cd.y}px) rotate(${cd.rot}deg)`,
+            boxShadow: "0 3px 8px rgba(0,0,0,0.3)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function UnoTableCenter({
   topCard,
   currentColor,
@@ -236,31 +333,40 @@ export function UnoTableCenter({
 }: UnoTableCenterProps) {
   const wildTop = topCard.rank === "Wild" || topCard.rank === "Wild+4";
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-5 sm:gap-7">
       <div className="flex flex-col items-center gap-1">
-        <button
-          onClick={onDraw}
-          disabled={!canDraw}
-          aria-label="Draw a card"
-          title={canDraw ? "Draw a card (D)" : "Draw pile"}
-          className={`relative w-14 h-20 sm:w-16 sm:h-24 rounded-lg transition ${
-            canDraw ? "cursor-pointer hover:-translate-y-1" : "cursor-default"
-          }`}
-        >
-          {canDraw && (
-            <div
-              className="absolute -inset-1.5 rounded-lg pointer-events-none animate-pulse"
-              style={{ boxShadow: "0 0 0 3px #E6A11E, 0 0 14px 2px rgba(230,161,30,0.6)" }}
-              aria-hidden
-            />
-          )}
-          <UnoCardBack className="w-full h-full drop-shadow-lg" />
-          <span className="absolute -bottom-1.5 -right-1.5 min-w-[1.4rem] h-5 px-1 flex items-center justify-center rounded-full bg-[#6D4323] text-[#F7E8C4] text-[10px] font-bold ring-2 ring-[#FFF9F0]">
-            {deckCount}
-          </span>
-        </button>
+        <div className="relative">
+          {/* Stacked thickness behind the top back — a real deck, not one card. */}
+          <div className="absolute inset-0 rounded-lg translate-x-[3px] translate-y-[3px] rotate-2" aria-hidden>
+            <UnoCardBack className="w-full h-full opacity-90 drop-shadow" />
+          </div>
+          <div className="absolute inset-0 rounded-lg translate-x-[1.5px] translate-y-[1.5px] rotate-1" aria-hidden>
+            <UnoCardBack className="w-full h-full opacity-95 drop-shadow" />
+          </div>
+          <button
+            onClick={onDraw}
+            disabled={!canDraw}
+            aria-label="Draw a card"
+            title={canDraw ? "Draw a card (D)" : "Draw pile"}
+            className={`relative w-14 h-20 sm:w-16 sm:h-24 rounded-lg transition ${
+              canDraw ? "cursor-pointer hover:-translate-y-1" : "cursor-default"
+            }`}
+          >
+            {canDraw && (
+              <div
+                className="absolute -inset-1.5 rounded-lg pointer-events-none animate-pulse"
+                style={{ boxShadow: "0 0 0 3px #E6A11E, 0 0 14px 2px rgba(230,161,30,0.6)" }}
+                aria-hidden
+              />
+            )}
+            <UnoCardBack className="w-full h-full drop-shadow-lg" />
+            <span className="absolute -bottom-1.5 -right-1.5 min-w-[1.4rem] h-5 px-1 flex items-center justify-center rounded-full bg-[#6D4323] text-[#F7E8C4] text-[10px] font-bold ring-2 ring-[#FFF9F0]">
+              {deckCount}
+            </span>
+          </button>
+        </div>
         {canDraw && (
-          <div className="text-[9px] uppercase tracking-wide font-bold text-[#E6A11E] whitespace-nowrap">
+          <div className="text-[9px] uppercase tracking-wide font-black text-[#FBE7A8] whitespace-nowrap drop-shadow">
             Tap to draw
           </div>
         )}
@@ -281,6 +387,7 @@ export function UnoTableCenter({
               : undefined,
           }}
         >
+          <UnoDiscardScatter />
           <div className="absolute inset-0 -rotate-[10deg] opacity-50" aria-hidden>
             <UnoCardBack className="w-full h-full" />
           </div>
@@ -315,20 +422,31 @@ export function UnoTableCenter({
  *  transform either way, same caveat as UnoHandFan's Motion animations. */
 function UnoCardFlipFace({ card }: { card: UnoCard }) {
   const prefersReducedMotion = useReducedMotion();
+  // Wider swing (-170deg, near edge-on) and a lower-friction spring than the
+  // original -110deg/friction:24 — the extra travel plus the natural
+  // slight overshoot of an underdamped spring reads as a card actually
+  // landing with some weight, not just sliding into place.
   const springs = useSpring({
-    from: { rotateY: prefersReducedMotion ? 0 : -110, opacity: prefersReducedMotion ? 1 : 0.5 },
-    to: { rotateY: 0, opacity: 1 },
-    config: { tension: 280, friction: 24 },
+    from: {
+      rotateY: prefersReducedMotion ? 0 : -170,
+      opacity: prefersReducedMotion ? 1 : 0.3,
+      scale: prefersReducedMotion ? 1 : 0.8,
+    },
+    to: { rotateY: 0, opacity: 1, scale: 1 },
+    config: { tension: 300, friction: 18 },
   });
   return (
     <animated.div
       className="absolute inset-0 rotate-[7deg]"
       style={{
-        transform: springs.rotateY.to((r) => `perspective(500px) rotateY(${r}deg)`),
+        transform: to(
+          [springs.rotateY, springs.scale],
+          (r, s) => `perspective(600px) rotateY(${r}deg) scale(${s})`
+        ),
         opacity: springs.opacity,
       }}
     >
-      <UnoCardFace card={card} className="w-full h-full drop-shadow-xl" />
+      <UnoCardFace card={card} className="w-full h-full drop-shadow-2xl" />
     </animated.div>
   );
 }
@@ -361,6 +479,174 @@ export interface UnoPlayerChipProps {
   isConnected?: boolean;
 }
 
+/** Glossy nameplate accent palette — the saturated banner colours in the
+ *  reference (gold, purple, green, blue, teal, rose). Assigned deterministically
+ *  per player name so a given player keeps the same plate colour all game. */
+interface PlateAccent {
+  light: string;
+  base: string;
+  dark: string;
+  ring: string;
+}
+const PLATE_ACCENTS: ReadonlyArray<PlateAccent> = [
+  { light: "#F6C24B", base: "#E0982A", dark: "#A96A16", ring: "#F7DA8B" }, // gold
+  { light: "#B07CE8", base: "#8A4FD0", dark: "#5F2FA0", ring: "#D9BEF5" }, // purple
+  { light: "#5BC46B", base: "#2FA043", dark: "#1E7A30", ring: "#B7E7BF" }, // green
+  { light: "#3FD0C4", base: "#17A79A", dark: "#0E7A70", ring: "#B5EDE7" }, // teal
+  { light: "#F0708A", base: "#D23E5E", dark: "#A01C3A", ring: "#F5BECB" }, // rose
+];
+/** The local player's plate is always the reference's blue, regardless of name. */
+const SELF_ACCENT: PlateAccent = { light: "#5AA9F0", base: "#2E7CD0", dark: "#1C57A0", ring: "#BEDCF5" };
+
+function accentFor(seed: string): PlateAccent {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return PLATE_ACCENTS[Math.abs(h) % PLATE_ACCENTS.length];
+}
+
+/**
+ * The glossy colored nameplate: an accent-gradient banner with a rounded
+ * avatar tile and the player's name. No level/trophy badges — the game has
+ * no such data, so rather than show invented numbers the plate carries only
+ * what's real (identity + turn state). Used for both opponents (via
+ * UnoPlayerChip) and the local player (isSelf) so the whole table shares one
+ * plate language.
+ */
+export function UnoNamePlate({
+  name,
+  isTurn = false,
+  isSelf = false,
+  compact = false,
+}: {
+  name: string;
+  isTurn?: boolean;
+  isSelf?: boolean;
+  compact?: boolean;
+}) {
+  const a = isSelf ? SELF_ACCENT : accentFor(name);
+  const turnRing = isTurn
+    ? `0 0 0 3px ${a.ring}, 0 6px 14px rgba(0,0,0,0.4)`
+    : "0 5px 12px rgba(0,0,0,0.4)";
+  const turnTag = isTurn ? (
+    <span
+      className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 text-[8px] font-black uppercase tracking-[0.14em] px-2 py-0.5 rounded-full text-[#3a2410] whitespace-nowrap"
+      style={{ background: "linear-gradient(135deg,#F7DA8B,#E6A11E)", boxShadow: "0 2px 5px rgba(0,0,0,0.35)" }}
+    >
+      {isSelf ? "Your Turn" : "Playing"}
+    </span>
+  ) : null;
+
+  // Compact = an avatar-only glossy chip (no name banner). Used for crowded
+  // seats — a phone can't fit 3+ full name banners around a small felt, and
+  // the accent colour + avatar initials already carry identity there.
+  if (compact) {
+    const tile = 34;
+    return (
+      <div className="relative">
+        {turnTag}
+        <div
+          className="rounded-xl overflow-hidden flex items-center justify-center"
+          style={{
+            width: tile,
+            height: tile,
+            background: `linear-gradient(168deg, ${a.light}, ${a.dark})`,
+            border: "2px solid rgba(255,255,255,0.6)",
+            boxShadow: turnRing,
+          }}
+        >
+          <Avatar name={name} size={tile - 10} />
+        </div>
+      </div>
+    );
+  }
+
+  const tile = 40;
+  return (
+    <div className="relative">
+      {turnTag}
+      <div
+        className="uno-plate-sheen flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-2xl"
+        style={{
+          background: `linear-gradient(168deg, ${a.light}, ${a.base} 62%, ${a.dark})`,
+          border: "1.5px solid rgba(255,255,255,0.55)",
+          boxShadow: turnRing,
+        }}
+      >
+        <div
+          className="rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0"
+          style={{ width: tile, height: tile, background: a.dark, border: "2px solid rgba(255,255,255,0.55)" }}
+        >
+          <Avatar name={name} size={tile - 12} />
+        </div>
+        <span
+          className="relative font-black text-white uppercase tracking-wide truncate text-sm max-w-[7rem]"
+          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
+        >
+          {name}
+          {isSelf ? " (you)" : ""}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Cream count tile — the beige "7" / "6" square at the trailing edge of an
+ *  opponent's card-back fan in the reference. */
+function UnoCountTile({ n, side, compact }: { n: number; side: "left" | "right"; compact: boolean }) {
+  return (
+    <span
+      className={`self-center flex items-center justify-center rounded-md font-black ${
+        compact ? "min-w-[1.05rem] h-5 text-[11px]" : "min-w-[1.35rem] h-6 text-[13px]"
+      }`}
+      style={{
+        [side === "left" ? "marginRight" : "marginLeft"]: compact ? 3 : 5,
+        padding: "0 4px",
+        background: "linear-gradient(180deg,#FBF0D4,#E9D3A6)",
+        color: "#7A5326",
+        border: "1px solid #C9A96A",
+        boxShadow: "0 2px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.6)",
+      }}
+    >
+      {n}
+    </span>
+  );
+}
+
+/** An opponent's fanned face-down cards + count tile, stacking away from the
+ *  seat (fanDir) so it reads as their held hand. */
+function UnoOpponentBackFan({
+  handSize,
+  fanDir,
+  compact,
+}: {
+  handSize: number;
+  fanDir: "left" | "right" | "up";
+  compact: boolean;
+}) {
+  const fanCount = Math.min(handSize, compact ? 4 : 6);
+  const reverse = fanDir === "left";
+  const overlap = compact ? -9 : -12;
+  if (handSize <= 0) return null;
+  return (
+    <div className={`flex items-end -mb-1 ${reverse ? "flex-row-reverse" : "flex-row"}`} aria-hidden>
+      {Array.from({ length: fanCount }).map((_, i) => (
+        <div
+          key={i}
+          className={compact ? "w-4 h-6" : "w-5 h-7"}
+          style={{
+            marginLeft: i === 0 ? 0 : reverse ? 0 : overlap,
+            marginRight: reverse && i > 0 ? overlap : 0,
+            transform: `rotate(${(i - (fanCount - 1) / 2) * 7}deg)`,
+          }}
+        >
+          <UnoCardBack className="w-full h-full drop-shadow-sm" />
+        </div>
+      ))}
+      <UnoCountTile n={handSize} side={reverse ? "left" : "right"} compact={compact} />
+    </div>
+  );
+}
+
 export function UnoPlayerChip({
   name,
   handSize,
@@ -371,72 +657,27 @@ export function UnoPlayerChip({
   compact = false,
   isConnected,
 }: UnoPlayerChipProps) {
-  const fanCount = Math.min(handSize, 6);
-  const fanRow = fanDir === "left" ? "flex-row-reverse" : "flex-row";
   return (
     <div className="relative flex flex-col items-center gap-1">
-      {fanCount > 0 && (
-        <div className={`flex ${fanRow} items-end -mb-1`} aria-hidden>
-          {Array.from({ length: fanCount }).map((_, i) => (
-            <div
-              key={i}
-              className="w-5 h-7"
-              style={{
-                marginLeft: i === 0 ? 0 : fanDir === "left" ? 0 : -12,
-                marginRight: fanDir === "left" && i > 0 ? -12 : 0,
-                transform: `rotate(${(i - (fanCount - 1) / 2) * 8}deg)`,
-              }}
-            >
-              <UnoCardBack className="w-full h-full drop-shadow-sm" />
-            </div>
-          ))}
-        </div>
-      )}
+      <UnoOpponentBackFan handSize={handSize} fanDir={fanDir} compact={compact} />
       <div className="relative">
-        <Avatar name={name} size={compact ? 38 : 52} />
+        <UnoNamePlate name={name} isTurn={isTurn} compact={compact} />
         {isConnected === false && (
           <span
-            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-[#FFF9F0]"
+            className="absolute -top-1 -right-1 w-3 h-3 rounded-full ring-2 ring-[#FFF9F0] z-20"
             style={{ background: "#F59E0B" }}
             title="Reconnecting…"
             aria-label="Reconnecting"
           />
         )}
-        {isTurn && (
-          <>
-            <div
-              className="absolute -inset-1.5 rounded-full pointer-events-none animate-pulse"
-              style={{ boxShadow: "0 0 0 3px #E6A11E, 0 0 14px 2px rgba(230,161,30,0.65)" }}
-              aria-hidden
-            />
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 pointer-events-none" aria-hidden>
-              <span
-                className="text-[8px] font-black uppercase tracking-[0.16em] px-1.5 py-0.5 rounded-full text-[#2B2118] whitespace-nowrap"
-                style={{ background: "linear-gradient(135deg, #F7DA8B, #E6A11E)" }}
-              >
-                ▸ Playing
-              </span>
-            </div>
-          </>
-        )}
-      </div>
-      <div
-        className="px-2 py-0.5 rounded-full text-[11px] font-bold text-white flex items-center gap-1 whitespace-nowrap"
-        style={{ background: "rgba(43,33,24,0.82)" }}
-      >
-        {!compact && <span className="truncate max-w-[6rem]">{name}</span>}
-        <span className="opacity-70">{handSize}</span>
       </div>
       {canCatch && (
         <button
           onClick={onCatch}
-          // min-h-[28px] — the visual pill stays compact (matches the
-          // seat chip's scale) but the tap target itself clears WCAG 2.5.8's
-          // 24x24px minimum with room to spare; a straight text-[9px]/py-0.5
-          // pill (the original size here) landed around 13-15px tall, well
-          // under it, for what's a real, meaningful tap action.
+          // min-h-[28px] clears WCAG 2.5.8's 24×24px target minimum for what's
+          // a real, meaningful tap action (catching an undeclared opponent).
           className="mt-0.5 min-h-[28px] rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white animate-pulse whitespace-nowrap"
-          style={{ background: "#DC2626" }}
+          style={{ background: "#DC2626", boxShadow: "0 3px 8px rgba(220,38,38,0.5)" }}
           aria-label={`Catch ${name} without UNO — they draw 2`}
         >
           Catch! +2
@@ -531,6 +772,28 @@ function useUnoCardDrag(opts: {
   };
 }
 
+/** Real mouse only — 3D tilt tracks a persistent cursor position, which
+ *  doesn't exist on touch (no hover state to read between taps), so it'd
+ *  read as jank rather than depth there. Same `(hover: hover) and
+ *  (pointer: fine)` query UnoBoard.tsx's isDesktopLayout() already gates
+ *  the shell split on, reused here rather than a second convention. */
+function useFinePointer(): boolean {
+  const [fine, setFine] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const onChange = () => setFine(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return fine;
+}
+
 /** One hand card, wrapping useUnoCardDrag. Pulled out of UnoHandFan's map()
  *  because a custom hook (useUnoCardDrag calls useRef) can't be called
  *  inside a loop/callback — Rules of Hooks — it needs its own component's
@@ -581,9 +844,44 @@ function UnoDraggableHandCard({
     onTap,
   });
 
+  // 3D tilt — the one deliberate "physical card" moment for this redesign
+  // (see uno-table.tsx's header note on the background-image pass this
+  // built on). Raw pointer offset -> spring-smoothed motion values -> a
+  // couple of degrees of rotateX/rotateY, so the card reads as tilting
+  // toward the cursor rather than snapping. Motion values, never useState,
+  // for a value that updates on every pointer move (Rules of Hooks are
+  // still respected: the hooks below always run; only whether the result
+  // is ever non-zero — via tiltEnabled — is conditional).
+  const finePointer = useFinePointer();
+  const prefersReducedMotion = useReducedMotion();
+  const tiltEnabled = finePointer && !prefersReducedMotion && !isDragged && !isDisabled;
+  const tiltX = useMotionValue(0);
+  const tiltY = useMotionValue(0);
+  const tiltSpringX = useMotionSpring(tiltX, { stiffness: 300, damping: 22 });
+  const tiltSpringY = useMotionSpring(tiltY, { stiffness: 300, damping: 22 });
+  const rotateX = useTransform(tiltSpringY, [-0.5, 0.5], [9, -9]);
+  const rotateY = useTransform(tiltSpringX, [-0.5, 0.5], [-9, 9]);
+  const sheenBackground = useTransform([tiltSpringX, tiltSpringY], (latest) => {
+    const [lx, ly] = latest as [number, number];
+    return `radial-gradient(circle at ${50 + lx * 70}% ${50 + ly * 70}%, rgba(255,255,255,0.4), transparent 60%)`;
+  });
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!tiltEnabled) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    tiltX.set((e.clientX - rect.left) / rect.width - 0.5);
+    tiltY.set((e.clientY - rect.top) / rect.height - 0.5);
+  }
+  function handleMouseLeave() {
+    tiltX.set(0);
+    tiltY.set(0);
+  }
+
   return (
     <motion.div
       {...dragHandlers}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       layout
       role="button"
       tabIndex={isDisabled ? -1 : 0}
@@ -610,18 +908,29 @@ function UnoDraggableHandCard({
         marginLeft: `${marginLeft}rem`,
         zIndex: isDragged ? 60 : zIndex,
         touchAction: canDrag ? "none" : undefined,
+        perspective: 600,
       }}
     >
-      <div
-        className="w-full h-full rounded-lg"
+      <motion.div
+        className="relative w-full h-full rounded-lg"
         style={{
+          rotateX: tiltEnabled ? rotateX : 0,
+          rotateY: tiltEnabled ? rotateY : 0,
+          transformStyle: "preserve-3d",
           boxShadow: isSelected
             ? "0 0 0 3px #E6A11E, 0 10px 20px rgba(0,0,0,0.35)"
             : "0 3px 8px rgba(0,0,0,0.25)",
         }}
       >
         <UnoCardFace card={card} className="w-full h-full" />
-      </div>
+        {tiltEnabled && (
+          <motion.div
+            aria-hidden
+            className="absolute inset-0 rounded-lg pointer-events-none"
+            style={{ background: sheenBackground, mixBlendMode: "soft-light" }}
+          />
+        )}
+      </motion.div>
     </motion.div>
   );
 }
