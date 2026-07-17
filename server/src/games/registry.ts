@@ -45,7 +45,7 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     case "rummy":
       return { min: 2, max: 6 };
     case "ludo":
-      return { min: 2, max: 4 };
+      return { min: 2, max: 8 };
     case "snl":
       return { min: 2, max: 10 };
     case "handcricket":

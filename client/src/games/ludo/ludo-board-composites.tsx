@@ -11,9 +11,10 @@ import EndGameCard from "./EndGameCard";
 import EmojiRain from "./EmojiRain";
 import WinnerCelebration from "./WinnerCelebration";
 import SettingsMenu from "./SettingsMenu";
-import PolygonBoardSVG from "./PolygonBoardSVG";
+import PrintBoardSVG from "./PrintBoardSVG";
+import { seatColor, seatColorDark } from "./print-board";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
-import { COLOR_HEX } from "./board-layout";
+import { COLOR_HEX, PLAYER_COLORS_ORDER } from "./board-layout";
 import { BoardSVG, HoverPreviewMarker, MiniBurst, polygonTokenSize } from "./ludo-board-shared";
 import type { LudoBoardModel } from "./useLudoBoard";
 
@@ -45,29 +46,50 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
           <span className="text-slate-400">Waiting for {m.nameOf(state.turnPlayerId)}…</span>
         )}
       </div>
-      <div className="flex items-center gap-1.5">
-        {rightSlot}
-        <button
-          onClick={m.toggleSound}
-          className="rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 px-2.5 py-1.5 text-sm transition"
-          title={m.soundOn ? "Mute sounds" : "Enable sounds"}
-        >
-          {m.soundOn ? "🔊" : "🔈"}
-        </button>
-        <button
-          onClick={() => m.setShowSettings(true)}
-          className="rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 px-2.5 py-1.5 text-sm transition"
-          title="Display settings (theme, color-blind, hover preview)"
-        >
-          ⚙
-        </button>
-        <button
-          onClick={() => m.setShowInstructions(true)}
-          className="rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 px-2.5 py-1.5 text-sm transition"
-          title="How to play"
-        >
-          ❔ Rules
-        </button>
+      <div className="flex items-center gap-2 flex-wrap justify-end">
+        {rightSlot && (
+          <div className="rounded-full bg-slate-900/55 border border-slate-700/60 px-1.5 py-1">
+            {rightSlot}
+          </div>
+        )}
+
+        <div className="h-6 w-px bg-slate-600/60" aria-hidden />
+
+        <div className="inline-flex items-center rounded-xl bg-slate-900/75 border border-slate-700/70 overflow-hidden">
+          {m.onLeave && (
+            <button
+              onClick={m.onLeave}
+              className="px-3 py-1.5 text-sm font-semibold text-rose-200 hover:bg-rose-900/40 active:scale-95 transition"
+              title="Leave room"
+            >
+              Leave
+            </button>
+          )}
+          <div className="h-5 w-px bg-slate-600/60" aria-hidden />
+          <button
+            onClick={m.toggleSound}
+            className="px-2.5 py-1.5 text-sm text-slate-100 hover:bg-slate-700/80 active:scale-95 transition"
+            title={m.soundOn ? "Mute sounds" : "Enable sounds"}
+          >
+            {m.soundOn ? "🔊" : "🔈"}
+          </button>
+          <div className="h-5 w-px bg-slate-600/60" aria-hidden />
+          <button
+            onClick={() => m.setShowSettings(true)}
+            className="px-2.5 py-1.5 text-sm text-slate-100 hover:bg-slate-700/80 active:scale-95 transition"
+            title="Display settings (theme, color-blind, hover preview)"
+          >
+            ⚙
+          </button>
+          <div className="h-5 w-px bg-slate-600/60" aria-hidden />
+          <button
+            onClick={() => m.setShowInstructions(true)}
+            className="px-2.5 py-1.5 text-sm text-slate-100 hover:bg-slate-700/80 active:scale-95 transition"
+            title="How to play"
+          >
+            ❔ Rules
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -81,10 +103,13 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
  */
 export function LudoDiceTray({ m, state }: { m: LudoBoardModel; state: LudoState }) {
   const sixesActive = state.consecutiveSixes > 0 && state.consecutiveSixes < 3;
+  const traySize = m.polygonGeo
+    ? "clamp(36px, 8.5%, 64px)"
+    : "clamp(44px, 12%, 92px)";
   return (
     <div
       className="absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 pointer-events-none"
-      style={{ width: "clamp(44px, 12%, 92px)" }}
+      style={{ width: traySize }}
     >
       <div className="pointer-events-auto w-full" style={{ aspectRatio: "1" }}>
         <Dice
@@ -97,8 +122,8 @@ export function LudoDiceTray({ m, state }: { m: LudoBoardModel; state: LudoState
         />
       </div>
       {sixesActive && (
-        <span className="pointer-events-auto rounded-full bg-amber-400/90 px-2 py-0.5 text-[10px] font-bold text-slate-900 shadow">
-          {state.consecutiveSixes}/3 sixes
+        <span className="pointer-events-auto rounded-full bg-amber-200/95 border border-amber-500 px-2.5 py-1 text-[11px] font-extrabold text-amber-900 shadow">
+          Six streak {state.consecutiveSixes}/3
         </span>
       )}
     </div>
@@ -134,14 +159,13 @@ export function LudoBoardArea({
       style={{ maxWidth }}
     >
       {m.polygonGeo ? (
-        <PolygonBoardSVG
+        <PrintBoardSVG
           geo={m.polygonGeo}
           players={players}
           playerOrder={state.playerOrder}
           playerColors={state.playerColors}
           activeColors={m.activeColors}
           hasCaptured={state.hasCaptured ?? {}}
-          unlockBurst={m.unlockBurst}
         />
       ) : (
         <BoardSVG
@@ -171,10 +195,17 @@ export function LudoBoardArea({
           const pos = m.tokenPosition(pid, token);
           const movable = pid === m.selfId && m.myTurn && state.movableTokenIds.includes(token.id);
           const idx = parseInt(token.id.split("-")[1] ?? "0", 10);
+          // Print boards recolor each seat by its arm's flat sector color —
+          // tokens must match their yard/lane, not the canonical LudoColor.
+          const armIdx = m.polygonGeo
+            ? PLAYER_COLORS_ORDER.indexOf(state.playerColors[pid])
+            : -1;
           return (
             <Token
               key={token.id}
               color={state.playerColors[pid]}
+              hex={armIdx >= 0 ? seatColor(armIdx) : undefined}
+              hexDark={armIdx >= 0 ? seatColorDark(armIdx) : undefined}
               left={pos.left}
               top={pos.top}
               size={

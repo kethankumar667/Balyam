@@ -29,6 +29,14 @@ const scaleFromCenter = (v: Pt, k: number): Pt => ({
   y: 50 + (v.y - 50) * k,
 });
 
+function shortLabel(name: string): string {
+  return name.length > 16 ? name.slice(0, 15) + "…" : name;
+}
+
+function pillWidth(label: string): number {
+  return Math.max(15, Math.min(22, 5.4 + label.length * 0.9));
+}
+
 export default function PolygonBoardSVG({
   geo,
   players,
@@ -126,6 +134,8 @@ export default function PolygonBoardSVG({
       {activeColors.map((color) => {
         const dark = COLOR_HEX_DARK[color];
         const name = nameFor(color);
+        const label = name ? shortLabel(name) : null;
+        const width = label ? pillWidth(label) : 15;
         const anchor = geo.nameAnchor[color];
         return (
           <g key={color + "-yard"}>
@@ -147,9 +157,9 @@ export default function PolygonBoardSVG({
               </g>
             ))}
             {/* name pill */}
-            {name && (
+            {label && (
               <g transform={`translate(${anchor.x} ${anchor.y})`}>
-                <rect x={-7.5} y={-2.1} width={15} height={4.2} rx={2.1} fill="#1c130a" opacity={0.78} />
+                <rect x={-width / 2} y={-2.1} width={width} height={4.2} rx={2.1} fill="#1c130a" opacity={0.78} />
                 <text
                   x={0}
                   y={0.15}
@@ -160,7 +170,7 @@ export default function PolygonBoardSVG({
                   fill="#ffffff"
                   style={{ fontFamily: "'Poppins','Nunito',sans-serif" }}
                 >
-                  {name.length > 11 ? name.slice(0, 10) + "…" : name}
+                  {label}
                 </text>
               </g>
             )}

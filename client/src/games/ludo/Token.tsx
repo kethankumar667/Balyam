@@ -30,6 +30,8 @@ export function Token({
   cbMode = false,
   golden = false,
   celebrating = false,
+  hex,
+  hexDark,
 }: {
   color: LudoColor;
   left: number;
@@ -43,9 +45,12 @@ export function Token({
   cbMode?: boolean;
   golden?: boolean;
   celebrating?: boolean;
+  /** Optional flat-palette override (print boards recolor seats by sector). */
+  hex?: string;
+  hexDark?: string;
 }) {
-  const main = golden ? "#D4AF37" : COLOR_HEX[color];
-  const dark = golden ? "#8B6914" : COLOR_HEX_DARK[color];
+  const main = golden ? "#D4AF37" : hex ?? COLOR_HEX[color];
+  const dark = golden ? "#8B6914" : hexDark ?? COLOR_HEX_DARK[color];
   return (
     <button
       onClick={onClick}
@@ -120,11 +125,11 @@ export function Token({
             y="12"
             textAnchor="middle"
             fontSize="22"
-            fontWeight="bold"
+            fontWeight="900"
             fill="white"
             stroke={dark}
             strokeWidth="0.8"
-            style={{ paintOrder: "stroke" } as React.CSSProperties}
+            style={{ fontFamily: "'Fredoka','Poppins','Nunito',sans-serif", letterSpacing: "0.01em", paintOrder: "stroke" } as React.CSSProperties}
           >
             {label}
           </text>

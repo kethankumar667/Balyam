@@ -38,6 +38,7 @@ import { createEngine, getGameLimits } from "../games/registry.js";
 import type { RematchState } from "@shared/types.js";
 import type { GameEngine } from "../games/GameEngine.js";
 import { LudoEngine } from "../games/ludo/LudoEngine.js";
+import { PLAYER_COLORS_ORDER } from "../games/ludo/track.js";
 import { SnlEngine } from "../games/snl/SnlEngine.js";
 import { RummyEngine } from "../games/rummy/RummyEngine.js";
 import { HandCricketEngine } from "../games/handcricket/HandCricketEngine.js";
@@ -62,7 +63,7 @@ const MAX_RUMMY_HISTORY = 20;
  * a Ludo bot reads like a neighbourhood kid you'd actually play with.
  *
  * Order matters — the first bot at the table gets index 0. Lists are sized
- * to comfortably cover the per-game max (Ludo 4, SnL 10, Rummy 6, others 2).
+ * to comfortably cover the per-game max (Ludo 8, SnL 10, Rummy 6, others 2).
  */
 const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   handcricket: ["Sachin", "Dhoni", "Kohli", "Yuvraj", "Sehwag", "Dravid"],
@@ -528,13 +529,17 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot change color during game");
       return;
     }
-    // The standard Ludo board only paints four cardinal yards (red / green
-    // / yellow / blue). Earlier this also accepted purple / cyan / orange /
-    // brown, but those fell through to red's coordinates in board-layout,
-    // so a player who picked one ended up with an invisible yard and four
-    // tokens rendered under the red player's tokens. Lock the picker to
-    // the four supported colors instead.
-    const validColors: string[] = ["red", "green", "yellow", "blue"];
+    // All 8 seats are valid picks now: the classic 2-4 player cross board
+    // only paints the first four cardinal colors, but the 5-8 player
+    // print-design board (client/src/games/ludo/print-board.ts) has real
+    // coordinates for all 8. A pick outside the eventual game's actual
+    // player-count pool isn't a dead end either — LudoEngine's color
+    // assignment (colorOf resolution in LudoEngine.ts) only honors
+    // chosenColor when it falls within `PLAYER_COLORS_ORDER.slice(0,
+    // players.length)`, silently falling back to the next free pool color
+    // otherwise, so accepting all 8 here can never leave a player stuck
+    // with an invisible yard.
+    const validColors: string[] = PLAYER_COLORS_ORDER;
     if (!validColors.includes(color)) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Invalid color");
       return;
