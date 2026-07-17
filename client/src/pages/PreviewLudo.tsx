@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { LudoColor, Player } from "@shared/types";
-import { buildLudoBoard, BoardView } from "../games/ludo/boards";
 import { Token } from "../games/ludo/Token";
 import { PLAYER_COLORS_ORDER } from "../games/ludo/board-layout";
+import { getPrintBoard, seatColor, seatColorDark } from "../games/ludo/print-board";
+import PrintBoardSVG from "../games/ludo/PrintBoardSVG";
 
 /**
  * Standalone viewer page for the N-player polygon boards (5, 6, 7, 8).
@@ -111,11 +112,15 @@ function BoardPreview({ N, small = false }: { N: number; small?: boolean }) {
   const playerOrder = players.map((p) => p.id);
   const playerColors: Record<string, LudoColor> = {};
   for (const p of players) if (p.chosenColor) playerColors[p.id] = p.chosenColor;
+  // true so the preview shows the board's print design (entry arrows) rather
+  // than burying every stretch entrance under a mandatory-capture 🔒.
   const hasCaptured: Record<string, boolean> = Object.fromEntries(
-    players.map((p) => [p.id, false])
+    players.map((p) => [p.id, true])
   );
 
-  const board = useMemo(() => buildLudoBoard(N), [N]);
+  // Every count previews the same print-design board family the live game
+  // uses (print-board.ts + PrintBoardSVG).
+  const geo = useMemo(() => getPrintBoard(N), [N]);
 
   const sizeClass = small
     ? "w-full max-w-[360px] aspect-square"
@@ -123,8 +128,8 @@ function BoardPreview({ N, small = false }: { N: number; small?: boolean }) {
 
   return (
     <div className={`relative ${sizeClass} mx-auto`}>
-      <BoardView
-        board={board}
+      <PrintBoardSVG
+        geo={geo}
         players={players}
         playerOrder={playerOrder}
         playerColors={playerColors}
@@ -132,15 +137,17 @@ function BoardPreview({ N, small = false }: { N: number; small?: boolean }) {
         hasCaptured={hasCaptured}
       />
       <div className="absolute inset-0">
-        {activeColors.flatMap((color) =>
+        {activeColors.flatMap((color, armIdx) =>
           [0, 1, 2, 3].map((tokenIdx) => {
-            const slot = board.yardSlots[color]?.[tokenIdx];
+            const slot = geo.yardSlots[color]?.[tokenIdx];
             if (!slot) return null;
-            const baseSize = board.cellSize * 1.7;
+            const baseSize = geo.cellSize * 1.0;
             return (
               <Token
                 key={`${color}-${tokenIdx}`}
                 color={color}
+                hex={seatColor(armIdx)}
+                hexDark={seatColorDark(armIdx)}
                 left={slot.x}
                 top={slot.y}
                 size={small ? baseSize * 0.85 : baseSize}

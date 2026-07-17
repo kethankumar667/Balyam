@@ -199,3 +199,40 @@ export const MEMORYMATCH_TUTORIAL: TutorialDeck = {
     },
   ],
 };
+
+export const STARGAME_TUTORIAL: TutorialDeck = {
+  key: "stargame.tutorial.completed.v1",
+  accent: "#8C5A2B",
+  slides: [
+    {
+      emoji: "🎭",
+      title: "Pick a secret value",
+      body: "At the start of each round, choose one hidden value from the theme deck. Other players cannot see your pick.",
+    },
+    {
+      emoji: "🔀",
+      title: "Shuffle and deal",
+      body: "Each player shuffles when prompted. Then everyone gets four face-down chits for the round.",
+    },
+    {
+      emoji: "⟳",
+      title: "Pass clockwise",
+      body: "Arm one chit and pass it clockwise. Read the table, bait opponents, and protect your own value.",
+    },
+    {
+      emoji: "⭐",
+      title: "Four of a kind triggers STAR",
+      body: "If someone forms four of the same value, the STAR phase begins instantly. Eligible players race to slap STAR first.",
+    },
+    {
+      emoji: "🖐️",
+      title: "Hand-stack speed rank",
+      body: "After STAR, everyone races to stack their hand. Faster stack rank means better points and momentum.",
+    },
+    {
+      emoji: "🏆",
+      title: "Win across rounds",
+      body: "Round scores build over the full match. Stay consistent and clutch late rounds to top the final podium.",
+    },
+  ],
+};

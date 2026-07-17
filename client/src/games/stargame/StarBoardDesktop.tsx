@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useStarBoard } from "./useStarBoard";
 import type { StarBoardModel, StarBoardProps, StarSeat } from "./useStarBoard";
+import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/GameTutorial";
+import { STARGAME_TUTORIAL } from "../tutorials";
 import {
   ActivityFeed,
   Chit,
@@ -36,6 +38,7 @@ import {
 export default function StarBoardDesktop(props: StarBoardProps) {
   const m = useStarBoard(props);
   const reduce = useReducedMotion();
+  const tut = useTutorialGate(STARGAME_TUTORIAL.key);
 
   // Self-tick once per second so the live DeadlinePill (which reads Date.now()
   // at render) actually counts down without any prop change.
@@ -211,7 +214,10 @@ export default function StarBoardDesktop(props: StarBoardProps) {
               <span className="text-sm font-bold" style={{ color: PAPER.ink }}>
                 {statusLine(m)}
               </span>
-              <DeadlinePill deadline={m.deadline} />
+              <div className="flex items-center gap-2">
+                <TutorialButton onClick={() => tut.setOpen(true)} label="How to play Star Game" />
+                <DeadlinePill deadline={m.deadline} />
+              </div>
             </div>
           </Panel>
         </aside>
@@ -253,6 +259,15 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           <ShortcutsHint />
         </div>
       </div>
+
+      {tut.open && (
+        <GameTutorial
+          slides={STARGAME_TUTORIAL.slides}
+          storageKey={STARGAME_TUTORIAL.key}
+          accent={STARGAME_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

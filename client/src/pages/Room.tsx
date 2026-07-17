@@ -43,7 +43,7 @@ import type { StarPlayerView } from "@shared/types";
 const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   rps: 2,
   rummy: 6,
-  ludo: 4,
+  ludo: 8,
   snl: 10,
   handcricket: 2,
   uno: 8,
@@ -589,7 +589,7 @@ export default function Room() {
             </button>
           </header>
         )}
-        {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && (
+        {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && (
           <header className="flex items-center justify-end">
             <button
               onClick={leaveRoom}
@@ -731,6 +731,7 @@ export default function Room() {
                       messages={messages}
                       roomCode={roomState.code}
                       roomPhase={roomState.phase}
+                      onLeave={leaveRoom}
                     />
                   </PassPhoneGate>
                 );

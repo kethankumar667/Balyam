@@ -16,7 +16,7 @@ import { useLudoSettings, prefersReducedMotion, type LudoSettings } from "./sett
 import { predictDestination } from "./predict";
 import { sfx, setSoundEnabled, isSoundEnabled } from "./sound";
 import { computeStepPath, isSameTokenState } from "./animation";
-import { buildPolygonGeometry, type PolygonBoardGeometry } from "./polygon-board";
+import { getPrintBoard, type PrintBoardGeometry } from "./print-board";
 import { DICE_ROLL_MS } from "./Dice";
 import {
   COLOR_HEX,
@@ -38,6 +38,7 @@ export interface LudoBoardProps {
   messages: ChatMessage[];
   roomCode: string;
   roomPhase: string;
+  onLeave?: () => void;
 }
 
 export type LudoToast = { text: string; emoji: string; color?: string };
@@ -89,11 +90,12 @@ export interface LudoBoardModel {
   playerCount: number;
   usePolygon: boolean;
   activeColors: LudoColor[];
-  polygonGeo: PolygonBoardGeometry | null;
+  polygonGeo: PrintBoardGeometry | null;
   tokenPosition: (pid: string, token: LudoToken) => LudoTokenPos;
   nameOf: (id: string) => string;
   roll: () => void;
   move: (tokenId: string) => void;
+  onLeave?: () => void;
 }
 /**
  * useLudoBoard — the entire Ludo board logic, layout-free.
@@ -109,6 +111,7 @@ export function useLudoBoard({
   state,
   players,
   selfId,
+  onLeave,
   // messages/roomCode/roomPhase are forwarded to InlineRoomRail by the shells.
 }: LudoBoardProps): LudoBoardModel {
   const myTurn = state.turnPlayerId === selfId;
@@ -637,9 +640,12 @@ export function useLudoBoard({
         .filter((c): c is LudoColor => !!c),
     [state.playerOrder, state.playerColors]
   );
-  const polygonGeo: PolygonBoardGeometry | null = useMemo(
-    () => (usePolygon ? buildPolygonGeometry(playerCount, activeColors) : null),
-    [usePolygon, playerCount, activeColors]
+  // 5-8 players all use the reference-exact print-design boards
+  // (print-board.ts). They fulfil the PolygonBoardGeometry contract, so
+  // token/hover/animation positioning below is unchanged.
+  const polygonGeo: PrintBoardGeometry | null = useMemo(
+    () => (usePolygon ? getPrintBoard(playerCount) : null),
+    [usePolygon, playerCount]
   );
 
   function posFromState(t: LudoToken, color: LudoColor): { left: number; top: number } | null {
@@ -754,5 +760,6 @@ export function useLudoBoard({
     nameOf,
     roll,
     move,
+    onLeave,
   };
 }

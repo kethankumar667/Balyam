@@ -53,11 +53,15 @@ export type LudoHoverPreview =
   | { kind: "stretch"; stretchPos: number; color: LudoColor }
   | { kind: "home"; color: LudoColor };
 
-/** Token sizes for the polygon (5-8 player) board, scaled to cell size. */
+/** Token sizes for the polygon (5-8 player) board, scaled to cell size.
+ *  Yard well positions (print-board.ts) are now derived from each yard
+ *  triangle's own taper, not a fixed cellSize-relative constant, so the
+ *  4-token cluster fills most of the yard at any N — 1.0 keeps tokens
+ *  comfortably inside that spread without touching their neighbors. */
 export function polygonTokenSize(state: LudoToken["state"], cellSize: number): number {
-  if (state === "yard") return cellSize * 1.7;
-  if (state === "home") return cellSize * 1.3;
-  return cellSize * 1.45;
+  if (state === "yard") return cellSize * 1.0;
+  if (state === "home") return cellSize * 1.05;
+  return cellSize * 1.18;
 }
 
 export function HoverPreviewMarker({
@@ -195,6 +199,16 @@ const WOOD_DARK      = "#3F2412";
 const GOLD           = "#E0AE3B";
 const GOLD_DEEP      = "#9A6E1A";
 
+function starPoints(cx: number, cy: number, r: number): string {
+  const pts: string[] = [];
+  for (let k = 0; k < 10; k++) {
+    const rr = k % 2 === 0 ? r : r * 0.42;
+    const a = -Math.PI / 2 + (k * Math.PI) / 5;
+    pts.push(`${(cx + rr * Math.cos(a)).toFixed(3)},${(cy + rr * Math.sin(a)).toFixed(3)}`);
+  }
+  return pts.join(" ");
+}
+
 /** Track index of each color's launch square on the cross (4-player) board. */
 const START_MAP: Record<string, number> = { red: 0, green: 13, yellow: 26, blue: 39 };
 
@@ -318,10 +332,10 @@ export function BoardSVG({
                 style={pid && pid !== selfId ? { cursor: "pointer" } : undefined}
               >
                 {pid && pid !== selfId && <title>React at {name}</title>}
-                <rect x={c0 + 0.5} y={r0 + 0.18} width={5} height={0.75} rx={0.38} fill={PARCHMENT} stroke={GOLD_DEEP} strokeWidth={0.08} />
+                <rect x={c0 + 0.5} y={r0 + 0.18} width={5} height={0.75} rx={0.38} fill={COLOR_HEX[color]} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.08} />
                 {/* Inner gold trim line */}
-                <rect x={c0 + 0.62} y={r0 + 0.28} width={4.76} height={0.55} rx={0.3} fill="none" stroke={GOLD} strokeWidth={0.04} opacity={0.85} />
-                <text x={c0 + 2.85} y={r0 + 0.72} textAnchor="middle" fontSize="0.5" fontWeight="900" fill={COLOR_HEX_DARK[color]} style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                <rect x={c0 + 0.62} y={r0 + 0.28} width={4.76} height={0.55} rx={0.3} fill="none" stroke="#ffffff" strokeWidth={0.04} opacity={0.35} />
+                <text x={c0 + 2.85} y={r0 + 0.72} textAnchor="middle" fontSize="0.5" fontWeight="900" fill="#ffffff" style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   {name.slice(0, 12)}
                 </text>
                 {/* Home-progress corner badge: "N/4" tokens home, live during play. */}
@@ -338,7 +352,7 @@ export function BoardSVG({
       {/* Track cells — warm off-white with hairline gold-tan border */}
       {TRACK_CELLS.map((cell, idx) => (
         <g key={idx}>
-          <rect x={cell.col + 0.04} y={cell.row + 0.04} width={1 - 0.08} height={1 - 0.08} rx={0.12} fill={TRACK_FILL} stroke={TRACK_BORDER} strokeWidth={0.07} />
+          <rect x={cell.col + 0.04} y={cell.row + 0.04} width={1 - 0.08} height={1 - 0.08} rx={0.12} fill={TRACK_FILL} stroke="#A89978" strokeWidth={0.055} />
           {/* Subtle top highlight for bevel */}
           <line x1={cell.col + 0.15} y1={cell.row + 0.12} x2={cell.col + 0.85} y2={cell.row + 0.12} stroke="#FFFFFF" strokeOpacity={0.5} strokeWidth={0.04} />
         </g>
@@ -359,11 +373,15 @@ export function BoardSVG({
       {/* Safe-square stars — gold with deep-gold halo for premium feel */}
       {[...SAFE_SQUARES].map((pos) => {
         const cell = TRACK_CELLS[pos];
+        const safeColor = ORDERED_COLORS.find((c) => START_MAP[c] === pos || ((START_MAP[c] + 8) % 52) === pos) ?? "yellow";
         return (
           <g key={"safe" + pos}>
-            <text x={cell.col + 0.5} y={cell.row + 0.78} fontSize={0.78} textAnchor="middle" fill={GOLD} fontWeight="900" style={{ paintOrder: "stroke", stroke: GOLD_DEEP, strokeWidth: 0.05 }}>
-              ★
-            </text>
+            <polygon
+              points={starPoints(cell.col + 0.5, cell.row + 0.5, 0.35)}
+              fill={COLOR_HEX[safeColor]}
+              stroke={COLOR_HEX_DARK[safeColor]}
+              strokeWidth={0.045}
+            />
           </g>
         );
       })}

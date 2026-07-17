@@ -2,18 +2,25 @@ import type { Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
 
 import type { LudoColor } from "@shared/types";
+import { COLOR_HEX, PLAYER_COLORS_ORDER } from "../games/ludo/board-layout";
 
-// Only the four cardinal colors render on the standard Ludo board. Earlier
-// the picker also offered purple/cyan/orange/brown, but board-layout stubs
-// those to red's coordinates, which meant picking one made your yard
-// invisible and stacked your tokens under red's tokens. The polygon-board
-// variant (5+ players) accepts more colors, but its UI lives elsewhere.
-const COLORS: { id: LudoColor; label: string; hex: string }[] = [
-  { id: "red", label: "Red", hex: "#ef4444" },
-  { id: "green", label: "Green", hex: "#10b981" },
-  { id: "yellow", label: "Yellow", hex: "#f59e0b" },
-  { id: "blue", label: "Blue", hex: "#3b82f6" },
-];
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// All 8 seats, in the same canonical order the server assigns colors in
+// (LudoEngine.ts's `pool = PLAYER_COLORS_ORDER.slice(0, players.length)`).
+// A 2-4 player game only ever uses the standard cross board (red/green/
+// yellow/blue), but rooms can grow to 8 (Ludo max — see registry.ts /
+// Room.tsx's MAX_PLAYERS_BY_GAME) and use the print-design polygon board,
+// which has real coordinates for all 8. Picking a color outside the
+// eventual game's player-count pool isn't a dead end: the engine's second
+// assignment pass just falls back to the next free pool color for that
+// player, so it's always safe to offer the full set here regardless of how
+// many players end up in the room by the time it starts.
+const COLORS: { id: LudoColor; label: string; hex: string }[] = PLAYER_COLORS_ORDER.map(
+  (id) => ({ id, label: capitalize(id), hex: COLOR_HEX[id] })
+);
 
 export default function LudoColorPicker({
   players,
@@ -33,7 +40,7 @@ export default function LudoColorPicker({
         <h3 className="text-sm uppercase text-slate-400">Pick your color</h3>
         <span className="text-xs text-slate-500">first come, first served</span>
       </div>
-      <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
         {COLORS.map((c) => {
           const owner = players.find((p) => p.chosenColor === c.id);
           const isMe = owner?.id === selfId;

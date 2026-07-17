@@ -3,6 +3,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import type { StarPhase } from "@shared/types";
 import { useStarBoard } from "./useStarBoard";
 import type { StarBoardProps } from "./useStarBoard";
+import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/GameTutorial";
+import { STARGAME_TUTORIAL } from "../tutorials";
 import {
   PAPER,
   Chit,
@@ -78,6 +80,7 @@ function ActionButton({
 export default function StarBoardMobile(props: StarBoardProps) {
   const m = useStarBoard(props);
   const reduce = useReducedMotion();
+  const tut = useTutorialGate(STARGAME_TUTORIAL.key);
 
   // Self-tick once a second so the <DeadlinePill> (which reads Date.now() at
   // render) shows a live countdown. Cheap re-render; no other side effects.
@@ -321,7 +324,8 @@ export default function StarBoardMobile(props: StarBoardProps) {
         <span className="shrink-0 font-display text-xs font-bold tabular-nums" style={{ color: PAPER.pencil }}>
           Round {m.round}/{m.totalRounds}
         </span>
-        <span className="flex min-w-[3.25rem] justify-end">
+        <span className="flex min-w-[3.25rem] items-center justify-end gap-1.5">
+          <TutorialButton onClick={() => tut.setOpen(true)} label="How to play Star Game" />
           <DeadlinePill deadline={m.deadline} />
         </span>
       </header>
@@ -369,6 +373,15 @@ export default function StarBoardMobile(props: StarBoardProps) {
         >
           {action}
         </div>
+      )}
+
+      {tut.open && (
+        <GameTutorial
+          slides={STARGAME_TUTORIAL.slides}
+          storageKey={STARGAME_TUTORIAL.key}
+          accent={STARGAME_TUTORIAL.accent}
+          onClose={() => tut.setOpen(false)}
+        />
       )}
     </div>
   );
