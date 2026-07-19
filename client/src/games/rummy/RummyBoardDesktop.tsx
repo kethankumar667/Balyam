@@ -15,7 +15,7 @@ import type {
   RummyRoundRecap,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
-import { PlayingCard } from "./Card";
+import { PlayingCard, FaceDownCard } from "./Card";
 import TutorialModal from "./TutorialModal";
 import {
   classifyMeld,
@@ -1648,7 +1648,7 @@ function Notepad({
               key={i}
               style={isVertical ? { marginTop: i === 0 ? 0 : -36 } : { marginLeft: i === 0 ? 0 : -24 }}
             >
-              <CardBackDesktop small />
+              <FaceDownCard small />
             </div>
           ))}
         </div>
@@ -1711,41 +1711,6 @@ function SelfPad({
         </div>
       )}
     </div>
-  );
-}
-
-/** Ornate SVG card back (desktop only — mobile keeps the shared red
- * FaceDownCard from ./Card untouched). Pure vector, no raster asset. */
-function CardBackDesktop({ small = false }: { small?: boolean }) {
-  const w = small ? 36 : 48;
-  const h = small ? 50 : 66;
-  return (
-    <svg width={w} height={h} viewBox="0 0 48 66" className="flex-shrink-0 drop-shadow" aria-hidden>
-      <defs>
-        <linearGradient id="cbd-bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#1e2a5c" />
-          <stop offset="100%" stopColor="#0d1530" />
-        </linearGradient>
-      </defs>
-      <rect x="1" y="1" width="46" height="64" rx="5" fill="url(#cbd-bg)" stroke="#C9A227" strokeWidth="1.5" />
-      <rect x="5" y="5" width="38" height="56" rx="3" fill="none" stroke="#C9A227" strokeWidth="0.75" opacity="0.6" />
-      {Array.from({ length: 4 }).map((_, row) =>
-        Array.from({ length: 3 }).map((_, col) => (
-          <circle
-            key={`${row}-${col}`}
-            cx={12 + col * 12}
-            cy={14 + row * 13}
-            r="2.6"
-            fill="none"
-            stroke="#C9A227"
-            strokeWidth="0.9"
-            opacity="0.65"
-          />
-        )),
-      )}
-      <circle cx="24" cy="33" r="8" fill="#C9A227" opacity="0.9" />
-      <text x="24" y="36.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#1e2a5c" fontFamily="Georgia, serif">B</text>
-    </svg>
   );
 }
 
@@ -1904,7 +1869,7 @@ function ClosedDeck({
           style={{ boxShadow: "0 0 0 2px #9C7A3C, 0 0 16px rgba(156,122,60,0.55)", animation: "rummy-glow 1.4s ease-in-out infinite" }}
         />
       )}
-      <CardBackDesktop />
+      <FaceDownCard />
       <div className="absolute -bottom-5 left-0 right-0 text-center text-[10px] uppercase tracking-widest text-nostalgia-pen/60 font-bold">
         Closed · {count}
       </div>

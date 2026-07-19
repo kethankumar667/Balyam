@@ -1047,15 +1047,28 @@ export default function RummyBoardMobile({
         <div className="flex justify-start min-w-0">
           <OpponentRow state={state} players={players} selfId={selfId} />
         </div>
-        <CenterDeckArea
-          state={state}
-          canDraw={canDraw}
-          canDiscard={canDiscardOrDeclare}
-          drawFromClosed={drawFromClosed}
-          drawFromOpen={drawFromOpen}
-          draggingIds={draggingIds}
-          discardPulseKey={discardPulseKey}
-        />
+        {/* relative wrapper scopes the post-show countdown (below) to just
+            this deck zone — see ArrangeCenterTimerMobile's own comment for
+            why it must NOT cover the hand/lanes area beneath. */}
+        <div className="relative">
+          <CenterDeckArea
+            state={state}
+            canDraw={canDraw}
+            canDiscard={canDiscardOrDeclare}
+            drawFromClosed={drawFromClosed}
+            drawFromOpen={drawFromOpen}
+            draggingIds={draggingIds}
+            discardPulseKey={discardPulseKey}
+            isArranging={isArranging}
+          />
+          {isArranging && (
+            <ArrangeCenterTimerMobile
+              deadline={state.arrangeDeadline ?? null}
+              iAmDeclarer={iAmDeclarer}
+              declarerName={nameOf(state.winnerId ?? "")}
+            />
+          )}
+        </div>
         <div aria-hidden />
       </div>
 
@@ -1205,14 +1218,10 @@ export default function RummyBoardMobile({
         <PoolStandings state={state} nameOf={nameOf} selfId={selfId} />
       )}
 
-      {/* Post-show 15s rearrange window — countdown banner. */}
-      {isArranging && (
-        <ArrangingBannerMobile
-          deadline={state.arrangeDeadline ?? null}
-          iAmDeclarer={iAmDeclarer}
-          declarerName={nameOf(state.winnerId ?? "")}
-        />
-      )}
+      {/* Declarer-only spectate lock during the post-show rearrange window —
+          see DeclarerSpectateLockMobile's own comment. The countdown itself
+          renders separately, scoped to the deck zone above (both roles). */}
+      {isArranging && iAmDeclarer && <DeclarerSpectateLockMobile />}
 
       {/* Drop flourish — a card slams down when a player drops. */}
       {dropAnnounce && <DropAnnounceMobile name={dropAnnounce.name} mine={dropAnnounce.mine} />}
@@ -2011,6 +2020,7 @@ function CenterDeckArea({
   drawFromOpen,
   draggingIds,
   discardPulseKey,
+  isArranging = false,
 }: {
   state: RummyPlayerState;
   canDraw: boolean;
@@ -2019,6 +2029,10 @@ function CenterDeckArea({
   drawFromOpen: () => void;
   draggingIds: string[];
   discardPulseKey: number;
+  /** Post-show rearrange window — mirrors desktop's dimmed/locked deck zone
+   *  (RummyBoardDesktop.tsx) so the countdown banner rendered over this same
+   *  area reads clearly against inert, greyed-out piles. */
+  isArranging?: boolean;
 }) {
   const isDragging = draggingIds.length > 0;
   // Drop targets are resolved by the pointer-drag hook via elementFromPoint;
@@ -2032,11 +2046,12 @@ function CenterDeckArea({
     state.topOfOpenPile?.isPrintedJoker === true && !state.openJokerDrawable;
   return (
     <div
-      className="rounded-lg p-1 sm:p-1.5 flex items-center justify-center gap-1.5 sm:gap-2.5 flex-wrap flex-shrink-0"
-      style={{
-        background: "rgba(0,0,0,0.18)",
-        border: "1px solid rgba(255,255,255,0.08)",
-      }}
+      className="rounded-lg p-1 sm:p-1.5 flex items-center justify-center gap-1.5 sm:gap-2.5 flex-wrap flex-shrink-0 transition-opacity"
+      style={
+        isArranging
+          ? { background: "rgba(0,0,0,0.18)", border: "1px solid rgba(255,255,255,0.08)", opacity: 0.28, pointerEvents: "none", filter: "grayscale(0.4)" }
+          : { background: "rgba(0,0,0,0.18)", border: "1px solid rgba(255,255,255,0.08)" }
+      }
     >
       {/* Wild joker */}
       <div className="flex flex-col items-center gap-1">
@@ -3438,12 +3453,19 @@ function DropAnnounceMobile({ name, mine }: { name: string; mine: boolean }) {
 }
 
 /**
- * Post-show rearrange window (mobile) — a countdown ring in the MIDDLE of the
- * table. For the declarer it also locks the whole board with a blocking dim
- * layer (they're spectating). For a loser it's pointer-events-none so they keep
- * rearranging the cards underneath; the pile/actions are already disabled.
+ * Post-show rearrange window (mobile) — a small countdown ring scoped to the
+ * deck zone, matching desktop's ArrangeCenterTimer (RummyBoardDesktop.tsx)
+ * exactly: always pointer-events-none, sized to sit over the (now dimmed
+ * and locked, via CenterDeckArea's isArranging) deck/pile row only.
+ *
+ * This used to be `fixed inset-0`, centered on the FULL viewport — on a
+ * narrow mobile screen that put the ring and its two label pills dead over
+ * the hand/lanes area below, where the (non-declarer) player actually needs
+ * to see and drag their cards during this window. Even with pointer-events
+ * passing through, the visual clutter made precise rearranging hard — hence
+ * scoping it to the deck zone instead, well clear of the hand.
  */
-function ArrangingBannerMobile({
+function ArrangeCenterTimerMobile({
   deadline,
   iAmDeclarer,
   declarerName,
@@ -3461,32 +3483,24 @@ function ArrangingBannerMobile({
   const urgent = remainingSec != null && remainingSec <= 5 && !iAmDeclarer;
   const accent = iAmDeclarer ? "#22c55e" : urgent ? "#ef4444" : "#fbbf24";
   return (
-    <div
-      className="fixed inset-0 z-[59] flex flex-col items-center justify-center px-6 text-center"
-      style={{
-        // Declarer: block the whole board (spectating). Loser: let taps through
-        // to the cards below so they can still rearrange.
-        pointerEvents: iAmDeclarer ? "auto" : "none",
-        background: iAmDeclarer ? "rgba(20,14,8,0.55)" : "transparent",
-      }}
-    >
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none rummy-result-pop">
       <div
-        className="flex items-center justify-center rounded-full font-black tabular-nums rummy-result-pop"
+        className="flex items-center justify-center rounded-full font-black tabular-nums"
         style={{
-          width: 84,
-          height: 84,
-          fontSize: 38,
+          width: 52,
+          height: 52,
+          fontSize: 22,
           color: "#fff",
           background: "radial-gradient(circle at 50% 35%, rgba(0,0,0,0.55), rgba(0,0,0,0.8))",
-          border: `4px solid ${accent}`,
-          boxShadow: `0 0 24px ${accent}88, inset 0 0 14px rgba(0,0,0,0.6)`,
+          border: `3px solid ${accent}`,
+          boxShadow: `0 0 16px ${accent}88, inset 0 0 10px rgba(0,0,0,0.6)`,
           animation: urgent ? "rummy-glow 0.7s ease-in-out infinite" : undefined,
         }}
       >
         {remainingSec ?? "—"}
       </div>
       <div
-        className="mt-2 px-4 py-1 rounded-full text-[12px] font-black uppercase tracking-[0.1em]"
+        className="mt-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-[0.08em] text-center whitespace-nowrap"
         style={{
           background: iAmDeclarer ? "linear-gradient(135deg,#166534,#15803d)" : "linear-gradient(135deg,#7c2d12,#b45309)",
           color: "#fff",
@@ -3496,8 +3510,29 @@ function ArrangingBannerMobile({
       >
         {iAmDeclarer ? "🏆 You made the show" : `⏱️ ${declarerName || "Someone"} declared`}
       </div>
-      <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/85">
-        {iAmDeclarer ? "Board locked — waiting for others…" : "Arrange to cut your points"}
+    </div>
+  );
+}
+
+/**
+ * Declarer-only spectate lock — a full-page dim + tap-block so the winner
+ * can't fiddle with their (already-locked) hand during the loser's
+ * rearrange window. Deliberately carries NO countdown of its own (that's
+ * ArrangeCenterTimerMobile, above, always visible in the deck zone to both
+ * roles) — this is purely the "you can't touch anything right now" block,
+ * scoped to the one role that actually needs it.
+ */
+function DeclarerSpectateLockMobile() {
+  return (
+    <div
+      className="fixed inset-0 z-[59] flex items-end justify-center pb-10 px-6 text-center"
+      style={{ pointerEvents: "auto", background: "rgba(20,14,8,0.55)" }}
+    >
+      <div
+        className="px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider text-white/90"
+        style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(34,197,94,0.5)" }}
+      >
+        🏆 Board locked — waiting for others to arrange…
       </div>
     </div>
   );

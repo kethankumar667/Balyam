@@ -623,64 +623,43 @@ function JackTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin:
 }
 
 /**
- * Card back used for the closed deck and other face-down piles.
- *
- * Diamond lattice over a deep crimson gradient, with a gold inner border
- * and a centred "B" monogram (BHALYAM). The pattern is pure CSS so it
- * scales crisply at all card sizes.
+ * Card back used for the closed deck and other face-down piles — shared by
+ * both shells (previously desktop had its own bespoke navy/gold version,
+ * "CardBackDesktop", while mobile was left on an earlier crimson-lattice
+ * design; this is that desktop design, promoted here so both shells render
+ * identically). Navy gradient, gold dot-lattice pattern, and a gold "B"
+ * (BHALYAM) monogram medallion. Pure SVG so it scales crisply at any size.
  */
 export function FaceDownCard({ small = false }: { small?: boolean }) {
-  const sizeCls = small ? "w-9 h-[3.25rem]" : "w-10 h-14 sm:w-12 sm:h-16";
+  const w = small ? 36 : 48;
+  const h = small ? 50 : 66;
   return (
-    <div
-      className={`${sizeCls} rounded-[7px] flex-shrink-0 relative overflow-hidden`}
-      style={{
-        background: "linear-gradient(140deg, #7f1d1d 0%, #991b1b 60%, #4c0519 100%)",
-        border: "1.5px solid #2c0507",
-        boxShadow:
-          "0 4px 9px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(251,191,36,0.55)",
-      }}
-    >
-      {/* Diamond lattice */}
-      <div
-        aria-hidden
-        className="absolute inset-1 rounded-[4px]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(45deg, rgba(251,191,36,0.18) 0 1.5px, transparent 1.5px 9px), repeating-linear-gradient(-45deg, rgba(251,191,36,0.18) 0 1.5px, transparent 1.5px 9px)",
-          border: "1px solid rgba(251,191,36,0.4)",
-        }}
-      />
-      {/* Centre monogram */}
-      <div
-        aria-hidden
-        className="absolute inset-0 flex items-center justify-center"
-      >
-        <span
-          className="inline-flex items-center justify-center rounded-full font-black"
-          style={{
-            width: small ? 18 : 22,
-            height: small ? 18 : 22,
-            background: "radial-gradient(circle, #fbbf24 0%, #d97706 100%)",
-            color: "#3a1f00",
-            fontSize: small ? 10 : 12,
-            boxShadow:
-              "0 1px 2px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.55)",
-            fontFamily: "Georgia, 'Times New Roman', serif",
-          }}
-        >
-          B
-        </span>
-      </div>
-      {/* Subtle glossy sheen */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-3 opacity-25"
-        style={{
-          background: "linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0))",
-        }}
-      />
-    </div>
+    <svg width={w} height={h} viewBox="0 0 48 66" className="flex-shrink-0 drop-shadow" aria-hidden>
+      <defs>
+        <linearGradient id="rummy-cardback-bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#1e2a5c" />
+          <stop offset="100%" stopColor="#0d1530" />
+        </linearGradient>
+      </defs>
+      <rect x="1" y="1" width="46" height="64" rx="5" fill="url(#rummy-cardback-bg)" stroke="#C9A227" strokeWidth="1.5" />
+      <rect x="5" y="5" width="38" height="56" rx="3" fill="none" stroke="#C9A227" strokeWidth="0.75" opacity="0.6" />
+      {Array.from({ length: 4 }).map((_, row) =>
+        Array.from({ length: 3 }).map((_, col) => (
+          <circle
+            key={`${row}-${col}`}
+            cx={12 + col * 12}
+            cy={14 + row * 13}
+            r="2.6"
+            fill="none"
+            stroke="#C9A227"
+            strokeWidth="0.9"
+            opacity="0.65"
+          />
+        )),
+      )}
+      <circle cx="24" cy="33" r="8" fill="#C9A227" opacity="0.9" />
+      <text x="24" y="36.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#1e2a5c" fontFamily="Georgia, serif">B</text>
+    </svg>
   );
 }
 
