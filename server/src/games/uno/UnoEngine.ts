@@ -29,6 +29,10 @@ const NUMBER_RANKS: UnoRank[] = [
 ];
 const ACTION_RANKS: UnoRank[] = ["Skip", "Reverse", "+2"];
 const WILD_RANKS: UnoRank[] = ["Wild", "Wild+4"];
+/** Human-readable color names for lastAction announcements — the wire
+ *  protocol only ever carries the single-letter UnoColor code, but
+ *  "chose Blue!" reads far better in the action toast than "chose B!". */
+const COLOR_NAMES: Record<UnoColor, string> = { R: "Red", G: "Green", B: "Blue", Y: "Yellow" };
 
 /**
  * Internal game state — server-only, never sent to clients.
@@ -475,9 +479,18 @@ export class UnoEngine implements GameEngine {
             : undefined;
         const wasLegalWildFour =
           card.rank === "Wild+4" ? !hand.some((c) => c.color === this.state.currentColor) : true;
+        // finalizePlayedCard always overwrites lastAction with the played
+        // card's own description — capture the Keep Drawing note first (if
+        // any) so a multi-card draw doesn't silently vanish from the toast
+        // the instant Force Play auto-plays the card it landed on.
+        const drawNote = drewCount > 1 ? this.state.lastAction : null;
         hand.splice(cardIndex, 1);
         this.syncUnoDeclaration(playerId);
-        return this.finalizePlayedCard(playerId, card, chosenColor, wasLegalWildFour);
+        const result = this.finalizePlayedCard(playerId, card, chosenColor, wasLegalWildFour);
+        if (drawNote && this.state.lastAction) {
+          this.state.lastAction = `${drawNote} → ${this.state.lastAction}`;
+        }
+        return result;
       }
     }
 
@@ -640,7 +653,7 @@ export class UnoEngine implements GameEngine {
         playedById: playerId,
         wasLegal: wasLegalWildFour,
       };
-      this.state.lastAction = `Wild Draw Four! Waiting for ${this.nameOf(targetId)} to accept or challenge.`;
+      this.state.lastAction = `Wild Draw Four! ${this.nameOf(playerId)} chose ${COLOR_NAMES[this.state.currentColor!]}. Waiting for ${this.nameOf(targetId)} to accept or challenge.`;
       return { ok: true };
     }
 
@@ -811,6 +824,21 @@ export class UnoEngine implements GameEngine {
       return {
         turnAdvance: 1,
         description: `Seven! ${this.nameOf(playerId)} swapped hands with ${this.nameOf(swappedWithId)}.`,
+      };
+    }
+
+    if (card.rank === "Wild") {
+      // Plain Wild has no dedicated turn-order effect, but it DOES change
+      // currentColor — announcing that choice is the whole point of the
+      // card. Before this branch existed, a plain Wild fell through to the
+      // generic "Card played." default below, silently dropping the one
+      // piece of information every other player actually needs (Bhalyam
+      // issue: "no indication of the player's chosen colour").
+      // this.state.currentColor is already set to the chosen color by the
+      // time finalizePlayedCard calls this (color update happens first).
+      return {
+        turnAdvance: 1,
+        description: `${this.nameOf(playerId)} played Wild — chose ${COLOR_NAMES[this.state.currentColor!]}!`,
       };
     }
 

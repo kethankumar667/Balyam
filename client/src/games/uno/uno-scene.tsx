@@ -122,6 +122,50 @@ export function UnoRoomCodePlate({ code, compact = false }: { code: string; comp
 }
 
 // ---------------------------------------------------------------------
+// House-rules badge — a small persistent indicator so anyone at the table
+// (not just the host, who's the only one who ever sees the toggles, in
+// GameRoomSheet.tsx's pre-creation sheet) can tell which non-official
+// rules are live this match. Without this, a joining player has zero
+// in-app way to learn Jump-In/Stacking/etc. exist before one fires —
+// an out-of-turn play or a sudden full-hand swap otherwise reads as a
+// bug. Renders nothing when every flag is off (the common case), same
+// "off = official, no extra chrome" principle the toggles themselves use.
+// ---------------------------------------------------------------------
+
+const HOUSE_RULE_LABELS: Record<string, string> = {
+  stackDrawCards: "Stack Draw Cards",
+  jumpIn: "Jump-In",
+  sevenSwap: "Seven Swap",
+  zeroRotate: "Zero Rotate",
+  keepDrawing: "Keep Drawing",
+  forcePlay: "Force Play",
+};
+
+export function UnoHouseRulesBadge({
+  rules,
+  compact = false,
+}: {
+  rules: Record<string, boolean>;
+  compact?: boolean;
+}) {
+  const active = Object.keys(HOUSE_RULE_LABELS).filter((k) => rules[k]);
+  if (active.length === 0) return null;
+  const names = active.map((k) => HOUSE_RULE_LABELS[k]).join(", ");
+  return (
+    <div
+      className={`uno-wood-plate flex items-center gap-1 rounded-xl font-bold uppercase text-[#E9C892] whitespace-nowrap ${
+        compact ? "px-2 py-1 text-[9px]" : "px-2.5 py-1 text-[10px]"
+      }`}
+      title={`House rules active: ${names}`}
+      aria-label={`House rules active: ${names}`}
+    >
+      <span aria-hidden>🎲</span>
+      {compact ? active.length : `${active.length} house rule${active.length === 1 ? "" : "s"}`}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
 // UNO! declare cluster — the big red button (right-middle in the reference)
 // with a "1 CARD LEFT!" tag beneath. Only rendered while the local player
 // actually has one undeclared card (canDeclareUno), so the tag is always

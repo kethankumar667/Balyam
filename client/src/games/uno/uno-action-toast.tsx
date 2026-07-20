@@ -35,20 +35,32 @@ export function UnoActionToast({ lastAction }: UnoActionToastProps) {
 
   useEffect(() => {
     if (!visible) return;
-    const t = window.setTimeout(() => setVisible(null), 2600);
+    // A round transition (Volume 2/6 multi-round matches) silently refills
+    // every player's hand — the standard 2.6s fade was easy to miss for an
+    // event that big, so it gets more time on screen and a bolder look
+    // below, keyed off the engine's own stable "Round N!" prefix
+    // (UnoEngine.startNewRound) rather than a new state field.
+    const isRoundBanner = visible.startsWith("Round ");
+    const t = window.setTimeout(() => setVisible(null), isRoundBanner ? 4200 : 2600);
     return () => window.clearTimeout(t);
   }, [visible]);
 
   if (!visible) return null;
+  const isRoundBanner = visible.startsWith("Round ");
 
   return (
     <div className="pointer-events-none flex justify-center px-2" aria-live="polite">
       <span
-        className="pointer-events-auto max-w-full truncate rounded-full px-4 py-1.5 text-[12px] font-bold shadow-md animate-[fadeIn_150ms_ease-out]"
+        className={`pointer-events-auto max-w-full truncate rounded-full shadow-md animate-[fadeIn_150ms_ease-out] ${
+          isRoundBanner
+            ? "px-6 py-2.5 text-[15px] font-black uppercase tracking-wide"
+            : "px-4 py-1.5 text-[12px] font-bold"
+        }`}
         style={{
           background: "linear-gradient(135deg, #F7DA8B, #E6A11E)",
           color: "#2B2118",
-          border: "1px solid #6D4323",
+          border: isRoundBanner ? "2px solid #6D4323" : "1px solid #6D4323",
+          boxShadow: isRoundBanner ? "0 8px 22px -4px rgba(0,0,0,0.55)" : undefined,
         }}
       >
         {visible}

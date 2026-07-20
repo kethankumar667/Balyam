@@ -19,7 +19,7 @@ import {
   computeSeatPosition,
   useUnoEventFlourish,
 } from "./uno-table";
-import { UnoRoomCodePlate, UnoIvoryButton, UnoDeclareCluster } from "./uno-scene";
+import { UnoRoomCodePlate, UnoIvoryButton, UnoDeclareCluster, UnoHouseRulesBadge } from "./uno-scene";
 import { UnoRoomRail } from "./uno-rail";
 import { useUnoDealGate, UnoDealOverlay } from "./uno-deal";
 import { UnoActionToast } from "./uno-action-toast";
@@ -113,6 +113,11 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
             </UnoIvoryButton>
           </div>
         </div>
+        {Object.values(state.activeHouseRules).some(Boolean) && (
+          <div className="flex justify-center">
+            <UnoHouseRulesBadge rules={state.activeHouseRules} compact />
+          </div>
+        )}
         <div
           className="flex items-center justify-between gap-2 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wide"
           style={
@@ -124,8 +129,12 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           <span className="truncate">{turnLabel}</span>
           {/* topOffsetRem clears this two-row header — the warning chip is
               position:fixed, so DOM nesting alone won't offset it. */}
+          {/* active also covers isChallengeTarget — see UnoBoardDesktop.tsx's
+              matching comment: the player the server resolves on timeout
+              during a Wild+4 decision must see the same warning a normal
+              turn gets, not just whoever holds turnPlayerId. */}
           {state.turnDeadline && (
-            <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn} topOffsetRem={5.5} />
+            <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn || m.isChallengeTarget} topOffsetRem={5.5} />
           )}
         </div>
       </div>
