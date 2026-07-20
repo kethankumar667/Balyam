@@ -216,6 +216,54 @@ export function UnoDeclareCluster({
 }
 
 // ---------------------------------------------------------------------
+// Pass button — on-felt placement (per live user reference: a hand-
+// annotated screenshot placed it just below the centre pile, not down
+// in the hand row where the shared `ActionBar` in uno-shared.tsx renders
+// it). Desktop-only variant; `ActionBar` itself is untouched and still
+// used by the mobile shell's sticky-bottom placement, which has its own,
+// separately-tuned layout constraints. Same visibility contract
+// (`drewThisTurn`) and same emit (`passTurn`) as `ActionBar` — this is a
+// presentation-only alternative, not a second source of truth.
+// ---------------------------------------------------------------------
+
+export function UnoPassButton({
+  visible,
+  canPass,
+  onPass,
+}: {
+  visible: boolean;
+  canPass: boolean;
+  onPass: () => void;
+}) {
+  if (!visible) return null;
+  return (
+    <button
+      onClick={onPass}
+      disabled={!canPass}
+      aria-label="Pass turn"
+      className={`flex items-center justify-center gap-1.5 rounded-full font-black uppercase tracking-wide text-white transition ${
+        canPass ? "cursor-pointer active:scale-95" : "cursor-not-allowed opacity-60"
+      }`}
+      style={{
+        padding: "0.7rem 1.8rem",
+        fontSize: "1.05rem",
+        background: canPass
+          ? "linear-gradient(135deg,#F7A94A,#E6821E)"
+          : "linear-gradient(135deg,#9C8A78,#7A6C5D)",
+        border: "3px solid #FFF6E4",
+        boxShadow: "0 10px 22px rgba(0,0,0,0.45), inset 0 2px 3px rgba(255,255,255,0.35)",
+        textShadow: "0 2px 2px rgba(0,0,0,0.35)",
+      }}
+    >
+      Pass
+      <span className="font-mono text-[10px] opacity-70 border border-current rounded px-1 py-0.5">
+        P
+      </span>
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------
 // Asset-placeholder slots — exact-positioned framed boxes for the two
 // illustrated props in the reference (a paper-clipped polaroid, a
 // notebook-with-pencils). Muted dashed fill labels them clearly as "art

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useUnoBoard, type UnoBoardProps } from "./useUnoBoard";
-import { ActionBar } from "./uno-shared";
 import { useAudio } from "../../hooks/useAudio";
 import {
   enterFullscreen,
@@ -24,6 +23,7 @@ import {
   UnoRoomCodePlate,
   UnoIvoryButton,
   UnoDeclareCluster,
+  UnoPassButton,
   UnoNotebookPlaceholder,
   UnoHouseRulesBadge,
 } from "./uno-scene";
@@ -234,15 +234,25 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
             </div>
           </UnoTableMat>
 
-          {/* UNO! declare cluster — right edge of the felt (reference position) */}
-          <div className="absolute right-[-1.5%] top-1/2 -translate-y-1/2 z-30">
+          {/* UNO! declare cluster — bottom-right of the felt, and Pass —
+              centred just below the pile, above the self plate. Both
+              moved onto the felt itself per live user reference (a
+              hand-annotated screenshot): previously UNO sat pinned to the
+              felt's right edge and Pass rendered as a full-width bar
+              below the hand fan, disconnected from the table action the
+              player is actually looking at. */}
+          <div className="absolute z-30" style={{ left: "77%", top: "77%", transform: "translate(-50%,-50%)" }}>
             <UnoDeclareCluster visible={m.canDeclareUno} onDeclare={m.declareUno} />
+          </div>
+          <div className="absolute z-30" style={{ left: "50%", top: "80%", transform: "translate(-50%,-50%)" }}>
+            <UnoPassButton visible={m.myTurn && m.drewThisTurn && state.phase === "playing"} canPass={m.canPassTurn} onPass={m.passTurn} />
           </div>
         </div>
       </div>
 
-      {/* Bottom: own hand fan + Pass row. The UNO! declare button now lives on
-          the right edge of the felt (UnoDeclareCluster), matching the reference. */}
+      {/* Bottom: own hand fan. Pass and UNO! now live on the felt itself
+          (see the on-felt UnoPassButton/UnoDeclareCluster above), matching
+          the live reference — this row is hand + keyboard hint only. */}
       <div className="flex-shrink-0 px-4 pb-3 -mt-1">
         <UnoHandFan
           sortedHand={m.sortedHand}
@@ -258,17 +268,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
           onDragStateChange={setIsDraggingCard}
         />
 
-        <div className="flex items-center justify-between gap-3 mt-2">
-          <div className="flex-1 max-w-md">
-            {m.myTurn && state.phase === "playing" && (
-              <ActionBar
-                passTurn={m.passTurn}
-                canPassTurn={m.canPassTurn}
-                drewThisTurn={m.drewThisTurn}
-                showKbdHint
-              />
-            )}
-          </div>
+        <div className="flex items-center justify-end gap-3 mt-2">
           <div className="hidden lg:block text-[10px] font-mono text-[#E9C892]/70 italic whitespace-nowrap">
             D draw · P pass · U declare · Esc cancel
           </div>
