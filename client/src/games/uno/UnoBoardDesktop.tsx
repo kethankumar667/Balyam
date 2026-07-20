@@ -25,6 +25,7 @@ import {
   UnoIvoryButton,
   UnoDeclareCluster,
   UnoNotebookPlaceholder,
+  UnoHouseRulesBadge,
 } from "./uno-scene";
 import { UnoRoomRail } from "./uno-rail";
 import { useUnoDealGate, UnoDealOverlay } from "./uno-deal";
@@ -113,8 +114,15 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
       {/* topOffsetRem clears the room-code pill below, which centres itself
           in this same top-of-screen slot (see the header block further
           down) — without it the two fixed-position elements overlap. */}
+      {/* active also covers isChallengeTarget: the player the server will
+          forcibly resolve on timeout (UnoEngine.getTimeoutActor returns
+          pendingChallenge.challengerId during a Wild+4 decision, not just
+          the normal turnPlayerId) must see the same escalating warning a
+          normal turn gets — previously only myTurn triggered it, so the
+          challenge target could lose their Accept/Challenge window with
+          zero warning it was coming. */}
       {state.turnDeadline && (
-        <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn} topOffsetRem={3.25} />
+        <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn || m.isChallengeTarget} topOffsetRem={3.25} />
       )}
 
       {/* Screen-reader-only turn announcement — the visual design conveys
@@ -135,7 +143,8 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         </UnoIvoryButton>
         <div className="flex flex-col gap-2">
           <UnoRoomCodePlate code={roomCode} />
-          {state.turnDeadline && <UnoTimerBadge deadline={state.turnDeadline} myTurn={m.myTurn} />}
+          <UnoHouseRulesBadge rules={state.activeHouseRules} />
+          {state.turnDeadline && <UnoTimerBadge deadline={state.turnDeadline} myTurn={m.myTurn || m.isChallengeTarget} />}
         </div>
       </div>
 

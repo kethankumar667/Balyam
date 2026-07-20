@@ -1089,6 +1089,29 @@ describe("UnoEngine", () => {
       expect(after.hands["p1"]).toHaveLength(2); // drawn card stays in hand
       expect(after.discard[after.discard.length - 1]!.id).toBe("top-fp-off"); // not auto-played
     });
+
+    it("keeps the Keep Drawing draw-count note in lastAction instead of Force Play silently clobbering it", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, keepDrawing: true, forcePlay: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-fp-kd")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      s.hands["p1"] = [card("B", "1", "p1-no-match-fp-kd")];
+      s.deck = [
+        card("G", "2", "fp-kd-wrong-1"),
+        card("Y", "3", "fp-kd-wrong-2"),
+        card("R", "9", "fp-kd-match"), // finally playable — Force Play auto-plays this one
+      ];
+
+      const result = engine.applyMove({ playerId: "p1", type: "draw" });
+      expect(result.ok).toBe(true);
+      const after = engine.getPublicState();
+      expect(after.topCard.id).toBe("fp-kd-match"); // auto-played
+      expect(after.lastAction).toContain("drew 3 cards looking for a play");
+      expect(after.lastAction).toContain("→");
+      expect(after.lastAction).not.toBe("Card played."); // the draw note must survive, not be overwritten
+    });
   });
 
   describe("Multi-round target score matches (Volume 2/6, targetScore option)", () => {
