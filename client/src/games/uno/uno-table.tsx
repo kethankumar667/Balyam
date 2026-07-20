@@ -235,70 +235,31 @@ export function UnoTableMat({ children }: { children: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------
-// Direction indicator — two small, fixed-size curved-arrow icons on the
-// table's side rails, mirrored when direction is -1.
+// Direction indicator — a large dashed ring around the centre pile,
+// mirrored when direction is -1.
 //
-// Was previously one big SVG with a square 200x200 viewBox stretched to
-// `w-full h-full` of the felt. On a near-square mobile felt (aspect
-// ~1.12) that was fine, but the desktop felt is a WIDE rectangle (aspect
-// ~1.8) — SVG's default `preserveAspectRatio="xMidYMid meet"` then scales
-// the square viewBox up to match the felt's HEIGHT (the limiting
-// dimension), so the arcs ballooned to nearly the table's full height and
-// swept diagonally across the middle, overlapping opponent seats/pile at
-// 3-4+ players (reported live: RED/BLUE/GREEN seats with the arc cutting
-// straight across the felt). Fixed by dropping the stretched-viewBox
-// approach entirely: each icon is now a small, NORMALLY-proportioned SVG
-// (never stretched, always crisp) at a small fixed pixel size, positioned
-// via percentage coordinates on the table's side rails — same technique
-// computeSeatPosition already uses for seats, so it can never balloon
-// with the container's aspect ratio, and its fixed placement (side rails,
-// mid-height) stays clear of the seat ring (which occupies the upper
-// arc) and the centre pile at any player count.
+// v1 was one big SVG with a square 200x200 viewBox stretched to
+// `w-full h-full` of the felt — SVG's default `preserveAspectRatio`
+// scaled it to the felt's HEIGHT on a wide desktop table, ballooning it
+// across the middle and overlapping opponent seats. v2 fixed the overlap
+// by shrinking to two tiny fixed-size icons on the side rails — but that
+// undercorrected: per live user reference (a hand-annotated screenshot),
+// the direction indicator should read as a real ring FRAMING the pile,
+// not a pair of small side accents.
+//
+// This version gets the size back without reintroducing the stretch bug:
+// `viewBox="0 0 100 100"` + `preserveAspectRatio="none"` maps 1 unit to
+// 1% of the felt's width (x) and 1% of its height (y) INDEPENDENTLY —
+// exactly the same percentage coordinate system `computeSeatPosition`
+// already uses for seats, so the ring always matches the felt's real
+// aspect ratio instead of a generic circle getting letterboxed or
+// stretched. `vectorEffect="non-scaling-stroke"` keeps the dash/stroke a
+// constant screen-pixel width despite that non-uniform scale, so the
+// ring reads as a clean dashed line, not a smeared ellipse cross-section.
+// Centred on the pile (50, 48) with a radius (21 x, 20 y) sized to clear
+// the seat ring above (seats occupy roughly y 8-54%) and the Pass/UNO
+// controls below (~74%+) at any player count.
 // ---------------------------------------------------------------------
-
-function DirArrowLeft() {
-  return (
-    <svg viewBox="0 0 40 40" width="28" height="28" aria-hidden>
-      <defs>
-        <marker id="uno-dir-arrow-l" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="#F7DA8B" />
-        </marker>
-      </defs>
-      <path
-        d="M 8 30 A 18 18 0 0 1 30 10"
-        fill="none"
-        stroke="#F7DA8B"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray="1.5 6"
-        markerEnd="url(#uno-dir-arrow-l)"
-        opacity="0.8"
-      />
-    </svg>
-  );
-}
-
-function DirArrowRight() {
-  return (
-    <svg viewBox="0 0 40 40" width="28" height="28" aria-hidden>
-      <defs>
-        <marker id="uno-dir-arrow-r" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="#F7DA8B" />
-        </marker>
-      </defs>
-      <path
-        d="M 10 10 A 18 18 0 0 1 32 30"
-        fill="none"
-        stroke="#F7DA8B"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray="1.5 6"
-        markerEnd="url(#uno-dir-arrow-r)"
-        opacity="0.8"
-      />
-    </svg>
-  );
-}
 
 export function UnoDirectionArc({
   direction,
@@ -309,18 +270,33 @@ export function UnoDirectionArc({
   flourish?: boolean;
 }) {
   return (
-    <div
-      className={`absolute inset-0 pointer-events-none ${flourish ? "uno-flourish-pulse" : ""}`}
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      className={`absolute inset-0 w-full h-full pointer-events-none ${flourish ? "uno-flourish-pulse" : ""}`}
       style={{ transform: direction === -1 ? "scaleX(-1)" : undefined }}
       aria-hidden
     >
-      <div className="absolute" style={{ left: "4%", top: "48%", transform: "translate(-50%,-50%)" }}>
-        <DirArrowLeft />
-      </div>
-      <div className="absolute" style={{ left: "96%", top: "48%", transform: "translate(-50%,-50%)" }}>
-        <DirArrowRight />
-      </div>
-    </div>
+      {/* The closed ring — standard "two arcs" SVG ellipse trick (start at
+          the leftmost point, sweep to the rightmost point and back), so
+          the geometry is always a true closed ellipse with no seam. */}
+      <path
+        d="M 29 48 A 21 20 0 1 0 71 48 A 21 20 0 1 0 29 48"
+        fill="none"
+        stroke="#F7DA8B"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeDasharray="2.2 5"
+        opacity="0.85"
+        vectorEffect="non-scaling-stroke"
+      />
+      {/* Two small flow arrows at the 3-o'clock/9-o'clock points, tangent
+          to the ring, conveying clockwise rotation (mirrored to
+          counter-clockwise by the wrapper's scaleX(-1) above when
+          direction is -1, same as every seat/UI element already flips). */}
+      <path d="M 68.5 44 L 74.5 44 L 71.5 50.5 Z" fill="#F7DA8B" opacity="0.9" />
+      <path d="M 31.5 52 L 25.5 52 L 28.5 45.5 Z" fill="#F7DA8B" opacity="0.9" />
+    </svg>
   );
 }
 
@@ -453,21 +429,21 @@ export function UnoTableCenter({
           <UnoCardFlipFace key={topCard.id} card={topCard} />
           {wildTop && currentColor && (
             <div
-              className="absolute -bottom-7 inset-x-0 flex justify-center"
+              className="absolute -bottom-9 inset-x-0 flex justify-center z-10"
               // A player who wasn't looking at the toast when a Wild landed
               // needs a SECOND, persistent place to find the chosen colour —
               // this pill (swatch dot + label, high-contrast dark chip) sits
-              // right under the card for exactly that. Previously just small
-              // muted text ("→ green", #6E5E4D on the red felt) that was
-              // easy to miss entirely (Bhalyam issue: no clear indication of
-              // a played Wild's chosen colour).
+              // right under the card for exactly that. Sized up per live
+              // user feedback ("make the color indication pill also in big
+              // size") — was a compact 11px chip, now a larger, harder-to-
+              // miss badge matching the toast's own emphasis treatment.
             >
               <div
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide text-white whitespace-nowrap shadow-md"
-                style={{ background: "rgba(42,26,15,0.88)", border: "1px solid rgba(247,218,139,0.55)" }}
+                className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[15px] font-black uppercase tracking-wide text-white whitespace-nowrap shadow-lg"
+                style={{ background: "rgba(42,26,15,0.92)", border: "2px solid rgba(247,218,139,0.7)" }}
               >
                 <span
-                  className="w-2.5 h-2.5 rounded-full ring-1 ring-white/70"
+                  className="w-4 h-4 rounded-full ring-2 ring-white/80"
                   style={{ background: WILD_COLOR_SWATCH[currentColor] }}
                   aria-hidden
                 />
