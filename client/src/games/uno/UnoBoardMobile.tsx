@@ -31,6 +31,16 @@ import { WildDrawFourChallengePrompt } from "./uno-challenge";
 import UnoResultModal from "./UnoResultModal";
 import GameTutorial, { useTutorialGate } from "../../components/GameTutorial";
 import { UNO_TUTORIAL } from "../tutorials";
+import { animated } from "@react-spring/web";
+import { useAnimationConfig } from "../../animations/helpers/useAnimationConfig";
+import { useTableCamera } from "../../animations/camera/useTableCamera";
+import { usePlayerWobble } from "../../animations/player/usePlayerWobble";
+import { PlusTwoFlyingSlippers } from "../../animations/card/PlusTwoFlyingSlippers";
+import type { FeltAnchor } from "../../animations/helpers/types";
+
+/** The pile sits at the felt's visual centre — see UnoBoardDesktop.tsx's
+ *  matching constant. */
+const PILE_ANCHOR: FeltAnchor = { left: "50%", top: "50%" };
 
 /**
  * Touch-first UNO board — circular-table redesign (see UnoBoardDesktop.tsx's
@@ -57,6 +67,25 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const opponents = state.playerOrder.filter((id) => id !== selfId);
   const selfDeclared = selfId != null && state.unoDeclaredBy.includes(selfId);
   const selfName = selfId ? m.nameOf(selfId) : "You";
+
+  // ── Animation system — see UnoBoardDesktop.tsx's matching block for
+  // the full rationale; identical wiring, mobile just uses a smaller
+  // shake intensity (screen real estate is tighter, per AGENTS.md §6.1).
+  const animConfig = useAnimationConfig();
+  const { cameraRef, shake, punch } = useTableCamera();
+  const [wobbleKey, setWobbleKey] = useState<string | null>(null);
+  const [wobbleTargetId, setWobbleTargetId] = useState<string | null>(null);
+  const wobbleBaseTransform = wobbleTargetId === selfId ? "translateX(-50%)" : "translate(-50%, -50%)";
+  const wobble = usePlayerWobble(wobbleKey, wobbleBaseTransform);
+  const handleHitImpact = (targetId: string) => {
+    shake({ disabled: animConfig.reducedMotion, intensity: 4 });
+    punch({ disabled: animConfig.reducedMotion });
+    setWobbleTargetId(targetId);
+    setWobbleKey(`${targetId}-${Date.now()}`);
+  };
+  const slipperHit = activeHit?.kind === "draw2" ? activeHit : null;
+  const slipperTargetId = slipperHit?.targetIds[0] ?? null;
+  const slipperTargetPos = slipperTargetId ? resolveSeatPosition(slipperTargetId, selfId, opponents) : null;
 
   /* ─── Sound + fullscreen header controls — same global toggles as
      desktop. No keyboard shortcuts here, matching Rummy's own scoping:
@@ -157,6 +186,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
             the table at tablet widths (768-1023px) instead of using the
             extra room the way AGENTS.md's tablet tier calls for. */}
         <div
+          ref={cameraRef}
           className="relative w-full mx-auto max-w-[480px] sm:max-w-[560px] lg:max-w-[680px]"
           style={{ aspectRatio: "1.12" }}
         >
@@ -166,10 +196,14 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
             {opponents.map((id, i) => {
               const pos = computeSeatPosition(i, opponents.length);
               return (
-                <div
+                <animated.div
                   key={id}
                   className="absolute z-[2]"
-                  style={{ left: pos.left, top: pos.top, transform: "translate(-50%, -50%)" }}
+                  style={{
+                    left: pos.left,
+                    top: pos.top,
+                    transform: wobbleTargetId === id ? wobble.transform : "translate(-50%, -50%)",
+                  }}
                 >
                   <UnoPlayerChip
                     name={m.nameOf(id)}
@@ -181,7 +215,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                     compact={opponents.length >= 3}
                     isConnected={players.find((p) => p.id === id)?.isConnected}
                   />
-                </div>
+                </animated.div>
               );
             })}
 
@@ -196,16 +230,31 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
               />
             </div>
 
-            <div className="absolute left-1/2 bottom-[3%] -translate-x-1/2 z-[3]">
+            <animated.div
+              className="absolute left-1/2 bottom-[3%] z-[3]"
+              style={{ transform: wobbleTargetId === selfId ? wobble.transform : "translateX(-50%)" }}
+            >
               <div className="relative flex flex-col items-center">
                 <UnoDeclareBubble declared={selfDeclared} />
                 <UnoNamePlate name={selfName} isSelf isTurn={m.myTurn} />
               </div>
-            </div>
+            </animated.div>
 
-            {/* Comedic "fired at" flourish — see UnoBoardDesktop.tsx's
+            {/* Comedic "fired at" flourish — draw2 gets the full "+2
+                Flying Slippers" cinematic; see UnoBoardDesktop.tsx's
                 matching block for the full rationale. */}
-            {activeHit?.targetIds.map((tid) => {
+            {slipperHit && slipperTargetPos && (
+              <PlusTwoFlyingSlippers
+                key={`${slipperTargetId}-draw2-${slipperHit.count}`}
+                count={slipperHit.count ?? 2}
+                originAnchor={PILE_ANCHOR}
+                targetAnchor={slipperTargetPos}
+                config={animConfig}
+                onImpact={() => slipperTargetId && handleHitImpact(slipperTargetId)}
+                onComplete={() => {}}
+              />
+            )}
+            {activeHit && activeHit.kind !== "draw2" && activeHit.targetIds.map((tid) => {
               const pos = resolveSeatPosition(tid, selfId, opponents);
               if (!pos) return null;
               return (

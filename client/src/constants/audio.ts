@@ -83,6 +83,16 @@ export const AUDIO = {
   UNO_REVERSE:  "uno_reverse",
   UNO_SKIP:     "uno_skip",
 
+  /* ── UNO animation-layer FX (keys wired, assets pending — same
+     precedent as above). Distinct from the coarse UNO_* keys: these are
+     short, generic impact-sound "layers" the animation system composes
+     per-event (e.g. +2 Flying Slippers = whoosh on launch, smack on
+     impact, boing under the wobble), reused across future animations
+     rather than one bespoke key per animation. ── */
+  UNO_FX_WHOOSH: "uno_fx_whoosh",
+  UNO_FX_SMACK:  "uno_fx_smack",
+  UNO_FX_BOING:  "uno_fx_boing",
+
   /* ── Star Game (90's paper-slip; keys wired, assets pending) ── */
   STAR_SHUFFLE:   "star_shuffle",
   STAR_DEAL:      "star_deal",
