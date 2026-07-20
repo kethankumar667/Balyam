@@ -19,7 +19,7 @@ export interface AudioContextValue {
   isAudioUnlocked: boolean;
 
   /* Playback — fire-and-forget. Routes music keys to playMusic(). */
-  play: (key: AudioKey) => void;
+  play: (key: AudioKey, opts?: { rate?: number }) => void;
   stop: (key: AudioKey) => void;
 
   /* Background music. */
@@ -64,7 +64,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     () => ({
       settings,
       isAudioUnlocked: manager.isAudioUnlocked(),
-      play:            (k) => manager.play(k),
+      play:            (k, opts) => manager.play(k, opts),
       stop:            (k) => manager.stop(k),
       playMusic:       (k) => manager.playMusic(k),
       stopMusic:       () => manager.stopMusic(),

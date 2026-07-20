@@ -259,8 +259,14 @@ export class AudioManager {
   /**
    * Play a sound by key. Music keys are routed to playMusic() so callers
    * can always say `play(AUDIO.WHATEVER)` and get the right behaviour.
+   *
+   * `opts.rate` — optional Howler playback-rate override (its pitch knob),
+   * applied to this ONE play instance only via the sound id `.play()`
+   * returns. Never mutates the cached Howl's default rate, so a
+   * pitch-varied animation SFX never leaks into a later unrelated
+   * `play()` of the same key elsewhere in the app.
    */
-  play(key: AudioKey): void {
+  play(key: AudioKey, opts?: { rate?: number }): void {
     if (this.settings.isMuted) return;
     if (!this.unlocked) return;
     if (MUSIC_KEYS.has(key)) {
@@ -272,7 +278,8 @@ export class AudioManager {
     const howl = this.getOrCreateHowl(this.sfxCache, file, false);
     try {
       howl.volume(this.settings.effectsVolume);
-      howl.play();
+      const id = howl.play();
+      if (opts?.rate) howl.rate(opts.rate, id);
     } catch (err) {
       warn(`play(${key}) threw`, err);
     }

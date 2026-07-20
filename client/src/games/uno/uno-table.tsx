@@ -178,11 +178,23 @@ const HIT_FLAVOR: Record<UnoHit["kind"], { emoji: string; label: (count?: number
   catch: { emoji: "🚨", label: (c) => `CAUGHT! +${c ?? 2}`, bg: "linear-gradient(135deg,#F87171,#DC2626)" },
 };
 
+/** Per-kind hold duration for `useUnoHitReaction` below. Every kind still
+ *  using the plain `UnoHitBadge` holds for the badge's own ~1.5s pop
+ *  animation; `draw2` now drives the "+2 Flying Slippers" cinematic
+ *  (`animations/card/PlusTwoFlyingSlippers.tsx`), whose own internal
+ *  timeline runs a little longer — the hold here must outlast it or the
+ *  component unmounts mid-sequence and GSAP's cleanup cuts the tail. */
+const HIT_HOLD_MS: Partial<Record<UnoHit["kind"], number>> = {
+  draw2: 1700,
+};
+const DEFAULT_HIT_HOLD_MS = 1500;
+
 /** Watches `lastHit` for a genuinely new value (stringified comparison —
  *  the server rebuilds the object fresh on every `getPublicState()` call,
  *  so reference equality would false-positive on every unrelated
- *  broadcast) and returns it for ~1.5s, long enough for `uno-hit-pop` to
- *  play out fully. */
+ *  broadcast) and returns it for its kind's hold duration (see
+ *  `HIT_HOLD_MS`), long enough for its reaction animation to play out
+ *  fully. */
 export function useUnoHitReaction(lastHit: UnoPublicState["lastHit"]): UnoHit | null {
   const [active, setActive] = useState<UnoHit | null>(null);
   const prevKey = useRef<string | null>(null);
@@ -192,7 +204,8 @@ export function useUnoHitReaction(lastHit: UnoPublicState["lastHit"]): UnoHit | 
     if (key && key !== prevKey.current) {
       prevKey.current = key;
       setActive(lastHit);
-      const t = window.setTimeout(() => setActive(null), 1500);
+      const holdMs = (lastHit && HIT_HOLD_MS[lastHit.kind]) ?? DEFAULT_HIT_HOLD_MS;
+      const t = window.setTimeout(() => setActive(null), holdMs);
       return () => window.clearTimeout(t);
     }
     prevKey.current = key;
