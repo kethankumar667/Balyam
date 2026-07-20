@@ -42,6 +42,10 @@ import { SkipBananaPeel } from "../../animations/card/SkipBananaPeel";
 import { useReverseFlip } from "../../animations/card/useReverseFlip";
 import { useWildColorSplash } from "../../animations/card/useWildColorSplash";
 import { WildColorSplash } from "../../animations/card/WildColorSplash";
+import { useUnoCallCelebration } from "../../animations/card/useUnoCallCelebration";
+import { UnoCallCelebration } from "../../animations/card/UnoCallCelebration";
+import { ForgotUnoCallout } from "../../animations/card/ForgotUnoCallout";
+import { StackAttack } from "../../animations/card/StackAttack";
 import type { FeltAnchor } from "../../animations/helpers/types";
 
 /** The pile sits at the felt's visual centre — see UnoBoardDesktop.tsx's
@@ -111,6 +115,18 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const reverseTrigger = useReverseFlip(flourish, animConfig, tilt);
   const pileWobble = usePlayerWobble(reverseTrigger, "");
   const wildEvent = useWildColorSplash(state.lastAction, state.currentColor);
+  const unoCallEvent = useUnoCallCelebration(state.unoDeclaredBy);
+  const unoCallPos = unoCallEvent ? resolveSeatPosition(unoCallEvent.playerId, selfId, opponents) : null;
+  const catchHit = activeHit?.kind === "catch" ? activeHit : null;
+  const catchTargetId = catchHit?.targetIds[0] ?? null;
+  const catchTargetPos = catchTargetId ? resolveSeatPosition(catchTargetId, selfId, opponents) : null;
+  const stackHit = activeHit?.kind === "stack" ? activeHit : null;
+  const stackTargetId = stackHit?.targetIds[0] ?? null;
+  const stackTargetPos = stackTargetId ? resolveSeatPosition(stackTargetId, selfId, opponents) : null;
+  const handleStackImpact = (targetId: string) => {
+    shake({ disabled: animConfig.reducedMotion, intensity: 5 });
+    triggerWobble(targetId);
+  };
 
   /* ─── Sound + fullscreen header controls — same global toggles as
      desktop. No keyboard shortcuts here, matching Rummy's own scoping:
@@ -304,10 +320,33 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                   onComplete={() => {}}
                 />
               )}
+              {catchHit && catchTargetPos && (
+                <ForgotUnoCallout
+                  key={`${catchTargetId}-catch-${catchHit.count}`}
+                  count={catchHit.count ?? 2}
+                  targetAnchor={catchTargetPos}
+                  config={animConfig}
+                  onImpact={() => catchTargetId && triggerWobble(catchTargetId)}
+                  onComplete={() => {}}
+                />
+              )}
+              {stackHit && stackTargetPos && (
+                <StackAttack
+                  key={`${stackTargetId}-stack-${stackHit.count}`}
+                  count={stackHit.count ?? 4}
+                  originAnchor={PILE_ANCHOR}
+                  targetAnchor={stackTargetPos}
+                  config={animConfig}
+                  onImpact={() => stackTargetId && handleStackImpact(stackTargetId)}
+                  onComplete={() => {}}
+                />
+              )}
               {activeHit &&
                 activeHit.kind !== "draw2" &&
                 activeHit.kind !== "draw4" &&
                 activeHit.kind !== "skip" &&
+                activeHit.kind !== "catch" &&
+                activeHit.kind !== "stack" &&
                 activeHit.targetIds.map((tid) => {
                   const pos = resolveSeatPosition(tid, selfId, opponents);
                   if (!pos) return null;
@@ -321,6 +360,24 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                     </div>
                   );
                 })}
+              {wildEvent && (
+                <WildColorSplash
+                  key={wildEvent.key}
+                  event={wildEvent}
+                  anchor={PILE_ANCHOR}
+                  config={animConfig}
+                  onComplete={() => {}}
+                />
+              )}
+              {unoCallEvent && unoCallPos && (
+                <UnoCallCelebration
+                  key={unoCallEvent.key}
+                  anchor={unoCallPos}
+                  isSelf={unoCallEvent.playerId === selfId}
+                  config={animConfig}
+                  onComplete={() => {}}
+                />
+              )}
               {wildEvent && (
                 <WildColorSplash
                   key={wildEvent.key}

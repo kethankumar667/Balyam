@@ -1,7 +1,10 @@
 import { useEffect } from "react";
+import { motion } from "framer-motion";
 import type { Player, UnoPlayerState } from "@shared/types";
 import RematchPanel from "../../components/RematchPanel";
 import { fireUnoWinConfetti } from "./uno-confetti";
+import { useAnimationConfig } from "../../animations/helpers/useAnimationConfig";
+import { WinnerCelebration } from "../../animations/card/WinnerCelebration";
 
 export interface UnoResultModalProps {
   state: UnoPlayerState;
@@ -27,6 +30,7 @@ export default function UnoResultModal({ state, players, selfId, onClose, onLeav
   const winnerId = state.winnerId;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
   const isSelfWinner = winnerId != null && winnerId === selfId;
+  const animConfig = useAnimationConfig();
 
   // Only the winner gets the burst — same "no negative FX for everyone
   // else" precedent useUnoBoard.ts already sets for the win sound.
@@ -47,9 +51,13 @@ export default function UnoResultModal({ state, players, selfId, onClose, onLeav
       aria-modal="true"
       aria-label="Match results"
     >
-      <div
+      {isSelfWinner && <WinnerCelebration config={animConfig} />}
+      <motion.div
         className="w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
         style={{ background: "#FFF9F0", border: "2px solid #6D4323" }}
+        initial={animConfig.reducedMotion ? false : { scale: 0.85, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 340, damping: 24 }}
       >
         <div
           className="px-5 py-5 text-center space-y-1"
@@ -113,7 +121,7 @@ export default function UnoResultModal({ state, players, selfId, onClose, onLeav
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
