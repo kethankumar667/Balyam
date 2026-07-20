@@ -92,8 +92,10 @@ function BotControls({
   players: import("@shared/types").Player[];
   maxPlayers: number;
 }) {
+  const [botName, setBotName] = useState("");
   function addBot() {
-    getSocket().emit("room:addBot");
+    getSocket().emit("room:addBot", botName.trim() || undefined);
+    setBotName("");
   }
   function removeBot(id: string) {
     getSocket().emit("room:removeBot", id);
@@ -107,6 +109,18 @@ function BotControls({
         <h3 className="text-xs uppercase tracking-wider text-[#796651]">
           Bots {atCapacity ? "· table full" : `· ${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`}
         </h3>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={botName}
+          onChange={(e) => setBotName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !atCapacity) addBot(); }}
+          placeholder="Bot name (optional)"
+          maxLength={20}
+          disabled={atCapacity}
+          className="flex-1 text-xs px-2 py-1 rounded border border-[#D9C9B0] bg-white placeholder-[#B0A090] focus:outline-none focus:border-[#31A157] disabled:opacity-50"
+        />
         <button
           onClick={addBot}
           disabled={atCapacity}

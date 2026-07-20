@@ -1500,7 +1500,7 @@ export interface ClientToServerEvents {
   ) => void;
   "room:leave": () => void;
   "room:setReady": (ready: boolean) => void;
-  "room:addBot": () => void;
+  "room:addBot": (botName?: string) => void;
   "room:removeBot": (botId: string) => void;
   /** Pass & Play: host adds a local human seat with the given name. */
   "room:addLocalPlayer": (name: string) => void;
