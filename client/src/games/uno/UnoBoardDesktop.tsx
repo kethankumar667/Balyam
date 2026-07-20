@@ -18,6 +18,9 @@ import {
   UnoTimerBadge,
   computeSeatPosition,
   useUnoEventFlourish,
+  useUnoHitReaction,
+  resolveSeatPosition,
+  UnoHitBadge,
 } from "./uno-table";
 import {
   UnoRoomCodePlate,
@@ -53,6 +56,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   const tut = useTutorialGate(UNO_TUTORIAL.key);
   const dealStage = useUnoDealGate(roomCode);
   const flourish = useUnoEventFlourish(state.lastAction);
+  const activeHit = useUnoHitReaction(state.lastHit);
   // Drag-to-play: true while a hand card is mid-drag, so the discard pile
   // can show its "Drop to play" affordance. See uno-table.tsx's UnoHandFan.
   const [isDraggingCard, setIsDraggingCard] = useState(false);
@@ -232,6 +236,24 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                 <UnoNamePlate name={selfName} isSelf isTurn={m.myTurn} />
               </div>
             </div>
+
+            {/* Comedic "fired at" flourish — a badge pops over whoever a
+                special-power card just hit (Skip/Draw Two/Draw Four/stack/
+                Seven Swap/Zero Rotate/UNO catch). translateY(-135%) lifts
+                it clear of the seat chip/self plate it's anchored to. */}
+            {activeHit?.targetIds.map((tid) => {
+              const pos = resolveSeatPosition(tid, selfId, opponents);
+              if (!pos) return null;
+              return (
+                <div
+                  key={`${tid}-${activeHit.kind}`}
+                  className="absolute z-40"
+                  style={{ left: pos.left, top: pos.top, transform: "translate(-50%, -135%)" }}
+                >
+                  <UnoHitBadge hit={activeHit} />
+                </div>
+              );
+            })}
           </UnoTableMat>
 
           {/* UNO! declare cluster — bottom-right of the felt, and Pass —

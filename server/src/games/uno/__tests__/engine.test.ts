@@ -1210,4 +1210,134 @@ describe("UnoEngine", () => {
       expect(engine.getPublicState().round).toBe(3);
     });
   });
+
+  describe("lastHit (per-seat comedic flourish targeting)", () => {
+    beforeEach(() => {
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-hit")];
+      s.currentColor = "R";
+      s.turnIndex = 0; // p1's turn
+      s.direction = 1;
+    });
+
+    it("Skip: hits the skipped player", () => {
+      const skip = card("R", "Skip", "hit-skip");
+      stateOf(engine).hands["p1"] = [skip, card("B", "1", "filler-hs")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: skip.id } });
+      const hit = engine.getPublicState().lastHit;
+      expect(hit).toEqual({ targetIds: ["p2"], kind: "skip" });
+    });
+
+    it("Reverse in a 2-player game: hits the acts-as-skip target", () => {
+      const twoPlayers = players.slice(0, 2);
+      engine.init(twoPlayers);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-hit-2p")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const rev = card("R", "Reverse", "hit-reverse-2p");
+      s.hands["p1"] = [rev, card("B", "1", "filler-2p")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: rev.id } });
+      expect(engine.getPublicState().lastHit).toEqual({ targetIds: ["p2"], kind: "skip" });
+    });
+
+    it("Draw Two (un-stacked): hits the player who draws 2", () => {
+      const d2 = card("R", "+2", "hit-d2");
+      stateOf(engine).hands["p1"] = [d2, card("B", "1", "filler-d2")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: d2.id } });
+      expect(engine.getPublicState().lastHit).toEqual({ targetIds: ["p2"], kind: "draw2", count: 2 });
+    });
+
+    it("Stack Draw Cards absorption: hits the player who draws the accumulated total", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, stackDrawCards: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-hit-stack")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const d2 = card("R", "+2", "hit-stack-d2");
+      s.hands["p1"] = [d2, card("B", "1", "filler-stack")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: d2.id } }); // stacked, no hit yet
+      expect(engine.getPublicState().lastHit).toBeNull();
+      engine.applyMove({ playerId: "p2", type: "draw" }); // p2 absorbs the stack
+      expect(engine.getPublicState().lastHit).toEqual({ targetIds: ["p2"], kind: "stack", count: 2 });
+    });
+
+    it("Wild Draw Four acceptDraw: hits the challenger who accepted", () => {
+      const w4 = card(null, "Wild+4", "hit-w4-accept");
+      stateOf(engine).hands["p1"] = [w4, card("B", "1", "filler-w4a")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: w4.id, color: "G" } });
+      engine.applyMove({ playerId: "p2", type: "acceptDraw" });
+      expect(engine.getPublicState().lastHit).toEqual({ targetIds: ["p2"], kind: "draw4", count: 4 });
+    });
+
+    it("Wild Draw Four challenge succeeds: hits the original player instead of the challenger", () => {
+      // p1 holds a Red card too, making their Wild+4 illegal to challenge.
+      const w4 = card(null, "Wild+4", "hit-w4-illegal");
+      stateOf(engine).hands["p1"] = [w4, card("R", "9", "p1-red-illegal")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: w4.id, color: "G" } });
+      engine.applyMove({ playerId: "p2", type: "challenge" });
+      expect(engine.getPublicState().lastHit).toEqual({ targetIds: ["p1"], kind: "draw4", count: 4 });
+    });
+
+    it("Wild Draw Four challenge fails: hits the challenger with 6 instead of 4", () => {
+      const w4 = card(null, "Wild+4", "hit-w4-legal");
+      stateOf(engine).hands["p1"] = [w4, card("B", "1", "filler-w4l")]; // no Red -> legal
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: w4.id, color: "G" } });
+      engine.applyMove({ playerId: "p2", type: "challenge" });
+      expect(engine.getPublicState().lastHit).toEqual({ targetIds: ["p2"], kind: "draw4", count: 6 });
+    });
+
+    it("Seven Swap: hits both the player and the opponent they swapped with", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, sevenSwap: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-hit-7")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const seven = card("R", "7", "hit-seven");
+      s.hands["p1"] = [seven, card("B", "1", "filler-7")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: seven.id } });
+      const hit = engine.getPublicState().lastHit;
+      expect(hit?.kind).toBe("swap");
+      expect(hit?.targetIds).toContain("p1");
+      expect(hit?.targetIds).toHaveLength(2);
+    });
+
+    it("Zero Rotate: hits every seated player", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, zeroRotate: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-hit-0")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const zero = card("R", "0", "hit-zero");
+      s.hands["p1"] = [zero, card("B", "1", "filler-0")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: zero.id } });
+      expect(engine.getPublicState().lastHit).toEqual({
+        targetIds: ["p1", "p2", "p3"],
+        kind: "rotate",
+      });
+    });
+
+    it("catchUno: hits the caught player", () => {
+      stateOf(engine).hands["p2"] = [card("B", "3", "hit-catch")];
+      engine.applyMove({ playerId: "p1", type: "catchUno", data: { targetId: "p2" } });
+      expect(engine.getPublicState().lastHit).toEqual({ targetIds: ["p2"], kind: "catch", count: 2 });
+    });
+
+    it("resets to null on the very next move if that move isn't itself a hit", () => {
+      const skip = card("R", "Skip", "hit-reset-skip");
+      stateOf(engine).hands["p1"] = [skip, card("B", "1", "filler-reset")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: skip.id } });
+      expect(engine.getPublicState().lastHit).not.toBeNull();
+
+      // p2 was skipped, so it's p3's turn — a plain number play, no hit.
+      const plain = card("R", "4", "hit-reset-plain");
+      stateOf(engine).hands["p3"] = [plain];
+      engine.applyMove({ playerId: "p3", type: "play", data: { cardId: plain.id } });
+      expect(engine.getPublicState().lastHit).toBeNull();
+    });
+  });
 });
