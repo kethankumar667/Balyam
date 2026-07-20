@@ -18,6 +18,9 @@ import {
   UnoHandFan,
   computeSeatPosition,
   useUnoEventFlourish,
+  useUnoHitReaction,
+  resolveSeatPosition,
+  UnoHitBadge,
 } from "./uno-table";
 import { UnoRoomCodePlate, UnoIvoryButton, UnoDeclareCluster, UnoHouseRulesBadge } from "./uno-scene";
 import { UnoRoomRail } from "./uno-rail";
@@ -44,6 +47,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const tut = useTutorialGate(UNO_TUTORIAL.key);
   const dealStage = useUnoDealGate(roomCode);
   const flourish = useUnoEventFlourish(state.lastAction);
+  const activeHit = useUnoHitReaction(state.lastHit);
   // Drag-to-play: true while a hand card is mid-drag, so the discard pile
   // can show its "Drop to play" affordance. See uno-table.tsx's UnoHandFan.
   const [isDraggingCard, setIsDraggingCard] = useState(false);
@@ -198,6 +202,22 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                 <UnoNamePlate name={selfName} isSelf isTurn={m.myTurn} />
               </div>
             </div>
+
+            {/* Comedic "fired at" flourish — see UnoBoardDesktop.tsx's
+                matching block for the full rationale. */}
+            {activeHit?.targetIds.map((tid) => {
+              const pos = resolveSeatPosition(tid, selfId, opponents);
+              if (!pos) return null;
+              return (
+                <div
+                  key={`${tid}-${activeHit.kind}`}
+                  className="absolute z-40"
+                  style={{ left: pos.left, top: pos.top, transform: "translate(-50%, -135%)" }}
+                >
+                  <UnoHitBadge hit={activeHit} />
+                </div>
+              );
+            })}
           </UnoTableMat>
         </div>
 

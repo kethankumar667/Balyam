@@ -1110,6 +1110,38 @@ body, #root, .bhalyam-paper {
   animation: uno-flourish-pulse 650ms ease-in-out both;
 }
 
+/* UNO — comedic "hit" flourish, per live user request ("funny animations
+   whenever player got fired by special power cards"): a bouncy overshoot
+   pop with a quick wobble, held briefly, then a clean fade — anchored at
+   the affected seat by uno-table.tsx's UnoHitBadge, driven by
+   UnoEngine.lastHit (a Skip/Draw Two/Draw Four/stack-absorb/Seven Swap/
+   Zero Rotate/UNO-catch event, with the exact affected player id(s), not
+   text-parsed from the toast). */
+@keyframes uno-hit-pop {
+  0%   { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+  45%  { transform: scale(1.18) rotate(5deg); opacity: 1; }
+  60%  { transform: scale(0.94) rotate(-3deg); }
+  75%  { transform: scale(1.06) rotate(2deg); }
+  90%  { transform: scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: scale(0.92) rotate(0deg); opacity: 0; }
+}
+.uno-hit-pop {
+  animation: uno-hit-pop 1500ms cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* A small extra shake layered on the hit target's own seat chip, so the
+   "victim" visibly flinches, not just the badge floating above them. */
+@keyframes uno-hit-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-4px) rotate(-2deg); }
+  40% { transform: translateX(4px) rotate(2deg); }
+  60% { transform: translateX(-3px) rotate(-1deg); }
+  80% { transform: translateX(3px) rotate(1deg); }
+}
+.uno-hit-shake {
+  animation: uno-hit-shake 420ms ease-in-out;
+}
+
 /* UNO — glass-morphic header chrome (Leave / sound / fullscreen / room pill).
    A flat cream fill reads inconsistently against the new photographic table
    background, whose brightness varies by crop/seat. backdrop-blur alone

@@ -83,6 +83,14 @@ export interface InternalUnoState {
    *  handleActionCard) given how much state the existing Wild+4
    *  legality/challenge machinery already carries. */
   pendingDrawStack: { count: number; kind: "+2" } | null;
+  /** Mirrors UnoPublicState.lastHit — see that field's doc comment for
+   *  the full rationale (client-side per-seat comedic flourishes,
+   *  reliably targeted by id rather than parsed out of lastAction text). */
+  lastHit: {
+    targetIds: string[];
+    kind: "skip" | "draw2" | "draw4" | "stack" | "swap" | "rotate" | "catch";
+    count?: number;
+  } | null;
 }
 
 export class UnoEngine implements GameEngine {
@@ -176,6 +184,7 @@ export class UnoEngine implements GameEngine {
       unoDeclaredBy: new Set(),
       pendingChallenge: null,
       pendingDrawStack: null,
+      lastHit: null,
     };
   }
 
@@ -257,6 +266,7 @@ export class UnoEngine implements GameEngine {
     this.state.pendingChallenge = null;
     this.state.pendingDrawStack = null;
     this.state.winnerId = null; // match continues — this is a per-round field only until the real end
+    this.state.lastHit = null; // a round transition itself isn't a "hit" moment
     this.state.lastAction = `Round ${this.state.round}! ${this.nameOf(previousWinnerId)} deals — ${this.nameOf(this.state.playerOrder[this.state.turnIndex]!)} to play.`;
   }
 
@@ -264,6 +274,11 @@ export class UnoEngine implements GameEngine {
     if (this.state.phase === "finished") {
       return { ok: false, error: "Game is over" };
     }
+    // Reset every move by default — only the specific branch that
+    // produces a genuine "hit" (see UnoPublicState.lastHit) re-sets it,
+    // so an unrelated later move never leaves a stale hit for the client
+    // to (mis)react to.
+    this.state.lastHit = null;
 
     const data = move.data as Record<string, unknown> | undefined;
     const moveType = move.type as string;
@@ -359,6 +374,7 @@ export class UnoEngine implements GameEngine {
     const drawn = this.drawCards(2);
     this.state.hands[targetId]!.push(...drawn);
     this.syncUnoDeclaration(targetId);
+    this.state.lastHit = { targetIds: [targetId], kind: "catch", count: 2 };
     this.state.lastAction = `${this.nameOf(playerId)} caught ${this.nameOf(targetId)} without UNO! +2 penalty.`;
     return { ok: true };
   }
@@ -386,6 +402,7 @@ export class UnoEngine implements GameEngine {
       const drawn = this.drawCards(4);
       this.state.hands[pending.challengerId]!.push(...drawn);
       this.syncUnoDeclaration(pending.challengerId);
+      this.state.lastHit = { targetIds: [pending.challengerId], kind: "draw4", count: 4 };
       this.state.lastAction = `${this.nameOf(pending.challengerId)} accepted the Wild Draw Four and drew 4.`;
       this.state.turnIndex = this.stepIndex(this.state.turnIndex, 2);
       return { ok: true };
@@ -398,6 +415,7 @@ export class UnoEngine implements GameEngine {
       const drawn = this.drawCards(4);
       this.state.hands[pending.playedById]!.push(...drawn);
       this.syncUnoDeclaration(pending.playedById);
+      this.state.lastHit = { targetIds: [pending.playedById], kind: "draw4", count: 4 };
       this.state.lastAction = `${this.nameOf(pending.challengerId)} challenged successfully — ${this.nameOf(pending.playedById)} draws 4.`;
       this.state.turnIndex = this.stepIndex(this.state.turnIndex, 1);
       return { ok: true };
@@ -408,6 +426,7 @@ export class UnoEngine implements GameEngine {
     const drawn = this.drawCards(6);
     this.state.hands[pending.challengerId]!.push(...drawn);
     this.syncUnoDeclaration(pending.challengerId);
+    this.state.lastHit = { targetIds: [pending.challengerId], kind: "draw4", count: 6 };
     this.state.lastAction = `${this.nameOf(pending.challengerId)} challenged and lost — draws 6.`;
     this.state.turnIndex = this.stepIndex(this.state.turnIndex, 2);
     return { ok: true };
@@ -427,6 +446,7 @@ export class UnoEngine implements GameEngine {
       const drawnStack = this.drawCards(count);
       this.state.hands[playerId].push(...drawnStack);
       this.syncUnoDeclaration(playerId);
+      this.state.lastHit = { targetIds: [playerId], kind: "stack", count };
       this.state.lastAction = `${this.nameOf(playerId)} draws ${count} from the stack.`;
       this.state.pendingDrawStack = null;
       this.state.drewLastTurn = false;
@@ -661,6 +681,7 @@ export class UnoEngine implements GameEngine {
     // Reverse flips this.state.direction inside here, so by the time we
     // step below, "direction" already reflects the new direction.
     const actionResult = this.handleActionCard(card, playerId);
+    this.state.lastHit = actionResult.hit ?? null;
     this.state.lastAction = actionResult.description;
     this.state.turnIndex = this.stepIndex(this.state.turnIndex, actionResult.turnAdvance);
 
@@ -768,9 +789,22 @@ export class UnoEngine implements GameEngine {
   private handleActionCard(
     card: UnoCard,
     playerId: string
-  ): { turnAdvance: number; description: string } {
+  ): {
+    turnAdvance: number;
+    description: string;
+    /** A hit worth a client-side comedic flourish (Skip/Draw Two/Zero
+     *  Rotate/Seven Swap) — omitted for effect-less cards (plain numbers,
+     *  Reverse with 3+ players, Wild). Wild Draw Four's own hit is set
+     *  separately in handleChallengeDecision, once it actually resolves. */
+    hit?: { targetIds: string[]; kind: "skip" | "draw2" | "swap" | "rotate"; count?: number };
+  } {
     if (card.rank === "Skip") {
-      return { turnAdvance: 2, description: "Skip! Next player skipped." };
+      const skippedId = this.state.playerOrder[this.stepIndex(this.state.turnIndex, 1)]!;
+      return {
+        turnAdvance: 2,
+        description: `Skip! ${this.nameOf(skippedId)} loses a turn.`,
+        hit: { targetIds: [skippedId], kind: "skip" },
+      };
     }
 
     if (card.rank === "Reverse") {
@@ -780,12 +814,15 @@ export class UnoEngine implements GameEngine {
       // magnitude-2 hop is direction-symmetric, so this needs no direction
       // branch — it lands back on the same player either way).
       const twoPlayerSkip = this.state.playerOrder.length === 2;
-      return {
-        turnAdvance: twoPlayerSkip ? 2 : 1,
-        description: twoPlayerSkip
-          ? "Reverse! Acts as Skip with two players."
-          : `Reverse! Playing ${dir}.`,
-      };
+      if (twoPlayerSkip) {
+        const skippedId = this.state.playerOrder[this.stepIndex(this.state.turnIndex, 1)]!;
+        return {
+          turnAdvance: 2,
+          description: `Reverse! Acts as Skip — ${this.nameOf(skippedId)} loses a turn.`,
+          hit: { targetIds: [skippedId], kind: "skip" },
+        };
+      }
+      return { turnAdvance: 1, description: `Reverse! Playing ${dir}.` };
     }
 
     if (card.rank === "+2") {
@@ -810,13 +847,18 @@ export class UnoEngine implements GameEngine {
       this.syncUnoDeclaration(nextPlayerId);
       return {
         turnAdvance: 2,
-        description: `Draw Two! Next player draws 2.`,
+        description: `Draw Two! ${this.nameOf(nextPlayerId)} draws 2 cards.`,
+        hit: { targetIds: [nextPlayerId], kind: "draw2", count: 2 },
       };
     }
 
     if (card.rank === "0" && this.state.options.zeroRotate) {
       this.rotateHands();
-      return { turnAdvance: 1, description: "Zero! Everyone rotates hands." };
+      return {
+        turnAdvance: 1,
+        description: "Zero! Everyone rotates hands.",
+        hit: { targetIds: [...this.state.playerOrder], kind: "rotate" },
+      };
     }
 
     if (card.rank === "7" && this.state.options.sevenSwap) {
@@ -824,6 +866,7 @@ export class UnoEngine implements GameEngine {
       return {
         turnAdvance: 1,
         description: `Seven! ${this.nameOf(playerId)} swapped hands with ${this.nameOf(swappedWithId)}.`,
+        hit: { targetIds: [playerId, swappedWithId], kind: "swap" },
       };
     }
 
@@ -969,6 +1012,7 @@ export class UnoEngine implements GameEngine {
         keepDrawing: this.state.options.keepDrawing,
         forcePlay: this.state.options.forcePlay,
       },
+      lastHit: this.state.lastHit,
     };
   }
 

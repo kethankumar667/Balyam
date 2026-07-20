@@ -9,7 +9,7 @@ import {
 } from "framer-motion";
 import type { Transition } from "framer-motion";
 import { useSpring, animated, to } from "@react-spring/web";
-import type { UnoCard, UnoColor } from "@shared/types";
+import type { UnoCard, UnoColor, UnoPublicState } from "@shared/types";
 import { UnoCardFace, UnoCardBack, WildColorPicker } from "./uno-shared";
 import { getCardLabel, CARD_DISPLAY } from "./helpers/deck";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
@@ -154,6 +154,88 @@ export function computeSeatPosition(index: number, total: number): SeatPosition 
 }
 
 // ---------------------------------------------------------------------
+// "Fired at" reaction — comedic per-seat flourish whenever a special-
+// power card actually lands on someone (Skip, Draw Two, Draw Four,
+// Stack absorb, Seven Swap, Zero Rotate, a caught UNO). Driven by
+// `UnoPublicState.lastHit` (exact target id(s) + kind, set server-side —
+// see UnoEngine's per-branch `hit:` assignments) rather than text-parsed
+// from the toast, so it's reliably anchored even with duplicate names.
+// ---------------------------------------------------------------------
+
+type UnoHit = NonNullable<UnoPublicState["lastHit"]>;
+
+/** One line of flavour per hit kind — emoji + label (some read the
+ *  card-count) + accent colour for the badge chip. Kept light/funny per
+ *  request: this is a table full of friends ribbing each other, not a
+ *  scoreboard. */
+const HIT_FLAVOR: Record<UnoHit["kind"], { emoji: string; label: (count?: number) => string; bg: string }> = {
+  skip: { emoji: "⏭️", label: () => "SKIPPED!", bg: "linear-gradient(135deg,#F0765A,#D6472B)" },
+  draw2: { emoji: "😵", label: (c) => `+${c ?? 2} OOF!`, bg: "linear-gradient(135deg,#F7B84A,#E6821E)" },
+  draw4: { emoji: "🤯", label: (c) => `+${c ?? 4} YIKES!`, bg: "linear-gradient(135deg,#EF5DA8,#C22D74)" },
+  stack: { emoji: "📚", label: (c) => `+${c ?? 0} STACKED!`, bg: "linear-gradient(135deg,#B084F0,#7C3AED)" },
+  swap: { emoji: "🔄", label: () => "SWAPPED!", bg: "linear-gradient(135deg,#4ADE80,#16A34A)" },
+  rotate: { emoji: "🌀", label: () => "ROTATED!", bg: "linear-gradient(135deg,#60A5FA,#2563EB)" },
+  catch: { emoji: "🚨", label: (c) => `CAUGHT! +${c ?? 2}`, bg: "linear-gradient(135deg,#F87171,#DC2626)" },
+};
+
+/** Watches `lastHit` for a genuinely new value (stringified comparison —
+ *  the server rebuilds the object fresh on every `getPublicState()` call,
+ *  so reference equality would false-positive on every unrelated
+ *  broadcast) and returns it for ~1.5s, long enough for `uno-hit-pop` to
+ *  play out fully. */
+export function useUnoHitReaction(lastHit: UnoPublicState["lastHit"]): UnoHit | null {
+  const [active, setActive] = useState<UnoHit | null>(null);
+  const prevKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    const key = lastHit ? JSON.stringify(lastHit) : null;
+    if (key && key !== prevKey.current) {
+      prevKey.current = key;
+      setActive(lastHit);
+      const t = window.setTimeout(() => setActive(null), 1500);
+      return () => window.clearTimeout(t);
+    }
+    prevKey.current = key;
+  }, [lastHit]);
+
+  return active;
+}
+
+/** Resolves any seated player id to felt percentage coordinates — the
+ *  self plate's fixed bottom-centre slot (both shells use the identical
+ *  `left-1/2 bottom-[3%]` position for it) or an opponent's
+ *  `computeSeatPosition` seat. Returns null for an id that isn't
+ *  currently seated (e.g. someone who left mid-hit-animation). */
+export function resolveSeatPosition(
+  targetId: string,
+  selfId: string | null,
+  opponents: string[]
+): { left: string; top: string } | null {
+  if (targetId === selfId) return { left: "50%", top: "93%" };
+  const idx = opponents.indexOf(targetId);
+  if (idx === -1) return null;
+  return computeSeatPosition(idx, opponents.length);
+}
+
+/** The actual comedic badge — bouncy pop-in, brief hold, fade. Callers
+ *  wrap this in an absolutely-positioned div at `resolveSeatPosition`'s
+ *  coordinates for each of `hit.targetIds`. */
+export function UnoHitBadge({ hit }: { hit: UnoHit }) {
+  const flavor = HIT_FLAVOR[hit.kind];
+  return (
+    <div className="uno-hit-pop pointer-events-none flex flex-col items-center" aria-hidden>
+      <div
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white font-black text-[13px] uppercase tracking-wide whitespace-nowrap shadow-lg"
+        style={{ background: flavor.bg, border: "2px solid rgba(255,255,255,0.75)" }}
+      >
+        <span className="text-base leading-none">{flavor.emoji}</span>
+        {flavor.label(hit.count)}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
 // The oval mat itself.
 // ---------------------------------------------------------------------
 
@@ -242,24 +324,53 @@ export function UnoTableMat({ children }: { children: React.ReactNode }) {
 // `w-full h-full` of the felt — SVG's default `preserveAspectRatio`
 // scaled it to the felt's HEIGHT on a wide desktop table, ballooning it
 // across the middle and overlapping opponent seats. v2 fixed the overlap
-// by shrinking to two tiny fixed-size icons on the side rails — but that
-// undercorrected: per live user reference (a hand-annotated screenshot),
-// the direction indicator should read as a real ring FRAMING the pile,
-// not a pair of small side accents.
+// by shrinking to two tiny fixed-size icons on the side rails, which
+// undercorrected. v3 brought back a proper ring (kept here, unchanged —
+// confirmed good by the user) but its flow-direction arrows were drawn
+// as raw `<path>` triangles INSIDE the same `preserveAspectRatio="none"`
+// SVG as the ring — fine for a stroke (a dashed line reads the same
+// however it's stretched) but wrong for a filled shape: on a wide
+// desktop felt the non-uniform x/y scale flattened what should have
+// been clean up/down chevrons into lopsided, sideways-reading blobs.
 //
-// This version gets the size back without reintroducing the stretch bug:
-// `viewBox="0 0 100 100"` + `preserveAspectRatio="none"` maps 1 unit to
-// 1% of the felt's width (x) and 1% of its height (y) INDEPENDENTLY —
-// exactly the same percentage coordinate system `computeSeatPosition`
-// already uses for seats, so the ring always matches the felt's real
-// aspect ratio instead of a generic circle getting letterboxed or
-// stretched. `vectorEffect="non-scaling-stroke"` keeps the dash/stroke a
-// constant screen-pixel width despite that non-uniform scale, so the
-// ring reads as a clean dashed line, not a smeared ellipse cross-section.
-// Centred on the pile (50, 48) with a radius (21 x, 20 y) sized to clear
-// the seat ring above (seats occupy roughly y 8-54%) and the Pass/UNO
-// controls below (~74%+) at any player count.
+// v4 (this version) separates the two concerns: the ring stays exactly
+// as-is (`viewBox="0 0 100 100"` + `preserveAspectRatio="none"` +
+// `vectorEffect="non-scaling-stroke"`, matching `computeSeatPosition`'s
+// own percentage system). The two flow arrows move OUTSIDE that
+// stretched SVG entirely — each is its own small, normally-proportioned
+// icon (`DirFlowChevron`, true 1:1 aspect, never stretched), positioned
+// via percentage `left`/`top` at the ring's true leftmost/rightmost
+// points. Those two points are the mathematically special case where a
+// non-uniform x/y scale can't introduce any distortion: the tangent to
+// ANY axis-aligned ellipse at its left/right extremes is always exactly
+// vertical, before or after independent x/y scaling — so a simple
+// up/down chevron there is always geometrically correct, regardless of
+// the felt's aspect ratio.
 // ---------------------------------------------------------------------
+
+/** A single small, cleanly-proportioned flow chevron — never lives
+ *  inside a non-uniformly-stretched SVG, so it always renders crisp. */
+function DirFlowChevron({ pointDown }: { pointDown: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      style={{ transform: pointDown ? undefined : "rotate(180deg)" }}
+      aria-hidden
+    >
+      <path
+        d="M4 8 L12 16 L20 8"
+        fill="none"
+        stroke="#F7DA8B"
+        strokeWidth="3.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }}
+      />
+    </svg>
+  );
+}
 
 export function UnoDirectionArc({
   direction,
@@ -270,33 +381,37 @@ export function UnoDirectionArc({
   flourish?: boolean;
 }) {
   return (
-    <svg
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      className={`absolute inset-0 w-full h-full pointer-events-none ${flourish ? "uno-flourish-pulse" : ""}`}
+    <div
+      className={`absolute inset-0 pointer-events-none ${flourish ? "uno-flourish-pulse" : ""}`}
       style={{ transform: direction === -1 ? "scaleX(-1)" : undefined }}
       aria-hidden
     >
-      {/* The closed ring — standard "two arcs" SVG ellipse trick (start at
-          the leftmost point, sweep to the rightmost point and back), so
-          the geometry is always a true closed ellipse with no seam. */}
-      <path
-        d="M 29 48 A 21 20 0 1 0 71 48 A 21 20 0 1 0 29 48"
-        fill="none"
-        stroke="#F7DA8B"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeDasharray="2.2 5"
-        opacity="0.85"
-        vectorEffect="non-scaling-stroke"
-      />
-      {/* Two small flow arrows at the 3-o'clock/9-o'clock points, tangent
-          to the ring, conveying clockwise rotation (mirrored to
-          counter-clockwise by the wrapper's scaleX(-1) above when
-          direction is -1, same as every seat/UI element already flips). */}
-      <path d="M 68.5 44 L 74.5 44 L 71.5 50.5 Z" fill="#F7DA8B" opacity="0.9" />
-      <path d="M 31.5 52 L 25.5 52 L 28.5 45.5 Z" fill="#F7DA8B" opacity="0.9" />
-    </svg>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+        {/* The closed ring — standard "two arcs" SVG ellipse trick (start
+            at the leftmost point, sweep to the rightmost point and back),
+            so the geometry is always a true closed ellipse with no seam. */}
+        <path
+          d="M 29 48 A 21 20 0 1 0 71 48 A 21 20 0 1 0 29 48"
+          fill="none"
+          stroke="#F7DA8B"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeDasharray="2.2 5"
+          opacity="0.85"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      {/* Flow chevrons at the ring's true left/right extremes — right
+          points down, left points up, reading as clockwise rotation
+          (mirrored to counter-clockwise by this wrapper's scaleX(-1)
+          above when direction is -1, same as every other table element). */}
+      <div className="absolute" style={{ left: "71%", top: "48%", transform: "translate(-50%,-50%)" }}>
+        <DirFlowChevron pointDown />
+      </div>
+      <div className="absolute" style={{ left: "29%", top: "48%", transform: "translate(-50%,-50%)" }}>
+        <DirFlowChevron pointDown={false} />
+      </div>
+    </div>
   );
 }
 

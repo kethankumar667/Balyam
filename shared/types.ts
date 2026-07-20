@@ -1094,6 +1094,22 @@ export interface UnoPublicState {
    *  `null` for a single-round match — the pre-existing, still-default
    *  behavior. See UnoGameOptions.targetScore. */
   targetScore: number | null;
+  /** The player(s) an action card just hit — purely for client-side
+   *  celebratory/comedic flourishes anchored at a specific seat (e.g. a
+   *  "SKIPPED!" badge over the skipped player's chip). `lastAction`
+   *  remains the source of truth for the toast text; this exists ONLY
+   *  because reliably anchoring a per-seat animation from free text would
+   *  mean reverse-matching player NAMES out of a sentence, which is
+   *  fragile (name collisions, substrings). Reset to `null` at the top of
+   *  every `applyMove` call and re-set only by the specific branch that
+   *  produces a hit, so a move that isn't itself a hit doesn't leave a
+   *  stale one for the client to (mis)react to. */
+  lastHit: {
+    targetIds: string[];
+    kind: "skip" | "draw2" | "draw4" | "stack" | "swap" | "rotate" | "catch";
+    /** Cards drawn, where relevant (draw2/draw4/stack/catch) — omitted for swap/rotate/skip. */
+    count?: number;
+  } | null;
 }
 
 /**
