@@ -133,3 +133,94 @@ export function firePaintSplash(anchor: FeltAnchor, color: UnoColor, opts: Comic
     shapes: ["circle"],
   });
 }
+
+/** UNO Call celebration: bright gold stars + white sparkles — a
+ *  brighter, more triumphant palette than the comic-dust star-flecks,
+ *  matching a "crowd cheering" moment rather than an impact. */
+const CELEBRATION_STAR_COLORS = ["#FFD966", "#FFF9F0", "#F7B84A"];
+
+export function fireStarSparkleBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const { x, y } = anchorToPercentXY(anchor);
+  void confetti({
+    count: Math.round(36 * intensity),
+    spread: 160,
+    startVelocity: 30,
+    decay: 0.9,
+    gravity: 0.35,
+    scalar: 0.6,
+    position: { x, y },
+    colors: CELEBRATION_STAR_COLORS,
+    shapes: ["star", "circle"],
+  });
+}
+
+/** UNO's own card colours (matching `uno-confetti.ts`'s
+ *  `UNO_CONFETTI_COLORS`) as small square "card" chips — used for both
+ *  Forgot UNO's falling-cards gag and Stacking +2's collapse scatter,
+ *  which only differ in trajectory (gravity/velocity), not palette. */
+const CARD_CHIP_COLORS = ["#D22B27", "#3AA03A", "#1C6DD0", "#E8B100", "#FFF9F0"];
+
+/** Falling cards — Forgot UNO's punishment gag: a light shower straight
+ *  down, low velocity, longer hang time (low gravity) so it reads as
+ *  "raining cards on you" rather than an explosion. */
+export function fireFallingCardsBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const { x, y } = anchorToPercentXY(anchor);
+  void confetti({
+    count: Math.round(22 * intensity),
+    spread: 50,
+    startVelocity: 8,
+    decay: 0.92,
+    gravity: 0.4,
+    scalar: 0.7,
+    position: { x: x - 10 + Math.random() * 20, y: 0 },
+    colors: CARD_CHIP_COLORS,
+    shapes: ["square"],
+  });
+}
+
+/** Flying cards — Stacking +2's collapse: a hard, wide scatter outward
+ *  from the toppled tower, the opposite trajectory from falling cards
+ *  (high velocity, standard gravity, so they arc away and drop). */
+export function fireFlyingCardsBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const { x, y } = anchorToPercentXY(anchor);
+  void confetti({
+    count: Math.round(28 * intensity),
+    spread: 150,
+    startVelocity: 32,
+    decay: 0.88,
+    gravity: 0.9,
+    scalar: 0.65,
+    position: { x, y },
+    colors: CARD_CHIP_COLORS,
+    shapes: ["square"],
+  });
+}
+
+/** Fireworks — Winner Celebration: several staggered, wide, high-velocity
+ *  bursts across random x positions near the top of the felt, distinct
+ *  from `uno-confetti.ts`'s single centred `fireUnoWinConfetti()` burst
+ *  (kept firing as-is; this is an ADDITIONAL layered sequence, not a
+ *  replacement — see WinnerCelebration.tsx). */
+export function fireFireworksBurst(opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const x = 20 + Math.random() * 60;
+  const y = 15 + Math.random() * 25;
+  void confetti({
+    count: Math.round(50 * intensity),
+    spread: 360,
+    startVelocity: 38,
+    decay: 0.9,
+    gravity: 0.7,
+    scalar: 0.7,
+    position: { x, y },
+    colors: CELEBRATION_STAR_COLORS,
+    shapes: ["star", "circle", "square"],
+  });
+}

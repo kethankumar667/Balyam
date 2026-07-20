@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { motion } from "framer-motion";
-import { useSpring, animated } from "@react-spring/web";
+import { animated } from "@react-spring/web";
 import type { UnoColor } from "@shared/types";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
 import { pitchVariant } from "../sound/pitch";
 import { firePaintSplash } from "../particles/comicBursts";
+import { useBounceIn } from "../player/useBounceIn";
 import type { AnimationConfig, FeltAnchor } from "../helpers/types";
 import type { WildColorSplashEvent } from "./useWildColorSplash";
 
@@ -27,13 +28,10 @@ const COLOR_NAME: Record<UnoColor, string> = { R: "Red", G: "Green", B: "Blue", 
  *                    the chosen colour at the pile.
  *   - Framer Motion → the wild card's own reveal (a quick flip into its
  *                     new colour face).
- *   - React Spring  → the paintbrush's bounce-in — a one-shot elastic
- *                     overshoot, distinct from `usePlayerWobble`'s
- *                     multi-stage squash/settle (a bounce-in entrance
- *                     needs only one spring, so it stays inline here
- *                     rather than becoming a new shared hook prematurely —
- *                     promote it if a later animation needs the same
- *                     shape).
+ *   - React Spring  → the paintbrush's bounce-in (`useBounceIn`, shared
+ *                     with `WinnerCelebration`'s trophy bounce) — a
+ *                     one-shot elastic overshoot, distinct from
+ *                     `usePlayerWobble`'s multi-stage squash/settle.
  *   - tsParticles   → coloured paint-splash droplets (`firePaintSplash`).
  *   - Howler        → a splash on spread-start, a magical chime once the
  *                     colour settles.
@@ -62,7 +60,7 @@ export function WildColorSplash({ event, anchor, config, onComplete }: WildColor
   const { play } = useAudio();
   const hex = COLOR_HEX[event.color];
 
-  const [brushStyle, brushApi] = useSpring(() => ({ scale: 0, rotate: -25 }));
+  const { style: brushStyle, play: playBrushBounce } = useBounceIn(-25);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -82,13 +80,7 @@ export function WildColorSplash({ event, anchor, config, onComplete }: WildColor
     const speed = config.speed || 1;
     const dur = (ms: number) => ms / 1000 / speed;
 
-    brushApi.start({
-      from: { scale: 0, rotate: -25 },
-      to: async (next) => {
-        await next({ scale: 1.15, rotate: 8, config: { tension: 500, friction: 12 } });
-        await next({ scale: 1, rotate: 0, config: { tension: 320, friction: 14 } });
-      },
-    });
+    playBrushBounce();
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ onComplete });

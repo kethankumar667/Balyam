@@ -98,6 +98,11 @@ export const AUDIO = {
   UNO_FX_THUD:         "uno_fx_thud",
   UNO_FX_SPLASH:       "uno_fx_splash",
   UNO_FX_MAGIC_CHIME:  "uno_fx_magic_chime",
+  UNO_FX_CROWD_CHEER:  "uno_fx_crowd_cheer",
+  UNO_FX_LAUGH_TRACK:  "uno_fx_laugh_track",
+  UNO_FX_BUZZER:       "uno_fx_buzzer",
+  UNO_FX_WOOD_CREAK:   "uno_fx_wood_creak",
+  UNO_FX_CRASH:        "uno_fx_crash",
 
   /* ── Star Game (90's paper-slip; keys wired, assets pending) ── */
   STAR_SHUFFLE:   "star_shuffle",

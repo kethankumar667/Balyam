@@ -180,14 +180,16 @@ const HIT_FLAVOR: Record<UnoHit["kind"], { emoji: string; label: (count?: number
 
 /** Per-kind hold duration for `useUnoHitReaction` below. Every kind still
  *  using the plain `UnoHitBadge` holds for the badge's own ~1.5s pop
- *  animation; `draw2`/`draw4`/`skip` now drive their own cinematics
- *  (`animations/card/`), whose internal timelines run longer — the hold
- *  here must outlast each one or the component unmounts mid-sequence
- *  and GSAP's cleanup cuts the tail. */
+ *  animation; `draw2`/`draw4`/`skip`/`catch`/`stack` now drive their own
+ *  cinematics (`animations/card/`), whose internal timelines run
+ *  longer — the hold here must outlast each one or the component
+ *  unmounts mid-sequence and GSAP's cleanup cuts the tail. */
 const HIT_HOLD_MS: Partial<Record<UnoHit["kind"], number>> = {
   draw2: 1700,
   draw4: 2300,
   skip: 1800,
+  catch: 1700,
+  stack: 2100,
 };
 const DEFAULT_HIT_HOLD_MS = 1500;
 
