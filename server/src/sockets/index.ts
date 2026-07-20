@@ -66,8 +66,8 @@ export function registerSocketHandlers(
     rooms.setRoomName(socket.id, name);
   });
 
-  socket.on("room:addBot", () => {
-    rooms.addBot(socket.id);
+  socket.on("room:addBot", (botName) => {
+    rooms.addBot(socket.id, botName);
   });
 
   socket.on("room:removeBot", (botId) => {

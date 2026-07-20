@@ -71,7 +71,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   snl: ["Sneha", "Lalita", "Babu", "Chiklu", "Anu", "Gopi", "Ravi", "Suma", "Kiran", "Mounika"],
   rummy: ["Anand", "Babji", "Chinna", "Damodar", "Eswari", "Lakshmi"],
   rps: ["Rocky", "Bhola", "Chotu", "Dolly"],
-  uno: ["Red", "Blue", "Green", "Yellow"],
+  uno: ["Baazi", "Chikki", "Gabbar", "Jugadu"],
   wordbuilding: ["Teacher Padma", "Master Ravi", "Miss Lakshmi", "Sir Krishna"],
   dotsboxes: ["Pencil", "Eraser", "Sharpener", "Ruler"],
   memorymatch: ["Polaroid", "Kodak", "Snapshot", "Album"],
@@ -353,7 +353,7 @@ export class RoomManager {
     this.broadcastRoomState(room);
   }
 
-  addBot(socketId: string): void {
+  addBot(socketId: string, customName?: string): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     if (player.id !== room.hostId) {
@@ -371,7 +371,8 @@ export class RoomManager {
     }
     const botCount = [...room.players.values()].filter((p) => p.isBot).length;
     const botId = `bot_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-    const botName = pickBotName(room.game, botCount);
+    const cleaned = customName?.trim().slice(0, 20);
+    const botName = cleaned && cleaned.length > 0 ? cleaned : pickBotName(room.game, botCount);
     const bot: Player = {
       id: botId,
       name: botName,
