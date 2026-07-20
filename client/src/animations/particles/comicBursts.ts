@@ -1,4 +1,5 @@
 import { confetti } from "@tsparticles/confetti";
+import type { UnoColor } from "@shared/types";
 import type { FeltAnchor } from "../helpers/types";
 import { anchorToPercentXY } from "../helpers/geometry";
 
@@ -100,5 +101,35 @@ export function fireMeteorImpactBurst(anchor: FeltAnchor, opts: ComicBurstOption
     position: { x, y },
     colors: METEOR_DEBRIS_COLORS,
     shapes: ["square"],
+  });
+}
+
+/** Wild card colour reveal: droplets in the just-chosen colour plus a
+ *  few white highlights (a "paint splash" reads clearer with a touch of
+ *  white mixed in than a single flat hue). Same hex values as
+ *  `uno-table.tsx`'s `WILD_COLOR_SWATCH` — kept local rather than
+ *  imported since that map is module-private there, matching the
+ *  precedent its own comment already sets. */
+const PAINT_COLOR_HEX: Record<UnoColor, string> = {
+  R: "#D22B27",
+  G: "#3AA03A",
+  B: "#1C6DD0",
+  Y: "#E8B100",
+};
+
+export function firePaintSplash(anchor: FeltAnchor, color: UnoColor, opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const { x, y } = anchorToPercentXY(anchor);
+  void confetti({
+    count: Math.round(30 * intensity),
+    spread: 140,
+    startVelocity: 26,
+    decay: 0.9,
+    gravity: 0.5,
+    scalar: 0.65,
+    position: { x, y },
+    colors: [PAINT_COLOR_HEX[color], "#FFFFFF"],
+    shapes: ["circle"],
   });
 }

@@ -89,10 +89,15 @@ export const AUDIO = {
      per-event (e.g. +2 Flying Slippers = whoosh on launch, smack on
      impact, boing under the wobble), reused across future animations
      rather than one bespoke key per animation. ── */
-  UNO_FX_WHOOSH:    "uno_fx_whoosh",
-  UNO_FX_SMACK:     "uno_fx_smack",
-  UNO_FX_BOING:     "uno_fx_boing",
-  UNO_FX_EXPLOSION: "uno_fx_explosion",
+  UNO_FX_WHOOSH:       "uno_fx_whoosh",
+  UNO_FX_SMACK:        "uno_fx_smack",
+  UNO_FX_BOING:        "uno_fx_boing",
+  UNO_FX_EXPLOSION:    "uno_fx_explosion",
+  UNO_FX_REWIND:       "uno_fx_rewind",
+  UNO_FX_SLIP_WHISTLE: "uno_fx_slip_whistle",
+  UNO_FX_THUD:         "uno_fx_thud",
+  UNO_FX_SPLASH:       "uno_fx_splash",
+  UNO_FX_MAGIC_CHIME:  "uno_fx_magic_chime",
 
   /* ── Star Game (90's paper-slip; keys wired, assets pending) ── */
   STAR_SHUFFLE:   "star_shuffle",

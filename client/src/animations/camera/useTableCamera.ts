@@ -17,6 +17,13 @@ export interface CameraPunchOptions {
   disabled?: boolean;
 }
 
+export interface CameraTiltOptions {
+  /** Peak rotation in degrees. Default 3.5 — a jolt, not a dizzying spin. */
+  degrees?: number;
+  duration?: number;
+  disabled?: boolean;
+}
+
 /**
  * Imperative camera-FX surface for the felt. `cameraRef` attaches to the
  * board shell's table-mat wrapper (the element that visually IS "the
@@ -66,5 +73,22 @@ export function useTableCamera() {
       .to(el, { scale: 1, duration: duration * 0.65, ease: "elastic.out(1, 0.5)" });
   }, []);
 
-  return { cameraRef, shake, punch };
+  /** Reverse's "camera tilt" — the table jolts a few degrees in the new
+   *  direction's rotational sense, then snaps back. Distinct axis from
+   *  `shake` (random xy jitter) and `punch` (uniform scale), so all
+   *  three can share `cameraRef` without visually colliding. */
+  const tilt = useCallback((opts: CameraTiltOptions = {}) => {
+    const el = cameraRef.current;
+    if (!el || opts.disabled) return;
+    const degrees = opts.degrees ?? 3.5;
+    const duration = opts.duration ?? 0.5;
+    gsap.killTweensOf(el, "rotation");
+    gsap
+      .timeline()
+      .to(el, { rotation: degrees, duration: duration * 0.3, ease: "power2.out" })
+      .to(el, { rotation: -degrees * 0.5, duration: duration * 0.25, ease: "power1.inOut" })
+      .to(el, { rotation: 0, duration: duration * 0.45, ease: "elastic.out(1, 0.55)" });
+  }, []);
+
+  return { cameraRef, shake, punch, tilt };
 }
