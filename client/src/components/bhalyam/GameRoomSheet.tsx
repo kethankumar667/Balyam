@@ -117,15 +117,49 @@ const HC_MODES: { id: HcMode; label: string; blurb: string }[] = [
 
 // UNO turn timer, stored as a string id so it fits OptionGrid<T extends
 // string>; parsed back to a number when building the room-create payload.
-// Only the timer is exposed here — the house-rule toggles in
-// UnoGameOptions (stacking, jump-in, etc.) stay scaffolding-only until the
-// engine actually reads them (Phase C); shipping a toggle for something
-// with zero gameplay effect would be a worse UX than not offering it yet.
 const UNO_TURN_TIMERS: { id: "10" | "20" | "30" | "0"; label: string; blurb: string }[] = [
   { id: "10", label: "Fast",      blurb: "10s per turn — keeps the table moving." },
   { id: "20", label: "Standard",  blurb: "20s per turn — the official default." },
   { id: "30", label: "Relaxed",   blurb: "30s per turn — more time to think." },
   { id: "0",  label: "No timer",  blurb: "Untimed — casual/family friendly." },
+];
+
+// UNO match length (Volume 2/6): a single round, or a multi-round match
+// that keeps dealing fresh rounds — cumulative scores carrying over —
+// until someone crosses the target. "500" mirrors Mattel's own official
+// default and unoonline.io's headline "first to 500" feature.
+const UNO_MATCH_LENGTHS: { id: "single" | "300" | "500" | "1000"; label: string; blurb: string }[] = [
+  { id: "single", label: "Single round",  blurb: "One deal, win or lose, done." },
+  { id: "300",    label: "Race to 300",   blurb: "Quick multi-round match." },
+  { id: "500",    label: "Race to 500",   blurb: "Mattel's official match length." },
+  { id: "1000",   label: "Race to 1000",  blurb: "Long, high-drama session." },
+];
+
+// UNO house rules (Volume 4 §28-34) — private-room-only options the engine
+// now fully enforces (Phase C). Every flag defaults off, so a room with no
+// selections is exactly the official ruleset.
+type UnoHouseRuleKey =
+  | "stackDrawCards"
+  | "jumpIn"
+  | "sevenSwap"
+  | "zeroRotate"
+  | "keepDrawing"
+  | "forcePlay";
+const UNO_DEFAULT_HOUSE_RULES: Record<UnoHouseRuleKey, boolean> = {
+  stackDrawCards: false,
+  jumpIn: false,
+  sevenSwap: false,
+  zeroRotate: false,
+  keepDrawing: false,
+  forcePlay: false,
+};
+const UNO_HOUSE_RULES: { id: UnoHouseRuleKey; label: string; blurb: string }[] = [
+  { id: "stackDrawCards", label: "Stack Draw Cards", blurb: "+2 on +2 piles up — the next player who can't stack draws it all." },
+  { id: "jumpIn",         label: "Jump-In",          blurb: "Hold the exact same card on top? Play it instantly, out of turn." },
+  { id: "sevenSwap",      label: "Seven Swap",       blurb: "Playing a 7 swaps your hand with a random opponent's." },
+  { id: "zeroRotate",     label: "Zero Rotate",      blurb: "Playing a 0 rotates every hand around the table." },
+  { id: "keepDrawing",    label: "Keep Drawing",     blurb: "No playable card? Keep drawing until you find one." },
+  { id: "forcePlay",      label: "Force Play",       blurb: "A drawn card that's playable is played automatically." },
 ];
 
 // Word Building option catalogs.
@@ -204,6 +238,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [starRounds, setStarRounds] = useState<number>(5);
   const [starPassSpeed, setStarPassSpeed] = useState<"normal" | "fast">("normal");
   const [unoTurnTimer, setUnoTurnTimer] = useState<"10" | "20" | "30" | "0">("20");
+  const [unoMatchLength, setUnoMatchLength] = useState<"single" | "300" | "500" | "1000">("single");
+  const [unoHouseRules, setUnoHouseRules] = useState<Record<UnoHouseRuleKey, boolean>>(UNO_DEFAULT_HOUSE_RULES);
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   /**
@@ -236,7 +272,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setDbBoardSize(7);
       setMmBoardSize(6);
       setUnoTurnTimer("20");
-
+      setUnoMatchLength("single");
+      setUnoHouseRules(UNO_DEFAULT_HOUSE_RULES);
     }
   }, [game, playerName]);
 
@@ -309,7 +346,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             ? { themeId: starTheme, totalRounds: starRounds, passSpeed: starPassSpeed }
             : undefined,
         unoOptions:
-          game === "uno" ? { turnTimerSeconds: Number(unoTurnTimer) } : undefined,
+          game === "uno"
+            ? {
+                turnTimerSeconds: Number(unoTurnTimer),
+                targetScore: unoMatchLength === "single" ? null : Number(unoMatchLength),
+                ...unoHouseRules,
+              }
+            : undefined,
       },
       (res) => {
         setBusy(false);
@@ -570,14 +613,29 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           )}
 
           {game === "uno" && (
-            <Field label="Turn timer">
-              <OptionGrid
-                items={UNO_TURN_TIMERS}
-                value={unoTurnTimer}
-                onChange={setUnoTurnTimer}
-                cols={2}
-              />
-            </Field>
+            <>
+              <Field label="Turn timer">
+                <OptionGrid
+                  items={UNO_TURN_TIMERS}
+                  value={unoTurnTimer}
+                  onChange={setUnoTurnTimer}
+                  cols={2}
+                />
+              </Field>
+              <Field label="Match length">
+                <OptionGrid
+                  items={UNO_MATCH_LENGTHS}
+                  value={unoMatchLength}
+                  onChange={setUnoMatchLength}
+                  cols={2}
+                />
+              </Field>
+              <Field label="House rules (optional)">
+                <UnoHouseRuleGrid flags={unoHouseRules} onToggle={(id) =>
+                  setUnoHouseRules((prev) => ({ ...prev, [id]: !prev[id] }))
+                } />
+              </Field>
+            </>
           )}
 
           {game === "handcricket" && (
@@ -908,6 +966,42 @@ function OptionGrid<T extends string>({
             </div>
             <div className="text-[10px] text-bhalyam-wood-dark/70 mt-0.5 leading-tight">
               {item.blurb}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function UnoHouseRuleGrid({
+  flags,
+  onToggle,
+}: {
+  flags: Record<UnoHouseRuleKey, boolean>;
+  onToggle: (id: UnoHouseRuleKey) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {UNO_HOUSE_RULES.map((rule) => {
+        const isActive = flags[rule.id];
+        return (
+          <button
+            key={rule.id}
+            type="button"
+            onClick={() => onToggle(rule.id)}
+            aria-pressed={isActive}
+            className={`text-left rounded-xl p-2.5 border-2 min-h-[64px]
+                        active:scale-[0.98] transition-all duration-150 bhalyam-press-feedback
+                        ${isActive
+                          ? "bg-bhalyam-gold/20 border-bhalyam-gold-dark shadow-[0_4px_10px_-3px_rgba(228,177,40,0.45)]"
+                          : "bg-bhalyam-cream-soft border-bhalyam-cream-edge/80 hover:border-bhalyam-wood/40"}`}
+          >
+            <div className="font-bold text-bhalyam-wood-dark text-[13px] leading-tight">
+              {rule.label}
+            </div>
+            <div className="text-[10px] text-bhalyam-wood-dark/70 mt-0.5 leading-tight">
+              {rule.blurb}
             </div>
           </button>
         );

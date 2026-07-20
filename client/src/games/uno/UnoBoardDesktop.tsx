@@ -24,7 +24,6 @@ import {
   UnoRoomCodePlate,
   UnoIvoryButton,
   UnoDeclareCluster,
-  UnoPolaroidPlaceholder,
   UnoNotebookPlaceholder,
 } from "./uno-scene";
 import { UnoRoomRail } from "./uno-rail";
@@ -136,7 +135,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         </UnoIvoryButton>
         <div className="flex flex-col gap-2">
           <UnoRoomCodePlate code={roomCode} />
-          {state.turnDeadline && <UnoTimerBadge deadline={state.turnDeadline} />}
+          {state.turnDeadline && <UnoTimerBadge deadline={state.turnDeadline} myTurn={m.myTurn} />}
         </div>
       </div>
 
@@ -163,10 +162,16 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         </UnoIvoryButton>
       </div>
 
-      {/* Decorative asset-placeholder props — real art drops in later */}
-      <div className="absolute top-[4.5rem] right-4 z-20 hidden xl:block">
-        <UnoPolaroidPlaceholder />
-      </div>
+      {/* Decorative asset-placeholder prop — the notebook reads as an
+          intentional sketchy sticky-note (paperclip, pencils, dashed
+          cream cover matches Bhalyam's established notebook motif), kept.
+          Its polaroid sibling (UnoPolaroidPlaceholder) was removed from
+          this render: a flat gray-checkered box labelled "Photo" reads as
+          a broken/missing image to a real player, not a stylised prop —
+          revisit by rendering it again once real art exists to replace it
+          with, matching how every other reserved-but-undelivered
+          illustration slot in this codebase degrades (nothing shown,
+          not a placeholder shown). */}
       <div className="absolute bottom-3 left-4 z-20 hidden xl:block">
         <UnoNotebookPlaceholder />
       </div>
@@ -282,6 +287,8 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         playerOrder={state.playerOrder}
         turnPlayerId={state.turnPlayerId}
         scores={state.scores}
+        round={state.round}
+        targetScore={state.targetScore}
         nameOf={m.nameOf}
       />
 

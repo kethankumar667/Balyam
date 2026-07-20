@@ -5,12 +5,22 @@ import type { UnoCard, UnoColor } from "@shared/types";
  * Used to pre-compute valid moves and disable invalid buttons on the client.
  *
  * Note: Server performs authoritative validation. This is for UI only.
+ *
+ * `pendingDrawCount` mirrors UnoEngine.isPlayableNow's Stack Draw Cards
+ * override (Volume 4 §29): while a stack is pending (count > 0), ONLY a
+ * "+2" is playable — every other card, including a normally legal
+ * color/rank match, is illegal until the stack resolves.
  */
 export function canPlayCard(
   card: UnoCard,
   topCard: UnoCard,
-  currentColor: UnoColor | null
+  currentColor: UnoColor | null,
+  pendingDrawCount = 0
 ): boolean {
+  if (pendingDrawCount > 0) {
+    return card.rank === "+2";
+  }
+
   // Wild and Wild+4 are always playable
   if (card.rank === "Wild" || card.rank === "Wild+4") {
     return true;
@@ -31,9 +41,10 @@ export function canPlayCard(
 export function getPlayableCards(
   hand: UnoCard[],
   topCard: UnoCard,
-  currentColor: UnoColor | null
+  currentColor: UnoColor | null,
+  pendingDrawCount = 0
 ): UnoCard[] {
-  return hand.filter((card) => canPlayCard(card, topCard, currentColor));
+  return hand.filter((card) => canPlayCard(card, topCard, currentColor, pendingDrawCount));
 }
 
 /**

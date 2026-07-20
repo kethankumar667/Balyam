@@ -63,7 +63,9 @@ export default function UnoResultModal({ state, players, selfId, onClose, onLeav
           </div>
           {winnerId && (
             <div className="text-sm font-semibold text-[#5C4A38]">
-              +{state.scores[winnerId] ?? 0} points
+              {state.targetScore != null
+                ? `${state.scores[winnerId] ?? 0} pts across ${state.round} round${state.round === 1 ? "" : "s"}`
+                : `+${state.scores[winnerId] ?? 0} points`}
             </div>
           )}
         </div>

@@ -1067,6 +1067,33 @@ export interface UnoPublicState {
    * that must stay hidden until resolved, or the challenge has no purpose.
    */
   pendingChallenge: { challengerId: string; playedById: string } | null;
+  /** Total cards the current player must draw if they decline (or can't)
+   *  continue a Stack Draw Cards chain (Volume 4 §29). 0 when no stack is
+   *  pending — the common case when the house rule is off. Only "+2" cards
+   *  currently participate in stacking; Wild Draw Four stacking is a
+   *  deliberately deferred scope decision (see UnoEngine.handleActionCard). */
+  pendingDrawCount: number;
+  /** Which house rules are active this match (Volume 4 §28-34), so the UI
+   *  can show rule-specific affordances (jump-in hint, stack indicator)
+   *  only when they actually do something. Mirrors UnoGameOptions minus
+   *  turnTimerSeconds, which isn't a "house rule" in the rules-fidelity
+   *  sense. */
+  activeHouseRules: {
+    stackDrawCards: boolean;
+    jumpIn: boolean;
+    sevenSwap: boolean;
+    zeroRotate: boolean;
+    keepDrawing: boolean;
+    forcePlay: boolean;
+  };
+  /** Current round number within the match (starts at 1). Only
+   *  meaningful when `targetScore` is set — a single-round match never
+   *  advances past round 1. */
+  round: number;
+  /** Cumulative score a player must reach to end the match (Volume 2/6);
+   *  `null` for a single-round match — the pre-existing, still-default
+   *  behavior. See UnoGameOptions.targetScore. */
+  targetScore: number | null;
 }
 
 /**
@@ -1124,10 +1151,10 @@ export type UnoMoveType =
 
 /**
  * Room-configurable options — mirrors the RummyGameOptions/LudoGameOptions
- * pattern. `turnTimerSeconds` is wired as of Phase 2 (see
- * PLAN_REVIEW_REPORT.md); the house-rule flags below remain scaffolding —
- * `UnoEngine` does not read them yet. Every house-rule flag defaults to
- * `false` so the default options object is always the official ruleset —
+ * pattern. `turnTimerSeconds` and the 6 house-rule flags are fully
+ * consumed by `UnoEngine` (Phase C — see PLAN_REVIEW_REPORT.md §9's
+ * 2026-07-20 entry). Every house-rule flag defaults to `false` so the
+ * default options object is always the official single-round ruleset —
  * the same "off = official, ranked-locked" shape Volume 4's rule matrix
  * requires once ranked play exists.
  */
@@ -1146,6 +1173,13 @@ export interface UnoGameOptions {
   keepDrawing: boolean;
   /** House rule: a drawn card that is playable is played automatically. */
   forcePlay: boolean;
+  /** Volume 2/6 multi-round match structure: when set, a round that ends
+   *  without any player reaching this cumulative score deals a fresh
+   *  round automatically (keeping scores) instead of ending the match —
+   *  Mattel's own official default and unoonline.io's headline "first to
+   *  500" feature. `null` (default) is a single round, matching every
+   *  prior release of this engine — existing rooms see no behavior change. */
+  targetScore: number | null;
 }
 
 export const DEFAULT_UNO_OPTIONS: UnoGameOptions = {
@@ -1156,6 +1190,7 @@ export const DEFAULT_UNO_OPTIONS: UnoGameOptions = {
   zeroRotate: false,
   keepDrawing: false,
   forcePlay: false,
+  targetScore: null,
 };
 
 // ---- Star Game (90's Paper-Slip Edition) ----

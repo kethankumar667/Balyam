@@ -766,4 +766,425 @@ describe("UnoEngine", () => {
       expect(engine.pendingActors()).toContain("p2"); // still bot-scheduler-visible
     });
   });
+
+  describe("Stack Draw Cards (Volume 4 §29, house rule)", () => {
+    beforeEach(() => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, stackDrawCards: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top")];
+      s.currentColor = "R";
+      s.turnIndex = 0; // p1's turn
+      s.direction = 1;
+    });
+
+    it("defers the draw and passes the stack to the next player instead of drawing immediately", () => {
+      const plusTwo = card("R", "+2", "p1-plus2");
+      stateOf(engine).hands["p1"] = [plusTwo, card("B", "1", "filler")];
+      const p2Before = stateOf(engine).hands["p2"].length;
+      const result = engine.applyMove({ playerId: "p1", type: "play", data: { cardId: plusTwo.id } });
+      expect(result.ok).toBe(true);
+      expect(stateOf(engine).hands["p2"]).toHaveLength(p2Before); // no draw yet
+      const after = engine.getPublicState();
+      expect(after.pendingDrawCount).toBe(2);
+      expect(after.turnPlayerId).toBe("p2");
+    });
+
+    it("accumulates when the next player stacks another +2", () => {
+      const p1Plus2 = card("R", "+2", "p1-plus2b");
+      stateOf(engine).hands["p1"] = [p1Plus2, card("B", "1", "filler-a")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: p1Plus2.id } });
+
+      const p2Plus2 = card("G", "+2", "p2-plus2b");
+      stateOf(engine).hands["p2"] = [p2Plus2, card("B", "1", "filler-b")];
+      const result = engine.applyMove({ playerId: "p2", type: "play", data: { cardId: p2Plus2.id } });
+
+      expect(result.ok).toBe(true);
+      const after = engine.getPublicState();
+      expect(after.pendingDrawCount).toBe(4);
+      expect(after.turnPlayerId).toBe("p3");
+    });
+
+    it("only a matching +2 is legal while a stack is pending — a color match that isn't +2 is rejected", () => {
+      const p1Plus2 = card("R", "+2", "p1-plus2c");
+      stateOf(engine).hands["p1"] = [p1Plus2, card("B", "1", "filler-c")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: p1Plus2.id } });
+
+      const p2RedCard = card("R", "9", "p2-red9"); // color-matches, but isn't +2
+      stateOf(engine).hands["p2"] = [p2RedCard, card("B", "1", "filler-d")];
+      const result = engine.applyMove({ playerId: "p2", type: "play", data: { cardId: p2RedCard.id } });
+      expect(result.ok).toBe(false);
+    });
+
+    it("drawing absorbs the full stacked total and ends the turn immediately, no play-or-pass window", () => {
+      const p1Plus2 = card("R", "+2", "p1-plus2d");
+      stateOf(engine).hands["p1"] = [p1Plus2, card("B", "1", "filler-e")];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: p1Plus2.id } });
+
+      const p2Plus2 = card("G", "+2", "p2-plus2d");
+      stateOf(engine).hands["p2"] = [p2Plus2, card("B", "1", "filler-f")];
+      engine.applyMove({ playerId: "p2", type: "play", data: { cardId: p2Plus2.id } });
+
+      const p3Before = stateOf(engine).hands["p3"].length;
+      const result = engine.applyMove({ playerId: "p3", type: "draw" });
+      expect(result.ok).toBe(true);
+      const after = engine.getPublicState();
+      expect(stateOf(engine).hands["p3"]).toHaveLength(p3Before + 4);
+      expect(after.pendingDrawCount).toBe(0);
+      expect(after.turnPlayerId).toBe("p1"); // stack absorbed, turn moves on past p3
+    });
+
+    it("with the house rule off, a +2 resolves immediately as usual (no regression)", () => {
+      const off = new UnoEngine();
+      off.init(players);
+      const s = stateOf(off);
+      s.discard = [card("R", "5", "top-off")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const plusTwo = card("R", "+2", "off-plus2");
+      s.hands["p1"] = [plusTwo, card("B", "1", "filler-off")];
+      const p2Before = s.hands["p2"].length;
+      off.applyMove({ playerId: "p1", type: "play", data: { cardId: plusTwo.id } });
+      expect(stateOf(off).hands["p2"]).toHaveLength(p2Before + 2);
+      expect(off.getPublicState().pendingDrawCount).toBe(0);
+    });
+  });
+
+  describe("Jump-In (Volume 4 §30, house rule)", () => {
+    beforeEach(() => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, jumpIn: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-ji")];
+      s.currentColor = "R";
+      s.turnIndex = 0; // p1's turn
+      s.direction = 1;
+    });
+
+    it("lets a non-current player play an exact color+rank match out of turn", () => {
+      const matching = card("R", "5", "p3-jumpin");
+      stateOf(engine).hands["p3"] = [matching, card("B", "1", "filler-ji-a")];
+      const result = engine.applyMove({ playerId: "p3", type: "play", data: { cardId: matching.id } });
+      expect(result.ok).toBe(true);
+      expect(engine.getPublicState().topCard.id).toBe("p3-jumpin");
+    });
+
+    it("play order continues from the player who jumped in", () => {
+      const matching = card("R", "5", "p3-jumpin-order");
+      stateOf(engine).hands["p3"] = [matching, card("B", "1", "filler-ji-b")];
+      engine.applyMove({ playerId: "p3", type: "play", data: { cardId: matching.id } });
+      expect(engine.getPublicState().turnPlayerId).toBe("p1"); // next after p3, wrapping
+    });
+
+    it("rejects a jump-in that only matches by color, not rank", () => {
+      const colorOnly = card("R", "9", "p3-color-only");
+      stateOf(engine).hands["p3"] = [colorOnly, card("B", "1", "filler-ji-c")];
+      const result = engine.applyMove({ playerId: "p3", type: "play", data: { cardId: colorOnly.id } });
+      expect(result.ok).toBe(false);
+    });
+
+    it("rejects a jump-in that only matches by rank, not color", () => {
+      const rankOnly = card("G", "5", "p3-rank-only");
+      stateOf(engine).hands["p3"] = [rankOnly, card("B", "1", "filler-ji-d")];
+      const result = engine.applyMove({ playerId: "p3", type: "play", data: { cardId: rankOnly.id } });
+      expect(result.ok).toBe(false);
+    });
+
+    it("never allows a Wild to jump in, since Wild cards are colorless (never 'identical')", () => {
+      const wild = card(null, "Wild", "p3-wild-jumpin");
+      stateOf(engine).hands["p3"] = [wild, card("B", "1", "filler-ji-e")];
+      const result = engine.applyMove({ playerId: "p3", type: "play", data: { cardId: wild.id, color: "R" } });
+      expect(result.ok).toBe(false);
+    });
+
+    it("is rejected entirely when the house rule is off", () => {
+      const off = new UnoEngine();
+      off.init(players);
+      const s = stateOf(off);
+      s.discard = [card("R", "5", "top-ji-off")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const matching = card("R", "5", "p3-jumpin-off");
+      s.hands["p3"] = [matching, card("B", "1", "filler-ji-f")];
+      const result = off.applyMove({ playerId: "p3", type: "play", data: { cardId: matching.id } });
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe("Seven Swap (Volume 4 §31, house rule)", () => {
+    it("swaps the player's hand with an opponent's when a 7 is played", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, sevenSwap: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-7s")];
+      s.currentColor = "R";
+      s.turnIndex = 0; // p1's turn
+      s.direction = 1;
+
+      const seven = card("R", "7", "p1-seven");
+      const p1OtherCards = [card("B", "2", "p1-b2"), card("Y", "3", "p1-y3")];
+      const p2Hand = [card("G", "4", "p2-g4"), card("Y", "8", "p2-y8")];
+      const p3Hand = [card("B", "6", "p3-b6")];
+      s.hands["p1"] = [seven, ...p1OtherCards];
+      s.hands["p2"] = p2Hand;
+      s.hands["p3"] = p3Hand;
+
+      const result = engine.applyMove({ playerId: "p1", type: "play", data: { cardId: seven.id } });
+      expect(result.ok).toBe(true);
+
+      const after = stateOf(engine);
+      const p1IdsAfter = after.hands["p1"].map((c) => c.id).sort();
+      const swappedWithP2 =
+        after.hands["p2"].map((c) => c.id).sort().join() === p1OtherCards.map((c) => c.id).sort().join();
+      expect(p1IdsAfter).toEqual(
+        (swappedWithP2 ? p2Hand : p3Hand).map((c) => c.id).sort()
+      );
+    });
+
+    it("does nothing special when the house rule is off — 7 is a plain number card", () => {
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-7s-off")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const seven = card("R", "7", "p1-seven-off");
+      const p1HandBefore = [card("B", "2", "p1-b2-off")];
+      const p2HandBefore = [card("G", "4", "p2-g4-off")];
+      s.hands["p1"] = [seven, ...p1HandBefore];
+      s.hands["p2"] = [...p2HandBefore];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: seven.id } });
+      const after = stateOf(engine);
+      expect(after.hands["p1"].map((c) => c.id)).toEqual(p1HandBefore.map((c) => c.id));
+      expect(after.hands["p2"].map((c) => c.id)).toEqual(p2HandBefore.map((c) => c.id));
+    });
+  });
+
+  describe("Zero Rotate (Volume 4 §32, house rule)", () => {
+    it("rotates every hand one seat in the current play direction", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, zeroRotate: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-0r")];
+      s.currentColor = "R";
+      s.turnIndex = 0; // p1's turn
+      s.direction = 1;
+
+      const zero = card("R", "0", "p1-zero");
+      const p1Rest = [card("B", "2", "p1-b2-0r")];
+      const p2Hand = [card("G", "4", "p2-g4-0r")];
+      const p3Hand = [card("Y", "6", "p3-y6-0r")];
+      s.hands["p1"] = [zero, ...p1Rest];
+      s.hands["p2"] = p2Hand;
+      s.hands["p3"] = p3Hand;
+
+      const result = engine.applyMove({ playerId: "p1", type: "play", data: { cardId: zero.id } });
+      expect(result.ok).toBe(true);
+
+      const after = stateOf(engine);
+      // direction=1: each seat receives the PREVIOUS seat's hand.
+      expect(after.hands["p2"].map((c) => c.id)).toEqual(p1Rest.map((c) => c.id));
+      expect(after.hands["p3"].map((c) => c.id)).toEqual(p2Hand.map((c) => c.id));
+      expect(after.hands["p1"].map((c) => c.id)).toEqual(p3Hand.map((c) => c.id));
+    });
+
+    it("does nothing special when the house rule is off — 0 is a plain number card", () => {
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-0r-off")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const zero = card("R", "0", "p1-zero-off");
+      const p1Rest = [card("B", "2", "p1-b2-0r-off")];
+      s.hands["p1"] = [zero, ...p1Rest];
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: zero.id } });
+      expect(stateOf(engine).hands["p1"].map((c) => c.id)).toEqual(p1Rest.map((c) => c.id));
+    });
+  });
+
+  describe("Keep Drawing (Volume 4 §33, house rule)", () => {
+    it("draws repeatedly until a playable card appears instead of stopping at one", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, keepDrawing: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-kd")];
+      s.currentColor = "R";
+      s.turnIndex = 0; // p1's turn
+      s.hands["p1"] = [card("B", "1", "p1-no-match")]; // no red/5-rank card
+      s.deck = [
+        card("G", "2", "kd-wrong-1"),
+        card("Y", "3", "kd-wrong-2"),
+        card("R", "9", "kd-match"), // finally playable
+        card("B", "8", "kd-unused"),
+      ];
+
+      const result = engine.applyMove({ playerId: "p1", type: "draw" });
+      expect(result.ok).toBe(true);
+      const after = stateOf(engine);
+      // Drew 3 cards (2 wrong + 1 match), stopped once a playable card landed.
+      expect(after.hands["p1"]).toHaveLength(4); // original 1 + 3 drawn
+      expect(after.deck.map((c) => c.id)).toEqual(["kd-unused"]);
+      expect(after.drewLastTurn).toBe(true);
+    });
+
+    it("draws exactly one card when the house rule is off (no regression)", () => {
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-kd-off")];
+      s.currentColor = "R";
+      s.deck = [card("G", "2", "kd-off-1"), card("Y", "3", "kd-off-2")];
+      const handBefore = s.hands["p1"].length;
+      const result = engine.applyMove({ playerId: "p1", type: "draw" });
+      expect(result.ok).toBe(true);
+      expect(stateOf(engine).hands["p1"]).toHaveLength(handBefore + 1);
+    });
+  });
+
+  describe("Force Play (Volume 4 §34, house rule)", () => {
+    it("auto-plays a drawn card immediately when it's playable, ending the turn with no manual decision", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, forcePlay: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-fp")];
+      s.currentColor = "R";
+      s.turnIndex = 0; // p1's turn
+      s.direction = 1;
+      s.hands["p1"] = [card("B", "1", "p1-no-match-fp")];
+      s.deck = [card("R", "9", "fp-playable")];
+
+      const result = engine.applyMove({ playerId: "p1", type: "draw" });
+      expect(result.ok).toBe(true);
+      const after = engine.getPublicState();
+      expect(after.topCard.id).toBe("fp-playable"); // auto-played
+      expect(stateOf(engine).hands["p1"]).toHaveLength(1); // drawn card left again immediately
+      expect(after.turnPlayerId).toBe("p2"); // turn already advanced, no pass needed
+    });
+
+    it("picks a color automatically when the auto-played card is Wild", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, forcePlay: true });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("B", "5", "top-fp-wild")];
+      s.currentColor = "B";
+      s.turnIndex = 0;
+      s.hands["p1"] = [card("G", "1", "p1-green"), card("G", "2", "p1-green2")]; // majority Green
+      s.deck = [card(null, "Wild", "fp-wild")];
+
+      const result = engine.applyMove({ playerId: "p1", type: "draw" });
+      expect(result.ok).toBe(true);
+      const after = engine.getPublicState();
+      expect(after.topCard.id).toBe("fp-wild");
+      expect(after.currentColor).toBe("G");
+    });
+
+    it("leaves the drawn card in hand for a manual decision when the house rule is off (no regression)", () => {
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-fp-off")];
+      s.currentColor = "R";
+      s.hands["p1"] = [card("B", "1", "p1-no-match-fp-off")];
+      s.deck = [card("R", "9", "fp-off-playable")];
+      const result = engine.applyMove({ playerId: "p1", type: "draw" });
+      expect(result.ok).toBe(true);
+      const after = stateOf(engine);
+      expect(after.hands["p1"]).toHaveLength(2); // drawn card stays in hand
+      expect(after.discard[after.discard.length - 1]!.id).toBe("top-fp-off"); // not auto-played
+    });
+  });
+
+  describe("Multi-round target score matches (Volume 2/6, targetScore option)", () => {
+    it("continues to a new round instead of ending the match when target isn't reached", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, targetScore: 500 });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-ms")];
+      s.currentColor = "R";
+      s.turnIndex = 0; // p1's turn
+      s.direction = 1;
+      const lastCard = card("R", "9", "p1-last");
+      s.hands["p1"] = [lastCard]; // about to win this round
+      s.hands["p2"] = [card("B", "1", "p2-b1")]; // 1 point
+      s.hands["p3"] = [card("G", "2", "p3-g2")]; // 2 points
+
+      const result = engine.applyMove({ playerId: "p1", type: "play", data: { cardId: lastCard.id } });
+      expect(result.ok).toBe(true);
+      expect(result.isOver).toBeFalsy();
+
+      const after = engine.getPublicState();
+      expect(after.phase).toBe("playing"); // match continues
+      expect(after.round).toBe(2);
+      expect(after.scores["p1"]).toBe(3); // 1 + 2 points from opponents' hands
+      expect(after.handSizes["p1"]).toBe(7); // fresh round dealt
+      expect(after.handSizes["p2"]).toBe(7);
+      expect(after.turnPlayerId).toBe("p1"); // round winner deals/starts next
+    });
+
+    it("ends the match once a player's cumulative score reaches the target", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, targetScore: 10 });
+      engine.init(players);
+      const s = stateOf(engine);
+      s.scores["p1"] = 8; // already close to target
+      s.discard = [card("R", "5", "top-ms2")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const lastCard = card("R", "9", "p1-last2");
+      s.hands["p1"] = [lastCard];
+      s.hands["p2"] = [card("B", "3", "p2-b3")]; // +3 points -> total 11, crosses 10
+      s.hands["p3"] = []; // no extra points from p3's hand
+
+      const result = engine.applyMove({ playerId: "p1", type: "play", data: { cardId: lastCard.id } });
+      expect(result.ok).toBe(true);
+      expect(result.isOver).toBe(true);
+      expect(result.winnerId).toBe("p1");
+      const after = engine.getPublicState();
+      expect(after.phase).toBe("finished");
+      expect(after.scores["p1"]).toBe(11);
+    });
+
+    it("keeps ending the match immediately (single round) when targetScore is unset — no regression", () => {
+      engine.init(players); // default options, targetScore null
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-ms3")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const lastCard = card("R", "9", "p1-last3");
+      s.hands["p1"] = [lastCard];
+      const result = engine.applyMove({ playerId: "p1", type: "play", data: { cardId: lastCard.id } });
+      expect(result.ok).toBe(true);
+      expect(result.isOver).toBe(true);
+      const after = engine.getPublicState();
+      expect(after.phase).toBe("finished");
+      expect(after.round).toBe(1);
+    });
+
+    it("accumulates scores correctly across two consecutive rounds", () => {
+      engine.setOptions({ ...DEFAULT_UNO_OPTIONS, targetScore: 1000 }); // high enough to force >=2 rounds
+      engine.init(players);
+      const s = stateOf(engine);
+      s.discard = [card("R", "5", "top-ms4")];
+      s.currentColor = "R";
+      s.turnIndex = 0;
+      const round1Card = card("R", "9", "p1-r1-last");
+      s.hands["p1"] = [round1Card];
+      s.hands["p2"] = [card("B", "5", "p2-r1")]; // 5 points
+      s.hands["p3"] = [card("G", "5", "p3-r1")]; // 5 points
+      engine.applyMove({ playerId: "p1", type: "play", data: { cardId: round1Card.id } });
+      expect(engine.getPublicState().scores["p1"]).toBe(10);
+      expect(engine.getPublicState().round).toBe(2);
+      expect(engine.getPublicState().turnPlayerId).toBe("p1"); // round winner starts round 2
+
+      // Round 2: rig p2's turn and hand to win this round instead.
+      const s2 = stateOf(engine);
+      s2.discard = [card("R", "5", "top-r2")]; // override the freshly-dealt random top card
+      s2.currentColor = "R";
+      s2.turnIndex = s2.playerOrder.indexOf("p2");
+      const round2Card = card("R", "3", "p2-r2-last");
+      s2.hands["p2"] = [round2Card];
+      s2.hands["p1"] = [card("B", "6", "p1-r2")]; // 6 points
+      s2.hands["p3"] = [card("G", "4", "p3-r2")]; // 4 points
+      engine.applyMove({ playerId: "p2", type: "play", data: { cardId: round2Card.id } });
+      expect(engine.getPublicState().scores["p1"]).toBe(10); // unchanged
+      expect(engine.getPublicState().scores["p2"]).toBe(10); // 6+4 from round 2
+      expect(engine.getPublicState().round).toBe(3);
+    });
+  });
 });
