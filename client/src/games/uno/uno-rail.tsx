@@ -34,6 +34,11 @@ export interface UnoRoomRailProps {
   playerOrder: string[];
   turnPlayerId: string;
   scores: Record<string, number>;
+  /** Current round number — only shown when targetScore is set (a
+   *  single-round match's rail doesn't need "Round 1 of 1" noise). */
+  round: number;
+  /** Race-to-target-score match length, or null for a single round. */
+  targetScore: number | null;
   nameOf: (id: string) => string;
 }
 
@@ -120,6 +125,8 @@ function UnoRailBody({
   playerOrder,
   turnPlayerId,
   scores,
+  round,
+  targetScore,
   nameOf,
 }: UnoRoomRailProps) {
   const [activeTab, setActiveTab] = useState<UnoRailTab>("chat");
@@ -152,6 +159,8 @@ function UnoRailBody({
             turnPlayerId={turnPlayerId}
             selfId={selfId}
             scores={scores}
+            round={round}
+            targetScore={targetScore}
             nameOf={nameOf}
           />
         )}

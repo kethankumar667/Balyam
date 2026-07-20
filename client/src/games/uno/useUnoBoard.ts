@@ -186,12 +186,35 @@ export function useUnoBoard({
   );
   const nameOf = (id: string): string => nameById.get(id) ?? "?";
 
-  // Compute valid moves, then index by id so the hand fan is an O(1) `has`
+  // "Playable right now" has two totally different sources depending on
+  // whose turn it is: on my turn it's the normal server legality check
+  // (plus the Stack Draw Cards override, Volume 4 §29 — only a "+2" is
+  // legal while pendingDrawCount > 0). Off my turn, the ONLY thing that
+  // can ever be legal is a Jump-In (Volume 4 §30) — an exact color+rank
+  // match — and only when that house rule is on and nothing else is
+  // blocking it (a Wild+4 challenge or an active draw stack), mirroring
+  // UnoEngine.handleJumpIn's own guards so the UI never offers a tap the
+  // server would reject. Indexed by id so the hand fan is an O(1) `has`
   // check per card instead of a linear `find` per card.
-  const validMoves = useMemo(
-    () => getPlayableCards(state.myHand, state.topCard, state.currentColor),
-    [state.myHand, state.topCard, state.currentColor]
-  );
+  const validMoves = useMemo(() => {
+    if (myTurn) {
+      return getPlayableCards(state.myHand, state.topCard, state.currentColor, state.pendingDrawCount);
+    }
+    if (!state.activeHouseRules.jumpIn || state.pendingChallenge || state.pendingDrawCount > 0) {
+      return [];
+    }
+    return state.myHand.filter(
+      (c) => c.color !== null && c.color === state.topCard.color && c.rank === state.topCard.rank
+    );
+  }, [
+    myTurn,
+    state.myHand,
+    state.topCard,
+    state.currentColor,
+    state.pendingDrawCount,
+    state.activeHouseRules.jumpIn,
+    state.pendingChallenge,
+  ]);
   const validMoveIds = useMemo(
     () => new Set(validMoves.map((c) => c.id)),
     [validMoves]
@@ -203,7 +226,7 @@ export function useUnoBoard({
   );
 
   const canPlaySelectedCard =
-    selectedCard && canPlayCard(selectedCard, state.topCard, state.currentColor);
+    selectedCard && canPlayCard(selectedCard, state.topCard, state.currentColor, state.pendingDrawCount);
 
   const needsColorChoice = selectedCard ? requiresColorChoice(selectedCard) : false;
   const colorChosen = !needsColorChoice || selectedWildColor !== null;
@@ -260,8 +283,11 @@ export function useUnoBoard({
    *  (opening the existing colour picker) rather than submitting immediately —
    *  the user still taps a colour and Play Card from there, unchanged. */
   function dropCardOnDiscard(cardId: string) {
-    if (!myTurn || isSubmitting) return;
+    if (isSubmitting) return;
     const card = state.myHand.find((c) => c.id === cardId);
+    // validMoveIds is already the full "can this card actually be played
+    // right now" answer — normal turn legality when it's my turn, Jump-In
+    // eligibility otherwise. No separate myTurn check needed here.
     if (!card || !validMoveIds.has(cardId)) return;
     if (requiresColorChoice(card)) {
       setSelectedCard(cardId);

@@ -421,20 +421,34 @@ export interface ScorePanelProps {
   turnPlayerId: string;
   selfId: string | null;
   scores: Record<string, number>;
+  /** Current round number (Volume 2/6 multi-round matches). */
+  round?: number;
+  /** Race-to-target-score match length, or null/undefined for a single round. */
+  targetScore?: number | null;
   nameOf: (id: string) => string;
 }
 
-/** Per-player score list with the active player highlighted. */
+/** Per-player score list with the active player highlighted. Shows a
+ *  "Round N • Race to T" subtitle when the room is playing a Volume 2/6
+ *  multi-round match — a single-round match (the pre-existing default)
+ *  renders exactly as before. */
 export function ScorePanel({
   playerOrder,
   turnPlayerId,
   selfId,
   scores,
+  round,
+  targetScore,
   nameOf,
 }: ScorePanelProps) {
   return (
     <div className="bg-[#FFF9F0] border border-[#E8D8BE] rounded-lg p-4">
-      <h3 className="text-xs font-bold uppercase text-[#6E5E4D] mb-3">Scores</h3>
+      <h3 className={`text-xs font-bold uppercase text-[#6E5E4D] ${targetScore != null ? "mb-1" : "mb-3"}`}>Scores</h3>
+      {targetScore != null && (
+        <p className="text-[11px] font-semibold text-[#B08942] mb-2">
+          Round {round ?? 1} · Race to {targetScore}
+        </p>
+      )}
       <div className="space-y-2">
         {playerOrder.map((pid) => {
           const isCurrentPlayer = pid === turnPlayerId;

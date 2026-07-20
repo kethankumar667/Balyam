@@ -142,7 +142,7 @@ The engine's sequential move handling naturally applies Volume 4 §27's priority
 | 13 | Turn timer + timeout auto-draw | V4§22 | 🟢 **fixed** — RoomManager wiring shipped, see §4.8 | ~~B~~ done |
 | 14 | Disconnect grace period | V4§23 | 🟢 generic `awayUntil`, not UNO-specific | — |
 | 15 | Scoring | V4§20 | 🟢 **fixed** — pulled forward into Phase 3, see §4.9 | ~~D~~ done |
-| 16 | House rules (stack/jump-in/7-swap/0-rotate/keep-drawing/force-play) | V4§29-34 | 🟡 `UnoGameOptions`/`DEFAULT_UNO_OPTIONS` type + wire-contract field now exist (`shared/types.ts`); engine doesn't consume any flag yet, no lobby UI | C |
+| 16 | House rules (stack/jump-in/7-swap/0-rotate/keep-drawing/force-play) | V4§29-34 | 🟢 **fixed (2026-07-20)** — engine consumes all 6 flags (`UnoEngine.handleActionCard`/`handleJumpIn`/`handleDraw`/`finalizePlayedCard`), lobby toggles shipped in `GameRoomSheet.tsx`, `pendingDrawCount`/`activeHouseRules` exposed on `UnoPublicState` for client UI. Seven Swap ships "random target" only (host "player choice" targeting is a stated, deferred enhancement — see PLAN_REVIEW_REPORT.md §9's 2026-07-20 entry); Wild+4 stacking deliberately out of scope (stacking is "+2"-only, to avoid compounding the Wild+4 challenge state machine). 20 new engine tests (75 total). | ~~C~~ done |
 | 17 | Effect priority order | V4§27 | 🟢 implicit | A (document only) |
 
 ### 4.12 Edge cases requiring explicit, tested behavior
@@ -739,17 +739,24 @@ Epic: UNO Official Rules Completeness (Phase A/B)
             WildDrawFourChallengePrompt, UnoActionToast already wired to show pendingChallenge/
             unoDeclaredBy transitions once built (§12)
 
-Epic: House Rules & Room Options (Phase C)
+Epic: House Rules & Room Options (Phase C) — ALL DONE
  ├─ [DONE] shared/types.ts: UnoGameOptions + DEFAULT_UNO_OPTIONS (mirror RummyGameOptions)
  ├─ [DONE] CreateRoomPayload.unoOptions?: Partial<UnoGameOptions> wire-contract field
  ├─ [DONE] turnTimerSeconds: fully wired end-to-end — engine (Phase 2) + a Fast/Standard/
  │         Relaxed/No-timer selector in GameRoomSheet.tsx (Phase 3), matching the app's
  │         actual per-game-options convention rather than a bespoke "lobby panel"
- ├─ RoomManager/UnoEngine: read and enforce the 6 house-rule flags (still all inert)
- ├─ Engine: stacking via pendingDrawStack extension point (§14.6)
- ├─ Engine: jump-in, seven-swap, zero-rotate, keep-drawing, force-play branches
- └─ UI: house-rule toggles in GameRoomSheet.tsx once the engine actually reads them
-         (no separate UnoHouseRuleOptions component — see §12's scope-correction note)
+ ├─ [DONE] RoomManager/UnoEngine: read and enforce all 6 house-rule flags (2026-07-20)
+ ├─ [DONE] Engine: stacking via pendingDrawStack extension point (§14.6) — "+2" only,
+ │         Wild+4 stacking deliberately deferred (see rule matrix row 16)
+ ├─ [DONE] Engine: jump-in, seven-swap (random target), zero-rotate, keep-drawing,
+ │         force-play branches — all in UnoEngine.ts's handleActionCard/handleJumpIn/
+ │         handleDraw/finalizePlayedCard
+ └─ [DONE] UI: house-rule toggles in GameRoomSheet.tsx (UnoHouseRuleGrid), stacking-aware
+          Jump-In tap gating in UnoHandFan/useUnoBoard.ts (validMoveIds now folds in
+          Jump-In eligibility off-turn). Seven Swap "player choice" targeting UI and a
+          dedicated stack-size table indicator remain stated, deferred enhancements —
+          random-target Seven Swap and the existing UnoActionToast (surfaces
+          "Draw Two stacked — N pending!") are complete, non-stub baselines on their own.
 
 Epic: Scoring & Results (Phase 3/4) — ALL DONE except art
  ├─ [DONE] Engine: point-table scoring on win (§4.9) — pulled forward from Phase D
@@ -758,6 +765,18 @@ Epic: Scoring & Results (Phase 3/4) — ALL DONE except art
  ├─ [DONE] UI: UnoResultModal.tsx, "uno" added to Room.tsx's GAMES_WITH_OWN_SCORECARD (§7.9)
  └─ Illustration: gameover-trophy-win/-loss confirmed still null — deliberately not
          wired into UnoResultModal for a null asset; revisit once art exists
+
+Epic: Multi-Round Target-Score Matches (Volume 2/6) — ALL DONE
+ ├─ [DONE] shared/types.ts: UnoGameOptions.targetScore (null default = single round,
+ │         unchanged behavior); UnoPublicState.round/targetScore
+ ├─ [DONE] Engine: dealFreshRound() extracted from init(), reused by new startNewRound();
+ │         finalizePlayedCard's win-check defers to a fresh round instead of ending the
+ │         match when targetScore is set and not yet reached. RoomManager untouched —
+ │         its generic post-move scheduling already re-reads engine state every move.
+ ├─ [DONE] UI: GameRoomSheet.tsx "Match length" selector (Single/300/500/1000); ScorePanel
+ │         (existing rail "Points" tab) gained a "Round N · Race to T" subtitle;
+ │         UnoResultModal's point line reads "X pts across N rounds" for a target match
+ └─ [DONE] 4 new engine tests (continue/end/no-regression/accumulate-across-rounds)
 
 Epic: Game Feel Polish (Phase 3/4)
  ├─ [DONE] UnoActionToast surfacing state.lastAction (§8.4) — also now covers the

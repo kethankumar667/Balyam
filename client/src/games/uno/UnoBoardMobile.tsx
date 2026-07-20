@@ -136,8 +136,17 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           of THIS container, not the page (the page itself no longer scrolls,
           see Room.tsx's uno full-bleed shell). */}
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
-        {/* The table — same oval mat as desktop, scaled to fit one column. */}
-        <div className="relative w-full mx-auto" style={{ maxWidth: 480, aspectRatio: "1.12" }}>
+        {/* The table — same oval mat as desktop, scaled to fit one column.
+            The cap grows with viewport width (480 phone / 560 landscape
+            phone-and-up / 680 tablet) — this shell serves every width up
+            to the 1280px desktop-shell gate (UnoBoard.tsx), and a flat
+            480px cap left a large, unbalanced empty-wood dead zone around
+            the table at tablet widths (768-1023px) instead of using the
+            extra room the way AGENTS.md's tablet tier calls for. */}
+        <div
+          className="relative w-full mx-auto max-w-[480px] sm:max-w-[560px] lg:max-w-[680px]"
+          style={{ aspectRatio: "1.12" }}
+        >
           <UnoTableMat>
             <UnoDirectionArc direction={state.direction} flourish={flourish !== null} />
 
@@ -239,6 +248,8 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
         playerOrder={state.playerOrder}
         turnPlayerId={state.turnPlayerId}
         scores={state.scores}
+        round={state.round}
+        targetScore={state.targetScore}
         nameOf={m.nameOf}
       />
 

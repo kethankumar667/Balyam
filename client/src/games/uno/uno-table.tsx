@@ -60,12 +60,20 @@ export function useUnoEventFlourish(lastAction: string | null): "reverse" | "ski
 // ---------------------------------------------------------------------
 // Always-visible timer tag ("⏰ 00:45" in the reference), distinct from
 // TurnTimeWarning (which only appears in the final ≤10s as a full-screen
-// urgency pulse — kept as-is and layered on top of this for that moment).
+// urgency pulse). The two used to render simultaneously whenever it was
+// your own turn with ≤10s left — two countdowns of the same number in two
+// different screen corners, a real duplication bug, not just a style nit.
+// Fixed by having this badge cede the moment: once TurnTimeWarning's own
+// window opens (myTurn && secondsLeft <= 10), this badge hides so only
+// the more prominent urgent pill shows. For an opponent's turn
+// (TurnTimeWarning never activates) this badge keeps counting down as the
+// sole indicator, unchanged.
 // ---------------------------------------------------------------------
 
-export function UnoTimerBadge({ deadline }: { deadline: number | null }) {
+export function UnoTimerBadge({ deadline, myTurn }: { deadline: number | null; myTurn: boolean }) {
   const secondsLeft = useTurnSecondsLeft(deadline);
   if (deadline == null) return null;
+  if (myTurn && secondsLeft <= 10 && secondsLeft > 0) return null;
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
   const urgent = secondsLeft <= 10;
@@ -937,8 +945,14 @@ function UnoDraggableHandCard({
 
 export interface UnoHandFanProps {
   sortedHand: UnoCard[];
+  /** ids of cards that are actually playable right now — the caller
+   *  (useUnoBoard's validMoveIds) already folds in both the normal-turn
+   *  legality check AND Jump-In eligibility when it's not myTurn, so this
+   *  is the single source of truth for isDisabled/canDrag/onTap below. */
   validMoveIds: Set<string>;
   selectedCardId: string | null;
+  /** Kept for callers/turn-label context; hand interactivity itself is
+   *  driven entirely by validMoveIds now (Jump-In can be legal off-turn). */
   myTurn: boolean;
   phase: "playing" | "finished";
   onSelectCard: (cardId: string) => void;
@@ -1000,7 +1014,7 @@ export function UnoHandFan({
           {sortedHand.map((card, i) => {
             const isSelected = card.id === selectedCardId;
             const isValid = validMoveIds.has(card.id);
-            const isDisabled = !isValid && myTurn && phase === "playing";
+            const isDisabled = !isValid && phase === "playing";
             const offset = i - (n - 1) / 2;
             const rotate = offset * spreadDeg;
             const lift = isSelected ? -20 : Math.abs(offset) * Math.min(1.5, 10 / n);
@@ -1011,13 +1025,13 @@ export function UnoHandFan({
                 isSelected={isSelected}
                 isDisabled={isDisabled}
                 isDragged={draggedCardId === card.id}
-                canDrag={isValid && myTurn && phase === "playing" && !!onDropOnDiscard}
+                canDrag={isValid && phase === "playing" && !!onDropOnDiscard}
                 rotate={rotate}
                 lift={lift}
                 marginLeft={i === 0 ? 0 : -overlapRem}
                 zIndex={isSelected ? 50 : i}
                 springTransition={springTransition}
-                onTap={() => (myTurn ? onSelectCard(card.id) : undefined)}
+                onTap={() => (isValid ? onSelectCard(card.id) : undefined)}
                 onDragStart={() => {
                   setDraggedCardId(card.id);
                   onDragStateChange?.(true);

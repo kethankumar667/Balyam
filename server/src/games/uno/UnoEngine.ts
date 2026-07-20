@@ -42,6 +42,11 @@ const WILD_RANKS: UnoRank[] = ["Wild", "Wild+4"];
  */
 export interface InternalUnoState {
   phase: "playing" | "finished";
+  /** Current round within the match — starts at 1, incremented by
+   *  startNewRound() (Volume 2/6 multi-round "race to a target score"
+   *  matches). A single-round match (targetScore null) never advances
+   *  past 1. */
+  round: number;
   options: UnoGameOptions;
   playerOrder: string[];
   turnIndex: number;
@@ -67,6 +72,13 @@ export interface InternalUnoState {
     playedById: string;
     wasLegal: boolean;
   } | null;
+  /** Non-null while Stack Draw Cards (Volume 4 §29) is mid-chain — the
+   *  current player must play a matching card to keep it going, or draw
+   *  the whole thing and forfeit their turn. Scoped to "+2" only; Wild
+   *  Draw Four stacking is a deliberate, documented non-goal (see
+   *  handleActionCard) given how much state the existing Wild+4
+   *  legality/challenge machinery already carries. */
+  pendingDrawStack: { count: number; kind: "+2" } | null;
 }
 
 export class UnoEngine implements GameEngine {
@@ -139,26 +151,59 @@ export class UnoEngine implements GameEngine {
     this.names = {};
     for (const p of players) this.names[p.id] = p.name;
 
-    // Create and shuffle deck
+    const { hands, deck, discard, currentColor } = this.dealFreshRound(playerIds);
+
+    this.state = {
+      phase: "playing",
+      round: 1,
+      options: { ...this.pendingOptions },
+      playerOrder: playerIds,
+      turnIndex: 0,
+      direction: 1,
+      hands,
+      deck,
+      discard,
+      currentColor,
+      scores,
+      turnDeadline: null,
+      winnerId: null,
+      lastAction: `Dealt 7 cards. ${playerIds[0] ? this.nameOf(playerIds[0]) : "Player"} to play.`,
+      drewLastTurn: false,
+      unoDeclaredBy: new Set(),
+      pendingChallenge: null,
+      pendingDrawStack: null,
+    };
+  }
+
+  /**
+   * Shuffles a fresh 108-card deck, deals STARTING_HAND_SIZE to every seat
+   * in `playerOrder`, and picks a non-Wild opening card (re-drawing per
+   * Volume 4 §7 if the reveal lands on one). The deal algorithm shared by
+   * init() (match start) and startNewRound() (each round after the first
+   * in a Volume 2/6 multi-round target-score match) — doesn't touch
+   * `this.state` itself so init() can still assemble the full initial
+   * state object in one literal, matching every other engine's init()
+   * shape.
+   */
+  private dealFreshRound(playerOrder: string[]): {
+    hands: Record<string, UnoCard[]>;
+    deck: UnoCard[];
+    discard: UnoCard[];
+    currentColor: UnoColor;
+  } {
     const deck = this.createDeck();
     this.shuffle(deck);
 
-    // Deal 7 cards to each player
     const hands: Record<string, UnoCard[]> = {};
-    for (const id of playerIds) hands[id] = [];
+    for (const id of playerOrder) hands[id] = [];
 
     let cardIndex = 0;
     for (let i = 0; i < STARTING_HAND_SIZE; i++) {
-      for (const id of playerIds) {
+      for (const id of playerOrder) {
         hands[id].push(deck[cardIndex++]!);
       }
     }
 
-    // Reveal the starting card from the remaining pool. Official rule
-    // (Volume 4 §7): if it's Wild/Wild+4, shuffle it back in and draw
-    // again until a colored card appears — no more silently defaulting to
-    // Red. Bounded retry count guards against a pathological all-Wild
-    // remainder rather than looping forever.
     const pool = deck.slice(cardIndex);
     let startCard = pool.shift()!;
     let attempts = 0;
@@ -173,27 +218,42 @@ export class UnoEngine implements GameEngine {
       attempts++;
     }
 
-    const discard: UnoCard[] = [startCard];
-    const drawPile = pool;
-
-    this.state = {
-      phase: "playing",
-      options: { ...this.pendingOptions },
-      playerOrder: playerIds,
-      turnIndex: 0,
-      direction: 1,
+    return {
       hands,
-      deck: drawPile,
-      discard,
+      deck: pool,
+      discard: [startCard],
       currentColor: startCard.color ?? "R", // Defensive fallback only; see retry loop above.
-      scores,
-      turnDeadline: null,
-      winnerId: null,
-      lastAction: `Dealt 7 cards. ${playerIds[0] ? this.nameOf(playerIds[0]) : "Player"} to play.`,
-      drewLastTurn: false,
-      unoDeclaredBy: new Set(),
-      pendingChallenge: null,
     };
+  }
+
+  /**
+   * Volume 2/6 "race to a target score" multi-round match structure —
+   * unoonline.io's own "first to 500" headline feature (and Mattel's own
+   * official default). Called instead of ending the match when a round's
+   * winner hasn't reached `options.targetScore` yet: deals a completely
+   * fresh round to the same `playerOrder`, keeping cumulative `scores`
+   * (never touched here) and every match-level field (options,
+   * playerOrder) — only per-round transient state resets. The round
+   * winner deals/starts the next round, the common convention neither
+   * Volume 4 nor Volume 2 contradicts.
+   */
+  private startNewRound(previousWinnerId: string): void {
+    this.state.round += 1;
+    const { hands, deck, discard, currentColor } = this.dealFreshRound(this.state.playerOrder);
+
+    this.state.hands = hands;
+    this.state.deck = deck;
+    this.state.discard = discard;
+    this.state.currentColor = currentColor;
+    this.state.direction = 1;
+    const dealerIndex = this.state.playerOrder.indexOf(previousWinnerId);
+    this.state.turnIndex = dealerIndex === -1 ? 0 : dealerIndex; // defensive: winner always seated
+    this.state.drewLastTurn = false;
+    this.state.unoDeclaredBy = new Set();
+    this.state.pendingChallenge = null;
+    this.state.pendingDrawStack = null;
+    this.state.winnerId = null; // match continues — this is a per-round field only until the real end
+    this.state.lastAction = `Round ${this.state.round}! ${this.nameOf(previousWinnerId)} deals — ${this.nameOf(this.state.playerOrder[this.state.turnIndex]!)} to play.`;
   }
 
   applyMove(move: MoveContext): MoveResult {
@@ -220,6 +280,15 @@ export class UnoEngine implements GameEngine {
     }
 
     const currentPlayerId = this.state.playerOrder[this.state.turnIndex];
+    if (moveType === "play" && move.playerId !== currentPlayerId) {
+      // The only way a non-current player may act at all: Jump-In (Volume
+      // 4 §30), gated entirely inside handleJumpIn (including whether the
+      // house rule is even on) so this dispatch stays a thin router.
+      const cardId = data?.cardId as string | undefined;
+      const chosenColor = data?.color as UnoColor | undefined;
+      if (!cardId) return { ok: false, error: "Missing cardId" };
+      return this.handleJumpIn(move.playerId, cardId, chosenColor);
+    }
     if (move.playerId !== currentPlayerId) {
       return { ok: false, error: "Not your turn" };
     }
@@ -345,15 +414,95 @@ export class UnoEngine implements GameEngine {
       return { ok: false, error: "Already drew this turn" };
     }
 
-    const drawn = this.drawCards(1);
-    if (drawn.length > 0) {
-      this.state.hands[playerId].push(drawn[0]!);
+    // Stack Draw Cards (Volume 4 §29): the current player declined (or
+    // couldn't) continue the stack — absorb the whole accumulated total
+    // and the turn ends immediately, exactly like an un-stacked Draw Two.
+    // No "then play or pass" window afterward, unlike a normal draw.
+    if (this.state.pendingDrawStack) {
+      const { count } = this.state.pendingDrawStack;
+      const drawnStack = this.drawCards(count);
+      this.state.hands[playerId].push(...drawnStack);
+      this.syncUnoDeclaration(playerId);
+      this.state.lastAction = `${this.nameOf(playerId)} draws ${count} from the stack.`;
+      this.state.pendingDrawStack = null;
+      this.state.drewLastTurn = false;
+      this.advanceTurn();
+      return { ok: true };
+    }
+
+    // Keep Drawing (Volume 4 §33, house rule): draw repeatedly until a
+    // playable card appears, instead of stopping at one. Bounded by
+    // drawCards() itself returning fewer cards than requested once the
+    // deck+discard are truly exhausted, so this always terminates even in
+    // a pathological all-wrong-color remainder.
+    const topCard = this.state.discard[this.state.discard.length - 1];
+    const drawLimit = this.state.options.keepDrawing ? 200 : 1;
+    let drewCount = 0;
+    let landedPlayable: UnoCard | null = null;
+
+    for (let i = 0; i < drawLimit; i++) {
+      const drawn = this.drawCards(1);
+      if (drawn.length === 0) break; // truly out of cards anywhere
+      const newCard = drawn[0]!;
+      this.state.hands[playerId].push(newCard);
+      drewCount++;
+      if (this.isPlayableNow(newCard, topCard, this.state.currentColor)) {
+        landedPlayable = newCard;
+        break;
+      }
+    }
+
+    if (drewCount > 0) {
       this.syncUnoDeclaration(playerId);
       this.state.drewLastTurn = true;
-      this.state.lastAction = `${this.nameOf(playerId)} drew a card`;
+      this.state.lastAction =
+        drewCount === 1
+          ? `${this.nameOf(playerId)} drew a card`
+          : `${this.nameOf(playerId)} drew ${drewCount} cards looking for a play`;
+    }
+
+    // Force Play (Volume 4 §34, house rule): if what was drawn is
+    // playable, it's played automatically — no manual decision. Routes
+    // through the exact same finalizePlayedCard tail a manual play uses.
+    if (this.state.options.forcePlay && landedPlayable) {
+      const hand = this.state.hands[playerId]!;
+      const cardIndex = hand.findIndex((c) => c.id === landedPlayable!.id);
+      if (cardIndex !== -1) {
+        const card = hand[cardIndex]!;
+        const chosenColor =
+          card.rank === "Wild" || card.rank === "Wild+4"
+            ? this.pickColorForHand(hand)
+            : undefined;
+        const wasLegalWildFour =
+          card.rank === "Wild+4" ? !hand.some((c) => c.color === this.state.currentColor) : true;
+        hand.splice(cardIndex, 1);
+        this.syncUnoDeclaration(playerId);
+        return this.finalizePlayedCard(playerId, card, chosenColor, wasLegalWildFour);
+      }
     }
 
     return { ok: true };
+  }
+
+  /**
+   * The single source of truth for "can this specific card be played right
+   * now" — wraps isValidPlay with the Stack Draw Cards house rule's
+   * override (Volume 4 §29): while a draw stack is pending, only a card
+   * matching the pending stack's kind may be played; every other card
+   * (including a normally legal color/rank match) is illegal until the
+   * stack is resolved via handleDraw. Used by handlePlay, getStateFor's
+   * validMoves, and applyAutoMove so the restriction is consistent
+   * everywhere a "can I play this" question is asked.
+   */
+  private isPlayableNow(
+    card: UnoCard,
+    topCard: UnoCard,
+    currentColor: UnoColor | null
+  ): boolean {
+    if (this.state.pendingDrawStack) {
+      return card.rank === this.state.pendingDrawStack.kind;
+    }
+    return this.isValidPlay(card, topCard, currentColor);
   }
 
   private handlePlay(
@@ -371,9 +520,13 @@ export class UnoEngine implements GameEngine {
     const card = hand[cardIndex]!;
     const topCard = this.state.discard[this.state.discard.length - 1];
 
-    // Validate move
-    if (!this.isValidPlay(card, topCard, this.state.currentColor)) {
-      return { ok: false, error: "Invalid play: color/rank mismatch" };
+    if (!this.isPlayableNow(card, topCard, this.state.currentColor)) {
+      return {
+        ok: false,
+        error: this.state.pendingDrawStack
+          ? `Must play a matching ${this.state.pendingDrawStack.kind} or draw ${this.state.pendingDrawStack.count}`
+          : "Invalid play: color/rank mismatch",
+      };
     }
 
     // For Wild/Wild+4, color must be provided
@@ -389,19 +542,91 @@ export class UnoEngine implements GameEngine {
     const wasLegalWildFour =
       card.rank === "Wild+4" ? !hand.some((c) => c.color === this.state.currentColor) : true;
 
-    // Play the card
     hand.splice(cardIndex, 1);
     this.syncUnoDeclaration(playerId);
+
+    return this.finalizePlayedCard(playerId, card, chosenColor, wasLegalWildFour);
+  }
+
+  /**
+   * Jump-In (Volume 4 §30, house rule): a player who is NOT the current
+   * turn holder may play a card that is an EXACT match (same color AND
+   * same rank) to the top of the discard pile, at any time. Wild/Wild+4
+   * are colorless (`color: null`) and therefore can never be "identical"
+   * to anything — a deliberate, documented scope decision, not an
+   * oversight. Play order continues from the jumper afterward, so
+   * turnIndex is snapped to their seat before the shared resolution tail
+   * runs.
+   */
+  private handleJumpIn(
+    playerId: string,
+    cardId: string,
+    chosenColor?: UnoColor
+  ): MoveResult {
+    if (!this.state.options.jumpIn) {
+      return { ok: false, error: "Not your turn" };
+    }
+    if (this.state.pendingChallenge) {
+      return { ok: false, error: "Waiting for a Wild Draw Four decision" };
+    }
+    if (this.state.pendingDrawStack) {
+      return { ok: false, error: "A draw stack is active — only the current player may respond" };
+    }
+    const hand = this.state.hands[playerId];
+    if (!hand) return { ok: false, error: "Unknown player" };
+    const cardIndex = hand.findIndex((c) => c.id === cardId);
+    if (cardIndex === -1) return { ok: false, error: "Card not in hand" };
+    const card = hand[cardIndex]!;
+    const topCard = this.state.discard[this.state.discard.length - 1];
+
+    if (card.color === null || card.color !== topCard.color || card.rank !== topCard.rank) {
+      return { ok: false, error: "Not your turn" };
+    }
+
+    hand.splice(cardIndex, 1);
+    this.syncUnoDeclaration(playerId);
+    this.state.turnIndex = this.state.playerOrder.indexOf(playerId);
+    this.state.lastAction = `${this.nameOf(playerId)} jumped in!`;
+
+    return this.finalizePlayedCard(playerId, card, chosenColor, true);
+  }
+
+  /**
+   * Shared tail for every way a card can leave a hand onto the discard
+   * pile — a normal in-turn play (handlePlay), a Jump-In (handleJumpIn),
+   * or an auto-resolved Force Play draw (handleDraw). Every caller has
+   * ALREADY removed the card from the player's hand and called
+   * syncUnoDeclaration; this owns what happens once the card is on the
+   * discard pile: color update, win check, Wild+4 defer-to-challenge, and
+   * turn advance via handleActionCard. `wasLegalWildFour` must be computed
+   * by the caller BEFORE splicing (it needs the hand as it stood with the
+   * card still in it) — Jump-In cards are never Wild+4 (see the
+   * exact-match guard above) so that caller always passes `true`.
+   */
+  private finalizePlayedCard(
+    playerId: string,
+    card: UnoCard,
+    chosenColor: UnoColor | undefined,
+    wasLegalWildFour: boolean
+  ): MoveResult {
     this.state.discard.push(card);
     this.state.currentColor = chosenColor || card.color;
     this.state.drewLastTurn = false;
 
-    // Check win
+    const hand = this.state.hands[playerId]!;
     if (hand.length === 0) {
-      this.state.phase = "finished";
-      this.state.winnerId = playerId;
       this.awardRoundPoints(playerId);
-      return { ok: true, isOver: true, winnerId: playerId };
+      const target = this.state.options.targetScore;
+      const reachedTarget = target != null && (this.state.scores[playerId] ?? 0) >= target;
+      if (target == null || reachedTarget) {
+        this.state.phase = "finished";
+        this.state.winnerId = playerId;
+        return { ok: true, isOver: true, winnerId: playerId };
+      }
+      // Volume 2/6: target not reached yet — the match continues with a
+      // fresh round instead of ending here.
+      this.startNewRound(playerId);
+      return { ok: true };
     }
 
     if (card.rank === "Wild+4") {
@@ -419,18 +644,60 @@ export class UnoEngine implements GameEngine {
       return { ok: true };
     }
 
-    // Handle action cards. Reverse flips this.state.direction inside here,
-    // so by the time we step below, "direction" already reflects the new
-    // direction — which is exactly right (the hop away from the player who
-    // just moved happens in the post-Reverse direction).
-    const actionResult = this.handleActionCard(card);
+    // Handle action cards (and, with house rules on, 0/7/stacked +2 too).
+    // Reverse flips this.state.direction inside here, so by the time we
+    // step below, "direction" already reflects the new direction.
+    const actionResult = this.handleActionCard(card, playerId);
     this.state.lastAction = actionResult.description;
-
-    // Advance turn (may advance by 1 or 2 depending on card), respecting
-    // current play direction.
     this.state.turnIndex = this.stepIndex(this.state.turnIndex, actionResult.turnAdvance);
 
     return { ok: true };
+  }
+
+  /** Volume 4 §32 (Zero Rotate, house rule): every hand moves one seat in
+   *  the current play direction — direction-aware since a Reverse earlier
+   *  in the same play already flipped this.state.direction before this
+   *  runs. */
+  private rotateHands(): void {
+    const order = this.state.playerOrder;
+    const n = order.length;
+    if (n < 2) return;
+    const snapshot = order.map((id) => this.state.hands[id]!);
+    for (let i = 0; i < n; i++) {
+      const fromIndex = ((i - this.state.direction) % n + n) % n;
+      this.state.hands[order[i]!] = snapshot[fromIndex]!;
+    }
+    for (const id of order) this.syncUnoDeclaration(id);
+  }
+
+  /** Volume 4 §31 (Seven Swap, house rule, "Random target" mode): swaps
+   *  the player's hand with a randomly chosen opponent's. "Player choice"
+   *  mode (host picks who via a target-selection UI) is a stated, deferred
+   *  enhancement — random-target is a complete, spec-valid variant on its
+   *  own, not a stub. Returns the id swapped with. */
+  private performSevenSwap(playerId: string): string {
+    const opponents = this.state.playerOrder.filter((id) => id !== playerId);
+    const swapWithId = opponents[Math.floor(this.rng() * opponents.length)]!;
+    const myHand = this.state.hands[playerId]!;
+    this.state.hands[playerId] = this.state.hands[swapWithId]!;
+    this.state.hands[swapWithId] = myHand;
+    this.syncUnoDeclaration(playerId);
+    this.syncUnoDeclaration(swapWithId);
+    return swapWithId;
+  }
+
+  /** Picks a color for an about-to-be-played Wild/Wild+4 by majority color
+   *  in `hand` — the bot heuristic from applyAutoMove, extracted so Force
+   *  Play (handleDraw) can reuse the exact same, hand-scoped-only logic
+   *  instead of inventing a second version. Never reads anything beyond
+   *  the hand passed in — no hidden-information risk. */
+  private pickColorForHand(hand: UnoCard[]): UnoColor {
+    const colorCounts: Record<UnoColor, number> = { R: 0, G: 0, B: 0, Y: 0 };
+    for (const c of hand) {
+      if (c.color) colorCounts[c.color]++;
+    }
+    const best = Object.entries(colorCounts).sort(([, a], [, b]) => b - a)[0];
+    return (best?.[0] as UnoColor) ?? "R";
   }
 
   private handlePass(playerId: string): MoveResult {
@@ -486,7 +753,8 @@ export class UnoEngine implements GameEngine {
   }
 
   private handleActionCard(
-    card: UnoCard
+    card: UnoCard,
+    playerId: string
   ): { turnAdvance: number; description: string } {
     if (card.rank === "Skip") {
       return { turnAdvance: 2, description: "Skip! Next player skipped." };
@@ -508,6 +776,21 @@ export class UnoEngine implements GameEngine {
     }
 
     if (card.rank === "+2") {
+      if (this.state.options.stackDrawCards) {
+        // Volume 4 §29 (Stack Draw Cards, house rule): defer the draw —
+        // accumulate onto pendingDrawStack instead of resolving
+        // immediately. The next player must play a matching +2 to pass the
+        // stack along (handlePlay/isPlayableNow enforce that), or draw the
+        // whole thing via handleDraw. Scoped to "+2" only — see
+        // isPlayableNow's doc comment for why Wild+4 doesn't stack here.
+        const priorCount =
+          this.state.pendingDrawStack?.kind === "+2" ? this.state.pendingDrawStack.count : 0;
+        this.state.pendingDrawStack = { count: priorCount + 2, kind: "+2" };
+        return {
+          turnAdvance: 1,
+          description: `Draw Two stacked — ${this.state.pendingDrawStack.count} pending!`,
+        };
+      }
       const nextPlayerId = this.state.playerOrder[this.stepIndex(this.state.turnIndex, 1)]!;
       const drawn = this.drawCards(2);
       this.state.hands[nextPlayerId]!.push(...drawn);
@@ -518,9 +801,22 @@ export class UnoEngine implements GameEngine {
       };
     }
 
-    // Wild+4 is NOT handled here — handlePlay() intercepts it before this
-    // function is ever called, since it needs a challenge-decision pause
-    // rather than an immediate turnAdvance.
+    if (card.rank === "0" && this.state.options.zeroRotate) {
+      this.rotateHands();
+      return { turnAdvance: 1, description: "Zero! Everyone rotates hands." };
+    }
+
+    if (card.rank === "7" && this.state.options.sevenSwap) {
+      const swappedWithId = this.performSevenSwap(playerId);
+      return {
+        turnAdvance: 1,
+        description: `Seven! ${this.nameOf(playerId)} swapped hands with ${this.nameOf(swappedWithId)}.`,
+      };
+    }
+
+    // Wild+4 is NOT handled here — finalizePlayedCard() intercepts it
+    // before this function is ever called, since it needs a
+    // challenge-decision pause rather than an immediate turnAdvance.
 
     return { turnAdvance: 1, description: "Card played." };
   }
@@ -613,6 +909,8 @@ export class UnoEngine implements GameEngine {
     return {
       kind: "uno",
       phase: this.state.phase,
+      round: this.state.round,
+      targetScore: this.state.options.targetScore,
       playerOrder: this.state.playerOrder,
       turnPlayerId: this.state.playerOrder[this.state.turnIndex] || "",
       direction: this.state.direction,
@@ -634,6 +932,15 @@ export class UnoEngine implements GameEngine {
             // wasLegal is intentionally omitted — must stay hidden until resolved.
           }
         : null,
+      pendingDrawCount: this.state.pendingDrawStack?.count ?? 0,
+      activeHouseRules: {
+        stackDrawCards: this.state.options.stackDrawCards,
+        jumpIn: this.state.options.jumpIn,
+        sevenSwap: this.state.options.sevenSwap,
+        zeroRotate: this.state.options.zeroRotate,
+        keepDrawing: this.state.options.keepDrawing,
+        forcePlay: this.state.options.forcePlay,
+      },
     };
   }
 
@@ -646,7 +953,7 @@ export class UnoEngine implements GameEngine {
       ...publicState,
       myHand: hand,
       validMoves: hand.filter((card) =>
-        this.isValidPlay(card, topCard, this.state.currentColor)
+        this.isPlayableNow(card, topCard, this.state.currentColor)
       ),
     };
   }
@@ -747,23 +1054,16 @@ export class UnoEngine implements GameEngine {
 
     // Find first valid card
     const validCard = hand.find((card) =>
-      this.isValidPlay(card, topCard, this.state.currentColor)
+      this.isPlayableNow(card, topCard, this.state.currentColor)
     );
 
     if (validCard) {
-      // Play the first valid card
-      // For Wild cards, pick a color (just use the most common in hand)
-      let chosenColor: UnoColor | undefined;
-      if (validCard.rank === "Wild" || validCard.rank === "Wild+4") {
-        const colorCounts = { R: 0, G: 0, B: 0, Y: 0 };
-        for (const c of hand) {
-          if (c.color) colorCounts[c.color]++;
-        }
-        chosenColor = (
-          Object.entries(colorCounts).sort(([, a], [, b]) => b - a)[0]?.[0] ||
-          "R"
-        ) as UnoColor;
-      }
+      // Play the first valid card. For Wild cards, pick a color via the
+      // shared majority-color heuristic (also used by Force Play).
+      const chosenColor =
+        validCard.rank === "Wild" || validCard.rank === "Wild+4"
+          ? this.pickColorForHand(hand)
+          : undefined;
 
       return this.applyMove({
         playerId,
