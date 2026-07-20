@@ -180,13 +180,14 @@ const HIT_FLAVOR: Record<UnoHit["kind"], { emoji: string; label: (count?: number
 
 /** Per-kind hold duration for `useUnoHitReaction` below. Every kind still
  *  using the plain `UnoHitBadge` holds for the badge's own ~1.5s pop
- *  animation; `draw2`/`draw4` now drive the "+2 Flying Slippers"/"+4
- *  Meteor Strike" cinematics (`animations/card/`), whose own internal
- *  timelines run longer — the hold here must outlast each one or the
- *  component unmounts mid-sequence and GSAP's cleanup cuts the tail. */
+ *  animation; `draw2`/`draw4`/`skip` now drive their own cinematics
+ *  (`animations/card/`), whose internal timelines run longer — the hold
+ *  here must outlast each one or the component unmounts mid-sequence
+ *  and GSAP's cleanup cuts the tail. */
 const HIT_HOLD_MS: Partial<Record<UnoHit["kind"], number>> = {
   draw2: 1700,
   draw4: 2300,
+  skip: 1800,
 };
 const DEFAULT_HIT_HOLD_MS = 1500;
 
@@ -389,10 +390,18 @@ function DirFlowChevron({ pointDown }: { pointDown: boolean }) {
 export function UnoDirectionArc({
   direction,
   flourish = false,
+  spinTrigger = null,
 }: {
   direction: 1 | -1;
   /** Briefly pulses the arc when a Reverse/Skip resolves — see useUnoEventFlourish. */
   flourish?: boolean;
+  /** Non-null, changing key → the two flow chevrons spin a full turn —
+   *  Reverse's "direction arrow spin" (animation #3). `key`-remounted per
+   *  trigger so Framer Motion always replays from 0 rather than no-op'ing
+   *  when consecutive triggers happen to share an end value. Skip does
+   *  NOT spin the arrows (only Reverse does), hence a dedicated prop
+   *  rather than reusing the existing `flourish` boolean. */
+  spinTrigger?: string | null;
 }) {
   return (
     <div
@@ -419,12 +428,26 @@ export function UnoDirectionArc({
           points down, left points up, reading as clockwise rotation
           (mirrored to counter-clockwise by this wrapper's scaleX(-1)
           above when direction is -1, same as every other table element). */}
-      <div className="absolute" style={{ left: "71%", top: "48%", transform: "translate(-50%,-50%)" }}>
+      <motion.div
+        key={`r-${spinTrigger ?? "static"}`}
+        className="absolute"
+        style={{ left: "71%", top: "48%", translateX: "-50%", translateY: "-50%" }}
+        initial={false}
+        animate={{ rotate: spinTrigger ? 360 : 0 }}
+        transition={{ duration: 0.55, ease: "easeInOut" }}
+      >
         <DirFlowChevron pointDown />
-      </div>
-      <div className="absolute" style={{ left: "29%", top: "48%", transform: "translate(-50%,-50%)" }}>
+      </motion.div>
+      <motion.div
+        key={`l-${spinTrigger ?? "static"}`}
+        className="absolute"
+        style={{ left: "29%", top: "48%", translateX: "-50%", translateY: "-50%" }}
+        initial={false}
+        animate={{ rotate: spinTrigger ? 360 : 0 }}
+        transition={{ duration: 0.55, ease: "easeInOut" }}
+      >
         <DirFlowChevron pointDown={false} />
-      </div>
+      </motion.div>
     </div>
   );
 }

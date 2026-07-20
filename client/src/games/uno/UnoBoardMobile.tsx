@@ -38,6 +38,10 @@ import { useScreenRecoil } from "../../animations/camera/useScreenRecoil";
 import { usePlayerWobble } from "../../animations/player/usePlayerWobble";
 import { PlusTwoFlyingSlippers } from "../../animations/card/PlusTwoFlyingSlippers";
 import { DrawFourMeteorStrike } from "../../animations/card/DrawFourMeteorStrike";
+import { SkipBananaPeel } from "../../animations/card/SkipBananaPeel";
+import { useReverseFlip } from "../../animations/card/useReverseFlip";
+import { useWildColorSplash } from "../../animations/card/useWildColorSplash";
+import { WildColorSplash } from "../../animations/card/WildColorSplash";
 import type { FeltAnchor } from "../../animations/helpers/types";
 
 /** The pile sits at the felt's visual centre — see UnoBoardDesktop.tsx's
@@ -75,7 +79,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   // shake/recoil intensity (screen real estate is tighter, per
   // AGENTS.md §6.1).
   const animConfig = useAnimationConfig();
-  const { cameraRef, shake, punch } = useTableCamera();
+  const { cameraRef, shake, punch, tilt } = useTableCamera();
   const { recoilRef, recoilStyle, recoil } = useScreenRecoil();
   const [wobbleKey, setWobbleKey] = useState<string | null>(null);
   const [wobbleTargetId, setWobbleTargetId] = useState<string | null>(null);
@@ -94,12 +98,19 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
     recoil({ disabled: animConfig.reducedMotion, intensity: 9 });
     triggerWobble(targetId);
   };
+  const handleSkipImpact = (targetId: string) => triggerWobble(targetId);
   const slipperHit = activeHit?.kind === "draw2" ? activeHit : null;
   const slipperTargetId = slipperHit?.targetIds[0] ?? null;
   const slipperTargetPos = slipperTargetId ? resolveSeatPosition(slipperTargetId, selfId, opponents) : null;
   const meteorHit = activeHit?.kind === "draw4" ? activeHit : null;
   const meteorTargetId = meteorHit?.targetIds[0] ?? null;
   const meteorTargetPos = meteorTargetId ? resolveSeatPosition(meteorTargetId, selfId, opponents) : null;
+  const skipHit = activeHit?.kind === "skip" ? activeHit : null;
+  const skipTargetId = skipHit?.targetIds[0] ?? null;
+  const skipTargetPos = skipTargetId ? resolveSeatPosition(skipTargetId, selfId, opponents) : null;
+  const reverseTrigger = useReverseFlip(flourish, animConfig, tilt);
+  const pileWobble = usePlayerWobble(reverseTrigger, "");
+  const wildEvent = useWildColorSplash(state.lastAction, state.currentColor);
 
   /* ─── Sound + fullscreen header controls — same global toggles as
      desktop. No keyboard shortcuts here, matching Rummy's own scoping:
@@ -206,7 +217,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
         >
           <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
             <UnoTableMat>
-              <UnoDirectionArc direction={state.direction} flourish={flourish !== null} />
+              <UnoDirectionArc direction={state.direction} flourish={flourish !== null} spinTrigger={reverseTrigger} />
 
               {opponents.map((id, i) => {
                 const pos = computeSeatPosition(i, opponents.length);
@@ -234,7 +245,10 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                 );
               })}
 
-              <div className="absolute inset-0 flex items-center justify-center z-[2]">
+              <animated.div
+                className="absolute inset-0 flex items-center justify-center z-[2]"
+                style={{ transform: pileWobble.transform }}
+              >
                 <UnoTableCenter
                   topCard={state.topCard}
                   currentColor={state.currentColor}
@@ -243,7 +257,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                   canDraw={m.canDraw}
                   onDraw={m.drawCard}
                 />
-              </div>
+              </animated.div>
 
               <animated.div
                 className="absolute left-1/2 bottom-[3%] z-[3]"
@@ -280,19 +294,42 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                   onComplete={() => {}}
                 />
               )}
-              {activeHit && activeHit.kind !== "draw2" && activeHit.kind !== "draw4" && activeHit.targetIds.map((tid) => {
-                const pos = resolveSeatPosition(tid, selfId, opponents);
-                if (!pos) return null;
-                return (
-                  <div
-                    key={`${tid}-${activeHit.kind}`}
-                    className="absolute z-40"
-                    style={{ left: pos.left, top: pos.top, transform: "translate(-50%, -135%)" }}
-                  >
-                    <UnoHitBadge hit={activeHit} />
-                  </div>
-                );
-              })}
+              {skipHit && skipTargetPos && (
+                <SkipBananaPeel
+                  key={`${skipTargetId}-skip-${skipHit.targetIds.join(",")}`}
+                  originAnchor={PILE_ANCHOR}
+                  targetAnchor={skipTargetPos}
+                  config={animConfig}
+                  onImpact={() => skipTargetId && handleSkipImpact(skipTargetId)}
+                  onComplete={() => {}}
+                />
+              )}
+              {activeHit &&
+                activeHit.kind !== "draw2" &&
+                activeHit.kind !== "draw4" &&
+                activeHit.kind !== "skip" &&
+                activeHit.targetIds.map((tid) => {
+                  const pos = resolveSeatPosition(tid, selfId, opponents);
+                  if (!pos) return null;
+                  return (
+                    <div
+                      key={`${tid}-${activeHit.kind}`}
+                      className="absolute z-40"
+                      style={{ left: pos.left, top: pos.top, transform: "translate(-50%, -135%)" }}
+                    >
+                      <UnoHitBadge hit={activeHit} />
+                    </div>
+                  );
+                })}
+              {wildEvent && (
+                <WildColorSplash
+                  key={wildEvent.key}
+                  event={wildEvent}
+                  anchor={PILE_ANCHOR}
+                  config={animConfig}
+                  onComplete={() => {}}
+                />
+              )}
             </UnoTableMat>
           </animated.div>
         </div>
