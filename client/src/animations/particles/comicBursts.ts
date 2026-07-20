@@ -52,3 +52,53 @@ export function fireComicDustBurst(anchor: FeltAnchor, opts: ComicBurstOptions =
     shapes: ["star"],
   });
 }
+
+/** Meteor-strike impact: grey smoke that lingers and drifts up (low
+ *  decay, negative-ish gravity via a small upward drift), rainbow
+ *  sparkles (the Wild Draw Four's colour-choice identity), and dark
+ *  angular debris chunks flung outward harder than the dust burst's
+ *  gentle puff — a bigger, more violent event than a plain +2. */
+const METEOR_SMOKE_COLORS = ["#6B6660", "#8C8680", "#4A453F", "#B5AFA6"];
+const METEOR_RAINBOW_COLORS = ["#D22B27", "#3AA03A", "#1C6DD0", "#E8B100", "#B347D6"];
+const METEOR_DEBRIS_COLORS = ["#3D2B1F", "#5C4030", "#2B2118"];
+
+export function fireMeteorImpactBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const { x, y } = anchorToPercentXY(anchor);
+
+  // Smoke — slow, lingering, wide spread.
+  void confetti({
+    count: Math.round(34 * intensity),
+    spread: 100,
+    startVelocity: 14,
+    decay: 0.94,
+    gravity: 0.15,
+    scalar: 1.1,
+    position: { x, y },
+    colors: METEOR_SMOKE_COLORS,
+    shapes: ["circle"],
+  });
+  // Rainbow sparkles — quick, bright, the Wild+4 colour-choice signature.
+  void confetti({
+    count: Math.round(18 * intensity),
+    spread: 130,
+    startVelocity: 34,
+    scalar: 0.5,
+    position: { x, y },
+    colors: METEOR_RAINBOW_COLORS,
+    shapes: ["star", "circle"],
+  });
+  // Debris — harder, faster, angular chunks.
+  void confetti({
+    count: Math.round(14 * intensity),
+    spread: 80,
+    startVelocity: 40,
+    decay: 0.9,
+    gravity: 1.1,
+    scalar: 0.6,
+    position: { x, y },
+    colors: METEOR_DEBRIS_COLORS,
+    shapes: ["square"],
+  });
+}

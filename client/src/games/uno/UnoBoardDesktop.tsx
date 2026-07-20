@@ -41,8 +41,10 @@ import { UNO_TUTORIAL } from "../tutorials";
 import { animated } from "@react-spring/web";
 import { useAnimationConfig } from "../../animations/helpers/useAnimationConfig";
 import { useTableCamera } from "../../animations/camera/useTableCamera";
+import { useScreenRecoil } from "../../animations/camera/useScreenRecoil";
 import { usePlayerWobble } from "../../animations/player/usePlayerWobble";
 import { PlusTwoFlyingSlippers } from "../../animations/card/PlusTwoFlyingSlippers";
+import { DrawFourMeteorStrike } from "../../animations/card/DrawFourMeteorStrike";
 import type { FeltAnchor } from "../../animations/helpers/types";
 
 /** The pile sits at the felt's visual centre — `UnoTableCenter`'s wrapper
@@ -77,28 +79,41 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   const selfName = selfId ? m.nameOf(selfId) : "You";
 
   // ── Animation system (client/src/animations/) ─────────────────────
-  // One `useTableCamera` instance per board — its `cameraRef` attaches to
-  // the table-mat wrapper below, so every current/future per-hit
-  // animation shares one GSAP-scoped shake/punch surface instead of each
-  // mounting a competing context on the same DOM node.
+  // `useTableCamera` (GSAP shake/punch) attaches to the outer felt
+  // wrapper below; `useScreenRecoil` (React Spring) attaches to a
+  // SEPARATE, inner wrapper around `UnoTableMat` — two concentric
+  // layers by construction, so the two camera systems (each owned by a
+  // different animation per the guide) can never fight over the same
+  // DOM node's transform.
   const animConfig = useAnimationConfig();
   const { cameraRef, shake, punch } = useTableCamera();
+  const { recoilRef, recoilStyle, recoil } = useScreenRecoil();
   const [wobbleKey, setWobbleKey] = useState<string | null>(null);
   const [wobbleTargetId, setWobbleTargetId] = useState<string | null>(null);
   const wobbleBaseTransform = wobbleTargetId === selfId ? "translateX(-50%)" : "translate(-50%, -50%)";
   const wobble = usePlayerWobble(wobbleKey, wobbleBaseTransform);
-  const handleHitImpact = (targetId: string) => {
-    shake({ disabled: animConfig.reducedMotion, intensity: animConfig.mobileMode ? 4 : 6 });
-    punch({ disabled: animConfig.reducedMotion });
+  const triggerWobble = (targetId: string) => {
     setWobbleTargetId(targetId);
     setWobbleKey(`${targetId}-${Date.now()}`);
   };
-  // "+2 Flying Slippers" (animations/card/PlusTwoFlyingSlippers.tsx)
-  // replaces the plain UnoHitBadge specifically for draw2 — every other
-  // hit kind still uses the badge until its own cinematic is built.
+  const handleSlipperImpact = (targetId: string) => {
+    shake({ disabled: animConfig.reducedMotion, intensity: animConfig.mobileMode ? 4 : 6 });
+    punch({ disabled: animConfig.reducedMotion });
+    triggerWobble(targetId);
+  };
+  const handleMeteorImpact = (targetId: string) => {
+    recoil({ disabled: animConfig.reducedMotion, intensity: animConfig.mobileMode ? 9 : 14 });
+    triggerWobble(targetId);
+  };
+  // "+2 Flying Slippers"/"+4 Meteor Strike" (animations/card/) replace
+  // the plain UnoHitBadge for draw2/draw4 — every other hit kind still
+  // uses the badge until its own cinematic is built.
   const slipperHit = activeHit?.kind === "draw2" ? activeHit : null;
   const slipperTargetId = slipperHit?.targetIds[0] ?? null;
   const slipperTargetPos = slipperTargetId ? resolveSeatPosition(slipperTargetId, selfId, opponents) : null;
+  const meteorHit = activeHit?.kind === "draw4" ? activeHit : null;
+  const meteorTargetId = meteorHit?.targetIds[0] ?? null;
+  const meteorTargetPos = meteorTargetId ? resolveSeatPosition(meteorTargetId, selfId, opponents) : null;
 
   /* ─── Sound + fullscreen header controls — ported from Rummy's own
      header buttons. Sound is the app-wide AudioManager mute (UNO has no
@@ -229,91 +244,104 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
       {/* The felt table */}
       <div className="flex-1 min-h-0 flex items-center justify-center px-4 pt-16 pb-1">
         <div ref={cameraRef} className="relative w-full" style={{ maxWidth: 1140, aspectRatio: "1.8" }}>
-          <UnoTableMat>
-            <UnoDirectionArc direction={state.direction} flourish={flourish !== null} />
+          <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
+            <UnoTableMat>
+              <UnoDirectionArc direction={state.direction} flourish={flourish !== null} />
 
-            {opponents.map((id, i) => {
-              const pos = computeSeatPosition(i, opponents.length);
-              return (
-                <animated.div
-                  key={id}
-                  className="absolute z-[2]"
-                  style={{
-                    left: pos.left,
-                    top: pos.top,
-                    transform: wobbleTargetId === id ? wobble.transform : "translate(-50%, -50%)",
-                  }}
-                >
-                  <UnoPlayerChip
-                    name={m.nameOf(id)}
-                    handSize={state.handSizes[id] ?? 0}
-                    isTurn={state.turnPlayerId === id}
-                    fanDir={pos.fanDir}
-                    canCatch={m.catchableOpponents.includes(id)}
-                    onCatch={() => m.catchUno(id)}
-                    isConnected={players.find((p) => p.id === id)?.isConnected}
-                  />
-                </animated.div>
-              );
-            })}
+              {opponents.map((id, i) => {
+                const pos = computeSeatPosition(i, opponents.length);
+                return (
+                  <animated.div
+                    key={id}
+                    className="absolute z-[2]"
+                    style={{
+                      left: pos.left,
+                      top: pos.top,
+                      transform: wobbleTargetId === id ? wobble.transform : "translate(-50%, -50%)",
+                    }}
+                  >
+                    <UnoPlayerChip
+                      name={m.nameOf(id)}
+                      handSize={state.handSizes[id] ?? 0}
+                      isTurn={state.turnPlayerId === id}
+                      fanDir={pos.fanDir}
+                      canCatch={m.catchableOpponents.includes(id)}
+                      onCatch={() => m.catchUno(id)}
+                      isConnected={players.find((p) => p.id === id)?.isConnected}
+                    />
+                  </animated.div>
+                );
+              })}
 
-            <div className="absolute inset-0 flex items-center justify-center z-[2]">
-              <UnoTableCenter
-                topCard={state.topCard}
-                currentColor={state.currentColor}
-                deckCount={state.deckCount}
-                isDragging={isDraggingCard}
-                canDraw={m.canDraw}
-                onDraw={m.drawCard}
-              />
-            </div>
-
-            {/* Self plate, anchored at the base of the felt */}
-            <animated.div
-              className="absolute left-1/2 bottom-[3%] z-[3]"
-              style={{ transform: wobbleTargetId === selfId ? wobble.transform : "translateX(-50%)" }}
-            >
-              <div className="relative flex flex-col items-center">
-                <UnoDeclareBubble declared={selfDeclared} />
-                <UnoNamePlate name={selfName} isSelf isTurn={m.myTurn} />
+              <div className="absolute inset-0 flex items-center justify-center z-[2]">
+                <UnoTableCenter
+                  topCard={state.topCard}
+                  currentColor={state.currentColor}
+                  deckCount={state.deckCount}
+                  isDragging={isDraggingCard}
+                  canDraw={m.canDraw}
+                  onDraw={m.drawCard}
+                />
               </div>
-            </animated.div>
 
-            {/* Comedic "fired at" flourish — draw2 gets the full "+2 Flying
-                Slippers" cinematic (animations/card/PlusTwoFlyingSlippers.tsx);
-                every other kind (Skip/Draw Four/stack/Seven Swap/Zero
-                Rotate/UNO catch) still gets the plain badge pop until its
-                own animation is built. translateY(-135%) lifts the badge
-                clear of the seat chip/self plate it's anchored to. */}
-            {slipperHit && slipperTargetPos && (
-              <PlusTwoFlyingSlippers
-                key={`${slipperTargetId}-draw2-${slipperHit.count}`}
-                count={slipperHit.count ?? 2}
-                originAnchor={PILE_ANCHOR}
-                targetAnchor={slipperTargetPos}
-                config={animConfig}
-                onImpact={() => slipperTargetId && handleHitImpact(slipperTargetId)}
-                // The board doesn't need to react to sequence-end — the
-                // hit itself auto-clears via useUnoHitReaction's own
-                // per-kind hold timer (HIT_HOLD_MS.draw2), sized to
-                // outlast this animation's internal timeline.
-                onComplete={() => {}}
-              />
-            )}
-            {activeHit && activeHit.kind !== "draw2" && activeHit.targetIds.map((tid) => {
-              const pos = resolveSeatPosition(tid, selfId, opponents);
-              if (!pos) return null;
-              return (
-                <div
-                  key={`${tid}-${activeHit.kind}`}
-                  className="absolute z-40"
-                  style={{ left: pos.left, top: pos.top, transform: "translate(-50%, -135%)" }}
-                >
-                  <UnoHitBadge hit={activeHit} />
+              {/* Self plate, anchored at the base of the felt */}
+              <animated.div
+                className="absolute left-1/2 bottom-[3%] z-[3]"
+                style={{ transform: wobbleTargetId === selfId ? wobble.transform : "translateX(-50%)" }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <UnoDeclareBubble declared={selfDeclared} />
+                  <UnoNamePlate name={selfName} isSelf isTurn={m.myTurn} />
                 </div>
-              );
-            })}
-          </UnoTableMat>
+              </animated.div>
+
+              {/* Comedic "fired at" flourish — draw2/draw4 get full
+                  cinematics (animations/card/); every other kind (Skip/
+                  stack/Seven Swap/Zero Rotate/UNO catch) still gets the
+                  plain badge pop until its own animation is built.
+                  translateY(-135%) lifts the badge clear of the seat
+                  chip/self plate it's anchored to. */}
+              {slipperHit && slipperTargetPos && (
+                <PlusTwoFlyingSlippers
+                  key={`${slipperTargetId}-draw2-${slipperHit.count}`}
+                  count={slipperHit.count ?? 2}
+                  originAnchor={PILE_ANCHOR}
+                  targetAnchor={slipperTargetPos}
+                  config={animConfig}
+                  onImpact={() => slipperTargetId && handleSlipperImpact(slipperTargetId)}
+                  // The board doesn't need to react to sequence-end — the
+                  // hit itself auto-clears via useUnoHitReaction's own
+                  // per-kind hold timer (HIT_HOLD_MS.draw2), sized to
+                  // outlast this animation's internal timeline.
+                  onComplete={() => {}}
+                />
+              )}
+              {meteorHit && meteorTargetPos && (
+                <DrawFourMeteorStrike
+                  key={`${meteorTargetId}-draw4-${meteorHit.count}`}
+                  count={meteorHit.count ?? 4}
+                  originAnchor={PILE_ANCHOR}
+                  targetAnchor={meteorTargetPos}
+                  config={animConfig}
+                  onImpact={() => meteorTargetId && handleMeteorImpact(meteorTargetId)}
+                  onComplete={() => {}}
+                />
+              )}
+              {activeHit && activeHit.kind !== "draw2" && activeHit.kind !== "draw4" && activeHit.targetIds.map((tid) => {
+                const pos = resolveSeatPosition(tid, selfId, opponents);
+                if (!pos) return null;
+                return (
+                  <div
+                    key={`${tid}-${activeHit.kind}`}
+                    className="absolute z-40"
+                    style={{ left: pos.left, top: pos.top, transform: "translate(-50%, -135%)" }}
+                  >
+                    <UnoHitBadge hit={activeHit} />
+                  </div>
+                );
+              })}
+            </UnoTableMat>
+          </animated.div>
 
           {/* UNO! declare cluster — bottom-right of the felt, and Pass —
               centred just below the pile, above the self plate. Both
