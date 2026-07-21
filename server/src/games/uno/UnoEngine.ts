@@ -91,6 +91,13 @@ export interface InternalUnoState {
     kind: "skip" | "draw2" | "draw4" | "stack" | "swap" | "rotate" | "catch";
     count?: number;
   } | null;
+  /** Mirrors UnoPublicState.lastRoundRecap — see that field's doc comment. */
+  lastRoundRecap: {
+    roundNumber: number;
+    winnerId: string;
+    scores: Record<string, number>;
+    ts: number;
+  } | null;
 }
 
 export class UnoEngine implements GameEngine {
@@ -185,6 +192,7 @@ export class UnoEngine implements GameEngine {
       pendingChallenge: null,
       pendingDrawStack: null,
       lastHit: null,
+      lastRoundRecap: null,
     };
   }
 
@@ -649,6 +657,19 @@ export class UnoEngine implements GameEngine {
     const hand = this.state.hands[playerId]!;
     if (hand.length === 0) {
       this.awardRoundPoints(playerId);
+      // Captured here (not inside startNewRound()) so both the
+      // mid-match-continues branch and the match-ends branch below share
+      // one recording point, using `this.state.round` while it's still
+      // the round that JUST ended (startNewRound() increments it after).
+      // RoomManager.recordUnoRoundIfFinished reads this to build
+      // RoomPublicState.unoHistory/unoChampion — see that field's own
+      // doc comment on UnoPublicState for the full contract.
+      this.state.lastRoundRecap = {
+        roundNumber: this.state.round,
+        winnerId: playerId,
+        scores: { ...this.state.scores },
+        ts: Date.now(),
+      };
       const target = this.state.options.targetScore;
       const reachedTarget = target != null && (this.state.scores[playerId] ?? 0) >= target;
       if (target == null || reachedTarget) {
@@ -1013,6 +1034,7 @@ export class UnoEngine implements GameEngine {
         forcePlay: this.state.options.forcePlay,
       },
       lastHit: this.state.lastHit,
+      lastRoundRecap: this.state.lastRoundRecap,
     };
   }
 

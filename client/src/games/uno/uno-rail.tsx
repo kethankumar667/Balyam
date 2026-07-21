@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChatMessage, Player } from "@shared/types";
+import type { ChatMessage, Player, UnoChampion, UnoRoundRecap } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import Chat from "../../components/Chat";
 import VoicePanel from "../../components/VoicePanel";
 import PlayerList from "../../components/PlayerList";
 import { ScorePanel } from "./uno-shared";
+import UnoRoomHistory from "../../components/nostalgia/UnoRoomHistory";
 
 /**
  * UNO's Chat / Voice / Players / Points tab rail — structurally mirrors
@@ -23,11 +24,15 @@ import { ScorePanel } from "./uno-shared";
  * modals.
  */
 
-type UnoRailTab = "chat" | "voice" | "players" | "points";
-const TABS: UnoRailTab[] = ["chat", "voice", "players", "points"];
+type UnoRailTab = "chat" | "voice" | "players" | "points" | "history";
+const TABS: UnoRailTab[] = ["chat", "voice", "players", "points", "history"];
 
 export interface UnoRoomRailProps {
   variant: "sidebar" | "sheet";
+  /** Screen-size density, independent of `variant` — both board shells now
+   *  use `variant="sheet"`, so this is the only signal left for the
+   *  History tab's NotebookSheet type-size switch (AGENTS.md Section 6). */
+  density: "mobile" | "desktop";
   players: Player[];
   selfId: string | null;
   messages: ChatMessage[];
@@ -40,6 +45,9 @@ export interface UnoRoomRailProps {
   /** Race-to-target-score match length, or null for a single round. */
   targetScore: number | null;
   nameOf: (id: string) => string;
+  /** UNO's own room "photo album" — see shared/types.ts's UnoPublicState.unoHistory doc comment. */
+  history: UnoRoundRecap[];
+  champion: UnoChampion | null;
 }
 
 export function UnoRoomRail(props: UnoRoomRailProps) {
@@ -119,6 +127,8 @@ function SheetRail(props: UnoRoomRailProps) {
 /** Tab strip + switched content. Owns its own tab state so both host shells
  *  (persistent sidebar, full-screen sheet) stay dumb positioning wrappers. */
 function UnoRailBody({
+  variant,
+  density,
   players,
   selfId,
   messages,
@@ -128,6 +138,8 @@ function UnoRailBody({
   round,
   targetScore,
   nameOf,
+  history,
+  champion,
 }: UnoRoomRailProps) {
   const [activeTab, setActiveTab] = useState<UnoRailTab>("chat");
   return (
@@ -150,7 +162,7 @@ function UnoRailBody({
       <div className="flex-1 overflow-y-auto p-3 min-h-0">
         {activeTab === "chat" && <Chat messages={messages} selfId={selfId} />}
         {activeTab === "voice" && (
-          <VoicePanel players={players} selfId={selfId} restoreOrientation="any" />
+          <VoicePanel players={players} selfId={selfId} restoreOrientation={variant === "sheet" ? "landscape" : "any"} />
         )}
         {activeTab === "players" && <PlayerList players={players} selfId={selfId} />}
         {activeTab === "points" && (
@@ -163,6 +175,9 @@ function UnoRailBody({
             targetScore={targetScore}
             nameOf={nameOf}
           />
+        )}
+        {activeTab === "history" && (
+          <UnoRoomHistory variant="panel" density={density} history={history} champion={champion} players={players} showTitle={false} />
         )}
       </div>
     </>

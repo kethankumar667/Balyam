@@ -5,6 +5,11 @@ import RematchPanel from "../../components/RematchPanel";
 import { fireUnoWinConfetti } from "./uno-confetti";
 import { useAnimationConfig } from "../../animations/helpers/useAnimationConfig";
 import { WinnerCelebration } from "../../animations/card/WinnerCelebration";
+import { VictoryDance } from "../../animations/card/VictoryDance";
+import type { FeltAnchor } from "../../animations/helpers/types";
+
+/** Roughly above the modal card's header — see `VictoryDance.tsx`. */
+const VICTORY_DANCE_ANCHOR: FeltAnchor = { left: "50%", top: "32%" };
 
 export interface UnoResultModalProps {
   state: UnoPlayerState;
@@ -52,6 +57,7 @@ export default function UnoResultModal({ state, players, selfId, onClose, onLeav
       aria-label="Match results"
     >
       {isSelfWinner && <WinnerCelebration config={animConfig} />}
+      {isSelfWinner && <VictoryDance anchor={VICTORY_DANCE_ANCHOR} config={animConfig} />}
       <motion.div
         className="w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
         style={{ background: "#FFF9F0", border: "2px solid #6D4323" }}

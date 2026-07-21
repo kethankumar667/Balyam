@@ -801,6 +801,8 @@ export default function Room() {
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
                 onLeave={leaveRoom}
+                history={roomState.unoHistory}
+                champion={roomState.unoChampion}
                 onScorecardClose={triggerGameOver}
               />
             )}
