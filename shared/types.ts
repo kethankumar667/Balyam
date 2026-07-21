@@ -1386,6 +1386,24 @@ export interface StarPublicState {
   standings: StarStanding[] | null;
   isOver: boolean;
   winnerId: string | null;
+  /** This round's designated relay starter (rotates every round — round N's
+   *  starter is seatOrder[(N-1) % seatOrder.length] at the moment the round's
+   *  shuffle begins). Fixed for every pass-cycle within the round. Null before
+   *  the first round's shuffle has run. */
+  starterId: string | null;
+  /** seatOrder rotated to begin at starterId — the fixed relay route for this
+   *  round (e.g. starter=B, seats=[A,B,C,D] -> passOrder=[B,C,D,A]). Cards
+   *  travel passOrder[i] -> passOrder[i+1], wrapping back to the starter. */
+  passOrder: string[];
+  /** Whose turn to select-and-send during the "pass" phase's sequential
+   *  relay, or null outside that phase. Exactly one player may act at a
+   *  time — this replaces the old simultaneous-commit model. */
+  currentPasserId: string | null;
+  /** The most recent relay step's card handoff, for the client's travel
+   *  animation. Reset to null at the top of every applyMove and re-set only
+   *  by the handlePass branch that produces one — same one-shot-signal
+   *  pattern as UnoPublicState.lastHit (shared/types.ts). */
+  lastPass: { fromId: string; toId: string; cardId: string } | null;
 }
 
 /** Per-player private view - adds the owner's hand + secret pick. */
@@ -1408,6 +1426,13 @@ export interface StarPassMove { type: "pass"; }
 export interface StarPressStarMove { type: "pressStar"; }
 export interface StarPlaceHandMove { type: "placeHand"; }
 export interface StarNextRoundMove { type: "nextRound"; }
+/** Replaces the sender's own hand order (client-driven reorder, e.g. drag
+ *  reordering) — must be a permutation of the exact cards already held.
+ *  Purely a preference/ordering action, no phase restriction beyond having
+ *  a non-empty hand. Auto-pass (bot or deadline fallback) always sends the
+ *  LAST card in this order, so reordering is how a player steers what
+ *  gets auto-passed if they run out of time. */
+export interface StarReorderHandMove { type: "reorderHand"; data: { cardIds: string[] }; }
 
 export type StarMove =
   | StarSelectValueMove
@@ -1416,7 +1441,8 @@ export type StarMove =
   | StarPassMove
   | StarPressStarMove
   | StarPlaceHandMove
-  | StarNextRoundMove;
+  | StarNextRoundMove
+  | StarReorderHandMove;
 
 // ---- Socket event payloads ----
 export interface CreateRoomPayload {

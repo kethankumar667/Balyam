@@ -1,35 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useStarBoard } from "./useStarBoard";
-import type { StarBoardModel, StarBoardProps, StarSeat } from "./useStarBoard";
+import type { StarBoardModel, StarBoardProps } from "./useStarBoard";
 import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/GameTutorial";
 import { STARGAME_TUTORIAL } from "../tutorials";
 import {
-  ActivityFeed,
   Chit,
   DeadlinePill,
+  DraggableChitRail,
   FinalPodium,
-  HandRail,
   HandStackButton,
   NostalgiaLine,
   PAPER,
+  RoundInfoPanel,
   RoundSummaryTable,
   Scoreboard,
   SeatTile,
   StarButton,
+  StarTable,
   ThemeChitPicker,
   ValuesLegend,
   GrainOverlay,
   PAGE_BG,
   Confetti,
+  ShuffleFlourish,
+  BotThinkingDots,
 } from "./star-shared";
 
 /**
  * StarBoardDesktop — the DEDICATED desktop shell for Star Game (≥1280px, mouse +
- * keyboard). A full-height three-column workspace (left standings / center felt /
- * right ledger) over a persistent bottom hand rail. This is a native desktop
- * arrangement, not the mobile shell stretched: the felt is the focus, the rails
- * are reference panels, and the round is fully keyboard-playable.
+ * keyboard). A full-height three-column workspace (left standings/roster/round
+ * info · center felt with the circular StarTable · right theme/status) over a
+ * persistent bottom hand rail. Native desktop arrangement, not the mobile
+ * shell stretched: the StarTable is the shared visual language across both
+ * shells, the side rails are reference panels, and the round is fully
+ * keyboard-playable.
  *
  * Pure presentation over the frozen `useStarBoard` model — every socket emit,
  * derivation and sound cue lives in the hook. Honours prefers-reduced-motion via
@@ -48,9 +53,10 @@ export default function StarBoardDesktop(props: StarBoardProps) {
     return () => window.clearInterval(id);
   }, []);
 
-  // Keyboard shortcuts: 1-4 arm the Nth chit while passing, Enter passes,
-  // S slaps the STAR, Space places the hand. We ignore keystrokes typed into
-  // chat / form fields so the desktop chat panel keeps working.
+  // Keyboard shortcuts: 1-4 arm the Nth chit (in the player's own on-screen
+  // order — reordering changes what each number means, as expected) while
+  // passing, Enter passes, S slaps the STAR, Space places the hand. We
+  // ignore keystrokes typed into chat / form fields so desktop chat works.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
@@ -101,14 +107,17 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
   const selectedCount = m.seats.filter((s) => s.pub.hasSelected).length;
   const shuffledCount = m.seats.filter((s) => s.pub.hasShuffled).length;
-  const stillToPass = m.seats.filter((s) => !s.pub.hasPassed).length;
 
-  /** A seat is "active" when it's their shuffle turn, or holds four during STAR. */
-  const isActiveSeat = (s: StarSeat): boolean => {
+  /** A seat is "active" in the left roster when it's their shuffle turn, or
+   *  they currently hold four during STAR. StarTable derives its own,
+   *  richer version (incl. the sequential pass turn) internally. */
+  const isActiveSeat = (s: { id: string; pub: { starEligible: boolean } }): boolean => {
     if (m.phase === "shuffle") return m.state.shuffleTurnId === s.id;
     if (m.phase === "star") return s.pub.starEligible;
     return false;
   };
+
+  const showTable = m.phase !== "themeSelect" && m.phase !== "finished";
 
   return (
     <div
@@ -135,28 +144,11 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           </Panel>
 
           <Panel title="Round">
-            <dl className="space-y-1.5 text-sm">
-              <Row label="Round">
-                <span className="font-display font-black" style={{ color: PAPER.brown }}>
-                  {m.round}/{m.totalRounds}
-                </span>
-              </Row>
-              <Row label="Theme">
-                <span className="font-bold">
-                  <span aria-hidden className="mr-1">{m.theme.glyph}</span>
-                  {m.theme.label}
-                </span>
-              </Row>
-              <Row label="Pass">
-                <span className="font-bold" style={{ color: PAPER.pencil }}>
-                  clockwise <span aria-hidden>⟳</span>
-                </span>
-              </Row>
-            </dl>
+            <RoundInfoPanel round={m.round} totalRounds={m.totalRounds} starterId={m.starterId} nameOf={m.nameOf} />
           </Panel>
         </aside>
 
-        {/* CENTER — the felt */}
+        {/* CENTER — the felt, with the circular table as its centerpiece */}
         <main
           className="relative flex min-h-0 flex-col overflow-y-auto rounded-3xl border-2 p-6"
           style={{
@@ -167,18 +159,33 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           aria-live="polite"
         >
           <GrainOverlay vignette={false} />
-          <div className="m-auto w-full max-w-2xl">
-            <Stage
-              m={m}
-              reduce={!!reduce}
-              selectedCount={selectedCount}
-              shuffledCount={shuffledCount}
-              stillToPass={stillToPass}
-            />
+          <div className="m-auto flex w-full max-w-3xl flex-col items-center gap-5">
+            <StageHeading phase={m.phase} />
+            {showTable && (
+              <StarTable
+                seats={m.seats}
+                selfId={m.selfId}
+                phase={m.phase}
+                shuffleTurnId={m.state.shuffleTurnId}
+                currentPasserId={m.currentPasserId}
+                passOrder={m.passOrder}
+                lastPass={m.lastPass}
+                thinkingBotId={m.thinkingBotId}
+                starWinnerId={m.state.starWinnerId}
+                width={480}
+                height={360}
+              >
+                <CenterContent m={m} reduce={!!reduce} selectedCount={selectedCount} shuffledCount={shuffledCount} />
+              </StarTable>
+            )}
+            {!showTable && (
+              <CenterContent m={m} reduce={!!reduce} selectedCount={selectedCount} shuffledCount={shuffledCount} />
+            )}
           </div>
         </main>
 
-        {/* RIGHT — theme, activity ledger, status */}
+        {/* RIGHT — theme + live status. Activity ledger removed (UI only —
+            server still tracks it in state.activity for any future use). */}
         <aside className="flex min-h-0 flex-col gap-3">
           <Panel title="Theme">
             <div className="flex items-center gap-3">
@@ -203,16 +210,13 @@ export default function StarBoardDesktop(props: StarBoardProps) {
             </div>
           </Panel>
 
-          <Panel title="Activity" className="flex min-h-0 flex-1 flex-col" bodyClass="min-h-0 flex-1 overflow-hidden">
-            <div className="h-full overflow-y-auto pr-1">
-              <ActivityFeed entries={m.state.activity} nameOf={m.nameOf} />
-            </div>
-          </Panel>
+          <div className="min-h-0 flex-1" />
 
           <Panel title="Now">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-bold" style={{ color: PAPER.ink }}>
+              <span className="flex items-center gap-2 text-sm font-bold" style={{ color: PAPER.ink }}>
                 {statusLine(m)}
+                {m.isBotThinking && <BotThinkingDots />}
               </span>
               <div className="flex items-center gap-2">
                 <TutorialButton onClick={() => tut.setOpen(true)} label="How to play Star Game" />
@@ -230,11 +234,13 @@ export default function StarBoardDesktop(props: StarBoardProps) {
       >
         <div className="min-w-0 flex-1">
           {m.myHand.length > 0 ? (
-            <HandRail
+            <DraggableChitRail
               hand={m.myHand}
               armedId={m.state.myArmedCardId}
               onArm={m.armCard}
+              onReorder={m.reorderHand}
               disabled={!m.iNeedToPass}
+              isBackgrounded={m.isBackgrounded}
               size="lg"
             />
           ) : (
@@ -274,24 +280,43 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
 /* ─────────────────────────── Center stage ─────────────────────────── */
 
-function Stage({
+function StageHeading({ phase }: { phase: StarBoardModel["phase"] }) {
+  const TEXT: Record<StarBoardModel["phase"], string> = {
+    themeSelect: "Pick your secret value",
+    shuffle: "Shuffle time",
+    deal: "Dealing four chits each…",
+    pass: "Pass it on!",
+    star: "Someone got four — slap the STAR!",
+    handstack: "Stack your hand — fast!",
+    roundSummary: "Round over",
+    finished: "Game over",
+  };
+  return (
+    <h2 className="text-center font-display text-2xl font-black" style={{ color: PAPER.brown }}>
+      {TEXT[phase]}
+    </h2>
+  );
+}
+
+/** Phase-specific content — rendered either inside the StarTable's center
+ *  slot (shuffle/pass/star/handstack, so it sits amid the seat ring) or
+ *  standalone above it (themeSelect/deal have no table yet; roundSummary/
+ *  finished don't need one). */
+function CenterContent({
   m,
   reduce,
   selectedCount,
   shuffledCount,
-  stillToPass,
 }: {
   m: StarBoardModel;
   reduce: boolean;
   selectedCount: number;
   shuffledCount: number;
-  stillToPass: number;
 }) {
   switch (m.phase) {
     case "themeSelect":
       return (
         <div className="space-y-5 text-center">
-          <StageHeading>Pick your secret value</StageHeading>
           {m.iNeedToSelect ? (
             <>
               <p className="text-sm" style={{ color: PAPER.pencil }}>
@@ -307,8 +332,10 @@ function Stage({
             </>
           ) : (
             <div className="space-y-3">
-              <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border-2 px-4 py-3"
-                style={{ borderColor: PAPER.gold, background: PAPER.page }}>
+              <div
+                className="mx-auto flex w-fit items-center gap-2 rounded-xl border-2 px-4 py-3"
+                style={{ borderColor: PAPER.gold, background: PAPER.page }}
+              >
                 <span aria-hidden className="text-xl">🔒</span>
                 <span className="font-script text-2xl font-bold" style={{ color: PAPER.ink }}>
                   Locked: {m.state.mySelectedValue}
@@ -324,22 +351,27 @@ function Stage({
 
     case "shuffle":
       return (
-        <div className="space-y-6 text-center">
-          <StageHeading>Shuffle time</StageHeading>
+        <div className="relative space-y-4 text-center">
+          <ShuffleFlourish shuffleKey={shuffledCount} />
           {m.iAmShuffling ? (
             <button
               type="button"
               onClick={m.shuffle}
               aria-label="Give the chits a shuffle"
-              className="mx-auto flex flex-col items-center gap-2 rounded-3xl border-4 px-12 py-8 font-display text-2xl font-black uppercase tracking-wide transition active:scale-95"
+              className="mx-auto flex flex-col items-center gap-2 rounded-3xl border-4 px-10 py-6 font-display text-xl font-black uppercase tracking-wide transition active:scale-95"
               style={{ borderColor: PAPER.brown, background: PAPER.gold, color: PAPER.ink }}
             >
-              <span aria-hidden className="text-5xl">🔀</span>
+              <span aria-hidden className="text-4xl">🔀</span>
               Give them a shuffle!
             </button>
+          ) : m.isBotThinking ? (
+            <p className="flex items-center justify-center gap-2 font-script text-2xl font-bold" style={{ color: PAPER.brown }}>
+              {m.nameOf(m.state.shuffleTurnId ?? "")} is thinking
+              <BotThinkingDots />
+            </p>
           ) : (
-            <p className="font-script text-3xl font-bold" style={{ color: PAPER.brown }}>
-              {m.nameOf(m.state.shuffleTurnId!)} is shuffling…
+            <p className="font-script text-2xl font-bold" style={{ color: PAPER.brown }}>
+              {m.nameOf(m.state.shuffleTurnId ?? "")} is shuffling…
             </p>
           )}
           <p className="text-sm" style={{ color: PAPER.pencil }}>
@@ -350,103 +382,80 @@ function Stage({
 
     case "deal":
       return (
-        <div className="space-y-6 text-center">
-          <StageHeading>Dealing four chits each…</StageHeading>
-          <div className="flex items-center justify-center gap-3">
-            {[0, 1, 2, 3].map((i) => (
-              <motion.div
-                key={i}
-                initial={reduce ? false : { y: -40, opacity: 0, rotate: -8 }}
-                animate={{ y: 0, opacity: 1, rotate: 0 }}
-                transition={{ delay: reduce ? 0 : i * 0.12, type: "spring", stiffness: 280, damping: 22 }}
-              >
-                <Chit value="" faceDown size="md" />
-              </motion.div>
-            ))}
-          </div>
+        <div className="flex items-center justify-center gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <motion.div
+              key={i}
+              initial={reduce ? false : { y: -40, opacity: 0, rotate: -8 }}
+              animate={{ y: 0, opacity: 1, rotate: 0 }}
+              transition={{ delay: reduce ? 0 : i * 0.12, type: "spring", stiffness: 280, damping: 22 }}
+            >
+              <Chit value="" faceDown size="md" />
+            </motion.div>
+          ))}
         </div>
       );
 
     case "pass":
       return (
-        <div className="space-y-6">
-          <div className="text-center">
-            <ValuesLegend values={m.state.valuesInPlay} glyph={m.theme.glyph} />
-          </div>
-          <SeatRing seats={m.seats} selfId={m.selfId}>
-            <div className="flex w-44 flex-col items-center gap-3 text-center">
-              {m.iNeedToPass ? (
-                <>
-                  <p className="font-script text-2xl font-bold leading-tight" style={{ color: PAPER.brown }}>
-                    Arm a chit & pass <span aria-hidden>⟳</span>
-                  </p>
-                  <PassButton onPass={m.pass} disabled={!m.iNeedToPass} big />
-                  <p className="text-[11px]" style={{ color: PAPER.pencil }}>
-                    {m.state.myArmedCardId ? "Armed — slide it on!" : "Pick a chit from your rail"}
-                  </p>
-                </>
-              ) : (
-                <p className="font-script text-2xl font-bold" style={{ color: PAPER.pencil }}>
-                  Passed — waiting for {stillToPass} player{stillToPass === 1 ? "" : "s"}
-                </p>
-              )}
-            </div>
-          </SeatRing>
-        </div>
-      );
-
-    case "star":
-      return (
-        <div className="flex flex-col items-center gap-6 text-center">
-          <StageHeading>Someone got four — slap the STAR!</StageHeading>
-          <StarButton onPress={m.pressStar} disabled={!m.iAmEligible} />
-          {!m.iAmEligible && (
-            <p className="font-script text-2xl font-bold" style={{ color: PAPER.pencil }}>
-              Someone got FOUR — watch the STAR!
+        <div className="flex w-44 flex-col items-center gap-3 text-center">
+          <ValuesLegend values={m.state.valuesInPlay} glyph={m.theme.glyph} />
+          {m.iNeedToPass ? (
+            <>
+              <p className="font-script text-xl font-bold leading-tight" style={{ color: PAPER.brown }}>
+                Arm a chit & pass <span aria-hidden>⟳</span>
+              </p>
+              <PassButton onPass={m.pass} disabled={!m.iNeedToPass} big />
+              <p className="text-[11px]" style={{ color: PAPER.pencil }}>
+                {m.state.myArmedCardId ? "Armed — slide it on!" : "Pick a chit from your rail"}
+              </p>
+            </>
+          ) : m.isBotThinking ? (
+            <p className="flex items-center justify-center gap-2 font-script text-xl font-bold" style={{ color: PAPER.pencil }}>
+              {m.nameOf(m.currentPasserId ?? "")} is thinking
+              <BotThinkingDots />
+            </p>
+          ) : (
+            <p className="font-script text-xl font-bold" style={{ color: PAPER.pencil }}>
+              Waiting for {m.nameOf(m.currentPasserId ?? "")}
             </p>
           )}
         </div>
       );
 
+    case "star":
+      return <StarButton onPress={m.pressStar} disabled={!m.iAmEligible} />;
+
     case "handstack":
-      return (
-        <div className="flex flex-col items-center gap-6 text-center">
-          {m.iAmWinner ? (
-            <motion.div
-              initial={reduce ? false : { scale: 0.7, rotate: -6, opacity: 0 }}
-              animate={{ scale: 1, rotate: 0, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 260, damping: 16 }}
-              className="space-y-2"
-            >
-              <div className="text-7xl" aria-hidden>★</div>
-              <h2 className="font-display text-3xl font-black" style={{ color: PAPER.brown }}>
-                You slapped the STAR!
-              </h2>
-              <p className="text-sm" style={{ color: PAPER.pencil }}>
-                Everyone else is racing to stack their hand…
-              </p>
-            </motion.div>
-          ) : (
-            <>
-              <StageHeading>Stack your hand — fast!</StageHeading>
-              <div className="w-full max-w-xs">
-                <HandStackButton
-                  onPlace={m.placeHand}
-                  disabled={!m.iCanStack}
-                  placed={m.me?.pub.hasStacked ?? false}
-                  rank={m.me?.pub.stackRank ?? null}
-                />
-              </div>
-            </>
-          )}
-          <StackOrder order={m.state.stackOrder} nameOf={m.nameOf} />
+      return m.iAmWinner ? (
+        <motion.div
+          initial={reduce ? false : { scale: 0.7, rotate: -6, opacity: 0 }}
+          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 16 }}
+          className="space-y-2 text-center"
+        >
+          <div className="text-7xl" aria-hidden>★</div>
+          <h3 className="font-display text-2xl font-black" style={{ color: PAPER.brown }}>
+            You slapped the STAR!
+          </h3>
+          <p className="text-sm" style={{ color: PAPER.pencil }}>
+            Everyone else is racing to stack their hand…
+          </p>
+        </motion.div>
+      ) : (
+        <div className="w-full max-w-xs">
+          <HandStackButton
+            onPlace={m.placeHand}
+            disabled={!m.iCanStack}
+            placed={m.me?.pub.hasStacked ?? false}
+            rank={m.me?.pub.stackRank ?? null}
+          />
         </div>
       );
 
     case "roundSummary":
       return (
-        <div className="space-y-5">
-          <StageHeading>Round {m.round} over</StageHeading>
+        <div className="w-full max-w-xl space-y-5">
           {m.state.lastResult && (
             <RoundSummaryTable result={m.state.lastResult} seats={m.seats} nameOf={m.nameOf} />
           )}
@@ -467,7 +476,7 @@ function Stage({
 
     case "finished":
       return (
-        <div className="space-y-4">
+        <div className="w-full max-w-xl space-y-4">
           <FinalPodium standings={m.state.standings ?? []} nameOf={m.nameOf} />
         </div>
       );
@@ -508,127 +517,6 @@ function Panel({
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <dt style={{ color: PAPER.pencil }}>{label}</dt>
-      <dd>{children}</dd>
-    </div>
-  );
-}
-
-function StageHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="font-display text-2xl font-black" style={{ color: PAPER.brown }}>
-      {children}
-    </h2>
-  );
-}
-
-/** Radial arrangement of seats around a central prompt for the pass cycle. Self
- *  is anchored at the bottom; the others fan clockwise to mirror the pass flow. */
-function SeatRing({
-  seats,
-  selfId,
-  children,
-}: {
-  seats: StarSeat[];
-  selfId: string | null;
-  children: React.ReactNode;
-}) {
-  const ordered = useMemo(() => {
-    const i = seats.findIndex((s) => s.id === selfId);
-    if (i <= 0) return seats;
-    return [...seats.slice(i), ...seats.slice(0, i)];
-  }, [seats, selfId]);
-
-  const n = ordered.length;
-  const W = 460;
-  const H = 360;
-  const cx = W / 2;
-  const cy = H / 2;
-  const rx = W / 2 - 56;
-  const ry = H / 2 - 48;
-
-  return (
-    <div className="relative mx-auto" style={{ width: W, height: H }}>
-      {ordered.map((s, i) => {
-        // Start at the bottom (self) and sweep clockwise.
-        const angle = Math.PI / 2 + (Math.PI * 2 * i) / n;
-        const x = cx + rx * Math.cos(angle);
-        const y = cy + ry * Math.sin(angle);
-        return (
-          <div
-            key={s.id}
-            className="absolute -translate-x-1/2 -translate-y-1/2"
-            style={{ left: x, top: y }}
-          >
-            <RingSeat seat={s} />
-          </div>
-        );
-      })}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function RingSeat({ seat }: { seat: StarSeat }) {
-  const { pub, name, isSelf, isBot, isConnected } = seat;
-  return (
-    <div
-      className="flex w-24 flex-col items-center gap-1 text-center"
-      style={{ opacity: isConnected ? 1 : 0.5 }}
-    >
-      <div
-        className="flex h-12 w-12 items-center justify-center rounded-full font-display text-base font-black text-white"
-        style={{
-          background: pub.hasPassed ? PAPER.green : PAPER.brown,
-          boxShadow: pub.hasPassed ? "0 0 0 4px rgba(92,122,58,0.25)" : "none",
-        }}
-        aria-hidden
-      >
-        {name.slice(0, 1).toUpperCase()}
-      </div>
-      <div className="max-w-full truncate text-xs font-bold" style={{ color: PAPER.ink }}>
-        {name}
-        {isSelf && " (you)"}
-        {isBot && <span className="ml-0.5 text-[9px] opacity-60">bot</span>}
-      </div>
-      <div className="text-[10px]" style={{ color: pub.hasPassed ? PAPER.green : PAPER.pencil }}>
-        {pub.hasPassed ? "passed ✓" : "thinking…"}
-      </div>
-    </div>
-  );
-}
-
-function StackOrder({
-  order,
-  nameOf,
-}: {
-  order: string[];
-  nameOf: (id: string) => string;
-}) {
-  if (order.length === 0) return null;
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-1.5">
-      {order.map((pid, i) => (
-        <span
-          key={pid}
-          className="rounded-full border px-2.5 py-1 text-xs font-bold"
-          style={{ borderColor: PAPER.rim, background: PAPER.page, color: PAPER.ink }}
-        >
-          <span className="mr-1 font-display font-black" style={{ color: PAPER.brown }}>
-            #{i + 1}
-          </span>
-          {nameOf(pid)}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function PassButton({
   onPass,
   disabled,
@@ -643,7 +531,7 @@ function PassButton({
       type="button"
       onClick={onPass}
       disabled={disabled}
-      aria-label="Pass your armed chit clockwise"
+      aria-label="Pass your armed chit"
       className={[
         "rounded-2xl border-4 font-display font-black uppercase tracking-wide transition active:scale-95 disabled:active:scale-100",
         big ? "px-10 py-5 text-2xl" : "px-6 py-3 text-base",
@@ -724,7 +612,7 @@ function statusLine(m: StarBoardModel): string {
     case "deal":
       return "Dealing chits…";
     case "pass":
-      return m.iNeedToPass ? "Arm & pass a chit" : "Passed — waiting";
+      return m.iNeedToPass ? "Arm & pass a chit" : `Waiting for ${m.nameOf(m.currentPasserId ?? "")}`;
     case "star":
       return m.iAmEligible ? "Slap the STAR!" : "Watch the STAR…";
     case "handstack":

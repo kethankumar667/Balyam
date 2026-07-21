@@ -9,10 +9,10 @@ import {
   PAPER,
   Chit,
   ThemeChitPicker,
-  HandRail,
+  DraggableChitRail,
   StarButton,
   HandStackButton,
-  SeatTile,
+  StarTable,
   RoundSummaryTable,
   FinalPodium,
   NostalgiaLine,
@@ -21,14 +21,17 @@ import {
   GrainOverlay,
   PAGE_BG,
   Confetti,
+  ShuffleFlourish,
+  BotThinkingDots,
 } from "./star-shared";
 
 /**
  * Star Game — MOBILE shell (every non-desktop tier: phones + tablets, portrait,
- * one-hand). Single column on a paper page: a slim header (theme · round ·
- * deadline) over a one-line phase title, a swipeable seat strip, the phase
- * stage in the flexible middle, and a sticky thumb action bar pinned to the
- * bottom. Pure layout over the frozen `useStarBoard` model + `star-shared` kit.
+ * one-hand). A slim header (theme · round · deadline) over a one-line phase
+ * title, the circular StarTable as the persistent visual centerpiece (self
+ * bottom-center, others fanned clockwise, passing-flow arrows during "pass"),
+ * the phase stage/action below it, and a sticky thumb action bar. Pure layout
+ * over the frozen `useStarBoard` model + `star-shared` kit.
  *
  * The picker (StarBoard.tsx) mounts EXACTLY one shell, so the hook — and its
  * sound subscription — runs once here.
@@ -39,7 +42,7 @@ const PHASE_TITLE: Record<StarPhase, string> = {
   themeSelect: "Pick your secret value",
   shuffle: "Shuffle the deck",
   deal: "Dealing the chits…",
-  pass: "Pass clockwise!",
+  pass: "Pass it on!",
   star: "SLAP THE STAR",
   handstack: "Stack your hands!",
   roundSummary: "Round over",
@@ -90,11 +93,11 @@ export default function StarBoardMobile(props: StarBoardProps) {
     return () => window.clearInterval(id);
   }, []);
 
-  const seatCount = m.seats.length;
-  const selectedCount = m.seats.filter((s) => s.pub.hasSelected).length;
+  // Shuffle flourish trigger — bumps once per player who completes their
+  // shuffle turn (server-authoritative count, not a local click guess).
   const shuffledCount = m.seats.filter((s) => s.pub.hasShuffled).length;
-  const waitingToPass = m.seats.filter((s) => !s.pub.hasPassed).length;
-  const others = m.seats.filter((s) => !s.isSelf);
+
+  const selectedCount = m.seats.filter((s) => s.pub.hasSelected).length;
 
   /** The middle stage — one branch per phase (all eight handled). */
   function renderStage() {
@@ -118,18 +121,24 @@ export default function StarBoardMobile(props: StarBoardProps) {
               waiting for others…
             </p>
             <p className="font-display text-sm font-bold tabular-nums" style={{ color: PAPER.brown }}>
-              {selectedCount}/{seatCount} ready
+              {selectedCount}/{m.seats.length} ready
             </p>
           </div>
         );
 
       case "shuffle":
         return (
-          <div className="space-y-3 text-center">
+          <div className="relative space-y-3 text-center">
+            <ShuffleFlourish shuffleKey={shuffledCount} />
             <div aria-hidden className="text-5xl">🔀</div>
             {m.iAmShuffling ? (
               <p className="font-script text-lg" style={{ color: PAPER.ink }}>
                 Your turn — give them a shuffle!
+              </p>
+            ) : m.isBotThinking ? (
+              <p className="flex items-center justify-center gap-2 font-script text-lg" style={{ color: PAPER.ink }}>
+                {m.nameOf(m.state.shuffleTurnId ?? "")} is thinking
+                <BotThinkingDots />
               </p>
             ) : (
               <p className="font-script text-lg" style={{ color: PAPER.ink }}>
@@ -137,7 +146,7 @@ export default function StarBoardMobile(props: StarBoardProps) {
               </p>
             )}
             <p className="font-display text-sm font-bold tabular-nums" style={{ color: PAPER.brown }}>
-              {shuffledCount}/{seatCount} shuffled
+              {shuffledCount}/{m.seats.length} shuffled
             </p>
           </div>
         );
@@ -163,47 +172,31 @@ export default function StarBoardMobile(props: StarBoardProps) {
 
       case "pass":
         return (
-          <div className="flex w-full flex-col items-center gap-4">
+          <div className="flex w-full flex-col items-center gap-3">
             <ValuesLegend values={m.state.valuesInPlay} glyph={m.theme.glyph} />
 
-            {/* Other players: face-down chit counts, clockwise. */}
-            {others.length > 0 && (
-              <div className="flex flex-wrap items-start justify-center gap-3">
-                {others.map((s) => (
-                  <div key={s.id} className="flex flex-col items-center gap-1">
-                    <div className="relative">
-                      <Chit value="" faceDown size="sm" />
-                      <span
-                        className="absolute -bottom-1 -right-1 rounded-full px-1.5 text-[10px] font-black tabular-nums"
-                        style={{ background: PAPER.brown, color: "#fff" }}
-                        aria-hidden
-                      >
-                        {s.pub.cardCount}
-                      </span>
-                    </div>
-                    <span
-                      className="max-w-[4.5rem] truncate text-[10px]"
-                      style={{ color: PAPER.pencil }}
-                    >
-                      {s.name}
-                      {s.pub.hasPassed ? " ✓" : ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Your hand — tap to arm the chit you'll slide. */}
-            <HandRail
+            {/* Your hand — drag to reorder, tap to arm the chit you'll send. */}
+            <DraggableChitRail
               hand={m.myHand}
               armedId={m.state.myArmedCardId}
               onArm={m.armCard}
+              onReorder={m.reorderHand}
               disabled={!m.iNeedToPass}
+              isBackgrounded={m.isBackgrounded}
             />
 
-            {!m.iNeedToPass && (
+            {m.iNeedToPass ? (
+              <p className="text-center text-sm" style={{ color: PAPER.brown }} aria-live="polite">
+                Your turn — pick a chit and pass it on.
+              </p>
+            ) : m.isBotThinking ? (
+              <p className="flex items-center justify-center gap-2 text-sm" style={{ color: PAPER.pencil }} aria-live="polite">
+                {m.nameOf(m.currentPasserId ?? "")} is thinking
+                <BotThinkingDots />
+              </p>
+            ) : (
               <p className="text-center text-sm" style={{ color: PAPER.pencil }} aria-live="polite">
-                Passed — waiting for {waitingToPass} player{waitingToPass === 1 ? "" : "s"}…
+                Waiting for {m.nameOf(m.currentPasserId ?? "")}…
               </p>
             )}
           </div>
@@ -300,6 +293,11 @@ export default function StarBoardMobile(props: StarBoardProps) {
   }
 
   const action = renderAction();
+  // Table only makes sense once seats + cards exist meaningfully — keep it
+  // mounted from "shuffle" onward so it's the constant visual anchor across
+  // pass/star/handstack too, matching "Player Table Layout" for the whole
+  // game, not just the pass cycle.
+  const showTable = m.phase !== "themeSelect" && m.phase !== "finished";
 
   return (
     <div
@@ -330,31 +328,39 @@ export default function StarBoardMobile(props: StarBoardProps) {
         </span>
       </header>
 
-      {/* phase title line */}
+      {/* phase title line, with starter/direction once it's known */}
       <h2
-        className="px-3 py-1.5 text-center font-script text-base font-bold"
-        style={{ color: PAPER.ink, background: PAPER.cream, borderBottom: `1px dashed ${PAPER.rim}` }}
+        className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-center"
+        style={{ background: PAPER.cream, borderBottom: `1px dashed ${PAPER.rim}` }}
       >
-        {PHASE_TITLE[m.phase]}
+        <span className="font-script text-base font-bold" style={{ color: PAPER.ink }}>
+          {PHASE_TITLE[m.phase]}
+        </span>
+        {m.starterId && m.phase !== "themeSelect" && (
+          <span className="text-[10px] font-semibold" style={{ color: PAPER.pencil }}>
+            Starter: {m.nameOf(m.starterId)} · clockwise <span aria-hidden>⟳</span>
+          </span>
+        )}
       </h2>
 
-      {/* 2 — player status strip (swipeable) */}
-      <nav
-        aria-label="Players"
-        className="flex gap-2 overflow-x-auto px-3 py-2"
-        style={{ borderBottom: `1px dashed ${PAPER.rim}` }}
-      >
-        {m.seats.map((s) => {
-          const active =
-            (m.phase === "shuffle" && s.id === m.state.shuffleTurnId) ||
-            ((m.phase === "star" || m.phase === "handstack") && s.id === m.state.starWinnerId);
-          return (
-            <div key={s.id} className="w-40 shrink-0">
-              <SeatTile seat={s} showScore active={active} />
-            </div>
-          );
-        })}
-      </nav>
+      {/* 2 — the circular table: persistent visual centerpiece */}
+      {showTable && (
+        <div className="flex justify-center py-3">
+          <StarTable
+            seats={m.seats}
+            selfId={m.selfId}
+            phase={m.phase}
+            shuffleTurnId={m.state.shuffleTurnId}
+            currentPasserId={m.currentPasserId}
+            passOrder={m.passOrder}
+            lastPass={m.lastPass}
+            thinkingBotId={m.thinkingBotId}
+            starWinnerId={m.state.starWinnerId}
+            width={340}
+            height={260}
+          />
+        </div>
+      )}
 
       {/* 3 — game area (flex-1, centered) */}
       <main className="flex flex-1 flex-col items-center justify-center gap-3 overflow-y-auto px-3 py-4">

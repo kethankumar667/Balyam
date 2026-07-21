@@ -1001,10 +1001,10 @@ export function GameTile({
     tambola: "/Tambola.png",
     // No bespoke art shipped yet for Samethalu — falls through to the
     // gradient + glyph layer (palm-leaf manuscript icon).
-    samethalu: "",
+    samethalu: "/SamethaluTile.png",
     telugucinemalu: "/telugu cinemalu.png",
     // No bespoke art shipped yet — falls through to the gradient + star glyph.
-    stargame: "",
+    stargame: "/StarTile.png",
   };
 
   const underMaintenance = isLocked(game);

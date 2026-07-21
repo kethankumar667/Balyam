@@ -92,6 +92,20 @@ export class StarGameEngine implements GameEngine {
 
   private armed = new Map<string, string>();
   private committed = new Set<string>();
+  /** This round's designated relay starter — rotates every round, fixed for
+   *  the whole round (all laps). Computed once per round in startShuffle(). */
+  private starterId = "";
+  /** seatOrder rotated to begin at starterId — the fixed relay route for
+   *  this round. Cards travel passOrder[i] -> passOrder[i+1], wrapping. */
+  private passOrder: string[] = [];
+  /** Position within passOrder whose turn it is to select+send THIS lap.
+   *  0 = the starter (has 4, selects 1 of 4); 1..n-1 = everyone else (has
+   *  5, selects 1 of 5). Reset to 0 at the start of every lap. */
+  private passTurnIndex = 0;
+  /** Most recent relay handoff, for the client's travel animation. Reset to
+   *  null at the top of every applyMove, re-set only by a successful pass —
+   *  same one-shot pattern as UnoEngine's lastHit (shared/types.ts). */
+  private lastPass: { fromId: string; toId: string; cardId: string } | null = null;
 
   private starWinnerId: string | null = null;
   private winningValue: string | null = null;
@@ -185,6 +199,13 @@ export class StarGameEngine implements GameEngine {
     this.starWinnerId = null;
     this.winningValue = null;
     this.deadline = null;
+    // Round starter rotates by round number (seating order, wraps for any
+    // player count) — fixed for every lap within this round.
+    const starterIdx = (this.round - 1) % this.seatOrder.length;
+    this.starterId = this.seatOrder[starterIdx];
+    this.passOrder = [...this.seatOrder.slice(starterIdx), ...this.seatOrder.slice(0, starterIdx)];
+    this.passTurnIndex = 0;
+    this.lastPass = null;
     this.addActivity("shuffle", "Shuffle ceremony — each player gives the chits a mix.");
   }
 
@@ -214,6 +235,7 @@ export class StarGameEngine implements GameEngine {
     this.phase = "pass";
     this.armed.clear();
     this.committed.clear();
+    this.passTurnIndex = 0;
     this.deadline = null;
   }
 
@@ -243,6 +265,9 @@ export class StarGameEngine implements GameEngine {
     if (this.isOverFlag) {
       return { ok: false, error: "Game is over" };
     }
+    // One-shot animation signal (see field doc) — cleared before dispatch so
+    // a move that isn't itself a pass never leaves a stale one behind.
+    this.lastPass = null;
     switch (move.type) {
       case "selectValue":
         return this.handleSelectValue(pid, (move.data as { value?: string } | undefined)?.value);
@@ -252,6 +277,8 @@ export class StarGameEngine implements GameEngine {
         return this.handleSelectCard(pid, (move.data as { cardId?: string } | undefined)?.cardId);
       case "pass":
         return this.handlePass(pid);
+      case "reorderHand":
+        return this.handleReorderHand(pid, (move.data as { cardIds?: string[] } | undefined)?.cardIds);
       case "pressStar":
         return this.handlePressStar(pid);
       case "placeHand":
@@ -296,49 +323,76 @@ export class StarGameEngine implements GameEngine {
 
   private handleSelectCard(pid: string, cardId: string | undefined): MoveResult {
     if (this.phase !== "pass") return { ok: false, error: "Not the pass phase" };
-    if (this.committed.has(pid)) return { ok: false, error: "Already passed this cycle" };
+    if (this.passOrder[this.passTurnIndex] !== pid) return { ok: false, error: "Not your turn to pass" };
     const hand = this.hands.get(pid) ?? [];
     if (!cardId || !hand.some((c) => c.id === cardId)) return { ok: false, error: "You don't hold that card" };
     this.armed.set(pid, cardId);
     return this.result();
   }
 
+  /**
+   * Sequential relay (Volume-redesign): exactly one player may act at a
+   * time — passOrder[passTurnIndex]. The starter (index 0) selects from
+   * their normal 4-card hand; everyone else selects from a temporary
+   * 5-card hand (their 4 plus the one just received). The destination is
+   * always passOrder[(passTurnIndex+1) % n] — this naturally closes the
+   * loop back onto the starter for the last relay step with no special
+   * casing. Replaces the old simultaneous-commit resolvePass() model.
+   */
   private handlePass(pid: string): MoveResult {
     if (this.phase !== "pass") return { ok: false, error: "Not the pass phase" };
-    if (this.committed.has(pid)) return { ok: false, error: "Already passed this cycle" };
+    if (this.passOrder[this.passTurnIndex] !== pid) return { ok: false, error: "Not your turn to pass" };
     const hand = this.hands.get(pid) ?? [];
     if (hand.length === 0) return { ok: false, error: "No cards to pass" };
-    if (!this.armed.has(pid)) this.armed.set(pid, hand[0].id); // auto-arm first if none chosen
+    // Auto-arm the LAST card in hand order if nothing was explicitly
+    // selected — auto-pass always takes the last chit, never the first.
+    const cardId = this.armed.get(pid) ?? hand[hand.length - 1].id;
+    const idx = hand.findIndex((c) => c.id === cardId);
+    if (idx < 0) return { ok: false, error: "You don't hold that card" };
+    const [card] = hand.splice(idx, 1);
+    const destIdx = (this.passTurnIndex + 1) % this.passOrder.length;
+    const destId = this.passOrder[destIdx];
+    this.hands.get(destId)!.push(card);
+    this.lastPass = { fromId: pid, toId: destId, cardId: card.id };
     this.committed.add(pid);
-    if (this.committed.size === this.seatOrder.length) {
-      this.resolvePass();
+    this.armed.delete(pid);
+    this.passTurnIndex += 1;
+    if (this.passTurnIndex >= this.passOrder.length) {
+      // Full clockwise circulation closed — everyone's back to exactly 4.
+      // Check for a fresh 4-of-a-kind; else start the next lap with the
+      // SAME starter/passOrder for this round.
+      this.addActivity("pass", "A full circulation completed — chits back to four each.");
+      const eligible = this.seatOrder.filter((id) => this.isFourOfAKind(id));
+      if (eligible.length > 0) {
+        this.startStar();
+      } else {
+        this.startPassCycle();
+      }
     }
     return this.result();
   }
 
-  private resolvePass(): void {
-    const n = this.seatOrder.length;
-    // Pull each player's armed card out simultaneously...
-    const outgoing: StarCard[] = [];
-    for (let i = 0; i < n; i++) {
-      const pid = this.seatOrder[i];
-      const hand = this.hands.get(pid)!;
-      const cardId = this.armed.get(pid)!;
-      const idx = hand.findIndex((c) => c.id === cardId);
-      outgoing[i] = hand.splice(idx, 1)[0];
+  /** Client-driven hand reorder (drag-and-drop) — a pure preference action,
+   *  no phase gate beyond having cards. Must be an exact permutation of the
+   *  cards already held. Auto-pass reads hand[length-1] straight after
+   *  this, so reordering is how a player steers what gets auto-passed. */
+  private handleReorderHand(pid: string, cardIds: string[] | undefined): MoveResult {
+    const hand = this.hands.get(pid);
+    if (!hand || hand.length === 0) return { ok: false, error: "No hand to reorder" };
+    if (!Array.isArray(cardIds) || cardIds.length !== hand.length) {
+      return { ok: false, error: "Reorder must include every card exactly once" };
     }
-    // ...then slide clockwise: seat i gives to seat i+1.
-    for (let i = 0; i < n; i++) {
-      const dest = this.seatOrder[(i + 1) % n];
-      this.hands.get(dest)!.push(outgoing[i]);
+    const byId = new Map(hand.map((c) => [c.id, c] as const));
+    const reordered: StarCard[] = [];
+    for (const id of cardIds) {
+      const c = byId.get(id);
+      if (!c) return { ok: false, error: "Unknown card in reorder" };
+      reordered.push(c);
+      byId.delete(id);
     }
-    this.addActivity("pass", "Chits slid one seat clockwise.");
-    const eligible = this.seatOrder.filter((pid) => this.isFourOfAKind(pid));
-    if (eligible.length > 0) {
-      this.startStar();
-    } else {
-      this.startPassCycle();
-    }
+    if (byId.size > 0) return { ok: false, error: "Reorder missing cards" };
+    this.hands.set(pid, reordered);
+    return this.result();
   }
 
   private handlePressStar(pid: string): MoveResult {
@@ -502,6 +556,10 @@ export class StarGameEngine implements GameEngine {
       standings: this.standings,
       isOver: this.isOverFlag,
       winnerId: this.winnerId,
+      starterId: this.starterId || null,
+      passOrder: [...this.passOrder],
+      currentPasserId: this.phase === "pass" ? this.passOrder[this.passTurnIndex] ?? null : null,
+      lastPass: this.lastPass,
     };
   }
 
@@ -537,6 +595,13 @@ export class StarGameEngine implements GameEngine {
     this.stackOrder = this.stackOrder.filter((id) => id !== playerId);
     if (this.starWinnerId === playerId) this.starWinnerId = null;
     if (this.shuffleIdx > this.seatOrder.length) this.shuffleIdx = this.seatOrder.length;
+    // Keep the relay route consistent with the shrunken table so a departed
+    // player's old slot never gets looked up mid-lap.
+    if (this.passOrder.includes(playerId)) {
+      this.passOrder = this.passOrder.filter((id) => id !== playerId);
+      if (this.passTurnIndex >= this.passOrder.length) this.passTurnIndex = 0;
+    }
+    if (this.starterId === playerId) this.starterId = this.passOrder[0] ?? "";
     this.addActivity("info", `${this.nameOf.get(playerId) ?? "A player"} left the game.`);
     // Below the floor (or only one left) — end and crown the current leader.
     if (this.seatOrder.length < this.minPlayers) {
@@ -559,6 +624,22 @@ export class StarGameEngine implements GameEngine {
 
   clearDeadline(): void {
     this.deadline = null;
+  }
+
+  /** Human-like randomized bot delay (1.5-4s) — replaces the platform
+   *  default (1200-2000ms, RoomManager.scheduleBotMoveIfNeeded) for the
+   *  DELIBERATE-CHOICE phases (picking a value, shuffling, choosing which
+   *  chit to pass) so bots don't feel instant/robotic there. Deliberately
+   *  NOT applied to "star"/"handstack" — those are reflex-speed races
+   *  where a bot artificially "thinking" for seconds would defeat the
+   *  whole point of the phase and give humans a free win every time; they
+   *  keep the platform-default pace untouched. A fresh value every call,
+   *  per the GameEngine.ts contract. */
+  getBotThinkDelayMs(): number {
+    if (this.phase === "star" || this.phase === "handstack") {
+      return 1200 + this.rng() * 800; // unchanged platform default — reflex phases
+    }
+    return 1500 + this.rng() * 2500;
   }
 
   /** Auto-resolve the current phase when its window lapses (a missing/slow
@@ -584,10 +665,9 @@ export class StarGameEngine implements GameEngine {
         this.startPassCycle();
         break;
       case "pass": {
-        for (const pid of this.seatOrder) {
-          if (this.phase !== "pass") break;
-          if (!this.committed.has(pid)) this.handlePass(pid);
-        }
+        // Sequential relay — force just the current actor, not the table.
+        const pid = this.passOrder[this.passTurnIndex];
+        if (pid) this.handlePass(pid);
         break;
       }
       case "star": {
@@ -626,7 +706,7 @@ export class StarGameEngine implements GameEngine {
       case "shuffle":
         return this.seatOrder[this.shuffleIdx] ? [this.seatOrder[this.shuffleIdx]] : [];
       case "pass":
-        return this.seatOrder.filter((pid) => !this.committed.has(pid));
+        return this.passOrder[this.passTurnIndex] ? [this.passOrder[this.passTurnIndex]] : [];
       case "star":
         return this.starWinnerId ? [] : this.seatOrder.filter((pid) => this.isFourOfAKind(pid));
       case "handstack":
@@ -643,8 +723,10 @@ export class StarGameEngine implements GameEngine {
       case "shuffle":
         return this.handleShuffle(playerId);
       case "pass": {
+        // Auto-pass always takes the LAST chit in hand order, never a
+        // random one — matches the human timeout fallback in handlePass.
         const hand = this.hands.get(playerId) ?? [];
-        const pick = hand[Math.floor(this.rng() * hand.length)];
+        const pick = hand[hand.length - 1];
         if (pick) this.handleSelectCard(playerId, pick.id);
         return this.handlePass(playerId);
       }
