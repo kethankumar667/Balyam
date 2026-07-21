@@ -28,7 +28,6 @@ import {
   UnoGlyph,
   WordBuildingGlyph,
   DotsBoxesGlyph,
-  MemoryMatchGlyph,
   NamePlaceAnimalGlyph,
   TambolaGlyph,
   TeluguCinemaluGlyph,
@@ -63,7 +62,6 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   uno: UnoGlyph,
   wordbuilding: WordBuildingGlyph,
   dotsboxes: DotsBoxesGlyph,
-  memorymatch: MemoryMatchGlyph,
   namesplaceanimal: NamePlaceAnimalGlyph,
   tambola: TambolaGlyph,
   samethalu: SamethaluGlyph,
@@ -996,14 +994,10 @@ export function GameTile({
     uno: "/UNOTile.png",
     wordbuilding: "/words_building.png",
     dotsboxes: "/Dots&boxes.png",
-    memorymatch: "/Memory match cards.png",
     namesplaceanimal: "/Name-place-thing-animal.png",
     tambola: "/Tambola.png",
-    // No bespoke art shipped yet for Samethalu — falls through to the
-    // gradient + glyph layer (palm-leaf manuscript icon).
     samethalu: "/SamethaluTile.png",
     telugucinemalu: "/telugu cinemalu.png",
-    // No bespoke art shipped yet — falls through to the gradient + star glyph.
     stargame: "/StarTile.png",
   };
 

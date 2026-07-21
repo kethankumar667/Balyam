@@ -173,33 +173,6 @@ export const DOTSBOXES_TUTORIAL: TutorialDeck = {
   ],
 };
 
-export const MEMORYMATCH_TUTORIAL: TutorialDeck = {
-  key: "memorymatch.tutorial.completed.v1",
-  accent: "#0EA5A5",
-  slides: [
-    {
-      emoji: "🃏",
-      title: "Flip two cards",
-      body: "On your turn, flip over two of the face-down cards on the board.",
-    },
-    {
-      emoji: "✨",
-      title: "Find a pair",
-      body: "If the two cards show the same symbol, you keep the pair and take another turn.",
-    },
-    {
-      emoji: "🔄",
-      title: "Miss? Next player",
-      body: "If they don't match, the cards flip back over and it becomes the next player's turn — so remember where things are!",
-    },
-    {
-      emoji: "🏆",
-      title: "Most pairs wins",
-      body: "Once every pair has been found, the player who collected the most pairs wins.",
-    },
-  ],
-};
-
 export const STARGAME_TUTORIAL: TutorialDeck = {
   key: "stargame.tutorial.completed.v1",
   accent: "#8C5A2B",

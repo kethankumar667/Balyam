@@ -20,7 +20,6 @@ export function registerSocketHandlers(
         payload.hcOptions,
         payload.wordBuildingOptions,
         payload.dotsBoxesOptions,
-        payload.memoryMatchOptions,
         payload.starGameOptions,
         payload.unoOptions
       );

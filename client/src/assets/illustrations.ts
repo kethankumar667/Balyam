@@ -29,7 +29,6 @@ export type IllustrationKey =
   | "lobby-prop-uno"          // 06 · Lobby prop — single oversized action card
   | "lobby-prop-wordbuilding" // 06 · Lobby prop — alphabet tiles forming a word
   | "lobby-prop-dotsboxes"    // 06 · Lobby prop — dots grid with one closed box
-  | "lobby-prop-memorymatch"  // 06 · Lobby prop — two face-down cards, one mid-flip
   | "lobby-prop-stargame"     // 06 · Lobby prop — unfolded star-chit
   // ── Game Over ────────────────────────────────────────────────────────────
   | "gameover-trophy-win"     // 08 · Game Over — trophy + confetti + cheering kids
@@ -48,7 +47,6 @@ export type IllustrationKey =
   | "corner-uno"              // 07 · UNO board corner — oversized action card
   | "corner-wordbuilding"     // 07 · Word Building corner — alphabet tile snap
   | "corner-dotsboxes"        // 07 · Dots & Boxes corner — one closed box with star
-  | "corner-memorymatch"      // 07 · Memory Match corner — two cards mid-flip
   | "corner-stargame"         // 07 · Star Game corner — folded star-chit
   // ── Full game catalog scenes (4:3, for catalog tiles / lobby headers) ────
   | "catalog-rummy"           // Game catalog — Sankranti card-table scene
@@ -76,7 +74,6 @@ export const ILLUSTRATIONS: Record<IllustrationKey, string | null> = {
   "lobby-prop-uno":          null,
   "lobby-prop-wordbuilding": null,
   "lobby-prop-dotsboxes":    null,
-  "lobby-prop-memorymatch":  null,
   "lobby-prop-stargame":     null,
   "gameover-trophy-win":     null,
   "gameover-trophy-loss":    null,
@@ -91,7 +88,6 @@ export const ILLUSTRATIONS: Record<IllustrationKey, string | null> = {
   "corner-uno":              null,
   "corner-wordbuilding":     null,
   "corner-dotsboxes":        null,
-  "corner-memorymatch":      null,
   "corner-stargame":         null,
   "catalog-rummy":           null,
   "catalog-ludo":            null,

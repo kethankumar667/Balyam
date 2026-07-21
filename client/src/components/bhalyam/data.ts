@@ -24,7 +24,6 @@ export type BhalyamGameSlug =
   | "dotsboxes"
   | "stargame"
   // Coming soon — NOT in GameKind. Maintenance tiles only.
-  | "memorymatch"
   | "namesplaceanimal"
   | "tambola"
   | "samethalu"
@@ -128,13 +127,6 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "The English workbook revisited. Take turns writing letters and watch dictionary words light up like a teacher's tick.",
     accent: { from: "#1E40AF", to: "#0F2A5A" },
-  },
-  {
-    slug: "memorymatch",
-    title: "Memory Match Cards",
-    blurb:
-      "Flip two cards, find the pair, win the round. Photographic memory required.",
-    accent: { from: "#00897B", to: "#004D40" },
   },
   {
     slug: "stargame",

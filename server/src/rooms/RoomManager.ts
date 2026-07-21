@@ -17,7 +17,6 @@ import type {
   WebRTCSignal,
   WordBuildingOptions,
   DotsBoxesOptions,
-  MemoryMatchOptions,
   StarGameOptions,
   UnoGameOptions,
   UnoChampion,
@@ -31,7 +30,6 @@ import {
   DEFAULT_SNL_OPTIONS,
   DEFAULT_WORDBUILDING_OPTIONS,
   DEFAULT_DOTSBOXES_OPTIONS,
-  DEFAULT_MEMORYMATCH_OPTIONS,
   DEFAULT_STARGAME_OPTIONS,
   DEFAULT_UNO_OPTIONS,
 } from "@shared/types.js";
@@ -46,7 +44,6 @@ import { RummyEngine } from "../games/rummy/RummyEngine.js";
 import { HandCricketEngine } from "../games/handcricket/HandCricketEngine.js";
 import { WordBuildingEngine } from "../games/wordbuilding/WordBuildingEngine.js";
 import { DotsBoxesEngine } from "../games/dotsboxes/DotsBoxesEngine.js";
-import { MemoryMatchEngine } from "../games/memorymatch/MemoryMatchEngine.js";
 import { RpsEngine } from "../games/rps/RpsEngine.js";
 import { StarGameEngine } from "../games/stargame/StarGameEngine.js";
 import { UnoEngine } from "../games/uno/UnoEngine.js";
@@ -78,7 +75,6 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   uno: ["Baazi", "Chikki", "Gabbar", "Jugadu"],
   wordbuilding: ["Teacher Padma", "Master Ravi", "Miss Lakshmi", "Sir Krishna"],
   dotsboxes: ["Pencil", "Eraser", "Sharpener", "Ruler"],
-  memorymatch: ["Polaroid", "Kodak", "Snapshot", "Album"],
   stargame: ["Pinky", "Chinnu", "Guddu", "Sweety", "Bujji", "Chitti", "Lucky", "Appu"],
 };
 
@@ -132,16 +128,8 @@ interface Room {
   hcOptions: HcGameOptions;
   wordBuildingOptions: WordBuildingOptions;
   dotsBoxesOptions: DotsBoxesOptions;
-  memoryMatchOptions: MemoryMatchOptions;
   starGameOptions: StarGameOptions;
   unoOptions: UnoGameOptions;
-  /**
-   * Memory Match's reveal-phase flip-back timer. After a non-matching
-   * pair is flipped the engine enters REVEAL state with a deadline; we
-   * schedule a setTimeout here to call `engine.resolveReveal()` then
-   * broadcast. Separate from `turnTimer` so the two never collide.
-   */
-  memoryMatchRevealTimer: NodeJS.Timeout | null;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -205,7 +193,6 @@ export class RoomManager {
     hcOptions?: Partial<HcGameOptions>,
     wordBuildingOptions?: Partial<WordBuildingOptions>,
     dotsBoxesOptions?: Partial<DotsBoxesOptions>,
-    memoryMatchOptions?: Partial<MemoryMatchOptions>,
     starGameOptions?: Partial<StarGameOptions>,
     unoOptions?: Partial<UnoGameOptions>
   ): { code: string; playerId: string } {
@@ -240,10 +227,8 @@ export class RoomManager {
       hcOptions: { ...DEFAULT_HC_OPTIONS, ...(hcOptions ?? {}) },
       wordBuildingOptions: { ...DEFAULT_WORDBUILDING_OPTIONS, ...(wordBuildingOptions ?? {}) },
       dotsBoxesOptions: { ...DEFAULT_DOTSBOXES_OPTIONS, ...(dotsBoxesOptions ?? {}) },
-      memoryMatchOptions: { ...DEFAULT_MEMORYMATCH_OPTIONS, ...(memoryMatchOptions ?? {}) },
       starGameOptions: { ...DEFAULT_STARGAME_OPTIONS, ...(starGameOptions ?? {}) },
       unoOptions: { ...DEFAULT_UNO_OPTIONS, ...(unoOptions ?? {}) },
-      memoryMatchRevealTimer: null,
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -437,17 +422,16 @@ export class RoomManager {
       room.game !== "ludo" &&
       room.game !== "snl" &&
       room.game !== "wordbuilding" &&
-      room.game !== "dotsboxes" &&
-      room.game !== "memorymatch"
+      room.game !== "dotsboxes"
     ) {
       // Pass & Play is fair only for open-information games — everyone
-      // looks at the same board state, no private hands. Word Building,
-      // Dots & Boxes, and Memory Match all qualify (every card flip
-      // is visible to everyone). Rummy / UNO etc. would leak hidden
-      // information to the wrong player on a shared device.
+      // looks at the same board state, no private hands. Word Building
+      // and Dots & Boxes both qualify (every move is visible to
+      // everyone). Rummy / UNO etc. would leak hidden information to
+      // the wrong player on a shared device.
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
-        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, Dots & Boxes, and Memory Match"
+        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, and Dots & Boxes"
       );
       return;
     }
@@ -636,9 +620,6 @@ export class RoomManager {
       if (engine instanceof DotsBoxesEngine) {
         engine.setOptions(room.dotsBoxesOptions);
       }
-      if (engine instanceof MemoryMatchEngine) {
-        engine.setOptions(room.memoryMatchOptions);
-      }
       if (engine instanceof StarGameEngine) {
         engine.setOptions(room.starGameOptions);
       }
@@ -701,7 +682,6 @@ export class RoomManager {
       room.phase = "finished";
       for (const p of room.players.values()) p.isReady = false;
       this.clearTurnTimer(room);
-      this.clearMemoryMatchRevealTimer(room);
       this.broadcastRoomState(room);
       // Cheapest possible version of UNO_GAME_PLAN.md §3's "measurable now"
       // match-completion metric — a queryable log line, not a real
@@ -710,51 +690,9 @@ export class RoomManager {
       // move-rejection log above.
       console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
     } else {
-      // Memory Match: if the engine entered the REVEAL phase (a
-      // non-matching pair is face-up), schedule the auto-flip-back here
-      // instead of advancing the turn timer. The reveal timer fires
-      // resolveReveal + a fresh broadcast + then schedules the next
-      // turn / bot move.
-      if (room.engine instanceof MemoryMatchEngine && room.engine.isRevealing()) {
-        this.scheduleMemoryMatchReveal(room);
-      } else {
-        this.scheduleTurnTimer(room);
-        this.scheduleBotMoveIfNeeded(room);
-      }
-    }
-  }
-
-  private clearMemoryMatchRevealTimer(room: Room): void {
-    if (room.memoryMatchRevealTimer) {
-      clearTimeout(room.memoryMatchRevealTimer);
-      room.memoryMatchRevealTimer = null;
-    }
-  }
-
-  /**
-   * Memory Match — after a non-matching pair the engine is in `reveal`
-   * phase with a wall-clock deadline. Schedule a setTimeout to flip the
-   * cards back and resume play. Pause the turn timer while revealing
-   * (the active player isn't waiting on a move during this beat).
-   */
-  private scheduleMemoryMatchReveal(room: Room): void {
-    if (!(room.engine instanceof MemoryMatchEngine)) return;
-    this.clearMemoryMatchRevealTimer(room);
-    this.clearTurnTimer(room);
-    const remaining = Math.max(0, room.engine.revealRemainingMs());
-    room.memoryMatchRevealTimer = setTimeout(() => {
-      if (!(room.engine instanceof MemoryMatchEngine)) return;
-      room.engine.resolveReveal();
-      this.broadcastGameState(room);
-      if (room.engine.isOver()) {
-        room.phase = "finished";
-        for (const p of room.players.values()) p.isReady = false;
-        this.broadcastRoomState(room);
-        return;
-      }
       this.scheduleTurnTimer(room);
       this.scheduleBotMoveIfNeeded(room);
-    }, remaining);
+    }
   }
 
   setTokenNicknames(socketId: string, nicknames: Record<string, string>): void {
@@ -974,22 +912,6 @@ export class RoomManager {
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
     }
-    if (room.engine instanceof MemoryMatchEngine) {
-      // Don't tick the turn clock during the reveal phase — the next
-      // active beat is the auto-flip-back, scheduled separately.
-      if (room.engine.isRevealing()) return;
-      const seconds = room.engine.getTurnTimerSeconds();
-      if (seconds <= 0) {
-        room.engine.clearTurnDeadline();
-        this.broadcastGameState(room);
-        return;
-      }
-      const ms = Math.max(5, seconds) * 1000;
-      room.engine.setTurnDeadline(Date.now() + ms);
-      this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
-      return;
-    }
     if (room.engine instanceof StarGameEngine) {
       const engine = room.engine;
       if (engine.isOver()) {
@@ -1079,30 +1001,6 @@ export class RoomManager {
       if (state.phase !== "playing") return;
       engine.applyAutoMove(state.turnPlayerId);
       this.afterAutoMove(room, engine.isOver());
-      return;
-    }
-    if (room.engine instanceof MemoryMatchEngine) {
-      const engine = room.engine;
-      const state = engine.getPublicState();
-      if (state.phase !== "playing") return;
-      engine.applyAutoMove(state.turnPlayerId);
-      // After a bot's flip pair, the engine may have entered REVEAL —
-      // schedule the auto-flip-back instead of the next turn timer.
-      this.broadcastGameState(room);
-      if (engine.isOver()) {
-        room.phase = "finished";
-        for (const p of room.players.values()) p.isReady = false;
-        this.clearTurnTimer(room);
-        this.clearMemoryMatchRevealTimer(room);
-        this.broadcastRoomState(room);
-        return;
-      }
-      if (engine.isRevealing()) {
-        this.scheduleMemoryMatchReveal(room);
-      } else {
-        this.scheduleTurnTimer(room);
-        this.scheduleBotMoveIfNeeded(room);
-      }
       return;
     }
     if (room.engine instanceof StarGameEngine) {
@@ -1554,7 +1452,6 @@ export class RoomManager {
       if (engine instanceof HandCricketEngine) engine.setOptions(room.hcOptions);
       if (engine instanceof WordBuildingEngine) engine.setOptions(room.wordBuildingOptions);
       if (engine instanceof DotsBoxesEngine) engine.setOptions(room.dotsBoxesOptions);
-      if (engine instanceof MemoryMatchEngine) engine.setOptions(room.memoryMatchOptions);
       if (engine instanceof StarGameEngine) engine.setOptions(room.starGameOptions);
       if (engine instanceof UnoEngine) engine.setOptions(room.unoOptions);
       engine.init(playersList);

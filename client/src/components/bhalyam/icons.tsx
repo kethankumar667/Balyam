@@ -139,15 +139,6 @@ export const DotsBoxesGlyph = makeIcon(
   </>,
 );
 
-export const MemoryMatchGlyph = makeIcon(
-  <>
-    {/* Two overlapping cards, one face down, one revealed */}
-    <rect x="3" y="6" width="10" height="14" rx="1.5" transform="rotate(-8 8 13)" />
-    <rect x="11" y="4" width="10" height="14" rx="1.5" transform="rotate(8 16 11)" />
-    <path d="M14 7l3 3M17 7l-3 3" />
-  </>,
-);
-
 export const NamePlaceAnimalGlyph = makeIcon(
   <>
     {/* Grid of 4 letters — N P A T */}

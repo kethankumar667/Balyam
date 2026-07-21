@@ -39,7 +39,6 @@ export default function RoomCodeShare({
     uno: "UNO",
     wordbuilding: "Word Building",
     dotsboxes: "Dots & Boxes",
-    memorymatch: "Memory Match",
     stargame: "Star Game",
   };
   /**

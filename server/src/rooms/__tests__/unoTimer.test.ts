@@ -61,7 +61,6 @@ describe("RoomManager — UNO turn timer wiring", () => {
       undefined, // hcOptions
       undefined, // wordBuildingOptions
       undefined, // dotsBoxesOptions
-      undefined, // memoryMatchOptions
       undefined, // starGameOptions
       { turnTimerSeconds: 1 } // unoOptions — 1s so the fake-timer advance below is tiny
     );
@@ -89,8 +88,8 @@ describe("RoomManager — UNO turn timer wiring", () => {
       expect(before.turnDeadline!).toBeGreaterThan(Date.now());
 
       // scheduleTurnTimer floors every game's timer at 5s regardless of the
-      // configured value (Math.max(5, seconds), same floor DotsBoxesEngine/
-      // MemoryMatchEngine use) — a requested 1s becomes a real 5s timer.
+      // configured value (Math.max(5, seconds), same floor DotsBoxesEngine
+      // uses) — a requested 1s becomes a real 5s timer.
       vi.advanceTimersByTime(5_100);
 
       const after = latestGameStateFor("s0");
