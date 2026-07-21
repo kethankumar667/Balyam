@@ -30,7 +30,6 @@ import {
   UnoGlyph,
   WordBuildingGlyph,
   DotsBoxesGlyph,
-  MemoryMatchGlyph,
   NamePlaceAnimalGlyph,
   TambolaGlyph,
   TeluguCinemaluGlyph,
@@ -69,7 +68,6 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   uno: UnoGlyph,
   wordbuilding: WordBuildingGlyph,
   dotsboxes: DotsBoxesGlyph,
-  memorymatch: MemoryMatchGlyph,
   namesplaceanimal: NamePlaceAnimalGlyph,
   tambola: TambolaGlyph,
   samethalu: SamethaluGlyph,
@@ -85,7 +83,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  * makes the narrowing explicit so callers don't need a wide cast.
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
-  "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "memorymatch", "stargame",
+  "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
@@ -183,13 +181,6 @@ const DB_BOARD_SIZES: { id: "5" | "7" | "9"; label: string; blurb: string }[] = 
   { id: "9", label: "9 × 9 dots", blurb: "64 boxes — marathon notebook match." },
 ];
 
-// Memory Match — card grid size. 4 → 8 pairs, 6 → 18 pairs, 8 → 32 pairs.
-const MM_BOARD_SIZES: { id: "4" | "6" | "8"; label: string; blurb: string }[] = [
-  { id: "4", label: "4 × 4 grid", blurb: "8 pairs — quick warm-up." },
-  { id: "6", label: "6 × 6 grid", blurb: "18 pairs — classic challenge." },
-  { id: "8", label: "8 × 8 grid", blurb: "32 pairs — memory marathon." },
-];
-
 // Star Game — round count + pass-window pacing (theme list comes from STAR_THEMES).
 const STAR_ROUNDS: { id: string; label: string; blurb: string }[] = [
   { id: "3", label: "3", blurb: "quick" },
@@ -232,8 +223,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [wbBoardSize, setWbBoardSize] = useState<8 | 10 | 15>(10);
   // Dots & Boxes: dot-grid edge length. Box count = (n-1)^2.
   const [dbBoardSize, setDbBoardSize] = useState<5 | 7 | 9>(7);
-  // Memory Match: card grid size (4, 6, or 8 cards per side)
-  const [mmBoardSize, setMmBoardSize] = useState<4 | 6 | 8>(6);
   const [starTheme, setStarTheme] = useState<string>("colors");
   const [starRounds, setStarRounds] = useState<number>(5);
   const [starPassSpeed, setStarPassSpeed] = useState<"normal" | "fast">("normal");
@@ -270,7 +259,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setWbDictMode("common");
       setWbBoardSize(10);
       setDbBoardSize(7);
-      setMmBoardSize(6);
       setUnoTurnTimer("20");
       setUnoMatchLength("single");
       setUnoHouseRules(UNO_DEFAULT_HOUSE_RULES);
@@ -339,8 +327,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             : undefined,
         dotsBoxesOptions:
           game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
-        memoryMatchOptions:
-          game === "memorymatch" ? { boardSize: mmBoardSize } : undefined,
         starGameOptions:
           game === "stargame"
             ? { themeId: starTheme, totalRounds: starRounds, passSpeed: starPassSpeed }
@@ -405,8 +391,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             : undefined,
         dotsBoxesOptions:
           game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
-        memoryMatchOptions:
-          game === "memorymatch" ? { boardSize: mmBoardSize } : undefined,
         starGameOptions:
           game === "stargame"
             ? { themeId: starTheme, totalRounds: starRounds, passSpeed: starPassSpeed }
@@ -730,18 +714,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 items={DB_BOARD_SIZES}
                 value={String(dbBoardSize) as "5" | "7" | "9"}
                 onChange={(v) => setDbBoardSize(Number(v) as 5 | 7 | 9)}
-                cols={3}
-              />
-            </Field>
-          )}
-
-          {/* Memory Match: board size selector */}
-          {game === "memorymatch" && (
-            <Field label="Board size">
-              <OptionGrid
-                items={MM_BOARD_SIZES}
-                value={String(mmBoardSize) as "4" | "6" | "8"}
-                onChange={(v) => setMmBoardSize(Number(v) as 4 | 6 | 8)}
                 cols={3}
               />
             </Field>

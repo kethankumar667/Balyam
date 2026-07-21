@@ -8,7 +8,6 @@ import { HandCricketEngine } from "./handcricket/HandCricketEngine.js";
 import { UnoEngine } from "./uno/UnoEngine.js";
 import { WordBuildingEngine } from "./wordbuilding/WordBuildingEngine.js";
 import { DotsBoxesEngine } from "./dotsboxes/DotsBoxesEngine.js";
-import { MemoryMatchEngine } from "./memorymatch/MemoryMatchEngine.js";
 import { StarGameEngine } from "./stargame/StarGameEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
@@ -29,8 +28,6 @@ export function createEngine(kind: GameKind): GameEngine {
       return new WordBuildingEngine();
     case "dotsboxes":
       return new DotsBoxesEngine();
-    case "memorymatch":
-      return new MemoryMatchEngine();
     case "stargame":
       return new StarGameEngine();
     default:
@@ -55,8 +52,6 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     case "wordbuilding":
       return { min: 2, max: 4 };
     case "dotsboxes":
-      return { min: 2, max: 4 };
-    case "memorymatch":
       return { min: 2, max: 4 };
     case "stargame":
       return { min: 3, max: 8 };

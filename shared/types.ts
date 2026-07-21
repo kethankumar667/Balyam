@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "memorymatch" | "stargame";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame";
 
 export interface Player {
   id: string;
@@ -978,78 +978,6 @@ export interface DotsBoxesDrawMove {
   data: { kind: "h" | "v"; r: number; c: number };
 }
 
-// ---- Memory Match (Old Photo Album Edition) ----
-//
-// Classic 2–4 player concentration game. NxN grid of face-down "photos".
-// Each photo's symbol has exactly one twin on the board. On your turn:
-//   1. Flip a card → its symbol is revealed.
-//   2. Flip a second card.
-//      - Match  → you claim both, score a point, KEEP THE TURN (bonus).
-//      - No match → both cards stay face-up for the REVEAL phase (~1.5s
-//                   so everyone gets to memorise them), then flip back
-//                   and the next player goes.
-// Game ends when every pair is claimed. Most pairs wins; ties are
-// surfaced as winnerId=null.
-
-export type MemoryMatchBoardSize = 4 | 6 | 8;
-
-export interface MemoryMatchOptions {
-  /** Square grid edge length. boardSize^2 must be even (4, 6, 8 all are). */
-  boardSize: MemoryMatchBoardSize;
-  /** Seconds per turn. 0 disables. */
-  turnTimerSeconds: number;
-  /** Milliseconds the non-match reveal pair stays face-up before flipping back. */
-  revealMs: number;
-}
-
-export const DEFAULT_MEMORYMATCH_OPTIONS: MemoryMatchOptions = {
-  boardSize: 6,
-  turnTimerSeconds: 20,
-  revealMs: 1500,
-};
-
-export type MemoryMatchPhase = "playing" | "reveal" | "finished";
-
-export interface MemoryMatchCard {
-  /** Stable id assigned at shuffle. Same across the run. */
-  id: number;
-  /** Hidden symbol — clients only see this when face-up or matched. */
-  symbol: string;
-  /** Whose claim the card belongs to, null while in play. */
-  ownerId: string | null;
-}
-
-export interface MemoryMatchPublicState {
-  kind: "memorymatch";
-  phase: MemoryMatchPhase;
-  options: MemoryMatchOptions;
-  playerOrder: string[];
-  turnPlayerId: string;
-  /** Row-major layout — index = r * size + c. Each entry is { id, ownerId,
-   *  and either the symbol (when face-up or matched) or null (face-down). */
-  board: Array<{ id: number; symbol: string | null; ownerId: string | null }>;
-  /** Card ids currently face-up. 0, 1, or 2 entries. */
-  flipped: number[];
-  /** Per-player matched-pair count. */
-  scores: Record<string, number>;
-  /** Wall-clock ms after which the turn auto-passes (or reveal flips back). */
-  turnDeadline: number | null;
-  /** When phase === "reveal", the timestamp at which the flip-back fires. */
-  revealUntil: number | null;
-  /** True when the just-completed move closed a match → bonus turn. */
-  lastMoveScored: boolean;
-  winnerId: string | null;
-  totalPairs: number;
-  matchedPairs: number;
-}
-
-export type MemoryMatchMoveType = "flip";
-
-export interface MemoryMatchFlipMove {
-  type: "flip";
-  data: { cardId: number };
-}
-
 // ---- UNO ----
 
 export type UnoColor = "R" | "G" | "B" | "Y"; // Red, Green, Blue, Yellow
@@ -1455,7 +1383,6 @@ export interface CreateRoomPayload {
   hcOptions?: Partial<HcGameOptions>;
   wordBuildingOptions?: Partial<WordBuildingOptions>;
   dotsBoxesOptions?: Partial<DotsBoxesOptions>;
-  memoryMatchOptions?: Partial<MemoryMatchOptions>;
   starGameOptions?: Partial<StarGameOptions>;
   unoOptions?: Partial<UnoGameOptions>;
 }

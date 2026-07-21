@@ -113,7 +113,7 @@ export class UnoEngine implements GameEngine {
    *  in production, deterministic in tests. */
   private rng: () => number = Math.random;
   /** Captured by RoomManager before init() — same setOptions()-then-init()
-   *  pattern as DotsBoxesEngine/MemoryMatchEngine. */
+   *  pattern as DotsBoxesEngine. */
   private pendingOptions: UnoGameOptions = { ...DEFAULT_UNO_OPTIONS };
 
   /** Test-only: inject a deterministic RNG (returns a value in [0,1)). */
