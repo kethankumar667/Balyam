@@ -31,7 +31,12 @@ import {
   UnoHouseRulesBadge,
 } from "./uno-scene";
 import { UnoRoomRail } from "./uno-rail";
-import { useUnoDealGate, UnoDealOverlay } from "./uno-deal";
+import { UnoDealOverlay } from "./uno-deal";
+import {
+  useOrientationReport,
+  useUnoRotationGate,
+  UnoWaitingForPlayersBanner,
+} from "./rotation-sync";
 import { UnoActionToast } from "./uno-action-toast";
 import { UnoDeclareBubble } from "./uno-declare";
 import { WildDrawFourChallengePrompt } from "./uno-challenge";
@@ -53,6 +58,19 @@ import { useUnoCallCelebration } from "../../animations/card/useUnoCallCelebrati
 import { UnoCallCelebration } from "../../animations/card/UnoCallCelebration";
 import { ForgotUnoCallout } from "../../animations/card/ForgotUnoCallout";
 import { StackAttack } from "../../animations/card/StackAttack";
+import { RevengeDrawFour } from "../../animations/card/RevengeDrawFour";
+import { UnoPoliceBust } from "../../animations/card/UnoPoliceBust";
+import { Draw20TruckAttack } from "../../animations/card/Draw20TruckAttack";
+import { CardEvolutionSwap } from "../../animations/card/CardEvolutionSwap";
+import { useJumpInDuel } from "../../animations/card/useJumpInDuel";
+import { CardDuelJumpIn } from "../../animations/card/CardDuelJumpIn";
+import { useComboCounter } from "../../animations/card/useComboCounter";
+import { ComboReaction } from "../../animations/card/ComboReaction";
+import { useLastCardTension } from "../../animations/card/useLastCardTension";
+import { LastCardTension } from "../../animations/card/LastCardTension";
+import { useFakeCelebration } from "../../animations/card/useFakeCelebration";
+import { FakeCelebration } from "../../animations/card/FakeCelebration";
+import { ColorChangeBalloon } from "../../animations/card/ColorChangeBalloon";
 import type { FeltAnchor } from "../../animations/helpers/types";
 
 /** The pile sits at the felt's visual centre — `UnoTableCenter`'s wrapper
@@ -72,10 +90,20 @@ const PILE_ANCHOR: FeltAnchor = { left: "50%", top: "50%" };
  * `useUnoBoard` unchanged; no hook, store, or engine logic was touched.
  */
 export default function UnoBoardDesktop(props: UnoBoardProps) {
+  const { history, champion } = props;
   const m = useUnoBoard(props);
   const { state, players, selfId, messages, roomCode, onLeave } = m;
   const tut = useTutorialGate(UNO_TUTORIAL.key);
-  const dealStage = useUnoDealGate(roomCode);
+  // Desktop never needs to rotate itself, but stays synchronized with the
+  // same gate mobile players are held by — see rotation-sync.tsx.
+  const needsLandscape = useOrientationReport();
+  const gate = useUnoRotationGate({
+    roomCode,
+    phase: state.phase,
+    players,
+    selfId,
+    selfNeedsRotation: needsLandscape,
+  });
   const flourish = useUnoEventFlourish(state.lastAction);
   const activeHit = useUnoHitReaction(state.lastHit);
   // Drag-to-play: true while a hand card is mid-drag, so the discard pile
@@ -123,9 +151,23 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   const slipperHit = activeHit?.kind === "draw2" ? activeHit : null;
   const slipperTargetId = slipperHit?.targetIds[0] ?? null;
   const slipperTargetPos = slipperTargetId ? resolveSeatPosition(slipperTargetId, selfId, opponents) : null;
-  const meteorHit = activeHit?.kind === "draw4" ? activeHit : null;
-  const meteorTargetId = meteorHit?.targetIds[0] ?? null;
-  const meteorTargetPos = meteorTargetId ? resolveSeatPosition(meteorTargetId, selfId, opponents) : null;
+  // draw4 has THREE presentations depending on how it resolved — the
+  // engine always tags it `lastHit.kind: "draw4"`, so the specific
+  // outcome is read from `lastAction`'s own distinct text (the same
+  // technique `useUnoEventFlourish`/`UnoActionToast` already use):
+  //   - plain accept                     → DrawFourMeteorStrike (#2)
+  //   - "challenged and lost" (challenger punished, draws 6) → RevengeDrawFour (#12)
+  //   - "challenged successfully" (bluffer caught, draws 4)  → UnoPoliceBust (#17)
+  const draw4Hit = activeHit?.kind === "draw4" ? activeHit : null;
+  const draw4TargetId = draw4Hit?.targetIds[0] ?? null;
+  const draw4TargetPos = draw4TargetId ? resolveSeatPosition(draw4TargetId, selfId, opponents) : null;
+  const isRevenge = draw4Hit != null && state.lastAction != null && state.lastAction.includes("challenged and lost");
+  const isPoliceBust = draw4Hit != null && state.lastAction != null && state.lastAction.includes("challenged successfully");
+  const meteorHit = draw4Hit && !isRevenge && !isPoliceBust ? draw4Hit : null;
+  const meteorTargetId = draw4TargetId;
+  const meteorTargetPos = draw4TargetPos;
+  const revengeHit = isRevenge ? draw4Hit : null;
+  const policeHit = isPoliceBust ? draw4Hit : null;
   const skipHit = activeHit?.kind === "skip" ? activeHit : null;
   const skipTargetId = skipHit?.targetIds[0] ?? null;
   const skipTargetPos = skipTargetId ? resolveSeatPosition(skipTargetId, selfId, opponents) : null;
@@ -140,17 +182,40 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   // UNO Call — table-wide (self or any opponent).
   const unoCallEvent = useUnoCallCelebration(state.unoDeclaredBy);
   const unoCallPos = unoCallEvent ? resolveSeatPosition(unoCallEvent.playerId, selfId, opponents) : null;
-  // Forgot UNO / Stack Attack — per-target, same pattern as +2/+4/Skip.
+  // Forgot UNO — per-target, same pattern as +2/+4/Skip.
   const catchHit = activeHit?.kind === "catch" ? activeHit : null;
   const catchTargetId = catchHit?.targetIds[0] ?? null;
   const catchTargetPos = catchTargetId ? resolveSeatPosition(catchTargetId, selfId, opponents) : null;
-  const stackHit = activeHit?.kind === "stack" ? activeHit : null;
-  const stackTargetId = stackHit?.targetIds[0] ?? null;
+  // Stack has two presentations by size — a huge pile (>=8, four or
+  // more chained Draw Twos) gets the "Draw 20" truck treatment (#15)
+  // instead of the hand-stacked tower (#8-#9).
+  const stackHitRaw = activeHit?.kind === "stack" ? activeHit : null;
+  const isBigStack = (stackHitRaw?.count ?? 0) >= 8;
+  const stackHit = stackHitRaw && !isBigStack ? stackHitRaw : null;
+  const truckHit = stackHitRaw && isBigStack ? stackHitRaw : null;
+  const stackTargetId = stackHitRaw?.targetIds[0] ?? null;
   const stackTargetPos = stackTargetId ? resolveSeatPosition(stackTargetId, selfId, opponents) : null;
   const handleStackImpact = (targetId: string) => {
     shake({ disabled: animConfig.reducedMotion, intensity: animConfig.mobileMode ? 5 : 7 });
     triggerWobble(targetId);
   };
+  // Card Evolution — Seven Swap, TWO targets.
+  const swapHit = activeHit?.kind === "swap" ? activeHit : null;
+  const swapTargetAnchors = swapHit
+    ? swapHit.targetIds
+        .map((tid) => resolveSeatPosition(tid, selfId, opponents))
+        .filter((p): p is NonNullable<typeof p> => p != null)
+    : [];
+  // Card Duel — Jump-In, table-wide.
+  const duelTrigger = useJumpInDuel(state.lastAction);
+  // Chain Reaction — a meta-layer watching for consecutive hits.
+  const comboEvent = useComboCounter(state.lastHit);
+  // Last Card tension — table-wide, fires the instant anyone drops to 1.
+  const lastCardEvent = useLastCardTension(state.handSizes);
+  const lastCardPos = lastCardEvent ? resolveSeatPosition(lastCardEvent.playerId, selfId, opponents) : null;
+  // Fake Celebration — the inverse of UNO Call (a declare invalidated).
+  const fakeCelebEvent = useFakeCelebration(state.unoDeclaredBy);
+  const fakeCelebPos = fakeCelebEvent ? resolveSeatPosition(fakeCelebEvent.playerId, selfId, opponents) : null;
 
   /* ─── Sound + fullscreen header controls — ported from Rummy's own
      header buttons. Sound is the app-wide AudioManager mute (UNO has no
@@ -198,8 +263,14 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
 
   return (
     <div className="uno-wood-surface relative h-full flex flex-col overflow-hidden">
-      {dealStage !== "idle" && (
-        <UnoDealOverlay stage={dealStage} playerCount={state.playerOrder.length} />
+      {/* Desktop never rotates itself but stays synchronized with mobile
+          players — a full-viewport block during "gating" so no board
+          content flashes before the deal, then the deal opener. */}
+      {gate.stage === "gating" && (
+        <UnoWaitingForPlayersBanner blockers={gate.blockers} showNames={gate.showBlockerNames} variant="overlay" />
+      )}
+      {(gate.stage === "shuffle" || gate.stage === "deal") && (
+        <UnoDealOverlay stage={gate.stage} playerCount={state.playerOrder.length} />
       )}
 
       {/* topOffsetRem clears the room-code pill below, which centres itself
@@ -335,12 +406,10 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                 </div>
               </animated.div>
 
-              {/* Comedic "fired at" flourish — draw2/draw4 get full
-                  cinematics (animations/card/); every other kind (Skip/
-                  stack/Seven Swap/Zero Rotate/UNO catch) still gets the
-                  plain badge pop until its own animation is built.
-                  translateY(-135%) lifts the badge clear of the seat
-                  chip/self plate it's anchored to. */}
+              {/* Comedic "fired at" flourish — every hit kind now has
+                  its own cinematic except Zero Rotate, which still gets
+                  the plain badge pop. translateY(-135%) lifts the badge
+                  clear of the seat chip/self plate it's anchored to. */}
               {slipperHit && slipperTargetPos && (
                 <PlusTwoFlyingSlippers
                   key={`${slipperTargetId}-draw2-${slipperHit.count}`}
@@ -364,6 +433,27 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                   targetAnchor={meteorTargetPos}
                   config={animConfig}
                   onImpact={() => meteorTargetId && handleMeteorImpact(meteorTargetId)}
+                  onComplete={() => {}}
+                />
+              )}
+              {revengeHit && draw4TargetPos && (
+                <RevengeDrawFour
+                  key={`${draw4TargetId}-revenge-${revengeHit.count}`}
+                  count={revengeHit.count ?? 6}
+                  originAnchor={PILE_ANCHOR}
+                  targetAnchor={draw4TargetPos}
+                  config={animConfig}
+                  onImpact={() => draw4TargetId && handleMeteorImpact(draw4TargetId)}
+                  onComplete={() => {}}
+                />
+              )}
+              {policeHit && draw4TargetPos && (
+                <UnoPoliceBust
+                  key={`${draw4TargetId}-police-${policeHit.count}`}
+                  count={policeHit.count ?? 4}
+                  targetAnchor={draw4TargetPos}
+                  config={animConfig}
+                  onImpact={() => draw4TargetId && triggerWobble(draw4TargetId)}
                   onComplete={() => {}}
                 />
               )}
@@ -398,12 +488,31 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                   onComplete={() => {}}
                 />
               )}
+              {truckHit && stackTargetPos && (
+                <Draw20TruckAttack
+                  key={`${stackTargetId}-truck-${truckHit.count}`}
+                  count={truckHit.count ?? 8}
+                  targetAnchor={stackTargetPos}
+                  config={animConfig}
+                  onImpact={() => stackTargetId && handleStackImpact(stackTargetId)}
+                  onComplete={() => {}}
+                />
+              )}
+              {swapHit && swapTargetAnchors.length === 2 && (
+                <CardEvolutionSwap
+                  key={`swap-${swapHit.targetIds.join(",")}`}
+                  targetAnchors={swapTargetAnchors}
+                  config={animConfig}
+                  onComplete={() => {}}
+                />
+              )}
               {activeHit &&
                 activeHit.kind !== "draw2" &&
                 activeHit.kind !== "draw4" &&
                 activeHit.kind !== "skip" &&
                 activeHit.kind !== "catch" &&
                 activeHit.kind !== "stack" &&
+                activeHit.kind !== "swap" &&
                 activeHit.targetIds.map((tid) => {
                   const pos = resolveSeatPosition(tid, selfId, opponents);
                   if (!pos) return null;
@@ -426,20 +535,32 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                   onComplete={() => {}}
                 />
               )}
+              {wildEvent && (
+                <ColorChangeBalloon
+                  key={`balloon-${wildEvent.key}`}
+                  event={wildEvent}
+                  anchor={PILE_ANCHOR}
+                  config={animConfig}
+                  onComplete={() => {}}
+                />
+              )}
+              {duelTrigger && (
+                <CardDuelJumpIn key={duelTrigger} anchor={PILE_ANCHOR} config={animConfig} onComplete={() => {}} />
+              )}
+              {comboEvent && (
+                <ComboReaction key={comboEvent.key} count={comboEvent.count} config={animConfig} onComplete={() => {}} />
+              )}
+              {lastCardEvent && lastCardPos && (
+                <LastCardTension key={lastCardEvent.key} anchor={lastCardPos} config={animConfig} onComplete={() => {}} />
+              )}
+              {fakeCelebEvent && fakeCelebPos && (
+                <FakeCelebration key={fakeCelebEvent.key} anchor={fakeCelebPos} config={animConfig} onComplete={() => {}} />
+              )}
               {unoCallEvent && unoCallPos && (
                 <UnoCallCelebration
                   key={unoCallEvent.key}
                   anchor={unoCallPos}
                   isSelf={unoCallEvent.playerId === selfId}
-                  config={animConfig}
-                  onComplete={() => {}}
-                />
-              )}
-              {wildEvent && (
-                <WildColorSplash
-                  key={wildEvent.key}
-                  event={wildEvent}
-                  anchor={PILE_ANCHOR}
                   config={animConfig}
                   onComplete={() => {}}
                 />
@@ -503,6 +624,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
           reference's minimal chrome (hamburger + share icon only). */}
       <UnoRoomRail
         variant="sheet"
+        density="desktop"
         players={players}
         selfId={selfId}
         messages={messages}
@@ -511,6 +633,8 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         scores={state.scores}
         round={state.round}
         targetScore={state.targetScore}
+        history={history}
+        champion={champion}
         nameOf={m.nameOf}
       />
 

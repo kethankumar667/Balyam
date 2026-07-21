@@ -86,26 +86,27 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     accent: { from: "#1976D2", to: "#0D47A1" },
   },
   {
-    slug: "dotsboxes",
-    title: "Dots & Boxes",
-    blurb:
-      "Connect the dots, close the box, claim the square. Maths-period nostalgia at its purest.",
-    accent: { from: "#8E24AA", to: "#4A148C" },
-  },
-  {
-    slug: "wordbuilding",
-    title: "Word Building",
-    blurb:
-      "The English workbook revisited. Take turns writing letters and watch dictionary words light up like a teacher's tick.",
-    accent: { from: "#1E40AF", to: "#0F2A5A" },
-  },
-  {
     slug: "ludo",
     title: "Ludo",
     blurb:
       "The ultimate hot summer afternoon time-killer while waiting for the current (power) to come back.",
     accent: { from: "#E53935", to: "#7B1E2B" },
   },
+  {
+    slug: "uno",
+    title: "UNO",
+    blurb:
+      "Color chaos with your gang. Match cards, drop action cards, and race to shout UNO first.",
+    accent: { from: "#EC1C24", to: "#7B1E2B" },
+  },
+  {
+    slug: "dotsboxes",
+    title: "Dots & Boxes",
+    blurb:
+      "Connect the dots, close the box, claim the square. Maths-period nostalgia at its purest.",
+    accent: { from: "#8E24AA", to: "#4A148C" },
+  },
+
   {
     slug: "rps",
     title: "Rock Paper Scissors",
@@ -122,11 +123,11 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     accent: { from: "#43A047", to: "#1B5E20" },
   },
   {
-    slug: "uno",
-    title: "UNO",
+    slug: "wordbuilding",
+    title: "Word Building",
     blurb:
-      "Color chaos with your gang. Match cards, drop action cards, and race to shout UNO first.",
-    accent: { from: "#EC1C24", to: "#7B1E2B" },
+      "The English workbook revisited. Take turns writing letters and watch dictionary words light up like a teacher's tick.",
+    accent: { from: "#1E40AF", to: "#0F2A5A" },
   },
   {
     slug: "memorymatch",
@@ -138,7 +139,6 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "stargame",
     title: "Star Game",
-    teluguTitle: "చుక్క ఆట",
     theme: "Folded Paper Slips Edition",
     blurb:
       "Pick a secret, slide the chits clockwise, and slap the STAR the instant you hold all four. Pure 90's terrace nostalgia.",
@@ -150,8 +150,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   {
     slug: "namesplaceanimal",
     title: "Name Place Animal Thing",
-    blurb:
-      "Pick a letter, beat the clock. Whose Bombay was the most legit?",
+    blurb: "Pick a letter, beat the clock. Whose Bombay was the most legit?",
     accent: { from: "#F57C00", to: "#BF360C" },
     maintenance: true,
   },

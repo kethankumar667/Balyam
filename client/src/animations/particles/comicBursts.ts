@@ -224,3 +224,89 @@ export function fireFireworksBurst(opts: ComicBurstOptions = {}): void {
     shapes: ["star", "circle", "square"],
   });
 }
+
+/** Revenge (a failed Wild+4 challenge): dark, wispy smoke — a colder,
+ *  more sinister palette than either the comic-dust puff or the
+ *  meteor's grey smoke, reading as "something supernatural just
+ *  happened" rather than a physical impact. */
+const DARK_SMOKE_COLORS = ["#1A1420", "#3A2A4A", "#241B2E", "#5C4A70"];
+
+export function fireDarkSmokeBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const { x, y } = anchorToPercentXY(anchor);
+  void confetti({
+    count: Math.round(30 * intensity),
+    spread: 110,
+    startVelocity: 12,
+    decay: 0.94,
+    gravity: 0.1,
+    scalar: 1.0,
+    position: { x, y },
+    colors: DARK_SMOKE_COLORS,
+    shapes: ["circle"],
+  });
+}
+
+/** Color Change's balloon pop: a spray of ink droplets in the chosen
+ *  colour — reuses the Wild Card palette convention (see
+ *  `firePaintSplash`'s `PAINT_COLOR_HEX`) but tighter/faster, matching a
+ *  balloon bursting rather than paint spreading. */
+export function fireInkPopBurst(anchor: FeltAnchor, color: UnoColor, opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const { x, y } = anchorToPercentXY(anchor);
+  void confetti({
+    count: Math.round(24 * intensity),
+    spread: 360,
+    startVelocity: 24,
+    decay: 0.88,
+    gravity: 0.6,
+    scalar: 0.45,
+    position: { x, y },
+    colors: [PAINT_COLOR_HEX[color]],
+    shapes: ["circle"],
+  });
+}
+
+/** Card Duel's clash: bright cyan/white "energy" sparks bursting from
+ *  the point of impact between the two cards. */
+const ENERGY_COLORS = ["#7DF9FF", "#FFFFFF", "#39C5FF"];
+
+export function fireEnergyBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const { x, y } = anchorToPercentXY(anchor);
+  void confetti({
+    count: Math.round(26 * intensity),
+    spread: 360,
+    startVelocity: 34,
+    decay: 0.9,
+    gravity: 0.4,
+    scalar: 0.5,
+    position: { x, y },
+    colors: ENERGY_COLORS,
+    shapes: ["star", "circle"],
+  });
+}
+
+/** Card Evolution's (Seven Swap) transformation: electric-yellow sparks
+ *  at each affected seat. */
+const ELECTRIC_SPARK_COLORS = ["#FFE066", "#FFFFFF", "#FFC300"];
+
+export function fireElectricSparkBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
+  const intensity = opts.intensity ?? 1;
+  if (intensity <= 0) return;
+  const { x, y } = anchorToPercentXY(anchor);
+  void confetti({
+    count: Math.round(20 * intensity),
+    spread: 360,
+    startVelocity: 26,
+    decay: 0.9,
+    gravity: 0.3,
+    scalar: 0.4,
+    position: { x, y },
+    colors: ELECTRIC_SPARK_COLORS,
+    shapes: ["star"],
+  });
+}

@@ -3,8 +3,10 @@ import type {
   ChatMessage,
   Player,
   UnoCard,
+  UnoChampion,
   UnoColor,
   UnoPlayerState,
+  UnoRoundRecap,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { useAudio } from "../../hooks/useAudio";
@@ -30,6 +32,9 @@ export interface UnoBoardProps {
   roomCode: string;
   roomPhase: string;
   onLeave: () => void;
+  /** UNO's own room "photo album" — see shared/types.ts's RoomPublicState.unoHistory doc comment. */
+  history: UnoRoundRecap[];
+  champion: UnoChampion | null;
   /** Fired once the player dismisses UnoResultModal — lets Room.tsx run its
    *  generic post-match flow (GameOverScreen) afterward, same contract as
    *  RummyBoard/RpsBoard/HandCricketBoard's own scorecards. */

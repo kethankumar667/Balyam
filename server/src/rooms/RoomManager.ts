@@ -20,6 +20,8 @@ import type {
   MemoryMatchOptions,
   StarGameOptions,
   UnoGameOptions,
+  UnoChampion,
+  UnoRoundRecap,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -56,6 +58,8 @@ const REMATCH_REQUEST_WINDOW_MS = 30_000;
 const REMATCH_COUNTDOWN_MS = 3_000;
 /** Last N finished rounds kept per room (docs/rummy/roadmap.md B.1). */
 const MAX_RUMMY_HISTORY = 20;
+/** Last N finished rounds kept per room, UNO's own history. */
+const MAX_UNO_HISTORY = 20;
 
 /**
  * Per-game bot name pools. Each pool draws from the cultural texture of
@@ -113,6 +117,10 @@ interface Room {
   name: string | null;
   /** Finished rounds this room has played, oldest first (Rummy only). docs/rummy/roadmap.md B.1. */
   history: RummyRoundRecap[];
+  /** UNO's own finished-round history, oldest first — separate array,
+   *  same "copy the pattern per game" rationale as its shared-types
+   *  doc comment (RoomPublicState.unoHistory). */
+  unoHistory: UnoRoundRecap[];
   players: Map<string, Player>;
   socketToPlayer: Map<string, string>;
   engine: GameEngine | null;
@@ -160,8 +168,12 @@ export class RoomManager {
   private socketToRoom = new Map<string, string>();
   /** "House Champion" per room table name — outlives any single room/code. docs/rummy/roadmap.md B.3. */
   private champions = new Map<string, RummyChampion>();
+  /** UNO's own "House Champion" per room table name — separate map, same rationale as `unoHistory`. */
+  private unoChampions = new Map<string, UnoChampion>();
   /** Last round number recorded into room.history per engine instance, so a fresh rematch's round 1 isn't mistaken for an already-seen round 1. */
   private lastRecordedRound = new WeakMap<RummyEngine, number>();
+  /** Same idempotency guard as `lastRecordedRound`, scoped to UNO's own engine instances. */
+  private lastRecordedUnoRound = new WeakMap<UnoEngine, number>();
 
   constructor(private io: IO) {}
 
@@ -177,6 +189,8 @@ export class RoomManager {
       name: room.name,
       history: room.history,
       champion: room.name ? this.champions.get(room.name) ?? null : null,
+      unoHistory: room.unoHistory,
+      unoChampion: room.name ? this.unoChampions.get(room.name) ?? null : null,
     };
   }
 
@@ -214,6 +228,7 @@ export class RoomManager {
       hostId: playerId,
       name: null,
       history: [],
+      unoHistory: [],
       players: new Map([[playerId, player]]),
       socketToPlayer: new Map([[socketId, playerId]]),
       engine: null,
@@ -1308,6 +1323,7 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("game:state", state);
     }
     this.recordRummyRoundIfFinished(room);
+    this.recordUnoRoundIfFinished(room);
   }
 
   /**
@@ -1349,6 +1365,56 @@ export class RoomManager {
         playerId: state.matchWinnerId,
         playerName: winner?.name ?? "Unknown",
         date: new Date().toISOString().slice(0, 10),
+      });
+    }
+  }
+
+  /**
+   * Append a finished UNO round to room.unoHistory and, once a
+   * race-to-target-score match is fully decided, crown the room's table
+   * name a "House Champion" — UNO's own parallel to
+   * `recordRummyRoundIfFinished` above (same idempotent-per-broadcast
+   * shape), reading `UnoEngine.getPublicState().lastRoundRecap` instead
+   * of gating on `phase === "finished"` alone: UNO's engine resolves a
+   * mid-match round transition (`startNewRound()`) atomically within one
+   * `applyMove` call — `phase` never surfaces an intermediate "this round
+   * just ended" state the way Rummy's does, so `lastRoundRecap` is the
+   * signal the engine sets specifically so this method has something
+   * durable to read at EVERY round boundary, not just the final one.
+   * Champion-crowning stays gated on `targetScore != null` — matching
+   * Rummy's "single mode never crowns a champion" precedent, since a
+   * single UNO round (no target score) is the whole match by definition
+   * and was never a "pool" in the first place.
+   */
+  private recordUnoRoundIfFinished(room: Room): void {
+    if (!(room.engine instanceof UnoEngine)) return;
+    const engine = room.engine;
+    const state = engine.getPublicState();
+    const recap = state.lastRoundRecap;
+    if (!recap) return;
+    if (this.lastRecordedUnoRound.get(engine) === recap.roundNumber) return;
+    this.lastRecordedUnoRound.set(engine, recap.roundNumber);
+
+    const playerNames: Record<string, string> = {};
+    for (const p of room.players.values()) playerNames[p.id] = p.name;
+
+    room.unoHistory.push({
+      roundNumber: recap.roundNumber,
+      winnerId: recap.winnerId,
+      winnerName: playerNames[recap.winnerId] ?? "Someone",
+      scores: recap.scores,
+      playerNames,
+      ts: recap.ts,
+    });
+    if (room.unoHistory.length > MAX_UNO_HISTORY) room.unoHistory.shift();
+
+    if (state.phase === "finished" && state.targetScore != null && room.name) {
+      const winner = room.players.get(recap.winnerId);
+      this.unoChampions.set(room.name, {
+        playerId: recap.winnerId,
+        playerName: winner?.name ?? playerNames[recap.winnerId] ?? "Unknown",
+        date: new Date().toISOString().slice(0, 10),
+        finalScore: recap.scores[recap.winnerId] ?? 0,
       });
     }
   }

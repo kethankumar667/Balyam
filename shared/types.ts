@@ -56,6 +56,32 @@ export interface RoomPublicState {
   history: RummyRoundRecap[];
   /** "House Champion" of this room's table name, if a pool match has been won under it (Rummy only). Keyed by name, not room code, so it survives room collapse and resurfaces if the same gang reconvenes under the same name. docs/rummy/roadmap.md B.3. */
   champion: RummyChampion | null;
+  /** UNO's own round history — same "photo album" idea as Rummy's `history` above, kept as a SEPARATE array (not merged) since the two games' recap shapes don't overlap (no melds/wild joker in UNO) and this follows the codebase's own "copy the pattern per game, don't force a shared abstraction" convention. Oldest first, UNO only — empty elsewhere. */
+  unoHistory: UnoRoundRecap[];
+  /** UNO's own "House Champion" — crowned only for a race-to-target-score multi-round match (a single UNO round never crowns one, matching Rummy's single-mode-never-crowns precedent). Keyed by table name, same survives-room-collapse rationale as `champion`. UNO only. */
+  unoChampion: UnoChampion | null;
+}
+
+/** One row of the room's UNO "photo album" — a finished round's recap. UNO only. */
+export interface UnoRoundRecap {
+  roundNumber: number;
+  winnerId: string;
+  winnerName: string;
+  /** Cumulative scores at the moment this round ended. */
+  scores: Record<string, number>;
+  /** Names as they were when the round ended, so history still reads right after a player leaves or renames. */
+  playerNames: Record<string, string>;
+  ts: number;
+}
+
+/** Race-to-target-score match winner crowned for a room's table name. UNO only. */
+export interface UnoChampion {
+  playerId: string;
+  playerName: string;
+  /** YYYY-MM-DD the match was won. */
+  date: string;
+  /** The winner's final cumulative score when the match ended. */
+  finalScore: number;
 }
 
 /** One row of the room's "photo album" — a finished round's recap. Rummy only. */
@@ -1109,6 +1135,23 @@ export interface UnoPublicState {
     kind: "skip" | "draw2" | "draw4" | "stack" | "swap" | "rotate" | "catch";
     /** Cards drawn, where relevant (draw2/draw4/stack/catch) — omitted for swap/rotate/skip. */
     count?: number;
+  } | null;
+  /** Set exactly once per finished round (both a mid-match round transition
+   *  under a race-to-target-score match, AND the final round) — the signal
+   *  `RoomManager.recordUnoRoundIfFinished` reads to append into
+   *  `RoomPublicState.unoHistory`/crown `unoChampion`, mirroring how the
+   *  Rummy engine's round-end fields (`finalHands`, `wildJoker`, …) get
+   *  copied out by `RoomManager.recordRummyRoundIfFinished`. Left in place
+   *  (not reset to `null`) after a round ends — RoomManager dedupes by
+   *  `roundNumber` via its own per-engine-instance tracking, the same
+   *  `lastRecordedRound` WeakMap pattern Rummy already uses, so a stale
+   *  value being re-broadcast on later moves is harmless. */
+  lastRoundRecap: {
+    roundNumber: number;
+    winnerId: string;
+    /** Cumulative scores at the moment this round ended. */
+    scores: Record<string, number>;
+    ts: number;
   } | null;
 }
 
