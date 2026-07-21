@@ -1,8 +1,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
-  StarActivityEntry,
   StarCard,
+  StarPhase,
   StarRoundResult,
   StarStanding,
 } from "@shared/types";
@@ -271,6 +271,202 @@ export function HandRail({
   );
 }
 
+/**
+ * Pointer Events-based drag-and-drop reorderable hand — same gesture
+ * grammar as Rummy's useCardPointerDrag (client/src/games/rummy/
+ * RummyBoardMobile.tsx: capture the pointer on down, declare a drag past
+ * 6px of movement so a quick tap still arms the chit to pass, resolve the
+ * drop position from the fingertip's x among sibling chits), simplified
+ * to single-lane insert-before-index reordering — no lanes/melds here.
+ * `hand` is trusted as already-correctly-ordered (the caller's
+ * useStarBoard.reorderHand owns the authoritative order); this component
+ * only tracks a TRANSIENT live-reorder preview during the gesture itself,
+ * discarded the instant the drag ends or the drop lands via `onReorder`.
+ */
+export function DraggableChitRail({
+  hand,
+  armedId,
+  onArm,
+  onReorder,
+  disabled = false,
+  size = "lg",
+  isBackgrounded = false,
+}: {
+  hand: StarCard[];
+  armedId: string | null;
+  onArm: (cardId: string) => void;
+  onReorder: (cardIds: string[]) => void;
+  disabled?: boolean;
+  size?: keyof typeof SIZE;
+  /** Cancels any in-flight drag the instant the tab backgrounds — a
+   *  pointer that never receives its up/cancel event (the OS can suspend
+   *  JS mid-gesture) must not resume into a stale drag on return. */
+  isBackgrounded?: boolean;
+}) {
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [previewOrder, setPreviewOrder] = useState<string[] | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const dragStateRef = useRef<{ pointerId: number; x0: number; y0: number; dragging: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!isBackgrounded) return;
+    dragStateRef.current = null;
+    setPreviewOrder(null);
+    setDraggedId(null);
+  }, [isBackgrounded]);
+
+  const baseOrder = useMemo(() => hand.map((c) => c.id), [hand]);
+  const displayOrder = previewOrder ?? baseOrder;
+  const byId = useMemo(() => new Map(hand.map((c) => [c.id, c] as const)), [hand]);
+
+  const computeInsertOrder = useCallback(
+    (cardId: string, clientX: number): string[] => {
+      const without = baseOrder.filter((id) => id !== cardId);
+      let insertAt = without.length;
+      for (let i = 0; i < without.length; i++) {
+        const el = cardRefs.current.get(without[i]);
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (clientX < rect.left + rect.width / 2) {
+          insertAt = i;
+          break;
+        }
+      }
+      const next = [...without];
+      next.splice(insertAt, 0, cardId);
+      return next;
+    },
+    [baseOrder],
+  );
+
+  return (
+    <div className="flex items-end justify-center gap-2.5 overflow-x-auto px-2 py-2" style={{ touchAction: disabled ? "auto" : "none" }}>
+      {displayOrder.map((id) => {
+        const c = byId.get(id);
+        if (!c) return null;
+        return (
+          <motion.div
+            key={id}
+            layout={!disabled}
+            ref={(el) => {
+              if (el) cardRefs.current.set(id, el);
+              else cardRefs.current.delete(id);
+            }}
+            onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
+              if (disabled) return;
+              if (e.pointerType === "mouse" && e.button !== 0) return;
+              dragStateRef.current = { pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, dragging: false };
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e: React.PointerEvent<HTMLDivElement>) => {
+              const st = dragStateRef.current;
+              if (!st || st.pointerId !== e.pointerId) return;
+              const dist = Math.hypot(e.clientX - st.x0, e.clientY - st.y0);
+              if (!st.dragging) {
+                if (dist < 6) return;
+                st.dragging = true;
+                setDraggedId(id);
+              }
+              setPreviewOrder(computeInsertOrder(id, e.clientX));
+            }}
+            onPointerUp={(e: React.PointerEvent<HTMLDivElement>) => {
+              const st = dragStateRef.current;
+              dragStateRef.current = null;
+              if (!st || st.pointerId !== e.pointerId) return;
+              try {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              } catch {
+                /* element may already have lost capture */
+              }
+              if (st.dragging) {
+                const finalOrder = computeInsertOrder(id, e.clientX);
+                setPreviewOrder(null);
+                setDraggedId(null);
+                onReorder(finalOrder);
+              } else if (!disabled) {
+                onArm(id);
+              }
+            }}
+            onPointerCancel={() => {
+              dragStateRef.current = null;
+              setPreviewOrder(null);
+              setDraggedId(null);
+            }}
+            style={{
+              opacity: draggedId === id ? 0.5 : 1,
+              cursor: disabled ? "default" : "grab",
+              touchAction: "none",
+            }}
+          >
+            {/* Chit's own onClick is a no-op — the wrapper's onPointerUp owns
+                tap-vs-drag resolution, matching Rummy's DraggableHandCard. */}
+            <Chit
+              value={c.value}
+              armed={c.id === armedId}
+              size={size}
+              onClick={() => {}}
+              ariaLabel={`${c.value}${c.id === armedId ? " (armed to pass)" : ""}`}
+            />
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Shuffle ceremony flourish — plays once per successful shuffle tap (the
+ * premium sequence's compress/spread/regroup beats), purely decorative
+ * and declaratively keyframed via Framer Motion's own `transition.times`
+ * — no internal setTimeout chain to get stuck mid-sequence (see
+ * client/src/games/uno/rotation-sync.tsx's fix for exactly that bug
+ * class: a stage machine driven by bare setTimeouts can freeze if its own
+ * dependency flips before they fire). Caller re-mounts by changing
+ * `shuffleKey` on every successful shuffle.
+ */
+export function ShuffleFlourish({ shuffleKey }: { shuffleKey: string | number }) {
+  const reduce = useReducedMotion();
+  if (reduce) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <AnimatePresence>
+        <motion.div
+          key={shuffleKey}
+          className="absolute flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 1, 0] }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.9, times: [0, 0.15, 0.75, 1] }}
+        >
+          {Array.from({ length: 5 }).map((_, i) => {
+            const spreadAngle = (i - 2) * 16; // fan out ±32deg
+            return (
+              <motion.div
+                key={i}
+                aria-hidden
+                className="absolute h-16 w-11 rounded-[5px]"
+                style={{
+                  background: `repeating-linear-gradient(48deg, ${PAPER.kraft}, ${PAPER.kraft} 6px, #CBA87A 6px, #CBA87A 12px)`,
+                  border: `1px solid ${PAPER.rim}`,
+                  boxShadow: "0 4px 10px rgba(70,41,21,0.35)",
+                }}
+                initial={{ x: 0, y: 0, rotate: 0, scale: 0.6 }}
+                animate={{
+                  x: [0, 0, spreadAngle * 1.4, 0],
+                  y: [0, -4, -14, 0],
+                  rotate: [0, 0, spreadAngle, 0],
+                  scale: [0.6, 0.9, 1, 0.6],
+                }}
+                transition={{ duration: 0.9, times: [0, 0.15, 0.55, 1], ease: "easeInOut" }}
+              />
+            );
+          })}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /** Big STAR slap — rotating burst rays, glossy sticker, pulsing glow. */
 export function StarButton({ onPress, disabled }: { onPress: () => void; disabled: boolean }) {
   const reduce = useReducedMotion();
@@ -425,6 +621,307 @@ export function SeatTile({
   );
 }
 
+/** Three bouncing dots for a live "thinking…" state — same recipe as Hand
+ *  Cricket's TossStatusPill (client/src/games/handcricket/hc-shared.tsx):
+ *  0.85s duration, 0.18s stagger, y:[0,-5,0] + opacity:[0.4,1,0.4]. */
+export function BotThinkingDots({ color = PAPER.pencil }: { color?: string }) {
+  const reduce = useReducedMotion();
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ background: color }}
+          animate={reduce ? {} : { y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
+          transition={{ repeat: Infinity, duration: 0.85, delay: i * 0.18, ease: "easeInOut" }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** Round info panel: current round / total, this round's starter, and the
+ *  fixed circulation direction — the "who started, which way" summary the
+ *  table's own geometry only shows visually. */
+export function RoundInfoPanel({
+  round,
+  totalRounds,
+  starterId,
+  nameOf,
+}: {
+  round: number;
+  totalRounds: number;
+  starterId: string | null;
+  nameOf: (id: string) => string;
+}) {
+  return (
+    <dl className="space-y-1.5 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <dt style={{ color: PAPER.pencil }}>Round</dt>
+        <dd className="font-display font-black" style={{ color: PAPER.brown }}>
+          {round}/{totalRounds}
+        </dd>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <dt style={{ color: PAPER.pencil }}>Starter</dt>
+        <dd className="font-bold" style={{ color: PAPER.ink }}>
+          {starterId ? nameOf(starterId) : "—"}
+        </dd>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <dt style={{ color: PAPER.pencil }}>Direction</dt>
+        <dd className="font-bold" style={{ color: PAPER.pencil }}>
+          clockwise <span aria-hidden>⟳</span>
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+/** Card-count badge, color-coded by the temporary sender(3)/normal(4)/
+ *  receiver(5) hand size the sequential relay produces. */
+function CountBadge({ count }: { count: number }) {
+  const color = count === 3 ? PAPER.terracotta : count === 5 ? PAPER.olive : PAPER.brown;
+  return (
+    <span
+      className="absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-display text-[11px] font-black text-white"
+      style={{ background: color, boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+      aria-label={`${count} cards`}
+    >
+      {count}
+    </span>
+  );
+}
+
+/**
+ * The circular/star table — the game's persistent visual centerpiece across
+ * EVERY phase, not just the pass cycle (previously only StarBoardDesktop's
+ * pass-phase-only `SeatRing`). Self anchored bottom-center, other seats
+ * fanned clockwise, so the seating order itself reads as the circulation
+ * route. Passing-flow arrows (full route dim, the active leg bright +
+ * animated) and a flying-chit travel animation only render during "pass";
+ * every other phase shows the plain ring with live per-seat status.
+ */
+export function StarTable({
+  seats,
+  selfId,
+  phase,
+  shuffleTurnId,
+  currentPasserId,
+  passOrder,
+  lastPass,
+  thinkingBotId,
+  starWinnerId,
+  width = 420,
+  height = 340,
+  children,
+}: {
+  seats: StarSeat[];
+  selfId: string | null;
+  phase: StarPhase;
+  shuffleTurnId: string | null;
+  currentPasserId: string | null;
+  passOrder: string[];
+  lastPass: { fromId: string; toId: string; cardId: string } | null;
+  thinkingBotId: string | null;
+  starWinnerId: string | null;
+  width?: number;
+  height?: number;
+  children?: React.ReactNode;
+}) {
+  const reduce = useReducedMotion();
+  const ordered = useMemo(() => {
+    const i = seats.findIndex((s) => s.id === selfId);
+    if (i <= 0) return seats;
+    return [...seats.slice(i), ...seats.slice(0, i)];
+  }, [seats, selfId]);
+
+  const n = ordered.length;
+  const cx = width / 2;
+  const cy = height / 2;
+  const rx = width / 2 - 54;
+  const ry = height / 2 - 46;
+  const posOf = useCallback(
+    (i: number) => {
+      const angle = Math.PI / 2 + (Math.PI * 2 * i) / Math.max(n, 1);
+      return { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
+    },
+    [n, cx, cy, rx, ry],
+  );
+  const indexById = useMemo(() => new Map(ordered.map((s, i) => [s.id, i] as const)), [ordered]);
+
+  const isActive = (s: StarSeat): boolean => {
+    if (phase === "shuffle") return s.id === shuffleTurnId;
+    if (phase === "pass") return s.id === currentPasserId;
+    if (phase === "star") return s.pub.starEligible && starWinnerId == null;
+    if (phase === "handstack") return s.id !== starWinnerId && !s.pub.hasStacked && starWinnerId != null;
+    return false;
+  };
+  const isReceiving = (s: StarSeat): boolean => phase === "pass" && lastPass?.toId === s.id;
+
+  const lastPassKey = lastPass ? `${lastPass.fromId}-${lastPass.toId}-${lastPass.cardId}` : null;
+
+  return (
+    <div className="relative mx-auto" style={{ width, height }}>
+      {phase === "pass" && n >= 2 && (
+        <svg className="pointer-events-none absolute inset-0" width={width} height={height} aria-hidden>
+          <defs>
+            <marker id="star-flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill={PAPER.gold} />
+            </marker>
+          </defs>
+          {passOrder.map((pid) => {
+            const idx = passOrder.indexOf(pid);
+            const nextId = passOrder[(idx + 1) % passOrder.length];
+            const a = indexById.get(pid);
+            const b = indexById.get(nextId);
+            if (a == null || b == null) return null;
+            const pa = posOf(a);
+            const pb = posOf(b);
+            const activeLeg = pid === currentPasserId;
+            return (
+              <line
+                key={pid}
+                x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y}
+                stroke={activeLeg ? PAPER.gold : PAPER.rim}
+                strokeWidth={activeLeg ? 3 : 1.5}
+                strokeDasharray={activeLeg ? undefined : "4 5"}
+                opacity={activeLeg ? 0.9 : 0.35}
+                markerEnd="url(#star-flow-arrow)"
+              />
+            );
+          })}
+        </svg>
+      )}
+
+      {/* Flying chit — one-shot travel animation on every relay handoff. */}
+      <AnimatePresence>
+        {!reduce && lastPass && lastPassKey && (
+          <FlyingChit
+            key={lastPassKey}
+            from={indexById.has(lastPass.fromId) ? posOf(indexById.get(lastPass.fromId)!) : null}
+            to={indexById.has(lastPass.toId) ? posOf(indexById.get(lastPass.toId)!) : null}
+          />
+        )}
+      </AnimatePresence>
+
+      {ordered.map((s, i) => {
+        const pos = posOf(i);
+        return (
+          <div
+            key={s.id}
+            className="absolute -translate-x-1/2 -translate-y-1/2"
+            style={{ left: pos.x, top: pos.y }}
+          >
+            <TableSeat
+              seat={s}
+              active={isActive(s)}
+              receiving={isReceiving(s)}
+              thinking={thinkingBotId === s.id}
+            />
+          </div>
+        );
+      })}
+
+      {children && (
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">{children}</div>
+      )}
+    </div>
+  );
+}
+
+/** One seat on the StarTable ring: avatar + ring, name, card-count badge,
+ *  status line, and the bot "thinking…" bouncing-dots indicator. */
+function TableSeat({
+  seat,
+  active,
+  receiving,
+  thinking,
+}: {
+  seat: StarSeat;
+  active: boolean;
+  receiving: boolean;
+  thinking: boolean;
+}) {
+  const { pub, name, isSelf, isBot, isConnected } = seat;
+  const statusText = thinking
+    ? null // BotThinkingDots renders instead of text
+    : pub.starEligible
+      ? "★ four!"
+      : receiving
+        ? "receiving…"
+        : pub.hasPassed
+          ? "passed ✓"
+          : pub.hasStacked
+            ? "stacked"
+            : null;
+  return (
+    <div className="flex w-24 flex-col items-center gap-1 text-center" style={{ opacity: isConnected ? 1 : 0.5 }}>
+      <motion.div
+        className="relative"
+        animate={active ? { scale: [1, 1.06, 1] } : receiving ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+        transition={active || receiving ? { repeat: Infinity, duration: receiving ? 0.6 : 1.1 } : { duration: 0.2 }}
+      >
+        <div
+          className="flex h-12 w-12 items-center justify-center rounded-full font-display text-base font-black text-white"
+          style={{
+            background: active
+              ? `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})`
+              : `linear-gradient(160deg, ${PAPER.terracotta}, ${PAPER.clay})`,
+            boxShadow: active
+              ? "0 0 0 4px rgba(228,177,40,0.32), inset 0 2px 4px rgba(255,255,255,0.3)"
+              : receiving
+                ? "0 0 0 4px rgba(92,122,58,0.32), inset 0 2px 4px rgba(255,255,255,0.3)"
+                : "inset 0 2px 4px rgba(255,255,255,0.3)",
+          }}
+          aria-hidden
+        >
+          {name.slice(0, 1).toUpperCase()}
+        </div>
+        <CountBadge count={pub.cardCount} />
+      </motion.div>
+      <div className="max-w-full truncate text-xs font-bold" style={{ color: PAPER.ink }}>
+        {name}
+        {isSelf && " (you)"}
+        {isBot && <span className="ml-0.5 text-[9px] opacity-60">bot</span>}
+      </div>
+      <div className="h-3.5 text-[10px]" style={{ color: receiving ? PAPER.olive : active ? PAPER.gold : PAPER.pencil }}>
+        {thinking ? <BotThinkingDots color={PAPER.pencil} /> : statusText}
+      </div>
+    </div>
+  );
+}
+
+/** Framer-motion overlay chit flying from one seat position to another —
+ *  the visible "card travel" cue for a single relay handoff. */
+function FlyingChit({
+  from,
+  to,
+}: {
+  from: { x: number; y: number } | null;
+  to: { x: number; y: number } | null;
+}) {
+  if (!from || !to) return null;
+  return (
+    <motion.div
+      className="pointer-events-none absolute rounded-[4px]"
+      style={{
+        width: 20,
+        height: 28,
+        left: from.x - 10,
+        top: from.y - 14,
+        background: `linear-gradient(160deg, ${PAPER.paper}, #F2E6CC)`,
+        border: `1px solid ${PAPER.gold}`,
+        boxShadow: "0 4px 10px rgba(70,41,21,0.4)",
+      }}
+      initial={{ x: 0, y: 0, opacity: 0, scale: 0.7 }}
+      animate={{ x: to.x - from.x, y: to.y - from.y, opacity: [0, 1, 1, 0], scale: 1 }}
+      transition={{ duration: 0.55, times: [0, 0.15, 0.75, 1], ease: "easeInOut" }}
+    />
+  );
+}
+
 /** Ranked standings used in the desktop sidebar. */
 export function Scoreboard({ seats }: { seats: StarSeat[] }) {
   const ranked = [...seats].sort((a, b) => b.pub.score - a.pub.score || b.pub.roundWins - a.pub.roundWins);
@@ -548,35 +1045,6 @@ export function FinalPodium({
   );
 }
 
-/** Fractional-indexed activity feed — a handwritten ledger, newest on top. */
-export function ActivityFeed({
-  entries,
-  nameOf,
-  max = 40,
-}: {
-  entries: StarActivityEntry[];
-  nameOf: (id: string) => string;
-  max?: number;
-}) {
-  const sorted = useMemo(
-    () => [...entries].sort((a, b) => (a.idx < b.idx ? 1 : a.idx > b.idx ? -1 : 0)).slice(0, max),
-    [entries, max],
-  );
-  return (
-    <ul className="space-y-1 overflow-y-auto pl-7 pr-1 text-[13px]" style={{ color: PAPER.ink, ...RULED }} aria-label="Activity feed" aria-live="polite">
-      {sorted.map((e, i) => (
-        <li
-          key={e.idx}
-          className="py-0.5 font-script leading-6"
-          style={{ color: i === 0 ? PAPER.clay : PAPER.pencil, fontWeight: i === 0 ? 700 : 500 }}
-        >
-          {e.text}
-          {e.playerId && <span className="hidden">{nameOf(e.playerId)}</span>}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 /** Prominent, optional between-rounds nostalgia line with a pencil underline. */
 export function NostalgiaLine({ text }: { text: string | null }) {

@@ -809,7 +809,10 @@ export class RoomManager {
     // steps. After each sub-move we broadcast immediately and recurse via
     // scheduleBotMoveIfNeeded, which adds a fresh humanised delay before
     // the next sub-move fires.
-    const delayMs = 1200 + Math.random() * 800;
+    const delayMs =
+      typeof engine.getBotThinkDelayMs === "function"
+        ? engine.getBotThinkDelayMs()
+        : 1200 + Math.random() * 800;
     setTimeout(() => {
       if (room.phase !== "playing") return;
       if (room.engine !== engine) return;

@@ -46,22 +46,52 @@ function reachPass(e: StarGameEngine, n: number): void {
   expect(pub(e).phase).toBe("pass");
 }
 
-/** Funnel valuesInPlay[0] clockwise to seat 0 until the STAR phase opens. */
+/** Drive shuffle → deal → pass for round 2+, which skips themeSelect
+ *  entirely (values are locked in once, for the whole game). */
+function reshuffleAndDeal(e: StarGameEngine, n: number): void {
+  expect(pub(e).phase).toBe("shuffle");
+  for (let i = 0; i < n; i++) {
+    e.applyMove({ playerId: `p${i}`, type: "shuffle" });
+  }
+  expect(pub(e).phase).toBe("deal");
+  e.resolveDeadline();
+  expect(pub(e).phase).toBe("pass");
+}
+
+/**
+ * Funnel valuesInPlay[0] toward "p0" one sequential relay step at a time
+ * (driven by currentPasserId, matching the real client's one-actor-at-a-time
+ * turn), until the STAR phase opens. p0 hoards the target; everyone else
+ * shoves any target-valued card they're holding onward. Starter-agnostic —
+ * works whichever seat is passOrder[0] for the round.
+ */
 function driveToStar(e: StarGameEngine, n: number): void {
   let guard = 0;
-  while (pub(e).phase === "pass" && guard++ < 60) {
+  while (pub(e).phase === "pass" && guard++ < 40 * n) {
     const target = pub(e).valuesInPlay[0];
-    for (let i = 0; i < n; i++) {
-      if (pub(e).phase !== "pass") break;
-      const pid = `p${i}`;
-      const hand = view(e, pid).myHand;
-      const card =
-        i === 0
-          ? hand.find((c) => c.value !== target) ?? hand[0] // seat 0 hoards the target
-          : hand.find((c) => c.value === target) ?? hand[0]; // others shove it clockwise
-      e.applyMove({ playerId: pid, type: "selectCard", data: { cardId: card.id } });
-      e.applyMove({ playerId: pid, type: "pass" });
-    }
+    const pid = pub(e).currentPasserId;
+    if (!pid) break;
+    const hand = view(e, pid).myHand;
+    const card =
+      pid === "p0"
+        ? hand.find((c) => c.value !== target) ?? hand[0] // p0 hoards the target
+        : hand.find((c) => c.value === target) ?? hand[0]; // others shove it onward
+    e.applyMove({ playerId: pid, type: "selectCard", data: { cardId: card.id } });
+    e.applyMove({ playerId: pid, type: "pass" });
+  }
+}
+
+/** From the "star" phase, presses STAR for the eligible winner then places
+ *  every remaining hand in seat order, finishing the round. */
+function finishRoundViaStar(e: StarGameEngine, n: number): void {
+  expect(pub(e).phase).toBe("star");
+  const winner = pub(e).players.find((p) => p.starEligible)!.id;
+  e.applyMove({ playerId: winner, type: "pressStar" });
+  expect(pub(e).phase).toBe("handstack");
+  for (let i = 0; i < n; i++) {
+    const pid = `p${i}`;
+    if (pid === winner) continue;
+    e.applyMove({ playerId: pid, type: "placeHand" });
   }
 }
 
@@ -102,31 +132,150 @@ describe("StarGameEngine — anti-cheat & validation", () => {
     expect(e.applyMove({ playerId: "p0", type: "shuffle" }).ok).toBe(true);
   });
 
-  it("rejects a second pass in the same cycle and an unowned card", () => {
+  it("rejects an unowned card and a second pass from the same player out of turn", () => {
     const e = newEngine(3);
     reachPass(e, 3);
     const hand = view(e, "p0").myHand;
     expect(e.applyMove({ playerId: "p0", type: "selectCard", data: { cardId: "nope" } }).ok).toBe(false);
     expect(e.applyMove({ playerId: "p0", type: "selectCard", data: { cardId: hand[0].id } }).ok).toBe(true);
     expect(e.applyMove({ playerId: "p0", type: "pass" }).ok).toBe(true);
-    expect(e.applyMove({ playerId: "p0", type: "pass" }).ok).toBe(false); // double pass
+    expect(e.applyMove({ playerId: "p0", type: "pass" }).ok).toBe(false); // p0's turn is over — now p1's
   });
 });
 
-describe("StarGameEngine — pass moves chits clockwise", () => {
-  it("each player's chit lands on the next seat clockwise", () => {
+describe("StarGameEngine — sequential relay pass", () => {
+  it("starter rotates by round; passOrder is seatOrder rotated to begin there", () => {
+    const e = newEngine(4);
+    reachPass(e, 4);
+    expect(pub(e).starterId).toBe("p0"); // round 1 -> seatOrder[0]
+    expect(pub(e).passOrder).toEqual(["p0", "p1", "p2", "p3"]);
+    expect(pub(e).currentPasserId).toBe("p0");
+  });
+
+  it("relays one full circulation: 3-card sender, 5-card receivers, everyone back to exactly 4", () => {
+    const e = newEngine(4);
+    reachPass(e, 4);
+
+    const p0Card = view(e, "p0").myHand[0];
+    e.applyMove({ playerId: "p0", type: "selectCard", data: { cardId: p0Card.id } });
+    expect(e.applyMove({ playerId: "p0", type: "pass" }).ok).toBe(true);
+    expect(view(e, "p0").myHand).toHaveLength(3); // sender temporarily at 3
+    expect(view(e, "p1").myHand).toHaveLength(5); // receiver temporarily at 5
+    expect(view(e, "p1").myHand.some((c) => c.id === p0Card.id)).toBe(true);
+    expect(pub(e).currentPasserId).toBe("p1");
+    expect(pub(e).lastPass).toEqual({ fromId: "p0", toId: "p1", cardId: p0Card.id });
+
+    const p1Card = view(e, "p1").myHand[0];
+    e.applyMove({ playerId: "p1", type: "selectCard", data: { cardId: p1Card.id } });
+    e.applyMove({ playerId: "p1", type: "pass" });
+    expect(view(e, "p1").myHand).toHaveLength(4);
+    expect(view(e, "p2").myHand).toHaveLength(5);
+    expect(pub(e).currentPasserId).toBe("p2");
+
+    const p2Card = view(e, "p2").myHand[0];
+    e.applyMove({ playerId: "p2", type: "selectCard", data: { cardId: p2Card.id } });
+    e.applyMove({ playerId: "p2", type: "pass" });
+    expect(view(e, "p2").myHand).toHaveLength(4);
+    expect(view(e, "p3").myHand).toHaveLength(5);
+    expect(pub(e).currentPasserId).toBe("p3");
+
+    // Final relay step: p3 passes back to the starter (p0) directly —
+    // p0 receives without a choice of their own, closing the loop.
+    const p3Card = view(e, "p3").myHand[0];
+    e.applyMove({ playerId: "p3", type: "selectCard", data: { cardId: p3Card.id } });
+    expect(e.applyMove({ playerId: "p3", type: "pass" }).ok).toBe(true);
+
+    for (let i = 0; i < 4; i++) expect(view(e, `p${i}`).myHand).toHaveLength(4);
+    expect(view(e, "p0").myHand.some((c) => c.id === p3Card.id)).toBe(true);
+    // A fresh lap starts at the SAME starter (no 4-of-a-kind expected here).
+    expect(pub(e).phase).toBe("pass");
+    expect(pub(e).currentPasserId).toBe("p0");
+  });
+
+  it("enforces strict turn order — only the current passer may select or pass", () => {
     const e = newEngine(3);
     reachPass(e, 3);
-    const armedIds = [0, 1, 2].map((i) => view(e, `p${i}`).myHand[0].id);
-    for (let i = 0; i < 3; i++) {
-      e.applyMove({ playerId: `p${i}`, type: "selectCard", data: { cardId: armedIds[i] } });
-      e.applyMove({ playerId: `p${i}`, type: "pass" });
-    }
-    // p0 → p1, p1 → p2, p2 → p0
-    expect(view(e, "p1").myHand.some((c) => c.id === armedIds[0])).toBe(true);
-    expect(view(e, "p2").myHand.some((c) => c.id === armedIds[1])).toBe(true);
-    expect(view(e, "p0").myHand.some((c) => c.id === armedIds[2])).toBe(true);
-    for (let i = 0; i < 3; i++) expect(view(e, `p${i}`).myHand).toHaveLength(4);
+    expect(pub(e).currentPasserId).toBe("p0");
+    expect(e.applyMove({ playerId: "p1", type: "pass" }).ok).toBe(false);
+    expect(
+      e.applyMove({ playerId: "p1", type: "selectCard", data: { cardId: view(e, "p1").myHand[0].id } }).ok,
+    ).toBe(false);
+
+    const card = view(e, "p0").myHand[0];
+    expect(e.applyMove({ playerId: "p0", type: "selectCard", data: { cardId: card.id } }).ok).toBe(true);
+    expect(e.applyMove({ playerId: "p0", type: "pass" }).ok).toBe(true);
+    expect(pub(e).currentPasserId).toBe("p1");
+    expect(e.applyMove({ playerId: "p0", type: "pass" }).ok).toBe(false); // no longer p0's turn
+  });
+
+  it("auto-pass (no explicit selectCard) sends the LAST card in hand order, never the first", () => {
+    const e = newEngine(3);
+    reachPass(e, 3);
+    const hand = view(e, "p0").myHand;
+    const firstCard = hand[0];
+    const lastCard = hand[hand.length - 1];
+    expect(e.applyMove({ playerId: "p0", type: "pass" }).ok).toBe(true); // no selectCard first
+    expect(view(e, "p1").myHand.some((c) => c.id === lastCard.id)).toBe(true);
+    expect(view(e, "p1").myHand.some((c) => c.id === firstCard.id)).toBe(false);
+  });
+
+  it("reorderHand changes which card auto-pass sends (the new last card)", () => {
+    const e = newEngine(3);
+    reachPass(e, 3);
+    const hand = view(e, "p0").myHand;
+    const reordered = [hand[3].id, hand[2].id, hand[0].id, hand[1].id]; // new last = hand[1]
+    expect(e.applyMove({ playerId: "p0", type: "reorderHand", data: { cardIds: reordered } }).ok).toBe(true);
+    expect(view(e, "p0").myHand.map((c) => c.id)).toEqual(reordered);
+    expect(e.applyMove({ playerId: "p0", type: "pass" }).ok).toBe(true); // auto-pass, no explicit select
+    expect(view(e, "p1").myHand.some((c) => c.id === hand[1].id)).toBe(true); // the NEW last card
+  });
+
+  it("rejects a reorder that isn't an exact permutation of the current hand", () => {
+    const e = newEngine(3);
+    reachPass(e, 3);
+    const hand = view(e, "p0").myHand;
+    expect(
+      e.applyMove({ playerId: "p0", type: "reorderHand", data: { cardIds: [hand[0].id, hand[1].id] } }).ok,
+    ).toBe(false); // missing cards
+    expect(
+      e.applyMove({
+        playerId: "p0",
+        type: "reorderHand",
+        data: { cardIds: [hand[0].id, hand[0].id, hand[1].id, hand[2].id] },
+      }).ok,
+    ).toBe(false); // duplicate
+    expect(
+      e.applyMove({
+        playerId: "p0",
+        type: "reorderHand",
+        data: { cardIds: ["ghost", hand[1].id, hand[2].id, hand[3].id] },
+      }).ok,
+    ).toBe(false); // unknown card
+    expect(view(e, "p0").myHand.map((c) => c.id)).toEqual(hand.map((c) => c.id)); // untouched
+  });
+});
+
+describe("StarGameEngine — round starter rotation", () => {
+  it("rotates the starter by seating order across successive rounds", () => {
+    const e = newEngine(4, { totalRounds: 4 });
+    reachPass(e, 4);
+    expect(pub(e).round).toBe(1);
+    expect(pub(e).starterId).toBe("p0");
+
+    driveToStar(e, 4);
+    finishRoundViaStar(e, 4);
+    e.applyMove({ playerId: "p0", type: "nextRound" });
+    expect(pub(e).round).toBe(2);
+    expect(pub(e).starterId).toBe("p1");
+    expect(pub(e).passOrder).toEqual(["p1", "p2", "p3", "p0"]);
+
+    reshuffleAndDeal(e, 4);
+    driveToStar(e, 4);
+    finishRoundViaStar(e, 4);
+    e.applyMove({ playerId: "p0", type: "nextRound" });
+    expect(pub(e).round).toBe(3);
+    expect(pub(e).starterId).toBe("p2");
+    expect(pub(e).passOrder).toEqual(["p2", "p3", "p0", "p1"]);
   });
 });
 
@@ -178,6 +327,22 @@ describe("StarGameEngine — STAR, hand-stack, scoring & podium", () => {
     expect(pts["p0"]).toBe(10);
     expect(pts["p7"]).toBe(3);
   });
+
+  it("getBotThinkDelayMs stays fast (platform default) for star/handstack reflex phases, slow (1.5-4s) elsewhere", () => {
+    const e = newEngine(3, { totalRounds: 1 });
+    e.setRng(() => 0.9); // deterministic — isolates phase branching, not randomness
+    reachPass(e, 3);
+    expect(pub(e).phase).toBe("pass");
+    expect(e.getBotThinkDelayMs()).toBeCloseTo(1500 + 0.9 * 2500, 5); // 3750 — deliberate-choice pace
+
+    driveToStar(e, 3);
+    expect(pub(e).phase).toBe("star");
+    expect(e.getBotThinkDelayMs()).toBeCloseTo(1200 + 0.9 * 800, 5); // 1920 — untouched reflex pace
+
+    e.applyMove({ playerId: "p0", type: "pressStar" });
+    expect(pub(e).phase).toBe("handstack");
+    expect(e.getBotThinkDelayMs()).toBeCloseTo(1200 + 0.9 * 800, 5); // 1920 — untouched reflex pace
+  });
 });
 
 describe("StarGameEngine — deadline auto-resolve & bots", () => {
@@ -187,6 +352,16 @@ describe("StarGameEngine — deadline auto-resolve & bots", () => {
     e.resolveDeadline(); // p1..p3 auto-picked
     expect(pub(e).phase).toBe("shuffle");
     expect(pub(e).players.every((p) => p.hasSelected)).toBe(true);
+  });
+
+  it("resolveDeadline forces only the current relay actor's pass, using their last card", () => {
+    const e = newEngine(3);
+    reachPass(e, 3);
+    const hand = view(e, "p0").myHand;
+    const lastCard = hand[hand.length - 1];
+    e.resolveDeadline();
+    expect(view(e, "p1").myHand.some((c) => c.id === lastCard.id)).toBe(true);
+    expect(pub(e).currentPasserId).toBe("p1"); // only p0 was forced, not the whole table
   });
 
   it("bots drive themeSelect → shuffle → deal via pendingActors/applyAutoMove", () => {
@@ -203,6 +378,24 @@ describe("StarGameEngine — deadline auto-resolve & bots", () => {
     expect(pub(e).phase).toBe("deal");
     e.resolveDeadline();
     expect(pub(e).phase).toBe("pass");
+  });
+
+  it("bots drive the sequential relay one actor at a time via pendingActors/applyAutoMove", () => {
+    const e = newEngine(4, {}, true);
+    let guard = 0;
+    while (pub(e).phase !== "deal" && guard++ < 50) {
+      for (const id of e.pendingActors()) e.applyAutoMove(id);
+    }
+    e.resolveDeadline(); // deal -> pass
+    expect(pub(e).phase).toBe("pass");
+
+    guard = 0;
+    while (pub(e).phase === "pass" && guard++ < 200) {
+      const actors = e.pendingActors();
+      expect(actors.length).toBeLessThanOrEqual(1); // exactly one actor pending at a time
+      for (const id of actors) e.applyAutoMove(id);
+    }
+    expect(["star", "pass"]).toContain(pub(e).phase);
   });
 });
 

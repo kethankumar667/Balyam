@@ -42,4 +42,13 @@ export interface GameEngine {
    */
   pendingActors?(): string[];
   applyAutoMove?(playerId: string): MoveResult;
+
+  /**
+   * Optional per-engine override for how long a bot "thinks" before its
+   * next auto-move (RoomManager.scheduleBotMoveIfNeeded). Return a fresh
+   * randomized ms value each call — RoomManager calls this once per
+   * scheduled sub-move, not once per game. Omit to keep the platform
+   * default (1200-2000ms, RoomManager.ts).
+   */
+  getBotThinkDelayMs?(): number;
 }
