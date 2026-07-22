@@ -8,6 +8,13 @@
  * another entry into STAR_THEMES (this is the JSON-configurable seam the spec
  * asks for — no engine change needed, the engine reads values off the theme).
  *
+ * One deliberate exception: `id: "custom"` (below) ships with an EMPTY
+ * `values` list. It isn't a catalog at all — StarGameEngine special-cases
+ * this id in handleSelectValue() to accept free-typed text instead of a
+ * pick from `values`, so every player writes their own chit name. Client
+ * pickers branch on `themeId === "custom"` (see star-shared.tsx's
+ * CustomChitInput) to show a text field instead of the ThemeChitPicker grid.
+ *
  * Shared by client (theme picker) and server (deck generation), imported via
  * the @shared alias on both sides.
  */
@@ -19,7 +26,8 @@ export interface StarTheme {
   label: string;
   /** A short emoji used as the theme glyph (decorative, in-game playful UI). */
   glyph: string;
-  /** At least 8 distinct values (one per possible seat). */
+  /** At least 8 distinct values (one per possible seat) - except "custom",
+   *  which is intentionally empty (see the file header). */
   values: string[];
 }
 
@@ -130,7 +138,15 @@ export const STAR_THEMES: ReadonlyArray<StarTheme> = [
     id: "cartoonCharacters",
     label: "Cartoon Characters",
     glyph: "📺",
-    values: ["Tom", "Jerry", "Mickey Mouse", "Chhota Bheem", "Doraemon", "Shinchan", "Popeye", "Scooby-Doo"],
+    values: ["Tom", "Jerry", "Mickey Mouse", "Chhota Bheem", "Doraemon", "Shinchan", "Kick Buttowski", "Scooby-Doo"],
+  },
+  {
+    id: "custom",
+    label: "Custom",
+    glyph: "✍️",
+    // Intentionally empty — see the file header. Every player writes their
+    // own chit name instead of picking from a preset list.
+    values: [],
   },
 ];
 

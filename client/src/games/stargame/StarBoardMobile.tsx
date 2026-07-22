@@ -9,6 +9,7 @@ import {
   PAPER,
   Chit,
   ThemeChitPicker,
+  CustomChitInput,
   DraggableChitRail,
   StarButton,
   HandStackButton,
@@ -93,8 +94,9 @@ export default function StarBoardMobile(props: StarBoardProps) {
     return () => window.clearInterval(id);
   }, []);
 
-  // Shuffle flourish trigger — bumps once per player who completes their
-  // shuffle turn (server-authoritative count, not a local click guess).
+  // Shuffle flourish trigger — flips 0 -> 1 the instant the round's sole
+  // designated shuffler (the starter) completes their turn
+  // (server-authoritative, not a local click guess).
   const shuffledCount = m.seats.filter((s) => s.pub.hasShuffled).length;
 
   const selectedCount = m.seats.filter((s) => s.pub.hasSelected).length;
@@ -104,13 +106,21 @@ export default function StarBoardMobile(props: StarBoardProps) {
     switch (m.phase) {
       case "themeSelect":
         return m.iNeedToSelect ? (
-          <ThemeChitPicker
-            values={m.state.themeValues}
-            taken={m.state.takenValues}
-            selected={m.state.mySelectedValue}
-            onPick={m.selectValue}
-            glyph={m.theme.glyph}
-          />
+          m.state.themeId === "custom" ? (
+            <CustomChitInput
+              taken={m.state.takenValues}
+              selected={m.state.mySelectedValue}
+              onSubmit={m.selectValue}
+            />
+          ) : (
+            <ThemeChitPicker
+              values={m.state.themeValues}
+              taken={m.state.takenValues}
+              selected={m.state.mySelectedValue}
+              onPick={m.selectValue}
+              glyph={m.theme.glyph}
+            />
+          )
         ) : (
           <div className="space-y-2 text-center">
             <p className="font-script text-lg" style={{ color: PAPER.ink }}>
@@ -145,8 +155,8 @@ export default function StarBoardMobile(props: StarBoardProps) {
                 {m.nameOf(m.state.shuffleTurnId ?? "")} is shuffling…
               </p>
             )}
-            <p className="font-display text-sm font-bold tabular-nums" style={{ color: PAPER.brown }}>
-              {shuffledCount}/{m.seats.length} shuffled
+            <p className="text-xs" style={{ color: PAPER.pencil }}>
+              One shuffle locks the deck for round {m.round} — then dealing starts.
             </p>
           </div>
         );

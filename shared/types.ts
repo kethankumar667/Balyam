@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo";
 
 export interface Player {
   id: string;
@@ -31,6 +31,9 @@ export interface Player {
    * bots and pass-and-play local seats — they have no physical device.
    */
   needsRotation?: boolean;
+  /** For Bingo: bot difficulty tier, chosen when the host adds the bot in
+   *  the lobby. Only meaningful for isBot=true seats; humans never set it. */
+  bingoDifficulty?: BotDifficulty;
 }
 
 export interface ChatMessage {
@@ -60,6 +63,13 @@ export interface RoomPublicState {
   unoHistory: UnoRoundRecap[];
   /** UNO's own "House Champion" — crowned only for a race-to-target-score multi-round match (a single UNO round never crowns one, matching Rummy's single-mode-never-crowns precedent). Keyed by table name, same survives-room-collapse rationale as `champion`. UNO only. */
   unoChampion: UnoChampion | null;
+  /** Bingo's own round history — same "photo album" convention as UNO/Rummy
+   *  above, kept separate since Bingo's recap shape (winners + pattern +
+   *  called-count, no melds/cards) doesn't overlap either. No champion
+   *  concept — Bingo rounds are standalone rematches, not a race-to-target
+   *  multi-round match, so there's nothing to crown. Oldest first, Bingo
+   *  only — empty elsewhere. */
+  bingoHistory: BingoRoundRecap[];
 }
 
 /** One row of the room's UNO "photo album" — a finished round's recap. UNO only. */
@@ -1372,6 +1382,123 @@ export type StarMove =
   | StarNextRoundMove
   | StarReorderHandMove;
 
+// ---- Bingo ----
+//
+// 75-ball American Bingo. 5x5 board, columns B-I-N-G-O (1-15/16-30/31-45/
+// 46-60/61-75), center is FREE. Server owns board generation, the call
+// pool, every mark, and win validation — the client only ever renders
+// state and sends intents (claim / optional manual mark). See
+// docs/bingo/roadmap.md for the full design record.
+
+export type BingoLetter = "B" | "I" | "N" | "G" | "O";
+
+export interface BingoCell {
+  /** 0-24, row-major (index = row*5 + col). */
+  index: number;
+  letter: BingoLetter;
+  /** null only for the FREE cell (index 12). */
+  value: number | null;
+  free: boolean;
+  /** Server-computed at serialization time from the room's calledNumbers. */
+  marked: boolean;
+}
+
+/** Always length 25. Sent to a player ONLY inside their own BingoPlayerState
+ *  — never appears anywhere in the broadcast BingoPublicState, and never for
+ *  another player's id, even after the round ends (see BingoPlayerPublic). */
+export type BingoBoard = BingoCell[];
+
+export interface CalledNumber {
+  /** 1-75. */
+  value: number;
+  letter: BingoLetter;
+  /** 1-based call sequence within this round. */
+  order: number;
+  calledAt: number;
+}
+
+export type BingoPattern =
+  | "row0" | "row1" | "row2" | "row3" | "row4"
+  | "col0" | "col1" | "col2" | "col3" | "col4"
+  | "diagTL" | "diagTR"
+  | "fourCorners"
+  | "fullHouse";
+
+export interface BingoWinner {
+  playerId: string;
+  playerName: string;
+  pattern: BingoPattern;
+  claimedAt: number;
+  calledCountAtWin: number;
+}
+
+export type BotDifficulty = "easy" | "medium" | "hard";
+
+export interface BingoGameOptions {
+  /** Clamped server-side to a small allowed set regardless of what a
+   *  client sends — see DEFAULT_BINGO_OPTIONS and RoomManager.clampBingoOptions. */
+  callIntervalMs: number;
+  /** true (default): the round ends the instant the first valid claim
+   *  lands. false: calling continues until every active player has
+   *  resolved (won or the pool is exhausted), winners ranked by claim time. */
+  stopOnFirstWin: boolean;
+}
+
+export const BINGO_CALL_INTERVAL_TIERS = [2500, 4000, 6000] as const;
+
+export const DEFAULT_BINGO_OPTIONS: BingoGameOptions = {
+  callIntervalMs: 4000,
+  stopOnFirstWin: true,
+};
+
+/** Opponents see only the COUNT of marked cells — never which numbers, and
+ *  never the board itself, win or lose. */
+export interface BingoPlayerPublic {
+  id: string;
+  markedCount: number;
+  hasWon: boolean;
+  isBot: boolean;
+  isConnected: boolean;
+}
+
+/** One row of the room's Bingo "photo album" — a finished round's recap. */
+export interface BingoRoundRecap {
+  roundNumber: number;
+  winners: BingoWinner[];
+  calledCount: number;
+  ts: number;
+}
+
+export interface BingoPublicState {
+  kind: "bingo";
+  phase: "playing" | "finished";
+  players: BingoPlayerPublic[];
+  calledNumbers: CalledNumber[];
+  currentCall: CalledNumber | null;
+  /** Epoch ms the NEXT call fires — a display-only countdown; the actual
+   *  call is purely server-timer-driven, never client-raced. */
+  callDeadline: number | null;
+  winners: BingoWinner[];
+  roundNumber: number;
+  stopOnFirstWin: boolean;
+  isOver: boolean;
+  /** "poolExhausted" only when calling ran out with zero winners (possible
+   *  only under stopOnFirstWin=false). null otherwise, including mid-round. */
+  endReason: "poolExhausted" | null;
+}
+
+export interface BingoPlayerState extends BingoPublicState {
+  myBoard: BingoBoard;
+  myMarkedCount: number;
+  myPendingClaim: boolean;
+}
+
+/** Moves flow through the existing game:move envelope — no new socket
+ *  events are introduced for Bingo (see docs/bingo/roadmap.md). */
+export interface BingoMarkCellMove { type: "markCell"; data: { cellIndex: number }; }
+export interface BingoClaimMove { type: "claim"; }
+export type BingoMove = BingoMarkCellMove | BingoClaimMove;
+
 // ---- Socket event payloads ----
 export interface CreateRoomPayload {
   name: string;
@@ -1385,6 +1512,7 @@ export interface CreateRoomPayload {
   dotsBoxesOptions?: Partial<DotsBoxesOptions>;
   starGameOptions?: Partial<StarGameOptions>;
   unoOptions?: Partial<UnoGameOptions>;
+  bingoOptions?: Partial<BingoGameOptions>;
 }
 
 export interface SetTokenNicknamesPayload {
@@ -1512,7 +1640,8 @@ export interface ClientToServerEvents {
   ) => void;
   "room:leave": () => void;
   "room:setReady": (ready: boolean) => void;
-  "room:addBot": (botName?: string) => void;
+  /** `difficulty` is only meaningful for game === "bingo"; every other game ignores it. */
+  "room:addBot": (botName?: string, difficulty?: BotDifficulty) => void;
   "room:removeBot": (botId: string) => void;
   /** Pass & Play: host adds a local human seat with the given name. */
   "room:addLocalPlayer": (name: string) => void;

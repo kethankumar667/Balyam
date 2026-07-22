@@ -21,7 +21,8 @@ export function registerSocketHandlers(
         payload.wordBuildingOptions,
         payload.dotsBoxesOptions,
         payload.starGameOptions,
-        payload.unoOptions
+        payload.unoOptions,
+        payload.bingoOptions
       );
       ack({ ok: true, code, playerId });
     } catch (err) {
@@ -65,8 +66,8 @@ export function registerSocketHandlers(
     rooms.setRoomName(socket.id, name);
   });
 
-  socket.on("room:addBot", (botName) => {
-    rooms.addBot(socket.id, botName);
+  socket.on("room:addBot", (botName, difficulty) => {
+    rooms.addBot(socket.id, botName, difficulty);
   });
 
   socket.on("room:removeBot", (botId) => {

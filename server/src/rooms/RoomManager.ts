@@ -21,6 +21,9 @@ import type {
   UnoGameOptions,
   UnoChampion,
   UnoRoundRecap,
+  BingoGameOptions,
+  BingoRoundRecap,
+  BotDifficulty,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -32,6 +35,7 @@ import {
   DEFAULT_DOTSBOXES_OPTIONS,
   DEFAULT_STARGAME_OPTIONS,
   DEFAULT_UNO_OPTIONS,
+  DEFAULT_BINGO_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -47,6 +51,7 @@ import { DotsBoxesEngine } from "../games/dotsboxes/DotsBoxesEngine.js";
 import { RpsEngine } from "../games/rps/RpsEngine.js";
 import { StarGameEngine } from "../games/stargame/StarGameEngine.js";
 import { UnoEngine } from "../games/uno/UnoEngine.js";
+import { BingoEngine } from "../games/bingo/BingoEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 /** How long the host's rematch request stays open before auto-cancelling. */
@@ -57,6 +62,8 @@ const REMATCH_COUNTDOWN_MS = 3_000;
 const MAX_RUMMY_HISTORY = 20;
 /** Last N finished rounds kept per room, UNO's own history. */
 const MAX_UNO_HISTORY = 20;
+/** Last N finished rounds kept per room, Bingo's own history. */
+const MAX_BINGO_HISTORY = 20;
 
 /**
  * Per-game bot name pools. Each pool draws from the cultural texture of
@@ -76,6 +83,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   wordbuilding: ["Teacher Padma", "Master Ravi", "Miss Lakshmi", "Sir Krishna"],
   dotsboxes: ["Pencil", "Eraser", "Sharpener", "Ruler"],
   stargame: ["Pinky", "Chinnu", "Guddu", "Sweety", "Bujji", "Chitti", "Lucky", "Appu"],
+  bingo: ["Kanakam", "Padma", "Rajyam", "Saroja", "Venkat", "Nagesh", "Prasad", "Vani"],
 };
 
 function pickBotName(game: GameKind, idx: number): string {
@@ -117,6 +125,9 @@ interface Room {
    *  same "copy the pattern per game" rationale as its shared-types
    *  doc comment (RoomPublicState.unoHistory). */
   unoHistory: UnoRoundRecap[];
+  /** Bingo's own finished-round history, oldest first — same rationale
+   *  as `unoHistory` above. */
+  bingoHistory: BingoRoundRecap[];
   players: Map<string, Player>;
   socketToPlayer: Map<string, string>;
   engine: GameEngine | null;
@@ -130,6 +141,7 @@ interface Room {
   dotsBoxesOptions: DotsBoxesOptions;
   starGameOptions: StarGameOptions;
   unoOptions: UnoGameOptions;
+  bingoOptions: BingoGameOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -162,6 +174,8 @@ export class RoomManager {
   private lastRecordedRound = new WeakMap<RummyEngine, number>();
   /** Same idempotency guard as `lastRecordedRound`, scoped to UNO's own engine instances. */
   private lastRecordedUnoRound = new WeakMap<UnoEngine, number>();
+  /** Same idempotency guard as `lastRecordedUnoRound`, scoped to Bingo's own engine instances. */
+  private lastRecordedBingoRound = new WeakMap<BingoEngine, number>();
 
   constructor(private io: IO) {}
 
@@ -179,6 +193,7 @@ export class RoomManager {
       champion: room.name ? this.champions.get(room.name) ?? null : null,
       unoHistory: room.unoHistory,
       unoChampion: room.name ? this.unoChampions.get(room.name) ?? null : null,
+      bingoHistory: room.bingoHistory,
     };
   }
 
@@ -194,7 +209,8 @@ export class RoomManager {
     wordBuildingOptions?: Partial<WordBuildingOptions>,
     dotsBoxesOptions?: Partial<DotsBoxesOptions>,
     starGameOptions?: Partial<StarGameOptions>,
-    unoOptions?: Partial<UnoGameOptions>
+    unoOptions?: Partial<UnoGameOptions>,
+    bingoOptions?: Partial<BingoGameOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -216,6 +232,7 @@ export class RoomManager {
       name: null,
       history: [],
       unoHistory: [],
+      bingoHistory: [],
       players: new Map([[playerId, player]]),
       socketToPlayer: new Map([[socketId, playerId]]),
       engine: null,
@@ -229,6 +246,7 @@ export class RoomManager {
       dotsBoxesOptions: { ...DEFAULT_DOTSBOXES_OPTIONS, ...(dotsBoxesOptions ?? {}) },
       starGameOptions: { ...DEFAULT_STARGAME_OPTIONS, ...(starGameOptions ?? {}) },
       unoOptions: { ...DEFAULT_UNO_OPTIONS, ...(unoOptions ?? {}) },
+      bingoOptions: { ...DEFAULT_BINGO_OPTIONS, ...(bingoOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -353,7 +371,7 @@ export class RoomManager {
     this.broadcastRoomState(room);
   }
 
-  addBot(socketId: string, customName?: string): void {
+  addBot(socketId: string, customName?: string, difficulty?: BotDifficulty): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     if (player.id !== room.hostId) {
@@ -380,6 +398,7 @@ export class RoomManager {
       isReady: true,
       isConnected: true,
       isBot: true,
+      bingoDifficulty: difficulty ?? "medium",
     };
     room.players.set(botId, bot);
     this.broadcastRoomState(room);
@@ -625,6 +644,9 @@ export class RoomManager {
       }
       if (engine instanceof UnoEngine) {
         engine.setOptions(room.unoOptions);
+      }
+      if (engine instanceof BingoEngine) {
+        engine.setOptions(room.bingoOptions);
       }
       engine.init(playersList);
       room.engine = engine;
@@ -938,6 +960,19 @@ export class RoomManager {
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
     }
+    if (room.engine instanceof BingoEngine) {
+      const engine = room.engine;
+      if (engine.isOver()) {
+        engine.clearCallDeadline();
+        this.broadcastGameState(room);
+        return;
+      }
+      const ms = room.bingoOptions.callIntervalMs;
+      engine.setCallDeadline(Date.now() + ms);
+      this.broadcastGameState(room);
+      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      return;
+    }
   }
 
   private onTurnTimeout(room: Room): void {
@@ -1019,6 +1054,16 @@ export class RoomManager {
       // mechanic, not something the clock does for them).
       const actorId = engine.getTimeoutActor();
       if (actorId) engine.applyAutoMove(actorId);
+      this.afterAutoMove(room, engine.isOver());
+      return;
+    }
+    if (room.engine instanceof BingoEngine) {
+      const engine = room.engine;
+      if (engine.isOver()) return;
+      // No per-player timeout actor — BINGO's clock just calls the next
+      // number. Any bot claims that unlocks are picked up by the generic
+      // scheduleBotMoveIfNeeded() inside afterAutoMove below.
+      engine.callNext();
       this.afterAutoMove(room, engine.isOver());
       return;
     }
@@ -1225,6 +1270,7 @@ export class RoomManager {
     }
     this.recordRummyRoundIfFinished(room);
     this.recordUnoRoundIfFinished(room);
+    this.recordBingoRoundIfFinished(room);
   }
 
   /**
@@ -1318,6 +1364,29 @@ export class RoomManager {
         finalScore: recap.scores[recap.winnerId] ?? 0,
       });
     }
+  }
+
+  /**
+   * Append a finished Bingo round to room.bingoHistory (docs/bingo/roadmap.md)
+   * — same idempotent-per-broadcast shape as recordRummyRoundIfFinished /
+   * recordUnoRoundIfFinished above. No champion concept for Bingo (see the
+   * RoomPublicState.bingoHistory doc comment) — just the recap log.
+   */
+  private recordBingoRoundIfFinished(room: Room): void {
+    if (!(room.engine instanceof BingoEngine)) return;
+    const engine = room.engine;
+    const state = engine.getPublicState();
+    if (state.phase !== "finished") return;
+    if (this.lastRecordedBingoRound.get(engine) === state.roundNumber) return;
+    this.lastRecordedBingoRound.set(engine, state.roundNumber);
+
+    room.bingoHistory.push({
+      roundNumber: state.roundNumber,
+      winners: state.winners,
+      calledCount: state.calledNumbers.length,
+      ts: Date.now(),
+    });
+    if (room.bingoHistory.length > MAX_BINGO_HISTORY) room.bingoHistory.shift();
   }
 
   /* ───────────────────────────── Rematch flow ───────────────────────────── */
@@ -1454,6 +1523,7 @@ export class RoomManager {
       if (engine instanceof DotsBoxesEngine) engine.setOptions(room.dotsBoxesOptions);
       if (engine instanceof StarGameEngine) engine.setOptions(room.starGameOptions);
       if (engine instanceof UnoEngine) engine.setOptions(room.unoOptions);
+      if (engine instanceof BingoEngine) engine.setOptions(room.bingoOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

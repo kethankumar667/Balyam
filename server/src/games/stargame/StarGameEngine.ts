@@ -16,6 +16,10 @@ import { keyBetween } from "@shared/frac-index.js";
 
 const TOKENS_PER_VALUE = 4;
 const ACTIVITY_CAP = 80;
+/** Longest a free-typed custom chit name may be (themeId === "custom").
+ *  Comfortably covers the longest preset catalog value ("Subhas Chandra
+ *  Bose", 20 chars) with room to spare. */
+const CUSTOM_CHIT_MAX_LEN = 24;
 
 /** Between-round nostalgic interstitials (the emotional finishing touch). */
 const NOSTALGIA: ReadonlyArray<string> = [
@@ -88,7 +92,6 @@ export class StarGameEngine implements GameEngine {
   private cardSeq = 0;
 
   private hasShuffled = new Set<string>();
-  private shuffleIdx = 0;
 
   private armed = new Map<string, string>();
   private committed = new Set<string>();
@@ -192,7 +195,6 @@ export class StarGameEngine implements GameEngine {
   private startShuffle(): void {
     this.phase = "shuffle";
     this.hasShuffled.clear();
-    this.shuffleIdx = 0;
     this.armed.clear();
     this.committed.clear();
     this.stackOrder = [];
@@ -200,13 +202,20 @@ export class StarGameEngine implements GameEngine {
     this.winningValue = null;
     this.deadline = null;
     // Round starter rotates by round number (seating order, wraps for any
-    // player count) — fixed for every lap within this round.
+    // player count) — fixed for every lap within this round. The starter
+    // is ALSO this round's sole shuffler (handleShuffle below) — one
+    // shuffle, by one player, is all Fisher-Yates needs for a uniformly
+    // random deck; the old "everyone takes a turn" loop added ceremony
+    // but no extra randomness.
     const starterIdx = (this.round - 1) % this.seatOrder.length;
     this.starterId = this.seatOrder[starterIdx];
     this.passOrder = [...this.seatOrder.slice(starterIdx), ...this.seatOrder.slice(0, starterIdx)];
     this.passTurnIndex = 0;
     this.lastPass = null;
-    this.addActivity("shuffle", "Shuffle ceremony — each player gives the chits a mix.");
+    this.addActivity(
+      "shuffle",
+      `Shuffle ceremony — ${this.nameOf.get(this.starterId) ?? "the starter"} gives the chits a mix.`,
+    );
   }
 
   private fisherYates(): void {
@@ -292,14 +301,29 @@ export class StarGameEngine implements GameEngine {
     }
   }
 
-  private handleSelectValue(pid: string, value: string | undefined): MoveResult {
+  private handleSelectValue(pid: string, rawValue: string | undefined): MoveResult {
     if (this.phase !== "themeSelect") return { ok: false, error: "Not the selection phase" };
     if (this.selectedValue.has(pid)) return { ok: false, error: "You already picked" };
-    if (!value || !this.themeValues.includes(value)) return { ok: false, error: "Invalid value" };
-    for (const [other, v] of this.selectedValue) {
-      if (other !== pid && v === value) {
-        return { ok: false, error: "Someone already chose that — pick another" };
+    const isCustom = this.opts.themeId === "custom";
+    let value: string;
+    if (isCustom) {
+      const trimmed = rawValue?.trim() ?? "";
+      if (!trimmed) return { ok: false, error: "Enter a chit name" };
+      if (trimmed.length > CUSTOM_CHIT_MAX_LEN) {
+        return { ok: false, error: `Keep it under ${CUSTOM_CHIT_MAX_LEN} characters` };
       }
+      value = trimmed;
+    } else {
+      if (!rawValue || !this.themeValues.includes(rawValue)) return { ok: false, error: "Invalid value" };
+      value = rawValue;
+    }
+    for (const [other, v] of this.selectedValue) {
+      if (other === pid) continue;
+      // Custom names dedupe case-insensitively ("Cat" vs "cat") since
+      // players type freely; preset catalog values are already canonical
+      // strings, so an exact match is the right (and cheaper) check.
+      const collides = isCustom ? v.toLowerCase() === value.toLowerCase() : v === value;
+      if (collides) return { ok: false, error: "Someone already chose that — pick another" };
     }
     this.selectedValue.set(pid, value);
     if (this.selectedValue.size === this.seatOrder.length) {
@@ -308,16 +332,15 @@ export class StarGameEngine implements GameEngine {
     return this.result();
   }
 
+  /** Exactly one shuffle, by this round's designated starter — see
+   *  startShuffle()'s comment. Moves straight to deal on success. */
   private handleShuffle(pid: string): MoveResult {
     if (this.phase !== "shuffle") return { ok: false, error: "Not the shuffle phase" };
-    if (this.seatOrder[this.shuffleIdx] !== pid) return { ok: false, error: "Not your shuffle turn" };
+    if (pid !== this.starterId) return { ok: false, error: "Not your shuffle turn" };
     this.fisherYates();
     this.hasShuffled.add(pid);
-    this.shuffleIdx += 1;
     this.deadline = null;
-    if (this.shuffleIdx >= this.seatOrder.length) {
-      this.startDeal();
-    }
+    this.startDeal();
     return this.result();
   }
 
@@ -545,7 +568,7 @@ export class StarGameEngine implements GameEngine {
       winningPoints: this.opts.winningPoints ?? null,
       seatOrder: [...this.seatOrder],
       players: this.publicPlayers(),
-      shuffleTurnId: this.phase === "shuffle" ? this.seatOrder[this.shuffleIdx] ?? null : null,
+      shuffleTurnId: this.phase === "shuffle" ? this.starterId || null : null,
       deadline: this.deadline,
       valuesInPlay: [...this.valuesInPlay],
       starWinnerId: this.starWinnerId,
@@ -594,7 +617,8 @@ export class StarGameEngine implements GameEngine {
     this.committed.delete(playerId);
     this.stackOrder = this.stackOrder.filter((id) => id !== playerId);
     if (this.starWinnerId === playerId) this.starWinnerId = null;
-    if (this.shuffleIdx > this.seatOrder.length) this.shuffleIdx = this.seatOrder.length;
+    // (no shuffleIdx bookkeeping needed anymore - shuffle is a single
+    // starter-only action, not a seatOrder walk.)
     // Keep the relay route consistent with the shrunken table so a departed
     // player's old slot never gets looked up mid-lap.
     if (this.passOrder.includes(playerId)) {
@@ -655,10 +679,7 @@ export class StarGameEngine implements GameEngine {
         break;
       }
       case "shuffle": {
-        let guard = 0;
-        while (this.phase === "shuffle" && guard++ < this.seatOrder.length + 1) {
-          this.handleShuffle(this.seatOrder[this.shuffleIdx]);
-        }
+        if (this.starterId) this.handleShuffle(this.starterId);
         break;
       }
       case "deal":
@@ -693,6 +714,12 @@ export class StarGameEngine implements GameEngine {
   }
 
   private firstFreeValue(): string {
+    if (this.opts.themeId === "custom") {
+      const taken = new Set([...this.selectedValue.values()].map((v) => v.toLowerCase()));
+      let n = 1;
+      while (taken.has(`chit ${n}`.toLowerCase())) n++;
+      return `Chit ${n}`;
+    }
     const taken = new Set(this.selectedValue.values());
     return this.themeValues.find((v) => !taken.has(v)) ?? this.themeValues[0];
   }
@@ -704,7 +731,7 @@ export class StarGameEngine implements GameEngine {
       case "themeSelect":
         return this.seatOrder.filter((pid) => !this.selectedValue.has(pid));
       case "shuffle":
-        return this.seatOrder[this.shuffleIdx] ? [this.seatOrder[this.shuffleIdx]] : [];
+        return this.starterId ? [this.starterId] : [];
       case "pass":
         return this.passOrder[this.passTurnIndex] ? [this.passOrder[this.passTurnIndex]] : [];
       case "star":

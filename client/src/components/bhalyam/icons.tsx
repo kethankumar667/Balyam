@@ -213,6 +213,15 @@ export const StarGameGlyph = makeIcon(
   </>,
 );
 
+export const BingoGlyph = makeIcon(
+  <>
+    {/* 5x5 ticket grid with the center FREE cell dabbed. */}
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M3 7.8h18M3 12.6h18M3 17.4h18M7.8 3v18M12.6 3v18M17.4 3v18" />
+    <circle cx="12.6" cy="12.6" r="1.6" fill="currentColor" stroke="none" />
+  </>,
+);
+
 // Back-compat re-export: existing imports keep working while the home
 // header now uses GamepadGlyph for clearer "games" reading.
 export const JoystickGlyph = GamepadGlyph;

@@ -28,11 +28,13 @@ import LudoBoard from "../games/ludo/LudoBoard";
 import SnlBoard from "../games/snl/SnlBoard";
 import HandCricketBoard from "../games/handcricket/HandCricketBoard";
 import UnoBoard from "../games/uno/UnoBoard";
-import type { GameKind, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState } from "@shared/types";
+import type { GameKind, Player, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
 import WordBuildingBoard from "../games/wordbuilding/WordBuildingBoard";
 import DotsBoxesBoard from "../games/dotsboxes/DotsBoxesBoard";
 import StarBoard from "../games/stargame/StarBoard";
 import type { StarPlayerView } from "@shared/types";
+import BingoBoard from "../games/bingo/BingoBoard";
+import type { BingoPlayerState } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -49,6 +51,7 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   wordbuilding: 4,
   dotsboxes: 4,
   stargame: 8,
+  bingo: 8,
 };
 
 /**
@@ -86,13 +89,20 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 function BotControls({
   players,
   maxPlayers,
+  game,
 }: {
-  players: import("@shared/types").Player[];
+  players: Player[];
   maxPlayers: number;
+  game: GameKind;
 }) {
   const [botName, setBotName] = useState("");
+  const [bingoDifficulty, setBingoDifficulty] = useState<BotDifficulty>("medium");
   function addBot() {
-    getSocket().emit("room:addBot", botName.trim() || undefined);
+    getSocket().emit(
+      "room:addBot",
+      botName.trim() || undefined,
+      game === "bingo" ? bingoDifficulty : undefined,
+    );
     setBotName("");
   }
   function removeBot(id: string) {
@@ -108,6 +118,25 @@ function BotControls({
           Bots {atCapacity ? "· table full" : `· ${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`}
         </h3>
       </div>
+      {game === "bingo" && (
+        <div className="flex items-center gap-1.5">
+          {(["easy", "medium", "hard"] as BotDifficulty[]).map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setBingoDifficulty(d)}
+              disabled={atCapacity}
+              className={`text-[11px] px-2 py-1 rounded-full font-semibold capitalize border transition ${
+                bingoDifficulty === d
+                  ? "bg-[#31A157] border-[#2A8B4B] text-white"
+                  : "bg-white border-[#D9C9B0] text-[#796651]"
+              } disabled:opacity-50`}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -163,7 +192,7 @@ function BotControls({
 const SCORECARD_WINDOW_MS = 90_000;
 /** Games that render their own end-of-round scorecard modal and call back
  *  via onScorecardClose. GenericScorecardModal is suppressed for these. */
-const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket", "uno"]);
+const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket", "uno", "bingo"]);
 
 export default function Room() {
   const { code } = useParams<{ code: string }>();
@@ -530,6 +559,7 @@ export default function Room() {
     wordbuilding: "Word Building",
     dotsboxes:    "Dots & Boxes",
     stargame:     "Star Game",
+    bingo:        "Bingo",
   };
   const gameOverGameName = roomState
     ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)
@@ -663,6 +693,7 @@ export default function Room() {
                   <BotControls
                     players={roomState.players}
                     maxPlayers={MAX_PLAYERS_BY_GAME[roomState.game] ?? 4}
+                    game={roomState.game}
                   />
                 )}
                 <div className="flex justify-center gap-3">
@@ -871,6 +902,19 @@ export default function Room() {
                 roomCode={roomState.code}
                 messages={messages}
                 roomPhase={roomState.phase}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "bingo" && gameState != null && !showGameOver && (
+              <BingoBoard
+                state={gameState as BingoPlayerState}
+                players={roomState.players}
+                selfId={playerId}
+                messages={messages}
+                roomCode={roomState.code}
+                roomPhase={roomState.phase}
+                onLeave={leaveRoom}
+                onScorecardClose={triggerGameOver}
               />
             )}
 

@@ -241,6 +241,98 @@ export function ThemeChitPicker({
   );
 }
 
+/**
+ * themeSelect (custom theme): write your own chit name instead of picking
+ * from a preset list — same "taped paper slip" visual language as
+ * ThemeChitPicker, a text field standing in for the value grid. Locks the
+ * moment `onSubmit` fires; the server is the sole authority on validity
+ * (length cap, non-empty, case-insensitive uniqueness) — this just gives
+ * instant client-side feedback so a doomed submit never round-trips.
+ */
+const CUSTOM_CHIT_MAX_LEN = 24;
+
+export function CustomChitInput({
+  taken,
+  selected,
+  onSubmit,
+}: {
+  taken: string[];
+  selected: string | null;
+  onSubmit: (value: string) => void;
+}) {
+  const [text, setText] = useState(selected ?? "");
+  const locked = selected != null;
+  const trimmed = text.trim();
+  const takenLower = useMemo(() => new Set(taken.map((t) => t.toLowerCase())), [taken]);
+  const isDuplicate = trimmed.length > 0 && takenLower.has(trimmed.toLowerCase());
+  const canSubmit = !locked && trimmed.length > 0 && trimmed.length <= CUSTOM_CHIT_MAX_LEN && !isDuplicate;
+
+  function submit() {
+    if (!canSubmit) return;
+    onSubmit(trimmed);
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-xs space-y-3">
+      <div
+        className="relative rounded-lg px-4 py-4 text-center"
+        style={{
+          background: locked
+            ? `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})`
+            : `linear-gradient(160deg, ${PAPER.paper}, #F1E4C9)`,
+          border: `1.5px solid ${locked ? PAPER.brown : PAPER.rim}`,
+          boxShadow: locked
+            ? "0 10px 18px -6px rgba(166,83,31,0.45)"
+            : "0 5px 11px -4px rgba(70,41,21,0.28), inset 0 1px 0 rgba(255,255,255,0.6)",
+        }}
+      >
+        <Tape className="-top-1.5 left-1/2 -translate-x-1/2" rotate={-3} />
+        <input
+          type="text"
+          value={locked ? (selected ?? "") : text}
+          onChange={(e) => !locked && setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+          }}
+          disabled={locked}
+          maxLength={CUSTOM_CHIT_MAX_LEN}
+          placeholder="Write your own chit name…"
+          aria-label="Your custom chit name"
+          className="w-full bg-transparent text-center font-script text-lg font-bold outline-none placeholder:opacity-50 disabled:cursor-not-allowed"
+          style={{ color: PAPER.ink }}
+        />
+        {locked && <span aria-hidden className="ml-1">✓</span>}
+      </div>
+      {!locked && (
+        <>
+          {isDuplicate ? (
+            <p className="text-center text-[11px] font-sans italic" style={{ color: PAPER.clay }}>
+              Someone already picked that — try another.
+            </p>
+          ) : (
+            <p className="text-center text-[11px] font-sans" style={{ color: PAPER.pencil }}>
+              {trimmed.length}/{CUSTOM_CHIT_MAX_LEN}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!canSubmit}
+            className="w-full rounded-lg py-2.5 font-sans text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
+            style={{
+              background: `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})`,
+              color: PAPER.ink,
+              border: `1.5px solid ${PAPER.brown}`,
+            }}
+          >
+            Lock it in
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** The player's own four chits — tap to arm the one you'll slide clockwise. */
 export function HandRail({
   hand,
@@ -560,10 +652,16 @@ export function SeatTile({
   seat,
   active = false,
   showScore = true,
+  phase,
 }: {
   seat: StarSeat;
   active?: boolean;
   showScore?: boolean;
+  /** Gates the "ready" badge to the shuffle phase only - `hasShuffled`
+   *  stays false forever for every seat except the round's one starter
+   *  (single-shuffler model), so without this gate every other player's
+   *  tile would misleadingly show "ready" through pass/star/handstack too. */
+  phase?: StarPhase;
 }) {
   const { pub, name, isSelf, isBot, isConnected } = seat;
   let badge = "";
@@ -571,7 +669,7 @@ export function SeatTile({
   if (pub.starEligible) { badge = "★ four!"; badgeColor = PAPER.clay; }
   else if (pub.hasPassed) { badge = "passed ✓"; badgeColor = PAPER.green; }
   else if (pub.hasStacked) { badge = "stacked"; badgeColor = PAPER.olive; }
-  else if (pub.hasSelected && !pub.hasShuffled) badge = "ready";
+  else if (pub.hasSelected && phase === "shuffle" && !pub.hasShuffled) badge = "ready";
   return (
     <motion.div
       animate={active ? { scale: [1, 1.03, 1] } : { scale: 1 }}

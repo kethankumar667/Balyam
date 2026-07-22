@@ -9,6 +9,7 @@ import { UnoEngine } from "./uno/UnoEngine.js";
 import { WordBuildingEngine } from "./wordbuilding/WordBuildingEngine.js";
 import { DotsBoxesEngine } from "./dotsboxes/DotsBoxesEngine.js";
 import { StarGameEngine } from "./stargame/StarGameEngine.js";
+import { BingoEngine } from "./bingo/BingoEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
   switch (kind) {
@@ -30,6 +31,8 @@ export function createEngine(kind: GameKind): GameEngine {
       return new DotsBoxesEngine();
     case "stargame":
       return new StarGameEngine();
+    case "bingo":
+      return new BingoEngine();
     default:
       throw new Error(`Game not implemented yet: ${kind}`);
   }
@@ -55,5 +58,7 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
       return { min: 2, max: 4 };
     case "stargame":
       return { min: 3, max: 8 };
+    case "bingo":
+      return { min: 2, max: 8 };
   }
 }
