@@ -34,6 +34,7 @@ import {
   SamethaluGlyph,
   GamepadGlyph,
   StarGameGlyph,
+  BingoGlyph,
 } from "../components/bhalyam/icons";
 
 /**
@@ -67,6 +68,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   samethalu: SamethaluGlyph,
   telugucinemalu: TeluguCinemaluGlyph,
   stargame: StarGameGlyph,
+  bingo: BingoGlyph,
 };
 
 export default function BhalyamHome() {
@@ -998,7 +1000,8 @@ export function GameTile({
     tambola: "/Tambola.png",
     samethalu: "/SamethaluTile.png",
     telugucinemalu: "/telugu cinemalu.png",
-    stargame: "/StarTile.png",
+  stargame: "/StarTile.png",
+  bingo: "",
   };
 
   const underMaintenance = isLocked(game);

@@ -35,6 +35,7 @@ import {
   TeluguCinemaluGlyph,
   SamethaluGlyph,
   StarGameGlyph,
+  BingoGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   samethalu: SamethaluGlyph,
   telugucinemalu: TeluguCinemaluGlyph,
   stargame: StarGameGlyph,
+  bingo: BingoGlyph,
 };
 
 /**
@@ -83,7 +85,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  * makes the narrowing explicit so callers don't need a wide cast.
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
-  "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame",
+  "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
@@ -131,6 +133,19 @@ const UNO_MATCH_LENGTHS: { id: "single" | "300" | "500" | "1000"; label: string;
   { id: "300",    label: "Race to 300",   blurb: "Quick multi-round match." },
   { id: "500",    label: "Race to 500",   blurb: "Mattel's official match length." },
   { id: "1000",   label: "Race to 1000",  blurb: "Long, high-drama session." },
+];
+
+// Bingo call pace (docs/bingo/roadmap.md) — how often the caller reads the
+// next number. Values mirror shared/types.ts's BINGO_CALL_INTERVAL_TIERS.
+const BINGO_CALL_SPEEDS: { id: "2500" | "4000" | "6000"; label: string; blurb: string }[] = [
+  { id: "2500", label: "Fast",     blurb: "New number every 2.5s — quickfire round." },
+  { id: "4000", label: "Standard", blurb: "New number every 4s — the default pace." },
+  { id: "6000", label: "Relaxed",  blurb: "New number every 6s — more time to mark." },
+];
+// Single-winner vs "play it out" — matches the stopOnFirstWin option.
+const BINGO_WIN_MODES: { id: "first" | "all"; label: string; blurb: string }[] = [
+  { id: "first", label: "First win ends it", blurb: "Round ends the instant someone claims BINGO." },
+  { id: "all",   label: "Play it out",       blurb: "Calling continues until everyone's resolved, ranked by claim time." },
 ];
 
 // UNO house rules (Volume 4 §28-34) — private-room-only options the engine
@@ -229,6 +244,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [unoTurnTimer, setUnoTurnTimer] = useState<"10" | "20" | "30" | "0">("20");
   const [unoMatchLength, setUnoMatchLength] = useState<"single" | "300" | "500" | "1000">("single");
   const [unoHouseRules, setUnoHouseRules] = useState<Record<UnoHouseRuleKey, boolean>>(UNO_DEFAULT_HOUSE_RULES);
+  const [bingoCallSpeed, setBingoCallSpeed] = useState<"2500" | "4000" | "6000">("4000");
+  const [bingoWinMode, setBingoWinMode] = useState<"first" | "all">("first");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   /**
@@ -262,6 +279,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setUnoTurnTimer("20");
       setUnoMatchLength("single");
       setUnoHouseRules(UNO_DEFAULT_HOUSE_RULES);
+      setBingoCallSpeed("4000");
+      setBingoWinMode("first");
     }
   }, [game, playerName]);
 
@@ -337,6 +356,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 turnTimerSeconds: Number(unoTurnTimer),
                 targetScore: unoMatchLength === "single" ? null : Number(unoMatchLength),
                 ...unoHouseRules,
+              }
+            : undefined,
+        bingoOptions:
+          game === "bingo"
+            ? {
+                callIntervalMs: Number(bingoCallSpeed),
+                stopOnFirstWin: bingoWinMode === "first",
               }
             : undefined,
       },
@@ -742,6 +768,27 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   items={STAR_PASS_SPEEDS}
                   value={starPassSpeed}
                   onChange={(v) => setStarPassSpeed(v as "normal" | "fast")}
+                  cols={2}
+                />
+              </Field>
+            </>
+          )}
+
+          {game === "bingo" && (
+            <>
+              <Field label="Call speed">
+                <OptionGrid
+                  items={BINGO_CALL_SPEEDS}
+                  value={bingoCallSpeed}
+                  onChange={setBingoCallSpeed}
+                  cols={3}
+                />
+              </Field>
+              <Field label="Win condition">
+                <OptionGrid
+                  items={BINGO_WIN_MODES}
+                  value={bingoWinMode}
+                  onChange={setBingoWinMode}
                   cols={2}
                 />
               </Field>

@@ -19,6 +19,7 @@ import {
   StarButton,
   StarTable,
   ThemeChitPicker,
+  CustomChitInput,
   ValuesLegend,
   GrainOverlay,
   PAGE_BG,
@@ -139,7 +140,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
           <Panel title="Players" bodyClass="space-y-1.5">
             {m.seats.map((s) => (
-              <SeatTile key={s.id} seat={s} active={isActiveSeat(s)} />
+              <SeatTile key={s.id} seat={s} active={isActiveSeat(s)} phase={m.phase} />
             ))}
           </Panel>
 
@@ -320,15 +321,25 @@ function CenterContent({
           {m.iNeedToSelect ? (
             <>
               <p className="text-sm" style={{ color: PAPER.pencil }}>
-                Tap one chit to lock it. Nobody sees your choice.
+                {m.state.themeId === "custom"
+                  ? "Write your own chit name. Nobody sees your choice."
+                  : "Tap one chit to lock it. Nobody sees your choice."}
               </p>
-              <ThemeChitPicker
-                values={m.state.themeValues}
-                taken={m.state.takenValues}
-                selected={m.state.mySelectedValue}
-                onPick={m.selectValue}
-                glyph={m.theme.glyph}
-              />
+              {m.state.themeId === "custom" ? (
+                <CustomChitInput
+                  taken={m.state.takenValues}
+                  selected={m.state.mySelectedValue}
+                  onSubmit={m.selectValue}
+                />
+              ) : (
+                <ThemeChitPicker
+                  values={m.state.themeValues}
+                  taken={m.state.takenValues}
+                  selected={m.state.mySelectedValue}
+                  onPick={m.selectValue}
+                  glyph={m.theme.glyph}
+                />
+              )}
             </>
           ) : (
             <div className="space-y-3">
@@ -375,7 +386,7 @@ function CenterContent({
             </p>
           )}
           <p className="text-sm" style={{ color: PAPER.pencil }}>
-            {shuffledCount}/{m.seats.length} shuffled
+            One shuffle locks the deck for round {m.round} — then dealing starts.
           </p>
         </div>
       );

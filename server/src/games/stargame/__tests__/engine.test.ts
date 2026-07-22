@@ -38,9 +38,11 @@ function reachPass(e: StarGameEngine, n: number): void {
     e.applyMove({ playerId: `p${i}`, type: "selectValue", data: { value: COLORS[i] } });
   }
   expect(pub(e).phase).toBe("shuffle");
-  for (let i = 0; i < n; i++) {
-    e.applyMove({ playerId: `p${i}`, type: "shuffle" });
-  }
+  // Exactly one shuffle, by the round's designated starter — everyone
+  // else is locked out (see the "anti-cheat & validation" describe block).
+  const shuffler = pub(e).shuffleTurnId!;
+  expect(shuffler).toBe(pub(e).starterId);
+  e.applyMove({ playerId: shuffler, type: "shuffle" });
   expect(pub(e).phase).toBe("deal");
   e.resolveDeadline(); // deal beat → pass
   expect(pub(e).phase).toBe("pass");
@@ -50,9 +52,9 @@ function reachPass(e: StarGameEngine, n: number): void {
  *  entirely (values are locked in once, for the whole game). */
 function reshuffleAndDeal(e: StarGameEngine, n: number): void {
   expect(pub(e).phase).toBe("shuffle");
-  for (let i = 0; i < n; i++) {
-    e.applyMove({ playerId: `p${i}`, type: "shuffle" });
-  }
+  const shuffler = pub(e).shuffleTurnId!;
+  expect(shuffler).toBe(pub(e).starterId);
+  e.applyMove({ playerId: shuffler, type: "shuffle" });
   expect(pub(e).phase).toBe("deal");
   e.resolveDeadline();
   expect(pub(e).phase).toBe("pass");
@@ -277,6 +279,27 @@ describe("StarGameEngine — round starter rotation", () => {
     expect(pub(e).starterId).toBe("p2");
     expect(pub(e).passOrder).toEqual(["p2", "p3", "p0", "p1"]);
   });
+
+  it("only the round's rotated starter may shuffle - not whoever shuffled last round", () => {
+    const e = newEngine(4, { totalRounds: 3 });
+    reachPass(e, 4); // round 1 starter = p0, already consumed by reachPass
+    driveToStar(e, 4);
+    finishRoundViaStar(e, 4);
+    e.applyMove({ playerId: "p0", type: "nextRound" });
+
+    // Round 2's starter rotates to p1 - p0 (last round's shuffler) is now
+    // locked out, even though it used to be seatOrder[0].
+    expect(pub(e).phase).toBe("shuffle");
+    expect(pub(e).starterId).toBe("p1");
+    expect(pub(e).shuffleTurnId).toBe("p1");
+    expect(e.applyMove({ playerId: "p0", type: "shuffle" }).ok).toBe(false);
+    expect(pub(e).phase).toBe("shuffle"); // unmoved by the rejected attempt
+    expect(e.applyMove({ playerId: "p1", type: "shuffle" }).ok).toBe(true);
+    // A single shuffle is sufficient - straight to deal, no further
+    // per-player shuffle turns to take.
+    expect(pub(e).phase).toBe("deal");
+    expect(pub(e).players.filter((p) => p.hasShuffled)).toHaveLength(1);
+  });
 });
 
 describe("StarGameEngine — STAR, hand-stack, scoring & podium", () => {
@@ -454,5 +477,97 @@ describe("frac-index ordering", () => {
     const mid = keyBetween(keys[0], keys[1]);
     expect(mid > keys[0]).toBe(true);
     expect(mid < keys[1]).toBe(true);
+  });
+});
+
+describe("StarGameEngine — custom chit names (themeId: custom)", () => {
+  function newCustomEngine(n: number, opts: Record<string, unknown> = {}): StarGameEngine {
+    const e = new StarGameEngine();
+    e.setRng(() => 0.42);
+    e.setOptions({ themeId: "custom", totalRounds: 1, passSpeed: "normal", ...opts });
+    e.init(makePlayers(n));
+    return e;
+  }
+
+  it("ships an empty preset list - the client must show a text field, not a picker", () => {
+    const e = newCustomEngine(3);
+    expect(view(e, "p0").themeValues).toEqual([]);
+  });
+
+  it("accepts a free-typed, trimmed chit name", () => {
+    const e = newCustomEngine(3);
+    const res = e.applyMove({ playerId: "p0", type: "selectValue", data: { value: "  Rahul's Bike  " } });
+    expect(res.ok).toBe(true);
+    expect(view(e, "p0").mySelectedValue).toBe("Rahul's Bike");
+  });
+
+  it("rejects an empty or whitespace-only name", () => {
+    const e = newCustomEngine(3);
+    expect(e.applyMove({ playerId: "p0", type: "selectValue", data: { value: "" } }).ok).toBe(false);
+    expect(e.applyMove({ playerId: "p0", type: "selectValue", data: { value: "   " } }).ok).toBe(false);
+    expect(e.applyMove({ playerId: "p0", type: "selectValue", data: {} }).ok).toBe(false);
+  });
+
+  it("rejects a name over the max length", () => {
+    const e = newCustomEngine(3);
+    const res = e.applyMove({
+      playerId: "p0",
+      type: "selectValue",
+      data: { value: "This name is definitely way too long" },
+    });
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/characters/);
+  });
+
+  it("dedupes custom names case-insensitively", () => {
+    const e = newCustomEngine(3);
+    expect(e.applyMove({ playerId: "p0", type: "selectValue", data: { value: "Tiger" } }).ok).toBe(true);
+    expect(e.applyMove({ playerId: "p1", type: "selectValue", data: { value: "tiger" } }).ok).toBe(false);
+    expect(e.applyMove({ playerId: "p1", type: "selectValue", data: { value: "  TIGER  " } }).ok).toBe(false);
+    expect(e.applyMove({ playerId: "p1", type: "selectValue", data: { value: "Lion" } }).ok).toBe(true);
+  });
+
+  it("still allows two DIFFERENT preset-catalog-shaped strings that only collide under custom's case-fold", () => {
+    const e = newCustomEngine(3);
+    expect(e.applyMove({ playerId: "p0", type: "selectValue", data: { value: "Sachin" } }).ok).toBe(true);
+    expect(e.applyMove({ playerId: "p1", type: "selectValue", data: { value: "Dhoni" } }).ok).toBe(true);
+    expect(e.applyMove({ playerId: "p2", type: "selectValue", data: { value: "Kohli" } }).ok).toBe(true);
+    expect(pub(e).phase).toBe("shuffle"); // all distinct -> deck builds fine
+  });
+
+  it("plays a full round end to end with custom names, one shuffler, single-round rotation", () => {
+    const e = newCustomEngine(4);
+    expect(
+      e.applyMove({ playerId: "p0", type: "selectValue", data: { value: "Auto Rickshaw" } }).ok,
+    ).toBe(true);
+    expect(e.applyMove({ playerId: "p1", type: "selectValue", data: { value: "Cycle" } }).ok).toBe(true);
+    expect(e.applyMove({ playerId: "p2", type: "selectValue", data: { value: "Scooter" } }).ok).toBe(true);
+    expect(e.applyMove({ playerId: "p3", type: "selectValue", data: { value: "Bus" } }).ok).toBe(true);
+
+    expect(pub(e).phase).toBe("shuffle");
+    const shuffler = pub(e).shuffleTurnId!;
+    expect(shuffler).toBe(pub(e).starterId);
+    e.applyMove({ playerId: shuffler, type: "shuffle" });
+    expect(pub(e).phase).toBe("deal");
+    e.resolveDeadline();
+    expect(pub(e).phase).toBe("pass");
+    expect(pub(e).valuesInPlay.sort()).toEqual(
+      ["Auto Rickshaw", "Bus", "Cycle", "Scooter"].sort(),
+    );
+
+    driveToStar(e, 4);
+    finishRoundViaStar(e, 4);
+    expect(pub(e).lastResult?.winnerId).toBeTruthy();
+  });
+
+  it("resolveDeadline auto-picks a synthetic unique 'Chit N' name for a stalled player", () => {
+    const e = newCustomEngine(3);
+    e.applyMove({ playerId: "p0", type: "selectValue", data: { value: "Chit 1" } });
+    e.resolveDeadline(); // p1, p2 never picked -> auto-resolved
+    expect(pub(e).players.every((p) => p.hasSelected)).toBe(true);
+    const p1Value = view(e, "p1").mySelectedValue;
+    const p2Value = view(e, "p2").mySelectedValue;
+    expect(p1Value).not.toBe("Chit 1"); // already taken by p0
+    expect(p1Value).not.toBe(p2Value); // auto-picks stay distinct from each other too
   });
 });

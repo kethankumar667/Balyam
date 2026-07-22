@@ -40,6 +40,7 @@ export default function RoomCodeShare({
     wordbuilding: "Word Building",
     dotsboxes: "Dots & Boxes",
     stargame: "Star Game",
+    bingo: "Bingo",
   };
   /**
    * Body of the share message — keeps the URL OUT of the text. The OS

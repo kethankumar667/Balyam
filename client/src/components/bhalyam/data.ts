@@ -23,6 +23,7 @@ export type BhalyamGameSlug =
   | "uno"
   | "dotsboxes"
   | "stargame"
+  | "bingo"
   // Coming soon — NOT in GameKind. Maintenance tiles only.
   | "namesplaceanimal"
   | "tambola"
@@ -112,6 +113,13 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Stone-Paper-Scissor! The ultimate playground arbiter for deciding who bats first.",
     accent: { from: "#F4C430", to: "#B38918" },
+  },
+  {
+    slug: "bingo",
+    title: "Bingo",
+    blurb:
+      "Eyes down! Mark your ticket as the caller reads out the numbers — first full house wins.",
+    accent: { from: "#00897B", to: "#004D40" },
   },
   // ── Below the fold — only on /games ───────────────────────────────
   {
