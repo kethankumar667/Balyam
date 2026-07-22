@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import type { Player, RummyPublicState } from "@shared/types.js";
+import { DEFAULT_RUMMY_OPTIONS, type Player, type RummyPublicState } from "@shared/types.js";
 import { RummyEngine } from "../RummyEngine.js";
 
 function makePlayers(n: number): Player[] {
@@ -118,5 +118,97 @@ describe("RummyEngine DROP", () => {
     expect(after.scores?.[winner!]).toBe(0);
     expect(after.scores?.[turnA]).toBe(20);
     expect(after.scores?.[turnB]).toBe(20);
+  });
+
+  it("a dropped player's hand is NEVER exposed via finalHands, whether it's a first-drop or middle-drop", () => {
+    engine.init(makePlayers(3));
+    const before = state(engine);
+    const firstId = before.turnPlayerId;
+
+    // First-drop: before drawing.
+    engine.applyMove({ playerId: firstId, type: "drop" });
+    expect(state(engine).finalHands?.[firstId]).toBeUndefined();
+
+    // Middle-drop: after drawing, still no reveal.
+    const secondId = state(engine).turnPlayerId;
+    engine.applyMove({ playerId: secondId, type: "draw", data: { from: "closed" } });
+    engine.applyMove({ playerId: secondId, type: "drop" });
+    expect(state(engine).finalHands?.[secondId]).toBeUndefined();
+  });
+
+  it("when everyone-but-one drops, the round ends with NO hands revealed at all (no melds were ever played)", () => {
+    engine.init(makePlayers(2));
+    const before = state(engine);
+    const dropperId = before.turnPlayerId;
+    const winnerId = before.playerOrder.find((id) => id !== dropperId)!;
+
+    const res = engine.applyMove({ playerId: dropperId, type: "drop" });
+    expect(res.ok).toBe(true);
+    expect(res.winnerId).toBe(winnerId);
+
+    const after = state(engine);
+    expect(after.phase).toBe("finished");
+    // Neither the dropper NOR the by-default winner had a hand revealed —
+    // nobody actually played a meld this round.
+    expect(after.finalHands?.[dropperId]).toBeUndefined();
+    expect(after.finalHands?.[winnerId]).toBeUndefined();
+  });
+
+  it("round 1 middle-drop still scores raw card points (unchanged baseline)", () => {
+    engine.setOptions({ ...DEFAULT_RUMMY_OPTIONS, mode: "pool101" });
+    engine.init(makePlayers(2));
+    expect(state(engine).roundNumber).toBe(1);
+    const id = state(engine).turnPlayerId;
+    engine.applyMove({ playerId: id, type: "draw", data: { from: "closed" } });
+    const drop = engine.applyMove({ playerId: id, type: "drop" });
+    expect(drop.ok).toBe(true);
+    const score = state(engine).scores?.[id] ?? -1;
+    expect(score).toBeGreaterThan(0);
+    expect(score).not.toBe(40); // could coincidentally land near it, but the
+    // real guarantee is round 2's test below asserting the exact fixed 40.
+  });
+
+  it("round 2+ middle-drop uses the fixed 40-point penalty, not raw card weightage", () => {
+    engine.setOptions({ ...DEFAULT_RUMMY_OPTIONS, mode: "pool101" });
+    engine.init(makePlayers(2));
+    const r1 = state(engine);
+    const p0 = r1.playerOrder[0];
+    const firstTurn = r1.turnPlayerId;
+
+    // First-drop ends round 1 quickly (20-pt penalty, nobody eliminated at
+    // pool target 101), then advance to round 2.
+    engine.applyMove({ playerId: firstTurn, type: "drop" });
+    expect(state(engine).phase).toBe("finished");
+    expect(state(engine).roundNumber).toBe(1);
+
+    const advance = engine.applyMove({ playerId: p0, type: "newRound" });
+    expect(advance.ok).toBe(true);
+    expect(state(engine).roundNumber).toBe(2);
+    expect(state(engine).phase).toBe("playing");
+
+    // Round 2: middle-drop (draw, then drop) must score exactly 40.
+    const turn2 = state(engine).turnPlayerId;
+    const draw = engine.applyMove({ playerId: turn2, type: "draw", data: { from: "closed" } });
+    expect(draw.ok).toBe(true);
+    const drop = engine.applyMove({ playerId: turn2, type: "drop" });
+    expect(drop.ok).toBe(true);
+    expect(state(engine).scores?.[turn2]).toBe(40);
+    // Still no hand reveal in round 2 either.
+    expect(state(engine).finalHands?.[turn2]).toBeUndefined();
+  });
+
+  it("round 2+ first-drop (before drawing) is unaffected — still the flat 20", () => {
+    engine.setOptions({ ...DEFAULT_RUMMY_OPTIONS, mode: "pool101" });
+    engine.init(makePlayers(2));
+    const p0 = state(engine).playerOrder[0];
+    const firstTurn = state(engine).turnPlayerId;
+    engine.applyMove({ playerId: firstTurn, type: "drop" });
+    engine.applyMove({ playerId: p0, type: "newRound" });
+    expect(state(engine).roundNumber).toBe(2);
+
+    const turn2 = state(engine).turnPlayerId;
+    const drop = engine.applyMove({ playerId: turn2, type: "drop" }); // no draw first
+    expect(drop.ok).toBe(true);
+    expect(state(engine).scores?.[turn2]).toBe(20);
   });
 });

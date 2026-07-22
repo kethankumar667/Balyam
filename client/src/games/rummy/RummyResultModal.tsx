@@ -329,9 +329,17 @@ export default function RummyResultModal({
                     )}
                   </div>
 
-                  {/* Cards */}
+                  {/* Cards — dropped players never had a hand recorded
+                      server-side (RummyEngine.handleDrop never writes to
+                      finalHands for them), so this is belt-and-suspenders:
+                      even if `hand` were ever non-empty, a dropped player's
+                      cards are never shown to the table. */}
                   <div className="min-w-0 overflow-x-auto scrollbar-none pt-1 pb-3">
-                    <MeldGroups hand={hand} declaredMelds={state.finalMelds?.[id]} wildRank={wildRank} isWrongShower={isWrongShower} />
+                    {isDropped ? (
+                      <span className="text-amber-100/50 text-[11px] italic">Cards hidden</span>
+                    ) : (
+                      <MeldGroups hand={hand} declaredMelds={state.finalMelds?.[id]} wildRank={wildRank} isWrongShower={isWrongShower} />
+                    )}
                   </div>
 
                   {/* Points */}
