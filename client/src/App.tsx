@@ -5,6 +5,7 @@ import PreviewLudo from "./pages/PreviewLudo";
 import BhalyamHome from "./pages/BhalyamHome";
 import GamesPage from "./pages/GamesPage";
 import NotFound from "./pages/NotFound";
+import CricketApp from "./games/cricket/CricketApp";
 
 /**
  * On every route change, snap the window scroll back to the top so the
@@ -72,6 +73,7 @@ export default function App() {
         <Route path="/games" element={<GamesPage />} />
         <Route path="/room/:code" element={<Room />} />
         <Route path="/preview/ludo" element={<PreviewLudo />} />
+        <Route path="/cricket/*" element={<CricketApp />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

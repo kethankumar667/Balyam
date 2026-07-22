@@ -1,0 +1,49 @@
+/*
+ * Bhalyam Cricket — scoped theme layer.
+ *
+ * Keyframes and helpers used only by the cricket module. Imported once from
+ * CricketApp so it never affects the rest of the app. Every animation is
+ * disabled under prefers-reduced-motion; the DOM/text always conveys state.
+ */
+
+@keyframes ck-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-42%); }
+}
+
+@keyframes ck-coin-flip {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(1440deg); }
+}
+
+@keyframes ck-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ck-stamp-in {
+  0% { opacity: 0; transform: scale(1.6) rotate(-8deg); }
+  60% { opacity: 1; transform: scale(0.92) rotate(-8deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+
+@keyframes ck-progress-shimmer {
+  0% { background-position: -160px 0; }
+  100% { background-position: 160px 0; }
+}
+
+.ck-anim-bounce { animation: ck-bounce 0.9s ease-in-out infinite; }
+.ck-anim-coin { animation: ck-coin-flip 1.6s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; transform-style: preserve-3d; }
+.ck-anim-fade-up { animation: ck-fade-up 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.ck-anim-stamp { animation: ck-stamp-in 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ck-anim-bounce,
+  .ck-anim-coin,
+  .ck-anim-fade-up,
+  .ck-anim-stamp {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
