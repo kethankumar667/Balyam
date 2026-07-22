@@ -1,22 +1,31 @@
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { useLudoBoard, type LudoBoardProps } from "./useLudoBoard";
-import { LudoStatusBar, LudoBoardArea, LudoOverlays } from "./ludo-board-composites";
+import {
+  LudoStatusBar,
+  LudoBoardArea,
+  LudoOverlays,
+  LudoPlayerCards,
+  LudoBottomBar,
+} from "./ludo-board-composites";
 
 /**
- * Ludo — desktop shell.
+ * Ludo — desktop shell (BHALYAM notebook theme).
  *
- * Single centred column. The room rail (link/players/voice/chat/emoji) is a
- * compact horizontal strip that now lives in the top status bar next to the
- * Rules/settings controls, so the board is free to centre across the FULL
- * width instead of being pushed left by a fixed side column that left a large
- * empty void to its right. The dice sits on the board itself.
+ * Uses the extra width deliberately (AGENTS.md §6.2): the paper header docks
+ * the room rail inline on the right; the board centres between two side rails
+ * of player cards (top-half seats left, bottom-half right, stacked); the roll
+ * cup + bottom nav sit centred beneath. Same components + theme as mobile —
+ * only the arrangement differs.
  */
 export default function LudoBoardDesktop(props: LudoBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
   const m = useLudoBoard(props);
 
   return (
-    <div className="rounded-2xl border border-slate-700/80 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.16),transparent_32%),linear-gradient(135deg,#111827,#020617)] p-4 lg:p-5 space-y-4 shadow-2xl">
+    <div
+      className="bhalyam-font bhalyam-paper rounded-2xl p-4 lg:p-5 space-y-4 shadow-2xl"
+      style={{ border: "3px solid #6D4323" }}
+    >
       <LudoStatusBar
         m={m}
         state={state}
@@ -28,14 +37,29 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
             players={players}
             selfId={selfId}
             messages={messages}
+            variant="paper"
           />
         }
       />
 
-      {/* Board centred across the full width — no side column, symmetric
-          margins on both sides. */}
+      {/* Board flanked by two stacked player-card rails. */}
+      <div className="flex items-start justify-center gap-4 lg:gap-6">
+        <div className="w-[clamp(9rem,16vw,15rem)] flex-shrink-0 pt-2">
+          <LudoPlayerCards state={state} players={players} row="top" orientation="col" />
+        </div>
+        <LudoBoardArea
+          m={m}
+          state={state}
+          players={players}
+          maxWidth="min(52vw, calc(100vh - 240px), 720px)"
+        />
+        <div className="w-[clamp(9rem,16vw,15rem)] flex-shrink-0 pt-2">
+          <LudoPlayerCards state={state} players={players} row="bottom" orientation="col" />
+        </div>
+      </div>
+
       <div className="flex justify-center">
-        <LudoBoardArea m={m} state={state} players={players} maxWidth="min(82vw, calc(100vh - 170px), 860px)" />
+        <LudoBottomBar m={m} state={state} />
       </div>
 
       <LudoOverlays m={m} state={state} players={players} />

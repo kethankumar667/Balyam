@@ -29,6 +29,7 @@ export default function InlineRoomRail({
   players,
   selfId,
   messages,
+  variant = "dark",
 }: {
   code: string;
   game: string;
@@ -36,7 +37,13 @@ export default function InlineRoomRail({
   players: Player[];
   selfId: string | null;
   messages: ChatMessage[];
+  /** Visual skin. "dark" (default) keeps the original slate strip every
+   *  other game uses; "paper" matches the BHALYAM notebook theme (Ludo's
+   *  redesigned board chrome). Only the pill + buttons + emoji popover
+   *  change — the slide-in side sheets are already paper-toned. */
+  variant?: "dark" | "paper";
 }) {
+  const paper = variant === "paper";
   const [open, setOpen] = useState<Panel | null>(null);
   const [emojiCooldown, setEmojiCooldown] = useState(false);
   const [reactionTarget, setReactionTarget] = useState<string | null>(null);
@@ -77,6 +84,21 @@ export default function InlineRoomRail({
     return () => window.removeEventListener("bhalyam:react-at-player", onBoardTarget);
   }, [selfId]);
 
+  // Sibling controls (e.g. Ludo's bottom nav) can open one of this rail's
+  // panels without re-implementing them — they fire `bhalyam:open-room-panel`
+  // with the target panel id, same lightweight custom-event bridge as the
+  // board's react-at-player above.
+  useEffect(() => {
+    function onOpenPanel(e: Event) {
+      const panel = (e as CustomEvent<{ panel: Panel }>).detail?.panel;
+      if (!panel) return;
+      if (panel === "emoji") setReactionTarget(null);
+      setOpen(panel);
+    }
+    window.addEventListener("bhalyam:open-room-panel", onOpenPanel);
+    return () => window.removeEventListener("bhalyam:open-room-panel", onOpenPanel);
+  }, []);
+
   function sendReaction(emoji: string) {
     if (emojiCooldown) return;
     getSocket().emit("room:reaction", { emoji, targetPlayerId: reactionTarget ?? undefined });
@@ -91,12 +113,13 @@ export default function InlineRoomRail({
           aria-label="Room actions"
           className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 shadow-lg backdrop-blur"
           style={{
-            background: "rgba(15, 23, 42, 0.75)",
-            border: "1px solid rgba(148, 163, 184, 0.18)",
+            background: paper ? "rgba(247,232,196,0.92)" : "rgba(15, 23, 42, 0.75)",
+            border: paper ? "1px solid #C8A66B" : "1px solid rgba(148, 163, 184, 0.18)",
           }}
         >
           <InlineButton
             label="Room code"
+            paper={paper}
             active={open === "room"}
             onClick={() => setOpen(open === "room" ? null : "room")}
           >
@@ -104,6 +127,7 @@ export default function InlineRoomRail({
           </InlineButton>
           <InlineButton
             label="Players"
+            paper={paper}
             active={open === "players"}
             onClick={() => setOpen(open === "players" ? null : "players")}
           >
@@ -111,6 +135,7 @@ export default function InlineRoomRail({
           </InlineButton>
           <InlineButton
             label="Voice"
+            paper={paper}
             active={open === "voice"}
             onClick={() => setOpen(open === "voice" ? null : "voice")}
           >
@@ -118,6 +143,7 @@ export default function InlineRoomRail({
           </InlineButton>
           <InlineButton
             label="Chat"
+            paper={paper}
             active={open === "chat"}
             badge={unread}
             onClick={() => setOpen(open === "chat" ? null : "chat")}
@@ -126,11 +152,12 @@ export default function InlineRoomRail({
           </InlineButton>
           <span
             className="self-stretch w-px"
-            style={{ background: "rgba(148,163,184,0.25)" }}
+            style={{ background: paper ? "rgba(200,166,107,0.5)" : "rgba(148,163,184,0.25)" }}
             aria-hidden
           />
           <InlineButton
             label="Reactions"
+            paper={paper}
             active={open === "emoji"}
             onClick={() => { setReactionTarget(null); setOpen(open === "emoji" ? null : "emoji"); }}
           >
@@ -158,6 +185,7 @@ export default function InlineRoomRail({
           }}
           cooldown={emojiCooldown}
           targetName={reactionTarget ? players.find((p) => p.id === reactionTarget)?.name ?? null : null}
+          paper={paper}
         />
       )}
 
@@ -230,14 +258,23 @@ function InlineButton({
   active,
   badge,
   onClick,
+  paper = false,
   children,
 }: {
   label: string;
   active: boolean;
   badge?: number;
   onClick: () => void;
+  paper?: boolean;
   children: React.ReactNode;
 }) {
+  const bg = active
+    ? paper ? "#FF8F00" : "#EA5A1F"
+    : paper ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.06)";
+  const color = active ? "#fff" : paper ? "#6D4323" : "#e2e8f0";
+  const border = active
+    ? paper ? "1px solid #C86D0E" : "1px solid #D84F17"
+    : paper ? "1px solid #C8A66B" : "1px solid rgba(148,163,184,0.18)";
   return (
     <button
       type="button"
@@ -245,14 +282,7 @@ function InlineButton({
       aria-label={label}
       title={label}
       className="relative w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-      style={{
-        background: active ? "#EA5A1F" : "rgba(255,255,255,0.06)",
-        color: active ? "#fff" : "#e2e8f0",
-        border: active
-          ? "1px solid #D84F17"
-          : "1px solid rgba(148,163,184,0.18)",
-        cursor: "pointer",
-      }}
+      style={{ background: bg, color, border, cursor: "pointer" }}
     >
       {children}
       {badge != null && badge > 0 && (
@@ -276,11 +306,13 @@ function EmojiPopover({
   onClose,
   cooldown,
   targetName,
+  paper = false,
 }: {
   onPick: (e: string) => void;
   onClose: () => void;
   cooldown: boolean;
   targetName: string | null;
+  paper?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -298,8 +330,8 @@ function EmojiPopover({
         ref={wrapRef}
         className="rounded-2xl px-2.5 py-2 flex flex-wrap items-center gap-1 shadow-xl backdrop-blur max-w-[min(92vw,28rem)]"
         style={{
-          background: "rgba(15, 23, 42, 0.92)",
-          border: "1px solid rgba(148,163,184,0.22)",
+          background: paper ? "rgba(247,232,196,0.96)" : "rgba(15, 23, 42, 0.92)",
+          border: paper ? "1px solid #C8A66B" : "1px solid rgba(148,163,184,0.22)",
         }}
       >
         {targetName && (
