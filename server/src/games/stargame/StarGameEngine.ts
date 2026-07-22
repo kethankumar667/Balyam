@@ -723,10 +723,19 @@ export class StarGameEngine implements GameEngine {
       case "shuffle":
         return this.handleShuffle(playerId);
       case "pass": {
-        // Auto-pass always takes the LAST chit in hand order, never a
-        // random one — matches the human timeout fallback in handlePass.
+        // Bots pick RANDOMLY among their held cards — NOT hand[length-1].
+        // A received card is always appended to the END of the recipient's
+        // hand (see handlePass's `this.hands.get(destId)!.push(card)`), so
+        // "last card in hand order" for a bot is *always* the card it just
+        // received. Blindly forwarding that card every turn turns the
+        // whole relay into a single chit orbiting the table forever while
+        // every bot's real hand sits frozen untouched — the exact "same
+        // slip every round" bug this replaces. "Last card in hand order"
+        // (below, in handlePass's own fallback) is the correct default
+        // ONLY for a human who hasn't rearranged/selected — a bot has no
+        // visual order to respect, so it needs real variety instead.
         const hand = this.hands.get(playerId) ?? [];
-        const pick = hand[hand.length - 1];
+        const pick = hand[Math.floor(this.rng() * hand.length)];
         if (pick) this.handleSelectCard(playerId, pick.id);
         return this.handlePass(playerId);
       }

@@ -397,6 +397,46 @@ describe("StarGameEngine — deadline auto-resolve & bots", () => {
     }
     expect(["star", "pass"]).toContain(pub(e).phase);
   });
+
+  it("REGRESSION: bots actually mix hands over multiple laps — never just orbit the same received chit forever", () => {
+    // Reported bug: bots picked hand[length-1] to auto-pass, which is
+    // ALWAYS the chit they just received (handlePass appends received
+    // cards to the end of the array) — so every bot immediately forwarded
+    // whatever it was just handed, and a single chit cycled the whole
+    // table untouched while every bot's real hand sat frozen ("I keep
+    // getting the same slip back for 10 rounds"). Bots must pick with
+    // real variety instead.
+    const e = newEngine(4, {}, true);
+    let guard = 0;
+    while (pub(e).phase !== "deal" && guard++ < 50) {
+      for (const id of e.pendingActors()) e.applyAutoMove(id);
+    }
+    e.resolveDeadline(); // deal -> pass
+    expect(pub(e).phase).toBe("pass");
+
+    const initialHands = new Map(
+      Array.from({ length: 4 }, (_, i) => `p${i}`).map((pid) => [pid, view(e, pid).myHand.map((c) => c.id).sort()] as const),
+    );
+
+    // Drive several full laps (4 relay steps each) purely via bot auto-move.
+    guard = 0;
+    let steps = 0;
+    while (pub(e).phase === "pass" && steps < 16 && guard++ < 200) {
+      for (const id of e.pendingActors()) {
+        e.applyAutoMove(id);
+        steps++;
+      }
+    }
+    expect(steps).toBeGreaterThanOrEqual(16); // several full laps actually happened
+
+    let anyHandChanged = false;
+    for (let i = 0; i < 4; i++) {
+      const pid = `p${i}`;
+      const nowHand = view(e, pid).myHand.map((c) => c.id).sort();
+      if (JSON.stringify(nowHand) !== JSON.stringify(initialHands.get(pid))) anyHandChanged = true;
+    }
+    expect(anyHandChanged).toBe(true);
+  });
 });
 
 describe("frac-index ordering", () => {
