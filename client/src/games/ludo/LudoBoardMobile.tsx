@@ -1,37 +1,58 @@
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { useLudoBoard, type LudoBoardProps } from "./useLudoBoard";
-import { LudoStatusBar, LudoBoardArea, LudoOverlays } from "./ludo-board-composites";
+import {
+  LudoStatusBar,
+  LudoBoardArea,
+  LudoOverlays,
+  LudoPlayerCards,
+  LudoBottomBar,
+} from "./ludo-board-composites";
 
 /**
- * Ludo — mobile shell.
+ * Ludo — mobile shell (BHALYAM notebook theme).
  *
- * Single column, touch-first: status bar → room rail → board (the dice now
- * sits on the board itself, not a separate stacked section) → all
- * modals/overlays. Capped by viewport width AND height so it never needs
- * scrolling.
+ * Reference layout, top→bottom: paper header (menu · LUDO · turn · sound ·
+ * Rules · Leave) → paper toolbar pill (room/players/voice/chat/emoji) →
+ * top player cards → board → bottom player cards → roll-cup + bottom nav.
+ * Everything sits on `.bhalyam-paper` inside a wood frame. The board is
+ * capped by BOTH viewport width and height (chrome reserve) so the whole
+ * screen never needs scrolling; the dice now lives in the bottom roll cup.
  */
 export default function LudoBoardMobile(props: LudoBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
   const m = useLudoBoard(props);
 
   return (
-    <div className="rounded-2xl border border-slate-700/80 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.16),transparent_32%),linear-gradient(135deg,#111827,#020617)] p-3 sm:p-4 space-y-3 shadow-2xl">
+    <div
+      className="bhalyam-font bhalyam-paper rounded-2xl p-3 sm:p-4 space-y-3 shadow-2xl"
+      style={{ border: "3px solid #6D4323" }}
+    >
       <LudoStatusBar m={m} state={state} />
 
-      <InlineRoomRail
-        code={roomCode}
-        game="ludo"
-        phase={roomPhase}
+      <div className="flex justify-center">
+        <InlineRoomRail
+          code={roomCode}
+          game="ludo"
+          phase={roomPhase}
+          players={players}
+          selfId={selfId}
+          messages={messages}
+          variant="paper"
+        />
+      </div>
+
+      <LudoPlayerCards state={state} players={players} row="top" />
+
+      <LudoBoardArea
+        m={m}
+        state={state}
         players={players}
-        selfId={selfId}
-        messages={messages}
+        maxWidth="min(92vw, calc(100vh - 440px), 560px)"
       />
 
-      {/* Board — capped by BOTH viewport width and viewport height so it
-          always fits on a single screen without scrolling. The 300 px
-          reserve accounts for the chrome above the board (header + turn
-          chips + reactions row). Dice now lives on the board itself. */}
-      <LudoBoardArea m={m} state={state} players={players} maxWidth="min(92vw, calc(100vh - 300px), 680px)" />
+      <LudoPlayerCards state={state} players={players} row="bottom" />
+
+      <LudoBottomBar m={m} state={state} />
 
       <LudoOverlays m={m} state={state} players={players} />
     </div>

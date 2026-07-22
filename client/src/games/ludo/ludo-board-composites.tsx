@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { LudoState, Player } from "@shared/types";
+import type { LudoColor, LudoState, Player } from "@shared/types";
 import { Dice } from "./Dice";
 import { Token } from "./Token";
 import InstructionsModal from "./InstructionsModal";
@@ -14,7 +14,8 @@ import SettingsMenu from "./SettingsMenu";
 import PrintBoardSVG from "./PrintBoardSVG";
 import { seatColor, seatColorDark } from "./print-board";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
-import { COLOR_HEX, PLAYER_COLORS_ORDER } from "./board-layout";
+import { COLOR_HEX, COLOR_HEX_DARK, PLAYER_COLORS_ORDER } from "./board-layout";
+import { Avatar } from "./Avatar";
 import { BoardSVG, HoverPreviewMarker, MiniBurst, polygonTokenSize } from "./ludo-board-shared";
 import type { LudoBoardModel } from "./useLudoBoard";
 
@@ -29,103 +30,286 @@ import type { LudoBoardModel } from "./useLudoBoard";
  * ludo-board-shared.tsx, never from this file).
  */
 
-export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; state: LudoState; rightSlot?: ReactNode }) {
+/** Crayon "LUDO" wordmark on a taped sticky-note — the reference header
+ *  motif. Purely decorative; each letter tinted a play-color with a wax-
+ *  crayon outline and a hand-drawn tilt. */
+function LudoLogo() {
+  const letters: ReadonlyArray<[string, string]> = [
+    ["L", "#E4572E"], ["U", "#F2A900"], ["D", "#2E86DE"], ["O", "#3FA34D"],
+  ];
   return (
-    <div className="flex justify-between items-center flex-wrap gap-2">
-      <h2 className="text-xl font-black tracking-tight">Ludo</h2>
-      <div className="text-sm flex-1 text-center px-2">
-        {state.phase === "finished" ? (
-          <span className="text-emerald-300 font-semibold">
-            🏆 {state.winnerId ? `${m.nameOf(state.winnerId)} wins!` : "Game over"}
+    <div className="relative select-none flex-shrink-0" style={{ transform: "rotate(-3deg)" }} aria-label="Ludo">
+      <span
+        aria-hidden
+        className="absolute -top-2 left-1/2 -translate-x-1/2 w-9 h-3.5 rounded-sm"
+        style={{ background: "rgba(228,177,40,0.35)", border: "1px solid rgba(154,110,26,0.4)", transform: "rotate(4deg)" }}
+      />
+      <div className="flex items-end leading-none font-display" style={{ fontSize: "1.7rem" }}>
+        {letters.map(([ch, col], i) => (
+          <span
+            key={i}
+            className="font-black"
+            style={{
+              color: col,
+              WebkitTextStroke: "1.4px rgba(63,36,18,0.55)",
+              textShadow: "0 2px 0 rgba(63,36,18,0.22)",
+              transform: `rotate(${(i % 2 ? 1 : -1) * 4}deg)`,
+            }}
+          >
+            {ch}
           </span>
-        ) : m.myTurn ? (
-          <span className="text-emerald-300">
-            Your turn — {state.turnPhase === "rolling" ? "roll the dice 🎲" : "pick a token"}
-          </span>
-        ) : (
-          <span className="text-slate-400">Waiting for {m.nameOf(state.turnPlayerId)}…</span>
-        )}
+        ))}
       </div>
-      <div className="flex items-center gap-2 flex-wrap justify-end">
-        {rightSlot && (
-          <div className="rounded-full bg-slate-900/55 border border-slate-700/60 px-1.5 py-1">
-            {rightSlot}
+    </div>
+  );
+}
+
+/** Paper header: menu · LUDO logo · turn banner · sound · Rules · Leave.
+ *  `rightSlot` lets the desktop shell dock the room rail inline. */
+export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; state: LudoState; rightSlot?: ReactNode }) {
+  const finished = state.phase === "finished";
+  const chip =
+    "flex-shrink-0 h-9 px-3 rounded-full flex items-center justify-center text-sm font-bold active:scale-95 transition";
+  const chipStyle = { background: "#F7E8C4", border: "2px solid #C8A66B", color: "#6D4323" } as const;
+  return (
+    <div className="flex items-center flex-wrap gap-2">
+      <button
+        onClick={() => m.setShowSettings(true)}
+        aria-label="Settings"
+        title="Settings (theme, color-blind, hover preview)"
+        className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-lg active:scale-95 transition"
+        style={chipStyle}
+      >
+        ☰
+      </button>
+      <LudoLogo />
+      <div className="flex-1 min-w-[8rem] text-center px-1">
+        {finished ? (
+          <div className="font-script text-lg font-bold" style={{ color: "#2E7D32" }}>
+            🏆 {state.winnerId ? `${m.nameOf(state.winnerId)} wins!` : "Game over"}
+          </div>
+        ) : m.myTurn ? (
+          <>
+            <div className="font-script text-sm font-bold leading-tight" style={{ color: "#2E7D32" }}>Your turn</div>
+            <div className="font-display text-base leading-tight" style={{ color: "#6D4323" }}>
+              {state.turnPhase === "rolling" ? "Roll the dice" : "Pick a token"}
+            </div>
+          </>
+        ) : (
+          <div className="font-script text-sm" style={{ color: "#8A6D4B" }}>
+            {m.nameOf(state.turnPlayerId)}&rsquo;s turn…
           </div>
         )}
+      </div>
+      <button onClick={m.toggleSound} className={chip} style={chipStyle} title={m.soundOn ? "Mute" : "Unmute"} aria-label="Toggle sound">
+        {m.soundOn ? "🔊" : "🔈"}
+      </button>
+      <button onClick={() => m.setShowInstructions(true)} className={chip} style={chipStyle} title="How to play">
+        ❔ Rules
+      </button>
+      {m.onLeave && (
+        <button
+          onClick={m.onLeave}
+          className={chip}
+          style={{ background: "#D64541", border: "2px solid #A5302C", color: "#fff" }}
+          title="Leave room"
+        >
+          Leave ⇥
+        </button>
+      )}
+      {rightSlot}
+    </div>
+  );
+}
 
-        <div className="h-6 w-px bg-slate-600/60" aria-hidden />
+/** Real, in-game per-seat status — no fabricated scores/levels/rewards
+ *  (dropped by design). Shows the player's name, seat-colored rim + avatar
+ *  ring, a live online dot (isConnected), and 4 pips = tokens home
+ *  (finishedCount). The active seat gets a colored glow. */
+type LudoSeatMeta = {
+  pid: string;
+  name: string;
+  color: LudoColor;
+  online: boolean;
+  isBot: boolean;
+  tokensHome: number;
+  active: boolean;
+};
 
-        <div className="inline-flex items-center rounded-xl bg-slate-900/75 border border-slate-700/70 overflow-hidden">
-          {m.onLeave && (
-            <button
-              onClick={m.onLeave}
-              className="px-3 py-1.5 text-sm font-semibold text-rose-200 hover:bg-rose-900/40 active:scale-95 transition"
-              title="Leave room"
-            >
-              Leave
-            </button>
-          )}
-          <div className="h-5 w-px bg-slate-600/60" aria-hidden />
-          <button
-            onClick={m.toggleSound}
-            className="px-2.5 py-1.5 text-sm text-slate-100 hover:bg-slate-700/80 active:scale-95 transition"
-            title={m.soundOn ? "Mute sounds" : "Enable sounds"}
-          >
-            {m.soundOn ? "🔊" : "🔈"}
-          </button>
-          <div className="h-5 w-px bg-slate-600/60" aria-hidden />
-          <button
-            onClick={() => m.setShowSettings(true)}
-            className="px-2.5 py-1.5 text-sm text-slate-100 hover:bg-slate-700/80 active:scale-95 transition"
-            title="Display settings (theme, color-blind, hover preview)"
-          >
-            ⚙
-          </button>
-          <div className="h-5 w-px bg-slate-600/60" aria-hidden />
-          <button
-            onClick={() => m.setShowInstructions(true)}
-            className="px-2.5 py-1.5 text-sm text-slate-100 hover:bg-slate-700/80 active:scale-95 transition"
-            title="How to play"
-          >
-            ❔ Rules
-          </button>
+const CARD_COLOR_ORDER: LudoColor[] = ["red", "green", "blue", "yellow"];
+
+function orderedSeats(state: LudoState, players: Player[]): LudoSeatMeta[] {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  return state.playerOrder
+    .map((pid) => {
+      const color = state.playerColors[pid];
+      const p = byId.get(pid);
+      return {
+        pid,
+        color,
+        name: p?.name ?? "Player",
+        online: p?.isConnected !== false,
+        isBot: p?.isBot === true,
+        tokensHome: state.finishedCount?.[pid] ?? 0,
+        active: state.turnPlayerId === pid && state.phase !== "finished",
+      };
+    })
+    .filter((s): s is LudoSeatMeta => !!s.color)
+    .sort((a, b) => CARD_COLOR_ORDER.indexOf(a.color) - CARD_COLOR_ORDER.indexOf(b.color));
+}
+
+function LudoPlayerCard({ seat }: { seat: LudoSeatMeta }) {
+  const rim = COLOR_HEX_DARK[seat.color];
+  const tint = COLOR_HEX[seat.color];
+  return (
+    <div
+      className="flex-1 min-w-0 flex items-center gap-2 rounded-2xl px-2 py-1.5"
+      style={{
+        background: "rgba(255,251,240,0.94)",
+        border: `2.5px solid ${rim}`,
+        boxShadow: seat.active
+          ? `0 0 0 3px ${tint}66, 0 6px 14px rgba(0,0,0,0.18)`
+          : "0 4px 10px rgba(0,0,0,0.12)",
+      }}
+    >
+      <div className="relative flex-shrink-0 rounded-full" style={{ padding: 2, background: tint }}>
+        <Avatar name={seat.name} color={seat.color} size={36} />
+        <span
+          className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full"
+          style={{ background: seat.online ? "#37B24D" : "#9AA0A6", border: "2px solid #FFFBF0" }}
+          title={seat.online ? "Online" : "Away"}
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-black text-[12px] uppercase tracking-wide" style={{ color: rim }}>
+          {seat.name}
+          {seat.isBot && <span className="ml-1 text-[8px] opacity-60">BOT</span>}
+        </div>
+        <div className="flex items-center gap-1 mt-0.5">
+          {[0, 1, 2, 3].map((i) => (
+            <span
+              key={i}
+              className="w-2.5 h-2.5 rounded-full"
+              style={{
+                background: i < seat.tokensHome ? tint : "rgba(109,67,35,0.16)",
+                border: `1px solid ${i < seat.tokensHome ? rim : "rgba(109,67,35,0.25)"}`,
+              }}
+            />
+          ))}
+          <span className="ml-1 text-[9px] font-bold" style={{ color: "rgba(109,67,35,0.65)" }}>
+            {seat.tokensHome}/4 home
+          </span>
         </div>
       </div>
     </div>
   );
 }
 
-/**
- * The dice "sits on the board" - a compact overlay pinned to the board's
- * center cross (the same spot a physical Ludo board's home triangles meet),
- * not a separate bordered toolbar above/beside the felt. Turn text already
- * lives in LudoStatusBar, so this stays purely the dice (now the roll control itself) + streak.
- */
-export function LudoDiceTray({ m, state }: { m: LudoBoardModel; state: LudoState }) {
-  const sixesActive = state.consecutiveSixes > 0 && state.consecutiveSixes < 3;
-  const traySize = m.polygonGeo
-    ? "clamp(36px, 8.5%, 64px)"
-    : "clamp(44px, 12%, 92px)";
+/** A row (or column) of player cards. `row="top"` shows the first half of
+ *  the color-ordered seats, `row="bottom"` the rest — 2/2 for a 4-player
+ *  game, matching the reference's above/below-board split. `orientation`
+ *  is "row" on mobile (cards flow across above/below the board) and "col"
+ *  on desktop (cards stack in a side rail flanking the board). */
+export function LudoPlayerCards({
+  state,
+  players,
+  row,
+  orientation = "row",
+}: {
+  state: LudoState;
+  players: Player[];
+  row: "top" | "bottom";
+  orientation?: "row" | "col";
+}) {
+  const seats = orderedSeats(state, players);
+  const mid = Math.ceil(seats.length / 2);
+  const shown = row === "top" ? seats.slice(0, mid) : seats.slice(mid);
+  if (shown.length === 0) return null;
   return (
-    <div
-      className="absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 pointer-events-none"
-      style={{ width: traySize }}
-    >
-      <div className="pointer-events-auto w-full" style={{ aspectRatio: "1" }}>
-        <Dice
-          value={state.diceValue}
-          rolling={m.rolling}
-          highlight={m.myTurn && m.canRoll}
-          wooden={m.settings.woodenDice}
-          size="100%"
-          onClick={m.canRoll && !m.rolling ? m.roll : undefined}
-        />
+    <div className={orientation === "col" ? "flex flex-col gap-3" : "flex justify-between gap-2"}>
+      {shown.map((s) => (
+        <LudoPlayerCard key={s.pid} seat={s} />
+      ))}
+    </div>
+  );
+}
+
+/** The bottom roll "cup" — a felt-green dice tray with a rope rim and a
+ *  paper ribbon. The whole cup is the roll control (Dice stays visual so we
+ *  never nest a button in a button). Streak badge shows the live six-run. */
+export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState }) {
+  const streak = state.consecutiveSixes > 0 && state.consecutiveSixes < 3;
+  const canRoll = m.myTurn && m.canRoll && !m.rolling;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        type="button"
+        onClick={canRoll ? m.roll : undefined}
+        disabled={!canRoll}
+        aria-label="Roll the dice"
+        className="relative rounded-full flex items-center justify-center active:scale-95 transition disabled:cursor-default"
+        style={{
+          width: 92,
+          height: 92,
+          background: "radial-gradient(circle at 50% 35%, #57B65B, #2E7D32)",
+          border: "5px solid #1B5E20",
+          boxShadow: canRoll
+            ? "0 0 0 4px rgba(87,182,91,0.4), 0 8px 18px rgba(0,0,0,0.3)"
+            : "0 6px 14px rgba(0,0,0,0.22)",
+        }}
+      >
+        <div style={{ width: 58, height: 58 }}>
+          <Dice value={state.diceValue} rolling={m.rolling} highlight={canRoll} wooden={m.settings.woodenDice} size="100%" />
+        </div>
+        {streak && (
+          <span
+            className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 rounded-full text-[11px] font-black flex items-center justify-center"
+            style={{ background: "#DC2626", color: "#fff", border: "2px solid #FFFBF0" }}
+          >
+            {state.consecutiveSixes}
+          </span>
+        )}
+      </button>
+      <div
+        className="px-4 py-0.5 text-[12px] font-black"
+        style={{ background: "#F7E8C4", border: "2px solid #C8A66B", color: "#6D4323", borderRadius: 6 }}
+      >
+        {state.phase === "finished"
+          ? "Game over"
+          : m.myTurn
+          ? state.turnPhase === "rolling"
+            ? "Tap to roll"
+            : "Pick a token"
+          : "Waiting…"}
       </div>
-      {sixesActive && (
-        <span className="pointer-events-auto rounded-full bg-amber-200/95 border border-amber-500 px-2.5 py-1 text-[11px] font-extrabold text-amber-900 shadow">
-          Six streak {state.consecutiveSixes}/3
-        </span>
-      )}
+    </div>
+  );
+}
+
+/** Bottom action bar: Emoji · Voice · [roll cup] · Invite. The side buttons
+ *  reuse the room rail's panels via the `bhalyam:open-room-panel` bridge —
+ *  no duplicated panel logic. (Reference's "Rewards" is dropped: no rewards
+ *  system exists.) */
+export function LudoBottomBar({ m, state }: { m: LudoBoardModel; state: LudoState }) {
+  const openPanel = (panel: string) =>
+    window.dispatchEvent(new CustomEvent("bhalyam:open-room-panel", { detail: { panel } }));
+  const NavBtn = ({ label, glyph, panel }: { label: string; glyph: string; panel: string }) => (
+    <button type="button" onClick={() => openPanel(panel)} className="flex flex-col items-center gap-0.5" aria-label={label}>
+      <span
+        className="w-12 h-12 rounded-full flex items-center justify-center text-xl active:scale-95 transition"
+        style={{ background: "#F7E8C4", border: "2px solid #C8A66B" }}
+      >
+        {glyph}
+      </span>
+      <span className="text-[10px] font-semibold" style={{ color: "#6D4323" }}>{label}</span>
+    </button>
+  );
+  return (
+    <div className="flex items-end justify-center gap-3 sm:gap-5">
+      <NavBtn label="Emoji" glyph="😊" panel="emoji" />
+      <NavBtn label="Voice" glyph="🎙️" panel="voice" />
+      <LudoRollTray m={m} state={state} />
+      <NavBtn label="Invite" glyph="🔗" panel="room" />
     </div>
   );
 }
@@ -229,10 +413,6 @@ export function LudoBoardArea({
           );
         })}
       </div>
-
-      {/* The dice "sits on" the board's center cross like a real board. */}
-      <LudoDiceTray m={m} state={state} />
-
       {/* Capture sad-faces (briefly visible at the victim's last position) */}
       {m.captureFaces.map((cf) => (
         <span key={cf.id} className="capture-face" style={{ left: `${cf.left}%`, top: `${cf.top}%` }}>

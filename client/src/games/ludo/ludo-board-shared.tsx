@@ -305,6 +305,18 @@ export function BoardSVG({
             <rect x={c0 + 0.2} y={r0 + 0.2} width={6 - 0.4} height={6 - 0.4} rx={0.4} fill={`url(#ludo-yard-${color})`} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.12} />
             {/* Inner cream pad where tokens park */}
             <rect x={c0 + 1} y={r0 + 1} width={4} height={4} rx={0.3} fill={PARCHMENT} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.08} />
+            {/* Faint hand-drawn crown watermark behind the parked tokens —
+                the reference's per-quadrant motif. Decorative only. */}
+            <text
+              x={c0 + 3}
+              y={r0 + 3.55}
+              textAnchor="middle"
+              fontSize={2}
+              opacity={0.12}
+              style={{ pointerEvents: "none" }}
+            >
+              👑
+            </text>
             {/* Token slot circles — slightly darker so they read as a
                 landing pad rather than a faint ghost. */}
             {YARD_CELLS[color].map((cell, i) => (
@@ -409,10 +421,10 @@ export function BoardSVG({
         <rect x={6} y={6} width={3} height={3} fill="none" stroke={WOOD_DARK} strokeWidth={0.1} />
         {/* Gold inner trim */}
         <rect x={6.12} y={6.12} width={2.76} height={2.76} fill="none" stroke={GOLD} strokeWidth={0.05} opacity={0.85} />
-        {/* Central gold disc + star — "finish" crest */}
-        <circle cx={7.5} cy={7.5} r={0.62} fill={GOLD} stroke={GOLD_DEEP} strokeWidth={0.08} />
-        <text x={7.5} y={7.78} fontSize={0.92} textAnchor="middle" fill={WOOD_DARK} fontWeight="900" style={{ paintOrder: "stroke", stroke: GOLD_DEEP, strokeWidth: 0.03 }}>
-          ★
+        {/* Central gold disc + crown — the "finish" crest (reference motif). */}
+        <circle cx={7.5} cy={7.5} r={0.7} fill={GOLD} stroke={GOLD_DEEP} strokeWidth={0.08} />
+        <text x={7.5} y={7.86} fontSize={0.95} textAnchor="middle" style={{ pointerEvents: "none" }}>
+          👑
         </text>
       </g>
 
