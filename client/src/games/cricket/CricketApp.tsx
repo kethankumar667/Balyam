@@ -14,6 +14,18 @@ import { ManhattanChartPage } from "./screens/ManhattanChartPage";
 import { PartnershipChartPage } from "./screens/PartnershipChartPage";
 import { MatchTimelinePage } from "./screens/MatchTimelinePage";
 import { WagonWheelPage } from "./screens/WagonWheelPage";
+import { PlayerOfMatchPage } from "./screens/PlayerOfMatchPage";
+import { MatchResultPage } from "./screens/MatchResultPage";
+import { MatchSummaryPage } from "./screens/MatchSummaryPage";
+import { EndMatchCelebrationPage } from "./screens/EndMatchCelebrationPage";
+import { MatchHistoryPage } from "./screens/MatchHistoryPage";
+import { StatisticsPage } from "./screens/StatisticsPage";
+import { StandingsPage } from "./screens/StandingsPage";
+import { ProfilePage } from "./screens/ProfilePage";
+import { MatchHighlightsPage } from "./screens/MatchHighlightsPage";
+import { StickerAlbumPage } from "./screens/StickerAlbumPage";
+import { EncyclopediaPage } from "./screens/EncyclopediaPage";
+import { DailyChallengePage } from "./screens/DailyChallengePage";
 
 /**
  * Bhalyam Cricket — self-contained game section mounted at /cricket/*.
@@ -41,6 +53,18 @@ export default function CricketApp() {
       <Route path="partnership-chart" element={<PartnershipChartPage />} />
       <Route path="timeline" element={<MatchTimelinePage />} />
       <Route path="wagon-wheel" element={<WagonWheelPage />} />
+      <Route path="player-of-match" element={<PlayerOfMatchPage />} />
+      <Route path="match-result" element={<MatchResultPage />} />
+      <Route path="match-summary" element={<MatchSummaryPage />} />
+      <Route path="celebration" element={<EndMatchCelebrationPage />} />
+      <Route path="history" element={<MatchHistoryPage />} />
+      <Route path="statistics" element={<StatisticsPage />} />
+      <Route path="standings" element={<StandingsPage />} />
+      <Route path="profile" element={<ProfilePage />} />
+      <Route path="highlights" element={<MatchHighlightsPage />} />
+      <Route path="stickers" element={<StickerAlbumPage />} />
+      <Route path="encyclopedia" element={<EncyclopediaPage />} />
+      <Route path="daily-challenge" element={<DailyChallengePage />} />
       <Route path="*" element={<Navigate to="/cricket" replace />} />
     </Routes>
   );

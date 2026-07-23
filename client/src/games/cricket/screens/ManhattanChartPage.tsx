@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { GamePageShell, NotebookGraphCard, NotebookSurface, PremiumCard, type GraphBar } from "../components";
 import { manhattan } from "../derive";
-import { useCricketStore } from "../store";
+import { useReviewedInnings } from "../store"
 
 /**
  * Manhattan Chart — runs scored per over as a bar chart, with wicket overs
@@ -10,7 +10,7 @@ import { useCricketStore } from "../store";
  */
 export function ManhattanChartPage() {
   const navigate = useNavigate();
-  const innings = useCricketStore((s) => s.lastInnings);
+  const innings = useReviewedInnings();
   const overs = useMemo(() => (innings ? manhattan(innings) : []), [innings]);
   const bars = useMemo<GraphBar[]>(
     () => overs.map((o) => ({ label: `${o.over}`, value: o.runs, tone: o.wickets > 0 ? "red" : "gold" })),

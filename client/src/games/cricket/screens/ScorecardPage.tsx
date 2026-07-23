@@ -27,7 +27,12 @@ const TABS = [
  */
 export function ScorecardPage() {
   const navigate = useNavigate();
-  const innings = useCricketStore((s) => s.lastInnings);
+  const firstInnings = useCricketStore((s) => s.firstInnings);
+  const secondInnings = useCricketStore((s) => s.secondInnings);
+  const reviewInningsNo = useCricketStore((s) => s.reviewInningsNo);
+  const setReviewInningsNo = useCricketStore((s) => s.setReviewInningsNo);
+  const innings = reviewInningsNo === 2 && secondInnings ? secondInnings : firstInnings;
+  const hasBothInnings = firstInnings != null && secondInnings != null;
   const [tab, setTab] = useState<Tab>("batting");
 
   const bat = useMemo(() => (innings ? battingRows(innings) : []), [innings]);
@@ -99,6 +104,7 @@ export function ScorecardPage() {
               { label: "Partnerships", to: "/cricket/partnership-chart" },
               { label: "Timeline", to: "/cricket/timeline" },
               { label: "Wagon Wheel", to: "/cricket/wagon-wheel" },
+              { label: "Highlights", to: "/cricket/highlights" },
             ].map((link) => (
               <button
                 key={link.to}
@@ -127,6 +133,25 @@ export function ScorecardPage() {
             <span className="ml-1 text-sm font-semibold text-[#6D4323]/70">({innings.oversCompleted}.{innings.ballInOver})</span>
           </p>
         </header>
+
+        {hasBothInnings && (
+          <div className="mt-3 flex justify-center gap-1.5" role="tablist" aria-label="Select innings">
+            {[1, 2].map((no) => (
+              <button
+                key={no}
+                type="button"
+                role="tab"
+                aria-selected={reviewInningsNo === no}
+                onClick={() => setReviewInningsNo(no as 1 | 2)}
+                className={`rounded-full px-4 py-1.5 text-xs font-black transition ${
+                  reviewInningsNo === no ? "bg-[#2E7D32] text-white" : "border-2 border-[#E4D3AC] bg-[#FFFBF0] text-[#6D4323]"
+                }`}
+              >
+                {no === 1 ? "1st Innings" : "2nd Innings"}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="mt-4 flex justify-center">
           <GameTabs ariaLabel="Scorecard view" tabs={TABS} value={tab} onChange={setTab} />
