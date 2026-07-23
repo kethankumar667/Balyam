@@ -91,14 +91,26 @@ export function ScorecardPage() {
   return (
     <GamePageShell
       footer={
-        <div className="grid grid-cols-3 gap-2">
-          <button type="button" onClick={() => navigate("/cricket/run-distribution")} className="rounded-2xl border-2 border-[#E4D3AC] bg-[#FFFBF0] py-2.5 text-xs font-black text-[#6D4323] active:scale-95">
-            Run Dist.
-          </button>
-          <button type="button" onClick={() => navigate("/cricket/manhattan")} className="rounded-2xl border-2 border-[#E4D3AC] bg-[#FFFBF0] py-2.5 text-xs font-black text-[#6D4323] active:scale-95">
-            Manhattan
-          </button>
-          <button type="button" onClick={() => navigate("/")} className="rounded-2xl bg-[#2E7D32] py-2.5 text-xs font-black text-white active:scale-95">
+        <div className="space-y-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {[
+              { label: "Run Dist.", to: "/cricket/run-distribution" },
+              { label: "Manhattan", to: "/cricket/manhattan" },
+              { label: "Partnerships", to: "/cricket/partnership-chart" },
+              { label: "Timeline", to: "/cricket/timeline" },
+              { label: "Wagon Wheel", to: "/cricket/wagon-wheel" },
+            ].map((link) => (
+              <button
+                key={link.to}
+                type="button"
+                onClick={() => navigate(link.to)}
+                className="flex-none rounded-full border-2 border-[#E4D3AC] bg-[#FFFBF0] px-4 py-2 text-xs font-black text-[#6D4323] active:scale-95"
+              >
+                {link.label}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => navigate("/")} className="w-full rounded-2xl bg-[#2E7D32] py-2.5 text-sm font-black text-white active:scale-95">
             Home
           </button>
         </div>

@@ -11,6 +11,9 @@ import { GameplayPage } from "./screens/GameplayPage";
 import { ScorecardPage } from "./screens/ScorecardPage";
 import { RunDistributionPage } from "./screens/RunDistributionPage";
 import { ManhattanChartPage } from "./screens/ManhattanChartPage";
+import { PartnershipChartPage } from "./screens/PartnershipChartPage";
+import { MatchTimelinePage } from "./screens/MatchTimelinePage";
+import { WagonWheelPage } from "./screens/WagonWheelPage";
 
 /**
  * Bhalyam Cricket — self-contained game section mounted at /cricket/*.
@@ -35,6 +38,9 @@ export default function CricketApp() {
       <Route path="scorecard" element={<ScorecardPage />} />
       <Route path="run-distribution" element={<RunDistributionPage />} />
       <Route path="manhattan" element={<ManhattanChartPage />} />
+      <Route path="partnership-chart" element={<PartnershipChartPage />} />
+      <Route path="timeline" element={<MatchTimelinePage />} />
+      <Route path="wagon-wheel" element={<WagonWheelPage />} />
       <Route path="*" element={<Navigate to="/cricket" replace />} />
     </Routes>
   );
