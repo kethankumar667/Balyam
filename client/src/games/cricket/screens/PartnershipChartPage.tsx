@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { GamePageShell, NotebookSurface, PremiumCard } from "../components";
 import { partnershipBreakdown } from "../derive";
-import { useCricketStore } from "../store";
+import { useReviewedInnings } from "../store"
 
 /**
  * Partnership Chart — a timeline of each stand, showing exactly how much of
@@ -12,7 +12,7 @@ import { useCricketStore } from "../store";
  */
 export function PartnershipChartPage() {
   const navigate = useNavigate();
-  const innings = useCricketStore((s) => s.lastInnings);
+  const innings = useReviewedInnings();
   const rows = useMemo(() => (innings ? partnershipBreakdown(innings) : []), [innings]);
 
   return (

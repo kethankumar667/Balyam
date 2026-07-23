@@ -243,3 +243,65 @@ export function wagonPoints(inn: InningsState): WagonPoint[] {
     runs: b.runs,
   }));
 }
+
+/** Total 4s/6s hit across the whole innings — used by career-stat aggregates. */
+export function boundaryCounts(inn: InningsState): { fours: number; sixes: number } {
+  let fours = 0;
+  for (const s of Object.values(inn.stats)) fours += s.fours;
+  return { fours, sixes: inn.sixes };
+}
+
+export interface HighlightEvent {
+  index: number;
+  overBall: string;
+  kind: "six" | "four" | "wicket" | "fifty" | "century";
+  batterName: string;
+  detail: string;
+  runningScore: string;
+}
+
+/** The innings' notable moments — sixes, fours, wickets, and the exact ball
+ *  each batter crossed 50/100 — read straight from the real ball log, not a
+ *  re-simulated or invented "highlight generator". */
+export function highlightEvents(inn: InningsState): HighlightEvent[] {
+  const events: HighlightEvent[] = [];
+  let total = 0;
+  let wkts = 0;
+  const cumByBatter: Record<string, number> = {};
+  const ballsByBatter: Record<string, number> = {};
+
+  for (const b of inn.log) {
+    total += b.runs;
+    const overBall = `${b.over}.${b.ballInOver}`;
+    const batterName = nameOf(inn, b.batterId);
+
+    if (b.isWicket) {
+      wkts += 1;
+      events.push({
+        index: b.index,
+        overBall,
+        kind: "wicket",
+        batterName,
+        detail: `out for ${cumByBatter[b.batterId] ?? 0} (${ballsByBatter[b.batterId] ?? 0})`,
+        runningScore: `${total}/${wkts}`,
+      });
+      continue;
+    }
+
+    ballsByBatter[b.batterId] = (ballsByBatter[b.batterId] ?? 0) + 1;
+    const before = cumByBatter[b.batterId] ?? 0;
+    const after = before + b.runs;
+    cumByBatter[b.batterId] = after;
+
+    if (b.runs === 6) events.push({ index: b.index, overBall, kind: "six", batterName, detail: "SIX!", runningScore: `${total}/${wkts}` });
+    else if (b.runs === 4) events.push({ index: b.index, overBall, kind: "four", batterName, detail: "FOUR!", runningScore: `${total}/${wkts}` });
+
+    if (before < 100 && after >= 100) {
+      events.push({ index: b.index, overBall, kind: "century", batterName, detail: `Century! ${after} off ${ballsByBatter[b.batterId]}`, runningScore: `${total}/${wkts}` });
+    } else if (before < 50 && after >= 50) {
+      events.push({ index: b.index, overBall, kind: "fifty", batterName, detail: `Fifty! ${after} off ${ballsByBatter[b.batterId]}`, runningScore: `${total}/${wkts}` });
+    }
+  }
+
+  return events;
+}

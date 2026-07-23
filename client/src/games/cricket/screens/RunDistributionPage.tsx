@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { GamePageShell, NotebookGraphCard, NotebookSurface, type GraphBar } from "../components";
 import { runDistribution } from "../derive";
-import { useCricketStore } from "../store";
+import { useReviewedInnings } from "../store"
 
 /**
  * Run Distribution — how the innings' runs were made: dots, 1s, 2s, 4s, 6s and
@@ -10,7 +10,7 @@ import { useCricketStore } from "../store";
  */
 export function RunDistributionPage() {
   const navigate = useNavigate();
-  const innings = useCricketStore((s) => s.lastInnings);
+  const innings = useReviewedInnings();
   const bars = useMemo<GraphBar[]>(() => {
     if (!innings) return [];
     return runDistribution(innings).map((b) => ({

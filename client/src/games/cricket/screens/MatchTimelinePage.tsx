@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { GamePageShell, NotebookSurface } from "../components";
 import { timelineEntries } from "../derive";
-import { useCricketStore } from "../store";
+import { useReviewedInnings } from "../store"
 import type { BallOutcome } from "../types";
 
 function pillClass(o: BallOutcome): string {
@@ -17,7 +17,7 @@ function pillClass(o: BallOutcome): string {
  */
 export function MatchTimelinePage() {
   const navigate = useNavigate();
-  const innings = useCricketStore((s) => s.lastInnings);
+  const innings = useReviewedInnings();
   const rows = useMemo(() => (innings ? timelineEntries(innings) : []), [innings]);
 
   return (

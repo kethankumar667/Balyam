@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { GamePageShell, NotebookSurface, SketchAccent } from "../components";
 import { wagonPoints } from "../derive";
-import { useCricketStore } from "../store";
+import { useReviewedInnings } from "../store"
 import type { BallOutcome } from "../types";
 
 function pointColor(outcome: BallOutcome): string {
@@ -21,7 +21,7 @@ function pointColor(outcome: BallOutcome): string {
  */
 export function WagonWheelPage() {
   const navigate = useNavigate();
-  const innings = useCricketStore((s) => s.lastInnings);
+  const innings = useReviewedInnings();
   const points = useMemo(() => (innings ? wagonPoints(innings) : []), [innings]);
 
   const CENTER = 50;

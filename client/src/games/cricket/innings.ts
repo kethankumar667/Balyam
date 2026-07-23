@@ -57,9 +57,12 @@ export interface InningsState {
   sixes: number;
   achievements: string[];
   done: boolean;
+  /** Runs needed to win — set only for the second (chasing) innings. The
+   *  innings ends the instant `runs >= target`, even mid-over. */
+  target?: number;
 }
 
-export function createInnings(xi: CricketPlayer[], format: HcFormat): InningsState {
+export function createInnings(xi: CricketPlayer[], format: HcFormat, target?: number): InningsState {
   const stats: Record<string, BatterStat> = {};
   xi.forEach((p) => {
     stats[p.id] = { runs: 0, balls: 0, fours: 0, sixes: 0, out: false };
@@ -83,6 +86,7 @@ export function createInnings(xi: CricketPlayer[], format: HcFormat): InningsSta
     sixes: 0,
     achievements: [],
     done: false,
+    target,
   };
 }
 
@@ -166,6 +170,9 @@ export function playBall(prev: InningsState, pick: number): { state: InningsStat
       nonStrikerIdx = t;
     }
   }
+
+  const targetReached = prev.target != null && total >= prev.target;
+  if (targetReached) done = true;
 
   if (sixes >= 3 && !achievements.includes("power-hitter")) {
     achievements.push("power-hitter");

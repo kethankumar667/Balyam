@@ -20,11 +20,13 @@ export function MatchLoadingPage() {
   const awayTeamId = useCricketStore((s) => s.awayTeamId);
   const loadingProgress = useCricketStore((s) => s.loadingProgress);
   const setLoadingProgress = useCricketStore((s) => s.setLoadingProgress);
+  const resetMatch = useCricketStore((s) => s.resetMatch);
 
   const [fact] = useState(() => FUN_FACTS[Math.floor(Math.random() * FUN_FACTS.length)]);
   const doneRef = useRef(false);
 
   useEffect(() => {
+    resetMatch();
     setLoadingProgress(0);
     const start = Date.now();
     const total = 2400;
@@ -34,7 +36,7 @@ export function MatchLoadingPage() {
       if (pct >= 100) window.clearInterval(timer);
     }, 90);
     return () => window.clearInterval(timer);
-  }, [setLoadingProgress]);
+  }, [setLoadingProgress, resetMatch]);
 
   useEffect(() => {
     if (loadingProgress >= 100 && !doneRef.current) {

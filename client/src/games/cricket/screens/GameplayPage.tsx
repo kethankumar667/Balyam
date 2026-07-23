@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../../lib/cn";
 import {
@@ -11,9 +11,14 @@ import {
   StampBadge,
 } from "../components";
 import { getSelectablePool, getSquad, getTeamRef, playersByIds } from "../data";
+import { boundaryCounts } from "../derive";
 import { createInnings, isPowerplay, playBall, type InningsState } from "../innings";
+import { useHistoryStore, type HistoryMatchRecord } from "../historyStore";
+import { buildMatchSummary } from "../matchSummary";
+import { detectMatchAchievements } from "../achievements";
+import { useStickerStore } from "../stickerStore";
 import { useCricketStore } from "../store";
-import type { BallOutcome, MatchScore } from "../types";
+import type { BallOutcome, CricketPlayer, HcTeamId, MatchScore } from "../types";
 import {
   AchievementOverlay,
   BallResultOverlay,
@@ -41,17 +46,24 @@ const DURATION: Record<QueuedOverlay["kind"], number> = {
   overSummary: 2200,
 };
 
+/** Delay after the 2nd innings ends before auto-navigating to the result
+ *  flow, so the final ball's own overlay/score has time to settle. */
+const MATCH_END_DELAY_MS = 1200;
+
 function ppQueue(innings: InningsState): QueuedOverlay[] {
   return innings.ppOvers > 0 ? [{ kind: "powerplay", overs: innings.ppOvers }] : [];
 }
 
 /**
- * Gameplay — the live innings. Score header (with a powerplay badge), the
- * batting pair, the current over strip, and the thumb-first finger buttons.
- * Ball events feed a queue of auto-dismissing callout overlays (boundary,
- * wicket, milestone, achievement, over summary). A batting-order bottom sheet
- * is reachable at any time. Overlays are disabled from blocking for long and
- * respect reduced motion. Works for every format via the innings engine.
+ * Gameplay — the live innings, twice. Score header (with a powerplay badge,
+ * plus a target/required-run-rate line once chasing), the batting pair, the
+ * current over strip, and the thumb-first finger buttons. Ball events feed a
+ * queue of auto-dismissing callout overlays (boundary, wicket, milestone,
+ * achievement, over summary). Innings 1 ends into a "Start 2nd Innings"
+ * choice; innings 2 chases the target set by innings 1 (winning the instant
+ * the target is passed, even mid-over) and auto-advances into the real
+ * match-result flow once both innings are in the store. Works for every
+ * format via the innings engine.
  */
 export function GameplayPage() {
   const navigate = useNavigate();
@@ -62,27 +74,42 @@ export function GameplayPage() {
   const tossWinner = useCricketStore((s) => s.tossWinner);
   const tossDecision = useCricketStore((s) => s.tossDecision);
   const format = useCricketStore((s) => s.format);
-  const setLastInnings = useCricketStore((s) => s.setLastInnings);
+  const category = useCricketStore((s) => s.category);
+  const setFirstInnings = useCricketStore((s) => s.setFirstInnings);
+  const setSecondInnings = useCricketStore((s) => s.setSecondInnings);
+  const startMatchClock = useCricketStore((s) => s.startMatchClock);
+  const finishMatchClock = useCricketStore((s) => s.finishMatchClock);
+  const recordMatch = useHistoryStore((s) => s.recordMatch);
 
-  const battingId = useMemo(() => {
+  const battingFirstId = useMemo<HcTeamId>(() => {
     if (!tossWinner || !tossDecision) return homeTeamId;
     if (tossDecision === "bat") return tossWinner;
     return tossWinner === homeTeamId ? awayTeamId : homeTeamId;
   }, [tossWinner, tossDecision, homeTeamId, awayTeamId]);
+  const battingSecondId: HcTeamId = battingFirstId === homeTeamId ? awayTeamId : homeTeamId;
 
-  const xi = useMemo(() => {
-    const ids = battingId === homeTeamId ? homeXI : awayXI;
-    const pool = getSelectablePool(battingId, format);
+  function xiFor(teamId: HcTeamId): CricketPlayer[] {
+    const ids = teamId === homeTeamId ? homeXI : awayXI;
+    const pool = getSelectablePool(teamId, format);
     const resolved = playersByIds(ids, pool);
-    return resolved.length >= 2 ? resolved : getSquad(battingId, format).slice(0, 11);
-  }, [battingId, homeTeamId, homeXI, awayXI, format]);
+    return resolved.length >= 2 ? resolved : getSquad(teamId, format).slice(0, 11);
+  }
 
+  const [inningsNo, setInningsNo] = useState<1 | 2>(1);
+  const battingId = inningsNo === 1 ? battingFirstId : battingSecondId;
   const battingTeam = getTeamRef(battingId);
-  const setup = useMemo(() => createInnings(xi, format), [xi, format]);
 
-  const [innings, setInnings] = useState<InningsState>(setup);
-  const [queue, setQueue] = useState<QueuedOverlay[]>(() => ppQueue(setup));
+  const [innings, setInnings] = useState<InningsState>(() => createInnings(xiFor(battingFirstId), format));
+  const [queue, setQueue] = useState<QueuedOverlay[]>(() => ppQueue(innings));
   const [orderOpen, setOrderOpen] = useState(false);
+  const recordedRef = useRef(false);
+
+  useEffect(() => {
+    startMatchClock();
+    // Runs once on mount only — subsequent innings/rematch transitions call
+    // the clock actions explicitly at the moment they matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (queue.length === 0) return;
@@ -91,11 +118,55 @@ export function GameplayPage() {
   }, [queue]);
 
   useEffect(() => {
-    if (innings.done) setLastInnings(innings);
-  }, [innings, setLastInnings]);
+    if (!innings.done) return;
+    if (inningsNo === 1) {
+      setFirstInnings(innings);
+      return;
+    }
+    setSecondInnings(innings);
+    finishMatchClock();
+    if (recordedRef.current) return;
+    const first = useCricketStore.getState().firstInnings;
+    const startedAt = useCricketStore.getState().matchStartedAt;
+    if (!first) return;
+    recordedRef.current = true;
+    const summary = buildMatchSummary(first, innings, startedAt ?? Date.now(), Date.now());
+    const firstBoundaries = boundaryCounts(first);
+    const secondBoundaries = boundaryCounts(innings);
+    const record: HistoryMatchRecord = {
+      id: crypto.randomUUID(),
+      playedAt: Date.now(),
+      category,
+      format,
+      firstTeamId: summary.firstTeamId,
+      secondTeamId: summary.secondTeamId,
+      winner: summary.winner,
+      marginKind: summary.margin.kind,
+      marginValue: summary.margin.value,
+      marginText: summary.marginText,
+      first: { ...summary.first, ...firstBoundaries },
+      second: { ...summary.second, ...secondBoundaries },
+      playerOfMatch: summary.playerOfMatch,
+      durationText: summary.durationText,
+    };
+    recordMatch(record);
+
+    const matchesAfter = useHistoryStore.getState().matches.length;
+    const earnedIds = detectMatchAchievements({ first, second: innings, margin: summary.margin, matchesPlayedIncludingThis: matchesAfter });
+    if (earnedIds.length > 0) useStickerStore.getState().unlockMany(earnedIds, record.id);
+  }, [innings, inningsNo, setFirstInnings, setSecondInnings, finishMatchClock, category, format, recordMatch]);
+
+  useEffect(() => {
+    if (inningsNo !== 2 || !innings.done || queue.length > 0) return;
+    const t = window.setTimeout(() => navigate("/cricket/player-of-match"), MATCH_END_DELAY_MS);
+    return () => window.clearTimeout(t);
+  }, [inningsNo, innings.done, queue.length, navigate]);
 
   const pp = isPowerplay(innings);
   const busy = queue.length > 0 || innings.done;
+
+  const ballsLeft = innings.oversLimit * 6 - (innings.oversCompleted * 6 + innings.ballInOver);
+  const runsNeeded = innings.target != null ? innings.target - innings.runs : null;
 
   const score: MatchScore = {
     teamId: battingId,
@@ -103,6 +174,7 @@ export function GameplayPage() {
     wickets: innings.wickets,
     overs: innings.oversCompleted,
     balls: innings.ballInOver,
+    target: innings.target,
     runRate: innings.oversCompleted + innings.ballInOver / 6 > 0 ? innings.runs / (innings.oversCompleted + innings.ballInOver / 6) : 0,
   };
 
@@ -127,34 +199,36 @@ export function GameplayPage() {
     if (next.length > 0) setQueue((q) => [...q, ...next]);
   }
 
-  function playAgain() {
-    const fresh = createInnings(xi, format);
+  function startSecondInnings() {
+    const fresh = createInnings(xiFor(battingSecondId), format, innings.runs + 1);
+    setInningsNo(2);
     setInnings(fresh);
     setQueue(ppQueue(fresh));
   }
 
   const head = queue[0];
   const dismiss = () => setQueue((q) => q.slice(1));
+  const matchOver = inningsNo === 2 && innings.done;
 
   return (
     <GamePageShell
       footer={
-        innings.done ? (
+        innings.done && inningsNo === 1 ? (
           <div className="space-y-2">
             <button
               type="button"
-              onClick={() => navigate("/cricket/scorecard")}
+              onClick={startSecondInnings}
               className="w-full rounded-2xl bg-[#2E7D32] py-3.5 text-base font-black text-white shadow-md transition active:scale-95"
             >
-              View scorecard
+              Start 2nd innings
             </button>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={playAgain}
+                onClick={() => navigate("/cricket/scorecard")}
                 className="rounded-2xl border-2 border-[#E4D3AC] bg-[#FFFBF0] py-3 text-sm font-black text-[#6D4323] transition active:scale-95"
               >
-                Play again
+                View scorecard
               </button>
               <button
                 type="button"
@@ -185,6 +259,12 @@ export function GameplayPage() {
         </div>
 
         <ScoreHeader battingTeam={battingTeam} score={score} />
+
+        {innings.target != null && !innings.done && runsNeeded != null && (
+          <p className="text-center text-xs font-bold text-[#6D4323]/80">
+            Need {Math.max(0, runsNeeded)} run{runsNeeded === 1 ? "" : "s"} off {Math.max(0, ballsLeft)} ball{ballsLeft === 1 ? "" : "s"}
+          </p>
+        )}
 
         {!innings.done && (
           <PremiumCard className="px-4 py-3">
@@ -224,9 +304,10 @@ export function GameplayPage() {
         <NotebookSurface className="px-4 py-5">
           {innings.done ? (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <StampBadge label="Innings complete" tone="gold" />
+              <StampBadge label={matchOver ? "Match complete!" : "Innings complete"} tone="gold" />
               <p className="font-display text-4xl text-[#3A2210]">{innings.runs}/{innings.wickets}</p>
               <p className="text-sm text-[#6D4323]/80">{battingTeam.name} · {innings.oversCompleted}.{innings.ballInOver} overs</p>
+              {matchOver && <p className="text-xs text-[#6D4323]/60">Working out the result…</p>}
             </div>
           ) : (
             <>
