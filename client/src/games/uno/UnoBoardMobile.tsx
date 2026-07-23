@@ -286,16 +286,32 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           see Room.tsx's uno full-bleed shell). */}
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
         {/* The table — same oval mat as desktop, scaled to fit one column.
-            The cap grows with viewport width (480 phone / 560 landscape
-            phone-and-up / 680 tablet) — this shell serves every width up
-            to the 1280px desktop-shell gate (UnoBoard.tsx), and a flat
-            480px cap left a large, unbalanced empty-wood dead zone around
-            the table at tablet widths (768-1023px) instead of using the
-            extra room the way AGENTS.md's tablet tier calls for. */}
+            Width-only caps (480 phone / 560 landscape phone-and-up / 680
+            tablet) used to be the whole story, but on a landscape phone
+            HEIGHT is the tight dimension, not width: at a typical ~390px
+            landscape viewport the 560px tier rendered a ~500px-tall table
+            that alone blew past the ~300px this scroll area actually has,
+            pushing the hand fan (and the sticky Pass button below it)
+            almost entirely off-screen — the exact "can't arrange my cards"
+            complaint. The height term reserves header (~89px) + this
+            container's own py-3 (24px) + the hand fan's fixed 8rem row
+            (128px, see UnoHandFan in uno-table.tsx) + the space-y-3 gaps
+            between the table/declare-row/hand-fan (36px) ≈ 277px, so the
+            table shrinks to whatever's left instead of assuming landscape
+            phones have as much vertical room as portrait ones (same
+            reasoning as LudoBoardMobile.tsx's own vh-aware cap).
+            The clamp() floor (314px) stops it shrinking past the point
+            where opponent seats (UnoPlayerChip, ~58px, fixed size — it
+            doesn't scale down with the table) start overlapping the pile
+            (UnoTableCenter, ~140×96px, also fixed) — computeSeatPosition's
+            42/46% radius needs a real table to place them around, and on
+            the shortest phones this floor means a little scrolling to
+            reach the hand remains, which beats a table with the opponents'
+            names and card counts unreadably stacked on top of the pile. */}
         <div
           ref={cameraRef}
-          className="relative w-full mx-auto max-w-[480px] sm:max-w-[560px] lg:max-w-[680px]"
-          style={{ aspectRatio: "1.12" }}
+          className="relative mx-auto"
+          style={{ aspectRatio: "1.12", width: "clamp(314px, min(92vw, calc((100vh - 277px) * 1.12)), 680px)" }}
         >
           <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
             <UnoTableMat>

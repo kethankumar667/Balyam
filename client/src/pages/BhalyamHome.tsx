@@ -1129,6 +1129,27 @@ function GameTileArt({
   children: React.ReactNode;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
+
+  // Clear stale "failed" state when src changes (e.g. hot reload swapping
+  // which game a tile points at) — otherwise a one-time load failure keeps
+  // showing the glyph placeholder forever, even after the real file is
+  // confirmed present. Mirrors AssetImg's fix below.
+  useEffect(() => {
+    setImageFailed(false);
+    setRetryNonce(0);
+  }, [src]);
+
+  // Retry once after a brief delay so a transient dev-server / cache hiccup
+  // on first load doesn't leave the tile permanently stuck on fallback.
+  useEffect(() => {
+    if (!imageFailed || retryNonce > 0) return;
+    const timer = window.setTimeout(() => {
+      setImageFailed(false);
+      setRetryNonce(1);
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [imageFailed, retryNonce]);
 
   // No bespoke tile art (e.g. Word Building) — fall through to the glyph
   // layer directly instead of rendering a broken <img>.
@@ -1140,9 +1161,11 @@ function GameTileArt({
     ? "mt-1 h-[86px] sm:h-[92px] w-auto max-w-[62%]"
     : "mt-0.5 h-[88px] sm:h-[96px] w-auto max-w-[52%]";
 
+  const resolvedSrc = retryNonce === 0 ? src : `${src}?retry=${retryNonce}`;
+
   return (
     <img
-      src={src}
+      src={resolvedSrc}
       alt={`${title} icon`}
       className={`relative ${imageClass} object-contain object-left-top`}
       style={{ filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.28))" }}
