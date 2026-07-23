@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useUnoBoard, type UnoBoardProps } from "./useUnoBoard";
 import { ActionBar } from "./uno-shared";
@@ -70,6 +70,12 @@ import type { FeltAnchor } from "../../animations/helpers/types";
 /** The pile sits at the felt's visual centre — see UnoBoardDesktop.tsx's
  *  matching constant. */
 const PILE_ANCHOR: FeltAnchor = { left: "50%", top: "50%" };
+
+/** Reference size the table (mat, opponent chips, pile, every hit
+ *  animation inside it) is laid out at, then uniformly scaled down to
+ *  fit — see the scaling effect in the component body for why. */
+const TABLE_BASE_W = 480;
+const TABLE_BASE_H = TABLE_BASE_W / 1.12;
 
 /**
  * Touch-first UNO board — circular-table redesign (see UnoBoardDesktop.tsx's
@@ -193,6 +199,47 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
     else void enterFullscreen("landscape");
   }
 
+  /* ─── Table scaling — fits the whole table (mat, opponent chips, pile,
+     every hit animation) into whatever vertical room is left below the
+     header once the hand fan / declare cluster / action bar have taken
+     theirs, instead of assuming a landscape phone has as much height to
+     spare as a portrait one. Earlier this shrank the table by capping its
+     *width* (aspect-ratio deriving height), which on a short viewport
+     forced the table down to a size where opponent seats — fixed-px
+     assets that don't resize with their container — started overlapping
+     the pile. A uniform CSS transform: scale() on the whole table
+     (rendered internally at a constant TABLE_BASE_W×TABLE_BASE_H) avoids
+     that: everything shrinks together, so relative layout never breaks,
+     at any scale. ResizeObserver on both the scroll area and the "rest"
+     group below the table (whose height itself changes live as the
+     declare cluster / action bar show and hide) keeps this correct
+     through every state change, not just window resizes. The 0.5 floor
+     stops it shrinking past legibility — beyond that a little scrolling
+     to reach the hand is the lesser evil. */
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const restRef = useRef<HTMLDivElement | null>(null);
+  const [tableScale, setTableScale] = useState(1);
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const rest = restRef.current;
+    if (!scroller || !rest) return;
+    const compute = () => {
+      const cs = getComputedStyle(scroller);
+      const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      const gapY = parseFloat(cs.rowGap) || 0;
+      const availableH = scroller.clientHeight - padY - rest.getBoundingClientRect().height - gapY;
+      const availableW = scroller.clientWidth - padX;
+      const scale = Math.min(1, availableH / TABLE_BASE_H, availableW / TABLE_BASE_W);
+      setTableScale(Math.max(0.5, scale));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(scroller);
+    ro.observe(rest);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="uno-wood-surface relative h-full flex flex-col overflow-hidden">
       {/* Three cases, same priority order as Rummy's mobile shell:
@@ -225,7 +272,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
       </div>
 
       {/* Header — wood chrome matching the desktop scene */}
-      <div className="flex-shrink-0 px-3 py-2 space-y-2 border-b border-[#5c3a1e]">
+      <div className="flex-shrink-0 px-3 py-1.5 space-y-1.5 border-b border-[#5c3a1e]">
         <div className="flex items-center justify-between gap-2">
           <UnoIvoryButton shape="round" ariaLabel="Leave game" title="Leave" onClick={onLeave}>
             <span className="text-base leading-none">←</span>
@@ -283,37 +330,28 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
 
       {/* Scrollable body — the sticky action bar below sticks to the bottom
           of THIS container, not the page (the page itself no longer scrolls,
-          see Room.tsx's uno full-bleed shell). */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
-        {/* The table — same oval mat as desktop, scaled to fit one column.
-            Width-only caps (480 phone / 560 landscape phone-and-up / 680
-            tablet) used to be the whole story, but on a landscape phone
-            HEIGHT is the tight dimension, not width: at a typical ~390px
-            landscape viewport the 560px tier rendered a ~500px-tall table
-            that alone blew past the ~300px this scroll area actually has,
-            pushing the hand fan (and the sticky Pass button below it)
-            almost entirely off-screen — the exact "can't arrange my cards"
-            complaint. The height term reserves header (~89px) + this
-            container's own py-3 (24px) + the hand fan's fixed 8rem row
-            (128px, see UnoHandFan in uno-table.tsx) + the space-y-3 gaps
-            between the table/declare-row/hand-fan (36px) ≈ 277px, so the
-            table shrinks to whatever's left instead of assuming landscape
-            phones have as much vertical room as portrait ones (same
-            reasoning as LudoBoardMobile.tsx's own vh-aware cap).
-            The clamp() floor (314px) stops it shrinking past the point
-            where opponent seats (UnoPlayerChip, ~58px, fixed size — it
-            doesn't scale down with the table) start overlapping the pile
-            (UnoTableCenter, ~140×96px, also fixed) — computeSeatPosition's
-            42/46% radius needs a real table to place them around, and on
-            the shortest phones this floor means a little scrolling to
-            reach the hand remains, which beats a table with the opponents'
-            names and card counts unreadably stacked on top of the pile. */}
+          see Room.tsx's uno full-bleed shell). Flex column (not space-y-3)
+          so the table slot and the "rest" group below it are each
+          independently measurable for the scaling effect above. */}
+      <div ref={scrollerRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 flex flex-col items-center gap-2">
         <div
           ref={cameraRef}
-          className="relative mx-auto"
-          style={{ aspectRatio: "1.12", width: "clamp(314px, min(92vw, calc((100vh - 277px) * 1.12)), 680px)" }}
+          className="relative mx-auto flex-shrink-0"
+          style={{ width: TABLE_BASE_W * tableScale, height: TABLE_BASE_H * tableScale }}
         >
-          <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
+          <animated.div ref={recoilRef} className="relative w-full h-full overflow-hidden" style={recoilStyle}>
+            {/* Laid out at the constant reference size, then scaled as a
+                whole — see the table-scaling effect above for why this
+                can't just be a resized container. */}
+            <div
+              className="absolute top-0 left-0"
+              style={{
+                width: TABLE_BASE_W,
+                height: TABLE_BASE_H,
+                transform: `scale(${tableScale})`,
+                transformOrigin: "top left",
+              }}
+            >
             <UnoTableMat>
               <UnoDirectionArc direction={state.direction} flourish={flourish !== null} spinTrigger={reverseTrigger} />
 
@@ -523,44 +561,49 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                 />
               )}
             </UnoTableMat>
+            </div>
           </animated.div>
         </div>
 
-        {/* UNO declare button — centred above the hand, not a floating
-            corner button anymore. It used to sit fixed bottom-left, easy to
-            miss and awkward to reach; right above the cards is exactly
-            where the player is already looking once their hand gets down
-            to one. */}
-        <div className="flex justify-center">
-          <UnoDeclareCluster visible={m.canDeclareUno} onDeclare={m.declareUno} />
-        </div>
-
-        {/* Full-width card fan */}
-        <UnoHandFan
-          sortedHand={m.sortedHand}
-          validMoveIds={m.validMoveIds}
-          selectedCardId={m.selectedCardId}
-          myTurn={m.myTurn}
-          phase={state.phase}
-          onSelectCard={m.dropCardOnDiscard}
-          needsColorChoice={m.needsColorChoice}
-          selectedWildColor={m.selectedWildColor}
-          onPickColor={m.pickColorAndPlay}
-          onDropOnDiscard={m.dropCardOnDiscard}
-          onDragStateChange={setIsDraggingCard}
-        />
-
-        {/* Action bar pinned to the bottom of the scroll area */}
-        {m.myTurn && state.phase === "playing" && (
-          <div className="sticky bottom-0 z-20 -mx-1 px-1 pt-2 pb-2 bg-gradient-to-t from-[#2a190d] via-[#2a190d]/95 to-transparent">
-            <ActionBar
-              passTurn={m.passTurn}
-              canPassTurn={m.canPassTurn}
-              drewThisTurn={m.drewThisTurn}
-            />
+        {/* Declare cluster / hand fan / action bar — measured as one group
+            by the table-scaling effect above (restRef), since its total
+            height is what's left over for the table. */}
+        <div ref={restRef} className="w-full flex-shrink-0 flex flex-col items-center gap-1.5">
+          {/* UNO declare button — centred above the hand, not a floating
+              corner button anymore. It used to sit fixed bottom-left, easy
+              to miss and awkward to reach; right above the cards is
+              exactly where the player is already looking once their hand
+              gets down to one. */}
+          <div className="flex justify-center">
+            <UnoDeclareCluster visible={m.canDeclareUno} onDeclare={m.declareUno} />
           </div>
-        )}
 
+          {/* Full-width card fan */}
+          <UnoHandFan
+            sortedHand={m.sortedHand}
+            validMoveIds={m.validMoveIds}
+            selectedCardId={m.selectedCardId}
+            myTurn={m.myTurn}
+            phase={state.phase}
+            onSelectCard={m.dropCardOnDiscard}
+            needsColorChoice={m.needsColorChoice}
+            selectedWildColor={m.selectedWildColor}
+            onPickColor={m.pickColorAndPlay}
+            onDropOnDiscard={m.dropCardOnDiscard}
+            onDragStateChange={setIsDraggingCard}
+          />
+
+          {/* Action bar pinned to the bottom of the scroll area */}
+          {m.myTurn && state.phase === "playing" && (
+            <div className="sticky bottom-0 z-20 -mx-1 px-1 pt-2 pb-2 w-full bg-gradient-to-t from-[#2a190d] via-[#2a190d]/95 to-transparent">
+              <ActionBar
+                passTurn={m.passTurn}
+                canPassTurn={m.canPassTurn}
+                drewThisTurn={m.drewThisTurn}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {state.phase === "finished" && !m.scorecardDismissed && (
