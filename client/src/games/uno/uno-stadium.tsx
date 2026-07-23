@@ -75,9 +75,9 @@ export function computeSeatNumbers(seating: StadiumSeating, selfId: string | nul
  *  slots, so a 1- or 2-opponent side isn't stranded at the top. */
 function sideTops(count: number): string[] {
   if (count === 0) return [];
-  if (count === 1) return ["45%"];
-  const top = 22;
-  const bottom = 68;
+  if (count === 1) return ["40%"];
+  const top = 18;
+  const bottom = 62;
   const step = (bottom - top) / (count - 1);
   return Array.from({ length: count }, (_, i) => `${top + step * i}%`);
 }
@@ -87,18 +87,20 @@ export interface StadiumSeatPos {
   top: string;
 }
 
-/** Percentage coordinates (of the stadium canvas) for every seated id,
- *  self included — used both to place seats and as the anchor lookup for
- *  every special-card hit animation (see UnoBoardMobile.tsx). */
+/** Percentage coordinates (of the FULL board area, which is now the whole
+ *  region between header and hand fan — the reference composition is
+ *  full-bleed, seats hugging the screen edges) for every seated id, self
+ *  included. Used both to place seats and as the anchor lookup for every
+ *  special-card hit animation (see UnoBoardMobile.tsx). */
 export function computeStadiumPositions(
   seating: StadiumSeating,
   selfId: string | null,
 ): Record<string, StadiumSeatPos> {
   const pos: Record<string, StadiumSeatPos> = {};
-  if (seating.spotlight) pos[seating.spotlight] = { left: "50%", top: "8%" };
+  if (seating.spotlight) pos[seating.spotlight] = { left: "50%", top: "16%" };
   const rightTops = sideTops(seating.right.length);
   seating.right.forEach((id, i) => {
-    pos[id] = { left: "88%", top: rightTops[i] };
+    pos[id] = { left: "92%", top: rightTops[i] };
   });
   const leftTops = sideTops(seating.left.length);
   // `seating.left` is closest-to-self-first; rendering/positioning top-to-
@@ -106,9 +108,11 @@ export function computeStadiumPositions(
   // slot), so read the tops array in reverse.
   const reversedTops = [...leftTops].reverse();
   seating.left.forEach((id, i) => {
-    pos[id] = { left: "12%", top: reversedTops[i] };
+    pos[id] = { left: "8%", top: reversedTops[i] };
   });
-  if (selfId) pos[selfId] = { left: "50%", top: "95%" };
+  // Anchor for hit animations targeting the local player — approximates
+  // the self plate's new bottom-left slot (see UnoBoardMobile.tsx).
+  if (selfId) pos[selfId] = { left: "14%", top: "88%" };
   return pos;
 }
 
@@ -154,16 +158,14 @@ function stadiumAccentFor(seed: string): StadiumAccent {
 // replacing UnoTableMat's wood-frame + red-felt look for this shell only.
 // ---------------------------------------------------------------------
 
+/** Seamless full-bleed board surface — the page background already carries
+ *  the dark-maroon radial gradient, so this renders NO panel of its own
+ *  (the first cut drew a rounded rectangle here, which read as a small
+ *  centered card instead of the reference's edge-to-edge stadium). Only
+ *  the faint concentric rings remain, stretched across the whole area. */
 export function StadiumMat({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="relative w-full h-full overflow-hidden"
-      style={{
-        borderRadius: "4%",
-        background: "radial-gradient(ellipse at 50% 40%, #7a2015 0%, #4a1108 55%, #200705 100%)",
-        boxShadow: "inset 0 0 90px rgba(0,0,0,0.55), 0 30px 60px -20px rgba(0,0,0,0.7)",
-      }}
-    >
+    <div className="relative w-full h-full">
       <StadiumRings />
       {children}
     </div>
@@ -178,8 +180,8 @@ function StadiumRings() {
       className="absolute inset-0 w-full h-full pointer-events-none"
       aria-hidden
     >
-      {[16, 26, 36, 46].map((r) => (
-        <ellipse key={r} cx="50" cy="48" rx={r} ry={r * 0.8} fill="none" stroke="#F0603A" strokeWidth="0.35" opacity="0.3" />
+      {[13, 20, 27, 34].map((r) => (
+        <ellipse key={r} cx="50" cy="48" rx={r} ry={r * 0.9} fill="none" stroke="#F0603A" strokeWidth="0.3" opacity="0.28" />
       ))}
     </svg>
   );
@@ -196,7 +198,7 @@ export function StadiumDirectionArc({ direction }: { direction: 1 | -1 }) {
     <div className="absolute inset-0 pointer-events-none" style={{ transform: direction === -1 ? "scaleX(-1)" : undefined }} aria-hidden>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
         <path
-          d="M 8 50 A 42 44 0 1 0 92 50 A 42 44 0 1 0 8 50"
+          d="M 6 48 A 44 42 0 1 0 94 48 A 44 42 0 1 0 6 48"
           fill="none"
           stroke="#F5B347"
           strokeWidth="1.4"
@@ -205,8 +207,8 @@ export function StadiumDirectionArc({ direction }: { direction: 1 | -1 }) {
           vectorEffect="non-scaling-stroke"
         />
       </svg>
-      <StadiumFlowChevron left="92%" top="50%" pointDown />
-      <StadiumFlowChevron left="8%" top="50%" pointDown={false} />
+      <StadiumFlowChevron left="94%" top="48%" pointDown />
+      <StadiumFlowChevron left="6%" top="48%" pointDown={false} />
     </div>
   );
 }
@@ -242,6 +244,10 @@ export interface StadiumOpponentSeatProps {
   isTurn: boolean;
   isConnected?: boolean;
   variant: "spotlight" | "side";
+  /** Tiny-board mode (short landscape phones): hides the decorative mini
+   *  card-back fan so three stacked side seats never collide vertically.
+   *  The numeric hand count stays — it is the load-bearing information. */
+  dense?: boolean;
   canCatch?: boolean;
   onCatch?: () => void;
 }
@@ -254,11 +260,12 @@ export function StadiumOpponentSeat({
   isTurn,
   isConnected,
   variant,
+  dense = false,
   canCatch = false,
   onCatch,
 }: StadiumOpponentSeatProps) {
   const isSpotlight = variant === "spotlight";
-  const tile = isSpotlight ? 56 : 42;
+  const tile = isSpotlight ? 64 : 52;
   const accent = stadiumAccentFor(name);
   return (
     <div className="relative flex flex-col items-center gap-1">
@@ -307,23 +314,23 @@ export function StadiumOpponentSeat({
         </div>
         <div className="flex items-center gap-1 min-w-0">
           <span
-            className="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black text-white"
+            className="flex-shrink-0 flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-black text-white"
             style={{ background: accent.base, border: "1.5px solid rgba(255,255,255,0.85)" }}
           >
             {seatNumber}
           </span>
           <span
-            className="text-[11px] font-bold text-white truncate max-w-[4.5rem]"
+            className="text-[13px] font-bold text-white truncate max-w-[5.5rem]"
             style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}
           >
             {name}
           </span>
         </div>
       </div>
-      <span className="text-[13px] font-black text-white leading-none" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
+      <span className="text-[15px] font-black text-white leading-none" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
         {handSize}
       </span>
-      <StadiumMiniFan count={handSize} compact={!isSpotlight} />
+      {!dense && <StadiumMiniFan count={handSize} compact={!isSpotlight} />}
       {canCatch && (
         <button
           onClick={onCatch}
@@ -340,10 +347,10 @@ export function StadiumOpponentSeat({
 
 function StadiumMiniFan({ count, compact }: { count: number; compact: boolean }) {
   if (count <= 0) return null;
-  const shown = Math.min(count, compact ? 3 : 4);
-  const w = compact ? 13 : 17;
-  const h = compact ? 19 : 25;
-  const overlap = compact ? -7 : -9;
+  const shown = Math.min(count, 4);
+  const w = compact ? 17 : 21;
+  const h = compact ? 25 : 31;
+  const overlap = compact ? -9 : -11;
   return (
     <div className="flex items-end" aria-hidden>
       {Array.from({ length: shown }).map((_, i) => (
