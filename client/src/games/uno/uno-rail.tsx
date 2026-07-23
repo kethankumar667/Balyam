@@ -48,6 +48,12 @@ export interface UnoRoomRailProps {
   /** UNO's own room "photo album" — see shared/types.ts's UnoPublicState.unoHistory doc comment. */
   history: UnoRoundRecap[];
   champion: UnoChampion | null;
+  /** Mobile "stadium" redesign only: when set, replaces the sheet's own
+   *  floating chat/reaction trigger with a custom-rendered pair, wired to
+   *  the same open/unread state (`open()` shows the tab sheet). Omitted
+   *  everywhere else (desktop sidebar, desktop sheet) — those keep the
+   *  original floating buttons untouched. */
+  renderTriggers?: (open: () => void, unreadCount: number) => React.ReactNode;
 }
 
 export function UnoRoomRail(props: UnoRoomRailProps) {
@@ -71,27 +77,31 @@ function SheetRail(props: UnoRoomRailProps) {
 
   return (
     <>
-      {/* bottom-20 (not bottom-4) — clears the sticky Play/Draw/Pass action
-          bar, which also sits at the bottom of the viewport on mobile and
-          would otherwise sit directly under these floating buttons. */}
-      <div className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-2">
-        <ReactionButton />
-        <button
-          onClick={() => setOpen(true)}
-          className="relative rounded-full px-4 py-2.5 text-sm font-bold shadow-lg"
-          style={{ background: "#6D4323", color: "#F7E8C4" }}
-        >
-          💬 Room
-          {unread > 0 && (
-            <span
-              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-extrabold flex items-center justify-center"
-              style={{ background: "#DC2626", color: "#fff" }}
-            >
-              {unread > 9 ? "9+" : unread}
-            </span>
-          )}
-        </button>
-      </div>
+      {props.renderTriggers ? (
+        props.renderTriggers(() => setOpen(true), unread)
+      ) : (
+        // bottom-20 (not bottom-4) — clears the sticky Play/Draw/Pass action
+        // bar, which also sits at the bottom of the viewport on mobile and
+        // would otherwise sit directly under these floating buttons.
+        <div className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-2">
+          <ReactionButton />
+          <button
+            onClick={() => setOpen(true)}
+            className="relative rounded-full px-4 py-2.5 text-sm font-bold shadow-lg"
+            style={{ background: "#6D4323", color: "#F7E8C4" }}
+          >
+            💬 Room
+            {unread > 0 && (
+              <span
+                className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-extrabold flex items-center justify-center"
+                style={{ background: "#DC2626", color: "#fff" }}
+              >
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
 
       {open && (
         <>
@@ -203,7 +213,14 @@ function useUnreadCount(messages: ChatMessage[], selfId: string | null, open: bo
  *  so replacing InlineRoomRail in UNO doesn't silently drop the feature. */
 const QUICK_EMOJIS = ["👍", "😂", "🔥", "🎉", "😮", "💯", "👏", "🤝"];
 
-function ReactionButton() {
+/** `variant="round"` (default) is the existing icon-only circular button —
+ *  used as-is by the desktop sidebar and the default sheet trigger above.
+ *  `variant="square"` is the mobile "stadium" redesign's labeled square
+ *  button (matches its sibling Chat button's shape/size) — exported so
+ *  UnoBoardMobile.tsx can drop it straight into its own bottom-left rail
+ *  via SheetRail's `renderTriggers`, without a second reaction-emitting
+ *  implementation. */
+export function ReactionButton({ variant = "round" }: { variant?: "round" | "square" }) {
   const [open, setOpen] = useState(false);
   const [cooldown, setCooldown] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -227,15 +244,28 @@ function ReactionButton() {
 
   return (
     <div ref={wrapRef} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label="React"
-        title="React"
-        className="w-9 h-9 rounded-full flex items-center justify-center text-lg shadow-sm"
-        style={{ background: "#F0E1D0", border: "1px solid #E8D8BE" }}
-      >
-        🙂
-      </button>
+      {variant === "square" ? (
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-label="React"
+          title="React"
+          className="w-12 h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 text-white"
+          style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.2)" }}
+        >
+          <span className="text-base leading-none">🙂</span>
+          <span className="text-[8px] font-black uppercase tracking-wide">Emoji</span>
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-label="React"
+          title="React"
+          className="w-9 h-9 rounded-full flex items-center justify-center text-lg shadow-sm"
+          style={{ background: "#F0E1D0", border: "1px solid #E8D8BE" }}
+        >
+          🙂
+        </button>
+      )}
       {open && (
         <div
           // `w-56` (not `max-w-[14rem]`) — an absolutely-positioned flex-wrap
