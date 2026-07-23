@@ -8,7 +8,7 @@
  */
 
 import type { InningsState } from "./innings";
-import type { CricketPlayer } from "./types";
+import type { BallOutcome, CricketPlayer } from "./types";
 
 export interface BattingRow {
   player: CricketPlayer;
@@ -140,4 +140,106 @@ export function partnerships(inn: InningsState): PartnershipRow[] {
   }
   if (balls > 0) rows.push({ index: idx++, names: `${nameOf(inn, pair[0])} & ${nameOf(inn, pair[1])}`, runs, balls });
   return rows;
+}
+
+export interface PartnershipBreakdownRow {
+  index: number;
+  a: { id: string; name: string; runs: number };
+  b: { id: string; name: string; runs: number };
+  totalRuns: number;
+  balls: number;
+}
+
+/** Same pair-rotation segmentation as partnerships(), but split per batter so
+ *  the chart can show each player's individual contribution to the stand. */
+export function partnershipBreakdown(inn: InningsState): PartnershipBreakdownRow[] {
+  if (inn.log.length === 0 || inn.xi.length < 2) return [];
+  const rows: PartnershipBreakdownRow[] = [];
+  let pair: [string, string] = [inn.xi[0].id, inn.xi[1].id];
+  let nextIdx = 2;
+  let runsByPlayer: Record<string, number> = { [pair[0]]: 0, [pair[1]]: 0 };
+  let balls = 0;
+  let idx = 1;
+
+  const pushRow = () => {
+    rows.push({
+      index: idx++,
+      a: { id: pair[0], name: nameOf(inn, pair[0]), runs: runsByPlayer[pair[0]] ?? 0 },
+      b: { id: pair[1], name: nameOf(inn, pair[1]), runs: runsByPlayer[pair[1]] ?? 0 },
+      totalRuns: (runsByPlayer[pair[0]] ?? 0) + (runsByPlayer[pair[1]] ?? 0),
+      balls,
+    });
+  };
+
+  for (const b of inn.log) {
+    balls += 1;
+    if (!b.isWicket) runsByPlayer[b.batterId] = (runsByPlayer[b.batterId] ?? 0) + b.runs;
+    if (b.isWicket) {
+      pushRow();
+      const survivor = b.batterId === pair[0] ? pair[1] : pair[0];
+      const incoming = inn.xi[nextIdx]?.id ?? survivor;
+      nextIdx += 1;
+      pair = [survivor, incoming];
+      runsByPlayer = { [pair[0]]: 0, [pair[1]]: 0 };
+      balls = 0;
+    }
+  }
+  if (balls > 0) pushRow();
+  return rows;
+}
+
+export interface TimelineRow {
+  index: number;
+  overBall: string;
+  outcome: BallOutcome;
+  batterName: string;
+  runningScore: string;
+}
+
+/** The full ball-by-ball sequence with a running score — a direct read of
+ *  the real log, not a derived summary. */
+export function timelineEntries(inn: InningsState): TimelineRow[] {
+  let total = 0;
+  let wkts = 0;
+  return inn.log.map((b) => {
+    total += b.runs;
+    if (b.isWicket) wkts += 1;
+    return {
+      index: b.index,
+      overBall: `${b.over}.${b.ballInOver}`,
+      outcome: b.outcome,
+      batterName: nameOf(inn, b.batterId),
+      runningScore: `${total}/${wkts}`,
+    };
+  });
+}
+
+export interface WagonPoint {
+  id: string;
+  angleDeg: number;
+  radiusPct: number;
+  outcome: BallOutcome;
+  runs: number;
+}
+
+/**
+ * Wagon-wheel points from the real ball log. IMPORTANT honesty note: this
+ * hand-cricket model has no shot-direction/fielding data — a player picks a
+ * number, they don't aim a shot. So the angle here is a deterministic,
+ * evenly-spaced placement by bowling sequence (ball 1, 2, 3… spread around
+ * the circle), NOT a real "off side / leg side" claim. Only the RADIUS
+ * (distance from center) and color encode real data: higher runs sit further
+ * from the center, wickets get a fixed marker. The screen must caption this
+ * plainly rather than imply real shot tracking.
+ */
+export function wagonPoints(inn: InningsState): WagonPoint[] {
+  const n = inn.log.length;
+  if (n === 0) return [];
+  return inn.log.map((b, i) => ({
+    id: `b${b.index}`,
+    angleDeg: (i / n) * 360,
+    radiusPct: b.isWicket ? 58 : 12 + (b.runs / 6) * 78,
+    outcome: b.outcome,
+    runs: b.runs,
+  }));
 }
