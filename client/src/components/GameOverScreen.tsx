@@ -6,7 +6,7 @@ import RematchPanel from "./RematchPanel";
  * Full-viewport end-of-session screen — game-agnostic.
  *
  * Works for every game (RPS, Ludo, SnL, UNO, WordBuilding, DotsBoxes,
- * MemoryMatch, StarGame, HandCricket, Rummy). BHALYAM brand palette:
+ * StarGame, HandCricket, Rummy). BHALYAM brand palette:
  * warm amber-to-deep-maroon; no card-table metaphor, no purple/navy.
  *
  * Props:
