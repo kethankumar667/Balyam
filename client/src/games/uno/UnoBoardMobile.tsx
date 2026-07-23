@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { useUnoBoard, type UnoBoardProps } from "./useUnoBoard";
 import { ActionBar } from "./uno-shared";
 import { useAudio } from "../../hooks/useAudio";
@@ -73,24 +73,19 @@ import { FakeCelebration } from "../../animations/card/FakeCelebration";
 import { ColorChangeBalloon } from "../../animations/card/ColorChangeBalloon";
 import type { FeltAnchor } from "../../animations/helpers/types";
 
-/** The pile sits at the felt's visual centre. */
+/** The pile sits at the board area's visual centre. */
 const PILE_ANCHOR: FeltAnchor = { left: "50%", top: "48%" };
-
-/** Reference size the stadium canvas (rings, seats, pile, every hit
- *  animation inside it) is laid out at, then uniformly scaled down to fit
- *  — see the scaling effect below for why. Wider than the old wood-table's
- *  480x428 reference: the reference mockup's 3-left/3-right column grid
- *  needs a landscape-proportioned canvas, matching this shell's existing
- *  landscape lock (useUnoRotationGate). */
-const STADIUM_BASE_W = 660;
-const STADIUM_BASE_H = 420;
 
 /**
  * Touch-first UNO board — "stadium" redesign matching the max-players
- * mobile reference (dark-maroon grid seating: 1 spotlight top, 3+3 side
- * columns, self bottom-centre). See uno-stadium.tsx for the chrome this
- * shell is built from; UnoBoardDesktop.tsx is untouched and keeps the
- * separate wood-table look from uno-table.tsx/uno-scene.tsx.
+ * mobile reference (dark-maroon FULL-BLEED composition: spotlight seat top-
+ * centre, 3+3 side columns hugging the screen edges, self plate bottom-left
+ * beside the hand fan). No fixed-aspect canvas and no internal scrolling —
+ * the board area stretches to whatever space the viewport gives it (seat
+ * anchors are percentages of the real container, like the reference's
+ * edge-to-edge ellipse), while seat/pile contents scale from measured
+ * container size so nothing collides on short landscape phones.
+ * UnoBoardDesktop.tsx is untouched and keeps the separate wood-table look.
  */
 export default function UnoBoardMobile(props: UnoBoardProps) {
   const { history, champion } = props;
@@ -98,9 +93,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const { state, players, selfId, messages, roomCode, onLeave } = m;
   const tut = useTutorialGate(UNO_TUTORIAL.key);
   // Mobile portrait detection — UNO locks landscape, matching Rummy (see
-  // rotation-sync.tsx for the full synchronized-gate rationale). Declared
-  // before the gate call below, which needs this value (not the
-  // server-echoed one) for the LOCAL player specifically.
+  // rotation-sync.tsx for the full synchronized-gate rationale).
   const needsLandscape = useOrientationReport();
   const gate = useUnoRotationGate({
     roomCode,
@@ -126,7 +119,6 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const stadiumPositions = computeStadiumPositions(seating, selfId);
   const seatList = stadiumSeatList(seating);
   const selfSeatNumber = selfId ? seatNumbers[selfId] ?? 0 : 0;
-  const selfPos = selfId ? stadiumPositions[selfId] : undefined;
 
   // ── Animation system — see UnoBoardDesktop.tsx's matching block for the
   // full rationale; identical wiring, only the seat-position lookups below
@@ -137,8 +129,10 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const { recoilRef, recoilStyle, recoil } = useScreenRecoil();
   const [wobbleKey, setWobbleKey] = useState<string | null>(null);
   const [wobbleTargetId, setWobbleTargetId] = useState<string | null>(null);
-  const wobbleBaseTransform = wobbleTargetId === selfId ? "translateX(-50%)" : "translate(-50%, -50%)";
-  const wobble = usePlayerWobble(wobbleKey, wobbleBaseTransform);
+  // Seat anchoring/centering now lives on a static OUTER wrapper per seat,
+  // so the wobble spring only ever animates a plain (untranslated) inner
+  // element — base transform is empty for every target.
+  const wobble = usePlayerWobble(wobbleKey, "");
   const triggerWobble = (targetId: string) => {
     setWobbleTargetId(targetId);
     setWobbleKey(`${targetId}-${Date.now()}`);
@@ -210,45 +204,57 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
     else void enterFullscreen("landscape");
   }
 
-  /* ─── Stadium scaling — fits the whole canvas (rings, seats, pile, every
-     hit animation) into whatever vertical room is left below the header
-     once the hand fan / tagline / action bar have taken theirs. A uniform
-     CSS transform: scale() on the whole canvas (rendered internally at a
-     constant STADIUM_BASE_W×STADIUM_BASE_H) keeps every seat's relative
-     layout correct at any scale — same approach the previous wood-table
-     shell used, see git history for the fixed-px-seat overlap this avoids.
-     ResizeObserver on both the scroll area and the "rest" group below the
-     canvas (whose height changes live as the action bar shows/hides) keeps
-     this correct through every state change, not just window resizes. The
-     0.5 floor stops it shrinking past legibility. */
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const restRef = useRef<HTMLDivElement | null>(null);
-  const [tableScale, setTableScale] = useState(1);
+  /* ─── Adaptive sizing — three independent, loop-free measurements:
+     1. rootH (ResizeObserver on the shell) → fanScale: the hand fan
+        shrinks on short viewports so board + fan + tagline always fit
+        with ZERO scrolling (the previous canvas-scale + internal-scroll
+        approach clipped the fan on short screens — the exact bug the
+        live screenshot showed).
+     2. board box (ResizeObserver on the flex-1 board area) → seatScale:
+        seat/pile CONTENTS shrink when the leftover board area is small,
+        while their percentage ANCHORS keep hugging the screen edges at
+        every size — full-bleed like the reference, uncollided on phones.
+     3. fanNaturalH (ResizeObserver on the fan's unscaled content) → the
+        fan wrapper's reserved height, so the Wild colour picker appearing
+        under the fan grows the reservation instead of clipping. */
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const fanInnerRef = useRef<HTMLDivElement | null>(null);
+  const [rootH, setRootH] = useState(720);
+  const [boardBox, setBoardBox] = useState({ w: 1280, h: 480 });
+  const [fanNaturalH, setFanNaturalH] = useState(150);
   useEffect(() => {
-    const scroller = scrollerRef.current;
-    const rest = restRef.current;
-    if (!scroller || !rest) return;
-    const compute = () => {
-      const cs = getComputedStyle(scroller);
-      const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-      const gapY = parseFloat(cs.rowGap) || 0;
-      const availableH = scroller.clientHeight - padY - rest.getBoundingClientRect().height - gapY;
-      const availableW = scroller.clientWidth - padX;
-      const scale = Math.min(1, availableH / STADIUM_BASE_H, availableW / STADIUM_BASE_W);
-      setTableScale(Math.max(0.5, scale));
+    const root = rootRef.current;
+    const board = boardRef.current;
+    const fan = fanInnerRef.current;
+    if (!root || !board || !fan) return;
+    const measure = () => {
+      setRootH(root.clientHeight);
+      setBoardBox({ w: board.clientWidth, h: board.clientHeight });
+      setFanNaturalH(fan.offsetHeight || 150);
     };
-    compute();
-    const ro = new ResizeObserver(compute);
-    ro.observe(scroller);
-    ro.observe(rest);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    ro.observe(board);
+    ro.observe(fan);
     return () => ro.disconnect();
   }, []);
+  const fanScale = Math.min(1.5, Math.max(0.55, rootH / 460));
+  const seatScale = Math.min(1.2, Math.max(0.55, Math.min(boardBox.w / 1100, boardBox.h / 430)));
+  const pileScale = Math.min(1.6, Math.max(0.6, Math.min(boardBox.w / 1000, boardBox.h / 430) * 1.45));
+  const dense = seatScale < 0.7;
+  // The urgent countdown (TurnTimeWarning's top-centre chip) and the
+  // CLASSIC MODE badge both want the top-centre slot; yield it to the
+  // time-critical one during its ≤10s window.
+  const turnSecondsLeft = useTurnSecondsLeft(state.turnDeadline);
+  const warningActive = (m.myTurn || m.isChallengeTarget) && state.turnDeadline != null && turnSecondsLeft <= 10 && turnSecondsLeft > 0;
 
   return (
     <div
+      ref={rootRef}
       className="relative h-full flex flex-col overflow-hidden"
-      style={{ background: "radial-gradient(ellipse at 50% 30%, #3a1410 0%, #1c0806 60%, #100302 100%)" }}
+      style={{ background: "radial-gradient(ellipse at 50% 38%, #6b1c11 0%, #3a1009 45%, #1c0806 78%, #120403 100%)" }}
     >
       {/* Three cases, same priority order as Rummy's mobile shell:
            1. needsLandscape  → UnoRotateDevicePrompt blocks the board.
@@ -271,65 +277,50 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
         {state.phase === "playing" ? (m.myTurn ? "Your turn" : `${m.currentPlayer}'s turn`) : ""}
       </div>
 
-      {/* Header — room code, classic-mode/house-rules badge, icon rail. */}
-      <div className="flex-shrink-0 px-3 py-2 flex flex-col gap-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <StadiumIconButton onClick={onLeave} ariaLabel="Leave game" title="Leave">
-              <span className="text-base leading-none">←</span>
-            </StadiumIconButton>
-            <StadiumRoomCodePlate code={roomCode} />
+      {/* Header — one slim row; the classic-mode badge sits absolutely
+          centred inside it (a second layout row would waste height, and
+          floating it over the board collided with the spotlight seat). */}
+      <div className="relative flex-shrink-0 px-3 pt-2 pb-1 flex items-center justify-between gap-2 z-20">
+        {!warningActive && (
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 mt-0.5">
+            {Object.values(state.activeHouseRules).some(Boolean) ? (
+              <StadiumHouseRulesBadge rules={state.activeHouseRules} />
+            ) : (
+              <StadiumClassicModeBadge />
+            )}
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <StadiumIconButton
-              onClick={toggleMute}
-              ariaLabel={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
-              title="Sound"
-            >
-              {audioSettings.isMuted ? "🔇" : "🔊"}
-            </StadiumIconButton>
-            <StadiumSettingsMenu
-              isFullscreen={isFs}
-              onToggleFullscreen={toggleFullscreen}
-              onOpenTutorial={() => tut.setOpen(true)}
-            />
-            <ReactionButton />
-          </div>
+        )}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <StadiumIconButton onClick={onLeave} ariaLabel="Leave game" title="Leave">
+            <span className="text-base leading-none">←</span>
+          </StadiumIconButton>
+          <StadiumRoomCodePlate code={roomCode} />
         </div>
-        <div className="flex justify-center">
-          {Object.values(state.activeHouseRules).some(Boolean) ? (
-            <StadiumHouseRulesBadge rules={state.activeHouseRules} />
-          ) : (
-            <StadiumClassicModeBadge />
-          )}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <StadiumIconButton
+            onClick={toggleMute}
+            ariaLabel={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
+            title="Sound"
+          >
+            {audioSettings.isMuted ? "🔇" : "🔊"}
+          </StadiumIconButton>
+          <StadiumSettingsMenu
+            isFullscreen={isFs}
+            onToggleFullscreen={toggleFullscreen}
+            onOpenTutorial={() => tut.setOpen(true)}
+          />
+          <ReactionButton />
         </div>
       </div>
 
       <UnoActionToast lastAction={state.lastAction} />
 
-      {/* Scrollable body — the sticky action bar below sticks to the
-          bottom of THIS container, not the page. Flex column so the
-          stadium canvas and the "rest" group below it are each
-          independently measurable for the scaling effect above. */}
-      <div ref={scrollerRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 flex flex-col items-center gap-2">
-        <div
-          ref={cameraRef}
-          className="relative mx-auto flex-shrink-0"
-          style={{ width: STADIUM_BASE_W * tableScale, height: STADIUM_BASE_H * tableScale }}
-        >
-          <animated.div ref={recoilRef} className="relative w-full h-full overflow-hidden" style={recoilStyle}>
-            {/* Laid out at the constant reference size, then scaled as a
-                whole — see the table-scaling effect above for why this
-                can't just be a resized container. */}
-            <div
-              className="absolute top-0 left-0"
-              style={{
-                width: STADIUM_BASE_W,
-                height: STADIUM_BASE_H,
-                transform: `scale(${tableScale})`,
-                transformOrigin: "top left",
-              }}
-            >
+      {/* Board area — full-bleed, fills all space between header and hand
+          fan. Seats/pile/hit-animations are all percentage-anchored to
+          THIS box, matching the reference's edge-to-edge composition. */}
+      <div ref={cameraRef} className="flex-1 min-h-0 relative">
+        <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
+          <div ref={boardRef} className="relative w-full h-full">
             <StadiumMat>
               <StadiumDirectionArc direction={state.direction} />
 
@@ -338,63 +329,72 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                 if (!pos) return null;
                 const player = players.find((p) => p.id === id);
                 return (
-                  <animated.div
+                  <div
                     key={id}
                     className="absolute z-[2]"
                     style={{
                       left: pos.left,
                       top: pos.top,
-                      transform: wobbleTargetId === id ? wobble.transform : "translate(-50%, -50%)",
+                      transform: `translate(-50%, -50%) scale(${seatScale})`,
                     }}
                   >
-                    <StadiumOpponentSeat
-                      name={m.nameOf(id)}
-                      handSize={state.handSizes[id] ?? 0}
-                      seatNumber={seatNumbers[id] ?? 0}
-                      isHost={player?.isHost ?? false}
-                      isTurn={state.turnPlayerId === id}
-                      isConnected={player?.isConnected}
-                      variant={variant}
-                      canCatch={m.catchableOpponents.includes(id)}
-                      onCatch={() => m.catchUno(id)}
-                    />
-                  </animated.div>
+                    <animated.div style={{ transform: wobbleTargetId === id ? wobble.transform : "none" }}>
+                      <StadiumOpponentSeat
+                        name={m.nameOf(id)}
+                        handSize={state.handSizes[id] ?? 0}
+                        seatNumber={seatNumbers[id] ?? 0}
+                        isHost={player?.isHost ?? false}
+                        isTurn={state.turnPlayerId === id}
+                        isConnected={player?.isConnected}
+                        variant={variant}
+                        dense={dense}
+                        canCatch={m.catchableOpponents.includes(id)}
+                        onCatch={() => m.catchUno(id)}
+                      />
+                    </animated.div>
+                  </div>
                 );
               })}
 
-              <animated.div
-                className="absolute inset-0 flex items-center justify-center z-[2]"
-                style={{ transform: pileWobble.transform }}
+              <div
+                className="absolute z-[2]"
+                style={{ left: "50%", top: "48%", transform: `translate(-50%, -50%) scale(${pileScale})` }}
               >
-                <StadiumPileCenter
-                  topCard={state.topCard}
-                  currentColor={state.currentColor}
-                  deckCount={state.deckCount}
-                  isDragging={isDraggingCard}
-                  canDraw={m.canDraw}
-                  onDraw={m.drawCard}
-                />
-              </animated.div>
+                <animated.div style={{ transform: pileWobble.transform }}>
+                  <StadiumPileCenter
+                    topCard={state.topCard}
+                    currentColor={state.currentColor}
+                    deckCount={state.deckCount}
+                    isDragging={isDraggingCard}
+                    canDraw={m.canDraw}
+                    onDraw={m.drawCard}
+                  />
+                </animated.div>
+              </div>
 
-              {selfPos && (
-                <animated.div
-                  className="absolute left-1/2 z-[3]"
-                  style={{
-                    top: selfPos.top,
-                    transform: wobbleTargetId === selfId ? wobble.transform : "translateX(-50%)",
-                  }}
-                >
-                  <div className="relative flex flex-col items-center">
+              {/* Self plate — bottom-left beside the hand fan, like the
+                  reference's "YOU / KETHAN" cluster. Left offset clears
+                  the fixed chat/emoji rail in the corner. */}
+              <div className="absolute z-[3]" style={{ left: 74, bottom: 2, transform: `scale(${seatScale})`, transformOrigin: "bottom left" }}>
+                <animated.div style={{ transform: wobbleTargetId === selfId ? wobble.transform : "none" }}>
+                  <div className="relative">
                     <UnoDeclareBubble declared={selfDeclared} />
                     <StadiumSelfPlate name={selfName} seatNumber={selfSeatNumber} handSize={m.sortedHand.length} isTurn={m.myTurn} />
                   </div>
                 </animated.div>
+              </div>
+
+              {/* Pass button (rare, post-draw) — floats bottom-centre of
+                  the board, just above the fan. */}
+              {m.myTurn && state.phase === "playing" && (
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-20">
+                  <ActionBar passTurn={m.passTurn} canPassTurn={m.canPassTurn} drewThisTurn={m.drewThisTurn} />
+                </div>
               )}
 
-              {/* Comedic "fired at" flourish — every hit kind now has its
-                  own cinematic except Zero Rotate, which still gets the
-                  plain badge pop; see UnoBoardDesktop.tsx's matching block
-                  for the full rationale. */}
+              {/* Comedic "fired at" flourish — every hit kind has its own
+                  cinematic except Zero Rotate, which gets the plain badge
+                  pop; see UnoBoardDesktop.tsx's matching block. */}
               {slipperHit && slipperTargetPos && (
                 <PlusTwoFlyingSlippers
                   key={`${slipperTargetId}-draw2-${slipperHit.count}`}
@@ -535,14 +535,20 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                 />
               )}
             </StadiumMat>
-            </div>
-          </animated.div>
-        </div>
+          </div>
+        </animated.div>
+      </div>
 
-        {/* Hand fan / tagline / action bar — measured as one group by the
-            table-scaling effect above (restRef), since its total height is
-            what's left over for the stadium canvas. */}
-        <div ref={restRef} className="w-full flex-shrink-0 flex flex-col items-center gap-1">
+      {/* Hand fan — fixed bottom block, downscaled on short viewports so
+          it ALWAYS fits fully (reserved height tracks the fan's measured
+          natural height × scale, so the Wild colour picker appearing
+          never clips). */}
+      <div className="relative flex-shrink-0 w-full z-10" style={{ height: fanNaturalH * fanScale }}>
+        <div
+          ref={fanInnerRef}
+          className="absolute top-0 left-1/2"
+          style={{ transform: `translateX(-50%) scale(${fanScale})`, transformOrigin: "top center" }}
+        >
           <UnoHandFan
             sortedHand={m.sortedHand}
             validMoveIds={m.validMoveIds}
@@ -556,26 +562,18 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
             onDropOnDiscard={m.dropCardOnDiscard}
             onDragStateChange={setIsDraggingCard}
           />
-
-          {state.phase === "playing" && (
-            <p className="text-[11px] font-bold text-center px-2" style={{ color: "#F0DDB4" }}>
-              {m.myTurn ? "It's your turn. Play a card!" : `${m.currentPlayer} is playing…`}
-            </p>
-          )}
-
-          {/* Action bar pinned to the bottom of the scroll area */}
-          {m.myTurn && state.phase === "playing" && (
-            <div className="sticky bottom-0 z-20 -mx-1 px-1 pt-2 pb-2 w-full bg-gradient-to-t from-[#1c0806] via-[#1c0806]/95 to-transparent">
-              <ActionBar passTurn={m.passTurn} canPassTurn={m.canPassTurn} drewThisTurn={m.drewThisTurn} />
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Bottom-right HUD — persistent UNO declare button + turn timer,
-          floating above the scroll area so it never contributes to the
-          scaling calc and never overflows. */}
-      <div className="fixed bottom-4 right-3 z-30 flex flex-col items-end gap-2">
+      {/* Tagline — reference's "— It's your turn. Play a card! —" footer. */}
+      {state.phase === "playing" && (
+        <p className="flex-shrink-0 pb-1 text-[11px] font-bold text-center px-2 z-10" style={{ color: "#F0DDB4" }}>
+          {m.myTurn ? "— It's your turn. Play a card! —" : `${m.currentPlayer} is playing…`}
+        </p>
+      )}
+
+      {/* Bottom-right HUD — persistent UNO declare button + turn timer. */}
+      <div className="fixed bottom-3 right-3 z-30 flex flex-col items-end gap-2">
         <StadiumUnoButton enabled={m.canDeclareUno} onDeclare={m.declareUno} />
         <StadiumTurnTimerPill deadline={state.turnDeadline} myTurn={m.myTurn} />
       </div>
@@ -611,7 +609,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
         champion={champion}
         nameOf={m.nameOf}
         renderTriggers={(open, unread) => (
-          <div className="fixed bottom-4 left-3 z-30 flex flex-col gap-2">
+          <div className="fixed bottom-3 left-3 z-30 flex flex-col gap-2">
             <StadiumChatButton onClick={open} unread={unread} />
             <ReactionButton variant="square" />
           </div>
