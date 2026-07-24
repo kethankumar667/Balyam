@@ -324,9 +324,32 @@ export function UnoTableMat({ children }: { children: React.ReactNode }) {
           background:
             "radial-gradient(ellipse at 50% 42%, #C62D22 0%, #A81E17 58%, #8A130D 100%)",
           boxShadow: "inset 0 8px 30px rgba(58,6,4,0.5), inset 0 0 70px rgba(58,6,4,0.32)",
+          // Scopes the emboss watermark's cqw font-size to THIS box's own
+          // width, so it stays proportional to the felt regardless of the
+          // caller's viewport-driven sizing (RummyBoardDesktop-style
+          // aspect-ratio + max-w/max-h caps).
+          containerType: "inline-size",
         }}
       >
         <UnoFeltStars />
+        {/* Embossed table branding — pressed into the felt (light + dark
+            offset text-shadows either side, near-transparent fill) rather
+            than printed on top, so it reads as material, not decoration
+            fighting the cards for attention. */}
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
+          style={{
+            fontSize: "9cqw",
+            fontWeight: 900,
+            fontStyle: "italic",
+            letterSpacing: "-0.03em",
+            color: "rgba(255,255,255,0.045)",
+            textShadow: "1px 1px 0 rgba(0,0,0,0.1), -1px -1px 0 rgba(255,255,255,0.04)",
+          }}
+          aria-hidden
+        >
+          UNO
+        </div>
       </div>
       {children}
     </div>
@@ -572,6 +595,22 @@ export function UnoTableCenter({
               : undefined,
           }}
         >
+          {/* Colour-matched ambient glow — painted first so the card art
+              (below) covers its centre and only the blurred edge shows.
+              Reads the active colour at a glance, before parsing the pip —
+              wild cards glow once currentColor is picked, same as the
+              chosen-colour pill below. */}
+          {(topCard.color ?? currentColor) && (
+            <div
+              className="absolute -inset-3 rounded-xl pointer-events-none"
+              style={{
+                background: WILD_COLOR_SWATCH[(topCard.color ?? currentColor) as UnoColor],
+                opacity: 0.5,
+                filter: "blur(10px)",
+              }}
+              aria-hidden
+            />
+          )}
           <UnoDiscardScatter />
           <div className="absolute inset-0 -rotate-[10deg] opacity-50" aria-hidden>
             <UnoCardBack className="w-full h-full" />
@@ -728,8 +767,14 @@ export function UnoNamePlate({
   compact?: boolean;
 }) {
   const a = isSelf ? SELF_ACCENT : accentFor(name);
+  // The signature "impossible to miss" turn cue, reused everywhere a plate
+  // renders: a thicker gold ring plus a soft outer glow, pulsing — not just
+  // the thin static ring this used to be. The gold stays fixed (not the
+  // per-player accent colour) so "whose turn" reads as ONE consistent
+  // language across every seat, the way UnoDraggableHandCard's playable-
+  // card glow and the discard pile's colour glow do elsewhere on the table.
   const turnRing = isTurn
-    ? `0 0 0 3px ${a.ring}, 0 6px 14px rgba(0,0,0,0.4)`
+    ? `0 0 0 3px #F7DA8B, 0 0 18px 4px rgba(247,218,139,0.55), 0 6px 14px rgba(0,0,0,0.4)`
     : "0 5px 12px rgba(0,0,0,0.4)";
   const turnTag = isTurn ? (
     <span
@@ -749,7 +794,7 @@ export function UnoNamePlate({
       <div className="relative">
         {turnTag}
         <div
-          className="rounded-xl overflow-hidden flex items-center justify-center"
+          className={`rounded-xl overflow-hidden flex items-center justify-center ${isTurn ? "animate-pulse" : ""}`}
           style={{
             width: tile,
             height: tile,
@@ -769,7 +814,7 @@ export function UnoNamePlate({
     <div className="relative">
       {turnTag}
       <div
-        className="uno-plate-sheen flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-2xl"
+        className={`uno-plate-sheen flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-2xl ${isTurn ? "animate-pulse" : ""}`}
         style={{
           background: `linear-gradient(168deg, ${a.light}, ${a.base} 62%, ${a.dark})`,
           border: "1.5px solid rgba(255,255,255,0.55)",
@@ -1012,6 +1057,7 @@ function useFinePointer(): boolean {
 function UnoDraggableHandCard({
   card,
   isSelected,
+  isValid,
   isDisabled,
   isDragged,
   canDrag,
@@ -1027,6 +1073,12 @@ function UnoDraggableHandCard({
 }: {
   card: UnoCard;
   isSelected: boolean;
+  /** True when this card is a legal move right now. Previously the only
+   *  cue was the *absence* of the disabled dimming — no positive signal
+   *  that a card is playable, just that the others aren't. Gives every
+   *  legal card its own gold glow so "what can I play" reads at a glance
+   *  instead of scanning for which ones AREN'T faded. */
+  isValid: boolean;
   isDisabled: boolean;
   isDragged: boolean;
   canDrag: boolean;
@@ -1123,7 +1175,9 @@ function UnoDraggableHandCard({
           transformStyle: "preserve-3d",
           boxShadow: isSelected
             ? "0 0 0 3px #E6A11E, 0 10px 20px rgba(0,0,0,0.35)"
-            : "0 3px 8px rgba(0,0,0,0.25)",
+            : isValid && !isDisabled
+              ? "0 0 0 2px rgba(230,161,30,0.85), 0 0 14px 2px rgba(230,161,30,0.45), 0 3px 8px rgba(0,0,0,0.25)"
+              : "0 3px 8px rgba(0,0,0,0.25)",
         }}
       >
         <UnoCardFace card={card} className="w-full h-full" />
@@ -1219,6 +1273,7 @@ export function UnoHandFan({
                 key={card.id}
                 card={card}
                 isSelected={isSelected}
+                isValid={isValid}
                 isDisabled={isDisabled}
                 isDragged={draggedCardId === card.id}
                 canDrag={isValid && phase === "playing" && !!onDropOnDiscard}

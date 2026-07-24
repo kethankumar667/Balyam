@@ -161,13 +161,54 @@ function stadiumAccentFor(seed: string): StadiumAccent {
 /** Seamless full-bleed board surface — the page background already carries
  *  the dark-maroon radial gradient, so this renders NO panel of its own
  *  (the first cut drew a rounded rectangle here, which read as a small
- *  centered card instead of the reference's edge-to-edge stadium). Only
- *  the faint concentric rings remain, stretched across the whole area. */
+ *  centered card instead of the reference's edge-to-edge stadium). Layers
+ *  a woven-felt texture, a soft top-down "stage light" over the spotlight
+ *  seat, a pulled-in vignette that frames the pile, and a large barely-
+ *  there embossed wordmark — the material depth the flat two-stop gradient
+ *  didn't have on its own — underneath the existing concentric rings and
+ *  whatever the caller renders on top. */
 export function StadiumMat({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full" style={{ containerType: "inline-size" }}>
+      <div className="absolute inset-0 pointer-events-none" aria-hidden style={{
+        backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1.5px, transparent 1.5px, transparent 4px)",
+        mixBlendMode: "overlay",
+      }} />
+      <div
+        className="absolute pointer-events-none"
+        aria-hidden
+        style={{
+          width: "38%",
+          height: "22%",
+          left: "50%",
+          top: "2%",
+          transform: "translateX(-50%)",
+          background: "radial-gradient(ellipse at center, rgba(255,222,138,0.4), transparent 72%)",
+          filter: "blur(8px)",
+          animation: "uno-flourish-pulse 3.6s ease-in-out infinite",
+        }}
+      />
+      <div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
+        aria-hidden
+        style={{
+          fontSize: "9cqw",
+          fontWeight: 900,
+          fontStyle: "italic",
+          letterSpacing: "-0.03em",
+          color: "rgba(255,255,255,0.045)",
+          textShadow: "1px 1px 0 rgba(0,0,0,0.1), -1px -1px 0 rgba(255,255,255,0.04)",
+        }}
+      >
+        UNO
+      </div>
       <StadiumRings />
       {children}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden
+        style={{ boxShadow: "inset 0 0 18cqw 2cqw rgba(0,0,0,0.45)" }}
+      />
     </div>
   );
 }
@@ -286,6 +327,17 @@ export function StadiumOpponentSeat({
               aria-hidden
             />
           )}
+          {/* Turn glow — independent of the spotlight ring above (that one
+              marks a fixed SEAT position, not whose turn it is). Offset a
+              touch further out so the two can layer without fighting when
+              the spotlight seat's occupant is also the active player. */}
+          {isTurn && (
+            <span
+              className="absolute -inset-2.5 rounded-2xl animate-pulse pointer-events-none"
+              style={{ boxShadow: "0 0 0 3px #F7DA8B, 0 0 22px 6px rgba(247,218,139,0.55)" }}
+              aria-hidden
+            />
+          )}
           {isHost && (
             <span className="absolute -top-3 -left-1.5 z-10 text-base leading-none" aria-hidden title="Room host">
               👑
@@ -390,7 +442,11 @@ export function StadiumSelfPlate({
     <div className="flex items-center gap-2">
       <div className="relative flex-shrink-0">
         {isTurn && (
-          <span className="absolute -inset-1.5 rounded-2xl pointer-events-none" style={{ boxShadow: "0 0 0 3px #F7DA8B" }} aria-hidden />
+          <span
+            className="absolute -inset-1.5 rounded-2xl animate-pulse pointer-events-none"
+            style={{ boxShadow: "0 0 0 3px #F7DA8B, 0 0 20px 5px rgba(247,218,139,0.55)" }}
+            aria-hidden
+          />
         )}
         <div
           className="rounded-xl overflow-hidden flex items-center justify-center"
@@ -662,7 +718,12 @@ export function StadiumUnoButton({ enabled, onDeclare }: { enabled: boolean; onD
           ? "radial-gradient(circle at 35% 30%, #F97362, #E23122 55%, #B01212 100%)"
           : "linear-gradient(180deg,#7a2a24,#5a1c18)",
         border: "3px solid #FFF6E4",
-        boxShadow: enabled ? "0 8px 18px rgba(176,18,18,0.55)" : "none",
+        // Physical-button bevel: a short, solid "ledge" shadow under the rim
+        // (reads as thickness, not just a flat gradient fill) plus the
+        // existing soft ambient shadow further out.
+        boxShadow: enabled
+          ? "0 3px 0 1.5px #7a0f0f, 0 8px 18px rgba(176,18,18,0.55), inset 0 2px 3px rgba(255,255,255,0.35)"
+          : "0 2px 0 1.5px #3a1512",
         textShadow: "0 2px 2px rgba(0,0,0,0.35)",
       }}
     >
