@@ -3,6 +3,7 @@ import { UnoCardBack } from "./uno-shared";
 import { UnoTableCenter, type UnoTableCenterProps } from "./uno-table";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import Avatar from "../rummy/Avatar";
+import { CheckIcon, ChatIcon, ClockIcon, CrownIcon, DiceIcon, GearIcon, StarIcon } from "./uno-icons";
 
 /**
  * "Stadium" chrome — the dark-maroon, grid-seated mobile UNO redesign
@@ -339,8 +340,8 @@ export function StadiumOpponentSeat({
             />
           )}
           {isHost && (
-            <span className="absolute -top-3 -left-1.5 z-10 text-base leading-none" aria-hidden title="Room host">
-              👑
+            <span className="absolute -top-3 -left-1.5 z-10 leading-none text-[#F7DA8B]" aria-hidden title="Room host">
+              <CrownIcon size={18} />
             </span>
           )}
           <div
@@ -532,7 +533,7 @@ export function StadiumRoomCodePlate({ code }: { code: string }) {
         style={{ background: copied ? "#2F9E44" : "rgba(255,255,255,0.15)" }}
       >
         {copied ? (
-          <span className="text-[10px] font-black">✓</span>
+          <CheckIcon size={12} />
         ) : (
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden>
             <rect x="9" y="9" width="11" height="11" rx="2.5" fill="currentColor" opacity="0.95" />
@@ -550,7 +551,7 @@ export function StadiumClassicModeBadge() {
       className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-white whitespace-nowrap"
       style={{ background: "rgba(0,0,0,0.32)", border: "1px solid rgba(255,255,255,0.2)" }}
     >
-      <span aria-hidden>⭐</span>
+      <StarIcon size={11} />
       Classic Mode
     </div>
   );
@@ -580,7 +581,7 @@ export function StadiumHouseRulesBadge({ rules }: { rules: Record<string, boolea
       title={`House rules active: ${names}`}
       aria-label={`House rules active: ${names}`}
     >
-      <span aria-hidden>🎲</span>
+      <DiceIcon size={11} />
       {active.length} house rule{active.length === 1 ? "" : "s"}
     </div>
   );
@@ -637,7 +638,7 @@ export function StadiumSettingsMenu({
   return (
     <div ref={ref} className="relative">
       <StadiumIconButton onClick={() => setOpen((v) => !v)} ariaLabel="Settings" title="Settings">
-        ⚙️
+        <GearIcon size={16} />
       </StadiumIconButton>
       {open && (
         <div
@@ -684,7 +685,7 @@ export function StadiumChatButton({ onClick, unread }: { onClick: () => void; un
       style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.2)" }}
       aria-label="Open chat and room panel"
     >
-      <span className="text-base leading-none" aria-hidden>💬</span>
+      <ChatIcon size={18} />
       <span className="text-[8px] font-black uppercase tracking-wide">Chat</span>
       {unread > 0 && (
         <span
@@ -745,7 +746,7 @@ export function StadiumTurnTimerPill({ deadline, myTurn }: { deadline: number | 
         border: "1px solid rgba(255,255,255,0.25)",
       }}
     >
-      <span aria-hidden>⏰</span>
+      <ClockIcon size={12} />
       <span>{myTurn ? "Your Turn" : "Their Turn"}</span>
       <span className="tabular-nums">{secondsLeft}s</span>
     </div>

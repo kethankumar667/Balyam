@@ -6,6 +6,7 @@ import VoicePanel from "../../components/VoicePanel";
 import PlayerList from "../../components/PlayerList";
 import { ScorePanel } from "./uno-shared";
 import UnoRoomHistory from "../../components/nostalgia/UnoRoomHistory";
+import { SmileyIcon } from "./uno-icons";
 
 /**
  * UNO's Chat / Voice / Players / Points tab rail — structurally mirrors
@@ -220,7 +221,16 @@ const QUICK_EMOJIS = ["👍", "😂", "🔥", "🎉", "😮", "💯", "👏", "�
  *  UnoBoardMobile.tsx can drop it straight into its own bottom-left rail
  *  via SheetRail's `renderTriggers`, without a second reaction-emitting
  *  implementation. */
-export function ReactionButton({ variant = "round" }: { variant?: "round" | "square" }) {
+export function ReactionButton({
+  variant = "round",
+  dark = false,
+}: {
+  variant?: "round" | "square";
+  /** Round variant only — swaps the light cream desktop-sidebar chip for
+   *  the dark glass style matching StadiumIconButton, for the mobile
+   *  stadium header (the square variant is already dark by default). */
+  dark?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [cooldown, setCooldown] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -252,7 +262,7 @@ export function ReactionButton({ variant = "round" }: { variant?: "round" | "squ
           className="w-12 h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 text-white"
           style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.2)" }}
         >
-          <span className="text-base leading-none">🙂</span>
+          <SmileyIcon size={18} />
           <span className="text-[8px] font-black uppercase tracking-wide">Emoji</span>
         </button>
       ) : (
@@ -260,10 +270,14 @@ export function ReactionButton({ variant = "round" }: { variant?: "round" | "squ
           onClick={() => setOpen((v) => !v)}
           aria-label="React"
           title="React"
-          className="w-9 h-9 rounded-full flex items-center justify-center text-lg shadow-sm"
-          style={{ background: "#F0E1D0", border: "1px solid #E8D8BE" }}
+          className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
+          style={
+            dark
+              ? { background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.18)", color: "#fff" }
+              : { background: "#F0E1D0", border: "1px solid #E8D8BE", color: "#6D4323" }
+          }
         >
-          🙂
+          <SmileyIcon size={16} />
         </button>
       )}
       {open && (
