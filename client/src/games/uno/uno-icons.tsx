@@ -129,3 +129,29 @@ export function SmileyIcon({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function ExpandIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} className={className} {...base}>
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+    </svg>
+  );
+}
+
+export function CompressIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} className={className} {...base}>
+      <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+    </svg>
+  );
+}
+
+export function HelpIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} className={className} {...base}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9.6 9.2a2.5 2.5 0 014.8.9c0 1.7-2.4 2-2.4 3.4" />
+      <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
