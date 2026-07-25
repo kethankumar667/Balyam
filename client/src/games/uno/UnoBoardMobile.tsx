@@ -30,6 +30,7 @@ import {
   StadiumTurnTimerPill,
 } from "./uno-stadium";
 import { UnoRoomRail, ReactionButton } from "./uno-rail";
+import { ArrowLeftIcon, SpeakerIcon, SpeakerMutedIcon } from "./uno-icons";
 import { UnoDealOverlay } from "./uno-deal";
 import {
   useOrientationReport,
@@ -285,7 +286,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
         <div className="flex flex-col items-start gap-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
             <StadiumIconButton onClick={onLeave} ariaLabel="Leave game" title="Leave">
-              <span className="text-base leading-none">←</span>
+              <ArrowLeftIcon size={16} />
             </StadiumIconButton>
             <StadiumRoomCodePlate code={roomCode} />
           </div>
@@ -303,14 +304,14 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
             ariaLabel={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
             title="Sound"
           >
-            {audioSettings.isMuted ? "🔇" : "🔊"}
+            {audioSettings.isMuted ? <SpeakerMutedIcon size={16} /> : <SpeakerIcon size={16} />}
           </StadiumIconButton>
           <StadiumSettingsMenu
             isFullscreen={isFs}
             onToggleFullscreen={toggleFullscreen}
             onOpenTutorial={() => tut.setOpen(true)}
           />
-          <ReactionButton />
+          <ReactionButton dark />
         </div>
       </div>
 
