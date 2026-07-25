@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { useEffect, useRef, useState } from "react";
+import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { useUnoBoard, type UnoBoardProps } from "./useUnoBoard";
 import { useAudio } from "../../hooks/useAudio";
 import {
@@ -8,29 +8,28 @@ import {
   isFullscreenActive,
   onFullscreenChange,
 } from "../../lib/fullscreen";
+import { UnoHandFan, useUnoEventFlourish, useUnoHitReaction, UnoHitBadge } from "./uno-table";
 import {
-  UnoTableMat,
-  UnoDirectionArc,
-  UnoTableCenter,
-  UnoPlayerChip,
-  UnoNamePlate,
-  UnoHandFan,
-  UnoTimerBadge,
-  computeSeatPosition,
-  useUnoEventFlourish,
-  useUnoHitReaction,
-  resolveSeatPosition,
-  UnoHitBadge,
-} from "./uno-table";
-import {
-  UnoRoomCodePlate,
-  UnoIvoryButton,
-  UnoDeclareCluster,
-  UnoPassButton,
-  UnoNotebookPlaceholder,
-  UnoHouseRulesBadge,
-} from "./uno-scene";
-import { UnoRoomRail } from "./uno-rail";
+  computeStadiumSeating,
+  computeSeatNumbers,
+  computeStadiumPositions,
+  stadiumSeatList,
+  StadiumMat,
+  StadiumDirectionArc,
+  StadiumOpponentSeat,
+  StadiumSelfPlate,
+  StadiumPileCenter,
+  StadiumRoomCodePlate,
+  StadiumClassicModeBadge,
+  StadiumHouseRulesBadge,
+  StadiumIconButton,
+  StadiumChatButton,
+  StadiumUnoButton,
+  StadiumTurnTimerPill,
+} from "./uno-stadium";
+import { ArrowLeftIcon, CompressIcon, ExpandIcon, HelpIcon, SpeakerIcon, SpeakerMutedIcon } from "./uno-icons";
+import { UnoRoomRail, ReactionButton } from "./uno-rail";
+import { ActionBar } from "./uno-shared";
 import { UnoDealOverlay } from "./uno-deal";
 import {
   useOrientationReport,
@@ -73,21 +72,27 @@ import { FakeCelebration } from "../../animations/card/FakeCelebration";
 import { ColorChangeBalloon } from "../../animations/card/ColorChangeBalloon";
 import type { FeltAnchor } from "../../animations/helpers/types";
 
-/** The pile sits at the felt's visual centre — `UnoTableCenter`'s wrapper
- *  below is `inset-0 flex items-center justify-center`. Shared anchor for
- *  every "thrown from the pile" animation. */
-const PILE_ANCHOR: FeltAnchor = { left: "50%", top: "50%" };
+/** The pile sits at the board area's visual centre — matches the pile
+ *  wrapper's `top: 48%` below. Shared anchor for every "thrown from the
+ *  pile" animation. */
+const PILE_ANCHOR: FeltAnchor = { left: "50%", top: "48%" };
 
 /**
- * Desktop UNO board — circular-table redesign (see PLAN_REVIEW_REPORT.md §9,
- * "table redesign" implementation-log entry, and uno-table.tsx's own header
- * comment for the asset constraints this works within). Oval mat, opponents
- * arranged across the top arc via `computeSeatPosition`, own hand as a
- * tilted card fan at the bottom, self avatar + declare bubble anchored at
- * the mat's base, round UNO button beside the action row.
+ * Desktop UNO board — "stadium" redesign, adopting the same dark-arena DNA
+ * as UnoBoardMobile.tsx so both breakpoints match the max-players reference
+ * (dark-maroon full-bleed composition: spotlight seat top-centre, 3+3 side
+ * columns hugging the screen edges, self plate bottom-left beside the hand
+ * fan, persistent UNO button + turn timer bottom-right). Replaced the older
+ * wood-frame + red-felt skin (UnoTableMat / UnoPlayerChip / ivory buttons
+ * from uno-table.tsx + uno-scene.tsx — those files are left in place, just
+ * no longer imported here).
  *
  * Presentation-only rewrite — every value and handler still comes from
  * `useUnoBoard` unchanged; no hook, store, or engine logic was touched.
+ * Desktop-only affordances kept over the shared stadium chrome: physical
+ * keyboard shortcuts (D/P/U/Esc), dedicated fullscreen + help buttons in
+ * the top-right rail (mobile buries these in a gear menu), and the keyboard
+ * hint line by the hand fan.
  */
 export default function UnoBoardDesktop(props: UnoBoardProps) {
   const { history, champion } = props;
@@ -110,57 +115,51 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   // can show its "Drop to play" affordance. See uno-table.tsx's UnoHandFan.
   const [isDraggingCard, setIsDraggingCard] = useState(false);
 
-  const opponents = state.playerOrder.filter((id) => id !== selfId);
   const selfDeclared = selfId != null && state.unoDeclaredBy.includes(selfId);
   const selfName = selfId ? m.nameOf(selfId) : "You";
 
-  // ── Animation system (client/src/animations/) ─────────────────────
-  // `useTableCamera` (GSAP shake/punch) attaches to the outer felt
-  // wrapper below; `useScreenRecoil` (React Spring) attaches to a
-  // SEPARATE, inner wrapper around `UnoTableMat` — two concentric
-  // layers by construction, so the two camera systems (each owned by a
-  // different animation per the guide) can never fight over the same
-  // DOM node's transform.
+  // ── Seating — maps playerOrder onto the reference's fixed ring. See
+  // uno-stadium.tsx's computeStadiumSeating doc comment for the derivation
+  // (numbers/positions trace one clockwise lap from self).
+  const seating = computeStadiumSeating(state.playerOrder, selfId);
+  const seatNumbers = computeSeatNumbers(seating, selfId);
+  const stadiumPositions = computeStadiumPositions(seating, selfId);
+  const seatList = stadiumSeatList(seating);
+  const selfSeatNumber = selfId ? seatNumbers[selfId] ?? 0 : 0;
+
+  // ── Animation system — identical wiring to the mobile stadium board;
+  // seat-position lookups read from `stadiumPositions` (the ring anchors),
+  // not the old arc-based resolveSeatPosition (that helper stays with the
+  // retired wood skin).
   const animConfig = useAnimationConfig();
   const { cameraRef, shake, punch, tilt } = useTableCamera();
   const { recoilRef, recoilStyle, recoil } = useScreenRecoil();
   const [wobbleKey, setWobbleKey] = useState<string | null>(null);
   const [wobbleTargetId, setWobbleTargetId] = useState<string | null>(null);
-  const wobbleBaseTransform = wobbleTargetId === selfId ? "translateX(-50%)" : "translate(-50%, -50%)";
-  const wobble = usePlayerWobble(wobbleKey, wobbleBaseTransform);
+  // Seat anchoring/centering lives on a static OUTER wrapper per seat, so
+  // the wobble spring only ever animates a plain (untranslated) inner
+  // element — base transform is empty for every target.
+  const wobble = usePlayerWobble(wobbleKey, "");
   const triggerWobble = (targetId: string) => {
     setWobbleTargetId(targetId);
     setWobbleKey(`${targetId}-${Date.now()}`);
   };
   const handleSlipperImpact = (targetId: string) => {
-    shake({ disabled: animConfig.reducedMotion, intensity: animConfig.mobileMode ? 4 : 6 });
+    shake({ disabled: animConfig.reducedMotion, intensity: 6 });
     punch({ disabled: animConfig.reducedMotion });
     triggerWobble(targetId);
   };
   const handleMeteorImpact = (targetId: string) => {
-    recoil({ disabled: animConfig.reducedMotion, intensity: animConfig.mobileMode ? 9 : 14 });
+    recoil({ disabled: animConfig.reducedMotion, intensity: 14 });
     triggerWobble(targetId);
   };
-  // Skip has no camera-library assignment in the guide (a lesser
-  // penalty than +2/+4) — just the seat-chip wobble.
   const handleSkipImpact = (targetId: string) => triggerWobble(targetId);
-  // "+2 Flying Slippers"/"+4 Meteor Strike"/"Skip Banana Peel"
-  // (animations/card/) replace the plain UnoHitBadge for draw2/draw4/
-  // skip — every other hit kind still uses the badge until its own
-  // cinematic is built.
   const slipperHit = activeHit?.kind === "draw2" ? activeHit : null;
   const slipperTargetId = slipperHit?.targetIds[0] ?? null;
-  const slipperTargetPos = slipperTargetId ? resolveSeatPosition(slipperTargetId, selfId, opponents) : null;
-  // draw4 has THREE presentations depending on how it resolved — the
-  // engine always tags it `lastHit.kind: "draw4"`, so the specific
-  // outcome is read from `lastAction`'s own distinct text (the same
-  // technique `useUnoEventFlourish`/`UnoActionToast` already use):
-  //   - plain accept                     → DrawFourMeteorStrike (#2)
-  //   - "challenged and lost" (challenger punished, draws 6) → RevengeDrawFour (#12)
-  //   - "challenged successfully" (bluffer caught, draws 4)  → UnoPoliceBust (#17)
+  const slipperTargetPos = slipperTargetId ? stadiumPositions[slipperTargetId] : undefined;
   const draw4Hit = activeHit?.kind === "draw4" ? activeHit : null;
   const draw4TargetId = draw4Hit?.targetIds[0] ?? null;
-  const draw4TargetPos = draw4TargetId ? resolveSeatPosition(draw4TargetId, selfId, opponents) : null;
+  const draw4TargetPos = draw4TargetId ? stadiumPositions[draw4TargetId] : undefined;
   const isRevenge = draw4Hit != null && state.lastAction != null && state.lastAction.includes("challenged and lost");
   const isPoliceBust = draw4Hit != null && state.lastAction != null && state.lastAction.includes("challenged successfully");
   const meteorHit = draw4Hit && !isRevenge && !isPoliceBust ? draw4Hit : null;
@@ -170,57 +169,40 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   const policeHit = isPoliceBust ? draw4Hit : null;
   const skipHit = activeHit?.kind === "skip" ? activeHit : null;
   const skipTargetId = skipHit?.targetIds[0] ?? null;
-  const skipTargetPos = skipTargetId ? resolveSeatPosition(skipTargetId, selfId, opponents) : null;
-  // Reverse — table-wide, no seat target. `pileWobble` reuses
-  // `usePlayerWobble`'s physics on the pile wrapper (see
-  // useReverseFlip.ts's header comment for why this is a deliberate
-  // reuse, not a new hook).
+  const skipTargetPos = skipTargetId ? stadiumPositions[skipTargetId] : undefined;
   const reverseTrigger = useReverseFlip(flourish, animConfig, tilt);
   const pileWobble = usePlayerWobble(reverseTrigger, "");
-  // Wild Card colour splash — also table-wide.
   const wildEvent = useWildColorSplash(state.lastAction, state.currentColor);
-  // UNO Call — table-wide (self or any opponent).
   const unoCallEvent = useUnoCallCelebration(state.unoDeclaredBy);
-  const unoCallPos = unoCallEvent ? resolveSeatPosition(unoCallEvent.playerId, selfId, opponents) : null;
-  // Forgot UNO — per-target, same pattern as +2/+4/Skip.
+  const unoCallPos = unoCallEvent ? stadiumPositions[unoCallEvent.playerId] : undefined;
   const catchHit = activeHit?.kind === "catch" ? activeHit : null;
   const catchTargetId = catchHit?.targetIds[0] ?? null;
-  const catchTargetPos = catchTargetId ? resolveSeatPosition(catchTargetId, selfId, opponents) : null;
-  // Stack has two presentations by size — a huge pile (>=8, four or
-  // more chained Draw Twos) gets the "Draw 20" truck treatment (#15)
-  // instead of the hand-stacked tower (#8-#9).
+  const catchTargetPos = catchTargetId ? stadiumPositions[catchTargetId] : undefined;
   const stackHitRaw = activeHit?.kind === "stack" ? activeHit : null;
   const isBigStack = (stackHitRaw?.count ?? 0) >= 8;
   const stackHit = stackHitRaw && !isBigStack ? stackHitRaw : null;
   const truckHit = stackHitRaw && isBigStack ? stackHitRaw : null;
   const stackTargetId = stackHitRaw?.targetIds[0] ?? null;
-  const stackTargetPos = stackTargetId ? resolveSeatPosition(stackTargetId, selfId, opponents) : null;
+  const stackTargetPos = stackTargetId ? stadiumPositions[stackTargetId] : undefined;
   const handleStackImpact = (targetId: string) => {
-    shake({ disabled: animConfig.reducedMotion, intensity: animConfig.mobileMode ? 5 : 7 });
+    shake({ disabled: animConfig.reducedMotion, intensity: 7 });
     triggerWobble(targetId);
   };
-  // Card Evolution — Seven Swap, TWO targets.
   const swapHit = activeHit?.kind === "swap" ? activeHit : null;
   const swapTargetAnchors = swapHit
     ? swapHit.targetIds
-        .map((tid) => resolveSeatPosition(tid, selfId, opponents))
+        .map((tid) => stadiumPositions[tid])
         .filter((p): p is NonNullable<typeof p> => p != null)
     : [];
-  // Card Duel — Jump-In, table-wide.
   const duelTrigger = useJumpInDuel(state.lastAction);
-  // Chain Reaction — a meta-layer watching for consecutive hits.
   const comboEvent = useComboCounter(state.lastHit);
-  // Last Card tension — table-wide, fires the instant anyone drops to 1.
   const lastCardEvent = useLastCardTension(state.handSizes);
-  const lastCardPos = lastCardEvent ? resolveSeatPosition(lastCardEvent.playerId, selfId, opponents) : null;
-  // Fake Celebration — the inverse of UNO Call (a declare invalidated).
+  const lastCardPos = lastCardEvent ? stadiumPositions[lastCardEvent.playerId] : undefined;
   const fakeCelebEvent = useFakeCelebration(state.unoDeclaredBy);
-  const fakeCelebPos = fakeCelebEvent ? resolveSeatPosition(fakeCelebEvent.playerId, selfId, opponents) : null;
+  const fakeCelebPos = fakeCelebEvent ? stadiumPositions[fakeCelebEvent.playerId] : undefined;
 
-  /* ─── Sound + fullscreen header controls — ported from Rummy's own
-     header buttons. Sound is the app-wide AudioManager mute (UNO has no
-     Rummy-style per-game synth layer to toggle separately, just the
-     shared AUDIO.* asset player useUnoBoard.ts already calls). ─── */
+  /* ─── Sound + fullscreen header controls — same global toggles as the
+     retired wood skin. ─── */
   const { settings: audioSettings, toggleMute } = useAudio();
   const [isFs, setIsFs] = useState<boolean>(() => isFullscreenActive());
   useEffect(() => onFullscreenChange(() => setIsFs(isFullscreenActive())), []);
@@ -229,12 +211,8 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
     else void enterFullscreen("any");
   }
 
-  /* ─── Keyboard shortcuts — desktop only, matching Rummy's own scoping
-     (RummyBoardMobile.tsx has no keydown handler; touch devices rarely
-     have a physical keyboard). D draw, P pass, U declare UNO, Escape
-     deselects/cancels the Wild colour picker. There's no "confirm play"
-     shortcut because there's nothing left to confirm — tapping/dragging a
-     card (or Tab+Enter on it, see uno-table.tsx) plays it directly. ─── */
+  /* ─── Keyboard shortcuts — desktop only. D draw, P pass, U declare UNO,
+     Escape deselects/cancels the Wild colour picker. ─── */
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
@@ -261,8 +239,47 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.canDraw, m.canPassTurn, m.canDeclareUno]);
 
+  /* ─── Adaptive sizing — mirrors the mobile board's two board-box
+     measurements, with desktop-friendly caps so the big-screen real estate
+     is actually used (seats/pile render larger than the mobile ceilings).
+     The hand fan is measured separately so its reserved height (and the
+     Wild colour picker that can appear under it) never clips. */
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const fanInnerRef = useRef<HTMLDivElement | null>(null);
+  const [rootH, setRootH] = useState(900);
+  const [boardBox, setBoardBox] = useState({ w: 1400, h: 620 });
+  const [fanNaturalH, setFanNaturalH] = useState(170);
+  useEffect(() => {
+    const root = rootRef.current;
+    const board = boardRef.current;
+    const fan = fanInnerRef.current;
+    if (!root || !board || !fan) return;
+    const measure = () => {
+      setRootH(root.clientHeight);
+      setBoardBox({ w: board.clientWidth, h: board.clientHeight });
+      setFanNaturalH(fan.offsetHeight || 170);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    ro.observe(board);
+    ro.observe(fan);
+    return () => ro.disconnect();
+  }, []);
+  const fanScale = Math.min(1.7, Math.max(0.7, rootH / 620));
+  const seatScale = Math.min(1.5, Math.max(0.7, Math.min(boardBox.w / 1000, boardBox.h / 480)));
+  const pileScale = Math.min(2.0, Math.max(0.8, Math.min(boardBox.w / 950, boardBox.h / 470) * 1.45));
+
+  const turnSecondsLeft = useTurnSecondsLeft(state.turnDeadline);
+  const warningActive = (m.myTurn || m.isChallengeTarget) && state.turnDeadline != null && turnSecondsLeft <= 10 && turnSecondsLeft > 0;
+
   return (
-    <div className="uno-wood-surface relative h-full flex flex-col overflow-hidden">
+    <div
+      ref={rootRef}
+      className="relative h-full flex flex-col overflow-hidden"
+      style={{ background: "radial-gradient(ellipse at 50% 38%, #6b1c11 0%, #3a1009 45%, #1c0806 78%, #120403 100%)" }}
+    >
       {/* Desktop never rotates itself but stays synchronized with mobile
           players — a full-viewport block during "gating" so no board
           content flashes before the deal, then the deal opener. */}
@@ -273,143 +290,132 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         <UnoDealOverlay stage={gate.stage} playerCount={state.playerOrder.length} />
       )}
 
-      {/* topOffsetRem clears the room-code pill below, which centres itself
-          in this same top-of-screen slot (see the header block further
-          down) — without it the two fixed-position elements overlap. */}
-      {/* active also covers isChallengeTarget: the player the server will
-          forcibly resolve on timeout (UnoEngine.getTimeoutActor returns
-          pendingChallenge.challengerId during a Wild+4 decision, not just
-          the normal turnPlayerId) must see the same escalating warning a
-          normal turn gets — previously only myTurn triggered it, so the
-          challenge target could lose their Accept/Challenge window with
-          zero warning it was coming. */}
-      {state.turnDeadline && (
-        <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn || m.isChallengeTarget} topOffsetRem={3.25} />
-      )}
-
-      {/* Screen-reader-only turn announcement — the visual design conveys
-          whose turn it is via the avatar glow/pill, same as the reference,
-          which isn't enough on its own (Volume 3 §25 accessibility). */}
+      {/* Screen-reader-only turn announcement. */}
       <div className="sr-only" role="status" aria-live="polite">
-        {state.phase === "playing"
-          ? m.myTurn
-            ? "Your turn"
-            : `${m.currentPlayer}'s turn`
-          : ""}
+        {state.phase === "playing" ? (m.myTurn ? "Your turn" : `${m.currentPlayer}'s turn`) : ""}
       </div>
 
-      {/* Top-left: leave + room-code plate + turn timer */}
-      <div className="absolute top-3 left-3 z-30 flex items-start gap-2">
-        <UnoIvoryButton shape="round" ariaLabel="Leave game" title="Leave" onClick={onLeave}>
-          <span className="text-lg leading-none">←</span>
-        </UnoIvoryButton>
-        <div className="flex flex-col gap-2">
-          <UnoRoomCodePlate code={roomCode} />
-          <UnoHouseRulesBadge rules={state.activeHouseRules} />
-          {state.turnDeadline && <UnoTimerBadge deadline={state.turnDeadline} myTurn={m.myTurn || m.isChallengeTarget} />}
+      {/* Header — room-code plate + classic/house-rules badge stacked on the
+          left (matching the reference), sound / fullscreen / help on the
+          right. */}
+      <div className="relative flex-shrink-0 px-4 pt-3 pb-1 flex items-start justify-between gap-2 z-20">
+        <div className="flex flex-col items-start gap-1.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <StadiumIconButton onClick={onLeave} ariaLabel="Leave game" title="Leave">
+              <ArrowLeftIcon size={18} />
+            </StadiumIconButton>
+            <StadiumRoomCodePlate code={roomCode} />
+          </div>
+          {!warningActive && (
+            Object.values(state.activeHouseRules).some(Boolean) ? (
+              <StadiumHouseRulesBadge rules={state.activeHouseRules} />
+            ) : (
+              <StadiumClassicModeBadge />
+            )
+          )}
         </div>
-      </div>
-
-      {/* Top-right: sound / fullscreen / help */}
-      <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
-        <UnoIvoryButton
-          shape="round"
-          ariaLabel={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
-          title="Sound"
-          onClick={toggleMute}
-        >
-          {audioSettings.isMuted ? "🔇" : "🔊"}
-        </UnoIvoryButton>
-        <UnoIvoryButton
-          shape="round"
-          ariaLabel={isFs ? "Exit fullscreen" : "Enter fullscreen"}
-          title="Fullscreen"
-          onClick={toggleFullscreen}
-        >
-          ⛶
-        </UnoIvoryButton>
-        <UnoIvoryButton shape="round" ariaLabel="How to play" title="How to play" onClick={() => tut.setOpen(true)}>
-          <span className="font-black">?</span>
-        </UnoIvoryButton>
-      </div>
-
-      {/* Decorative asset-placeholder prop — the notebook reads as an
-          intentional sketchy sticky-note (paperclip, pencils, dashed
-          cream cover matches Bhalyam's established notebook motif), kept.
-          Its polaroid sibling (UnoPolaroidPlaceholder) was removed from
-          this render: a flat gray-checkered box labelled "Photo" reads as
-          a broken/missing image to a real player, not a stylised prop —
-          revisit by rendering it again once real art exists to replace it
-          with, matching how every other reserved-but-undelivered
-          illustration slot in this codebase degrades (nothing shown,
-          not a placeholder shown). */}
-      <div className="absolute bottom-3 left-4 z-20 hidden xl:block">
-        <UnoNotebookPlaceholder />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <StadiumIconButton
+            onClick={toggleMute}
+            ariaLabel={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
+            title="Sound"
+          >
+            {audioSettings.isMuted ? <SpeakerMutedIcon size={16} /> : <SpeakerIcon size={16} />}
+          </StadiumIconButton>
+          <StadiumIconButton
+            onClick={toggleFullscreen}
+            ariaLabel={isFs ? "Exit fullscreen" : "Enter fullscreen"}
+            title="Fullscreen"
+          >
+            {isFs ? <CompressIcon size={16} /> : <ExpandIcon size={16} />}
+          </StadiumIconButton>
+          <StadiumIconButton onClick={() => tut.setOpen(true)} ariaLabel="How to play" title="How to play">
+            <HelpIcon size={16} />
+          </StadiumIconButton>
+        </div>
       </div>
 
       <UnoActionToast lastAction={state.lastAction} />
 
-      {/* The felt table */}
-      <div className="flex-1 min-h-0 flex items-center justify-center px-4 pt-16 pb-1">
-        <div ref={cameraRef} className="relative w-full" style={{ maxWidth: 1140, aspectRatio: "1.8" }}>
-          <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
-            <UnoTableMat>
-              <UnoDirectionArc direction={state.direction} flourish={flourish !== null} spinTrigger={reverseTrigger} />
+      {/* Board area — full-bleed, fills all space between header and hand
+          fan. Seats/pile/hit-animations are all percentage-anchored to
+          THIS box, matching the reference's edge-to-edge composition. */}
+      <div ref={cameraRef} className="flex-1 min-h-0 relative">
+        <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
+          <div ref={boardRef} className="relative w-full h-full">
+            <StadiumMat>
+              <StadiumDirectionArc direction={state.direction} />
 
-              {opponents.map((id, i) => {
-                const pos = computeSeatPosition(i, opponents.length);
+              {seatList.map(({ id, variant }) => {
+                const pos = stadiumPositions[id];
+                if (!pos) return null;
+                const player = players.find((p) => p.id === id);
                 return (
-                  <animated.div
+                  <div
                     key={id}
                     className="absolute z-[2]"
                     style={{
                       left: pos.left,
                       top: pos.top,
-                      transform: wobbleTargetId === id ? wobble.transform : "translate(-50%, -50%)",
+                      transform: `translate(-50%, -50%) scale(${seatScale})`,
                     }}
                   >
-                    <UnoPlayerChip
-                      name={m.nameOf(id)}
-                      handSize={state.handSizes[id] ?? 0}
-                      isTurn={state.turnPlayerId === id}
-                      fanDir={pos.fanDir}
-                      canCatch={m.catchableOpponents.includes(id)}
-                      onCatch={() => m.catchUno(id)}
-                      isConnected={players.find((p) => p.id === id)?.isConnected}
-                    />
-                  </animated.div>
+                    <animated.div style={{ transform: wobbleTargetId === id ? wobble.transform : "none" }}>
+                      <StadiumOpponentSeat
+                        name={m.nameOf(id)}
+                        handSize={state.handSizes[id] ?? 0}
+                        seatNumber={seatNumbers[id] ?? 0}
+                        isHost={player?.isHost ?? false}
+                        isTurn={state.turnPlayerId === id}
+                        isConnected={player?.isConnected}
+                        variant={variant}
+                        canCatch={m.catchableOpponents.includes(id)}
+                        onCatch={() => m.catchUno(id)}
+                      />
+                    </animated.div>
+                  </div>
                 );
               })}
 
-              <animated.div
-                className="absolute inset-0 flex items-center justify-center z-[2]"
-                style={{ transform: pileWobble.transform }}
+              <div
+                className="absolute z-[2]"
+                style={{ left: "50%", top: "48%", transform: `translate(-50%, -50%) scale(${pileScale})` }}
               >
-                <UnoTableCenter
-                  topCard={state.topCard}
-                  currentColor={state.currentColor}
-                  deckCount={state.deckCount}
-                  isDragging={isDraggingCard}
-                  canDraw={m.canDraw}
-                  onDraw={m.drawCard}
-                />
-              </animated.div>
+                <animated.div style={{ transform: pileWobble.transform }}>
+                  <StadiumPileCenter
+                    topCard={state.topCard}
+                    currentColor={state.currentColor}
+                    deckCount={state.deckCount}
+                    isDragging={isDraggingCard}
+                    canDraw={m.canDraw}
+                    onDraw={m.drawCard}
+                  />
+                </animated.div>
+              </div>
 
-              {/* Self plate, anchored at the base of the felt */}
-              <animated.div
-                className="absolute left-1/2 bottom-[3%] z-[3]"
-                style={{ transform: wobbleTargetId === selfId ? wobble.transform : "translateX(-50%)" }}
-              >
-                <div className="relative flex flex-col items-center">
-                  <UnoDeclareBubble declared={selfDeclared} />
-                  <UnoNamePlate name={selfName} isSelf isTurn={m.myTurn} />
+              {/* Self plate — bottom-left beside the hand fan, like the
+                  reference's "YOU / KETHAN" cluster. Left offset clears the
+                  fixed chat/emoji rail in the corner. */}
+              <div className="absolute z-[3]" style={{ left: 84, bottom: 4, transform: `scale(${seatScale})`, transformOrigin: "bottom left" }}>
+                <animated.div style={{ transform: wobbleTargetId === selfId ? wobble.transform : "none" }}>
+                  <div className="relative">
+                    <UnoDeclareBubble declared={selfDeclared} />
+                    <StadiumSelfPlate name={selfName} seatNumber={selfSeatNumber} handSize={m.sortedHand.length} isTurn={m.myTurn} />
+                  </div>
+                </animated.div>
+              </div>
+
+              {/* Pass button (rare, post-draw) — floats bottom-centre of the
+                  board, just above the fan. */}
+              {m.myTurn && state.phase === "playing" && (
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-20">
+                  <ActionBar passTurn={m.passTurn} canPassTurn={m.canPassTurn} drewThisTurn={m.drewThisTurn} />
                 </div>
-              </animated.div>
+              )}
 
-              {/* Comedic "fired at" flourish — every hit kind now has
-                  its own cinematic except Zero Rotate, which still gets
-                  the plain badge pop. translateY(-135%) lifts the badge
-                  clear of the seat chip/self plate it's anchored to. */}
+              {/* Comedic "fired at" flourish — every hit kind has its own
+                  cinematic except Zero Rotate, which gets the plain badge
+                  pop. */}
               {slipperHit && slipperTargetPos && (
                 <PlusTwoFlyingSlippers
                   key={`${slipperTargetId}-draw2-${slipperHit.count}`}
@@ -418,10 +424,6 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                   targetAnchor={slipperTargetPos}
                   config={animConfig}
                   onImpact={() => slipperTargetId && handleSlipperImpact(slipperTargetId)}
-                  // The board doesn't need to react to sequence-end — the
-                  // hit itself auto-clears via useUnoHitReaction's own
-                  // per-kind hold timer (HIT_HOLD_MS.draw2), sized to
-                  // outlast this animation's internal timeline.
                   onComplete={() => {}}
                 />
               )}
@@ -514,7 +516,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                 activeHit.kind !== "stack" &&
                 activeHit.kind !== "swap" &&
                 activeHit.targetIds.map((tid) => {
-                  const pos = resolveSeatPosition(tid, selfId, opponents);
+                  const pos = stadiumPositions[tid];
                   if (!pos) return null;
                   return (
                     <div
@@ -527,22 +529,10 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                   );
                 })}
               {wildEvent && (
-                <WildColorSplash
-                  key={wildEvent.key}
-                  event={wildEvent}
-                  anchor={PILE_ANCHOR}
-                  config={animConfig}
-                  onComplete={() => {}}
-                />
+                <WildColorSplash key={wildEvent.key} event={wildEvent} anchor={PILE_ANCHOR} config={animConfig} onComplete={() => {}} />
               )}
               {wildEvent && (
-                <ColorChangeBalloon
-                  key={`balloon-${wildEvent.key}`}
-                  event={wildEvent}
-                  anchor={PILE_ANCHOR}
-                  config={animConfig}
-                  onComplete={() => {}}
-                />
+                <ColorChangeBalloon key={`balloon-${wildEvent.key}`} event={wildEvent} anchor={PILE_ANCHOR} config={animConfig} onComplete={() => {}} />
               )}
               {duelTrigger && (
                 <CardDuelJumpIn key={duelTrigger} anchor={PILE_ANCHOR} config={animConfig} onComplete={() => {}} />
@@ -565,63 +555,69 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                   onComplete={() => {}}
                 />
               )}
-            </UnoTableMat>
-          </animated.div>
+            </StadiumMat>
+          </div>
+        </animated.div>
+      </div>
 
-          {/* UNO! declare cluster — bottom-right of the felt, and Pass —
-              centred just below the pile, above the self plate. Both
-              moved onto the felt itself per live user reference (a
-              hand-annotated screenshot): previously UNO sat pinned to the
-              felt's right edge and Pass rendered as a full-width bar
-              below the hand fan, disconnected from the table action the
-              player is actually looking at. */}
-          <div className="absolute z-30" style={{ left: "77%", top: "77%", transform: "translate(-50%,-50%)" }}>
-            <UnoDeclareCluster visible={m.canDeclareUno} onDeclare={m.declareUno} />
-          </div>
-          <div className="absolute z-30" style={{ left: "50%", top: "80%", transform: "translate(-50%,-50%)" }}>
-            <UnoPassButton visible={m.myTurn && m.drewThisTurn && state.phase === "playing"} canPass={m.canPassTurn} onPass={m.passTurn} />
-          </div>
+      {/* Hand fan — fixed bottom block, downscaled to fit whatever height is
+          left (reserved height tracks the fan's measured natural height ×
+          scale, so the Wild colour picker appearing never clips). */}
+      <div className="relative flex-shrink-0 w-full z-10" style={{ height: fanNaturalH * fanScale }}>
+        <div
+          ref={fanInnerRef}
+          className="absolute top-0 left-1/2"
+          style={{ transform: `translateX(-50%) scale(${fanScale})`, transformOrigin: "top center" }}
+        >
+          <UnoHandFan
+            sortedHand={m.sortedHand}
+            validMoveIds={m.validMoveIds}
+            selectedCardId={m.selectedCardId}
+            myTurn={m.myTurn}
+            phase={state.phase}
+            onSelectCard={m.dropCardOnDiscard}
+            needsColorChoice={m.needsColorChoice}
+            selectedWildColor={m.selectedWildColor}
+            onPickColor={m.pickColorAndPlay}
+            onDropOnDiscard={m.dropCardOnDiscard}
+            onDragStateChange={setIsDraggingCard}
+          />
         </div>
       </div>
 
-      {/* Bottom: own hand fan. Pass and UNO! now live on the felt itself
-          (see the on-felt UnoPassButton/UnoDeclareCluster above), matching
-          the live reference — this row is hand + keyboard hint only. */}
-      <div className="flex-shrink-0 px-4 pb-3 -mt-1">
-        <UnoHandFan
-          sortedHand={m.sortedHand}
-          validMoveIds={m.validMoveIds}
-          selectedCardId={m.selectedCardId}
-          myTurn={m.myTurn}
-          phase={state.phase}
-          onSelectCard={m.dropCardOnDiscard}
-          needsColorChoice={m.needsColorChoice}
-          selectedWildColor={m.selectedWildColor}
-          onPickColor={m.pickColorAndPlay}
-          onDropOnDiscard={m.dropCardOnDiscard}
-          onDragStateChange={setIsDraggingCard}
-        />
-
-        <div className="flex items-center justify-end gap-3 mt-2">
-          <div className="hidden lg:block text-[10px] font-mono text-[#E9C892]/70 italic whitespace-nowrap">
+      {/* Tagline + keyboard hint — reference's "— It's your turn. Play a
+          card! —" footer, with the desktop-only shortcut legend beside it. */}
+      {state.phase === "playing" && (
+        <div className="flex-shrink-0 pb-1.5 px-4 flex items-center justify-center gap-4 z-10">
+          <p className="text-xs font-bold text-center" style={{ color: "#F0DDB4" }}>
+            {m.myTurn ? "— It's your turn. Play a card! —" : `${m.currentPlayer} is playing…`}
+          </p>
+          <span className="hidden lg:block text-[10px] font-mono text-[#E9C892]/60 italic whitespace-nowrap">
             D draw · P pass · U declare · Esc cancel
-          </div>
+          </span>
         </div>
-      </div>
-
-      {state.phase === "finished" && !m.scorecardDismissed && (
-        <UnoResultModal
-          state={state}
-          players={players}
-          selfId={selfId}
-          onClose={m.dismissScorecard}
-          onLeave={onLeave}
-        />
       )}
 
-      {/* Room rail — sheet variant (floating trigger, not a persistent
-          sidebar) now that the table fills the full width, matching the
-          reference's minimal chrome (hamburger + share icon only). */}
+      {/* Bottom-right HUD — persistent UNO declare button + turn timer. */}
+      <div className="fixed bottom-4 right-4 z-30 flex flex-col items-end gap-2">
+        <StadiumUnoButton enabled={m.canDeclareUno} onDeclare={m.declareUno} />
+        <StadiumTurnTimerPill deadline={state.turnDeadline} myTurn={m.myTurn} />
+      </div>
+
+      {/* Full-screen urgency pulse for the final ≤10s — see
+          TurnTimeWarning.tsx. active also covers isChallengeTarget: the
+          player the server resolves on timeout during a Wild+4 decision
+          must see the same warning a normal turn gets. */}
+      {state.turnDeadline && (
+        <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn || m.isChallengeTarget} topOffsetRem={0.5} />
+      )}
+
+      {state.phase === "finished" && !m.scorecardDismissed && (
+        <UnoResultModal state={state} players={players} selfId={selfId} onClose={m.dismissScorecard} onLeave={onLeave} />
+      )}
+
+      {/* Room rail — chat/voice/players/points/history sheet, with a
+          bottom-left CHAT + EMOJI trigger pair matching the reference. */}
       <UnoRoomRail
         variant="sheet"
         density="desktop"
@@ -636,22 +632,23 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         history={history}
         champion={champion}
         nameOf={m.nameOf}
+        renderTriggers={(open, unread) => (
+          <div className="fixed bottom-4 left-4 z-30 flex flex-col gap-2">
+            <StadiumChatButton onClick={open} unread={unread} />
+            <ReactionButton variant="square" />
+          </div>
+        )}
       />
+
+      {tut.open && (
+        <GameTutorial slides={UNO_TUTORIAL.slides} storageKey={UNO_TUTORIAL.key} accent={UNO_TUTORIAL.accent} onClose={() => tut.setOpen(false)} />
+      )}
 
       {m.isChallengeTarget && m.pendingChallenge && (
         <WildDrawFourChallengePrompt
           playedByName={m.nameOf(m.pendingChallenge.playedById)}
           onAccept={m.acceptWildFourDraw}
           onChallenge={m.challengeWildFour}
-        />
-      )}
-
-      {tut.open && (
-        <GameTutorial
-          slides={UNO_TUTORIAL.slides}
-          storageKey={UNO_TUTORIAL.key}
-          accent={UNO_TUTORIAL.accent}
-          onClose={() => tut.setOpen(false)}
         />
       )}
     </div>
