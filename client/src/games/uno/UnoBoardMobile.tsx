@@ -277,24 +277,25 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
         {state.phase === "playing" ? (m.myTurn ? "Your turn" : `${m.currentPlayer}'s turn`) : ""}
       </div>
 
-      {/* Header — one slim row; the classic-mode badge sits absolutely
-          centred inside it (a second layout row would waste height, and
-          floating it over the board collided with the spotlight seat). */}
-      <div className="relative flex-shrink-0 px-3 pt-2 pb-1 flex items-center justify-between gap-2 z-20">
-        {!warningActive && (
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 mt-0.5">
-            {Object.values(state.activeHouseRules).some(Boolean) ? (
+      {/* Header — reference stacks the classic-mode/house-rules badge
+          directly under the room-code plate on the left (not centred);
+          it grows the left column's height only, which the adaptive
+          board-area sizing below already absorbs. */}
+      <div className="relative flex-shrink-0 px-3 pt-2 pb-1 flex items-start justify-between gap-2 z-20">
+        <div className="flex flex-col items-start gap-1 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <StadiumIconButton onClick={onLeave} ariaLabel="Leave game" title="Leave">
+              <span className="text-base leading-none">←</span>
+            </StadiumIconButton>
+            <StadiumRoomCodePlate code={roomCode} />
+          </div>
+          {!warningActive && (
+            Object.values(state.activeHouseRules).some(Boolean) ? (
               <StadiumHouseRulesBadge rules={state.activeHouseRules} />
             ) : (
               <StadiumClassicModeBadge />
-            )}
-          </div>
-        )}
-        <div className="flex items-center gap-1.5 min-w-0">
-          <StadiumIconButton onClick={onLeave} ariaLabel="Leave game" title="Leave">
-            <span className="text-base leading-none">←</span>
-          </StadiumIconButton>
-          <StadiumRoomCodePlate code={roomCode} />
+            )
+          )}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <StadiumIconButton
