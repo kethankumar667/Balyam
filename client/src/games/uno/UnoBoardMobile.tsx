@@ -255,7 +255,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
     <div
       ref={rootRef}
       className="relative h-full flex flex-col overflow-hidden"
-      style={{ background: "radial-gradient(ellipse at 50% 38%, #6b1c11 0%, #3a1009 45%, #1c0806 78%, #120403 100%)" }}
+      style={{ background: "radial-gradient(ellipse at 50% 44%, #F5442C 0%, #E51E1E 26%, #B81616 48%, #7E0F0F 72%, #3E0909 100%)" }}
     >
       {/* Three cases, same priority order as Rummy's mobile shell:
            1. needsLandscape  → UnoRotateDevicePrompt blocks the board.
@@ -570,7 +570,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
       {/* Tagline — reference's "— It's your turn. Play a card! —" footer. */}
       {state.phase === "playing" && (
         <p className="flex-shrink-0 pb-1 text-[11px] font-bold text-center px-2 z-10" style={{ color: "#F0DDB4" }}>
-          {m.myTurn ? "— It's your turn. Play a card! —" : `${m.currentPlayer} is playing…`}
+          {m.myTurn ? "◆ It's your turn. Play a card! ◆" : `${m.currentPlayer} is playing…`}
         </p>
       )}
 
