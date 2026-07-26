@@ -155,26 +155,32 @@ function stadiumAccentFor(seed: string): StadiumAccent {
 }
 
 // ---------------------------------------------------------------------
-// Background — dark-maroon radial stadium + faint concentric rings,
-// replacing UnoTableMat's wood-frame + red-felt look for this shell only.
+// Background — bright-red radial arena matching the reference: a lit
+// centre bloom, a faint tiled UNO-card watermark, concentric ripple
+// rings, and a soft red vignette pulling the edges down.
 // ---------------------------------------------------------------------
 
-/** Seamless full-bleed board surface — the page background already carries
- *  the dark-maroon radial gradient, so this renders NO panel of its own
- *  (the first cut drew a rounded rectangle here, which read as a small
- *  centered card instead of the reference's edge-to-edge stadium). Layers
- *  a woven-felt texture, a soft top-down "stage light" over the spotlight
- *  seat, a pulled-in vignette that frames the pile, and a large barely-
- *  there embossed wordmark — the material depth the flat two-stop gradient
- *  didn't have on its own — underneath the existing concentric rings and
- *  whatever the caller renders on top. */
+/** Seamless full-bleed board surface. The page background already carries
+ *  the bright-red radial gradient; this layers the material depth on top —
+ *  a tiled UNO-card watermark, a warm centre bloom behind the pile, a
+ *  top-down stage light over the spotlight seat, the concentric ripple
+ *  rings, and a red-tinted vignette (kept light so the centre stays bright,
+ *  unlike a heavy black inset which flattened the earlier dark cut). */
 export function StadiumMat({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative w-full h-full" style={{ containerType: "inline-size" }}>
-      <div className="absolute inset-0 pointer-events-none" aria-hidden style={{
-        backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1.5px, transparent 1.5px, transparent 4px)",
-        mixBlendMode: "overlay",
-      }} />
+      {/* Warm centre bloom — the reference's brightly-lit play area. */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden
+        style={{
+          background:
+            "radial-gradient(ellipse 42% 46% at 50% 47%, rgba(255,140,60,0.55), rgba(255,90,40,0.16) 45%, transparent 70%)",
+        }}
+      />
+      {/* Faint tiled UNO-card watermark. */}
+      <StadiumWatermark />
+      {/* Top-down stage light over the spotlight seat. */}
       <div
         className="absolute pointer-events-none"
         aria-hidden
@@ -182,38 +188,47 @@ export function StadiumMat({ children }: { children: React.ReactNode }) {
           width: "38%",
           height: "22%",
           left: "50%",
-          top: "2%",
+          top: "1%",
           transform: "translateX(-50%)",
-          background: "radial-gradient(ellipse at center, rgba(255,222,138,0.4), transparent 72%)",
+          background: "radial-gradient(ellipse at center, rgba(255,236,180,0.35), transparent 72%)",
           filter: "blur(8px)",
           animation: "uno-flourish-pulse 3.6s ease-in-out infinite",
         }}
       />
-      <div
-        className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
-        aria-hidden
-        style={{
-          fontSize: "9cqw",
-          fontWeight: 900,
-          fontStyle: "italic",
-          letterSpacing: "-0.03em",
-          color: "rgba(255,255,255,0.045)",
-          textShadow: "1px 1px 0 rgba(0,0,0,0.1), -1px -1px 0 rgba(255,255,255,0.04)",
-        }}
-      >
-        UNO
-      </div>
       <StadiumRings />
       {children}
+      {/* Red-tinted vignette — darkens the corners without dimming the
+          bright centre. */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden
-        style={{ boxShadow: "inset 0 0 18cqw 2cqw rgba(0,0,0,0.45)" }}
+        style={{ boxShadow: "inset 0 0 16cqw 3cqw rgba(70,8,8,0.55)" }}
       />
     </div>
   );
 }
 
+/** Tiled, faintly-embossed UNO cards drifting across the felt — the
+ *  reference's background pattern. Pure SVG <pattern>, no raster asset. */
+function StadiumWatermark() {
+  return (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
+      <defs>
+        <pattern id="uno-watermark" width="132" height="132" patternUnits="userSpaceOnUse" patternTransform="rotate(-16)">
+          <g opacity="0.05">
+            <rect x="46" y="34" width="40" height="60" rx="7" fill="none" stroke="#fff" strokeWidth="2.5" />
+            <ellipse cx="66" cy="64" rx="19" ry="11" fill="#fff" opacity="0.55" />
+            <text x="66" y="67" fontSize="9" fontWeight="900" fontStyle="italic" fill="#7a0f0f" textAnchor="middle" fontFamily="'Nunito','Poppins',sans-serif">UNO</text>
+          </g>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#uno-watermark)" />
+    </svg>
+  );
+}
+
+/** Concentric ripple rings radiating from the pile — brighter and more
+ *  numerous than the earlier dark cut, matching the reference's arena. */
 function StadiumRings() {
   return (
     <svg
@@ -222,53 +237,82 @@ function StadiumRings() {
       className="absolute inset-0 w-full h-full pointer-events-none"
       aria-hidden
     >
-      {[13, 20, 27, 34].map((r) => (
-        <ellipse key={r} cx="50" cy="48" rx={r} ry={r * 0.9} fill="none" stroke="#F0603A" strokeWidth="0.3" opacity="0.28" />
+      {[10, 16, 22, 28, 34, 40].map((r, i) => (
+        <ellipse
+          key={r}
+          cx="50"
+          cy="48"
+          rx={r}
+          ry={r * 0.92}
+          fill="none"
+          stroke="#FF7A4A"
+          strokeWidth="0.35"
+          opacity={0.34 - i * 0.04}
+          vectorEffect="non-scaling-stroke"
+        />
       ))}
     </svg>
   );
 }
 
-/** Big flow arrows tracing the outer seat ring — the reference's clockwise
- *  (or, mirrored, counter-clockwise) turn-direction cue. Same left/right-
- *  extreme placement rationale as uno-table.tsx's UnoDirectionArc: the
- *  tangent to an axis-aligned ellipse at its true left/right points is
- *  always vertical regardless of independent x/y scaling, so a simple
- *  up/down chevron there never distorts. */
+// ---------------------------------------------------------------------
+// Turn-direction arrows — two bold, glowing orange arcs forming a ring
+// around the pile (the reference's signature rotation cue). `direction`
+// flips the whole ring clockwise ↔ counter-clockwise, so a Reverse card
+// visibly turns the arrows around. Fed by state.direction, which the
+// engine flips on every Reverse.
+// ---------------------------------------------------------------------
+
 export function StadiumDirectionArc({ direction }: { direction: 1 | -1 }) {
+  // The two arcs are a 180° rotation of each other; drawing one and
+  // rotating it about the pile centre (50,48) guarantees symmetry. A
+  // horizontal mirror (scaleX -1) turns the clockwise ring counter-
+  // clockwise for a reversed direction — arrowheads flip with it.
   return (
-    <div className="absolute inset-0 pointer-events-none" style={{ transform: direction === -1 ? "scaleX(-1)" : undefined }} aria-hidden>
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{ transform: direction === -1 ? "scaleX(-1)" : undefined, transition: "transform 400ms cubic-bezier(0.4,0,0.2,1)" }}
+      aria-hidden
+    >
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
-        <path
-          d="M 6 48 A 44 42 0 1 0 94 48 A 44 42 0 1 0 6 48"
-          fill="none"
-          stroke="#F5B347"
-          strokeWidth="1.4"
-          strokeDasharray="3 7"
-          opacity="0.5"
-          vectorEffect="non-scaling-stroke"
-        />
+        <defs>
+          <linearGradient id="uno-arrow-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#FFC94D" />
+            <stop offset="55%" stopColor="#FF9A2E" />
+            <stop offset="100%" stopColor="#FF6A15" />
+          </linearGradient>
+        </defs>
+        {/* soft glow underlay */}
+        <g opacity="0.45" style={{ filter: "blur(2px)" }}>
+          <StadiumArrowArc />
+          <g transform="rotate(180 50 48)"><StadiumArrowArc /></g>
+        </g>
+        <StadiumArrowArc glow />
+        <g transform="rotate(180 50 48)"><StadiumArrowArc glow /></g>
       </svg>
-      <StadiumFlowChevron left="94%" top="48%" pointDown />
-      <StadiumFlowChevron left="6%" top="48%" pointDown={false} />
     </div>
   );
 }
 
-function StadiumFlowChevron({ left, top, pointDown }: { left: string; top: string; pointDown: boolean }) {
+/** One thick orange arc (9 o'clock → over the top → 2 o'clock) with a
+ *  filled arrowhead at the clockwise end. `glow` renders the gradient
+ *  fill; without it, a wider flat-orange copy used as the blurred underlay. */
+function StadiumArrowArc({ glow = false }: { glow?: boolean }) {
+  const stroke = glow ? "url(#uno-arrow-grad)" : "#FF7A1A";
   return (
-    <div className="absolute" style={{ left, top, transform: "translate(-50%, -50%)" }}>
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
-        <path
-          d={pointDown ? "M6 8 L12 16 L18 8" : "M6 16 L12 8 L18 16"}
-          fill="none"
-          stroke="#F5B347"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
+    <g fill={stroke} stroke={stroke}>
+      <path
+        d="M 20 48 A 30 32 0 0 1 63 20.5"
+        fill="none"
+        strokeWidth={glow ? 3.6 : 5}
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      {/* arrowhead at the 2 o'clock end, pointing clockwise (down-right) */}
+      <g transform="translate(63 20.5) rotate(52)">
+        <path d="M 0 -6 L 9 0 L 0 6 Z" stroke="none" />
+      </g>
+    </g>
   );
 }
 
@@ -319,12 +363,12 @@ export function StadiumOpponentSeat({
           Playing
         </span>
       )}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <div className="relative flex-shrink-0">
           {isSpotlight && (
             <span
               className="absolute -inset-2 rounded-2xl animate-pulse pointer-events-none"
-              style={{ boxShadow: "0 0 0 3px rgba(196,120,230,0.6), 0 0 18px 5px rgba(196,120,230,0.4)" }}
+              style={{ boxShadow: "0 0 0 3px rgba(247,218,139,0.7), 0 0 18px 5px rgba(247,218,139,0.45)" }}
               aria-hidden
             />
           )}
@@ -340,17 +384,17 @@ export function StadiumOpponentSeat({
             />
           )}
           {isHost && (
-            <span className="absolute -top-3 -left-1.5 z-10 leading-none text-[#F7DA8B]" aria-hidden title="Room host">
-              <CrownIcon size={18} />
+            <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10 leading-none text-[#F7DA8B]" aria-hidden title="Room host">
+              <CrownIcon size={20} />
             </span>
           )}
           <div
-            className="rounded-xl overflow-hidden flex items-center justify-center"
+            className="rounded-2xl overflow-hidden flex items-center justify-center"
             style={{
               width: tile,
               height: tile,
               background: `linear-gradient(168deg, ${accent.light}, ${accent.dark})`,
-              border: "2.5px solid rgba(255,255,255,0.65)",
+              border: `2.5px solid ${isSpotlight ? "#F7DA8B" : "rgba(255,255,255,0.7)"}`,
               boxShadow: "0 4px 10px rgba(0,0,0,0.45)",
             }}
           >
@@ -365,24 +409,29 @@ export function StadiumOpponentSeat({
             />
           )}
         </div>
-        <div className="flex items-center gap-1 min-w-0">
-          <span
-            className="flex-shrink-0 flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-black text-white"
-            style={{ background: accent.base, border: "1.5px solid rgba(255,255,255,0.85)" }}
+        {/* Name pill (with seat-number badge) stacked over the card-count
+            chip — the reference's dark-pill cluster beside each avatar. */}
+        <div className="flex flex-col items-start gap-1 min-w-0">
+          <div
+            className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full min-w-0"
+            style={{ background: "rgba(40,6,6,0.78)", border: "1px solid rgba(255,255,255,0.16)" }}
           >
-            {seatNumber}
-          </span>
+            <span
+              className="flex-shrink-0 flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-black text-white"
+              style={{ background: accent.base, border: "1.5px solid rgba(255,255,255,0.9)" }}
+            >
+              {seatNumber}
+            </span>
+            <span className="text-[13px] font-bold text-white truncate max-w-[5.5rem]">{name}</span>
+          </div>
           <span
-            className="text-[13px] font-bold text-white truncate max-w-[5.5rem]"
-            style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}
+            className="px-2.5 py-0.5 rounded-md text-[13px] font-black text-white leading-none tabular-nums"
+            style={{ background: "rgba(40,6,6,0.78)", border: "1px solid rgba(255,255,255,0.14)" }}
           >
-            {name}
+            {handSize}
           </span>
         </div>
       </div>
-      <span className="text-[15px] font-black text-white leading-none" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
-        {handSize}
-      </span>
       {!dense && <StadiumMiniFan count={handSize} compact={!isSpotlight} />}
       {canCatch && (
         <button
@@ -440,40 +489,53 @@ export function StadiumSelfPlate({
   isTurn: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2.5">
       <div className="relative flex-shrink-0">
-        {isTurn && (
-          <span
-            className="absolute -inset-1.5 rounded-2xl animate-pulse pointer-events-none"
-            style={{ boxShadow: "0 0 0 3px #F7DA8B, 0 0 20px 5px rgba(247,218,139,0.55)" }}
-            aria-hidden
-          />
-        )}
+        {/* Self avatar is always highlighted (gold glow), brighter on turn. */}
+        <span
+          className={`absolute -inset-1.5 rounded-2xl pointer-events-none ${isTurn ? "animate-pulse" : ""}`}
+          style={{ boxShadow: isTurn ? "0 0 0 3px #F7DA8B, 0 0 20px 5px rgba(247,218,139,0.6)" : "0 0 0 2.5px rgba(247,218,139,0.75)" }}
+          aria-hidden
+        />
         <div
-          className="rounded-xl overflow-hidden flex items-center justify-center"
+          className="rounded-2xl overflow-hidden flex items-center justify-center"
           style={{
-            width: 52,
-            height: 52,
+            width: 58,
+            height: 58,
             background: `linear-gradient(168deg, ${SELF_STADIUM_ACCENT.light}, ${SELF_STADIUM_ACCENT.dark})`,
             border: "2.5px solid #FFF6D8",
             boxShadow: "0 4px 10px rgba(0,0,0,0.45)",
           }}
         >
-          <Avatar name={name} size={40} />
+          <Avatar name={name} size={44} />
         </div>
+        {/* YOU badge — gold pill overlapping the avatar's base. */}
         <span
-          className="absolute -bottom-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full text-[9px] font-black text-white flex items-center justify-center"
-          style={{ background: SELF_STADIUM_ACCENT.base, border: "1.5px solid rgba(255,255,255,0.85)" }}
+          className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-[0.14em] text-[#3a2410] whitespace-nowrap"
+          style={{ background: "linear-gradient(135deg,#F7DA8B,#E6A11E)", boxShadow: "0 2px 5px rgba(0,0,0,0.4)" }}
         >
-          {seatNumber}
-        </span>
-      </div>
-      <div className="flex flex-col leading-tight">
-        <span className="text-[9px] font-black uppercase tracking-[0.14em]" style={{ color: "#F7DA8B" }}>
           You
         </span>
-        <span className="text-sm font-black text-white uppercase truncate max-w-[6rem]">{name}</span>
-        <span className="text-[13px] font-black text-white leading-none">{handSize}</span>
+      </div>
+      <div className="flex flex-col items-start gap-1 min-w-0">
+        <div
+          className="flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full min-w-0"
+          style={{ background: "rgba(40,6,6,0.78)", border: "1px solid rgba(255,255,255,0.16)" }}
+        >
+          <span
+            className="flex-shrink-0 flex items-center justify-center w-[19px] h-[19px] rounded-full text-[10px] font-black text-white"
+            style={{ background: SELF_STADIUM_ACCENT.base, border: "1.5px solid rgba(255,255,255,0.9)" }}
+          >
+            {seatNumber}
+          </span>
+          <span className="text-[15px] font-black text-white uppercase truncate max-w-[7rem]">{name}</span>
+        </div>
+        <span
+          className="px-2.5 py-0.5 rounded-md text-[13px] font-black text-white leading-none tabular-nums"
+          style={{ background: "rgba(40,6,6,0.78)", border: "1px solid rgba(255,255,255,0.14)" }}
+        >
+          {handSize}
+        </span>
       </div>
     </div>
   );
@@ -481,21 +543,31 @@ export function StadiumSelfPlate({
 
 // ---------------------------------------------------------------------
 // Pile centre — wraps the existing UnoTableCenter (draw/discard mechanics
-// untouched) with the reference's "DRAW PILE" / "DISCARD PILE" captions.
+// untouched). Reference caption placement: "DISCARD PILE" on a dark pill
+// above the pile, "DRAW PILE" on a dark pill below the draw stack.
 // ---------------------------------------------------------------------
+
+function StadiumPileLabel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span
+      className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-[0.16em] text-white/85 whitespace-nowrap ${className}`}
+      style={{ background: "rgba(60,8,8,0.72)", border: "1px solid rgba(255,255,255,0.14)" }}
+    >
+      {children}
+    </span>
+  );
+}
 
 export function StadiumPileCenter(props: UnoTableCenterProps) {
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="flex items-center gap-5 sm:gap-7 justify-center">
-        <span className="text-[8px] font-black uppercase tracking-[0.16em] text-white/70 w-14 sm:w-16 text-center">
-          Draw Pile
-        </span>
-        <span className="text-[8px] font-black uppercase tracking-[0.16em] text-white/70 w-16 sm:w-20 text-center">
-          Discard Pile
-        </span>
-      </div>
+    <div className="relative flex flex-col items-center">
+      {/* DISCARD PILE — centred above the cluster. */}
+      <StadiumPileLabel className="mb-1.5">Discard Pile</StadiumPileLabel>
       <UnoTableCenter {...props} />
+      {/* DRAW PILE — under the draw stack (left column of the cluster). */}
+      <div className="absolute left-0 -bottom-5 pl-1">
+        <StadiumPileLabel>Draw Pile</StadiumPileLabel>
+      </div>
     </div>
   );
 }

@@ -23,11 +23,12 @@ import {
   StadiumClassicModeBadge,
   StadiumHouseRulesBadge,
   StadiumIconButton,
+  StadiumSettingsMenu,
   StadiumChatButton,
   StadiumUnoButton,
   StadiumTurnTimerPill,
 } from "./uno-stadium";
-import { ArrowLeftIcon, CompressIcon, ExpandIcon, HelpIcon, SpeakerIcon, SpeakerMutedIcon } from "./uno-icons";
+import { ArrowLeftIcon, SpeakerIcon, SpeakerMutedIcon } from "./uno-icons";
 import { UnoRoomRail, ReactionButton } from "./uno-rail";
 import { ActionBar } from "./uno-shared";
 import { UnoDealOverlay } from "./uno-deal";
@@ -267,7 +268,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
     ro.observe(fan);
     return () => ro.disconnect();
   }, []);
-  const fanScale = Math.min(1.7, Math.max(0.7, rootH / 620));
+  const fanScale = Math.min(1.45, Math.max(0.7, rootH / 720));
   const seatScale = Math.min(1.5, Math.max(0.7, Math.min(boardBox.w / 1000, boardBox.h / 480)));
   const pileScale = Math.min(2.0, Math.max(0.8, Math.min(boardBox.w / 950, boardBox.h / 470) * 1.45));
 
@@ -278,7 +279,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
     <div
       ref={rootRef}
       className="relative h-full flex flex-col overflow-hidden"
-      style={{ background: "radial-gradient(ellipse at 50% 38%, #6b1c11 0%, #3a1009 45%, #1c0806 78%, #120403 100%)" }}
+      style={{ background: "radial-gradient(ellipse at 50% 44%, #F5442C 0%, #E51E1E 26%, #B81616 48%, #7E0F0F 72%, #3E0909 100%)" }}
     >
       {/* Desktop never rotates itself but stays synchronized with mobile
           players — a full-viewport block during "gating" so no board
@@ -322,16 +323,12 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
           >
             {audioSettings.isMuted ? <SpeakerMutedIcon size={16} /> : <SpeakerIcon size={16} />}
           </StadiumIconButton>
-          <StadiumIconButton
-            onClick={toggleFullscreen}
-            ariaLabel={isFs ? "Exit fullscreen" : "Enter fullscreen"}
-            title="Fullscreen"
-          >
-            {isFs ? <CompressIcon size={16} /> : <ExpandIcon size={16} />}
-          </StadiumIconButton>
-          <StadiumIconButton onClick={() => tut.setOpen(true)} ariaLabel="How to play" title="How to play">
-            <HelpIcon size={16} />
-          </StadiumIconButton>
+          <StadiumSettingsMenu
+            isFullscreen={isFs}
+            onToggleFullscreen={toggleFullscreen}
+            onOpenTutorial={() => tut.setOpen(true)}
+          />
+          <ReactionButton dark />
         </div>
       </div>
 
@@ -590,7 +587,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
       {state.phase === "playing" && (
         <div className="flex-shrink-0 pb-1.5 px-4 flex items-center justify-center gap-4 z-10">
           <p className="text-xs font-bold text-center" style={{ color: "#F0DDB4" }}>
-            {m.myTurn ? "— It's your turn. Play a card! —" : `${m.currentPlayer} is playing…`}
+            {m.myTurn ? "◆ It's your turn. Play a card! ◆" : `${m.currentPlayer} is playing…`}
           </p>
           <span className="hidden lg:block text-[10px] font-mono text-[#E9C892]/60 italic whitespace-nowrap">
             D draw · P pass · U declare · Esc cancel
