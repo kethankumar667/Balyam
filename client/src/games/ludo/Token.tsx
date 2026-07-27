@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
 import type { LudoColor } from "@shared/types";
 
@@ -51,6 +52,17 @@ export function Token({
 }) {
   const main = golden ? "#D4AF37" : hex ?? COLOR_HEX[color];
   const dark = golden ? "#8B6914" : hexDark ?? COLOR_HEX_DARK[color];
+  // Every token defines its own shine gradients, so the ids MUST be unique per
+  // instance — they used to be the literals "baseShine"/"bodyShine", which
+  // meant a full board emitted 100+ elements sharing two ids and every
+  // `url(#baseShine)` resolved to whichever token mounted first. That happened
+  // to render correctly only because both gradients are pure white/black and
+  // carry no colour: the moment a shine is made seat-dependent, every token on
+  // the board would silently wear the first token's colours. Colons are
+  // stripped from useId() — legal in an id, but they break `url(#…)`.
+  const uid = useId().replace(/:/g, "");
+  const baseShine = `tkbase${uid}`;
+  const bodyShine = `tkbody${uid}`;
   return (
     <button
       onClick={onClick}
@@ -94,7 +106,7 @@ export function Token({
         {/* Base (oval) */}
         <ellipse cx="0" cy="50" rx="38" ry="12" fill={dark} />
         <ellipse cx="0" cy="48" rx="38" ry="12" fill={main} />
-        <ellipse cx="0" cy="46" rx="32" ry="8" fill="url(#baseShine)" opacity="0.5" />
+        <ellipse cx="0" cy="46" rx="32" ry="8" fill={`url(#${baseShine})`} opacity="0.5" />
 
         {/* Body — pawn-shaped curve */}
         <path
@@ -105,7 +117,7 @@ export function Token({
         />
         <path
           d="M -22 46 Q -32 0 -16 -20 Q 0 -32 16 -20 Q 32 0 22 46 Z"
-          fill="url(#bodyShine)"
+          fill={`url(#${bodyShine})`}
           opacity="0.6"
         />
 
@@ -153,11 +165,11 @@ export function Token({
         )}
 
         <defs>
-          <linearGradient id="baseShine" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={baseShine} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="white" stopOpacity="0.7" />
             <stop offset="100%" stopColor="white" stopOpacity="0" />
           </linearGradient>
-          <linearGradient id="bodyShine" x1="0" y1="0" x2="1" y2="0">
+          <linearGradient id={bodyShine} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="white" stopOpacity="0.5" />
             <stop offset="40%" stopColor="white" stopOpacity="0" />
             <stop offset="100%" stopColor="black" stopOpacity="0.2" />

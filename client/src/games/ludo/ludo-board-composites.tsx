@@ -710,14 +710,16 @@ export function LudoBoardArea({
               hexDark={armIdx >= 0 ? seatColorDark(armIdx) : undefined}
               left={pos.left}
               top={pos.top}
+              // `pos.scale` shrinks tokens that are sharing a cell so the
+              // whole fanned cluster still fits inside it.
               size={
-                m.polygonGeo
+                (m.polygonGeo
                   ? polygonTokenSize(token.state, m.polygonGeo.cellSize)
                   : token.state === "yard"
                   ? 7
                   : token.state === "home"
                   ? 4.2
-                  : 6
+                  : 6) * (pos.scale ?? 1)
               }
               movable={movable}
               onClick={movable ? () => m.move(token.id) : undefined}

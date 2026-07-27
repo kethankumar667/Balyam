@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { CSSProperties, ElementType, KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Card as CardType, Rank } from "@shared/types";
 
@@ -633,15 +634,21 @@ function JackTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin:
 export function FaceDownCard({ small = false }: { small?: boolean }) {
   const w = small ? 36 : 48;
   const h = small ? 50 : 66;
+  // Unique per instance: a face-down pile renders many of these, and a literal
+  // id meant every copy shared one definition (all `url(#…)` resolving to
+  // whichever mounted first). Harmless while the gradient is a fixed navy, but
+  // it silently breaks the moment the back is themed per deck/player. Colons
+  // are stripped from useId() — legal in an id, but they break `url(#…)`.
+  const bgId = `rcb${useId().replace(/:/g, "")}`;
   return (
     <svg width={w} height={h} viewBox="0 0 48 66" className="flex-shrink-0 drop-shadow" aria-hidden>
       <defs>
-        <linearGradient id="rummy-cardback-bg" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#1e2a5c" />
           <stop offset="100%" stopColor="#0d1530" />
         </linearGradient>
       </defs>
-      <rect x="1" y="1" width="46" height="64" rx="5" fill="url(#rummy-cardback-bg)" stroke="#C9A227" strokeWidth="1.5" />
+      <rect x="1" y="1" width="46" height="64" rx="5" fill={`url(#${bgId})`} stroke="#C9A227" strokeWidth="1.5" />
       <rect x="5" y="5" width="38" height="56" rx="3" fill="none" stroke="#C9A227" strokeWidth="0.75" opacity="0.6" />
       {Array.from({ length: 4 }).map((_, row) =>
         Array.from({ length: 3 }).map((_, col) => (
