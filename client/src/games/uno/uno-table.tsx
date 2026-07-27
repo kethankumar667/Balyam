@@ -491,6 +491,8 @@ export interface UnoTableCenterProps {
    *  a single "is a drag in flight" flag, not per-pixel hover tracking —
    *  there's only one drop target here, so that's all that's needed. */
   isDragging?: boolean;
+  /** Render the "Draw Pile"/"Discard Pile" captions on each stack. */
+  showCaptions?: boolean;
   /** True when it's this player's turn and they haven't drawn yet — ported
    *  from Rummy's ClosedDeck: the pile itself is the primary way to draw
    *  (glowing to invite a tap), the "D" keyboard shortcut is the secondary
@@ -531,6 +533,24 @@ function UnoDiscardScatter() {
   );
 }
 
+/** Pile caption. Absolutely positioned by its caller so it can sit on its own
+ *  pile without pushing the two columns out of vertical alignment. */
+function UnoPileCaption({ children, tone = "muted" }: { children: React.ReactNode; tone?: "muted" | "action" }) {
+  return (
+    <span
+      className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-[0.16em] whitespace-nowrap ${
+        tone === "action" ? "text-[#FFF0C2]" : "text-white/85"
+      }`}
+      style={{
+        background: tone === "action" ? "rgba(160,60,6,0.9)" : "rgba(60,8,8,0.72)",
+        border: `1px solid ${tone === "action" ? "rgba(255,209,122,0.8)" : "rgba(255,255,255,0.14)"}`,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 export function UnoTableCenter({
   topCard,
   currentColor,
@@ -538,6 +558,7 @@ export function UnoTableCenter({
   isDragging = false,
   canDraw = false,
   onDraw,
+  showCaptions = false,
 }: UnoTableCenterProps) {
   const wildTop = topCard.rank === "Wild" || topCard.rank === "Wild+4";
   return (
@@ -557,7 +578,7 @@ export function UnoTableCenter({
             aria-label="Draw a card"
             title={canDraw ? "Draw a card (D)" : "Draw pile"}
             className={`relative w-14 h-20 sm:w-16 sm:h-24 rounded-lg transition ${
-              canDraw ? "cursor-pointer hover:-translate-y-1" : "cursor-default"
+              canDraw ? "cursor-pointer hover:-translate-y-1 uno-draw-beckon" : "cursor-default"
             }`}
           >
             {canDraw && (
@@ -572,12 +593,18 @@ export function UnoTableCenter({
               {deckCount}
             </span>
           </button>
+          {/* One caption slot, two mutually-exclusive states. Previously
+              "Tap to draw" rendered in flow AND the shell stacked a separate
+              "DRAW PILE" pill underneath, so the two sat on top of each
+              other. Absolute so neither shifts the pile columns. */}
+          {(canDraw || showCaptions) && (
+            <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
+              <UnoPileCaption tone={canDraw ? "action" : "muted"}>
+                {canDraw ? "Tap to draw" : "Draw Pile"}
+              </UnoPileCaption>
+            </div>
+          )}
         </div>
-        {canDraw && (
-          <div className="text-[9px] uppercase tracking-wide font-black text-[#FBE7A8] whitespace-nowrap drop-shadow">
-            Tap to draw
-          </div>
-        )}
       </div>
       <div className="flex flex-col items-center gap-1.5">
         {/* data-uno-drop tags this as the discard drop zone, resolved via
@@ -595,6 +622,14 @@ export function UnoTableCenter({
               : undefined,
           }}
         >
+          {/* Sits over the DISCARD stack specifically — the shell used to
+              centre it over the whole draw+discard cluster, where it read as
+              a label for the draw pile. */}
+          {showCaptions && (
+            <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-10">
+              <UnoPileCaption>{isDragging ? "Drop to play" : "Discard Pile"}</UnoPileCaption>
+            </div>
+          )}
           {/* Colour-matched ambient glow — painted first so the card art
               (below) covers its centre and only the blurred edge shows.
               Reads the active colour at a glance, before parsing the pip —
@@ -1064,6 +1099,8 @@ function UnoDraggableHandCard({
   rotate,
   lift,
   marginLeft,
+  cardW,
+  cardH,
   zIndex,
   springTransition,
   onTap,
@@ -1084,7 +1121,11 @@ function UnoDraggableHandCard({
   canDrag: boolean;
   rotate: number;
   lift: number;
+  /** Negative overlap in PX (was rem) — the fan now derives it from the real
+   *  measured width, so it has to speak the same unit as the card size. */
   marginLeft: number;
+  cardW: number;
+  cardH: number;
   zIndex: number;
   springTransition: Transition;
   onTap: () => void;
@@ -1151,17 +1192,26 @@ function UnoDraggableHandCard({
       }}
       initial={{ opacity: 0, scale: 0.7, y: 24 }}
       animate={{ opacity: isDragged ? 0.35 : 1, scale: 1, rotate, y: lift }}
+      // Hover/focus raises the card clear of its neighbours. With a fanned
+      // hand the neighbour overlaps this card's right edge, so "which card am
+      // I about to play" was ambiguous on a pointer device — the lift plus the
+      // z-raise below makes the whole face readable before committing.
+      whileHover={isDisabled || prefersReducedMotion ? undefined : { y: lift - HOVER_LIFT, scale: 1.04 }}
+      // Keyboard users get the same "which card is this" lift as the mouse.
+      whileFocus={isDisabled || prefersReducedMotion ? undefined : { y: lift - HOVER_LIFT, scale: 1.04 }}
       exit={{ opacity: 0, scale: 0.6, y: -36, transition: { duration: 0.16 } }}
       transition={springTransition}
-      className={`relative w-16 h-24 sm:w-[4.5rem] sm:h-[6.5rem] rounded-lg ${
+      className={`relative rounded-lg ${
         isDisabled
           ? "opacity-45 cursor-not-allowed"
           : canDrag
-            ? "cursor-grab hover:z-30"
-            : "cursor-pointer hover:z-30"
+            ? "cursor-grab hover:z-30 focus-visible:z-30"
+            : "cursor-pointer hover:z-30 focus-visible:z-30"
       }`}
       style={{
-        marginLeft: `${marginLeft}rem`,
+        width: cardW,
+        height: cardH,
+        marginLeft,
         zIndex: isDragged ? 60 : zIndex,
         touchAction: canDrag ? "none" : undefined,
         perspective: 600,
@@ -1213,6 +1263,66 @@ export interface UnoHandFanProps {
    *  Optional so any future caller of UnoHandFan can opt out. */
   onDropOnDiscard?: (cardId: string) => void;
   onDragStateChange?: (dragging: boolean) => void;
+  /** Width the fan may occupy, in the fan's OWN (pre-scale) pixels. Without
+   *  it the fan can only guess, and guessing is what produced a 7-card hand
+   *  squeezed into 512px of a 1920px screen with a 14px visible slice per
+   *  card. Omitted → falls back to a conservative 640. */
+  availableWidth?: number;
+  /** Base card footprint. Phones want the smaller slot. */
+  compact?: boolean;
+}
+
+/** Card slot sizes, in px. These used to live in Tailwind classes
+ *  (`w-16 h-24 sm:w-[4.5rem] sm:h-[6.5rem]`) while the overlap was computed in
+ *  rem, so the two could silently drift apart. One source of truth now. */
+const FAN_CARD = { w: 72, h: 104 };
+const FAN_CARD_COMPACT = { w: 64, h: 96 };
+/** How much of a card must stay uncovered. An UNO face carries its rank in
+ *  the top-left corner; below ~26px that corner is buried and the hand is
+ *  unreadable — which is exactly the failure mode this replaces. */
+const MIN_SLICE = 26;
+/** Lift applied to the selected card, and the extra headroom hover needs. */
+const SELECT_LIFT = 20;
+const HOVER_LIFT = 18;
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/**
+ * Fan geometry, derived from the REAL available width instead of assumed.
+ *
+ * Three regimes, in order of preference:
+ *  1. Roomy — cards sit side by side with a hair of overlap.
+ *  2. Tight — overlap grows to fit, down to MIN_SLICE (still readable).
+ *  3. Overflowing — past MIN_SLICE nothing can save readability, so the whole
+ *     row scales down uniformly rather than spilling off-screen.
+ */
+export function computeFanLayout(n: number, availableWidth: number, compact: boolean) {
+  const card = compact ? FAN_CARD_COMPACT : FAN_CARD;
+  const maxSlice = card.w - 6;
+  if (n <= 0)
+    return { ...card, slice: 0, spreadDeg: 0, arc: 0, rowScale: 1, rowW: 0, rowH: card.h, padBottom: 0 };
+  const room = Math.max(card.w, availableWidth) - card.w;
+  const slice = n === 1 ? 0 : clamp(room / (n - 1), MIN_SLICE, maxSlice);
+  // Flat when tight, gently fanned when roomy — rotation costs horizontal
+  // room, so it may only spend what the overlap isn't already using.
+  const openness = maxSlice === MIN_SLICE ? 1 : (slice - MIN_SLICE) / (maxSlice - MIN_SLICE);
+  const spreadDeg = clamp((36 / n) * openness, 0, 3.2);
+  const arc = 5 * openness;
+  const halfAngle = (Math.abs((n - 1) / 2) * spreadDeg * Math.PI) / 180;
+  // Rotating a card widens its footprint; count it so the row can't creep
+  // past `availableWidth` after the fact.
+  const bleed = card.h * Math.sin(halfAngle);
+  const rowW = card.w + slice * (n - 1) + bleed * 2;
+  const rowScale = Math.min(1, availableWidth / Math.max(1, rowW));
+  // Cards are bottom-aligned, so rotation and the arc push the outer ones
+  // BELOW the row box — that overhang is what let the fan sit on top of the
+  // tagline and run off the bottom of the screen. Pad it back in.
+  const bleedY = card.w * Math.sin(halfAngle);
+  const padBottom = Math.ceil(arc + bleedY / 2 + 4);
+  // `compact` is the touch shell, where hover can't happen — reserving its
+  // headroom there just donates ~18px of a 430px-tall phone to empty felt.
+  const rowH = Math.ceil(card.h + bleedY + arc + SELECT_LIFT + (compact ? 0 : HOVER_LIFT) + padBottom);
+  return { ...card, slice, spreadDeg, arc, rowScale, rowW, rowH, padBottom };
 }
 
 export function UnoHandFan({
@@ -1227,6 +1337,8 @@ export function UnoHandFan({
   onPickColor,
   onDropOnDiscard,
   onDragStateChange,
+  availableWidth = 640,
+  compact = false,
 }: UnoHandFanProps) {
   const n = sortedHand.length;
   // Framer Motion's own reduced-motion signal, not the global CSS rule
@@ -1243,10 +1355,7 @@ export function UnoHandFan({
     return <div className="text-center py-4 font-bold text-[#6E5E4D]">You win! 🎉</div>;
   }
 
-  // Fan spread narrows as the hand grows so a full 7+ card hand doesn't
-  // run off the table; overlap compensates by tightening simultaneously.
-  const spreadDeg = Math.min(7, 46 / n);
-  const overlapRem = n <= 5 ? 2.4 : n <= 9 ? 1.9 : 1.5;
+  const L = computeFanLayout(n, availableWidth, compact);
   const springTransition = prefersReducedMotion
     ? { duration: 0 }
     : { type: "spring" as const, stiffness: 340, damping: 28 };
@@ -1259,15 +1368,38 @@ export function UnoHandFan({
           than vanishing instantly. initial={false} so mounting a fresh hand
           (page load, or the deal sequence handing off) doesn't replay an
           entrance animation for all 7 starting cards at once. */}
-      <div className="flex items-end justify-center" style={{ minHeight: "8rem" }}>
+      {/* Height is COMPUTED, not a `minHeight` guess: rotation and the
+          select/hover lifts are transforms, so they never show up in
+          offsetHeight — the shell's reserved strip came up short and the fan
+          spilled over the tagline and off the bottom of the screen. */}
+      <div
+        className="flex items-end justify-center"
+        style={{
+          height: Math.ceil(L.rowH * L.rowScale),
+          width: Math.ceil(L.rowW * L.rowScale),
+          maxWidth: "100%",
+        }}
+      >
+        <div
+          className="flex items-end justify-center"
+          style={{
+            height: L.rowH,
+            paddingBottom: L.padBottom,
+            transform: L.rowScale < 1 ? `scale(${L.rowScale})` : undefined,
+            transformOrigin: "bottom center",
+          }}
+        >
         <AnimatePresence initial={false}>
           {sortedHand.map((card, i) => {
             const isSelected = card.id === selectedCardId;
             const isValid = validMoveIds.has(card.id);
             const isDisabled = !isValid && phase === "playing";
             const offset = i - (n - 1) / 2;
-            const rotate = offset * spreadDeg;
-            const lift = isSelected ? -20 : Math.abs(offset) * Math.min(1.5, 10 / n);
+            const half = Math.max(1, (n - 1) / 2);
+            const rotate = offset * L.spreadDeg;
+            // Cards ride a shallow arc — ends sit lower than the middle, the
+            // way a real hand sits. Squared so the curve is smooth, not a V.
+            const lift = isSelected ? -SELECT_LIFT : (offset / half) ** 2 * L.arc;
             return (
               <UnoDraggableHandCard
                 key={card.id}
@@ -1279,7 +1411,9 @@ export function UnoHandFan({
                 canDrag={isValid && phase === "playing" && !!onDropOnDiscard}
                 rotate={rotate}
                 lift={lift}
-                marginLeft={i === 0 ? 0 : -overlapRem}
+                marginLeft={i === 0 ? 0 : -(L.w - L.slice)}
+                cardW={L.w}
+                cardH={L.h}
                 zIndex={isSelected ? 50 : i}
                 springTransition={springTransition}
                 onTap={() => (isValid ? onSelectCard(card.id) : undefined)}
@@ -1298,6 +1432,7 @@ export function UnoHandFan({
             );
           })}
         </AnimatePresence>
+        </div>
       </div>
 
       {needsColorChoice && (

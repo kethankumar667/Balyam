@@ -74,11 +74,9 @@ export function computeSeatNumbers(seating: StadiumSeating, selfId: string | nul
 
 /** Evenly spaces 0-3 seats down a side rail between the spotlight and self
  *  slots, so a 1- or 2-opponent side isn't stranded at the top. */
-function sideTops(count: number): string[] {
+function sideTops(count: number, top: number, bottom: number): string[] {
   if (count === 0) return [];
-  if (count === 1) return ["40%"];
-  const top = 18;
-  const bottom = 62;
+  if (count === 1) return [`${(top + bottom) / 2}%`];
   const step = (bottom - top) / (count - 1);
   return Array.from({ length: count }, (_, i) => `${top + step * i}%`);
 }
@@ -88,31 +86,60 @@ export interface StadiumSeatPos {
   top: string;
 }
 
-/** Percentage coordinates (of the FULL board area, which is now the whole
- *  region between header and hand fan — the reference composition is
- *  full-bleed, seats hugging the screen edges) for every seated id, self
- *  included. Used both to place seats and as the anchor lookup for every
- *  special-card hit animation (see UnoBoardMobile.tsx). */
+/**
+ * Seat ring geometry.
+ *
+ * "edge" — seats pinned to the screen edges. Right for a short landscape
+ * PHONE, where the edges are only a few hundred px from the pile anyway.
+ *
+ * "ring" — seats on an ellipse drawn AROUND the pile, which is what the
+ * reference actually shows. On a desktop the edge layout falls apart: at
+ * 1920px the columns land at x≈40 and x≈1880 while the pile sits at 960, so
+ * ~700px of empty felt opens up on either side and the table stops reading as
+ * a table. The ring keeps every seat in one glance-able group.
+ */
+export type StadiumLayout = "edge" | "ring";
+
+const RING_GEOMETRY: Record<StadiumLayout, { sideX: number; top: number; bottom: number; spotTop: number }> = {
+  edge: { sideX: 8, top: 18, bottom: 62, spotTop: 16 },
+  ring: { sideX: 20, top: 26, bottom: 66, spotTop: 13 },
+};
+
+/** Percentage coordinates (of the FULL board area — the whole region between
+ *  header and hand fan) for every seated id, self included. Used both to
+ *  place seats and as the anchor lookup for every special-card hit animation
+ *  (see UnoBoardDesktop.tsx / UnoBoardMobile.tsx). */
 export function computeStadiumPositions(
   seating: StadiumSeating,
   selfId: string | null,
+  layout: StadiumLayout = "edge",
 ): Record<string, StadiumSeatPos> {
   const pos: Record<string, StadiumSeatPos> = {};
-  if (seating.spotlight) pos[seating.spotlight] = { left: "50%", top: "16%" };
-  const rightTops = sideTops(seating.right.length);
+  const g = RING_GEOMETRY[layout];
+  if (seating.spotlight) pos[seating.spotlight] = { left: "50%", top: `${g.spotTop}%` };
+
+  // On the ring, the middle seat of a 3-stack bows OUTWARD so the column
+  // traces the ellipse instead of running dead straight past the pile.
+  const bow = (count: number, i: number) => {
+    if (layout !== "ring" || count < 2) return 0;
+    const t = count === 1 ? 0.5 : i / (count - 1);
+    return Math.sin(t * Math.PI) * 4;
+  };
+
+  const rightTops = sideTops(seating.right.length, g.top, g.bottom);
   seating.right.forEach((id, i) => {
-    pos[id] = { left: "92%", top: rightTops[i] };
+    pos[id] = { left: `${100 - g.sideX - bow(seating.right.length, i)}%`, top: rightTops[i] };
   });
-  const leftTops = sideTops(seating.left.length);
+  const leftTops = sideTops(seating.left.length, g.top, g.bottom);
   // `seating.left` is closest-to-self-first; rendering/positioning top-to-
   // bottom means the closest-to-self entry gets the LARGEST top% (bottom
   // slot), so read the tops array in reverse.
   const reversedTops = [...leftTops].reverse();
   seating.left.forEach((id, i) => {
-    pos[id] = { left: "8%", top: reversedTops[i] };
+    pos[id] = { left: `${g.sideX + bow(seating.left.length, i)}%`, top: reversedTops[i] };
   });
-  // Anchor for hit animations targeting the local player — approximates
-  // the self plate's new bottom-left slot (see UnoBoardMobile.tsx).
+  // Anchor for hit animations targeting the local player — approximates the
+  // self plate's bottom-left slot in both shells.
   if (selfId) pos[selfId] = { left: "14%", top: "88%" };
   return pos;
 }
@@ -263,54 +290,131 @@ function StadiumRings() {
 // engine flips on every Reverse.
 // ---------------------------------------------------------------------
 
-export function StadiumDirectionArc({ direction }: { direction: 1 | -1 }) {
-  // The two arcs are a 180° rotation of each other; drawing one and
-  // rotating it about the pile centre (50,48) guarantees symmetry. A
-  // horizontal mirror (scaleX -1) turns the clockwise ring counter-
-  // clockwise for a reversed direction — arrowheads flip with it.
+/** Angular span of each arc, in degrees (0° = 3 o'clock, growing clockwise
+ *  because SVG's y axis points down). */
+const ARC_FROM = 214;
+const ARC_TO = 326;
+
+/**
+ * Turn-direction ring — two tapered arcs chasing each other around the pile.
+ *
+ * The SVG works in PIXEL user units (`viewBox="0 0 w h"`), which is the whole
+ * point. The previous version stretched a 100×100 viewBox across the board
+ * with `preserveAspectRatio="none"`: on a 1920×950 desktop that scaled 19.2×
+ * horizontally against 9.5× vertically, smearing the arcs into a flat oval and
+ * the arrowheads into big clip-art triangles. Working in px means the ring can
+ * be a wide ELLIPSE (which is what suits a wide table, and what the reference
+ * shows) while the arrowheads stay exactly the shape they were drawn.
+ */
+export function StadiumDirectionArc({
+  direction,
+  width,
+  height,
+}: {
+  direction: 1 | -1;
+  width: number;
+  height: number;
+}) {
+  const cx = width / 2;
+  const cy = height / 2;
+  const rx = width * 0.46;
+  const ry = height * 0.46;
   return (
     <div
-      className="absolute inset-0 pointer-events-none"
-      style={{ transform: direction === -1 ? "scaleX(-1)" : undefined, transition: "transform 400ms cubic-bezier(0.4,0,0.2,1)" }}
+      className="absolute pointer-events-none"
+      style={{
+        width,
+        height,
+        left: "50%",
+        top: "48%",
+        // The mirror flips the ring for a Reverse; the -50% keeps it centred.
+        transform: `translate(-50%, -50%) scaleX(${direction === -1 ? -1 : 1})`,
+        transition: "transform 420ms cubic-bezier(0.34,1.3,0.64,1)",
+      }}
       aria-hidden
     >
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 w-full h-full overflow-visible">
         <defs>
           <linearGradient id="uno-arrow-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#FFC94D" />
+            <stop offset="0%" stopColor="#FFD46B" />
             <stop offset="55%" stopColor="#FF9A2E" />
             <stop offset="100%" stopColor="#FF6A15" />
           </linearGradient>
         </defs>
-        {/* soft glow underlay */}
-        <g opacity="0.45" style={{ filter: "blur(2px)" }}>
-          <StadiumArrowArc />
-          <g transform="rotate(180 50 48)"><StadiumArrowArc /></g>
+        <g opacity="0.4" style={{ filter: "blur(2px)" }}>
+          <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} />
+          <g transform={`rotate(180 ${cx} ${cy})`}>
+            <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} />
+          </g>
         </g>
-        <StadiumArrowArc glow />
-        <g transform="rotate(180 50 48)"><StadiumArrowArc glow /></g>
+        <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} glow />
+        <g transform={`rotate(180 ${cx} ${cy})`}>
+          <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} glow />
+        </g>
       </svg>
     </div>
   );
 }
 
-/** One thick orange arc (9 o'clock → over the top → 2 o'clock) with a
- *  filled arrowhead at the clockwise end. `glow` renders the gradient
- *  fill; without it, a wider flat-orange copy used as the blurred underlay. */
-function StadiumArrowArc({ glow = false }: { glow?: boolean }) {
-  const stroke = glow ? "url(#uno-arrow-grad)" : "#FF7A1A";
+/** One arc sweeping clockwise from ~8 o'clock over the top to ~2 o'clock,
+ *  with a filled arrowhead sitting ON the path, rotated to the ELLIPSE's
+ *  tangent there (not a circle's — they differ once rx ≠ ry, and using the
+ *  wrong one makes the head visibly skew off the path). */
+function StadiumArrowArc({
+  cx,
+  cy,
+  rx,
+  ry,
+  glow = false,
+}: {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  glow?: boolean;
+}) {
+  const at = (deg: number) => {
+    const t = (deg * Math.PI) / 180;
+    return { x: cx + rx * Math.cos(t), y: cy + ry * Math.sin(t) };
+  };
+  // Arrowheads and stroke scale off the SHORT radius, so they stay
+  // proportionate whatever shape the table is.
+  const short = Math.min(rx, ry);
+  const a = Math.min(60, Math.max(15, short * 0.19));
+  const w = Math.min(22, Math.max(5, short * 0.058));
+  const start = at(ARC_FROM);
+  // Stop the stroke short of the tip so the arrowhead reads as the arc coming
+  // to a point rather than a triangle stuck onto a blunt end. The gap is an
+  // arc LENGTH, so convert it to degrees against this ellipse.
+  const tailDeg = (a * 0.62 * 180) / (Math.PI * short);
+  const end = at(ARC_TO - tailDeg);
+  const tip = at(ARC_TO);
+  const t = (ARC_TO * Math.PI) / 180;
+  const tangentDeg = (Math.atan2(ry * Math.cos(t), -rx * Math.sin(t)) * 180) / Math.PI;
+  const d = `M ${start.x} ${start.y} A ${rx} ${ry} 0 0 1 ${end.x} ${end.y}`;
+  const paint = glow ? "url(#uno-arrow-grad)" : "#FF7A1A";
   return (
-    <g fill={stroke} stroke={stroke}>
-      <path
-        d="M 20 48 A 30 32 0 0 1 63 20.5"
-        fill="none"
-        strokeWidth={glow ? 3.6 : 5}
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
-      {/* arrowhead at the 2 o'clock end, pointing clockwise (down-right) */}
-      <g transform="translate(63 20.5) rotate(52)">
-        <path d="M 0 -6 L 9 0 L 0 6 Z" stroke="none" />
+    <g fill={paint} stroke={paint}>
+      <path d={d} fill="none" strokeWidth={w} strokeLinecap="round" />
+      {/* Motion WITHOUT breaking the arc: a short lit segment travels along
+          the solid stroke. Dashing the stroke itself (the first attempt)
+          turned the ring into a dotted circle and killed the arrow read. */}
+      {glow && (
+        <path
+          d={d}
+          fill="none"
+          stroke="#FFE9A8"
+          strokeWidth={Math.max(1.4, w * 0.42)}
+          strokeLinecap="round"
+          opacity="0.9"
+          className="uno-arc-comet"
+          style={{ strokeDasharray: `${a * 1.6} ${rx * 4}`, ["--uno-arc-len" as string]: `${rx * 4}` }}
+        />
+      )}
+      <g transform={`translate(${tip.x} ${tip.y}) rotate(${tangentDeg})`}>
+        {/* Swept-back head — the notched tail is what makes it read as a
+            game arrow rather than a plain triangle. */}
+        <path d={`M ${a * 0.72} 0 L ${-a * 0.5} ${-a * 0.72} L ${-a * 0.24} 0 L ${-a * 0.5} ${a * 0.72} Z`} stroke="none" />
       </g>
     </g>
   );
@@ -353,16 +457,36 @@ export function StadiumOpponentSeat({
   const isSpotlight = variant === "spotlight";
   const tile = isSpotlight ? 64 : 52;
   const accent = stadiumAccentFor(name);
+  const offline = isConnected === false;
   return (
-    <div className="relative flex flex-col items-center gap-1">
-      {isTurn && (
+    <div
+      className="relative flex flex-col items-center gap-1"
+      style={{
+        // A disconnected player still gets a full seat — you need to see who
+        // the table is waiting on — but recedes so live players read first.
+        // A 12px corner dot alone was doing all this work.
+        opacity: offline ? 0.55 : 1,
+        filter: offline ? "grayscale(0.6)" : undefined,
+        transition: "opacity 300ms, filter 300ms",
+      }}
+    >
+      {/* One badge slot. "Reconnecting" outranks "Playing": if the table is
+          stalled waiting on a dropped player, that is the thing to say. */}
+      {offline ? (
+        <span
+          className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 text-[8px] font-black uppercase tracking-[0.14em] px-2 py-0.5 rounded-full text-white whitespace-nowrap"
+          style={{ background: "#B45309", boxShadow: "0 2px 5px rgba(0,0,0,0.35)" }}
+        >
+          Reconnecting
+        </span>
+      ) : isTurn ? (
         <span
           className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 text-[8px] font-black uppercase tracking-[0.14em] px-2 py-0.5 rounded-full text-[#3a2410] whitespace-nowrap"
           style={{ background: "linear-gradient(135deg,#F7DA8B,#E6A11E)", boxShadow: "0 2px 5px rgba(0,0,0,0.35)" }}
         >
           Playing
         </span>
-      )}
+      ) : null}
       <div className="flex items-center gap-2">
         <div className="relative flex-shrink-0">
           {isSpotlight && (
@@ -378,7 +502,7 @@ export function StadiumOpponentSeat({
               the spotlight seat's occupant is also the active player. */}
           {isTurn && (
             <span
-              className="absolute -inset-2.5 rounded-2xl animate-pulse pointer-events-none"
+              className="uno-seat-claim absolute -inset-2.5 rounded-2xl pointer-events-none"
               style={{ boxShadow: "0 0 0 3px #F7DA8B, 0 0 22px 6px rgba(247,218,139,0.55)" }}
               aria-hidden
             />
@@ -400,9 +524,9 @@ export function StadiumOpponentSeat({
           >
             <Avatar name={name} size={tile - 12} />
           </div>
-          {isConnected === false && (
+          {offline && (
             <span
-              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-black/40"
+              className="uno-reconnect-dot absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-black/40"
               style={{ background: "#F59E0B" }}
               title="Reconnecting…"
               aria-label="Reconnecting"
@@ -493,7 +617,8 @@ export function StadiumSelfPlate({
       <div className="relative flex-shrink-0">
         {/* Self avatar is always highlighted (gold glow), brighter on turn. */}
         <span
-          className={`absolute -inset-1.5 rounded-2xl pointer-events-none ${isTurn ? "animate-pulse" : ""}`}
+          key={isTurn ? "turn" : "idle"}
+          className={`absolute -inset-1.5 rounded-2xl pointer-events-none ${isTurn ? "uno-seat-claim" : ""}`}
           style={{ boxShadow: isTurn ? "0 0 0 3px #F7DA8B, 0 0 20px 5px rgba(247,218,139,0.6)" : "0 0 0 2.5px rgba(247,218,139,0.75)" }}
           aria-hidden
         />
@@ -547,27 +672,17 @@ export function StadiumSelfPlate({
 // above the pile, "DRAW PILE" on a dark pill below the draw stack.
 // ---------------------------------------------------------------------
 
-function StadiumPileLabel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <span
-      className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-[0.16em] text-white/85 whitespace-nowrap ${className}`}
-      style={{ background: "rgba(60,8,8,0.72)", border: "1px solid rgba(255,255,255,0.14)" }}
-    >
-      {children}
-    </span>
-  );
-}
-
+/** Captions now live INSIDE UnoTableCenter, anchored to their own stack —
+ *  this wrapper only forwards the caller's choice. Previously it stacked its
+ *  own pills around the cluster, which put "Discard Pile" over the draw stack
+ *  and "Draw Pile" on top of the "Tap to draw" cue. Callers on a short board
+ *  should turn captions OFF: there the "Discard Pile" pill rides up into the
+ *  spotlight seat's name pill. The "Tap to draw" cue is unaffected — it is an
+ *  action affordance, not a caption, and stays whenever a draw is legal. */
 export function StadiumPileCenter(props: UnoTableCenterProps) {
   return (
     <div className="relative flex flex-col items-center">
-      {/* DISCARD PILE — centred above the cluster. */}
-      <StadiumPileLabel className="mb-1.5">Discard Pile</StadiumPileLabel>
       <UnoTableCenter {...props} />
-      {/* DRAW PILE — under the draw stack (left column of the cluster). */}
-      <div className="absolute left-0 -bottom-5 pl-1">
-        <StadiumPileLabel>Draw Pile</StadiumPileLabel>
-      </div>
     </div>
   );
 }
@@ -775,29 +890,41 @@ export function StadiumChatButton({ onClick, unread }: { onClick: () => void; un
 // Bottom-right HUD — persistent UNO declare button + turn timer pill.
 // ---------------------------------------------------------------------
 
+/**
+ * The signature UNO call. Sized and weighted like the reference's, and — the
+ * bug this replaces — still legible when disabled: `opacity-45` over a dark
+ * red arena rendered it as a barely-visible ghost outline, so nobody could
+ * tell whether the game's most important button even existed. Now it keeps a
+ * solid (if unlit) body and states WHY it's off via tooltip + aria-label.
+ */
 export function StadiumUnoButton({ enabled, onDeclare }: { enabled: boolean; onDeclare: () => void }) {
+  const label = enabled
+    ? "Declare UNO — you have one card left"
+    : "Declare UNO — lights up when you are down to one card";
   return (
     <button
       onClick={enabled ? onDeclare : undefined}
       disabled={!enabled}
-      aria-label={enabled ? "Declare UNO — you have one card left" : "Declare UNO — enabled once you hold exactly one card"}
-      className={`flex items-center justify-center rounded-full font-black italic text-lg tracking-tight text-white ${
-        enabled ? "animate-pulse" : "cursor-not-allowed opacity-45"
+      aria-label={label}
+      title={label}
+      className={`relative flex items-center justify-center rounded-full font-black italic tracking-tight transition-transform ${
+        enabled ? "uno-call-ready active:scale-95 cursor-pointer" : "cursor-not-allowed"
       }`}
       style={{
-        width: "5.6rem",
-        height: "2.6rem",
+        width: "7.4rem",
+        height: "3.4rem",
+        fontSize: "1.6rem",
+        color: enabled ? "#FFF4D2" : "rgba(255,236,206,0.55)",
         background: enabled
-          ? "radial-gradient(circle at 35% 30%, #F97362, #E23122 55%, #B01212 100%)"
-          : "linear-gradient(180deg,#7a2a24,#5a1c18)",
-        border: "3px solid #FFF6E4",
-        // Physical-button bevel: a short, solid "ledge" shadow under the rim
-        // (reads as thickness, not just a flat gradient fill) plus the
-        // existing soft ambient shadow further out.
+          ? "radial-gradient(circle at 35% 28%, #FF8A62, #E23122 52%, #A50E0E 100%)"
+          : "radial-gradient(circle at 35% 28%, #6E2A22, #4A1714 60%, #351010 100%)",
+        border: `3px solid ${enabled ? "#FFF6E4" : "rgba(255,246,228,0.42)"}`,
+        // Physical-button bevel: a short, solid "ledge" under the rim reads as
+        // thickness, not just a flat gradient fill.
         boxShadow: enabled
-          ? "0 3px 0 1.5px #7a0f0f, 0 8px 18px rgba(176,18,18,0.55), inset 0 2px 3px rgba(255,255,255,0.35)"
-          : "0 2px 0 1.5px #3a1512",
-        textShadow: "0 2px 2px rgba(0,0,0,0.35)",
+          ? "0 4px 0 2px #6E0B0B, 0 10px 24px rgba(226,49,34,0.55), inset 0 2px 4px rgba(255,255,255,0.4)"
+          : "0 3px 0 2px rgba(40,12,10,0.9), inset 0 2px 4px rgba(255,255,255,0.12)",
+        textShadow: "0 2px 3px rgba(0,0,0,0.45)",
       }}
     >
       UNO
@@ -805,22 +932,67 @@ export function StadiumUnoButton({ enabled, onDeclare }: { enabled: boolean; onD
   );
 }
 
+/**
+ * Turn timer. Reference-weight: clock glyph beside a stacked label + a big
+ * tabular countdown, with a draining ring so the remaining time reads
+ * pre-attentively instead of requiring you to parse digits.
+ *
+ * Urgency is carried by colour AND the ring AND the number — never colour
+ * alone, so it survives colour-blindness and greyscale.
+ */
 export function StadiumTurnTimerPill({ deadline, myTurn }: { deadline: number | null; myTurn: boolean }) {
   const secondsLeft = useTurnSecondsLeft(deadline);
+  // The server publishes a deadline, not the turn length, so the ring
+  // self-calibrates: the first tick of a new deadline becomes its "full".
+  const [track, setTrack] = useState<{ key: number | null; total: number }>({ key: null, total: 1 });
+  if (deadline !== track.key) setTrack({ key: deadline, total: Math.max(1, secondsLeft) });
   if (deadline == null) return null;
   const urgent = secondsLeft <= 10;
+  const critical = secondsLeft <= 5;
+  const pct = Math.max(0, Math.min(1, secondsLeft / Math.max(1, track.total)));
+  const ring = critical ? "#FF4D4D" : urgent ? "#FFB020" : "#F7DA8B";
+  const R = 16;
+  const C = 2 * Math.PI * R;
   return (
     <div
-      className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap"
+      className={`flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-2xl whitespace-nowrap ${
+        critical ? "uno-timer-critical" : ""
+      }`}
       style={{
-        background: urgent ? "rgba(220,38,38,0.88)" : "rgba(0,0,0,0.42)",
-        color: "#fff",
-        border: "1px solid rgba(255,255,255,0.25)",
+        background: urgent ? "rgba(140,16,16,0.92)" : "rgba(0,0,0,0.48)",
+        border: `1.5px solid ${urgent ? "rgba(255,140,120,0.7)" : "rgba(255,255,255,0.22)"}`,
       }}
+      role="timer"
+      aria-label={`${myTurn ? "Your turn" : "Their turn"}, ${secondsLeft} seconds left`}
     >
-      <ClockIcon size={12} />
-      <span>{myTurn ? "Your Turn" : "Their Turn"}</span>
-      <span className="tabular-nums">{secondsLeft}s</span>
+      <div className="relative flex-shrink-0" style={{ width: 38, height: 38 }}>
+        <svg width="38" height="38" className="absolute inset-0 -rotate-90" aria-hidden>
+          <circle cx="19" cy="19" r={R} fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="3" />
+          <circle
+            cx="19"
+            cy="19"
+            r={R}
+            fill="none"
+            stroke={ring}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={C}
+            strokeDashoffset={C * (1 - pct)}
+            style={{ transition: "stroke-dashoffset 950ms linear, stroke 250ms" }}
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-white/85" aria-hidden>
+          <ClockIcon size={15} />
+        </span>
+      </div>
+      <div className="flex flex-col leading-none gap-0.5">
+        <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white/70">
+          {myTurn ? "Your Turn" : "Their Turn"}
+        </span>
+        <span className="text-[19px] font-black tabular-nums" style={{ color: ring }}>
+          {secondsLeft}s
+        </span>
+      </div>
     </div>
   );
 }

@@ -221,7 +221,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
   const fanInnerRef = useRef<HTMLDivElement | null>(null);
-  const [rootH, setRootH] = useState(720);
+  const [rootBox, setRootBox] = useState({ w: 1280, h: 720 });
   const [boardBox, setBoardBox] = useState({ w: 1280, h: 480 });
   const [fanNaturalH, setFanNaturalH] = useState(150);
   useEffect(() => {
@@ -230,7 +230,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
     const fan = fanInnerRef.current;
     if (!root || !board || !fan) return;
     const measure = () => {
-      setRootH(root.clientHeight);
+      setRootBox({ w: root.clientWidth, h: root.clientHeight });
       setBoardBox({ w: board.clientWidth, h: board.clientHeight });
       setFanNaturalH(fan.offsetHeight || 150);
     };
@@ -241,10 +241,28 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
     ro.observe(fan);
     return () => ro.disconnect();
   }, []);
+  const rootH = rootBox.h;
   const fanScale = Math.min(1.5, Math.max(0.55, rootH / 460));
+  /* Same corridor rule as desktop — the fixed bottom-corner HUD reserves no
+     layout space, so the fan has to be told what it may actually use.
+     Narrower reserve here: the phone HUD is smaller. */
+  const fanAvailableWidth = Math.max(260, (rootBox.w - 120 * 2) / fanScale);
   const seatScale = Math.min(1.2, Math.max(0.55, Math.min(boardBox.w / 1100, boardBox.h / 430)));
   const pileScale = Math.min(1.6, Math.max(0.6, Math.min(boardBox.w / 1000, boardBox.h / 430) * 1.45));
+  /* Direction ring — narrower than desktop's, since a phone's edge-seated
+     columns sit much closer in. */
+  const arcW = Math.max(200, Math.min(boardBox.w * 0.56, 760));
+  const arcH = Math.max(150, Math.min(boardBox.h * 0.88, 420));
   const dense = seatScale < 0.7;
+  /* Passive pile captions need vertical room: the "Discard Pile" pill sits
+     above the discard stack and, on a short board, rides into the spotlight
+     seat's name pill and mini-fan. Derived from the real geometry rather than
+     a guessed height — the seat sits at 16% and the pile at 48% of the board,
+     and both scale independently, so a fixed threshold gets it wrong at some
+     size. The "Tap to draw" ACTION cue is deliberately NOT gated; only the two
+     decorative labels drop out. */
+  const seatToPileGap = boardBox.h * 0.32;
+  const captionsFit = seatToPileGap > (122 * seatScale) / 2 + (112 * pileScale) / 2 + 30;
   // The urgent countdown (TurnTimeWarning's top-centre chip) and the
   // CLASSIC MODE badge both want the top-centre slot; yield it to the
   // time-critical one during its ≤10s window.
@@ -324,7 +342,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
         <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
           <div ref={boardRef} className="relative w-full h-full">
             <StadiumMat>
-              <StadiumDirectionArc direction={state.direction} />
+              <StadiumDirectionArc direction={state.direction} width={arcW} height={arcH} />
 
               {seatList.map(({ id, variant }) => {
                 const pos = stadiumPositions[id];
@@ -370,6 +388,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                     isDragging={isDraggingCard}
                     canDraw={m.canDraw}
                     onDraw={m.drawCard}
+                    showCaptions={captionsFit}
                   />
                 </animated.div>
               </div>
@@ -563,6 +582,8 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
             onPickColor={m.pickColorAndPlay}
             onDropOnDiscard={m.dropCardOnDiscard}
             onDragStateChange={setIsDraggingCard}
+            availableWidth={fanAvailableWidth}
+            compact
           />
         </div>
       </div>
