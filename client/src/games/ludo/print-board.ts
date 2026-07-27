@@ -91,8 +91,42 @@ function P(r: number, aDeg: number, s = 0): Pt {
     y: 50 - r * Math.cos(a) + s * Math.sin(a),
   };
 }
+/**
+ * Yard token width, as a multiple of CELL. SHARED with `polygonTokenSize`
+ * (ludo-board-shared.tsx), which sizes the actual rendered piece. The yard
+ * slot geometry below erodes the triangle by half this value, so if the two
+ * ever disagree the tokens go straight back to overhanging their walls —
+ * hence one exported constant rather than a literal in each file.
+ */
+export const YARD_TOKEN_W = 1.0;
+
 const fmt = (p: Pt): string => `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
 const dist = (a: Pt, b: Pt): number => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * Shrink a triangle inward by `d` on every side — the safe region for the
+ * CENTRE of a disc of radius `d`. A triangle offset inward by a uniform
+ * distance is just the original scaled about its INCENTRE (not its centroid:
+ * scaling about the centroid moves the three edges by different amounts on a
+ * non-equilateral triangle, which is exactly the case here — yard triangles
+ * are wide-and-short at N=5 and narrow-and-tall at N=8).
+ */
+function erodeTriangle(t: readonly [Pt, Pt, Pt], d: number): [Pt, Pt, Pt] {
+  const [A, B, C] = t;
+  const a = dist(B, C);
+  const b = dist(C, A);
+  const c = dist(A, B);
+  const per = a + b + c;
+  const inc: Pt = { x: (a * A.x + b * B.x + c * C.x) / per, y: (a * A.y + b * B.y + c * C.y) / per };
+  const area = Math.abs((B.x - A.x) * (C.y - A.y) - (C.x - A.x) * (B.y - A.y)) / 2;
+  const rIn = area / (per / 2);
+  // Clamped: if a token were wider than the triangle's incircle there is no
+  // valid region at all, and we'd rather collapse to the incentre than emit
+  // inverted geometry.
+  const k = Math.max(0.04, (rIn - d) / rIn);
+  const s = (p: Pt): Pt => ({ x: inc.x + (p.x - inc.x) * k, y: inc.y + (p.y - inc.y) * k });
+  return [s(A), s(B), s(C)];
+}
 
 export interface PrintBoardArt {
   /** All plain white loop cells (tip caps excluded): position + arm angle. */
@@ -237,44 +271,47 @@ function build(
     const tri = [insTip, insL, insR].map(fmt).join(" ");
     yardPolygons[color] = tri;
 
-    // Home well grid: sized off the triangle's OWN dimensions (not a fixed
-    // CELL-relative constant) so the 4-token cluster actually fills most of
-    // the yard, matching the reference — a fixed small cluster left a wide
-    // gap of bare triangle around it. The triangle tapers linearly from 0
-    // width at the tip to `halfBaseWidth` at the base, so each row's
-    // available half-width is derived from that taper directly, keeping
-    // wells clear of the walls at any N without hand-tuned per-N constants.
+    // Yard token slots — a 2+2 cluster laid out in BARYCENTRIC coordinates of
+    // the yard triangle, after eroding that triangle by the token's own
+    // radius.
     //
-    // Arrangement is 2-1-1 (pyramid), not a 2×2 grid: 2 tokens side by side
-    // nearest the base, then 1 centered above them, then 1 more centered
-    // above that, tapering up toward the tip.
+    // Every previous attempt here placed token CENTRES using the raw triangle
+    // (polar rows, then a 2x2 grid, then a 2-1-1 pyramid) and never accounted
+    // for the token having width. Measured result: all 5/6/7/8 yards on every
+    // board had tokens overhanging their walls — clearance 0.3-1.0 where half
+    // a token width (1.9-2.2) was needed — and at N=5 a centre sat OUTSIDE the
+    // triangle entirely. They were simultaneously spread 2.2 token-widths
+    // apart, i.e. the cluster was far too big for the space.
     //
-    // Row-to-row RADIAL gap is a fixed multiple of CELL (the same unit
-    // tokens are sized in), not a fraction of the triangle's own radial
-    // span — that span's relationship to CELL varies a lot across N (wide,
-    // short triangles at low N vs narrow, tall ones at high N), so a fixed
-    // fraction (e.g. "28% of the span") produced a real absolute gap wide
-    // enough to separate the stacked mid/tip tokens at N=8 but nowhere near
-    // wide enough at N=5-7, where they visually merged into one blob.
-    // Clamped to the triangle's own radial span so it can never push a row
-    // past the tip or base on an unusually short/inset triangle.
-    const insBaseMid = { x: (insL.x + insR.x) / 2, y: (insL.y + insR.y) / 2 };
-    const insTipR = dist(insTip, { x: 50, y: 50 });
-    const insBaseR = dist(insBaseMid, { x: 50, y: 50 });
-    const halfBaseWidth = dist(insL, insR) / 2;
-    const radialSpan = insBaseR - insTipR;
-    const clusterMidR = (insTipR + insBaseR) / 2;
-    const rowGap = Math.min(CELL * 2.2, radialSpan * 0.46);
-    const rBaseRow = clusterMidR + rowGap;
-    const rMid = clusterMidR;
-    const rTip = clusterMidR - rowGap;
-    const widthAtR = (r: number) => (halfBaseWidth * (r - insTipR)) / radialSpan;
-    const sBaseRow = Math.max(CELL * 0.58, widthAtR(rBaseRow) * 0.6);
+    // Eroding first makes "inside the walls" structural rather than tuned:
+    // any centre placed in the eroded triangle is provably clear by `margin`,
+    // at any N, with no per-N constants. Barycentric rows then taper with the
+    // triangle automatically — the upper row is narrower because the triangle
+    // is, which is what makes wide-short (N=5) and narrow-tall (N=8) yards
+    // both look deliberate.
+    const tokenR = (CELL * YARD_TOKEN_W) / 2;
+    const [eTip, eL, eR] = erodeTriangle([insTip, insL, insR], tokenR + CELL * 0.1);
+    /** `up` = 0 at the base edge, 1 at the tip; `f` = 0..1 across that row. */
+    const inYard = (up: number, f: number): Pt => {
+      const w = 1 - up;
+      return {
+        x: up * eTip.x + w * ((1 - f) * eL.x + f * eR.x),
+        y: up * eTip.y + w * ((1 - f) * eL.y + f * eR.y),
+      };
+    };
+    // DIAMOND (1-2-1), not two rows of two. A row's width tapers with the
+    // triangle, so any side-by-side pair placed high up is squeezed: at N=8 a
+    // row 62% of the way to the tip is only ~1.15 token widths across, which
+    // forced the pair to 0.69 widths apart — overlapping each other even
+    // though both were safely inside the walls. The diamond puts its only
+    // side-by-side pair at 40%, where the triangle is still wide, and keeps
+    // the two singles on the centre line. Measured worst-case separation is
+    // then ~1.4 token widths at EVERY N (5-8), rather than 0.69-1.08.
     yardSlots[color] = [
-      P(rBaseRow, b, -sBaseRow),
-      P(rBaseRow, b, +sBaseRow),
-      P(rMid, b, 0),
-      P(rTip, b, 0),
+      inYard(0.06, 0.5),
+      inYard(0.4, 0.1),
+      inYard(0.4, 0.9),
+      inYard(0.78, 0.5),
     ];
     art.yards.push({ color, tri, wells: yardSlots[color], bisector: b });
 

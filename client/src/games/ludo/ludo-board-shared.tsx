@@ -1,6 +1,7 @@
 import type { LudoColor, LudoToken, Player } from "@shared/types";
 import { COLOR_HEX, COLOR_HEX_DARK, HOME_CENTER, SAFE_SQUARES, STRETCH_CELLS, TRACK_CELLS, YARD_CELLS, YARD_REGIONS } from "./board-layout";
 import type { PolygonBoardGeometry } from "./polygon-board";
+import { YARD_TOKEN_W } from "./print-board";
 
 /**
  * Ludo — shared render primitives.
@@ -20,32 +21,30 @@ export function cellToPct(row: number, col: number): { left: number; top: number
   };
 }
 
-/** Slight per-color visual offset so overlapping tokens on the same cell don't fully overlap. */
-export function colorOffset(color: LudoColor): { r: number; c: number } {
-  switch (color) {
-    case "red":    return { r: -1, c: -1 };
-    case "green":  return { r: -1, c: 1 };
-    case "yellow": return { r: 1, c: 1 };
-    case "blue":   return { r: 1, c: -1 };
-    case "purple": return { r: -0.6, c: 0 };
-    case "cyan":   return { r: 0, c: 1 };
-    case "orange": return { r: 0.6, c: 0 };
-    case "brown":  return { r: 0, c: -1 };
-  }
-}
-
-/** Small per-token nudge layered on top of colorOffset so 2+ tokens of the
- * SAME player stacked on one track cell fan out instead of fully
- * overlapping - colorOffset alone only separates different colors sharing
- * a cell, not same-color stacks. */
-export function stackOffset(tokenIdx: number): { r: number; c: number } {
-  const FAN: { r: number; c: number }[] = [
-    { r: 0, c: 0 },
-    { r: -0.13, c: 0.13 },
-    { r: 0.13, c: 0.13 },
-    { r: 0.13, c: -0.13 },
-  ];
-  return FAN[tokenIdx % 4] ?? FAN[0];
+/**
+ * Where token `i` of `n` sharing one cell sits, in CELL units, and how much to
+ * shrink it so the whole cluster still fits inside that cell.
+ *
+ * Replaces the old `colorOffset` + `stackOffset` pair, which were blind: they
+ * derived a nudge from the token's colour and index rather than from what was
+ * actually on the cell. Two same-colour tokens got ~0.18 cell of separation
+ * against a token ~1.18 cells wide — about 85% overlap — and the polygon
+ * (5-8 player) board never applied them at all, so a block of 2-4 tokens
+ * rendered as a single visible piece.
+ *
+ * Ludo genuinely allows several tokens on one cell — a block of the same
+ * player's pieces, or different players resting on a safe square — so every
+ * one of them has to stay individually countable.
+ */
+export function fanSlot(i: number, n: number): { dx: number; dy: number; scale: number } {
+  if (n <= 1) return { dx: 0, dy: 0, scale: 1 };
+  // A pair reads best side by side: the pieces are taller than they are wide,
+  // so horizontal separation costs the least overlap.
+  if (n === 2) return { dx: i === 0 ? -0.23 : 0.23, dy: 0, scale: 0.74 };
+  const radius = n <= 4 ? 0.28 : 0.34;
+  const scale = n === 3 ? 0.64 : n === 4 ? 0.56 : Math.max(0.4, 1.15 / Math.sqrt(n));
+  const ang = -Math.PI / 2 + (2 * Math.PI * i) / n;
+  return { dx: radius * Math.cos(ang), dy: radius * Math.sin(ang), scale };
 }
 
 export type LudoHoverPreview =
@@ -53,13 +52,12 @@ export type LudoHoverPreview =
   | { kind: "stretch"; stretchPos: number; color: LudoColor }
   | { kind: "home"; color: LudoColor };
 
-/** Token sizes for the polygon (5-8 player) board, scaled to cell size.
- *  Yard well positions (print-board.ts) are now derived from each yard
- *  triangle's own taper, not a fixed cellSize-relative constant, so the
- *  4-token cluster fills most of the yard at any N — 1.0 keeps tokens
- *  comfortably inside that spread without touching their neighbors. */
+/** Token sizes for the polygon (5-8 player) board, scaled to cell size. The
+ *  YARD size is imported, not a literal: print-board.ts erodes each yard
+ *  triangle by half that width to guarantee the slots sit fully inside the
+ *  walls, so the two values have to be the same number. */
 export function polygonTokenSize(state: LudoToken["state"], cellSize: number): number {
-  if (state === "yard") return cellSize * 1.0;
+  if (state === "yard") return cellSize * YARD_TOKEN_W;
   if (state === "home") return cellSize * 1.05;
   return cellSize * 1.18;
 }

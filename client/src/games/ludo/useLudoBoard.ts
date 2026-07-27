@@ -25,7 +25,7 @@ import {
   TRACK_CELLS,
   YARD_CELLS,
 } from "./board-layout";
-import { cellToPct, colorOffset, stackOffset, type LudoHoverPreview } from "./ludo-board-shared";
+import { cellToPct, fanSlot, type LudoHoverPreview } from "./ludo-board-shared";
 
 /**
  * Shared props for every Ludo shell (picker, mobile, desktop). Identical to
@@ -44,7 +44,22 @@ export interface LudoBoardProps {
 export type LudoToast = { text: string; emoji: string; color?: string };
 export type LudoCaptureFace = { id: string; left: number; top: number };
 export type LudoHomeBurst = { id: string; left: number; top: number; color: LudoColor };
-export type LudoTokenPos = { left: number; top: number };
+/** Identity of the cell a token occupies, for stack detection. Track cells are
+ *  global (any player can share one); stretch cells belong to a single colour.
+ *  Yard/home return null — those slots are indexed per token and never
+ *  collide. */
+function stackKeyOf(token: LudoToken, color: LudoColor): string | null {
+  if (token.state === "track" && token.trackPos != null) return `t:${token.trackPos}`;
+  if (token.state === "stretch" && token.stretchPos != null) return `s:${color}:${token.stretchPos}`;
+  return null;
+}
+
+export type LudoTokenPos = {
+  left: number;
+  top: number;
+  /** <1 when this token shares its cell — see `fanSlot`. */
+  scale?: number;
+};
 
 /**
  * Everything both Ludo shells render. Named contract (no ReturnType<>) so the
@@ -583,6 +598,33 @@ export function useLudoBoard({
     return arr;
   }, [state.tokens, state.playerOrder, displayed]);
 
+  // Which tokens share each cell, so they can be fanned out instead of drawn
+  // on top of one another. Only track and stretch cells can be shared — yard
+  // and home slots are indexed per token, so they never collide.
+  const stacks = useMemo(() => {
+    const byCell = new Map<string, string[]>();
+    for (const { pid, token } of allTokens) {
+      const key = stackKeyOf(token, state.playerColors[pid]);
+      if (!key) continue;
+      const list = byCell.get(key);
+      if (list) list.push(token.id);
+      else byCell.set(key, [token.id]);
+    }
+    // Stable slot assignment — without sorting, tokens would swap places
+    // whenever playerOrder iteration produced a different arrival order.
+    for (const list of byCell.values()) list.sort();
+    return byCell;
+  }, [allTokens, state.playerColors]);
+
+  /** Fan data for a token, in CELL units (caller scales to its board). */
+  function fanFor(token: LudoToken, color: LudoColor) {
+    const key = stackKeyOf(token, color);
+    if (!key) return { dx: 0, dy: 0, scale: 1 };
+    const group = stacks.get(key);
+    if (!group || group.length < 2) return { dx: 0, dy: 0, scale: 1 };
+    return fanSlot(Math.max(0, group.indexOf(token.id)), group.length);
+  }
+
   // Detect capture / home-arrival transitions on the displayed token snapshot.
   useEffect(() => {
     const prev = prevTokens.current;
@@ -684,13 +726,17 @@ export function useLudoBoard({
         const slot = polygonGeo.homeSlots[color]?.[tokenIdx];
         if (slot) return { left: slot.x, top: slot.y };
       }
+      // Track/stretch cells can hold several tokens at once — fan them so a
+      // block of 2-4 doesn't render as one visible piece.
+      const fan = fanFor(token, color);
+      const u = polygonGeo.cellSize;
       if (token.state === "stretch") {
         const cell = polygonGeo.stretchCells[color]?.[token.stretchPos ?? 0];
-        if (cell) return { left: cell.x, top: cell.y };
+        if (cell) return { left: cell.x + fan.dx * u, top: cell.y + fan.dy * u, scale: fan.scale };
       }
       if (token.state === "track") {
         const cell = polygonGeo.trackCells[token.trackPos ?? 0];
-        if (cell) return { left: cell.x, top: cell.y };
+        if (cell) return { left: cell.x + fan.dx * u, top: cell.y + fan.dy * u, scale: fan.scale };
       }
       return { left: 50, top: 50 };
     }
@@ -705,14 +751,18 @@ export function useLudoBoard({
       const slot = HOME_SLOTS[color][tokenIdx];
       return cellToPct(slot.row, slot.col);
     }
+    // Same occupancy-aware fan as the polygon board. `fanSlot` works in cell
+    // units, and one cross-board cell is this many percent of the board.
+    const fan = fanFor(token, color);
+    const u = cellToPct(1, 1).left - cellToPct(0, 0).left;
     if (token.state === "stretch") {
       const cell = STRETCH_CELLS[color][token.stretchPos ?? 0];
-      return cellToPct(cell.row, cell.col);
+      const p = cellToPct(cell.row, cell.col);
+      return { left: p.left + fan.dx * u, top: p.top + fan.dy * u, scale: fan.scale };
     }
     const cell = TRACK_CELLS[token.trackPos ?? 0];
-    const off = colorOffset(color);
-    const stack = stackOffset(tokenIdx);
-    return cellToPct(cell.row + off.r * 0.18 + stack.r, cell.col + off.c * 0.18 + stack.c);
+    const p = cellToPct(cell.row, cell.col);
+    return { left: p.left + fan.dx * u, top: p.top + fan.dy * u, scale: fan.scale };
   }
 
   return {

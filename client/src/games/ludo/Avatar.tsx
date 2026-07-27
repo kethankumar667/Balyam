@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
 import type { LudoColor } from "@shared/types";
 
@@ -22,6 +23,13 @@ export function Avatar({
   const dark = color ? COLOR_HEX_DARK[color] : `hsl(${hue}, 60%, 30%)`;
   const pattern = seed % 4; // 0..3 — pick a small decorative ornament
   const r = size / 2;
+  // Gradient id must be unique per RENDER, not per name. It used to be
+  // `g-${hash(name)}`, so two players sharing a name emitted the same id — and
+  // unlike the other avatar/token gradients this one is COLOUR-dependent, so
+  // the second player's badge silently resolved to the first player's fill.
+  // Reproduced with two bots named "Rocky": the second intended #F4B400 (Gold)
+  // and rendered #00A86B (Emerald), disagreeing with its own board sector.
+  const gid = `lav${useId().replace(/:/g, "")}`;
 
   return (
     <svg
@@ -31,12 +39,12 @@ export function Avatar({
       style={{ display: "block", flexShrink: 0 }}
     >
       <defs>
-        <linearGradient id={`g-${seed}`} x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor={bg} />
           <stop offset="100%" stopColor={dark} />
         </linearGradient>
       </defs>
-      <circle cx={r} cy={r} r={r - 1} fill={`url(#g-${seed})`} stroke={dark} strokeWidth="1.5" />
+      <circle cx={r} cy={r} r={r - 1} fill={`url(#${gid})`} stroke={dark} strokeWidth="1.5" />
       {/* Decorative pattern */}
       {pattern === 0 && (
         <circle cx={r * 0.65} cy={r * 0.5} r={r * 0.18} fill="white" opacity="0.18" />
