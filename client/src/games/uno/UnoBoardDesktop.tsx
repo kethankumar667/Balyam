@@ -124,7 +124,9 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   // (numbers/positions trace one clockwise lap from self).
   const seating = computeStadiumSeating(state.playerOrder, selfId);
   const seatNumbers = computeSeatNumbers(seating, selfId);
-  const stadiumPositions = computeStadiumPositions(seating, selfId);
+  // "ring" (not the phone's "edge"): on a wide desktop the edge columns sit
+  // ~700px away from the pile and the composition falls apart.
+  const stadiumPositions = computeStadiumPositions(seating, selfId, "ring");
   const seatList = stadiumSeatList(seating);
   const selfSeatNumber = selfId ? seatNumbers[selfId] ?? 0 : 0;
 
@@ -248,7 +250,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
   const fanInnerRef = useRef<HTMLDivElement | null>(null);
-  const [rootH, setRootH] = useState(900);
+  const [rootBox, setRootBox] = useState({ w: 1400, h: 900 });
   const [boardBox, setBoardBox] = useState({ w: 1400, h: 620 });
   const [fanNaturalH, setFanNaturalH] = useState(170);
   useEffect(() => {
@@ -257,7 +259,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
     const fan = fanInnerRef.current;
     if (!root || !board || !fan) return;
     const measure = () => {
-      setRootH(root.clientHeight);
+      setRootBox({ w: root.clientWidth, h: root.clientHeight });
       setBoardBox({ w: board.clientWidth, h: board.clientHeight });
       setFanNaturalH(fan.offsetHeight || 170);
     };
@@ -268,9 +270,21 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
     ro.observe(fan);
     return () => ro.disconnect();
   }, []);
+  const rootH = rootBox.h;
   const fanScale = Math.min(1.45, Math.max(0.7, rootH / 720));
+  /* Corridor the fan may use. The bottom-left chat/emoji rail and the
+     bottom-right UNO+timer HUD are `fixed`, so they don't reserve layout
+     space — a wide hand would slide straight under them. Kept symmetric so
+     the fan stays optically centred. Divided by fanScale because the fan
+     lays itself out in pre-scale pixels. */
+  const FAN_SIDE_RESERVE = 168;
+  const fanAvailableWidth = Math.max(320, (rootBox.w - FAN_SIDE_RESERVE * 2) / fanScale);
   const seatScale = Math.min(1.5, Math.max(0.7, Math.min(boardBox.w / 1000, boardBox.h / 480)));
   const pileScale = Math.min(2.0, Math.max(0.8, Math.min(boardBox.w / 950, boardBox.h / 470) * 1.45));
+  /* Direction ring — a wide ellipse that must clear the pile on the inside
+     and the seat ring (left/right 20%, spotlight up top) on the outside. */
+  const arcW = Math.max(280, Math.min(boardBox.w * 0.58, 1180));
+  const arcH = Math.max(200, Math.min(boardBox.h * 0.78, 600));
 
   const turnSecondsLeft = useTurnSecondsLeft(state.turnDeadline);
   const warningActive = (m.myTurn || m.isChallengeTarget) && state.turnDeadline != null && turnSecondsLeft <= 10 && turnSecondsLeft > 0;
@@ -341,7 +355,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
           <div ref={boardRef} className="relative w-full h-full">
             <StadiumMat>
-              <StadiumDirectionArc direction={state.direction} />
+              <StadiumDirectionArc direction={state.direction} width={arcW} height={arcH} />
 
               {seatList.map(({ id, variant }) => {
                 const pos = stadiumPositions[id];
@@ -386,6 +400,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                     isDragging={isDraggingCard}
                     canDraw={m.canDraw}
                     onDraw={m.drawCard}
+                    showCaptions
                   />
                 </animated.div>
               </div>
@@ -578,6 +593,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
             onPickColor={m.pickColorAndPlay}
             onDropOnDiscard={m.dropCardOnDiscard}
             onDragStateChange={setIsDraggingCard}
+            availableWidth={fanAvailableWidth}
           />
         </div>
       </div>
