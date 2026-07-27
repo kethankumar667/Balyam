@@ -98,6 +98,9 @@ export function HoverPreviewMarker({
     p = cellToPct(HOME_CENTER.row, HOME_CENTER.col);
     hex = COLOR_HEX[preview.color];
   }
+  // Size the target to the actual cell (polygon boards carry a cellSize in
+  // viewBox %; the cross board's cells are ~1/15 of the board).
+  const sizePct = geo ? geo.cellSize * 1.15 : 7;
   return (
     <div
       className="pointer-events-none absolute z-10"
@@ -105,15 +108,39 @@ export function HoverPreviewMarker({
         left: `${p.left}%`,
         top: `${p.top}%`,
         transform: "translate(-50%, -50%)",
-        width: "8%",
+        width: `${sizePct}%`,
         aspectRatio: "1 / 1",
       }}
     >
+      {/* soft radial glow */}
       <div
-        className="w-full h-full rounded-md animate-pulse"
+        className="absolute rounded-full"
+        style={{ inset: "-22%", background: `radial-gradient(circle, ${hex}55, transparent 66%)` }}
+      />
+      {/* expanding sonar ping */}
+      <div
+        className="ludo-hover-ping absolute inset-0 rounded-full"
+        style={{ border: `2px solid ${hex}` }}
+      />
+      {/* steady framing ring (gently breathing) */}
+      <div
+        className="ludo-hover-core absolute rounded-full"
         style={{
-          background: `${hex}55`,
-          boxShadow: `0 0 0 3px ${hex}, 0 0 18px ${hex}`,
+          inset: "12%",
+          border: `2.5px solid ${hex}`,
+          boxShadow: `0 0 8px ${hex}, inset 0 0 5px ${hex}aa`,
+          background: `${hex}22`,
+        }}
+      />
+      {/* center pip */}
+      <div
+        className="absolute left-1/2 top-1/2 rounded-full"
+        style={{
+          width: "26%",
+          height: "26%",
+          transform: "translate(-50%, -50%)",
+          background: hex,
+          boxShadow: `0 0 6px ${hex}`,
         }}
       />
     </div>

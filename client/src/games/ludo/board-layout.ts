@@ -154,26 +154,35 @@ export function lastTrackPosFor(color: LudoColor, trackLength: number = TRACK_LE
   return (COLOR_START_POSITION[color] + trackLength - 1) % trackLength;
 }
 
+/**
+ * Global Ludo seat palette (user-specified, 2026-07-26). One source of truth
+ * for the 8 seat colors across cards, tokens, avatars and the cross board;
+ * `print-board.ts`'s SEAT_COLORS mirrors these exact values (indexed) for the
+ * 5-8 polygon boards, so a 4-player and an 8-player game read identically.
+ *   red Crimson · green Emerald · blue Royal Blue · yellow Gold ·
+ *   purple Violet · cyan Magenta · orange Orange · brown Bronze
+ */
 export const COLOR_HEX: Record<LudoColor, string> = {
-  red: "#ef4444",
-  green: "#10b981",
-  yellow: "#f59e0b",
-  blue: "#3b82f6",
-  purple: "#a855f7",
-  cyan: "#06b6d4",
-  orange: "#f97316",
-  brown: "#92400e",
+  red: "#D7263D",    // Crimson
+  green: "#00A86B",  // Emerald
+  yellow: "#F4B400", // Gold
+  blue: "#2563EB",   // Royal Blue
+  purple: "#7B2CBF", // Violet
+  cyan: "#E11D8A",   // Magenta
+  orange: "#F97316", // Orange
+  brown: "#A16207",  // Bronze
 };
 
+/** ~0.7× shade of each, for token bases, card rims and pip/border edges. */
 export const COLOR_HEX_DARK: Record<LudoColor, string> = {
-  red: "#b91c1c",
-  green: "#047857",
-  yellow: "#b45309",
-  blue: "#1d4ed8",
-  purple: "#7e22ce",
-  cyan: "#0e7490",
-  orange: "#c2410c",
-  brown: "#7c2d12",
+  red: "#971B2B",
+  green: "#00764B",
+  yellow: "#AB7E00",
+  blue: "#1A45A5",
+  purple: "#561F86",
+  cyan: "#9E1461",
+  orange: "#AE510F",
+  brown: "#714505",
 };
 
 export const PLAYER_COLORS_ORDER: LudoColor[] = [

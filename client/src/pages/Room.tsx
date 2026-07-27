@@ -577,12 +577,25 @@ export default function Room() {
     ? (roomState?.players.find((p) => p.id === gameOverWinnerId)?.name ?? null)
     : null;
 
+  // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
+  // needs the same "no inline banners, no extra padding" treatment Rummy gets.
+  const ludoInPlay = roomState.game === "ludo" && roomState.phase !== "lobby";
+
   return (
     <div
       className={
         (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby"
           ? "bhalyam-font bhalyam-paper h-dvh-safe overflow-hidden p-0"
-          : "bhalyam-font bhalyam-paper min-h-screen p-2 sm:p-4"
+          : ludoInPlay
+            ? // Ludo's shells are viewport-locked: they reserve exactly 1rem
+              // (`min-h-[calc(100svh-1rem)]`), so this padding must stay 0.5rem
+              // at EVERY breakpoint. `sm:p-4` spent 1rem the shells hadn't
+              // budgeted for and scrolled the page by exactly 16px on every
+              // desktop size. `min-h-dvh-safe` (not `min-h-screen`) keeps the
+              // same guarantee on mobile, where `100vh` overshoots the visible
+              // viewport by the browser toolbar.
+              "bhalyam-font bhalyam-paper min-h-dvh-safe p-2"
+            : "bhalyam-font bhalyam-paper min-h-screen p-2 sm:p-4"
       }
     >
       <div
@@ -591,7 +604,11 @@ export default function Room() {
             ? // No space-y here — the board fills the whole inner area
               // and any lastError banner overlays it via fixed positioning.
               "mx-auto h-full max-w-none"
-            : "mx-auto space-y-3 sm:space-y-4 max-w-6xl"
+            : roomState.game === "ludo" && roomState.phase !== "lobby"
+              ? // Ludo in play wants the full desktop width so the board can
+                // be large between its side rails (max-w-6xl squeezed it).
+                "mx-auto space-y-3 sm:space-y-4 max-w-[110rem]"
+              : "mx-auto space-y-3 sm:space-y-4 max-w-6xl"
         }
       >
         {/* Room header. Three shapes:
@@ -641,11 +658,12 @@ export default function Room() {
           </header>
         )}
 
-        {/* Errors render inline for non-Rummy games and as a fixed toast for
-            Rummy (whose felt is viewport-locked — inline banners would push the
-            UI off-screen). The fixed toast sits above the felt (z-40) but below
-            modal overlays (z-50). */}
-        {lastError && !(roomState.game === "rummy" && roomState.phase !== "lobby") && (
+        {/* Errors render inline for most games and as a fixed toast for the
+            viewport-locked boards — Rummy's felt and Ludo's in-play shell are
+            both sized to fill the viewport, so an inline banner adds height
+            they never budgeted for and scrolls the board off-screen. The fixed
+            toast sits above the board (z-40) but below modal overlays (z-50). */}
+        {lastError && !(roomState.game === "rummy" && roomState.phase !== "lobby") && !ludoInPlay && (
           <div className="bg-[#FEE2E2] border border-[#FCA5A5] text-[#9F1239] rounded p-3 text-sm">
             {lastError}
             <button onClick={() => setError(null)} className="float-right">
@@ -653,7 +671,7 @@ export default function Room() {
             </button>
           </div>
         )}
-        {lastError && roomState.game === "rummy" && roomState.phase !== "lobby" && (
+        {lastError && ((roomState.game === "rummy" && roomState.phase !== "lobby") || ludoInPlay) && (
           <Toast message={lastError} onClose={() => setError(null)} />
         )}
 
