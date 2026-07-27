@@ -30,6 +30,8 @@ export default function InlineRoomRail({
   selfId,
   messages,
   variant = "dark",
+  hideStrip = false,
+  onUnreadChange,
 }: {
   code: string;
   game: string;
@@ -42,6 +44,14 @@ export default function InlineRoomRail({
    *  redesigned board chrome). Only the pill + buttons + emoji popover
    *  change — the slide-in side sheets are already paper-toned. */
   variant?: "dark" | "paper";
+  /** When true, the visible nav strip is not rendered — only the panels +
+   *  the `bhalyam:open-room-panel` / `bhalyam:react-at-player` event bridge
+   *  stay live. Lets a host (Ludo mobile) drive every room action from its
+   *  own bottom nav without a duplicated toolbar row eating vertical space. */
+  hideStrip?: boolean;
+  /** Fires whenever the unread-chat count changes, so a host driving the
+   *  panels from its own controls can surface the badge itself. */
+  onUnreadChange?: (n: number) => void;
 }) {
   const paper = variant === "paper";
   const [open, setOpen] = useState<Panel | null>(null);
@@ -58,6 +68,9 @@ export default function InlineRoomRail({
       messages.slice(lastReadCount).filter((m) => m.playerId !== selfId).length,
     [messages, lastReadCount, selfId],
   );
+  useEffect(() => {
+    onUnreadChange?.(unread);
+  }, [unread, onUnreadChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -108,6 +121,7 @@ export default function InlineRoomRail({
 
   return (
     <>
+      {!hideStrip && (
       <div className="flex justify-center">
         <nav
           aria-label="Room actions"
@@ -165,6 +179,7 @@ export default function InlineRoomRail({
           </InlineButton>
         </nav>
       </div>
+      )}
 
       {/* Inline emoji popover — sits directly under the strip and dismisses
           on outside click. Kept lightweight (no backdrop) so reacting feels

@@ -53,23 +53,19 @@ const R_OUT_TARGET = 40;
  * PICKS in the lobby (LudoColorPicker.tsx) is the color they actually SEE
  * rendered — this must stay name-accurate, not just visually distinct.
  *
- * User-supplied palette (2026-07-17), replacing the earlier reference-match
- * set. Two entries needed clarification before applying: the given Magenta
- * hex was an exact duplicate of Ruby Red's, and the given "Lime Green" hex
- * (#90e0ef) is actually a pale sky-blue, not lime green — the user confirmed
- * a corrected magenta (#D6249F) for Purple and the pale-blue hex for Cyan
- * (matching each hex's natural hue family; both ambiguously-labeled entries
- * left Purple/Cyan as the only unclaimed seats among the 8).
+ * User-supplied palette (2026-07-26) — mirrors board-layout.ts COLOR_HEX
+ * exactly (same hexes, indexed to PLAYER_COLORS_ORDER) so 4-player cross
+ * boards and 5-8 polygon boards render one consistent global palette.
  */
 export const SEAT_COLORS = [
-  "#D90429", // red — Ruby Red
-  "#2a9d8f", // green — Emerald Green
-  "#ffb703", // yellow — Golden Yellow
-  "#00b4d8", // blue — Cobalt Blue
-  "#D6249F", // purple — Magenta (corrected; given hex duplicated Red)
-  "#90e0ef", // cyan — "Lime Green" as given (reads as pale sky-blue)
-  "#fb8500", // orange — Vivid Orange
-  "#6f4e37", // brown — Chocolate Brown
+  "#D7263D", // red — Crimson
+  "#00A86B", // green — Emerald
+  "#F4B400", // yellow — Gold
+  "#2563EB", // blue — Royal Blue
+  "#7B2CBF", // purple — Violet
+  "#E11D8A", // cyan — Magenta
+  "#F97316", // orange — Orange
+  "#A16207", // brown — Bronze
 ] as const;
 
 export function seatColor(i: number): string {

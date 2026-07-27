@@ -22,6 +22,16 @@
   height: 100dvh;
 }
 
+/* Same trick for a FLOOR rather than a fixed height — used by Ludo's in-play
+ * page wrapper, which must be at least the visible viewport but may grow.
+ * Tailwind's `min-h-screen` is plain `100vh`, which on mobile is the
+ * toolbar-hidden height: the wrapper then out-measures the visible viewport
+ * and the page scrolls even though nothing inside it overflowed. */
+.min-h-dvh-safe {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 /* ===== Design tokens — MultiplayerGames v1.0 ===== */
 :root {
   /* Brand (felt-emerald) */
@@ -549,6 +559,135 @@ body, #root, .bhalyam-paper {
 }
 .ludo-token-bob {
   animation: ludo-bob 1s ease-in-out infinite;
+}
+
+/* Idle "breathing" for the roll cup when it's the player's turn to roll —
+   a subtle scale so the primary action reads as alive without demanding
+   attention. Auto-disabled by the prefers-reduced-motion block below. */
+@keyframes ludo-cup-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.045); }
+}
+.ludo-cup-breathe { animation: ludo-cup-breathe 2.2s ease-in-out infinite; }
+
+/* Active-seat glow pulse — the player whose turn it is gets a soft,
+   breathing colored ring so whose-turn-it-is reads without text. */
+@keyframes ludo-seat-glow {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.ludo-seat-glow { animation: ludo-seat-glow 1.6s ease-in-out infinite; }
+
+/* Live match-feed row slide-in — new events flick in from the left so the
+   feed reads as "happening now". */
+@keyframes ludo-feed-in {
+  from { transform: translateX(-12px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+.ludo-feed-in { animation: ludo-feed-in 260ms cubic-bezier(.34,1.56,.64,1); }
+
+/* "LIVE" indicator dot pulse. */
+@keyframes ludo-live-dot {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.82); }
+}
+.ludo-live-dot { animation: ludo-live-dot 1.2s ease-in-out infinite; }
+
+/* ── Ludo premium motion layer ──────────────────────────────────────────
+   Every animation below is purely decorative and is neutralised by the
+   global `prefers-reduced-motion` block further down — no gameplay signal
+   depends on motion alone (each also has a static colour/text counterpart). */
+
+/* Game-event toast: drops in under the header with a soft settle. */
+@keyframes ludo-toast-in {
+  from { transform: translate(-50%, -14px) scale(0.94); opacity: 0; }
+  to   { transform: translate(-50%, 0)     scale(1);    opacity: 1; }
+}
+.ludo-toast-in {
+  transform: translate(-50%, 0);
+  animation: ludo-toast-in 320ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* Player cards fan in on mount (staggered by inline animation-delay). */
+@keyframes ludo-card-in {
+  from { transform: translateX(-10px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+.ludo-card-in {
+  animation: ludo-card-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* A light sweep that crosses the active player's card when their turn
+   begins — the "it's you / them now" flourish. */
+@keyframes ludo-turn-sweep {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+.ludo-turn-sweep { animation: ludo-turn-sweep 2.6s ease-in-out infinite; }
+
+/* Dice tray landing punch — fires once when a roll settles. */
+@keyframes ludo-dice-impact {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.14); }
+  60%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.ludo-dice-impact { animation: ludo-dice-impact 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* Disconnected seat: slow breathe so "reconnecting" reads as transient
+   rather than broken. */
+@keyframes ludo-reconnect {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+.ludo-reconnect { animation: ludo-reconnect 1.5s ease-in-out infinite; }
+
+/* Move hover-preview "landing target": an expanding sonar ping + a gently
+   breathing framing ring, marking the cell a token would land on. */
+@keyframes ludo-hover-ping {
+  0%   { transform: scale(0.5);  opacity: 0.85; }
+  70%  { opacity: 0; }
+  100% { transform: scale(1.4);  opacity: 0; }
+}
+.ludo-hover-ping { animation: ludo-hover-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes ludo-hover-core {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(0.88); }
+}
+.ludo-hover-core { animation: ludo-hover-core 1.4s ease-in-out infinite; }
+
+/* Glossy seat-color "chip" — the global Ludo color treatment. Pass the seat
+   hex as --chip and its dark shade as --chip-dark; the class renders all five
+   requested layers:
+     1. subtle top-to-bottom gradient (lighter top → base → darker bottom)
+     2. glossy highlight across the upper edge (::before, top half)
+     3. a slightly darker base (inset bottom shadow in --chip-dark)
+     4. a thin inner highlight (inset 1px top white line)
+     5. a soft drop shadow
+   Used on card pips, avatar frames, the turn badge — any solid color swatch. */
+.ludo-chip {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--chip) 80%, white) 0%,
+    var(--chip) 48%,
+    var(--chip-dark, var(--chip)) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),                               /* 4. thin inner highlight */
+    inset 0 -2px 3px color-mix(in srgb, var(--chip-dark, var(--chip)) 65%, black), /* 3. darker base */
+    0 2px 5px rgba(0, 0, 0, 0.3);                                          /* 5. soft shadow */
+  overflow: hidden;
+}
+.ludo-chip::before {
+  /* 2. glossy highlight across the upper edge */
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 52%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 /* Toast slide-in */

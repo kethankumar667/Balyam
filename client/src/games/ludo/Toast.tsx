@@ -1,3 +1,12 @@
+/**
+ * Game-event toast (capture / home / win / forfeit / passed turn).
+ *
+ * Positioned BELOW the board header rather than at the viewport top — at
+ * `top-6` it sat directly on top of the turn banner and the Rules/Leave/
+ * fullscreen controls, hiding them for its whole 3.2s life. It also used
+ * `whitespace-nowrap`, so a long player name could push it past the viewport
+ * edge; it now wraps inside a capped width instead.
+ */
 export default function Toast({
   text,
   emoji,
@@ -7,16 +16,29 @@ export default function Toast({
   emoji: string;
   color?: string;
 }) {
+  const accent = color ?? "#E0AE3B";
   return (
     <div
-      className="fixed top-6 left-1/2 toast-in z-40 bg-slate-900/95 border border-slate-700 rounded-full px-4 py-2 shadow-2xl flex items-center gap-2 text-sm font-semibold whitespace-nowrap"
+      className="ludo-toast-in fixed left-1/2 z-40 flex items-center gap-2.5 rounded-2xl px-3.5 py-2 shadow-2xl"
       style={{
-        transform: "translate(-50%, 0)",
-        outline: color ? `2px solid ${color}` : "none",
+        // Clears the one-row header on both shells (and any notch).
+        top: "calc(env(safe-area-inset-top, 0px) + 4.75rem)",
+        maxWidth: "min(92vw, 30rem)",
+        background: "rgba(15,23,42,0.95)",
+        border: "1px solid rgba(148,163,184,0.28)",
+        boxShadow: `0 10px 30px rgba(0,0,0,0.45), 0 0 0 2px ${accent}`,
       }}
+      role="status"
+      aria-live="polite"
     >
-      <span className="text-xl leading-none">{emoji}</span>
-      <span>{text}</span>
+      <span
+        className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-lg leading-none"
+        style={{ background: `${accent}2e`, border: `1.5px solid ${accent}` }}
+        aria-hidden
+      >
+        {emoji}
+      </span>
+      <span className="text-sm font-semibold text-slate-100 leading-snug">{text}</span>
     </div>
   );
 }
