@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import type { LudoColor, LudoEvent, LudoState, Player } from "@shared/types";
-import { getSocket } from "../../lib/socket";
+import type { LudoColor, LudoState, Player } from "@shared/types";
 import { enterFullscreen, exitFullscreen, isFullscreenActive, onFullscreenChange } from "../../lib/fullscreen";
 
 /** CSS custom-prop pair the global `.ludo-chip` glossy treatment reads. */
@@ -85,6 +84,15 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
   const [isFs, setIsFs] = useState<boolean>(() => isFullscreenActive());
   useEffect(() => onFullscreenChange(() => setIsFs(isFullscreenActive())), []);
   const toggleFullscreen = () => (isFs ? void exitFullscreen() : void enterFullscreen("any"));
+  // Mirrors TurnTimeWarning's own trigger so the two can't disagree about
+  // whether the chip is on screen.
+  const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
+  const warningActive =
+    m.myTurn &&
+    state.phase === "playing" &&
+    state.turnDeadline != null &&
+    secondsLeft <= 10 &&
+    secondsLeft > 0;
   return (
     <div className="flex items-center flex-wrap gap-2">
       <button
@@ -98,7 +106,13 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
       </button>
       <LudoLogo />
       <div className="flex-1 min-w-0 text-center px-1">
-        {finished ? (
+        {/* The final-10s countdown chip (TurnTimeWarning, rendered by
+            LudoOverlays) is `fixed` to this exact top-centre slot, and Ludo
+            never passed it an offset — so it landed straight on top of "Roll
+            the dice". Yield the slot while it is up, the same way UNO's boards
+            hide their house-rules badge. Nothing is lost: the chip states the
+            same turn, louder. */}
+        {warningActive ? null : finished ? (
           <div className="font-script text-lg font-bold" style={{ color: "#2E7D32" }}>
             🏆 {state.winnerId ? `${m.nameOf(state.winnerId)} wins!` : "Game over"}
           </div>
@@ -199,9 +213,7 @@ function TurnCountdownRing({ pct, color, box }: { pct: number; color: string; bo
   );
 }
 
-const CARD_COLOR_ORDER: LudoColor[] = ["red", "green", "blue", "yellow"];
-
-function orderedSeats(state: LudoState, players: Player[], byPlay = false): LudoSeatMeta[] {
+function orderedSeats(state: LudoState, players: Player[], selfId?: string | null): LudoSeatMeta[] {
   const byId = new Map(players.map((p) => [p.id, p]));
   const seats = state.playerOrder
     .map((pid) => {
@@ -219,10 +231,21 @@ function orderedSeats(state: LudoState, players: Player[], byPlay = false): Ludo
       };
     })
     .filter((s): s is LudoSeatMeta => !!s.color);
-  // `byPlay` keeps the server's rotation order (turn sequence) — used by the
-  // desktop single list so it reads in gameplay order. Otherwise sort by board
-  // color position so the mobile top/bottom halves line up with the board.
-  return byPlay ? seats : seats.sort((a, b) => CARD_COLOR_ORDER.indexOf(a.color) - CARD_COLOR_ORDER.indexOf(b.color));
+
+  // ALWAYS true turn order (`state.playerOrder` — exactly what the engine's
+  // advanceTurn walks), rotated so the player AFTER you comes first and YOU
+  // come last. Reading top-left → bottom-right is then "who plays next … all
+  // the way round to me", and the highlight steps card by card.
+  //
+  // The previous colour sort is why turns looked out of sequence: colours are
+  // HAND-PICKED (`chosenColor`), so a player who joins 2nd but picks brown
+  // lands 8th in colour order while still taking the 2nd turn. Sorting cards
+  // by colour made the engine's perfectly sequential rotation look random.
+  // Self-last also puts you in the BOTTOM row, matching the board rotation
+  // that now places your yard nearest you.
+  const selfIdx = selfId ? seats.findIndex((s) => s.pid === selfId) : -1;
+  if (selfIdx < 0) return seats;
+  return [...seats.slice(selfIdx + 1), ...seats.slice(0, selfIdx + 1)];
 }
 
 /** Compact seat card. Progressive disclosure per the AAA critique: one
@@ -234,16 +257,41 @@ function LudoPlayerCard({
   seat,
   deadline,
   index = 0,
+  dense = false,
+  ultra = false,
+  isSelf = false,
+  registerCard,
+  onTarget,
 }: {
   seat: LudoSeatMeta;
   /** Active turn's deadline — drives the countdown ring on the active seat. */
   deadline?: number | null;
   /** Position in the list, used to stagger the entrance animation. */
   index?: number;
+  /** 3+ cards abreast on a phone. At 390px that leaves ~111px per card, and
+   *  the full layout does not fit: measured, the name was cut 27-81% and the
+   *  4 pips overflowed their column. Dense swaps the pips for a compact
+   *  "n/4", shrinks the avatar, and drops the inline BOT tag (kept in the
+   *  tooltip) so the NAME gets the whole text column. */
+  dense?: boolean;
+  /** 4 cards abreast (7-8 players on a phone) — ~81px each. Beside a 26px
+   *  avatar that leaves a ~27px text column, which cannot show a name at any
+   *  font size worth reading. Ultra stacks the card vertically so the name
+   *  gets the FULL card width instead of what's left over. */
+  ultra?: boolean;
+  /** The local player — marked so you can find yourself at a glance. */
+  isSelf?: boolean;
+  /** Registers this card as the anchor a reaction flies TO/FROM. Without it
+   *  `reactionAnchor()` returns null and targeted reactions render nowhere —
+   *  which is why they were invisible on every 5-8 player board. */
+  registerCard?: (playerId: string, el: Element | null) => void;
+  /** Tapping an opponent's card aims a reaction at them. */
+  onTarget?: (playerId: string) => void;
 }) {
   const rim = COLOR_HEX_DARK[seat.color];
   const tint = COLOR_HEX[seat.color];
   const offline = !seat.online;
+  const avatarPx = ultra ? 24 : dense ? 26 : 30;
 
   // Turn timer. The engine publishes only a deadline (not the turn's length),
   // so the ring self-calibrates: the first tick after a new deadline arrives
@@ -259,15 +307,42 @@ function LudoPlayerCard({
 
   return (
     <div
-      className="ludo-card-in relative flex-1 min-w-0 flex items-center gap-2 rounded-2xl px-2 py-1 overflow-hidden"
+      // Stacking is gated on WIDTH as well as count. 4 cards abreast on a
+      // 360px phone gives ~81px and must stack, but the same 4 on a 1024px
+      // landscape screen gives ~250px, where stacking only wastes ~59px of
+      // board height for no legibility gain. `sm:` returns those to inline.
+      ref={(el) => registerCard?.(seat.pid, el)}
+      onClick={onTarget && !isSelf ? () => onTarget(seat.pid) : undefined}
+      role={onTarget && !isSelf ? "button" : undefined}
+      tabIndex={onTarget && !isSelf ? 0 : undefined}
+      onKeyDown={
+        onTarget && !isSelf
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onTarget(seat.pid);
+              }
+            }
+          : undefined
+      }
+      title={onTarget && !isSelf ? `React at ${seat.name}` : undefined}
+      className={`ludo-card-in relative flex-1 min-w-0 rounded-2xl overflow-hidden ${
+        onTarget && !isSelf ? "cursor-pointer" : ""
+      } ${
+        ultra
+          ? "flex flex-col items-center gap-0.5 px-1 py-1 sm:flex-row sm:items-center sm:gap-2 sm:px-2"
+          : "flex items-center gap-2 px-2 py-1"
+      }`}
       style={{
         background: seat.isWinner ? "rgba(255,247,214,0.98)" : "rgba(255,251,240,0.94)",
         border: `2.5px solid ${seat.isWinner ? "#E0AE3B" : rim}`,
         boxShadow: seat.isWinner
           ? "0 0 0 3px rgba(224,174,59,0.45), 0 8px 18px rgba(0,0,0,0.2)"
-          : seat.active
-            ? "0 6px 14px rgba(0,0,0,0.18)"
-            : "0 3px 8px rgba(0,0,0,0.10)",
+          : isSelf
+            ? "0 0 0 2px rgba(224,174,59,0.85), 0 5px 12px rgba(0,0,0,0.16)"
+            : seat.active
+              ? "0 6px 14px rgba(0,0,0,0.18)"
+              : "0 3px 8px rgba(0,0,0,0.10)",
         // Offline seats recede but stay legible (never fully hidden — you
         // still need to see who you're waiting on).
         opacity: offline ? 0.62 : 1,
@@ -295,66 +370,97 @@ function LudoPlayerCard({
         {/* Glossy seat-color chip frame around the avatar (online dot kept
             outside so `.ludo-chip`'s overflow-hidden doesn't clip it). */}
         <div className="ludo-chip rounded-full" style={{ padding: 3, ...chipVars(tint, rim) }}>
-          <Avatar name={seat.name} color={seat.color} size={30} />
+          <Avatar name={seat.name} color={seat.color} size={avatarPx} />
         </div>
-        {showTimer && <TurnCountdownRing pct={pct} color={timerColor} box={44} />}
+        {showTimer && <TurnCountdownRing pct={pct} color={timerColor} box={avatarPx + 14} />}
+        {/* Online dot moved to the TOP-right so the "YOU" ribbon can own the
+            bottom edge without the two colliding. */}
         <span
-          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full z-10 ${offline ? "ludo-reconnect" : ""}`}
+          className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full z-10 ${offline ? "ludo-reconnect" : ""}`}
           style={{ background: seat.online ? "#37B24D" : "#F59E0B", border: "2px solid #FFFBF0" }}
           title={seat.online ? "Online" : "Reconnecting…"}
         />
+        {/* Self marker rides ON the avatar — a badge in the text row would
+            cost the very width the name is already short of. */}
+        {isSelf && (
+          <span
+            className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-10 px-1 rounded-full text-[7px] font-black uppercase tracking-[0.1em] leading-[1.4] whitespace-nowrap"
+            style={{ background: "linear-gradient(135deg,#F7DA8B,#E0AE3B)", color: "#4A3300", border: "1px solid #FFFBF0" }}
+          >
+            You
+          </span>
+        )}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1 min-w-0">
+      <div className={ultra ? "min-w-0 w-full sm:flex-1" : "min-w-0 flex-1"}>
+        {/* Line 1 is the NAME and nothing else. The BOT tag and the turn chip
+            used to share this row and were eating 20px and ~34px of a ~51px
+            column — which is why the ACTIVE player's name (the one you most
+            need to read) was the most truncated card on screen. */}
+        <div className={`flex items-center gap-1 min-w-0 ${ultra ? "justify-center sm:justify-start" : ""}`}>
           {seat.isWinner && <span className="flex-shrink-0 text-[11px] leading-none" aria-hidden>👑</span>}
-          <span className="truncate font-black text-[12px] uppercase tracking-wide" style={{ color: rim }}>
+          <span
+            className={`truncate font-black uppercase tracking-wide ${
+              ultra ? "text-[10px] sm:text-[12px]" : dense ? "text-[11px]" : "text-[12px]"
+            }`}
+            style={{ color: rim }}
+            title={`${seat.name}${seat.isBot ? " (bot)" : ""}`}
+          >
             {seat.name}
           </span>
-          {seat.isBot && <span className="flex-shrink-0 text-[8px] opacity-60">BOT</span>}
+          {!dense && seat.isBot && <span className="flex-shrink-0 text-[8px] opacity-60">BOT</span>}
         </div>
         {offline ? (
           <div className="text-[9px] font-bold mt-0.5 truncate" style={{ color: "#B45309" }}>
             Reconnecting…
           </div>
         ) : (
-          <div className="flex items-center gap-1 mt-0.5" title={`${seat.tokensHome}/4 tokens home`}>
-            {[0, 1, 2, 3].map((i) =>
-              i < seat.tokensHome ? (
-                // filled = glossy seat-color chip bead (the global color treatment)
-                <span key={i} className="ludo-chip w-3 h-3 rounded-full" style={chipVars(tint, rim)} />
-              ) : (
-                <span
-                  key={i}
-                  className="w-3 h-3 rounded-full"
-                  style={{ background: "rgba(109,67,35,0.14)", border: "1px solid rgba(109,67,35,0.22)" }}
-                />
-              ),
+          <div
+            className={`flex items-center gap-1 mt-0.5 min-w-0 ${ultra ? "justify-center sm:justify-start" : ""}`}
+            title={`${seat.tokensHome}/4 tokens home`}
+          >
+            {dense || ultra ? (
+              // 4 pips need ~60px; a dense card's text column is ~51px, so they
+              // were being clipped. The count says the same thing in ~20px.
+              <span className="text-[10px] font-black tabular-nums flex-shrink-0" style={{ color: rim }}>
+                {seat.tokensHome}/4
+              </span>
+            ) : (
+              [0, 1, 2, 3].map((i) =>
+                i < seat.tokensHome ? (
+                  // filled = glossy seat-color chip bead (the global color treatment)
+                  <span key={i} className="ludo-chip w-3 h-3 rounded-full flex-shrink-0" style={chipVars(tint, rim)} />
+                ) : (
+                  <span
+                    key={i}
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ background: "rgba(109,67,35,0.14)", border: "1px solid rgba(109,67,35,0.22)" }}
+                  />
+                ),
+              )
             )}
+            {/* Status chip lives on line 2, beside the progress — never on the
+                name's line. */}
+            {seat.isWinner ? (
+              <span
+                className="ludo-chip flex-shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                style={{ ...chipVars("#F4B400", "#AB7E00"), color: "#4A3300" }}
+              >
+                <span className="relative">Won</span>
+              </span>
+            ) : seat.active ? (
+              <span
+                className="ludo-chip flex-shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                style={{ ...chipVars(showTimer ? timerColor : tint, rim), color: "#fff" }}
+                title={showTimer ? `${secondsLeft}s left in this turn` : "Their turn"}
+              >
+                <span className="relative tabular-nums whitespace-nowrap">
+                  {showTimer ? `${secondsLeft}s` : "Turn"}
+                </span>
+              </span>
+            ) : null}
           </div>
         )}
       </div>
-      {seat.isWinner ? (
-        <span
-          className="ludo-chip flex-shrink-0 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
-          style={{ ...chipVars("#F4B400", "#AB7E00"), color: "#4A3300" }}
-        >
-          <span className="relative">Won</span>
-        </span>
-      ) : seat.active ? (
-        // Compact on purpose: with 8 players the cards are narrow (4 per row on
-        // mobile), and "TURN 15s" truncated to "TUR". The pulsing glow + the
-        // countdown ring already say "active", so the chip carries just the
-        // seconds when a timer is running.
-        <span
-          className="ludo-chip flex-shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-          style={{ ...chipVars(showTimer ? timerColor : tint, rim), color: "#fff" }}
-          title={showTimer ? `${secondsLeft}s left in this turn` : "Their turn"}
-        >
-          <span className="relative tabular-nums whitespace-nowrap">
-            {showTimer ? `${secondsLeft}s` : "Turn"}
-          </span>
-        </span>
-      ) : null}
     </div>
   );
 }
@@ -369,22 +475,66 @@ export function LudoPlayerCards({
   players,
   row,
   orientation = "row",
+  selfId,
+  registerCard,
+  onTarget,
 }: {
   state: LudoState;
   players: Player[];
   /** "all" = every seat in one list (desktop single left rail); "top"/"bottom"
-   *  = the color-ordered halves (mobile above/below the board). */
+   *  = the board-ordered halves (mobile above/below the board). */
   row: "top" | "bottom" | "all";
   orientation?: "row" | "col";
+  selfId?: string | null;
+  registerCard?: (playerId: string, el: Element | null) => void;
+  onTarget?: (playerId: string) => void;
 }) {
-  const seats = orderedSeats(state, players, row === "all");
+  const seats = orderedSeats(state, players, selfId);
   const mid = Math.ceil(seats.length / 2);
   const shown = row === "all" ? seats : row === "top" ? seats.slice(0, mid) : seats.slice(mid);
   if (shown.length === 0) return null;
+
+  if (orientation === "col") {
+    return (
+      <div className="flex flex-col gap-2">
+        {shown.map((s, i) => (
+          <LudoPlayerCard
+            key={s.pid}
+            seat={s}
+            deadline={state.turnDeadline}
+            index={i}
+            registerCard={registerCard}
+            onTarget={onTarget}
+            isSelf={s.pid === selfId}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Both mobile rows size their cards off the BUSIER row, so a 5-player game
+  // (3 up / 2 down) no longer renders 111px cards above and 170px cards below
+  // — same component, 53% different width, names truncated in one row and
+  // whole in the other. Fixed width + centring keeps the two rows identical.
+  const perRow = Math.max(1, mid);
+  const cardW = `calc((100% - ${(perRow - 1) * 0.5}rem) / ${perRow})`;
+  const dense = perRow >= 3;
+  const ultra = perRow >= 4;
   return (
-    <div className={orientation === "col" ? "flex flex-col gap-2" : "flex justify-between gap-2"}>
+    <div className="flex justify-center gap-2">
       {shown.map((s, i) => (
-        <LudoPlayerCard key={s.pid} seat={s} deadline={state.turnDeadline} index={i} />
+        <div key={s.pid} className="min-w-0" style={{ width: cardW, display: "flex" }}>
+          <LudoPlayerCard
+            seat={s}
+            deadline={state.turnDeadline}
+            index={i}
+            registerCard={registerCard}
+            onTarget={onTarget}
+            dense={dense}
+            ultra={ultra}
+            isSelf={s.pid === selfId}
+          />
+        </div>
       ))}
     </div>
   );
@@ -513,125 +663,6 @@ export function LudoBottomBar({ m, state, unread = 0 }: { m: LudoBoardModel; sta
   );
 }
 
-// ---------------------------------------------------------------------
-// Engagement zone — fills the dead space below the nav on tall phones
-// (esp. 8-player, where you wait through 7 other turns). A LIVE match feed
-// of REAL server events (state.lastEvent) + a one-tap reactions bar that
-// flings emoji onto the board via the existing `room:reaction` socket
-// (rendered by FloatingReactionsLayer/EmojiRain already mounted in
-// LudoOverlays). No fabricated stats/rewards — every feed row is a real
-// game event. The zone is `flex-1` so it consumes whatever vertical slack
-// the width-capped board leaves, and collapses gracefully on short screens.
-// ---------------------------------------------------------------------
-
-type LudoFeedItem = { key: number; emoji: string; name: string; text: string; color: string };
-
-const QUICK_REACTS = ["👍", "🔥", "😂", "🎉", "😮", "💯"];
-
-function buildFeedItem(
-  e: LudoEvent,
-  nameOf: (id: string) => string,
-  colors: Record<string, LudoColor>,
-): LudoFeedItem | null {
-  const by = e.byPlayerId ? nameOf(e.byPlayerId) : "";
-  const victim = e.victimPlayerId ? nameOf(e.victimPlayerId) : "someone";
-  const color = e.byPlayerId && colors[e.byPlayerId] ? COLOR_HEX[colors[e.byPlayerId]] : "#6D4323";
-  const base = { key: e.ts, name: by, color };
-  switch (e.kind) {
-    case "capture": return { ...base, emoji: "💥", text: `sent ${victim} home` };
-    case "home": return { ...base, emoji: "🏠", text: "brought a token home" };
-    case "win": return { ...base, emoji: "🏆", text: "won the game!" };
-    case "forfeit": return { ...base, emoji: "⛔", text: "rolled three 6s — forfeited" };
-    case "noMove": return { ...base, emoji: "↪", text: "couldn’t move — passed" };
-    default: return null; // "move" / "autoSkip" are too noisy for the feed
-  }
-}
-
-export function LudoEngagementZone({ state, nameOf }: { state: LudoState; nameOf: (id: string) => string }) {
-  const [feed, setFeed] = useState<LudoFeedItem[]>([]);
-  const [cooldown, setCooldown] = useState(false);
-  const lastTs = useRef(0);
-
-  useEffect(() => {
-    const e = state.lastEvent;
-    if (!e || e.ts <= lastTs.current) return;
-    lastTs.current = e.ts;
-    const item = buildFeedItem(e, nameOf, state.playerColors);
-    if (item) setFeed((f) => [item, ...f].slice(0, 24));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.lastEvent?.ts]);
-
-  function react(emoji: string) {
-    if (cooldown) return;
-    getSocket().emit("room:reaction", { emoji });
-    setCooldown(true);
-    window.setTimeout(() => setCooldown(false), 400);
-  }
-
-  const turnName = state.phase === "finished" ? null : nameOf(state.turnPlayerId);
-
-  return (
-    <div
-      className="flex-1 min-h-0 flex flex-col rounded-2xl overflow-hidden"
-      style={{ background: "rgba(255,251,240,0.6)", border: "2px solid #E6D4B7" }}
-    >
-      <div
-        className="flex items-center justify-between px-3 py-1.5 flex-shrink-0"
-        style={{ borderBottom: "1.5px solid #ECDCC0" }}
-      >
-        <div className="flex items-center gap-1.5">
-          <span className="ludo-live-dot w-2 h-2 rounded-full" style={{ background: "#DC2626" }} aria-hidden />
-          <span className="text-[11px] font-black uppercase tracking-wider" style={{ color: "#6D4323" }}>
-            Table Feed
-          </span>
-        </div>
-        {turnName && (
-          <span className="text-[10px] font-bold truncate max-w-[55%]" style={{ color: "#8A6D4B" }}>
-            {turnName}&rsquo;s turn
-          </span>
-        )}
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto px-2.5 py-1.5 space-y-1" role="log" aria-live="polite" aria-label="Match feed">
-        {feed.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-center px-4 min-h-[2.5rem]">
-            <span className="text-[11px] font-semibold" style={{ color: "#A3886E" }}>
-              Watch the action here — captures, home runs &amp; passes show up live. React below! 🎲
-            </span>
-          </div>
-        ) : (
-          feed.map((it) => (
-            <div key={it.key} className="ludo-feed-in flex items-center gap-2 text-[12px]">
-              <span className="flex-shrink-0 text-sm leading-none">{it.emoji}</span>
-              <span className="font-black flex-shrink-0" style={{ color: it.color }}>{it.name}</span>
-              <span className="truncate" style={{ color: "#6D4323" }}>{it.text}</span>
-            </div>
-          ))
-        )}
-      </div>
-
-      <div
-        className="flex items-center justify-center gap-1.5 px-2 py-1.5 flex-shrink-0"
-        style={{ borderTop: "1.5px solid #ECDCC0" }}
-      >
-        {QUICK_REACTS.map((e) => (
-          <button
-            key={e}
-            type="button"
-            onClick={() => react(e)}
-            disabled={cooldown}
-            aria-label={`React ${e}`}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-lg active:scale-90 transition disabled:opacity-40"
-            style={{ background: "#F7E8C4", border: "1.5px solid #C8A66B" }}
-          >
-            {e}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /**
  * The board wrap: SVG board (cross or polygon), live cursors, hover preview,
  * the token overlay, capture sad-faces and per-home mini-bursts. `maxWidth`
@@ -657,9 +688,30 @@ export function LudoBoardArea({
         m.onBoardMouseLeave();
         m.clearHoverPreview();
       }}
-      className={`ludo-board relative w-full mx-auto aspect-square select-none rounded-2xl border-4 border-slate-950 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] theme-${m.settings.theme} ${m.settings.highContrast ? "hc" : ""}`}
+      // `overflow-hidden` keeps the ROTATED board art inside the rounded card
+      // — without it the spun background square's corners hang outside it.
+      className={`ludo-board relative w-full mx-auto aspect-square select-none rounded-2xl overflow-hidden border-4 border-slate-950 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] theme-${m.settings.theme} ${m.settings.highContrast ? "hc" : ""}`}
       style={{ maxWidth }}
     >
+      {/* EGOCENTRIC ORIENTATION. The board spins so the local player's own
+          yard sits at the BOTTOM, nearest their hands — the same reason a card
+          game deals your hand toward you. Picking brown on an 8-player board
+          previously put your pieces at the far top edge.
+
+          Applied as one CSS rotation on a wrapper that contains BOTH the board
+          SVG and the token/cursor overlay, so they cannot drift apart: token
+          coordinates are percentages of this same box, and rotating the box
+          rotates art and pieces as one. Purely presentational — no engine
+          index, track position or colour→arm mapping is touched, so it stays
+          per-client and cannot desync players from each other. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: `rotate(${m.boardRotation}deg)`,
+          transformOrigin: "50% 50%",
+          transition: "transform 500ms cubic-bezier(0.4,0,0.2,1)",
+        }}
+      >
       {m.polygonGeo ? (
         <PrintBoardSVG
           geo={m.polygonGeo}
@@ -668,6 +720,7 @@ export function LudoBoardArea({
           playerColors={state.playerColors}
           activeColors={m.activeColors}
           hasCaptured={state.hasCaptured ?? {}}
+          rotationDeg={m.boardRotation}
         />
       ) : (
         <BoardSVG
@@ -680,6 +733,7 @@ export function LudoBoardArea({
           registerCard={m.registerPlayerCard}
           selfId={m.selfId}
           finishedCount={state.finishedCount}
+          rotationDeg={m.boardRotation}
         />
       )}
       {/* Live opponent cursors */}
@@ -726,6 +780,9 @@ export function LudoBoardArea({
               onMouseEnter={() => m.onHoverToken(pid, token)}
               onMouseLeave={m.clearHoverPreview}
               label={String(idx + 1)}
+              // Cancels the board's rotation so the pawn and its number stay
+              // upright whichever way the board is turned.
+              counterRotateDeg={-m.boardRotation}
               cbMode={m.settings.colorBlindMode}
               golden={m.settings.goldenTokens}
               celebrating={m.celebratingIds.has(token.id)}
@@ -735,7 +792,11 @@ export function LudoBoardArea({
       </div>
       {/* Capture sad-faces (briefly visible at the victim's last position) */}
       {m.captureFaces.map((cf) => (
-        <span key={cf.id} className="capture-face" style={{ left: `${cf.left}%`, top: `${cf.top}%` }}>
+        <span
+          key={cf.id}
+          className="capture-face"
+          style={{ left: `${cf.left}%`, top: `${cf.top}%`, rotate: `${-m.boardRotation}deg` }}
+        >
           😵
         </span>
       ))}
@@ -744,6 +805,7 @@ export function LudoBoardArea({
       {m.homeBursts.map((b) => (
         <MiniBurst key={b.id} left={b.left} top={b.top} color={b.color} />
       ))}
+      </div>
     </div>
   );
 }

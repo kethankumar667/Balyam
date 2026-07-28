@@ -47,7 +47,7 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
 
   return (
     <div
-      className="bhalyam-font bhalyam-paper rounded-2xl p-4 lg:p-5 shadow-2xl flex flex-col gap-3 h-[calc(100svh-1rem)] overflow-hidden"
+      className="bhalyam-font bhalyam-paper rounded-2xl p-4 lg:p-5 shadow-2xl flex flex-col gap-3 h-[calc(100svh-0.5rem)] overflow-hidden"
       style={{ border: "3px solid #6D4323" }}
     >
       <LudoStatusBar
@@ -70,7 +70,7 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
           cup (also balances the left rail so the board stays centred). */}
       <div className="flex-1 min-h-0 flex items-stretch justify-center gap-4 lg:gap-6">
         <div className="w-[clamp(10rem,15vw,15rem)] flex-shrink-0 overflow-y-auto pt-1">
-          <LudoPlayerCards state={state} players={players} row="all" orientation="col" />
+          <LudoPlayerCards state={state} players={players} row="all" orientation="col" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
         </div>
 
         <div ref={boardColRef} className="flex-1 min-w-0 flex items-center justify-center">

@@ -44,8 +44,15 @@ import type { PolygonBoardGeometry, Pt } from "./polygon-board";
  *  outside for the colored border band + label the reference design
  *  carries. Solved so `R_OUT_TARGET * BORDER_OUT` (PrintBoardSVG.tsx) stays
  *  safely inside the 0..100 viewBox at every N — do not raise this without
- *  re-checking that product (N=5's widest per-arm angle is the tight case). */
-const R_OUT_TARGET = 40;
+ *  re-checking that product (N=5's widest per-arm angle is the tight case).
+ *
+ *  Raised 40 → 41.6 (2026-07-27): the drawn board only covered 91-96% of its
+ *  own square, so on a portrait phone — where the board is WIDTH-bound and
+ *  every pixel counts — up to 9% of the playing surface was blank margin
+ *  inside the card. The binding constraint is `R_OUT_TARGET * BORDER_OUT`
+ *  (1.19) ≤ 50, i.e. a hard ceiling of 42.0; 41.6 gives 49.5, keeping a small
+ *  margin for the rim stroke. */
+const R_OUT_TARGET = 41.6;
 
 /**
  * Flat seat palette, indexed to match `PLAYER_COLORS_ORDER` (board-layout.ts:

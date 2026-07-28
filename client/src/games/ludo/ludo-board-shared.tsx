@@ -255,6 +255,7 @@ export function BoardSVG({
   registerCard,
   selfId,
   finishedCount,
+  rotationDeg = 0,
 }: {
   playerColorsInRoom: LudoColor[];
   players: Player[];
@@ -263,6 +264,11 @@ export function BoardSVG({
   hasCaptured: Record<string, boolean>;
   unlockBurst: Record<string, number>;
   registerCard?: (playerId: string, el: SVGGElement | null) => void;
+  /** How far an ancestor has spun the board (egocentric orientation). Glyphs
+   *  that represent OBJECTS — names, crowns, padlocks — are counter-rotated by
+   *  this so they stay upright; the direction arrows deliberately are NOT,
+   *  since they point board-relative. */
+  rotationDeg?: number;
   /** Used to hide the "react at" affordance on the viewer's own name plate. */
   selfId: string | null;
   /** Home-token count per playerId - drives the live "N/4" corner badge. */
@@ -338,6 +344,7 @@ export function BoardSVG({
               textAnchor="middle"
               fontSize={2}
               opacity={0.12}
+              transform={`rotate(${-rotationDeg} ${c0 + 3} ${r0 + 3})`}
               style={{ pointerEvents: "none" }}
             >
               👑
@@ -357,9 +364,23 @@ export function BoardSVG({
                 buried Players side-panel. Also carries a small "N/4"
                 home-progress pill so everyone can see at a glance how
                 many of this player's tokens have made it home. */}
-            {name && (
+            {name && (() => {
+              /* The badge is placed in SCREEN space, not board space.
+                 It is 5 units wide and used to sit 2.8 above its yard centre;
+                 once the board could rotate, counter-rotating it swung that
+                 wide span perpendicular and shoved ~2 units of it off the
+                 board edge — the plates rendered as "AJU" / "ONICA".
+                 Anchoring to the yard CENTRE and offsetting by a rotated
+                 2.4-unit vector keeps it the same distance "above" the tokens
+                 from the player's point of view at any angle, while its
+                 furthest corner stays inside the 6x6 yard. */
+              const t = (-rotationDeg * Math.PI) / 180;
+              const bx = c0 + 3 + 2.4 * Math.sin(t);
+              const by = r0 + 3 - 2.4 * Math.cos(t);
+              return (
               <g
                 filter="url(#ludo-drop)"
+                transform={`translate(${bx} ${by}) rotate(${-rotationDeg})`}
                 ref={(el) => registerCard?.(pid!, el)}
                 onClick={
                   pid && pid !== selfId
@@ -369,19 +390,20 @@ export function BoardSVG({
                 style={pid && pid !== selfId ? { cursor: "pointer" } : undefined}
               >
                 {pid && pid !== selfId && <title>React at {name}</title>}
-                <rect x={c0 + 0.5} y={r0 + 0.18} width={5} height={0.75} rx={0.38} fill={COLOR_HEX[color]} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.08} />
+                <rect x={-2.5} y={-0.375} width={5} height={0.75} rx={0.38} fill={COLOR_HEX[color]} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.08} />
                 {/* Inner gold trim line */}
-                <rect x={c0 + 0.62} y={r0 + 0.28} width={4.76} height={0.55} rx={0.3} fill="none" stroke="#ffffff" strokeWidth={0.04} opacity={0.35} />
-                <text x={c0 + 2.85} y={r0 + 0.72} textAnchor="middle" fontSize="0.5" fontWeight="900" fill="#ffffff" style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                <rect x={-2.38} y={-0.275} width={4.76} height={0.55} rx={0.3} fill="none" stroke="#ffffff" strokeWidth={0.04} opacity={0.35} />
+                <text x={-0.15} y={0.17} textAnchor="middle" fontSize="0.5" fontWeight="900" fill="#ffffff" style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   {name.slice(0, 12)}
                 </text>
                 {/* Home-progress corner badge: "N/4" tokens home, live during play. */}
-                <circle cx={c0 + 5.5} cy={r0 + 0.18} r={0.34} fill={COLOR_HEX_DARK[color]} stroke={PARCHMENT} strokeWidth={0.05} />
-                <text x={c0 + 5.5} y={r0 + 0.29} textAnchor="middle" fontSize="0.3" fontWeight="800" fill="#FFF">
+                <circle cx={2.5} cy={-0.375} r={0.34} fill={COLOR_HEX_DARK[color]} stroke={PARCHMENT} strokeWidth={0.05} />
+                <text x={2.5} y={-0.265} textAnchor="middle" fontSize="0.3" fontWeight="800" fill="#FFF">
                   {finishedCount[pid!] ?? 0}/4
                 </text>
               </g>
-            )}
+              );
+            })()}
           </g>
         );
       })}
@@ -448,7 +470,7 @@ export function BoardSVG({
         <rect x={6.12} y={6.12} width={2.76} height={2.76} fill="none" stroke={GOLD} strokeWidth={0.05} opacity={0.85} />
         {/* Central gold disc + crown — the "finish" crest (reference motif). */}
         <circle cx={7.5} cy={7.5} r={0.7} fill={GOLD} stroke={GOLD_DEEP} strokeWidth={0.08} />
-        <text x={7.5} y={7.86} fontSize={0.95} textAnchor="middle" style={{ pointerEvents: "none" }}>
+        <text x={7.5} y={7.86} fontSize={0.95} textAnchor="middle" transform={`rotate(${-rotationDeg} 7.5 7.5)`} style={{ pointerEvents: "none" }}>
           👑
         </text>
       </g>
@@ -479,7 +501,7 @@ export function BoardSVG({
           return (
             <g key={color + "-lock"} className="lock-pulse" style={{ transformOrigin: `${cx}px ${cy}px` }}>
               <circle cx={cx} cy={cy} r={0.45} fill="rgba(0,0,0,0.45)" />
-              <text x={cx} y={cy + 0.22} textAnchor="middle" fontSize="0.7">
+              <text x={cx} y={cy + 0.22} textAnchor="middle" fontSize="0.7" transform={`rotate(${-rotationDeg} ${cx} ${cy})`}>
                 🔒
               </text>
             </g>
@@ -490,7 +512,7 @@ export function BoardSVG({
           return (
             <g key={color + "-unlock"} className="unlock-burst" style={{ transformOrigin: `${cx}px ${cy}px` }}>
               <circle cx={cx} cy={cy} r={0.5} fill={COLOR_HEX[color]} opacity={0.85} />
-              <text x={cx} y={cy + 0.25} textAnchor="middle" fontSize="0.8">
+              <text x={cx} y={cy + 0.25} textAnchor="middle" fontSize="0.8" transform={`rotate(${-rotationDeg} ${cx} ${cy})`}>
                 🔓
               </text>
             </g>

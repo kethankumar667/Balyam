@@ -33,6 +33,7 @@ export function Token({
   celebrating = false,
   hex,
   hexDark,
+  counterRotateDeg = 0,
 }: {
   color: LudoColor;
   left: number;
@@ -49,6 +50,9 @@ export function Token({
   /** Optional flat-palette override (print boards recolor seats by sector). */
   hex?: string;
   hexDark?: string;
+  /** Cancels the board's egocentric rotation so the pawn and its number stay
+   *  upright however the board is turned. */
+  counterRotateDeg?: number;
 }) {
   const main = golden ? "#D4AF37" : hex ?? COLOR_HEX[color];
   const dark = golden ? "#8B6914" : hexDark ?? COLOR_HEX_DARK[color];
@@ -75,7 +79,11 @@ export function Token({
         top: `${top}%`,
         width: `${size}%`,
         aspectRatio: "1 / 1",
-        transform: "translate(-50%, -65%)",
+        // Counter-rotation is applied about the pawn's own centre AFTER the
+        // anchoring translate, so the piece stands upright without its
+        // position on the board shifting.
+        transform: `translate(-50%, -65%) rotate(${counterRotateDeg}deg)`,
+        transformOrigin: "50% 65%",
         transition:
           "left 380ms cubic-bezier(.4,1.5,.6,1), top 380ms cubic-bezier(.4,1.5,.6,1), transform 200ms",
         cursor: onClick ? "pointer" : "default",

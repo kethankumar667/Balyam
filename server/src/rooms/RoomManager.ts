@@ -166,6 +166,10 @@ type IO = Server<ClientToServerEvents, ServerToClientEvents>;
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private socketToRoom = new Map<string, string>();
+  /** Recent reaction timestamps per player id — sliding window for the
+   *  anti-spam check in `sendReaction`. Targeted reactions render on other
+   *  people's screens, so this is abuse-facing, not just cosmetic. */
+  private reactionRate = new Map<string, number[]>();
   /** "House Champion" per room table name — outlives any single room/code. docs/rummy/roadmap.md B.3. */
   private champions = new Map<string, RummyChampion>();
   /** UNO's own "House Champion" per room table name — separate map, same rationale as `unoHistory`. */
@@ -1088,8 +1092,23 @@ export class RoomManager {
     const ALLOWED = new Set([
       "👍", "😂", "😢", "🔥", "🎉", "💯", "😮", "👏",
       "🤔", "😭", "😡", "🙌", "💪", "🎯", "🤝", "💔",
+      // "Throwables" — playful comebacks a player can lob at whoever just sent
+      // their token home. Deliberately harmless props (a flung chappal, a
+      // tomato, a Diwali firecracker), never weapons: the point is sibling
+      // teasing, not violence, and it keeps our own visual identity rather
+      // than mimicking another title's.
+      "🩴", "🍅", "🧨",
     ]);
     if (!ALLOWED.has(emoji)) return;
+
+    // Spam guard. A targeted reaction lands on someone else's screen, so an
+    // unthrottled sender could grief the whole table; 6 per 4s is generous for
+    // real play and useless for flooding.
+    const now = Date.now();
+    const bucket = (this.reactionRate.get(player.id) ?? []).filter((t) => now - t < 4000);
+    if (bucket.length >= 6) return;
+    bucket.push(now);
+    this.reactionRate.set(player.id, bucket);
     const validTarget = targetPlayerId && room.players.has(targetPlayerId) ? targetPlayerId : undefined;
     this.io.to(room.code).emit("room:reaction", {
       id: `r_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
