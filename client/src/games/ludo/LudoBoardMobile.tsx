@@ -7,13 +7,8 @@ import {
   LudoOverlays,
   LudoPlayerCards,
   LudoBottomBar,
-  LudoEngagementZone,
 } from "./ludo-board-composites";
 
-/** Rendered height of the engagement zone, plus the shell's `gap-2` — i.e. the
- *  vertical cost of showing it. */
-const ZONE_H = 132;
-const ZONE_COST = ZONE_H + 8;
 /** The board is never allowed past this, matching the desktop shell. */
 const MAX_BOARD = 620;
 
@@ -45,25 +40,11 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
 
   const boardRowRef = useRef<HTMLDivElement>(null);
   const [boardPx, setBoardPx] = useState(320);
-  // The engagement zone exists to fill DEAD space — on a tall phone the board
-  // is width-capped and leaves a gap below it. When there's no such gap it
-  // must not render at all, or it steals height from the board (which is the
-  // hero) and overflows the shell.
-  const [showZone, setShowZone] = useState(false);
-
   useEffect(() => {
     const el = boardRowRef.current;
     if (!el) return;
-    const measure = () => {
-      const w = el.clientWidth;
-      const h = el.clientHeight;
-      setBoardPx(Math.max(120, Math.floor(Math.min(w, h, MAX_BOARD))));
-      // Hysteresis, so the two states can't flip-flop: showing the zone costs
-      // the row exactly ZONE_COST, so "show it" and "keep it" reduce to the
-      // same predicate — the board still gets its full width-capped size.
-      const cap = Math.min(w, MAX_BOARD);
-      setShowZone((on) => (on ? h : h - ZONE_COST) >= cap);
-    };
+    const measure = () =>
+      setBoardPx(Math.max(120, Math.floor(Math.min(el.clientWidth, el.clientHeight, MAX_BOARD))));
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -72,29 +53,24 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
 
   return (
     <div
-      className="bhalyam-font bhalyam-paper rounded-2xl p-2.5 sm:p-4 shadow-2xl flex flex-col gap-2 h-[calc(100svh-1rem)] overflow-hidden"
+      className="bhalyam-font bhalyam-paper rounded-2xl p-1.5 sm:p-4 shadow-2xl flex flex-col gap-2 h-[calc(100svh-0.5rem)] overflow-hidden"
       style={{ border: "3px solid #6D4323" }}
     >
       <LudoStatusBar m={m} state={state} />
 
-      <LudoPlayerCards state={state} players={players} row="top" />
+      <LudoPlayerCards state={state} players={players} row="top" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
 
-      <div ref={boardRowRef} className="flex-1 min-h-0 flex items-center justify-center">
+      {/* `-mx-1.5` cancels the shell's own horizontal padding for the BOARD
+          only. The board is width-bound on a portrait phone, so every pixel of
+          side padding comes straight off the playing surface — while the rest
+          of the shell still wants its padding. */}
+      <div ref={boardRowRef} className="flex-1 min-h-0 flex items-center justify-center -mx-1.5 sm:mx-0">
         <LudoBoardArea m={m} state={state} players={players} maxWidth={`${boardPx}px`} />
       </div>
 
-      <LudoPlayerCards state={state} players={players} row="bottom" />
+      <LudoPlayerCards state={state} players={players} row="bottom" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
 
       <LudoBottomBar m={m} state={state} unread={unread} />
-
-      {/* Only when the board genuinely leaves room: a live match feed of real
-          game events + one-tap reactions. Fixed height so its cost to the
-          board row is exactly known (see the hysteresis above). */}
-      {showZone && (
-        <div className="flex-shrink-0 flex" style={{ height: ZONE_H }}>
-          <LudoEngagementZone state={state} nameOf={m.nameOf} />
-        </div>
-      )}
 
       {/* Room panels + event bridge only — no visible strip (the bottom nav
           drives them). Keeps chat/voice/players/room/emoji fully functional

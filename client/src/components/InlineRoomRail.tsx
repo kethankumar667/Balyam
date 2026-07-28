@@ -18,7 +18,12 @@ import Chat from "./Chat";
  * / EmojiRain receivers work unchanged.
  */
 const QUICK_EMOJIS = ["👍", "😂", "🔥", "🎉", "😮", "💯", "👏", "🤝"];
-const MORE_EMOJIS = ["😢", "🤔", "😭", "😡", "🙌", "💪", "🎯", "💔"];
+/** The second row leans into playful retaliation — the chappal, the tomato and
+ *  the Diwali firecracker are things you'd actually lob at a cousin who just
+ *  sent your token home. Harmless props by design: the feeling we're after is
+ *  sibling teasing, not violence. Every glyph here must also be in the server's
+ *  ALLOWED set (RoomManager.sendReaction) or it is silently dropped. */
+const MORE_EMOJIS = ["😡", "🩴", "🍅", "🧨", "😭", "🎯", "💪", "💔"];
 
 type Panel = "room" | "players" | "voice" | "chat" | "emoji";
 
@@ -357,7 +362,12 @@ function EmojiPopover({
             🎯 {targetName}
           </div>
         )}
-        {QUICK_EMOJIS.map((e) => (
+        {/* Which row leads depends on WHY the tray is open. Aimed at a player
+            (they just sent your token home) the comeback set is the point, so
+            it leads; a general cheer leads with the applause set. Burying the
+            throwables behind "+" made the targeted flow two taps deep for the
+            one emotion it exists to serve. */}
+        {(targetName ? MORE_EMOJIS : QUICK_EMOJIS).map((e) => (
           <button
             key={e}
             onClick={() => onPick(e)}

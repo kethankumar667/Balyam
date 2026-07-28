@@ -587,14 +587,16 @@ export default function Room() {
         (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby"
           ? "bhalyam-font bhalyam-paper h-dvh-safe overflow-hidden p-0"
           : ludoInPlay
-            ? // Ludo's shells are viewport-locked: they reserve exactly 1rem
-              // (`min-h-[calc(100svh-1rem)]`), so this padding must stay 0.5rem
-              // at EVERY breakpoint. `sm:p-4` spent 1rem the shells hadn't
-              // budgeted for and scrolled the page by exactly 16px on every
-              // desktop size. `min-h-dvh-safe` (not `min-h-screen`) keeps the
-              // same guarantee on mobile, where `100vh` overshoots the visible
-              // viewport by the browser toolbar.
-              "bhalyam-font bhalyam-paper min-h-dvh-safe p-2"
+            ? // Ludo's shells are viewport-locked and reserve EXACTLY this much
+              // (`h-[calc(100svh-0.5rem)]`), so the two must always agree — a
+              // mismatch here is what scrolled the page by 16px on every
+              // desktop size once before. Trimmed 0.5rem → 0.25rem per side to
+              // hand the width back to the board, which is width-bound on a
+              // portrait phone (it had 86px of spare HEIGHT it could not use,
+              // so width is the only lever that makes it bigger).
+              // `min-h-dvh-safe` (not `min-h-screen`) keeps the guarantee on
+              // mobile, where `100vh` overshoots the visible viewport.
+              "bhalyam-font bhalyam-paper min-h-dvh-safe p-1"
             : "bhalyam-font bhalyam-paper min-h-screen p-2 sm:p-4"
       }
     >

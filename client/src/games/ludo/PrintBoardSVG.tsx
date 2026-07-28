@@ -51,6 +51,14 @@ function angleDeg(a: Pt, b: Pt): number {
   return (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
 }
 
+/** Normalise to (-180, 180]. `readable` compares against ±90, so it only works
+ *  on an angle already in that range — feeding it a raw sum like
+ *  `edgeAngle + boardRotation` (which can reach ±360) made it flip the wrong
+ *  way and rendered some arm names upside-down once the board rotated. */
+function norm180(a: number): number {
+  return ((((a + 180) % 360) + 360) % 360) - 180;
+}
+
 /** Keep rotated text upright-readable. */
 function readable(a: number): number {
   return a > 90 || a < -90 ? a + 180 : a;
@@ -119,6 +127,7 @@ export default function PrintBoardSVG({
   playerOrder,
   playerColors,
   hasCaptured,
+  rotationDeg = 0,
 }: {
   geo: PrintBoardGeometry;
   players: Player[];
@@ -126,6 +135,12 @@ export default function PrintBoardSVG({
   playerColors: Record<string, LudoColor>;
   activeColors: LudoColor[];
   hasCaptured: Record<string, boolean>;
+  /** How far the whole board is spun on screen (egocentric orientation). The
+   *  label helpers below flip text that would land upside-down, and that
+   *  decision depends on the FINAL on-screen angle — so they have to be told
+   *  about a rotation applied by an ancestor, or half the names read upside
+   *  down once the board turns. */
+  rotationDeg?: number;
 }) {
   // Namespace every <defs> id to this instance. The preview page renders
   // several boards at once, and duplicate ids would make them all resolve to
@@ -207,7 +222,12 @@ export default function PrintBoardSVG({
         </radialGradient>
       </defs>
 
-      <rect className="board-bg-rect" x={-2} y={-2} width={104} height={104} rx={4} fill="#ffffff" />
+      {/* Oversized on purpose. The board can be ROTATED (egocentric
+          orientation), and a square only just larger than the viewBox leaves
+          the container's corners uncovered once turned — which showed as white
+          wedges poking out of the card. Half-diagonal of a 100×100 box is
+          ~70.7, so this spans any rotation; the wrapper clips the excess. */}
+      <rect className="board-bg-rect" x={-25} y={-25} width={150} height={150} fill="#ffffff" />
       <polygon
         points={silhouette}
         fill="#ffffff"
@@ -239,7 +259,9 @@ export default function PrintBoardSVG({
       {/* Big rotated player labels in the white band inside the border */}
       {art.rimSegments.map(({ a, b }, i) => {
         const mid = scalePt({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, (1 + BORDER_IN) / 2);
-        const rot = readable(angleDeg(a, b));
+        // Decide the flip on the FINAL on-screen angle, then subtract the
+        // ancestor rotation back out so the glyphs still run along the rim.
+        const rot = readable(norm180(angleDeg(a, b) + rotationDeg)) - rotationDeg;
         return (
           <g key={"lbl" + i} transform={`translate(${mid.x} ${mid.y}) rotate(${rot})`}>
             <text
@@ -401,7 +423,9 @@ export default function PrintBoardSVG({
         const entry = geo.stretchCells[color]?.[0];
         if (!entry) return null;
         return (
-          <g key={"lock" + i} transform={`translate(${entry.x} ${entry.y})`}>
+          // Counter-rotated: a padlock is a recognisable object, so it should
+          // stand up whichever way the board is turned.
+          <g key={"lock" + i} transform={`translate(${entry.x} ${entry.y}) rotate(${-rotationDeg})`}>
             <LockMark s={cell * 0.62} />
           </g>
         );
@@ -429,7 +453,7 @@ export default function PrintBoardSVG({
           (acc, s) => ({ x: acc.x + s.x / slots.length, y: acc.y + s.y / slots.length }),
           { x: 0, y: 0 },
         );
-        const rot = uprightAngle(geo.wedgeAngle[sliceColor]);
+        const rot = uprightAngle(geo.wedgeAngle[sliceColor] + rotationDeg) - rotationDeg;
         return (
           <text
             key={"homelbl" + sliceColor}

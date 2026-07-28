@@ -24,6 +24,7 @@ import {
   STRETCH_CELLS,
   TRACK_CELLS,
   YARD_CELLS,
+  PLAYER_COLORS_ORDER,
 } from "./board-layout";
 import { cellToPct, fanSlot, type LudoHoverPreview } from "./ludo-board-shared";
 
@@ -54,6 +55,17 @@ function stackKeyOf(token: LudoToken, color: LudoColor): string | null {
   return null;
 }
 
+/** Screen angle (clockwise from up, matching print-board's `P()`) of each
+ *  cross-board yard quadrant: red top-left, green top-right, yellow
+ *  bottom-right, blue bottom-left. Only these four ever appear on a 2-4 player
+ *  board — the engine hands out `PLAYER_COLORS_ORDER.slice(0, n)`. */
+const CROSS_YARD_ANGLE: Partial<Record<LudoColor, number>> = {
+  red: 315,
+  green: 45,
+  yellow: 135,
+  blue: 225,
+};
+
 export type LudoTokenPos = {
   left: number;
   top: number;
@@ -83,6 +95,8 @@ export interface LudoBoardModel {
   reactions: ReactionRecvPayload[];
   reactionAnchor: (playerId: string) => { left: number; top: number } | null;
   registerPlayerCard: (playerId: string, el: Element | null) => void;
+  /** Aim a reaction at another player (opens the emoji tray targeted). */
+  targetPlayer: (playerId: string) => void;
   rains: { id: string; emoji: string }[];
   cursors: Record<string, RemoteCursor>;
   boardWrapRef: React.RefObject<HTMLDivElement>;
@@ -106,6 +120,8 @@ export interface LudoBoardModel {
   usePolygon: boolean;
   activeColors: LudoColor[];
   polygonGeo: PrintBoardGeometry | null;
+  /** Degrees the board view is spun so the local player sits at the bottom. */
+  boardRotation: number;
   tokenPosition: (pid: string, token: LudoToken) => LudoTokenPos;
   nameOf: (id: string) => string;
   roll: () => void;
@@ -268,6 +284,21 @@ export function useLudoBoard({
       // point of aiming it at one person. Untargeted reactions keep the rain.
       if (!r.targetPlayerId) {
         setRains((prev) => [...prev.slice(-2), { id: r.id, emoji: r.emoji }]);
+      } else {
+        // Make the hit land: the struck card flinches as the emoji arrives
+        // (720ms of flight). Driven imperatively off the registered element so
+        // no card has to subscribe to the reaction stream just to twitch.
+        const hitId = r.targetPlayerId;
+        window.setTimeout(() => {
+          const el = playerCardRefs.current.get(hitId);
+          if (!el) return;
+          el.classList.remove("ludo-hit-shake");
+          // Force a reflow so re-adding the class restarts the animation for
+          // rapid-fire hits on the same card.
+          void (el as HTMLElement).offsetWidth;
+          el.classList.add("ludo-hit-shake");
+          window.setTimeout(() => el.classList.remove("ludo-hit-shake"), 460);
+        }, 700);
       }
       setTimeout(() => {
         setReactions((prev) => prev.filter((x) => x.id !== r.id));
@@ -281,6 +312,16 @@ export function useLudoBoard({
       socket.off("room:reaction", onReaction);
     };
   }, []);
+  /** Aim the room rail's emoji tray at one player. Reuses the existing
+   *  `bhalyam:react-at-player` bridge InlineRoomRail already listens on, so a
+   *  tapped seat card and the cross board's yard badge open the same tray. */
+  const targetPlayer = useCallback((playerId: string) => {
+    if (!playerId || playerId === selfId) return;
+    window.dispatchEvent(
+      new CustomEvent("bhalyam:react-at-player", { detail: { playerId } }),
+    );
+  }, [selfId]);
+
   function reactionAnchor(playerId: string): { left: number; top: number } | null {
     const el = playerCardRefs.current.get(playerId);
     if (!el) return null;
@@ -690,6 +731,48 @@ export function useLudoBoard({
     [usePolygon, playerCount]
   );
 
+  /**
+   * Degrees to spin the board so the LOCAL player's own yard sits at the
+   * bottom, nearest them. Purely a client-side view transform — every engine
+   * index, track position and colour→arm mapping is untouched, so two players
+   * looking at differently-rotated boards still agree on the game state.
+   *
+   * print-board.ts measures angles CLOCKWISE FROM UP (`P()`), arm `i` sits on
+   * axis `i·360/N`, and its yard is on that arm's bisector, half a wedge
+   * further round. Bottom of screen is 180°, hence `180 − bisector`.
+   */
+  const targetRotation = useMemo(() => {
+    if (!selfId) return 0;
+    const color = state.playerColors[selfId];
+    if (!color) return 0;
+    // Normalised to (-180, 180] so the CSS transition always takes the short
+    // way round instead of unwinding through a full turn.
+    const norm = (d: number) => ((((d % 360) + 540) % 360)) - 180;
+    if (polygonGeo) {
+      const arm = PLAYER_COLORS_ORDER.indexOf(color);
+      if (arm < 0) return 0;
+      return norm(180 - (arm + 0.5) * (360 / polygonGeo.N));
+    }
+    // Cross board (2-4 players): four fixed quadrants rather than arms, so it
+    // is a 90° step. Target is BOTTOM-LEFT (225°) — blue's home corner, and
+    // where you'd naturally sit at a physical board.
+    const at = CROSS_YARD_ANGLE[color];
+    return at == null ? 0 : norm(225 - at);
+  }, [polygonGeo, selfId, state.playerColors]);
+
+  /**
+   * The board starts square-on and turns to face you a beat after it mounts —
+   * the digital echo of sliding a real board round so your colour is in front
+   * of you before the first roll. Skipped entirely under reduced motion, where
+   * it snaps straight to the final orientation.
+   */
+  const [rotationSettled, setRotationSettled] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setRotationSettled(true), 80);
+    return () => window.clearTimeout(t);
+  }, []);
+  const boardRotation = reduceMotion || rotationSettled ? targetRotation : 0;
+
   function posFromState(t: LudoToken, color: LudoColor): { left: number; top: number } | null {
     if (polygonGeo) {
       if (t.state === "track" && t.trackPos != null) {
@@ -783,6 +866,7 @@ export function useLudoBoard({
     reactions,
     reactionAnchor,
     registerPlayerCard,
+    targetPlayer,
     rains,
     cursors,
     boardWrapRef,
@@ -806,6 +890,7 @@ export function useLudoBoard({
     usePolygon,
     activeColors,
     polygonGeo,
+    boardRotation,
     tokenPosition,
     nameOf,
     roll,

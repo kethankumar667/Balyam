@@ -578,20 +578,6 @@ body, #root, .bhalyam-paper {
 }
 .ludo-seat-glow { animation: ludo-seat-glow 1.6s ease-in-out infinite; }
 
-/* Live match-feed row slide-in — new events flick in from the left so the
-   feed reads as "happening now". */
-@keyframes ludo-feed-in {
-  from { transform: translateX(-12px); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
-}
-.ludo-feed-in { animation: ludo-feed-in 260ms cubic-bezier(.34,1.56,.64,1); }
-
-/* "LIVE" indicator dot pulse. */
-@keyframes ludo-live-dot {
-  0%, 100% { opacity: 1;   transform: scale(1); }
-  50%      { opacity: 0.4; transform: scale(0.82); }
-}
-.ludo-live-dot { animation: ludo-live-dot 1.2s ease-in-out infinite; }
 
 /* ── Ludo premium motion layer ──────────────────────────────────────────
    Every animation below is purely decorative and is neutralised by the
@@ -1317,6 +1303,52 @@ body, #root, .bhalyam-paper {
   50%      { opacity: 0.35; transform: scale(0.86); }
 }
 .uno-reconnect-dot { animation: uno-reconnect-dot 1.1s ease-in-out infinite; }
+
+/* ── Ludo: thrown reactions ──────────────────────────────────────────────
+   A targeted reaction ARCS from the sender's seat card to the target's. The
+   parabola is composed from two transforms rather than an SVG path: the outer
+   element carries constant-velocity travel, the inner carries the lift/drop.
+   Both are compositor-friendly, and the arc height/spin come in as inline
+   custom properties so each throw is shaped by its own distance. */
+@keyframes ludo-fling-travel {
+  from { transform: translate(-50%, -50%); }
+  to   { transform: translate(calc(-50% + var(--fling-dx)), calc(-50% + var(--fling-dy))); }
+}
+@keyframes ludo-fling-arc {
+  0%   { transform: translateY(0) scale(0.55) rotate(0deg); opacity: 0; }
+  12%  { opacity: 1; }
+  50%  { transform: translateY(calc(-1 * var(--fling-lift))) scale(1.15) rotate(calc(var(--fling-spin) * 0.5)); }
+  100% { transform: translateY(0) scale(0.9) rotate(var(--fling-spin)); opacity: 1; }
+}
+.ludo-fling {
+  animation: ludo-fling-travel 720ms cubic-bezier(0.35, 0, 0.7, 1) forwards;
+}
+.ludo-fling-arc {
+  animation: ludo-fling-arc 720ms ease-in-out forwards;
+}
+
+/* Splash ring at the landing point — delayed to coincide with arrival. */
+@keyframes ludo-fling-impact {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
+  35%  { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); }
+}
+.ludo-fling-impact {
+  width: 3.2rem;
+  height: 3.2rem;
+  opacity: 0;
+  animation: ludo-fling-impact 520ms ease-out 660ms forwards;
+}
+
+/* The struck seat card flinches. Applied imperatively by useLudoBoard when a
+   targeted reaction lands, so no card needs to subscribe to reactions. */
+@keyframes ludo-hit-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20%      { transform: translateX(-4px) rotate(-1.6deg); }
+  45%      { transform: translateX(4px) rotate(1.6deg); }
+  70%      { transform: translateX(-2px) rotate(-0.8deg); }
+}
+.ludo-hit-shake { animation: ludo-hit-shake 420ms ease-in-out; }
 
 /* UNO — comedic "hit" flourish, per live user request ("funny animations
    whenever player got fired by special power cards"): a bouncy overshoot
