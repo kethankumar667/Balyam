@@ -24,6 +24,9 @@ import {
   Confetti,
   ShuffleFlourish,
   BotThinkingDots,
+  StarRoomBackdrop,
+  StarLogo,
+  RoundProgress,
 } from "./star-shared";
 
 /**
@@ -294,7 +297,25 @@ export default function StarBoardMobile(props: StarBoardProps) {
       case "shuffle":
         return <ActionButton label="Shuffle!" onPress={m.shuffle} disabled={!m.iAmShuffling} />;
       case "pass":
-        return <ActionButton label="PASS" onPress={m.pass} disabled={!m.iNeedToPass} tone="pass" />;
+        // Names its destination and states the cost, same as desktop — on a
+        // phone the table is small, so the button is often the clearest place
+        // to learn who you are actually handing a slip to.
+        return (
+          <div className="flex flex-col gap-1">
+            <ActionButton
+              label={m.passTargetName ? `PASS TO ${m.passTargetName.toUpperCase()} →` : "PASS"}
+              onPress={m.pass}
+              disabled={!m.iNeedToPass}
+              tone="pass"
+            />
+            {m.iNeedToPass && m.passTargetName && (
+              <p className="text-center text-[11px]" style={{ color: PAPER.pencil }}>
+                You will have {Math.max(0, m.myHand.length - 1)} · {m.passTargetName} will have{" "}
+                {m.passTargetCount + 1}
+              </p>
+            )}
+          </div>
+        );
       case "roundSummary":
         return <ActionButton label="Next round →" onPress={m.nextRound} disabled={false} />;
       default:
@@ -311,27 +332,33 @@ export default function StarBoardMobile(props: StarBoardProps) {
 
   return (
     <div
-      className="relative flex w-full flex-col overflow-x-hidden"
-      style={{ minHeight: "100dvh", background: PAGE_BG, color: PAPER.ink }}
+      className="relative flex w-full flex-col overflow-hidden"
+      // NO-SCROLL INVARIANT. `minHeight` was a floor, so any phase whose stage
+      // ran tall (the theme picker's 8 chits, a round summary table) pushed the
+      // page past the viewport. A hard `height` + `overflow-hidden` caps the
+      // shell; the game area below is the only scroller, so long content
+      // scrolls INSIDE the stage instead of moving the header and action bar
+      // off-screen. `100dvh` (not vh) so mobile browser chrome is accounted for.
+      style={{ height: "100dvh", background: PAGE_BG, color: PAPER.ink }}
     >
+      <StarRoomBackdrop />
       <GrainOverlay />
       {(m.iAmWinner || m.phase === "finished") && <Confetti count={30} />}
       {/* 1 — slim header: theme · round · deadline */}
       <header
-        className="flex items-center justify-between gap-2 border-b-2 px-3 py-2"
+        // `pr-24` reserves the top-right corner for Room's floating Leave
+        // button, which is positioned OVER the board rather than in flow —
+        // without it the button covers the deadline pill. `relative z-10`
+        // keeps this above StarRoomBackdrop, which is absolutely positioned
+        // and would otherwise paint over every non-positioned sibling.
+        className="relative z-10 flex items-center justify-between gap-2 border-b-2 px-3 py-2 pr-24"
         style={{ borderColor: PAPER.rim, background: PAPER.cream }}
       >
-        <h1 className="flex min-w-0 items-center gap-1.5 font-display text-sm font-black">
-          <span aria-hidden className="text-xl">
-            {m.theme.glyph}
-          </span>
-          <span className="truncate" style={{ color: PAPER.brown }}>
-            {m.theme.label}
-          </span>
-        </h1>
-        <span className="shrink-0 font-display text-xs font-bold tabular-nums" style={{ color: PAPER.pencil }}>
-          Round {m.round}/{m.totalRounds}
-        </span>
+        {/* Wordmark rather than the theme glyph: on a phone the header is the
+            only place the game gets to say its own name, and the theme is
+            already stated by every slip on screen. */}
+        <StarLogo compact />
+        <RoundProgress round={m.round} total={m.totalRounds} />
         <span className="flex min-w-[3.25rem] items-center justify-end gap-1.5">
           <TutorialButton onClick={() => tut.setOpen(true)} label="How to play Star Game" />
           <DeadlinePill deadline={m.deadline} />
@@ -340,7 +367,7 @@ export default function StarBoardMobile(props: StarBoardProps) {
 
       {/* phase title line, with starter/direction once it's known */}
       <h2
-        className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-center"
+        className="relative z-10 flex flex-col items-center gap-0.5 px-3 py-1.5 text-center"
         style={{ background: PAPER.cream, borderBottom: `1px dashed ${PAPER.rim}` }}
       >
         <span className="font-script text-base font-bold" style={{ color: PAPER.ink }}>
@@ -366,6 +393,10 @@ export default function StarBoardMobile(props: StarBoardProps) {
             lastPass={m.lastPass}
             thinkingBotId={m.thinkingBotId}
             starWinnerId={m.state.starWinnerId}
+            iAmEligible={m.iAmEligible}
+            iCanStack={m.iCanStack}
+            onPressStar={m.pressStar}
+            onPlaceHand={m.placeHand}
             width={340}
             height={260}
           />
@@ -373,7 +404,7 @@ export default function StarBoardMobile(props: StarBoardProps) {
       )}
 
       {/* 3 — game area (flex-1, centered) */}
-      <main className="flex flex-1 flex-col items-center justify-center gap-3 overflow-y-auto px-3 py-4">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto px-3 py-4">
         {renderStage()}
       </main>
 

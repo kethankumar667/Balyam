@@ -584,7 +584,7 @@ export default function Room() {
   return (
     <div
       className={
-        (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby"
+        (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby"
           ? "bhalyam-font bhalyam-paper h-dvh-safe overflow-hidden p-0"
           : ludoInPlay
             ? // Ludo's shells are viewport-locked and reserve EXACTLY this much
@@ -602,7 +602,7 @@ export default function Room() {
     >
       <div
         className={
-          (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby"
+          (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby"
             ? // No space-y here — the board fills the whole inner area
               // and any lastError banner overlays it via fixed positioning.
               "mx-auto h-full max-w-none"
@@ -650,10 +650,22 @@ export default function Room() {
           </header>
         )}
         {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && (
-          <header className="flex items-center justify-end">
+          // Star Game runs full-bleed on its own desk surface, so this header
+          // must FLOAT over the board. In normal flow it consumed a strip of
+          // the cream page above the desk, which read as a stray band across
+          // the top of the table. Every other game here still lays it out
+          // inline. The board is the only way out of the room, so the button
+          // itself stays put — it is just no longer taking layout space.
+          <header
+            className={
+              roomState.game === "stargame"
+                ? "pointer-events-none absolute right-3 top-3 z-30 flex items-center justify-end"
+                : "flex items-center justify-end"
+            }
+          >
             <button
               onClick={leaveRoom}
-              className="text-sm bg-[#4A3F35] hover:bg-[#3F352C] text-[#FFF3E3] px-3 py-1.5 rounded"
+              className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] text-[#FFF3E3] px-3 py-1.5 rounded shadow-lg"
             >
               Leave
             </button>
@@ -679,7 +691,7 @@ export default function Room() {
 
         <div
           className={(() => {
-            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby";
+            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby";
             const compactPlay = !fullPlay && roomState.phase !== "lobby";
             if (fullPlay) return "h-full";
             // Compact gameplay: the side rail collapses into the floating
@@ -690,7 +702,7 @@ export default function Room() {
         >
           <div
             className={(() => {
-              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno") && roomState.phase !== "lobby";
+              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby";
               const compactPlay = !fullPlay && roomState.phase !== "lobby";
               if (fullPlay) return "h-full";
               if (compactPlay) return "w-full space-y-4";

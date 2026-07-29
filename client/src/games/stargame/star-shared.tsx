@@ -24,30 +24,257 @@ import type { StarSeat } from "./useStarBoard";
  * gold are reserved for large headings, borders and decoration.
  */
 
+/**
+ * CHIT ★ STAR theme tokens.
+ *
+ * NOTE ON THE NAME: this was a light paper/kraft palette and every component in
+ * the game reads from it, so the KEYS are kept (`cream`, `ink`, `paper` …) while
+ * the VALUES were inverted to the dark arcade look. Read them by ROLE, not by
+ * the colour word:
+ *   page/creamDeep = deepest background · cream = panel · paper = raised surface
+ *   ink = primary text · pencil = muted text · rim = border
+ * Renaming ~400 call sites would have been churn with no visual payoff.
+ */
 export const PAPER = {
-  // surfaces
-  page: "#F0E0C0",
-  cream: "#F7ECD2",
-  creamDeep: "#E8D3A6",
-  paper: "#FCF5E4",
-  kraft: "#D7B98B",
-  // ink + wood
-  ink: "#3D2B17",
-  brown: "#6D4323",
-  woodDark: "#46291520",
-  pencil: "#8A7355",
+  // surfaces — deep indigo, lit from the table outward
+  page: "#0A0F20",
+  cream: "#151C34",
+  creamDeep: "#0D1428",
+  paper: "#1E2745",
+  kraft: "#2A3358",
+  // text
+  ink: "#ECF2FF",
+  brown: "#FFD166",
+  woodDark: "#00000055",
+  pencil: "#93A2C7",
+  // the table itself — warm wood, the one warm mass in a cool room
+  desk: "#6B4423",
+  deskDeep: "#3E2513",
+  deskEdge: "#241408",
   // accents
-  rim: "#C9A86A",
-  gold: "#E4B128",
-  goldDeep: "#B9831C",
-  terracotta: "#C2683F",
-  clay: "#A6531F",
-  olive: "#6E7B3C",
-  red: "#B23A2E",
-  green: "#5C7A3A",
-  tape: "rgba(226,205,150,0.72)",
-  slate: "#5A6B7A",
+  rim: "#2E3A63",
+  gold: "#FFC53D",
+  goldDeep: "#E0951C",
+  terracotta: "#F0803C",
+  clay: "#C2541E",
+  olive: "#8FBF4D",
+  red: "#F2555A",
+  green: "#3ED598",
+  tape: "rgba(255,214,102,0.30)",
+  slate: "#8698C4",
 } as const;
+
+/** Per-seat neon, assigned by seat index — the glowing rings in the reference.
+ *  Distinct at a glance and colour-blind-separable by lightness as well as hue. */
+export const SEAT_NEON: readonly { ring: string; glow: string; slip: string }[] = [
+  { ring: "#8B7BFF", glow: "rgba(139,123,255,0.55)", slip: "#4A3FA8" },
+  { ring: "#3ED598", glow: "rgba(62,213,152,0.55)", slip: "#1F7A56" },
+  { ring: "#38BDF8", glow: "rgba(56,189,248,0.55)", slip: "#1B6FA8" },
+  { ring: "#FF8A4C", glow: "rgba(255,138,76,0.55)", slip: "#A8501F" },
+  { ring: "#F471B5", glow: "rgba(244,113,181,0.55)", slip: "#A32E6B" },
+  { ring: "#FBBF24", glow: "rgba(251,191,36,0.55)", slip: "#9A6B0E" },
+  { ring: "#5EEAD4", glow: "rgba(94,234,212,0.55)", slip: "#177F72" },
+  { ring: "#C084FC", glow: "rgba(192,132,252,0.55)", slip: "#6B2FA8" },
+];
+
+export const seatNeon = (i: number) => SEAT_NEON[((i % SEAT_NEON.length) + SEAT_NEON.length) % SEAT_NEON.length];
+
+/**
+ * The room the table sits in. A supplied photograph, deliberately pushed back
+ * behind a scrim: UI panels sit on top of it and have to stay readable, so the
+ * image contributes ATMOSPHERE, never contrast. `PAGE_BG`'s gradients still
+ * paint underneath, so if the file is ever missing the screen degrades to the
+ * procedural room rather than going blank.
+ */
+export function StarRoomBackdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: "url('/illustrations/Stargame/stargame-room.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          // Tuned by eye against a live screenshot. At 0.40 the room was
+          // technically present and visually absent — no point shipping art
+          // nobody can see. This is the most it can carry before the side
+          // rails start fighting it for attention.
+          opacity: 0.72,
+        }}
+      />
+      {/* Scrim. Lightest over the centre, where the table wants the room to
+          show through, and heaviest at the edges, where the rails sit. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: [
+            `radial-gradient(58% 50% at 50% 46%, rgba(10,15,32,0.04), rgba(6,9,20,0.72) 82%)`,
+            `linear-gradient(180deg, rgba(8,12,28,0.34) 0%, rgba(5,8,18,0.12) 45%, rgba(3,5,12,0.72) 100%)`,
+          ].join(", "),
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * CHIT ★ STAR wordmark. Drawn, not an image — it stays crisp at any size and
+ * the star can carry the same gold glow as the one on the table.
+ */
+export function StarLogo({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="flex select-none flex-col leading-none" aria-label="Chit Star">
+      <div className="flex items-center gap-1.5 font-display font-black tracking-tight"
+           style={{ fontSize: compact ? "1.15rem" : "1.6rem" }}>
+        <span style={{ color: "#EAF2FF", textShadow: "0 2px 10px rgba(120,160,255,0.45)" }}>CHIT</span>
+        <svg
+          viewBox="0 0 24 24"
+          width={compact ? 18 : 24}
+          height={compact ? 18 : 24}
+          aria-hidden
+          style={{ filter: `drop-shadow(0 0 6px ${PAPER.gold}) drop-shadow(0 0 14px ${PAPER.gold}88)` }}
+        >
+          <path
+            d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.7 5.6 21.2 7 14.1l-5.3-5 7.2-.9z"
+            fill={PAPER.gold}
+            stroke={PAPER.goldDeep}
+            strokeWidth="1"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span style={{ color: PAPER.gold, textShadow: `0 2px 12px ${PAPER.gold}66` }}>STAR</span>
+      </div>
+      {!compact && (
+        <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ color: PAPER.pencil }}>
+          The Slip Passing Game
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Segmented round progress — one pill per round, filled up to the current one.
+ * Reads as "how far through the match are we" at a glance, which a bare
+ * "Round 4/9" label does not.
+ */
+export function RoundProgress({ round, total }: { round: number; total: number }) {
+  const safeTotal = Math.max(1, total);
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="font-display text-xs font-black uppercase tracking-[0.18em]" style={{ color: PAPER.ink }}>
+        Round {Math.min(round, safeTotal)} / {safeTotal}
+      </span>
+      <div className="flex items-center gap-1" role="img" aria-label={`Round ${round} of ${safeTotal}`}>
+        {Array.from({ length: safeTotal }, (_, i) => {
+          const done = i < round - 1;
+          const now = i === round - 1;
+          return (
+            <span
+              key={i}
+              className="h-1.5 rounded-full transition-all"
+              style={{
+                width: now ? 26 : 16,
+                background: now ? PAPER.gold : done ? "#6E7BB5" : "#2A3358",
+                boxShadow: now ? `0 0 10px ${PAPER.gold}AA` : undefined,
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * GAME FLOW — the round's beats, with the CURRENT one lit.
+ *
+ * The reference shows this as a static numbered list. Bound to the live phase
+ * instead it stops being decoration and becomes the answer to "what is
+ * happening and what comes next", which matters here because the rules are
+ * unusual: a secret pick, a relay, then two different reflex races.
+ */
+const FLOW_STEPS: { phase: StarPhase; label: string }[] = [
+  { phase: "themeSelect", label: "Pick a secret value" },
+  { phase: "shuffle", label: "Starter shuffles" },
+  { phase: "deal", label: "Four chits each" },
+  { phase: "pass", label: "Pass slips in order" },
+  { phase: "star", label: "Four same → tap STAR" },
+  { phase: "handstack", label: "Hands on the line" },
+  { phase: "roundSummary", label: "Score & repeat" },
+];
+
+export function GameFlowPanel({ phase }: { phase: StarPhase }) {
+  const activeIdx = FLOW_STEPS.findIndex((s) => s.phase === phase);
+  return (
+    <ol className="space-y-1">
+      {FLOW_STEPS.map((s, i) => {
+        const now = i === activeIdx;
+        const done = activeIdx >= 0 && i < activeIdx;
+        return (
+          <li
+            key={s.phase}
+            className="flex items-center gap-2 rounded-lg px-1.5 py-1 transition"
+            style={{
+              background: now ? `${PAPER.gold}1A` : undefined,
+              boxShadow: now ? `inset 0 0 0 1px ${PAPER.gold}55` : undefined,
+            }}
+            aria-current={now ? "step" : undefined}
+          >
+            <span
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-black tabular-nums"
+              style={{
+                background: now ? PAPER.gold : done ? "#3A4570" : "transparent",
+                border: now || done ? "none" : `1px solid ${PAPER.rim}`,
+                color: now ? "#2A2115" : done ? PAPER.ink : PAPER.pencil,
+              }}
+            >
+              {done ? "✓" : i + 1}
+            </span>
+            <span
+              className="truncate text-[11px]"
+              style={{
+                color: now ? PAPER.ink : done ? PAPER.pencil : PAPER.slate,
+                fontWeight: now ? 800 : 500,
+              }}
+            >
+              {s.label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** Circular dark icon button — the sound/help/settings cluster. */
+export function StarIconButton({
+  onClick,
+  label,
+  children,
+}: {
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
+      style={{
+        background: PAPER.cream,
+        border: `1.5px solid ${PAPER.rim}`,
+        color: PAPER.ink,
+        boxShadow: "0 4px 12px -4px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 /** Subtle monochrome paper grain (inline SVG, no asset). Layer at low opacity. */
 const GRAIN = `url("data:image/svg+xml;utf8,${encodeURIComponent(
@@ -74,8 +301,19 @@ export function GrainOverlay({ vignette = true }: { vignette?: boolean }) {
   );
 }
 
-/** Warm page background gradient shared by both shells' roots. */
-export const PAGE_BG = `radial-gradient(120% 90% at 50% -10%, ${PAPER.cream}, ${PAPER.page} 55%, ${PAPER.creamDeep})`;
+/**
+ * The desk both shells sit on — a warm walnut surface lit from above, with a
+ * faint grain running across it. Everything the game renders is PAPER, so the
+ * page itself has to be the one thing that isn't: cream panels on a cream page
+ * gave the screen no figure/ground at all.
+ */
+export const PAGE_BG = [
+  // warm pool where the table sits — the room's only light source
+  `radial-gradient(58% 46% at 50% 44%, rgba(255,178,84,0.16), transparent 72%)`,
+  // cool rim light from above, so the top edge doesn't read as flat black
+  `radial-gradient(120% 70% at 50% -12%, rgba(96,128,255,0.14), transparent 62%)`,
+  `linear-gradient(180deg, #101838 0%, ${PAPER.page} 52%, #05080F 100%)`,
+].join(", ");
 
 /** Stable, value-derived tiny rotation so chits feel hand-stacked, not aligned. */
 function tilt(seed: string): number {
@@ -145,18 +383,22 @@ export function Chit({
         "flex items-center justify-center text-center",
         interactive ? "cursor-pointer" : "cursor-default",
       ].join(" ")}
+      // The slip face stays LIGHT on the dark theme — a paper chit lit by the
+      // lamp over the table. These are deliberate literals, not PAPER tokens:
+      // those inverted to dark surfaces, and feeding them here produced a
+      // half-dark gradient with light text on a light lower half, i.e. an
+      // unreadable smudge. Colour identity lives on the RIM and the glow.
       style={{
         background: faceDown
-          ? `repeating-linear-gradient(48deg, ${PAPER.kraft}, ${PAPER.kraft} 7px, #CBA87A 7px, #CBA87A 14px)`
-          : `linear-gradient(160deg, ${PAPER.paper}, #F2E6CC)`,
-        border: `1.5px solid ${armed ? PAPER.gold : PAPER.rim}`,
-        color: PAPER.ink,
+          ? `repeating-linear-gradient(48deg, #24305A, #24305A 7px, #1B2547 7px, #1B2547 14px)`
+          : `linear-gradient(168deg, #FFFDF6 0%, #F6EAD2 100%)`,
+        border: `2px solid ${armed ? PAPER.gold : faceDown ? PAPER.rim : "#D9C7A2"}`,
+        color: faceDown ? PAPER.pencil : "#2A2115",
         boxShadow: armed
-          ? `0 14px 22px -6px rgba(166,83,31,0.45), 0 0 0 3px rgba(228,177,40,0.35)`
-          : `0 6px 12px -4px rgba(70,41,21,0.32), inset 0 1px 0 rgba(255,255,255,0.6)`,
+          ? `0 16px 26px -8px rgba(0,0,0,0.7), 0 0 0 3px ${PAPER.gold}66, 0 0 22px ${PAPER.gold}55`
+          : `0 8px 16px -6px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.85)`,
       }}
     >
-      <Tape className="-top-1.5 left-1/2 -translate-x-1/2" rotate={armed ? 0 : rot * 1.4} />
       {/* fold crease */}
       <span
         aria-hidden
@@ -216,16 +458,21 @@ export function ThemeChitPicker({
             whileTap={!isTaken && selected == null ? { scale: 0.96 } : undefined}
             transition={{ delay: reduce ? 0 : i * 0.03, type: "spring", stiffness: 300, damping: 22 }}
             className="relative cursor-pointer rounded-lg px-2 py-3.5 text-center font-script text-lg font-bold disabled:cursor-not-allowed"
+            // Same rule as <Chit>: the slip FACE stays light on the dark
+            // theme, colour identity lives on the rim/glow. Literals, not
+            // PAPER tokens — those now resolve to dark surfaces and produced
+            // light text on a light half-gradient.
             style={{
-              background: isMine ? `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})` : `linear-gradient(160deg, ${PAPER.paper}, #F1E4C9)`,
-              border: `1.5px solid ${isMine ? PAPER.brown : PAPER.rim}`,
-              color: isTaken ? "#A8997E" : PAPER.ink,
+              background: isMine
+                ? `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})`
+                : `linear-gradient(168deg, #FFFDF6 0%, #F6EAD2 100%)`,
+              border: `2px solid ${isMine ? PAPER.gold : "#D9C7A2"}`,
+              color: isTaken ? "#9A8F7C" : "#2A2115",
               boxShadow: isMine
-                ? "0 10px 18px -6px rgba(166,83,31,0.45)"
-                : "0 5px 11px -4px rgba(70,41,21,0.28), inset 0 1px 0 rgba(255,255,255,0.6)",
+                ? `0 12px 22px -6px rgba(0,0,0,0.7), 0 0 0 3px ${PAPER.gold}55, 0 0 20px ${PAPER.gold}55`
+                : "0 8px 16px -6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.85)",
             }}
           >
-            <Tape className="-top-1.5 left-1/2 -translate-x-1/2" rotate={rot * 1.5} />
             <span aria-hidden className="mr-1">{glyph}</span>
             {v}
             {isMine && <span aria-hidden className="ml-1">✓</span>}
@@ -811,6 +1058,10 @@ export function StarTable({
   lastPass,
   thinkingBotId,
   starWinnerId,
+  iAmEligible = false,
+  iCanStack = false,
+  onPressStar,
+  onPlaceHand,
   width = 420,
   height = 340,
   children,
@@ -824,6 +1075,13 @@ export function StarTable({
   lastPass: { fromId: string; toId: string; cardId: string } | null;
   thinkingBotId: string | null;
   starWinnerId: string | null;
+  /** Local player holds four right now — the star is theirs to slap. */
+  iAmEligible?: boolean;
+  /** Star already claimed; the local player still has to get their hand down,
+   *  and arrival order decides points. */
+  iCanStack?: boolean;
+  onPressStar?: () => void;
+  onPlaceHand?: () => void;
   width?: number;
   height?: number;
   children?: React.ReactNode;
@@ -860,8 +1118,109 @@ export function StarTable({
 
   const lastPassKey = lastPass ? `${lastPass.fromId}-${lastPass.toId}-${lastPass.cardId}` : null;
 
+  // The table's own footprint — an ellipse just inside the seat ring, so seats
+  // sit ON its rim the way people sit around a real table.
+  const tableW = rx * 2 + 40;
+  const tableH = ry * 2 + 36;
+
   return (
     <div className="relative mx-auto" style={{ width, height }}>
+      {/* ── The table itself ──────────────────────────────────────────────
+          Everything used to float in empty space: seats, arrows and the value
+          legend with nothing underneath them. A surface is what turns a
+          scatter of avatars into people sitting around a game. Warm wood, so
+          it is the one warm mass in a cool room, lit from above-left. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 rounded-[50%]"
+        style={{
+          width: tableW,
+          height: tableH,
+          transform: "translate(-50%, -50%)",
+          background: [
+            `radial-gradient(58% 58% at 38% 26%, rgba(255,214,150,0.22), transparent 62%)`,
+            `radial-gradient(120% 120% at 50% 50%, ${PAPER.desk} 0%, ${PAPER.deskDeep} 62%, ${PAPER.deskEdge} 100%)`,
+          ].join(", "),
+          border: `2px solid rgba(255,197,61,0.22)`,
+          boxShadow: [
+            "0 40px 70px -24px rgba(0,0,0,0.85)",
+            "inset 0 2px 0 rgba(255,220,160,0.16)",
+            "inset 0 -30px 60px rgba(0,0,0,0.45)",
+          ].join(", "),
+        }}
+      />
+
+      {/* ── The STAR — the thing you slap, and what the game is named after.
+          Three states, driven by the engine's own rules:
+            · dormant  — nobody holds four yet. Dim, inert, no caption.
+            · ARMED    — YOU hold four. Lit, pulsing, tappable, captioned.
+            · claimed  — somebody slapped it; everyone else now races to get
+                         their hand down, and rank decides points.
+          Deliberately NOT lit for players who are merely watching someone
+          else be eligible: a target you cannot hit should not look live. */}
+      {(() => {
+        const armed = phase === "star" && iAmEligible;
+        const racing = phase === "handstack" && iCanStack;
+        const size = Math.min(tableW, tableH) * 0.34;
+        const hot = armed || racing;
+        const onTap = armed ? onPressStar : racing ? onPlaceHand : undefined;
+        return (
+          <div
+            className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1"
+            style={{ transform: "translate(-50%, -50%)" }}
+          >
+            <button
+              type="button"
+              onClick={onTap}
+              disabled={!onTap}
+              aria-label={
+                armed
+                  ? "Slap the star — you have four of a kind"
+                  : racing
+                    ? "Get your hand on the line"
+                    : "The star"
+              }
+              className={`rounded-full transition ${onTap ? "cursor-pointer active:scale-95" : "cursor-default"} focus:outline-none focus-visible:ring-4 focus-visible:ring-yellow-300`}
+              style={{ lineHeight: 0 }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width={size}
+                height={size}
+                className={hot && !reduce ? "star-pulse" : undefined}
+                style={{
+                  filter: hot
+                    ? `drop-shadow(0 0 12px ${PAPER.gold}) drop-shadow(0 0 34px ${PAPER.gold}CC)`
+                    : "drop-shadow(0 0 6px rgba(255,197,61,0.22))",
+                  opacity: hot ? 1 : 0.32,
+                }}
+              >
+                <path
+                  d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.7 5.6 21.2 7 14.1l-5.3-5 7.2-.9z"
+                  fill={hot ? PAPER.gold : "#6B7399"}
+                  stroke={hot ? PAPER.goldDeep : "#4A5378"}
+                  strokeWidth="0.9"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            {(armed || racing) && (
+              <div className="text-center">
+                <div
+                  className="font-display text-sm font-black uppercase tracking-[0.16em]"
+                  style={{ color: PAPER.gold, textShadow: `0 0 12px ${PAPER.gold}88` }}
+                >
+                  {armed ? "Tap the star" : "Hands on the line!"}
+                </div>
+                <div className="text-[10px] font-semibold" style={{ color: PAPER.pencil }}>
+                  {armed ? "You have four of a kind" : "Fastest hand scores higher"}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {phase === "pass" && n >= 2 && (
         <svg className="pointer-events-none absolute inset-0" width={width} height={height} aria-hidden>
           <defs>
@@ -917,6 +1276,7 @@ export function StarTable({
               active={isActive(s)}
               receiving={isReceiving(s)}
               thinking={thinkingBotId === s.id}
+              seatIndex={i}
             />
           </div>
         );
@@ -936,12 +1296,16 @@ function TableSeat({
   active,
   receiving,
   thinking,
+  seatIndex = 0,
 }: {
   seat: StarSeat;
   active: boolean;
   receiving: boolean;
   thinking: boolean;
+  /** Position in the ring — picks this seat's neon from SEAT_NEON. */
+  seatIndex?: number;
 }) {
+  const neon = seatNeon(seatIndex);
   const { pub, name, isSelf, isBot, isConnected } = seat;
   const statusText = thinking
     ? null // BotThinkingDots renders instead of text
@@ -963,15 +1327,21 @@ function TableSeat({
       >
         <div
           className="flex h-12 w-12 items-center justify-center rounded-full font-display text-base font-black text-white"
+          // Every seat used to be the same terracotta, so a five-player table
+          // was five identical orange discs. Each seat now owns a colour from
+          // SEAT_NEON and wears it as a glowing ring — the reference's main
+          // device for telling players apart at a glance. Gold still overrides
+          // it while a seat is ACTIVE, because whose turn it is has to beat
+          // identity.
           style={{
             background: active
               ? `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})`
-              : `linear-gradient(160deg, ${PAPER.terracotta}, ${PAPER.clay})`,
+              : `linear-gradient(160deg, ${neon.ring}, ${neon.slip})`,
             boxShadow: active
-              ? "0 0 0 4px rgba(228,177,40,0.32), inset 0 2px 4px rgba(255,255,255,0.3)"
+              ? `0 0 0 4px ${PAPER.gold}55, 0 0 22px ${PAPER.gold}88, inset 0 2px 4px rgba(255,255,255,0.3)`
               : receiving
-                ? "0 0 0 4px rgba(92,122,58,0.32), inset 0 2px 4px rgba(255,255,255,0.3)"
-                : "inset 0 2px 4px rgba(255,255,255,0.3)",
+                ? `0 0 0 4px ${PAPER.green}55, 0 0 20px ${PAPER.green}88, inset 0 2px 4px rgba(255,255,255,0.3)`
+                : `0 0 0 3px ${neon.glow}, 0 0 16px ${neon.glow}, inset 0 2px 4px rgba(255,255,255,0.28)`,
           }}
           aria-hidden
         >
