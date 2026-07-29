@@ -80,6 +80,14 @@ export interface StarBoardModel {
   starterId: string | null;
   /** seatOrder rotated to begin at starterId — the fixed relay route. */
   passOrder: string[];
+  /** Who the CURRENT passer hands to — always the next seat on the relay
+   *  route. Lets the pass button name its destination ("Pass to Bala") and
+   *  state the consequence, instead of an anonymous "Pass". */
+  passTargetId: string | null;
+  passTargetName: string | null;
+  /** How many slips that seat holds right now, so the UI can say what the
+   *  hand counts will be after the pass lands. */
+  passTargetCount: number;
   /** Most recent relay handoff, for the card-travel animation. Changes
    *  object identity every relay step (even same-direction repeats). */
   lastPass: { fromId: string; toId: string; cardId: string } | null;
@@ -237,6 +245,15 @@ export function useStarBoard(props: StarBoardProps): StarBoardModel {
     return rosterById.get(actorId)?.isBot ? actorId : null;
   }, [state.phase, state.shuffleTurnId, state.currentPasserId, selfId, rosterById]);
 
+  /** The seat the current passer hands to — one step along the relay route,
+   *  wrapping at the end (which is how the lap closes back onto the starter). */
+  const passTargetId = ((): string | null => {
+    if (state.phase !== "pass" || !state.currentPasserId) return null;
+    const i = state.passOrder.indexOf(state.currentPasserId);
+    if (i < 0) return null;
+    return state.passOrder[(i + 1) % state.passOrder.length] ?? null;
+  })();
+
   return {
     state,
     players,
@@ -254,6 +271,7 @@ export function useStarBoard(props: StarBoardProps): StarBoardModel {
     myHand,
 
     iNeedToSelect: state.phase === "themeSelect" && !state.mySelectedValue,
+    // (passTargetId is derived just above the return — see below.)
     iAmShuffling: state.phase === "shuffle" && state.shuffleTurnId === selfId,
     iNeedToPass: state.phase === "pass" && state.currentPasserId === selfId,
     iAmEligible: state.phase === "star" && me?.pub.starEligible === true && state.starWinnerId == null,
@@ -264,6 +282,11 @@ export function useStarBoard(props: StarBoardProps): StarBoardModel {
     nameOf,
 
     currentPasserId: state.currentPasserId,
+    passTargetId,
+    passTargetName: passTargetId ? nameOf(passTargetId) : null,
+    passTargetCount: passTargetId
+      ? (seats.find((s) => s.id === passTargetId)?.pub.cardCount ?? 0)
+      : 0,
     starterId: state.starterId,
     passOrder: state.passOrder,
     lastPass: state.lastPass,

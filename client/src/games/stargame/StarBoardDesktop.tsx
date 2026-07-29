@@ -14,7 +14,6 @@ import {
   PAPER,
   RoundInfoPanel,
   RoundSummaryTable,
-  Scoreboard,
   SeatTile,
   StarButton,
   StarTable,
@@ -26,6 +25,11 @@ import {
   Confetti,
   ShuffleFlourish,
   BotThinkingDots,
+  StarLogo,
+  RoundProgress,
+  StarIconButton,
+  StarRoomBackdrop,
+  GameFlowPanel,
 } from "./star-shared";
 
 /**
@@ -106,6 +110,11 @@ export default function StarBoardDesktop(props: StarBoardProps) {
     m.placeHand,
   ]);
 
+  // Same ordering the retired Scoreboard used, so merging the two panels
+  // loses no information.
+  const rankedSeats = [...m.seats].sort(
+    (a, b) => b.pub.score - a.pub.score || b.pub.roundWins - a.pub.roundWins,
+  );
   const selectedCount = m.seats.filter((s) => s.pub.hasSelected).length;
   const shuffledCount = m.seats.filter((s) => s.pub.hasShuffled).length;
 
@@ -123,24 +132,52 @@ export default function StarBoardDesktop(props: StarBoardProps) {
   return (
     <div
       className="relative flex h-full min-h-0 w-full flex-col font-sans"
+      // Text colour flips to paper: the page is now a DESK, so anything not
+      // inside a cream panel would otherwise be dark-brown ink on dark wood.
       style={{ background: PAGE_BG, color: PAPER.ink }}
     >
+      <StarRoomBackdrop />
       <GrainOverlay />
       {(m.iAmWinner || m.phase === "finished") && <Confetti count={34} />}
+
+      {/* ── Title bar: wordmark · round progress · controls ─────────────── */}
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 px-4 pb-1 pt-3">
+        <StarLogo />
+        <RoundProgress round={m.round} total={m.totalRounds} />
+        {/* `pr-24` keeps this cluster clear of Room's floating Leave button,
+            which is positioned over the board rather than laid out in flow. */}
+        <div className="flex items-center gap-2 pr-24">
+          <StarIconButton onClick={() => tut.setOpen(true)} label="How to play Star Game">
+            ?
+          </StarIconButton>
+        </div>
+      </header>
+
       {/* ── Workspace: three columns ───────────────────────────────────── */}
       <div
-        className="grid min-h-0 flex-1 gap-3 p-3"
+        className="relative z-10 grid min-h-0 flex-1 gap-3 p-3 pt-1"
         style={{ gridTemplateColumns: "260px 1fr 300px" }}
       >
         {/* LEFT — standings, roster, round info */}
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
-          <Panel title="Standings">
-            <Scoreboard seats={m.seats} />
-          </Panel>
-
-          <Panel title="Players" bodyClass="space-y-1.5">
-            {m.seats.map((s) => (
-              <SeatTile key={s.id} seat={s} active={isActiveSeat(s)} phase={m.phase} />
+          {/* One roster, ranked. "Standings" and "Players" used to be two
+              stacked panels listing the same four people with the same four
+              scores — ~380px of the rail spent saying everything twice. The
+              seat tiles already carry avatar, you/bot and score, so ranking
+              them by wins makes this the standings as well. */}
+          <Panel title="At the table" bodyClass="space-y-1.5">
+            {rankedSeats.map((s, i) => (
+              <div key={s.id} className="flex items-center gap-2">
+                <span
+                  className="w-4 shrink-0 text-right font-display text-xs font-black tabular-nums"
+                  style={{ color: i === 0 ? PAPER.goldDeep : PAPER.pencil }}
+                >
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <SeatTile seat={s} active={isActiveSeat(s)} phase={m.phase} />
+                </div>
+              </div>
             ))}
           </Panel>
 
@@ -151,11 +188,19 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
         {/* CENTER — the felt, with the circular table as its centerpiece */}
         <main
-          className="relative flex min-h-0 flex-col overflow-y-auto rounded-3xl border-2 p-6"
+          // `self-center` + `max-h-full` makes the sheet SHRINK-WRAP its
+          // content instead of stretching to fill the grid row. A real sheet of
+          // paper is the size of the sheet; stretching it left the chits
+          // marooned in the middle of a vast empty page.
+          className="relative flex min-h-0 max-h-full self-center flex-col overflow-y-auto rounded-3xl border-2 p-6"
+          // The big sheet in the middle of the desk — where the round happens.
+          // Lifted hardest of all the surfaces so the eye lands here first.
           style={{
             borderColor: PAPER.rim,
-            background: `radial-gradient(circle at 50% 0%, ${PAPER.page}, ${PAPER.cream})`,
-            boxShadow: "inset 0 2px 16px rgba(109,67,35,0.08)",
+            background: `radial-gradient(circle at 50% 0%, ${PAPER.paper}, ${PAPER.cream} 70%, ${PAPER.page})`,
+            color: PAPER.ink,
+            boxShadow:
+              "0 24px 48px -16px rgba(0,0,0,0.6), inset 0 2px 16px rgba(109,67,35,0.08), 0 2px 0 rgba(255,255,255,0.55) inset",
           }}
           aria-live="polite"
         >
@@ -173,6 +218,10 @@ export default function StarBoardDesktop(props: StarBoardProps) {
                 lastPass={m.lastPass}
                 thinkingBotId={m.thinkingBotId}
                 starWinnerId={m.state.starWinnerId}
+                iAmEligible={m.iAmEligible}
+                iCanStack={m.iCanStack}
+                onPressStar={m.pressStar}
+                onPlaceHand={m.placeHand}
                 width={480}
                 height={360}
               >
@@ -187,7 +236,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
         {/* RIGHT — theme + live status. Activity ledger removed (UI only —
             server still tracks it in state.activity for any future use). */}
-        <aside className="flex min-h-0 flex-col gap-3">
+        <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto pl-0.5">
           <Panel title="Theme">
             <div className="flex items-center gap-3">
               <div
@@ -211,8 +260,6 @@ export default function StarBoardDesktop(props: StarBoardProps) {
             </div>
           </Panel>
 
-          <div className="min-h-0 flex-1" />
-
           <Panel title="Now">
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-sm font-bold" style={{ color: PAPER.ink }}>
@@ -225,14 +272,76 @@ export default function StarBoardDesktop(props: StarBoardProps) {
               </div>
             </div>
           </Panel>
+
+          {/* SCORE BOARD — running totals, ranked. Distinct from the left
+              rail's roster, which is about who is at the table and what they
+              are doing right now; this is purely who is winning. */}
+          <Panel title="Score board" bodyClass="space-y-1">
+            {rankedSeats.map((s, i) => (
+              <div
+                key={s.id}
+                className="flex items-center gap-2 rounded-lg px-1.5 py-1"
+                style={{ background: i === 0 ? `${PAPER.gold}14` : undefined }}
+              >
+                <span
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-black tabular-nums"
+                  style={{
+                    background: i === 0 ? PAPER.gold : "#2A3358",
+                    color: i === 0 ? "#2A2115" : PAPER.pencil,
+                  }}
+                >
+                  {i + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12px] font-bold" style={{ color: PAPER.ink }}>
+                  {s.name}
+                  {s.isSelf && <span className="ml-1 text-[10px]" style={{ color: PAPER.pencil }}>you</span>}
+                </span>
+                <span className="shrink-0 font-display text-[13px] font-black tabular-nums" style={{ color: PAPER.gold }}>
+                  {s.pub.score}
+                </span>
+              </div>
+            ))}
+          </Panel>
+
+          {/* ROUND RESULT — only once there IS one. An empty "last round"
+              panel in round 1 is a hole, not information. */}
+          {m.state.lastResult && (
+            <Panel title={`Round ${m.state.lastResult.round} result`}>
+              <RoundSummaryTable result={m.state.lastResult} seats={m.seats} nameOf={m.nameOf} />
+            </Panel>
+          )}
+
+          <Panel title="Game flow">
+            <GameFlowPanel phase={m.phase} />
+          </Panel>
         </aside>
       </div>
 
       {/* ── Persistent bottom hand rail ────────────────────────────────── */}
       <div
-        className="flex shrink-0 items-center gap-4 border-t-2 px-4 py-3"
-        style={{ borderColor: PAPER.rim, background: PAPER.cream }}
+        className="relative z-10 flex shrink-0 items-center gap-4 border-t-2 px-4 py-3"
+        // Your own hand — the strip of paper nearest you on the desk.
+        style={{
+          borderColor: PAPER.rim,
+          background: PAPER.cream,
+          color: PAPER.ink,
+          boxShadow: "0 -12px 26px -14px rgba(0,0,0,0.6)",
+        }}
       >
+        {/* "SELECT A SLIP TO PASS" — the rail is only an instruction while it
+            is actually your turn; the rest of the time it is just your hand. */}
+        {m.phase === "pass" && m.iNeedToPass && m.myHand.length > 0 && (
+          <div className="flex shrink-0 items-center gap-2 pr-1">
+            <span
+              className="max-w-[6.5rem] font-display text-[11px] font-black uppercase leading-tight tracking-[0.14em]"
+              style={{ color: PAPER.pencil }}
+            >
+              Select a slip to pass
+            </span>
+            <span aria-hidden style={{ color: PAPER.gold }}>→</span>
+          </div>
+        )}
+
         <div className="min-w-0 flex-1">
           {m.myHand.length > 0 ? (
             <DraggableChitRail
@@ -253,7 +362,13 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
         <div className="flex shrink-0 flex-col items-end gap-2">
           {m.phase === "pass" && (
-            <PassButton onPass={m.pass} disabled={!m.iNeedToPass} />
+            <PassToButton
+              onPass={m.pass}
+              disabled={!m.iNeedToPass}
+              toName={m.passTargetName}
+              myCount={m.myHand.length}
+              theirCount={m.passTargetCount}
+            />
           )}
           {m.phase === "handstack" && !m.iAmWinner && (
             <HandStackButtonCompact
@@ -409,19 +524,15 @@ function CenterContent({
 
     case "pass":
       return (
+        // NOTHING sits in the middle of the table on your own turn any more.
+        // The action moved to the bottom rail (hand + "Pass to <name>"), and
+        // leaving the old big PASS button here put a slab over the star and
+        // over your own seat — two copies of one action, the louder of which
+        // covered the thing the game is named after. The table shows the
+        // TABLE; the rail shows what you do.
         <div className="flex w-44 flex-col items-center gap-3 text-center">
-          <ValuesLegend values={m.state.valuesInPlay} glyph={m.theme.glyph} />
-          {m.iNeedToPass ? (
-            <>
-              <p className="font-script text-xl font-bold leading-tight" style={{ color: PAPER.brown }}>
-                Arm a chit & pass <span aria-hidden>⟳</span>
-              </p>
-              <PassButton onPass={m.pass} disabled={!m.iNeedToPass} big />
-              <p className="text-[11px]" style={{ color: PAPER.pencil }}>
-                {m.state.myArmedCardId ? "Armed — slide it on!" : "Pick a chit from your rail"}
-              </p>
-            </>
-          ) : m.isBotThinking ? (
+          {!m.iNeedToPass && <ValuesLegend values={m.state.valuesInPlay} glyph={m.theme.glyph} />}
+          {m.iNeedToPass ? null : m.isBotThinking ? (
             <p className="flex items-center justify-center gap-2 font-script text-xl font-bold" style={{ color: PAPER.pencil }}>
               {m.nameOf(m.currentPasserId ?? "")} is thinking
               <BotThinkingDots />
@@ -513,7 +624,14 @@ function Panel({
   return (
     <section
       className={`rounded-2xl border-2 ${className}`}
-      style={{ borderColor: PAPER.rim, background: PAPER.cream }}
+      // Sheets of paper resting ON the desk: ink text, and a cast shadow so
+      // they lift off the wood instead of being flush with it.
+      style={{
+        borderColor: PAPER.rim,
+        background: PAPER.cream,
+        color: PAPER.ink,
+        boxShadow: "0 10px 22px -8px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.5) inset",
+      }}
     >
       {title && (
         <h2
@@ -525,6 +643,69 @@ function Panel({
       )}
       <div className={`p-3 ${bodyClass}`}>{children}</div>
     </section>
+  );
+}
+
+/**
+ * The pass action, named and consequential.
+ *
+ * "Pass ⟳" told you nothing: not who receives it, and not what it costs you.
+ * Both facts are already in the model, and stating them turns a blind button
+ * into a decision — you can see you are about to drop to 3 while handing the
+ * next player a 5th slip, which is exactly the tension the game runs on.
+ */
+function PassToButton({
+  onPass,
+  disabled,
+  toName,
+  myCount,
+  theirCount,
+}: {
+  onPass: () => void;
+  disabled: boolean;
+  toName: string | null;
+  myCount: number;
+  theirCount: number;
+}) {
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={onPass}
+        disabled={disabled}
+        aria-label={toName ? `Pass your selected slip to ${toName}` : "Pass your selected slip"}
+        className="flex items-center gap-2 rounded-2xl border-2 px-6 py-3 font-display text-base font-black uppercase tracking-wide transition active:scale-95 disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
+        style={{
+          background: disabled
+            ? PAPER.kraft
+            : `linear-gradient(160deg, #4C7DF0, #2B4FB8)`,
+          borderColor: disabled ? PAPER.rim : "#7BA3FF",
+          color: disabled ? PAPER.pencil : "#FFFFFF",
+          boxShadow: disabled ? undefined : "0 10px 24px -10px rgba(76,125,240,0.9), 0 0 18px rgba(76,125,240,0.35)",
+          opacity: disabled ? 0.65 : 1,
+        }}
+      >
+        <span className="leading-tight">
+          {toName ? (
+            <>
+              Pass to
+              <br />
+              {toName}
+            </>
+          ) : (
+            "Pass"
+          )}
+        </span>
+        <span aria-hidden>→</span>
+      </button>
+      {!disabled && toName && (
+        <p className="text-right text-[10px] leading-snug" style={{ color: PAPER.pencil }}>
+          You will have {Math.max(0, myCount - 1)} slips
+          <br />
+          {toName} will have {theirCount + 1} slips
+        </p>
+      )}
+    </div>
   );
 }
 

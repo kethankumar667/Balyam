@@ -368,8 +368,28 @@ export class StarGameEngine implements GameEngine {
     const hand = this.hands.get(pid) ?? [];
     if (hand.length === 0) return { ok: false, error: "No cards to pass" };
     // Auto-arm the LAST card in hand order if nothing was explicitly
-    // selected — auto-pass always takes the last chit, never the first.
-    const cardId = this.armed.get(pid) ?? hand[hand.length - 1].id;
+    // selected — auto-pass always takes the last chit, never the first, so a
+    // player steers it by reordering their hand (see handleReorderHand).
+    //
+    // EXCEPT the chit just received. Incoming cards are appended to the end of
+    // the hand, so "last in hand order" is precisely what this seat was handed
+    // a moment ago. Blindly forwarding it makes every seat a relay: one chit
+    // orbits the table forever, every real hand stays frozen, and the player
+    // who opened the lap gets their own chit back round after round. Bots dodge
+    // this by picking randomly (applyAutoMove), but a HUMAN whose pass window
+    // lapses reaches this fallback via resolveDeadline() and hit the bug.
+    const justReceived = this.lastPass?.toId === pid ? this.lastPass.cardId : null;
+    let cardId = this.armed.get(pid);
+    if (!cardId) {
+      for (let i = hand.length - 1; i >= 0; i--) {
+        if (hand[i].id !== justReceived) {
+          cardId = hand[i].id;
+          break;
+        }
+      }
+      // Only reachable if the hand holds nothing but the received chit.
+      cardId ??= hand[hand.length - 1].id;
+    }
     const idx = hand.findIndex((c) => c.id === cardId);
     if (idx < 0) return { ok: false, error: "You don't hold that card" };
     const [card] = hand.splice(idx, 1);
