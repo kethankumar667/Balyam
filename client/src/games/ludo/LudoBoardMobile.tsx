@@ -7,6 +7,7 @@ import {
   LudoOverlays,
   LudoPlayerCards,
   LudoBottomBar,
+  LudoTurnCallout,
 } from "./ludo-board-composites";
 
 /** The board is never allowed past this, matching the desktop shell. */
@@ -64,8 +65,18 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
           only. The board is width-bound on a portrait phone, so every pixel of
           side padding comes straight off the playing surface — while the rest
           of the shell still wants its padding. */}
-      <div ref={boardRowRef} className="flex-1 min-h-0 flex items-center justify-center -mx-1.5 sm:mx-0">
-        <LudoBoardArea m={m} state={state} players={players} maxWidth={`${boardPx}px`} />
+      {/* Board + turn callout share one flex column. The board keeps its own
+          `flex-1` slot (and the ResizeObserver with it), so the callout's
+          height is subtracted from the measurement rather than guessed —
+          the board is still the largest square that fits what's left, and
+          the no-scroll invariant above still holds. The callout spends part
+          of the ~124px of blank paper that `items-center` used to leave under
+          a width-bound board. */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 -mx-1.5 sm:mx-0">
+        <div ref={boardRowRef} className="w-full flex-1 min-h-0 flex items-center justify-center">
+          <LudoBoardArea m={m} state={state} players={players} maxWidth={`${boardPx}px`} />
+        </div>
+        <LudoTurnCallout m={m} state={state} />
       </div>
 
       <LudoPlayerCards state={state} players={players} row="bottom" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />

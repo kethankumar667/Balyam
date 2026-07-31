@@ -4,6 +4,7 @@ import type { StarPhase } from "@shared/types";
 import { useStarBoard } from "./useStarBoard";
 import type { StarBoardProps } from "./useStarBoard";
 import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/GameTutorial";
+import InlineRoomRail from "../../components/InlineRoomRail";
 import { STARGAME_TUTORIAL } from "../tutorials";
 import {
   PAPER,
@@ -104,6 +105,24 @@ export default function StarBoardMobile(props: StarBoardProps) {
 
   const selectedCount = m.seats.filter((s) => s.pub.hasSelected).length;
 
+  const rankedSeats = [...m.seats].sort(
+    (a, b) => b.pub.score - a.pub.score || b.pub.roundWins - a.pub.roundWins,
+  );
+
+  // Table sizing follows the viewport, so a 430px phone is not showing the
+  // same 340px table as a 360px one.
+  const [vw, setVw] = useState(() => (typeof window === "undefined" ? 390 : window.innerWidth));
+  useEffect(() => {
+    const onResize = () => setVw(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
+  const tableW = Math.max(280, Math.min(vw - 24, 460));
+
   /** The middle stage — one branch per phase (all eight handled). */
   function renderStage() {
     switch (m.phase) {
@@ -186,7 +205,10 @@ export default function StarBoardMobile(props: StarBoardProps) {
       case "pass":
         return (
           <div className="flex w-full flex-col items-center gap-3">
-            <ValuesLegend values={m.state.valuesInPlay} glyph={m.theme.glyph} />
+            {/* Legend moved OUT of the stage flow — see the header strip. On a
+                phone six theme values wrapped to two rows of pills and ate
+                ~90px of the vertical budget between the table and your hand,
+                which is the space the table actually wants. */}
 
             {/* Your hand — drag to reorder, tap to arm the chit you'll send. */}
             <DraggableChitRail
@@ -380,6 +402,35 @@ export default function StarBoardMobile(props: StarBoardProps) {
         )}
       </h2>
 
+      {/* Score strip + values. Scores were entirely ABSENT on mobile — there
+          was no way to know who was winning, on any screen, at any point in
+          the match. Desktop has a whole SCORE BOARD panel; a phone has no rail
+          to put one in, so it becomes one compact scrolling row. The values in
+          play ride the same strip rather than a block in the middle of the
+          stage. */}
+      <div
+        className="relative z-10 flex items-center gap-2 overflow-x-auto px-3 py-1.5"
+        style={{ background: PAPER.creamDeep, borderBottom: `1px solid ${PAPER.rim}` }}
+      >
+        {rankedSeats.map((s, i) => (
+          <span
+            key={s.id}
+            className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+            style={{
+              background: i === 0 ? `${PAPER.gold}22` : "transparent",
+              border: `1px solid ${i === 0 ? PAPER.gold : PAPER.rim}`,
+              color: PAPER.ink,
+            }}
+            title={`${s.name}: ${s.pub.score}`}
+          >
+            <span className="max-w-[4.5rem] truncate">{s.isSelf ? "You" : s.name}</span>
+            <span className="tabular-nums font-black" style={{ color: PAPER.gold }}>
+              {s.pub.score}
+            </span>
+          </span>
+        ))}
+      </div>
+
       {/* 2 — the circular table: persistent visual centerpiece */}
       {showTable && (
         <div className="flex justify-center py-3">
@@ -397,8 +448,11 @@ export default function StarBoardMobile(props: StarBoardProps) {
             iCanStack={m.iCanStack}
             onPressStar={m.pressStar}
             onPlaceHand={m.placeHand}
-            width={340}
-            height={260}
+            // Was a fixed 340x260, which wasted ~60px of a 430px phone and
+            // crowded seat labels into each other at 6+ players. Sized to the
+            // real viewport instead, capped so it never dominates a tablet.
+            width={tableW}
+            height={Math.round(tableW * 0.78)}
           />
         </div>
       )}
@@ -421,6 +475,30 @@ export default function StarBoardMobile(props: StarBoardProps) {
           {action}
         </div>
       )}
+
+      {/* Room controls live at the BOTTOM on a phone, like the reference's
+          nav bar. They were briefly in the header, where five icon buttons
+          plus the wordmark, round bar, tutorial and timer could not fit 430px
+          — everything collided into an unreadable pile. Down here they get a
+          row of their own and the header stays legible. */}
+      <div
+        className="relative z-10 flex shrink-0 items-center justify-center border-t px-3 py-1.5"
+        style={{
+          borderColor: PAPER.rim,
+          background: PAPER.creamDeep,
+          paddingBottom: action ? undefined : "max(0.375rem, env(safe-area-inset-bottom))",
+        }}
+      >
+        <InlineRoomRail
+          code={props.roomCode}
+          game="stargame"
+          phase={props.roomPhase}
+          players={props.players}
+          selfId={props.selfId}
+          messages={props.messages}
+          variant="dark"
+        />
+      </div>
 
       {tut.open && (
         <GameTutorial

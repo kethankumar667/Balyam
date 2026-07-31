@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useStarBoard } from "./useStarBoard";
 import type { StarBoardModel, StarBoardProps } from "./useStarBoard";
 import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/GameTutorial";
+import InlineRoomRail from "../../components/InlineRoomRail";
 import { STARGAME_TUTORIAL } from "../tutorials";
 import {
   Chit,
@@ -150,6 +151,18 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           <StarIconButton onClick={() => tut.setOpen(true)} label="How to play Star Game">
             ?
           </StarIconButton>
+          {/* Chat / voice / players / invite / reactions. Star Game was the
+              ONLY game in the app without this — no way to talk to the table,
+              and no way to even see the room code to invite anyone. */}
+          <InlineRoomRail
+            code={props.roomCode}
+            game="stargame"
+            phase={props.roomPhase}
+            players={props.players}
+            selfId={props.selfId}
+            messages={props.messages}
+            variant="dark"
+          />
         </div>
       </header>
 
@@ -160,26 +173,28 @@ export default function StarBoardDesktop(props: StarBoardProps) {
       >
         {/* LEFT — standings, roster, round info */}
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
-          {/* One roster, ranked. "Standings" and "Players" used to be two
-              stacked panels listing the same four people with the same four
-              scores — ~380px of the rail spent saying everything twice. The
-              seat tiles already carry avatar, you/bot and score, so ranking
-              them by wins makes this the standings as well. */}
-          <Panel title="At the table" bodyClass="space-y-1.5">
-            {rankedSeats.map((s, i) => (
-              <div key={s.id} className="flex items-center gap-2">
-                <span
-                  className="w-4 shrink-0 text-right font-display text-xs font-black tabular-nums"
-                  style={{ color: i === 0 ? PAPER.goldDeep : PAPER.pencil }}
-                >
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <SeatTile seat={s} active={isActiveSeat(s)} phase={m.phase} />
-                </div>
-              </div>
-            ))}
+          {/* GAME INFO, per the reference — and it also removes a duplication
+              I had reintroduced: a left roster listing every player and score
+              sat opposite a SCORE BOARD listing every player and score. The
+              players belong around the TABLE (where their seat colour, slip
+              count and turn state live) and in the score board. Naming them a
+              third time in the rail said nothing new. */}
+          <Panel title="Game info" bodyClass="space-y-2">
+            <InfoRow label="Room code" value={props.roomCode} mono />
+            <InfoRow label="Players" value={`${m.seats.length}`} />
+            <InfoRow label="Rounds" value={`${m.totalRounds}`} />
           </Panel>
+
+          {/* The values in play. This used to render in the middle of the
+              table, where five long theme values (Sridevi / Savitri /
+              Jayaprada …) stacked into a column that completely buried the
+              star. It is reference material, not a live control — the rail is
+              where it belongs. */}
+          {m.state.valuesInPlay.length > 0 && (
+            <Panel title="Values in play">
+              <ValuesLegend values={m.state.valuesInPlay} glyph={m.theme.glyph} />
+            </Panel>
+          )}
 
           <Panel title="Round">
             <RoundInfoPanel round={m.round} totalRounds={m.totalRounds} starterId={m.starterId} nameOf={m.nameOf} />
@@ -531,7 +546,7 @@ function CenterContent({
         // covered the thing the game is named after. The table shows the
         // TABLE; the rail shows what you do.
         <div className="flex w-44 flex-col items-center gap-3 text-center">
-          {!m.iNeedToPass && <ValuesLegend values={m.state.valuesInPlay} glyph={m.theme.glyph} />}
+          {/* Legend lives in the left rail now — nothing sits on the star. */}
           {m.iNeedToPass ? null : m.isBotThinking ? (
             <p className="flex items-center justify-center gap-2 font-script text-xl font-bold" style={{ color: PAPER.pencil }}>
               {m.nameOf(m.currentPasserId ?? "")} is thinking
@@ -816,4 +831,21 @@ function statusLine(m: StarBoardModel): string {
     default:
       return "";
   }
+}
+
+/** One label/value line in the GAME INFO panel. */
+function InfoRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[11px] uppercase tracking-wider" style={{ color: PAPER.pencil }}>
+        {label}
+      </span>
+      <span
+        className={`font-display text-sm font-black ${mono ? "tracking-[0.18em]" : "tabular-nums"}`}
+        style={{ color: mono ? PAPER.gold : PAPER.ink }}
+      >
+        {value}
+      </span>
+    </div>
+  );
 }
