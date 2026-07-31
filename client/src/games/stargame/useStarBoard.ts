@@ -245,11 +245,20 @@ export function useStarBoard(props: StarBoardProps): StarBoardModel {
     return rosterById.get(actorId)?.isBot ? actorId : null;
   }, [state.phase, state.shuffleTurnId, state.currentPasserId, selfId, rosterById]);
 
-  /** The seat the current passer hands to — one step along the relay route,
-   *  wrapping at the end (which is how the lap closes back onto the starter). */
+  /**
+   * The seat YOU hand to — one step along the relay route from your own
+   * position, wrapping at the end.
+   *
+   * This used to key off `currentPasserId`, which meant your own Pass button
+   * was labelled with whoever the ACTIVE player hands to. Waiting your turn,
+   * it read "Pass to Guddu" (Chinnu's destination) and then silently changed
+   * to your real target the moment your turn arrived — and the consequence
+   * line described a pass you were not making. Your destination never changes
+   * during a lap, so deriving it from `selfId` is both correct and stable.
+   */
   const passTargetId = ((): string | null => {
-    if (state.phase !== "pass" || !state.currentPasserId) return null;
-    const i = state.passOrder.indexOf(state.currentPasserId);
+    if (state.phase !== "pass" || !selfId) return null;
+    const i = state.passOrder.indexOf(selfId);
     if (i < 0) return null;
     return state.passOrder[(i + 1) % state.passOrder.length] ?? null;
   })();

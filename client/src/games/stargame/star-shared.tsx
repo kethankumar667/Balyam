@@ -351,6 +351,7 @@ export function Chit({
   armed = false,
   dimmed = false,
   size = "md",
+  fluid = false,
   onClick,
   ariaLabel,
 }: {
@@ -359,6 +360,11 @@ export function Chit({
   armed?: boolean;
   dimmed?: boolean;
   size?: keyof typeof SIZE;
+  /** Explicit width, overriding the `size` class. The hand rail uses this to
+   *  fit however many chits you are holding into the width it actually has —
+   *  during a relay you briefly hold FIVE, and five fixed-width cards do not
+   *  fit a phone. Height follows the 4:3 ratio of the size classes. */
+  fluid?: boolean;
   onClick?: () => void;
   ariaLabel?: string;
 }) {
@@ -378,7 +384,7 @@ export function Chit({
       whileTap={interactive ? { scale: 0.95 } : undefined}
       transition={{ type: "spring", stiffness: 340, damping: 24 }}
       className={[
-        SIZE[size],
+        fluid ? "" : SIZE[size],
         "relative shrink-0 rounded-[7px] px-1 font-script font-bold leading-tight",
         "flex items-center justify-center text-center",
         interactive ? "cursor-pointer" : "cursor-default",
@@ -389,6 +395,12 @@ export function Chit({
       // half-dark gradient with light text on a light lower half, i.e. an
       // unreadable smudge. Colour identity lives on the RIM and the glow.
       style={{
+        // `fluid` lets the PARENT decide the width (flex-basis 0 + max-width),
+        // so N chits always share the row. An earlier attempt measured the
+        // rail with a ResizeObserver and computed pixel widths; it silently
+        // never applied, and 5-chit hands still ran off a 390px phone. CSS
+        // cannot fail to measure.
+        ...(fluid ? { width: "100%", height: "auto", aspectRatio: "3 / 4" } : null),
         background: faceDown
           ? `repeating-linear-gradient(48deg, #24305A, #24305A 7px, #1B2547 7px, #1B2547 14px)`
           : `linear-gradient(168deg, #FFFDF6 0%, #F6EAD2 100%)`,
@@ -642,6 +654,33 @@ export function DraggableChitRail({
    *  JS mid-gesture) must not resume into a stale drag on return. */
   isBackgrounded?: boolean;
 }) {
+  /**
+   * Chits are sized to the width the rail ACTUALLY has, not a fixed class.
+   *
+   * During a relay you briefly hold five (your four plus the one just
+   * received). Five fixed 96px cards plus gaps need ~520px, which overflows a
+   * phone — and `touchAction: "none"` (required for drag-to-reorder) disables
+   * the horizontal scroll that would otherwise have reached the fifth, so it
+   * was not merely off-screen but unreachable.
+   */
+  const railRef = useRef<HTMLDivElement>(null);
+  const [railW, setRailW] = useState(0);
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const measure = () => setRailW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const MAX_W = size === "lg" ? 96 : size === "md" ? 72 : 48;
+  const GAP = 10;
+  const cardW =
+    railW > 0 && hand.length > 0
+      ? Math.max(44, Math.min(MAX_W, Math.floor((railW - 16 - GAP * (hand.length - 1)) / hand.length)))
+      : undefined;
+
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [previewOrder, setPreviewOrder] = useState<string[] | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -679,7 +718,7 @@ export function DraggableChitRail({
   );
 
   return (
-    <div className="flex items-end justify-center gap-2.5 overflow-x-auto px-2 py-2" style={{ touchAction: disabled ? "auto" : "none" }}>
+    <div ref={railRef} data-star-hand className="flex w-full items-end justify-center gap-2.5 px-2 py-2" style={{ touchAction: disabled ? "auto" : "none" }}>
       {displayOrder.map((id) => {
         const c = byId.get(id);
         if (!c) return null;
@@ -731,7 +770,13 @@ export function DraggableChitRail({
               setPreviewOrder(null);
               setDraggedId(null);
             }}
+            // Each chit takes an equal share of the row and never exceeds its
+            // natural size — so four sit at full size and five shrink to fit
+            // rather than the fifth landing off-screen.
             style={{
+              flex: "1 1 0",
+              minWidth: 0,
+              maxWidth: size === "lg" ? 96 : size === "md" ? 72 : 48,
               opacity: draggedId === id ? 0.5 : 1,
               cursor: disabled ? "default" : "grab",
               touchAction: "none",
@@ -743,6 +788,7 @@ export function DraggableChitRail({
               value={c.value}
               armed={c.id === armedId}
               size={size}
+              fluid
               onClick={() => {}}
               ariaLabel={`${c.value}${c.id === armedId ? " (armed to pass)" : ""}`}
             />

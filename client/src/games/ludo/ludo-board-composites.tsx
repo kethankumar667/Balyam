@@ -555,6 +555,100 @@ function useSettleKey(rolling: boolean): number {
   return key;
 }
 
+/**
+ * Turn callout — the "whose move is it" ticket that sits directly under the
+ * board on mobile.
+ *
+ * Two problems it solves, both from the mobile design review:
+ *
+ *  1. DEAD SPACE. The board is width-bound on a portrait phone (≈394px on a
+ *     430px screen), but its row is ~640px tall, so `items-center` floated it
+ *     with ~124px of blank paper above AND below — a quarter of the screen
+ *     doing nothing. This ticket spends part of that band.
+ *
+ *  2. THE PROMPT WAS 700px FROM THE CONTROL. "Your turn / Roll the dice" lived
+ *     in the header at the top of the screen while the roll cup sits at the
+ *     very bottom, so the instruction and the thing it instructs you to touch
+ *     were at opposite ends. Announcing the turn adjacent to the board — and
+ *     within thumb reach — puts cause and effect in one glance.
+ *
+ * The countdown is the other half: previously the only clock was a ~20px "15S"
+ * chip on your own seat card, which is easy to miss entirely. Here it is a
+ * first-class element that goes amber at 10s and red at 5s.
+ */
+export function LudoTurnCallout({ m, state }: { m: LudoBoardModel; state: LudoState }) {
+  const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
+  if (state.phase !== "playing") return null;
+
+  const activeId = state.turnPlayerId;
+  const color = state.playerColors[activeId] as LudoColor | undefined;
+  const hex = color ? COLOR_HEX[color] : "#6D4323";
+  const dark = color ? COLOR_HEX_DARK[color] : "#4A2E18";
+  const mine = m.myTurn;
+  const ticking = state.turnDeadline != null && secondsLeft > 0;
+  const urgent = ticking && secondsLeft <= 5;
+  const warn = ticking && secondsLeft <= 10;
+
+  const action = mine
+    ? state.turnPhase === "rolling"
+      ? "Roll the dice"
+      : "Pick a token to move"
+    : state.turnPhase === "rolling"
+      ? "is rolling…"
+      : "is moving…";
+
+  return (
+    <div
+      className="mx-auto flex w-full max-w-[26rem] items-center gap-2.5 px-3 py-2"
+      style={{
+        background: mine ? "#F7E8C4" : "rgba(247,232,196,0.55)",
+        border: `2px solid ${mine ? hex : "#C8A66B"}`,
+        borderRadius: 12,
+        boxShadow: mine ? `0 0 0 3px ${hex}22, 0 6px 14px rgba(0,0,0,0.16)` : "0 3px 8px rgba(0,0,0,0.10)",
+      }}
+      aria-live="polite"
+    >
+      {/* Colour anchor — ties the callout to a seat without repeating the
+          avatar already shown on that player's card. */}
+      <span
+        className="shrink-0 rounded-full"
+        style={{
+          width: 14,
+          height: 14,
+          background: hex,
+          border: `2px solid ${dark}`,
+          boxShadow: mine ? `0 0 0 4px ${hex}33` : undefined,
+        }}
+      />
+      <div className="min-w-0 flex-1 leading-tight">
+        <div className="truncate text-[13px] font-black" style={{ color: dark }}>
+          {mine ? "YOUR TURN" : m.nameOf(activeId)}
+        </div>
+        <div className="truncate text-[11px] font-bold" style={{ color: "#8A6A45" }}>
+          {action}
+        </div>
+      </div>
+      {ticking && (
+        <span
+          className="shrink-0 tabular-nums font-black"
+          style={{
+            minWidth: 40,
+            textAlign: "center",
+            fontSize: 15,
+            padding: "3px 8px",
+            borderRadius: 8,
+            color: "#fff",
+            background: urgent ? "#DC2626" : warn ? "#D97706" : dark,
+          }}
+          aria-label={`${secondsLeft} seconds left`}
+        >
+          {secondsLeft}s
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState }) {
   const streak = state.consecutiveSixes > 0 && state.consecutiveSixes < 3;
   const canRoll = m.myTurn && m.canRoll && !m.rolling;
