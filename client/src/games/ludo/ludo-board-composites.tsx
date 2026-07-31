@@ -116,16 +116,16 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
           <div className="font-script text-lg font-bold" style={{ color: "#2E7D32" }}>
             🏆 {state.winnerId ? `${m.nameOf(state.winnerId)} wins!` : "Game over"}
           </div>
-        ) : m.myTurn ? (
+        ) : m.displayMyTurn ? (
           <>
             <div className="font-script text-sm font-bold leading-tight" style={{ color: "#2E7D32" }}>Your turn</div>
             <div className="font-display text-base leading-tight" style={{ color: "#6D4323" }}>
-              {state.turnPhase === "rolling" ? "Roll the dice" : "Pick a token"}
+              {m.displayTurnPhase === "rolling" ? "Roll the dice" : "Pick a token"}
             </div>
           </>
         ) : (
           <div className="font-script text-sm" style={{ color: "#8A6D4B" }}>
-            {m.nameOf(state.turnPlayerId)}&rsquo;s turn…
+            {m.nameOf(m.displayTurnPlayerId)}&rsquo;s turn…
           </div>
         )}
       </div>
@@ -580,20 +580,20 @@ export function LudoTurnCallout({ m, state }: { m: LudoBoardModel; state: LudoSt
   const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
   if (state.phase !== "playing") return null;
 
-  const activeId = state.turnPlayerId;
+  const activeId = m.displayTurnPlayerId;
   const color = state.playerColors[activeId] as LudoColor | undefined;
   const hex = color ? COLOR_HEX[color] : "#6D4323";
   const dark = color ? COLOR_HEX_DARK[color] : "#4A2E18";
-  const mine = m.myTurn;
+  const mine = m.displayMyTurn;
   const ticking = state.turnDeadline != null && secondsLeft > 0;
   const urgent = ticking && secondsLeft <= 5;
   const warn = ticking && secondsLeft <= 10;
 
   const action = mine
-    ? state.turnPhase === "rolling"
+    ? m.displayTurnPhase === "rolling"
       ? "Roll the dice"
       : "Pick a token to move"
-    : state.turnPhase === "rolling"
+    : m.displayTurnPhase === "rolling"
       ? "is rolling…"
       : "is moving…";
 
@@ -656,7 +656,7 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
   const finished = state.phase === "finished";
   // Name who we're waiting on — "Waiting…" alone leaves the player guessing,
   // and on desktop this tray sits far from the header's turn banner.
-  const waitingFor = !finished && !m.myTurn ? m.nameOf(state.turnPlayerId) : null;
+  const waitingFor = !finished && !m.displayMyTurn ? m.nameOf(m.displayTurnPlayerId) : null;
   return (
     <div className="flex flex-col items-center gap-1.5">
       <button
@@ -708,8 +708,8 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
       >
         {finished
           ? "Game over"
-          : m.myTurn
-            ? state.turnPhase === "rolling"
+          : m.displayMyTurn
+            ? m.displayTurnPhase === "rolling"
               ? "Tap to roll"
               : "Pick a token"
             : `${waitingFor}…`}
@@ -811,17 +811,18 @@ export function LudoBoardArea({
           geo={m.polygonGeo}
           players={players}
           playerOrder={state.playerOrder}
-          playerColors={state.playerColors}
+          playerColors={m.arms}
           activeColors={m.activeColors}
           hasCaptured={state.hasCaptured ?? {}}
           rotationDeg={m.boardRotation}
         />
       ) : (
         <BoardSVG
-          playerColorsInRoom={Object.values(state.playerColors)}
+          playerColorsInRoom={m.activeColors}
           players={players}
           playerOrder={state.playerOrder}
-          playerColors={state.playerColors}
+          playerColors={m.arms}
+          paint={m.armPaint}
           hasCaptured={state.hasCaptured ?? {}}
           unlockBurst={m.unlockBurst}
           registerCard={m.registerPlayerCard}
@@ -847,8 +848,10 @@ export function LudoBoardArea({
           const idx = parseInt(token.id.split("-")[1] ?? "0", 10);
           // Print boards recolor each seat by its arm's flat sector color —
           // tokens must match their yard/lane, not the canonical LudoColor.
+          // Polygon sectors are painted by ARM index, so tokens must use the
+          // arm too or they would not match the wedge they sit in.
           const armIdx = m.polygonGeo
-            ? PLAYER_COLORS_ORDER.indexOf(state.playerColors[pid])
+            ? PLAYER_COLORS_ORDER.indexOf(m.arms[pid])
             : -1;
           return (
             <Token

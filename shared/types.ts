@@ -363,7 +363,25 @@ export interface LudoState {
   consecutiveSixes: number;
   movableTokenIds: string[];
   tokens: Record<string, LudoToken[]>;   // by playerId
+  /**
+   * The color a player is PAINTED in — tokens, yard, home lane, seat card.
+   * Any of the 8 palette colors, at any player count: this is the color the
+   * player picked in the lobby.
+   *
+   * Deliberately decoupled from `playerArms` below. It used to be one field
+   * doing both jobs, which is why picking purple in a 3-player room silently
+   * became blue — the cross board has no "purple" arm, so the pick could not
+   * survive. Now the arm is a seat on the board and the color is just paint.
+   */
   playerColors: Record<string, LudoColor>;
+  /**
+   * The board ARM a player occupies — pure geometry. Always one of the first
+   * `max(4, playerCount)` canonical colors, because that is what the board
+   * has track/stretch/yard coordinates for. Everything positional (track
+   * start, home stretch, yard slots, token ids, board rotation) keys off
+   * this; nothing visual does.
+   */
+  playerArms: Record<string, LudoColor>;
   playerOrder: string[];
   winnerId: string | null;
   finishedCount: Record<string, number>;
