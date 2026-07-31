@@ -150,8 +150,17 @@ export const COLOR_START_POSITION: Record<LudoColor, number> = {
   brown: 91,
 };
 
+/**
+ * Mirrors `divertOffsetFor` in server/src/games/ludo/track.ts — see the full
+ * rationale there. Short version: the cross board's lane is fed by the cell
+ * two before a color's start (the cell one before sits on the outer edge and
+ * would only lead back onto the start square); the polygon boards divert one
+ * before. Client and server must agree or the previewed route and the played
+ * route diverge.
+ */
 export function lastTrackPosFor(color: LudoColor, trackLength: number = TRACK_LENGTH): number {
-  return (COLOR_START_POSITION[color] + trackLength - 1) % trackLength;
+  const back = trackLength <= TRACK_LENGTH ? 2 : 1;
+  return (COLOR_START_POSITION[color] + trackLength - back) % trackLength;
 }
 
 /**

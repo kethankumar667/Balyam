@@ -82,6 +82,12 @@ export interface LudoBoardModel {
   myTurn: boolean;
   canRoll: boolean;
   rolling: boolean;
+  /** Turn owner/phase for ANNOUNCEMENTS — held at the previous value while
+   *  the dice is still tumbling so the banner never names the next player
+   *  before you have seen your own result. Never gate controls on these. */
+  displayTurnPlayerId: string;
+  displayTurnPhase: LudoState["turnPhase"];
+  displayMyTurn: boolean;
   showInstructions: boolean;
   setShowInstructions: (v: boolean) => void;
   showSettings: boolean;
@@ -119,6 +125,11 @@ export interface LudoBoardModel {
   playerCount: number;
   usePolygon: boolean;
   activeColors: LudoColor[];
+  /** Board ARM per player — geometry. */
+  arms: Record<string, LudoColor>;
+  /** Arm -> the color its occupant is painted in. Unoccupied arms are absent
+   *  and keep their own color, so an empty wedge still reads as a wedge. */
+  armPaint: Partial<Record<LudoColor, LudoColor>>;
   polygonGeo: PrintBoardGeometry | null;
   /** Degrees the board view is spun so the local player sits at the bottom. */
   boardRotation: number;
@@ -145,6 +156,17 @@ export function useLudoBoard({
   onLeave,
   // messages/roomCode/roomPhase are forwarded to InlineRoomRail by the shells.
 }: LudoBoardProps): LudoBoardModel {
+  /**
+   * The board ARM a player sits on — the key for ALL geometry (track start,
+   * home stretch, yard slots, token ids, board rotation). Distinct from
+   * `state.playerColors`, which is now purely the color they are painted in
+   * and may be any of the 8 even on a four-arm board.
+   *
+   * Falls back to the paint color for states produced before the split, where
+   * the two were the same field.
+   */
+  const armOf = (pid: string): LudoColor => state.playerArms?.[pid] ?? state.playerColors[pid];
+
   const myTurn = state.turnPlayerId === selfId;
   // 1-second "settle" gap between consecutive rolls.
   const [rollCooldown, setRollCooldown] = useState(false);
@@ -177,6 +199,33 @@ export function useLudoBoard({
     }
     prevDice.current = state.diceValue;
   }, [state.diceValue]);
+
+  /**
+   * Turn identity for ANNOUNCEMENTS only, held still until the dice settles.
+   *
+   * A roll that isn't a 6 passes play immediately, and the server sends the
+   * new dice value and the new turn owner in the SAME state update. The dice
+   * then tumbles locally for DICE_ROLL_MS — so every banner had already
+   * switched to the next player before you were shown the number that took
+   * your turn away. It read as the game skipping you, which is exactly what
+   * the player reported ("status message was coming before the dice result").
+   *
+   * `rolling` alone cannot gate this: it is set by an effect, so the render
+   * that first carries the new turn still has `rolling === false` and would
+   * flash the next player for a frame — and would also poison the held value.
+   * Comparing against `prevDice` (which the effect above advances) detects the
+   * change during that very render instead.
+   *
+   * Controls are deliberately NOT gated on this: `myTurn` / `canRoll` stay
+   * live, so nothing becomes less responsive. Only the words wait.
+   */
+  const diceChanging = state.diceValue != null && state.diceValue !== prevDice.current;
+  const settlingDice = rolling || diceChanging;
+  const settledTurn = useRef({ pid: state.turnPlayerId, phase: state.turnPhase });
+  if (!settlingDice) settledTurn.current = { pid: state.turnPlayerId, phase: state.turnPhase };
+  const displayTurnPlayerId = settlingDice ? settledTurn.current.pid : state.turnPlayerId;
+  const displayTurnPhase = settlingDice ? settledTurn.current.phase : state.turnPhase;
+  const displayMyTurn = displayTurnPlayerId === selfId;
 
   const LUDO_TUTORIAL_KEY = "ludo.tutorial.completed.v1";
   const [showInstructions, setShowInstructionsRaw] = useState<boolean>(() => {
@@ -258,6 +307,40 @@ export function useLudoBoard({
     const id = setTimeout(() => setToast(null), 3200);
     return () => clearTimeout(id);
   }, [toast]);
+
+  /**
+   * Announce departures.
+   *
+   * `RoomManager.leaveRoom` deletes the player and re-broadcasts the room, so
+   * a seat simply vanished from the table with no explanation — mid-game that
+   * looks like a rendering glitch, and the remaining players have no idea why
+   * the turn order suddenly changed.
+   *
+   * Derived from the roster rather than a new socket event: the removal is
+   * already in the broadcast, so every client (including one that reconnects
+   * a moment later) reaches the same conclusion without new server surface.
+   * Bots are skipped — the host removing a bot in the lobby is not news.
+   */
+  const knownPlayersRef = useRef<Map<string, { name: string; isBot: boolean }> | null>(null);
+  useEffect(() => {
+    const now = new Map(
+      players.map((p) => [p.id, { name: p.name, isBot: p.isBot === true }] as const),
+    );
+    const before = knownPlayersRef.current;
+    knownPlayersRef.current = now;
+    // Skip the first roster we ever see: everyone would look "new".
+    if (!before || before.size === 0) return;
+    const goneNames: string[] = [];
+    for (const [id, info] of before) {
+      if (!now.has(id) && id !== selfId && !info.isBot) goneNames.push(info.name);
+    }
+    if (goneNames.length === 0) return;
+    const label =
+      goneNames.length === 1
+        ? `${goneNames[0]} left the game`
+        : `${goneNames.length} players left the game`;
+    setToast({ text: label, emoji: "🚪", color: "#8A6D4B" });
+  }, [players, selfId]);
 
   // Auto-clear the capture "CUT!" callout (the lucky banner takes over the
   // center for the rarer 6-then-capture case — see render guard).
@@ -429,7 +512,7 @@ export function useLudoBoard({
     if (!settings.showHoverPreview) return;
     if (pid !== selfId || !myTurn || state.diceValue == null) return;
     if (!state.movableTokenIds.includes(token.id)) return;
-    const color = state.playerColors[pid];
+    const color = armOf(pid);
     const hasCap = state.hasCaptured?.[pid] ?? false;
     const trackLen = polygonGeo ? polygonGeo.N * 13 : 52;
     const dest = predictDestination(token, state.diceValue, color, hasCap, trackLen);
@@ -481,7 +564,7 @@ export function useLudoBoard({
         if (canRoll && !rolling) roll();
       } else if (/^[1-4]$/.test(ev.key)) {
         if (!myTurn || state.turnPhase !== "moving") return;
-        const target = `${state.playerColors[selfId ?? ""] ?? ""}-${Number(ev.key) - 1}`;
+        const target = `${(selfId ? armOf(selfId) : "") ?? ""}-${Number(ev.key) - 1}`;
         if (state.movableTokenIds.includes(target)) move(target);
       }
     }
@@ -598,7 +681,7 @@ export function useLudoBoard({
       clearTimeout(animationTimersRef.current.get(id));
       animationTimersRef.current.delete(id);
 
-      const color = state.playerColors[pid];
+      const color = armOf(pid);
       const trackLen = polygonGeo ? polygonGeo.N * 13 : 52;
       const path = computeStepPath(cur, serverToken, color, trackLen);
       if (path.length === 0) {
@@ -645,7 +728,7 @@ export function useLudoBoard({
   const stacks = useMemo(() => {
     const byCell = new Map<string, string[]>();
     for (const { pid, token } of allTokens) {
-      const key = stackKeyOf(token, state.playerColors[pid]);
+      const key = stackKeyOf(token, armOf(pid));
       if (!key) continue;
       const list = byCell.get(key);
       if (list) list.push(token.id);
@@ -677,7 +760,7 @@ export function useLudoBoard({
       }
       // Captured: was on track → now in yard
       if (before.state === "track" && cur.state === "yard") {
-        const pos = posFromState(before, state.playerColors[pid]);
+        const pos = posFromState(before, armOf(pid));
         if (pos) {
           const id = `cf_${cur.id}_${Date.now()}`;
           setCaptureFaces((curArr) => [...curArr, { id, ...pos }]);
@@ -716,10 +799,31 @@ export function useLudoBoard({
   // Decide cross (≤4) vs polygon (≥5) board mode
   const playerCount = state.playerOrder.length;
   const usePolygon = playerCount >= 5;
+  const arms = useMemo(() => {
+    const r: Record<string, LudoColor> = {};
+    for (const pid of state.playerOrder) {
+      const a = armOf(pid);
+      if (a) r[pid] = a;
+    }
+    return r;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.playerOrder, state.playerArms, state.playerColors]);
+
+  const armPaint = useMemo(() => {
+    const r: Partial<Record<LudoColor, LudoColor>> = {};
+    for (const pid of state.playerOrder) {
+      const a = armOf(pid);
+      const paint = state.playerColors[pid];
+      if (a && paint) r[a] = paint;
+    }
+    return r;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.playerOrder, state.playerArms, state.playerColors]);
+
   const activeColors = useMemo(
     () =>
       state.playerOrder
-        .map((pid) => state.playerColors[pid])
+        .map((pid) => armOf(pid))
         .filter((c): c is LudoColor => !!c),
     [state.playerOrder, state.playerColors]
   );
@@ -743,7 +847,7 @@ export function useLudoBoard({
    */
   const targetRotation = useMemo(() => {
     if (!selfId) return 0;
-    const color = state.playerColors[selfId];
+    const color = armOf(selfId);
     if (!color) return 0;
     // Normalised to (-180, 180] so the CSS transition always takes the short
     // way round instead of unwinding through a full turn.
@@ -797,7 +901,7 @@ export function useLudoBoard({
   }
 
   function tokenPosition(pid: string, token: LudoToken): LudoTokenPos {
-    const color = state.playerColors[pid];
+    const color = armOf(pid);
     const tokenIdx = parseInt(token.id.split("-")[1] ?? "0", 10) % 4;
 
     if (polygonGeo) {
@@ -853,6 +957,9 @@ export function useLudoBoard({
     myTurn,
     canRoll,
     rolling,
+    displayTurnPlayerId,
+    displayTurnPhase,
+    displayMyTurn,
     showInstructions,
     setShowInstructions,
     showSettings,
@@ -889,6 +996,8 @@ export function useLudoBoard({
     playerCount,
     usePolygon,
     activeColors,
+    arms,
+    armPaint,
     polygonGeo,
     boardRotation,
     tokenPosition,

@@ -8,16 +8,15 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// All 8 seats, in the same canonical order the server assigns colors in
-// (LudoEngine.ts's `pool = PLAYER_COLORS_ORDER.slice(0, players.length)`).
-// A 2-4 player game only ever uses the standard cross board (red/green/
-// yellow/blue), but rooms can grow to 8 (Ludo max — see registry.ts /
-// Room.tsx's MAX_PLAYERS_BY_GAME) and use the print-design polygon board,
-// which has real coordinates for all 8. Picking a color outside the
-// eventual game's player-count pool isn't a dead end: the engine's second
-// assignment pass just falls back to the next free pool color for that
-// player, so it's always safe to offer the full set here regardless of how
-// many players end up in the room by the time it starts.
+// All 8 seats, in the same canonical order the server assigns colors in.
+// The engine's pool is sized to the BOARD's wedge count, not the player
+// count (LudoEngine.init -> `wedgeCountFor(players.length)`), so a 2-player
+// game can still pick any of the cross board's four arms and KEEPS that
+// pick — the two arms nobody took just stay empty. Rooms can grow to 8
+// (Ludo max — see registry.ts / Room.tsx's MAX_PLAYERS_BY_GAME) and use the
+// print-design polygon board, which has real coordinates for all 8.
+// A pick outside the eventual board's pool is not a dead end: that player
+// simply draws randomly from the free colors like anyone who never picked.
 const COLORS: { id: LudoColor; label: string; hex: string }[] = PLAYER_COLORS_ORDER.map(
   (id) => ({ id, label: capitalize(id), hex: COLOR_HEX[id] })
 );
@@ -34,6 +33,17 @@ export default function LudoColorPicker({
     getSocket().emit("room:chooseColor", color);
   }
 
+  /**
+   * Every color is pickable at every table size.
+   *
+   * This briefly enforced the board's arm count (only the first four on a
+   * 2-4 player cross board), because picking purple in a 3-player room used
+   * to be silently discarded at start. That restriction is gone: the board
+   * ARM and the color a player is painted in are now separate (see
+   * LudoState.playerArms), so purple sits on whichever wedge is free and is
+   * still drawn purple — tokens, yard, home lane and name plate.
+   */
+
   return (
     <div className="bg-slate-900/70 rounded-xl p-4 space-y-3">
       <div className="flex items-baseline justify-between">
@@ -46,25 +56,22 @@ export default function LudoColorPicker({
           const isMe = owner?.id === selfId;
           const isOther = owner && !isMe;
           const isAvailable = !owner;
+          const blocked = !!isOther;
           return (
             <button
               key={c.id}
-              onClick={() => !isOther && pick(c.id)}
-              disabled={!!isOther}
+              onClick={() => !blocked && pick(c.id)}
+              disabled={blocked}
               className={`relative rounded-lg p-3 flex flex-col items-center gap-1.5 transition border-2 ${
                 isMe
                   ? "border-white scale-105"
                   : isOther
-                  ? "border-slate-700 opacity-40 cursor-not-allowed"
-                  : "border-transparent hover:scale-105 hover:border-white"
+                    ? "border-slate-700 opacity-40 cursor-not-allowed"
+                    : "border-transparent hover:scale-105 hover:border-white"
               }`}
               style={{ background: c.hex }}
               title={
-                isMe
-                  ? "Your color"
-                  : isOther
-                  ? `Taken by ${owner.name}`
-                  : `Pick ${c.label}`
+                isMe ? "Your color" : isOther ? `Taken by ${owner.name}` : `Pick ${c.label}`
               }
             >
               <div className="w-7 h-7 rounded-full bg-white/30 border border-white/60 shadow-inner" />
@@ -88,8 +95,9 @@ export default function LudoColorPicker({
       <div className="text-xs text-slate-400">
         {self?.chosenColor
           ? `You picked ${self.chosenColor}. Click another to switch.`
-          : "You'll auto-assign a color when the game starts if you don't pick."}
+          : "You'll be given a random color when the game starts if you don't pick."}
       </div>
+
     </div>
   );
 }

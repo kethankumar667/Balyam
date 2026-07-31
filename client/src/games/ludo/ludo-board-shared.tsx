@@ -256,11 +256,18 @@ export function BoardSVG({
   selfId,
   finishedCount,
   rotationDeg = 0,
+  paint,
 }: {
   playerColorsInRoom: LudoColor[];
   players: Player[];
   playerOrder: string[];
+  /** Board ARM per player — geometry. Never the color they are painted in. */
   playerColors: Record<string, LudoColor>;
+  /** Arm -> paint color. An arm nobody occupies keeps its own color, so an
+   *  empty wedge still looks like a wedge. This is what lets a player who
+   *  picked purple sit on the cross board's four-arm geometry and still be
+   *  purple everywhere: tokens, yard, home lane and name plate. */
+  paint?: Partial<Record<LudoColor, LudoColor>>;
   hasCaptured: Record<string, boolean>;
   unlockBurst: Record<string, number>;
   registerCard?: (playerId: string, el: SVGGElement | null) => void;
@@ -274,7 +281,15 @@ export function BoardSVG({
   /** Home-token count per playerId - drives the live "N/4" corner badge. */
   finishedCount: Record<string, number>;
 }) {
-  // Map color -> playerId for this room
+  // Every fill below goes through these, so an arm is drawn in its
+  // occupant's color rather than its own.
+  const pc = (c: LudoColor): LudoColor => paint?.[c] ?? c;
+  const CH = (c: LudoColor) => COLOR_HEX[pc(c)];
+  const CHD = (c: LudoColor) => COLOR_HEX_DARK[pc(c)];
+  const SF = (c: LudoColor) => STRETCH_FILL[pc(c)];
+  const YF = (c: LudoColor) => YARD_FILL[pc(c)];
+
+  // Map ARM -> playerId for this room
   const playerIdByColor: Partial<Record<LudoColor, string | null>> = {};
   for (const pid of playerOrder) {
     const c = playerColors[pid];
@@ -301,9 +316,9 @@ export function BoardSVG({
             soft "inset bowl" look instead of a flat block. */}
         {ORDERED_COLORS.map((color) => (
           <radialGradient key={color + "-yard-grad"} id={`ludo-yard-${color}`} cx="50%" cy="50%" r="70%">
-            <stop offset="0%" stopColor={YARD_FILL[color]} />
-            <stop offset="80%" stopColor={YARD_FILL[color]} />
-            <stop offset="100%" stopColor={COLOR_HEX_DARK[color]} />
+            <stop offset="0%" stopColor={YF(color)} />
+            <stop offset="80%" stopColor={YF(color)} />
+            <stop offset="100%" stopColor={CHD(color)} />
           </radialGradient>
         ))}
         {/* Soft drop-shadow used for the center cross + name labels so they
@@ -333,9 +348,9 @@ export function BoardSVG({
         return (
           <g key={color} opacity={inactive ? 0.45 : 1}>
             {/* Outer colored frame with rounded corner */}
-            <rect x={c0 + 0.2} y={r0 + 0.2} width={6 - 0.4} height={6 - 0.4} rx={0.4} fill={`url(#ludo-yard-${color})`} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.12} />
+            <rect x={c0 + 0.2} y={r0 + 0.2} width={6 - 0.4} height={6 - 0.4} rx={0.4} fill={`url(#ludo-yard-${color})`} stroke={CHD(color)} strokeWidth={0.12} />
             {/* Inner cream pad where tokens park */}
-            <rect x={c0 + 1} y={r0 + 1} width={4} height={4} rx={0.3} fill={PARCHMENT} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.08} />
+            <rect x={c0 + 1} y={r0 + 1} width={4} height={4} rx={0.3} fill={PARCHMENT} stroke={CHD(color)} strokeWidth={0.08} />
             {/* Faint hand-drawn crown watermark behind the parked tokens —
                 the reference's per-quadrant motif. Decorative only. */}
             <text
@@ -353,17 +368,15 @@ export function BoardSVG({
                 landing pad rather than a faint ghost. */}
             {YARD_CELLS[color].map((cell, i) => (
               <g key={i}>
-                <circle cx={cell.col + 0.5} cy={cell.row + 0.5} r={0.62} fill={YARD_FILL[color]} opacity={0.2} />
-                <circle cx={cell.col + 0.5} cy={cell.row + 0.5} r={0.62} fill="none" stroke={COLOR_HEX_DARK[color]} strokeWidth={0.06} opacity={0.45} />
+                <circle cx={cell.col + 0.5} cy={cell.row + 0.5} r={0.62} fill={YF(color)} opacity={0.2} />
+                <circle cx={cell.col + 0.5} cy={cell.row + 0.5} r={0.62} fill="none" stroke={CHD(color)} strokeWidth={0.06} opacity={0.45} />
               </g>
             ))}
             {/* Player name badge inside each yard. Clicking a teammate's
                 badge fires a custom event that opens InlineRoomRail's
                 emoji picker pre-targeted at them - lets "shoot this
                 player" happen straight from the board, not just the
-                buried Players side-panel. Also carries a small "N/4"
-                home-progress pill so everyone can see at a glance how
-                many of this player's tokens have made it home. */}
+                buried Players side-panel. */}
             {name && (() => {
               /* The badge is placed in SCREEN space, not board space.
                  It is 5 units wide and used to sit 2.8 above its yard centre;
@@ -390,17 +403,17 @@ export function BoardSVG({
                 style={pid && pid !== selfId ? { cursor: "pointer" } : undefined}
               >
                 {pid && pid !== selfId && <title>React at {name}</title>}
-                <rect x={-2.5} y={-0.375} width={5} height={0.75} rx={0.38} fill={COLOR_HEX[color]} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.08} />
+                <rect x={-2.5} y={-0.375} width={5} height={0.75} rx={0.38} fill={CH(color)} stroke={CHD(color)} strokeWidth={0.08} />
                 {/* Inner gold trim line */}
                 <rect x={-2.38} y={-0.275} width={4.76} height={0.55} rx={0.3} fill="none" stroke="#ffffff" strokeWidth={0.04} opacity={0.35} />
                 <text x={-0.15} y={0.17} textAnchor="middle" fontSize="0.5" fontWeight="900" fill="#ffffff" style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   {name.slice(0, 12)}
                 </text>
-                {/* Home-progress corner badge: "N/4" tokens home, live during play. */}
-                <circle cx={2.5} cy={-0.375} r={0.34} fill={COLOR_HEX_DARK[color]} stroke={PARCHMENT} strokeWidth={0.05} />
-                <text x={2.5} y={-0.265} textAnchor="middle" fontSize="0.3" fontWeight="800" fill="#FFF">
-                  {finishedCount[pid!] ?? 0}/4
-                </text>
+                {/* The "N/4" home-progress pill that used to sit here was
+                    removed at the user's request: the seat cards already
+                    carry four pips each showing exactly the same thing, and
+                    on a phone the badge was an unreadable ~10px disc that
+                    only added clutter to the name plate. */}
               </g>
               );
             })()}
@@ -424,7 +437,7 @@ export function BoardSVG({
         const cell = TRACK_CELLS[startIdx];
         return (
           <g key={color + "-start"}>
-            <rect x={cell.col + 0.04} y={cell.row + 0.04} width={1 - 0.08} height={1 - 0.08} rx={0.12} fill={STRETCH_FILL[color]} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.08} />
+            <rect x={cell.col + 0.04} y={cell.row + 0.04} width={1 - 0.08} height={1 - 0.08} rx={0.12} fill={SF(color)} stroke={CHD(color)} strokeWidth={0.08} />
           </g>
         );
       })}
@@ -437,8 +450,8 @@ export function BoardSVG({
           <g key={"safe" + pos}>
             <polygon
               points={starPoints(cell.col + 0.5, cell.row + 0.5, 0.35)}
-              fill={COLOR_HEX[safeColor]}
-              stroke={COLOR_HEX_DARK[safeColor]}
+              fill={CH(safeColor)}
+              stroke={CHD(safeColor)}
               strokeWidth={0.045}
             />
           </g>
@@ -451,7 +464,7 @@ export function BoardSVG({
         <g key={color + "-stretch"}>
           {STRETCH_CELLS[color].map((cell, i) => (
             <g key={i}>
-              <rect x={cell.col + 0.04} y={cell.row + 0.04} width={1 - 0.08} height={1 - 0.08} rx={0.12} fill={STRETCH_FILL[color]} stroke={COLOR_HEX_DARK[color]} strokeWidth={0.06} />
+              <rect x={cell.col + 0.04} y={cell.row + 0.04} width={1 - 0.08} height={1 - 0.08} rx={0.12} fill={SF(color)} stroke={CHD(color)} strokeWidth={0.06} />
               <line x1={cell.col + 0.15} y1={cell.row + 0.12} x2={cell.col + 0.85} y2={cell.row + 0.12} stroke="#FFFFFF" strokeOpacity={0.4} strokeWidth={0.04} />
             </g>
           ))}
@@ -481,7 +494,7 @@ export function BoardSVG({
         if (!d) return null;
         return (
           <g key={color + "-arrow"} transform={`rotate(${d.rot}, ${d.x}, ${d.y})`}>
-            <polygon points={`${d.x - 0.25},${d.y - 0.15} ${d.x + 0.15},${d.y} ${d.x - 0.25},${d.y + 0.15}`} fill={COLOR_HEX_DARK[color]} opacity={0.85} />
+            <polygon points={`${d.x - 0.25},${d.y - 0.15} ${d.x + 0.15},${d.y} ${d.x - 0.25},${d.y + 0.15}`} fill={CHD(color)} opacity={0.85} />
           </g>
         );
       })}
@@ -511,7 +524,7 @@ export function BoardSVG({
           // Show unlock burst briefly
           return (
             <g key={color + "-unlock"} className="unlock-burst" style={{ transformOrigin: `${cx}px ${cy}px` }}>
-              <circle cx={cx} cy={cy} r={0.5} fill={COLOR_HEX[color]} opacity={0.85} />
+              <circle cx={cx} cy={cy} r={0.5} fill={CH(color)} opacity={0.85} />
               <text x={cx} y={cy + 0.25} textAnchor="middle" fontSize="0.8" transform={`rotate(${-rotationDeg} ${cx} ${cy})`}>
                 🔓
               </text>

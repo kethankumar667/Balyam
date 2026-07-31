@@ -72,8 +72,21 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
           the no-scroll invariant above still holds. The callout spends part
           of the ~124px of blank paper that `items-center` used to leave under
           a width-bound board. */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 -mx-1.5 sm:mx-0">
-        <div ref={boardRowRef} className="w-full flex-1 min-h-0 flex items-center justify-center">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2">
+        {/* Full-bleed breakout. The board is width-bound in portrait, so every
+            pixel of chrome between it and the screen edge comes straight off
+            the playing surface. Three separate insets sat in the way: Room's
+            `p-1` (4px), this shell's 3px border, and its own `p-1.5` (6px) —
+            13px per side. Pulling 11 of those back (leaving 2px so the board
+            never sits flush against the bezel, and never widens past the
+            viewport) takes the board from ~409px to ~426px on a 430px phone.
+            That is the whole budget: a square board on a portrait screen is
+            limited by width alone, and this exhausts it. */}
+        <div
+          ref={boardRowRef}
+          className="w-full flex-1 min-h-0 flex items-center justify-center"
+          style={{ marginLeft: -11, marginRight: -11 }}
+        >
           <LudoBoardArea m={m} state={state} players={players} maxWidth={`${boardPx}px`} />
         </div>
         <LudoTurnCallout m={m} state={state} />

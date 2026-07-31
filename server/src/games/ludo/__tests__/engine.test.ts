@@ -1,7 +1,16 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type { Player } from "@shared/types.js";
 import { LudoEngine } from "../LudoEngine.js";
+import { PLAYER_COLORS_ORDER } from "../track.js";
 
+/**
+ * Seats every player on an explicitly CHOSEN color, in canonical order.
+ *
+ * Unchosen seats now draw randomly (see the color assignment in
+ * LudoEngine.init), so these tests — which address tokens by name, e.g.
+ * "red-0" — must pin the colors rather than rely on positional defaults.
+ * Choosing also exercises the "a chosen color is honored exactly" path.
+ */
 function makePlayers(n: number): Player[] {
   return Array.from({ length: n }, (_, i) => ({
     id: `p${i}`,
@@ -9,6 +18,7 @@ function makePlayers(n: number): Player[] {
     isHost: i === 0,
     isReady: true,
     isConnected: true,
+    chosenColor: PLAYER_COLORS_ORDER[i],
   }));
 }
 
@@ -126,7 +136,11 @@ describe("LudoEngine", () => {
     // entry without a prior capture - disable it to isolate the home bonus.
     engine.setOptions({ mandatoryCapture: false });
     engine.init(makePlayers(2));
-    rigDice(engine, [6, 6, 2, 1, 6, 6, 2, 1, 6, 6, 2, 1, 6, 6, 4, 1, 2, 1, 4]);
+    // Final die is a 3 (not 4) since the divert point moved from start-1 to
+    // start-2 — see divertOffsetFor() in ../track.ts. The cross board's home
+    // lane is fed by the cell TWO before a color's start, so every token's
+    // journey is one cell shorter and the stretch is entered one step deeper.
+    rigDice(engine, [6, 6, 2, 1, 6, 6, 2, 1, 6, 6, 2, 1, 6, 6, 4, 1, 2, 1, 3]);
     for (let i = 0; i < 3; i++) {
       rollFor("p0", "red-0"); // six: bonus
       rollFor("p0", "red-0"); // six: bonus
@@ -136,16 +150,16 @@ describe("LudoEngine", () => {
     // red-0 is now at track pos 36.
     rollFor("p0", "red-0"); // six: 36 -> 42 (bonus)
     rollFor("p0", "red-0"); // six: 42 -> 48 (bonus)
-    rollFor("p0");          // four: 48 -> stretch pos 0, turn passes to p1
+    rollFor("p0");          // four: 48 -> divert at 50 -> stretch pos 1, turn passes to p1
     rollFor("p1");          // noMove, back to p0
-    rollFor("p0");          // two: stretch 0 -> 2, turn passes to p1
+    rollFor("p0");          // two: stretch 1 -> 3, turn passes to p1
     rollFor("p1");          // noMove, back to p0
-    rollFor("p0");          // four: stretch 2 -> HOME, with a FOUR (not six)
+    rollFor("p0");          // three: stretch 3 -> HOME, with a THREE (not six)
 
     const state = engine.getPublicState();
     expect(state.lastEvent?.kind).toBe("home");
     expect(state.tokens["p0"].find((t) => t.id === "red-0")?.state).toBe("home");
-    // The finishing roll was a 4, not a 6 - bonus must come from reaching home itself.
+    // The finishing roll was a 3, not a 6 - bonus must come from reaching home itself.
     expect(state.turnPlayerId).toBe("p0");
     expect(state.turnPhase).toBe("rolling");
   });

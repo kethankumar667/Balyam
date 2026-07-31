@@ -15,6 +15,7 @@ import {
   lastTrackPosFor,
   safeSquaresFor,
   trackLengthFor,
+  wedgeCountFor,
 } from "./track.js";
 
 interface Internal {
@@ -25,7 +26,11 @@ interface Internal {
   consecutiveSixes: number;
   movableTokenIds: string[];
   tokens: Map<string, LudoToken[]>;
+  /** Board ARM per player — geometry only (track start, stretch, yard,
+   *  token ids). Always one of the board's canonical wedge colors. */
   colorOf: Map<string, LudoColor>;
+  /** Display color per player — any of the 8, never touches geometry. */
+  paintOf: Map<string, LudoColor>;
   playerOrder: string[];
   finishedCount: Map<string, number>;
   winnerId: string | null;
@@ -75,28 +80,90 @@ export class LudoEngine implements GameEngine {
     const order = players.map((p) => p.id);
     const colorOf = new Map<string, LudoColor>();
     const tokens = new Map<string, LudoToken[]>();
-    // Each game uses exactly the first N canonical colors — one per wedge of
-    // the cross (≤4) / polygon (5–8) board. Honor a player's chosen color
-    // only when it's inside that pool; everyone else auto-assigns to the next
-    // free pool color so the board always has geometry for every player.
-    const pool = PLAYER_COLORS_ORDER.slice(0, players.length);
-    const poolSet = new Set<LudoColor>(pool);
-    const takenColors = new Set<LudoColor>();
+    /**
+     * Two separate things that used to be one field, which is exactly why
+     * picking purple in a 3-player room silently turned into blue:
+     *
+     *   ARM   — which wedge of the board you sit on. The cross board (2-4
+     *           players) has four arms and the polygon board has N, and the
+     *           track/stretch/yard coordinates are keyed to them. Only the
+     *           first `wedgeCountFor(n)` colors are legal here, ever.
+     *   PAINT — what color you appear in. Any of the 8, honored exactly as
+     *           picked, because it is only ever used to look up a hex.
+     *
+     * Collapsing them meant a 3-player game could only offer four colors, and
+     * any pick outside that pool was dropped without telling anyone. Splitting
+     * them lets a 2-player game be purple vs orange on the classic four-arm
+     * board.
+     *
+     * Unpicked seats (bots, and humans who never opened the picker) draw at
+     * random rather than taking the next canonical color, so the table is not
+     * red/green/yellow/blue in that order every single game. All randomness
+     * runs through `this.rng` so tests can pin it.
+     */
+    const shuffled = (src: LudoColor[]): LudoColor[] => {
+      const a = src.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(this.rng() * (i + 1));
+        [a[i], a[j]] = [a[j]!, a[i]!];
+      }
+      return a;
+    };
+
+    // ── ARMS (geometry) ──────────────────────────────────────────────────
+    // One per player, always from the colors the board actually has
+    // coordinates for. Arms are seats, not looks — which arm you get does not
+    // affect what color you appear in, so these are simply dealt at random.
+    const armPool = PLAYER_COLORS_ORDER.slice(0, wedgeCountFor(players.length));
+    const takenArm = new Set<LudoColor>();
+    // Prefer the arm matching the pick. On the 5-8 polygon board the sector
+    // colour IS the arm, so this keeps those boards honouring a pick exactly
+    // as they did before the split; on the cross board it simply means a
+    // red/green/yellow/blue pick also gets the matching wedge.
     for (const p of players) {
       const chosen = p.chosenColor as LudoColor | undefined;
-      if (chosen && poolSet.has(chosen) && !takenColors.has(chosen)) {
+      if (chosen && armPool.includes(chosen) && !takenArm.has(chosen)) {
         colorOf.set(p.id, chosen);
-        takenColors.add(chosen);
+        takenArm.add(chosen);
       }
     }
-    // Second pass: assign remaining players the next free color in canonical order.
+    const armDeck = shuffled(armPool.filter((c) => !takenArm.has(c)));
     for (const p of players) {
       if (colorOf.has(p.id)) continue;
-      const next = pool.find((c) => !takenColors.has(c));
-      if (!next) throw new Error("Ran out of Ludo colors");
-      colorOf.set(p.id, next);
-      takenColors.add(next);
+      const arm = armDeck.pop();
+      if (!arm) throw new Error("Ran out of Ludo board arms");
+      colorOf.set(p.id, arm);
+      takenArm.add(arm);
     }
+
+    // ── PAINT (looks) ────────────────────────────────────────────────────
+    // Paint DEFAULTS to the arm, and only diverges when a player picked a
+    // color the board has no arm for — purple on the four-arm cross board,
+    // say. That keeps the two in sync everywhere they have to be:
+    //
+    //   * On the 5-8 polygon boards every color is an arm, so a pick is
+    //     already honored by the arm pass above and paint == arm. Those
+    //     boards paint their sectors by arm INDEX, so letting paint wander
+    //     free there would put a purple seat card next to an orange token.
+    //   * On the cross board a purple pick lands on whichever wedge is free
+    //     and that wedge is then drawn purple.
+    //
+    // No collision is possible: a pick that is IN the arm pool became that
+    // player's own arm, and a pick outside it can never be another player's
+    // arm-derived paint.
+    // The divergence is CROSS-BOARD ONLY. The polygon boards draw each
+    // sector from its arm INDEX, so a paint color that is not an arm has
+    // nothing to paint with there and would leave a brown seat card beside a
+    // blue token. Those boards have an arm for all 8 colors anyway, so the
+    // arm pass above already honors every pick they can express.
+    const crossBoard = wedgeCountFor(players.length) === 4;
+    const paintOf = new Map<string, LudoColor>();
+    for (const p of players) {
+      const chosen = p.chosenColor as LudoColor | undefined;
+      const arm = colorOf.get(p.id)!;
+      paintOf.set(p.id, crossBoard && chosen ? chosen : arm);
+    }
+
     for (const pid of order) {
       const color = colorOf.get(pid)!;
       tokens.set(
@@ -117,6 +184,7 @@ export class LudoEngine implements GameEngine {
       movableTokenIds: [],
       tokens,
       colorOf,
+      paintOf,
       playerOrder: order,
       finishedCount: new Map(order.map((p) => [p, 0])),
       winnerId: null,
@@ -415,6 +483,7 @@ export class LudoEngine implements GameEngine {
   getPublicState(): LudoState {
     const tokens: Record<string, LudoToken[]> = {};
     const playerColors: Record<string, LudoColor> = {};
+    const playerArms: Record<string, LudoColor> = {};
     const finishedCount: Record<string, number> = {};
     const hasCaptured: Record<string, boolean> = {};
     const rollCount: Record<string, number> = {};
@@ -423,8 +492,11 @@ export class LudoEngine implements GameEngine {
     const biggestStreak: Record<string, number> = {};
     for (const pid of this.s.playerOrder) {
       tokens[pid] = (this.s.tokens.get(pid) ?? []).map((t) => ({ ...t }));
-      const c = this.s.colorOf.get(pid);
-      if (c) playerColors[pid] = c;
+      const arm = this.s.colorOf.get(pid);
+      if (arm) playerArms[pid] = arm;
+      // Paint falls back to the arm for states created before the split.
+      const paint = this.s.paintOf?.get(pid) ?? arm;
+      if (paint) playerColors[pid] = paint;
       finishedCount[pid] = this.s.finishedCount.get(pid) ?? 0;
       hasCaptured[pid] = this.s.hasCaptured.get(pid) ?? false;
       rollCount[pid] = this.s.rollCount.get(pid) ?? 0;
@@ -442,6 +514,7 @@ export class LudoEngine implements GameEngine {
       movableTokenIds: [...this.s.movableTokenIds],
       tokens,
       playerColors,
+      playerArms,
       playerOrder: this.s.playerOrder,
       winnerId: this.s.winnerId,
       finishedCount,
