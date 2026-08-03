@@ -19,6 +19,10 @@ interface PeerEntry {
   stream: MediaStream | null;
   pendingCandidates: RTCIceCandidateInit[];
   remoteDescSet: boolean;
+  /** Which side owns the offer for this pair (lexicographic tie-break). */
+  weInitiate: boolean;
+  /** Whether our local audio has been attached to this connection yet. */
+  tracksAdded: boolean;
 }
 
 /**
@@ -81,6 +85,8 @@ export class VoiceManager {
       if (this.peers.has(id)) continue;
       this.openPeer(id, this.localPlayerId < id);
     }
+    // Connections opened before our mic existed still need it.
+    this.renegotiateAll();
     this.emitChange();
   }
 
@@ -122,14 +128,11 @@ export class VoiceManager {
       stream: null,
       pendingCandidates: [],
       remoteDescSet: false,
+      weInitiate,
+      tracksAdded: false,
     };
     this.peers.set(playerId, entry);
-
-    if (this.localStream) {
-      for (const track of this.localStream.getTracks()) {
-        pc.addTrack(track, this.localStream);
-      }
-    }
+    this.attachLocalTracks(entry);
 
     pc.ontrack = (e) => {
       entry.stream = e.streams[0] ?? null;
@@ -151,6 +154,51 @@ export class VoiceManager {
       this.makeOffer(playerId).catch((err) => console.error("makeOffer failed:", err));
     }
     return entry;
+  }
+
+  /**
+   * Put our microphone on an existing connection.
+   *
+   * Peers are NOT always created after we have a mic: whoever connects first
+   * signals the other, and `handleSignal` opens a connection on the receiving
+   * side immediately — before that person has clicked "Connect mic". The
+   * original code only ever called `addTrack` inside `openPeer`, so that
+   * connection was answered with NO audio track and the initiator heard
+   * silence forever. Nothing errored; voice just half-worked, one direction
+   * only, which is exactly how it was reported.
+   */
+  private attachLocalTracks(entry: PeerEntry): boolean {
+    if (!this.localStream || entry.tracksAdded) return false;
+    for (const track of this.localStream.getTracks()) {
+      entry.pc.addTrack(track, this.localStream);
+    }
+    entry.tracksAdded = true;
+    return true;
+  }
+
+  /**
+   * Our mic just became available (or came back) — make sure every existing
+   * connection carries it. The side that owns the offer re-offers; the other
+   * side asks for one with `ready`, the signal kind that was declared in
+   * shared/types.ts but never actually sent.
+   */
+  private renegotiateAll(): void {
+    for (const [playerId, entry] of this.peers) {
+      this.attachLocalTracks(entry);
+      // Already flowing — leave it alone.
+      if (entry.stream && entry.pc.connectionState === "connected") continue;
+      // Mid-negotiation; the in-flight offer/answer will finish the job.
+      if (entry.pc.signalingState !== "stable") continue;
+      if (entry.weInitiate) {
+        this.makeOffer(playerId).catch((err) => console.error("re-offer failed:", err));
+      } else {
+        // We do not own the offer for this pair, so ask the side that does.
+        // Without this the staggered case deadlocks: the first person to
+        // connect offered into the void (nobody was listening yet) and the
+        // second never had a reason to speak up.
+        this.sendSignal(playerId, { kind: "ready" });
+      }
+    }
   }
 
   private async makeOffer(playerId: string): Promise<void> {
@@ -181,7 +229,15 @@ export class VoiceManager {
       entry = this.openPeer(fromPlayerId, false);
     }
     try {
+      if (signal.kind === "ready") {
+        // The far side now has a mic and wants a fresh offer from us.
+        this.attachLocalTracks(entry);
+        if (entry.weInitiate) await this.makeOffer(fromPlayerId);
+        return;
+      }
       if (signal.kind === "offer" && signal.sdp) {
+        // Attach BEFORE answering so the answer advertises our audio.
+        this.attachLocalTracks(entry);
         await entry.pc.setRemoteDescription({ type: "offer", sdp: signal.sdp });
         entry.remoteDescSet = true;
         await this.flushCandidates(entry);

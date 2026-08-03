@@ -1,6 +1,16 @@
 import type { LudoColor, LudoToken, Player } from "@shared/types";
 import { COLOR_HEX, COLOR_HEX_DARK, HOME_CENTER, SAFE_SQUARES, STRETCH_CELLS, TRACK_CELLS, YARD_CELLS, YARD_REGIONS } from "./board-layout";
 import type { PolygonBoardGeometry } from "./polygon-board";
+import {
+  INK,
+  GRID_STROKE as PRINT_GRID_STROKE,
+  LANE_STROKE as PRINT_LANE_STROKE,
+  RIM_STROKE as PRINT_RIM_STROKE,
+  PRINT_CELL,
+  LockMark,
+  rosettePts,
+  starPts,
+} from "./print-marks";
 import { YARD_TOKEN_W } from "./print-board";
 
 /**
@@ -12,6 +22,18 @@ import { YARD_TOKEN_W } from "./print-board";
  */
 
 export const GRID = 15;
+
+/**
+ * The print stroke weights are expressed in the 5-8 board's 100-unit viewBox.
+ * This board is 15 units across, so using them raw drew every line ~6.7x too
+ * heavy — hairline cell borders came out as thick bars and the rim as a slab.
+ * Converting keeps both boards at the SAME on-screen line weight, which is
+ * most of what makes them read as one design.
+ */
+const VB = GRID / 100;
+const GRID_STROKE = PRINT_GRID_STROKE * VB;
+const LANE_STROKE = PRINT_LANE_STROKE * VB;
+const RIM_STROKE = PRINT_RIM_STROKE * VB;
 
 /** Convert grid (row, col) to percent (left, top) for absolute positioning. */
 export function cellToPct(row: number, col: number): { left: number; top: number } {
@@ -216,13 +238,18 @@ const STRETCH_FILL: Record<LudoColor, string> = {
   red: "#E89895", green: "#7CC59E", yellow: "#F2D08C", blue: "#85AEDA",
   purple: "#C7A2E2", cyan: "#83CBD5", orange: "#EFB388", brown: "#B58A5E",
 };
-const PARCHMENT      = "#FBF4DE";
-const PARCHMENT_DEEP = "#F1E3BC";
-const TRACK_FILL     = "#FDF8E6";
-const TRACK_BORDER   = "#C8A66B";
-const WOOD_DARK      = "#3F2412";
-const GOLD           = "#E0AE3B";
-const GOLD_DEEP      = "#9A6E1A";
+// The 2-4 player board is now PRINTED rather than upholstered, matching the
+// 5-8 boards: a white play field, one ink colour for every line, flat seat
+// colour for anything belonging to a player. The wood / felt / gold
+// vocabulary this board used to share with nothing else is gone. These
+// aliases are kept so the markup below still reads the same.
+const PARCHMENT      = "#FFFFFF";
+const PARCHMENT_DEEP = "#FFFFFF";
+const TRACK_FILL     = PRINT_CELL;
+const TRACK_BORDER   = INK;
+const WOOD_DARK      = INK;
+const GOLD           = INK;
+const GOLD_DEEP      = INK;
 
 function starPoints(cx: number, cy: number, r: number): string {
   const pts: string[] = [];
@@ -289,6 +316,15 @@ export function BoardSVG({
   const SF = (c: LudoColor) => STRETCH_FILL[pc(c)];
   const YF = (c: LudoColor) => YARD_FILL[pc(c)];
 
+  /**
+   * An arm with no player must look empty EVERYWHERE, not just in its yard.
+   * The yard already dimmed, but the home lane, start square, safe star and
+   * centre sector all stayed at full strength — so an empty red arm still
+   * read as an occupied one, which is misleading at a glance on a 2-3 player
+   * table.
+   */
+  const armOpacity = (c: LudoColor) => (playerColorsInRoom.includes(c) ? 1 : 0.16);
+
   // Map ARM -> playerId for this room
   const playerIdByColor: Partial<Record<LudoColor, string | null>> = {};
   for (const pid of playerOrder) {
@@ -300,10 +336,7 @@ export function BoardSVG({
     <svg
       viewBox={`0 0 ${GRID} ${GRID}`}
       className="absolute inset-0 w-full h-full rounded-md"
-      style={{
-        background:
-          "radial-gradient(ellipse at 50% 35%, " + PARCHMENT + " 0%, " + PARCHMENT_DEEP + " 75%, #D9BE82 100%)",
-      }}
+      style={{ background: "#FFFFFF" }}
     >
       <defs>
         {/* Wood-grain stroke used as the outer board frame trim. */}
@@ -314,12 +347,14 @@ export function BoardSVG({
         </linearGradient>
         {/* Per-color radial gradient for yard quadrants — gives each yard a
             soft "inset bowl" look instead of a flat block. */}
+        {/* Flat seat fills. The radial inset-bowl gradient that used to live
+            here is the single biggest thing that made this board read as a
+            different product from the 5-8 print boards. */}
         {ORDERED_COLORS.map((color) => (
-          <radialGradient key={color + "-yard-grad"} id={`ludo-yard-${color}`} cx="50%" cy="50%" r="70%">
+          <linearGradient key={color + "-yard-grad"} id={`ludo-yard-${color}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={YF(color)} />
-            <stop offset="80%" stopColor={YF(color)} />
-            <stop offset="100%" stopColor={CHD(color)} />
-          </radialGradient>
+            <stop offset="100%" stopColor={YF(color)} />
+          </linearGradient>
         ))}
         {/* Soft drop-shadow used for the center cross + name labels so they
             sit above the board instead of flush with it. */}
@@ -336,8 +371,8 @@ export function BoardSVG({
 
       {/* Outer wood frame trim — sits at the very edge so the rest of the
           drawing reads as the felt inside the box. */}
-      <rect x={0.1} y={0.1} width={GRID - 0.2} height={GRID - 0.2} rx={0.5} fill="none" stroke="url(#ludo-frame)" strokeWidth={0.4} />
-      <rect x={0.35} y={0.35} width={GRID - 0.7} height={GRID - 0.7} rx={0.35} fill="none" stroke={GOLD} strokeWidth={0.12} opacity={0.7} />
+      <rect x={RIM_STROKE / 2} y={RIM_STROKE / 2} width={GRID - RIM_STROKE} height={GRID - RIM_STROKE} rx={0.3}
+            fill="none" stroke={INK} strokeWidth={RIM_STROKE} />
 
       {/* 4 yard quadrants */}
       {ORDERED_COLORS.map((color) => {
@@ -348,22 +383,19 @@ export function BoardSVG({
         return (
           <g key={color} opacity={inactive ? 0.45 : 1}>
             {/* Outer colored frame with rounded corner */}
-            <rect x={c0 + 0.2} y={r0 + 0.2} width={6 - 0.4} height={6 - 0.4} rx={0.4} fill={`url(#ludo-yard-${color})`} stroke={CHD(color)} strokeWidth={0.12} />
+            <rect x={c0 + 0.2} y={r0 + 0.2} width={6 - 0.4} height={6 - 0.4} rx={0.25} fill={`url(#ludo-yard-${color})`} stroke={INK} strokeWidth={LANE_STROKE} />
             {/* Inner cream pad where tokens park */}
-            <rect x={c0 + 1} y={r0 + 1} width={4} height={4} rx={0.3} fill={PARCHMENT} stroke={CHD(color)} strokeWidth={0.08} />
+            <rect x={c0 + 1} y={r0 + 1} width={4} height={4} rx={0.2} fill={PRINT_CELL} stroke={INK} strokeWidth={GRID_STROKE} />
             {/* Faint hand-drawn crown watermark behind the parked tokens —
                 the reference's per-quadrant motif. Decorative only. */}
-            <text
-              x={c0 + 3}
-              y={r0 + 3.55}
-              textAnchor="middle"
-              fontSize={2}
-              opacity={0.12}
-              transform={`rotate(${-rotationDeg} ${c0 + 3} ${r0 + 3})`}
+            <g
+              transform={`translate(${c0 + 3} ${r0 + 3}) rotate(${-rotationDeg})`}
+              opacity={0.14}
               style={{ pointerEvents: "none" }}
             >
-              👑
-            </text>
+              <polygon points={rosettePts(4, 1.15)} fill="none" stroke={INK} strokeWidth={LANE_STROKE} />
+              <polygon points={starPts(0.5)} fill={INK} />
+            </g>
             {/* Token slot circles — slightly darker so they read as a
                 landing pad rather than a faint ghost. */}
             {YARD_CELLS[color].map((cell, i) => (
@@ -424,9 +456,7 @@ export function BoardSVG({
       {/* Track cells — warm off-white with hairline gold-tan border */}
       {TRACK_CELLS.map((cell, idx) => (
         <g key={idx}>
-          <rect x={cell.col + 0.04} y={cell.row + 0.04} width={1 - 0.08} height={1 - 0.08} rx={0.12} fill={TRACK_FILL} stroke="#A89978" strokeWidth={0.055} />
-          {/* Subtle top highlight for bevel */}
-          <line x1={cell.col + 0.15} y1={cell.row + 0.12} x2={cell.col + 0.85} y2={cell.row + 0.12} stroke="#FFFFFF" strokeOpacity={0.5} strokeWidth={0.04} />
+          <rect x={cell.col} y={cell.row} width={1} height={1} fill={PRINT_CELL} stroke={INK} strokeWidth={GRID_STROKE} />
         </g>
       ))}
 
@@ -436,8 +466,8 @@ export function BoardSVG({
         const startIdx = START_MAP[color];
         const cell = TRACK_CELLS[startIdx];
         return (
-          <g key={color + "-start"}>
-            <rect x={cell.col + 0.04} y={cell.row + 0.04} width={1 - 0.08} height={1 - 0.08} rx={0.12} fill={SF(color)} stroke={CHD(color)} strokeWidth={0.08} />
+          <g key={color + "-start"} opacity={armOpacity(color)}>
+            <rect x={cell.col} y={cell.row} width={1} height={1} fill={CH(color)} stroke={INK} strokeWidth={LANE_STROKE} />
           </g>
         );
       })}
@@ -447,12 +477,16 @@ export function BoardSVG({
         const cell = TRACK_CELLS[pos];
         const safeColor = ORDERED_COLORS.find((c) => START_MAP[c] === pos || ((START_MAP[c] + 8) % 52) === pos) ?? "yellow";
         return (
-          <g key={"safe" + pos}>
+          <g key={"safe" + pos} opacity={armOpacity(safeColor)}>
             <polygon
-              points={starPoints(cell.col + 0.5, cell.row + 0.5, 0.35)}
-              fill={CH(safeColor)}
-              stroke={CHD(safeColor)}
-              strokeWidth={0.045}
+              // A start square is itself a safe square, and it is already
+              // filled with the seat colour — so a seat-coloured star on it
+              // was invisible. On colour, print white; on the white track,
+              // print the seat colour.
+              points={starPoints(cell.col + 0.5, cell.row + 0.5, 0.34)}
+              fill={START_MAP[safeColor] === pos ? PRINT_CELL : CH(safeColor)}
+              stroke={INK}
+              strokeWidth={GRID_STROKE}
             />
           </g>
         );
@@ -461,11 +495,10 @@ export function BoardSVG({
       {/* Home stretches — gradient strip in stretch color with rounded
           cells, dark trim inherited from the yard's frame. */}
       {ORDERED_COLORS.map((color) => (
-        <g key={color + "-stretch"}>
+        <g key={color + "-stretch"} opacity={armOpacity(color)}>
           {STRETCH_CELLS[color].map((cell, i) => (
             <g key={i}>
-              <rect x={cell.col + 0.04} y={cell.row + 0.04} width={1 - 0.08} height={1 - 0.08} rx={0.12} fill={SF(color)} stroke={CHD(color)} strokeWidth={0.06} />
-              <line x1={cell.col + 0.15} y1={cell.row + 0.12} x2={cell.col + 0.85} y2={cell.row + 0.12} stroke="#FFFFFF" strokeOpacity={0.4} strokeWidth={0.04} />
+              <rect x={cell.col} y={cell.row} width={1} height={1} fill={CH(color)} stroke={INK} strokeWidth={GRID_STROKE} />
             </g>
           ))}
         </g>
@@ -473,19 +506,21 @@ export function BoardSVG({
 
       {/* Center: 4 deeper-toned triangles + gold star crest */}
       <g filter="url(#ludo-drop)">
-        <polygon points="6,6 6,9 7.5,7.5" fill={YARD_FILL.red} />
-        <polygon points="6,6 9,6 7.5,7.5" fill={YARD_FILL.green} />
-        <polygon points="9,6 9,9 7.5,7.5" fill={YARD_FILL.yellow} />
-        <polygon points="6,9 9,9 7.5,7.5" fill={YARD_FILL.blue} />
+        <polygon points="6,6 6,9 7.5,7.5" fill={YF("red")} fillOpacity={armOpacity("red")} stroke={INK} strokeWidth={GRID_STROKE} />
+        <polygon points="6,6 9,6 7.5,7.5" fill={YF("green")} fillOpacity={armOpacity("green")} stroke={INK} strokeWidth={GRID_STROKE} />
+        <polygon points="9,6 9,9 7.5,7.5" fill={YF("yellow")} fillOpacity={armOpacity("yellow")} stroke={INK} strokeWidth={GRID_STROKE} />
+        <polygon points="6,9 9,9 7.5,7.5" fill={YF("blue")} fillOpacity={armOpacity("blue")} stroke={INK} strokeWidth={GRID_STROKE} />
         {/* Frame */}
-        <rect x={6} y={6} width={3} height={3} fill="none" stroke={WOOD_DARK} strokeWidth={0.1} />
-        {/* Gold inner trim */}
-        <rect x={6.12} y={6.12} width={2.76} height={2.76} fill="none" stroke={GOLD} strokeWidth={0.05} opacity={0.85} />
-        {/* Central gold disc + crown — the "finish" crest (reference motif). */}
-        <circle cx={7.5} cy={7.5} r={0.7} fill={GOLD} stroke={GOLD_DEEP} strokeWidth={0.08} />
-        <text x={7.5} y={7.86} fontSize={0.95} textAnchor="middle" transform={`rotate(${-rotationDeg} 7.5 7.5)`} style={{ pointerEvents: "none" }}>
-          👑
-        </text>
+        <rect x={6} y={6} width={3} height={3} fill="none" stroke={INK} strokeWidth={LANE_STROKE} />
+        {/* Rosette medallion — the same hub motif the 5-8 print boards use,
+            one point per arm. Replaces the gold disc and the 👑 emoji, which
+            was the last non-vector mark on the board and rendered differently
+            on every OS. */}
+        <g transform={`translate(7.5 7.5)`}>
+          <circle r={0.8} fill={PRINT_CELL} stroke={INK} strokeWidth={LANE_STROKE} />
+          <polygon points={rosettePts(4, 0.6)} fill="none" stroke={INK} strokeWidth={GRID_STROKE} />
+          <polygon points={starPts(0.32)} fill={INK} />
+        </g>
       </g>
 
       {/* Arrows from each color's start square pointing into the track */}
@@ -493,8 +528,8 @@ export function BoardSVG({
         const d = ARROW_DIR[color];
         if (!d) return null;
         return (
-          <g key={color + "-arrow"} transform={`rotate(${d.rot}, ${d.x}, ${d.y})`}>
-            <polygon points={`${d.x - 0.25},${d.y - 0.15} ${d.x + 0.15},${d.y} ${d.x - 0.25},${d.y + 0.15}`} fill={CHD(color)} opacity={0.85} />
+          <g key={color + "-arrow"} opacity={armOpacity(color)} transform={`rotate(${d.rot}, ${d.x}, ${d.y})`}>
+            <polygon points={`${d.x - 0.24},${d.y - 0.16} ${d.x + 0.18},${d.y} ${d.x - 0.24},${d.y + 0.16}`} fill={INK} />
           </g>
         );
       })}
@@ -513,10 +548,9 @@ export function BoardSVG({
           // Show locked padlock
           return (
             <g key={color + "-lock"} className="lock-pulse" style={{ transformOrigin: `${cx}px ${cy}px` }}>
-              <circle cx={cx} cy={cy} r={0.45} fill="rgba(0,0,0,0.45)" />
-              <text x={cx} y={cy + 0.22} textAnchor="middle" fontSize="0.7" transform={`rotate(${-rotationDeg} ${cx} ${cy})`}>
-                🔒
-              </text>
+              <g transform={`translate(${cx} ${cy}) rotate(${-rotationDeg})`}>
+                <LockMark s={0.62} />
+              </g>
             </g>
           );
         }

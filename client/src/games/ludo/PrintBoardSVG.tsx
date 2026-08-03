@@ -1,3 +1,14 @@
+import {
+  INK,
+  GRID_STROKE,
+  LANE_STROKE,
+  RIM_STROKE,
+  norm180,
+  readable,
+  starPts,
+  rosettePts,
+  LockMark,
+} from "./print-marks";
 import { useId } from "react";
 import type { LudoColor, Player } from "@shared/types";
 import { PLAYER_COLORS_ORDER } from "./board-layout";
@@ -35,10 +46,6 @@ import { seatColor, seatColorDark, type PrintBoardGeometry } from "./print-board
  * the cell grid, medium for structural edges (yards, centre wedges,
  * medallion), heavy for the silhouette.
  */
-const INK = "#444444";
-const GRID_STROKE = 0.11;
-const LANE_STROKE = 0.26;
-const RIM_STROKE = 0.5;
 
 /** Scale a point outward from the board center (50,50). */
 function scalePt(p: { x: number; y: number }, k: number): { x: number; y: number } {
@@ -49,65 +56,6 @@ type Pt = { x: number; y: number };
 
 function angleDeg(a: Pt, b: Pt): number {
   return (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
-}
-
-/** Normalise to (-180, 180]. `readable` compares against ±90, so it only works
- *  on an angle already in that range — feeding it a raw sum like
- *  `edgeAngle + boardRotation` (which can reach ±360) made it flip the wrong
- *  way and rendered some arm names upside-down once the board rotated. */
-function norm180(a: number): number {
-  return ((((a + 180) % 360) + 360) % 360) - 180;
-}
-
-/** Keep rotated text upright-readable. */
-function readable(a: number): number {
-  return a > 90 || a < -90 ? a + 180 : a;
-}
-
-/** 5-point star polygon points centered on (0,0), outer radius r. */
-function starPts(r: number): string {
-  const pts: string[] = [];
-  for (let k = 0; k < 10; k++) {
-    const rr = k % 2 === 0 ? r : r * 0.42;
-    const a = -Math.PI / 2 + (k * Math.PI) / 5;
-    pts.push(`${(rr * Math.cos(a)).toFixed(2)},${(rr * Math.sin(a)).toFixed(2)}`);
-  }
-  return pts.join(" ");
-}
-
-/** n-point rosette for the centre medallion — one point per seat, so the hub
- *  states the table size. `inner` is the waist as a fraction of `r`. */
-function rosettePts(n: number, r: number, inner = 0.52): string {
-  const pts: string[] = [];
-  for (let k = 0; k < n * 2; k++) {
-    const rr = k % 2 === 0 ? r : r * inner;
-    const a = -Math.PI / 2 + (k * Math.PI) / n;
-    pts.push(`${(rr * Math.cos(a)).toFixed(2)},${(rr * Math.sin(a)).toFixed(2)}`);
-  }
-  return pts.join(" ");
-}
-
-/** Flat vector padlock, drawn at the origin, sized to `s`. Replaces a raw
- *  `🔒` emoji — the one non-vector mark on an otherwise pure-vector board,
- *  and one that renders differently on every OS. Sits on a white disc so it
- *  stays legible on the solid seat-coloured lane cell underneath. */
-function LockMark({ s }: { s: number }) {
-  const bodyW = s * 0.62;
-  const bodyH = s * 0.46;
-  const bodyY = -s * 0.1;
-  return (
-    <g>
-      <circle r={s * 0.62} fill="#ffffff" stroke={INK} strokeWidth={GRID_STROKE} />
-      <path
-        d={`M ${-bodyW * 0.3} ${bodyY} v ${-s * 0.2} a ${bodyW * 0.3} ${s * 0.2} 0 0 1 ${bodyW * 0.6} 0 v ${s * 0.2}`}
-        fill="none"
-        stroke={INK}
-        strokeWidth={s * 0.11}
-        strokeLinecap="round"
-      />
-      <rect x={-bodyW / 2} y={bodyY} width={bodyW} height={bodyH} rx={s * 0.08} fill={INK} />
-    </g>
-  );
 }
 
 /** Keep a radially-placed label upright: rotate by the arm axis, adding a
