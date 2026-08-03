@@ -68,6 +68,24 @@ export class LudoEngine implements GameEngine {
   }
 
   /** Update the turn deadline (in wall-clock ms). Returns updated state. */
+  /**
+   * How long a bot "thinks" before each sub-move.
+   *
+   * Ludo did not implement this, so it inherited RoomManager's generic
+   * 1200-2000ms fallback — and that delay is applied PER SUB-MOVE. A Ludo turn
+   * is two sub-moves (roll, then move), so every bot turn cost 2.4-4s, and a
+   * table with three bots left a human waiting 7-12s between their own turns.
+   * That is the main reason the game felt slow.
+   *
+   * A Ludo sub-move carries almost no information to absorb — a die face, or a
+   * token sliding a few cells — so the pause only has to cover the client's
+   * own animation (DICE_ROLL_MS is 640ms) and read as deliberate rather than
+   * instant. Roughly a third of the old figure does that.
+   */
+  getBotThinkDelayMs(): number {
+    return 420 + Math.random() * 260;
+  }
+
   setTurnDeadline(deadline: number | null): void {
     if (!this.s) return;
     this.s.turnDeadline = deadline;

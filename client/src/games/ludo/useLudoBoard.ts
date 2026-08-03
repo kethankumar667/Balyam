@@ -176,7 +176,10 @@ export function useLudoBoard({
     prevTurnIdRef.current = state.turnPlayerId;
     if (prev !== null && prev !== state.turnPlayerId) {
       setRollCooldown(true);
-      const t = window.setTimeout(() => setRollCooldown(false), 1000);
+      // Was 1000ms. This only needs to swallow a double-tap on the roll
+      // button; a full second of dead time at the start of every one of your
+      // turns was a big part of why the game felt sluggish.
+      const t = window.setTimeout(() => setRollCooldown(false), 250);
       return () => window.clearTimeout(t);
     }
   }, [state.turnPlayerId]);
@@ -188,17 +191,32 @@ export function useLudoBoard({
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
   const haptics = useHaptics();
 
+  /**
+   * Roll animation, driven by a roll COUNTER rather than the dice value.
+   *
+   * This used to fire on `state.diceValue !== prev`, which silently skipped
+   * the animation whenever a roll repeated the previous number — and in Ludo
+   * that is not an edge case: rolling a 6 grants another turn, so back-to-back
+   * 6s are routine, and the die simply sat there showing a stale face while
+   * play carried on. Any repeated value (4 then 4) did the same.
+   *
+   * `rollCount` is per-player and monotonic, so its sum changes on EVERY roll
+   * by anyone, regardless of what came up.
+   */
+  const rollTick = useMemo(
+    () =>
+      Object.values(state.stats?.rollCount ?? {}).reduce<number>((a, b) => a + b, 0),
+    [state.stats?.rollCount],
+  );
   const [rolling, setRolling] = useState(false);
-  const prevDice = useRef<number | null>(state.diceValue);
+  const prevRollTick = useRef(rollTick);
   useEffect(() => {
-    if (state.diceValue != null && state.diceValue !== prevDice.current) {
-      setRolling(true);
-      const t = setTimeout(() => setRolling(false), DICE_ROLL_MS);
-      prevDice.current = state.diceValue;
-      return () => clearTimeout(t);
-    }
-    prevDice.current = state.diceValue;
-  }, [state.diceValue]);
+    if (rollTick === prevRollTick.current) return;
+    prevRollTick.current = rollTick;
+    setRolling(true);
+    const t = setTimeout(() => setRolling(false), DICE_ROLL_MS);
+    return () => clearTimeout(t);
+  }, [rollTick]);
 
   /**
    * Turn identity for ANNOUNCEMENTS only, held still until the dice settles.
@@ -219,7 +237,7 @@ export function useLudoBoard({
    * Controls are deliberately NOT gated on this: `myTurn` / `canRoll` stay
    * live, so nothing becomes less responsive. Only the words wait.
    */
-  const diceChanging = state.diceValue != null && state.diceValue !== prevDice.current;
+  const diceChanging = rollTick !== prevRollTick.current;
   const settlingDice = rolling || diceChanging;
   const settledTurn = useRef({ pid: state.turnPlayerId, phase: state.turnPhase });
   if (!settlingDice) settledTurn.current = { pid: state.turnPlayerId, phase: state.turnPhase };
@@ -689,6 +707,15 @@ export function useLudoBoard({
         continue;
       }
 
+      /**
+       * Longer hops travel faster per cell, so a 6 does not take six times as
+       * long to watch as a 1. At a flat 160ms a six-step move ran ~1s, which
+       * on top of the dice animation and the next player's turn is a lot of
+       * dead time for the commonest roll in the game. A single step keeps the
+       * full beat (it needs to be legible); six compress to ~100ms each.
+       */
+      const stepMs = Math.max(85, STEP_MS - (path.length - 1) * 14);
+
       let i = 0;
       const playStep = () => {
         if (i >= path.length) {
@@ -703,7 +730,7 @@ export function useLudoBoard({
           sfx.tokenMove();
         }
         if (i < path.length) {
-          const t = setTimeout(playStep, STEP_MS);
+          const t = setTimeout(playStep, stepMs);
           animationTimersRef.current.set(id, t);
         }
       };
