@@ -147,6 +147,70 @@ body, #root, .bhalyam-paper {
 
 /* Cream parchment texture — base for the BHALYAM home page. Pure CSS
    gradients, no raster fallback needed. */
+/**
+ * INK ON PAPER — theme-aware text colours for anything drawn straight onto
+ * `.bhalyam-paper`.
+ *
+ * The paper itself already flips (cream -> dark brown, below), but every
+ * caller wrote its text colour as a literal dark brown. In dark mode that put
+ * dark-brown ink on a dark-brown sheet: the Ludo turn banner ("Roll the dice")
+ * was very nearly invisible. Use these instead of a hard-coded hex whenever
+ * text sits on the paper surface.
+ *
+ * Text on a CHIP (the cream pills, seat cards, the roll caption) keeps its
+ * own literal colour on purpose — those chips do not flip, so their ink must
+ * not either.
+ */
+/**
+ * Selected text always states BOTH colours.
+ *
+ * Left to the browser, ::selection paints its own highlight but keeps the
+ * element's existing text colour. Any element whose ink happens to sit near
+ * that highlight becomes unreadable the moment you select it — which is what
+ * happened in the bot-name field: light ink, light highlight, invisible
+ * selection in both themes.
+ *
+ * Declaring both means selection legibility no longer depends on whatever
+ * colour the element inherited.
+ */
+/* Rummy / Hand Cricket notebook palette. Ink and paper MUST flip together —
+   see the `nostalgia` block in tailwind.config. Channels, not hex, so
+   Tailwind's `/70` opacity modifiers still resolve. */
+:root {
+  --nostalgia-paper: 245 233 201;
+  --nostalgia-paper-edge: 224 204 156;
+  --nostalgia-pen: 46 36 25;
+  --nostalgia-pen-red: 168 51 43;
+  --nostalgia-brass: 156 122 60;
+}
+:root[data-theme="dark"] {
+  --nostalgia-paper: 42 33 20;        /* matches .nostalgia-paper dark sheet */
+  --nostalgia-paper-edge: 74 59 38;
+  --nostalgia-pen: 240 227 202;       /* light ink on the dark sheet */
+  --nostalgia-pen-red: 232 117 107;   /* red-pen circle, readable on dark */
+  --nostalgia-brass: 201 174 135;
+}
+
+::selection {
+  background: #31A157;
+  color: #ffffff;
+}
+:root[data-theme="dark"] ::selection {
+  background: #7BD88F;
+  color: #10261a;
+}
+
+:root {
+  --paper-ink: #6D4323;        /* body text on paper */
+  --paper-ink-soft: #8A6D4B;   /* secondary / waiting states */
+  --paper-ink-hi: #2E7D32;     /* "your turn" affirmative */
+}
+:root[data-theme="dark"] {
+  --paper-ink: #F0DFC2;
+  --paper-ink-soft: #C9AE87;
+  --paper-ink-hi: #7BD88F;
+}
+
 .bhalyam-paper {
   background-color: #F7E8C4;
   background-image:

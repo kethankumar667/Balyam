@@ -146,7 +146,7 @@ function BotControls({
           placeholder="Bot name (optional)"
           maxLength={20}
           disabled={atCapacity}
-          className="flex-1 text-xs px-2 py-1 rounded border border-[#D9C9B0] bg-white placeholder-[#B0A090] focus:outline-none focus:border-[#31A157] disabled:opacity-50"
+          className="flex-1 text-xs px-2 py-1 rounded border border-[#D9C9B0] bg-white text-[#3F2412] caret-[#3F2412] placeholder-[#B0A090] focus:outline-none focus:border-[#31A157] disabled:opacity-50"
         />
         <button
           onClick={addBot}
