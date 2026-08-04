@@ -7,6 +7,23 @@ export interface Player {
   isReady: boolean;
   isConnected: boolean;
   awayUntil?: number;
+  /** Wall-clock ms at which this seat lost its socket. Absent while connected. */
+  awaySince?: number;
+  /**
+   * True while the SERVER is playing this seat's turns for them.
+   *
+   * A dropped player used to stall the whole table: every one of their turns
+   * burned the full turn timer before auto-resolving, so a four-player game
+   * with one bad connection spent most of its time waiting on someone who
+   * wasn't there. After a short blip-tolerance the server takes the seat over
+   * and plays it at bot pace, and hands it straight back the moment they
+   * reconnect.
+   *
+   * Distinct from `isBot`: this seat belongs to a human who is coming back,
+   * so it must never be treated as an AI opponent for scoring, roster or
+   * end-of-game purposes — only for "who acts now".
+   */
+  isAutoPlaying?: boolean;
   /** True if this is a server-controlled AI player (no real socket). */
   isBot?: boolean;
   /**

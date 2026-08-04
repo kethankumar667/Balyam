@@ -833,6 +833,7 @@ export default function RummyBoardDesktop({
                 dropped={state.droppedPlayers.includes(id)}
                 eliminated={state.eliminatedInMatch.includes(id)}
                 connected={players.find((p) => p.id === id)?.isConnected ?? true}
+                autoPlaying={players.find((p) => p.id === id)?.isAutoPlaying === true}
                 cumulativeScore={state.cumulativeScores?.[id]}
               />
             ))}
@@ -1501,6 +1502,7 @@ function SidePlayersRail({
           const dropped = state.droppedPlayers.includes(id);
           const out = state.eliminatedInMatch.includes(id);
           const conn = players.find((p) => p.id === id)?.isConnected ?? true;
+          const autoPlaying = players.find((p) => p.id === id)?.isAutoPlaying === true;
           const score = state.cumulativeScores?.[id];
           return (
             <li
@@ -1516,6 +1518,9 @@ function SidePlayersRail({
                 {isSelf ? `${nameOf(id)} (You)` : nameOf(id)}
                 {dropped && <span className="rm-roster__tag">dropped</span>}
                 {out && !dropped && <span className="rm-roster__tag">out</span>}
+                {autoPlaying && !dropped && !out && (
+                  <span className="rm-roster__tag rm-roster__tag--auto">auto</span>
+                )}
               </span>
               {score != null && (
                 <span className="rm-roster__score" title="Running score">
@@ -1596,6 +1601,7 @@ function SeatCard({
   dropped,
   eliminated,
   connected,
+  autoPlaying,
   cumulativeScore,
 }: {
   letter: string;
@@ -1606,6 +1612,7 @@ function SeatCard({
   dropped: boolean;
   eliminated: boolean;
   connected: boolean;
+  autoPlaying: boolean;
   cumulativeScore?: number;
 }) {
   const out = dropped || eliminated;
@@ -1621,6 +1628,10 @@ function SeatCard({
     ? "Dropped"
     : eliminated
     ? "Eliminated"
+    // Outranks the turn state: whose turn it is matters less than the fact
+    // that nobody is behind the seat taking it.
+    : autoPlaying
+    ? "Reconnecting · auto"
     : isTurn
     // "Your turn" on somebody else's seat is a lie the second person at the
     // table would read as their own cue.
@@ -1636,7 +1647,15 @@ function SeatCard({
           <span className="rm-seat__name" title={name}>
             {name}
           </span>
-          <span className={`rm-seat__sub${out ? " rm-seat__sub--out" : ""}`}>{sub}</span>
+          <span
+            className={
+              "rm-seat__sub" +
+              (out ? " rm-seat__sub--out" : "") +
+              (autoPlaying ? " rm-seat__sub--auto" : "")
+            }
+          >
+            {sub}
+          </span>
         </span>
         <span
           className={`rm-dot${connected ? "" : " rm-dot--away"}`}
