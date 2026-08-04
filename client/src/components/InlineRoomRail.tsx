@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
+import {
+  QUICK_REACTIONS,
+  THROW_REACTIONS,
+  NUDGE_REACTIONS,
+} from "@shared/reactions";
+
+// Local aliases keep the JSX below reading the same as before.
+const QUICK_EMOJIS: readonly string[] = QUICK_REACTIONS;
+const MORE_EMOJIS: readonly string[] = THROW_REACTIONS;
+const NUDGE_EMOJIS: readonly string[] = NUDGE_REACTIONS;
+
 import PlayerList from "./PlayerList";
 import VoicePanel from "./VoicePanel";
 import Chat from "./Chat";
@@ -17,13 +28,6 @@ import Chat from "./Chat";
  * standalone ReactionBar used to fire, so existing FloatingReactionsLayer
  * / EmojiRain receivers work unchanged.
  */
-const QUICK_EMOJIS = ["👍", "😂", "🔥", "🎉", "😮", "💯", "👏", "🤝"];
-/** The second row leans into playful retaliation — the chappal, the tomato and
- *  the Diwali firecracker are things you'd actually lob at a cousin who just
- *  sent your token home. Harmless props by design: the feeling we're after is
- *  sibling teasing, not violence. Every glyph here must also be in the server's
- *  ALLOWED set (RoomManager.sendReaction) or it is silently dropped. */
-const MORE_EMOJIS = ["😡", "🩴", "🍅", "🧨", "😭", "🎯", "💪", "💔"];
 
 type Panel = "room" | "players" | "voice" | "chat" | "emoji";
 
@@ -390,7 +394,7 @@ function EmojiPopover({
             className="flex items-center gap-1 pl-2 ml-1 border-l"
             style={{ borderColor: "rgba(148,163,184,0.25)" }}
           >
-            {MORE_EMOJIS.map((e) => (
+            {[...NUDGE_EMOJIS, ...(targetName ? QUICK_EMOJIS : MORE_EMOJIS)].map((e) => (
               <button
                 key={e}
                 onClick={() => onPick(e)}

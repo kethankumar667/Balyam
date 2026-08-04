@@ -88,7 +88,12 @@ function FlungReaction({
   // your neighbour stays flat.
   const lift = Math.min(22, 6 + Math.abs(dx) * 0.28);
   // Spin follows travel direction, so it reads as thrown rather than spun.
-  const spin = dx >= 0 ? 540 : -540;
+  //
+  // MUST be a whole number of turns. This was +/-540deg, and 540 mod 360 is
+  // 180 — so every thrown reaction came to REST upside-down on the target's
+  // card and stayed that way for the rest of its life. Two full turns keeps
+  // the same lively tumble over the 720ms flight and lands it upright.
+  const spin = dx >= 0 ? 720 : -720;
   return (
     <>
       <div
