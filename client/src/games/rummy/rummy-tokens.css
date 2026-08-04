@@ -35,36 +35,112 @@
   --rm-brass-dim:   oklch(52% 0.070 78);
   --rm-brass-glow:  oklch(80% 0.120 78);
 
-  /* ── Ink on felt ─────────────────────────────────────────────────────── */
+  /* Brass as a RAIL is not the same colour as brass as TEXT. The rail value
+     only has to clear 3:1 (non-text); the same value used for a word lands at
+     3.90:1 on light felt, which fails. Two jobs, two tokens. */
+  --rm-brass-ink:   oklch(78% 0.105 78);
+
+  /* ── Ink on felt ─────────────────────────────────────────────────────
+     Every step clears 4.5:1 on ALL THREE felt depths. The worst case is
+     the LIT felt in dark mode (lightest bg under light ink) and the DEEP
+     felt in light mode (darkest bg under dark ink) — ink-low is tuned to
+     the worst case, not the average, so no depth is a trap. */
   --rm-ink:         oklch(94% 0.010 90);   /* primary — names, counts */
   --rm-ink-mid:     oklch(78% 0.014 90);   /* secondary — labels */
-  --rm-ink-low:     oklch(60% 0.014 90);   /* tertiary — hints, meta */
+  --rm-ink-low:     oklch(71% 0.014 90);   /* tertiary — hints, meta */
 
   /* ── Card stock ──────────────────────────────────────────────────────
      Warm, not white. Pure #fff on dark felt glares under a turn timer. */
   --rm-card:        oklch(96% 0.014 85);
   --rm-card-edge:   oklch(86% 0.020 85);
-  --rm-card-back:   oklch(38% 0.052 255);
+  --rm-card-back:      oklch(38% 0.052 255);
+  --rm-card-back-deep: oklch(26% 0.048 255);
 
-  /* ── Suits ───────────────────────────────────────────────────────────
-     Legibility first: these must clear 4.5:1 on --rm-card, and red/black
-     must stay distinguishable for deuteranopia via VALUE, not hue alone. */
-  --rm-suit-red:    oklch(48% 0.170 25);
-  --rm-suit-black:  oklch(24% 0.020 265);
+  /* ── Suits · four-colour deck ────────────────────────────────────────
+     This deck is four-coloured on purpose (the Indian convention already
+     shipped): in a fanned 13-card hand only the top-left corner shows, so
+     suit-by-hue is doing real legibility work and collapsing to red/black
+     would cost information.
+     Two constraints, both verified against --rm-card in BOTH themes:
+       1. every suit clears 4.5:1 on card stock (worst is diamond, 4.72);
+       2. the confusable pairs separate by VALUE, not hue alone —
+          heart/diamond (red vs saffron) ΔL 0.10, spade/club (black vs
+          navy) ΔL 0.14 — so the deck survives deuteranopia and greyscale.
+     All four are inside the sRGB gamut; pushing chroma higher clips. */
+  --rm-suit-spade:   oklch(24% 0.020 265);  /* near-black, navy-tinted */
+  --rm-suit-heart:   oklch(44% 0.175 25);   /* deep red */
+  --rm-suit-diamond: oklch(54% 0.130 55);   /* saffron */
+  --rm-suit-club:    oklch(38% 0.130 265);  /* navy */
+
+  /* ── Card-face artwork ───────────────────────────────────────────────
+     The printed illustration on the court cards (J/Q/K) — the one place
+     the design is allowed to be ornamental, because this is where the
+     nostalgia lives. These are ARTWORK fills, not UI chrome: they sit on
+     card stock, never on felt, and the rank glyph in the corner carries
+     the actual information, so they are held to a decorative bar rather
+     than 4.5:1. They do NOT flip with the theme — a printed card is the
+     same printed card in a lit room and a dim one. */
+  --rm-art-gold:    oklch(62% 0.115 78);   /* jewellery, crowns, sceptres */
+  --rm-art-skin:    oklch(84% 0.055 75);   /* warm ochre */
+  --rm-art-eye:     oklch(20% 0.030 45);
+  --rm-art-hair:    oklch(38% 0.060 65);   /* moustache, beard */
+  --rm-art-relief:  oklch(97% 0.012 85);   /* highlight lines on garments */
+  --rm-art-bindi:   oklch(48% 0.190 25);
+  --rm-art-lip:     oklch(58% 0.080 15);
+  --rm-art-lotus:   oklch(78% 0.105 350);
+  --rm-art-lotus-2: oklch(68% 0.140 350);
+  --rm-art-stem:    oklch(52% 0.080 145);
+  --rm-art-plume:   oklch(62% 0.150 145);
+  --rm-art-plume-2: oklch(48% 0.180 265);
 
   /* ── State ───────────────────────────────────────────────────────────── */
   --rm-turn:        var(--rm-brass);        /* it is your turn */
-  --rm-danger:      oklch(58% 0.170 25);    /* timer critical, invalid meld */
-  --rm-valid:       oklch(68% 0.130 155);   /* a meld that scores */
-  --rm-joker:       oklch(66% 0.150 305);   /* wild — the one violet in the set */
+  --rm-danger:      oklch(68% 0.175 25);    /* timer critical, invalid meld */
+  --rm-valid:       oklch(72% 0.135 155);   /* a meld that scores */
+  --rm-joker:       oklch(70% 0.150 305);   /* wild — the one violet in the set */
+
+  /* ── Interactive states ──────────────────────────────────────────────
+     Drag-to-meld needs all eight states to be visibly distinct, and the
+     focus ring must never animate in — it appears the instant focus lands. */
+  --rm-focus-ring:   var(--rm-brass-glow);
+  --rm-focus-width:  2px;
+  --rm-focus-offset: 2px;
+  /* Disabled is greyed AND faded; dimmed keeps its colour and only recedes.
+     Disabled stays the more faded of the two so the ordering reads correctly,
+     but not so faint that a light-theme card disappears into light felt. */
+  --rm-disabled-opacity: 0.50;
+  --rm-dimmed-opacity:   0.64;
+
+  /* Drop-target feedback while a card is in flight. */
+  --rm-drop-ok:     oklch(from var(--rm-valid)  l c h / 0.18);
+  --rm-drop-bad:    oklch(from var(--rm-danger) l c h / 0.16);
+
+  /* ── Card geometry ───────────────────────────────────────────────────
+     The card is the atom, so its size is a token, not a Tailwind class
+     repeated in three files. `--rm-card-w` is what the hand fans against;
+     the aspect ratio is the standard poker 1:1.4. */
+  --rm-card-w:      2.5rem;   /* 40px — mobile default */
+  --rm-card-w-sm:   2.25rem;  /* 36px — dense rows, opponent rails */
+  --rm-card-w-lg:   3rem;     /* 48px — desktop hand */
+  --rm-card-ratio:  1.4;
 
   /* ── Type ────────────────────────────────────────────────────────────
-     Two families + the existing mono. Display carries the nostalgia; the
-     table itself is set in a humanist sans because it must survive being
-     read in under a second. Numerals are tabular everywhere a count moves. */
+     Display carries the nostalgia; the table itself is set in a sans
+     because it must survive being read in under a second. Numerals are
+     tabular everywhere a count moves.
+
+     Only ONE new face is loaded (Playfair Display, in index.html) — body
+     and numerals reuse Poppins and JetBrains Mono, which the app already
+     ships. A second webfont on the critical path is not worth it for a
+     game table that has to paint fast on mobile.
+
+     `--rm-font-card` is deliberately a system serif: it is set at 11–15px
+     inside a 40px-wide card, where a webfont's extra weight buys nothing
+     and Georgia's large x-height and sturdy numerals read better small. */
   --rm-font-display: "Playfair Display", Georgia, serif;
-  --rm-font-body:    "Inter", ui-sans-serif, system-ui, sans-serif;
-  --rm-font-num:     ui-monospace, "SF Mono", Menlo, monospace;
+  --rm-font-body:    "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --rm-font-num:     "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --rm-font-card:    Georgia, "Times New Roman", serif;
 
   --rm-text-xs:   0.6875rem;   /* 11px — meta only */
   --rm-text-sm:   0.8125rem;   /* 13px — labels */
@@ -121,13 +197,23 @@
   --rm-brass:      oklch(52% 0.098 78);
   --rm-brass-dim:  oklch(68% 0.060 78);
   --rm-brass-glow: oklch(44% 0.110 78);
+  --rm-brass-ink:  oklch(45% 0.100 78);
 
   --rm-ink:        oklch(24% 0.020 90);
   --rm-ink-mid:    oklch(42% 0.018 90);
-  --rm-ink-low:    oklch(56% 0.016 90);
+  --rm-ink-low:    oklch(47% 0.016 90);
 
   --rm-card:       oklch(99% 0.006 85);
   --rm-card-edge:  oklch(82% 0.018 85);
+
+  /* The suits do NOT flip with the theme — a card face is a printed object
+     and its ink is the same ink in both rooms. They are re-verified against
+     the lighter light-theme card stock, where every suit gains contrast. */
+
+  /* State colours DO flip: on light felt they must darken to stay legible. */
+  --rm-danger:     oklch(48% 0.180 25);
+  --rm-valid:      oklch(45% 0.120 155);
+  --rm-joker:      oklch(45% 0.170 305);
 
   --rm-rule-color: oklch(from var(--rm-brass) l c h / 0.30);
   --rm-lift-hand:  0 -12px 40px -14px oklch(50% 0.06 78 / 0.28);

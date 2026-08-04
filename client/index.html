@@ -26,11 +26,18 @@
          board) and Architects Daughter (sketchy heading marker) — without them
          every `font-notebook`/`font-hand` surface silently fell back to the
          browser default cursive and lost the hand-drawn look. Preconnect
-         speeds up the font-stylesheet fetch on the first paint. -->
+         speeds up the font-stylesheet fetch on the first paint.
+
+         Playfair Display is the Rummy "Card Room" display face
+         (--rm-font-display, see games/rummy/rummy-tokens.css). It is the
+         ONLY face that skin adds: its body text reuses Poppins and its
+         numerals reuse JetBrains Mono rather than pulling a second webfont
+         onto the critical path. Weights are limited to 600/700 because the
+         table only ever sets it as a headline. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Righteous&family=Caveat:wght@500;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=Architects+Daughter&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Righteous&family=Caveat:wght@500;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=Architects+Daughter&family=Playfair+Display:wght@600;700&display=swap"
       rel="stylesheet"
     />
   </head>

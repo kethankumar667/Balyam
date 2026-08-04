@@ -1,0 +1,342 @@
+/* Hallmark · component: playing-card · genre: atmospheric · theme: Card Room
+ * states: default · hover · focus · active · disabled · loading · error · success
+ * contrast: verified — every suit ink clears 4.5:1 on --rm-card in both themes
+ */
+
+/**
+ * RUMMY — the card atom.
+ *
+ * Every value here resolves to a token in rummy-tokens.css. The component
+ * passes exactly one thing inline: `--rm-suit-ink`, which is itself a
+ * reference to one of the four suit tokens.
+ *
+ * The old card carried FOUR border weights at once — a 1.5px border, a 2px
+ * inset ring, a 1px inset highlight and a drop shadow — which is most of why
+ * a fanned hand read as noise rather than as thirteen objects. There is one
+ * hairline here, and elevation is expressed as light rather than a stack of
+ * shadows.
+ */
+
+/* Transform is owned by exactly ONE rule (`.rm-card` below) and driven by two
+ * custom properties. Anything that wants to move a card — including the
+ * `.rummy-card-shell:hover` rule in index.css, which used to set `transform`
+ * directly and silently outrank this file — sets these instead. Two rules both
+ * declaring `transform` is how the hover lift got lost. */
+.rm-card {
+  --rm-card-lift: 0px;
+  --rm-card-scale: 1;
+
+  position: relative;
+  flex-shrink: 0;
+  width: var(--rm-card-w);
+  height: calc(var(--rm-card-w) * var(--rm-card-ratio));
+  border-radius: var(--rm-radius-card);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 0;
+  appearance: none;
+  background: linear-gradient(
+    168deg,
+    var(--rm-card) 0%,
+    oklch(from var(--rm-card) calc(l - 0.02) c h) 100%
+  );
+  /* ONE hairline. Not a border plus a ring plus an inset highlight. */
+  border: var(--rm-rule) solid var(--rm-card-edge);
+  box-shadow: var(--rm-lift-card);
+  transform: translateY(var(--rm-card-lift)) scale(var(--rm-card-scale));
+  transition:
+    transform var(--rm-dur-settle) var(--rm-ease-out),
+    box-shadow var(--rm-dur-settle) var(--rm-ease-out),
+    border-color var(--rm-dur-quick) var(--rm-ease-out),
+    opacity var(--rm-dur-quick) var(--rm-ease-out);
+}
+
+.rm-card--sm { width: var(--rm-card-w-sm); }
+.rm-card--lg { width: var(--rm-card-w-lg); }
+
+/* The lit-from-above sheen. A card table is a lit object; this is the light,
+   not a decorative gloss. */
+.rm-card__sheen {
+  position: absolute;
+  inset-inline: 1px;
+  top: 1px;
+  height: 30%;
+  border-radius: calc(var(--rm-radius-card) - 1px) calc(var(--rm-radius-card) - 1px) 0 0;
+  background: linear-gradient(
+    180deg,
+    oklch(100% 0 0 / 0.55) 0%,
+    oklch(100% 0 0 / 0) 100%
+  );
+  pointer-events: none;
+}
+
+/* ── Corner index ─────────────────────────────────────────────────────── */
+/* Rank sits ABOVE the pip, not beside it. These are spans, so the column has
+   to be declared — inline children render side-by-side, which at the
+   bottom-right corner (rotated 180°) turns the index into noise. */
+.rm-card__corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--rm-font-card);
+  font-weight: 700;
+  line-height: 0.92;
+  color: var(--rm-suit-ink);
+}
+.rm-card__corner--tl { top: 1px; left: 3px; }
+.rm-card__corner--br { bottom: 1px; right: 3px; transform: rotate(180deg); }
+.rm-card__rank  { font-size: var(--rm-text-sm); }
+.rm-card__pip   { font-size: var(--rm-text-xs); line-height: 1; margin-top: 1px; }
+.rm-card--lg .rm-card__rank { font-size: var(--rm-text-base); }
+
+.rm-card__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rm-suit-ink);
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+.rm-card--lg .rm-card__center { font-size: 1.75rem; }
+
+/* ── 1 · default is the base rule above ───────────────────────────────── */
+
+/* ── 2 · hover — the card rises toward the light ──────────────────────── */
+.rm-card--interactive { cursor: pointer; }
+
+.rm-card--interactive:hover,
+.rm-card--interactive.is-hover {
+  --rm-card-lift: -4px;
+  box-shadow: var(--rm-lift-drag);
+  border-color: var(--rm-brass-dim);
+}
+
+/* ── 3 · focus-visible — appears INSTANTLY, never animates in ─────────── */
+.rm-card:focus-visible,
+.rm-card.is-focus {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: var(--rm-focus-offset);
+  /* The ring must not fade in: transition covers transform/shadow only. */
+  transition-property: transform, box-shadow, border-color, opacity;
+  z-index: 3;
+}
+.rm-card:focus { outline: none; }
+.rm-card:focus-visible { outline: var(--rm-focus-width) solid var(--rm-focus-ring); }
+
+/* ── 4 · active — the card presses into the felt ──────────────────────── */
+.rm-card--interactive:active,
+.rm-card--interactive.is-active {
+  --rm-card-lift: -1px;
+  box-shadow: var(--rm-lift-card);
+  transition-duration: var(--rm-dur-quick);
+}
+
+/* ── selected — a played/held card stands proud of the fan ────────────── */
+.rm-card.is-selected {
+  --rm-card-lift: -12px;
+  border-color: var(--rm-brass);
+  box-shadow:
+    var(--rm-lift-drag),
+    0 0 0 1px var(--rm-brass);
+  z-index: 2;
+}
+.rm-card--interactive.is-selected:hover { --rm-card-lift: -14px; }
+
+/* ── 5 · disabled — present but out of play ───────────────────────────────
+   Keyed to `.is-disabled` ONLY, never `:disabled`. A LOADING card is also
+   non-interactive and therefore also carries the native `disabled` attribute
+   for correct semantics — hanging the disabled *look* off `:disabled` made
+   loading and disabled render identically, so the player could not tell
+   "the server is thinking" from "you may not touch this". Semantics and
+   appearance are deliberately decoupled here. */
+.rm-card.is-disabled {
+  opacity: var(--rm-disabled-opacity);
+  cursor: not-allowed;
+  --rm-card-lift: 0px;
+  box-shadow: none;
+  /* Greyed, not just faint — this is what separates it from `dimmed`. */
+  filter: grayscale(0.85);
+}
+.rm-card.is-disabled:hover {
+  --rm-card-lift: 0px;
+  border-color: var(--rm-card-edge);
+  box-shadow: none;
+}
+
+/* `dimmed` is NOT disabled — it means "not part of the current meld", i.e.
+   de-emphasised but still fully playable. It keeps its COLOUR and merely
+   recedes; disabled goes grey. Two different messages, two different looks. */
+.rm-card.is-dimmed { opacity: var(--rm-dimmed-opacity); }
+
+/* ── 6 · loading — the move is in flight, awaiting the server ────────────
+   Full opacity and a brass edge: the card is not "off", it is BUSY. A sweep
+   of light crosses it, which is the same "lit from above" language the rest
+   of the table uses for attention. */
+.rm-card.is-loading {
+  cursor: progress;
+  pointer-events: none;
+  border-color: var(--rm-brass-dim);
+}
+.rm-card.is-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    oklch(from var(--rm-brass) l c h / 0) 30%,
+    oklch(from var(--rm-brass) l c h / 0.28) 50%,
+    oklch(from var(--rm-brass) l c h / 0) 70%
+  );
+  background-size: 250% 100%;
+  animation: rm-card-sweep 1100ms var(--rm-ease-in-out) infinite;
+  pointer-events: none;
+}
+@keyframes rm-card-sweep {
+  from { background-position: 180% 0; }
+  to   { background-position: -80% 0; }
+}
+
+/* ── 7 · error — the meld was rejected ────────────────────────────────── */
+.rm-card.is-error {
+  border-color: var(--rm-danger);
+  box-shadow: 0 0 0 1px var(--rm-danger), var(--rm-lift-card);
+  animation: rm-card-refuse 280ms var(--rm-ease-in-out);
+}
+/* Keeps the lift/scale the card already has — a refusal must not also reset
+   its position, or a selected card visibly drops while it shakes. */
+@keyframes rm-card-refuse {
+  0%, 100% { transform: translateY(var(--rm-card-lift)) scale(var(--rm-card-scale)) translateX(0); }
+  25%      { transform: translateY(var(--rm-card-lift)) scale(var(--rm-card-scale)) translateX(-3px); }
+  75%      { transform: translateY(var(--rm-card-lift)) scale(var(--rm-card-scale)) translateX(3px); }
+}
+
+/* ── 8 · success — the meld scores ────────────────────────────────────── */
+.rm-card.is-success {
+  border-color: var(--rm-valid);
+  box-shadow: 0 0 0 1px var(--rm-valid), 0 0 14px -2px var(--rm-valid);
+}
+
+/* ── Wild-joker marker ────────────────────────────────────────────────── */
+.rm-card__joker {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--rm-font-body);
+  font-size: 8px;
+  font-weight: 700;
+  background: var(--rm-joker);
+  color: var(--rm-card);
+  box-shadow: 0 0 0 1px oklch(from var(--rm-suit-spade) l c h / 0.5);
+}
+.rm-card__joker--tr { top: 1px; right: 1px; }
+.rm-card__joker--bl { bottom: 1px; left: 1px; transform: rotate(180deg); }
+
+/* ── Printed joker ────────────────────────────────────────────────────── */
+.rm-card--joker {
+  background: linear-gradient(
+    140deg,
+    var(--rm-joker) 0%,
+    oklch(from var(--rm-joker) calc(l - 0.22) c h) 100%
+  );
+  border-color: oklch(from var(--rm-joker) calc(l - 0.3) c h);
+}
+.rm-card__joker-ribbon {
+  position: absolute;
+  inset-inline: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  font-family: var(--rm-font-body);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--rm-card);
+  padding-block: 2px;
+  border-block: var(--rm-rule) solid var(--rm-brass);
+  background: oklch(from var(--rm-suit-spade) l c h / 0.35);
+}
+
+/* ── Card back ────────────────────────────────────────────────────────
+   Shares the `.rm-card` silhouette so a face-down pile lines up exactly
+   with the hand — same width, radius, hairline and lift. */
+.rm-card--back {
+  background: var(--rm-card-back);
+  border-color: oklch(from var(--rm-brass) l c h / 0.45);
+}
+.rm-card__back-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* The back has no sheen element of its own; the lit edge comes from the
+   brass hairline instead, so the navy stays dark enough to read as "closed". */
+
+/* ── Finish slot — an empty, dashed placeholder ───────────────────────── */
+.rm-finish-slot {
+  width: var(--rm-card-w);
+  height: calc(var(--rm-card-w) * var(--rm-card-ratio));
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border-radius: var(--rm-radius-card);
+  border: var(--rm-rule) dashed var(--rm-brass-dim);
+  background: oklch(from var(--rm-brass) l c h / 0.06);
+  color: var(--rm-brass-ink);
+  font-family: var(--rm-font-body);
+  font-size: var(--rm-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  text-align: center;
+}
+.rm-finish-slot--sm { width: var(--rm-card-w-sm); height: calc(var(--rm-card-w-sm) * var(--rm-card-ratio)); }
+.rm-finish-slot--lg { width: var(--rm-card-w-lg); height: calc(var(--rm-card-w-lg) * var(--rm-card-ratio)); }
+
+/* Drop-target feedback. Without this the slot was inert while a card was in
+   flight over it, so players could not tell it was a legal target until they
+   had already let go. */
+.rm-finish-slot {
+  transition:
+    background-color var(--rm-dur-quick) var(--rm-ease-out),
+    border-color var(--rm-dur-quick) var(--rm-ease-out),
+    color var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-finish-slot.is-over {
+  border-style: solid;
+  border-color: var(--rm-valid);
+  background: var(--rm-drop-ok);
+  color: var(--rm-valid);
+}
+.rm-finish-slot.is-error {
+  border-color: var(--rm-danger);
+  background: var(--rm-drop-bad);
+  color: var(--rm-danger);
+}
+.rm-finish-slot.is-success {
+  border-style: solid;
+  border-color: var(--rm-valid);
+  background: var(--rm-drop-ok);
+  color: var(--rm-valid);
+}
+.rm-finish-slot.is-loading { opacity: 0.6; }
+
+/* ── Reduced motion ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .rm-card { transition-duration: var(--rm-dur-quick); }
+  .rm-card.is-loading::after { animation: none; opacity: 0.25; }
+  .rm-card.is-error { animation: none; }
+}
