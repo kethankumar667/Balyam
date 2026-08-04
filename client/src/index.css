@@ -161,6 +161,27 @@ body, #root, .bhalyam-paper {
  * own literal colour on purpose — those chips do not flip, so their ink must
  * not either.
  */
+/**
+ * Selected text always states BOTH colours.
+ *
+ * Left to the browser, ::selection paints its own highlight but keeps the
+ * element's existing text colour. Any element whose ink happens to sit near
+ * that highlight becomes unreadable the moment you select it — which is what
+ * happened in the bot-name field: light ink, light highlight, invisible
+ * selection in both themes.
+ *
+ * Declaring both means selection legibility no longer depends on whatever
+ * colour the element inherited.
+ */
+::selection {
+  background: #31A157;
+  color: #ffffff;
+}
+:root[data-theme="dark"] ::selection {
+  background: #7BD88F;
+  color: #10261a;
+}
+
 :root {
   --paper-ink: #6D4323;        /* body text on paper */
   --paper-ink-soft: #8A6D4B;   /* secondary / waiting states */
