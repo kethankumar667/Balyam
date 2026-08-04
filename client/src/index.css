@@ -1123,13 +1123,18 @@ body, #root, .bhalyam-paper {
 .rummy-card-shell:focus-within {
   z-index: 80 !important;
 }
+/* The card's `transform` is owned by `.rm-card` in games/rummy/rummy-card.css
+   and driven by two custom properties. This rule used to declare `transform`
+   itself; with two classes it outranked the component and quietly replaced the
+   card's own lift/press/selected transforms on hover. Drive the properties
+   instead so there is exactly one transform owner. */
 .rummy-card-shell:hover .rummy-playing-card,
 .rummy-card-shell:focus-within .rummy-playing-card {
-  transform: translateY(-12px) scale(1.04);
+  --rm-card-lift: -12px;
+  --rm-card-scale: 1.04;
 }
-.rummy-playing-card {
-  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
-}
+/* Transition is likewise owned by `.rm-card` (token durations + easings).
+   A bare `ease` here would override them. */
 .rummy-zone-valid {
   box-shadow: 0 0 0 1px rgba(52,211,153,0.55), 0 0 18px rgba(16,185,129,0.28);
 }

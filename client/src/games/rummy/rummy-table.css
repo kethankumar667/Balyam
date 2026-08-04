@@ -1,0 +1,568 @@
+/* Hallmark · macrostructure: Workbench · theme: Card Room · genre: atmospheric
+ * tone: luxury > professional > nostalgia > playful > technical
+ * anchor hue: brass 78° · paper-band: dark (native) · display: high-contrast-serif
+ */
+
+/**
+ * RUMMY — the table surface.
+ *
+ * THREE zones, not nine panels. The old table nested a wood desk inside a
+ * paper page inside a dashed pile frame inside a bordered meld lane, flanked
+ * by two vertical seat columns and a cream sidebar — every one of them
+ * carrying its own border weight and its own background. Nothing was
+ * dominant, so the eye had nowhere to land and the thirteen cards the player
+ * actually needs were the smallest thing on screen.
+ *
+ *   1. the opponent rail   — one strip, low contrast, recedes
+ *   2. the lit centre      — piles + melds, where the light falls
+ *   3. the hand shelf      — raised, brightest, closest to the player
+ *
+ * Elevation is LIGHT, not shadow: the table is lit from above centre, so a
+ * surface that matters is lighter, not more shadowed. There is exactly ONE
+ * hairline weight (--rm-rule) anywhere on this screen.
+ */
+
+/* ── The room ─────────────────────────────────────────────────────────── */
+.rm-room {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--rm-felt-deep);
+  color: var(--rm-ink);
+  font-family: var(--rm-font-body);
+  overflow: hidden;
+}
+
+/* ── Chrome: the top bar ──────────────────────────────────────────────── */
+.rm-topbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rm-space-md);
+  padding: var(--rm-space-xs) var(--rm-space-lg);
+  background: var(--rm-felt-deep);
+  border-bottom: var(--rm-rule) solid var(--rm-rule-color);
+}
+.rm-wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: var(--rm-space-xs);
+  font-family: var(--rm-font-display);
+  font-size: var(--rm-text-lg);
+  color: var(--rm-ink);
+  line-height: 1;
+}
+.rm-wordmark__sub {
+  font-family: var(--rm-font-body);
+  font-size: var(--rm-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rm-brass-ink);
+}
+.rm-wordmark__room {
+  font-family: var(--rm-font-num);
+  font-size: var(--rm-text-xs);
+  color: var(--rm-ink-low);
+}
+
+/* Chrome buttons — a hairline, no fill. Brass is a rail, never a panel. */
+.rm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rm-space-2xs);
+  padding: var(--rm-space-2xs) var(--rm-space-sm);
+  min-height: 32px;
+  border-radius: var(--rm-radius-card);
+  border: var(--rm-rule) solid var(--rm-rule-color);
+  background: transparent;
+  color: var(--rm-ink-mid);
+  font-family: var(--rm-font-body);
+  font-size: var(--rm-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color var(--rm-dur-quick) var(--rm-ease-out),
+    border-color var(--rm-dur-quick) var(--rm-ease-out),
+    background-color var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-chip:hover { color: var(--rm-ink); border-color: var(--rm-brass); }
+.rm-chip:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: var(--rm-focus-offset);
+}
+.rm-chip:active { background: oklch(from var(--rm-brass) l c h / 0.10); }
+.rm-chip:disabled { opacity: var(--rm-disabled-opacity); cursor: not-allowed; }
+
+/* ── The table: three zones in one column, sidebar alongside ──────────── */
+.rm-table {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  height: calc(100vh - 49px);
+  height: calc(100dvh - 49px);
+  min-height: 0;
+}
+.rm-play {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  min-width: 0;
+  background: var(--rm-felt);
+}
+
+/* ── ZONE 1 · the opponent rail ───────────────────────────────────────
+   One strip. Deliberately the lowest-contrast zone on the screen — these
+   are people you glance at, not the thing you act on. */
+.rm-rail {
+  display: flex;
+  align-items: stretch;
+  gap: var(--rm-space-xs);
+  padding: var(--rm-space-xs) var(--rm-space-md);
+  background: var(--rm-felt-deep);
+  border-bottom: var(--rm-rule) solid var(--rm-rule-color);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.rm-rail::-webkit-scrollbar { height: 4px; }
+.rm-rail::-webkit-scrollbar-thumb { background: var(--rm-rule-color); border-radius: 999px; }
+
+/* ── ZONE 2 · the lit centre ──────────────────────────────────────────
+   The light falls here. `--rm-felt-lit` plus a soft pool from above centre
+   is the ONLY elevation cue — no border, no panel, no dashed frame. */
+.rm-centre {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rm-space-md);
+  padding: var(--rm-space-lg) var(--rm-space-lg) var(--rm-space-md);
+  min-height: 0;
+  overflow-y: auto;
+  background:
+    radial-gradient(
+      ellipse 60% 55% at 50% 12%,
+      var(--rm-felt-lit) 0%,
+      transparent 70%
+    );
+}
+
+/* The pile cluster — deck, wild joker, open pile, finish slot. */
+.rm-piles {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--rm-space-xl);
+  flex-wrap: wrap;
+  transition: opacity var(--rm-dur-settle) var(--rm-ease-out);
+}
+.rm-piles--locked { opacity: 0.28; pointer-events: none; filter: grayscale(0.4); }
+
+/* Meld lanes — sit ON the lit felt, no container of their own. */
+.rm-melds {
+  display: flex;
+  align-items: stretch;
+  gap: var(--rm-space-sm);
+  flex-wrap: wrap;
+  align-content: flex-start;
+  min-height: 116px;
+  flex: 1;
+  transition: opacity var(--rm-dur-settle) var(--rm-ease-out);
+}
+.rm-melds--locked { opacity: 0.4; pointer-events: none; }
+
+/* ── ZONE 3 · the hand shelf ──────────────────────────────────────────
+   The brightest, closest surface. Lit from above by --rm-lift-hand rather
+   than lifted by a drop shadow — a shelf catching the table light. */
+.rm-shelf {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rm-space-sm);
+  padding: var(--rm-space-md) var(--rm-space-lg) var(--rm-space-md);
+  background: var(--rm-felt-lit);
+  border-top: var(--rm-rule) solid var(--rm-rule-color);
+  box-shadow: var(--rm-lift-hand);
+}
+/* Your turn: the shelf's own edge brightens. A ring around the hand would be
+   a fifth border; brightening the surface says the same thing with light. */
+.rm-shelf--turn {
+  border-top-color: var(--rm-brass);
+  background: linear-gradient(
+    180deg,
+    oklch(from var(--rm-brass) l c h / 0.10) 0%,
+    var(--rm-felt-lit) 42%
+  );
+}
+.rm-shelf--idle { opacity: 0.4; pointer-events: none; }
+
+.rm-shelf__label {
+  position: absolute;
+  top: calc(var(--rm-space-xs) * -1);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px var(--rm-space-sm);
+  border-radius: 999px;
+  background: var(--rm-brass);
+  color: var(--rm-felt-deep);
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.rm-hand-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--rm-space-md);
+}
+
+/* ── The action bar — sits inside the shelf, no wood panel ────────────── */
+.rm-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-xs);
+  flex-wrap: wrap;
+}
+.rm-actions__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-xs);
+  flex-wrap: wrap;
+  width: 100%;
+  padding-top: var(--rm-space-xs);
+  border-top: var(--rm-rule) solid var(--rm-rule-color);
+}
+
+/* Live score readout. Tabular numerals so a changing count doesn't reflow. */
+.rm-score {
+  display: flex;
+  align-items: stretch;
+  border: var(--rm-rule) solid var(--rm-rule-color);
+  border-radius: var(--rm-radius-card);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rm-score__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rm-space-2xs) var(--rm-space-sm);
+}
+.rm-score__cell + .rm-score__cell { border-left: var(--rm-rule) solid var(--rm-rule-color); }
+.rm-score__label {
+  font-size: var(--rm-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rm-ink-low);
+  line-height: 1.2;
+}
+.rm-score__value {
+  font-family: var(--rm-font-num);
+  font-size: var(--rm-text-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--rm-ink);
+  line-height: 1.1;
+}
+.rm-score__value--warn { color: var(--rm-danger); }
+.rm-score__value--mid  { color: var(--rm-brass-ink); }
+.rm-score__value--ok   { color: var(--rm-valid); }
+
+/* ── Action buttons — 8 states ────────────────────────────────────────── */
+.rm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rm-space-2xs);
+  min-height: 36px;
+  padding: 0 var(--rm-space-md);
+  border-radius: var(--rm-radius-card);
+  border: var(--rm-rule) solid var(--rm-rule-color);
+  background: transparent;
+  color: var(--rm-ink-mid);
+  font-family: var(--rm-font-body);
+  font-size: var(--rm-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--rm-dur-quick) var(--rm-ease-out),
+    border-color var(--rm-dur-quick) var(--rm-ease-out),
+    background-color var(--rm-dur-quick) var(--rm-ease-out),
+    transform var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-btn:hover:not(:disabled) { color: var(--rm-ink); border-color: var(--rm-brass); }
+.rm-btn:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: var(--rm-focus-offset);
+}
+.rm-btn:active:not(:disabled) { transform: translateY(1px); }
+.rm-btn:disabled { opacity: var(--rm-disabled-opacity); cursor: not-allowed; }
+
+/* Primary — the one filled control on the table. Brass earns a fill here
+   because DECLARE is the single most consequential action in the game. */
+.rm-btn--primary {
+  background: var(--rm-brass);
+  border-color: var(--rm-brass);
+  color: var(--rm-felt-deep);
+}
+.rm-btn--primary:hover:not(:disabled) {
+  background: var(--rm-brass-glow);
+  border-color: var(--rm-brass-glow);
+  color: var(--rm-felt-deep);
+}
+.rm-btn--warn { color: var(--rm-ink); border-color: var(--rm-brass-dim); }
+.rm-btn--warn:hover:not(:disabled) { border-color: var(--rm-danger); color: var(--rm-danger); }
+
+.rm-kbd {
+  font-family: var(--rm-font-num);
+  font-size: var(--rm-text-xs);
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+/* ── The right rail — collapsible, one panel not three ────────────────── */
+.rm-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  min-height: 0;
+  background: var(--rm-felt-deep);
+  border-left: var(--rm-rule) solid var(--rm-rule-color);
+  transition: width var(--rm-dur-settle) var(--rm-ease-out);
+}
+.rm-sidebar--collapsed { width: 44px; }
+.rm-sidebar__tabs {
+  display: flex;
+  border-bottom: var(--rm-rule) solid var(--rm-rule-color);
+}
+.rm-tab {
+  flex: 1;
+  padding: var(--rm-space-xs) var(--rm-space-2xs);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--rm-ink-low);
+  font-family: var(--rm-font-body);
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-tab:hover { color: var(--rm-ink-mid); }
+.rm-tab:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: -2px;
+}
+.rm-tab[aria-selected="true"] {
+  color: var(--rm-ink);
+  border-bottom-color: var(--rm-brass);
+}
+.rm-sidebar__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--rm-space-sm);
+}
+
+/* The collapse handle — a full-height hairline strip. */
+.rm-sidebar__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  background: transparent;
+  border: 0;
+  border-bottom: var(--rm-rule) solid var(--rm-rule-color);
+  color: var(--rm-ink-low);
+  cursor: pointer;
+  font-size: var(--rm-text-sm);
+}
+.rm-sidebar__toggle:hover { color: var(--rm-brass); }
+.rm-sidebar__toggle:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: -2px;
+}
+
+/* ── Card lanes ───────────────────────────────────────────────────────
+   Lanes have no resting container. They only draw a surface while a drag is
+   hovering them, which is the moment the boundary actually means something.
+   Previously every lane carried a permanent dashed box, so the table showed
+   half a dozen competing frames at rest and none of them read as a target. */
+.rm-lane {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  row-gap: var(--rm-space-xs);
+  padding: var(--rm-space-xs);
+  border-radius: var(--rm-radius-zone);
+  border: var(--rm-rule) solid transparent;
+  transition:
+    background-color var(--rm-dur-quick) var(--rm-ease-out),
+    border-color var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-lane.is-over {
+  border-color: var(--rm-brass);
+  background: oklch(from var(--rm-brass) l c h / 0.12);
+}
+.rm-lane--hand {
+  /* The hand is the point of the screen: give it real breathing room and the
+     large card size. */
+  --rm-card-w: var(--rm-card-w-lg);
+  min-height: calc(var(--rm-card-w-lg) * var(--rm-card-ratio) + var(--rm-space-lg));
+  padding: var(--rm-space-sm) var(--rm-space-md);
+  align-items: center;
+}
+.rm-lane__empty {
+  padding: var(--rm-space-md) var(--rm-space-sm);
+  color: var(--rm-ink-low);
+  font-size: var(--rm-text-sm);
+}
+
+/* ── The self pad ─────────────────────────────────────────────────────── */
+.rm-selfpad {
+  flex-shrink: 0;
+  width: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rm-space-2xs);
+  padding: var(--rm-space-sm);
+  border-radius: var(--rm-radius-zone);
+  border: var(--rm-rule) solid var(--rm-rule-color);
+  text-align: center;
+}
+.rm-selfpad.is-turn { border-color: var(--rm-brass); }
+.rm-selfpad__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rm-brass-dim);
+  color: var(--rm-felt-deep);
+  font-weight: 700;
+  font-size: var(--rm-text-base);
+}
+.rm-selfpad.is-turn .rm-selfpad__avatar { background: var(--rm-brass); }
+.rm-selfpad__name {
+  font-size: var(--rm-text-sm);
+  font-weight: 600;
+  color: var(--rm-ink);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rm-selfpad__score {
+  font-family: var(--rm-font-num);
+  font-size: var(--rm-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--rm-ink-low);
+}
+
+/* ── The roster — who is at the table ─────────────────────────────────── */
+.rm-roster {
+  flex-shrink: 0;
+  max-height: 42%;
+  overflow-y: auto;
+  padding: var(--rm-space-sm);
+  border-top: var(--rm-rule) solid var(--rm-rule-color);
+}
+.rm-roster__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--rm-space-xs);
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rm-ink-low);
+}
+.rm-roster__list { display: flex; flex-direction: column; gap: var(--rm-space-2xs); }
+.rm-roster__row {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-xs);
+  padding: var(--rm-space-2xs) var(--rm-space-xs);
+  border-radius: var(--rm-radius-card);
+  border: var(--rm-rule) solid transparent;
+}
+.rm-roster__row.is-turn { border-color: var(--rm-brass); }
+.rm-roster__row.is-out  { opacity: 0.55; }
+.rm-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--rm-valid);
+}
+.rm-dot--away { background: var(--rm-brass); }
+.rm-roster__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--rm-text-sm);
+  font-weight: 600;
+  color: var(--rm-ink);
+}
+.rm-roster__tag {
+  margin-left: var(--rm-space-2xs);
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rm-brass-ink);
+}
+.rm-roster__tag--out { color: var(--rm-danger); }
+.rm-roster__count,
+.rm-roster__score {
+  flex-shrink: 0;
+  font-family: var(--rm-font-num);
+  font-size: var(--rm-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--rm-ink-low);
+}
+.rm-roster__score {
+  color: var(--rm-ink);
+  font-weight: 700;
+  padding-inline: var(--rm-space-2xs);
+}
+
+/* ── Inline messages ──────────────────────────────────────────────────── */
+.rm-error {
+  align-self: center;
+  padding: var(--rm-space-2xs) var(--rm-space-md);
+  border-radius: var(--rm-radius-card);
+  border: var(--rm-rule) solid var(--rm-danger);
+  background: var(--rm-drop-bad);
+  color: var(--rm-danger);
+  font-size: var(--rm-text-sm);
+  font-weight: 600;
+}
+.rm-hint {
+  align-self: center;
+  color: var(--rm-ink-low);
+  font-size: var(--rm-text-sm);
+}
+
+/* ── Narrower desktops ────────────────────────────────────────────────── */
+@media (max-width: 1439px) {
+  .rm-sidebar { width: 300px; }
+  .rm-centre  { padding: var(--rm-space-md); gap: var(--rm-space-sm); }
+  .rm-piles   { gap: var(--rm-space-lg); }
+}

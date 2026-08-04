@@ -2,36 +2,72 @@ import { useId } from "react";
 import type { CSSProperties, ElementType, KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Card as CardType, Rank } from "@shared/types";
 
+// The Card Room token system + this component's own rules. Imported here
+// because Card.tsx is the atom every Rummy surface pulls in — board, result
+// modal and tutorial all render cards — so one import covers the whole skin.
+import "./rummy-tokens.css";
+import "./rummy-card.css";
+
 export const SUIT_GLYPHS: Record<string, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
 
-/** Suit-specific ink color — Bhalyam Indian theme:
- *  Hearts=red, Diamonds=saffron/orange, Clubs=navy, Spades=black */
+/**
+ * Suit → the token holding that suit's printed ink.
+ *
+ * Four colours, not two. The Indian convention this deck already followed is
+ * also the more legible one here: a fanned 13-card hand shows only the
+ * top-left corner of each card, so hue is carrying real information. The
+ * tokens are tuned so the two confusable pairs (red/saffron, black/navy)
+ * separate by LIGHTNESS as well as hue — see rummy-tokens.css.
+ */
+const SUIT_INK: Record<string, string> = {
+  S: "var(--rm-suit-spade)",
+  H: "var(--rm-suit-heart)",
+  D: "var(--rm-suit-diamond)",
+  C: "var(--rm-suit-club)",
+};
+
 function suitInk(suit: string): string {
-  if (suit === "H") return "#c8102e";
-  if (suit === "D") return "#c75a00";
-  if (suit === "C") return "#1b3a8c";
-  return "#111827";
-}
-/** Lighter/brighter accent of the suit ink */
-function suitGlow(suit: string): string {
-  if (suit === "H") return "#e53e3e";
-  if (suit === "D") return "#f97316";
-  if (suit === "C") return "#3b82f6";
-  return "#374151";
+  return SUIT_INK[suit] ?? SUIT_INK.S;
 }
 
 /**
- * Playing card — Bhalyam Indian theme.
+ * The card's transient states, beyond the persistent `selected` / `dimmed`.
+ *
+ * These exist because drag-to-meld had no way to say "this move is in flight",
+ * "the server refused it" or "that meld scores" — it failed silently, which is
+ * the single most confusing thing the table did.
+ */
+export type CardState = "idle" | "loading" | "error" | "success";
+export type CardSize = "sm" | "md" | "lg";
+
+/** Cards may not be interacted with while a move is resolving or barred. */
+function isInert(state: CardState, disabled: boolean): boolean {
+  return disabled || state === "loading";
+}
+
+function sizeClass(size: CardSize): string {
+  if (size === "sm") return " rm-card--sm";
+  if (size === "lg") return " rm-card--lg";
+  return "";
+}
+
+/**
+ * Playing card — Bhalyam Indian theme, Card Room skin.
  *
  * Design:
- *   - Warm parchment / ivory cardstock background for all cards
- *   - Four distinct suit colours: Hearts=red, Diamonds=saffron/orange,
- *     Clubs=navy-blue, Spades=black  (matching a traditional Indian deck)
- *   - Ace rank label shows "1" (Indian convention)
- *   - Face cards (J/Q/K) display double-headed Indian royal SVG artwork:
- *     turban warrior (J), crowned queen (Q), and crown-sceptre king (K)
- *   - Number cards (2–9) and Ace show a large centred suit pip
- *   - Printed jokers retain the purple gradient with a JOKER ribbon
+ *   - Warm card stock (--rm-card), never pure white: #fff on dark felt glares
+ *     under a turn timer.
+ *   - ONE hairline edge. The previous card stacked a 1.5px border, a 2px inset
+ *     ring, a 1px inset highlight and a drop shadow — four weights on a 40px
+ *     object, which is most of why a fanned hand read as noise.
+ *   - Four suit colours (Hearts red, Diamonds saffron, Clubs navy, Spades
+ *     black), each verified to 4.5:1 on card stock in both themes.
+ *   - Rank labels are "A" and "10" (see rankLabel).
+ *   - Face cards (J/Q/K) keep the double-headed Indian royal artwork: this is
+ *     where the nostalgia lives, so it is the one deliberately ornamental
+ *     surface in the whole table.
+ *   - Elevation is expressed as LIGHT, not a shadow stack — the table is lit
+ *     from above centre, so a card that matters rises toward the light.
  */
 export function PlayingCard({
   card,
@@ -40,23 +76,36 @@ export function PlayingCard({
   dimmed = false,
   onClick,
   small = false,
+  size,
+  state = "idle",
+  disabled = false,
   draggable,
+  title,
 }: {
   card: CardType;
   isWildJoker?: boolean;
   selected?: boolean;
+  /** De-emphasised but still playable — NOT the same as `disabled`. */
   dimmed?: boolean;
   onClick?: () => void;
+  /** Legacy size flag. `size` wins when both are given. */
   small?: boolean;
+  size?: CardSize;
+  /** Transient feedback for drag-to-meld. */
+  state?: CardState;
+  /** Out of play — cannot be picked up at all. */
+  disabled?: boolean;
   // When set, the rendered element advertises itself as a drag source so HTML5
   // drag fires even though the card is a <button>. Without this, mousedown is
   // captured by the button and never bubbles up to a draggable wrapper.
   draggable?: boolean;
+  title?: string;
 }) {
   const ink = suitInk(card.suit);
-  const sizeCls = small ? "w-9 h-[3.25rem]" : "w-10 h-14 sm:w-12 sm:h-16";
-  const rankSize = small ? "text-[13px]" : "text-[13px] sm:text-[15px]";
-  const suitCornerSize = small ? "text-[11px]" : "text-[10px] sm:text-[12px]";
+  const resolvedSize: CardSize = size ?? (small ? "sm" : "md");
+  const inert = isInert(state, disabled);
+  const interactive = Boolean(onClick) && !inert;
+
   // Face cards (J/Q/K) get Indian royal SVG artwork.
   const isCourt =
     !card.isPrintedJoker &&
@@ -66,169 +115,94 @@ export function PlayingCard({
     !card.isPrintedJoker &&
     !isCourt &&
     (card.rank === "T" || card.rank === "A");
-  // Plain number pip size for 2–9 and for A/10 fallback centre pip.
-  const centerSize = small ? "text-[24px]" : "text-[22px] sm:text-[28px]";
-  const Tag: ElementType = draggable ? "div" : onClick ? "button" : "div";
-  const ariaProps = draggable && onClick
-    ? {
-        role: "button" as const,
-        tabIndex: 0,
-        onKeyDown: (e: ReactKeyboardEvent) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClick();
-          }
-        },
-        onClick,
-      }
-    : onClick && !draggable
-    ? { onClick, disabled: false }
-    : {};
-  const touchActionStyle: CSSProperties = draggable
-    ? { touchAction: "none" }
-    : {};
 
-  // Printed joker — bolder gradient with a fan motif behind the JOKER ribbon.
+  const Tag: ElementType = draggable ? "div" : onClick ? "button" : "div";
+
+  // A <div> drag source still has to behave like a button for keyboard users;
+  // a real <button> gets that for free. Neither should be reachable by tab
+  // while it is inert.
+  const ariaProps =
+    draggable && onClick
+      ? {
+          role: "button" as const,
+          tabIndex: inert ? -1 : 0,
+          "aria-disabled": inert || undefined,
+          onKeyDown: (e: ReactKeyboardEvent) => {
+            if (inert) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onClick();
+            }
+          },
+          onClick: inert ? undefined : onClick,
+        }
+      : onClick && !draggable
+      ? { onClick: inert ? undefined : onClick, disabled: inert }
+      : {};
+
+  const cls =
+    "rummy-playing-card rm-card" +
+    sizeClass(resolvedSize) +
+    (interactive ? " rm-card--interactive" : "") +
+    (selected ? " is-selected" : "") +
+    (dimmed ? " is-dimmed" : "") +
+    (disabled ? " is-disabled" : "") +
+    (state !== "idle" ? ` is-${state}` : "");
+
+  const cardStyle = {
+    "--rm-suit-ink": ink,
+    ...(draggable ? { touchAction: "none" } : null),
+  } as CSSProperties;
+
+  // Printed joker — the one violet in the set, per the token system.
   if (card.isPrintedJoker) {
     return (
       <Tag
-        draggable={draggable}
+        draggable={draggable && !inert}
         {...ariaProps}
-        className={`rummy-playing-card relative ${sizeCls} rounded-[7px] flex-shrink-0 transition transform select-none overflow-hidden
-          ${selected ? "-translate-y-3 ring-2 ring-amber-400 shadow-2xl" : ""}
-          ${dimmed ? "opacity-50" : ""}
-          ${onClick ? "hover:-translate-y-1 cursor-pointer" : "cursor-default"}`}
-        style={{
-          ...touchActionStyle,
-          background:
-            "linear-gradient(140deg, #6d28d9 0%, #4c1d95 55%, #2e1065 100%)",
-          border: "1px solid #1e0843",
-          boxShadow: selected
-            ? "0 12px 24px rgba(245,158,11,0.45), inset 0 0 0 1px rgba(251,191,36,0.5), 0 2px 4px rgba(0,0,0,0.3)"
-            : "0 3px 6px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(251,191,36,0.35)",
-        }}
-        title="Printed Joker"
+        className={`${cls} rm-card--joker`}
+        style={cardStyle}
+        title={title ?? "Printed Joker"}
       >
-        {/* Diagonal sheen */}
-        <span
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(115deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 35%, rgba(255,255,255,0) 65%, rgba(255,255,255,0.10) 100%)",
-          }}
-        />
-        {/* Star burst */}
-        <span
-          aria-hidden
-          className="absolute inset-0 flex items-center justify-center"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 45%, rgba(251,191,36,0.32) 0%, rgba(251,191,36,0) 55%)",
-          }}
-        />
-        {/* Centre ribbon */}
-        <span
-          className="absolute inset-x-0 top-1/2 -translate-y-1/2 mx-1 py-0.5 text-center font-black tracking-[0.2em] text-[8px] sm:text-[9px]"
-          style={{
-            color: "#fef3c7",
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,0.0), rgba(0,0,0,0.45), rgba(0,0,0,0.0))",
-            borderTop: "1px solid rgba(251,191,36,0.55)",
-            borderBottom: "1px solid rgba(251,191,36,0.55)",
-            textShadow: "0 1px 2px rgba(0,0,0,0.6)",
-          }}
-        >
-          JOKER
-        </span>
-        {/* Corner mini-stars hinting "wild" */}
-        <span className="absolute top-0.5 left-1 text-[9px] text-amber-200/85" aria-hidden>★</span>
-        <span className="absolute bottom-0.5 right-1 text-[9px] text-amber-200/85 rotate-180" aria-hidden>★</span>
+        <span className="rm-card__sheen" aria-hidden />
+        <span className="rm-card__joker-ribbon">JOKER</span>
       </Tag>
     );
   }
 
   return (
     <Tag
-      draggable={draggable}
+      draggable={draggable && !inert}
       {...ariaProps}
-      className={`rummy-playing-card relative ${sizeCls} rounded-[7px] flex-shrink-0 transition transform select-none overflow-hidden
-        ${selected ? "-translate-y-3 ring-2 ring-amber-400 shadow-2xl" : ""}
-        ${dimmed ? "opacity-50" : ""}
-        ${onClick ? "hover:-translate-y-1 cursor-pointer" : "cursor-default"}`}
-      style={{
-        ...touchActionStyle,
-        // Warm parchment for all cards — matches the Indian Bhalyam aesthetic.
-        background: isCourt
-          ? "linear-gradient(168deg, #fffbf0 0%, #fff7e0 55%, #fef0c0 100%)"
-          : "linear-gradient(168deg, #fffdf8 0%, #fff9ef 60%, #fef3d8 100%)",
-        border: isCourt ? `1.5px solid ${ink}` : "1.5px solid #b0a080",
-        boxShadow: selected
-          ? "0 14px 26px rgba(245,158,11,0.5), 0 2px 4px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(252,211,77,0.7)"
-          : isCourt
-          ? `0 4px 9px rgba(0,0,0,0.30), inset 0 0 0 2px rgba(212,160,23,0.28)`
-          : "0 4px 9px rgba(0,0,0,0.22), inset 0 0 0 2px rgba(176,160,128,0.22)",
-      }}
+      className={cls}
+      style={cardStyle}
+      title={title}
     >
-      {/* Top glossy sheen */}
-      <div
-        className="absolute inset-x-1 top-0.5 h-4 rounded-t-[5px] opacity-55"
-        style={{
-          background: "linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0))",
-        }}
-        aria-hidden
-      />
+      <span className="rm-card__sheen" aria-hidden />
+
       {/* Top-left corner — rank above suit */}
-      <div
-        className={`absolute top-[1px] left-[3px] leading-[0.92] font-black ${rankSize}`}
-        style={{
-          color: ink,
-          fontFamily: "Georgia, 'Times New Roman', serif",
-        }}
-      >
-        <div>{rankLabel(card.rank)}</div>
-        <div
-          className={`${suitCornerSize} leading-none mt-[1px]`}
-          style={{ color: ink }}
-        >
-          {SUIT_GLYPHS[card.suit]}
-        </div>
-      </div>
+      <span className="rm-card__corner rm-card__corner--tl">
+        <span className="rm-card__rank">{rankLabel(card.rank)}</span>
+        <span className="rm-card__pip">{SUIT_GLYPHS[card.suit]}</span>
+      </span>
 
       {/* Centre — face cards get Indian royal artwork; index cards (10/A)
           get a rank-between-pips treatment; number cards 2–9 get a big pip. */}
       {isCourt ? (
-        <IndianCourtCenter rank={card.rank as "J" | "Q" | "K"} suit={card.suit} small={small} />
+        <IndianCourtCenter rank={card.rank as "J" | "Q" | "K"} suit={card.suit} small={resolvedSize === "sm"} />
       ) : isIndex ? (
-        <IndexCenter rank={card.rank} suit={card.suit} ink={ink} small={small} />
+        <IndexCenter rank={card.rank} suit={card.suit} ink={ink} small={resolvedSize === "sm"} />
       ) : (
-        <div
-          className={`absolute inset-0 flex items-center justify-center font-black ${centerSize}`}
-          style={{
-            color: ink,
-            textShadow: `0 1px 1px ${ink}30`,
-          }}
-        >
+        <span className="rm-card__center" aria-hidden>
           {SUIT_GLYPHS[card.suit]}
-        </div>
+        </span>
       )}
 
       {/* Bottom-right mirror corner */}
-      <div
-        className={`absolute bottom-[1px] right-[3px] leading-[0.92] font-black rotate-180 ${rankSize}`}
-        style={{
-          color: ink,
-          fontFamily: "Georgia, 'Times New Roman', serif",
-        }}
-      >
-        <div>{rankLabel(card.rank)}</div>
-        <div
-          className={`${suitCornerSize} leading-none mt-[1px]`}
-          style={{ color: ink }}
-        >
-          {SUIT_GLYPHS[card.suit]}
-        </div>
-      </div>
+      <span className="rm-card__corner rm-card__corner--br" aria-hidden>
+        <span className="rm-card__rank">{rankLabel(card.rank)}</span>
+        <span className="rm-card__pip">{SUIT_GLYPHS[card.suit]}</span>
+      </span>
 
       {/* Wild-rank-match joker badges — top-right AND bottom-left so the
           card reads as a joker regardless of how it's fanned/overlapped in
@@ -238,32 +212,12 @@ export function PlayingCard({
           opposite corners means at least one is always visible. */}
       {isWildJoker && (
         <>
-          <div
-            className="absolute top-[1px] right-[1px] w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-black"
-            style={{
-              background: "linear-gradient(135deg, #fbbf24, #ea580c)",
-              color: "#1f1300",
-              boxShadow:
-                "0 0 0 1px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.45)",
-            }}
-            title="Wild Joker"
-          >
+          <span className="rm-card__joker rm-card__joker--tr" title="Wild Joker">
             J
-          </div>
-          <div
-            className="absolute bottom-[1px] left-[1px] w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-black"
-            style={{
-              background: "linear-gradient(135deg, #fbbf24, #ea580c)",
-              color: "#1f1300",
-              boxShadow:
-                "0 0 0 1px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.45)",
-              transform: "rotate(180deg)",
-            }}
-            title="Wild Joker"
-            aria-hidden
-          >
+          </span>
+          <span className="rm-card__joker rm-card__joker--bl" title="Wild Joker" aria-hidden>
             J
-          </div>
+          </span>
         </>
       )}
     </Tag>
@@ -295,22 +249,19 @@ function IndexCenter({
   return (
     <div className="absolute inset-0 flex items-center justify-center" aria-hidden>
       <div
-        className="flex flex-col items-center justify-center gap-0.5 rounded-[3px]"
-        style={{
-          width: frameW,
-          height: frameH,
-        }}
+        className="flex flex-col items-center justify-center gap-0.5"
+        style={{ width: frameW, height: frameH }}
       >
         <span style={{ color: ink, fontSize: pipSize, lineHeight: 1 }}>
           {SUIT_GLYPHS[suit]}
         </span>
         <span
-          className="font-black leading-none"
+          className="leading-none"
           style={{
             color: ink,
             fontSize: letterSize,
-            fontFamily: "Georgia, 'Times New Roman', serif",
-            textShadow: "0 1px 1px rgba(0,0,0,0.15)",
+            fontWeight: 700,
+            fontFamily: "var(--rm-font-card)",
           }}
         >
           {label}
@@ -336,8 +287,13 @@ function IndexCenter({
  * Each figure is drawn in the top half of a 30×42 SVG viewBox and then
  * the same figure is rotated 180° around the centre point to produce the
  * traditional "double-headed" court-card layout.  Garments and accessories
- * use the suit's own ink colour; gold (#d4a017) is used for jewellery,
- * crowns, and sceptre ornaments; skin tone is warm ochre (#e8c89a).
+ * use the suit's own ink colour; --rm-art-gold is used for jewellery,
+ * crowns, and sceptre ornaments; skin tone is --rm-art-skin.
+ *
+ * NOTE ON UNITS: every stroke width and coordinate below is relative to THIS
+ * component's viewBox (vw ≈ 26–30 × vh ≈ 36–42). They are NOT interchangeable
+ * with the numbers in FaceDownCard, whose viewBox is 48×66 — a stroke of 1.5
+ * means something ~1.7× different there. Do not copy values between the two.
  */
 function IndianCourtCenter({
   rank,
@@ -349,8 +305,8 @@ function IndianCourtCenter({
   small: boolean;
 }) {
   const ink = suitInk(suit);
-  const gold = "#d4a017";
-  const skin = "#e8c89a";
+  const gold = "var(--rm-art-gold)";
+  const skin = "var(--rm-art-skin)";
   const vw = small ? 26 : 30;
   const vh = small ? 36 : 42;
   const cx = vw / 2;
@@ -372,8 +328,9 @@ function IndianCourtCenter({
           <CourtFigureTop rank={rank} ink={ink} gold={gold} skin={skin} cx={cx} hh={hh} />
         </g>
 
-        {/* Centre divider ornament */}
-        <line x1="3" y1={hh} x2={vw - 3} y2={hh} stroke={`${ink}77`} strokeWidth="0.5" />
+        {/* Centre divider ornament. Opacity is an ATTRIBUTE, not a hex alpha
+            suffix — `${ink}77` silently stops working once ink is a var(). */}
+        <line x1="3" y1={hh} x2={vw - 3} y2={hh} stroke={ink} strokeOpacity={0.47} strokeWidth="0.5" />
         <polygon
           points={`${cx},${hh - 2.5} ${cx + 2},${hh} ${cx},${hh + 2.5} ${cx - 2},${hh}`}
           fill={gold}
@@ -445,14 +402,14 @@ function KingTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin:
       {/* Face */}
       <ellipse cx={cx} cy={fy + 3} rx={5} ry={5.5} fill={skin} />
       {/* Eyes */}
-      <ellipse cx={cx - 1.8} cy={ey + 3} rx={0.8} ry={1} fill="#1a0800" />
-      <ellipse cx={cx + 1.8} cy={ey + 3} rx={0.8} ry={1} fill="#1a0800" />
+      <ellipse cx={cx - 1.8} cy={ey + 3} rx={0.8} ry={1} fill="var(--rm-art-eye)" />
+      <ellipse cx={cx + 1.8} cy={ey + 3} rx={0.8} ry={1} fill="var(--rm-art-eye)" />
       {/* Mustache */}
       <path d={`M ${cx - 3.5},${fy + 4.5} Q ${cx},${fy + 6} ${cx + 3.5},${fy + 4.5}`}
-        stroke="#5a3a00" strokeWidth="0.9" fill="none" strokeLinecap="round" />
+        stroke="var(--rm-art-hair)" strokeWidth="0.9" fill="none" strokeLinecap="round" />
       {/* Beard hint */}
       <path d={`M ${cx - 2.5},${fy + 5.5} Q ${cx},${fy + 7.5} ${cx + 2.5},${fy + 5.5}`}
-        stroke="#5a3a00" strokeWidth="0.6" fill="none" strokeLinecap="round" />
+        stroke="var(--rm-art-hair)" strokeWidth="0.6" fill="none" strokeLinecap="round" />
 
       {/* Body — sherwani */}
       <path
@@ -461,7 +418,7 @@ function KingTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin:
       />
       {/* V-neck */}
       <path d={`M ${cx - 1.5},${fY} L ${cx},${fY + 1.5} L ${cx + 1.5},${fY}`}
-        fill="none" stroke="#fffbf0" strokeWidth="0.6" />
+        fill="none" stroke="var(--rm-art-relief)" strokeWidth="0.6" />
       {/* Gold chest ornament */}
       <path d={`M ${cx - 1},${fY + 2} L ${cx},${fY + 1} L ${cx + 1},${fY + 2} L ${cx},${fY + 3} Z`}
         fill={gold} />
@@ -489,10 +446,10 @@ function QueenTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin
   return (
     <g>
       {/* Lotus held in left hand */}
-      <line x1={cx - 9} y1={bY} x2={cx - 9} y2={bY - 5} stroke="#4a7c40" strokeWidth="1" />
-      <ellipse cx={cx - 9} cy={bY - 7} rx={3} ry={2} fill="#f9a8d4" />
-      <ellipse cx={cx - 9} cy={bY - 6.5} rx={2} ry={1.2} fill="#f472b6" />
-      <circle cx={cx - 9} cy={bY - 7} r={0.8} fill="#fbbf24" />
+      <line x1={cx - 9} y1={bY} x2={cx - 9} y2={bY - 5} stroke="var(--rm-art-stem)" strokeWidth="1" />
+      <ellipse cx={cx - 9} cy={bY - 7} rx={3} ry={2} fill="var(--rm-art-lotus)" />
+      <ellipse cx={cx - 9} cy={bY - 6.5} rx={2} ry={1.2} fill="var(--rm-art-lotus-2)" />
+      <circle cx={cx - 9} cy={bY - 7} r={0.8} fill={gold} />
 
       {/* Tiara / crown — delicate arches */}
       <path
@@ -520,15 +477,15 @@ function QueenTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin
       {/* Face */}
       <ellipse cx={cx} cy={fy + 3} rx={4.8} ry={5.3} fill={skin} />
       {/* Eyes — slightly larger with eyelash hint */}
-      <ellipse cx={cx - 1.8} cy={ey + 3.5} rx={0.9} ry={1.1} fill="#1a0800" />
-      <ellipse cx={cx + 1.8} cy={ey + 3.5} rx={0.9} ry={1.1} fill="#1a0800" />
-      <line x1={cx - 2.7} y1={ey + 2.5} x2={cx - 0.9} y2={ey + 2.5} stroke="#1a0800" strokeWidth="0.5" />
-      <line x1={cx + 0.9} y1={ey + 2.5} x2={cx + 2.7} y2={ey + 2.5} stroke="#1a0800" strokeWidth="0.5" />
-      {/* Bindi (always red) */}
-      <circle cx={cx} cy={ey + 1} r={0.7} fill="#c8102e" />
+      <ellipse cx={cx - 1.8} cy={ey + 3.5} rx={0.9} ry={1.1} fill="var(--rm-art-eye)" />
+      <ellipse cx={cx + 1.8} cy={ey + 3.5} rx={0.9} ry={1.1} fill="var(--rm-art-eye)" />
+      <line x1={cx - 2.7} y1={ey + 2.5} x2={cx - 0.9} y2={ey + 2.5} stroke="var(--rm-art-eye)" strokeWidth="0.5" />
+      <line x1={cx + 0.9} y1={ey + 2.5} x2={cx + 2.7} y2={ey + 2.5} stroke="var(--rm-art-eye)" strokeWidth="0.5" />
+      {/* Bindi */}
+      <circle cx={cx} cy={ey + 1} r={0.7} fill="var(--rm-art-bindi)" />
       {/* Lips */}
       <path d={`M ${cx - 1.8},${fy + 5.2} Q ${cx},${fy + 6.4} ${cx + 1.8},${fy + 5.2}`}
-        stroke="#b05060" strokeWidth="0.7" fill="none" strokeLinecap="round" />
+        stroke="var(--rm-art-lip)" strokeWidth="0.7" fill="none" strokeLinecap="round" />
       {/* Earrings */}
       <ellipse cx={cx - 5.2} cy={fy + 3} rx={0.7} ry={2} fill={gold} stroke={ink} strokeWidth="0.3" />
       <ellipse cx={cx + 5.2} cy={fy + 3} rx={0.7} ry={2} fill={gold} stroke={ink} strokeWidth="0.3" />
@@ -543,7 +500,7 @@ function QueenTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin
         stroke={gold} strokeWidth="0.7" fill="none" />
       <circle cx={cx} cy={fY + 2.2} r={0.8} fill={gold} />
       {/* Dupatta drape diagonal lines */}
-      <line x1={cx - 6} y1={fY + 2} x2={cx - 1} y2={bY} stroke="#fffbf0" strokeWidth="0.5" opacity="0.6" />
+      <line x1={cx - 6} y1={fY + 2} x2={cx - 1} y2={bY} stroke="var(--rm-art-relief)" strokeWidth="0.5" opacity="0.6" />
 
       {/* Left arm reaching to lotus */}
       <path d={`M ${cx - 6},${fY + 2} Q ${cx - 8},${fY + 3} ${cx - 9},${bY - 1}`}
@@ -576,29 +533,29 @@ function JackTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin:
         d={`M ${cx - 7},${turbanBase + 3} C ${cx - 8},${turbanBase - 2} ${cx - 4},${turbanBase - 4} ${cx},${turbanBase - 5} C ${cx + 4},${turbanBase - 4} ${cx + 8},${turbanBase - 2} ${cx + 7},${turbanBase + 3} Z`}
         fill={ink}
       />
-      {/* Turban band */}
-      <rect x={cx - 7} y={turbanBase + 2.5} width={14} height={2.5} fill={`${ink}dd`} rx="0.4" />
+      {/* Turban band. Opacity is an ATTRIBUTE — `${ink}dd` breaks on a var(). */}
+      <rect x={cx - 7} y={turbanBase + 2.5} width={14} height={2.5} fill={ink} fillOpacity={0.87} rx="0.4" />
       {/* Turban wrap lines */}
       <path d={`M ${cx - 6.5},${turbanBase + 1} C ${cx - 2},${turbanBase - 1} ${cx + 2},${turbanBase - 1} ${cx + 6.5},${turbanBase + 1}`}
-        stroke="#fffbf0" strokeWidth="0.35" fill="none" opacity="0.7" />
+        stroke="var(--rm-art-relief)" strokeWidth="0.35" fill="none" opacity="0.7" />
       <path d={`M ${cx - 6},${turbanBase} C ${cx - 2},${turbanBase - 2} ${cx + 2},${turbanBase - 2} ${cx + 6},${turbanBase}`}
-        stroke="#fffbf0" strokeWidth="0.35" fill="none" opacity="0.5" />
+        stroke="var(--rm-art-relief)" strokeWidth="0.35" fill="none" opacity="0.5" />
       {/* Turban jewel (diamond-shaped) */}
       <path d={`M ${cx},${turbanBase - 2} L ${cx + 1.5},${turbanBase} L ${cx},${turbanBase + 2} L ${cx - 1.5},${turbanBase} Z`}
         fill={gold} stroke={ink} strokeWidth="0.3" />
       {/* Plume (peacock feather hint) */}
       <path d={`M ${cx + 2},${turbanBase - 4} C ${cx + 3},${turbanBase - 7} ${cx + 1},${turbanBase - 9} ${cx},${turbanBase - 9}`}
-        stroke="#22c55e" strokeWidth="0.9" fill="none" strokeLinecap="round" />
-      <circle cx={cx} cy={turbanBase - 9} r={0.8} fill="#1d4ed8" />
+        stroke="var(--rm-art-plume)" strokeWidth="0.9" fill="none" strokeLinecap="round" />
+      <circle cx={cx} cy={turbanBase - 9} r={0.8} fill="var(--rm-art-plume-2)" />
 
       {/* Face */}
       <ellipse cx={cx} cy={fy + 3} rx={5} ry={5.5} fill={skin} />
       {/* Eyes */}
-      <ellipse cx={cx - 1.8} cy={ey + 3} rx={0.8} ry={1} fill="#1a0800" />
-      <ellipse cx={cx + 1.8} cy={ey + 3} rx={0.8} ry={1} fill="#1a0800" />
+      <ellipse cx={cx - 1.8} cy={ey + 3} rx={0.8} ry={1} fill="var(--rm-art-eye)" />
+      <ellipse cx={cx + 1.8} cy={ey + 3} rx={0.8} ry={1} fill="var(--rm-art-eye)" />
       {/* Young mustache (light) */}
       <path d={`M ${cx - 3},${fy + 4.8} Q ${cx},${fy + 5.8} ${cx + 3},${fy + 4.8}`}
-        stroke="#5a3a00" strokeWidth="0.6" fill="none" strokeLinecap="round" />
+        stroke="var(--rm-art-hair)" strokeWidth="0.6" fill="none" strokeLinecap="round" />
 
       {/* Body — angarkha */}
       <path
@@ -625,64 +582,108 @@ function JackTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin:
 
 /**
  * Card back used for the closed deck and other face-down piles — shared by
- * both shells (previously desktop had its own bespoke navy/gold version,
- * "CardBackDesktop", while mobile was left on an earlier crimson-lattice
- * design; this is that desktop design, promoted here so both shells render
- * identically). Navy gradient, gold dot-lattice pattern, and a gold "B"
- * (BHALYAM) monogram medallion. Pure SVG so it scales crisply at any size.
+ * both shells. Navy card stock (--rm-card-back), brass dot-lattice, and a
+ * brass "B" (BHALYAM) monogram medallion.
+ *
+ * It now shares the `.rm-card` silhouette with the face-up card — same width,
+ * same corner radius, same hairline, same lift. Previously the back was a bare
+ * SVG with its own drop-shadow and a slightly different aspect ratio, so a
+ * pile of backs never quite lined up with the hand.
+ *
+ * NOTE ON UNITS: the geometry below is relative to a 48×66 viewBox and is NOT
+ * interchangeable with the court-card artwork above (viewBox ≈ 30×42).
  */
-export function FaceDownCard({ small = false }: { small?: boolean }) {
-  const w = small ? 36 : 48;
-  const h = small ? 50 : 66;
+export function FaceDownCard({
+  small = false,
+  size,
+}: {
+  small?: boolean;
+  size?: CardSize;
+}) {
+  const resolvedSize: CardSize = size ?? (small ? "sm" : "md");
   // Unique per instance: a face-down pile renders many of these, and a literal
   // id meant every copy shared one definition (all `url(#…)` resolving to
   // whichever mounted first). Harmless while the gradient is a fixed navy, but
   // it silently breaks the moment the back is themed per deck/player. Colons
   // are stripped from useId() — legal in an id, but they break `url(#…)`.
   const bgId = `rcb${useId().replace(/:/g, "")}`;
+
   return (
-    <svg width={w} height={h} viewBox="0 0 48 66" className="flex-shrink-0 drop-shadow" aria-hidden>
-      <defs>
-        <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#1e2a5c" />
-          <stop offset="100%" stopColor="#0d1530" />
-        </linearGradient>
-      </defs>
-      <rect x="1" y="1" width="46" height="64" rx="5" fill={`url(#${bgId})`} stroke="#C9A227" strokeWidth="1.5" />
-      <rect x="5" y="5" width="38" height="56" rx="3" fill="none" stroke="#C9A227" strokeWidth="0.75" opacity="0.6" />
-      {Array.from({ length: 4 }).map((_, row) =>
-        Array.from({ length: 3 }).map((_, col) => (
-          <circle
-            key={`${row}-${col}`}
-            cx={12 + col * 12}
-            cy={14 + row * 13}
-            r="2.6"
-            fill="none"
-            stroke="#C9A227"
-            strokeWidth="0.9"
-            opacity="0.65"
-          />
-        )),
-      )}
-      <circle cx="24" cy="33" r="8" fill="#C9A227" opacity="0.9" />
-      <text x="24" y="36.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#1e2a5c" fontFamily="Georgia, serif">B</text>
-    </svg>
+    <div className={`rm-card rm-card--back${sizeClass(resolvedSize)}`} aria-hidden>
+      <svg
+        viewBox="0 0 48 66"
+        preserveAspectRatio="none"
+        className="rm-card__back-art"
+      >
+        <defs>
+          <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="var(--rm-card-back)" />
+            <stop offset="100%" stopColor="var(--rm-card-back-deep)" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="48" height="66" fill={`url(#${bgId})`} />
+        <rect
+          x="5" y="5" width="38" height="56" rx="3"
+          fill="none" stroke="var(--rm-brass)" strokeWidth="0.75" opacity="0.6"
+        />
+        {Array.from({ length: 4 }).map((_, row) =>
+          Array.from({ length: 3 }).map((_, col) => (
+            <circle
+              key={`${row}-${col}`}
+              cx={12 + col * 12}
+              cy={14 + row * 13}
+              r="2.6"
+              fill="none"
+              stroke="var(--rm-brass)"
+              strokeWidth="0.9"
+              opacity="0.65"
+            />
+          )),
+        )}
+        <circle cx="24" cy="33" r="8" fill="var(--rm-brass)" opacity="0.9" />
+        <text
+          x="24" y="36.5" textAnchor="middle"
+          fontSize="9" fontWeight="700"
+          fill="var(--rm-card-back)"
+          fontFamily="var(--rm-font-card)"
+        >
+          B
+        </text>
+      </svg>
+    </div>
   );
 }
 
-export function FinishSlot({ small = false }: { small?: boolean }) {
-  const sizeCls = small ? "w-9 h-[3.25rem]" : "w-10 h-14 sm:w-12 sm:h-16";
+/**
+ * The empty slot a player drops their final card onto to declare.
+ *
+ * `dragOver` is the drop-target half of drag-to-meld: without it the slot gave
+ * no feedback at all, so a player dragging toward it could not tell whether it
+ * was a legal target until they let go.
+ */
+export function FinishSlot({
+  small = false,
+  size,
+  dragOver = false,
+  state = "idle",
+}: {
+  small?: boolean;
+  size?: CardSize;
+  dragOver?: boolean;
+  state?: CardState;
+}) {
+  const resolvedSize: CardSize = size ?? (small ? "sm" : "md");
+  const cls =
+    "rm-finish-slot" +
+    (resolvedSize === "sm" ? " rm-finish-slot--sm" : "") +
+    (resolvedSize === "lg" ? " rm-finish-slot--lg" : "") +
+    (dragOver ? " is-over" : "") +
+    (state !== "idle" ? ` is-${state}` : "");
+
   return (
-    <div
-      className={`${sizeCls} rounded-[7px] flex-shrink-0 flex items-center justify-center text-[8px] uppercase tracking-widest font-black text-emerald-200`}
-      style={{
-        background: "rgba(6,78,59,0.5)",
-        border: "2px dashed rgba(16,185,129,0.7)",
-      }}
-    >
-      Finish
-      <br />
-      Slot
+    <div className={cls}>
+      <span>Finish</span>
+      <span>Slot</span>
     </div>
   );
 }
