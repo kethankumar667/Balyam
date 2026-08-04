@@ -1,52 +1,38 @@
 import type { LudoColor, LudoToken } from "@shared/types";
 import {
-  COLOR_START_POSITION,
-  STRETCH_LENGTH,
-  TRACK_LENGTH,
-  lastTrackPosFor,
-} from "./board-layout";
+  playerCountFromTrackLength,
+  resolveDestination,
+  type LudoDestination,
+} from "@shared/ludo-rules";
+import { TRACK_LENGTH } from "./board-layout";
 
 /**
- * Client-side mirror of the server's move simulator. Used to highlight the
- * destination cell when a player hovers a movable token. Stays in sync with
- * `server/src/games/ludo/LudoEngine.ts#simulateMove`.
+ * Where a hovered token would land — resolved by the SAME function the server
+ * uses to actually move it (`shared/ludo-rules.ts#resolveDestination`).
+ *
+ * This file used to re-implement the rule by hand, described as "stays in sync
+ * with LudoEngine#simulateMove". It did not stay in sync: it applied Mandatory
+ * Capture whenever the player had not yet captured, while the engine FIRST
+ * checks whether the room has that option enabled at all. In a room with the
+ * option off, the hover preview showed a token sailing past its own home
+ * entrance when the engine would have turned it in — the preview lied about
+ * the move the player was about to make.
+ *
+ * `mandatoryCapture` defaults to true to match DEFAULT_LUDO_OPTIONS; callers
+ * that know the room's real setting should pass it.
  */
 export function predictDestination(
   token: LudoToken,
   dice: number,
   color: LudoColor,
   hasCaptured: boolean,
-  trackLength: number = TRACK_LENGTH
-):
-  | { state: "track"; trackPos: number }
-  | { state: "stretch"; stretchPos: number }
-  | { state: "home" }
-  | null {
-  if (token.state === "yard") {
-    if (dice !== 6) return null;
-    return { state: "track", trackPos: COLOR_START_POSITION[color] };
-  }
-  if (token.state === "stretch") {
-    const next = (token.stretchPos ?? 0) + dice;
-    if (next > STRETCH_LENGTH) return null;
-    if (next === STRETCH_LENGTH) return { state: "home" };
-    return { state: "stretch", stretchPos: next };
-  }
-  if (token.state === "track") {
-    const last = lastTrackPosFor(color, trackLength);
-    const cur = token.trackPos ?? 0;
-    const distToLast = (last - cur + trackLength) % trackLength;
-    if (dice <= distToLast) {
-      return { state: "track", trackPos: (cur + dice) % trackLength };
-    }
-    if (!hasCaptured) {
-      // Mandatory Capture: token must bypass its entrance
-      return { state: "track", trackPos: (cur + dice) % trackLength };
-    }
-    const intoStretch = dice - distToLast;
-    if (intoStretch > STRETCH_LENGTH) return null;
-    if (intoStretch === STRETCH_LENGTH) return { state: "home" };
-    return { state: "stretch", stretchPos: intoStretch - 1 };
-  }
-  return null;
+  trackLength: number = TRACK_LENGTH,
+  mandatoryCapture = true,
+): LudoDestination | null {
+  return resolveDestination(token, dice, {
+    color,
+    playerCount: playerCountFromTrackLength(trackLength),
+    mandatoryCapture,
+    hasCaptured,
+  });
 }
