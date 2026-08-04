@@ -16,6 +16,7 @@ import type {
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { PlayingCard, FaceDownCard } from "./Card";
+import CardTracker from "./CardTracker";
 import "./rummy-table.css";
 import TutorialModal from "./TutorialModal";
 import {
@@ -30,7 +31,6 @@ import {
 } from "./meldCheck";
 import { splitBySuit } from "./autoArrange";
 import { isRummySoundEnabled, rummySfx, setRummySoundEnabled } from "./sound";
-import Chat from "../../components/Chat";
 import VoicePanel from "../../components/VoicePanel";
 import PlayerList from "../../components/PlayerList";
 import { enterFullscreen, exitFullscreen, isFullscreenActive } from "../../lib/fullscreen";
@@ -601,8 +601,24 @@ export default function RummyBoardDesktop({
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       switch (e.key.toLowerCase()) {
+        /**
+         * D is DRAW or DISCARD depending on where the turn is.
+         *
+         * The two never overlap — `turnAction` is either "draw" or
+         * "discardOrDeclare" and never both — so one key can carry the whole
+         * turn: press D to take a card, press D to put one down. That is also
+         * what lets the Discard button honestly print "D" on its face; the
+         * discard action previously answered to Space alone, which no label
+         * on screen mentioned.
+         */
         case "d":
-          if (canDraw) { e.preventDefault(); drawFromClosed(); }
+          if (canDraw) {
+            e.preventDefault();
+            drawFromClosed();
+          } else if (canDiscardOrDeclare && selected.size === 1) {
+            e.preventDefault();
+            discardSelected();
+          }
           break;
         case "o":
           if (canDraw) { e.preventDefault(); drawFromOpen(); }
@@ -678,42 +694,29 @@ export default function RummyBoardDesktop({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.droppedPlayers.join(",")]);
 
-  /* ─── Seat assignment — generalizes the reference mock's top/left/right
-     3-seat composition to any opponent count (rummy seats up to 6 total,
-     i.e. 5 opponents). The first two opponents flank the page as side
-     notepads; everyone else stacks along the top edge. A single
-     opponent sits top-center (head-to-head) rather than alone on a
-     side. ─── */
-  const sideSeatCount = opponentIds.length <= 1 ? 0 : 2;
-  const leftOpponentId = sideSeatCount > 0 ? opponentIds[0] : undefined;
-  const rightOpponentId = sideSeatCount > 1 ? opponentIds[1] : undefined;
-  const topOpponentIds = opponentIds.slice(sideSeatCount);
-
   /* ─────────────────────────── Render ─────────────────────────── */
-  const selfName = players.find((p) => p.id === selfId)?.name ?? "You";
-  const selfCumulative = selfId ? state.cumulativeScores?.[selfId] : undefined;
   const handHint = canDraw
-    ? "☆ Your turn — pick a card from the deck or the discard pile."
+    ? "Pick a card from the deck or discard pile"
     : canDiscardOrDeclare
-    ? "☆ Discard a card, or drop one into the Finish Slot to declare."
-    : null;
+    ? "Discard a card, or drop one into the Finish Slot to declare"
+    : isArranging
+    ? "A show has been made — rearrange to cut your points"
+    : `Waiting for ${nameOf(state.turnPlayerId)}…`;
 
-  function renderSeat(id: string | undefined, orientation: "vertical" | "horizontal") {
-    if (!id) return null;
-    return (
-      <Notepad
-        key={id}
-        orientation={orientation}
-        name={nameOf(id)}
-        isTurn={state.turnPlayerId === id}
-        handSize={state.handSizes[id] ?? 0}
-        dropped={state.droppedPlayers.includes(id)}
-        eliminated={state.eliminatedInMatch.includes(id)}
-        cumulativeScore={state.cumulativeScores?.[id]}
-        poolTarget={state.poolTarget}
-      />
-    );
-  }
+  /* Seats are dealt in table order with the local player LAST, so "you" is
+     always the rightmost card — nearest the hand it owns. The seat letter is
+     positional (A, B, C…) and is reused by the roster in the right rail, so
+     the two lists can be matched to each other without reading names. */
+  const seatOrder = [...opponentIds, ...(selfId && state.playerOrder.includes(selfId) ? [selfId] : [])];
+  const seatLetterOf = (id: string) =>
+    String.fromCharCode(65 + Math.max(0, state.playerOrder.indexOf(id)));
+
+  const variantLabel =
+    state.matchMode === "pool101"
+      ? "Pool 101"
+      : state.matchMode === "pool201"
+      ? "Pool 201"
+      : "Points Rummy";
 
   return (
     <div className="rm-room">
@@ -754,301 +757,393 @@ export default function RummyBoardDesktop({
         />
       )}
 
-      {/* ───── Chrome ───── */}
+      {/* ───── Chrome ─────
+          Three grid tracks rather than a flex row: the turn pill has to hold
+          the centre of the viewport however long the room metadata runs. */}
       <div className="rm-topbar">
-        <div className="flex items-center gap-4 min-w-0">
+        <div className="rm-topbar__left">
           <button onClick={onLeave} className="rm-chip" title="Leave the table">
             ← Leave
           </button>
           <div className="rm-wordmark">
             Bhalyam
             <span className="rm-wordmark__sub">Rummy</span>
-            <span className="rm-wordmark__room">· {roomCode ?? "ROOM"}</span>
           </div>
-          <TurnIndicator
-            myTurn={myTurn}
-            turnPlayerName={nameOf(state.turnPlayerId)}
-            action={state.turnAction}
-            remainingSec={remainingSec}
-          />
+          <div className="rm-meta">
+            <span>Table:</span>
+            <span className="rm-meta__code">{roomCode ?? "—"}</span>
+            <span className="rm-meta__dot">•</span>
+            <span>{variantLabel}</span>
+            <span className="rm-meta__dot">•</span>
+            <span>{state.playerOrder.length} Players</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <TurnPill
+          myTurn={myTurn}
+          turnPlayerName={nameOf(state.turnPlayerId)}
+          phase={state.phase}
+          remainingSec={remainingSec}
+        />
+
+        <div className="rm-topbar__right">
           <button onClick={() => setTutorialOpen(true)} className="rm-chip" title="How to play">
             Rules
           </button>
           <button
             onClick={toggleSound}
-            className="rm-chip"
+            className="rm-chip rm-chip--icon"
             title={soundOn ? "Mute sound" : "Unmute sound"}
             aria-pressed={soundOn}
+            aria-label={soundOn ? "Mute sound" : "Unmute sound"}
           >
-            {soundOn ? "Sound on" : "Sound off"}
+            <SoundIcon on={soundOn} />
           </button>
-          <button onClick={toggleFullscreen} className="rm-chip" title="Fullscreen">
-            ⛶
+          <button
+            onClick={toggleFullscreen}
+            className="rm-chip rm-chip--icon"
+            title={isFs ? "Exit fullscreen" : "Fullscreen"}
+            aria-label={isFs ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            <GearIcon />
           </button>
         </div>
       </div>
 
-      {/* ───── The table — three zones ─────
-          1. the opponent rail (recedes) · 2. the lit centre · 3. the hand shelf */}
-      <div className="rm-table">
-        <div className="rm-play">
-          {/* ── ZONE 1 · opponent rail ──
-              ONE strip. Opponents used to be split across a left column, a
-              right column and a top row, which meant a 6-player table put
-              seats on three different edges and none of them read as a set. */}
-          <div className="rm-rail">
-            {opponentIds.map((id) => renderSeat(id, "horizontal"))}
+      {/* ───── The table — five stacked panels + the right rail ─────
+          seats · piles · melds · hand · actions. Each is a framed object with
+          ONE edge weight, read top to bottom in the order it is actually
+          used. The previous pass made these three BORDERLESS zones bleeding
+          into one continuous felt; that removed the clutter and the structure
+          together, and the four things a player tracks ran into each other. */}
+      <div className="rm-main">
+        <div className="rm-board">
+          {/* ── 1 · who is at the table ──
+              One row, every seat the same object, the local player last so
+              "you" sits nearest the hand you own. */}
+          <div className="rm-seats">
+            {seatOrder.map((id) => (
+              <SeatCard
+                key={id}
+                letter={seatLetterOf(id)}
+                name={id === selfId ? `${nameOf(id)} (You)` : nameOf(id)}
+                isSelf={id === selfId}
+                isTurn={state.turnPlayerId === id && state.phase === "playing"}
+                handSize={state.handSizes[id] ?? 0}
+                dropped={state.droppedPlayers.includes(id)}
+                eliminated={state.eliminatedInMatch.includes(id)}
+                connected={players.find((p) => p.id === id)?.isConnected ?? true}
+                cumulativeScore={state.cumulativeScores?.[id]}
+              />
+            ))}
           </div>
 
-          {/* ── ZONE 2 · the lit centre ──
-              Piles and melds sit directly on the lit felt. The dashed frame
-              around the piles and the bordered panel around the meld lanes
-              are both gone: the pool of light IS the container. */}
-          <div className="rm-centre">
-            <div className="relative">
-              <div className={`rm-piles${isArranging ? " rm-piles--locked" : ""}`}>
-                <ClosedDeck
-                  count={state.closedDeckCount}
-                  canDraw={canDraw}
-                  onDraw={drawFromClosed}
-                />
-                <WildJokerDisplay card={state.wildJoker} />
-                <OpenPile
-                  top={state.topOfOpenPile}
-                  canDraw={canDraw}
-                  onDraw={drawFromOpen}
-                  dragOver={dragOverTarget === "openpile"}
-                  wildRank={wildRank}
-                />
-                <FinishSlot dragOver={dragOverTarget === "finishslot"} />
-              </div>
-              {isArranging && (
-                <ArrangeCenterTimer
-                  remainingSec={arrangeRemainingSec}
-                  spectator={iAmDeclarer}
-                  declarerName={nameOf(state.winnerId ?? "")}
-                />
-              )}
+          {/* ── 2 · the lit centre ──
+              The pool of light IS the container: no dashed frame around the
+              piles, no inner panel. Each pile carries its own name chip, so
+              nothing has to be learned by position. */}
+          <div className={`rm-felt${isArranging ? " rm-felt--locked" : ""}`}>
+            <div className="rm-felt__slots">
+              <ClosedDeck count={state.closedDeckCount} canDraw={canDraw} onDraw={drawFromClosed} />
+              <WildJokerSlot card={state.wildJoker} />
+              <DiscardSlot
+                top={state.topOfOpenPile}
+                pile={state.openPile}
+                canDraw={canDraw}
+                onDraw={drawFromOpen}
+                dragOver={dragOverTarget === "openpile"}
+                wildRank={wildRank}
+              />
+              <FinishSlot dragOver={dragOverTarget === "finishslot"} />
             </div>
 
-            {handHint && <div className="rm-hint">{handHint}</div>}
-
-            {/* Group lanes — locked for the declarer (they're spectating);
-                losers keep them live to rearrange and cut their points. */}
-            <div className={`rm-melds${iAmDeclarer ? " rm-melds--locked" : ""}`}>
-              {layout.groups.map((g) => (
-                <GroupLane
-                  key={g.id}
-                  groupId={g.id}
-                  cardIds={g.cardIds}
-                  byId={byId}
-                  wildRank={wildRank}
-                  selected={selected}
-                  draggingIds={draggingIds}
-                  classification={meldByGroupId[g.id]}
-                  dragOver={dragOverTarget === `group:${g.id}`}
-                  onTap={onCardTap}
-                  onDragBegin={onDragBegin}
-                  onDragHover={onDragHover}
-                  onDragRelease={onDragRelease}
-                  onUngroup={() => ungroupGroup(g.id)}
-                />
-              ))}
-              {draggingIds.length > 0 && (
-                <NewMeldZone
-                  active={dragOverTarget === "new"}
-                  atCap={layout.groups.length >= MAX_GROUPS}
-                />
-              )}
+            <div className="rm-felt__hint">
+              <BulbIcon />
+              <span>{handHint}</span>
             </div>
 
-            {error && <div className="rm-error">{error}</div>}
+            {isArranging && (
+              <ArrangeCenterTimer
+                remainingSec={arrangeRemainingSec}
+                spectator={iAmDeclarer}
+                declarerName={nameOf(state.winnerId ?? "")}
+              />
+            )}
           </div>
 
-          {/* ── ZONE 3 · the hand shelf ──
-              The brightest surface, closest to the player, with real
-              breathing room. "Your turn" is said by brightening the shelf's
-              own edge rather than adding a ring — a ring would have been a
-              fifth border weight on a screen whose problem was too many. */}
+          {/* ── 3 · the melds ──
+              Locked for the declarer (they are spectating); losers keep them
+              live so they can rearrange and cut their points. */}
+          <div className={`rm-melds${iAmDeclarer ? " rm-melds--locked" : ""}`}>
+            {layout.groups.length === 0 && (
+              <span className="rm-melds__empty">
+                No melds yet — select cards and press G, or drag them here.
+              </span>
+            )}
+            {layout.groups.map((g) => (
+              <GroupLane
+                key={g.id}
+                groupId={g.id}
+                cardIds={g.cardIds}
+                byId={byId}
+                wildRank={wildRank}
+                selected={selected}
+                draggingIds={draggingIds}
+                classification={meldByGroupId[g.id]}
+                dragOver={dragOverTarget === `group:${g.id}`}
+                onTap={onCardTap}
+                onDragBegin={onDragBegin}
+                onDragHover={onDragHover}
+                onDragRelease={onDragRelease}
+                onUngroup={() => ungroupGroup(g.id)}
+              />
+            ))}
+            {/* Always mounted, not drag-only: a target that appears only once
+                you are already dragging cannot teach you that dragging is
+                possible. */}
+            <AddMeldZone
+              active={dragOverTarget === "new"}
+              atCap={layout.groups.length >= MAX_GROUPS}
+            />
+          </div>
+
+          {/* ── 4 · the hand — the subject of the screen ── */}
           <div
             className={
-              "rm-shelf" +
-              (iDropped || iAmDeclarer ? " rm-shelf--idle" : myTurn ? " rm-shelf--turn" : "")
+              "rm-hand" + (iDropped || iAmDeclarer ? " is-idle" : myTurn ? " is-turn" : "")
             }
           >
-            {myTurn && !iDropped && !iAmDeclarer && (
-              <span className="rm-shelf__label">Your hand</span>
-            )}
+            <div className="rm-hand__head">
+              <span className="rm-hand__title">
+                Your hand{" "}
+                <span className="rm-hand__count">
+                  ({layout.ungrouped.length}{" "}
+                  {layout.ungrouped.length === 1 ? "card" : "cards"})
+                </span>
+              </span>
+              <span className="rm-hand__tip">
+                {selected.size > 0
+                  ? `${selected.size} selected · G to group`
+                  : "Tap a card to select"}
+              </span>
+              <span />
+            </div>
 
-            {/* Hand row: replaced by spectating banner when self has dropped. */}
             {iDropped ? (
               <div className="rm-hint" style={{ padding: "var(--rm-space-lg) 0" }}>
                 You dropped — spectating
               </div>
             ) : (
-              <div className="rm-hand-row">
-                <SelfPad name={selfName} cumulativeScore={selfCumulative} poolTarget={state.poolTarget} isTurn={myTurn} />
-                <div className="flex-1 min-w-0">
-                  <UngroupedLane
-                    cardIds={layout.ungrouped}
-                    byId={byId}
-                    wildRank={wildRank}
-                    selected={selected}
-                    draggingIds={draggingIds}
-                    dragOver={dragOverTarget === "ungrouped"}
-                    onTap={onCardTap}
-                    onDragBegin={onDragBegin}
-                    onDragHover={onDragHover}
-                    onDragRelease={onDragRelease}
-                  />
-                </div>
-              </div>
+              <UngroupedLane
+                cardIds={layout.ungrouped}
+                byId={byId}
+                wildRank={wildRank}
+                selected={selected}
+                draggingIds={draggingIds}
+                dragOver={dragOverTarget === "ungrouped"}
+                onTap={onCardTap}
+                onDragBegin={onDragBegin}
+                onDragHover={onDragHover}
+                onDragRelease={onDragRelease}
+              />
             )}
+          </div>
 
-            {/* The action bar lives ON the shelf. It used to be its own wood
-                panel with its own border — a separate object competing with
-                the hand it belongs to. */}
-            <div
-              className="rm-actions"
-              style={iAmDeclarer ? { opacity: 0.4, pointerEvents: "none" } : undefined}
+          {/* ── 5 · the action bar ──
+              Two tidy-up tools, the two numbers that decide the turn, then the
+              two committed actions. Everything rarer lives behind the tools
+              button at the end, so the bar itself never grows. */}
+          <div
+            className="rm-bar"
+            style={iAmDeclarer ? { opacity: 0.4, pointerEvents: "none" } : undefined}
+          >
+            <ToolButton
+              icon={<SortIcon />}
+              label="Sort"
+              note="Group (Suit)"
+              onClick={sortUngrouped}
+              title="Sort your ungrouped cards by suit and rank (S)"
+            />
+            <ToolButton
+              icon={<AutoGroupIcon />}
+              label="Auto Group"
+              note="Group Cards"
+              onClick={autoArrange}
+              title="Tidy the whole hand into suit lanes (A)"
+            />
+
+            <PointsReadout hand={livePoints.handTotal} ground={livePoints.caughtNow} />
+
+            <button
+              type="button"
+              className="rm-cta rm-cta--discard"
+              onClick={discardSelected}
+              disabled={!canDiscardOrDeclare || selected.size !== 1}
+              title={
+                selected.size === 1
+                  ? "Discard the selected card"
+                  : "Select exactly one card to discard"
+              }
             >
-              <div className="rm-score">
-                <div className="rm-score__cell">
-                  <span className="rm-score__label">Hand pts</span>
-                  <span className="rm-score__value">{livePoints.handTotal}</span>
-                </div>
-                <div className="rm-score__cell">
-                  <span className="rm-score__label">If caught</span>
-                  <span
-                    className={
-                      "rm-score__value " +
-                      (livePoints.caughtNow >= 80
-                        ? "rm-score__value--warn"
-                        : livePoints.caughtNow >= 50
-                        ? "rm-score__value--mid"
-                        : "rm-score__value--ok")
-                    }
-                  >
-                    {livePoints.caughtNow}
-                  </span>
-                </div>
-              </div>
+              <DiscardIcon />
+              Discard
+              <span className="rm-kbd">D</span>
+            </button>
+            <button
+              type="button"
+              className="rm-cta rm-cta--declare"
+              onClick={declareViaButton}
+              disabled={!canDiscardOrDeclare || !finishReadiness.ready}
+              title={
+                finishReadiness.ready
+                  ? "Declare your hand"
+                  : finishReadiness.reasons.join(" · ") || "Not ready to declare"
+              }
+            >
+              Declare
+              <span className="rm-kbd">Enter</span>
+            </button>
 
-              <div className="flex-1" />
-
+            <div style={{ position: "relative" }}>
               <button
+                type="button"
+                className="rm-chip rm-chip--icon"
                 onClick={() => setControlsOpen((o) => !o)}
-                className="rm-chip"
-                title="Toggle tools"
                 aria-expanded={controlsOpen}
+                title="More tools — group, drop, shortcuts"
+                aria-label="More tools"
               >
-                {controlsOpen ? "▾" : "▸"} Tools
+                <PencilIcon />
               </button>
-              <ActionButton
-                onClick={discardSelected}
-                disabled={!canDiscardOrDeclare || selected.size !== 1}
-                kbd="Space"
-                variant="warn"
-              >
-                DISCARD
-              </ActionButton>
-              <ActionButton
-                onClick={declareViaButton}
-                disabled={!canDiscardOrDeclare || !finishReadiness.ready}
-                kbd="Enter"
-                variant="primary"
-              >
-                DECLARE ▸
-              </ActionButton>
-
-              {/* Collapsible secondary tools */}
               {controlsOpen && (
-                <div className="rm-actions__tools">
-                  <ActionButton
-                    onClick={() => setConfirmDrop(true)}
-                    disabled={!(myTurn && !iDropped && state.phase === "playing")}
-                    kbd="—"
-                  >
-                    DROP
-                  </ActionButton>
-                  <ActionButton onClick={sortUngrouped} kbd="S">
-                    SORT
-                  </ActionButton>
-                  <ActionButton onClick={autoArrange} kbd="A">
-                    AUTO
-                  </ActionButton>
-                  <ActionButton onClick={groupSelected} kbd="G">
-                    GROUP
-                  </ActionButton>
-                  <span
-                    className="rm-kbd"
-                    style={{ marginLeft: "var(--rm-space-xs)", color: "var(--rm-ink-low)" }}
-                  >
-                    D draw · O open · G group · S sort · A auto · Space discard · Enter declare
-                  </span>
-                </div>
+                <ToolsPopover
+                  onGroup={() => {
+                    groupSelected();
+                    setControlsOpen(false);
+                  }}
+                  onDrop={() => {
+                    setConfirmDrop(true);
+                    setControlsOpen(false);
+                  }}
+                  canDrop={myTurn && !iDropped && state.phase === "playing"}
+                  onClose={() => setControlsOpen(false)}
+                />
               )}
             </div>
-
-            {/* Turn-time warning */}
-            <TurnTimeWarning deadline={state.turnDeadline} active={myTurn} />
           </div>
+
+          {error && <div className="rm-error">{error}</div>}
+
+          {/* Turn-time warning */}
+          <TurnTimeWarning deadline={state.turnDeadline} active={myTurn} />
         </div>
 
-        {/* ── The right rail — ONE collapsible panel ──
-            Chat, voice, players, points and history were already tabs, but
-            the panel sat on a cream background that fought the felt. It now
-            shares the room's surface and collapses so the table can own the
-            full width. */}
-        <aside className={`rm-sidebar${sidebarOpen ? "" : " rm-sidebar--collapsed"}`}>
-          <button
-            className="rm-sidebar__toggle"
-            onClick={() => setSidebarOpen((o) => !o)}
-            title={sidebarOpen ? "Collapse panel" : "Expand panel"}
-            aria-expanded={sidebarOpen}
-          >
-            {sidebarOpen ? "▸" : "◂"}
-          </button>
-
-          {sidebarOpen && (
+        {/* ── The right rail — the talk panel ABOVE the roster ──
+            The roster used to be one of the tabs, which meant checking whose
+            turn it was cost you the chat you were reading. It is its own
+            always-on panel now. */}
+        <aside className={`rm-side${sidebarOpen ? "" : " rm-side--collapsed"}`}>
+          {!sidebarOpen ? (
+            <button
+              className="rm-side__toggle"
+              onClick={() => setSidebarOpen(true)}
+              title="Expand panel"
+              aria-expanded={false}
+            >
+              ◂
+            </button>
+          ) : (
             <>
-              <div className="rm-sidebar__tabs" role="tablist">
-                {(["chat", "voice", "players", "points", ...(history.length > 0 || champion ? (["history"] as const) : [])] as RightTab[]).map((tab) => (
+              <div className="rm-side__panel">
+                <div className="rm-side__tabs" role="tablist">
+                  {(
+                    [
+                      "chat",
+                      "voice",
+                      "players",
+                      "points",
+                      ...(history.length > 0 || champion ? (["history"] as const) : []),
+                    ] as RightTab[]
+                  ).map((tab) => (
+                    <button
+                      key={tab}
+                      role="tab"
+                      aria-selected={activeTab === tab}
+                      onClick={() => setActiveTab(tab)}
+                      className="rm-tab"
+                    >
+                      {tab}
+                    </button>
+                  ))}
                   <button
-                    key={tab}
-                    role="tab"
-                    aria-selected={activeTab === tab}
-                    onClick={() => setActiveTab(tab)}
                     className="rm-tab"
+                    onClick={() => setSidebarOpen(false)}
+                    title="Collapse panel"
+                    aria-label="Collapse panel"
+                    style={{ flex: "0 0 28px" }}
                   >
-                    {tab}
+                    ▸
                   </button>
-                ))}
-              </div>
-              <div className="rm-sidebar__body">
-                {activeTab === "chat" && <Chat messages={messages} selfId={selfId} />}
-                {activeTab === "voice" && (
-                  <VoicePanel players={players} selfId={selfId} restoreOrientation="any" />
-                )}
-                {activeTab === "players" && <PlayerList players={players} selfId={selfId} />}
-                {activeTab === "points" && (
-                  <PointsPanel
-                    livePoints={livePoints}
-                    finishReadiness={finishReadiness}
-                    state={state}
-                  />
-                )}
-                {activeTab === "history" && (
-                  <RummyRoomHistory variant="panel" density="desktop" history={history} champion={champion} players={players} showTitle={false} />
+                </div>
+
+                {/* Chat owns its own scroll region, quick phrases and composer,
+                    so it is rendered whole rather than poured into the generic
+                    body slot the other tabs share. */}
+                {activeTab === "chat" ? (
+                  <TableChat messages={messages} selfId={selfId} />
+                ) : (
+                  <>
+                    <div className="rm-side__body">
+                      {activeTab === "voice" && (
+                        <VoicePanel players={players} selfId={selfId} restoreOrientation="any" />
+                      )}
+                      {activeTab === "players" && <PlayerList players={players} selfId={selfId} />}
+                      {activeTab === "points" && (
+                        <div className="flex flex-col gap-3">
+                          <PointsPanel
+                            livePoints={livePoints}
+                            finishReadiness={finishReadiness}
+                            state={state}
+                          />
+                          {/**
+                            * The card tracker shipped on MOBILE only, so the
+                            * big screen — the one with a rail sitting half
+                            * empty — was the one withholding the count of
+                            * what is still live. That is backwards. It lives
+                            * under Points because "what is left" and "what am
+                            * I holding" are the same decision.
+                            */}
+                          <CardTracker
+                            myHand={hand}
+                            openPile={state.openPile}
+                            wildJokerRank={wildRank as Rank}
+                            columns={7}
+                          />
+                        </div>
+                      )}
+                      {activeTab === "history" && (
+                        <RummyRoomHistory
+                          variant="panel"
+                          density="desktop"
+                          history={history}
+                          champion={champion}
+                          players={players}
+                          showTitle={false}
+                        />
+                      )}
+                    </div>
+                    <span />
+                  </>
                 )}
               </div>
 
-              {/* Always-on vertical room rail — keeps every player, whose-turn,
-                  hand count and running score in view no matter which tab is
-                  open. */}
-              <SidePlayersRail state={state} players={players} selfId={selfId} nameOf={nameOf} />
+              <SidePlayersRail
+                state={state}
+                players={players}
+                selfId={selfId}
+                nameOf={nameOf}
+                letterOf={seatLetterOf}
+              />
             </>
           )}
         </aside>
@@ -1372,21 +1467,25 @@ function ArrangeCenterTimer({
 }
 
 /**
- * Vertical "at the table" rail pinned to the bottom of the right sidebar.
- * Always visible (independent of the active tab) so the otherwise-empty lower
- * half of the sidebar earns its keep: live turn highlight, per-player hand
- * count and running score, plus dropped / out flags.
+ * "At the table" — pinned below the talk panel in the right rail.
+ *
+ * Used to be one of the tabs, which meant that checking whose turn it was and
+ * what everyone is carrying cost you the chat you were reading. The seat
+ * letters match the badges on the board above, so the two lists can be
+ * reconciled without reading a single name.
  */
 function SidePlayersRail({
   state,
   players,
   selfId,
   nameOf,
+  letterOf,
 }: {
   state: RummyPlayerState;
   players: Player[];
   selfId: string | null;
   nameOf: (id: string) => string;
+  letterOf: (id: string) => string;
 }) {
   const order = state.playerOrder;
   return (
@@ -1398,39 +1497,35 @@ function SidePlayersRail({
       <ul className="rm-roster__list">
         {order.map((id) => {
           const isSelf = id === selfId;
-          const isTurn = state.turnPlayerId === id;
+          const isTurn = state.turnPlayerId === id && state.phase === "playing";
           const dropped = state.droppedPlayers.includes(id);
           const out = state.eliminatedInMatch.includes(id);
           const conn = players.find((p) => p.id === id)?.isConnected ?? true;
-          const hand = state.handSizes[id] ?? 0;
           const score = state.cumulativeScores?.[id];
           return (
             <li
               key={id}
               className={
-                "rm-roster__row" +
-                (isTurn ? " is-turn" : "") +
-                (out || dropped ? " is-out" : "")
+                "rm-roster__row" + (isTurn ? " is-turn" : "") + (out || dropped ? " is-out" : "")
               }
             >
+              <span className="rm-roster__badge" aria-hidden>
+                {letterOf(id)}
+              </span>
+              <span className="rm-roster__name">
+                {isSelf ? `${nameOf(id)} (You)` : nameOf(id)}
+                {dropped && <span className="rm-roster__tag">dropped</span>}
+                {out && !dropped && <span className="rm-roster__tag">out</span>}
+              </span>
+              {score != null && (
+                <span className="rm-roster__score" title="Running score">
+                  {score} pts
+                </span>
+              )}
               <span
                 className={`rm-dot${conn ? "" : " rm-dot--away"}`}
                 title={conn ? "Online" : "Reconnecting…"}
               />
-              <span className="rm-roster__name">
-                {isSelf ? "You" : nameOf(id)}
-                {isTurn && <span className="rm-roster__tag">· turn</span>}
-                {dropped && <span className="rm-roster__tag rm-roster__tag--out">dropped</span>}
-                {out && !dropped && <span className="rm-roster__tag rm-roster__tag--out">out</span>}
-              </span>
-              <span className="rm-roster__count" title="Cards in hand">
-                {hand}
-              </span>
-              {score != null && (
-                <span className="rm-roster__score" title="Running score">
-                  {score}
-                </span>
-              )}
             </li>
           );
         })}
@@ -1439,295 +1534,389 @@ function SidePlayersRail({
   );
 }
 
-function TurnIndicator({
+/**
+ * The turn pill — whose turn it is and how long they have, in one object.
+ *
+ * These were two separate chips at opposite ends of the top bar, which is a
+ * strange split: the countdown is meaningless until you know whose it is, and
+ * the name is not urgent until you can see the clock running out.
+ */
+function TurnPill({
   myTurn,
   turnPlayerName,
-  action,
+  phase,
   remainingSec,
 }: {
   myTurn: boolean;
   turnPlayerName: string;
-  action: string;
+  phase: RummyPlayerState["phase"];
   remainingSec: number | null;
 }) {
-  const tone = myTurn
-    ? "bg-nostalgia-brass/30 border-nostalgia-brass text-nostalgia-paper"
-    : "bg-black/20 border-black/30 text-nostalgia-paper/70";
-  const label = myTurn ? `YOUR TURN · ${action === "draw" ? "DRAW" : "DISCARD"}` : `${turnPlayerName.toUpperCase()} · ${action.toUpperCase()}`;
+  const label =
+    phase === "finished"
+      ? "Round over"
+      : phase === "arranging"
+      ? "Show made — arrange"
+      : myTurn
+      ? "Your turn"
+      : `${turnPlayerName}’s turn`;
+  const urgent = remainingSec != null && remainingSec <= 10;
   return (
-    <div className={`flex items-center gap-2 border rounded-full px-3 py-1 text-[12px] font-bold uppercase tracking-widest ${tone}`}>
-      <span>{label}</span>
-      {remainingSec != null && (
-        <span className="font-mono text-nostalgia-paper">
-          {Math.floor(remainingSec / 60)}:{String(remainingSec % 60).padStart(2, "0")}
+    <div className={`rm-turnpill${myTurn && phase === "playing" ? " is-mine" : ""}`} aria-live="polite">
+      <span className="rm-turnpill__label">{label}</span>
+      {remainingSec != null && phase === "playing" && (
+        <span className={`rm-turnpill__timer${urgent ? " is-urgent" : ""}`}>
+          <ClockIcon />
+          {String(Math.floor(remainingSec / 60)).padStart(2, "0")}:
+          {String(remainingSec % 60).padStart(2, "0")}
         </span>
       )}
     </div>
   );
 }
 
-function Notepad({
-  orientation,
+/**
+ * One seat.
+ *
+ * Every player gets the same card, including you — the old board gave
+ * opponents a "notepad" with a fan of face-down cards and gave the local
+ * player a completely different pad, so the one row that should have been
+ * scannable as a set had two different vocabularies in it. The fanned card
+ * backs are gone too: they encoded a number that is now simply printed.
+ *
+ * The two stats are hand size and running score. Opponents' POINTS are not
+ * shown, because they are not knowable — that is the game.
+ */
+function SeatCard({
+  letter,
   name,
+  isSelf,
   isTurn,
   handSize,
   dropped,
   eliminated,
+  connected,
   cumulativeScore,
-  poolTarget,
 }: {
-  orientation: "vertical" | "horizontal";
+  letter: string;
   name: string;
+  isSelf: boolean;
   isTurn: boolean;
   handSize: number;
   dropped: boolean;
   eliminated: boolean;
+  connected: boolean;
   cumulativeScore?: number;
-  poolTarget: number | null;
 }) {
-  const opacity = eliminated || dropped ? "opacity-50" : "opacity-100";
-  const showsPool = poolTarget != null && cumulativeScore != null;
-  const isVertical = orientation === "vertical";
-  const fanCount = Math.min(handSize, isVertical ? 13 : 6);
+  const out = dropped || eliminated;
+  /**
+   * STATUS only — never a number.
+   *
+   * This used to fall back to the hand size, which the stat row below already
+   * prints, so every idle seat stated "13 cards" twice about forty pixels
+   * apart. Two lines saying the same thing is worse than one, because the
+   * reader has to check whether they actually differ.
+   */
+  const sub = dropped
+    ? "Dropped"
+    : eliminated
+    ? "Eliminated"
+    : isTurn
+    // "Your turn" on somebody else's seat is a lie the second person at the
+    // table would read as their own cue.
+    ? (isSelf ? "Your turn" : "Playing…")
+    : "Waiting";
   return (
-    <div
-      className={`relative flex-shrink-0 bg-nostalgia-paper rounded-md shadow-lift-2 ${opacity} ${isVertical ? "px-3 py-3 w-[120px]" : "px-3 py-2 w-[150px]"} transition-all duration-300`}
-      style={{
-        border: isTurn ? "2px solid #C9A227" : "1px solid rgba(46,36,25,0.18)",
-        boxShadow: isTurn
-          ? "0 0 0 4px rgba(201,162,39,0.30), 0 0 20px rgba(201,162,39,0.25)"
-          : undefined,
-        animation: isTurn ? "rummy-glow 1.4s ease-in-out infinite" : undefined,
-        backgroundImage:
-          "radial-gradient(circle at 4px center, rgba(46,36,25,0.25) 1.6px, transparent 1.6px)",
-        backgroundSize: "100% 14px",
-        backgroundPosition: "0 6px",
-        backgroundRepeat: "repeat-y",
-      }}
-    >
-      {/* Turn badge pinned above the notepad */}
-      {isTurn && (
-        <div className="absolute -top-4 left-0 right-0 flex justify-center pointer-events-none" style={{ zIndex: 2 }}>
-          <span
-            className="text-[8px] font-black uppercase tracking-[0.18em] px-2 py-0.5 rounded-full"
-            style={{ background: "linear-gradient(135deg, #C9A227, #8A6220)", color: "#1f1300", boxShadow: "0 2px 6px rgba(201,162,39,0.5)" }}
-          >
-            ▸ Playing
+    <div className={`rm-seat${isTurn ? " is-turn" : ""}${out ? " is-out" : ""}`}>
+      <div className="rm-seat__top">
+        <span className="rm-seat__avatar" aria-hidden>
+          {letter}
+        </span>
+        <span className="rm-seat__id">
+          <span className="rm-seat__name" title={name}>
+            {name}
           </span>
-        </div>
-      )}
-      <div className="flex items-center gap-1.5 pl-2">
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0 transition-all duration-300"
-          style={{
-            background: isTurn ? "linear-gradient(135deg, #C9A227, #8A6220)" : "rgba(156,122,60,0.30)",
-            color: isTurn ? "#1f1300" : "#2E2419",
-          }}
-        >
-          {name.charAt(0).toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-script text-sm text-nostalgia-pen truncate leading-tight">{name}</div>
-          <div className="text-[9px] text-nostalgia-pen/55 font-semibold uppercase tracking-wide">
-            {dropped ? "Dropped" : eliminated ? "Eliminated" : `${handSize} card${handSize === 1 ? "" : "s"}`}
-          </div>
-        </div>
+          <span className={`rm-seat__sub${out ? " rm-seat__sub--out" : ""}`}>{sub}</span>
+        </span>
+        <span
+          className={`rm-dot${connected ? "" : " rm-dot--away"}`}
+          title={connected ? "Online" : "Reconnecting…"}
+        />
       </div>
-      {!dropped && !eliminated && fanCount > 0 && (
-        <div
-          className={`pl-2 mt-1.5 ${isVertical ? "flex flex-col items-start" : "flex items-center"}`}
-          aria-hidden
-        >
-          {Array.from({ length: fanCount }).map((_, i) => (
-            <div
-              key={i}
-              style={isVertical ? { marginTop: i === 0 ? 0 : -36 } : { marginLeft: i === 0 ? 0 : -24 }}
-            >
-              <FaceDownCard small />
-            </div>
-          ))}
-        </div>
-      )}
-      {showsPool && (
-        <div className="pl-2 mt-1.5">
-          <div className="h-1.5 rounded-full bg-nostalgia-paper-edge overflow-hidden">
-            <div
-              className="h-full bg-nostalgia-pen-red"
-              style={{ width: `${Math.min(100, (cumulativeScore / poolTarget) * 100)}%` }}
-            />
-          </div>
-          <div className="text-[9px] text-nostalgia-pen/50 mt-0.5 text-right font-semibold">
-            {cumulativeScore} / {poolTarget}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
-function SelfPad({
-  name,
-  cumulativeScore,
-  poolTarget,
-  isTurn,
-}: {
-  name: string;
-  cumulativeScore?: number;
-  poolTarget: number | null;
-  isTurn?: boolean;
-}) {
-  const showsPool = poolTarget != null && cumulativeScore != null;
-  // The shelf already says "it is your turn" by brightening its own edge, so
-  // this pad no longer repeats it with a second ring and a pulsing glow. It
-  // is an identity marker, not a third turn indicator.
-  return (
-    <div className={`rm-selfpad${isTurn ? " is-turn" : ""}`}>
-      <span className="rm-selfpad__avatar" title={name}>
-        {name.charAt(0).toUpperCase()}
-      </span>
-      <span className="rm-selfpad__name">{isTurn ? "Your turn" : "You"}</span>
-      {showsPool && (
-        <span className="rm-selfpad__score">
-          {cumulativeScore} / {poolTarget}
+      <div className="rm-seat__stats">
+        <span className="rm-stat" title="Cards in hand">
+          <CardsIcon />
+          <span className="rm-stat__value">{handSize}</span>{" "}
+          {handSize === 1 ? "card" : "cards"}
+        </span>
+        <span className="rm-stat" title="Running score across the match">
+          <LaurelIcon side="left" />
+          <span className="rm-stat__value">{cumulativeScore ?? 0}</span> pts
+        </span>
+      </div>
+
+      {isTurn && (
+        <span className="rm-seat__badge" aria-hidden>
+          {letter}
         </span>
       )}
     </div>
   );
 }
 
-function PaperclipIcon() {
+/**
+ * Chat, felt-native.
+ *
+ * The shared <Chat> component is a cream card with its own border and its own
+ * fixed height — dropped onto this table it read as a piece of a different
+ * application. This is the same socket contract (`chat:send`) and the same
+ * quick phrases, wearing the table's tokens and filling the panel it lives in.
+ */
+const QUICK_PHRASES = [
+  "Nice move! 👏",
+  "Well played! 🔥",
+  "So close! 😅",
+  "Good luck! 🍀",
+  "Haar gaya! 😭",
+  "Mast! ✨",
+];
+
+function TableChat({ messages, selfId }: { messages: ChatMessage[]; selfId: string | null }) {
+  const [text, setText] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages]);
+
+  function sendText(raw: string) {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    try {
+      getSocket().emit("chat:send", { text: trimmed });
+    } catch {
+      /* socket down — the room banner already says so */
+    }
+  }
+
   return (
-    <svg viewBox="0 0 24 32" fill="none" className="w-full h-full drop-shadow" aria-hidden>
-      <path
-        d="M7 12V7a5 5 0 0 1 10 0v14a3 3 0 0 1-6 0V10"
-        stroke="#9C7A3C"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      />
+    <>
+      <div className="rm-side__body">
+        <div className="rm-chat">
+          {messages.length === 0 && (
+            <span className="rm-chat__empty">No messages yet. Say hi 👋</span>
+          )}
+          {messages.map((m) => (
+            <div key={m.id} className={`rm-chat__msg${m.playerId === selfId ? " is-self" : ""}`}>
+              <div className="rm-chat__head">
+                <span className="rm-chat__who">
+                  {m.playerId === selfId ? `${m.playerName} (You)` : m.playerName}
+                </span>
+                <span className="rm-chat__time">
+                  {new Date(m.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                </span>
+              </div>
+              <span className="rm-chat__text">{m.text}</span>
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+      </div>
+
+      <div>
+        <div className="rm-quick">
+          {QUICK_PHRASES.map((p) => (
+            <button key={p} type="button" className="rm-quick__btn" onClick={() => sendText(p)}>
+              {p}
+            </button>
+          ))}
+        </div>
+        <div className="rm-composer">
+          <input
+            type="text"
+            className="rm-composer__input"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              sendText(text);
+              setText("");
+            }}
+            placeholder="Type a message…"
+            maxLength={500}
+            aria-label="Chat message"
+          />
+          <button
+            type="button"
+            className="rm-composer__send"
+            onClick={() => {
+              sendText(text);
+              setText("");
+            }}
+            disabled={text.trim().length === 0}
+            aria-label="Send message"
+            title="Send"
+          >
+            <SendIcon />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── Icons ──────────────────────────────────────────────────────────────
+   Stroke glyphs at a single 1.6 weight, sized in em so they scale with the
+   text they sit beside. Emoji were the previous answer here and they are not
+   controllable: they render as someone else's colour at someone else's
+   weight, and on a table this dark half of them glowed. */
+
+function ClockIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" strokeLinecap="round" />
     </svg>
   );
 }
 
-/** Paper watermark: doodle scene + scattered card-suit symbols for richer
- *  table feel. Kept faint (opacity 0.08) so it never competes with cards.
- *  Pure SVG — no raster or external asset. */
-function BackgroundDoodle() {
+function SoundIcon({ on }: { on: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" strokeLinejoin="round" />
+      {on ? (
+        <>
+          <path d="M16.5 8.5a5 5 0 0 1 0 7" strokeLinecap="round" />
+          <path d="M19 6a9 9 0 0 1 0 12" strokeLinecap="round" />
+        </>
+      ) : (
+        <path d="M17 9.5l4 5m0-5l-4 5" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2 5.6 5.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BulbIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M9 18h6M10 21h4" strokeLinecap="round" />
+      <path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5.9 1.1 1 1.8l.1.3h4.8l.1-.3c.1-.7.4-1.3 1-1.8A6 6 0 0 0 12 3Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FlagIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M6 21V4" strokeLinecap="round" />
+      <path d="M6 4h10l-1.6 3.2L16 10.5H6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CardsIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <rect x="8" y="4" width="11" height="15" rx="2" />
+      <path d="M5.5 7v11a2 2 0 0 0 2 2h7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** The one nostalgic flourish the table earns — and it sits on the numbers
+ *  you check every turn, which is the only place ornament pays rent. */
+function LaurelIcon({ side }: { side: "left" | "right" }) {
   return (
     <svg
-      viewBox="0 0 860 290"
-      className="absolute w-[95%] max-w-[700px] h-auto pointer-events-none"
-      style={{ opacity: 0.08, top: "3%", left: "50%", transform: "translateX(-50%)" }}
+      className="rm-points__laurel"
+      width="12"
+      height="16"
+      viewBox="0 0 14 20"
       fill="none"
-      stroke="#2E2419"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      stroke="currentColor"
+      strokeWidth="1.4"
       aria-hidden
+      style={side === "right" ? { transform: "scaleX(-1)" } : undefined}
     >
-      {/* House */}
-      <path d="M80 190 L80 140 L120 108 L160 140 L160 190 Z" />
-      <rect x="108" y="162" width="20" height="28" />
-      {/* Tree */}
-      <circle cx="220" cy="128" r="28" />
-      <line x1="220" y1="156" x2="220" y2="192" />
-      {/* Two children holding hands */}
-      <circle cx="310" cy="145" r="10" />
-      <line x1="310" y1="155" x2="310" y2="182" />
-      <line x1="310" y1="163" x2="295" y2="175" />
-      <line x1="310" y1="163" x2="327" y2="172" />
-      <line x1="310" y1="182" x2="298" y2="200" />
-      <line x1="310" y1="182" x2="322" y2="200" />
-      <circle cx="344" cy="152" r="9" />
-      <line x1="344" y1="161" x2="344" y2="186" />
-      <line x1="344" y1="168" x2="327" y2="172" />
-      <line x1="344" y1="168" x2="360" y2="175" />
-      <line x1="344" y1="186" x2="332" y2="203" />
-      <line x1="344" y1="186" x2="356" y2="203" />
-      {/* Bird in flight */}
-      <path d="M440 92 Q452 82 464 92 Q476 82 488 92" />
-      {/* Kite */}
-      <path d="M580 70 L600 95 L580 140 L560 95 Z" />
-      <line x1="580" y1="140" x2="580" y2="182" />
-      <path d="M580 148 q6 4 0 8 q-6 4 0 8" />
-      {/* Sun */}
-      <circle cx="730" cy="70" r="22" strokeWidth="1.8" />
-      {[0,45,90,135,180,225,270,315].map((a, i) => (
-        <line
-          key={i}
-          x1={730 + Math.cos((a * Math.PI) / 180) * 26}
-          y1={70 + Math.sin((a * Math.PI) / 180) * 26}
-          x2={730 + Math.cos((a * Math.PI) / 180) * 34}
-          y2={70 + Math.sin((a * Math.PI) / 180) * 34}
-          strokeWidth="1.5"
-        />
-      ))}
-      {/* Ground line */}
-      <path d="M50 210 Q200 205 350 212 Q500 218 700 210 Q780 207 820 212" strokeWidth="1.2" opacity="0.5" />
-
-      {/* Scattered card suit symbols — larger, purely decorative */}
-      {/* Spade ♠ */}
-      <path d="M42 55 Q42 40 55 40 Q68 40 68 55 Q68 66 55 73 Q42 66 42 55 Z M49 73 L49 82 L61 82 L61 73" strokeWidth="1.5" />
-      {/* Heart ♥ */}
-      <path d="M780 155 Q780 143 791 143 Q802 143 802 155 Q802 166 791 175 Q780 166 780 155 Z M769 143 Q769 131 780 131 Q791 131 791 143" strokeWidth="1.5" />
-      {/* Diamond ♦ */}
-      <path d="M790 235 L808 252 L790 269 L772 252 Z" strokeWidth="1.5" />
-      {/* Club ♣ */}
-      <circle cx="56" cy="242" r="8" strokeWidth="1.5" />
-      <circle cx="70" cy="249" r="8" strokeWidth="1.5" />
-      <circle cx="42" cy="249" r="8" strokeWidth="1.5" />
-      <line x1="56" y1="257" x2="56" y2="270" strokeWidth="1.5" />
-      <line x1="48" y1="270" x2="64" y2="270" strokeWidth="1.5" />
+      <path d="M10 2C5 5 3 10 4.5 18" strokeLinecap="round" />
+      <path d="M8.6 5.2c-1.8-.5-3 .2-3.4 1.6M7.4 9c-1.9-.4-3 .4-3.3 1.9M6.6 13c-1.9-.3-2.9.6-3.1 2" strokeLinecap="round" />
     </svg>
   );
 }
 
-/** Bottom-left desk clutter: open notebook + two color pencils. */
-function CornerNotebook() {
+function SortIcon() {
   return (
-    <svg viewBox="0 0 100 100" className="w-full h-full" aria-hidden>
-      <g transform="rotate(-8 50 60)">
-        <rect x="15" y="40" width="70" height="50" rx="4" fill="#F5E9C9" stroke="#9C7A3C" strokeWidth="1.5" />
-        <line x1="50" y1="40" x2="50" y2="90" stroke="#C9A876" strokeWidth="1" />
-        {Array.from({ length: 6 }).map((_, i) => (
-          <circle key={i} cx="15" cy={48 + i * 8} r="2" fill="#FFF" stroke="#9C7A3C" strokeWidth="1" />
-        ))}
-        {Array.from({ length: 4 }).map((_, i) => (
-          <line key={i} x1="55" y1={52 + i * 8} x2="80" y2={52 + i * 8} stroke="#C9A876" strokeWidth="1" opacity="0.6" />
-        ))}
-      </g>
-      <g transform="rotate(18 60 35)">
-        <rect x="55" y="15" width="6" height="48" rx="2" fill="#C0392B" />
-        <polygon points="55,15 61,15 58,7" fill="#FBCDB0" />
-      </g>
-      <g transform="rotate(-4 70 35)">
-        <rect x="66" y="18" width="6" height="46" rx="2" fill="#1F5FA8" />
-        <polygon points="66,18 72,18 69,10" fill="#FBCDB0" />
-      </g>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M4 7h13M4 12h9M4 17h5" strokeLinecap="round" />
+      <path d="M19 9V19m0 0 2.2-2.4M19 19l-2.2-2.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-/** Bottom-right desk clutter: cricket bat + ball + coffee cup. */
-function CornerCricketCoffee() {
+function AutoGroupIcon() {
   return (
-    <svg viewBox="0 0 110 100" className="w-full h-full" aria-hidden>
-      <g transform="rotate(18 30 50)">
-        <rect x="24" y="10" width="10" height="55" rx="4" fill="#D9A463" stroke="#8A5A33" strokeWidth="1.5" />
-        <rect x="20" y="58" width="18" height="14" rx="3" fill="#C68642" stroke="#8A5A33" strokeWidth="1.5" />
-      </g>
-      <circle cx="50" cy="78" r="9" fill="#B5291F" stroke="#7a1414" strokeWidth="1.5" />
-      <path d="M44 78 Q50 73 56 78" stroke="#7a1414" strokeWidth="1" fill="none" />
-      <g transform="translate(70 50)">
-        <path d="M0 10 q0 18 16 18 q16 0 16 -18 Z" fill="#F7E8C4" stroke="#6D4323" strokeWidth="1.5" />
-        <path d="M32 14 q8 0 8 8 q0 8 -8 6" fill="none" stroke="#6D4323" strokeWidth="1.5" />
-        <ellipse cx="16" cy="29" rx="20" ry="3" fill="none" stroke="#6D4323" strokeWidth="1.2" />
-        <path d="M8 4 q2 -6 -2 -10" stroke="#9C7A3C" strokeWidth="1.2" fill="none" opacity="0.7" />
-        <path d="M16 2 q2 -6 -2 -10" stroke="#9C7A3C" strokeWidth="1.2" fill="none" opacity="0.7" />
-      </g>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <rect x="3" y="4" width="7" height="7" rx="1.6" />
+      <rect x="14" y="4" width="7" height="7" rx="1.6" />
+      <rect x="3" y="14" width="7" height="7" rx="1.6" />
+      <path d="M17.5 14v7M14 17.5h7" strokeLinecap="round" />
     </svg>
   );
 }
 
+function DiscardIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M20 11a8 8 0 1 0-1.6 5.6" strokeLinecap="round" />
+      <path d="M20 5.5V11h-5.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3Z" strokeLinejoin="round" />
+      <path d="M14.5 6.5l3 3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M4 12 20 4l-4.5 16-3.5-6.5L4 12Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MeldStatusIcon({ ok }: { ok: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
+      <circle cx="12" cy="12" r="9" strokeWidth="1.6" />
+      {ok ? (
+        <path d="m8 12.4 2.6 2.6L16 9.6" strokeLinecap="round" strokeLinejoin="round" />
+      ) : (
+        <path d="m9 9 6 6m0-6-6 6" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}
+
+/**
+ * The closed deck. The pile you may draw from wears a brass ring — the ring
+ * is the affordance, so the deck does not also need a permanent border.
+ */
 function ClosedDeck({
   count,
   canDraw,
@@ -1738,108 +1927,233 @@ function ClosedDeck({
   onDraw: () => void;
 }) {
   return (
-    <button
-      onClick={onDraw}
-      disabled={!canDraw}
-      className={`relative w-[80px] h-[110px] flex items-center justify-center transition ${canDraw ? "cursor-pointer hover:-translate-y-1" : "cursor-not-allowed opacity-80"}`}
-      title="Draw from closed deck (D)"
-    >
-      {canDraw && (
-        <div
-          className="absolute inset-[18px] rounded-lg pointer-events-none"
-          style={{ boxShadow: "0 0 0 2px #9C7A3C, 0 0 16px rgba(156,122,60,0.55)", animation: "rummy-glow 1.4s ease-in-out infinite" }}
-        />
-      )}
-      <FaceDownCard />
-      <div className="absolute -bottom-5 left-0 right-0 text-center text-[10px] uppercase tracking-widest text-nostalgia-pen/60 font-bold">
-        Closed · {count}
-      </div>
-    </button>
-  );
-}
-
-function WildJokerDisplay({ card }: { card: CardType }) {
-  return (
-    <div className="flex flex-col items-center">
-      <div
-        className="rounded-md p-1"
-        style={{ background: "rgba(156,122,60,0.18)", border: "1px solid #9C7A3C" }}
+    <div className="rm-slot">
+      <button
+        type="button"
+        onClick={onDraw}
+        disabled={!canDraw}
+        className={`rm-slot__card${canDraw ? " is-live" : ""}`}
+        title="Draw from the closed deck (D)"
       >
-        <PlayingCard card={card} small />
-      </div>
-      <div className="mt-1 text-[10px] uppercase tracking-widest text-nostalgia-pen/60 font-bold">
-        Wild Joker
-      </div>
+        <FaceDownCard />
+      </button>
+      <span className="rm-slot__label">Closed Deck</span>
+      <span className="rm-slot__meta">{count} Cards</span>
     </div>
   );
 }
 
-function OpenPile({
+/**
+ * The wild joker — a rule of the round on display, not a pile you can act on.
+ * The brass mount is what says "reference, not target"; every other slot here
+ * is something you either draw from or drop onto.
+ */
+function WildJokerSlot({ card }: { card: CardType }) {
+  return (
+    <div className="rm-slot">
+      <div className="rm-slot__card">
+        <span className="rm-slot__mount">
+          <PlayingCard card={card} />
+        </span>
+      </div>
+      <span className="rm-slot__label">Wild Joker</span>
+      <span className="rm-slot__meta">Any {rankWord(card.rank)} is wild</span>
+    </div>
+  );
+}
+
+/** Spoken form of a rank, for the wild-joker caption. */
+function rankWord(rank: string): string {
+  const named: Record<string, string> = {
+    A: "Ace",
+    J: "Jack",
+    Q: "Queen",
+    K: "King",
+    T: "10",
+  };
+  return named[rank] ?? rank;
+}
+
+/**
+ * The discard pile — both a draw source and a drop target, which is why it is
+ * the one slot that shows two different rings (brass when you may take from
+ * it, red when a dragged card is over it).
+ */
+function DiscardSlot({
   top,
+  pile,
   canDraw,
   onDraw,
   dragOver,
   wildRank,
 }: {
   top: CardType | null;
+  pile: CardType[];
   canDraw: boolean;
   onDraw: () => void;
   dragOver: boolean;
   wildRank: string;
 }) {
+  const [logOpen, setLogOpen] = useState(false);
   return (
-    <div className="flex flex-col items-center">
-      <div
-        data-rummy-drop="openpile"
-        className={`relative w-[80px] h-[110px] rounded-lg flex items-center justify-center transition ${dragOver ? "ring-4 ring-nostalgia-pen-red" : ""}`}
-        style={{
-          background: top ? "transparent" : "rgba(46,36,25,0.05)",
-          border: dragOver ? "2px solid #A8332B" : "2px dashed rgba(46,36,25,0.35)",
-        }}
+    /**
+     * The drop target is this WRAPPER, not the button inside it.
+     *
+     * The button is disabled for the whole discard phase (you may only DRAW
+     * from the pile on the draw half of a turn) — and the discard phase is
+     * precisely when you want to drag a card onto it. Hanging
+     * `data-rummy-drop` on the disabled control would have made the pile
+     * undroppable exactly when it matters, and `resolveDropTarget` walks up
+     * from the hit element, so the wrapper catches it either way.
+     */
+    <div className="rm-slot" data-rummy-drop="openpile">
+      <button
+        type="button"
+        onClick={onDraw}
+        disabled={!canDraw || !top}
+        className={
+          "rm-slot__card" +
+          (dragOver ? " is-over" : canDraw && top ? " is-live" : "")
+        }
+        title={top ? "Draw the top discard (O), or drop a card here to discard" : "Discard pile is empty"}
       >
         {top ? (
-          <button
-            onClick={onDraw}
-            disabled={!canDraw}
-            className={`${canDraw ? "cursor-pointer hover:-translate-y-1" : "cursor-not-allowed"} transition`}
-            title="Draw from open pile (O)"
-          >
-            <PlayingCard card={top} isWildJoker={top.rank === wildRank} />
-          </button>
+          <PlayingCard card={top} isWildJoker={top.rank === wildRank} />
         ) : (
-          <div className="text-nostalgia-pen/40 text-xs">empty</div>
+          <span
+            style={{
+              display: "grid",
+              placeItems: "center",
+              width: "var(--rm-card-w)",
+              height: "calc(var(--rm-card-w) * var(--rm-card-ratio))",
+              borderRadius: "var(--rm-radius-card)",
+              border: "1px dashed var(--rm-edge-strong)",
+              color: "var(--rm-ink-low)",
+              fontSize: "var(--rm-text-xs)",
+            }}
+          >
+            Empty
+          </span>
         )}
+      </button>
+      <span className="rm-slot__label">Discard Pile</span>
+
+      {/**
+        * This was a bare `▾` glyph — decoration that looked exactly like a
+        * disclosure control and did nothing, under the one pile where a caret
+        * has an obvious meaning. Players click it.
+        *
+        * It does the obvious thing now, because the data was already here:
+        * `openPile` is the whole discard history and the wire type documents
+        * it as public information. Knowing what has been thrown is a real part
+        * of playing rummy well, and it was being withheld for no reason.
+        */}
+      <button
+        type="button"
+        className="rm-slot__more"
+        onClick={() => setLogOpen((o) => !o)}
+        aria-expanded={logOpen}
+        disabled={pile.length === 0}
+        title={
+          pile.length === 0
+            ? "Nothing discarded yet"
+            : `Show all ${pile.length} discarded cards`
+        }
+      >
+        <span className="rm-stat__value">{pile.length}</span> thrown
+        <span className={`rm-slot__caret${logOpen ? " is-open" : ""}`} aria-hidden>
+          ▾
+        </span>
+      </button>
+
+      {logOpen && <DiscardLog pile={pile} wildRank={wildRank} onClose={() => setLogOpen(false)} />}
+    </div>
+  );
+}
+
+/**
+ * The discard history, newest first — the order you actually think in
+ * ("what went down last turn?"), not the chronological order the server
+ * stores it in.
+ *
+ * Anchored ABOVE the pile so opening it never covers the card you are
+ * deciding whether to draw.
+ */
+function DiscardLog({
+  pile,
+  wildRank,
+  onClose,
+}: {
+  pile: CardType[];
+  wildRank: string;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) onClose();
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    const t = window.setTimeout(() => document.addEventListener("mousedown", onDown), 0);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(t);
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  const newestFirst = pile.slice().reverse();
+  return (
+    <div ref={ref} className="rm-pilelog" role="dialog" aria-label="Discard pile history">
+      <div className="rm-pilelog__head">
+        <span>Discarded · newest first</span>
+        <button type="button" onClick={onClose} aria-label="Close">
+          ✕
+        </button>
       </div>
-      <div className="mt-1 text-[10px] uppercase tracking-widest text-nostalgia-pen/60 font-bold">
-        Discard · O
+      <div className="rm-pilelog__cards">
+        {newestFirst.map((c, i) => (
+          <PlayingCard
+            key={`${c.id}-${i}`}
+            card={c}
+            small
+            isWildJoker={c.rank === wildRank}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
+/**
+ * The declare target. Dashed, because on this table a dashed edge means
+ * exactly one thing: a place to put something.
+ */
 function FinishSlot({ dragOver }: { dragOver: boolean }) {
   return (
-    <div className="flex flex-col items-center">
+    <div className="rm-slot">
       <div
         data-rummy-drop="finishslot"
-        className={`w-[80px] h-[110px] rounded-lg flex flex-col items-center justify-center transition ${dragOver ? "ring-4 ring-nostalgia-brass" : ""}`}
-        style={{
-          background: "rgba(156,122,60,0.10)",
-          border: dragOver ? "2px solid #9C7A3C" : "2px dashed rgba(156,122,60,0.5)",
-        }}
+        className={`rm-finish${dragOver ? " is-over" : ""}`}
+        title="Drop your last card here to declare"
       >
-        <div className="text-[20px]">🏁</div>
-        <div className="text-[9px] uppercase tracking-widest text-nostalgia-pen/55 mt-1 text-center px-1 font-bold">
-          Finish<br />Slot
-        </div>
-      </div>
-      <div className="mt-1 text-[10px] uppercase tracking-widest text-nostalgia-pen/60 font-bold">
-        Drop to declare
+        <FlagIcon />
+        <span className="rm-finish__title">Finish Slot</span>
+        <span className="rm-finish__note">First to declare wins the round</span>
       </div>
     </div>
   );
 }
 
+/**
+ * One meld lane. Divided from its neighbours by a hairline rather than boxed:
+ * a box per meld put five nested frames inside a panel that is itself a frame,
+ * and the status line already tells you where one lane ends and the next
+ * begins.
+ */
 function GroupLane({
   groupId,
   cardIds,
@@ -1871,33 +2185,16 @@ function GroupLane({
 }) {
   const cls = classification;
   const label = cls?.label ?? "—";
-  const labelColor = cls?.color ?? "#7A6652";
+  const ok = cls?.kind !== "invalid" && cls?.kind !== "incomplete";
   return (
     <div
       data-rummy-drop={`group:${groupId}`}
-      className={`rounded-lg px-2 py-2 transition ${dragOver ? "ring-2 ring-nostalgia-brass" : ""}`}
-      style={{
-        background: dragOver ? "rgba(156,122,60,0.18)" : "rgba(255,255,255,0.5)",
-        border: `1px solid ${labelColor}66`,
-        minWidth: 130,
-      }}
+      className={`rm-meld${dragOver ? " is-over" : ""}`}
     >
-      <div className="flex items-center justify-between mb-1.5">
-        <span
-          className="text-[10px] uppercase tracking-widest font-black px-1.5 py-0.5 rounded"
-          style={{ background: `${labelColor}22`, color: labelColor }}
-        >
-          {label}
-        </span>
-        <button
-          onClick={onUngroup}
-          className="text-nostalgia-pen/45 hover:text-nostalgia-pen-red text-[11px]"
-          title="Break group"
-        >
-          ✕
-        </button>
-      </div>
-      <div className="flex">
+      <button className="rm-meld__ungroup" onClick={onUngroup} title="Break this meld">
+        ✕
+      </button>
+      <div className="rm-meld__cards">
         {cardIds.map((id, idx) => {
           const card = byId.get(id);
           if (!card) return null;
@@ -1913,15 +2210,31 @@ function GroupLane({
               onDragBegin={onDragBegin}
               onDragHover={onDragHover}
               onDragRelease={onDragRelease}
-              offset={idx === 0 ? 0 : -18}
+              // Melds overlap: a lane is read as ONE thing, and the left edge
+              // of each card carries the rank and suit you need to verify it.
+              offset={idx === 0 ? 0 : -22}
             />
           );
         })}
       </div>
+      <span
+        className="rm-meld__status"
+        style={{ color: ok ? "var(--rm-valid)" : "var(--rm-danger)" }}
+      >
+        <MeldStatusIcon ok={ok} />
+        {label}
+      </span>
     </div>
   );
 }
 
+/**
+ * The hand.
+ *
+ * Cards are SPREAD, not fanned. Thirteen cards fit at full width here, and a
+ * fan would hide the very corners you are reading to decide what to keep —
+ * the overlap belongs in the melds, where a lane is one object.
+ */
 function UngroupedLane({
   cardIds,
   byId,
@@ -1945,16 +2258,9 @@ function UngroupedLane({
   onDragHover: (target: DropTarget | null) => void;
   onDragRelease: (target: DropTarget | null) => void;
 }) {
-  // No panel of its own. The hand sits directly ON the shelf — wrapping it in
-  // a dashed, tinted box made it one more competing surface on a screen whose
-  // whole problem was that nothing was dominant. Drop feedback is carried by
-  // the lane's own background, which only appears while a drag is live.
   return (
-    <div
-      data-rummy-drop="ungrouped"
-      className={`rm-lane rm-lane--hand${dragOver ? " is-over" : ""}`}
-    >
-      {cardIds.map((id, idx) => {
+    <div data-rummy-drop="ungrouped" className={`rm-lane${dragOver ? " is-over" : ""}`}>
+      {cardIds.map((id) => {
         const card = byId.get(id);
         if (!card) return null;
         return (
@@ -1969,7 +2275,7 @@ function UngroupedLane({
             onDragBegin={onDragBegin}
             onDragHover={onDragHover}
             onDragRelease={onDragRelease}
-            offset={idx === 0 ? 0 : -16}
+            offset={0}
           />
         );
       })}
@@ -2035,61 +2341,170 @@ function DraggableCard({
   );
 }
 
-function NewMeldZone({ active, atCap }: { active: boolean; atCap: boolean }) {
+/**
+ * The "start a new meld here" target.
+ *
+ * Mounted at all times, not only while a drag is in flight. The drag-only
+ * version could not teach the interaction it was the target of: you had to
+ * already know cards were draggable in order to make it appear.
+ */
+function AddMeldZone({ active, atCap }: { active: boolean; atCap: boolean }) {
   return (
     <div
       data-rummy-drop={atCap ? undefined : "new"}
-      className="rounded-lg flex flex-col items-center justify-center font-black px-3 py-2 self-stretch min-w-[80px] transition"
-      style={{
-        background: atCap
-          ? "rgba(46,36,25,0.08)"
-          : active ? "rgba(16,185,129,0.35)" : "rgba(16,185,129,0.12)",
-        border: atCap
-          ? "2px dashed rgba(46,36,25,0.3)"
-          : active ? "2px dashed #34d399" : "2px dashed rgba(16,185,129,0.45)",
-        color: atCap ? "rgba(46,36,25,0.4)" : "#065f46",
-      }}
+      className={`rm-addmeld${active ? " is-over" : ""}${atCap ? " is-full" : ""}`}
+      title={atCap ? `Maximum ${MAX_GROUPS} melds` : "Drag cards here to start a new meld"}
     >
-      <span className="text-2xl mb-1">＋</span>
-      <span className="text-[10px] uppercase tracking-widest">
-        {atCap ? "MAX 7" : "New Meld"}
+      <span className="rm-addmeld__plus" aria-hidden>
+        ＋
       </span>
+      <span>{atCap ? `Max ${MAX_GROUPS}` : "Add Meld"}</span>
     </div>
   );
 }
 
-function ActionButton({
-  children,
+/**
+ * A tidy-up tool: what it does on the first line, how it will do it on the
+ * second. Both of these rearrange thirteen cards at once, which is worth
+ * spelling out — a lone "Sort" gives no clue whether it sorts by suit or by
+ * rank, and undoing it by hand is a minute of dragging.
+ */
+function ToolButton({
+  icon,
+  label,
+  note,
   onClick,
+  title,
   disabled,
-  kbd,
-  variant = "default",
 }: {
-  children: React.ReactNode;
+  icon: React.ReactNode;
+  label: string;
+  note: string;
   onClick: () => void;
+  title?: string;
   disabled?: boolean;
-  kbd?: string;
-  variant?: "default" | "primary" | "warn";
 }) {
-  const palette =
-    variant === "primary"
-      ? "bg-nostalgia-brass hover:brightness-110 text-[#1f1300] border-nostalgia-brass"
-      : variant === "warn"
-      ? "bg-[#7B1E2B] hover:bg-[#931f2e] text-nostalgia-paper border-[#A8332B]"
-      : "bg-black/25 hover:bg-black/35 text-nostalgia-paper border-black/30";
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`px-4 py-2 rounded-full border font-black text-[12px] tracking-wider uppercase transition flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${palette}`}
-    >
-      <span>{children}</span>
-      {kbd && (
-        <span className="font-mono text-[10px] opacity-70 border border-current rounded px-1 py-0.5">
-          {kbd}
-        </span>
-      )}
+    <button type="button" className="rm-tool" onClick={onClick} title={title} disabled={disabled}>
+      {icon}
+      <span>
+        <span className="rm-tool__label">{label}</span>
+        <br />
+        <span className="rm-tool__note">{note}</span>
+      </span>
     </button>
+  );
+}
+
+/**
+ * The two numbers that decide whether to declare.
+ *
+ *   HAND   — what the cards in your hand are worth as they stand.
+ *   GROUND — what you actually lose if someone shows right now, which is the
+ *            same number minus anything already sitting in a valid meld.
+ *
+ * They are separate because they diverge exactly when it matters: the moment
+ * your first life lands, GROUND drops and HAND does not. Only GROUND is
+ * colour-coded, since it is the one you are steering.
+ */
+function PointsReadout({ hand, ground }: { hand: number; ground: number }) {
+  const tone =
+    ground >= 80 ? "rm-points__value--warn" : ground >= 50 ? "rm-points__value--mid" : "rm-points__value--ok";
+  return (
+    <div className="rm-points" title="Hand points as dealt · what you lose if caught now">
+      <LaurelIcon side="left" />
+      <div className="rm-points__cell">
+        <span className="rm-points__label">Hand points</span>
+        <span className="rm-points__value">{hand}</span>
+      </div>
+      <div className="rm-points__cell">
+        <span className="rm-points__label">Ground points</span>
+        <span className={`rm-points__value ${tone}`}>{ground}</span>
+      </div>
+      <LaurelIcon side="right" />
+    </div>
+  );
+}
+
+/**
+ * Overflow for the two actions that are real but rare — forming a meld from a
+ * selection, and dropping the round. Keeping them off the bar means the bar
+ * never has more than two things you could mistake for each other.
+ */
+function ToolsPopover({
+  onGroup,
+  onDrop,
+  canDrop,
+  onClose,
+}: {
+  onGroup: () => void;
+  onDrop: () => void;
+  canDrop: boolean;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) onClose();
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    // Deferred: the click that OPENED the popover is still propagating, and
+    // binding synchronously would close it on the same gesture.
+    const t = window.setTimeout(() => document.addEventListener("mousedown", onDown), 0);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(t);
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      style={{
+        position: "absolute",
+        bottom: "calc(100% + 8px)",
+        right: 0,
+        zIndex: 30,
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--rm-space-2xs)",
+        minWidth: 176,
+        padding: "var(--rm-space-xs)",
+        borderRadius: "var(--rm-radius-zone)",
+        border: "var(--rm-rule) solid var(--rm-edge)",
+        background: "var(--rm-panel)",
+        boxShadow: "var(--rm-lift-drag)",
+      }}
+    >
+      <button type="button" role="menuitem" className="rm-chip" onClick={onGroup}>
+        Group selected <span className="rm-kbd">G</span>
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className="rm-chip"
+        onClick={onDrop}
+        disabled={!canDrop}
+        title="Forfeit this round and stop taking turns"
+      >
+        Drop round
+      </button>
+      <span
+        style={{
+          padding: "var(--rm-space-2xs)",
+          fontSize: "var(--rm-text-xs)",
+          color: "var(--rm-ink-low)",
+          lineHeight: 1.5,
+        }}
+      >
+        D draw · O open pile · S sort · A auto · G group · D discard · Enter declare · Esc clear
+      </span>
+    </div>
   );
 }
 

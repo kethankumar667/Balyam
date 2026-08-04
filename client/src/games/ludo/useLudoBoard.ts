@@ -18,7 +18,7 @@ import { sfx, setSoundEnabled, isSoundEnabled } from "./sound";
 import { computeStepPath, isSameTokenState } from "./animation";
 import { getPrintBoard, type PrintBoardGeometry } from "./print-board";
 import { DICE_ROLL_MS } from "./Dice";
-import { ROLL_COOLDOWN_MS, stepMsFor } from "@shared/ludo-pacing";
+import { ROLL_COOLDOWN_MS, hopMsFor, stepMsFor } from "@shared/ludo-pacing";
 import {
   COLOR_HEX,
   HOME_SLOTS,
@@ -135,6 +135,12 @@ export interface LudoBoardModel {
   /** Degrees the board view is spun so the local player sits at the bottom. */
   boardRotation: number;
   tokenPosition: (pid: string, token: LudoToken) => LudoTokenPos;
+  /** CSS transition duration for this token's CURRENT hop. Varies per move,
+   *  because a long walk uses shorter hops — see `stepMsFor`. */
+  hopMsOf: (tokenId: string) => number;
+  /** Bumped every time the turn actually changes hands, so the callout can
+   *  flash. Handovers used to be a silent one-frame swap. */
+  turnPulse: number;
   nameOf: (id: string) => string;
   roll: () => void;
   move: (tokenId: string) => void;
@@ -208,13 +214,29 @@ export function useLudoBoard({
   );
   const [rolling, setRolling] = useState(false);
   const prevRollTick = useRef(rollTick);
+  /** When the current tumble began, so the token walk can wait it out. */
+  const rollStartedAtRef = useRef(0);
   useEffect(() => {
     if (rollTick === prevRollTick.current) return;
     prevRollTick.current = rollTick;
+    rollStartedAtRef.current = Date.now();
     setRolling(true);
     const t = setTimeout(() => setRolling(false), DICE_ROLL_MS);
     return () => clearTimeout(t);
   }, [rollTick]);
+
+  /**
+   * Milliseconds of dice tumble still owed before a piece may start walking.
+   *
+   * A roll with exactly one movable token is resolved by the engine in the
+   * same call as the roll, so the dice value and the moved token arrive in ONE
+   * update — which meant the piece set off while the die was still spinning
+   * and nothing about the turn was legible. Zero in the ordinary case where
+   * you tap a token after watching your own roll settle.
+   */
+  function diceHoldMs(): number {
+    return Math.max(0, DICE_ROLL_MS - (Date.now() - rollStartedAtRef.current));
+  }
 
   /**
    * Turn identity for ANNOUNCEMENTS only, held still until the dice settles.
@@ -242,6 +264,25 @@ export function useLudoBoard({
   const displayTurnPlayerId = settlingDice ? settledTurn.current.pid : state.turnPlayerId;
   const displayTurnPhase = settlingDice ? settledTurn.current.phase : state.turnPhase;
   const displayMyTurn = displayTurnPlayerId === selfId;
+
+  /**
+   * Handover marker for the turn callout.
+   *
+   * Whose turn it is was only ever communicated by text swapping in place,
+   * which is the one change the eye is worst at catching — and at a table of
+   * bots the swaps come thick and fast. Bumping a counter lets the callout
+   * re-key an entrance animation, so a handover is an event rather than a
+   * diff. Keyed off the DISPLAY id so it fires when the words change, not a
+   * beat earlier while the dice is still settling.
+   */
+  const [turnPulse, setTurnPulse] = useState(0);
+  const pulsedTurnRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (pulsedTurnRef.current === displayTurnPlayerId) return;
+    const first = pulsedTurnRef.current === null;
+    pulsedTurnRef.current = displayTurnPlayerId;
+    if (!first) setTurnPulse((n) => n + 1);
+  }, [displayTurnPlayerId]);
 
   const LUDO_TUTORIAL_KEY = "ludo.tutorial.completed.v1";
   const [showInstructions, setShowInstructionsRaw] = useState<boolean>(() => {
@@ -655,6 +696,7 @@ export function useLudoBoard({
     if (!canRoll) return;
     if (soundOn) sfx.diceRoll();
     haptics.subtle();
+    rollStartedAtRef.current = Date.now();
     setRolling(true);
     // Include playerId so the server can proxy moves when Room.tsx has
     // overridden `selfId` to a local pass-and-play seat.
@@ -703,7 +745,13 @@ export function useLudoBoard({
       trackPos: dest.state === "track" ? dest.trackPos : undefined,
       stretchPos: dest.state === "stretch" ? dest.stretchPos : undefined,
     };
-    playPathRef.current(tokenId, computeStepPath(from, target, color, trackLen));
+    playPathRef.current(
+      tokenId,
+      computeStepPath(from, target, color, trackLen),
+      // Normally zero — you rolled, watched it settle, then tapped. Non-zero
+      // only if you tapped a token before your own die had finished.
+      diceHoldMs(),
+    );
   }
   function toggleSound() {
     const next = !soundOn;
@@ -715,6 +763,10 @@ export function useLudoBoard({
   const [displayed, setDisplayed] = useState<Record<string, LudoToken>>({});
   const animationTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const initialisedRef = useRef(false);
+  /** Per-token hop duration for the walk currently in flight. Fed to `Token`,
+   *  which must transition in less time than one step or the steps merge into
+   *  a single glide. */
+  const [hopMs, setHopMs] = useState<Record<string, number>>({});
 
   /**
    * Walk one token along `path`, one cell per tick. Shared by the
@@ -724,13 +776,21 @@ export function useLudoBoard({
    * previous timer is cleared and the new path continues from wherever the
    * piece currently is, so an optimistic hop that the server later confirms
    * simply finishes, and one it contradicts is corrected without a jump.
+   *
+   * `holdMs` delays the FIRST cell. The dice tumbles for DICE_ROLL_MS after a
+   * roll lands, and a roll that resolves its own move (single movable token)
+   * arrives in the same update as the move — so without this the piece walked
+   * while its own die was still spinning and you could not tell which number
+   * had moved it. Holding makes the two sequential: read the die, then watch
+   * the piece.
    */
-  const playPathRef = useRef<(id: string, path: LudoToken[]) => void>(() => {});
-  playPathRef.current = (id: string, path: LudoToken[]) => {
+  const playPathRef = useRef<(id: string, path: LudoToken[], holdMs?: number) => void>(() => {});
+  playPathRef.current = (id: string, path: LudoToken[], holdMs = 0) => {
     clearTimeout(animationTimersRef.current.get(id));
     animationTimersRef.current.delete(id);
     if (path.length === 0) return;
     const stepMs = stepMsFor(path.length);
+    setHopMs((cur) => ({ ...cur, [id]: hopMsFor(path.length) }));
     let i = 0;
     const playStep = () => {
       if (i >= path.length) {
@@ -745,7 +805,11 @@ export function useLudoBoard({
         animationTimersRef.current.set(id, setTimeout(playStep, stepMs));
       }
     };
-    playStep();
+    if (holdMs > 0) {
+      animationTimersRef.current.set(id, setTimeout(playStep, holdMs));
+    } else {
+      playStep();
+    }
   };
 
   // Cleanup all timers on unmount
@@ -795,7 +859,7 @@ export function useLudoBoard({
         setDisplayed((s) => ({ ...s, [id]: serverToken }));
         continue;
       }
-      playPathRef.current(id, path);
+      playPathRef.current(id, path, diceHoldMs());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.tokens]);
@@ -1089,6 +1153,11 @@ export function useLudoBoard({
     polygonGeo,
     boardRotation,
     tokenPosition,
+    // Reduced motion snaps tokens straight to the server position, so any
+    // transition at all would fight that.
+    hopMsOf: (tokenId: string) =>
+      reduceMotion ? 0 : hopMs[tokenId] ?? hopMsFor(1),
+    turnPulse,
     nameOf,
     roll,
     move,

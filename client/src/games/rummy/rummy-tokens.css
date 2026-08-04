@@ -24,9 +24,20 @@
      Three depths, not five. The table is ONE surface with a lit centre;
      nested panels-inside-panels are what made the old screen read as
      cluttered. Chroma stays low so the cards are the only saturated thing. */
+  --rm-room-bg:     oklch(15% 0.014 150);  /* the dim room the table stands in */
   --rm-felt-deep:   oklch(21% 0.028 165);  /* room, outside the table */
   --rm-felt:        oklch(27% 0.036 165);  /* the table itself */
   --rm-felt-lit:    oklch(33% 0.042 165);  /* the lit centre, under the piles */
+
+  /* Bordered surfaces. The desktop table is built from four framed panels
+     (seats · piles · melds · hand) rather than one continuous felt, so a
+     panel fill and a visible-but-quiet gold edge are their own tokens. The
+     edge is heavier than --rm-rule-color on purpose: it is the frame of an
+     object, not a divider inside one. */
+  --rm-panel:       oklch(23% 0.030 162);
+  --rm-panel-lit:   oklch(26% 0.034 162);
+  --rm-edge:        oklch(from var(--rm-brass) l c h / 0.34);
+  --rm-edge-strong: oklch(from var(--rm-brass) l c h / 0.62);
 
   /* ── Brass ───────────────────────────────────────────────────────────
      The ONLY metal. Hairlines, rails and the active-turn ring. Never a fill
@@ -98,6 +109,16 @@
   --rm-danger:      oklch(68% 0.175 25);    /* timer critical, invalid meld */
   --rm-valid:       oklch(72% 0.135 155);   /* a meld that scores */
   --rm-joker:       oklch(70% 0.150 305);   /* wild — the one violet in the set */
+  --rm-online:      oklch(72% 0.170 148);   /* connected dot on a seat card */
+
+  /* ── The two committed actions ───────────────────────────────────────
+     Brass is the table's metal and stays a rail, so the two buttons that
+     END a turn are the one place real colour is spent: go-green to put a
+     card down, blood-red to declare. Nothing else on the table is filled. */
+  --rm-go:          oklch(52% 0.125 150);
+  --rm-go-deep:     oklch(38% 0.105 150);
+  --rm-declare:     oklch(51% 0.170 27);
+  --rm-declare-deep:oklch(37% 0.150 27);
 
   /* ── Interactive states ──────────────────────────────────────────────
      Drag-to-meld needs all eight states to be visibly distinct, and the
@@ -121,7 +142,9 @@
      the aspect ratio is the standard poker 1:1.4. */
   --rm-card-w:      2.5rem;   /* 40px — mobile default */
   --rm-card-w-sm:   2.25rem;  /* 36px — dense rows, opponent rails */
-  --rm-card-w-lg:   3rem;     /* 48px — desktop hand */
+  --rm-card-w-lg:   3rem;     /* 48px — desktop melds */
+  --rm-card-w-hand: 3.75rem;  /* 60px — the desktop hand, the screen's subject */
+  --rm-card-w-pile: 5.25rem;  /* 84px — deck / wild / discard, read at a glance */
   --rm-card-ratio:  1.4;
 
   /* ── Type ────────────────────────────────────────────────────────────
@@ -190,9 +213,12 @@
  * same "hand comes forward" hierarchy survives.
  */
 :root[data-theme="light"] {
+  --rm-room-bg:    oklch(84% 0.024 92);
   --rm-felt-deep:  oklch(88% 0.022 92);
   --rm-felt:       oklch(93% 0.018 92);
   --rm-felt-lit:   oklch(97% 0.012 92);
+  --rm-panel:      oklch(95% 0.016 92);
+  --rm-panel-lit:  oklch(98% 0.010 92);
 
   --rm-brass:      oklch(52% 0.098 78);
   --rm-brass-dim:  oklch(68% 0.060 78);
@@ -214,6 +240,13 @@
   --rm-danger:     oklch(48% 0.180 25);
   --rm-valid:      oklch(45% 0.120 155);
   --rm-joker:      oklch(45% 0.170 305);
+  --rm-online:     oklch(52% 0.150 148);
+  /* The two filled CTAs keep white text in both rooms, so they darken rather
+     than lighten — a pastel button under daylight loses its authority. */
+  --rm-go:          oklch(46% 0.125 150);
+  --rm-go-deep:     oklch(34% 0.105 150);
+  --rm-declare:     oklch(45% 0.170 27);
+  --rm-declare-deep:oklch(33% 0.150 27);
 
   --rm-rule-color: oklch(from var(--rm-brass) l c h / 0.30);
   --rm-lift-hand:  0 -12px 40px -14px oklch(50% 0.06 78 / 0.28);
