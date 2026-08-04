@@ -7,6 +7,7 @@ import type {
   Player,
 } from "@shared/types.js";
 import { DEFAULT_LUDO_OPTIONS } from "@shared/types.js";
+import { botThinkMs } from "@shared/ludo-pacing.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import {
   PLAYER_COLORS_ORDER,
@@ -16,6 +17,7 @@ import {
   safeSquaresFor,
   trackLengthFor,
   wedgeCountFor,
+  resolveDestination,
 } from "./track.js";
 
 interface Internal {
@@ -33,6 +35,8 @@ interface Internal {
   paintOf: Map<string, LudoColor>;
   playerOrder: string[];
   finishedCount: Map<string, number>;
+  /** Seats that are all-home, in finishing order: 1st, 2nd, 3rd ... */
+  finishOrder: string[];
   winnerId: string | null;
   hasCaptured: Map<string, boolean>;
   lastEvent: LudoEvent | null;
@@ -83,7 +87,7 @@ export class LudoEngine implements GameEngine {
    * instant. Roughly a third of the old figure does that.
    */
   getBotThinkDelayMs(): number {
-    return 420 + Math.random() * 260;
+    return botThinkMs(this.rng);
   }
 
   setTurnDeadline(deadline: number | null): void {
@@ -205,6 +209,7 @@ export class LudoEngine implements GameEngine {
       paintOf,
       playerOrder: order,
       finishedCount: new Map(order.map((p) => [p, 0])),
+      finishOrder: [],
       winnerId: null,
       hasCaptured: new Map(order.map((p) => [p, false])),
       lastEvent: null,
@@ -336,13 +341,26 @@ export class LudoEngine implements GameEngine {
       this.s.lastEvent.destinationState = token.state as "track" | "stretch" | "home" | "yard";
     }
 
-    // Check win
+    // A player sending their last token home takes a PLACE; it does not end
+    // the game. Real Ludo keeps going so 2nd and 3rd are decided and the last
+    // player left is the loser. Ending on the first finisher robbed everyone
+    // else of their result.
     if ((this.s.finishedCount.get(pid) ?? 0) === TOKENS_PER_PLAYER) {
-      this.s.phase = "finished";
-      this.s.winnerId = pid;
-      this.s.endedAt = Date.now();
+      if (!this.s.finishOrder.includes(pid)) this.s.finishOrder.push(pid);
+      // `winnerId` stays the FIRST finisher, for every existing consumer.
+      if (this.s.winnerId == null) this.s.winnerId = pid;
       this.s.lastEvent = { kind: "win", byPlayerId: pid, ts: Date.now() };
-      return { ok: true, isOver: true, winnerId: pid };
+
+      // Over once everyone but one has placed — the straggler is last.
+      if (this.s.finishOrder.length >= this.s.playerOrder.length - 1) {
+        this.s.phase = "finished";
+        this.s.endedAt = Date.now();
+        return { ok: true, isOver: true, winnerId: this.s.winnerId };
+      }
+      // Otherwise play continues. No bonus turn: this seat has nothing left
+      // to move, so hand over rather than fall through to the bonus rules.
+      this.advanceTurn();
+      return { ok: true };
     }
 
     // Bonus turn rules: rolling a 6, capturing an opponent's token, or
@@ -400,32 +418,15 @@ export class LudoEngine implements GameEngine {
     token: LudoToken,
     dice: number,
   ): { state: "track" | "stretch" | "home"; trackPos?: number; stretchPos?: number } | null {
-    const color = this.s.colorOf.get(pid)!;
-    const TL = this.trackLen();
-    if (token.state === "yard") {
-      if (dice !== 6) return null;
-      return { state: "track", trackPos: this.startFor(color) };
-    }
-    if (token.state === "stretch") {
-      const next = (token.stretchPos ?? 0) + dice;
-      if (next > STRETCH_LENGTH) return null;
-      if (next === STRETCH_LENGTH) return { state: "home" };
-      return { state: "stretch", stretchPos: next };
-    }
-    // track
-    const last = lastTrackPosFor(color, this.playerCount());
-    const cur = token.trackPos ?? 0;
-    const distToLast = (last - cur + TL) % TL;
-    if (dice <= distToLast) {
-      return { state: "track", trackPos: (cur + dice) % TL };
-    }
-    if (this.s.options.mandatoryCapture && !this.s.hasCaptured.get(pid)) {
-      return { state: "track", trackPos: (cur + dice) % TL };
-    }
-    const intoStretch = dice - distToLast;
-    if (intoStretch > STRETCH_LENGTH) return null;
-    if (intoStretch === STRETCH_LENGTH) return { state: "home" };
-    return { state: "stretch", stretchPos: intoStretch - 1 };
+    // The rule itself lives in shared/ludo-rules.ts so the client's hover
+    // preview resolves the SAME move. This body used to be duplicated there
+    // by hand and had already drifted (the copy ignored `mandatoryCapture`).
+    return resolveDestination(token, dice, {
+      color: this.s.colorOf.get(pid)!,
+      playerCount: this.playerCount(),
+      mandatoryCapture: this.s.options.mandatoryCapture,
+      hasCaptured: this.s.hasCaptured.get(pid) ?? false,
+    });
   }
 
   private executeMove(pid: string, token: LudoToken, dice: number): void {
@@ -491,7 +492,11 @@ export class LudoEngine implements GameEngine {
     const order = this.s.playerOrder;
     for (let step = 1; step <= order.length; step++) {
       const idx = (this.s.turnIndex + step) % order.length;
-      if (this.s.tokens.has(order[idx])) {
+      const pid = order[idx];
+      // Skip seats that have left (no tokens) AND seats that have already
+      // placed — a finished player has four tokens, all home, so without this
+      // the table would hand them a dead turn every single lap.
+      if (this.s.tokens.has(pid) && !this.s.finishOrder.includes(pid)) {
         this.s.turnIndex = idx;
         return;
       }
@@ -535,6 +540,7 @@ export class LudoEngine implements GameEngine {
       playerArms,
       playerOrder: this.s.playerOrder,
       winnerId: this.s.winnerId,
+      finishOrder: [...this.s.finishOrder],
       finishedCount,
       hasCaptured,
       lastEvent: this.s.lastEvent,
@@ -625,15 +631,57 @@ export class LudoEngine implements GameEngine {
     return best;
   }
 
+  /**
+   * Drop a seat for good — called when a disconnect's 90s grace window expires
+   * or a player explicitly leaves.
+   *
+   * This used to delete only the player's TOKENS and leave them in
+   * `playerOrder`. Since `getPublicState` projects every per-player field by
+   * iterating `playerOrder`, the departed player stayed a seat forever: the
+   * board rendered a card for them, `players.find(...)` missed (they are gone
+   * from the roster), so it drew as a nameless "Player" with the turn banner
+   * saying "?", and the turn cursor still landed on them every lap — a whole
+   * dead beat each time round, since a seat with no tokens can never move.
+   */
   removePlayer(playerId: string): void {
     if (!this.s.tokens.has(playerId)) return;
     this.s.tokens.delete(playerId);
-    const remaining = [...this.s.tokens.keys()];
+
+    const idx = this.s.playerOrder.indexOf(playerId);
+    const wasCurrent = this.currentPid() === playerId;
+    if (idx >= 0) {
+      this.s.playerOrder.splice(idx, 1);
+      // Keep `turnIndex` pointing at the same SEAT it did before the splice.
+      // Removing someone earlier in the order shifts everyone after them down.
+      if (idx < this.s.turnIndex) this.s.turnIndex -= 1;
+      if (this.s.turnIndex >= this.s.playerOrder.length) this.s.turnIndex = 0;
+    }
+    // Per-player side tables, so nothing orphaned survives into the state.
+    this.s.colorOf.delete(playerId);
+    this.s.paintOf.delete(playerId);
+    this.s.finishedCount.delete(playerId);
+    this.s.finishOrder = this.s.finishOrder.filter((id) => id !== playerId);
+    this.s.hasCaptured.delete(playerId);
+    this.s.rollCount.delete(playerId);
+    this.s.captureCount.delete(playerId);
+    this.s.sixCount.delete(playerId);
+    this.s.biggestStreak.delete(playerId);
+
+    const remaining = this.s.playerOrder;
     if (remaining.length < 2 && this.s.phase === "playing") {
       this.s.phase = "finished";
       this.s.winnerId = remaining[0] ?? null;
-    } else if (this.currentPid() === playerId) {
-      this.advanceTurn();
+      return;
+    }
+    if (wasCurrent) {
+      // The splice already moved the cursor onto the next seat, so start that
+      // player's turn cleanly rather than advancing a second time (which would
+      // skip them).
+      this.s.turnPhase = "rolling";
+      this.s.diceValue = null;
+      this.s.movableTokenIds = [];
+      this.s.consecutiveSixes = 0;
+      this.s.turnDeadline = null;
     }
   }
 

@@ -21,6 +21,7 @@ import PrintBoardSVG from "./PrintBoardSVG";
 import { seatColor, seatColorDark } from "./print-board";
 import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { COLOR_HEX, COLOR_HEX_DARK, PLAYER_COLORS_ORDER } from "./board-layout";
+import { ordinal } from "@shared/ludo-rules";
 import { Avatar } from "./Avatar";
 import { BoardSVG, HoverPreviewMarker, MiniBurst, polygonTokenSize } from "./ludo-board-shared";
 import type { LudoBoardModel } from "./useLudoBoard";
@@ -176,6 +177,10 @@ type LudoSeatMeta = {
   active: boolean;
   /** Won the finished game — gets the gold winner treatment. */
   isWinner: boolean;
+  /** 1-based finishing place once this seat is all-home, else null. Shown
+   *  DURING play too: with ranked finishing a player can be done while the
+   *  rest are still going, and the table needs to see that. */
+  rank: number | null;
 };
 
 /**
@@ -228,6 +233,10 @@ function orderedSeats(state: LudoState, players: Player[], selfId?: string | nul
         tokensHome: state.finishedCount?.[pid] ?? 0,
         active: state.turnPlayerId === pid && state.phase !== "finished",
         isWinner: state.phase === "finished" && state.winnerId === pid,
+        rank: (() => {
+          const i = (state.finishOrder ?? []).indexOf(pid);
+          return i >= 0 ? i + 1 : null;
+        })(),
       };
     })
     .filter((s): s is LudoSeatMeta => !!s.color);
@@ -398,6 +407,15 @@ function LudoPlayerCard({
             need to read) was the most truncated card on screen. */}
         <div className={`flex items-center gap-1 min-w-0 ${ultra ? "justify-center sm:justify-start" : ""}`}>
           {seat.isWinner && <span className="flex-shrink-0 text-[11px] leading-none" aria-hidden>👑</span>}
+          {!seat.isWinner && seat.rank != null && (
+            <span
+              className="flex-shrink-0 rounded px-1 text-[9px] font-black leading-none"
+              style={{ background: "#6D4323", color: "#FFF7E0", paddingBlock: 2 }}
+              title={`Finished ${ordinal(seat.rank)}`}
+            >
+              {ordinal(seat.rank)}
+            </span>
+          )}
           <span
             className={`truncate font-black uppercase tracking-wide ${
               ultra ? "text-[10px] sm:text-[12px]" : dense ? "text-[11px]" : "text-[12px]"
@@ -869,7 +887,9 @@ export function LudoBoardArea({
                   : token.state === "yard"
                   ? 7
                   : token.state === "home"
-                  ? 4.2
+                  // Must stay under the HOME_SLOTS spacing (0.60 cells =
+                  // 4.0% of the board) or finished tokens touch again.
+                  ? 3.7
                   : 6) * (pos.scale ?? 1)
               }
               movable={movable}
@@ -981,6 +1001,8 @@ export function LudoOverlays({
           winnerId={state.winnerId ?? null}
           players={players}
           playerColors={state.playerColors}
+          playerOrder={state.playerOrder}
+          finishOrder={state.finishOrder ?? []}
           stats={state.stats}
           finishedCount={state.finishedCount}
           onClose={() => m.setShowEndCard(false)}
