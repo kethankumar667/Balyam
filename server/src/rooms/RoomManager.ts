@@ -24,7 +24,7 @@ import type {
   BingoGameOptions,
   BingoRoundRecap,
   BotDifficulty,
-} from "@shared/types.js";
+  LudoMatchRecap,} from "@shared/types.js";
 import {
   COIN_COLORS,
   DEFAULT_HC_OPTIONS,
@@ -40,6 +40,7 @@ import {
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
 import type { RematchState } from "@shared/types.js";
+import { ALLOWED_REACTIONS } from "@shared/reactions.js";
 import type { GameEngine } from "../games/GameEngine.js";
 import { LudoEngine } from "../games/ludo/LudoEngine.js";
 import { PLAYER_COLORS_ORDER } from "../games/ludo/track.js";
@@ -64,6 +65,7 @@ const MAX_RUMMY_HISTORY = 20;
 const MAX_UNO_HISTORY = 20;
 /** Last N finished rounds kept per room, Bingo's own history. */
 const MAX_BINGO_HISTORY = 20;
+const MAX_LUDO_HISTORY = 20;
 
 /**
  * Per-game bot name pools. Each pool draws from the cultural texture of
@@ -128,6 +130,7 @@ interface Room {
   /** Bingo's own finished-round history, oldest first — same rationale
    *  as `unoHistory` above. */
   bingoHistory: BingoRoundRecap[];
+  ludoHistory: LudoMatchRecap[];
   players: Map<string, Player>;
   socketToPlayer: Map<string, string>;
   engine: GameEngine | null;
@@ -180,6 +183,9 @@ export class RoomManager {
   private lastRecordedUnoRound = new WeakMap<UnoEngine, number>();
   /** Same idempotency guard as `lastRecordedUnoRound`, scoped to Bingo's own engine instances. */
   private lastRecordedBingoRound = new WeakMap<BingoEngine, number>();
+  /** Ludo matches already written to history, keyed by engine instance — a
+   *  match ends once, but its finished state re-broadcasts on every tick. */
+  private recordedLudoMatches = new WeakSet<LudoEngine>();
 
   constructor(private io: IO) {}
 
@@ -198,6 +204,7 @@ export class RoomManager {
       unoHistory: room.unoHistory,
       unoChampion: room.name ? this.unoChampions.get(room.name) ?? null : null,
       bingoHistory: room.bingoHistory,
+      ludoHistory: room.ludoHistory,
     };
   }
 
@@ -237,6 +244,7 @@ export class RoomManager {
       history: [],
       unoHistory: [],
       bingoHistory: [],
+      ludoHistory: [],
       players: new Map([[playerId, player]]),
       socketToPlayer: new Map([[socketId, playerId]]),
       engine: null,
@@ -1089,17 +1097,7 @@ export class RoomManager {
   sendReaction(socketId: string, emoji: string, targetPlayerId?: string): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
-    const ALLOWED = new Set([
-      "👍", "😂", "😢", "🔥", "🎉", "💯", "😮", "👏",
-      "🤔", "😭", "😡", "🙌", "💪", "🎯", "🤝", "💔",
-      // "Throwables" — playful comebacks a player can lob at whoever just sent
-      // their token home. Deliberately harmless props (a flung chappal, a
-      // tomato, a Diwali firecracker), never weapons: the point is sibling
-      // teasing, not violence, and it keeps our own visual identity rather
-      // than mimicking another title's.
-      "🩴", "🍅", "🧨",
-    ]);
-    if (!ALLOWED.has(emoji)) return;
+    if (!ALLOWED_REACTIONS.has(emoji)) return;
 
     // Spam guard. A targeted reaction lands on someone else's screen, so an
     // unthrottled sender could grief the whole table; 6 per 4s is generous for
@@ -1290,6 +1288,7 @@ export class RoomManager {
     this.recordRummyRoundIfFinished(room);
     this.recordUnoRoundIfFinished(room);
     this.recordBingoRoundIfFinished(room);
+    this.recordLudoMatchIfFinished(room);
   }
 
   /**
@@ -1391,6 +1390,41 @@ export class RoomManager {
    * recordUnoRoundIfFinished above. No champion concept for Bingo (see the
    * RoomPublicState.bingoHistory doc comment) — just the recap log.
    */
+  /**
+   * Append a finished Ludo match to room.ludoHistory.
+   *
+   * Guarded by a WeakMap on the ENGINE instance, the same idempotency trick
+   * the Rummy/UNO/Bingo recorders use: broadcastGameState runs on every move,
+   * and a finished match keeps re-broadcasting, so without this the same
+   * result would be appended over and over.
+   */
+  private recordLudoMatchIfFinished(room: Room): void {
+    if (!(room.engine instanceof LudoEngine)) return;
+    const engine = room.engine;
+    const state = engine.getPublicState();
+    if (state.phase !== "finished") return;
+    if (this.recordedLudoMatches.has(engine)) return;
+    this.recordedLudoMatches.add(engine);
+
+    const names: Record<string, string> = {};
+    for (const pid of state.playerOrder) {
+      names[pid] = room.players.get(pid)?.name ?? "Player";
+    }
+    room.ludoHistory.push({
+      finishOrder: [...state.finishOrder],
+      playerOrder: [...state.playerOrder],
+      playerNames: names,
+      finishedCount: { ...state.finishedCount },
+      rollCount: { ...state.stats.rollCount },
+      captureCount: { ...state.stats.captureCount },
+      sixCount: { ...state.stats.sixCount },
+      biggestStreak: { ...state.stats.biggestStreak },
+      durationMs: Math.max(0, (state.stats.endedAt ?? Date.now()) - state.stats.startedAt),
+      ts: Date.now(),
+    });
+    if (room.ludoHistory.length > MAX_LUDO_HISTORY) room.ludoHistory.shift();
+  }
+
   private recordBingoRoundIfFinished(room: Room): void {
     if (!(room.engine instanceof BingoEngine)) return;
     const engine = room.engine;

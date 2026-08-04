@@ -70,6 +70,42 @@ export interface RoomPublicState {
    *  multi-round match, so there's nothing to crown. Oldest first, Bingo
    *  only — empty elsewhere. */
   bingoHistory: BingoRoundRecap[];
+  /** Ludo's own match history — same "photo album" convention as the three
+   *  above, kept as its own array because a Ludo recap (standings + real
+   *  per-player counters) shares no shape with melds, card scores or called
+   *  numbers. Oldest first, Ludo only — empty elsewhere. */
+  ludoHistory: LudoMatchRecap[];
+}
+
+/**
+ * One finished Ludo match.
+ *
+ * Every field is a number the engine ALREADY counts during play — rolls,
+ * captures, sixes, best six-streak, wall-clock duration and the finishing
+ * order. Nothing here is invented: there is no XP, no coins, no level and no
+ * battle pass, because none of those exist in this game. The point is to give
+ * a table a real record of what it did, which is a genuine reason to come
+ * back without pretending at progression the code cannot honour.
+ */
+export interface LudoMatchRecap {
+  /** Finishing order: [0] came 1st. May be shorter than the table — the last
+   *  player never gets home, and the match ends without them. */
+  finishOrder: string[];
+  /** Everyone who sat at the table, in seat order. */
+  playerOrder: string[];
+  /** Names as they were when the match ended, so history still reads right
+   *  after somebody leaves or renames. */
+  playerNames: Record<string, string>;
+  /** Tokens home per player at the final whistle (0-4). */
+  finishedCount: Record<string, number>;
+  rollCount: Record<string, number>;
+  captureCount: Record<string, number>;
+  sixCount: Record<string, number>;
+  /** Longest run of consecutive sixes each player managed. */
+  biggestStreak: Record<string, number>;
+  /** Wall-clock length of the match, ms. */
+  durationMs: number;
+  ts: number;
 }
 
 /** One row of the room's UNO "photo album" — a finished round's recap. UNO only. */
@@ -383,6 +419,15 @@ export interface LudoState {
    */
   playerArms: Record<string, LudoColor>;
   playerOrder: string[];
+  /**
+   * Players who have sent all four tokens home, in the order they did it —
+   * so `finishOrder[0]` is 1st place, `[1]` is 2nd, and so on.
+   *
+   * Ludo does not end when the first player finishes; the rest keep playing
+   * for the remaining places, and the last player left is the loser. The game
+   * ends once `playerOrder.length - 1` players are in here.
+   */
+  finishOrder: string[];
   winnerId: string | null;
   finishedCount: Record<string, number>;
   /** Mandatory Capture: per-player flag — must be true before tokens can enter home stretch. */
