@@ -55,6 +55,20 @@ import { UnoEngine } from "../games/uno/UnoEngine.js";
 import { BingoEngine } from "../games/bingo/BingoEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
+/**
+ * How long a dropped seat is left alone before the server starts playing it.
+ *
+ * A disconnect used to cost the whole table a full turn timer on every one of
+ * that player's turns — 30s in Rummy, whatever `turnTimerSeconds` says in
+ * Ludo — for the entire 90s grace window. With one flaky connection at a
+ * four-player table, most of the match was spent waiting on someone who
+ * wasn't there.
+ *
+ * This is deliberately longer than a page refresh or a tunnel (both of which
+ * reconnect in a second or two) and much shorter than a turn timer, so the
+ * common case costs the table nothing and nobody loses a turn to a blip.
+ */
+const TAKEOVER_GRACE_MS = 10_000;
 /** How long the host's rematch request stays open before auto-cancelling. */
 const REMATCH_REQUEST_WINDOW_MS = 30_000;
 /** Countdown shown to everyone after all responses are in before the new game auto-starts. */
@@ -135,6 +149,8 @@ interface Room {
   socketToPlayer: Map<string, string>;
   engine: GameEngine | null;
   cleanupTimers: Map<string, NodeJS.Timeout>;
+  /** Per-seat timers that promote a disconnect into a server takeover. */
+  takeoverTimers: Map<string, NodeJS.Timeout>;
   turnTimer: NodeJS.Timeout | null;
   ludoOptions: LudoGameOptions;
   snlOptions: SnlGameOptions;
@@ -249,6 +265,7 @@ export class RoomManager {
       socketToPlayer: new Map([[socketId, playerId]]),
       engine: null,
       cleanupTimers: new Map(),
+      takeoverTimers: new Map(),
       turnTimer: null,
       ludoOptions: { ...DEFAULT_LUDO_OPTIONS, ...(ludoOptions ?? {}) },
       snlOptions: { ...DEFAULT_SNL_OPTIONS, ...(snlOptions ?? {}) },
@@ -286,13 +303,20 @@ export class RoomManager {
       const player = room.players.get(existingPlayerId)!;
       player.isConnected = true;
       delete player.awayUntil;
+      delete player.awaySince;
       const timer = room.cleanupTimers.get(existingPlayerId);
       if (timer) {
         clearTimeout(timer);
         room.cleanupTimers.delete(existingPlayerId);
       }
+      // Hand the seat back before anything is broadcast, so the state this
+      // client receives below already shows them in control.
+      this.releaseTakeover(room, existingPlayerId);
       room.socketToPlayer.set(socketId, existingPlayerId);
       this.socketToRoom.set(socketId, room.code);
+      // Now that this seat counts as connected again, restart anything that
+      // stalled while the room was empty.
+      this.resumeAfterReconnect(room);
       this.io.sockets.sockets.get(socketId)?.join(room.code);
       this.broadcastRoomState(room);
       if (room.engine) {
@@ -666,6 +690,7 @@ export class RoomManager {
       this.emitRummyBotTells(room);
       this.broadcastRoomState(room);
       this.broadcastGameState(room);
+      this.armTakeoversForAbsentSeats(room);
       this.scheduleTurnTimer(room);
       this.scheduleBotMoveIfNeeded(room);
     } catch (err) {
@@ -766,14 +791,35 @@ export class RoomManager {
     if (typeof engine.pendingActors !== "function") return;
     if (typeof engine.applyAutoMove !== "function") return;
 
+    /**
+     * Nobody is at the table — do not play it out.
+     *
+     * Without this, a two-player room where both humans drop simultaneously
+     * would run to completion at bot pace and they would each reconnect to a
+     * finished match. Waiting is correct: the 90s cleanup still resolves the
+     * room if they genuinely never return.
+     */
+    if (!this.hasConnectedHuman(room)) return;
+
     const pending = engine.pendingActors();
-    const botActors = pending.filter((id) => room.players.get(id)?.isBot);
+    /**
+     * Bots AND seats the server has taken over. A dropped player is driven by
+     * exactly the same machinery, which is why the takeover works in every
+     * game without a single engine change: all ten implement `applyAutoMove`,
+     * and each one's `getBotThinkDelayMs` keeps the pacing natural rather than
+     * making the absent player look like they are slamming buttons.
+     */
+    const botActors = pending.filter(
+      (id) => room.players.get(id)?.isBot || this.isAutoDriven(room, id),
+    );
     if (botActors.length === 0) return;
 
-    // If a human is also pending (e.g. RPS where both players choose
-    // simultaneously), keep the human timer running. Otherwise pause it —
-    // the bot owns this beat.
-    const humansPending = pending.some((id) => !room.players.get(id)?.isBot);
+    // If a PRESENT human is also pending (e.g. RPS where both players choose
+    // simultaneously), keep the human timer running. Otherwise pause it — the
+    // auto-driver owns this beat. A taken-over seat is not a waiting human.
+    const humansPending = pending.some(
+      (id) => !room.players.get(id)?.isBot && !this.isAutoDriven(room, id),
+    );
     if (!humansPending) this.clearTurnTimer(room);
 
     // One sub-move per tick so multi-step turns (Ludo roll → move,
@@ -793,15 +839,19 @@ export class RoomManager {
       const actors = engine.pendingActors;
       if (typeof apply !== "function" || typeof actors !== "function") return;
 
-      // Pick the first bot still pending — same one we delayed for.
+      // Re-checked at FIRE time, not just at schedule time: the whole point of
+      // a takeover is that it ends the instant the player is back, and a
+      // reconnect landing inside this delay must not have their move played
+      // for them a beat later.
+      if (!this.hasConnectedHuman(room)) return;
       const stillPending = actors.call(engine).filter(
-        (id) => room.players.get(id)?.isBot,
+        (id) => room.players.get(id)?.isBot || this.isAutoDriven(room, id),
       );
       const botId = stillPending[0];
       if (!botId) {
-        // Pending bot list shifted between scheduling and firing (e.g. the
-        // human discarded into a different bot). Fall through to a fresh
-        // schedule pass to pick up whoever is next.
+        // Pending list shifted between scheduling and firing (the human
+        // discarded into a different bot, or the away player reconnected).
+        // Fall through to a fresh pass to pick up whoever is next.
         this.scheduleBotMoveIfNeeded(room);
         return;
       }
@@ -847,12 +897,142 @@ export class RoomManager {
     this.clearTurnTimer(room);
     for (const t of room.cleanupTimers.values()) clearTimeout(t);
     room.cleanupTimers.clear();
+    for (const t of room.takeoverTimers.values()) clearTimeout(t);
+    room.takeoverTimers.clear();
     this.rooms.delete(room.code);
   }
 
   /** True while at least one seated player is a real human (not a bot). */
   private hasHumanPlayer(room: Room): boolean {
     return [...room.players.values()].some((p) => !p.isBot);
+  }
+
+  /* ── Disconnect takeover ────────────────────────────────────────────────
+     A seat with no live socket behind it still has to take its turns, or the
+     table stops. These four helpers are the whole mechanism; the scheduler
+     and the turn timer below just consult them. */
+
+  /**
+   * True while at least one human is actually AT the table right now.
+   *
+   * Gates every form of auto-play. Without it, a two-player game where both
+   * humans briefly drop would play itself to completion in a few seconds of
+   * bot moves, and they would both reconnect to a finished match they never
+   * saw. When nobody is watching, the right thing is to wait — the 90s
+   * cleanup still resolves the room if they truly never come back.
+   */
+  private hasConnectedHuman(room: Room): boolean {
+    return [...room.players.values()].some((p) => !p.isBot && p.isConnected);
+  }
+
+  /**
+   * Is this seat currently being driven by the server?
+   *
+   * Pass-and-play seats have no socket of their own — the host's socket emits
+   * for them — so they follow the HOST's connection, not their own flag
+   * (which is permanently true). Without that, a host dropping would freeze
+   * every local seat at their table with no way to resolve them.
+   */
+  private isAutoDriven(room: Room, playerId: string): boolean {
+    const p = room.players.get(playerId);
+    if (!p || p.isBot) return false;
+    if (p.isLocal) {
+      const host = room.players.get(room.hostId);
+      return !!host?.isAutoPlaying;
+    }
+    return p.isAutoPlaying === true;
+  }
+
+  /**
+   * Promote a disconnect into a takeover once the blip window has passed.
+   * Idempotent: re-arming for a seat that is already covered is a no-op.
+   */
+  private armTakeover(room: Room, playerId: string): void {
+    if (room.takeoverTimers.has(playerId)) return;
+    const timer = setTimeout(() => {
+      const stillRoom = this.rooms.get(room.code);
+      if (!stillRoom) return;
+      stillRoom.takeoverTimers.delete(playerId);
+      const p = stillRoom.players.get(playerId);
+      // Reconnected inside the window — nothing to do, which is the case this
+      // grace period exists for.
+      if (!p || p.isConnected || p.isBot) return;
+      p.isAutoPlaying = true;
+      this.systemMessage(
+        stillRoom,
+        `${p.name} lost connection — playing their turns until they're back.`,
+      );
+      this.broadcastRoomState(stillRoom);
+      // Their turn may already be sitting on the table.
+      this.scheduleBotMoveIfNeeded(stillRoom);
+    }, TAKEOVER_GRACE_MS);
+    room.takeoverTimers.set(playerId, timer);
+  }
+
+  /**
+   * Cover every seat that is ALREADY absent as play begins.
+   *
+   * `handleDisconnect` only arms a takeover mid-game, which misses the case
+   * that actually happens most: someone drops in the lobby, the host starts
+   * anyway, and that seat has never had a socket to lose. Without this the
+   * table would wait out a full turn timer for them on the very first lap.
+   */
+  private armTakeoversForAbsentSeats(room: Room): void {
+    for (const p of room.players.values()) {
+      if (p.isBot || p.isConnected) continue;
+      this.armTakeover(room, p.id);
+    }
+  }
+
+  /** Hand the seat back. Called the instant a socket reclaims it. */
+  private releaseTakeover(room: Room, playerId: string): void {
+    const timer = room.takeoverTimers.get(playerId);
+    if (timer) {
+      clearTimeout(timer);
+      room.takeoverTimers.delete(playerId);
+    }
+    const p = room.players.get(playerId);
+    if (!p?.isAutoPlaying) return;
+    p.isAutoPlaying = false;
+    this.systemMessage(room, `${p.name} is back — they have the table again.`);
+  }
+
+  /**
+   * Restart the clock for a room somebody just walked back into.
+   *
+   * Called on EVERY reconnect, unconditionally, and that is the point. Both
+   * auto-play paths refuse to run while no human is connected, and neither
+   * re-arms itself — so a room that briefly emptied has a dead turn timer and
+   * no pending bot tick. Re-arming only for the returning seat is not enough
+   * either: the table is usually waiting on somebody else, and that somebody
+   * has no live socket to nudge it.
+   *
+   * It also fixes the smaller everyday case: a returning player would
+   * otherwise inherit whatever is left of a timer that has been running since
+   * before they dropped, and could lose the turn they just came back for.
+   *
+   * `scheduleTurnTimer` clears any existing timer first, so this is safe to
+   * call when nothing was actually stuck.
+   */
+  private resumeAfterReconnect(room: Room): void {
+    if (room.phase !== "playing" || !room.engine) return;
+    this.scheduleTurnTimer(room);
+    this.scheduleBotMoveIfNeeded(room);
+  }
+
+  /**
+   * A line from the table itself. Carries a reserved `playerId` no real seat
+   * can hold, so the existing chat views render it without special-casing and
+   * nobody's "is this mine?" check ever matches it.
+   */
+  private systemMessage(room: Room, text: string): void {
+    this.io.to(room.code).emit("chat:message", {
+      id: `sys_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      playerId: "system",
+      playerName: "Table",
+      text,
+      ts: Date.now(),
+    });
   }
 
   private scheduleTurnTimer(room: Room): void {
@@ -989,6 +1169,13 @@ export class RoomManager {
 
   private onTurnTimeout(room: Room): void {
     if (room.phase !== "playing") return;
+    /**
+     * Same rule as the auto-play scheduler: never resolve turns for a table
+     * nobody is sitting at. Previously the timer kept firing while every human
+     * was disconnected, so a shared outage could burn through several rounds
+     * before anyone got back.
+     */
+    if (!this.hasConnectedHuman(room)) return;
     if (room.engine instanceof RpsEngine) {
       const engine = room.engine;
       if (engine.isOver()) return;
@@ -1201,16 +1388,29 @@ export class RoomManager {
     const player = room.players.get(playerId);
     if (player) {
       player.isConnected = false;
+      player.awaySince = Date.now();
       player.awayUntil = Date.now() + GRACE_PERIOD_MS;
     }
     room.socketToPlayer.delete(socketId);
     this.socketToRoom.delete(socketId);
+
+    // Start the clock on taking this seat over. Only mid-game: a lobby needs
+    // no one to act, and a finished room has nothing left to play.
+    if (room.phase === "playing" && player && !player.isBot) {
+      this.armTakeover(room, playerId);
+    }
 
     const timer = setTimeout(() => {
       const stillRoom = this.rooms.get(code);
       if (!stillRoom) return;
       const stillPlayer = stillRoom.players.get(playerId);
       if (stillPlayer && !stillPlayer.isConnected) {
+        // The seat is going away entirely, so its takeover goes with it.
+        const tk = stillRoom.takeoverTimers.get(playerId);
+        if (tk) {
+          clearTimeout(tk);
+          stillRoom.takeoverTimers.delete(playerId);
+        }
         stillRoom.players.delete(playerId);
         // If the departing human was the last human in the room, abandon it —
         // never let the grace-timeout resolve into a bot being crowned winner.
@@ -1589,6 +1789,7 @@ export class RoomManager {
       this.broadcastRoomState(room);
       this.broadcastGameState(room);
       this.broadcastRematch(room);
+      this.armTakeoversForAbsentSeats(room);
       this.scheduleTurnTimer(room);
       this.scheduleBotMoveIfNeeded(room);
     } catch (err) {

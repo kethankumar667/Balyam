@@ -173,6 +173,9 @@ type LudoSeatMeta = {
   color: LudoColor;
   online: boolean;
   isBot: boolean;
+  /** The server is playing this seat while its owner reconnects. Distinct
+   *  from `isBot` — they are coming back, and the seat is still theirs. */
+  autoPlaying: boolean;
   tokensHome: number;
   active: boolean;
   /** Won the finished game — gets the gold winner treatment. */
@@ -230,6 +233,7 @@ function orderedSeats(state: LudoState, players: Player[], selfId?: string | nul
         name: p?.name ?? "Player",
         online: p?.isConnected !== false,
         isBot: p?.isBot === true,
+        autoPlaying: p?.isAutoPlaying === true,
         tokensHome: state.finishedCount?.[pid] ?? 0,
         active: state.turnPlayerId === pid && state.phase !== "finished",
         isWinner: state.phase === "finished" && state.winnerId === pid,
@@ -428,8 +432,19 @@ function LudoPlayerCard({
           {!dense && seat.isBot && <span className="flex-shrink-0 text-[8px] opacity-60">BOT</span>}
         </div>
         {offline ? (
-          <div className="text-[9px] font-bold mt-0.5 truncate" style={{ color: "#B45309" }}>
-            Reconnecting…
+          <div
+            className="text-[9px] font-bold mt-0.5 truncate"
+            style={{ color: "#B45309" }}
+            title={
+              seat.autoPlaying
+                ? `${seat.name} lost connection — the table is playing their turns until they return`
+                : `${seat.name} is reconnecting`
+            }
+          >
+            {/* Once the server has taken the seat, say so. "Reconnecting…" on
+                its own leaves the table wondering why that player keeps
+                moving while their dot is amber. */}
+            {seat.autoPlaying ? "Reconnecting · auto" : "Reconnecting…"}
           </div>
         ) : (
           <div

@@ -372,6 +372,10 @@
 }
 .rm-seat.is-turn .rm-seat__sub { color: var(--rm-brass-ink); }
 .rm-seat__sub--out { color: var(--rm-danger); }
+/* Server is holding this seat. Brass rather than red: the player is coming
+   back, and this is not a failure state for them or for the table. */
+.rm-seat__sub--auto,
+.rm-seat.is-turn .rm-seat__sub--auto { color: var(--rm-brass); }
 
 .rm-dot {
   flex-shrink: 0;
@@ -1197,6 +1201,7 @@
   letter-spacing: 0.06em;
   color: var(--rm-danger);
 }
+.rm-roster__tag--auto { color: var(--rm-brass-ink); }
 .rm-roster__score {
   flex-shrink: 0;
   font-family: var(--rm-font-num);
