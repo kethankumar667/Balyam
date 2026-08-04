@@ -1,0 +1,145 @@
+/* Hallmark · custom theme: "Card Room" · genre: atmospheric
+ * tone: luxury > professional > nostalgia > playful > technical
+ * paper-band: dark (L 21%) · display-style: high-contrast-serif · accent-hue: warm (brass 78°)
+ * scope: client/src/games/rummy — table surface only, not the app shell
+ */
+
+/**
+ * RUMMY — "Card Room".
+ *
+ * Dark is the NATIVE state here, light is the variant. That inverts the rest
+ * of the app on purpose: a card table is a lit object in a dim room, and the
+ * felt has to recede so the hand can come forward. The current build fails
+ * exactly there — hand, piles, opponents, chat and scoreboard all carry the
+ * same visual weight, so the eye has nowhere to land and the 13 cards you
+ * actually need are the smallest thing on screen.
+ *
+ * Every value is a token. Nothing in the Rummy components may declare a raw
+ * hex, oklch() or font-family — if a value is needed that isn't here, add it
+ * here first and reference it by name.
+ */
+
+:root {
+  /* ── Felt ────────────────────────────────────────────────────────────
+     Three depths, not five. The table is ONE surface with a lit centre;
+     nested panels-inside-panels are what made the old screen read as
+     cluttered. Chroma stays low so the cards are the only saturated thing. */
+  --rm-felt-deep:   oklch(21% 0.028 165);  /* room, outside the table */
+  --rm-felt:        oklch(27% 0.036 165);  /* the table itself */
+  --rm-felt-lit:    oklch(33% 0.042 165);  /* the lit centre, under the piles */
+
+  /* ── Brass ───────────────────────────────────────────────────────────
+     The ONLY metal. Hairlines, rails and the active-turn ring. Never a fill
+     larger than a rail — brass reads cheap the moment it becomes a panel. */
+  --rm-brass:       oklch(72% 0.108 78);
+  --rm-brass-dim:   oklch(52% 0.070 78);
+  --rm-brass-glow:  oklch(80% 0.120 78);
+
+  /* ── Ink on felt ─────────────────────────────────────────────────────── */
+  --rm-ink:         oklch(94% 0.010 90);   /* primary — names, counts */
+  --rm-ink-mid:     oklch(78% 0.014 90);   /* secondary — labels */
+  --rm-ink-low:     oklch(60% 0.014 90);   /* tertiary — hints, meta */
+
+  /* ── Card stock ──────────────────────────────────────────────────────
+     Warm, not white. Pure #fff on dark felt glares under a turn timer. */
+  --rm-card:        oklch(96% 0.014 85);
+  --rm-card-edge:   oklch(86% 0.020 85);
+  --rm-card-back:   oklch(38% 0.052 255);
+
+  /* ── Suits ───────────────────────────────────────────────────────────
+     Legibility first: these must clear 4.5:1 on --rm-card, and red/black
+     must stay distinguishable for deuteranopia via VALUE, not hue alone. */
+  --rm-suit-red:    oklch(48% 0.170 25);
+  --rm-suit-black:  oklch(24% 0.020 265);
+
+  /* ── State ───────────────────────────────────────────────────────────── */
+  --rm-turn:        var(--rm-brass);        /* it is your turn */
+  --rm-danger:      oklch(58% 0.170 25);    /* timer critical, invalid meld */
+  --rm-valid:       oklch(68% 0.130 155);   /* a meld that scores */
+  --rm-joker:       oklch(66% 0.150 305);   /* wild — the one violet in the set */
+
+  /* ── Type ────────────────────────────────────────────────────────────
+     Two families + the existing mono. Display carries the nostalgia; the
+     table itself is set in a humanist sans because it must survive being
+     read in under a second. Numerals are tabular everywhere a count moves. */
+  --rm-font-display: "Playfair Display", Georgia, serif;
+  --rm-font-body:    "Inter", ui-sans-serif, system-ui, sans-serif;
+  --rm-font-num:     ui-monospace, "SF Mono", Menlo, monospace;
+
+  --rm-text-xs:   0.6875rem;   /* 11px — meta only */
+  --rm-text-sm:   0.8125rem;   /* 13px — labels */
+  --rm-text-base: 0.9375rem;   /* 15px — names, body */
+  --rm-text-lg:   1.25rem;     /* 20px — counts */
+  --rm-text-xl:   1.75rem;     /* 28px — the turn state */
+  --rm-text-2xl:  2.5rem;      /* 40px — result headline */
+
+  /* ── Space · 4pt ─────────────────────────────────────────────────────── */
+  --rm-space-2xs: 0.25rem;
+  --rm-space-xs:  0.5rem;
+  --rm-space-sm:  0.75rem;
+  --rm-space-md:  1rem;
+  --rm-space-lg:  1.5rem;
+  --rm-space-xl:  2.5rem;
+
+  /* ── Rules, radii, lift ──────────────────────────────────────────────
+     ONE hairline weight. The old table used borders at four different
+     weights, which is most of why it read as busy. */
+  --rm-rule:        1px;
+  --rm-rule-color:  oklch(from var(--rm-brass) l c h / 0.28);
+  --rm-radius-card: 6px;
+  --rm-radius-zone: 14px;
+
+  /* Elevation is LIGHT, not shadow — the table is lit from above centre. */
+  --rm-lift-hand:  0 -12px 40px -12px oklch(from var(--rm-brass) l c h / 0.22);
+  --rm-lift-card:  0 2px 6px oklch(12% 0.02 165 / 0.45);
+  --rm-lift-drag:  0 12px 28px oklch(12% 0.02 165 / 0.55);
+
+  /* ── Motion ──────────────────────────────────────────────────────────
+     A card table has weight. Nothing bounces; cards settle. Three primitives
+     only: deal, settle, turn-pulse. */
+  --rm-ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --rm-ease-in:     cubic-bezier(0.7, 0, 0.84, 0);
+  --rm-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --rm-dur-quick:  120ms;
+  --rm-dur-settle: 220ms;
+  --rm-dur-deal:   340ms;
+}
+
+/**
+ * LIGHT VARIANT — a daylit table, not an inverted one.
+ *
+ * Naively flipping the felt to white breaks the whole premise: the hand can
+ * no longer be lit forward, because everything is already bright. Instead the
+ * felt becomes a warm mid-tone board and the lit centre goes LIGHTER, so the
+ * same "hand comes forward" hierarchy survives.
+ */
+:root[data-theme="light"] {
+  --rm-felt-deep:  oklch(88% 0.022 92);
+  --rm-felt:       oklch(93% 0.018 92);
+  --rm-felt-lit:   oklch(97% 0.012 92);
+
+  --rm-brass:      oklch(52% 0.098 78);
+  --rm-brass-dim:  oklch(68% 0.060 78);
+  --rm-brass-glow: oklch(44% 0.110 78);
+
+  --rm-ink:        oklch(24% 0.020 90);
+  --rm-ink-mid:    oklch(42% 0.018 90);
+  --rm-ink-low:    oklch(56% 0.016 90);
+
+  --rm-card:       oklch(99% 0.006 85);
+  --rm-card-edge:  oklch(82% 0.018 85);
+
+  --rm-rule-color: oklch(from var(--rm-brass) l c h / 0.30);
+  --rm-lift-hand:  0 -12px 40px -14px oklch(50% 0.06 78 / 0.28);
+  --rm-lift-card:  0 1px 4px oklch(40% 0.02 92 / 0.20);
+  --rm-lift-drag:  0 10px 24px oklch(40% 0.02 92 / 0.28);
+}
+
+/* Spatial motion collapses to a crossfade; the turn ring never animates in. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --rm-dur-quick:  1ms;
+    --rm-dur-settle: 120ms;
+    --rm-dur-deal:   120ms;
+  }
+}
