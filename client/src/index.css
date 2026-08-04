@@ -173,6 +173,24 @@ body, #root, .bhalyam-paper {
  * Declaring both means selection legibility no longer depends on whatever
  * colour the element inherited.
  */
+/* Rummy / Hand Cricket notebook palette. Ink and paper MUST flip together —
+   see the `nostalgia` block in tailwind.config. Channels, not hex, so
+   Tailwind's `/70` opacity modifiers still resolve. */
+:root {
+  --nostalgia-paper: 245 233 201;
+  --nostalgia-paper-edge: 224 204 156;
+  --nostalgia-pen: 46 36 25;
+  --nostalgia-pen-red: 168 51 43;
+  --nostalgia-brass: 156 122 60;
+}
+:root[data-theme="dark"] {
+  --nostalgia-paper: 42 33 20;        /* matches .nostalgia-paper dark sheet */
+  --nostalgia-paper-edge: 74 59 38;
+  --nostalgia-pen: 240 227 202;       /* light ink on the dark sheet */
+  --nostalgia-pen-red: 232 117 107;   /* red-pen circle, readable on dark */
+  --nostalgia-brass: 201 174 135;
+}
+
 ::selection {
   background: #31A157;
   color: #ffffff;
