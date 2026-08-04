@@ -147,6 +147,31 @@ body, #root, .bhalyam-paper {
 
 /* Cream parchment texture — base for the BHALYAM home page. Pure CSS
    gradients, no raster fallback needed. */
+/**
+ * INK ON PAPER — theme-aware text colours for anything drawn straight onto
+ * `.bhalyam-paper`.
+ *
+ * The paper itself already flips (cream -> dark brown, below), but every
+ * caller wrote its text colour as a literal dark brown. In dark mode that put
+ * dark-brown ink on a dark-brown sheet: the Ludo turn banner ("Roll the dice")
+ * was very nearly invisible. Use these instead of a hard-coded hex whenever
+ * text sits on the paper surface.
+ *
+ * Text on a CHIP (the cream pills, seat cards, the roll caption) keeps its
+ * own literal colour on purpose — those chips do not flip, so their ink must
+ * not either.
+ */
+:root {
+  --paper-ink: #6D4323;        /* body text on paper */
+  --paper-ink-soft: #8A6D4B;   /* secondary / waiting states */
+  --paper-ink-hi: #2E7D32;     /* "your turn" affirmative */
+}
+:root[data-theme="dark"] {
+  --paper-ink: #F0DFC2;
+  --paper-ink-soft: #C9AE87;
+  --paper-ink-hi: #7BD88F;
+}
+
 .bhalyam-paper {
   background-color: #F7E8C4;
   background-image:
