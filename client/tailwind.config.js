@@ -89,16 +89,22 @@ export default {
         // client/src/games/rummy/ (NotebookSheet, score sheet, declaration
         // moment). Nothing references these yet — Phase 0 ships with zero
         // visible change by design.
+        // Driven by CSS variables so the whole set flips together for dark
+        // mode. The `.nostalgia-paper` SURFACE already flipped (#F5E9C9 ->
+        // #2A2114 in index.css) while the ink stayed dark sepia (#2E2419) —
+        // near-black on near-black, which is why the Rummy scorecard was
+        // unreadable in dark mode. Channel form keeps `/70`-style opacity
+        // modifiers working (they are used ~25 times).
         nostalgia: {
           paper: {
-            DEFAULT: "#F5E9C9",   // ruled notebook page — warmer/older than bhalyam.cream
-            edge:    "#E0CC9C",   // page edge / fold shadow
+            DEFAULT: "rgb(var(--nostalgia-paper) / <alpha-value>)",
+            edge:    "rgb(var(--nostalgia-paper-edge) / <alpha-value>)",
           },
           pen: {
-            DEFAULT: "#2E2419",   // handwriting ink — dark sepia ballpoint
-            red:     "#A8332B",   // red-pen circle around the winner's name
+            DEFAULT: "rgb(var(--nostalgia-pen) / <alpha-value>)",
+            red:     "rgb(var(--nostalgia-pen-red) / <alpha-value>)",
           },
-          brass: "#9C7A3C",       // coin-tray / hinge metal — duller than bhalyam.gold
+          brass: "rgb(var(--nostalgia-brass) / <alpha-value>)",
         },
         // ── Hand Cricket notebook skin (client/src/games/handcricket) ────
         // The scrapbook/ruled-paper aesthetic shared by the team-select,
