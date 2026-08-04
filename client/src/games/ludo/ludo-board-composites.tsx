@@ -114,18 +114,18 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
             hide their house-rules badge. Nothing is lost: the chip states the
             same turn, louder. */}
         {warningActive ? null : finished ? (
-          <div className="font-script text-lg font-bold" style={{ color: "#2E7D32" }}>
+          <div className="font-script text-lg font-bold" style={{ color: "var(--paper-ink-hi)" }}>
             🏆 {state.winnerId ? `${m.nameOf(state.winnerId)} wins!` : "Game over"}
           </div>
         ) : m.displayMyTurn ? (
           <>
-            <div className="font-script text-sm font-bold leading-tight" style={{ color: "#2E7D32" }}>Your turn</div>
-            <div className="font-display text-base leading-tight" style={{ color: "#6D4323" }}>
+            <div className="font-script text-sm font-bold leading-tight" style={{ color: "var(--paper-ink-hi)" }}>Your turn</div>
+            <div className="font-display text-base leading-tight" style={{ color: "var(--paper-ink)" }}>
               {m.displayTurnPhase === "rolling" ? "Roll the dice" : "Pick a token"}
             </div>
           </>
         ) : (
-          <div className="font-script text-sm" style={{ color: "#8A6D4B" }}>
+          <div className="font-script text-sm" style={{ color: "var(--paper-ink-soft)" }}>
             {m.nameOf(m.displayTurnPlayerId)}&rsquo;s turn…
           </div>
         )}
@@ -761,7 +761,7 @@ export function LudoBottomBar({ m, state, unread = 0 }: { m: LudoBoardModel; sta
           </span>
         )}
       </span>
-      <span className="text-[9px] font-semibold" style={{ color: "#6D4323" }}>{label}</span>
+      <span className="text-[9px] font-semibold" style={{ color: "var(--paper-ink)" }}>{label}</span>
     </button>
   );
   return (
