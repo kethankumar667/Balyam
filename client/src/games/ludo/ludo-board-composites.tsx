@@ -617,7 +617,11 @@ export function LudoTurnCallout({ m, state }: { m: LudoBoardModel; state: LudoSt
 
   return (
     <div
-      className="mx-auto flex w-full max-w-[26rem] items-center gap-2.5 px-3 py-2"
+      // Re-keying on the handover restarts the entrance animation, so the turn
+      // passing is something you SEE rather than a word quietly changing. Same
+      // trick the roll tray uses for its dice-settle impact.
+      key={m.turnPulse}
+      className="ludo-turn-change mx-auto flex w-full max-w-[26rem] items-center gap-2.5 px-3 py-2"
       style={{
         background: mine ? "#F7E8C4" : "rgba(247,232,196,0.55)",
         border: `2px solid ${mine ? hex : "#C8A66B"}`,
@@ -721,7 +725,10 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
         )}
       </button>
       <div
-        className="px-4 py-0.5 text-[12px] font-black max-w-[11rem] truncate text-center"
+        // The desktop shell has no turn callout — this label is its only
+        // whose-turn-is-it text, so the handover has to register here too.
+        key={m.turnPulse}
+        className="ludo-turn-change px-4 py-0.5 text-[12px] font-black max-w-[11rem] truncate text-center"
         style={{ background: "#F7E8C4", border: "2px solid #C8A66B", color: "#6D4323", borderRadius: 6 }}
       >
         {finished
@@ -904,6 +911,9 @@ export function LudoBoardArea({
               cbMode={m.settings.colorBlindMode}
               golden={m.settings.goldenTokens}
               celebrating={m.celebratingIds.has(token.id)}
+              // Must track the board's step interval — a transition longer
+              // than one step merges the whole walk into a single slide.
+              hopMs={m.hopMsOf(token.id)}
             />
           );
         })}

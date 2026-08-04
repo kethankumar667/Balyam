@@ -7,7 +7,12 @@ import type {
   Player,
 } from "@shared/types.js";
 import { DEFAULT_LUDO_OPTIONS } from "@shared/types.js";
-import { botThinkMs } from "@shared/ludo-pacing.js";
+import {
+  DICE_ROLL_MS,
+  TURN_HANDOFF_MS,
+  botThinkMs,
+  travelMsFor,
+} from "@shared/ludo-pacing.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import {
   PLAYER_COLORS_ORDER,
@@ -48,6 +53,17 @@ interface Internal {
   endedAt: number | null;
   turnDeadline: number | null;
   options: LudoGameOptions;
+  /**
+   * How long the client will still be animating what the LAST broadcast
+   * contained — dice tumble, token walk, handover beat.
+   *
+   * The engine is the only place that knows this, because it is the only place
+   * that knows a roll and its move collapsed into one broadcast (see the
+   * auto-move in `handleRoll`). Accumulated across a single `applyMove` call
+   * and consumed by `getBotThinkDelayMs`, so the next seat cannot act on top
+   * of the previous seat's animation.
+   */
+  pendingAnimMs: number;
 }
 
 const TOKENS_PER_PLAYER = 4;
@@ -71,24 +87,39 @@ export class LudoEngine implements GameEngine {
     this.pendingOptions = { ...DEFAULT_LUDO_OPTIONS, ...opts };
   }
 
-  /** Update the turn deadline (in wall-clock ms). Returns updated state. */
   /**
    * How long a bot "thinks" before each sub-move.
    *
-   * Ludo did not implement this, so it inherited RoomManager's generic
-   * 1200-2000ms fallback — and that delay is applied PER SUB-MOVE. A Ludo turn
-   * is two sub-moves (roll, then move), so every bot turn cost 2.4-4s, and a
-   * table with three bots left a human waiting 7-12s between their own turns.
-   * That is the main reason the game felt slow.
+   * Ludo originally did not implement this, so it inherited RoomManager's
+   * generic 1200-2000ms fallback — applied PER SUB-MOVE. A Ludo turn is two
+   * sub-moves (roll, then move), so every bot turn cost 2.4-4s and a table
+   * with three bots left a human waiting 7-12s between their own turns.
    *
-   * A Ludo sub-move carries almost no information to absorb — a die face, or a
-   * token sliding a few cells — so the pause only has to cover the client's
-   * own animation (DICE_ROLL_MS is 640ms) and read as deliberate rather than
-   * instant. Roughly a third of the old figure does that.
+   * The fix for that was a flat ~500ms pause, and it overshot in the other
+   * direction: a flat pause is shorter than the animation the client is still
+   * playing, so the bot's move landed while its own die was still tumbling and
+   * the next bot rolled while the previous token was still walking. Whole
+   * turns went past with nothing legible in them.
+   *
+   * So the pause is no longer flat. It is `whatever animation the last
+   * broadcast still owes the viewer` plus a short hesitation — which makes the
+   * ordering structural rather than a lucky consequence of the constants:
+   *
+   *   before a MOVE  →  the die is readable first (DICE_ROLL_MS)
+   *   before a ROLL  →  the previous token has stopped walking, and the
+   *                     handover beat has passed
    */
   getBotThinkDelayMs(): number {
-    return botThinkMs(this.rng);
+    return botThinkMs(this.s?.pendingAnimMs ?? 0, this.rng);
   }
+
+  /** Price the animation this broadcast just handed the client. Additive
+   *  within one `applyMove` so a roll that auto-moves pays for both. */
+  private owe(ms: number): void {
+    this.s.pendingAnimMs += ms;
+  }
+
+  /** Update the turn deadline (in wall-clock ms). Returns updated state. */
 
   setTurnDeadline(deadline: number | null): void {
     if (!this.s) return;
@@ -221,6 +252,7 @@ export class LudoEngine implements GameEngine {
       endedAt: null,
       turnDeadline: null,
       options: this.pendingOptions ?? { ...DEFAULT_LUDO_OPTIONS },
+      pendingAnimMs: 0,
     };
     this.pendingOptions = null;
   }
@@ -229,6 +261,12 @@ export class LudoEngine implements GameEngine {
     if (this.s.phase === "finished") return { ok: false, error: "Game is over" };
     const turnPid = this.s.playerOrder[this.s.turnIndex];
     if (move.playerId !== turnPid) return { ok: false, error: "Not your turn" };
+
+    // One `applyMove` produces exactly one broadcast, so the animation debt
+    // starts fresh here and the handlers below add to it. A roll that resolves
+    // its own move (single movable token) therefore pays for the dice tumble
+    // AND the walk, which is precisely the case that used to flash past.
+    this.s.pendingAnimMs = 0;
 
     switch (move.type) {
       case "roll":
@@ -246,6 +284,9 @@ export class LudoEngine implements GameEngine {
     }
     const roll = 1 + Math.floor(this.rng() * 6);
     this.s.diceValue = roll;
+    // Every roll costs the client a dice tumble before anything else it
+    // contains is readable.
+    this.owe(DICE_ROLL_MS);
     const pid = this.currentPid();
     this.s.rollCount.set(pid, (this.s.rollCount.get(pid) ?? 0) + 1);
     if (roll === 6) {
@@ -319,6 +360,10 @@ export class LudoEngine implements GameEngine {
     const stateBeforeCapture = token.state;
     this.executeMove(pid, token, this.s.diceValue);
     const eventAfter = this.s.lastEvent;
+
+    // The client walks the piece one cell at a time. Boarding out of the yard
+    // is a single pop rather than a walk — same rule `cellsMoved` uses below.
+    this.owe(travelMsFor(stateBeforeCapture === "yard" ? 1 : this.s.diceValue));
 
     // If executeMove didn't already fire a capture/home event, emit a generic move event
     // so the client can show an "end-of-turn summary" toast for plain moves too.
@@ -489,6 +534,10 @@ export class LudoEngine implements GameEngine {
     this.s.movableTokenIds = [];
     this.s.consecutiveSixes = 0;
     this.s.turnPhase = "rolling";
+    // A still moment between seats. Without it the next player starts on the
+    // same frame the last token stops, and at a table of bots there is never
+    // an instant where the board is quiet enough to see the turn change.
+    this.owe(TURN_HANDOFF_MS);
     const order = this.s.playerOrder;
     for (let step = 1; step <= order.length; step++) {
       const idx = (this.s.turnIndex + step) % order.length;

@@ -4,81 +4,220 @@
  */
 
 /**
- * RUMMY — the table surface.
+ * RUMMY — the table surface (desktop).
  *
- * THREE zones, not nine panels. The old table nested a wood desk inside a
- * paper page inside a dashed pile frame inside a bordered meld lane, flanked
- * by two vertical seat columns and a cream sidebar — every one of them
- * carrying its own border weight and its own background. Nothing was
- * dominant, so the eye had nowhere to land and the thirteen cards the player
- * actually needs were the smallest thing on screen.
+ * FRAMED PANELS, stacked. An earlier pass built this as three borderless
+ * zones bleeding into one continuous felt, on the theory that borders were
+ * what made the old screen busy. The real problem was that borders were being
+ * used at four different weights for four different reasons; removing them
+ * entirely cost the screen its structure, and the four things a player tracks
+ * — who is at the table, what is in the middle, what they have melded, what
+ * is in their hand — all ran together.
  *
- *   1. the opponent rail   — one strip, low contrast, recedes
- *   2. the lit centre      — piles + melds, where the light falls
- *   3. the hand shelf      — raised, brightest, closest to the player
+ * So: four panels, each a named object with ONE edge weight (--rm-edge), read
+ * top to bottom in the order you actually use them.
+ *
+ *   1. .rm-seats  — who is at the table
+ *   2. .rm-felt   — the piles, lit from above centre
+ *   3. .rm-melds  — what you have laid down
+ *   4. .rm-hand   — the thirteen cards, the subject of the screen
+ *   5. .rm-bar    — the two committed actions
  *
  * Elevation is LIGHT, not shadow: the table is lit from above centre, so a
- * surface that matters is lighter, not more shadowed. There is exactly ONE
- * hairline weight (--rm-rule) anywhere on this screen.
+ * surface that matters is lighter, not more shadowed. Brass is a RAIL — the
+ * only filled colour on the table is the two buttons that end a turn.
  */
 
-/* ── The room ─────────────────────────────────────────────────────────── */
+/**
+ * The table is ALWAYS the dim card room.
+ *
+ * rummy-tokens.css ships a light variant under `:root[data-theme="light"]`,
+ * and the app-level theme toggle sets exactly that attribute — so a player
+ * with the app in light mode got a cream table with washed-out buttons, which
+ * is a different design, not a lighter one. The whole premise here is a lit
+ * object in a dim room: the felt has to recede so the hand can come forward,
+ * and there is nothing to recede from once the page is already bright.
+ *
+ * Declared on `.rm-room` rather than by deleting the light block, because the
+ * CARD tokens genuinely are theme-aware and are used by the mobile shell too.
+ * Custom properties set here win for this subtree over anything on :root.
+ */
 .rm-room {
+  --rm-room-bg:     oklch(15% 0.014 150);
+  --rm-felt-deep:   oklch(21% 0.028 165);
+  --rm-felt:        oklch(27% 0.036 165);
+  --rm-felt-lit:    oklch(33% 0.042 165);
+  --rm-panel:       oklch(23% 0.030 162);
+  --rm-panel-lit:   oklch(26% 0.034 162);
+
+  --rm-brass:       oklch(72% 0.108 78);
+  --rm-brass-dim:   oklch(52% 0.070 78);
+  --rm-brass-glow:  oklch(80% 0.120 78);
+  --rm-brass-ink:   oklch(78% 0.105 78);
+
+  --rm-ink:         oklch(94% 0.010 90);
+  --rm-ink-mid:     oklch(78% 0.014 90);
+  --rm-ink-low:     oklch(71% 0.014 90);
+
+  --rm-danger:      oklch(68% 0.175 25);
+  --rm-valid:       oklch(72% 0.135 155);
+  --rm-joker:       oklch(70% 0.150 305);
+  --rm-online:      oklch(72% 0.170 148);
+
+  --rm-go:           oklch(52% 0.125 150);
+  --rm-go-deep:      oklch(38% 0.105 150);
+  --rm-declare:      oklch(51% 0.170 27);
+  --rm-declare-deep: oklch(37% 0.150 27);
+
+  /**
+   * Cards SCALE with the viewport instead of sitting at a fixed size in a
+   * growing hole.
+   *
+   * Distributing the leftover height was tried twice — into one panel, then
+   * into the gaps — and both fail for the same reason: on a 1200px screen
+   * there is ~450px more room than fixed-size content needs, and no
+   * distribution makes that invisible. A card table on a bigger screen should
+   * have bigger cards, which is what every physical table and every
+   * competitor does.
+   *
+   * The hand is clamped on WIDTH as well as height: it is the only row with
+   * thirteen items, so a purely vh-driven size wraps it onto two lines on a
+   * tall-but-narrow window. `min()` takes whichever limit binds first.
+   */
+  --rm-card-w-pile: clamp(5rem, 13vh, 10rem);
+  --rm-card-w-hand: clamp(3.25rem, min(9vh, 5.5vw), 7rem);
+  --rm-card-w-lg:   clamp(2.75rem, 6vh, 5rem);
+
+  --rm-rule-color:  oklch(from var(--rm-brass) l c h / 0.28);
+  --rm-lift-hand:   0 -12px 40px -12px oklch(from var(--rm-brass) l c h / 0.22);
+  --rm-lift-card:   0 2px 6px oklch(12% 0.02 165 / 0.45);
+  --rm-lift-drag:   0 12px 28px oklch(12% 0.02 165 / 0.55);
+
   position: relative;
   width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: var(--rm-felt-deep);
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--rm-room-bg);
   color: var(--rm-ink);
   font-family: var(--rm-font-body);
   overflow: hidden;
 }
 
-/* ── Chrome: the top bar ──────────────────────────────────────────────── */
+/* ── Chrome: the top bar ──────────────────────────────────────────────────
+   Three tracks, not a flex row with a spacer: the turn pill has to sit dead
+   centre of the VIEWPORT regardless of how long the room metadata on the left
+   runs, or it drifts as the table name changes. */
 .rm-topbar {
   position: relative;
   z-index: 20;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: var(--rm-space-md);
-  padding: var(--rm-space-xs) var(--rm-space-lg);
-  background: var(--rm-felt-deep);
-  border-bottom: var(--rm-rule) solid var(--rm-rule-color);
+  padding: var(--rm-space-xs) var(--rm-space-md);
+  background: var(--rm-room-bg);
+  border-bottom: var(--rm-rule) solid var(--rm-edge);
 }
+.rm-topbar__left  { display: flex; align-items: center; gap: var(--rm-space-sm); min-width: 0; }
+.rm-topbar__right { display: flex; align-items: center; gap: var(--rm-space-xs); justify-content: flex-end; }
+
 .rm-wordmark {
   display: flex;
   align-items: baseline;
-  gap: var(--rm-space-xs);
+  gap: var(--rm-space-2xs);
   font-family: var(--rm-font-display);
   font-size: var(--rm-text-lg);
-  color: var(--rm-ink);
+  font-style: italic;
+  color: var(--rm-brass-ink);
   line-height: 1;
+  white-space: nowrap;
 }
 .rm-wordmark__sub {
   font-family: var(--rm-font-body);
+  font-style: normal;
   font-size: var(--rm-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--rm-brass-ink);
+  color: var(--rm-ink-mid);
 }
-.rm-wordmark__room {
-  font-family: var(--rm-font-num);
+
+/* Room metadata — table code · variant · headcount, separated by hairline
+   bullets. Low contrast on purpose: it answers "am I in the right room",
+   which is a question you ask once. */
+.rm-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-xs);
+  min-width: 0;
+  padding-left: var(--rm-space-sm);
+  border-left: var(--rm-rule) solid var(--rm-edge);
   font-size: var(--rm-text-xs);
   color: var(--rm-ink-low);
+  white-space: nowrap;
+  overflow: hidden;
 }
+.rm-meta__code {
+  font-family: var(--rm-font-num);
+  font-weight: 700;
+  color: var(--rm-ink-mid);
+}
+.rm-meta__dot { opacity: 0.45; }
+
+/* The turn pill. One object holding two facts — whose turn, how long left —
+   because they are read together and were previously two separate chips at
+   opposite ends of the bar. */
+.rm-turnpill {
+  display: flex;
+  align-items: stretch;
+  border-radius: 999px;
+  border: var(--rm-rule) solid var(--rm-edge);
+  background: var(--rm-panel);
+  overflow: hidden;
+  font-weight: 800;
+}
+.rm-turnpill.is-mine {
+  border-color: var(--rm-brass);
+  box-shadow: 0 0 0 3px oklch(from var(--rm-brass) l c h / 0.16);
+}
+.rm-turnpill__label {
+  display: flex;
+  align-items: center;
+  padding: var(--rm-space-2xs) var(--rm-space-md);
+  font-size: var(--rm-text-sm);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rm-ink-mid);
+  white-space: nowrap;
+}
+.rm-turnpill.is-mine .rm-turnpill__label { color: var(--rm-brass-ink); }
+.rm-turnpill__timer {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-2xs);
+  padding: var(--rm-space-2xs) var(--rm-space-sm);
+  background: var(--rm-room-bg);
+  border-left: var(--rm-rule) solid var(--rm-edge);
+  font-family: var(--rm-font-num);
+  font-size: var(--rm-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--rm-ink);
+}
+.rm-turnpill__timer.is-urgent { color: var(--rm-danger); }
 
 /* Chrome buttons — a hairline, no fill. Brass is a rail, never a panel. */
 .rm-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--rm-space-2xs);
   padding: var(--rm-space-2xs) var(--rm-space-sm);
   min-height: 32px;
   border-radius: var(--rm-radius-card);
-  border: var(--rm-rule) solid var(--rm-rule-color);
-  background: transparent;
+  border: var(--rm-rule) solid var(--rm-edge);
+  background: var(--rm-panel);
   color: var(--rm-ink-mid);
   font-family: var(--rm-font-body);
   font-size: var(--rm-text-sm);
@@ -94,175 +233,662 @@
   outline: var(--rm-focus-width) solid var(--rm-focus-ring);
   outline-offset: var(--rm-focus-offset);
 }
-.rm-chip:active { background: oklch(from var(--rm-brass) l c h / 0.10); }
+.rm-chip:active { background: oklch(from var(--rm-brass) l c h / 0.12); }
 .rm-chip:disabled { opacity: var(--rm-disabled-opacity); cursor: not-allowed; }
+/* Square variant for glyph-only controls, so the sound and settings buttons
+   are the same optical size as the text ones next to them. */
+.rm-chip--icon { width: 34px; padding: 0; font-size: var(--rm-text-base); }
 
-/* ── The table: three zones in one column, sidebar alongside ──────────── */
-.rm-table {
+/* ── The table: board column + right rail ─────────────────────────────── */
+.rm-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  height: calc(100vh - 49px);
-  height: calc(100dvh - 49px);
   min-height: 0;
 }
-.rm-play {
+/* seats · felt · melds · hand · bar.
+ *
+ * NO row takes the slack. Both earlier attempts handed the spare height to
+ * one panel and both were wrong in the same way: on a tall screen the chosen
+ * panel inflated to two or three times its content (the hand grew a foot of
+ * dead space under thirteen cards; then the felt became a 575px box holding
+ * 190px of piles). A panel that is mostly empty reads as broken, and it was
+ * always the biggest thing on screen.
+ *
+ * Every row hugs its content and the spare height goes into the GAPS between
+ * them. Centring the whole stack was tried first and is also wrong: the right
+ * rail is full height, so a centred column floats between two bands of bare
+ * background and reads as a rendering fault rather than as breathing room.
+ *
+ * `space-between` also puts each panel where it belongs physically — the
+ * seats along the far edge of the table, the action bar under your hands, the
+ * play area breathing in between. Overflow degrades to start spacing, so a
+ * short viewport just tightens to the base gap.
+ */
+.rm-board {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: repeat(5, auto);
+  align-content: space-between;
+  gap: var(--rm-space-xs);
+  padding: var(--rm-space-xs) var(--rm-space-sm);
   min-height: 0;
   min-width: 0;
-  background: var(--rm-felt);
 }
 
-/* ── ZONE 1 · the opponent rail ───────────────────────────────────────
-   One strip. Deliberately the lowest-contrast zone on the screen — these
-   are people you glance at, not the thing you act on. */
-.rm-rail {
-  display: flex;
-  align-items: stretch;
+/* ── 1 · the seats ────────────────────────────────────────────────────── */
+/**
+ * The row grows by ADDING seats, not by inflating them.
+ *
+ * This was `grid-auto-flow: column` with `1fr` columns, which is correct at
+ * six players and absurd at two: each card stretched to ~780px on a wide
+ * monitor, pinning the avatar to the far left and the score to the far right
+ * with a canyon of empty felt between them. Heads-up is the most-played
+ * format, so that was the default view for a lot of tables.
+ *
+ * The cap belongs on the CARD, not on the grid track. Capping the track
+ * (`minmax(160px, 320px)`) makes the row wrap as soon as the seats' combined
+ * maximum exceeds the width — four seats went 3-then-1 at 1440px, which is
+ * worse than the stretching it was meant to cure. Equal `1fr` tracks never
+ * wrap; the card just stops growing inside its track and centres.
+ *
+ * 320px is roughly where a seat stops reading as a person and starts reading
+ * as a banner; the 160px floor is what six of them need at the 1280px
+ * minimum desktop width.
+ */
+.rm-seats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  justify-content: center;
   gap: var(--rm-space-xs);
-  padding: var(--rm-space-xs) var(--rm-space-md);
-  background: var(--rm-felt-deep);
-  border-bottom: var(--rm-rule) solid var(--rm-rule-color);
-  overflow-x: auto;
-  scrollbar-width: thin;
 }
-.rm-rail::-webkit-scrollbar { height: 4px; }
-.rm-rail::-webkit-scrollbar-thumb { background: var(--rm-rule-color); border-radius: 999px; }
-
-/* ── ZONE 2 · the lit centre ──────────────────────────────────────────
-   The light falls here. `--rm-felt-lit` plus a soft pool from above centre
-   is the ONLY elevation cue — no border, no panel, no dashed frame. */
-.rm-centre {
+.rm-seat {
+  /* The ceiling lives here, not on the grid track — see .rm-seats. */
+  width: 100%;
+  max-width: 320px;
+  margin-inline: auto;
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--rm-space-md);
-  padding: var(--rm-space-lg) var(--rm-space-lg) var(--rm-space-md);
-  min-height: 0;
-  overflow-y: auto;
-  background:
-    radial-gradient(
-      ellipse 60% 55% at 50% 12%,
-      var(--rm-felt-lit) 0%,
-      transparent 70%
-    );
+  gap: var(--rm-space-2xs);
+  padding: var(--rm-space-xs) var(--rm-space-sm);
+  border: var(--rm-rule) solid var(--rm-edge);
+  border-radius: var(--rm-radius-zone);
+  background: var(--rm-panel);
+  min-width: 0;
+  transition:
+    border-color var(--rm-dur-settle) var(--rm-ease-out),
+    background-color var(--rm-dur-settle) var(--rm-ease-out),
+    box-shadow var(--rm-dur-settle) var(--rm-ease-out);
+}
+/* Whose turn it is: the seat itself lights up. This is the ONLY place the
+   turn is stated on the board — the pill in the top bar says it in words. */
+.rm-seat.is-turn {
+  border-color: var(--rm-brass);
+  background: var(--rm-panel-lit);
+  box-shadow: 0 0 0 1px var(--rm-brass), 0 0 18px -4px oklch(from var(--rm-brass) l c h / 0.45);
+}
+.rm-seat.is-out { opacity: var(--rm-dimmed-opacity); }
+
+.rm-seat__top { display: flex; align-items: center; gap: var(--rm-space-xs); min-width: 0; }
+.rm-seat__avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: var(--rm-rule) solid var(--rm-edge-strong);
+  background: var(--rm-room-bg);
+  color: var(--rm-brass-ink);
+  font-family: var(--rm-font-display);
+  font-size: var(--rm-text-base);
+  font-weight: 700;
+}
+.rm-seat.is-turn .rm-seat__avatar {
+  background: var(--rm-brass);
+  border-color: var(--rm-brass-glow);
+  color: var(--rm-room-bg);
+}
+/* Block, not inline: `text-overflow: ellipsis` on the children below is inert
+   on an inline box, so a long name ran straight into its own status line
+   ("Babji13 cards") instead of truncating. */
+.rm-seat__id { flex: 1; min-width: 0; display: block; }
+.rm-seat__name {
+  display: block;
+  font-size: var(--rm-text-sm);
+  font-weight: 700;
+  color: var(--rm-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rm-seat__sub {
+  display: block;
+  font-size: var(--rm-text-xs);
+  font-weight: 600;
+  color: var(--rm-ink-low);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rm-seat.is-turn .rm-seat__sub { color: var(--rm-brass-ink); }
+.rm-seat__sub--out { color: var(--rm-danger); }
+
+.rm-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--rm-online);
+  box-shadow: 0 0 6px oklch(from var(--rm-online) l c h / 0.8);
+}
+.rm-dot--away { background: var(--rm-brass); box-shadow: none; }
+
+/* The two per-seat numbers, split by a hairline so neither reads as the
+   caption of the other. */
+.rm-seat__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--rm-space-xs);
+  padding-top: var(--rm-space-2xs);
+  border-top: var(--rm-rule) solid var(--rm-edge);
+}
+.rm-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-2xs);
+  min-width: 0;
+  font-size: var(--rm-text-xs);
+  font-weight: 600;
+  color: var(--rm-ink-mid);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.rm-stat svg { flex-shrink: 0; color: var(--rm-brass-dim); }
+.rm-stat__value { font-family: var(--rm-font-num); font-variant-numeric: tabular-nums; color: var(--rm-ink); }
+
+/* Seat letter, hung below the active seat so the board and the roster in the
+   rail can be matched to each other at a glance. */
+.rm-seat__badge {
+  position: absolute;
+  bottom: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--rm-brass);
+  border: 2px solid var(--rm-room-bg);
+  color: var(--rm-room-bg);
+  font-size: var(--rm-text-xs);
+  font-weight: 800;
 }
 
-/* The pile cluster — deck, wild joker, open pile, finish slot. */
-.rm-piles {
+/* ── 2 · the lit centre ───────────────────────────────────────────────── */
+.rm-felt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rm-space-sm);
+  /* A floor, not a share of the leftover height — see .rm-board. Scales too,
+     so it never forces the centre taller than a short viewport can afford. */
+  min-height: clamp(11rem, 24vh, 20rem);
+  padding: var(--rm-space-md);
+  border: var(--rm-rule) solid var(--rm-edge);
+  border-radius: var(--rm-radius-zone);
+  /* The pool of light IS the elevation cue — no inner panel, no dashed frame
+     around the piles. */
+  background:
+    radial-gradient(ellipse 62% 78% at 50% 34%, var(--rm-felt-lit) 0%, transparent 72%),
+    var(--rm-felt);
+}
+.rm-felt__slots {
   display: flex;
   align-items: flex-start;
   justify-content: center;
   gap: var(--rm-space-xl);
   flex-wrap: wrap;
-  transition: opacity var(--rm-dur-settle) var(--rm-ease-out);
 }
-.rm-piles--locked { opacity: 0.28; pointer-events: none; filter: grayscale(0.4); }
+.rm-felt--locked .rm-felt__slots { opacity: 0.28; pointer-events: none; filter: grayscale(0.4); }
 
-/* Meld lanes — sit ON the lit felt, no container of their own. */
-.rm-melds {
-  display: flex;
-  align-items: stretch;
-  gap: var(--rm-space-sm);
-  flex-wrap: wrap;
-  align-content: flex-start;
-  min-height: 116px;
-  flex: 1;
-  transition: opacity var(--rm-dur-settle) var(--rm-ease-out);
-}
-.rm-melds--locked { opacity: 0.4; pointer-events: none; }
-
-/* ── ZONE 3 · the hand shelf ──────────────────────────────────────────
-   The brightest, closest surface. Lit from above by --rm-lift-hand rather
-   than lifted by a drop shadow — a shelf catching the table light. */
-.rm-shelf {
+/* One pile position: the card, its name, and (optionally) a count beneath. */
+/* `relative` is load-bearing: the discard-history popover anchors to it. */
+.rm-slot {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--rm-space-sm);
-  padding: var(--rm-space-md) var(--rm-space-lg) var(--rm-space-md);
-  background: var(--rm-felt-lit);
-  border-top: var(--rm-rule) solid var(--rm-rule-color);
-  box-shadow: var(--rm-lift-hand);
+  align-items: center;
+  gap: var(--rm-space-2xs);
 }
-/* Your turn: the shelf's own edge brightens. A ring around the hand would be
-   a fifth border; brightening the surface says the same thing with light. */
-.rm-shelf--turn {
-  border-top-color: var(--rm-brass);
-  background: linear-gradient(
-    180deg,
-    oklch(from var(--rm-brass) l c h / 0.10) 0%,
-    var(--rm-felt-lit) 42%
-  );
+.rm-slot__card {
+  --rm-card-w: var(--rm-card-w-pile);
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: var(--rm-radius-card);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  transition: transform var(--rm-dur-settle) var(--rm-ease-out);
 }
-.rm-shelf--idle { opacity: 0.4; pointer-events: none; }
-
-.rm-shelf__label {
+.rm-slot__card:not(:disabled) { cursor: pointer; }
+.rm-slot__card:not(:disabled):hover { transform: translateY(-4px); }
+.rm-slot__card:disabled { cursor: default; }
+.rm-slot__card:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: var(--rm-focus-offset);
+}
+/* Drawable: a brass ring around the pile you may take from. */
+.rm-slot__card.is-live::after {
+  content: "";
   position: absolute;
-  top: calc(var(--rm-space-xs) * -1);
-  left: 50%;
-  transform: translateX(-50%);
+  inset: -6px;
+  border-radius: calc(var(--rm-radius-card) + 4px);
+  box-shadow: 0 0 0 2px var(--rm-brass), 0 0 20px -2px oklch(from var(--rm-brass) l c h / 0.6);
+  pointer-events: none;
+}
+.rm-slot__card.is-over::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: calc(var(--rm-radius-card) + 4px);
+  box-shadow: 0 0 0 2px var(--rm-danger);
+  pointer-events: none;
+}
+.rm-slot__label {
   padding: 2px var(--rm-space-sm);
-  border-radius: 999px;
-  background: var(--rm-brass);
-  color: var(--rm-felt-deep);
+  border-radius: var(--rm-radius-card);
+  border: var(--rm-rule) solid var(--rm-edge);
+  background: var(--rm-room-bg);
   font-size: var(--rm-text-xs);
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  pointer-events: none;
+  color: var(--rm-ink-mid);
   white-space: nowrap;
 }
-
-.rm-hand-row {
-  display: flex;
-  align-items: stretch;
-  gap: var(--rm-space-md);
+.rm-slot__meta {
+  font-family: var(--rm-font-num);
+  font-size: var(--rm-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--rm-ink-low);
 }
 
-/* ── The action bar — sits inside the shelf, no wood panel ────────────── */
-.rm-actions {
-  display: flex;
+/* The discard-history disclosure. Styled as a control, because unlike the
+   bare caret it replaced, it is one. */
+.rm-slot__more {
+  display: inline-flex;
   align-items: center;
-  gap: var(--rm-space-xs);
-  flex-wrap: wrap;
-}
-.rm-actions__tools {
-  display: flex;
-  align-items: center;
-  gap: var(--rm-space-xs);
-  flex-wrap: wrap;
-  width: 100%;
-  padding-top: var(--rm-space-xs);
-  border-top: var(--rm-rule) solid var(--rm-rule-color);
-}
-
-/* Live score readout. Tabular numerals so a changing count doesn't reflow. */
-.rm-score {
-  display: flex;
-  align-items: stretch;
-  border: var(--rm-rule) solid var(--rm-rule-color);
+  gap: var(--rm-space-2xs);
+  padding: 1px var(--rm-space-xs);
+  border: var(--rm-rule) solid transparent;
   border-radius: var(--rm-radius-card);
-  overflow: hidden;
-  flex-shrink: 0;
+  background: transparent;
+  color: var(--rm-ink-low);
+  font-family: var(--rm-font-body);
+  font-size: var(--rm-text-xs);
+  cursor: pointer;
+  transition:
+    color var(--rm-dur-quick) var(--rm-ease-out),
+    border-color var(--rm-dur-quick) var(--rm-ease-out);
 }
-.rm-score__cell {
+.rm-slot__more:hover:not(:disabled) { color: var(--rm-ink); border-color: var(--rm-edge); }
+.rm-slot__more:disabled { opacity: var(--rm-disabled-opacity); cursor: default; }
+.rm-slot__more:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: var(--rm-focus-offset);
+}
+.rm-slot__caret { transition: transform var(--rm-dur-quick) var(--rm-ease-out); }
+.rm-slot__caret.is-open { transform: rotate(180deg); }
+
+/* Anchored above the pile so it never covers the card being judged. */
+.rm-pilelog {
+  --rm-card-w: var(--rm-card-w-sm);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  /* Hugs a short pile, caps before it spans the table. */
+  width: max-content;
+  min-width: 12rem;
+  max-width: min(32rem, 55vw);
+  max-height: 15rem;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--rm-radius-zone);
+  border: var(--rm-rule) solid var(--rm-edge-strong);
+  background: var(--rm-panel);
+  box-shadow: var(--rm-lift-drag);
+  overflow: hidden;
+}
+.rm-pilelog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rm-space-xs);
+  padding: var(--rm-space-2xs) var(--rm-space-sm);
+  border-bottom: var(--rm-rule) solid var(--rm-edge);
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rm-ink-low);
+}
+.rm-pilelog__head button {
+  border: 0;
+  background: transparent;
+  color: var(--rm-ink-low);
+  cursor: pointer;
+  font-size: var(--rm-text-sm);
+}
+.rm-pilelog__head button:hover { color: var(--rm-danger); }
+.rm-pilelog__cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rm-space-2xs);
+  padding: var(--rm-space-sm);
+  overflow-y: auto;
+}
+/* Wild joker sits in a brass mount — it is a rule of the round on display,
+   not a pile you can act on. */
+.rm-slot__mount {
+  padding: var(--rm-space-2xs);
+  border-radius: var(--rm-radius-card);
+  border: var(--rm-rule) solid var(--rm-edge-strong);
+  background: oklch(from var(--rm-brass) l c h / 0.10);
+}
+
+/* The declare target. Dashed because it is a place to PUT something, which is
+   the one meaning a dashed edge should ever carry on this table. */
+.rm-finish {
+  --rm-card-w: var(--rm-card-w-pile);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--rm-space-2xs) var(--rm-space-sm);
+  gap: var(--rm-space-2xs);
+  width: calc(var(--rm-card-w) * 1.35);
+  height: calc(var(--rm-card-w) * var(--rm-card-ratio));
+  padding: var(--rm-space-xs);
+  border-radius: var(--rm-radius-zone);
+  border: 1px dashed var(--rm-edge-strong);
+  color: var(--rm-ink-low);
+  text-align: center;
+  transition:
+    border-color var(--rm-dur-quick) var(--rm-ease-out),
+    background-color var(--rm-dur-quick) var(--rm-ease-out);
 }
-.rm-score__cell + .rm-score__cell { border-left: var(--rm-rule) solid var(--rm-rule-color); }
-.rm-score__label {
+.rm-finish.is-over {
+  border-color: var(--rm-brass);
+  border-style: solid;
+  background: oklch(from var(--rm-brass) l c h / 0.16);
+  color: var(--rm-ink);
+}
+.rm-finish__title {
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rm-ink-mid);
+}
+.rm-finish__note { font-size: var(--rm-text-xs); line-height: 1.25; }
+
+.rm-felt__hint {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-2xs);
+  font-size: var(--rm-text-sm);
+  color: var(--rm-ink-low);
+  text-align: center;
+}
+
+/* ── 3 · the melds ────────────────────────────────────────────────────── */
+.rm-melds {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: var(--rm-space-xs);
+  border: var(--rm-rule) solid var(--rm-edge);
+  border-radius: var(--rm-radius-zone);
+  background: var(--rm-panel);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  min-height: calc(var(--rm-card-w-lg) * var(--rm-card-ratio) + 2.5rem);
+}
+.rm-melds::-webkit-scrollbar { height: 5px; }
+.rm-melds::-webkit-scrollbar-thumb { background: var(--rm-edge); border-radius: 999px; }
+.rm-melds--locked { opacity: 0.4; pointer-events: none; }
+
+/* Lanes are divided by a hairline rather than boxed. A box per meld put five
+   nested frames inside a panel that is itself a frame. */
+.rm-meld {
+  --rm-card-w: var(--rm-card-w-lg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--rm-space-2xs);
+  padding: 0 var(--rm-space-md);
+  border-radius: var(--rm-radius-card);
+  border: var(--rm-rule) solid transparent;
+  transition:
+    background-color var(--rm-dur-quick) var(--rm-ease-out),
+    border-color var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-meld + .rm-meld { border-left: var(--rm-rule) solid var(--rm-edge); }
+.rm-meld.is-over {
+  border-color: var(--rm-brass);
+  background: oklch(from var(--rm-brass) l c h / 0.12);
+}
+.rm-meld__cards { display: flex; align-items: flex-end; }
+.rm-meld__status {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-2xs);
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rm-meld__ungroup {
+  position: absolute;
+  top: 0;
+  right: var(--rm-space-2xs);
+  background: transparent;
+  border: 0;
+  padding: 2px 4px;
+  color: var(--rm-ink-low);
+  font-size: var(--rm-text-xs);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-meld:hover .rm-meld__ungroup,
+.rm-meld__ungroup:focus-visible { opacity: 1; }
+.rm-meld__ungroup:hover { color: var(--rm-danger); }
+
+/* The "put a new meld here" target. Always visible so the affordance is
+   discoverable, not only revealed mid-drag. */
+.rm-addmeld {
+  --rm-card-w: var(--rm-card-w-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rm-space-2xs);
+  flex-shrink: 0;
+  align-self: center;
+  min-width: 96px;
+  min-height: calc(var(--rm-card-w-lg) * var(--rm-card-ratio));
+  margin-left: var(--rm-space-xs);
+  padding: var(--rm-space-xs) var(--rm-space-md);
+  border-radius: var(--rm-radius-zone);
+  border: 1px dashed var(--rm-edge-strong);
+  background: transparent;
+  color: var(--rm-ink-low);
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: default;
+  transition:
+    border-color var(--rm-dur-quick) var(--rm-ease-out),
+    background-color var(--rm-dur-quick) var(--rm-ease-out),
+    color var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-addmeld.is-over {
+  border-color: var(--rm-valid);
+  border-style: solid;
+  background: var(--rm-drop-ok);
+  color: var(--rm-ink);
+}
+.rm-addmeld.is-full { opacity: var(--rm-disabled-opacity); }
+.rm-addmeld__plus { font-size: var(--rm-text-lg); line-height: 1; }
+
+.rm-melds__empty {
+  align-self: center;
+  padding-inline: var(--rm-space-md);
+  font-size: var(--rm-text-sm);
+  color: var(--rm-ink-low);
+}
+
+/* ── 4 · the hand ─────────────────────────────────────────────────────── */
+.rm-hand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rm-space-2xs);
+  padding: var(--rm-space-xs) var(--rm-space-sm) var(--rm-space-sm);
+  border: var(--rm-rule) solid var(--rm-edge);
+  border-radius: var(--rm-radius-zone);
+  background: var(--rm-panel);
+  min-height: 0;
+  transition: border-color var(--rm-dur-settle) var(--rm-ease-out),
+              box-shadow var(--rm-dur-settle) var(--rm-ease-out);
+}
+/* Your turn brightens the hand's own frame. It is the last thing in the
+   reading order and the thing you act on, so it gets the light. */
+.rm-hand.is-turn {
+  border-color: var(--rm-brass);
+  background: linear-gradient(180deg, oklch(from var(--rm-brass) l c h / 0.08) 0%, var(--rm-panel) 46%);
+  box-shadow: var(--rm-lift-hand);
+}
+.rm-hand.is-idle { opacity: 0.45; pointer-events: none; }
+
+.rm-hand__head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--rm-space-xs);
+}
+.rm-hand__title {
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rm-ink-mid);
+}
+.rm-hand__count { color: var(--rm-ink-low); font-family: var(--rm-font-num); }
+.rm-hand__tip {
+  justify-self: center;
+  padding: 2px var(--rm-space-sm);
+  border-radius: 999px;
+  border: var(--rm-rule) solid var(--rm-edge);
+  background: var(--rm-room-bg);
   font-size: var(--rm-text-xs);
   font-weight: 600;
+  color: var(--rm-ink-low);
+  white-space: nowrap;
+}
+
+/* The lane itself. Cards are spread, not fanned: at 13 cards there is room to
+   show every face in full, and a fan would hide the ranks you are reading. */
+.rm-lane {
+  --rm-card-w: var(--rm-card-w-hand);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rm-space-2xs);
+  row-gap: var(--rm-space-xs);
+  padding: var(--rm-space-xs);
+  border-radius: var(--rm-radius-zone);
+  border: 1px dashed transparent;
+  min-height: calc(var(--rm-card-w-hand) * var(--rm-card-ratio) + var(--rm-space-md));
+  transition:
+    background-color var(--rm-dur-quick) var(--rm-ease-out),
+    border-color var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-lane.is-over {
+  border-color: var(--rm-brass);
+  background: oklch(from var(--rm-brass) l c h / 0.12);
+}
+.rm-lane__empty {
+  padding: var(--rm-space-md) var(--rm-space-sm);
+  color: var(--rm-ink-low);
+  font-size: var(--rm-text-sm);
+}
+
+/* ── 5 · the action bar ───────────────────────────────────────────────── */
+.rm-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-xs);
+  padding: var(--rm-space-2xs) 0;
+}
+
+/* Two-line tool button: what it does, and how it will do it. */
+.rm-tool {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-xs);
+  padding: var(--rm-space-2xs) var(--rm-space-md);
+  border-radius: 999px;
+  border: var(--rm-rule) solid var(--rm-edge);
+  background: var(--rm-panel);
+  color: var(--rm-ink);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--rm-dur-quick) var(--rm-ease-out),
+    background-color var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-tool:hover:not(:disabled) { border-color: var(--rm-brass); background: var(--rm-panel-lit); }
+.rm-tool:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: var(--rm-focus-offset);
+}
+.rm-tool:disabled { opacity: var(--rm-disabled-opacity); cursor: not-allowed; }
+.rm-tool svg { flex-shrink: 0; color: var(--rm-brass-ink); }
+.rm-tool__label { font-size: var(--rm-text-sm); font-weight: 700; line-height: 1.15; }
+.rm-tool__note  { font-size: var(--rm-text-xs); color: var(--rm-ink-low); line-height: 1.15; }
+
+/* Live score readout — the two numbers that decide whether to declare. */
+.rm-points {
+  display: flex;
+  align-items: stretch;
+  gap: var(--rm-space-xs);
+  padding: var(--rm-space-2xs) var(--rm-space-md);
+  border-radius: 999px;
+  border: var(--rm-rule) solid var(--rm-edge);
+  background: var(--rm-panel);
+  flex-shrink: 0;
+}
+.rm-points__cell { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.rm-points__cell + .rm-points__cell {
+  padding-left: var(--rm-space-md);
+  border-left: var(--rm-rule) solid var(--rm-edge);
+}
+.rm-points__label {
+  font-size: var(--rm-text-xs);
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--rm-ink-low);
   line-height: 1.2;
 }
-.rm-score__value {
+.rm-points__value {
   font-family: var(--rm-font-num);
   font-size: var(--rm-text-lg);
   font-weight: 700;
@@ -270,79 +896,96 @@
   color: var(--rm-ink);
   line-height: 1.1;
 }
-.rm-score__value--warn { color: var(--rm-danger); }
-.rm-score__value--mid  { color: var(--rm-brass-ink); }
-.rm-score__value--ok   { color: var(--rm-valid); }
+.rm-points__value--warn { color: var(--rm-danger); }
+.rm-points__value--mid  { color: var(--rm-brass-ink); }
+.rm-points__value--ok   { color: var(--rm-valid); }
+/* The laurels that bracket the pair. Decorative only — aria-hidden at the
+   markup level; they exist because this is the one nostalgic flourish the
+   table earns, and it sits on the number you check every turn. */
+.rm-points__laurel { align-self: center; color: var(--rm-brass-dim); flex-shrink: 0; }
 
-/* ── Action buttons — 8 states ────────────────────────────────────────── */
-.rm-btn {
+/* ── The two committed actions ────────────────────────────────────────── */
+.rm-cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--rm-space-2xs);
-  min-height: 36px;
-  padding: 0 var(--rm-space-md);
-  border-radius: var(--rm-radius-card);
-  border: var(--rm-rule) solid var(--rm-rule-color);
-  background: transparent;
-  color: var(--rm-ink-mid);
+  gap: var(--rm-space-xs);
+  min-height: 46px;
+  padding: 0 var(--rm-space-lg);
+  border-radius: var(--rm-radius-zone);
+  border: var(--rm-rule) solid transparent;
   font-family: var(--rm-font-body);
-  font-size: var(--rm-text-sm);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: var(--rm-text-base);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rm-ink);
   cursor: pointer;
   white-space: nowrap;
   transition:
-    color var(--rm-dur-quick) var(--rm-ease-out),
-    border-color var(--rm-dur-quick) var(--rm-ease-out),
-    background-color var(--rm-dur-quick) var(--rm-ease-out),
-    transform var(--rm-dur-quick) var(--rm-ease-out);
+    filter var(--rm-dur-quick) var(--rm-ease-out),
+    transform var(--rm-dur-quick) var(--rm-ease-out),
+    opacity var(--rm-dur-quick) var(--rm-ease-out);
 }
-.rm-btn:hover:not(:disabled) { color: var(--rm-ink); border-color: var(--rm-brass); }
-.rm-btn:focus-visible {
+.rm-cta:hover:not(:disabled) { filter: brightness(1.12); }
+.rm-cta:active:not(:disabled) { transform: translateY(1px); }
+.rm-cta:focus-visible {
   outline: var(--rm-focus-width) solid var(--rm-focus-ring);
   outline-offset: var(--rm-focus-offset);
 }
-.rm-btn:active:not(:disabled) { transform: translateY(1px); }
-.rm-btn:disabled { opacity: var(--rm-disabled-opacity); cursor: not-allowed; }
-
-/* Primary — the one filled control on the table. Brass earns a fill here
-   because DECLARE is the single most consequential action in the game. */
-.rm-btn--primary {
-  background: var(--rm-brass);
-  border-color: var(--rm-brass);
-  color: var(--rm-felt-deep);
+.rm-cta:disabled { opacity: var(--rm-disabled-opacity); cursor: not-allowed; filter: saturate(0.5); }
+.rm-cta--discard {
+  flex: 1;
+  background: linear-gradient(180deg, var(--rm-go) 0%, var(--rm-go-deep) 100%);
+  border-color: var(--rm-go);
+  color: oklch(97% 0.012 150);
 }
-.rm-btn--primary:hover:not(:disabled) {
-  background: var(--rm-brass-glow);
-  border-color: var(--rm-brass-glow);
-  color: var(--rm-felt-deep);
+.rm-cta--declare {
+  flex: 1;
+  background: linear-gradient(180deg, var(--rm-declare) 0%, var(--rm-declare-deep) 100%);
+  border-color: var(--rm-declare);
+  color: oklch(97% 0.012 27);
 }
-.rm-btn--warn { color: var(--rm-ink); border-color: var(--rm-brass-dim); }
-.rm-btn--warn:hover:not(:disabled) { border-color: var(--rm-danger); color: var(--rm-danger); }
-
+/* The shortcut, worn on the button rather than listed in a legend nobody
+   reads. */
 .rm-kbd {
+  padding: 1px var(--rm-space-2xs);
+  border-radius: 4px;
+  border: var(--rm-rule) solid currentColor;
   font-family: var(--rm-font-num);
   font-size: var(--rm-text-xs);
-  font-weight: 500;
-  opacity: 0.6;
+  font-weight: 600;
+  letter-spacing: 0;
+  opacity: 0.75;
 }
 
-/* ── The right rail — collapsible, one panel not three ────────────────── */
-.rm-sidebar {
-  display: flex;
-  flex-direction: column;
-  width: 340px;
+/* ── The right rail ───────────────────────────────────────────────────── */
+.rm-side {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--rm-space-xs);
+  width: 268px;
+  padding: var(--rm-space-xs) var(--rm-space-sm) var(--rm-space-xs) 0;
   min-height: 0;
-  background: var(--rm-felt-deep);
-  border-left: var(--rm-rule) solid var(--rm-rule-color);
-  transition: width var(--rm-dur-settle) var(--rm-ease-out);
 }
-.rm-sidebar--collapsed { width: 44px; }
-.rm-sidebar__tabs {
-  display: flex;
-  border-bottom: var(--rm-rule) solid var(--rm-rule-color);
+.rm-side--collapsed { width: 40px; grid-template-rows: auto; padding-left: 0; }
+
+.rm-side__panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  /* Grid items default to `min-width: auto`, i.e. they refuse to shrink below
+     their content's min-content width. Everything in this rail is nowrap
+     (chips, timestamps, the composer), so without these the panel silently
+     sets its own floor and pushes itself off the right edge of the viewport. */
+  min-width: 0;
+  border: var(--rm-rule) solid var(--rm-edge);
+  border-radius: var(--rm-radius-zone);
+  background: var(--rm-panel);
+  overflow: hidden;
 }
+.rm-side__panel > * { min-width: 0; }
+.rm-side__tabs { display: flex; border-bottom: var(--rm-rule) solid var(--rm-edge); }
 .rm-tab {
   flex: 1;
   padding: var(--rm-space-xs) var(--rm-space-2xs);
@@ -353,7 +996,7 @@
   font-family: var(--rm-font-body);
   font-size: var(--rm-text-xs);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   transition: color var(--rm-dur-quick) var(--rm-ease-out);
@@ -363,153 +1006,179 @@
   outline: var(--rm-focus-width) solid var(--rm-focus-ring);
   outline-offset: -2px;
 }
-.rm-tab[aria-selected="true"] {
-  color: var(--rm-ink);
-  border-bottom-color: var(--rm-brass);
-}
-.rm-sidebar__body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--rm-space-sm);
-}
+.rm-tab[aria-selected="true"] { color: var(--rm-ink); border-bottom-color: var(--rm-brass); }
+.rm-side__body { min-height: 0; overflow-y: auto; padding: var(--rm-space-sm); }
 
-/* The collapse handle — a full-height hairline strip. */
-.rm-sidebar__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
-  background: transparent;
-  border: 0;
-  border-bottom: var(--rm-rule) solid var(--rm-rule-color);
+.rm-side__toggle {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 34px;
+  border: var(--rm-rule) solid var(--rm-edge);
+  border-radius: var(--rm-radius-card);
+  background: var(--rm-panel);
   color: var(--rm-ink-low);
   cursor: pointer;
   font-size: var(--rm-text-sm);
 }
-.rm-sidebar__toggle:hover { color: var(--rm-brass); }
-.rm-sidebar__toggle:focus-visible {
+.rm-side__toggle:hover { color: var(--rm-brass); border-color: var(--rm-brass); }
+.rm-side__toggle:focus-visible {
   outline: var(--rm-focus-width) solid var(--rm-focus-ring);
-  outline-offset: -2px;
+  outline-offset: var(--rm-focus-offset);
 }
 
-/* ── Card lanes ───────────────────────────────────────────────────────
-   Lanes have no resting container. They only draw a surface while a drag is
-   hovering them, which is the moment the boundary actually means something.
-   Previously every lane carried a permanent dashed box, so the table showed
-   half a dozen competing frames at rest and none of them read as a target. */
-.rm-lane {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  row-gap: var(--rm-space-xs);
-  padding: var(--rm-space-xs);
-  border-radius: var(--rm-radius-zone);
-  border: var(--rm-rule) solid transparent;
-  transition:
-    background-color var(--rm-dur-quick) var(--rm-ease-out),
-    border-color var(--rm-dur-quick) var(--rm-ease-out);
-}
-.rm-lane.is-over {
-  border-color: var(--rm-brass);
-  background: oklch(from var(--rm-brass) l c h / 0.12);
-}
-.rm-lane--hand {
-  /* The hand is the point of the screen: give it real breathing room and the
-     large card size. */
-  --rm-card-w: var(--rm-card-w-lg);
-  min-height: calc(var(--rm-card-w-lg) * var(--rm-card-ratio) + var(--rm-space-lg));
-  padding: var(--rm-space-sm) var(--rm-space-md);
-  align-items: center;
-}
-.rm-lane__empty {
-  padding: var(--rm-space-md) var(--rm-space-sm);
-  color: var(--rm-ink-low);
-  font-size: var(--rm-text-sm);
-}
-
-/* ── The self pad ─────────────────────────────────────────────────────── */
-.rm-selfpad {
-  flex-shrink: 0;
-  width: 104px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--rm-space-2xs);
-  padding: var(--rm-space-sm);
-  border-radius: var(--rm-radius-zone);
-  border: var(--rm-rule) solid var(--rm-rule-color);
-  text-align: center;
-}
-.rm-selfpad.is-turn { border-color: var(--rm-brass); }
-.rm-selfpad__avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--rm-brass-dim);
-  color: var(--rm-felt-deep);
+/* ── Chat, felt-native ────────────────────────────────────────────────── */
+.rm-chat { display: flex; flex-direction: column; gap: var(--rm-space-sm); }
+.rm-chat__msg { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+/* Your own lines carry a brass spine so they separate from everyone else's
+   without a bubble — bubbles at this width leave no room for the words. */
+.rm-chat__msg.is-self { padding-left: var(--rm-space-xs); border-left: 2px solid var(--rm-brass); }
+.rm-chat__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--rm-space-xs); }
+.rm-chat__who {
+  font-size: var(--rm-text-xs);
   font-weight: 700;
-  font-size: var(--rm-text-base);
-}
-.rm-selfpad.is-turn .rm-selfpad__avatar { background: var(--rm-brass); }
-.rm-selfpad__name {
-  font-size: var(--rm-text-sm);
-  font-weight: 600;
-  color: var(--rm-ink);
-  max-width: 100%;
+  color: var(--rm-brass-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.rm-selfpad__score {
+.rm-chat__time {
+  flex-shrink: 0;
   font-family: var(--rm-font-num);
   font-size: var(--rm-text-xs);
-  font-variant-numeric: tabular-nums;
   color: var(--rm-ink-low);
+}
+.rm-chat__text { font-size: var(--rm-text-sm); color: var(--rm-ink-mid); overflow-wrap: anywhere; }
+.rm-chat__empty { font-size: var(--rm-text-sm); color: var(--rm-ink-low); }
+
+.rm-quick {
+  display: grid;
+  /* minmax(0,1fr), not 1fr: the phrases are `white-space: nowrap`, so an auto
+     minimum lets the longest one dictate the width of the whole rail. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--rm-space-2xs);
+  padding: var(--rm-space-xs) var(--rm-space-sm);
+  border-top: var(--rm-rule) solid var(--rm-edge);
+}
+.rm-quick__btn {
+  min-width: 0;
+  padding: var(--rm-space-2xs) var(--rm-space-xs);
+  border-radius: 999px;
+  border: var(--rm-rule) solid var(--rm-edge);
+  background: var(--rm-room-bg);
+  color: var(--rm-ink-mid);
+  font-size: var(--rm-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--rm-dur-quick) var(--rm-ease-out),
+              border-color var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-quick__btn:hover { color: var(--rm-ink); border-color: var(--rm-brass); }
+.rm-quick__btn:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: var(--rm-focus-offset);
+}
+
+.rm-composer {
+  display: flex;
+  align-items: center;
+  gap: var(--rm-space-xs);
+  padding: var(--rm-space-xs) var(--rm-space-sm);
+  border-top: var(--rm-rule) solid var(--rm-edge);
+}
+.rm-composer__input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--rm-space-2xs) var(--rm-space-sm);
+  border-radius: 999px;
+  border: var(--rm-rule) solid var(--rm-edge);
+  background: var(--rm-room-bg);
+  color: var(--rm-ink);
+  font-family: var(--rm-font-body);
+  font-size: var(--rm-text-sm);
+}
+.rm-composer__input::placeholder { color: var(--rm-ink-low); }
+.rm-composer__input:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: 1px;
+}
+.rm-composer__send {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 30px;
+  border-radius: var(--rm-radius-card);
+  border: 0;
+  background: var(--rm-brass);
+  color: var(--rm-room-bg);
+  cursor: pointer;
+  transition: filter var(--rm-dur-quick) var(--rm-ease-out);
+}
+.rm-composer__send:hover:not(:disabled) { filter: brightness(1.1); }
+.rm-composer__send:disabled { opacity: var(--rm-disabled-opacity); cursor: not-allowed; }
+.rm-composer__send:focus-visible {
+  outline: var(--rm-focus-width) solid var(--rm-focus-ring);
+  outline-offset: var(--rm-focus-offset);
 }
 
 /* ── The roster — who is at the table ─────────────────────────────────── */
 .rm-roster {
-  flex-shrink: 0;
-  max-height: 42%;
-  overflow-y: auto;
-  padding: var(--rm-space-sm);
-  border-top: var(--rm-rule) solid var(--rm-rule-color);
+  border: var(--rm-rule) solid var(--rm-edge);
+  border-radius: var(--rm-radius-zone);
+  background: var(--rm-panel);
+  overflow: hidden;
 }
 .rm-roster__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--rm-space-xs);
+  padding: var(--rm-space-2xs) var(--rm-space-sm);
+  border-bottom: var(--rm-rule) solid var(--rm-edge);
   font-size: var(--rm-text-xs);
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--rm-ink-low);
 }
-.rm-roster__list { display: flex; flex-direction: column; gap: var(--rm-space-2xs); }
+.rm-roster__list {
+  display: flex;
+  flex-direction: column;
+  /* Six is the table cap, so all six should fit without scrolling — at 160px
+     the last row (usually YOU, since self sorts last) was clipped. */
+  max-height: 13rem;
+  overflow-y: auto;
+}
 .rm-roster__row {
   display: flex;
   align-items: center;
   gap: var(--rm-space-xs);
-  padding: var(--rm-space-2xs) var(--rm-space-xs);
-  border-radius: var(--rm-radius-card);
-  border: var(--rm-rule) solid transparent;
+  padding: var(--rm-space-2xs) var(--rm-space-sm);
+  border-left: 2px solid transparent;
 }
-.rm-roster__row.is-turn { border-color: var(--rm-brass); }
-.rm-roster__row.is-out  { opacity: 0.55; }
-.rm-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
+.rm-roster__row + .rm-roster__row { border-top: var(--rm-rule) solid var(--rm-edge); }
+.rm-roster__row.is-turn { border-left-color: var(--rm-brass); background: var(--rm-panel-lit); }
+.rm-roster__row.is-out { opacity: var(--rm-dimmed-opacity); }
+.rm-roster__badge {
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
-  background: var(--rm-valid);
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: var(--rm-rule) solid var(--rm-edge-strong);
+  font-size: var(--rm-text-xs);
+  font-weight: 800;
+  color: var(--rm-brass-ink);
 }
-.rm-dot--away { background: var(--rm-brass); }
+.rm-roster__row.is-turn .rm-roster__badge {
+  background: var(--rm-brass);
+  border-color: var(--rm-brass);
+  color: var(--rm-room-bg);
+}
 .rm-roster__name {
   flex: 1;
   min-width: 0;
@@ -525,22 +1194,15 @@
   font-size: var(--rm-text-xs);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--rm-brass-ink);
+  letter-spacing: 0.06em;
+  color: var(--rm-danger);
 }
-.rm-roster__tag--out { color: var(--rm-danger); }
-.rm-roster__count,
 .rm-roster__score {
   flex-shrink: 0;
   font-family: var(--rm-font-num);
   font-size: var(--rm-text-xs);
   font-variant-numeric: tabular-nums;
-  color: var(--rm-ink-low);
-}
-.rm-roster__score {
-  color: var(--rm-ink);
-  font-weight: 700;
-  padding-inline: var(--rm-space-2xs);
+  color: var(--rm-ink-mid);
 }
 
 /* ── Inline messages ──────────────────────────────────────────────────── */
@@ -554,15 +1216,23 @@
   font-size: var(--rm-text-sm);
   font-weight: 600;
 }
-.rm-hint {
-  align-self: center;
-  color: var(--rm-ink-low);
-  font-size: var(--rm-text-sm);
-}
+.rm-hint { align-self: center; color: var(--rm-ink-low); font-size: var(--rm-text-sm); }
 
-/* ── Narrower desktops ────────────────────────────────────────────────── */
+/* ── Narrower desktops ────────────────────────────────────────────────────
+   The hand keeps its full card size the longest: everything else on the
+   screen exists to serve it, so the piles and melds give up room first. */
 @media (max-width: 1439px) {
-  .rm-sidebar { width: 300px; }
-  .rm-centre  { padding: var(--rm-space-md); gap: var(--rm-space-sm); }
-  .rm-piles   { gap: var(--rm-space-lg); }
+  .rm-side { width: 234px; }
+  .rm-felt__slots { gap: var(--rm-space-lg); }
+  .rm-meld { padding-inline: var(--rm-space-sm); }
+}
+@media (max-width: 1279px) {
+  .rm-side { width: 210px; }
+  .rm-quick { grid-template-columns: minmax(0, 1fr); }
+}
+/* Card sizes are handled by the clamps on .rm-room now; a short viewport only
+   needs the chrome around them to tighten. */
+@media (max-height: 800px) {
+  .rm-felt { padding: var(--rm-space-xs); }
+  .rm-board { gap: var(--rm-space-2xs); }
 }

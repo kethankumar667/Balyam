@@ -625,6 +625,17 @@ body, #root, .bhalyam-paper {
   animation: ludo-bob 1s ease-in-out infinite;
 }
 
+/* Turn handover — the callout re-mounts on every change of hands (keyed on
+   `turnPulse`), so this plays exactly once per handover. Deliberately a
+   settle rather than a flourish: it has to catch the eye at a bot table where
+   turns come quickly, without becoming the loudest thing on screen. */
+@keyframes ludo-turn-change {
+  0%   { transform: translateY(-4px) scale(0.985); opacity: 0.45; }
+  55%  { transform: translateY(0) scale(1.012); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.ludo-turn-change { animation: ludo-turn-change 340ms cubic-bezier(.22,.9,.3,1); }
+
 /* Idle "breathing" for the roll cup when it's the player's turn to roll —
    a subtle scale so the primary action reads as alive without demanding
    attention. Auto-disabled by the prefers-reduced-motion block below. */

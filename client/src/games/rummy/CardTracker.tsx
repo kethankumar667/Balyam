@@ -8,13 +8,26 @@ interface Props {
   wildJokerRank: Rank;
   /** Number of decks in play. Standard Indian Rummy = 2. */
   decks?: number;
+  /**
+   * Cells per row. Thirteen reads best across a phone in landscape (the
+   * mobile modal it was built for), but squeezes to ~17px a cell inside the
+   * desktop side rail — narrow enough that the rank and its count collide.
+   * Desktop passes 7 and takes two rows instead.
+   */
+  columns?: number;
 }
 
 /**
  * Shows how many of each rank have been seen so far (mine + discard pile).
  * Helps players track which cards are still "live" in the closed deck + opponents' hands.
  */
-export default function CardTracker({ myHand, openPile, wildJokerRank, decks = 2 }: Props) {
+export default function CardTracker({
+  myHand,
+  openPile,
+  wildJokerRank,
+  decks = 2,
+  columns = 13,
+}: Props) {
   // Total of each rank in the deck = 4 suits × N decks.
   const totalPerRank = 4 * decks;
 
@@ -42,7 +55,7 @@ export default function CardTracker({ myHand, openPile, wildJokerRank, decks = 2
       </div>
       <div
         className="grid gap-0.5 sm:gap-1"
-        style={{ gridTemplateColumns: "repeat(13, minmax(0, 1fr))" }}
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
       >
         {RANK_DISPLAY.map((r) => {
           const used = seen[r];

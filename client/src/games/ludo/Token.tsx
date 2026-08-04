@@ -1,6 +1,14 @@
 import { useId } from "react";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
+import { hopMsFor } from "@shared/ludo-pacing";
 import type { LudoColor } from "@shared/types";
+
+/** A hop that decelerates into the cell — no overshoot. See the `transition`
+ *  comment on the pawn's style for why a spring is wrong here. */
+const HOP_EASE = "cubic-bezier(.22,.85,.35,1)";
+
+/** Used by call sites that render a static pawn (previews, the picker). */
+const DEFAULT_HOP_MS = hopMsFor(1);
 
 /**
  * 3D-styled "chess pawn" Ludo token rendered as inline SVG.
@@ -34,6 +42,7 @@ export function Token({
   hex,
   hexDark,
   counterRotateDeg = 0,
+  hopMs = DEFAULT_HOP_MS,
 }: {
   color: LudoColor;
   left: number;
@@ -53,6 +62,11 @@ export function Token({
   /** Cancels the board's egocentric rotation so the pawn and its number stay
    *  upright however the board is turned. */
   counterRotateDeg?: number;
+  /**
+   * How long ONE cell-to-cell hop takes. Must stay shorter than the interval
+   * at which the board feeds new positions — see the transition comment below.
+   */
+  hopMs?: number;
 }) {
   const main = golden ? "#D4AF37" : hex ?? COLOR_HEX[color];
   const dark = golden ? "#8B6914" : hexDark ?? COLOR_HEX_DARK[color];
@@ -84,8 +98,26 @@ export function Token({
         // position on the board shifting.
         transform: `translate(-50%, -65%) rotate(${counterRotateDeg}deg)`,
         transformOrigin: "50% 65%",
-        transition:
-          "left 380ms cubic-bezier(.4,1.5,.6,1), top 380ms cubic-bezier(.4,1.5,.6,1), transform 200ms",
+        /**
+         * The single most important number on this component.
+         *
+         * This was a fixed 380ms with a springy `cubic-bezier(.4,1.5,.6,1)`,
+         * while the board advances the token one cell roughly every 130-190ms.
+         * A CSS transition that is re-targeted before it finishes does not
+         * restart — it re-aims from wherever it currently is — so the piece
+         * never actually reached any intermediate square. Five steps rendered
+         * as ONE straight glide that cut diagonally across the track to the
+         * destination, which is exactly the "it jumped 5 in one shot" report.
+         * The overshoot curve made it worse: `y1 = 1.5` means barely any
+         * distance is covered in the first third, so the early cells of a walk
+         * were invisible even in principle.
+         *
+         * Now the duration comes from the board and is deliberately SHORTER
+         * than the step interval, so every hop completes and the piece sits
+         * still on each square before leaving it. `HOP_EASE` lands rather than
+         * springs — a spring on a chained hop reads as a wobble, not a step.
+         */
+        transition: `left ${hopMs}ms ${HOP_EASE}, top ${hopMs}ms ${HOP_EASE}, transform 200ms`,
         cursor: onClick ? "pointer" : "default",
         background: "transparent",
         border: "none",
