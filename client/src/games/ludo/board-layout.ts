@@ -112,57 +112,67 @@ const STUB_HOME: Cell[] = [
   { row: 7.0, col: 7.0 }, { row: 7.0, col: 7.0 },
 ];
 /**
+ * FINISHED-token width, as a PERCENT of the board (the board is 15 cells, so
+ * 3.0% = 0.45 cells). Exported so `ludo-board-composites.tsx` and
+ * `home-slots.test.ts` share one number — the previous 3.7 was written as a
+ * literal in both places and in the slot solve below, which is how they drifted
+ * apart.
+ */
+export const HOME_TOKEN_PCT = 3.0;
+
+/**
  * Where a colour's four FINISHED tokens sit inside its centre triangle.
  *
- * These used to be a straight line of four, 0.5 cells apart, hugging the
- * triangle's outer edge. Home tokens render ~0.63 cells wide, so consecutive
- * pieces overlapped by roughly a fifth of their width, and because each
- * triangle tapers to a point the two END slots fell OUTSIDE the triangle
- * entirely — finished tokens spilled onto the neighbouring wedge.
+ * THREE bounds, not two. The previous 2x2 block satisfied the first two and
+ * quietly violated the third:
  *
- * Now a 2x2 block placed in the WIDE part of each triangle, where there is
- * actually room. Every slot is verified inside its triangle: for the left
- * (red) wedge the boundary at row r is col <= 6 + min(r-6, 9-r), and the
- * widest span is around row 7.5 — which is where the block sits. The four
- * colours are exact 90-degree rotations of each other about the centre
- * (7.5, 7.5), so all four read identically however the board is spun.
+ *   WALLS    each wedge tapers to a point at the centre, so a slot at
+ *            tangential offset s and depth u clears the slanted walls only
+ *            while (u - |s|)/sqrt(2) >= tokenR.
+ *   OUTER    the centre block ends at 1.5 cells from (7.5, 7.5).
+ *   MEDALLION  <- the one that was missed. The board draws a white star
+ *            medallion of radius ~0.78 cells at the centre. The 2x2's INNER
+ *            pair sat 0.71 cells out, i.e. underneath it, so two of every
+ *            player's finished tokens ended up sitting on the star while the
+ *            outer pair pushed out through the wedge base.
  *
- * The geometry is a genuine constraint solve, not eyeballing: pushing the two
- * rows further apart buys vertical clearance but COSTS horizontal room, since
- * the wedge narrows away from row 7.5. With a token radius of ~0.28 cells the
- * half-separation h must satisfy 0.29 <= h <= 0.39; h = 0.34 sits in the
- * middle. Slot spacing lands at 0.60 x 0.68 cells — keep the home token size
- * (see `token.state === "home"` in ludo-board-composites.tsx) under that, and
- * see home-slots.test.ts, which checks containment and overlap directly.
+ * Four tokens cannot fit two-deep in the 0.78..1.5 band that leaves, so this is
+ * ONE arc of four hugging the outer edge — the widest part of the triangle —
+ * at 0.48-cell spacing with a 0.45-cell token. The four colours remain exact
+ * 90-degree rotations of each other about (7.5, 7.5), so the arrangement reads
+ * identically however the board is spun.
+ *
+ * home-slots.test.ts checks containment, overlap, rotation AND medallion
+ * clearance; the medallion case is what would have caught the old layout.
  */
 export const HOME_SLOTS: Record<LudoColor, Cell[]> = {
   // LEFT wedge.
   red: [
-    { row: 7.16, col: 6.28 },
-    { row: 7.16, col: 6.88 },
-    { row: 7.84, col: 6.28 },
-    { row: 7.84, col: 6.88 },
+    { row: 6.78, col: 6.26 },
+    { row: 7.26, col: 6.26 },
+    { row: 7.74, col: 6.26 },
+    { row: 8.22, col: 6.26 },
   ],
   // TOP wedge.
   green: [
-    { row: 6.28, col: 7.84 },
-    { row: 6.88, col: 7.84 },
-    { row: 6.28, col: 7.16 },
-    { row: 6.88, col: 7.16 },
+    { row: 6.26, col: 6.78 },
+    { row: 6.26, col: 7.26 },
+    { row: 6.26, col: 7.74 },
+    { row: 6.26, col: 8.22 },
   ],
   // RIGHT wedge.
   yellow: [
-    { row: 7.84, col: 8.72 },
-    { row: 7.84, col: 8.12 },
-    { row: 7.16, col: 8.72 },
-    { row: 7.16, col: 8.12 },
+    { row: 6.78, col: 8.74 },
+    { row: 7.26, col: 8.74 },
+    { row: 7.74, col: 8.74 },
+    { row: 8.22, col: 8.74 },
   ],
   // BOTTOM wedge.
   blue: [
-    { row: 8.72, col: 7.16 },
-    { row: 8.12, col: 7.16 },
-    { row: 8.72, col: 7.84 },
-    { row: 8.12, col: 7.84 },
+    { row: 8.74, col: 6.78 },
+    { row: 8.74, col: 7.26 },
+    { row: 8.74, col: 7.74 },
+    { row: 8.74, col: 8.22 },
   ],
   purple: STUB_HOME,
   cyan: STUB_HOME,

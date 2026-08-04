@@ -11,7 +11,7 @@ import {
   rosettePts,
   starPts,
 } from "./print-marks";
-import { YARD_TOKEN_W } from "./print-board";
+import { YARD_TOKEN_W, HOME_TOKEN_W } from "./print-board";
 
 /**
  * Ludo — shared render primitives.
@@ -80,7 +80,10 @@ export type LudoHoverPreview =
  *  walls, so the two values have to be the same number. */
 export function polygonTokenSize(state: LudoToken["state"], cellSize: number): number {
   if (state === "yard") return cellSize * YARD_TOKEN_W;
-  if (state === "home") return cellSize * 1.05;
+  // Must match HOME_TOKEN_W, which the centre-wedge slot geometry is solved
+  // against — a literal here is exactly how the old 1.05 drifted out of step
+  // with the slots and left finished tokens overhanging the wedge.
+  if (state === "home") return cellSize * HOME_TOKEN_W;
   return cellSize * 1.18;
 }
 

@@ -20,7 +20,7 @@ import SettingsMenu from "./SettingsMenu";
 import PrintBoardSVG from "./PrintBoardSVG";
 import { seatColor, seatColorDark } from "./print-board";
 import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
-import { COLOR_HEX, COLOR_HEX_DARK, PLAYER_COLORS_ORDER } from "./board-layout";
+import { COLOR_HEX, COLOR_HEX_DARK, HOME_TOKEN_PCT, PLAYER_COLORS_ORDER } from "./board-layout";
 import { ordinal } from "@shared/ludo-rules";
 import { Avatar } from "./Avatar";
 import { BoardSVG, HoverPreviewMarker, MiniBurst, polygonTokenSize } from "./ludo-board-shared";
@@ -887,9 +887,10 @@ export function LudoBoardArea({
                   : token.state === "yard"
                   ? 7
                   : token.state === "home"
-                  // Must stay under the HOME_SLOTS spacing (0.60 cells =
-                  // 4.0% of the board) or finished tokens touch again.
-                  ? 3.7
+                  // Shared with the HOME_SLOTS solve in board-layout.ts — a
+                  // literal here is how the size and the slot spacing drifted
+                  // apart and put finished tokens on the centre medallion.
+                  ? HOME_TOKEN_PCT
                   : 6) * (pos.scale ?? 1)
               }
               movable={movable}

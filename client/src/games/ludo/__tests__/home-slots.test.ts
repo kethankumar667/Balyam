@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { HOME_SLOTS } from "../board-layout";
+import { HOME_SLOTS, HOME_TOKEN_PCT } from "../board-layout";
 
 /**
  * Finished tokens must sit INSIDE their own centre wedge, without overlapping
@@ -19,8 +19,18 @@ import { HOME_SLOTS } from "../board-layout";
  * (given as col,row to match the SVG polygons that draw them.)
  */
 
-/** Half-width of a home token, in cells: 3.7% of a 15-cell board / 2. */
-const TOKEN_R = (3.7 / (100 / 15)) / 2;
+/** Half-width of a home token, in cells. Derived from the SAME constant the
+ *  renderer uses, so the two can no longer drift apart. */
+const TOKEN_R = HOME_TOKEN_PCT / (100 / 15) / 2;
+
+/**
+ * Radius of the white star medallion drawn at the board centre, in cells.
+ *
+ * This bound was ABSENT from the original suite, which is exactly how the old
+ * 2x2 layout shipped: its inner pair sat 0.71 cells from centre — comfortably
+ * inside its wedge, and comfortably underneath the star.
+ */
+const MEDALLION_R = 0.78;
 
 /** How far inside its wedge a point is, in cells. Negative means outside. */
 const insetInWedge: Record<string, (r: number, c: number) => number> = {
@@ -61,6 +71,25 @@ describe("finished tokens sit inside their own wedge", () => {
         const d = Math.hypot(slots[i].row - slots[j].row, slots[i].col - slots[j].col);
         expect(d, `${color} slots ${i}/${j} are ${d.toFixed(3)} cells apart`).toBeGreaterThan(TOKEN_R * 2);
       }
+    }
+  });
+
+  it.each(WEDGES)("%s: no finished token sits on the centre medallion", (color) => {
+    // The regression this suite previously allowed through.
+    for (const s of HOME_SLOTS[color]) {
+      const d = Math.hypot(s.row - 7.5, s.col - 7.5);
+      expect(
+        d,
+        `${color} slot (${s.row}, ${s.col}) is ${d.toFixed(3)} cells from centre — ` +
+          `needs >= ${(MEDALLION_R + TOKEN_R).toFixed(3)} to clear the star`,
+      ).toBeGreaterThanOrEqual(MEDALLION_R + TOKEN_R);
+    }
+  });
+
+  it.each(WEDGES)("%s: no finished token escapes the centre block", (color) => {
+    for (const s of HOME_SLOTS[color]) {
+      expect(Math.min(s.row, s.col), `${color} (${s.row}, ${s.col})`).toBeGreaterThanOrEqual(6 + TOKEN_R);
+      expect(Math.max(s.row, s.col), `${color} (${s.row}, ${s.col})`).toBeLessThanOrEqual(9 - TOKEN_R);
     }
   });
 

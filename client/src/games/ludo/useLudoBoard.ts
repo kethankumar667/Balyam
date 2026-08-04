@@ -494,6 +494,20 @@ export function useLudoBoard({
 
   // ---- Winner celebration + end-game card sequence ----
   const [showCelebration, setShowCelebration] = useState(false);
+  /**
+   * The recap card no longer AUTO-OPENS.
+   *
+   * Room.tsx classifies Ludo as a game without its own scorecard (it is absent
+   * from GAMES_WITH_OWN_SCORECARD), so the platform already shows
+   * GenericScorecardModal — "LUDO · Results" — the instant the phase flips to
+   * "finished". This card then opened 3 s later ON TOP of it, so every match
+   * ended with two stacked modals. The platform one wins: it owns the
+   * auto-leave countdown and hands off to GameOverScreen (which carries
+   * rematch), and that is the same flow every other game uses.
+   *
+   * The card itself is kept and still renders when `showEndCard` is set, so a
+   * "view recap" entry point can be wired up without rebuilding it.
+   */
   const [showEndCard, setShowEndCard] = useState(false);
   useEffect(() => {
     if (state.phase !== "finished" || !state.winnerId) {
@@ -502,10 +516,8 @@ export function useLudoBoard({
       return;
     }
     setShowCelebration(true);
-    const tCard = setTimeout(() => setShowEndCard(true), 3000);
     const tCelebrationEnd = setTimeout(() => setShowCelebration(false), 3300);
     return () => {
-      clearTimeout(tCard);
       clearTimeout(tCelebrationEnd);
     };
   }, [state.phase, state.winnerId]);

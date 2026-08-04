@@ -107,6 +107,19 @@ function P(r: number, aDeg: number, s = 0): Pt {
  */
 export const YARD_TOKEN_W = 1.0;
 
+/**
+ * FINISHED-token width, as a multiple of CELL. Also shared with
+ * `polygonTokenSize`, for the same reason as YARD_TOKEN_W.
+ *
+ * This was 1.05 — a full cell — and four of them simply do not fit in a centre
+ * wedge. The wedge is a triangle only `A_C` deep (1.5·CELL at N=4) with the
+ * centre medallion eating the tip, so the old two-ring layout put one pair ON
+ * the medallion and pushed the other pair straight out through the wedge's
+ * base into the neighbouring lane. Four pieces in that space have to be small;
+ * they are a finished record, not something you still click.
+ */
+export const HOME_TOKEN_W = 0.46;
+
 const fmt = (p: Pt): string => `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
 const dist = (a: Pt, b: Pt): number => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -330,15 +343,38 @@ function build(
       .join(" ");
     art.slices.push({ color, points: centerTriangles[color] });
 
-    const homeS = (r: number): number => 0.45 * Math.tan(rad(HALF_W)) * r;
-    const rH1 = 0.7 * R_C;
-    const rH2 = 0.46 * R_C;
-    homeSlots[color] = [
-      P(rH1, a, -homeS(rH1)),
-      P(rH1, a, +homeS(rH1)),
-      P(rH2, a, -homeS(rH2)),
-      P(rH2, a, +homeS(rH2)),
-    ];
+    /**
+     * The four FINISHED tokens — one clean arc across the wedge, not two rings.
+     *
+     * The wedge is the triangle from the board centre out to one edge of the
+     * central polygon. Three things bound it, and the old `0.7·R_C / 0.46·R_C`
+     * pair respected none of them:
+     *
+     *   OUTER  the polygon's flat edge sits at the apothem A_C, not at R_C.
+     *          0.7·R_C is 1.485·CELL at N=4 while A_C is 1.50·CELL, so a token
+     *          of half-width 0.52 hung ~0.5·CELL out through the base.
+     *   INNER  the centre medallion has radius min(1.15·CELL, 0.3·R_C)
+     *          (PrintBoardSVG). 0.46·R_C put the inner pair on top of it.
+     *   SIDES  the wedge walls close in at HALF_W. A token at radius r and
+     *          tangential offset s clears them only while
+     *          r·sin(HALF_W) − |s|·cos(HALF_W) >= tokenR.
+     *
+     * So: park the row just inside the outer wall, then spread it as wide as
+     * the walls allow. One arc rather than two rings because the usable band
+     * (A_C − medallion) is barely deeper than one token at small N.
+     */
+    const homeR = (HOME_TOKEN_W * CELL) / 2;
+    const medR = Math.min(CELL * 1.15, R_C * 0.3);
+    // Hug the outer wall, with a hairline of daylight so the pieces read as
+    // sitting inside the wedge rather than welded to its edge.
+    const rHome = Math.max(A_C - homeR - CELL * 0.06, medR + homeR);
+    // Widest tangential offset whose token still clears both slanted walls.
+    const sMax = (rHome * Math.sin(rad(HALF_W)) - homeR) / Math.cos(rad(HALF_W));
+    // Four abreast wants ±3·homeR; clamp to what the walls actually allow.
+    // At N=4 (the tightest wedge) this lands a few percent tight, which reads
+    // as a deliberate row rather than the old scattered overlap.
+    const spread = Math.max(0, Math.min(3 * homeR, sMax - homeR));
+    homeSlots[color] = [-1, -1 / 3, 1 / 3, 1].map((k) => P(rHome, a, k * spread));
   });
 
   return {
