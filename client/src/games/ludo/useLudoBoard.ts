@@ -18,6 +18,7 @@ import { sfx, setSoundEnabled, isSoundEnabled } from "./sound";
 import { computeStepPath, isSameTokenState } from "./animation";
 import { getPrintBoard, type PrintBoardGeometry } from "./print-board";
 import { DICE_ROLL_MS } from "./Dice";
+import { ROLL_COOLDOWN_MS, stepMsFor } from "@shared/ludo-pacing";
 import {
   COLOR_HEX,
   HOME_SLOTS,
@@ -168,7 +169,7 @@ export function useLudoBoard({
   const armOf = (pid: string): LudoColor => state.playerArms?.[pid] ?? state.playerColors[pid];
 
   const myTurn = state.turnPlayerId === selfId;
-  // 1-second "settle" gap between consecutive rolls.
+  // Brief settle gap between consecutive rolls — see ROLL_COOLDOWN_MS.
   const [rollCooldown, setRollCooldown] = useState(false);
   const prevTurnIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -176,10 +177,7 @@ export function useLudoBoard({
     prevTurnIdRef.current = state.turnPlayerId;
     if (prev !== null && prev !== state.turnPlayerId) {
       setRollCooldown(true);
-      // Was 1000ms. This only needs to swallow a double-tap on the roll
-      // button; a full second of dead time at the start of every one of your
-      // turns was a big part of why the game felt sluggish.
-      const t = window.setTimeout(() => setRollCooldown(false), 250);
+      const t = window.setTimeout(() => setRollCooldown(false), ROLL_COOLDOWN_MS);
       return () => window.clearTimeout(t);
     }
   }, [state.turnPlayerId]);
@@ -533,7 +531,17 @@ export function useLudoBoard({
     const color = armOf(pid);
     const hasCap = state.hasCaptured?.[pid] ?? false;
     const trackLen = polygonGeo ? polygonGeo.N * 13 : 52;
-    const dest = predictDestination(token, state.diceValue, color, hasCap, trackLen);
+    // Pass the room's REAL Mandatory Capture setting. The preview used to
+    // assume it was always on, so in a room with it off it showed the token
+    // bypassing its own home entrance — a move the engine would not make.
+    const dest = predictDestination(
+      token,
+      state.diceValue,
+      color,
+      hasCap,
+      trackLen,
+      state.options?.mandatoryCapture ?? true,
+    );
     if (!dest) return setHoverPreview(null);
     if (dest.state === "track") {
       setHoverPreview({ kind: "track", trackPos: dest.trackPos });
@@ -643,6 +651,47 @@ export function useLudoBoard({
   }
   function move(tokenId: string) {
     getSocket().emit("game:move", { type: "move", data: { tokenId }, playerId: selfId ?? undefined });
+
+    /**
+     * OPTIMISTIC: start the token moving now, rather than after the round
+     * trip. Tapping a token used to do nothing visible until the server
+     * answered, so on a slow link the game felt unresponsive and players
+     * tapped again.
+     *
+     * This is only safe because the client and the server now resolve a move
+     * with the SAME function (shared/ludo-rules.ts#resolveDestination) — see
+     * the contract test, which sweeps the whole move space to prove they
+     * agree. Predicting with a hand-written mirror, as this code used to do,
+     * would have made a wrong guess visible as a snap-back.
+     *
+     * Reconciliation is free: the effect above already animates any
+     * difference between what is displayed and what the server says. If the
+     * prediction was right it sees no difference and does nothing; if it was
+     * wrong it walks the piece to the truth from wherever it currently is.
+     */
+    if (reduceMotion || state.diceValue == null || !selfId) return;
+    const mine = state.tokens[selfId] ?? [];
+    const token = mine.find((t) => t.id === tokenId);
+    const from = displayed[tokenId] ?? token;
+    if (!token || !from) return;
+    const color = armOf(selfId);
+    const trackLen = polygonGeo ? polygonGeo.N * 13 : 52;
+    const dest = predictDestination(
+      token,
+      state.diceValue,
+      color,
+      state.hasCaptured?.[selfId] ?? false,
+      trackLen,
+      state.options?.mandatoryCapture ?? true,
+    );
+    if (!dest) return;
+    const target: LudoToken = {
+      ...token,
+      state: dest.state,
+      trackPos: dest.state === "track" ? dest.trackPos : undefined,
+      stretchPos: dest.state === "stretch" ? dest.stretchPos : undefined,
+    };
+    playPathRef.current(tokenId, computeStepPath(from, target, color, trackLen));
   }
   function toggleSound() {
     const next = !soundOn;
@@ -654,7 +703,38 @@ export function useLudoBoard({
   const [displayed, setDisplayed] = useState<Record<string, LudoToken>>({});
   const animationTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const initialisedRef = useRef(false);
-  const STEP_MS = 160;
+
+  /**
+   * Walk one token along `path`, one cell per tick. Shared by the
+   * server-reconcile effect below and by the OPTIMISTIC path in `move()`.
+   *
+   * Restarting a token that is already mid-flight is safe and intended: the
+   * previous timer is cleared and the new path continues from wherever the
+   * piece currently is, so an optimistic hop that the server later confirms
+   * simply finishes, and one it contradicts is corrected without a jump.
+   */
+  const playPathRef = useRef<(id: string, path: LudoToken[]) => void>(() => {});
+  playPathRef.current = (id: string, path: LudoToken[]) => {
+    clearTimeout(animationTimersRef.current.get(id));
+    animationTimersRef.current.delete(id);
+    if (path.length === 0) return;
+    const stepMs = stepMsFor(path.length);
+    let i = 0;
+    const playStep = () => {
+      if (i >= path.length) {
+        animationTimersRef.current.delete(id);
+        return;
+      }
+      const next = path[i];
+      i += 1;
+      setDisplayed((cur) => ({ ...cur, [id]: next }));
+      if (soundOn && next.state === "track") sfx.tokenMove();
+      if (i < path.length) {
+        animationTimersRef.current.set(id, setTimeout(playStep, stepMs));
+      }
+    };
+    playStep();
+  };
 
   // Cleanup all timers on unmount
   useEffect(() => {
@@ -696,9 +776,6 @@ export function useLudoBoard({
         continue;
       }
 
-      clearTimeout(animationTimersRef.current.get(id));
-      animationTimersRef.current.delete(id);
-
       const color = armOf(pid);
       const trackLen = polygonGeo ? polygonGeo.N * 13 : 52;
       const path = computeStepPath(cur, serverToken, color, trackLen);
@@ -706,35 +783,7 @@ export function useLudoBoard({
         setDisplayed((s) => ({ ...s, [id]: serverToken }));
         continue;
       }
-
-      /**
-       * Longer hops travel faster per cell, so a 6 does not take six times as
-       * long to watch as a 1. At a flat 160ms a six-step move ran ~1s, which
-       * on top of the dice animation and the next player's turn is a lot of
-       * dead time for the commonest roll in the game. A single step keeps the
-       * full beat (it needs to be legible); six compress to ~100ms each.
-       */
-      const stepMs = Math.max(85, STEP_MS - (path.length - 1) * 14);
-
-      let i = 0;
-      const playStep = () => {
-        if (i >= path.length) {
-          animationTimersRef.current.delete(id);
-          return;
-        }
-        const next = path[i];
-        i += 1;
-        setDisplayed((s) => ({ ...s, [id]: next }));
-        if (soundOn && next.state === "track") {
-          // gentle chirp per step — only on the track to avoid noise during home stretch
-          sfx.tokenMove();
-        }
-        if (i < path.length) {
-          const t = setTimeout(playStep, stepMs);
-          animationTimersRef.current.set(id, t);
-        }
-      };
-      playStep();
+      playPathRef.current(id, path);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.tokens]);

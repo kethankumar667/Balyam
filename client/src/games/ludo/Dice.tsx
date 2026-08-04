@@ -15,7 +15,9 @@ const DOTS: Record<number, [number, number][]> = {
  * timer) must match this exactly, or the CSS tumble below gets its class
  * yanked mid-animation and snaps instead of settling.
  */
-export const DICE_ROLL_MS = 640;
+// Pacing lives in shared/ludo-pacing.ts so the whole feel budget is tunable
+// in one place; re-exported here because callers already import it from Dice.
+export { DICE_ROLL_MS } from "@shared/ludo-pacing";
 
 export function Dice({
   value,

@@ -1,12 +1,15 @@
 import { useRef } from "react";
 import type { LudoColor, LudoStats, Player } from "@shared/types";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
+import { ordinal, standingsFor } from "@shared/ludo-rules";
 import { svgToPngBlob } from "../../lib/svgExport";
 
 export default function EndGameCard({
   winnerId,
   players,
   playerColors,
+  playerOrder,
+  finishOrder,
   stats,
   finishedCount,
   onClose,
@@ -15,6 +18,10 @@ export default function EndGameCard({
   winnerId: string | null;
   players: Player[];
   playerColors: Record<string, LudoColor>;
+  playerOrder: string[];
+  /** Who placed, in order. The ONLY record of 2nd vs 3rd — every placed
+   *  player has finishedCount 4, so sorting by that alone is ambiguous. */
+  finishOrder: string[];
   stats: LudoStats;
   finishedCount: Record<string, number>;
   onClose: () => void;
@@ -30,9 +37,17 @@ export default function EndGameCard({
   const minutes = Math.floor(durationMs / 60000);
   const seconds = Math.floor((durationMs % 60000) / 1000);
 
-  const orderedPlayers = players
-    .slice()
-    .sort((a, b) => (finishedCount[b.id] ?? 0) - (finishedCount[a.id] ?? 0));
+  // True standings: placed players in the order they got home, then whoever
+  // did not finish. Sorting by finishedCount alone put the placed players in
+  // arbitrary order relative to each other, since they all have 4.
+  const order = standingsFor(
+    playerOrder.length ? playerOrder : players.map((p) => p.id),
+    finishOrder,
+    finishedCount,
+  );
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const orderedPlayers = order.map((id) => byId.get(id)).filter((p): p is Player => !!p);
+  const placedCount = finishOrder.length;
 
   async function downloadPNG() {
     const svg = svgRef.current;
@@ -169,6 +184,12 @@ export default function EndGameCard({
                   <text x="80" y={y + 39} fontSize="20" fontWeight="bold" fill="white" textAnchor="middle">
                     {i + 1}
                   </text>
+                  {/* Placed players get their finishing position; the one seat
+                      that never got home is explicitly LAST rather than just
+                      being bottom of a list. */}
+                  <text x="120" y={y + 14} fontSize="11" fontWeight="bold" fill={i < placedCount ? "#fbbf24" : "#94a3b8"}>
+                    {i < placedCount ? `${ordinal(i + 1)} PLACE` : "DID NOT FINISH"}
+                  </text>
 
                   <text x="120" y={y + 30} fontSize="20" fontWeight="bold" fill="#f8fafc">
                     {p.name}
@@ -178,17 +199,22 @@ export default function EndGameCard({
                   </text>
 
                   {/* Stat cells */}
+                  {/* Every column is a counter the engine really kept. BEST
+                      is `biggestStreak` — the longest run of consecutive
+                      sixes — which the engine has always tracked and nothing
+                      ever rendered, so the number was dead weight. */}
                   {[
                     { label: "Home", value: `${finishedCount[p.id] ?? 0}/4` },
                     { label: "Rolls", value: String(stats.rollCount[p.id] ?? 0) },
                     { label: "Captures", value: String(stats.captureCount[p.id] ?? 0) },
                     { label: "Sixes", value: String(stats.sixCount[p.id] ?? 0) },
+                    { label: "Best run", value: String(stats.biggestStreak[p.id] ?? 0) },
                   ].map((s, j) => (
                     <g key={s.label}>
-                      <text x={300 + j * 120} y={y + 28} fontSize="22" fontWeight="bold" fill="#f8fafc" textAnchor="middle">
+                      <text x={300 + j * 100} y={y + 28} fontSize="22" fontWeight="bold" fill="#f8fafc" textAnchor="middle">
                         {s.value}
                       </text>
-                      <text x={300 + j * 120} y={y + 50} fontSize="11" fill="#94a3b8" textAnchor="middle">
+                      <text x={300 + j * 100} y={y + 50} fontSize="11" fill="#94a3b8" textAnchor="middle">
                         {s.label.toUpperCase()}
                       </text>
                     </g>

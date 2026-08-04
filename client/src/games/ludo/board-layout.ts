@@ -1,4 +1,12 @@
 import type { LudoColor } from "@shared/types";
+import {
+  PLAYER_COLORS_ORDER as SHARED_COLORS,
+  colorStartFor as colorStartForShared,
+  lastTrackPosFor as lastTrackPosForShared,
+  playerCountFromTrackLength as playerCountFromTrackLengthShared,
+  safeSquaresFor as safeSquaresForShared,
+  trackLengthFor as trackLengthForShared,
+} from "@shared/ludo-rules";
 
 export interface Cell {
   row: number; // 0-14
@@ -103,30 +111,58 @@ const STUB_HOME: Cell[] = [
   { row: 7.0, col: 7.0 }, { row: 7.0, col: 7.0 },
   { row: 7.0, col: 7.0 }, { row: 7.0, col: 7.0 },
 ];
+/**
+ * Where a colour's four FINISHED tokens sit inside its centre triangle.
+ *
+ * These used to be a straight line of four, 0.5 cells apart, hugging the
+ * triangle's outer edge. Home tokens render ~0.63 cells wide, so consecutive
+ * pieces overlapped by roughly a fifth of their width, and because each
+ * triangle tapers to a point the two END slots fell OUTSIDE the triangle
+ * entirely — finished tokens spilled onto the neighbouring wedge.
+ *
+ * Now a 2x2 block placed in the WIDE part of each triangle, where there is
+ * actually room. Every slot is verified inside its triangle: for the left
+ * (red) wedge the boundary at row r is col <= 6 + min(r-6, 9-r), and the
+ * widest span is around row 7.5 — which is where the block sits. The four
+ * colours are exact 90-degree rotations of each other about the centre
+ * (7.5, 7.5), so all four read identically however the board is spun.
+ *
+ * The geometry is a genuine constraint solve, not eyeballing: pushing the two
+ * rows further apart buys vertical clearance but COSTS horizontal room, since
+ * the wedge narrows away from row 7.5. With a token radius of ~0.28 cells the
+ * half-separation h must satisfy 0.29 <= h <= 0.39; h = 0.34 sits in the
+ * middle. Slot spacing lands at 0.60 x 0.68 cells — keep the home token size
+ * (see `token.state === "home"` in ludo-board-composites.tsx) under that, and
+ * see home-slots.test.ts, which checks containment and overlap directly.
+ */
 export const HOME_SLOTS: Record<LudoColor, Cell[]> = {
+  // LEFT wedge.
   red: [
-    { row: 6.55, col: 6.32 },
-    { row: 7.05, col: 6.32 },
-    { row: 7.55, col: 6.32 },
-    { row: 8.05, col: 6.32 },
+    { row: 7.16, col: 6.28 },
+    { row: 7.16, col: 6.88 },
+    { row: 7.84, col: 6.28 },
+    { row: 7.84, col: 6.88 },
   ],
+  // TOP wedge.
   green: [
-    { row: 6.32, col: 6.55 },
-    { row: 6.32, col: 7.05 },
-    { row: 6.32, col: 7.55 },
-    { row: 6.32, col: 8.05 },
+    { row: 6.28, col: 7.84 },
+    { row: 6.88, col: 7.84 },
+    { row: 6.28, col: 7.16 },
+    { row: 6.88, col: 7.16 },
   ],
+  // RIGHT wedge.
   yellow: [
-    { row: 6.55, col: 8.68 },
-    { row: 7.05, col: 8.68 },
-    { row: 7.55, col: 8.68 },
-    { row: 8.05, col: 8.68 },
+    { row: 7.84, col: 8.72 },
+    { row: 7.84, col: 8.12 },
+    { row: 7.16, col: 8.72 },
+    { row: 7.16, col: 8.12 },
   ],
+  // BOTTOM wedge.
   blue: [
-    { row: 8.68, col: 6.55 },
-    { row: 8.68, col: 7.05 },
-    { row: 8.68, col: 7.55 },
-    { row: 8.68, col: 8.05 },
+    { row: 8.72, col: 7.16 },
+    { row: 8.12, col: 7.16 },
+    { row: 8.72, col: 7.84 },
+    { row: 8.12, col: 7.84 },
   ],
   purple: STUB_HOME,
   cyan: STUB_HOME,
@@ -134,33 +170,47 @@ export const HOME_SLOTS: Record<LudoColor, Cell[]> = {
   brown: STUB_HOME,
 };
 
-export const SAFE_SQUARES = new Set<number>([0, 8, 13, 21, 26, 34, 39, 47]);
+/**
+ * RULES come from shared/ludo-rules.ts — this file owns PIXEL GEOMETRY only
+ * (which grid cell a track index maps to). The constants below used to be
+ * hand-maintained copies of the server's, which is how the home-stretch
+ * divert point ended up off by one on this board while the server was right.
+ */
+export {
+  CELLS_PER_WEDGE,
+  STRETCH_LENGTH,
+  PLAYER_COLORS_ORDER,
+  wedgeCountFor,
+  trackLengthFor,
+  playerCountFromTrackLength,
+  colorStartFor,
+  safeSquaresFor,
+  divertOffsetFor,
+  resolveDestination,
+  type LudoDestination,
+  type LudoMoveContext,
+} from "@shared/ludo-rules";
 
-export const TRACK_LENGTH = 52;
-export const STRETCH_LENGTH = 6;
+/** The classic cross board's ring length. Kept as a named constant because
+ *  the 15x15 cell tables in this file are inherently 4-arm. */
+export const TRACK_LENGTH = trackLengthForShared(4);
 
-export const COLOR_START_POSITION: Record<LudoColor, number> = {
-  red: 0,
-  green: 13,
-  yellow: 26,
-  blue: 39,
-  purple: 52, // only relevant for 5+ player polygon boards
-  cyan: 65,
-  orange: 78,
-  brown: 91,
-};
+/** Safe squares as drawn on the cross board — derived, not hand-listed. */
+export const SAFE_SQUARES: Set<number> = safeSquaresForShared([], 4);
+
+/** Track index of each color's launch square. Derived from the shared rule so
+ *  it cannot disagree with the server about where a token enters. */
+export const COLOR_START_POSITION: Record<LudoColor, number> = Object.fromEntries(
+  SHARED_COLORS.map((c) => [c, colorStartForShared(c)]),
+) as Record<LudoColor, number>;
 
 /**
- * Mirrors `divertOffsetFor` in server/src/games/ludo/track.ts — see the full
- * rationale there. Short version: the cross board's lane is fed by the cell
- * two before a color's start (the cell one before sits on the outer edge and
- * would only lead back onto the start square); the polygon boards divert one
- * before. Client and server must agree or the previewed route and the played
- * route diverge.
+ * Adapter over the shared rule for callers that carry a track LENGTH rather
+ * than a player count (the animation and preview paths derive theirs from the
+ * polygon geometry). The rule itself lives in shared/ludo-rules.ts.
  */
 export function lastTrackPosFor(color: LudoColor, trackLength: number = TRACK_LENGTH): number {
-  const back = trackLength <= TRACK_LENGTH ? 2 : 1;
-  return (COLOR_START_POSITION[color] + trackLength - back) % trackLength;
+  return lastTrackPosForShared(color, playerCountFromTrackLengthShared(trackLength));
 }
 
 /**
@@ -193,11 +243,6 @@ export const COLOR_HEX_DARK: Record<LudoColor, string> = {
   orange: "#AE510F",
   brown: "#714505",
 };
-
-export const PLAYER_COLORS_ORDER: LudoColor[] = [
-  "red", "green", "yellow", "blue",
-  "purple", "cyan", "orange", "brown",
-];
 
 /** Yard corner regions (6x6 each) for SVG painting. */
 export const YARD_REGIONS: Record<LudoColor, { r0: number; c0: number }> = {
