@@ -192,7 +192,7 @@ function BotControls({
 const SCORECARD_WINDOW_MS = 90_000;
 /** Games that render their own end-of-round scorecard modal and call back
  *  via onScorecardClose. GenericScorecardModal is suppressed for these. */
-const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket", "uno", "bingo"]);
+const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket", "uno", "bingo", "ludo"]);
 
 export default function Room() {
   const { code } = useParams<{ code: string }>();
@@ -401,6 +401,46 @@ export default function Room() {
     () => roomState?.players.find((p) => p.id === playerId) ?? null,
     [roomState?.players, playerId]
   );
+
+  /**
+   * "I'm back" — reclaim your seat the moment you touch anything.
+   *
+   * While the server is auto-playing a seat, the player has almost no way to
+   * prove they have returned. Tapping a gated control (the dice on someone
+   * else's turn) emits nothing at all, and by the time their own turn comes
+   * round the auto-player resolves it in a few hundred milliseconds — far
+   * faster than someone still re-reading the board. The seat stayed on
+   * autopilot for the rest of the match.
+   *
+   * Mounted on the room shell so every game gets it, and armed ONLY while the
+   * flag is set, so there is no listener and no traffic in the normal case.
+   * Capture phase, because a gated control may stop propagation before a
+   * bubbling listener would ever see the tap.
+   */
+  const selfIsAutoPlaying = selfPlayer?.isAutoPlaying === true;
+  useEffect(() => {
+    if (!selfIsAutoPlaying) return;
+    let lastSent = 0;
+    const wake = () => {
+      // One ping per second is plenty: the server clears the flag on the
+      // first one, and this unmounts as soon as that lands.
+      const now = Date.now();
+      if (now - lastSent < 1000) return;
+      lastSent = now;
+      try {
+        getSocket().emit("room:awake");
+      } catch {
+        /* socket down — the reconnect path will clear the seat instead */
+      }
+    };
+    const opts = { capture: true, passive: true } as const;
+    window.addEventListener("pointerdown", wake, opts);
+    window.addEventListener("keydown", wake, opts);
+    return () => {
+      window.removeEventListener("pointerdown", wake, opts);
+      window.removeEventListener("keydown", wake, opts);
+    };
+  }, [selfIsAutoPlaying]);
 
   /**
    * Every game auto-enters fullscreen at the moment the room transitions
@@ -806,6 +846,7 @@ export default function Room() {
                       roomCode={roomState.code}
                       roomPhase={roomState.phase}
                       onLeave={leaveRoom}
+                      onScorecardClose={triggerGameOver}
                     />
                   </PassPhoneGate>
                 );
@@ -987,6 +1028,36 @@ export default function Room() {
           in-board scorecard modal is dismissed (RummyBoard calls the
           `onScorecardClose` callback above, which calls `triggerGameOver`).
           A rematch (phase → "playing") hides it and resets the deadline. */}
+      {/* "I'm back" — shown ONLY to the player whose seat is being auto-played.
+          Any interaction already reclaims the seat silently (see the presence
+          effect above), but a player who has just returned to a board that has
+          moved without them needs to be told what is happening and given an
+          unmistakable way out — not left to guess that clicking somewhere will
+          fix it. Everyone else sees the robot on that seat instead. */}
+      {selfIsAutoPlaying && roomState?.phase === "playing" && (
+        <div className="fixed inset-x-0 bottom-4 z-[70] flex justify-center px-4 pointer-events-none">
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                getSocket().emit("room:awake");
+              } catch {
+                /* socket down — the reconnect path clears the seat instead */
+              }
+            }}
+            className="pointer-events-auto flex items-center gap-2 rounded-full px-5 py-3 font-extrabold text-sm shadow-2xl active:scale-95 transition"
+            style={{
+              background: "linear-gradient(135deg,#fde68a,#f59e0b)",
+              color: "#1f1300",
+              border: "2px solid #b45309",
+            }}
+          >
+            <span aria-hidden>🤖</span>
+            <span>Auto-play is on — tap to take back your turn</span>
+          </button>
+        </div>
+      )}
+
       {showGameOver && gameOverDeadlineMs > 0 && (
         <GameOverScreen
           players={roomState.players}

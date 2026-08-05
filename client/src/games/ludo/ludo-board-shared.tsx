@@ -12,6 +12,7 @@ import {
   starPts,
 } from "./print-marks";
 import { YARD_TOKEN_W, HOME_TOKEN_W } from "./print-board";
+import { ordinal } from "@shared/ludo-rules";
 
 /**
  * Ludo — shared render primitives.
@@ -285,6 +286,7 @@ export function BoardSVG({
   registerCard,
   selfId,
   finishedCount,
+  finishOrder = [],
   rotationDeg = 0,
   paint,
 }: {
@@ -310,6 +312,9 @@ export function BoardSVG({
   selfId: string | null;
   /** Home-token count per playerId - drives the live "N/4" corner badge. */
   finishedCount: Record<string, number>;
+  /** Seats that are all-home, in the order they got there. A player's index
+   *  here is their PLACE, which is stamped across their emptied yard. */
+  finishOrder?: string[];
 }) {
   // Every fill below goes through these, so an arm is drawn in its
   // occupant's color rather than its own.
@@ -382,13 +387,59 @@ export function BoardSVG({
         const { r0, c0 } = YARD_REGIONS[color];
         const inactive = !playerColorsInRoom.includes(color);
         const pid = playerIdByColor[color];
-        const name = pid ? players.find((p) => p.id === pid)?.name ?? null : null;
+        const seat = pid ? players.find((p) => p.id === pid) ?? null : null;
+        const name = seat?.name ?? null;
+        /** 1-based finishing place, or 0 while they are still playing. Their
+         *  yard is empty by then — all four tokens are home — so the number
+         *  has the whole pad to itself. */
+        const place = pid ? finishOrder.indexOf(pid) + 1 : 0;
+        /** The server is playing this seat. Shown to EVERYONE: a table needs
+         *  to know why a player keeps moving without being there. */
+        const autoPlaying = seat?.isAutoPlaying === true;
         return (
           <g key={color} opacity={inactive ? 0.45 : 1}>
             {/* Outer colored frame with rounded corner */}
             <rect x={c0 + 0.2} y={r0 + 0.2} width={6 - 0.4} height={6 - 0.4} rx={0.25} fill={`url(#ludo-yard-${color})`} stroke={INK} strokeWidth={LANE_STROKE} />
             {/* Inner cream pad where tokens park */}
             <rect x={c0 + 1} y={r0 + 1} width={4} height={4} rx={0.2} fill={PRINT_CELL} stroke={INK} strokeWidth={GRID_STROKE} />
+
+            {/* FINISHING PLACE, stamped across the emptied yard.
+                Only appears once all four of this player's tokens are home,
+                which is exactly when the pad is free — so a big numeral costs
+                nothing and turns a blank quadrant into the scoreboard. Drawn
+                under the tokens layer and counter-rotated, like the name
+                plate, so it stays upright however the board is spun. */}
+            {place > 0 && (
+              <g
+                transform={`translate(${c0 + 3} ${r0 + 3}) rotate(${-rotationDeg})`}
+                style={{ pointerEvents: "none" }}
+              >
+                <title>{name} finished {ordinal(place)}</title>
+                <text
+                  textAnchor="middle"
+                  y={1.05}
+                  fontSize="3.2"
+                  fontWeight="900"
+                  fill={CH(color)}
+                  stroke={CHD(color)}
+                  strokeWidth={0.11}
+                  paintOrder="stroke"
+                  opacity={0.92}
+                >
+                  {place}
+                </text>
+                <text
+                  textAnchor="middle"
+                  y={1.75}
+                  fontSize="0.62"
+                  fontWeight="800"
+                  fill={CHD(color)}
+                  style={{ textTransform: "uppercase", letterSpacing: "0.14em" }}
+                >
+                  {ordinal(place).slice(String(place).length)}
+                </text>
+              </g>
+            )}
             {/* Faint hand-drawn crown watermark behind the parked tokens —
                 the reference's per-quadrant motif. Decorative only. */}
             <g
@@ -441,8 +492,36 @@ export function BoardSVG({
                 <rect x={-2.5} y={-0.375} width={5} height={0.75} rx={0.38} fill={CH(color)} stroke={CHD(color)} strokeWidth={0.08} />
                 {/* Inner gold trim line */}
                 <rect x={-2.38} y={-0.275} width={4.76} height={0.55} rx={0.3} fill="none" stroke="#ffffff" strokeWidth={0.04} opacity={0.35} />
-                <text x={-0.15} y={0.17} textAnchor="middle" fontSize="0.5" fontWeight="900" fill="#ffffff" style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  {name.slice(0, 12)}
+                {/* Robot badge — rides the name plate rather than the yard pad,
+                    because the pad is where tokens park and a badge there
+                    would sit under one. Left end, so the name still centres
+                    close to where it always did. */}
+                {autoPlaying && (
+                  <g transform="translate(-1.95 0)">
+                    <title>{name} is away — the table is playing their turns</title>
+                    <circle r={0.3} fill="#ffffff" opacity={0.92} />
+                    <g stroke={CHD(color)} strokeWidth={0.055} fill="none" strokeLinecap="round">
+                      {/* antenna */}
+                      <path d="M0 -0.235 v -0.075" />
+                      <circle cx={0} cy={-0.3} r={0.045} fill={CHD(color)} stroke="none" />
+                      {/* head */}
+                      <rect x={-0.17} y={-0.19} width={0.34} height={0.3} rx={0.08} />
+                    </g>
+                    {/* eyes */}
+                    <circle cx={-0.07} cy={-0.05} r={0.037} fill={CHD(color)} />
+                    <circle cx={0.07} cy={-0.05} r={0.037} fill={CHD(color)} />
+                  </g>
+                )}
+                <text
+                  x={autoPlaying ? 0.15 : -0.15}
+                  y={0.17}
+                  textAnchor="middle"
+                  fontSize="0.5"
+                  fontWeight="900"
+                  fill="#ffffff"
+                  style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
+                >
+                  {name.slice(0, autoPlaying ? 10 : 12)}
                 </text>
                 {/* The "N/4" home-progress pill that used to sit here was
                     removed at the user's request: the seat cards already

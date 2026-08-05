@@ -1749,6 +1749,17 @@ export interface ClientToServerEvents {
   "room:setOrientation": (needsRotation: boolean) => void;
   /** Host-only. Names (or renames) the room — "Friday Rummy Nights" etc. Trimmed/capped server-side. */
   "room:setName": (name: string) => void;
+  /**
+   * "I'm here" — sent when a player interacts while the server is auto-playing
+   * their seat, to hand control straight back.
+   *
+   * Needed because the obvious signals do not exist on every device. Desktop
+   * leaks presence through `room:cursor`, but touch devices have no cursor at
+   * all, and tapping a control that is gated off (the dice on someone else's
+   * turn) emits nothing. Without this a phone player had no way to say they
+   * were back.
+   */
+  "room:awake": () => void;
   "room:startGame": () => void;
   "chat:send": (payload: ChatSendPayload) => void;
   "game:move": (payload: GameMovePayload) => void;

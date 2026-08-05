@@ -703,6 +703,193 @@ export function LudoTurnCallout({ m, state }: { m: LudoBoardModel; state: LudoSt
   );
 }
 
+/**
+ * "What just happened" — the same copy the toasts carry, kept instead of
+ * discarded after 3.2s. A player who looked away had no way to learn they had
+ * been cut.
+ *
+ * TWO SHAPES, one source, because the two shells have opposite spare space:
+ *
+ *   rail  — desktop. A tall column that was holding one 92px dice button in
+ *           868px of height, so a five-row list costs nothing.
+ *   strip — mobile. A phone board is WIDTH-bound, so the board row is taller
+ *           than the square inside it and leaves ~135px of blank paper above
+ *           and below. This spends part of that. It sits OUTSIDE the board's
+ *           own flex slot, so the ResizeObserver still measures what is left:
+ *           in portrait the board keeps its size and the strip is free, and
+ *           on a short landscape screen — where the board is height-bound and
+ *           there is no slack to spend — the board simply wins and the strip
+ *           gives way rather than forcing a scroll.
+ */
+export function LudoMatchFeed({
+  m,
+  variant,
+}: {
+  m: LudoBoardModel;
+  variant: "rail" | "strip";
+}) {
+  const items = m.feed.slice(0, variant === "rail" ? 5 : 2);
+  const empty = "Nothing yet — cuts and homecomings show up here.";
+
+  if (variant === "strip") {
+    // One compact card. Hidden entirely when there is nothing to say: on a
+    // phone an empty box is worse than no box.
+    if (items.length === 0) return null;
+    return (
+      <div
+        className="mx-auto flex w-full max-w-[26rem] flex-col gap-0.5 rounded-xl px-2.5 py-1.5"
+        style={{ background: "rgba(247,232,196,0.55)", border: "2px solid #C8A66B" }}
+        aria-live="polite"
+      >
+        {items.map((f, i) => (
+          <div
+            key={f.id}
+            className="flex items-center gap-1.5 truncate text-[11px] font-bold leading-tight"
+            style={{ color: "#6D4323", opacity: i === 0 ? 1 : 0.6 }}
+          >
+            <span aria-hidden>{f.emoji}</span>
+            <span className="truncate">{f.text}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-full rounded-2xl px-2 py-2"
+      style={{ background: "rgba(247,232,196,0.55)", border: "2px solid #C8A66B" }}
+      aria-live="polite"
+    >
+      <div className="px-1 pb-1 text-[10px] font-black uppercase tracking-[0.16em]" style={{ color: "#8A6A45" }}>
+        Match feed
+      </div>
+      <ul className="flex flex-col gap-1">
+        {items.length === 0 && (
+          <li className="px-1.5 py-1 text-[11px] font-semibold" style={{ color: "#A08A6B" }}>
+            {empty}
+          </li>
+        )}
+        {items.map((f, i) => (
+          <li
+            key={f.id}
+            className="flex items-start gap-1.5 rounded-lg px-1.5 py-1 text-[11px] font-semibold leading-snug"
+            style={{
+              color: "#6D4323",
+              background: i === 0 ? "rgba(255,255,255,0.75)" : "transparent",
+              opacity: 1 - i * 0.13,
+            }}
+          >
+            <span aria-hidden>{f.emoji}</span>
+            <span className="min-w-0 flex-1">{f.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * The right rail — turn state, the dice, and what just happened.
+ *
+ * The column was 225px wide and 868px tall holding a single 92px dice button,
+ * so the most important control on the screen read as debris floating in a
+ * gutter. And whose turn it was lived in 12px italic text at the very top of
+ * the page, ~300px from the seat card that was actually lit — on a four-player
+ * table you had to hunt for it.
+ *
+ * Stacking the three together fixes both: the column earns its width, and the
+ * turn state sits directly above the thing you press when it is yours.
+ */
+export function LudoTurnTower({
+  m,
+  state,
+}: {
+  m: LudoBoardModel;
+  state: LudoState;
+}) {
+  const finished = state.phase === "finished";
+  const activeId = m.displayTurnPlayerId;
+  const color = state.playerColors[activeId] as LudoColor | undefined;
+  const hex = color ? COLOR_HEX[color] : "#9C7A3C";
+  const dark = color ? COLOR_HEX_DARK[color] : "#6D4323";
+  const mine = m.displayMyTurn;
+  const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
+  const ticking = state.turnDeadline != null && secondsLeft > 0 && !finished;
+  const urgent = ticking && secondsLeft <= 5;
+
+  return (
+    /* Three rows, not a centred stack: turn state pinned to the top of the
+       column, the dice held on the board's own centre line where the eye
+       already is, and the feed anchored to the bottom. Centring all three
+       left them huddled in the middle of an 868px column with ~300px of bare
+       paper above and below — the rail looked emptier than before it had
+       anything in it. */
+    <div className="grid h-full w-full grid-rows-[auto_1fr_auto] items-center justify-items-center gap-3">
+      {/* ── Whose turn ─────────────────────────────────────────────────
+          Keyed on turnPulse so the handover animates instead of silently
+          swapping a word — a change you do not see is a change you miss. */}
+      {!finished && (
+        <div
+          key={m.turnPulse}
+          className="ludo-turn-change w-full rounded-2xl px-3 py-2.5 text-center"
+          style={{
+            background: mine ? hex : "#F7E8C4",
+            border: `3px solid ${mine ? dark : "#C8A66B"}`,
+            boxShadow: mine
+              ? `0 0 0 4px ${hex}33, 0 6px 16px rgba(0,0,0,0.18)`
+              : "0 3px 10px rgba(0,0,0,0.10)",
+          }}
+        >
+          <div
+            className="text-[11px] font-black uppercase tracking-[0.18em]"
+            style={{ color: mine ? "#FFFBF0" : "#8A6A45" }}
+          >
+            {mine ? "Your turn" : "Now playing"}
+          </div>
+          {!mine && (
+            <div
+              className="mt-0.5 truncate text-[15px] font-black leading-tight"
+              style={{ color: dark }}
+              title={m.nameOf(activeId)}
+            >
+              {m.nameOf(activeId)}
+            </div>
+          )}
+          <div
+            className="mt-0.5 text-[12px] font-bold"
+            style={{ color: mine ? "#FFFBF0" : "#8A6A45" }}
+          >
+            {m.displayTurnPhase === "rolling" ? "Roll the dice" : "Move a token"}
+          </div>
+
+          {/* The clock only appears when it is actually running, and only goes
+              loud in the last five seconds — a countdown that is always red
+              stops meaning anything. */}
+          {ticking && (
+            <div
+              className="mx-auto mt-1.5 w-fit rounded-full px-2.5 py-0.5 text-[13px] font-black tabular-nums"
+              style={{
+                background: urgent ? "#DC2626" : mine ? "rgba(255,255,255,0.9)" : "#EFE0BC",
+                color: urgent ? "#fff" : dark,
+              }}
+              aria-label={`${secondsLeft} seconds left`}
+            >
+              {secondsLeft}s
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center">
+        <LudoRollTray m={m} state={state} />
+      </div>
+
+      <LudoMatchFeed m={m} variant="rail" />
+    </div>
+  );
+}
+
 export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState }) {
   const streak = state.consecutiveSixes > 0 && state.consecutiveSixes < 3;
   const canRoll = m.myTurn && m.canRoll && !m.rolling;
@@ -885,6 +1072,7 @@ export function LudoBoardArea({
           registerCard={m.registerPlayerCard}
           selfId={m.selfId}
           finishedCount={state.finishedCount}
+          finishOrder={state.finishOrder ?? []}
           rotationDeg={m.boardRotation}
         />
       )}
@@ -1048,7 +1236,9 @@ export function LudoOverlays({
           finishOrder={state.finishOrder ?? []}
           stats={state.stats}
           finishedCount={state.finishedCount}
-          onClose={() => m.setShowEndCard(false)}
+          // Hands off to the platform game-over flow (auto-leave countdown +
+          // rematch), which the generic scorecard used to own.
+          onClose={m.closeScorecard}
           onRematch={m.rematch}
         />
       )}

@@ -1093,6 +1093,28 @@ export class RoomManager {
    * reconnect path, and a move arriving for a seat with no socket would mean
    * something has gone wrong rather than that they are back.
    */
+  /**
+   * ANY inbound event from a seated socket counts as "somebody is there".
+   *
+   * An accepted move is not enough, and relying on it created a trap with no
+   * way out. Picture the reported case: you come back, it is somebody else's
+   * turn, you click the dice — the client does not even emit, because the
+   * roll button is gated on `canRoll`. Nothing reaches the server, so the
+   * takeover stands. Then your own turn arrives and the auto-player resolves
+   * it within a few hundred milliseconds, long before a human who is still
+   * reading the board can act. There is no moment at which you can prove you
+   * are back, so the seat stays on autopilot for the rest of the match.
+   *
+   * Fail-open is deliberate here. A false "present" costs one turn timer, and
+   * self-corrects after two strikes; a false "away" locks a player out of
+   * their own game indefinitely. Those are not close.
+   */
+  noteSocketActivity(socketId: string): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    this.noteActivity(room, player.id);
+  }
+
   private noteActivity(room: Room, playerId: string): void {
     room.idleStrikes.delete(playerId);
     const p = room.players.get(playerId);
