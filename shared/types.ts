@@ -24,6 +24,15 @@ export interface Player {
    * end-of-game purposes — only for "who acts now".
    */
   isAutoPlaying?: boolean;
+  /**
+   * WHY the server is playing this seat — the two cases need different words
+   * on screen, and different things end them.
+   *
+   *   "disconnected" — their socket is gone. Ends when they reconnect.
+   *   "idle"         — connected, but they have let consecutive turns time
+   *                    out. Ends the moment they make any move.
+   */
+  autoPlayReason?: "disconnected" | "idle";
   /** True if this is a server-controlled AI player (no real socket). */
   isBot?: boolean;
   /**

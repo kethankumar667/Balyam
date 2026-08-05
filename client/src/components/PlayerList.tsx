@@ -38,14 +38,19 @@ export default function PlayerList({
               {p.name}
               {p.id === selfId && <span className="text-[#8C7A67] text-xs ml-1 dark:text-slate-500">(you)</span>}
             </span>
-            {/* The server is holding this seat for someone who dropped. Said
-                explicitly because the amber dot alone reads as "flaky", not
-                as "their turns are being played for them" — and the table
-                needs to know why moves are happening without them. */}
+            {/* The server is holding this seat. Said explicitly because the
+                amber dot alone reads as "flaky", not as "their turns are
+                being played for them" — and the table needs to know why moves
+                are happening without them. The reason matters: one ends when
+                they reconnect, the other the moment they play. */}
             {p.isAutoPlaying && (
               <span
                 className="text-[10px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                title={`${p.name} lost connection — the table is playing their turns until they return`}
+                title={
+                  p.autoPlayReason === "idle"
+                    ? `${p.name} isn't responding — the table is playing their turns. Any move takes the seat back.`
+                    : `${p.name} lost connection — the table is playing their turns until they return.`
+                }
               >
                 Auto
               </span>

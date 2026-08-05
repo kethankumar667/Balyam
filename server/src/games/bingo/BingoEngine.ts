@@ -296,13 +296,27 @@ export class BingoEngine implements GameEngine {
     }
   }
 
+  /**
+   * Everyone holding a winning board right now — bots AND humans.
+   *
+   * This used to skip humans outright (`!p.isBot` → continue), which was fine
+   * while the only consumer was bot scheduling but silently excluded Bingo
+   * from disconnect takeover: a player who dropped mid-game would sit on a
+   * completed board and never have it claimed, losing a `stopOnFirstWin` room
+   * outright while offline.
+   *
+   * Reporting every eligible seat is the honest answer to "who can act now".
+   * RoomManager decides who may be acted FOR — it already narrows this to
+   * bots plus seats the server has taken over — so a present human is listed
+   * here and still left entirely alone.
+   */
   pendingActors(): string[] {
     if (this.state.phase !== "playing") return [];
     if (this.state.stopOnFirstWin && this.state.winners.length > 0) return [];
     const ready: string[] = [];
     for (const id of this.state.playerOrder) {
       const p = this.state.players.get(id);
-      if (!p || !p.isBot || p.hasWon) continue;
+      if (!p || p.hasWon) continue;
       const cooldownUntil = this.state.claimCooldowns.get(id) ?? 0;
       if (this.now() < cooldownUntil) continue;
       if (validateWin(p.board, this.state.calledSet).valid) ready.push(id);
@@ -314,8 +328,23 @@ export class BingoEngine implements GameEngine {
     return this.applyMove({ playerId, type: "claim" });
   }
 
+  /**
+   * Claim speed for whichever seat is about to be played.
+   *
+   * Reads the first BOT in the pending list, not simply the first entry:
+   * `pendingActors` now reports eligible humans too (so a disconnected player
+   * can have their board claimed), and a human seat carries no `difficulty`.
+   * Taking `[0]` blindly meant one human ahead of a bot in seat order
+   * silently downgraded a "hard" bot to the medium delay — long enough, at a
+   * fast call interval, for the caller to exhaust the deck before the bot
+   * ever claimed, ending the round with no winner at all.
+   *
+   * A seat with no difficulty (a taken-over human) falls through to medium,
+   * which is the right pace for standing in for a person.
+   */
   getBotThinkDelayMs(): number {
-    const id = this.pendingActors()[0];
+    const pending = this.pendingActors();
+    const id = pending.find((pid) => this.state.players.get(pid)?.isBot) ?? pending[0];
     const difficulty = id ? this.state.players.get(id)?.difficulty ?? "medium" : "medium";
     switch (difficulty) {
       case "easy":

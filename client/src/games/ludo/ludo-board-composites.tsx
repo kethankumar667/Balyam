@@ -173,9 +173,14 @@ type LudoSeatMeta = {
   color: LudoColor;
   online: boolean;
   isBot: boolean;
-  /** The server is playing this seat while its owner reconnects. Distinct
-   *  from `isBot` — they are coming back, and the seat is still theirs. */
+  /** The server is playing this seat for its owner. Distinct from `isBot` —
+   *  they are coming back, and the seat is still theirs. */
   autoPlaying: boolean;
+  /** Why — "disconnected" ends on reconnect, "idle" the moment they play.
+   *  Not optional: `orderedSeats` always sets it (to undefined when the seat
+   *  is not taken over), and an optional field there breaks the type
+   *  predicate that filters colourless seats out of the list. */
+  autoReason: "disconnected" | "idle" | undefined;
   tokensHome: number;
   active: boolean;
   /** Won the finished game — gets the gold winner treatment. */
@@ -234,6 +239,7 @@ function orderedSeats(state: LudoState, players: Player[], selfId?: string | nul
         online: p?.isConnected !== false,
         isBot: p?.isBot === true,
         autoPlaying: p?.isAutoPlaying === true,
+        autoReason: p?.autoPlayReason,
         tokensHome: state.finishedCount?.[pid] ?? 0,
         active: state.turnPlayerId === pid && state.phase !== "finished",
         isWinner: state.phase === "finished" && state.winnerId === pid,
@@ -431,20 +437,31 @@ function LudoPlayerCard({
           </span>
           {!dense && seat.isBot && <span className="flex-shrink-0 text-[8px] opacity-60">BOT</span>}
         </div>
-        {offline ? (
+        {/* Gated on `offline || autoPlaying`, not offline alone: an IDLE
+            takeover is a fully connected player who has stopped responding,
+            so keying this off the socket would have hidden exactly the case
+            the table most needs explained — someone whose dot is green but
+            whose turns are being played for them. */}
+        {offline || seat.autoPlaying ? (
           <div
             className="text-[9px] font-bold mt-0.5 truncate"
             style={{ color: "#B45309" }}
             title={
-              seat.autoPlaying
-                ? `${seat.name} lost connection — the table is playing their turns until they return`
-                : `${seat.name} is reconnecting`
+              seat.autoReason === "idle"
+                ? `${seat.name} isn't responding — the table is playing their turns. Any move takes the seat back.`
+                : seat.autoPlaying
+                  ? `${seat.name} lost connection — the table is playing their turns until they return`
+                  : `${seat.name} is reconnecting`
             }
           >
             {/* Once the server has taken the seat, say so. "Reconnecting…" on
                 its own leaves the table wondering why that player keeps
                 moving while their dot is amber. */}
-            {seat.autoPlaying ? "Reconnecting · auto" : "Reconnecting…"}
+            {seat.autoReason === "idle"
+              ? "Away · auto"
+              : seat.autoPlaying
+                ? "Reconnecting · auto"
+                : "Reconnecting…"}
           </div>
         ) : (
           <div
