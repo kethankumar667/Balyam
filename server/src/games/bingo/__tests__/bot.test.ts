@@ -56,12 +56,39 @@ describe("pendingActors", () => {
     expect(e.pendingActors()).toEqual(["p1"]);
   });
 
-  it("never includes a human player, even with a completed pattern", () => {
+  /**
+   * This used to assert the opposite — that a human is NEVER listed.
+   *
+   * That excluded Bingo from disconnect takeover: a player who dropped while
+   * holding a completed board would never have it claimed, losing a
+   * stop-on-first-win room outright while offline. `pendingActors` answers
+   * "who COULD act", and a human with a winning pattern plainly could.
+   *
+   * The protection it was really guarding — that a PRESENT human is never
+   * played for — is a RoomManager decision, not an engine one, and is pinned
+   * there in disconnectTakeover.test.ts. Asserting it here only ever tested
+   * the wrong layer.
+   */
+  it("includes a human with a completed pattern (RoomManager decides who may be played for)", () => {
     const e = newEngine(players(2));
     const s = state(e);
     s.players.get("p0")!.board = riggedBoard(); // p0 is the human host
     [1, 2, 3, 4, 5].forEach((v) => s.calledSet.add(v));
-    expect(e.pendingActors()).toEqual([]);
+    expect(e.pendingActors()).toEqual(["p0"]);
+  });
+
+  it("prices the think delay off the BOT, not whoever is first in seat order", () => {
+    // A human ahead of a bot used to downgrade a "hard" bot to the medium
+    // delay, which at a fast call interval let the deck run out before it
+    // claimed — a round that ended with no winner.
+    const e = newEngine(players(2));
+    const s = state(e);
+    s.players.get("p1")!.difficulty = "hard";
+    s.players.get("p0")!.board = riggedBoard();
+    s.players.get("p1")!.board = riggedBoard();
+    [1, 2, 3, 4, 5].forEach((v) => s.calledSet.add(v));
+    expect(e.pendingActors()[0]).toBe("p0"); // human is first in seat order
+    expect(e.getBotThinkDelayMs()).toBeLessThanOrEqual(500); // still the hard band
   });
 
   it("excludes a bot that already won", () => {

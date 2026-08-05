@@ -595,11 +595,34 @@ export function NotebookMarginDoodles() {
 
 /* ─────────────────────────── Candidate line (tap target) ─────────────────────────── */
 
+/**
+ * How thick an undrawn edge's TAP TARGET is, across the line.
+ *
+ * This was a hard-coded 20px, which on the 9x9 board (38px cells) left every
+ * edge a 31x20 target — well under half the 44px minimum, and the hardest
+ * thing to hit anywhere in the app on a 320px phone.
+ *
+ * It cannot simply become 44: parallel edges sit exactly `cellPx` apart, so
+ * anything wider than a cell makes neighbouring targets overlap and taps
+ * ambiguous — which is worse than a small target, because it misfires instead
+ * of missing. So take the largest size that still cannot collide, capped
+ * where extra width stops helping the thumb and starts stealing area from the
+ * perpendicular edges near each dot.
+ *
+ * 9x9 goes 20 -> 26px. Still short of 44, and honestly so: at eight cells
+ * across a 320px screen the geometry cannot pay 44px. The remaining fix for
+ * that board is fewer cells, not a bigger hitbox.
+ */
+function hitThicknessFor(cellPx: number): number {
+  return Math.max(20, Math.min(30, Math.round(cellPx * 0.7)));
+}
+
 function CandidateLine({
   horizontal,
   left,
   top,
   length,
+  thickness,
   canPlay,
   onClick,
   selfPenColor,
@@ -608,6 +631,7 @@ function CandidateLine({
   left: number;
   top: number;
   length: number;
+  thickness: number;
   canPlay: boolean;
   onClick: () => void;
   selfPenColor?: string;
@@ -624,8 +648,8 @@ function CandidateLine({
         position: "absolute",
         left,
         top,
-        width: horizontal ? length : 20,
-        height: horizontal ? 20 : length,
+        width: horizontal ? length : thickness,
+        height: horizontal ? thickness : length,
         background: "transparent",
         border: "none",
         padding: 0,
@@ -688,6 +712,7 @@ export function NotebookBoard({
 }) {
   const size = state.options.boardSize;
   const totalPx = (size - 1) * cellPx + DOT_PX;
+  const hitPx = hitThicknessFor(cellPx);
 
   // The dot grid never changes between real state updates — only when the
   // board size or cell scale changes. Memoise it so it isn't rebuilt on
@@ -825,8 +850,11 @@ export function NotebookBoard({
               key={`hh-${r}-${c}`}
               horizontal
               left={x + DOT_PX / 2}
-              top={y - 10 + DOT_PX / 2}
+              // Centred on the edge: the offset has to track the thickness,
+              // or a wider target grows downward only and sits off the line.
+              top={y - hitPx / 2 + DOT_PX / 2}
               length={w}
+              thickness={hitPx}
               canPlay={canPlay}
               onClick={() => onDraw("h", r, c)}
               selfPenColor={selfPenColor}
@@ -846,9 +874,10 @@ export function NotebookBoard({
             <CandidateLine
               key={`vv-${r}-${c}`}
               horizontal={false}
-              left={x - 10 + DOT_PX / 2}
+              left={x - hitPx / 2 + DOT_PX / 2}
               top={y + DOT_PX / 2}
               length={h}
+              thickness={hitPx}
               canPlay={canPlay}
               onClick={() => onDraw("v", r, c)}
               selfPenColor={selfPenColor}

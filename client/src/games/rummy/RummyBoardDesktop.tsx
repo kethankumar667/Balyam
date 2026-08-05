@@ -834,6 +834,7 @@ export default function RummyBoardDesktop({
                 eliminated={state.eliminatedInMatch.includes(id)}
                 connected={players.find((p) => p.id === id)?.isConnected ?? true}
                 autoPlaying={players.find((p) => p.id === id)?.isAutoPlaying === true}
+                autoReason={players.find((p) => p.id === id)?.autoPlayReason}
                 cumulativeScore={state.cumulativeScores?.[id]}
               />
             ))}
@@ -1602,6 +1603,7 @@ function SeatCard({
   eliminated,
   connected,
   autoPlaying,
+  autoReason,
   cumulativeScore,
 }: {
   letter: string;
@@ -1613,6 +1615,7 @@ function SeatCard({
   eliminated: boolean;
   connected: boolean;
   autoPlaying: boolean;
+  autoReason?: "disconnected" | "idle";
   cumulativeScore?: number;
 }) {
   const out = dropped || eliminated;
@@ -1631,7 +1634,7 @@ function SeatCard({
     // Outranks the turn state: whose turn it is matters less than the fact
     // that nobody is behind the seat taking it.
     : autoPlaying
-    ? "Reconnecting · auto"
+    ? (autoReason === "idle" ? "Away · auto" : "Reconnecting · auto")
     : isTurn
     // "Your turn" on somebody else's seat is a lie the second person at the
     // table would read as their own cue.

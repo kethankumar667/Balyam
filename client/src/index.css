@@ -95,7 +95,16 @@
   --text-hi:   #f8fafc;
   --text-mid:  #cbd5e1;
   --text-lo:   #94a3b8;
-  --text-mute: #64748b;
+  /* Was #64748b, carried over unchanged from the light theme, where it is
+     fine. On these surfaces it measures 4.24 / 3.93 / 3.59 / 3.07 against
+     surface-0..3 — failing AA on every one of them, worst on the lightest
+     panel. #8592a4 is the darkest value that clears 4.5:1 on all four, so the
+     tier stays visibly quieter than --text-lo instead of collapsing into it
+     (bumping it to #94a3b8 would have made the two identical).
+
+     Latent, not live: nothing references --text-mute today. Fixed rather than
+     deleted so the next component to reach for it inherits a passing value. */
+  --text-mute: #8592a4;
   --rim-soft:  rgba(255,255,255,0.08);
   --ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--color-brand-400);
 }

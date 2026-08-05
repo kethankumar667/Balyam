@@ -31,25 +31,44 @@ function makeIo(): {
   io: Server<ClientToServerEvents, ServerToClientEvents>;
   broadcasts: RoomPublicState[];
   chat: ChatMessage[];
+  direct: ChatMessage[];
 } {
   const broadcasts: RoomPublicState[] = [];
   const chat: ChatMessage[] = [];
-  const fakeSocket = { join() {}, leave() {}, emit() {} };
+  // Messages sent to ONE socket rather than the room. The welcome-back note
+  // is deliberately private to the returning player, so a room-level capture
+  // would never see it.
+  const direct: ChatMessage[] = [];
+  const fakeSocket = {
+    join() {},
+    leave() {},
+    emit: (event: string, payload: unknown) => {
+      if (event === "chat:message") direct.push(payload as ChatMessage);
+    },
+  };
   const io = {
     to: () => ({
       emit: (event: string, payload: unknown) => {
         if (event === "chat:message") chat.push(payload as ChatMessage);
-        else if (event === "room:state") broadcasts.push(payload as RoomPublicState);
+        // DEEP COPY, deliberately. `toPublicState` hands out the live Player
+        // objects, so storing the payload by reference records nothing — the
+        // entries keep mutating with the server and every "what did the
+        // clients see?" assertion silently becomes "what does the server
+        // think now?". That is exactly how a takeover that was never
+        // broadcast passed a test written to catch it.
+        else if (event === "room:state") {
+          broadcasts.push(JSON.parse(JSON.stringify(payload)) as RoomPublicState);
+        }
       },
     }),
     sockets: { sockets: { get: () => fakeSocket } },
   } as unknown as Server<ClientToServerEvents, ServerToClientEvents>;
-  return { io, broadcasts, chat };
+  return { io, broadcasts, chat, direct };
 }
 
 /** Two humans + one bot on a Ludo table, mid-game. */
 function seatThree() {
-  const { io, chat } = makeIo();
+  const { io, chat, broadcasts, direct } = makeIo();
   const rooms = new RoomManager(io);
   const { code } = rooms.createRoom("sockA", "Alice", "ludo");
   rooms.joinRoom("sockB", "Bob", code);
@@ -57,8 +76,14 @@ function seatThree() {
   rooms.setReady("sockA", true);
   rooms.setReady("sockB", true);
   rooms.startGame("sockA");
-  return { rooms, code, chat };
+  return { rooms, code, chat, broadcasts, direct };
 }
+
+/** The seat as the CLIENTS last saw it — deliberately not the server's own
+ *  object. Every other assertion here reads internal state, which is exactly
+ *  why a takeover that was never broadcast went unnoticed. */
+const asBroadcast = (broadcasts: RoomPublicState[], name: string): Player | undefined =>
+  broadcasts[broadcasts.length - 1]?.players?.find((p) => p.name === name);
 
 /** Reach into the manager's private room map — these are internal-state
  *  assertions by nature, and the alternative is asserting on broadcast
@@ -68,6 +93,7 @@ interface PeekRoom {
   engine: {
     getPublicState(): {
       turnPlayerId: string;
+      turnPhase?: string;
       stats?: { rollCount?: Record<string, number> };
     };
   };
@@ -107,7 +133,10 @@ describe("RoomManager — disconnect takeover", () => {
     expect(bob.isAutoPlaying).not.toBe(true);
 
     rooms.joinRoom("sockB2", "Bob", code, bob.id);
-    vi.advanceTimersByTime(60_000);
+    // Short window on purpose. Advancing a minute here would let the IDLE
+    // takeover fire legitimately (nobody in this test ever plays), and the
+    // assertion would be about the wrong feature.
+    vi.advanceTimersByTime(5_000);
     expect(bob.isAutoPlaying).not.toBe(true);
     expect(bob.isConnected).toBe(true);
   });
@@ -134,6 +163,39 @@ describe("RoomManager — disconnect takeover", () => {
     rooms.joinRoom("sockB2", "Bob", code, bob.id);
     expect(bob.isAutoPlaying).toBe(false);
     expect(chat.some((m) => m.playerId === "system" && /Bob is back/i.test(m.text))).toBe(true);
+  });
+
+  it("the returning player is told what was played for them", () => {
+    // Everyone ELSE watched the takeover announcement and the Auto badge. The
+    // one person with no idea was the player it happened to — chat is not
+    // replayed on rejoin, so they landed on a board that had moved without
+    // them and nothing on screen explained why.
+    const { rooms, code, direct } = seatThree();
+    const alice = playerOf(rooms, code, "Alice");
+
+    rooms.handleDisconnect("sockA");
+    vi.advanceTimersByTime(30_000); // taken over, and several turns played
+    const played = rollsFor(rooms, code, "Alice");
+    expect(played).toBeGreaterThan(0);
+
+    direct.length = 0;
+    rooms.joinRoom("sockA2", "Alice", code, alice.id);
+
+    expect(
+      direct.some((m) => m.playerId === "system" && /Welcome back .* played for you/i.test(m.text)),
+    ).toBe(true);
+  });
+
+  it("a clean blip gets NO welcome-back note — there is nothing to report", () => {
+    const { rooms, code, direct } = seatThree();
+    const bob = playerOf(rooms, code, "Bob");
+
+    rooms.handleDisconnect("sockB");
+    vi.advanceTimersByTime(3_000); // back inside the blip window
+    direct.length = 0;
+    rooms.joinRoom("sockB2", "Bob", code, bob.id);
+
+    expect(direct.some((m) => /Welcome back/i.test(m.text))).toBe(false);
   });
 
   it("the taken-over seat is actually PLAYED, not merely flagged", () => {
@@ -223,6 +285,135 @@ describe("RoomManager — disconnect takeover", () => {
     const before = totalRolls(rooms, code);
     vi.advanceTimersByTime(60_000);
     expect(totalRolls(rooms, code)).toBeGreaterThan(before);
+  });
+
+  /* ── Idle takeover ────────────────────────────────────────────────────
+     A dropped socket is the obvious failure; the common one is someone still
+     connected who has simply stopped playing. Their turns cost the table the
+     full timer, every lap, and nothing about the disconnect path helps. */
+
+  it("a connected player who lets consecutive turns lapse is taken over", () => {
+    const { rooms, code } = seatThree();
+    const alice = playerOf(rooms, code, "Alice");
+    expect(peek(rooms, code).engine.getPublicState().turnPlayerId).toBe(alice.id);
+
+    // One lapse is a distraction and must still cost only that turn.
+    vi.advanceTimersByTime(21_000); // Ludo turn timer is 20s
+    expect(alice.isAutoPlaying).not.toBe(true);
+
+    // Round the table until it is her turn again, and let that one lapse too.
+    vi.advanceTimersByTime(90_000);
+    expect(alice.isAutoPlaying).toBe(true);
+    expect(alice.autoPlayReason).toBe("idle");
+    expect(alice.isConnected).toBe(true); // still connected — that is the point
+  });
+
+  it("BOTH takeover kinds actually reach the clients", () => {
+    // Regression: the idle path set the flag and announced it in chat but
+    // never re-broadcast the roster, so the seat looked untouched on every
+    // screen while its moves happened by themselves. The unit tests above all
+    // read server-side state and sailed straight past it.
+    {
+      const { rooms, code, broadcasts } = seatThree();
+      rooms.handleDisconnect("sockB");
+      vi.advanceTimersByTime(11_000);
+      expect(asBroadcast(broadcasts, "Bob")?.isAutoPlaying).toBe(true);
+      expect(asBroadcast(broadcasts, "Bob")?.autoPlayReason).toBe("disconnected");
+      void code;
+    }
+    {
+      const { rooms, code, broadcasts } = seatThree();
+      const idle = playerOf(rooms, code, "Alice");
+      vi.advanceTimersByTime(120_000); // let two of their turns lapse
+      expect(idle.isAutoPlaying).toBe(true); // server agrees…
+      expect(asBroadcast(broadcasts, "Alice")?.isAutoPlaying).toBe(true); // …and so do the clients
+      expect(asBroadcast(broadcasts, "Alice")?.autoPlayReason).toBe("idle");
+    }
+  });
+
+  it("making any move reclaims an idle seat instantly", () => {
+    const { rooms, code, chat } = seatThree();
+    const alice = playerOf(rooms, code, "Alice");
+
+    vi.advanceTimersByTime(120_000);
+    expect(alice.isAutoPlaying).toBe(true);
+
+    /**
+     * No "I'm back" button to find — you just play. But the move has to be
+     * one the engine will ACCEPT: a rejected move never reaches noteActivity,
+     * and the test would be asserting on nothing.
+     *
+     * So wait for her turn AND the rolling phase. Holding the turn is not
+     * enough — a Ludo turn is roll-then-move, and landing between the two
+     * sub-moves of her own auto-play makes "roll" illegal. That is precisely
+     * how this test flaked before.
+     */
+    let ready = false;
+    for (let i = 0; i < 400; i++) {
+      const st = peek(rooms, code).engine.getPublicState();
+      if (st.turnPlayerId === alice.id && st.turnPhase === "rolling") {
+        ready = true;
+        break;
+      }
+      vi.advanceTimersByTime(250);
+    }
+    expect(ready).toBe(true);
+    rooms.applyMove("sockA", "roll", undefined);
+
+    expect(alice.isAutoPlaying).toBe(false);
+    expect(alice.autoPlayReason).toBeUndefined();
+    expect(chat.some((m) => m.playerId === "system" && /Alice is back/i.test(m.text))).toBe(true);
+  });
+
+  it("the two reasons are distinguished, because different things end them", () => {
+    const { rooms, code } = seatThree();
+    const bob = playerOf(rooms, code, "Bob");
+    rooms.handleDisconnect("sockB");
+    vi.advanceTimersByTime(11_000);
+    expect(bob.autoPlayReason).toBe("disconnected");
+    // A disconnected seat must NOT be cleared by move activity — only a
+    // reconnect does that; a move for a socket-less seat would mean something
+    // else has gone wrong.
+    rooms.applyMove("sockB", "roll", undefined);
+    expect(bob.isAutoPlaying).toBe(true);
+  });
+
+  it("Bingo: a present human is never claimed for, a dropped one is", async () => {
+    // The guarantee BingoEngine's own test used to assert at the wrong layer.
+    const mk = () => {
+      const { io } = makeIo();
+      const rooms = new RoomManager(io);
+      const { code } = rooms.createRoom(
+        "s0", "Alice", "bingo", undefined,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        // 500ms, not the 10ms the lifecycle test uses: a 75-number round has
+        // to outlast the 10s takeover grace, or the deck runs dry before Bob
+        // is ever taken over and the test proves nothing.
+        { callIntervalMs: 500, stopOnFirstWin: true },
+      );
+      rooms.joinRoom("s1", "Bob", code);
+      rooms.setReady("s0", true);
+      rooms.setReady("s1", true);
+      rooms.startGame("s0");
+      return { rooms, code };
+    };
+    const runRound = async () => {
+      for (let i = 0; i < 1400; i++) await vi.advanceTimersByTimeAsync(50); // 70s
+    };
+
+    // Both humans present: the deck runs dry and nobody is claimed for.
+    const a = mk();
+    await runRound();
+    const aWinners = (peek(a.rooms, a.code).engine.getPublicState() as { winners?: unknown[] }).winners ?? [];
+    expect(aWinners).toHaveLength(0);
+
+    // Bob drops: once taken over, his completed board gets claimed for him.
+    const b = mk();
+    b.rooms.handleDisconnect("s1");
+    await runRound();
+    const bWinners = (peek(b.rooms, b.code).engine.getPublicState() as { winners?: { playerId: string }[] }).winners ?? [];
+    expect(bWinners.length).toBeGreaterThan(0);
+    expect(bWinners[0].playerId).toBe(playerOf(b.rooms, b.code, "Bob").id);
   });
 
   it("someone who dropped in the LOBBY is covered as soon as the game starts", () => {
