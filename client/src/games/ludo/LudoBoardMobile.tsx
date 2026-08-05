@@ -8,6 +8,7 @@ import {
   LudoPlayerCards,
   LudoBottomBar,
   LudoTurnCallout,
+  LudoMatchFeed,
 } from "./ludo-board-composites";
 
 /** The board is never allowed past this, matching the desktop shell. */
@@ -90,6 +91,14 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
           <LudoBoardArea m={m} state={state} players={players} maxWidth={`${boardPx}px`} />
         </div>
         <LudoTurnCallout m={m} state={state} />
+        {/* Same match feed the desktop rail carries, in its compact shape.
+            Sits OUTSIDE the board's own flex slot, so the ResizeObserver
+            above measures what is left after it: on a portrait phone the
+            board is width-bound and this spends slack that was blank paper,
+            costing the board nothing. On a short screen where the board is
+            height-bound instead, the board wins and this gives way — the
+            no-scroll invariant holds either way. */}
+        <LudoMatchFeed m={m} variant="strip" />
       </div>
 
       <LudoPlayerCards state={state} players={players} row="bottom" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />

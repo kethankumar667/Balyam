@@ -41,9 +41,22 @@ export interface LudoBoardProps {
   roomCode: string;
   roomPhase: string;
   onLeave?: () => void;
+  /**
+   * Called once the player dismisses Ludo's own results card. Room.tsx wires
+   * this to `triggerGameOver`, the same contract Rummy/UNO/Bingo use — without
+   * it, suppressing the generic scorecard for Ludo would strand the table on a
+   * finished board with no way forward.
+   */
+  onScorecardClose?: () => void;
 }
 
 export type LudoToast = { text: string; emoji: string; color?: string };
+export type LudoFeedItem = {
+  id: string;
+  text: string;
+  emoji: string;
+  color?: string;
+};
 export type LudoCaptureFace = { id: string; left: number; top: number };
 export type LudoHomeBurst = { id: string; left: number; top: number; color: LudoColor };
 /** Identity of the cell a token occupies, for stack detection. Track cells are
@@ -98,6 +111,10 @@ export interface LudoBoardModel {
   soundOn: boolean;
   toggleSound: () => void;
   toast: LudoToast | null;
+  /** The last few things that happened, newest first — the right rail's
+   *  match feed. Toasts vanish in 3s; this is what you read when you look
+   *  up and wonder what you missed. */
+  feed: LudoFeedItem[];
   confettiUntil: number;
   reactions: ReactionRecvPayload[];
   reactionAnchor: (playerId: string) => { left: number; top: number } | null;
@@ -112,6 +129,8 @@ export interface LudoBoardModel {
   showCelebration: boolean;
   showEndCard: boolean;
   setShowEndCard: (v: boolean) => void;
+  /** Dismissing the results card hands off to the platform game-over flow. */
+  closeScorecard: () => void;
   rematch: () => void;
   captureFaces: LudoCaptureFace[];
   homeBursts: LudoHomeBurst[];
@@ -161,6 +180,7 @@ export function useLudoBoard({
   players,
   selfId,
   onLeave,
+  onScorecardClose,
   // messages/roomCode/roomPhase are forwarded to InlineRoomRail by the shells.
 }: LudoBoardProps): LudoBoardModel {
   /**
@@ -313,6 +333,7 @@ export function useLudoBoard({
   const reduceMotion = prefersReducedMotion(settings);
   const [soundOn, setSoundOn] = useState(isSoundEnabled());
   const [toast, setToast] = useState<LudoToast | null>(null);
+  const [feed, setFeed] = useState<LudoFeedItem[]>([]);
   const [confettiUntil, setConfettiUntil] = useState<number>(0);
   const [cutFlash, setCutFlash] = useState<number | null>(null);
 
@@ -327,6 +348,12 @@ export function useLudoBoard({
   }, [state.lastEvent?.ts]);
 
   function handleEvent(e: LudoEvent): void {
+    /** Same copy as the toast, kept instead of discarded. Capped at 6 —
+     *  this is a glance-at-it rail, not a transcript. */
+    const record = (text: string, emoji: string, color?: string) =>
+      setFeed((prev) =>
+        [{ id: `${e.kind}_${e.ts}`, text, emoji, color }, ...prev].slice(0, 6),
+      );
     const byName = e.byPlayerId ? nameOf(e.byPlayerId) : "";
     const victimName = e.victimPlayerId ? nameOf(e.victimPlayerId) : "";
     const byColor = e.byPlayerId ? COLOR_HEX[state.playerColors[e.byPlayerId]] : undefined;
@@ -339,22 +366,27 @@ export function useLudoBoard({
           emoji: "💥",
           color: byColor,
         });
+        record(`${byName} cut ${victimName}'s token`, "💥", byColor);
         break;
       case "home":
         if (soundOn) sfx.home();
         setToast({ text: `${byName} brought a token home!`, emoji: "🏠", color: byColor });
+        record(`${byName} got a token home`, "🏠", byColor);
         break;
       case "win":
         if (soundOn) sfx.win();
         haptics.win();
         setConfettiUntil(Date.now() + 5000);
         setToast({ text: `${byName} wins the game! 🎉`, emoji: "🏆", color: byColor });
+        record(`${byName} wins!`, "🏆", byColor);
         break;
       case "forfeit":
         setToast({ text: `${byName} rolled three 6s — turn forfeited`, emoji: "⛔", color: byColor });
+        record(`${byName} rolled three 6s — forfeited`, "⛔", byColor);
         break;
       case "noMove":
         setToast({ text: `${byName} couldn't move — turn passed`, emoji: "↪", color: byColor });
+        record(`${byName} couldn't move`, "↪", byColor);
         break;
     }
   }
@@ -538,13 +570,16 @@ export function useLudoBoard({
   /**
    * The recap card no longer AUTO-OPENS.
    *
-   * Room.tsx classifies Ludo as a game without its own scorecard (it is absent
-   * from GAMES_WITH_OWN_SCORECARD), so the platform already shows
-   * GenericScorecardModal — "LUDO · Results" — the instant the phase flips to
-   * "finished". This card then opened 3 s later ON TOP of it, so every match
-   * ended with two stacked modals. The platform one wins: it owns the
-   * auto-leave countdown and hands off to GameOverScreen (which carries
-   * rematch), and that is the same flow every other game uses.
+   * Ludo shows ITS OWN card again — the generic platform scorecard was
+   * only ever a stand-in, and it is the one that reads "LUDO · RESULTS".
+   * Ludo is now in GAMES_WITH_OWN_SCORECARD, so GenericScorecardModal is
+   * suppressed and there is no second modal left to stack underneath —
+   * which was the only reason this auto-open was turned off.
+   *
+   * It opens AFTER the winner celebration rather than on the same frame,
+   * so the confetti is not immediately buried. Dismissing it calls
+   * `onScorecardClose` -> `triggerGameOver`, so the auto-leave countdown
+   * and the rematch hand-off still happen exactly as for every other game.
    *
    * The card itself is kept and still renders when `showEndCard` is set, so a
    * "view recap" entry point can be wired up without rebuilding it.
@@ -558,10 +593,17 @@ export function useLudoBoard({
     }
     setShowCelebration(true);
     const tCelebrationEnd = setTimeout(() => setShowCelebration(false), 3300);
+    const tCard = setTimeout(() => setShowEndCard(true), 3300);
     return () => {
       clearTimeout(tCelebrationEnd);
+      clearTimeout(tCard);
     };
   }, [state.phase, state.winnerId]);
+
+  function closeScorecard() {
+    setShowEndCard(false);
+    onScorecardClose?.();
+  }
 
   function rematch() {
     getSocket().emit("room:setReady", false);
@@ -1121,6 +1163,7 @@ export function useLudoBoard({
     soundOn,
     toggleSound,
     toast,
+    feed,
     confettiUntil,
     reactions,
     reactionAnchor,
@@ -1134,6 +1177,7 @@ export function useLudoBoard({
     showCelebration,
     showEndCard,
     setShowEndCard,
+    closeScorecard,
     rematch,
     captureFaces,
     homeBursts,

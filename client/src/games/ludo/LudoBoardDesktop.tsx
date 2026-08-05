@@ -6,7 +6,7 @@ import {
   LudoBoardArea,
   LudoOverlays,
   LudoPlayerCards,
-  LudoRollTray,
+  LudoTurnTower,
 } from "./ludo-board-composites";
 
 /**
@@ -66,10 +66,19 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
         }
       />
 
-      {/* Left: full player list (turn order) · Centre: big board · Right: roll
-          cup (also balances the left rail so the board stays centred). */}
+      {/* Left: full player list (turn order) · Centre: big board · Right: the
+          turn tower (turn state, dice, match feed).
+
+          The rails are WIDER than they look like they can afford, and it is
+          free: on any landscape viewport the board is a square capped by
+          HEIGHT, not width, so the centre column already had ~100px of slack
+          it could never use. Measured at 1500x1000 the board is 868px with
+          316px of empty paper either side — this spends that on the two
+          columns instead of leaving it blank. The ResizeObserver below still
+          has the final say, so on a narrow or short window the board simply
+          takes what it needs and the rails give way. */}
       <div className="flex-1 min-h-0 flex items-stretch justify-center gap-4 lg:gap-6">
-        <div className="w-[clamp(10rem,15vw,15rem)] flex-shrink-0 overflow-y-auto pt-1">
+        <div className="w-[clamp(10rem,17vw,17rem)] flex-shrink-0 overflow-y-auto pt-1">
           <LudoPlayerCards state={state} players={players} row="all" orientation="col" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
         </div>
 
@@ -77,8 +86,8 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
           <LudoBoardArea m={m} state={state} players={players} maxWidth={`${boardPx}px`} />
         </div>
 
-        <div className="w-[clamp(10rem,15vw,15rem)] flex-shrink-0 flex items-center justify-center">
-          <LudoRollTray m={m} state={state} />
+        <div className="w-[clamp(10rem,17vw,17rem)] flex-shrink-0 flex items-center justify-center">
+          <LudoTurnTower m={m} state={state} />
         </div>
       </div>
 

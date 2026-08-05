@@ -145,34 +145,52 @@ export const HOME_TOKEN_PCT = 3.0;
  * home-slots.test.ts checks containment, overlap, rotation AND medallion
  * clearance; the medallion case is what would have caught the old layout.
  */
+/**
+ * COORDINATE SPACE — the thing this got wrong for a year.
+ *
+ * These numbers are fed to `cellToPct`, which reads a cell INDEX and returns
+ * that cell's CENTRE: `((v + 0.5) / 15) * 100`. So the board's midpoint is
+ * v = 7.0 (→ 50%), and the centre block spans v = 5.5 … 8.5 (→ 40% … 60%).
+ *
+ * The old values were laid out symmetric about (7.5, 7.5) — half a cell out,
+ * in the "cell edge" space the wedge polygons are described in rather than the
+ * index space the renderer consumes. Every slot was therefore drawn 3.33% down
+ * and to the right of where it belonged.
+ *
+ * That asymmetry is invisible on two wedges and obvious on the other two: the
+ * shift pushes LEFT and TOP slots harmlessly toward the middle, while RIGHT
+ * and BOTTOM slots land at 61.6% — outside the 40–60% block entirely, spilling
+ * onto the track. Which is exactly what a four-player game shows: two players'
+ * finished tokens sit correctly, two sit outside their triangle.
+ */
 export const HOME_SLOTS: Record<LudoColor, Cell[]> = {
   // LEFT wedge.
   red: [
-    { row: 6.78, col: 6.26 },
-    { row: 7.26, col: 6.26 },
-    { row: 7.74, col: 6.26 },
-    { row: 8.22, col: 6.26 },
+    { row: 6.28, col: 5.76 },
+    { row: 6.76, col: 5.76 },
+    { row: 7.24, col: 5.76 },
+    { row: 7.72, col: 5.76 },
   ],
   // TOP wedge.
   green: [
-    { row: 6.26, col: 6.78 },
-    { row: 6.26, col: 7.26 },
-    { row: 6.26, col: 7.74 },
-    { row: 6.26, col: 8.22 },
+    { row: 5.76, col: 6.28 },
+    { row: 5.76, col: 6.76 },
+    { row: 5.76, col: 7.24 },
+    { row: 5.76, col: 7.72 },
   ],
   // RIGHT wedge.
   yellow: [
-    { row: 6.78, col: 8.74 },
-    { row: 7.26, col: 8.74 },
-    { row: 7.74, col: 8.74 },
-    { row: 8.22, col: 8.74 },
+    { row: 6.28, col: 8.24 },
+    { row: 6.76, col: 8.24 },
+    { row: 7.24, col: 8.24 },
+    { row: 7.72, col: 8.24 },
   ],
   // BOTTOM wedge.
   blue: [
-    { row: 8.74, col: 6.78 },
-    { row: 8.74, col: 7.26 },
-    { row: 8.74, col: 7.74 },
-    { row: 8.74, col: 8.22 },
+    { row: 8.24, col: 6.28 },
+    { row: 8.24, col: 6.76 },
+    { row: 8.24, col: 7.24 },
+    { row: 8.24, col: 7.72 },
   ],
   purple: STUB_HOME,
   cyan: STUB_HOME,

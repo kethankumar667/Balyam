@@ -2,11 +2,35 @@ import type { Server, Socket } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.js";
 import type { RoomManager } from "../rooms/RoomManager.js";
 
+/**
+ * Events that arrive WITHOUT a person doing anything — negotiation traffic and
+ * device/lifecycle reports the client sends on its own.
+ *
+ * Everything else is treated as proof the player is at the keyboard, which is
+ * what clears an idle takeover. Kept as a deny-list rather than an allow-list
+ * on purpose: a new interactive event added later should count as presence by
+ * default, and the failure mode of guessing wrong in that direction (one
+ * wasted turn timer) is far cheaper than the other one (a player locked out of
+ * their own seat).
+ */
+const MACHINE_EVENTS = new Set<string>([
+  "webrtc:signal",
+  "room:setOrientation",
+  "rummy:arrangement",
+]);
+
 export function registerSocketHandlers(
   io: Server<ClientToServerEvents, ServerToClientEvents>,
   socket: Socket<ClientToServerEvents, ServerToClientEvents>,
   rooms: RoomManager
 ): void {
+  // Runs before the specific handlers below, so even an event this file
+  // rejects (an out-of-turn move, say) still registers as a sign of life.
+  socket.onAny((event: string) => {
+    if (MACHINE_EVENTS.has(event)) return;
+    rooms.noteSocketActivity(socket.id);
+  });
+
   socket.on("room:create", (payload, ack) => {
     try {
       const { code, playerId } = rooms.createRoom(
@@ -84,6 +108,12 @@ export function registerSocketHandlers(
 
   socket.on("room:setTokenNicknames", ({ nicknames }) => {
     rooms.setTokenNicknames(socket.id, nicknames);
+  });
+
+  // The `onAny` hook above already did the work; this exists so the event is
+  // registered and type-checked rather than silently unhandled.
+  socket.on("room:awake", () => {
+    rooms.noteSocketActivity(socket.id);
   });
 
   socket.on("room:startGame", () => {

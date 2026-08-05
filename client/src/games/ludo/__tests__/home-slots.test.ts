@@ -10,12 +10,12 @@ import { HOME_SLOTS, HOME_TOKEN_PCT } from "../board-layout";
  * because each wedge tapers to a point at the board centre, the two end slots
  * were outside the triangle altogether and spilled onto the neighbour's wedge.
  *
- * The centre block spans rows/cols 6..9 and is cut into four triangles that
- * meet at (7.5, 7.5):
- *   red    LEFT   (6,6) (6,9) (7.5,7.5)
- *   green  TOP    (6,6) (9,6) (7.5,7.5)
- *   yellow RIGHT  (9,6) (9,9) (7.5,7.5)
- *   blue   BOTTOM (6,9) (9,9) (7.5,7.5)
+ * The centre block spans rows/cols 5.5..8.5 and is cut into four triangles that
+ * meet at (7, 7) in the cell-INDEX space cellToPct consumes:
+ *   red    LEFT   (5.5,5.5) (5.5,8.5) (7,7)
+ *   green  TOP    (5.5,5.5) (8.5,5.5) (7,7)
+ *   yellow RIGHT  (8.5,5.5) (8.5,8.5) (7,7)
+ *   blue   BOTTOM (5.5,8.5) (8.5,8.5) (7,7)
  * (given as col,row to match the SVG polygons that draw them.)
  */
 
@@ -35,13 +35,13 @@ const MEDALLION_R = 0.78;
 /** How far inside its wedge a point is, in cells. Negative means outside. */
 const insetInWedge: Record<string, (r: number, c: number) => number> = {
   // Boundary at row r is col <= 6 + min(r-6, 9-r); also col >= 6.
-  red: (r, c) => Math.min(6 + Math.min(r - 6, 9 - r) - c, c - 6),
+  red: (r, c) => Math.min(5.5 + Math.min(r - 5.5, 8.5 - r) - c, c - 5.5),
   // Boundary at col c is row <= 6 + min(c-6, 9-c); also row >= 6.
-  green: (r, c) => Math.min(6 + Math.min(c - 6, 9 - c) - r, r - 6),
+  green: (r, c) => Math.min(5.5 + Math.min(c - 5.5, 8.5 - c) - r, r - 5.5),
   // Boundary at row r is col >= 9 - min(r-6, 9-r); also col <= 9.
-  yellow: (r, c) => Math.min(c - (9 - Math.min(r - 6, 9 - r)), 9 - c),
+  yellow: (r, c) => Math.min(c - (8.5 - Math.min(r - 5.5, 8.5 - r)), 8.5 - c),
   // Boundary at col c is row >= 9 - min(c-6, 9-c); also row <= 9.
-  blue: (r, c) => Math.min(r - (9 - Math.min(c - 6, 9 - c)), 9 - r),
+  blue: (r, c) => Math.min(r - (8.5 - Math.min(c - 5.5, 8.5 - c)), 8.5 - r),
 };
 
 const WEDGES = ["red", "green", "yellow", "blue"] as const;
@@ -77,7 +77,7 @@ describe("finished tokens sit inside their own wedge", () => {
   it.each(WEDGES)("%s: no finished token sits on the centre medallion", (color) => {
     // The regression this suite previously allowed through.
     for (const s of HOME_SLOTS[color]) {
-      const d = Math.hypot(s.row - 7.5, s.col - 7.5);
+      const d = Math.hypot(s.row - 7, s.col - 7);
       expect(
         d,
         `${color} slot (${s.row}, ${s.col}) is ${d.toFixed(3)} cells from centre — ` +
@@ -88,16 +88,16 @@ describe("finished tokens sit inside their own wedge", () => {
 
   it.each(WEDGES)("%s: no finished token escapes the centre block", (color) => {
     for (const s of HOME_SLOTS[color]) {
-      expect(Math.min(s.row, s.col), `${color} (${s.row}, ${s.col})`).toBeGreaterThanOrEqual(6 + TOKEN_R);
-      expect(Math.max(s.row, s.col), `${color} (${s.row}, ${s.col})`).toBeLessThanOrEqual(9 - TOKEN_R);
+      expect(Math.min(s.row, s.col), `${color} (${s.row}, ${s.col})`).toBeGreaterThanOrEqual(5.5 + TOKEN_R);
+      expect(Math.max(s.row, s.col), `${color} (${s.row}, ${s.col})`).toBeLessThanOrEqual(8.5 - TOKEN_R);
     }
   });
 
   it("the four wedges are exact 90-degree rotations of each other", () => {
     // So the arrangement reads identically however the board is spun.
     const rot = (p: { row: number; col: number }) => ({
-      row: 7.5 + (p.col - 7.5),
-      col: 7.5 - (p.row - 7.5),
+      row: 7 + (p.col - 7),
+      col: 7 - (p.row - 7),
     });
     const key = (ps: { row: number; col: number }[]) =>
       ps.map((p) => `${p.row.toFixed(2)},${p.col.toFixed(2)}`).sort().join("|");

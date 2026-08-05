@@ -365,6 +365,48 @@ describe("RoomManager — disconnect takeover", () => {
     expect(chat.some((m) => m.playerId === "system" && /Alice is back/i.test(m.text))).toBe(true);
   });
 
+  it("an idle seat is reclaimed WITHOUT needing a legal move", () => {
+    /**
+     * The reported bug, and the sharpest edge in this whole feature.
+     *
+     * A returning player has almost no way to prove it. On someone else's
+     * turn the client will not even emit — the roll button is gated on
+     * `canRoll` — so clicking the dice reaches nobody. And when their own
+     * turn finally arrives the auto-player resolves it within a few hundred
+     * milliseconds, which no human re-reading the board can beat. Requiring
+     * an ACCEPTED move to clear the flag therefore left no reachable exit:
+     * the seat stayed on autopilot for the rest of the match.
+     *
+     * Any sign of life has to be enough.
+     */
+    const { rooms, code, chat } = seatThree();
+    const alice = playerOf(rooms, code, "Alice");
+
+    vi.advanceTimersByTime(120_000);
+    expect(alice.isAutoPlaying).toBe(true);
+
+    // Not a move — just proof somebody is at the keyboard. Deliberately NOT
+    // waiting for her turn, because that is exactly the state she is stuck in.
+    rooms.noteSocketActivity("sockA");
+
+    expect(alice.isAutoPlaying).toBe(false);
+    expect(alice.autoPlayReason).toBeUndefined();
+    expect(chat.some((m) => /Alice is back/i.test(m.text))).toBe(true);
+  });
+
+  it("an out-of-turn move ATTEMPT also counts as being back", () => {
+    // The engine rejects it, but a rejected move is still a person pressing
+    // a button — and the old code returned early before noticing.
+    const { rooms, code } = seatThree();
+    const bob = playerOf(rooms, code, "Bob");
+
+    vi.advanceTimersByTime(120_000);
+    expect(bob.isAutoPlaying).toBe(true);
+
+    rooms.noteSocketActivity("sockB");
+    expect(bob.isAutoPlaying).toBe(false);
+  });
+
   it("the two reasons are distinguished, because different things end them", () => {
     const { rooms, code } = seatThree();
     const bob = playerOf(rooms, code, "Bob");
