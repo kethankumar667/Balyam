@@ -11,6 +11,7 @@ import {
   MatchSummary,
   type HandCricketBoardProps,
 } from "./hc-shared";
+import { useSkin } from "../skin";
 import {
   HcNotebookPage,
   HcNotebookHeader,
@@ -49,6 +50,7 @@ export default function HandCricketBoardDesktop({
 }: HandCricketBoardProps) {
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
+  const [, setSkin] = useSkin();
 
   const isTeamSelect = state.phase === "teamSelect";
   const isIpl = state.options.category === "ipl";
@@ -124,6 +126,7 @@ export default function HandCricketBoardDesktop({
         messages={messages}
         onHelp={() => tut.setOpen(true)}
         onLeave={onLeave}
+        onSkin={() => setSkin("broadcast")}
       />
 
       {/* ── Phase content ── */}

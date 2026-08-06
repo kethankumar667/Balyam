@@ -5,6 +5,7 @@ import { RPS_TUTORIAL } from "../tutorials";
 import { RpsScorecardModal, RpsOverlays } from "./rps-shared";
 import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
+import { useSkin } from "../skin";
 import {
   NotebookPage,
   NotebookPlayerCard,
@@ -26,6 +27,7 @@ const P2_C = "#8B1A1A";
 export default function RpsBoardMobile(props: RpsBoardProps) {
   const m = useRpsBoard(props);
   const tut = useTutorialGate(RPS_TUTORIAL.key);
+  const [, setSkin] = useSkin();
   const showScorecard = m.state.isOver;
 
   return (
@@ -68,6 +70,18 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           <span className="text-xs font-bold" style={{ color: "#4a5a82" }}>
             to <span style={{ color: "#c0392b", fontWeight: 900 }}>{m.target}</span>
           </span>
+          <button
+            onClick={() => setSkin("broadcast")}
+            className="px-2 py-1 rounded text-xs font-bold"
+            style={{
+              background: "#FBF5E0",
+              border: "1.5px solid rgba(46,40,25,0.5)",
+              color: "#1a2952",
+            }}
+            title="Switch to the broadcast look"
+          >
+            Broadcast
+          </button>
           <TutorialButton onClick={() => tut.setOpen(true)} />
           {props.onLeave && (
             <button

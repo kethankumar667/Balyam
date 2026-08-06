@@ -141,12 +141,17 @@ export function NotebookTopBar({
   target,
   onLeave,
   onHelp,
+  onSkin,
 }: {
   match: number;
   round: number;
   target: number;
   onLeave?: () => void;
   onHelp?: () => void;
+  /** Switch back to the broadcast skin. Styled in the notebook idiom rather
+   *  than reusing the pro kit's dark control, which would read as a bug on
+   *  parchment. */
+  onSkin?: () => void;
 }) {
   return (
     <div className="flex items-start justify-between px-6 pt-4 pb-1">
@@ -208,6 +213,23 @@ export function NotebookTopBar({
             {target}
           </span>
         </div>
+
+        {onSkin && (
+          <button
+            onClick={onSkin}
+            className="px-3 py-1.5 rounded font-bold transition hover:brightness-95 active:scale-[0.97]"
+            style={{
+              background: PAPER_L,
+              border: `1.5px solid ${BORDER}`,
+              color: INK,
+              fontSize: 13,
+              boxShadow: "1px 2px 5px rgba(0,0,0,0.18)",
+            }}
+            title="Switch to the broadcast look"
+          >
+            Broadcast view
+          </button>
+        )}
 
         {onHelp && (
           <button
