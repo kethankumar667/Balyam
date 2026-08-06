@@ -16,6 +16,7 @@
     "@tsparticles/confetti": "^4.3.2",
     "@tsparticles/engine": "^4.3.2",
     "@tsparticles/react": "^4.3.2",
+    "animejs": "^4.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "country-flag-icons": "^1.6.20",
@@ -33,6 +34,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@types/animejs": "^3.1.13",
     "@types/howler": "^2.2.13",
     "@types/react": "^18.2.79",
     "@types/react-dom": "^18.2.25",

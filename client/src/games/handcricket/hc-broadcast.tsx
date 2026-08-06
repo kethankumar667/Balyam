@@ -2,7 +2,16 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { HcBall, HcInnings, HcState, Player } from "@shared/types";
 import { HC_COUNTRIES, HC_FRANCHISES, getRosterFor, type HcPlayerProfile } from "@shared/hc-rosters";
 import { getSocket } from "../../lib/socket";
+import { computeManOfTheMatch, summarizeMatch } from "./hc-shared";
 import { useHcSquad } from "./useHcSquad";
+import {
+  currentPartnership,
+  economy,
+  fallOfWickets,
+  lastOvers,
+  oversFromBalls,
+  strikeRate,
+} from "./hc-stats";
 import {
   PRO,
   PRO_SIDES,
@@ -81,6 +90,33 @@ export function TeamPlate({ team, size = "md" }: { team: HcTeamId2; size?: "sm" 
   );
 }
 
+/**
+ * Last-resort display name for a profile id the roster could not resolve.
+ *
+ * Ids are slugs ("mohammed-siraj"), so a raw fallback puts a lowercase
+ * hyphenated string in a scorecard. Rosters normally resolve, but a roster/JSON
+ * mismatch for one team should degrade to "Mohammed Siraj", not leak the key.
+ */
+export function prettyName(id: string): string {
+  return id
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/** 1st, 2nd, 3rd… for partnership and wicket labels. */
+function ordinal(n: number): string {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
 /* ── page chrome ─────────────────────────────────────────────────────────── */
 
 const PHASE_LABEL: Record<HcState["phase"], string> = {
@@ -152,8 +188,10 @@ export function HcProHeader({
           </div>
         </div>
 
-        {/* Matchup */}
-        <div className="hidden items-center gap-2.5 sm:flex">
+        {/* Matchup. Was `hidden sm:flex`, so on a phone you played a whole
+            match with no persistent answer to "who am I, and who am I
+            playing?" — the score bug only ever shows the batting side. */}
+        <div className="flex items-center gap-2">
           <TeamPlate team={a} size="sm" />
           <span className="text-[10px] font-black" style={{ color: PRO.inkLo, letterSpacing: "0.12em" }}>
             V
@@ -163,19 +201,16 @@ export function HcProHeader({
 
         <div className="flex flex-1 flex-wrap items-center justify-end gap-1.5">
           {live && <ProLive />}
-          {/* Format and overs are reference, not action — first to go when
-              space is tight, so the controls always stay reachable.
-              `sm` (640px), not a custom `xs`: this project defines no extra
-              breakpoints, and an undefined prefix would hide these forever. */}
-          <span className="hidden sm:inline-flex">
-            <ProChip>{opts.format.toUpperCase()}</ProChip>
-          </span>
+          {/* Format and overs now survive on a phone as one merged chip
+              ("T20 · 10 ov") rather than being hidden outright — the match
+              length is the frame for every decision in a chase, and it was
+              invisible for the entire match on the platform most people
+              play on. Two chips became one so the header still fits. */}
           {opts.mode === "galli" && <ProChip tone="gold">Galli</ProChip>}
-          {overs != null && (
-            <span className="hidden sm:inline-flex">
-              <ProChip>{overs} ov</ProChip>
-            </span>
-          )}
+          <ProChip>
+            {opts.format.toUpperCase()}
+            {overs != null ? ` · ${overs} ov` : ""}
+          </ProChip>
           {onSkin && <HeaderBtn label="Classic" onClick={onSkin} />}
           {onHelp && <HeaderBtn label="Help" onClick={onHelp} />}
           {onLeave && <HeaderBtn label="Leave" onClick={onLeave} danger />}
@@ -253,8 +288,11 @@ export function HcProTeamPicker({
         </div>
         {oppPick && (
           <div className="mt-2 flex justify-center">
+            {/* Was `oppPick.toString().slice(0, 14)`, which printed the raw
+                team slug — "Opponent picked southafrica". The display name is
+                one lookup away and this is a first-run screen. */}
             <ProChip tone="info">
-              Opponent picked {oppPick.toString().slice(0, 14)}
+              Opponent picked {teams.find((t) => t.id === oppPick)?.name ?? prettyName(String(oppPick))}
             </ProChip>
           </div>
         )}
@@ -292,7 +330,6 @@ export function HcProTeamPicker({
           );
         })}
       </div>
-      <div className="sr-only">{players.length} players</div>
     </div>
   );
 }
@@ -581,8 +618,13 @@ export function HcProToss({ state, selfId, players }: { state: HcState; selfId: 
       <div className="text-[19px] font-black" style={{ color: PRO.ink }}>
         Pick a number
       </div>
+      {/* Was "Odd total, you call it." — never said whose "you", and never
+          said what "call it" wins you. Both sides now read the same rule and
+          learn the stake before they commit to a number. */}
       <div className="mt-1.5 text-[12px] font-semibold" style={{ color: PRO.inkLo }}>
-        Both picks are added together. Odd total, you call it.
+        You and your opponent each pick a number. If the two add up to an
+        <span style={{ color: PRO.gold }}> odd</span> total you win the toss and
+        choose whether to bat or bowl first.
       </div>
 
       <div className="mx-auto mt-5 grid max-w-[380px] grid-cols-3 gap-2.5">
@@ -612,7 +654,6 @@ export function HcProToss({ state, selfId, players }: { state: HcState; selfId: 
         <ProChip tone={myPick != null ? "win" : "neutral"}>{myPick != null ? "You're in" : "Your pick"}</ProChip>
         <ProChip tone={oppLocked ? "win" : "neutral"}>{oppLocked ? "Opponent in" : "Waiting on opponent"}</ProChip>
       </div>
-      <div className="sr-only">{players.length}</div>
     </ProPanel>
   );
 }
@@ -727,7 +768,7 @@ export function HcProScoreBug({
           </div>
         </div>
 
-        {target != null && (
+        {target != null ? (
           <div className="shrink-0 text-right">
             <ProStat label="Target" value={target} accent={PRO.gold} size={compact ? "md" : "lg"} align="right" />
             {need != null && (
@@ -741,15 +782,288 @@ export function HcProScoreBug({
               </div>
             )}
           </div>
+        ) : (
+          /* First innings has no target, which left this whole half of the bug
+             empty. A broadcast fills it with the projection — current rate run
+             out to the full quota — which is the number both players are
+             actually arguing about at this point. */
+          <div className="shrink-0 text-right">
+            <ProStat
+              label="Projected"
+              value={innings.balls > 0 ? Math.round(runRate * innings.overs) : "—"}
+              accent={PRO.gold}
+              size={compact ? "md" : "lg"}
+              align="right"
+            />
+            <div className="mt-2 text-[11px] font-bold tabular-nums" style={{ color: PRO.inkMid }}>
+              {ballsLeft} balls left
+            </div>
+            <div className="mt-0.5 text-[11px] font-bold tabular-nums" style={{ color: PRO.inkLo }}>
+              {innings.wickets} of {state.maxWickets} down
+            </div>
+          </div>
         )}
       </div>
 
       {target != null && (
         <div className="mt-3">
-          <ProMeter value={innings.runs} max={target} accent={PRO.gold} />
+          <ProMeter
+            value={innings.runs}
+            max={target}
+            accent={PRO.gold}
+            label="Chase progress"
+            valueText={`${innings.runs} of ${target} runs`}
+          />
         </div>
       )}
     </ProPanel>
+  );
+}
+
+/**
+ * Who is at the crease, and who is bowling at them.
+ *
+ * The single most-requested readout and the one thing the first broadcast pass
+ * dropped: without it you cannot tell whose wicket just fell, who is set, or
+ * how the current bowler is going. Derivations mirror hc-shared's
+ * `CurrentPlayersBar` exactly — striker/non-striker come from the batting
+ * team's `squadPlayerIds` indexed by `strikerIdx`/`nonStrikerIdx`, NOT from
+ * the roster order, which is a different list.
+ */
+export function HcProPlayersBar({
+  state,
+  innings,
+  selfId,
+  compact = false,
+}: {
+  state: HcState;
+  innings: HcInnings;
+  selfId: string;
+  compact?: boolean;
+}) {
+  const batSel = state.teamSelections[innings.battingPlayerId];
+  const bowlSel = state.teamSelections[innings.bowlingPlayerId];
+  const batRoster = batSel?.teamId ? getRosterFor(batSel.teamId, state.options.format) : null;
+  const bowlRoster = bowlSel?.teamId ? getRosterFor(bowlSel.teamId, state.options.format) : null;
+  const batPool: HcPlayerProfile[] = batRoster ? [...batRoster.squad, ...batRoster.extras] : [];
+  const bowlPool: HcPlayerProfile[] = bowlRoster ? [...bowlRoster.squad, ...bowlRoster.extras] : [];
+
+  const squad = batSel?.squadPlayerIds ?? [];
+  const strikerId = squad[innings.strikerIdx];
+  const nonStrikerId = squad[innings.nonStrikerIdx];
+  const striker = strikerId ? batPool.find((p) => p.id === strikerId) : null;
+  const nonStriker = nonStrikerId ? batPool.find((p) => p.id === nonStrikerId) : null;
+  const strikerStats = strikerId ? innings.batterStats[strikerId] : null;
+  const nonStrikerStats = nonStrikerId ? innings.batterStats[nonStrikerId] : null;
+
+  const bowlerId = innings.currentBowlerId;
+  const bowler = bowlerId ? bowlPool.find((p) => p.id === bowlerId) : null;
+  const bowlerStats = bowlerId ? innings.bowlerStats[bowlerId] : null;
+
+  const iBat = innings.battingPlayerId === selfId;
+  const iBowl = innings.bowlingPlayerId === selfId;
+
+  const batLine = (s: typeof strikerStats) =>
+    s
+      ? `${s.runs}${s.isOut ? "" : "*"} (${s.balls})${s.fours ? ` · ${s.fours}×4` : ""}${s.sixes ? ` · ${s.sixes}×6` : ""}`
+      : "Yet to face";
+
+  const stand = currentPartnership(innings);
+
+  return (
+    <ProPanel padded={false}>
+      {/* Partnership header — the stand in progress. Cricket followers track
+          this constantly and it had no home anywhere in the UI. Sits above the
+          crease cells because it describes the pair BELOW it. */}
+      <div
+        className="flex items-center justify-between gap-2 px-4 py-2"
+        style={{ borderBottom: `1px solid ${PRO.line}` }}
+      >
+        <ProLabel>Partnership · {ordinal(stand.forWicket + 1)} wicket</ProLabel>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[15px] font-black tabular-nums" style={{ color: PRO.ink }}>
+            {stand.runs}
+          </span>
+          <span className="text-[11px] font-bold tabular-nums" style={{ color: PRO.inkLo }}>
+            ({stand.balls} {stand.balls === 1 ? "ball" : "balls"})
+          </span>
+          {stand.balls >= 6 && (
+            <span className="ml-1 text-[11px] font-bold tabular-nums" style={{ color: PRO.inkLo }}>
+              RR {((stand.runs / stand.balls) * 6).toFixed(1)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3">
+        <CreaseCell
+          label="Striker"
+          onStrike
+          mine={iBat}
+          name={striker?.name ?? "—"}
+          sub={batLine(strikerStats)}
+          compact={compact}
+        />
+        <CreaseCell
+          label="Non-striker"
+          mine={iBat}
+          dim
+          name={nonStriker?.name ?? "—"}
+          sub={batLine(nonStrikerStats)}
+          compact={compact}
+          bordered
+        />
+        <CreaseCell
+          label="Bowling"
+          mine={iBowl}
+          name={bowler?.name ?? "Waiting…"}
+          sub={
+            bowler
+              ? bowlerStats
+                ? `${oversFromBalls(bowlerStats.balls)}–${bowlerStats.wickets}–${bowlerStats.runs}`
+                : "0.0–0–0"
+              : "Pick a bowler"
+          }
+          warn={!bowler}
+          compact={compact}
+          bordered
+        />
+      </div>
+    </ProPanel>
+  );
+}
+
+function CreaseCell({
+  label,
+  name,
+  sub,
+  mine,
+  dim = false,
+  warn = false,
+  onStrike = false,
+  bordered = false,
+  compact = false,
+}: {
+  label: string;
+  name: string;
+  sub: string;
+  mine: boolean;
+  dim?: boolean;
+  warn?: boolean;
+  onStrike?: boolean;
+  bordered?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={compact ? "px-3 py-2" : "px-4 py-3"}
+      style={{
+        borderLeft: bordered ? `1px solid ${PRO.line}` : undefined,
+        // The vertical rule only makes sense once the cells sit side by side;
+        // stacked on a phone it would draw down the left of each row.
+        borderTop: bordered ? `1px solid ${PRO.line}` : undefined,
+      }}
+    >
+      <div className="flex items-center gap-1.5">
+        <ProLabel color={warn ? PRO.gold : PRO.inkLo}>{label}</ProLabel>
+        {onStrike && (
+          <>
+            {/* Was a 5px span with `title` only — not exposed by most screen
+                readers, unreachable by keyboard, and the sole indicator of who
+                faces the next ball. The dot stays; the meaning is now text. */}
+            <span
+              aria-hidden
+              className="inline-block rounded-full"
+              style={{ width: 5, height: 5, background: PRO.win, boxShadow: `0 0 6px ${PRO.win}` }}
+            />
+            <span className="sr-only">on strike</span>
+          </>
+        )}
+        {mine && <span className="text-[9px] font-black" style={{ color: PRO.gold, letterSpacing: "0.12em" }}>YOU</span>}
+      </div>
+      <div
+        className={`mt-1 truncate font-black ${compact ? "text-[13px]" : "text-[15px]"}`}
+        style={{ color: warn ? PRO.gold : dim ? PRO.inkMid : PRO.ink }}
+      >
+        {name}
+      </div>
+      <div className="mt-0.5 truncate text-[11px] font-semibold tabular-nums" style={{ color: PRO.inkLo }}>
+        {sub}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Powerplay strip: which balls of this over restrict the bowler to 1-3.
+ *
+ * The pips are the point — knowing ball 4 is restricted BEFORE it is bowled is
+ * what makes the phase strategic for both sides, so the advice line is
+ * role-specific rather than a generic rule reminder.
+ */
+export function HcProPowerplay({
+  overNumber,
+  totalPowerplayOvers,
+  restrictedBalls,
+  currentBallInOver,
+  bowlerRestricted,
+  myRole,
+}: {
+  overNumber: number;
+  totalPowerplayOvers: number;
+  restrictedBalls: number[];
+  currentBallInOver: number;
+  bowlerRestricted: boolean;
+  myRole: "batter" | "bowler" | null;
+}) {
+  return (
+    <div
+      className="rounded-2xl px-3.5 py-2.5"
+      style={{
+        background: `linear-gradient(135deg, rgba(245,196,81,0.16), rgba(245,196,81,0.05))`,
+        border: `1px solid ${PRO.gold}55`,
+        boxShadow: `0 0 18px ${PRO.gold}1F`,
+      }}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <ProLabel color={PRO.gold}>Powerplay</ProLabel>
+          <div className="mt-1 text-[12px] font-bold" style={{ color: PRO.inkMid }}>
+            Over {overNumber} of {totalPowerplayOvers} · 3 random balls cap the bowler at 1–3
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5, 6].map((b) => {
+            const restricted = restrictedBalls.includes(b);
+            const current = b === currentBallInOver;
+            return (
+              <span
+                key={b}
+                title={restricted ? `Ball ${b}: bowler capped at 1–3` : `Ball ${b}: no cap`}
+                className="grid h-6 w-6 place-items-center rounded text-[10px] font-black tabular-nums"
+                style={{
+                  background: restricted ? (current ? PRO.gold : `${PRO.gold}66`) : "rgba(255,255,255,0.06)",
+                  color: restricted ? "#2A1D05" : PRO.inkLo,
+                  border: current ? `2px solid ${PRO.ink}` : `1px solid ${PRO.line}`,
+                }}
+              >
+                {b}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      {bowlerRestricted && myRole === "bowler" && (
+        <div className="mt-1.5 text-center text-[11px] font-extrabold" style={{ color: PRO.gold }}>
+          This ball is capped — you may only pick 1, 2 or 3
+        </div>
+      )}
+      {bowlerRestricted && myRole === "batter" && (
+        <div className="mt-1.5 text-center text-[11px] font-extrabold" style={{ color: PRO.win }}>
+          Bowler is capped at 1–3 this ball — 4, 5 or 6 scores risk-free
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -802,39 +1116,78 @@ export function HcProPickRow({
   role: "batter" | "bowler" | null;
   onPick: (n: number) => void;
 }) {
+  const verb = role === "bowler" ? "Bowl" : "Play";
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
-        <ProLabel>
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <ProLabel color={myPick != null ? PRO.inkLo : PRO.gold}>
           {myPick != null ? "Locked in" : role === "batter" ? "Your shot" : role === "bowler" ? "Your delivery" : "Watching"}
         </ProLabel>
-        {restricted && <ProChip tone="gold">Powerplay · 1-3 only</ProChip>}
+        {restricted && <ProChip tone="gold">Powerplay · 1–3 only</ProChip>}
       </div>
-      <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
-        {[1, 2, 3, 4, 5, 6].map((n) => {
-          const ok = allowed.includes(n);
-          const chosen = myPick === n;
-          const disabled = !ok || myPick != null || role == null;
-          return (
-            <button
-              key={n}
-              type="button"
-              onClick={() => onPick(n)}
-              disabled={disabled}
-              className="rounded-xl py-3 text-[19px] font-black tabular-nums transition active:scale-[0.95] disabled:cursor-not-allowed"
-              style={{
-                background: chosen
-                  ? `linear-gradient(168deg, ${PRO.gold}, ${PRO.goldDeep})`
-                  : "rgba(255,255,255,0.05)",
-                color: chosen ? "#2A1D05" : ok ? PRO.ink : PRO.inkLo,
-                border: `1px solid ${chosen ? "rgba(255,235,180,0.55)" : PRO.line}`,
-                opacity: disabled && !chosen ? 0.3 : 1,
-              }}
-            >
-              {n}
-            </button>
-          );
-        })}
+
+      {/*
+       * THE HERO. This is the entire game — one tap among six, sixty times a
+       * match — and it previously rendered as the smallest, dimmest element on
+       * a page of statistics, below a toss picker used once. Size now follows
+       * frequency and consequence: tall tiles, large numerals, and a gold
+       * treatment on the live state.
+       */}
+      <div role="group" aria-label={role === "bowler" ? "Choose your delivery" : "Choose your shot"}>
+        <div className="grid grid-cols-6 gap-2">
+          {[1, 2, 3, 4, 5, 6].map((n) => {
+            const ok = allowed.includes(n);
+            const chosen = myPick === n;
+            const disabled = !ok || myPick != null || role == null;
+            const capped = !ok && restricted;
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => onPick(n)}
+                disabled={disabled}
+                // Screen readers previously heard six buttons named "1".."6"
+                // with no indication of what they do or why one is unavailable.
+                aria-label={
+                  capped
+                    ? `${n}. Unavailable — powerplay caps you at 1 to 3`
+                    : chosen
+                    ? `${n} locked in`
+                    : `${verb} ${n}`
+                }
+                aria-pressed={chosen}
+                className="relative grid place-items-center rounded-2xl font-black tabular-nums transition active:scale-[0.96] disabled:cursor-not-allowed"
+                style={{
+                  // 64px floor clears the 44px touch minimum with room to spare
+                  // on the axis a thumb actually travels.
+                  minHeight: 64,
+                  fontSize: 28,
+                  background: chosen
+                    ? `linear-gradient(168deg, ${PRO.gold}, ${PRO.goldDeep})`
+                    : ok
+                    ? "rgba(255,255,255,0.07)"
+                    : "rgba(255,255,255,0.03)",
+                  color: chosen ? "#2A1D05" : ok ? PRO.ink : PRO.inkLo,
+                  border: `1px solid ${chosen ? "rgba(255,235,180,0.6)" : ok ? PRO.lineStrong : PRO.line}`,
+                  boxShadow: chosen ? `0 4px 18px ${PRO.gold}44` : "none",
+                  // Was 0.3, which put a capped tile near 1.5:1 and defeated
+                  // this row's own reason for keeping them on screen. The cap
+                  // is now carried by a rule mark, not by fading it out.
+                  opacity: disabled && !chosen ? 0.62 : 1,
+                }}
+              >
+                {n}
+                {capped && (
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-3 top-1/2 h-[2px] -translate-y-1/2 rotate-[-18deg] rounded-full"
+                    style={{ background: PRO.gold, opacity: 0.7 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -1112,6 +1465,10 @@ export function HcProSummary({
   const iWon = state.winnerId === selfId;
   const tie = state.result === "tie";
   const winnerName = players.find((p) => p.id === state.winnerId)?.name ?? "—";
+  // Both already existed and were used only by the nostalgia skin — this is
+  // the first slice of converging the two.
+  const margin = summarizeMatch(state);
+  const motm = computeManOfTheMatch(state, players);
 
   return (
     <div className="mx-auto w-full max-w-[820px]">
@@ -1131,10 +1488,42 @@ export function HcProSummary({
           {tie ? "Match tied" : iWon ? "You win" : `${winnerName} wins`}
         </div>
 
+        {/* The margin. `summarizeMatch` has always existed and the nostalgia
+            skin shows it; broadcast computed the same number for the 4s
+            celebration overlay and then discarded it, leaving the final screen
+            — the one a player actually carries away — unable to say by how
+            much. "You win" with two totals is a result, not a story. */}
+        {margin && (
+          <div className="mt-1.5 text-[13px] font-bold" style={{ color: PRO.inkMid }}>
+            {margin}
+          </div>
+        )}
+
         <div className="mt-5 flex items-center justify-center gap-6">
           {i1 && <InningsTotal state={state} innings={i1} players={players} />}
           {i2 && <InningsTotal state={state} innings={i2} players={players} />}
         </div>
+
+        {motm && (
+          <div
+            className="mx-auto mt-5 flex max-w-[380px] items-center gap-3 rounded-xl px-3.5 py-2.5 text-left"
+            style={{ background: `${PRO.gold}14`, border: `1px solid ${PRO.gold}44` }}
+          >
+            <span className="shrink-0" style={{ color: PRO.gold }}><IconTrophy size={18} /></span>
+            <div className="min-w-0">
+              <ProLabel color={PRO.gold}>Player of the match</ProLabel>
+              <div className="mt-1 truncate text-[13px] font-black" style={{ color: PRO.ink }}>
+                {motm.name}
+                <span className="ml-1.5 text-[11px] font-bold" style={{ color: PRO.inkLo }}>
+                  {motm.teamShort}
+                </span>
+              </div>
+              <div className="truncate text-[11px] font-semibold tabular-nums" style={{ color: PRO.inkMid }}>
+                {motm.line}
+              </div>
+            </div>
+          </div>
+        )}
 
         {onContinue && (
           <button
@@ -1202,7 +1591,7 @@ export function HcProScorecard({
       if (r) pool.push(...r.squad, ...r.extras);
     }
     const m = new Map(pool.map((p) => [p.id, p.name]));
-    return (id: string) => m.get(id) ?? id;
+    return (id: string) => m.get(id) ?? prettyName(id);
   }, [teamId, bowlTeamId, state.options.format]);
 
   const batters = Object.entries(innings.batterStats).filter(([, s]) => s.balls > 0 || s.isOut);
@@ -1212,12 +1601,27 @@ export function HcProScorecard({
     <ProPanel>
       <div className="mb-3 flex items-center gap-2.5">
         <TeamPlate team={bat} size="sm" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <ProLabel>Innings {innings.number}</ProLabel>
           <div className="mt-1 truncate text-[13px] font-black tabular-nums" style={{ color: PRO.ink }}>
             {innings.runs}/{innings.wickets}
+            <span className="ml-1.5 text-[11px] font-bold" style={{ color: PRO.inkLo }}>
+              ({oversFromBalls(innings.balls)} ov)
+            </span>
           </div>
         </div>
+        {/* How the innings ended. The engine has always recorded this and the
+            nostalgia skin shows it; broadcast never did, so you could not tell
+            a chase completed from an innings that simply ran out of overs. */}
+        {innings.endedReason && (
+          <ProChip tone={innings.endedReason === "chased" ? "win" : "neutral"}>
+            {innings.endedReason === "allOut"
+              ? "All out"
+              : innings.endedReason === "chased"
+              ? "Target chased"
+              : "Overs up"}
+          </ProChip>
+        )}
       </div>
 
       <ProLabel className="mb-1.5">Batting</ProLabel>
@@ -1230,29 +1634,47 @@ export function HcProScorecard({
               <th className="pb-1 text-right font-bold tabular-nums">B</th>
               <th className="pb-1 text-right font-bold tabular-nums">4s</th>
               <th className="pb-1 text-right font-bold tabular-nums">6s</th>
+              <th className="pb-1 text-right font-bold tabular-nums">SR</th>
             </tr>
           </thead>
           <tbody>
             {batters.length === 0 && (
-              <tr><td colSpan={5} className="py-2 text-center" style={{ color: PRO.inkLo }}>No batting yet</td></tr>
+              <tr><td colSpan={6} className="py-2 text-center" style={{ color: PRO.inkLo }}>No batting yet</td></tr>
             )}
-            {batters.map(([id, s]) => (
-              <tr key={id} style={{ borderTop: `1px solid ${PRO.line}` }}>
-                <td className="py-1.5 pr-2 font-semibold" style={{ color: s.isOut ? PRO.inkMid : PRO.ink }}>
-                  <span className="block max-w-[140px] truncate">
-                    {nameOf(id)}
-                    {!s.isOut && <span style={{ color: PRO.win }}> *</span>}
-                  </span>
-                </td>
-                <td className="py-1.5 text-right font-black tabular-nums" style={{ color: PRO.ink }}>{s.runs}</td>
-                <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>{s.balls}</td>
-                <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>{s.fours}</td>
-                <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>{s.sixes}</td>
-              </tr>
-            ))}
+            {batters.map(([id, s]) => {
+              const sr = strikeRate(s.runs, s.balls);
+              return (
+                <tr key={id} style={{ borderTop: `1px solid ${PRO.line}` }}>
+                  <td className="py-1.5 pr-2 font-semibold" style={{ color: s.isOut ? PRO.inkMid : PRO.ink }}>
+                    <span className="block max-w-[130px] truncate">
+                      {nameOf(id)}
+                      {!s.isOut && <span style={{ color: PRO.win }}> *</span>}
+                    </span>
+                  </td>
+                  <td className="py-1.5 text-right font-black tabular-nums" style={{ color: PRO.ink }}>{s.runs}</td>
+                  <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>{s.balls}</td>
+                  <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>{s.fours}</td>
+                  <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>{s.sixes}</td>
+                  <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>
+                    {sr == null ? "—" : sr.toFixed(0)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      {/* Fall of wickets belongs on the scorecard, between the two tables —
+          exactly where a printed scorecard puts it. */}
+      {innings.wickets > 0 && (
+        <>
+          <ProLabel className="mb-1.5">Fall of wickets</ProLabel>
+          <div className="mb-3">
+            <HcProFallOfWickets state={state} innings={innings} />
+          </div>
+        </>
+      )}
 
       <ProLabel className="mb-1.5">Bowling</ProLabel>
       <div className="overflow-x-auto">
@@ -1263,26 +1685,33 @@ export function HcProScorecard({
               <th className="pb-1 text-right font-bold tabular-nums">O</th>
               <th className="pb-1 text-right font-bold tabular-nums">R</th>
               <th className="pb-1 text-right font-bold tabular-nums">W</th>
+              <th className="pb-1 text-right font-bold tabular-nums">Econ</th>
             </tr>
           </thead>
           <tbody>
             {bowlers.length === 0 && (
-              <tr><td colSpan={4} className="py-2 text-center" style={{ color: PRO.inkLo }}>No bowling yet</td></tr>
+              <tr><td colSpan={5} className="py-2 text-center" style={{ color: PRO.inkLo }}>No bowling yet</td></tr>
             )}
-            {bowlers.map(([id, s]) => (
-              <tr key={id} style={{ borderTop: `1px solid ${PRO.line}` }}>
-                <td className="py-1.5 pr-2 font-semibold" style={{ color: PRO.ink }}>
-                  <span className="block max-w-[140px] truncate">{nameOf(id)}</span>
-                </td>
-                <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>
-                  {Math.floor(s.balls / 6)}.{s.balls % 6}
-                </td>
-                <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>{s.runs}</td>
-                <td className="py-1.5 text-right font-black tabular-nums" style={{ color: s.wickets > 0 ? PRO.win : PRO.ink }}>
-                  {s.wickets}
-                </td>
-              </tr>
-            ))}
+            {bowlers.map(([id, s]) => {
+              const econ = economy(s.runs, s.balls);
+              return (
+                <tr key={id} style={{ borderTop: `1px solid ${PRO.line}` }}>
+                  <td className="py-1.5 pr-2 font-semibold" style={{ color: PRO.ink }}>
+                    <span className="block max-w-[130px] truncate">{nameOf(id)}</span>
+                  </td>
+                  <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>
+                    {oversFromBalls(s.balls)}
+                  </td>
+                  <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>{s.runs}</td>
+                  <td className="py-1.5 text-right font-black tabular-nums" style={{ color: s.wickets > 0 ? PRO.win : PRO.ink }}>
+                    {s.wickets}
+                  </td>
+                  <td className="py-1.5 text-right tabular-nums" style={{ color: PRO.inkLo }}>
+                    {econ == null ? "—" : econ.toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1343,65 +1772,313 @@ export function HcProInnings({
 
   const isBattingPlayer = innings.battingPlayerId === selfId;
   const needsBowler = innings.currentBowlerId == null;
+  const isPowerplayOver = upcomingOver <= innings.powerplayOvers;
+  // Balls bowled in the over currently in progress. `upcomingOver` is the over
+  // the NEXT ball belongs to, which is the same over these balls are in.
+  const thisOver = innings.history.filter((b) => b.overNumber === upcomingOver);
 
-  return (
-    <div className="flex flex-col gap-3">
-      <HcProScoreBug state={state} innings={innings} target={target} players={players} compact={compact} />
+  /* Three mutually-exclusive action states, in the same precedence the
+     notebook skin uses — a wicket blocks everything, then a missing bowler,
+     then the live ball. Getting this order wrong deadlocks the match, so it
+     deliberately mirrors hc-shared's InningsPhase. */
+  /** True only when a delivery is actually awaiting picks. */
+  const liveBall = !innings.needsNextBatterPick && !needsBowler;
 
-      {/* Three mutually-exclusive action states, in the same precedence the
-          notebook skin uses — a wicket blocks everything, then a missing
-          bowler, then the live ball. Getting this order wrong deadlocks the
-          match, so it deliberately mirrors hc-shared's InningsPhase. */}
-      {innings.needsNextBatterPick ? (
-        <>
-          {isBattingPlayer ? (
-            <HcProNextBatter state={state} innings={innings} />
-          ) : (
-            <ProPanel className="text-center">
-              <ProLabel className="mb-2" color={PRO.loss}>Wicket</ProLabel>
-              <div className="text-[13px] font-bold" style={{ color: PRO.ink }}>
-                Opponent is selecting their next batter…
-              </div>
-            </ProPanel>
-          )}
-          {/* A wicket on the last ball of an over needs BOTH picks. */}
-          {needsBowler && (
-            <HcProBowlerPicker state={state} innings={innings} selfId={selfId} players={players} />
-          )}
-        </>
-      ) : needsBowler ? (
-        <HcProBowlerPicker state={state} innings={innings} selfId={selfId} players={players} />
+  // The blocking pickers (wicket / new over). These REPLACE the reveal stage,
+  // never the sticky pick footer — that only exists on a live ball.
+  const blocking = innings.needsNextBatterPick ? (
+    <>
+      {isBattingPlayer ? (
+        <HcProNextBatter state={state} innings={innings} />
       ) : (
-        <>
-          <ProPanel>
-            <div className="mb-2 flex items-center justify-between">
-              <ProLabel>
-                {myRole === "batter" ? "You are batting" : myRole === "bowler" ? "You are bowling" : "Spectating"}
-              </ProLabel>
-              <span style={{ color: PRO.inkLo }}>
-                {myRole === "batter" ? <IconBat size={14} /> : myRole === "bowler" ? <IconBall size={14} /> : null}
-              </span>
-            </div>
-            <HcProReveal reveal={reveal} meIsBatter={myRole === "batter"} myPick={myPick} oppLockedIn={oppLockedIn} />
-          </ProPanel>
-
-          <ProPanel>
-            <HcProPickRow
-              myPick={myPick}
-              allowed={allowed}
-              restricted={bowlerRestricted}
-              role={myRole}
-              onPick={pick}
-            />
-          </ProPanel>
-        </>
+        <ProPanel className="text-center">
+          <ProLabel className="mb-2" color={PRO.loss}>Wicket</ProLabel>
+          <div className="text-[13px] font-bold" style={{ color: PRO.ink }}>
+            Opponent is selecting their next batter…
+          </div>
+        </ProPanel>
       )}
+      {/* A wicket on the last ball of an over needs BOTH picks. */}
+      {needsBowler && <HcProBowlerPicker state={state} innings={innings} selfId={selfId} players={players} />}
+    </>
+  ) : needsBowler ? (
+    <HcProBowlerPicker state={state} innings={innings} selfId={selfId} players={players} />
+  ) : null;
 
+  const revealPanel = (
+    // On desktop this absorbs the leftover height so the deck reads as a full
+    // screen rather than a column bunched at the top.
+    <ProPanel className={compact ? "" : "flex flex-1 flex-col"}>
+      <div className="mb-2 flex items-center justify-between">
+        <ProLabel>
+          {myRole === "batter" ? "You are batting" : myRole === "bowler" ? "You are bowling" : "Spectating"}
+        </ProLabel>
+        <span style={{ color: PRO.inkLo }}>
+          {myRole === "batter" ? <IconBat size={14} /> : myRole === "bowler" ? <IconBall size={14} /> : null}
+        </span>
+      </div>
+      <div className={compact ? "" : "flex flex-1 items-center justify-center"}>
+        <HcProReveal reveal={reveal} meIsBatter={myRole === "batter"} myPick={myPick} oppLockedIn={oppLockedIn} />
+      </div>
+    </ProPanel>
+  );
+
+  /**
+   * The pick row, pinned.
+   *
+   * Sticky on BOTH breakpoints, for two different failures it fixes:
+   *   - desktop 1280×720, where the clipped column could push it off-screen
+   *     entirely with no scrollbar to reveal it;
+   *   - phones, where it sat ~600px down the page behind the score bug,
+   *     powerplay strip and a three-row crease bar.
+   * The one control that advances the match is now always on screen.
+   */
+  const pickFooter = liveBall ? (
+    <div
+      // No negative margin: this sits inside an `overflow-y-auto` column, and
+      // `-mx-1` pushed the child past the content box, which produced a
+      // horizontal scrollbar across the whole left deck.
+      className="sticky bottom-0 z-20 pt-2"
+      style={{
+        paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))",
+        background: `linear-gradient(to top, ${PRO.bg0} 62%, transparent)`,
+      }}
+    >
       <ProPanel>
-        <ProLabel className="mb-2">This innings</ProLabel>
-        <HcProBallTicker history={innings.history} max={compact ? 10 : 16} />
+        <HcProPickRow
+          myPick={myPick}
+          allowed={allowed}
+          restricted={bowlerRestricted}
+          role={myRole}
+          onPick={pick}
+        />
       </ProPanel>
     </div>
+  ) : null;
+
+  const powerplay = isPowerplayOver && !needsBowler && (
+    <HcProPowerplay
+      overNumber={upcomingOver}
+      totalPowerplayOvers={innings.powerplayOvers}
+      restrictedBalls={restrictedThisOver}
+      currentBallInOver={upcomingBall}
+      bowlerRestricted={isRestrictedNow}
+      myRole={myRole}
+    />
+  );
+
+  const crease = (
+    <HcProPlayersBar state={state} innings={innings} selfId={selfId} compact={compact} />
+  );
+
+  /**
+   * Spoken match commentary for screen readers.
+   *
+   * The board previously had NO live region at all — the only one in the game
+   * belonged to the nostalgia celebration overlay, so a screen-reader user
+   * heard "Kohli sends it out of the park!" but never the score, never "out",
+   * and never the target. This announces the substance of each delivery, then
+   * the state that follows it.
+   *
+   * `polite` so it queues behind the user's own actions rather than cutting
+   * across them, and keyed on ball count so it fires once per delivery.
+   */
+  const spoken = (() => {
+    if (!reveal) return "";
+    const outcome = reveal.wicket
+      ? "Out."
+      : `${reveal.runs} run${reveal.runs === 1 ? "" : "s"}.`;
+    const chase =
+      target != null
+        ? ` Need ${Math.max(0, target - innings.runs)} from ${innings.overs * 6 - innings.balls} balls.`
+        : "";
+    return `${outcome} ${innings.runs} for ${innings.wickets}, ${oversFromBalls(innings.balls)} overs.${chase}`;
+  })();
+
+  // Phone: one column. Reference material (ticker, fall of wickets) now sits
+  // ABOVE the action rather than below it — it was previously the only thing
+  // between the pick row and the bottom of a very long scroll, which is
+  // exactly backwards: you glance at the log, you act on the picks.
+  if (compact) {
+    return (
+      <div className="flex min-h-full flex-col gap-3">
+        <p aria-live="polite" aria-atomic="true" className="sr-only">{spoken}</p>
+        <HcProScoreBug state={state} innings={innings} target={target} players={players} compact />
+        {powerplay}
+        {crease}
+        {blocking}
+        <ProPanel>
+          <ProLabel className="mb-2">This innings</ProLabel>
+          <HcProBallTicker history={innings.history} max={10} />
+          <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${PRO.line}` }}>
+            <HcProRecentForm innings={innings} />
+          </div>
+          {innings.wickets > 0 && (
+            <>
+              <ProLabel className="mb-2 mt-4">Fall of wickets</ProLabel>
+              <HcProFallOfWickets state={state} innings={innings} compact />
+            </>
+          )}
+        </ProPanel>
+        {/* Reveal sits DIRECTLY above the pinned picks: it shows your throw
+            against theirs, so it is part of the action, not reference. The
+            ticker goes above it — you glance at the log, you act on the row. */}
+        <div className="flex-1" />
+        {liveBall && revealPanel}
+        {pickFooter}
+      </div>
+    );
+  }
+
+  // Desktop: a broadcast control room. The match state everyone watches holds
+  // the wide left column; the reference material a player only glances at
+  // (over log, bowling figures) lives in a fixed rail so the action column
+  // never has to stretch across a 2560px monitor to fill it.
+  return (
+    <div className="grid h-full min-h-0 gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
+      {/*
+       * `overflow-y-auto` is the P0 fix: the shell clips this region
+       * (`overflow-hidden` while live), and only the rail had a scroller. At
+       * 1280×720 during a powerplay over the column out-measured the clip box
+       * and the bottom of the pick row was simply gone, with no scrollbar. The
+       * scroller plus the sticky footer means it can no longer be lost.
+       */}
+      <div className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto overflow-x-hidden pr-0.5">
+        <p aria-live="polite" aria-atomic="true" className="sr-only">{spoken}</p>
+        <HcProScoreBug state={state} innings={innings} target={target} players={players} />
+        {powerplay}
+        {crease}
+        {blocking}
+        {liveBall && revealPanel}
+        {pickFooter}
+      </div>
+
+      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
+        <ProPanel>
+          <ProLabel className="mb-2">This over</ProLabel>
+          <HcProBallTicker history={thisOver} max={6} />
+          <ProLabel className="mb-2 mt-4">This innings</ProLabel>
+          <HcProBallTicker history={innings.history} max={24} />
+          <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${PRO.line}` }}>
+            <HcProRecentForm innings={innings} />
+          </div>
+        </ProPanel>
+        <ProPanel>
+          <ProLabel className="mb-2">Fall of wickets</ProLabel>
+          <HcProFallOfWickets state={state} innings={innings} />
+        </ProPanel>
+        <HcProBowlingFigures state={state} innings={innings} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Fall of wickets — `1-13 (Gaikwad, 1.4)`.
+ *
+ * The line that tells the story of a collapse at a glance, and the one thing a
+ * scorecard reader looks for after the totals. Reconstructed entirely from
+ * ball history; nothing new is stored.
+ */
+export function HcProFallOfWickets({
+  state,
+  innings,
+  compact = false,
+}: {
+  state: HcState;
+  innings: HcInnings;
+  compact?: boolean;
+}) {
+  const sel = state.teamSelections[innings.battingPlayerId];
+  const roster = sel?.teamId ? getRosterFor(sel.teamId, state.options.format) : null;
+  const pool: HcPlayerProfile[] = roster ? [...roster.squad, ...roster.extras] : [];
+  const nameOf = (id: string) => pool.find((p) => p.id === id)?.name ?? prettyName(id);
+
+  const fow = fallOfWickets(innings);
+  if (fow.length === 0) {
+    return (
+      <div className="py-2 text-center text-[11px] font-semibold" style={{ color: PRO.inkLo }}>
+        No wickets down
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      {fow.map((w) => (
+        <div key={w.wicket} className="flex items-baseline justify-between gap-2">
+          <span className="shrink-0 text-[11px] font-black tabular-nums" style={{ color: PRO.loss }}>
+            {w.wicket}–{w.score}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-right text-[11px] font-semibold" style={{ color: PRO.inkMid }}>
+            {compact ? nameOf(w.batterId).split(" ").slice(-1)[0] : nameOf(w.batterId)}
+            <span className="tabular-nums" style={{ color: PRO.inkLo }}> · {w.over}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** "Last 5 overs: 38 runs, 1 wicket" — the momentum readout during a chase. */
+export function HcProRecentForm({ innings, overs = 5 }: { innings: HcInnings; overs?: number }) {
+  const form = lastOvers(innings, overs);
+  if (form.balls === 0) return null;
+  const rate = (form.runs / form.balls) * 6;
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <ProLabel>Last {Math.min(overs, Math.ceil(form.balls / 6))} ov</ProLabel>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[13px] font-black tabular-nums" style={{ color: PRO.ink }}>
+          {form.runs}
+        </span>
+        <span className="text-[10px] font-bold tabular-nums" style={{ color: PRO.inkLo }}>
+          / {form.wickets} wkt{form.wickets === 1 ? "" : "s"} · RR {rate.toFixed(1)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Bowling figures for the innings — the rail's reference panel. */
+export function HcProBowlingFigures({ state, innings }: { state: HcState; innings: HcInnings }) {
+  const sel = state.teamSelections[innings.bowlingPlayerId];
+  const roster = sel?.teamId ? getRosterFor(sel.teamId, state.options.format) : null;
+  const pool: HcPlayerProfile[] = roster ? [...roster.squad, ...roster.extras] : [];
+  const rows = Object.entries(innings.bowlerStats).filter(([, s]) => s.balls > 0);
+
+  return (
+    <ProPanel>
+      <ProLabel className="mb-2">Bowling</ProLabel>
+      {rows.length === 0 ? (
+        <div className="py-2 text-center text-[11px] font-semibold" style={{ color: PRO.inkLo }}>
+          No overs bowled yet
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {rows.map(([id, s]) => {
+            const name = pool.find((p) => p.id === id)?.name ?? prettyName(id);
+            const current = innings.currentBowlerId === id;
+            return (
+              <div
+                key={id}
+                className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5"
+                style={{
+                  background: current ? "rgba(245,196,81,0.10)" : "rgba(255,255,255,0.035)",
+                  border: `1px solid ${current ? `${PRO.gold}55` : PRO.line}`,
+                }}
+              >
+                <span className="min-w-0 flex-1 truncate text-[11px] font-bold" style={{ color: PRO.ink }}>
+                  {name}
+                </span>
+                <span className="shrink-0 text-[11px] font-black tabular-nums" style={{ color: PRO.inkMid }}>
+                  {oversFromBalls(s.balls)}–{s.wickets}–{s.runs}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </ProPanel>
   );
 }
 

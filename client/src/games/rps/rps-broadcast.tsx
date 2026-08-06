@@ -318,7 +318,9 @@ export function ProArena({
   oppSide: ProSide;
   compact?: boolean;
 }) {
-  const glyph = compact ? 40 : 60;
+  // The arena is the hero of the desktop composition — undersized glyphs left
+  // it reading as a small plate adrift in the middle of a wide screen.
+  const glyph = compact ? 40 : 76;
   const banner =
     bannerOutcome === "you-win"
       ? { text: "Round won", tone: PRO.win }
