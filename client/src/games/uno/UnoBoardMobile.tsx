@@ -597,16 +597,29 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
 
       {/* Bottom-right HUD — persistent UNO declare button + turn timer. */}
       <div className="fixed bottom-3 right-3 z-30 flex flex-col items-end gap-2">
-        <StadiumUnoButton enabled={m.canDeclareUno} onDeclare={m.declareUno} />
+        <StadiumUnoButton enabled={m.canDeclareUno} onDeclare={m.declareUno} handSize={state.myHand.length} />
         <StadiumTurnTimerPill deadline={state.turnDeadline} myTurn={m.myTurn} />
       </div>
 
       {/* Full-screen urgency pulse for the final ≤10s — see
           TurnTimeWarning.tsx. active also covers isChallengeTarget: the
           player the server resolves on timeout during a Wild+4 decision
-          must see the same warning a normal turn gets. */}
+          must see the same warning a normal turn gets.
+
+          `chipless`: the board already carries StadiumTurnTimerPill in the
+          bottom-right, with a draining ring, a Your Turn / Their Turn label
+          and three colour stages. The top-centre chip printed the SAME
+          seconds a second time — two countdowns for one deadline, on opposite
+          corners of a 390px-tall landscape board. The full-screen edge pulse
+          is kept (it is urgency, not a duplicate readout); only the redundant
+          number is dropped. */}
       {state.turnDeadline && (
-        <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn || m.isChallengeTarget} topOffsetRem={0.5} />
+        <TurnTimeWarning
+          deadline={state.turnDeadline}
+          active={m.myTurn || m.isChallengeTarget}
+          topOffsetRem={0.5}
+          chipless
+        />
       )}
 
       {state.phase === "finished" && !m.scorecardDismissed && (

@@ -7,7 +7,7 @@ import {
   LudoOverlays,
   LudoPlayerCards,
   LudoBottomBar,
-  LudoTurnCallout,
+  LudoRollTray,
   LudoMatchFeed,
 } from "./ludo-board-composites";
 
@@ -60,7 +60,15 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
     >
       <LudoStatusBar m={m} state={state} />
 
-      <LudoPlayerCards state={state} players={players} row="top" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
+      {/* ONE roster strip, not two.
+       *
+       * The seats used to be split above and below the board, which put the
+       * same four players in two places and cost a second ~76px row. With the
+       * turn callout also gone (its copy duplicated the header banner, the
+       * active card and the roll tray), the board reclaims ~130px of height —
+       * and on a portrait phone the board is height-bound at that size, so it
+       * grows to fill it. */}
+      <LudoPlayerCards state={state} players={players} row="all" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
 
       {/* `-mx-1.5` cancels the shell's own horizontal padding for the BOARD
           only. The board is width-bound on a portrait phone, so every pixel of
@@ -73,7 +81,13 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
           the no-scroll invariant above still holds. The callout spends part
           of the ~124px of blank paper that `items-center` used to leave under
           a width-bound board. */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2">
+      {/* `justify-start`, not `justify-center`. With the second card row and
+          the callout gone there is ~170px of slack in this column, and
+          centring split it above AND below the board — which read as the
+          board floating in dead paper. Anchored to the top it sits directly
+          under the roster, and the whole slack pools above the nav as one
+          deliberate gap instead of two accidental ones. */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-start gap-2">
         {/* Full-bleed breakout. The board is width-bound in portrait, so every
             pixel of chrome between it and the screen edge comes straight off
             the playing surface. Three separate insets sat in the way: Room's
@@ -83,14 +97,28 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
             viewport) takes the board from ~409px to ~426px on a 430px phone.
             That is the whole budget: a square board on a portrait screen is
             limited by width alone, and this exhausts it. */}
+        {/*
+         * The breakout has to WIDEN the row, not just shift it.
+         *
+         * This was `w-full` (width: 100%) plus `margin: 0 -11px`, which moves
+         * the box left and right but leaves it 100% wide — measured live, the
+         * row was still 364px on a 390px phone and the board with it. A
+         * portrait Ludo board is WIDTH-bound, so those 22px are the only
+         * lever that actually grows the playing surface; height reclaimed
+         * elsewhere cannot. `calc(100% + 22px)` genuinely takes them.
+         */}
         <div
           ref={boardRowRef}
-          className="w-full flex-1 min-h-0 flex items-center justify-center"
-          style={{ marginLeft: -11, marginRight: -11 }}
+          // `items-start`: the board is width-bound on a phone, so this row is
+          // always taller than the square inside it. Centring split the
+          // leftover above and below, which read as the board floating. Top
+          // aligned, it sits tight under the roster and the slack pools once,
+          // below — where the feed and the roll tray can use it.
+          className="flex-1 min-h-0 flex items-start justify-center"
+          style={{ width: "calc(100% + 22px)", marginLeft: -11, marginRight: -11 }}
         >
           <LudoBoardArea m={m} state={state} players={players} maxWidth={`${boardPx}px`} />
         </div>
-        <LudoTurnCallout m={m} state={state} />
         {/* Same match feed the desktop rail carries, in its compact shape.
             Sits OUTSIDE the board's own flex slot, so the ResizeObserver
             above measures what is left after it: on a portrait phone the
@@ -98,12 +126,20 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
             costing the board nothing. On a short screen where the board is
             height-bound instead, the board wins and this gives way — the
             no-scroll invariant holds either way. */}
+        {/* The dice sits WITH the board, not in the nav row.
+         *
+         * A phone board is width-bound, so this column always has vertical
+         * slack the board cannot use — previously ~170px of blank paper
+         * between the board and a dice cup wedged between Voice and Invite as
+         * if it were a fifth utility icon. Moving the cup here spends that
+         * slack on the one control the game is played with, puts it directly
+         * under the board where the eye already is, and lets the nav collapse
+         * to a single compact row. It stays inside the thumb arc. */}
+        <LudoRollTray m={m} state={state} />
         <LudoMatchFeed m={m} variant="strip" />
       </div>
 
-      <LudoPlayerCards state={state} players={players} row="bottom" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
-
-      <LudoBottomBar m={m} state={state} unread={unread} />
+      <LudoBottomBar m={m} state={state} unread={unread} withTray={false} />
 
       {/* Room panels + event bridge only — no visible strip (the bottom nav
           drives them). Keeps chat/voice/players/room/emoji fully functional

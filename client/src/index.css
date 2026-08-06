@@ -1371,11 +1371,20 @@ body, #root, .bhalyam-paper {
 /* UNO call button, armed. `animate-pulse` (a plain opacity fade) made the
    game's most important button look like it was disabled; this reads as a
    lit, thumpable button instead — scale + a widening halo. */
+/* Swell → counter-rotate → settle → REST. The rest beat is the point: a cue
+   that never stops moving stops being seen within a few seconds, so the button
+   holds still for the back half of every cycle and the movement re-registers
+   each time it starts again. Stays CSS — a looping transform is exactly what
+   keyframes are for; anime.js earns its place on sequences CSS cannot express
+   (see lib/anim.ts, used for the Rummy auto-arrange reorder). */
 @keyframes uno-call-ready {
-  0%, 100% { transform: scale(1);    box-shadow: 0 4px 0 2px #6E0B0B, 0 10px 24px rgba(226,49,34,0.55), inset 0 2px 4px rgba(255,255,255,0.4); }
-  50%      { transform: scale(1.045); box-shadow: 0 4px 0 2px #6E0B0B, 0 12px 34px rgba(255,90,60,0.85), inset 0 2px 4px rgba(255,255,255,0.5); }
+  0%   { transform: scale(1) rotate(0deg);        box-shadow: 0 4px 0 2px #6E0B0B, 0 10px 24px rgba(226,49,34,0.55), inset 0 2px 4px rgba(255,255,255,0.4); }
+  14%  { transform: scale(1.055) rotate(-1.6deg); box-shadow: 0 4px 0 2px #6E0B0B, 0 12px 34px rgba(255,90,60,0.85), inset 0 2px 4px rgba(255,255,255,0.5); }
+  28%  { transform: scale(1.03) rotate(1.4deg);   box-shadow: 0 4px 0 2px #6E0B0B, 0 12px 30px rgba(255,90,60,0.7),  inset 0 2px 4px rgba(255,255,255,0.5); }
+  42%  { transform: scale(1) rotate(0deg);        box-shadow: 0 4px 0 2px #6E0B0B, 0 10px 24px rgba(226,49,34,0.55), inset 0 2px 4px rgba(255,255,255,0.4); }
+  100% { transform: scale(1) rotate(0deg);        box-shadow: 0 4px 0 2px #6E0B0B, 0 10px 24px rgba(226,49,34,0.55), inset 0 2px 4px rgba(255,255,255,0.4); }
 }
-.uno-call-ready { animation: uno-call-ready 1.15s ease-in-out infinite; }
+.uno-call-ready { animation: uno-call-ready 1.9s ease-in-out infinite; }
 
 /* Final 5 seconds — a heartbeat on the timer chip. Redundant with the ring,
    the colour and the digits, so removing it (reduced motion) loses nothing. */
