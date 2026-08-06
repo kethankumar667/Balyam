@@ -30,10 +30,17 @@ export const PRO = {
   /** Hairlines. */
   line: "rgba(255,255,255,0.09)",
   lineStrong: "rgba(255,255,255,0.16)",
-  /** Ink. */
+  /** Ink.
+   *
+   * `inkLo` carries the entire secondary type ramp — every micro-label, stat
+   * sub-line, over count and table cell. At its original #6F829B it measured
+   * ~4.2:1 on `panel`, under AA's 4.5:1, on a surface people read for a whole
+   * match. #8B9CB5 measures ~5.6:1 and stays clearly quieter than `inkMid`.
+   * `inkFaint` keeps the old value for decorative marks only — never text. */
   ink: "#F2F6FC",
   inkMid: "#A7B6CC",
-  inkLo: "#6F829B",
+  inkLo: "#8B9CB5",
+  inkFaint: "#6F829B",
   /** Broadcast gold — primary emphasis. */
   gold: "#F5C451",
   goldDeep: "#C89227",
@@ -68,6 +75,33 @@ export function sideFor(index: number): ProSide {
  * corners from competing with the panels. All CSS gradients — no raster, so it
  * costs nothing to ship and scales to any viewport.
  */
+/**
+ * Browser surfaces this shell owns.
+ *
+ * Selection, the caret, scrollbars and focus rings ship with defaults that
+ * belong to no design system — a blue OS highlight and a grey scrollbar read
+ * as "assembled" the moment you drag-select a score or scroll the rail. These
+ * are scoped to `.pro-shell` so they never leak into the notebook skin.
+ */
+const PRO_SURFACES = `
+.pro-shell ::selection { background: ${PRO.gold}59; color: ${PRO.ink}; }
+.pro-shell { caret-color: ${PRO.gold}; scrollbar-color: ${PRO.lineStrong} transparent; scrollbar-width: thin; }
+.pro-shell ::-webkit-scrollbar { width: 10px; height: 10px; }
+.pro-shell ::-webkit-scrollbar-track { background: transparent; }
+.pro-shell ::-webkit-scrollbar-thumb {
+  background: ${PRO.lineStrong};
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.pro-shell ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); background-clip: content-box; }
+.pro-shell *:focus-visible {
+  outline: 2px solid ${PRO.gold};
+  outline-offset: 2px;
+  box-shadow: none;
+}
+`;
+
 export function ProShell({
   children,
   className = "",
@@ -79,13 +113,14 @@ export function ProShell({
 }) {
   return (
     <div
-      className={`relative flex flex-col overflow-hidden ${className}`}
+      className={`pro-shell relative flex flex-col overflow-hidden ${className}`}
       style={{
         background: `linear-gradient(180deg, ${PRO.bg1} 0%, ${PRO.bg0} 100%)`,
         color: PRO.ink,
         ...style,
       }}
     >
+      <style>{PRO_SURFACES}</style>
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -151,8 +186,11 @@ export function ProLabel({
   color?: string;
 }) {
   return (
+    // 11px, not 10px: at 0.16em tracking and 800 weight this is the smallest
+    // size that stays legible on the dark panel. It labels real data, so it is
+    // text, not ornament.
     <div
-      className={`text-[10px] font-extrabold uppercase leading-none ${className}`}
+      className={`text-[11px] font-extrabold uppercase leading-none ${className}`}
       style={{ letterSpacing: "0.16em", color }}
     >
       {children}
@@ -391,11 +429,17 @@ export function ProMeter({
   max,
   accent = PRO.gold,
   height = 6,
+  label,
+  valueText,
 }: {
   value: number;
   max: number;
   accent?: string;
   height?: number;
+  /** Accessible name. Without it this announces as an unnamed progress bar. */
+  label?: string;
+  /** Human phrasing of the value, e.g. "128 of 156 runs". */
+  valueText?: string;
 }) {
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
   return (
@@ -403,9 +447,11 @@ export function ProMeter({
       className="w-full overflow-hidden rounded-full"
       style={{ height, background: "rgba(255,255,255,0.10)" }}
       role="progressbar"
+      aria-label={label}
       aria-valuenow={value}
       aria-valuemin={0}
       aria-valuemax={max}
+      aria-valuetext={valueText}
     >
       <div
         className="h-full rounded-full transition-all duration-500"

@@ -2973,17 +2973,38 @@ export function HcCelebrationLayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase, state.winnerId, state.result]);
 
-  // Auto-dismiss
+  /**
+   * Auto-dismiss.
+   *
+   * Holds were cut roughly in half for the per-ball events (four/six/wicket):
+   * they fire on the most frequent notable deliveries, and a 2s hold after
+   * every boundary is a large share of a 10-over match spent watching a
+   * graphic. The winner card keeps a longer beat — it happens once.
+   */
   useEffect(() => {
     if (!active) return;
     const ms =
-      active.kind === "winner" ? 4800
-      : active.kind === "hattrickWickets" || active.kind === "streak" ? 3200
-      : active.kind === "six" ? 2200
-      : active.kind === "wicket" ? 2000
-      : 1800;
+      active.kind === "winner" ? 4200
+      : active.kind === "hattrickWickets" || active.kind === "streak" ? 2400
+      : active.kind === "six" ? 1300
+      : active.kind === "wicket" ? 1300
+      : 1100;
     const t = setTimeout(() => setActive(null), ms);
     return () => clearTimeout(t);
+  }, [active]);
+
+  // Any key or tap dismisses immediately — the celebration is feedback, never
+  // a gate. `pointerdown` on the window (not a catcher element) means the same
+  // tap that clears the graphic still reaches the control underneath it.
+  useEffect(() => {
+    if (!active) return;
+    const dismiss = () => setActive(null);
+    window.addEventListener("keydown", dismiss);
+    window.addEventListener("pointerdown", dismiss);
+    return () => {
+      window.removeEventListener("keydown", dismiss);
+      window.removeEventListener("pointerdown", dismiss);
+    };
   }, [active]);
 
   if (!active) return null;
@@ -2992,12 +3013,27 @@ export function HcCelebrationLayer({
 
 export function HcCelebrationOverlay({ data }: { data: HcCelebrationData }) {
   return (
+    /*
+     * `pointer-events-none` is load-bearing, not styling.
+     *
+     * This is a full-viewport z-60 layer that fires after every boundary and
+     * every wicket. Without it, both players were locked out of the pick row,
+     * the next-batter and bowler pickers, Leave and chat for the whole hold —
+     * an involuntary stall on the exact beats that should feel fastest.
+     * Celebration is feedback; it must never gate input. A tap anywhere
+     * dismisses it early via the transparent catcher below.
+     */
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+      className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center px-4"
       aria-live="polite"
       aria-atomic="true"
       role="status"
     >
+      {/* Dismissal is handled by a window listener in HcCelebrationLayer, NOT
+          by a full-screen catcher element here. A catcher would need
+          pointer-events-auto to be clickable, which would re-block the input
+          this layer exists to stop blocking. The listener lets one tap both
+          clear the graphic and land on the control underneath. */}
       <div
         className="absolute inset-0"
         style={{

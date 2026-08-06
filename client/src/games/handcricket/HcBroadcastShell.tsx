@@ -58,7 +58,13 @@ export default function HcBroadcastShell({
     prevTeamIdRef.current = next;
   }, [mySelection?.teamId, forceTeamPicker]);
 
-  const maxWidth = compact ? 560 : state.phase === "teamSelect" ? 1180 : 980;
+  // Wide enough for the innings screen's action column + rail to sit side by
+  // side on a laptop, and capped so a 2560px monitor doesn't stretch the score
+  // bug into a letterbox. Team selection gets more room for its card grid.
+  const maxWidth = compact ? 560 : state.phase === "teamSelect" ? 1320 : 1500;
+  // Only the desktop innings screen takes the fill-the-height treatment; on a
+  // phone the column is taller than the viewport and must scroll.
+  const isLive = !compact && (state.phase === "innings1" || state.phase === "innings2");
 
   function content(): ReactNode {
     if (isTeamSelect) {
@@ -82,7 +88,21 @@ export default function HcBroadcastShell({
   }
 
   return (
-    <ProShell className={compact ? "min-h-dvh-safe" : "h-full"}>
+    /*
+     * Full-viewport overlay, matching the notebook skin's `HcNotebookPage`
+     * (`position: fixed; inset: 0; z-index: 50`).
+     *
+     * Room.tsx renders the board inside its ordinary page container, so an
+     * in-flow shell left the app's cream page background framing a dark panel
+     * — the board read as a widget dropped on a page rather than the screen.
+     * Hand Cricket is the one game that takes over the viewport, and the
+     * broadcast skin has to do the same or the two skins disagree about what
+     * the game IS.
+     */
+    <ProShell
+      className={compact ? "min-h-dvh-safe" : ""}
+      style={{ position: "fixed", inset: 0, zIndex: 50 }}
+    >
       <HcProHeader
         state={state}
         players={players}
@@ -102,8 +122,19 @@ export default function HcBroadcastShell({
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-5">
-        <div className="mx-auto w-full" style={{ maxWidth }}>
+      {/*
+       * The live innings FILLS the remaining height (its inner columns do
+       * their own scrolling) so the pick row lands at the bottom of the screen
+       * rather than floating mid-page above dead space. Every other phase is
+       * content-sized and scrolls the whole area normally — forcing those to
+       * full height would stretch a small toss card across the viewport.
+       */}
+      <div
+        className={`min-h-0 flex-1 overflow-x-hidden px-3 py-4 sm:px-5 ${
+          isLive ? "overflow-hidden" : "overflow-y-auto"
+        }`}
+      >
+        <div className={`mx-auto w-full ${isLive ? "h-full" : ""}`} style={{ maxWidth }}>
           {content()}
         </div>
       </div>
