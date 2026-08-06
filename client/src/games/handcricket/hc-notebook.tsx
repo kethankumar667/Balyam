@@ -384,6 +384,7 @@ export function HcNotebookHeader({
   messages,
   onHelp,
   onLeave,
+  onSkin,
 }: {
   state: HcState;
   players: Player[];
@@ -393,6 +394,9 @@ export function HcNotebookHeader({
   messages: ChatMessage[];
   onHelp?: () => void;
   onLeave?: () => void;
+  /** Switch to the broadcast skin. Styled in the notebook idiom — a dark
+   *  pro-kit control would read as a rendering bug on parchment. */
+  onSkin?: () => void;
 }) {
   const [p0, p1] = state.playerOrder;
   const t0 = labelFor(state, p0, players);
@@ -497,6 +501,31 @@ export function HcNotebookHeader({
               />
             </div>
           </TornChip>
+
+          {/* Skin switch back to broadcast */}
+          {onSkin && (
+            <button
+              onClick={onSkin}
+              title="Switch to the broadcast look"
+              style={{
+                height: 32,
+                padding: "0 12px",
+                borderRadius: 5,
+                border: `1.5px solid ${INK_LT}`,
+                background: "transparent",
+                color: INK_LT,
+                cursor: "pointer",
+                fontFamily: "'Kalam', cursive",
+                fontWeight: 800,
+                fontSize: 12,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                flexShrink: 0,
+              }}
+            >
+              Broadcast
+            </button>
+          )}
 
           {/* Help button */}
           {onHelp && (

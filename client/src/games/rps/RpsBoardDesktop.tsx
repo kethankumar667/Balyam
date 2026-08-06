@@ -6,6 +6,7 @@ import { RpsScorecardModal } from "./rps-shared";
 import { RpsOverlays } from "./rps-shared";
 import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
+import { useSkin } from "../skin";
 import {
   NotebookPage,
   NotebookTopBar,
@@ -29,6 +30,7 @@ const P2_C = "#8B1A1A";
 export default function RpsBoardDesktop(props: RpsBoardProps) {
   const m = useRpsBoard(props);
   const tut = useTutorialGate(RPS_TUTORIAL.key);
+  const [, setSkin] = useSkin();
   const showScorecard = m.state.isOver;
 
   return (
@@ -42,6 +44,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         target={m.target}
         onLeave={props.onLeave ? props.onLeave : undefined}
         onHelp={() => tut.setOpen(true)}
+        onSkin={() => setSkin("broadcast")}
       />
 
       {/* ── Main 3-column layout ───────────────────────────────────── */}

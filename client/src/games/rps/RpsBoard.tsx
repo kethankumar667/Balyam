@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import RpsBoardMobile from "./RpsBoardMobile";
 import RpsBoardDesktop from "./RpsBoardDesktop";
+import RpsBroadcastMobile from "./RpsBroadcastMobile";
+import RpsBroadcastDesktop from "./RpsBroadcastDesktop";
+import { useSkin } from "../skin";
 import type { RpsBoardProps } from "./useRpsBoard";
 
 /**
@@ -31,5 +34,16 @@ export default function RpsBoard(props: RpsBoardProps) {
     };
   }, []);
 
-  return isDesktop ? <RpsBoardDesktop {...props} /> : <RpsBoardMobile {...props} />;
+  // Skin picks the LOOK, the gate above picks the LAYOUT — kept as two
+  // independent axes so a new skin never has to re-derive the desktop test.
+  //
+  // Exactly one shell mounts, which matters more here than it looks:
+  // `useRpsBoard` subscribes the reveal banner, reaction and confetti effects,
+  // so mounting two shells would double every one of them.
+  const [skin] = useSkin();
+
+  if (skin === "nostalgia") {
+    return isDesktop ? <RpsBoardDesktop {...props} /> : <RpsBoardMobile {...props} />;
+  }
+  return isDesktop ? <RpsBroadcastDesktop {...props} /> : <RpsBroadcastMobile {...props} />;
 }
