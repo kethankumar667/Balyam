@@ -566,7 +566,10 @@ export function LudoPlayerCards({
   // (3 up / 2 down) no longer renders 111px cards above and 170px cards below
   // — same component, 53% different width, names truncated in one row and
   // whole in the other. Fixed width + centring keeps the two rows identical.
-  const perRow = Math.max(1, mid);
+  //
+  // `all` in row orientation is the single-strip mobile roster: every seat is
+  // on one line, so it sizes off the FULL count rather than half of it.
+  const perRow = row === "all" ? Math.max(1, seats.length) : Math.max(1, mid);
   const cardW = `calc((100% - ${(perRow - 1) * 0.5}rem) / ${perRow})`;
   const dense = perRow >= 3;
   const ultra = perRow >= 4;
@@ -898,6 +901,19 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
   // Name who we're waiting on — "Waiting…" alone leaves the player guessing,
   // and on desktop this tray sits far from the header's turn banner.
   const waitingFor = !finished && !m.displayMyTurn ? m.nameOf(m.displayTurnPlayerId) : null;
+
+  /**
+   * The cup wears the ACTIVE seat's colour.
+   *
+   * It was a fixed felt green whoever was playing, so the dice read as a
+   * detached widget parked at the bottom of the screen rather than as this
+   * player's dice. Colour is the cheapest possible tether between the cup and
+   * the seat whose turn it is — no geometry, no animation path — and it makes
+   * "whose turn" readable from the control itself.
+   */
+  const activeColor = state.playerColors[m.displayTurnPlayerId] as LudoColor | undefined;
+  const cupTint = !finished && activeColor ? COLOR_HEX[activeColor] : "#57B65B";
+  const cupDark = !finished && activeColor ? COLOR_HEX_DARK[activeColor] : "#1B5E20";
   return (
     <div className="flex flex-col items-center gap-1.5">
       <button
@@ -919,10 +935,10 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
         style={{
           width: 92,
           height: 92,
-          background: "radial-gradient(circle at 50% 35%, #57B65B, #2E7D32)",
-          border: "5px solid #1B5E20",
+          background: `radial-gradient(circle at 50% 35%, ${cupTint}, ${cupDark})`,
+          border: `5px solid ${cupDark}`,
           boxShadow: canRoll
-            ? "0 0 0 4px rgba(87,182,91,0.4), 0 8px 18px rgba(0,0,0,0.3)"
+            ? `0 0 0 4px ${cupTint}66, 0 8px 18px rgba(0,0,0,0.3)`
             : "0 6px 14px rgba(0,0,0,0.22)",
         }}
       >
@@ -948,7 +964,15 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
         // whose-turn-is-it text, so the handover has to register here too.
         key={m.turnPulse}
         className="ludo-turn-change px-4 py-0.5 text-[12px] font-black max-w-[11rem] truncate text-center"
-        style={{ background: "#F7E8C4", border: "2px solid #C8A66B", color: "#6D4323", borderRadius: 6 }}
+        style={{
+          // Now that the mobile turn callout is gone, this label IS the turn
+          // sentence on both shells — so it carries the seat colour too
+          // rather than sitting in neutral parchment beside a coloured cup.
+          background: m.displayMyTurn ? cupTint : "#F7E8C4",
+          border: `2px solid ${m.displayMyTurn ? cupDark : "#C8A66B"}`,
+          color: m.displayMyTurn ? "#FFFFFF" : "#6D4323",
+          borderRadius: 6,
+        }}
       >
         {finished
           ? "Game over"
@@ -968,7 +992,20 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
  *  toolbar now, so the duplicate top strip is gone (critique: reduce layers).
  *  Chat carries the live unread badge lifted from the rail. (Reference's
  *  "Rewards" stays dropped: no rewards system exists.) */
-export function LudoBottomBar({ m, state, unread = 0 }: { m: LudoBoardModel; state: LudoState; unread?: number }) {
+export function LudoBottomBar({
+  m,
+  state,
+  unread = 0,
+  withTray = true,
+}: {
+  m: LudoBoardModel;
+  state: LudoState;
+  unread?: number;
+  /** False when the shell places the roll tray itself (mobile puts it under
+   *  the board, so the dice reads as part of the game rather than as a fifth
+   *  nav icon, and the control bar drops to a single compact row). */
+  withTray?: boolean;
+}) {
   const openPanel = (panel: string) =>
     window.dispatchEvent(new CustomEvent("bhalyam:open-room-panel", { detail: { panel } }));
   const NavBtn = ({ label, glyph, panel, badge }: { label: string; glyph: string; panel: string; badge?: number }) => (
@@ -991,12 +1028,16 @@ export function LudoBottomBar({ m, state, unread = 0 }: { m: LudoBoardModel; sta
     </button>
   );
   return (
-    <div className="flex items-end justify-center gap-2 sm:gap-4">
+    /* Invite is gone from the persistent bar and lives in the room panel
+     * (still one tap from "More"). It is the rarest action here by a wide
+     * margin — you invite once, before the match — and it was carrying the
+     * same weight as Chat, which is used constantly. */
+    <div className={`flex items-end justify-center ${withTray ? "gap-2 sm:gap-4" : "gap-6"}`}>
       <NavBtn label="Chat" glyph="💬" panel="chat" badge={unread} />
       <NavBtn label="Emoji" glyph="😊" panel="emoji" />
-      <LudoRollTray m={m} state={state} />
+      {withTray && <LudoRollTray m={m} state={state} />}
       <NavBtn label="Voice" glyph="🎙️" panel="voice" />
-      <NavBtn label="Invite" glyph="🔗" panel="room" />
+      <NavBtn label="More" glyph="⋯" panel="room" />
     </div>
   );
 }

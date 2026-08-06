@@ -19,9 +19,18 @@ export function TurnTimeWarning({
   deadline,
   active,
   topOffsetRem = 0.75,
+  chipless = false,
 }: {
   deadline: number | null | undefined;
   active: boolean;
+  /** Render the full-screen urgency pulse WITHOUT the countdown chip.
+   *
+   *  For boards that already show a persistent countdown of their own (UNO's
+   *  StadiumTurnTimerPill has a draining ring, a turn label and three colour
+   *  stages). Printing the same seconds again in the opposite corner is two
+   *  readouts for one deadline — the edge pulse is urgency, the chip is a
+   *  duplicate. Defaults false so every existing caller is unchanged. */
+  chipless?: boolean;
   /** Distance from the viewport top for the countdown chip, in rem. Defaults
    *  to the original 0.75rem every existing caller (Rummy, Word Building,
    *  Dots & Boxes) relies on — only pass this when a board's own header
@@ -64,6 +73,7 @@ export function TurnTimeWarning({
       <div
         className="fixed z-50 pointer-events-none"
         style={{
+          display: chipless ? "none" : undefined,
           top: `max(${topOffsetRem}rem, env(safe-area-inset-top, 0))`,
           left: "50%",
           transform: "translateX(-50%)",

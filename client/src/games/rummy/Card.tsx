@@ -119,6 +119,13 @@ export function PlayingCard({
   const Tag: ElementType = draggable ? "div" : onClick ? "button" : "div";
 
   // A <div> drag source still has to behave like a button for keyboard users;
+  // Stable DOM handle for FLIP reorder animations (see lib/anim.ts). A DOM
+  // reorder cannot be tweened directly — the animation has to measure each
+  // card before the layout change and invert it afterwards, which needs a way
+  // to find the same card in both passes. Rendered on every card, costs
+  // nothing when unused.
+  const flipProps = { "data-card-id": card.id } as const;
+
   // a real <button> gets that for free. Neither should be reachable by tab
   // while it is inert.
   const ariaProps =
@@ -160,6 +167,7 @@ export function PlayingCard({
       <Tag
         draggable={draggable && !inert}
         {...ariaProps}
+        {...flipProps}
         className={`${cls} rm-card--joker`}
         style={cardStyle}
         title={title ?? "Printed Joker"}
@@ -174,6 +182,7 @@ export function PlayingCard({
     <Tag
       draggable={draggable && !inert}
       {...ariaProps}
+      {...flipProps}
       className={cls}
       style={cardStyle}
       title={title}

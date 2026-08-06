@@ -897,23 +897,46 @@ export function StadiumChatButton({ onClick, unread }: { onClick: () => void; un
  * tell whether the game's most important button even existed. Now it keeps a
  * solid (if unlit) body and states WHY it's off via tooltip + aria-label.
  */
-export function StadiumUnoButton({ enabled, onDeclare }: { enabled: boolean; onDeclare: () => void }) {
+export function StadiumUnoButton({
+  enabled,
+  onDeclare,
+  handSize,
+}: {
+  enabled: boolean;
+  onDeclare: () => void;
+  /** Cards left in the local hand. Drives PROMINENCE, not availability. */
+  handSize?: number;
+}) {
   const label = enabled
     ? "Declare UNO — you have one card left"
     : "Declare UNO — lights up when you are down to one card";
+
+  /*
+   * The button earns its size instead of always taking it.
+   *
+   * At full weight it is 7.4rem of the arena's most valuable corner from the
+   * first deal, when it cannot be pressed for another dozen turns — the same
+   * dead slab whether you hold seven cards or one. It now stays small and
+   * quiet while it is irrelevant, grows as you approach the call, and only
+   * reaches full weight when it is actually live. Never hidden: a control
+   * that appears from nowhere is worse than one that is merely quiet, and
+   * a player has to be able to find it before they need it.
+   */
+  const armed = handSize == null || handSize <= 2;
   return (
     <button
       onClick={enabled ? onDeclare : undefined}
       disabled={!enabled}
       aria-label={label}
       title={label}
-      className={`relative flex items-center justify-center rounded-full font-black italic tracking-tight transition-transform ${
+      className={`relative flex items-center justify-center rounded-full font-black italic tracking-tight transition-all duration-500 ${
         enabled ? "uno-call-ready active:scale-95 cursor-pointer" : "cursor-not-allowed"
       }`}
       style={{
-        width: "7.4rem",
-        height: "3.4rem",
-        fontSize: "1.6rem",
+        width: armed ? "7.4rem" : "4.6rem",
+        height: armed ? "3.4rem" : "2.2rem",
+        fontSize: armed ? "1.6rem" : "1rem",
+        opacity: armed ? 1 : 0.72,
         color: enabled ? "#FFF4D2" : "rgba(255,236,206,0.55)",
         background: enabled
           ? "radial-gradient(circle at 35% 28%, #FF8A62, #E23122 52%, #A50E0E 100%)"

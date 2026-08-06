@@ -17,6 +17,7 @@ import {
 import EmojiRain from "../ludo/EmojiRain";
 import CardTracker from "./CardTracker";
 import { splitBySuit } from "./autoArrange";
+import { captureRects, playFlip } from "../../lib/anim";
 import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
 import { useTurnHaptics, useHaptics } from "../../hooks/useHaptics";
 import TutorialModal, { hasSeenTutorial } from "./TutorialModal";
@@ -865,6 +866,10 @@ export default function RummyBoardMobile({
     getSocket().emit("game:move", { type: "drop" });
   }
 
+  /** Cancels an in-flight auto-arrange FLIP on unmount. */
+  const flipCleanup = useRef<(() => void) | null>(null);
+  useEffect(() => () => flipCleanup.current?.(), []);
+
   // AUTO only tidies the hand into suit lanes (♠♥♦♣ + jokers) — it never builds
   // melds. The player must form their own sequences/sets, which is what makes
   // the post-show 15-second rearrange window matter.
@@ -878,6 +883,27 @@ export default function RummyBoardMobile({
       return;
     }
     const lanes = splitBySuit(all);
+
+    /*
+     * FLIP the rearrange instead of snapping it.
+     *
+     * AUTO rewrote the whole hand in a single frame: thirteen cards vanished
+     * from where they were and reappeared sorted, so a player could not tell
+     * what it had done or why — the one moment the feature most needs to
+     * explain itself. Measure where every card is now, let React commit the
+     * new lanes, then animate each card from its old position to its new one.
+     *
+     * This is the case CSS genuinely cannot cover (you cannot keyframe a DOM
+     * reorder), which is what makes it worth reaching for anime.js here. The
+     * helper animates transform only, staggers the starts so the eye can
+     * follow individual cards, and no-ops entirely under reduced motion —
+     * where the hand still sorts, just instantly.
+     */
+    const nodes = new Map<string, HTMLElement | null>(
+      all.map((c) => [c.id, document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(c.id)}"]`)]),
+    );
+    const before = captureRects(nodes);
+
     setLayout({
       groups: lanes.slice(0, MAX_GROUPS).map((cards) => ({
         id: newGroupId(),
@@ -888,6 +914,17 @@ export default function RummyBoardMobile({
     setSelected(new Set());
     setError(null);
     rummySfx.meldFormed();
+
+    // After paint, so the "last" measurement reads the committed layout.
+    requestAnimationFrame(() => {
+      const fresh = new Map<string, HTMLElement | null>(
+        all.map((c) => [c.id, document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(c.id)}"]`)]),
+      );
+      // Held so leaving the table mid-flight cancels the tweens rather than
+      // leaving anime.js ticking against detached nodes.
+      flipCleanup.current?.();
+      flipCleanup.current = playFlip(fresh, before);
+    });
   }
 
 
@@ -2642,25 +2679,46 @@ function FinishReadinessBanner({
       </div>
     );
   }
-  // Inline chip row — no "FINISH CHECKLIST" label since context is clear.
+  /*
+   * A CHECKLIST, not a tally.
+   *
+   * These read `Pure ×0 · Seq ×0/2 · Valid ×0` — three counters that only
+   * mean something once you already know the declare rules, which is exactly
+   * the player who does not need them. The requirement is binary per row
+   * ("do I have a pure sequence yet?"), so it now says that in words, with
+   * the tick carrying the state and the label naming the thing. Counts stay
+   * only where more than one is needed (two sequences), because there the
+   * number IS the information.
+   */
   const chips: { label: string; ok: boolean }[] = [
-    { label: `Pure ×${readiness.pureCount}`, ok: readiness.pureCount >= 1 },
-    { label: `Seq ×${readiness.sequenceCount}/2`, ok: readiness.sequenceCount >= 2 },
-    { label: `Valid ×${readiness.validGroups}`, ok: readiness.invalidGroups === 0 && readiness.validGroups > 0 },
+    { label: "Pure sequence", ok: readiness.pureCount >= 1 },
+    {
+      label: readiness.sequenceCount >= 2 ? "2 sequences" : `2 sequences (${readiness.sequenceCount}/2)`,
+      ok: readiness.sequenceCount >= 2,
+    },
+    {
+      label: readiness.invalidGroups > 0 ? `${readiness.invalidGroups} invalid group${readiness.invalidGroups === 1 ? "" : "s"}` : "All groups valid",
+      ok: readiness.invalidGroups === 0 && readiness.validGroups > 0,
+    },
   ];
   return (
     <div className="flex items-center gap-1 flex-shrink-0">
       {chips.map((chip) => (
         <span
           key={chip.label}
-          className="px-1.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider whitespace-nowrap"
+          className="px-1.5 py-0.5 rounded-full font-bold text-[10px] whitespace-nowrap"
           style={{
             background: chip.ok ? "#065f46" : "rgba(120,53,15,0.45)",
-            color: chip.ok ? "#a7f3d0" : "#fcd34d",
+            // Was #fcd34d amber on a brown table — the unmet rows, i.e. the
+            // ones you actually need to read. Lifted for contrast.
+            color: chip.ok ? "#a7f3d0" : "#FDE9B0",
             border: `1px solid ${chip.ok ? "#10b981" : "#f59e0b"}`,
           }}
         >
-          {chip.ok ? "✓" : "·"} {chip.label}
+          {/* Tick / cross, not tick / interpunct: "·" reads as a bullet, so a
+              failed row looked like a neutral list item rather than a
+              requirement you have not met. */}
+          <span aria-hidden>{chip.ok ? "✓" : "✕"}</span> {chip.label}
         </span>
       ))}
     </div>

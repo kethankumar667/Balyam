@@ -217,10 +217,16 @@ export default function PrintBoardSVG({
               y={0.1}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize={2.2}
+              // 2.2 → 1.65 (−25%). These are reference labels: you read them
+              // once to learn which corner is whose, then never again, but at
+              // the old size they competed with the tokens and cells you read
+              // on every single turn. Tracking eases with them so the band
+              // gets shorter AND narrower rather than just smaller.
+              fontSize={1.65}
               fontWeight={800}
               fill="#23201E"
-              style={{ fontFamily: "'Poppins','Nunito',sans-serif", letterSpacing: "0.16em" }}
+              fillOpacity={0.82}
+              style={{ fontFamily: "'Poppins','Nunito',sans-serif", letterSpacing: "0.12em" }}
             >
               {armLabel(i)}
             </text>
