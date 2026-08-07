@@ -100,47 +100,49 @@ export interface StadiumSeatPos {
  */
 export type StadiumLayout = "edge" | "ring";
 
-const RING_GEOMETRY: Record<StadiumLayout, { sideX: number; top: number; bottom: number; spotTop: number }> = {
-  edge: { sideX: 8, top: 18, bottom: 62, spotTop: 16 },
-  ring: { sideX: 20, top: 26, bottom: 66, spotTop: 13 },
-};
-
-/** Percentage coordinates (of the FULL board area — the whole region between
- *  header and hand fan) for every seated id, self included. Used both to
- *  place seats and as the anchor lookup for every special-card hit animation
- *  (see UnoBoardDesktop.tsx / UnoBoardMobile.tsx). */
 export function computeStadiumPositions(
   seating: StadiumSeating,
   selfId: string | null,
   layout: StadiumLayout = "edge",
 ): Record<string, StadiumSeatPos> {
   const pos: Record<string, StadiumSeatPos> = {};
-  const g = RING_GEOMETRY[layout];
-  if (seating.spotlight) pos[seating.spotlight] = { left: "50%", top: `${g.spotTop}%` };
 
-  // On the ring, the middle seat of a 3-stack bows OUTWARD so the column
-  // traces the ellipse instead of running dead straight past the pile.
-  const bow = (count: number, i: number) => {
-    if (layout !== "ring" || count < 2) return 0;
-    const t = count === 1 ? 0.5 : i / (count - 1);
-    return Math.sin(t * Math.PI) * 4;
-  };
+  // Spotlight seat (top center — positioned at 14% to sit under top banner)
+  if (seating.spotlight) {
+    pos[seating.spotlight] = { left: "50%", top: "14%" };
+  }
 
-  const rightTops = sideTops(seating.right.length, g.top, g.bottom);
-  seating.right.forEach((id, i) => {
-    pos[id] = { left: `${100 - g.sideX - bow(seating.right.length, i)}%`, top: rightTops[i] };
-  });
-  const leftTops = sideTops(seating.left.length, g.top, g.bottom);
-  // `seating.left` is closest-to-self-first; rendering/positioning top-to-
-  // bottom means the closest-to-self entry gets the LARGEST top% (bottom
-  // slot), so read the tops array in reverse.
-  const reversedTops = [...leftTops].reverse();
-  seating.left.forEach((id, i) => {
-    pos[id] = { left: `${g.sideX + bow(seating.left.length, i)}%`, top: reversedTops[i] };
-  });
-  // Anchor for hit animations targeting the local player — approximates the
-  // self plate's bottom-left slot in both shells.
-  if (selfId) pos[selfId] = { left: "14%", top: "88%" };
+  // Right column seats
+  const rightCount = seating.right.length;
+  if (rightCount === 1) {
+    pos[seating.right[0]] = { left: "82%", top: "46%" };
+  } else if (rightCount === 2) {
+    pos[seating.right[0]] = { left: "78%", top: "28%" }; // Top-Right
+    pos[seating.right[1]] = { left: "78%", top: "64%" }; // Bottom-Right
+  } else if (rightCount >= 3) {
+    pos[seating.right[0]] = { left: "76%", top: "22%" }; // Top-Right
+    pos[seating.right[1]] = { left: "84%", top: "46%" }; // Mid-Right
+    pos[seating.right[2]] = { left: "76%", top: "68%" }; // Bottom-Right
+  }
+
+  // Left column seats (seating.left is closest-to-self-first: bottom-to-top)
+  const leftCount = seating.left.length;
+  if (leftCount === 1) {
+    pos[seating.left[0]] = { left: "18%", top: "46%" };
+  } else if (leftCount === 2) {
+    pos[seating.left[0]] = { left: "22%", top: "64%" }; // Bottom-Left
+    pos[seating.left[1]] = { left: "22%", top: "28%" }; // Top-Left
+  } else if (leftCount >= 3) {
+    pos[seating.left[0]] = { left: "24%", top: "68%" }; // Bottom-Left
+    pos[seating.left[1]] = { left: "16%", top: "46%" }; // Mid-Left
+    pos[seating.left[2]] = { left: "24%", top: "22%" }; // Top-Left
+  }
+
+  // Self seat (YOU)
+  if (selfId) {
+    pos[selfId] = { left: "18%", top: "84%" };
+  }
+
   return pos;
 }
 
@@ -163,17 +165,18 @@ interface StadiumAccent {
   light: string;
   base: string;
   dark: string;
+  border: string;
 }
 const STADIUM_ACCENTS: readonly StadiumAccent[] = [
-  { light: "#5AA9F0", base: "#2E7CD0", dark: "#1C57A0" }, // blue
-  { light: "#C9A0F5", base: "#9B5FE0", dark: "#6B35A8" }, // purple
-  { light: "#F6C24B", base: "#E0982A", dark: "#A96A16" }, // gold
-  { light: "#F0708A", base: "#D23E5E", dark: "#A01C3A" }, // rose
-  { light: "#5BC46B", base: "#2FA043", dark: "#1E7A30" }, // green
-  { light: "#F5924B", base: "#E06E1E", dark: "#A84D0E" }, // orange
-  { light: "#3FD0C4", base: "#17A79A", dark: "#0E7A70" }, // teal
+  { light: "#F6C24B", base: "#E0982A", dark: "#A96A16", border: "#EAB308" }, // gold/yellow
+  { light: "#C9A0F5", base: "#9B5FE0", dark: "#6B35A8", border: "#A855F7" }, // purple
+  { light: "#5BC46B", base: "#2FA043", dark: "#1E7A30", border: "#10B981" }, // green
+  { light: "#5AA9F0", base: "#2E7CD0", dark: "#1C57A0", border: "#3B82F6" }, // blue
+  { light: "#F0708A", base: "#D23E5E", dark: "#A01C3A", border: "#EC4899" }, // pink
+  { light: "#3FD0C4", base: "#17A79A", dark: "#0E7A70", border: "#06B6D4" }, // cyan
+  { light: "#F5924B", base: "#E06E1E", dark: "#A84D0E", border: "#F97316" }, // orange
 ];
-const SELF_STADIUM_ACCENT: StadiumAccent = { light: "#F6C24B", base: "#E0982A", dark: "#A96A16" };
+const SELF_STADIUM_ACCENT: StadiumAccent = { light: "#38bdf8", base: "#0284c7", dark: "#0369a1", border: "#38bdf8" };
 
 function stadiumAccentFor(seed: string): StadiumAccent {
   let h = 0;
@@ -193,16 +196,33 @@ function stadiumAccentFor(seed: string): StadiumAccent {
  *  top-down stage light over the spotlight seat, the concentric ripple
  *  rings, and a red-tinted vignette (kept light so the centre stays bright,
  *  unlike a heavy black inset which flattened the earlier dark cut). */
-export function StadiumMat({ children }: { children: React.ReactNode }) {
+export function StadiumMat({
+  children,
+  activeColor = "red",
+}: {
+  children: React.ReactNode;
+  activeColor?: string;
+}) {
+  const isYellow = activeColor === "Y" || activeColor === "yellow";
+  const isBlue = activeColor === "B" || activeColor === "blue";
+  const isGreen = activeColor === "G" || activeColor === "green";
+
+  const colorGlow = isBlue
+    ? "radial-gradient(ellipse 65% 65% at 50% 48%, rgba(37,99,235,0.85), rgba(30,58,138,0.45) 50%, rgba(20,5,5,0.95) 85%)"
+    : isGreen
+    ? "radial-gradient(ellipse 65% 65% at 50% 48%, rgba(22,163,74,0.85), rgba(20,83,45,0.45) 50%, rgba(20,5,5,0.95) 85%)"
+    : isYellow
+    ? "radial-gradient(ellipse 65% 65% at 50% 48%, rgba(234,179,8,0.85), rgba(161,98,7,0.45) 50%, rgba(20,5,5,0.95) 85%)"
+    : "radial-gradient(ellipse 65% 65% at 50% 48%, rgba(220,38,38,0.85), rgba(127,29,29,0.45) 50%, rgba(20,5,5,0.95) 85%)";
+
   return (
-    <div className="relative w-full h-full" style={{ containerType: "inline-size" }}>
-      {/* Warm centre bloom — the reference's brightly-lit play area. */}
+    <div className="relative w-full h-full flex flex-col overflow-hidden" style={{ containerType: "inline-size" }}>
+      {/* Warm active-color centre bloom — dynamically shifts when active color changes. */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-none transition-all duration-700"
         aria-hidden
         style={{
-          background:
-            "radial-gradient(ellipse 42% 46% at 50% 47%, rgba(255,140,60,0.55), rgba(255,90,40,0.16) 45%, transparent 70%)",
+          background: colorGlow,
         }}
       />
       {/* Faint tiled UNO-card watermark. */}
@@ -317,8 +337,9 @@ export function StadiumDirectionArc({
 }) {
   const cx = width / 2;
   const cy = height / 2;
-  const rx = width * 0.46;
-  const ry = height * 0.46;
+  const r = Math.min(width, height) * 0.44;
+  const rx = r;
+  const ry = r;
   return (
     <div
       className="absolute pointer-events-none"
@@ -507,9 +528,9 @@ export function StadiumOpponentSeat({
               aria-hidden
             />
           )}
-          {isHost && (
-            <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10 leading-none text-[#F7DA8B]" aria-hidden title="Room host">
-              <CrownIcon size={20} />
+          {(isHost || isSpotlight) && (
+            <span className="absolute -top-4 left-1/2 -translate-x-1/2 z-10 leading-none text-[#F7DA8B] drop-shadow-md" aria-hidden title="Crown">
+              <CrownIcon size={22} />
             </span>
           )}
           <div
@@ -518,8 +539,8 @@ export function StadiumOpponentSeat({
               width: tile,
               height: tile,
               background: `linear-gradient(168deg, ${accent.light}, ${accent.dark})`,
-              border: `2.5px solid ${isSpotlight ? "#F7DA8B" : "rgba(255,255,255,0.7)"}`,
-              boxShadow: "0 4px 10px rgba(0,0,0,0.45)",
+              border: `3px solid ${isSpotlight ? "#F7DA8B" : accent.border}`,
+              boxShadow: `0 4px 12px rgba(0,0,0,0.5), 0 0 12px ${accent.border}60`,
             }}
           >
             <Avatar name={name} size={tile - 12} />
@@ -628,8 +649,8 @@ export function StadiumSelfPlate({
             width: 58,
             height: 58,
             background: `linear-gradient(168deg, ${SELF_STADIUM_ACCENT.light}, ${SELF_STADIUM_ACCENT.dark})`,
-            border: "2.5px solid #FFF6D8",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.45)",
+            border: "3px solid #38bdf8",
+            boxShadow: "0 4px 14px rgba(0,0,0,0.5), 0 0 16px rgba(56,189,248,0.75)",
           }}
         >
           <Avatar name={name} size={44} />
@@ -682,7 +703,7 @@ export function StadiumSelfPlate({
 export function StadiumPileCenter(props: UnoTableCenterProps) {
   return (
     <div className="relative flex flex-col items-center">
-      <UnoTableCenter {...props} />
+      <UnoTableCenter {...props} showCaptions={true} />
     </div>
   );
 }
@@ -933,21 +954,17 @@ export function StadiumUnoButton({
         enabled ? "uno-call-ready active:scale-95 cursor-pointer" : "cursor-not-allowed"
       }`}
       style={{
-        width: armed ? "7.4rem" : "4.6rem",
-        height: armed ? "3.4rem" : "2.2rem",
-        fontSize: armed ? "1.6rem" : "1rem",
-        opacity: armed ? 1 : 0.72,
-        color: enabled ? "#FFF4D2" : "rgba(255,236,206,0.55)",
-        background: enabled
-          ? "radial-gradient(circle at 35% 28%, #FF8A62, #E23122 52%, #A50E0E 100%)"
-          : "radial-gradient(circle at 35% 28%, #6E2A22, #4A1714 60%, #351010 100%)",
-        border: `3px solid ${enabled ? "#FFF6E4" : "rgba(255,246,228,0.42)"}`,
-        // Physical-button bevel: a short, solid "ledge" under the rim reads as
-        // thickness, not just a flat gradient fill.
+        width: armed ? "7.2rem" : "5.4rem",
+        height: armed ? "3.2rem" : "2.5rem",
+        fontSize: armed ? "1.5rem" : "1.1rem",
+        opacity: enabled ? 1 : 0.8,
+        color: "#FFD700",
+        background: "radial-gradient(circle at 35% 28%, #ff4d4d, #dc2626 55%, #991b1b 100%)",
+        border: "3.5px solid #FFD700",
         boxShadow: enabled
-          ? "0 4px 0 2px #6E0B0B, 0 10px 24px rgba(226,49,34,0.55), inset 0 2px 4px rgba(255,255,255,0.4)"
-          : "0 3px 0 2px rgba(40,12,10,0.9), inset 0 2px 4px rgba(255,255,255,0.12)",
-        textShadow: "0 2px 3px rgba(0,0,0,0.45)",
+          ? "0 4px 0 2px #500000, 0 8px 24px rgba(220,38,38,0.8), 0 0 28px rgba(255,215,0,0.9), inset 0 2px 4px rgba(255,255,255,0.5)"
+          : "0 4px 0 2px #500000, 0 4px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.3)",
+        textShadow: "0 2px 4px rgba(0,0,0,0.7), 0 0 8px rgba(255,215,0,0.5)",
       }}
     >
       UNO

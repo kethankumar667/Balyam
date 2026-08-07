@@ -11,12 +11,13 @@ import {
   evaluateFinishReadiness,
   sortMeldCards,
   sumCardPoints,
+  cardPoints,
   type LivePoints,
   type MeldClassification,
 } from "./meldCheck";
 import EmojiRain from "../ludo/EmojiRain";
 import CardTracker from "./CardTracker";
-import { splitBySuit } from "./autoArrange";
+import { splitBySuit, suggestArrangement, suggestDiscard } from "./autoArrange";
 import { captureRects, playFlip } from "../../lib/anim";
 import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
 import { useTurnHaptics, useHaptics } from "../../hooks/useHaptics";
@@ -299,6 +300,7 @@ export default function RummyBoardMobile({
   const iAmDeclarer = isArranging && state.winnerId === selfId;
   // Buzz the device on each transition into your turn.
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
+  const haptics = useHaptics();
   const iDropped = !!selfId && state.droppedPlayers.includes(selfId);
 
   const hand = state.myHand ?? [];
@@ -567,6 +569,7 @@ export default function RummyBoardMobile({
   }, [state.droppedPlayers.join(",")]);
 
   function toggleSelect(id: string) {
+    try { haptics.subtle(); } catch { /* ignore */ }
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -928,6 +931,81 @@ export default function RummyBoardMobile({
       flipCleanup.current?.();
       flipCleanup.current = playFlip(fresh, before);
     });
+  }
+
+  const [pendingHint, setPendingHint] = useState<{
+    groups: Card[][];
+    ungrouped: Card[];
+    bestDiscardCard: Card | null;
+  } | null>(null);
+
+  /**
+   * Request Smart Hint: computes proposed melds & discard card, then shows
+   * an approval preview banner so the user must click "APPROVE" to apply.
+   */
+  function requestSmartHint() {
+    try { haptics.subtle(); } catch { /* ignore */ }
+    const allCards: Card[] = [
+      ...layout.groups.flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c)),
+      ...layout.ungrouped.map((id) => byId.get(id)).filter((c): c is Card => !!c),
+    ];
+    if (allCards.length === 0) return;
+
+    const suggestion = suggestArrangement(allCards, wildRank as Rank);
+    const bestDiscard = suggestDiscard(suggestion.ungrouped, allCards, wildRank as Rank);
+
+    setPendingHint({
+      groups: suggestion.groups,
+      ungrouped: suggestion.ungrouped,
+      bestDiscardCard: bestDiscard,
+    });
+  }
+
+  function approveSmartHint() {
+    if (!pendingHint) return;
+    try { haptics.subtle(); } catch { /* ignore */ }
+
+    const newGroups = pendingHint.groups.map((cards) => ({
+      id: newGroupId(),
+      cardIds: cards.map((c) => c.id),
+    }));
+    const newUngroupedIds = pendingHint.ungrouped.map((c) => c.id);
+
+    const allCards = [
+      ...pendingHint.groups.flat(),
+      ...pendingHint.ungrouped,
+    ];
+    const nodes = new Map<string, HTMLElement | null>(
+      allCards.map((c) => [c.id, document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(c.id)}"]`)]),
+    );
+    const before = captureRects(nodes);
+
+    setLayout({
+      groups: newGroups,
+      ungrouped: newUngroupedIds,
+    });
+
+    if (pendingHint.bestDiscardCard) {
+      setSelected(new Set([pendingHint.bestDiscardCard.id]));
+    } else {
+      setSelected(new Set());
+    }
+
+    setPendingHint(null);
+    setError(null);
+    rummySfx.meldFormed();
+
+    requestAnimationFrame(() => {
+      const fresh = new Map<string, HTMLElement | null>(
+        allCards.map((c) => [c.id, document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(c.id)}"]`)]),
+      );
+      flipCleanup.current?.();
+      flipCleanup.current = playFlip(fresh, before);
+    });
+  }
+
+  function dismissSmartHint() {
+    setPendingHint(null);
   }
 
 
@@ -1457,10 +1535,126 @@ export default function RummyBoardMobile({
         </RummyModal>
       )}
 
-      {/* Coach — anchored below the top navigation strip on the left side of the felt. */}
+      {/* Junglee Rummy Smart Hint button — requests proposed arrangement for approval */}
       {state.phase === "playing" && (
         <div className="absolute left-3 top-11 z-[45]">
-          <CoachHintButton coach={coach} compact align="left" />
+          <button
+            onClick={requestSmartHint}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider transition transform hover:scale-105 active:scale-95 cursor-pointer"
+            style={{
+              background: "linear-gradient(135deg, #F59E0B, #D97706)",
+              color: "#1F1300",
+              border: "1.5px solid #FCD34D",
+              boxShadow: "0 4px 14px rgba(245,158,11,0.45), inset 0 1px 0 rgba(255,255,255,0.4)",
+            }}
+            title="Smart Hint: Previews best melds & optimal discard for your approval"
+          >
+            <span>💡</span>
+            <span>HINT</span>
+          </button>
+        </div>
+      )}
+
+      {/* Smart Hint Approval Banner — requires player click on APPROVE before touching the hand */}
+      {pendingHint && (
+        <div
+          className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[50] w-[94%] max-w-sm p-3 rounded-2xl flex flex-col gap-2 shadow-2xl"
+          style={{
+            background: "linear-gradient(145deg, #1e1b18 0%, #2d261e 100%)",
+            border: "2px solid #f59e0b",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.85), 0 0 20px rgba(245,158,11,0.35)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 font-black text-amber-400 text-[11px] uppercase tracking-wider">
+              <span>💡</span>
+              <span>Suggested Hand Rearrangement</span>
+            </div>
+            <button
+              onClick={dismissSmartHint}
+              className="text-white/60 hover:text-white text-xs px-2 py-0.5"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Melds summary chips showing exact cards */}
+          <div className="flex items-center gap-1.5 flex-wrap max-h-36 overflow-y-auto pr-1">
+            {pendingHint.groups.map((g, idx) => {
+              const classification = classifyMeld(g, wildRank as Rank);
+              const name = classification.valid
+                ? classification.label.replace(/\s*✓\s*$/, "")
+                : `${g.length} Cards`;
+              const cardsStr = g
+                .map((c) => {
+                  if (c.isPrintedJoker) return "🃏";
+                  const suit = c.suit === "S" ? "♠" : c.suit === "H" ? "♥" : c.suit === "D" ? "♦" : "♣";
+                  const rank = c.rank === "T" ? "10" : c.rank;
+                  return `${rank}${suit}`;
+                })
+                .join(" ");
+              return (
+                <div
+                  key={idx}
+                  className="px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 flex-wrap"
+                  style={{
+                    background: classification.counts ? "rgba(16,185,129,0.22)" : "rgba(245,158,11,0.22)",
+                    border: `1px solid ${classification.counts ? "#10b981" : "#f59e0b"}`,
+                    color: classification.counts ? "#a7f3d0" : "#fef08a",
+                  }}
+                >
+                  <span className="font-extrabold uppercase text-[10px] tracking-wide" style={{ color: classification.counts ? "#34d399" : "#fcd34d" }}>
+                    {classification.counts ? "✓ " : "• "}{name}:
+                  </span>
+                  <span className="font-mono tracking-wider text-white font-black text-xs">
+                    {cardsStr}
+                  </span>
+                </div>
+              );
+            })}
+            {pendingHint.bestDiscardCard && (
+              <div className="px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 bg-rose-950/90 border border-rose-500 text-rose-200">
+                <span className="font-extrabold uppercase text-[10px] tracking-wide text-rose-400">
+                  🗑 Suggested Discard:
+                </span>
+                <span className="font-mono tracking-wider text-rose-300 font-black text-xs">
+                  {(() => {
+                    const c = pendingHint.bestDiscardCard;
+                    if (c.isPrintedJoker) return "🃏";
+                    const suit = c.suit === "S" ? "♠" : c.suit === "H" ? "♥" : c.suit === "D" ? "♦" : "♣";
+                    const rank = c.rank === "T" ? "10" : c.rank;
+                    return `${rank}${suit}`;
+                  })()}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Approve / Cancel actions */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={approveSmartHint}
+              className="flex-1 py-1.5 rounded-xl font-black text-[11px] uppercase tracking-wider transition transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              style={{
+                background: "linear-gradient(135deg, #10b981, #059669)",
+                color: "#ffffff",
+                border: "1px solid #34d399",
+                boxShadow: "0 4px 14px rgba(16,185,129,0.45)",
+              }}
+            >
+              ✓ Approve & Rearrange
+            </button>
+            <button
+              onClick={dismissSmartHint}
+              className="px-3 py-1.5 rounded-xl font-extrabold text-[11px] uppercase tracking-wider text-white/70 hover:text-white cursor-pointer"
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -2389,10 +2583,17 @@ function GroupLane({
       data-rummy-drop={target}
       className={`flex flex-col items-center gap-0.5 transition flex-shrink-0 ${counts ? "rummy-zone-valid" : "rummy-zone-invalid"}`}
       style={{
-        background: isOver ? "rgba(252,211,77,0.10)" : "transparent",
-        borderRadius: 10,
-        padding: 3,
-        boxShadow: isOver ? "0 0 14px rgba(252,211,77,0.55)" : undefined,
+        background: isOver ? "rgba(252,211,77,0.12)" : "rgba(0,0,0,0.15)",
+        borderRadius: 12,
+        padding: "4px 5px",
+        border: isOver
+          ? "1.5px dashed #fcd34d"
+          : `1.5px solid ${counts ? "rgba(16,185,129,0.45)" : structurallyValid ? "rgba(245,158,11,0.40)" : "rgba(255,255,255,0.12)"}`,
+        boxShadow: isOver
+          ? "0 0 16px rgba(252,211,77,0.55)"
+          : counts
+          ? "0 0 12px rgba(16,185,129,0.25)"
+          : undefined,
       }}
     >
       <div className="flex items-center gap-0.5">

@@ -249,10 +249,10 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const fanAvailableWidth = Math.max(260, (rootBox.w - 120 * 2) / fanScale);
   const seatScale = Math.min(1.2, Math.max(0.55, Math.min(boardBox.w / 1100, boardBox.h / 430)));
   const pileScale = Math.min(1.6, Math.max(0.6, Math.min(boardBox.w / 1000, boardBox.h / 430) * 1.45));
-  /* Direction ring — narrower than desktop's, since a phone's edge-seated
-     columns sit much closer in. */
-  const arcW = Math.max(200, Math.min(boardBox.w * 0.56, 760));
-  const arcH = Math.max(150, Math.min(boardBox.h * 0.88, 420));
+  /* Direction ring — perfect circular ring framing the pile. */
+  const arcSize = Math.max(200, Math.min(boardBox.h * 0.48, 250));
+  const arcW = arcSize;
+  const arcH = arcSize;
   const dense = seatScale < 0.7;
   /* Passive pile captions need vertical room: the "Discard Pile" pill sits
      above the discard stack and, on a short board, rides into the spotlight
@@ -275,6 +275,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
       className="relative h-full flex flex-col overflow-hidden"
       style={{ background: "radial-gradient(ellipse at 50% 44%, #F5442C 0%, #E51E1E 26%, #B81616 48%, #7E0F0F 72%, #3E0909 100%)" }}
     >
+      <StadiumMat activeColor={state.currentColor ?? state.topCard?.color ?? "R"}>
       {/* Three cases, same priority order as Rummy's mobile shell:
            1. needsLandscape  → UnoRotateDevicePrompt blocks the board.
            2. !needsLandscape + gating → UnoWaitingForPlayersBanner.
@@ -341,8 +342,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
       <div ref={cameraRef} className="flex-1 min-h-0 relative">
         <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
           <div ref={boardRef} className="relative w-full h-full">
-            <StadiumMat>
-              <StadiumDirectionArc direction={state.direction} width={arcW} height={arcH} />
+            <StadiumDirectionArc direction={state.direction} width={arcW} height={arcH} />
 
               {seatList.map(({ id, variant }) => {
                 const pos = stadiumPositions[id];
@@ -555,7 +555,6 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                   onComplete={() => {}}
                 />
               )}
-            </StadiumMat>
           </div>
         </animated.div>
       </div>
@@ -663,6 +662,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           onChallenge={m.challengeWildFour}
         />
       )}
+      </StadiumMat>
     </div>
   );
 }

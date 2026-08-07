@@ -28,9 +28,10 @@ import {
   evaluateFinishReadiness,
   sortMeldCards,
   sumCardPoints,
+  cardPoints,
   type MeldClassification,
 } from "./meldCheck";
-import { splitBySuit } from "./autoArrange";
+import { splitBySuit, suggestArrangement, suggestDiscard } from "./autoArrange";
 import { useRummyFeed, type RummyFeedItem } from "./useRummyFeed";
 import { isRummySoundEnabled, rummySfx, setRummySoundEnabled } from "./sound";
 import VoicePanel from "../../components/VoicePanel";
@@ -542,6 +543,62 @@ export default function RummyBoardDesktop({
     });
     setSelected(new Set());
     rummySfx.meldFormed();
+  }
+
+  const [pendingHint, setPendingHint] = useState<{
+    groups: CardType[][];
+    ungrouped: CardType[];
+    bestDiscardCard: CardType | null;
+  } | null>(null);
+
+  /**
+   * Request Smart Hint: computes proposed melds & discard card, then shows
+   * an approval preview banner so the user must click "APPROVE" to apply.
+   */
+  function requestSmartHint() {
+    const allCards: CardType[] = [
+      ...layout.groups.flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is CardType => !!c)),
+      ...layout.ungrouped.map((id) => byId.get(id)).filter((c): c is CardType => !!c),
+    ];
+    if (allCards.length === 0) return;
+
+    const suggestion = suggestArrangement(allCards, wildRank as Rank);
+    const bestDiscard = suggestDiscard(suggestion.ungrouped, allCards, wildRank as Rank);
+
+    setPendingHint({
+      groups: suggestion.groups,
+      ungrouped: suggestion.ungrouped,
+      bestDiscardCard: bestDiscard,
+    });
+  }
+
+  function approveSmartHint() {
+    if (!pendingHint) return;
+
+    const newGroups = pendingHint.groups.map((cards) => ({
+      id: newGroupId(),
+      cardIds: cards.map((c) => c.id),
+    }));
+    const newUngroupedIds = pendingHint.ungrouped.map((c) => c.id);
+
+    setLayout({
+      groups: newGroups,
+      ungrouped: newUngroupedIds,
+    });
+
+    if (pendingHint.bestDiscardCard) {
+      setSelected(new Set([pendingHint.bestDiscardCard.id]));
+    } else {
+      setSelected(new Set());
+    }
+
+    setPendingHint(null);
+    setError(null);
+    rummySfx.meldFormed();
+  }
+
+  function dismissSmartHint() {
+    setPendingHint(null);
   }
 
   /* ─── Drag wiring ─── */
@@ -1210,11 +1267,126 @@ export default function RummyBoardDesktop({
           modal underneath stays interactive. */}
       {winnerBurstKey != null && <WinnerCelebrationBurst key={winnerBurstKey} />}
 
-      {/* Coach — top-left of the felt. Kept clear of the hand action bar
-          (bottom) and the piles (centre). */}
+      {/* Junglee Rummy Smart Hint button — requests proposed arrangement for approval */}
       {state.phase === "playing" && (
         <div className="absolute left-6 top-6 z-[45]">
-          <CoachHintButton coach={coach} align="left" />
+          <button
+            onClick={requestSmartHint}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider transition transform hover:scale-105 active:scale-95 cursor-pointer"
+            style={{
+              background: "linear-gradient(135deg, #F59E0B, #D97706)",
+              color: "#1F1300",
+              border: "1.5px solid #FCD34D",
+              boxShadow: "0 4px 14px rgba(245,158,11,0.45), inset 0 1px 0 rgba(255,255,255,0.4)",
+            }}
+            title="Smart Hint: Previews best melds & optimal discard for your approval"
+          >
+            <span>💡</span>
+            <span>HINT</span>
+          </button>
+        </div>
+      )}
+
+      {/* Smart Hint Approval Banner — requires player click on APPROVE before touching the hand */}
+      {pendingHint && (
+        <div
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[50] w-[90%] max-w-md p-4 rounded-2xl flex flex-col gap-3 shadow-2xl"
+          style={{
+            background: "linear-gradient(145deg, #1e1b18 0%, #2d261e 100%)",
+            border: "2px solid #f59e0b",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.85), 0 0 20px rgba(245,158,11,0.35)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-black text-amber-400 text-xs uppercase tracking-wider">
+              <span>💡</span>
+              <span>Suggested Hand Rearrangement</span>
+            </div>
+            <button
+              onClick={dismissSmartHint}
+              className="text-white/60 hover:text-white text-xs px-2 py-0.5"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Melds summary chips showing exact cards */}
+          <div className="flex items-center gap-1.5 flex-wrap max-h-48 overflow-y-auto pr-1">
+            {pendingHint.groups.map((g, idx) => {
+              const classification = classifyMeld(g, wildRank as Rank);
+              const name = classification.valid
+                ? classification.label.replace(/\s*✓\s*$/, "")
+                : `${g.length} Cards`;
+              const cardsStr = g
+                .map((c) => {
+                  if (c.isPrintedJoker) return "🃏";
+                  const suit = c.suit === "S" ? "♠" : c.suit === "H" ? "♥" : c.suit === "D" ? "♦" : "♣";
+                  const rank = c.rank === "T" ? "10" : c.rank;
+                  return `${rank}${suit}`;
+                })
+                .join(" ");
+              return (
+                <div
+                  key={idx}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-2 flex-wrap"
+                  style={{
+                    background: classification.counts ? "rgba(16,185,129,0.22)" : "rgba(245,158,11,0.22)",
+                    border: `1px solid ${classification.counts ? "#10b981" : "#f59e0b"}`,
+                    color: classification.counts ? "#a7f3d0" : "#fef08a",
+                  }}
+                >
+                  <span className="font-extrabold uppercase text-xs tracking-wide" style={{ color: classification.counts ? "#34d399" : "#fcd34d" }}>
+                    {classification.counts ? "✓ " : "• "}{name}:
+                  </span>
+                  <span className="font-mono tracking-wider text-white font-black text-xs">
+                    {cardsStr}
+                  </span>
+                </div>
+              );
+            })}
+            {pendingHint.bestDiscardCard && (
+              <div className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-2 bg-rose-950/90 border border-rose-500 text-rose-200">
+                <span className="font-extrabold uppercase text-xs tracking-wide text-rose-400">
+                  🗑 Suggested Discard:
+                </span>
+                <span className="font-mono tracking-wider text-rose-300 font-black text-xs">
+                  {(() => {
+                    const c = pendingHint.bestDiscardCard;
+                    if (c.isPrintedJoker) return "🃏";
+                    const suit = c.suit === "S" ? "♠" : c.suit === "H" ? "♥" : c.suit === "D" ? "♦" : "♣";
+                    const rank = c.rank === "T" ? "10" : c.rank;
+                    return `${rank}${suit}`;
+                  })()}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Approve / Cancel actions */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={approveSmartHint}
+              className="flex-1 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              style={{
+                background: "linear-gradient(135deg, #10b981, #059669)",
+                color: "#ffffff",
+                border: "1px solid #34d399",
+                boxShadow: "0 4px 14px rgba(16,185,129,0.45)",
+              }}
+            >
+              ✓ Approve & Rearrange
+            </button>
+            <button
+              onClick={dismissSmartHint}
+              className="px-4 py-2 rounded-xl font-extrabold text-xs uppercase tracking-wider text-white/70 hover:text-white cursor-pointer"
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

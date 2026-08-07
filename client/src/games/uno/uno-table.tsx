@@ -1224,9 +1224,17 @@ function UnoDraggableHandCard({
           rotateY: tiltEnabled ? rotateY : 0,
           transformStyle: "preserve-3d",
           boxShadow: isSelected
-            ? "0 0 0 3px #E6A11E, 0 10px 20px rgba(0,0,0,0.35)"
+            ? "0 0 0 3.5px #F7DA8B, 0 0 24px 6px rgba(247,218,139,0.95), 0 10px 24px rgba(0,0,0,0.4)"
             : isValid && !isDisabled
-              ? "0 0 0 2px rgba(230,161,30,0.85), 0 0 14px 2px rgba(230,161,30,0.45), 0 3px 8px rgba(0,0,0,0.25)"
+              ? card.color === "R"
+                ? "0 0 0 2.5px #ef4444, 0 0 18px 4px rgba(239,68,68,0.8), 0 4px 12px rgba(0,0,0,0.3)"
+                : card.color === "B"
+                ? "0 0 0 2.5px #3b82f6, 0 0 18px 4px rgba(59,130,246,0.8), 0 4px 12px rgba(0,0,0,0.3)"
+                : card.color === "G"
+                ? "0 0 0 2.5px #10b981, 0 0 18px 4px rgba(16,185,129,0.8), 0 4px 12px rgba(0,0,0,0.3)"
+                : card.color === "Y"
+                ? "0 0 0 2.5px #f59e0b, 0 0 18px 4px rgba(245,158,11,0.8), 0 4px 12px rgba(0,0,0,0.3)"
+                : "0 0 0 2.5px #f43f5e, 0 0 20px 5px rgba(244,63,94,0.9), 0 4px 12px rgba(0,0,0,0.3)"
               : "0 3px 8px rgba(0,0,0,0.25)",
         }}
       >
@@ -1303,11 +1311,9 @@ export function computeFanLayout(n: number, availableWidth: number, compact: boo
     return { ...card, slice: 0, spreadDeg: 0, arc: 0, rowScale: 1, rowW: 0, rowH: card.h, padBottom: 0 };
   const room = Math.max(card.w, availableWidth) - card.w;
   const slice = n === 1 ? 0 : clamp(room / (n - 1), MIN_SLICE, maxSlice);
-  // Flat when tight, gently fanned when roomy — rotation costs horizontal
-  // room, so it may only spend what the overlap isn't already using.
   const openness = maxSlice === MIN_SLICE ? 1 : (slice - MIN_SLICE) / (maxSlice - MIN_SLICE);
-  const spreadDeg = clamp((36 / n) * openness, 0, 3.2);
-  const arc = 5 * openness;
+  const spreadDeg = clamp((52 / Math.max(1, n)) * Math.max(0.6, openness), 2.5, 6.0);
+  const arc = 14 * Math.max(0.6, openness);
   const halfAngle = (Math.abs((n - 1) / 2) * spreadDeg * Math.PI) / 180;
   // Rotating a card widens its footprint; count it so the row can't creep
   // past `availableWidth` after the fact.
@@ -1397,9 +1403,11 @@ export function UnoHandFan({
             const offset = i - (n - 1) / 2;
             const half = Math.max(1, (n - 1) / 2);
             const rotate = offset * L.spreadDeg;
-            // Cards ride a shallow arc — ends sit lower than the middle, the
-            // way a real hand sits. Squared so the curve is smooth, not a V.
-            const lift = isSelected ? -SELECT_LIFT : (offset / half) ** 2 * L.arc;
+            const lift = isSelected
+              ? -SELECT_LIFT - 12
+              : isValid && !isDisabled
+                ? -14 + (offset / half) ** 2 * L.arc
+                : (offset / half) ** 2 * L.arc;
             return (
               <UnoDraggableHandCard
                 key={card.id}
