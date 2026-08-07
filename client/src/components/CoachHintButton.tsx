@@ -115,11 +115,13 @@ const KIND_ICON: Record<CoachHint["kind"], string> = {
 export default function CoachHintButton({
   coach,
   compact = false,
+  align = "right",
   className = "",
 }: {
   coach: CoachState;
   /** Icon-only trigger, for tight game chrome. */
   compact?: boolean;
+  align?: "left" | "right";
   className?: string;
 }) {
   const { hint, loading, error, request, dismiss } = coach;
@@ -131,7 +133,7 @@ export default function CoachHintButton({
         disabled={loading}
         aria-label="Get a hint"
         className={`flex items-center gap-1.5 rounded-full font-semibold transition disabled:opacity-50 bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118] ${
-          compact ? "w-9 h-9 justify-center text-base" : "px-3 py-1.5 text-xs"
+          compact ? "w-9 h-9 justify-center text-base shadow-md" : "px-3 py-1.5 text-xs"
         }`}
         title="Ask the coach what to do next"
       >
@@ -142,7 +144,9 @@ export default function CoachHintButton({
       {(hint || error) && (
         <div
           role="status"
-          className="absolute z-50 right-0 mt-2 w-[min(80vw,20rem)] rounded-xl p-3 shadow-2xl text-left"
+          className={`absolute z-50 mt-2 w-[min(80vw,20rem)] rounded-xl p-3 shadow-2xl text-left ${
+            align === "left" ? "left-0" : "right-0"
+          }`}
           style={{ background: "#F6EDDB", border: "1px solid #C8A66B" }}
         >
           {hint ? (

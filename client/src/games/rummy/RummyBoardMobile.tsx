@@ -1078,44 +1078,53 @@ export default function RummyBoardMobile({
       />
 
       {/* Opponents + Center deck on a single row. 3-column grid where the
-          deck sits in the center column and an empty spacer mirrors the
-          opponent column on the right, so the deck stays optically centered
-          regardless of how many opponents are at the table. */}
-      <div
-        className="grid items-center gap-2 sm:gap-3 flex-shrink-0 pl-4 sm:pl-10"
-        style={{ gridTemplateColumns: "1fr auto 1fr" }}
-      >
-        <div className="flex justify-start min-w-0">
-          <OpponentRow state={state} players={players} selfId={selfId} />
-        </div>
-        {/* relative wrapper scopes the post-show countdown (below) to just
-            this deck zone — see ArrangeCenterTimerMobile's own comment for
-            why it must NOT cover the hand/lanes area beneath. */}
-        <div className="relative">
-          <CenterDeckArea
-            state={state}
-            canDraw={canDraw}
-            canDiscard={canDiscardOrDeclare}
-            drawFromClosed={drawFromClosed}
-            drawFromOpen={drawFromOpen}
-            draggingIds={draggingIds}
-            discardPulseKey={discardPulseKey}
-            isArranging={isArranging}
-          />
-          {isArranging && (
-            <ArrangeCenterTimerMobile
-              deadline={state.arrangeDeadline ?? null}
-              iAmDeclarer={iAmDeclarer}
-              declarerName={nameOf(state.winnerId ?? "")}
-            />
-          )}
-        </div>
-        <div aria-hidden />
-      </div>
+          deck sits in the center column and opponents are split across
+          left and right sides for balanced symmetry. */}
+      {(() => {
+        const allOpponents = state.playerOrder.filter((id) => id !== selfId);
+        const midIndex = Math.ceil(allOpponents.length / 2);
+        const leftOpponents = allOpponents.slice(0, midIndex);
+        const rightOpponents = allOpponents.slice(midIndex);
+        return (
+          <div
+            className="grid items-center gap-2 sm:gap-3 flex-shrink-0 px-2 sm:px-4"
+            style={{ gridTemplateColumns: "1fr auto 1fr" }}
+          >
+            <div className="flex justify-end items-center min-w-0 pr-1">
+              <OpponentRow opponents={leftOpponents} state={state} players={players} selfId={selfId} />
+            </div>
+            {/* relative wrapper scopes the post-show countdown (below) to just
+                this deck zone — see ArrangeCenterTimerMobile's own comment for
+                why it must NOT cover the hand/lanes area beneath. */}
+            <div className="relative">
+              <CenterDeckArea
+                state={state}
+                canDraw={canDraw}
+                canDiscard={canDiscardOrDeclare}
+                drawFromClosed={drawFromClosed}
+                drawFromOpen={drawFromOpen}
+                draggingIds={draggingIds}
+                discardPulseKey={discardPulseKey}
+                isArranging={isArranging}
+              />
+              {isArranging && (
+                <ArrangeCenterTimerMobile
+                  deadline={state.arrangeDeadline ?? null}
+                  iAmDeclarer={iAmDeclarer}
+                  declarerName={nameOf(state.winnerId ?? "")}
+                />
+              )}
+            </div>
+            <div className="flex justify-start items-center min-w-0 pl-1">
+              <OpponentRow opponents={rightOpponents} state={state} players={players} selfId={selfId} />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* My hand: hidden/replaced when dropped — dropped player spectates */}
       {iDropped ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-4">
+        <div className="mt-2.5 sm:mt-4 flex-1 flex flex-col items-center justify-center gap-3 py-4">
           <div className="text-5xl opacity-30 tracking-widest">🂠🂠🂠</div>
           <div
             className="px-5 py-2.5 rounded-full text-sm font-extrabold uppercase tracking-[0.15em]"
@@ -1448,12 +1457,10 @@ export default function RummyBoardMobile({
         </RummyModal>
       )}
 
-      {/* Coach — top-left, above the felt but below the modals. Portrait
-          phones have no spare width beside the hand, so it anchors to the
-          board's own corner rather than floating over the cards. */}
+      {/* Coach — anchored below the top navigation strip on the left side of the felt. */}
       {state.phase === "playing" && (
-        <div className="absolute left-3 top-3 z-[45]">
-          <CoachHintButton coach={coach} compact />
+        <div className="absolute left-3 top-11 z-[45]">
+          <CoachHintButton coach={coach} compact align="left" />
         </div>
       )}
     </div>
@@ -1862,15 +1869,17 @@ function TurnTimer({ deadline, myTurn }: { deadline: number; myTurn: boolean }) 
 }
 
 function OpponentRow({
+  opponents: customOpponents,
   state,
   players,
   selfId,
 }: {
+  opponents?: string[];
   state: RummyPlayerState;
   players: Player[];
   selfId: string | null;
 }) {
-  const opponents = state.playerOrder.filter((id) => id !== selfId);
+  const opponents = customOpponents ?? state.playerOrder.filter((id) => id !== selfId);
   // Recompute seconds-remaining at 250ms so the countdown ring updates smoothly.
   // The exact starting duration isn't on the public state (it lives on engine options),
   // so we use 30s as a visual approximation for the ring fill — the number shown is
@@ -1895,7 +1904,7 @@ function OpponentRow({
           >
             <Avatar
               name={player?.name ?? "?"}
-              size={36}
+              size={52}
               countdown={isTurn && state.phase === "playing" ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
               scoreBadge={cumulative !== undefined ? cumulative : undefined}
               dimmed={isDropped}
@@ -1927,7 +1936,7 @@ function PlayerStrip({
     <div className="flex items-center gap-1.5 flex-shrink-0">
       <Avatar
         name={myName}
-        size={36}
+        size={52}
         countdown={myTurn ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
         scoreBadge={cumulative !== undefined ? cumulative : undefined}
       />
@@ -2020,11 +2029,11 @@ function RummyTimeWarning({
           animation: "rummy-time-pulse 900ms ease-in-out infinite",
         }}
       />
-      {/* Corner countdown chip — high contrast so it reads at a glance. */}
+      {/* Corner countdown chip — positioned below TopStrip to prevent header pill overlap. */}
       <div
         className="fixed z-50 pointer-events-none"
         style={{
-          top: "max(0.75rem, env(safe-area-inset-top, 0))",
+          top: "max(2.8rem, env(safe-area-inset-top, 0))",
           left: "50%",
           transform: "translateX(-50%)",
         }}
@@ -2247,7 +2256,7 @@ function HandArea({
   const dragging = draggingIds.length > 0;
   return (
     <div
-      className="rounded-xl px-1.5 sm:px-2 py-1.5 flex flex-col flex-1 min-h-[96px] overflow-hidden"
+      className="mt-2.5 sm:mt-4 rounded-xl px-1.5 sm:px-2 py-1.5 flex flex-col flex-1 min-h-[96px] overflow-hidden"
       style={{
         background: "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(0,0,0,0.12))",
         border: "1px solid rgba(255,255,255,0.12)",

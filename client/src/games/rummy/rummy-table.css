@@ -84,9 +84,9 @@
    * thirteen items, so a purely vh-driven size wraps it onto two lines on a
    * tall-but-narrow window. `min()` takes whichever limit binds first.
    */
-  --rm-card-w-pile: clamp(5rem, 13vh, 10rem);
-  --rm-card-w-hand: clamp(3.25rem, min(9vh, 5.5vw), 7rem);
-  --rm-card-w-lg:   clamp(2.75rem, 6vh, 5rem);
+  --rm-card-w-pile: clamp(5.75rem, 14vh, 11rem);
+  --rm-card-w-hand: clamp(4.25rem, min(10.5vh, 6.5vw), 8rem);
+  --rm-card-w-lg:   clamp(3.5rem, 7.5vh, 6rem);
 
   --rm-rule-color:  oklch(from var(--rm-brass) l c h / 0.28);
   --rm-lift-hand:   0 -12px 40px -12px oklch(from var(--rm-brass) l c h / 0.22);
@@ -331,8 +331,8 @@
 .rm-seat__top { display: flex; align-items: center; gap: var(--rm-space-xs); min-width: 0; }
 .rm-seat__avatar {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 50px;
+  height: 50px;
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -340,7 +340,7 @@
   background: var(--rm-room-bg);
   color: var(--rm-brass-ink);
   font-family: var(--rm-font-display);
-  font-size: var(--rm-text-base);
+  font-size: 1.25rem;
   font-weight: 700;
 }
 .rm-seat.is-turn .rm-seat__avatar {
