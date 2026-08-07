@@ -204,7 +204,14 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
           nameOf={nameOf}
           penOf={penOf}
           initialOf={initialOf}
-          onClose={() => setReportDismissed(true)}
+          // Dismissing hands off to Room's game-over flow. Dots & Boxes now
+          // owns its end-of-round modal outright (Room's generic blue
+          // scorecard used to stack on top of this one), so this is the only
+          // path from "round finished" to the game-over screen.
+          onClose={() => {
+            setReportDismissed(true);
+            props.onScorecardClose?.();
+          }}
         />
       )}
 

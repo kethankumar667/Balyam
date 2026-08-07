@@ -151,7 +151,11 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
           nameOf={nameOf}
           penOf={penOf}
           initialOf={initialOf}
-          onClose={() => setReportDismissed(true)}
+          // Hands off to Room's game-over flow — see the desktop shell.
+          onClose={() => {
+            setReportDismissed(true);
+            props.onScorecardClose?.();
+          }}
         />
       )}
 

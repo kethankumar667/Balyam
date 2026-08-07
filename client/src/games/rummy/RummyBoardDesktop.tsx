@@ -13,6 +13,7 @@ import type {
   RummyChampion,
   RummyPlayerState,
   RummyRoundRecap,
+  RummyTurnAction,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { PlayingCard, FaceDownCard } from "./Card";
@@ -30,6 +31,7 @@ import {
   type MeldClassification,
 } from "./meldCheck";
 import { splitBySuit } from "./autoArrange";
+import { useRummyFeed, type RummyFeedItem } from "./useRummyFeed";
 import { isRummySoundEnabled, rummySfx, setRummySoundEnabled } from "./sound";
 import VoicePanel from "../../components/VoicePanel";
 import PlayerList from "../../components/PlayerList";
@@ -676,6 +678,7 @@ export default function RummyBoardDesktop({
   /* ─── Names / opponents ─── */
   const opponentIds = state.playerOrder.filter((id) => id !== selfId);
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
+  const feed = useRummyFeed(state, selfId, nameOf);
   const totalUngroupedPlusGrouped =
     layout.ungrouped.length + layout.groups.reduce((s, g) => s + g.cardIds.length, 0);
 
@@ -836,6 +839,7 @@ export default function RummyBoardDesktop({
                 autoPlaying={players.find((p) => p.id === id)?.isAutoPlaying === true}
                 autoReason={players.find((p) => p.id === id)?.autoPlayReason}
                 cumulativeScore={state.cumulativeScores?.[id]}
+                turnAction={state.turnAction}
               />
             ))}
           </div>
@@ -857,6 +861,10 @@ export default function RummyBoardDesktop({
                 wildRank={wildRank}
               />
               <FinishSlot dragOver={dragOverTarget === "finishslot"} />
+              {/* Fills the bare felt beside the slots. Opponents' hands are
+                  hidden and their turns pass silently, so without this the
+                  widest part of the table carried no information at all. */}
+              <TableFeed items={feed} />
             </div>
 
             <div className="rm-felt__hint">
@@ -1605,11 +1613,14 @@ function SeatCard({
   autoPlaying,
   autoReason,
   cumulativeScore,
+  turnAction,
 }: {
   letter: string;
   name: string;
   isSelf: boolean;
   isTurn: boolean;
+  /** Which half of the active turn — the only publicly observable sub-state. */
+  turnAction?: RummyTurnAction;
   handSize: number;
   dropped: boolean;
   eliminated: boolean;
@@ -1638,7 +1649,15 @@ function SeatCard({
     : isTurn
     // "Your turn" on somebody else's seat is a lie the second person at the
     // table would read as their own cue.
-    ? (isSelf ? "Your turn" : "Playing…")
+    //
+    // The active seat now names WHICH half of the turn it is in — drawing vs
+    // discarding is publicly known from `turnAction`, and it is the only extra
+    // state that is genuinely observable. The review also asked for
+    // "Thinking / Grouping / Declaring" on the waiting seats; those are not
+    // knowable from a hidden hand, so inventing them would be fiction.
+    ? (turnAction === "draw"
+        ? (isSelf ? "Your turn · draw" : "Drawing…")
+        : (isSelf ? "Your turn · discard" : "Discarding…"))
     : "Waiting";
   return (
     <div className={`rm-seat${isTurn ? " is-turn" : ""}${out ? " is-out" : ""}`}>
@@ -2154,6 +2173,38 @@ function DiscardLog({
  * The declare target. Dashed, because on this table a dashed edge means
  * exactly one thing: a place to put something.
  */
+/**
+ * Live table log, sat in the felt's dead space beside the piles.
+ *
+ * Reserves its own width whether or not it has anything to say — a panel that
+ * appears once the first card is drawn would shove the four slots sideways
+ * mid-turn, which is worse than a quiet empty state.
+ */
+function TableFeed({ items }: { items: RummyFeedItem[] }) {
+  return (
+    <div className="rm-slot rm-tablefeed" aria-live="polite">
+      <span className="rm-tablefeed__title">At the table</span>
+      {items.length === 0 ? (
+        <span className="rm-tablefeed__empty">Moves will show up here</span>
+      ) : (
+        <ul className="rm-tablefeed__list">
+          {items.map((f, i) => (
+            <li
+              key={f.id}
+              className={`rm-tablefeed__item rm-tablefeed__item--${f.tone}`}
+              // Older lines recede rather than vanish, so the newest is
+              // obvious without needing a badge to say so.
+              style={{ opacity: 1 - i * 0.14 }}
+            >
+              {f.text}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function FinishSlot({ dragOver }: { dragOver: boolean }) {
   return (
     <div className="rm-slot">

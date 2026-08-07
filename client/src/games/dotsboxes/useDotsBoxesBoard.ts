@@ -23,6 +23,15 @@ export interface DotsBoxesBoardProps {
   roomCode?: string;
   roomPhase?: string;
   onLeave?: () => void;
+  /** Dismissing the report card hands off to Room's game-over flow.
+   *
+   *  Dots & Boxes has always drawn its own notebook-styled ReportCardOverlay,
+   *  but was NOT listed in Room's GAMES_WITH_OWN_SCORECARD — so the generic
+   *  blue scorecard rendered on top of it and two result modals stacked. The
+   *  generic one owned `triggerGameOver`, so suppressing it without this
+   *  callback would leave the round with no way to reach the game-over
+   *  screen. */
+  onScorecardClose?: () => void;
 }
 
 /** Everything both shells need to render. Pure data + handlers, no JSX. */
