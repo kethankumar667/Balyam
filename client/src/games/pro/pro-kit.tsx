@@ -150,6 +150,7 @@ export function ProPanel({
   style,
   glow = false,
   padded = true,
+  dense = false,
 }: {
   children: ReactNode;
   className?: string;
@@ -157,10 +158,13 @@ export function ProPanel({
   /** Gold rim + bloom — reserve for the one panel that currently matters. */
   glow?: boolean;
   padded?: boolean;
+  /** Phone density. 16px of padding per panel, times five stacked panels,
+   *  is ~160px of a 844px column spent on air. */
+  dense?: boolean;
 }) {
   return (
     <div
-      className={`relative rounded-2xl ${padded ? "p-4" : ""} ${className}`}
+      className={`relative rounded-2xl ${padded ? (dense ? "p-2.5" : "p-4") : ""} ${className}`}
       style={{
         background: `linear-gradient(168deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015)), ${PRO.panel}`,
         border: `1px solid ${glow ? "rgba(245,196,81,0.55)" : PRO.line}`,
