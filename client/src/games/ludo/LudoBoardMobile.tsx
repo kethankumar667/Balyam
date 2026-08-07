@@ -40,16 +40,32 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
   const m = useLudoBoard(props);
   const [unread, setUnread] = useState(0);
 
-  const boardRowRef = useRef<HTMLDivElement>(null);
+  /**
+   * The board is measured against the WHOLE play column, minus what sits
+   * under it — not against its own row.
+   *
+   * Observing the row meant the row kept every spare pixel (it is `flex-1`),
+   * so on a portrait phone, where the board is width-bound, ~170px of slack
+   * pooled inside it as blank paper between the board and the dice. Measuring
+   * the column and subtracting a reserve for the roll tray and feed lets that
+   * space collapse instead. No feedback loop: the column's own height is set
+   * by the shell, not by the board.
+   */
+  const playColRef = useRef<HTMLDivElement>(null);
+  const belowBoardRef = useRef<HTMLDivElement>(null);
   const [boardPx, setBoardPx] = useState(320);
   useEffect(() => {
-    const el = boardRowRef.current;
-    if (!el) return;
-    const measure = () =>
-      setBoardPx(Math.max(120, Math.floor(Math.min(el.clientWidth, el.clientHeight, MAX_BOARD))));
+    const col = playColRef.current;
+    if (!col) return;
+    const measure = () => {
+      const reserve = belowBoardRef.current?.offsetHeight ?? 0;
+      const usableH = col.clientHeight - reserve;
+      setBoardPx(Math.max(120, Math.floor(Math.min(col.clientWidth + 22, usableH, MAX_BOARD))));
+    };
     measure();
     const ro = new ResizeObserver(measure);
-    ro.observe(el);
+    ro.observe(col);
+    if (belowBoardRef.current) ro.observe(belowBoardRef.current);
     return () => ro.disconnect();
   }, []);
 
@@ -87,7 +103,7 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
           board floating in dead paper. Anchored to the top it sits directly
           under the roster, and the whole slack pools above the nav as one
           deliberate gap instead of two accidental ones. */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-start gap-2">
+      <div ref={playColRef} className="flex-1 min-h-0 flex flex-col items-center justify-start gap-2">
         {/* Full-bleed breakout. The board is width-bound in portrait, so every
             pixel of chrome between it and the screen edge comes straight off
             the playing surface. Three separate insets sat in the way: Room's
@@ -108,13 +124,10 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
          * elsewhere cannot. `calc(100% + 22px)` genuinely takes them.
          */}
         <div
-          ref={boardRowRef}
-          // `items-start`: the board is width-bound on a phone, so this row is
-          // always taller than the square inside it. Centring split the
-          // leftover above and below, which read as the board floating. Top
-          // aligned, it sits tight under the roster and the slack pools once,
-          // below — where the feed and the roll tray can use it.
-          className="flex-1 min-h-0 flex items-start justify-center"
+          // No longer `flex-1`: the row is exactly the board now, so the
+          // column's leftover height collapses instead of pooling inside it
+          // as blank paper between the board and the dice.
+          className="shrink-0 flex items-start justify-center"
           style={{ width: "calc(100% + 22px)", marginLeft: -11, marginRight: -11 }}
         >
           <LudoBoardArea m={m} state={state} players={players} maxWidth={`${boardPx}px`} />
@@ -135,8 +148,12 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
          * slack on the one control the game is played with, puts it directly
          * under the board where the eye already is, and lets the nav collapse
          * to a single compact row. It stays inside the thumb arc. */}
-        <LudoRollTray m={m} state={state} />
-        <LudoMatchFeed m={m} variant="strip" />
+        {/* Measured as the board's reserve, so the board takes the column
+            height that is genuinely left rather than competing with it. */}
+        <div ref={belowBoardRef} className="flex w-full flex-col items-center gap-2">
+          <LudoRollTray m={m} state={state} />
+          <LudoMatchFeed m={m} variant="strip" />
+        </div>
       </div>
 
       <LudoBottomBar m={m} state={state} unread={unread} withTray={false} />

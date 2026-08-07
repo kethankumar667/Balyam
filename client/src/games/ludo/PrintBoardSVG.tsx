@@ -359,12 +359,19 @@ export default function PrintBoardSVG({
           Stars are pushed one per arm in arm order, so `i` is the arm. */}
       {art.stars.map(({ pt }, i) => (
         <g key={"star" + i} transform={`translate(${pt.x} ${pt.y})`}>
+          {/* Safe cells have to be identifiable at a glance — they change
+              whether a move is a risk. At 0.16 fill on a 0.2 hairline this
+              read as a faint watermark next to a solid black padlock two
+              cells away, so the least important mark on the board was the
+              loudest and the most important one nearly vanished. Fill and
+              stroke both lifted; still an OUTLINE state so it stays clearly
+              distinct from a start cell's solid seat colour. */}
           <polygon
             points={star}
             fill={seatColor(i)}
-            fillOpacity={0.16}
+            fillOpacity={0.34}
             stroke={seatColor(i)}
-            strokeWidth={0.2}
+            strokeWidth={0.34}
             strokeLinejoin="round"
           />
         </g>
@@ -379,8 +386,16 @@ export default function PrintBoardSVG({
         return (
           // Counter-rotated: a padlock is a recognisable object, so it should
           // stand up whichever way the board is turned.
-          <g key={"lock" + i} transform={`translate(${entry.x} ${entry.y}) rotate(${-rotationDeg})`}>
-            <LockMark s={cell * 0.62} />
+          // −20% and slightly recessed. A solid black padlock was the highest
+          // contrast object on a white grid, so it out-shouted the tokens and
+          // the safe stars — it is a rule REMINDER you read once, not a thing
+          // you track every turn.
+          <g
+            key={"lock" + i}
+            transform={`translate(${entry.x} ${entry.y}) rotate(${-rotationDeg})`}
+            opacity={0.78}
+          >
+            <LockMark s={cell * 0.5} />
           </g>
         );
       })}

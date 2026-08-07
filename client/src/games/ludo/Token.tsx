@@ -176,11 +176,17 @@ export function Token({
             x="0"
             y="12"
             textAnchor="middle"
-            fontSize="22"
+            // 22 → 26 with a 2.2 outline (was 0.8). On a phone each token is
+            // roughly 24px of real estate, so this numeral was rendering at
+            // about 6px against a saturated seat colour — the review called it
+            // unreadable and it was. `paintOrder: stroke` below already draws
+            // the outline behind the glyph, so a thicker one buys contrast
+            // without eating the letterform.
+            fontSize="26"
             fontWeight="900"
             fill="white"
             stroke={dark}
-            strokeWidth="0.8"
+            strokeWidth="2.2"
             style={{ fontFamily: "'Fredoka','Poppins','Nunito',sans-serif", letterSpacing: "0.01em", paintOrder: "stroke" } as React.CSSProperties}
           >
             {label}
