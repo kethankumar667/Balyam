@@ -10,6 +10,7 @@ import { hasSeenWordBuildingTutorial } from "./TutorialModal";
 import { useTurnHaptics } from "../../hooks/useHaptics";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { inkFor, type Ink } from "./inks";
+import { useCoach, type CoachState } from "../../components/CoachHintButton";
 
 /**
  * Shared props for every Word Building shell (picker, mobile, desktop).
@@ -46,6 +47,9 @@ export interface WordBuildingBoardModel {
   pickCell: (r: number, c: number) => void;
   placeLetter: (letter: string) => void;
   remainingSec: number | null;
+  /** AI Coach. Lives on the model so the grid can highlight the suggested
+   *  cell while the button renders wherever each shell has room. */
+  coach: CoachState;
 }
 
 /**
@@ -217,6 +221,9 @@ export function useWordBuildingBoard({
   const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
   const remainingSec = state.turnDeadline != null ? secondsLeft : null;
 
+  // AI Coach. Server-computed, requested on demand — see CoachHintButton.
+  const coach = useCoach();
+
   return {
     size,
     myTurn,
@@ -236,5 +243,6 @@ export function useWordBuildingBoard({
     pickCell,
     placeLetter,
     remainingSec,
+    coach,
   };
 }

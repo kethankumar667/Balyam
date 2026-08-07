@@ -6,6 +6,7 @@ import {
   THROW_REACTIONS,
   NUDGE_REACTIONS,
 } from "@shared/reactions";
+import { SOUNDBOARD_CLIPS, SOUND_RATE_LIMIT, type SoundClip } from "@shared/soundboard";
 
 // Local aliases keep the JSX below reading the same as before.
 const QUICK_EMOJIS: readonly string[] = QUICK_REACTIONS;
@@ -66,6 +67,9 @@ export default function InlineRoomRail({
   const [open, setOpen] = useState<Panel | null>(null);
   const [emojiCooldown, setEmojiCooldown] = useState(false);
   const [reactionTarget, setReactionTarget] = useState<string | null>(null);
+  /** Send timestamps inside the current sound-rate window (see sendSound). */
+  const soundStamps = useRef<number[]>([]);
+  const [soundBlocked, setSoundBlocked] = useState(false);
 
   // Unread chat tracking — same logic as FloatingRoomRail.
   const [lastReadCount, setLastReadCount] = useState(messages.length);
@@ -126,6 +130,27 @@ export default function InlineRoomRail({
     getSocket().emit("room:reaction", { emoji, targetPlayerId: reactionTarget ?? undefined });
     setEmojiCooldown(true);
     window.setTimeout(() => setEmojiCooldown(false), 400);
+  }
+
+  /**
+   * Soundboard clip. The client mirrors the server's budget
+   * (SOUND_RATE_LIMIT) rather than inventing its own, so a throttled clip
+   * shows as a disabled button instead of a tap that appears to work and
+   * produces silence. The server still enforces it — this is only courtesy.
+   */
+  function sendSound(clipId: string) {
+    const now = Date.now();
+    const recent = soundStamps.current.filter((t) => now - t < SOUND_RATE_LIMIT.windowMs);
+    if (recent.length >= SOUND_RATE_LIMIT.max) {
+      setSoundBlocked(true);
+      return;
+    }
+    recent.push(now);
+    soundStamps.current = recent;
+    setSoundBlocked(false);
+    getSocket().emit("room:sound", { clipId, targetPlayerId: reactionTarget ?? undefined });
+    // Re-enable exactly when the oldest stamp falls out of the window.
+    window.setTimeout(() => setSoundBlocked(false), SOUND_RATE_LIMIT.windowMs);
   }
 
   return (
@@ -203,6 +228,14 @@ export default function InlineRoomRail({
             }
             // else: stay open so the player can fire off several reactions in a row.
           }}
+          onPickSound={(clipId) => {
+            sendSound(clipId);
+            // Sounds do NOT auto-close on a targeted send the way emoji do.
+            // The budget is 3 per 6s and the tray is the only place to see
+            // what is left, so closing it would hide the one thing the
+            // player needs to pace themselves.
+          }}
+          soundBlocked={soundBlocked}
           onClose={() => {
             setOpen(null);
             setReactionTarget(null);
@@ -327,18 +360,26 @@ function InlineButton({
 
 function EmojiPopover({
   onPick,
+  onPickSound,
+  soundBlocked,
   onClose,
   cooldown,
   targetName,
   paper = false,
 }: {
   onPick: (e: string) => void;
+  onPickSound: (clipId: string) => void;
+  soundBlocked: boolean;
   onClose: () => void;
   cooldown: boolean;
   targetName: string | null;
   paper?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  // Emoji and sounds share one tray rather than getting a second button on
+  // the strip: they are the same gesture ("react to what just happened"),
+  // and the targeting context (🎯 <name>) applies to both.
+  const [mode, setMode] = useState<"emoji" | "sound">("emoji");
   const wrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     function handleDown(e: MouseEvent) {
@@ -366,6 +407,25 @@ function EmojiPopover({
             🎯 {targetName}
           </div>
         )}
+        <button
+          onClick={() => setMode((m) => (m === "emoji" ? "sound" : "emoji"))}
+          aria-pressed={mode === "sound"}
+          className={`text-xs font-bold w-8 h-8 flex items-center justify-center rounded-full mr-1 transition ${
+            mode === "sound"
+              ? "bg-[#E6A11E] text-[#2B2118]"
+              : paper
+              ? "text-[#6E5E4D] hover:bg-[#E5D4B2]"
+              : "text-slate-300 hover:bg-slate-700"
+          }`}
+          title={mode === "sound" ? "Switch to emoji" : "Switch to sounds"}
+        >
+          {mode === "sound" ? "🙂" : "🔊"}
+        </button>
+
+        {mode === "sound" ? (
+          <SoundGrid onPick={onPickSound} blocked={soundBlocked} paper={paper} />
+        ) : (
+          <>
         {/* Which row leads depends on WHY the tray is open. Aimed at a player
             (they just sent your token home) the comeback set is the point, so
             it leads; a general cheer leads with the applause set. Burying the
@@ -407,7 +467,72 @@ function EmojiPopover({
             ))}
           </div>
         )}
+          </>
+        )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Soundboard grid, grouped the same way the emoji rows are (cheer / tease /
+ * drama) so the two halves of the tray read as one vocabulary.
+ *
+ * Every button carries its label, not just a glyph. A glyph-only soundboard
+ * is a guessing game — you cannot preview a clip before inflicting it on the
+ * whole room, so the label is the only thing standing between a player and
+ * an accidental airhorn.
+ */
+function SoundGrid({
+  onPick,
+  blocked,
+  paper,
+}: {
+  onPick: (clipId: string) => void;
+  blocked: boolean;
+  paper: boolean;
+}) {
+  const groups: { key: SoundClip["group"]; title: string }[] = [
+    { key: "cheer", title: "Cheer" },
+    { key: "tease", title: "Tease" },
+    { key: "drama", title: "Drama" },
+  ];
+  return (
+    <div className="flex flex-col gap-1.5 w-full max-w-[22rem]">
+      {blocked && (
+        <p className={`text-[11px] ${paper ? "text-[#8A5A2B]" : "text-amber-300"}`}>
+          Easy — wait a moment before the next sound.
+        </p>
+      )}
+      {groups.map((g) => (
+        <div key={g.key}>
+          <p
+            className={`text-[10px] uppercase tracking-wider mb-1 ${
+              paper ? "text-[#8A7865]" : "text-slate-400"
+            }`}
+          >
+            {g.title}
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {SOUNDBOARD_CLIPS.filter((c) => c.group === g.key).map((c) => (
+              <button
+                key={c.id}
+                onClick={() => onPick(c.id)}
+                disabled={blocked}
+                className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold transition disabled:opacity-40 ${
+                  paper
+                    ? "bg-[#EFE2C7] hover:bg-[#E5D4B2] text-[#5C4A38]"
+                    : "bg-slate-700 hover:bg-slate-600 text-slate-100"
+                }`}
+                title={`Play ${c.label} for the room`}
+              >
+                <span aria-hidden>{c.glyph}</span>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

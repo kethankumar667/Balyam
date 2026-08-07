@@ -34,6 +34,7 @@ import { splitBySuit } from "./autoArrange";
 import { useRummyFeed, type RummyFeedItem } from "./useRummyFeed";
 import { isRummySoundEnabled, rummySfx, setRummySoundEnabled } from "./sound";
 import VoicePanel from "../../components/VoicePanel";
+import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
 import PlayerList from "../../components/PlayerList";
 import { enterFullscreen, exitFullscreen, isFullscreenActive } from "../../lib/fullscreen";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
@@ -183,6 +184,9 @@ export default function RummyBoardDesktop({
 }: BoardProps) {
   const hand = state.myHand ?? [];
   const byId = useMemo(() => new Map(hand.map((c) => [c.id, c])), [hand]);
+  // AI Coach — server-computed, on demand. The provider below lets any card
+  // in the tree light itself up without the layers between knowing about it.
+  const coach = useCoach();
   const wildRank = state.wildJoker.rank;
 
   // Desktop never needs to rotate itself in practice (the picker only
@@ -722,6 +726,7 @@ export default function RummyBoardDesktop({
       : "Points Rummy";
 
   return (
+    <CoachHighlightProvider ids={coach.highlight}>
     <div className="rm-room">
       {/* The desk clutter (paperclip, notebook, coffee cup), the corner suit
           watermarks and the background doodle are deliberately NOT rendered
@@ -1204,7 +1209,17 @@ export default function RummyBoardDesktop({
       {/* 5-second winner burst — pointer-events: none so the scorecard
           modal underneath stays interactive. */}
       {winnerBurstKey != null && <WinnerCelebrationBurst key={winnerBurstKey} />}
+
+      {/* Coach — floating, bottom-left of the felt. Kept clear of the hand
+          (bottom-centre) and the piles (centre) so the hint card never
+          covers the cards it is talking about. */}
+      {state.phase === "playing" && (
+        <div className="absolute left-4 bottom-4 z-[45]">
+          <CoachHintButton coach={coach} />
+        </div>
+      )}
     </div>
+    </CoachHighlightProvider>
   );
 }
 

@@ -340,3 +340,25 @@
   .rm-card.is-loading::after { animation: none; opacity: 0.25; }
   .rm-card.is-error { animation: none; }
 }
+
+/* ── AI Coach annotation ────────────────────────────────────────────
+   The coach ring is deliberately NOT the selection treatment. Selection
+   means "I have picked this up"; a hint means "consider this". Reusing
+   the selected look would make the coach appear to have moved cards on
+   the player's behalf, and a beginner cannot tell those apart. Amber
+   outline + a soft halo, sitting outside the card edge. */
+.rm-card.is-hinted {
+  outline: 2.5px solid #E6A11E;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(230, 161, 30, 0.18), 0 6px 16px rgba(0, 0, 0, 0.28);
+  animation: rmHintPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes rmHintPulse {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(230, 161, 30, 0.18), 0 6px 16px rgba(0, 0, 0, 0.28); }
+  50%      { box-shadow: 0 0 0 9px rgba(230, 161, 30, 0.10), 0 6px 16px rgba(0, 0, 0, 0.28); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rm-card.is-hinted { animation: none; }
+}

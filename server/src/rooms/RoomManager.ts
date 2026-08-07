@@ -52,8 +52,10 @@ import {
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
-import type { RematchState } from "@shared/types.js";
+import type { RematchState, CoachableEngine, CoachHintResponse } from "@shared/types.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
+import { ALLOWED_SOUND_CLIPS, SOUND_RATE_LIMIT } from "@shared/soundboard.js";
+import { logger } from "../lib/logger.js";
 import type { GameEngine } from "../games/GameEngine.js";
 import { LudoEngine } from "../games/ludo/LudoEngine.js";
 import { PLAYER_COLORS_ORDER } from "../games/ludo/track.js";
@@ -237,6 +239,10 @@ export class RoomManager {
    *  anti-spam check in `sendReaction`. Targeted reactions render on other
    *  people's screens, so this is abuse-facing, not just cosmetic. */
   private reactionRate = new Map<string, number[]>();
+  /** Same idea as `reactionRate`, on its own tighter budget — a soundboard
+   *  clip plays over everyone's game whether they are looking at it or not,
+   *  so it is the more abusable of the two channels. */
+  private soundRate = new Map<string, number[]>();
   /** "House Champion" per room table name — outlives any single room/code. docs/rummy/roadmap.md B.3. */
   private champions = new Map<string, RummyChampion>();
   /** UNO's own "House Champion" per room table name — separate map, same rationale as `unoHistory`. */
@@ -1589,6 +1595,80 @@ export class RoomManager {
       targetPlayerId: validTarget,
       ts: Date.now(),
     });
+  }
+
+  /**
+   * Soundboard clip → everyone in the room.
+   *
+   * Mirrors `sendReaction`, with two deliberate differences: a stricter rate
+   * budget (see SOUND_RATE_LIMIT), and the sender is told when their clip was
+   * throttled. A silently-dropped sound is indistinguishable from a missing
+   * audio file, so the sender needs to know which one happened.
+   */
+  sendSound(socketId: string, clipId: string, targetPlayerId?: string): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (!ALLOWED_SOUND_CLIPS.has(clipId)) return;
+
+    const now = Date.now();
+    const bucket = (this.soundRate.get(player.id) ?? []).filter(
+      (t) => now - t < SOUND_RATE_LIMIT.windowMs,
+    );
+    if (bucket.length >= SOUND_RATE_LIMIT.max) return;
+    bucket.push(now);
+    this.soundRate.set(player.id, bucket);
+
+    const validTarget = targetPlayerId && room.players.has(targetPlayerId) ? targetPlayerId : undefined;
+    this.io.to(room.code).emit("room:sound", {
+      id: `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      fromPlayerId: player.id,
+      clipId,
+      targetPlayerId: validTarget,
+      ts: Date.now(),
+    });
+  }
+
+  /**
+   * AI Coach — a private hint for the asking player.
+   *
+   * Engines opt in by implementing `getHint` (see CoachableEngine). A game
+   * without one answers "not supported" rather than throwing, so adding the
+   * button to a new game is a one-method change with no plumbing.
+   *
+   * The answer goes back through the ack to the asker alone: broadcasting it
+   * would both leak the asker's hand and make needing help a public act.
+   */
+  requestHint(socketId: string, ack: (res: CoachHintResponse) => void): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) {
+      ack({ ok: false, error: "Not in a room" });
+      return;
+    }
+    if (room.phase !== "playing" || !room.engine) {
+      ack({ ok: false, error: "No game in progress" });
+      return;
+    }
+    const engine = room.engine as unknown as Partial<CoachableEngine>;
+    if (typeof engine.getHint !== "function") {
+      ack({ ok: false, error: "No coach for this game yet" });
+      return;
+    }
+    try {
+      const hint = engine.getHint(player.id);
+      if (!hint) {
+        ack({ ok: false, error: "Nothing to suggest right now" });
+        return;
+      }
+      ack({ ok: true, hint });
+    } catch (err) {
+      // A coach that throws must never take the round down with it — the
+      // hint is an optional convenience layered over a live game.
+      logger.warn({
+        message: `Coach failed for ${room.game}: ${String(err)}`,
+        module: "COACH",
+      });
+      ack({ ok: false, error: "Could not work out a hint" });
+    }
   }
 
   /**

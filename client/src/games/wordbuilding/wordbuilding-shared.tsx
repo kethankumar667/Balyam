@@ -7,6 +7,7 @@ import type {
 } from "@shared/types";
 import type { Ink } from "./inks";
 import type { WordBuildingBoardModel } from "./useWordBuildingBoard";
+import CoachHintButton, { type CoachState } from "../../components/CoachHintButton";
 
 /**
  * Word Building — shared presentational layer.
@@ -122,6 +123,7 @@ export function Grid({
   inkOf,
   activeAnnotation,
   activePulse,
+  hintCells,
   onPickCell,
 }: {
   board: string[][];
@@ -135,6 +137,8 @@ export function Grid({
   activeAnnotation: WordBuildingScoredWord | null;
   /** Word whose cells should pulse-highlight right now (or null). */
   activePulse: WordBuildingScoredWord | null;
+  /** Cells the AI Coach is pointing at, as "r,c" keys. */
+  hintCells: ReadonlySet<string>;
   onPickCell: (r: number, c: number) => void;
 }) {
   // Cell key set for the pulsing word — used inside the cell render to overlay
@@ -168,6 +172,7 @@ export function Grid({
             const overlays = cellOverlays.get(k) ?? [];
             const filled = cell !== "";
             const isSel = selected?.r === r && selected?.c === c;
+            const isHint = hintCells.has(k);
             const inkOwner = overlays.length > 0 ? inkOf[overlays[overlays.length - 1].scorerId] : null;
             return (
               <button
@@ -188,6 +193,10 @@ export function Grid({
                     ? "1.5px dashed #b45309"
                     : "1px solid rgba(120,82,40,0.18)",
                   cursor: canPlay && !filled ? "pointer" : "default",
+                  // Coach ring sits OUTSIDE the cell border so it reads as an
+                  // annotation over the sheet rather than as a new cell state.
+                  outline: isHint ? "2.5px solid #E6A11E" : undefined,
+                  outlineOffset: isHint ? 1 : undefined,
                   fontFamily: "'Caveat', 'Patrick Hand', cursive",
                   fontSize: cellPx * 0.62,
                   lineHeight: 1,
@@ -338,6 +347,7 @@ export function StudentBar({
   nameOf,
   selfId,
   remainingSec,
+  coach,
   onOpenTutorial,
   onLeave,
 }: {
@@ -346,6 +356,8 @@ export function StudentBar({
   nameOf: (id: string) => string;
   selfId: string | null;
   remainingSec: number | null;
+  /** AI Coach state from the board model. Omitted by shells without one. */
+  coach?: CoachState;
   onOpenTutorial: () => void;
   onLeave?: () => void;
 }) {
@@ -403,6 +415,9 @@ export function StudentBar({
         );
       })}
       <div className="flex-1" />
+      {/* Coach — sits beside the timer because both answer "what now?".
+          Only while the round is live; a hint on a finished sheet is noise. */}
+      {coach && state.phase === "playing" && <CoachHintButton coach={coach} />}
       {/* Timer */}
       {remainingSec != null && state.phase === "playing" && (
         <div
@@ -821,6 +836,7 @@ export function WorkbookBoard({
           inkOf={m.inkOf}
           activeAnnotation={m.activeAnnotation}
           activePulse={m.activePulse}
+          hintCells={m.coach.highlight}
           onPickCell={m.pickCell}
         />
 

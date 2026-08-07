@@ -135,6 +135,21 @@ export const AUDIO = {
   REWARD_ACHIEVEMENT: "reward_achievement",
   REWARD_LEVEL_UP:    "reward_level_up",
 
+  /* ── Soundboard (room-wide social clips; one key per shared/soundboard.ts
+       clip id — see client/src/lib/soundboard.ts for the mapping) ── */
+  SB_DHOL:        "sb_dhol",
+  SB_APPLAUSE:    "sb_applause",
+  SB_TADA:        "sb_tada",
+  SB_SHANKH:      "sb_shankh",
+  SB_AIRHORN:     "sb_airhorn",
+  SB_LAUGH:       "sb_laugh",
+  SB_BOO:         "sb_boo",
+  SB_SADTROMBONE: "sb_sadtrombone",
+  SB_DRUMROLL:    "sb_drumroll",
+  SB_SUSPENSE:    "sb_suspense",
+  SB_TICK:        "sb_tick",
+  SB_WHOOSH:      "sb_whoosh",
+
   /* ── System ── */
   SYS_TICK:      "sys_tick",
   SYS_COUNTDOWN: "sys_countdown",
