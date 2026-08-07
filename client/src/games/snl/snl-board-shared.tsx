@@ -828,7 +828,16 @@ export function SnlPlayerRail({
               isTurn ? "bg-slate-800/80" : "bg-slate-800/30"
             }`}
             style={{
-              borderLeft: `3px solid ${isTurn ? palette.fill : "transparent"}`,
+              // Was `borderLeft: 3px solid ${palette.fill}` — a coloured side
+              // border above 1px on a list item, which the craft floor bans
+              // outright (and the detector flags as `side-tab`). The seat's
+              // colour now washes the row from its leading edge instead: same
+              // "this seat is live, and it is the blue one" reading, without
+              // the stripe. Matches how the Hand Cricket score bug carries its
+              // innings identity, so the two games stay consistent.
+              backgroundImage: isTurn
+                ? `linear-gradient(90deg, ${palette.fill}38, transparent 55%)`
+                : undefined,
               boxShadow: isTurn ? `0 0 10px ${palette.fill}40` : undefined,
             }}
           >

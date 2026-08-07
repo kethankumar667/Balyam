@@ -12,7 +12,12 @@ export function getSocket(): AppSocket {
     socket = io(SERVER_URL, {
       autoConnect: true,
       transports: ["websocket", "polling"],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 500,
     });
+  }
+  if (!socket.connected) {
+    socket.connect();
   }
   return socket;
 }

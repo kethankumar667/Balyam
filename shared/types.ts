@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "spaceimpact" | "bounce" | "roadrash";
 
 export interface Player {
   id: string;
@@ -1586,7 +1586,290 @@ export interface BingoPlayerState extends BingoPublicState {
  *  events are introduced for Bingo (see docs/bingo/roadmap.md). */
 export interface BingoMarkCellMove { type: "markCell"; data: { cellIndex: number }; }
 export interface BingoClaimMove { type: "claim"; }
-export type BingoMove = BingoMarkCellMove | BingoClaimMove;
+export interface NamePlaceAnimalOptions {
+  totalRounds: number;
+  roundSeconds: number;
+}
+
+export const DEFAULT_NAMESPLACEANIMAL_OPTIONS: NamePlaceAnimalOptions = {
+  totalRounds: 5,
+  roundSeconds: 30,
+};
+
+export type NamePlaceAnimalCategory = "name" | "place" | "animal" | "thing";
+
+export type NamePlaceAnimalPhase =
+  | "letterSelect"
+  | "playing"
+  | "review"
+  | "roundSummary"
+  | "finished";
+
+export interface NamePlaceAnimalAnswers {
+  name: string;
+  place: string;
+  animal: string;
+  thing: string;
+}
+
+export interface NamePlaceAnimalPlayerPublic {
+  id: string;
+  hasSubmitted: boolean;
+  score: number;
+  roundWins: number;
+}
+
+export interface NamePlaceAnimalStanding {
+  playerId: string;
+  rank: number;
+  score: number;
+  roundWins: number;
+  medal: "gold" | "silver" | "bronze" | null;
+}
+
+export interface NamePlaceAnimalPublicState {
+  kind: "namesplaceanimal";
+  phase: NamePlaceAnimalPhase;
+  letter: string | null;
+  round: number;
+  totalRounds: number;
+  roundSeconds: number;
+  deadline: number | null;
+  seatOrder: string[];
+  players: NamePlaceAnimalPlayerPublic[];
+  allAnswers: Record<string, NamePlaceAnimalAnswers> | null;
+  categoryScores: Record<string, Record<NamePlaceAnimalCategory, number>> | null;
+  roundScores: Record<string, number> | null;
+  standings: NamePlaceAnimalStanding[] | null;
+  isOver: boolean;
+  winnerId: string | null;
+  stoppedByPlayerId: string | null;
+}
+
+export interface NamePlaceAnimalPlayerState extends NamePlaceAnimalPublicState {
+  myAnswers: NamePlaceAnimalAnswers;
+}
+
+export interface TambolaOptions {
+  callIntervalMs: number;
+}
+
+export const DEFAULT_TAMBOLA_OPTIONS: TambolaOptions = {
+  callIntervalMs: 5000,
+};
+
+export type TambolaClaimType = "early5" | "topLine" | "middleLine" | "bottomLine" | "fullHouse";
+
+export interface TambolaClaimWin {
+  type: TambolaClaimType;
+  winnerId: string;
+  winnerName: string;
+  ts: number;
+}
+
+export interface TambolaPlayerPublic {
+  id: string;
+  markedCount: number;
+  claimsWon: TambolaClaimType[];
+}
+
+export interface TambolaPublicState {
+  kind: "tambola";
+  phase: "playing" | "finished";
+  calledNumbers: number[];
+  currentCall: number | null;
+  callDeadline: number | null;
+  seatOrder: string[];
+  players: TambolaPlayerPublic[];
+  winners: TambolaClaimWin[];
+  isOver: boolean;
+}
+
+export interface TambolaPlayerState extends TambolaPublicState {
+  myTicket: number[][];
+  myMarkedCells: boolean[][];
+}
+
+export interface SamethaluOptions {
+  totalRounds: number;
+  questionSeconds: number;
+}
+
+export const DEFAULT_SAMETHALU_OPTIONS: SamethaluOptions = {
+  totalRounds: 5,
+  questionSeconds: 20,
+};
+
+export type SamethaluPhase = "playing" | "roundSummary" | "finished";
+
+export interface SamethaluQuestion {
+  id: string;
+  proverb: string;
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  meaning: string;
+}
+
+export interface SamethaluPlayerPublic {
+  id: string;
+  hasAnswered: boolean;
+  score: number;
+  roundWins: number;
+}
+
+export interface SamethaluStanding {
+  playerId: string;
+  rank: number;
+  score: number;
+  roundWins: number;
+  medal: "gold" | "silver" | "bronze" | null;
+}
+
+export interface SamethaluPublicState {
+  kind: "samethalu";
+  phase: SamethaluPhase;
+  round: number;
+  totalRounds: number;
+  questionSeconds: number;
+  deadline: number | null;
+  currentQuestion: Omit<SamethaluQuestion, "correctIndex"> | null;
+  seatOrder: string[];
+  players: SamethaluPlayerPublic[];
+  selectedIndices: Record<string, number> | null;
+  correctIndex: number | null;
+  roundScores: Record<string, number> | null;
+  standings: SamethaluStanding[] | null;
+  isOver: boolean;
+  winnerId: string | null;
+}
+
+export interface SamethaluPlayerState extends SamethaluPublicState {
+  mySelectedIndex: number | null;
+}
+
+export interface TeluguCinemaluOptions {
+  totalRounds: number;
+  questionSeconds: number;
+}
+
+export const DEFAULT_TELUGUCINEMALU_OPTIONS: TeluguCinemaluOptions = {
+  totalRounds: 5,
+  questionSeconds: 20,
+};
+
+export type TeluguCinemaluPhase = "playing" | "roundSummary" | "finished";
+
+export interface TeluguCinemaluQuestion {
+  id: string;
+  movieTitle: string;
+  dialogue: string;
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  trivia: string;
+}
+
+export interface TeluguCinemaluPlayerPublic {
+  id: string;
+  hasAnswered: boolean;
+  score: number;
+  roundWins: number;
+}
+
+export interface TeluguCinemaluStanding {
+  playerId: string;
+  rank: number;
+  score: number;
+  roundWins: number;
+  medal: "gold" | "silver" | "bronze" | null;
+}
+
+export interface TeluguCinemaluPublicState {
+  kind: "telugucinemalu";
+  phase: TeluguCinemaluPhase;
+  round: number;
+  totalRounds: number;
+  questionSeconds: number;
+  deadline: number | null;
+  currentQuestion: Omit<TeluguCinemaluQuestion, "correctIndex"> | null;
+  seatOrder: string[];
+  players: TeluguCinemaluPlayerPublic[];
+  selectedIndices: Record<string, number> | null;
+  correctIndex: number | null;
+  roundScores: Record<string, number> | null;
+  standings: TeluguCinemaluStanding[] | null;
+  isOver: boolean;
+  winnerId: string | null;
+}
+
+export interface TeluguCinemaluPlayerState extends TeluguCinemaluPublicState {
+  mySelectedIndex: number | null;
+}
+
+// ---- Nokia Snake ----
+export interface SnakeOptions {
+  speedMs: number;
+  gridSize: number;
+}
+export const DEFAULT_SNAKE_OPTIONS: SnakeOptions = { speedMs: 120, gridSize: 20 };
+export interface SnakePlayerPublic {
+  id: string;
+  score: number;
+  isAlive: boolean;
+  color: string;
+}
+export interface SnakePublicState {
+  kind: "snake";
+  gridSize: number;
+  snakes: Record<string, { body: { x: number; y: number }[]; dir: string; isAlive: boolean }>;
+  food: { x: number; y: number };
+  players: SnakePlayerPublic[];
+  isOver: boolean;
+  winnerId: string | null;
+}
+
+// ---- Space Impact ----
+export interface SpaceImpactOptions {
+  difficulty: string;
+}
+export const DEFAULT_SPACEIMPACT_OPTIONS: SpaceImpactOptions = { difficulty: "normal" };
+export interface SpaceImpactPublicState {
+  kind: "spaceimpact";
+  ships: Record<string, { x: number; y: number; hp: number; score: number }>;
+  enemies: { id: string; x: number; y: number; type: string }[];
+  bullets: { x: number; y: number; isPlayer: boolean }[];
+  players: { id: string; score: number; isAlive: boolean }[];
+  isOver: boolean;
+  winnerId: string | null;
+}
+
+// ---- Bounce ----
+export interface BounceOptions {
+  targetRings: number;
+}
+export const DEFAULT_BOUNCE_OPTIONS: BounceOptions = { targetRings: 10 };
+export interface BouncePublicState {
+  kind: "bounce";
+  balls: Record<string, { x: number; y: number; vx: number; vy: number; ringsCollected: number; isAlive: boolean }>;
+  rings: { id: string; x: number; y: number; collected: boolean }[];
+  players: { id: string; ringsCollected: number; isAlive: boolean }[];
+  isOver: boolean;
+  winnerId: string | null;
+}
+
+// ---- Road Rash ----
+export interface RoadRashOptions {
+  trackLength: number;
+}
+export const DEFAULT_ROADRASH_OPTIONS: RoadRashOptions = { trackLength: 1000 };
+export interface RoadRashPublicState {
+  kind: "roadrash";
+  bikes: Record<string, { position: number; lane: number; speed: number; isAttacking: boolean; isKnockedOut: boolean }>;
+  players: { id: string; position: number; rank: number; isKnockedOut: boolean }[];
+  isOver: boolean;
+  winnerId: string | null;
+}
 
 // ---- Socket event payloads ----
 export interface CreateRoomPayload {
@@ -1602,6 +1885,14 @@ export interface CreateRoomPayload {
   starGameOptions?: Partial<StarGameOptions>;
   unoOptions?: Partial<UnoGameOptions>;
   bingoOptions?: Partial<BingoGameOptions>;
+  namesplaceanimalOptions?: Partial<NamePlaceAnimalOptions>;
+  tambolaOptions?: Partial<TambolaOptions>;
+  samethaluOptions?: Partial<SamethaluOptions>;
+  teluguCinemaluOptions?: Partial<TeluguCinemaluOptions>;
+  snakeOptions?: Partial<SnakeOptions>;
+  spaceImpactOptions?: Partial<SpaceImpactOptions>;
+  bounceOptions?: Partial<BounceOptions>;
+  roadRashOptions?: Partial<RoadRashOptions>;
 }
 
 export interface SetTokenNicknamesPayload {

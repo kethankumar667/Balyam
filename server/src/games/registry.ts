@@ -10,6 +10,14 @@ import { WordBuildingEngine } from "./wordbuilding/WordBuildingEngine.js";
 import { DotsBoxesEngine } from "./dotsboxes/DotsBoxesEngine.js";
 import { StarGameEngine } from "./stargame/StarGameEngine.js";
 import { BingoEngine } from "./bingo/BingoEngine.js";
+import { NamePlaceAnimalEngine } from "./namesplaceanimal/NamePlaceAnimalEngine.js";
+import { TambolaEngine } from "./tambola/TambolaEngine.js";
+import { SamethaluEngine } from "./samethalu/SamethaluEngine.js";
+import { TeluguCinemaluEngine } from "./telugucinemalu/TeluguCinemaluEngine.js";
+import { SnakeEngine } from "./snake/SnakeEngine.js";
+import { SpaceImpactEngine } from "./spaceimpact/SpaceImpactEngine.js";
+import { BounceEngine } from "./bounce/BounceEngine.js";
+import { RoadRashEngine } from "./roadrash/RoadRashEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
   switch (kind) {
@@ -33,32 +41,48 @@ export function createEngine(kind: GameKind): GameEngine {
       return new StarGameEngine();
     case "bingo":
       return new BingoEngine();
+    case "namesplaceanimal":
+      return new NamePlaceAnimalEngine();
+    case "tambola":
+      return new TambolaEngine();
+    case "samethalu":
+      return new SamethaluEngine();
+    case "telugucinemalu":
+      return new TeluguCinemaluEngine();
+    case "snake":
+      return new SnakeEngine();
+    case "spaceimpact":
+      return new SpaceImpactEngine();
+    case "bounce":
+      return new BounceEngine();
+    case "roadrash":
+      return new RoadRashEngine();
     default:
       throw new Error(`Game not implemented yet: ${kind}`);
   }
 }
 
 export function getGameLimits(kind: GameKind): { min: number; max: number } {
-  switch (kind) {
-    case "rps":
-      return { min: 2, max: 2 };
-    case "rummy":
-      return { min: 2, max: 6 };
-    case "ludo":
-      return { min: 2, max: 8 };
-    case "snl":
-      return { min: 2, max: 10 };
-    case "handcricket":
-      return { min: 2, max: 2 };
-    case "uno":
-      return { min: 2, max: 8 };
-    case "wordbuilding":
-      return { min: 2, max: 4 };
-    case "dotsboxes":
-      return { min: 2, max: 4 };
-    case "stargame":
-      return { min: 3, max: 8 };
-    case "bingo":
-      return { min: 2, max: 8 };
-  }
+  const limits: Record<string, { min: number; max: number }> = {
+    rps: { min: 2, max: 2 },
+    rummy: { min: 2, max: 6 },
+    ludo: { min: 2, max: 8 },
+    snl: { min: 2, max: 6 },
+    handcricket: { min: 2, max: 2 },
+    uno: { min: 2, max: 10 },
+    wordbuilding: { min: 2, max: 8 },
+    dotsboxes: { min: 2, max: 4 },
+    stargame: { min: 2, max: 4 },
+    bingo: { min: 2, max: 8 },
+    namesplaceanimal: { min: 2, max: 8 },
+    tambola: { min: 2, max: 12 },
+    samethalu: { min: 2, max: 8 },
+    telugucinemalu: { min: 2, max: 8 },
+    snake: { min: 1, max: 4 },
+    spaceimpact: { min: 1, max: 4 },
+    bounce: { min: 1, max: 4 },
+    roadrash: { min: 1, max: 4 },
+  };
+
+  return limits[kind] ?? { min: 2, max: 4 };
 }

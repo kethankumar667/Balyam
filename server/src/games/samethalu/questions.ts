@@ -1,0 +1,68 @@
+import type { SamethaluQuestion } from "@shared/types.js";
+
+export const SAMETHALU_QUESTIONS: SamethaluQuestion[] = [
+  {
+    id: "sq_1",
+    proverb: "కుక్క తోక పట్టుకుని...",
+    prompt: "Complete the proverb: కుక్క తోక పట్టుకుని...",
+    options: ["గోదారి ఈదినట్లు", "కొండ ఎక్కినట్లు", "సముద్రం దాటినట్లు", "ఇల్లు చేరినట్లు"],
+    correctIndex: 0,
+    meaning: "Trying to cross a river by holding a dog's tail — relying on an unreliable support.",
+  },
+  {
+    id: "sq_2",
+    proverb: "చేతులు కాలక...",
+    prompt: "Complete the proverb: చేతులు కాలక...",
+    options: ["అాకులు పట్టుకున్నట్లు", "నీళ్ళు చల్లినట్లు", "మందు రాసినట్లు", "తలుపు వేసినట్లు"],
+    correctIndex: 0,
+    meaning: "Holding leaves after hands are already burnt — acting too late after damage is done.",
+  },
+  {
+    id: "sq_3",
+    proverb: "దీపం ఉండగానే...",
+    prompt: "Complete the proverb: దీపం ఉండగానే...",
+    options: ["ఇల్లు చక్కదిద్దుకోవాలి", "నిద్రపోవాలి", "చదువుకోవాలి", "వంట చేయాలి"],
+    correctIndex: 0,
+    meaning: "Fix the house while the lamp is still burning — make hay while the sun shines.",
+  },
+  {
+    id: "sq_4",
+    proverb: "అందవు ద్రాక్ష పళ్ళు...",
+    prompt: "Complete the proverb: అందవు ద్రాక్ష పళ్ళు...",
+    options: ["పుల్లన", "తీయన", "చేదు", "చల్లన"],
+    correctIndex: 0,
+    meaning: "Grapes that can't be reached are sour — sour grapes syndrome.",
+  },
+  {
+    id: "sq_5",
+    proverb: "మొక్కై వంగనిది...",
+    prompt: "Complete the proverb: మొక్కై వంగనిది...",
+    options: ["మానై వంగునా", "చెట్టై ఎదుగునా", "పువ్వై విరియునా", "కాయై కాచునా"],
+    correctIndex: 0,
+    meaning: "What does not bend as a sapling will not bend as a tree — habits formed young persist.",
+  },
+  {
+    id: "sq_6",
+    proverb: "అడిగేవాడికి చెప్పేవాడు...",
+    prompt: "Complete the proverb: అడిగేవాడికి చెప్పేవాడు...",
+    options: ["లోకువ", "రాజు", "గురువు", "స్నేహితుడు"],
+    correctIndex: 0,
+    meaning: "The one who answers readily is taken for granted.",
+  },
+  {
+    id: "sq_7",
+    proverb: "పిల్లికి చెలగాటం...",
+    prompt: "Complete the proverb: పిల్లికి చెలగాటం...",
+    options: ["ఎలుకకి ప్రాణసంకటం", "కుక్కకి భయం", "కోడికి ఆనందం", "పాముకి కోపం"],
+    correctIndex: 0,
+    meaning: "What is fun for the cat is life-and-death for the mouse.",
+  },
+  {
+    id: "sq_8",
+    proverb: "కూర్చుని తింటే...",
+    prompt: "Complete the proverb: కూర్చుని తింటే...",
+    options: ["కొండలైనా కరిగిపోతాయి", "సంపద పెరుగుతుంది", "ఆరోగ్యం బాగుంటుంది", "సమయం వెళ్తుంది"],
+    correctIndex: 0,
+    meaning: "Even mountains crumble if eaten away idly without earning.",
+  },
+];

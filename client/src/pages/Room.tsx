@@ -32,9 +32,18 @@ import type { GameKind, Player, RpsState, RummyPlayerState, LudoState, SnlState,
 import WordBuildingBoard from "../games/wordbuilding/WordBuildingBoard";
 import DotsBoxesBoard from "../games/dotsboxes/DotsBoxesBoard";
 import StarBoard from "../games/stargame/StarBoard";
-import type { StarPlayerView } from "@shared/types";
+import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState, SamethaluPlayerState, TeluguCinemaluPlayerState } from "@shared/types";
 import BingoBoard from "../games/bingo/BingoBoard";
 import type { BingoPlayerState } from "@shared/types";
+import NamePlaceAnimalBoard from "../games/namesplaceanimal/NamePlaceAnimalBoard";
+import TambolaBoard from "../games/tambola/TambolaBoard";
+import SamethaluBoard from "../games/samethalu/SamethaluBoard";
+import TeluguCinemaluBoard from "../games/telugucinemalu/TeluguCinemaluBoard";
+import SnakeBoard from "../games/snake/SnakeBoard";
+import SpaceImpactBoard from "../games/spaceimpact/SpaceImpactBoard";
+import BounceBoard from "../games/bounce/BounceBoard";
+import RoadRashBoard from "../games/roadrash/RoadRashBoard";
+import type { SnakePublicState, SpaceImpactPublicState, BouncePublicState, RoadRashPublicState } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -52,6 +61,14 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   dotsboxes: 4,
   stargame: 8,
   bingo: 8,
+  namesplaceanimal: 8,
+  tambola: 8,
+  samethalu: 8,
+  telugucinemalu: 8,
+  snake: 4,
+  spaceimpact: 4,
+  bounce: 4,
+  roadrash: 4,
 };
 
 /**
@@ -600,6 +617,10 @@ export default function Room() {
     dotsboxes:    "Dots & Boxes",
     stargame:     "Star Game",
     bingo:        "Bingo",
+    namesplaceanimal: "Name Place Animal Thing",
+    tambola: "Tambola (Housie)",
+    samethalu: "Samethalu Quiz",
+    telugucinemalu: "Telugu Cinema Quiz",
   };
   const gameOverGameName = roomState
     ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)
@@ -989,6 +1010,95 @@ export default function Room() {
                 roomPhase={roomState.phase}
                 onLeave={leaveRoom}
                 onScorecardClose={triggerGameOver}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "namesplaceanimal" && gameState != null && (
+              <NamePlaceAnimalBoard
+                state={gameState as NamePlaceAnimalPlayerState}
+                myAnswers={(gameState as NamePlaceAnimalPlayerState).myAnswers}
+                myPlayerId={playerId || ""}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "tambola" && gameState != null && (
+              <TambolaBoard
+                state={gameState as TambolaPlayerState}
+                selfId={playerId || ""}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "samethalu" && gameState != null && (
+              <SamethaluBoard
+                state={gameState as SamethaluPlayerState}
+                selfId={playerId || ""}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "telugucinemalu" && gameState != null && (
+              <TeluguCinemaluBoard
+                state={gameState as TeluguCinemaluPlayerState}
+                selfId={playerId || ""}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "snake" && gameState != null && (
+              <SnakeBoard
+                state={gameState as SnakePublicState}
+                selfId={playerId || ""}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "spaceimpact" && gameState != null && (
+              <SpaceImpactBoard
+                state={gameState as SpaceImpactPublicState}
+                selfId={playerId || ""}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "bounce" && gameState != null && (
+              <BounceBoard
+                state={gameState as BouncePublicState}
+                selfId={playerId || ""}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "roadrash" && gameState != null && (
+              <RoadRashBoard
+                state={gameState as RoadRashPublicState}
+                selfId={playerId || ""}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
               />
             )}
 

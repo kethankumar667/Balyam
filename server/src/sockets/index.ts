@@ -1,6 +1,8 @@
 import type { Server, Socket } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.js";
 import type { RoomManager } from "../rooms/RoomManager.js";
+import { globalRateLimiter } from "../lib/rateLimiter.js";
+import { logger } from "../lib/logger.js";
 
 /**
  * Events that arrive WITHOUT a person doing anything — negotiation traffic and
@@ -27,6 +29,13 @@ export function registerSocketHandlers(
   // Runs before the specific handlers below, so even an event this file
   // rejects (an out-of-turn move, say) still registers as a sign of life.
   socket.onAny((event: string) => {
+    // Check rate limit threshold per socket
+    const { allowed } = globalRateLimiter.consume(socket.id);
+    if (!allowed) {
+      logger.warn({ message: `Rate limit exceeded for event ${event}`, socketId: socket.id, module: "RATE_LIMIT" });
+      return;
+    }
+
     if (MACHINE_EVENTS.has(event)) return;
     rooms.noteSocketActivity(socket.id);
   });
@@ -46,7 +55,15 @@ export function registerSocketHandlers(
         payload.dotsBoxesOptions,
         payload.starGameOptions,
         payload.unoOptions,
-        payload.bingoOptions
+        payload.bingoOptions,
+        payload.namesplaceanimalOptions,
+        payload.tambolaOptions,
+        payload.samethaluOptions,
+        payload.teluguCinemaluOptions,
+        payload.snakeOptions,
+        payload.spaceImpactOptions,
+        payload.bounceOptions,
+        payload.roadRashOptions
       );
       ack({ ok: true, code, playerId });
     } catch (err) {

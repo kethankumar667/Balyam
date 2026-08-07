@@ -63,7 +63,14 @@ function ScrollToTopOnRouteChange() {
  * want a free-floating overlay button. If a future page needs a toggle,
  * mount one directly in that page using `useTheme` from lib/useTheme.
  */
+import { getSocket } from "./lib/socket";
+
 export default function App() {
+  useEffect(() => {
+    // Warm up socket connection on app load so room creation is instantaneous
+    getSocket();
+  }, []);
+
   return (
     <>
       <ScrollToTopOnRouteChange />
