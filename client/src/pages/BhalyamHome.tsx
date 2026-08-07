@@ -69,6 +69,10 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   telugucinemalu: TeluguCinemaluGlyph,
   stargame: StarGameGlyph,
   bingo: BingoGlyph,
+  snake: StarGameGlyph,
+  spaceimpact: StarGameGlyph,
+  bounce: StarGameGlyph,
+  roadrash: StarGameGlyph,
 };
 
 export default function BhalyamHome() {
@@ -1000,8 +1004,12 @@ export function GameTile({
     tambola: "/Tambola.png",
     samethalu: "/SamethaluTile.png",
     telugucinemalu: "/telugu cinemalu.png",
-  stargame: "/StarTile.png",
-  bingo: "",
+    stargame: "/StarTile.png",
+    bingo: "",
+    snake: "",
+    spaceimpact: "",
+    bounce: "",
+    roadrash: "",
   };
 
   const underMaintenance = isLocked(game);

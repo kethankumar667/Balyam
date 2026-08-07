@@ -75,6 +75,10 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   telugucinemalu: TeluguCinemaluGlyph,
   stargame: StarGameGlyph,
   bingo: BingoGlyph,
+  snake: StarGameGlyph,
+  spaceimpact: StarGameGlyph,
+  bounce: StarGameGlyph,
+  roadrash: StarGameGlyph,
 };
 
 /**
@@ -86,6 +90,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
+  "namesplaceanimal", "tambola", "samethalu", "telugucinemalu", "snake", "spaceimpact", "bounce", "roadrash",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
@@ -322,62 +327,65 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     if (!game) return;
     setBusy(true);
     setPlayerName(n);
-    const socket = getSocket();
-    socket.emit(
-      "room:create",
-      {
-        name: n,
-        game: asGameKind(game),
-        playerId: playerId ?? undefined,
-        snlOptions: game === "snl" ? { difficulty } : undefined,
-        rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
-        hcOptions:
-          game === "handcricket"
-            ? {
-                mode: hcMode,
-                format: hcFormat,
-                category: hcCategory,
-                ...(hcMode === "galli" ? { galliOvers: hcGalliOvers } : {}),
-              }
-            : undefined,
-        wordBuildingOptions:
-          game === "wordbuilding"
-            ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize }
-            : undefined,
-        dotsBoxesOptions:
-          game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
-        starGameOptions:
-          game === "stargame"
-            ? { themeId: starTheme, totalRounds: starRounds, passSpeed: starPassSpeed }
-            : undefined,
-        unoOptions:
-          game === "uno"
-            ? {
-                turnTimerSeconds: Number(unoTurnTimer),
-                targetScore: unoMatchLength === "single" ? null : Number(unoMatchLength),
-                ...unoHouseRules,
-              }
-            : undefined,
-        bingoOptions:
-          game === "bingo"
-            ? {
-                callIntervalMs: Number(bingoCallSpeed),
-                stopOnFirstWin: bingoWinMode === "first",
-              }
-            : undefined,
-      },
-      (res) => {
-        setBusy(false);
-        if (!res.ok || !res.code) {
-          // Room creation failure is genuinely cross-field — the server
-          // rejected the whole request. Use the form-level fallback.
-          setFormError(res.error ?? "Failed to create room");
-          return;
-        }
-        if (res.playerId) setPlayerId(res.playerId);
-        navigate(`/room/${res.code}`);
-      },
-    );
+    try {
+      const socket = getSocket();
+      socket.emit(
+        "room:create",
+        {
+          name: n,
+          game: asGameKind(game),
+          playerId: playerId ?? undefined,
+          snlOptions: game === "snl" ? { difficulty } : undefined,
+          rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
+          hcOptions:
+            game === "handcricket"
+              ? {
+                  mode: hcMode,
+                  format: hcFormat,
+                  category: hcCategory,
+                  ...(hcMode === "galli" ? { galliOvers: hcGalliOvers } : {}),
+                }
+              : undefined,
+          wordBuildingOptions:
+            game === "wordbuilding"
+              ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize }
+              : undefined,
+          dotsBoxesOptions:
+            game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
+          starGameOptions:
+            game === "stargame"
+              ? { themeId: starTheme, totalRounds: starRounds, passSpeed: starPassSpeed }
+              : undefined,
+          unoOptions:
+            game === "uno"
+              ? {
+                  turnTimerSeconds: Number(unoTurnTimer),
+                  targetScore: unoMatchLength === "single" ? null : Number(unoMatchLength),
+                  ...unoHouseRules,
+                }
+              : undefined,
+          bingoOptions:
+            game === "bingo"
+              ? {
+                  callIntervalMs: Number(bingoCallSpeed),
+                  stopOnFirstWin: bingoWinMode === "first",
+                }
+              : undefined,
+        },
+        (res) => {
+          setBusy(false);
+          if (!res.ok || !res.code) {
+            setFormError(res.error ?? "Failed to create room");
+            return;
+          }
+          if (res.playerId) setPlayerId(res.playerId);
+          navigate(`/room/${res.code}`);
+        },
+      );
+    } catch (err) {
+      setBusy(false);
+      setFormError(err instanceof Error ? err.message : "Failed to create room");
+    }
   }
 
   /**

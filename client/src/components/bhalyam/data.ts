@@ -28,7 +28,11 @@ export type BhalyamGameSlug =
   | "namesplaceanimal"
   | "tambola"
   | "samethalu"
-  | "telugucinemalu";
+  | "telugucinemalu"
+  | "snake"
+  | "spaceimpact"
+  | "bounce"
+  | "roadrash";
 
 export interface BhalyamGameCard {
   slug: BhalyamGameSlug;
@@ -143,16 +147,12 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Pick a secret, slide the chits clockwise, and slap the STAR the instant you hold all four. Pure 90's terrace nostalgia.",
     accent: { from: "#E4B128", to: "#6D4323" },
-    // Flagged under maintenance but kept open — players can still jump in.
-    maintenance: true,
-    accessible: true,
   },
   {
     slug: "namesplaceanimal",
     title: "Name Place Animal Thing",
     blurb: "Pick a letter, beat the clock. Whose Bombay was the most legit?",
     accent: { from: "#F57C00", to: "#BF360C" },
-    maintenance: true,
   },
   {
     slug: "tambola",
@@ -161,7 +161,6 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Eyes down, ticket out. Full house calling at the next wedding sangeet.",
     accent: { from: "#C2185B", to: "#7B1B45" },
-    maintenance: true,
   },
   {
     slug: "samethalu",
@@ -169,7 +168,6 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Telugu proverbs from Ammamma's verandah. Complete the saying, learn the lesson, win the round.",
     accent: { from: "#A57B23", to: "#5E3D0E" },
-    maintenance: true,
   },
   {
     slug: "telugucinemalu",
@@ -177,6 +175,37 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Guess the film. Hint by hint, dialogue by dialogue. Friday-release adda energy.",
     accent: { from: "#D84315", to: "#7B1A0A" },
-    maintenance: true,
+  },
+  {
+    slug: "snake",
+    theme: "90s Nostalgia 🐍",
+    title: "Nokia Snake",
+    blurb:
+      "Classic green LCD matrix. Eat food pellets, grow longer, avoid walls and self-collision.",
+    accent: { from: "#2E7D32", to: "#1B5E20" },
+  },
+  {
+    slug: "spaceimpact",
+    theme: "90s Shooter 🚀",
+    title: "Space Impact",
+    blurb:
+      "Iconic Nokia space shooter. Pilot ship, fire lasers, destroy alien waves and bosses.",
+    accent: { from: "#1565C0", to: "#0D47A1" },
+  },
+  {
+    slug: "bounce",
+    theme: "Red Ball 🔴",
+    title: "Nokia Bounce",
+    blurb:
+      "Classic red ball platformer. Pass through gold rings, avoid spikes, and finish the level.",
+    accent: { from: "#E65100", to: "#BF360C" },
+  },
+  {
+    slug: "roadrash",
+    theme: "90s Racer 🏍️",
+    title: "Road Rash",
+    blurb:
+      "Retro 90s highway motorcycle racer. Steer, accelerate, punch rival bikers to win!",
+    accent: { from: "#C62828", to: "#8E0000" },
   },
 ];

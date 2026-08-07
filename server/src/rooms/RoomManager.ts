@@ -24,7 +24,16 @@ import type {
   BingoGameOptions,
   BingoRoundRecap,
   BotDifficulty,
-  LudoMatchRecap,} from "@shared/types.js";
+  LudoMatchRecap,
+  NamePlaceAnimalOptions,
+  TambolaOptions,
+  SamethaluOptions,
+  TeluguCinemaluOptions,
+  SnakeOptions,
+  SpaceImpactOptions,
+  BounceOptions,
+  RoadRashOptions,
+} from "@shared/types.js";
 import {
   COIN_COLORS,
   DEFAULT_HC_OPTIONS,
@@ -36,6 +45,10 @@ import {
   DEFAULT_STARGAME_OPTIONS,
   DEFAULT_UNO_OPTIONS,
   DEFAULT_BINGO_OPTIONS,
+  DEFAULT_NAMESPLACEANIMAL_OPTIONS,
+  DEFAULT_TAMBOLA_OPTIONS,
+  DEFAULT_SAMETHALU_OPTIONS,
+  DEFAULT_TELUGUCINEMALU_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -53,6 +66,10 @@ import { RpsEngine } from "../games/rps/RpsEngine.js";
 import { StarGameEngine } from "../games/stargame/StarGameEngine.js";
 import { UnoEngine } from "../games/uno/UnoEngine.js";
 import { BingoEngine } from "../games/bingo/BingoEngine.js";
+import { NamePlaceAnimalEngine } from "../games/namesplaceanimal/NamePlaceAnimalEngine.js";
+import { TambolaEngine } from "../games/tambola/TambolaEngine.js";
+import { SamethaluEngine } from "../games/samethalu/SamethaluEngine.js";
+import { TeluguCinemaluEngine } from "../games/telugucinemalu/TeluguCinemaluEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 /**
@@ -114,6 +131,14 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   dotsboxes: ["Pencil", "Eraser", "Sharpener", "Ruler"],
   stargame: ["Pinky", "Chinnu", "Guddu", "Sweety", "Bujji", "Chitti", "Lucky", "Appu"],
   bingo: ["Kanakam", "Padma", "Rajyam", "Saroja", "Venkat", "Nagesh", "Prasad", "Vani"],
+  namesplaceanimal: ["Abhi", "Balu", "Chandu", "Divya", "Esha", "Farhan", "Gita", "Hari"],
+  tambola: ["Annapurna", "Bhaskar", "Chintamani", "Devi", "Eluru", "Ganga", "Hema", "Indra"],
+  samethalu: ["Peddaiah", "Patti", "Raja", "Saraswathi", "Subbu", "Tammudu"],
+  telugucinemalu: ["Chiranjeevi", "Balayya", "Nag", "Venky", "Prabhas", "Mahesh", "NTR", "Ram Charan"],
+  snake: ["Python", "Viper", "Cobra", "Mamba"],
+  spaceimpact: ["Ace", "Blaster", "Cosmo", "Defender"],
+  bounce: ["RedBall", "BounceMaster", "Hopper", "Jumper"],
+  roadrash: ["Rider", "Speedy", "Biker", "Racer"],
 };
 
 function pickBotName(game: GameKind, idx: number): string {
@@ -180,6 +205,10 @@ interface Room {
   starGameOptions: StarGameOptions;
   unoOptions: UnoGameOptions;
   bingoOptions: BingoGameOptions;
+  namesplaceanimalOptions: NamePlaceAnimalOptions;
+  tambolaOptions: TambolaOptions;
+  samethaluOptions: SamethaluOptions;
+  teluguCinemaluOptions: TeluguCinemaluOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -224,8 +253,13 @@ export class RoomManager {
 
   constructor(private io: IO) {}
 
+  getRoomCount(): number {
+    return this.rooms.size;
+  }
+
   private toPublicState(room: Room): RoomPublicState {
-    const { min, max } = getGameLimits(room.game);
+    const limits = getGameLimits(room.game) ?? { min: 2, max: 4 };
+    const { max } = limits;
     return {
       code: room.code,
       game: room.game,
@@ -256,7 +290,15 @@ export class RoomManager {
     dotsBoxesOptions?: Partial<DotsBoxesOptions>,
     starGameOptions?: Partial<StarGameOptions>,
     unoOptions?: Partial<UnoGameOptions>,
-    bingoOptions?: Partial<BingoGameOptions>
+    bingoOptions?: Partial<BingoGameOptions>,
+    namesplaceanimalOptions?: Partial<NamePlaceAnimalOptions>,
+    tambolaOptions?: Partial<TambolaOptions>,
+    samethaluOptions?: Partial<SamethaluOptions>,
+    teluguCinemaluOptions?: Partial<TeluguCinemaluOptions>,
+    snakeOptions?: Partial<SnakeOptions>,
+    spaceImpactOptions?: Partial<SpaceImpactOptions>,
+    bounceOptions?: Partial<BounceOptions>,
+    roadRashOptions?: Partial<RoadRashOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -297,6 +339,10 @@ export class RoomManager {
       starGameOptions: { ...DEFAULT_STARGAME_OPTIONS, ...(starGameOptions ?? {}) },
       unoOptions: { ...DEFAULT_UNO_OPTIONS, ...(unoOptions ?? {}) },
       bingoOptions: { ...DEFAULT_BINGO_OPTIONS, ...(bingoOptions ?? {}) },
+      namesplaceanimalOptions: { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS, ...(namesplaceanimalOptions ?? {}) },
+      tambolaOptions: { ...DEFAULT_TAMBOLA_OPTIONS, ...(tambolaOptions ?? {}) },
+      samethaluOptions: { ...DEFAULT_SAMETHALU_OPTIONS, ...(samethaluOptions ?? {}) },
+      teluguCinemaluOptions: { ...DEFAULT_TELUGUCINEMALU_OPTIONS, ...(teluguCinemaluOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -714,6 +760,15 @@ export class RoomManager {
       }
       if (engine instanceof BingoEngine) {
         engine.setOptions(room.bingoOptions);
+      }
+      if (engine instanceof TambolaEngine) {
+        engine.setOptions(room.tambolaOptions);
+      }
+      if (engine instanceof SamethaluEngine) {
+        engine.setOptions(room.samethaluOptions);
+      }
+      if (engine instanceof TeluguCinemaluEngine) {
+        engine.setOptions(room.teluguCinemaluOptions);
       }
       engine.init(playersList);
       room.engine = engine;
@@ -1361,6 +1416,27 @@ export class RoomManager {
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
     }
+    // ── Phase-timer engines (quiz / countdown style) ─────────────────────
+    // Telugu Cinema Quiz, Samethalu, and Name-Place-Animal all use the same
+    // armDeadline / resolveDeadline / getPhaseTimerSeconds / clearDeadline
+    // contract as StarGameEngine. Without these branches, no timer fires
+    // during roundSummary and the game freezes after question 1.
+    if (
+      room.engine instanceof TeluguCinemaluEngine ||
+      room.engine instanceof SamethaluEngine ||
+      room.engine instanceof NamePlaceAnimalEngine
+    ) {
+      const engine = room.engine;
+      if (engine.isOver()) {
+        engine.clearDeadline();
+        this.broadcastGameState(room);
+        return;
+      }
+      const ms = engine.armDeadline(engine.getPhaseTimerSeconds() * 1000);
+      this.broadcastGameState(room);
+      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      return;
+    }
   }
 
   private onTurnTimeout(room: Room): void {
@@ -1462,6 +1538,18 @@ export class RoomManager {
       // number. Any bot claims that unlocks are picked up by the generic
       // scheduleBotMoveIfNeeded() inside afterAutoMove below.
       engine.callNext();
+      this.afterAutoMove(room, engine.isOver());
+      return;
+    }
+    // ── Phase-timer engines (quiz / countdown style) ─────────────────────
+    if (
+      room.engine instanceof TeluguCinemaluEngine ||
+      room.engine instanceof SamethaluEngine ||
+      room.engine instanceof NamePlaceAnimalEngine
+    ) {
+      const engine = room.engine;
+      if (engine.isOver()) return;
+      engine.resolveDeadline();
       this.afterAutoMove(room, engine.isOver());
       return;
     }
