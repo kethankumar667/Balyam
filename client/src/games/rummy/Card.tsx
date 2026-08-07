@@ -1,6 +1,7 @@
 import { useId } from "react";
 import type { CSSProperties, ElementType, KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Card as CardType, Rank } from "@shared/types";
+import { useIsCoachHighlighted } from "../../components/CoachHintButton";
 
 // The Card Room token system + this component's own rules. Imported here
 // because Card.tsx is the atom every Rummy surface pulls in — board, result
@@ -73,6 +74,7 @@ export function PlayingCard({
   card,
   isWildJoker = false,
   selected = false,
+  hinted = false,
   dimmed = false,
   onClick,
   small = false,
@@ -85,6 +87,9 @@ export function PlayingCard({
   card: CardType;
   isWildJoker?: boolean;
   selected?: boolean;
+  /** The AI Coach is pointing at this card. Purely an annotation — it does
+   *  not change whether the card is selectable or what a tap does. */
+  hinted?: boolean;
   /** De-emphasised but still playable — NOT the same as `disabled`. */
   dimmed?: boolean;
   onClick?: () => void;
@@ -147,11 +152,18 @@ export function PlayingCard({
       ? { onClick: inert ? undefined : onClick, disabled: inert }
       : {};
 
+  // Explicit prop wins; otherwise the coach context decides. This keeps the
+  // annotation automatic for the boards (which just wrap in a provider) while
+  // leaving a manual override for previews and tests.
+  const coachHinted = useIsCoachHighlighted(card.id);
+  const showHint = hinted || coachHinted;
+
   const cls =
     "rummy-playing-card rm-card" +
     sizeClass(resolvedSize) +
     (interactive ? " rm-card--interactive" : "") +
     (selected ? " is-selected" : "") +
+    (showHint ? " is-hinted" : "") +
     (dimmed ? " is-dimmed" : "") +
     (disabled ? " is-disabled" : "") +
     (state !== "idle" ? ` is-${state}` : "");

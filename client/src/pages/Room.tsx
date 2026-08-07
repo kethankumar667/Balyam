@@ -21,6 +21,7 @@ import GameOverScreen, { AUTO_LEAVE_MS } from "../components/GameOverScreen";
 import PassPhoneGate from "../components/PassPhoneGate";
 import VoicePanel from "../components/VoicePanel";
 import { destroyVoiceSession, useVoiceRoster } from "../lib/voice-session";
+import SoundboardLayer from "../components/SoundboardLayer";
 import LudoColorPicker from "../components/LudoColorPicker";
 import CoinColorPicker from "../components/CoinColorPicker";
 import RpsBoard from "../games/rps/RpsBoard";
@@ -1126,6 +1127,11 @@ export default function Room() {
               gets pushed off-screen on mobile during other games' play, so
               this is the only way players reliably see a teammate ping. */}
           <ChatMessageToast messages={messages} selfId={playerId} />
+
+      {/* Soundboard playback + attribution. Mounted here, not in the rail,
+          so a clip lands on every player's screen regardless of which panel
+          any of them happens to have open. */}
+      <SoundboardLayer players={roomState.players} selfId={playerId} />
 
           {/* Every non-Rummy game now hosts its own InlineRoomRail inside
               its board card (the floating right-edge strip overlapped the

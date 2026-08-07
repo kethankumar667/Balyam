@@ -42,6 +42,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
         nameOf={m.nameOf}
         selfId={selfId}
         remainingSec={m.remainingSec}
+        coach={m.coach}
         onOpenTutorial={() => m.setTutorialOpen(true)}
         onLeave={onLeave}
       />

@@ -1,4 +1,5 @@
 import type {
+  CoachHint,
   Player,
   WordBuildingMoveRecord,
   WordBuildingOptions,
@@ -422,6 +423,56 @@ export class WordBuildingEngine implements GameEngine {
    * Heart of the bot. Returns the best (cell, letter) candidate plus
    * the score it would book.
    */
+  /**
+   * AI Coach. Reuses the bot's placement search rather than a second scorer:
+   * one source of "what is a good move here" means the hint and the bot can
+   * never disagree about the same board.
+   *
+   * The bot's search is deterministic wherever it matters — it only rolls
+   * dice on the seed/fallback branches, where every option is equivalent by
+   * construction, so a hint is stable for a given board within a turn.
+   */
+  getHint(playerId: string): CoachHint | null {
+    if (this.s.phase !== "playing") return null;
+    const size = this.s.options.boardSize;
+    const empties: Array<{ r: number; c: number }> = [];
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (this.s.board[r][c] === "") empties.push({ r, c });
+      }
+    }
+    if (empties.length === 0) return null;
+
+    const isMyTurn = this.s.playerOrder[this.s.turnIndex] === playerId;
+    const pick = this.pickBotMove(empties);
+    const cellId = `${pick.cell.r},${pick.cell.c}`;
+
+    if (!isMyTurn) {
+      return {
+        kind: "wait",
+        headline: `Watch ${cellId.replace(",", "/")} — ${pick.letter} scores there`,
+        detail:
+          pick.score > 0
+            ? `If nobody takes it, placing ${pick.letter} there is worth ${pick.score} points on your turn.`
+            : "No scoring square is open yet. Look for rows or columns with two letters already down.",
+        highlight: [cellId],
+      };
+    }
+
+    return {
+      kind: "place",
+      headline:
+        pick.score > 0
+          ? `Place ${pick.letter} for ${pick.score} points`
+          : `Place ${pick.letter} to open a word`,
+      detail:
+        pick.score > 0
+          ? `${pick.letter} completes a dictionary word along that row or column. Longer words score more, so extend rather than start fresh when you can.`
+          : `Nothing scores this turn. ${pick.letter} sits next to existing letters, which gives you something to extend next turn instead of stranding a letter in open space.`,
+      highlight: [cellId],
+    };
+  }
+
   private pickBotMove(
     empties: Array<{ r: number; c: number }>,
   ): { cell: { r: number; c: number }; letter: string; score: number } {

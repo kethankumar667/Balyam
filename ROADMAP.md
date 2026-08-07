@@ -1,7 +1,7 @@
 # Multiplayer Games Hub — 10-Year Roadmap (2026-2036)
 
 > A living document. Update when phases ship or priorities shift.
-> Last revised: 2026-05-29.
+> Last revised: 2026-08-07.
 
 ## Vision
 
@@ -80,6 +80,10 @@ type (`User`, `GameHistory`, `Room`, `FriendLink`) gets its own repo with
 - [ ] Deploy: Vercel (client) + Render (server) + free MongoDB Atlas
 - [ ] Custom domain + HTTPS
 - [ ] Basic Sentry error reporting
+- [ ] **TURN relay provisioned** — voice cannot work for symmetric-NAT players
+      without it (see Engagement track #6; client env hooks already shipped)
+- [ ] In-Room Soundboard + Reaction Stickers (Engagement track #1)
+- [ ] AI Coach hint button, Rummy + Word Building (Engagement track #2)
 
 **Exit criteria:** Family/friends use it weekly without me babysitting it.
 
@@ -156,6 +160,113 @@ type (`User`, `GameHistory`, `Room`, `FriendLink`) gets its own repo with
 
 ---
 
+## Engagement track — 2026-08 intake
+
+Six features taken in on 2026-08-07, ordered by fun-per-hour-of-work rather
+than by ambition. The first three extend what already exists; Carrom does not,
+and is called out separately below.
+
+Effort is in focused days for one person. Risk is the chance it goes badly
+wrong or drags, not the chance it is disliked.
+
+| # | Feature | Touches | Effort | Risk | Phase |
+|---|---------|---------|--------|------|-------|
+| 1 | In-Room Soundboard + Reaction Stickers | `room:reaction` relay, `InlineRoomRail` | 1d | Low | A |
+| 2 | AI Coach (hint button) | Rummy + Word Building engines | 2-3d | Low | A |
+| 3 | Smart TV / Party Mode | new spectator socket role, new layout | 3-4d | Medium | C |
+| 4 | 2D Physics Carrom | **new engine kind**, netcode, renderer | 8-12d | **High** | C |
+| 5 | Voice Command Gameplay | client-only speech layer | 2-3d | Medium | C |
+| 6 | TURN relay for voice | infra only — see correction below | 0.5d | Low | **A (was E)** |
+
+### 1. In-Room Soundboard + Reaction Stickers
+
+Tap a sound (dhol hit, "oooh", airhorn, tabla riff) or a sticker and every
+player in the room hears/sees it, optionally aimed at one seat.
+
+Cheap because the hard half is built: `room:reaction` already relays an emoji
+with an optional `targetPlayerId`, and the client already arcs it to that
+player's seat card and makes the card flinch. A soundboard is largely a new
+payload kind on that pipeline plus an asset set.
+
+**Watch:** rate-limit per player. An un-throttled airhorn button is a grief
+tool, and this ships to all ten games at once.
+
+### 2. AI Coach (hint button) — Rummy and Word Building
+
+A "Hint" button that highlights a valid meld (Rummy) or a high-scoring word
+(Word Building) for beginners.
+
+Must run **server-side**. Principle #2 says the server is the source of truth,
+and a client-side hint engine would need the full deck/rack in the browser —
+which hands a cheater the same information. Rummy already has meld scoring and
+`setArrangement` on the server, so the hint reuses existing logic rather than
+inventing new game intelligence.
+
+**Watch:** hint availability is a balance lever, not a free toggle. Default it
+to on for beginners and let the host turn it off for the table.
+
+### 3. Smart TV / Party Mode
+
+A big-screen room view — cast to a TV, phones become controllers. No engine
+changes: a spectator socket role that receives public state only, plus a
+layout tuned for 3 metres away.
+
+**Watch:** "public state only" is a real filter, not a styling choice. A TV
+view that receives full state leaks every hand in the room to anyone glancing
+at the screen. The `getStateFor(playerId)` contract already gives the right
+seam — add a spectator pseudo-player rather than bypassing it.
+
+### 4. 2D Physics Carrom — the architectural exception
+
+Highest regional appeal of the six, and the only one that does not fit the
+existing plugin contract.
+
+Every current game is turn-based and discrete: `applyMove` takes a move and
+returns a new state. Carrom is continuous — a strike produces several seconds
+of simulated motion that every client must see identically. That needs a
+fixed-timestep server simulation with tick broadcasting and client-side
+interpolation, which is a **second kind of engine** living beside the existing
+one, not a new folder under it.
+
+Decision needed before any code is written (see ADR table): does the
+`GameEngine` contract grow a real-time variant, or does Carrom run as a
+separate engine type with its own contract? Building it without answering that
+is how the contract — "the single most important interface in the project" —
+gets broken by accident.
+
+**Do not start this before features 1-3 ship.** It is worth building; it is
+not worth building first.
+
+### 5. Voice Command Gameplay
+
+"Roll dice", "pick card", "declare", "pass phone" — hands-free play for
+accessibility and couch games.
+
+**This shares no code with voice chat.** Voice chat is WebRTC (peer audio
+transport); this is the Web Speech API (`SpeechRecognition`, local
+transcription). Different stack, different failure modes. Budget them apart.
+
+**Watch:** Firefox has no `SpeechRecognition`, and Safari's is uneven. This is
+an enhancement for Chrome/Android, never the only way to perform an action.
+Every voice command must map to a control that already exists on screen.
+
+### 6. Correction: TURN is a Phase A blocker, not a Phase E nicety
+
+Phase E lists "Self-hosted Coturn (TURN server) for voice" under 2030-2031.
+That is too late by four years.
+
+The voice mesh runs on STUN only. Two players both behind a symmetric NAT —
+routine on mobile carrier data and corporate wifi — can never reach each other,
+and no amount of client-side signalling work fixes it. This was a live cause of
+"voice doesn't work" reports in August 2026.
+
+The client reads `VITE_TURN_URL` / `VITE_TURN_USERNAME` / `VITE_TURN_CREDENTIAL`
+and warns in-panel when no relay is configured. Provisioning the relay (hosted
+first, self-hosted later when cost justifies it) belongs in **Phase A**. Phase E
+keeps the *self-hosting* migration; it should not keep the capability itself.
+
+---
+
 ## Decision records to write up front (before Phase B)
 
 Each ADR is 1-2 pages: context, decision, alternatives considered, consequences.
@@ -168,6 +279,7 @@ Each ADR is 1-2 pages: context, decision, alternatives considered, consequences.
 | 004 | Voice topology (mesh vs SFU vs SaaS) | Phase E start |
 | 005 | Frontend rendering (CSR vs SSR vs RSC) | Phase C start |
 | 006 | Mobile strategy (PWA vs React Native) | Phase F start |
+| 007 | Real-time engine contract (does `GameEngine` grow a tick-based variant, or does Carrom get its own?) | **Before Carrom — see Engagement track #4** |
 
 ---
 

@@ -1,5 +1,6 @@
 import type {
   Card,
+  CoachHint,
   Player,
   RummyGameOptions,
   RummyMatchMode,
@@ -17,6 +18,7 @@ import {
   INVALID_DECLARE_PENALTY,
 } from "./score.js";
 import { findValidDeclaration, pickBestDiscard, shouldDrawFromOpen } from "./botArrange.js";
+import { rummyHint } from "./coach.js";
 
 interface InternalState {
   phase: "playing" | "arranging" | "finished";
@@ -792,6 +794,27 @@ export class RummyEngine implements GameEngine {
     // Single-mode: round end = match end. Pool mode: only when match is fully over.
     if (this.s.poolTarget == null) return this.s.phase === "finished";
     return this.s.matchOver;
+  }
+
+  /**
+   * AI Coach. Server-side by necessity: the hint is derived from the asker's
+   * hand plus the open pile, and computing it in the browser would require
+   * shipping information `getStateFor` deliberately withholds.
+   *
+   * Returns null outside the playing phase — there is nothing to advise on a
+   * finished round, and a stale hint is worse than no hint.
+   */
+  getHint(playerId: string): CoachHint | null {
+    if (this.s.phase !== "playing") return null;
+    const hand = this.s.hands.get(playerId);
+    if (!hand) return null;
+    return rummyHint({
+      hand: hand.slice(),
+      wildJokerRank: this.s.wildJoker.rank,
+      isMyTurn: this.s.playerOrder[this.s.turnIndex] === playerId,
+      turnAction: this.s.turnAction,
+      openTop: this.s.openPile.at(-1) ?? null,
+    });
   }
 
   /**

@@ -161,6 +161,15 @@ export function registerSocketHandlers(
     rooms.sendReaction(socket.id, emoji, targetPlayerId);
   });
 
+  socket.on("room:sound", ({ clipId, targetPlayerId }) => {
+    rooms.sendSound(socket.id, clipId, targetPlayerId);
+  });
+
+  socket.on("coach:hint", (ack) => {
+    if (typeof ack !== "function") return;
+    rooms.requestHint(socket.id, ack);
+  });
+
   socket.on("room:cursor", ({ x, y }) => {
     rooms.relayCursor(socket.id, x, y);
   });

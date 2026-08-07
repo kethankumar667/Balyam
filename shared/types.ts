@@ -1935,6 +1935,72 @@ export interface ReactionRecvPayload {
   ts: number;
 }
 
+/**
+ * Soundboard. Same shape as reactions on purpose — a clip is "a reaction you
+ * can hear" — but a separate event so it carries its own (stricter) rate
+ * budget and so a client that mutes sounds can ignore the whole channel
+ * without losing emoji.
+ */
+export interface SoundboardSendPayload {
+  /** A `SoundClip["id"]` from shared/soundboard.ts. */
+  clipId: string;
+  targetPlayerId?: string;
+}
+
+export interface SoundboardRecvPayload {
+  id: string;
+  fromPlayerId: string;
+  clipId: string;
+  targetPlayerId?: string;
+  ts: number;
+}
+
+// ---- AI Coach (hint button) ----
+
+/**
+ * A coaching hint for the requesting player.
+ *
+ * Computed on the SERVER and delivered only to the asker. A client-side hint
+ * engine would need the full deck / every rack in the browser, which hands a
+ * cheater exactly the information the server exists to withhold — so this
+ * travels the same trust boundary as `getStateFor`.
+ */
+export interface CoachHint {
+  /**
+   * What the player should do next. Game-specific, but the client only
+   * needs it to pick an icon — `headline` carries the meaning.
+   */
+  kind: "draw" | "discard" | "declare" | "build" | "place" | "wait";
+  /** One short imperative line. Shown as the hint's title. */
+  headline: string;
+  /** Why. One sentence — the teaching half of the feature. */
+  detail: string;
+  /**
+   * Ids to highlight in the player's own UI. Card ids for Rummy; `"r,c"`
+   * cell coordinates for Word Building. Empty when nothing to point at.
+   */
+  highlight: string[];
+  /** Suggested grouping (Rummy melds), as arrays of card ids. */
+  groups?: string[][];
+}
+
+export interface CoachHintResponse {
+  ok: boolean;
+  hint?: CoachHint;
+  /** Populated when ok is false: "not supported", "coach disabled", etc. */
+  error?: string;
+}
+
+/**
+ * Engines opt in by implementing this. Optional on purpose — the roadmap's
+ * rule is that the GameEngine contract grows new OPTIONAL members rather
+ * than breaking, so a game without a coach simply does not have the method
+ * and the server answers "not supported".
+ */
+export interface CoachableEngine {
+  getHint(playerId: string): CoachHint | null;
+}
+
 export interface CursorSendPayload {
   /** Normalized 0..1 coords inside the board element. null = hide. */
   x: number | null;
@@ -2004,6 +2070,7 @@ export interface ServerToClientEvents {
   "game:error": (message: string) => void;
   "webrtc:signal": (payload: WebRTCSignalRecvPayload) => void;
   "room:reaction": (payload: ReactionRecvPayload) => void;
+  "room:sound": (payload: SoundboardRecvPayload) => void;
   "room:cursor": (payload: CursorRecvPayload) => void;
   /** Broadcasted whenever rematch state changes for the room. */
   "rematch:state": (state: RematchState) => void;
@@ -2056,6 +2123,7 @@ export interface ClientToServerEvents {
   "game:move": (payload: GameMovePayload) => void;
   "webrtc:signal": (payload: WebRTCSignalSendPayload) => void;
   "room:reaction": (payload: ReactionSendPayload) => void;
+  "room:sound": (payload: SoundboardSendPayload) => void;
   "room:cursor": (payload: CursorSendPayload) => void;
   /** Host-only. Initiates a rematch request to all other players in the room. */
   "rematch:request": () => void;
@@ -2069,4 +2137,10 @@ export interface ClientToServerEvents {
    * listed is treated as ungrouped.
    */
   "rummy:arrangement": (payload: { groups: string[][] }) => void;
+  /**
+   * Ask for a coaching hint. Request/response via ack rather than a
+   * broadcast: a hint is private to the asker, and telling the table that
+   * someone needed help would make the button socially expensive to press.
+   */
+  "coach:hint": (ack: (res: CoachHintResponse) => void) => void;
 }

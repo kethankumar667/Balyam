@@ -23,6 +23,7 @@ import { useTurnHaptics, useHaptics } from "../../hooks/useHaptics";
 import TutorialModal, { hasSeenTutorial } from "./TutorialModal";
 import PlayerList from "../../components/PlayerList";
 import VoicePanel from "../../components/VoicePanel";
+import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
 import Chat from "../../components/Chat";
 import RematchPanel from "../../components/RematchPanel";
 import Avatar from "./Avatar";
@@ -302,6 +303,8 @@ export default function RummyBoardMobile({
 
   const hand = state.myHand ?? [];
   const byId = useMemo(() => new Map(hand.map((c) => [c.id, c])), [hand]);
+  // AI Coach — see the desktop board for the provider rationale.
+  const coach = useCoach();
   const wildRank = state.wildJoker.rank;
 
   // Layout — persistent client-side grouping. Reconciles on every server hand update.
@@ -1016,6 +1019,7 @@ export default function RummyBoardMobile({
   // === Render ===
 
   return (
+    <CoachHighlightProvider ids={coach.highlight}>
     <div
       className="rounded-none sm:rounded-[28px] px-3 sm:px-5 pt-3 sm:pt-4 relative shadow-2xl flex flex-col gap-1 sm:gap-1.5 h-full overflow-hidden"
       style={{
@@ -1444,7 +1448,16 @@ export default function RummyBoardMobile({
         </RummyModal>
       )}
 
+      {/* Coach — top-left, above the felt but below the modals. Portrait
+          phones have no spare width beside the hand, so it anchors to the
+          board's own corner rather than floating over the cards. */}
+      {state.phase === "playing" && (
+        <div className="absolute left-3 top-3 z-[45]">
+          <CoachHintButton coach={coach} compact />
+        </div>
+      )}
     </div>
+    </CoachHighlightProvider>
   );
 }
 

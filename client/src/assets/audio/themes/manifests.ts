@@ -29,6 +29,35 @@ export interface ThemeManifest {
 const f = (theme: string, category: string, file: string): string =>
   `/audio/themes/${theme}/${category}/${file}`;
 
+/**
+ * Soundboard clips, generated per theme.
+ *
+ * Every theme carries the same twelve clip keys under the same filenames, so
+ * a clip that exists in one theme exists in all of them — the soundboard is a
+ * social contract between players ("I pressed dhol, you heard dhol"), and a
+ * clip that goes silent because someone picked a different audio theme would
+ * break that. Only the recordings differ per theme.
+ *
+ * Assets are pending for these keys, same as the UNO block below: the
+ * AudioManager's `onloaderror` swallows a missing file with a dev-only
+ * warning, and SoundboardLayer still shows the banner, so an unshipped clip
+ * degrades to a visual-only reaction.
+ */
+const soundboardFiles = (theme: string): Partial<Record<AudioKey, string>> => ({
+  [AUDIO.SB_DHOL]:        f(theme, "soundboard", "dhol.mp3"),
+  [AUDIO.SB_APPLAUSE]:    f(theme, "soundboard", "applause.mp3"),
+  [AUDIO.SB_TADA]:        f(theme, "soundboard", "tada.mp3"),
+  [AUDIO.SB_SHANKH]:      f(theme, "soundboard", "shankh.mp3"),
+  [AUDIO.SB_AIRHORN]:     f(theme, "soundboard", "airhorn.mp3"),
+  [AUDIO.SB_LAUGH]:       f(theme, "soundboard", "laugh.mp3"),
+  [AUDIO.SB_BOO]:         f(theme, "soundboard", "boo.mp3"),
+  [AUDIO.SB_SADTROMBONE]: f(theme, "soundboard", "sad-trombone.mp3"),
+  [AUDIO.SB_DRUMROLL]:    f(theme, "soundboard", "drumroll.mp3"),
+  [AUDIO.SB_SUSPENSE]:    f(theme, "soundboard", "suspense.mp3"),
+  [AUDIO.SB_TICK]:        f(theme, "soundboard", "clock.mp3"),
+  [AUDIO.SB_WHOOSH]:      f(theme, "soundboard", "whoosh.mp3"),
+});
+
 /* ── Classic 90's — childhood nostalgia ──────────────────────────── */
 
 const CLASSIC_THEME: ThemeManifest = {
@@ -98,6 +127,9 @@ const CLASSIC_THEME: ThemeManifest = {
     [AUDIO.REWARD_UNLOCK]:      f("classic", "rewards", "temple-bell.mp3"),
     [AUDIO.REWARD_ACHIEVEMENT]: f("classic", "rewards", "achievement-whistle.mp3"),
     [AUDIO.REWARD_LEVEL_UP]:    f("classic", "rewards", "children-cheering.mp3"),
+
+    /* Soundboard */
+    ...soundboardFiles("classic"),
 
     /* System */
     [AUDIO.SYS_TICK]:      f("classic", "ui", "tick.mp3"),
@@ -170,6 +202,10 @@ const MODERN_THEME: ThemeManifest = {
     [AUDIO.REWARD_ACHIEVEMENT]: f("modern", "rewards", "achievement.mp3"),
     [AUDIO.REWARD_LEVEL_UP]:    f("modern", "rewards", "level-up.mp3"),
 
+    /* Soundboard */
+    ...soundboardFiles("modern"),
+
+    /* System */
     [AUDIO.SYS_TICK]:      f("modern", "ui", "tick.mp3"),
     [AUDIO.SYS_COUNTDOWN]: f("modern", "ui", "countdown.mp3"),
     [AUDIO.SYS_SUCCESS]:   f("modern", "ui", "success.mp3"),
@@ -240,6 +276,10 @@ const FESTIVAL_THEME: ThemeManifest = {
     [AUDIO.REWARD_ACHIEVEMENT]: f("festival", "rewards", "fireworks.mp3"),
     [AUDIO.REWARD_LEVEL_UP]:    f("festival", "rewards", "festival-crowd.mp3"),
 
+    /* Soundboard */
+    ...soundboardFiles("festival"),
+
+    /* System */
     [AUDIO.SYS_TICK]:      f("festival", "ui", "tick.mp3"),
     [AUDIO.SYS_COUNTDOWN]: f("festival", "ui", "countdown.mp3"),
     [AUDIO.SYS_SUCCESS]:   f("festival", "ui", "success.mp3"),
