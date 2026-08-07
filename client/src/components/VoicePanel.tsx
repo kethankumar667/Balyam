@@ -1,13 +1,19 @@
-import { useEffect, useRef, useState } from "react";
 import type { Player } from "@shared/types";
-import { VoiceManager, type RemotePeerInfo } from "../lib/webrtc";
-import { getSocket } from "../lib/socket";
+import { useVoiceSession } from "../lib/voice-session";
 import {
   enterFullscreen,
   isFullscreenActive,
   isFullscreenSupported,
 } from "../lib/fullscreen";
 
+/**
+ * View onto the room's voice session.
+ *
+ * This component owns no connection state. The mic, the peer mesh and the
+ * remote audio elements belong to the module-level session in
+ * lib/voice-session.ts, so closing this panel — or starting the game, or
+ * switching to the chat tab — no longer ends the call.
+ */
 export default function VoicePanel({
   players,
   selfId,
@@ -23,40 +29,14 @@ export default function VoicePanel({
    */
   restoreOrientation?: "landscape" | "portrait" | "any";
 }) {
-  const managerRef = useRef<VoiceManager | null>(null);
-  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
-  const [connected, setConnected] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const [peers, setPeers] = useState<RemotePeerInfo[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const voice = useVoiceSession(selfId);
+  const connected = voice.status === "live";
+  const busy = voice.status === "connecting";
 
-  useEffect(() => {
-    if (!managerRef.current || !connected) return;
-    const remoteIds = players.map((p) => p.id);
-    managerRef.current.syncPeers(remoteIds).catch((err) => {
-      console.error("syncPeers failed:", err);
-    });
-  }, [players, connected]);
-
-  useEffect(() => {
-    return () => {
-      managerRef.current?.destroy();
-      managerRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    for (const peer of peers) {
-      const el = audioRefs.current.get(peer.playerId);
-      if (el && peer.stream && el.srcObject !== peer.stream) {
-        el.srcObject = peer.stream;
-        el.play().catch(() => {
-          // autoplay sometimes blocked; user click on the page unblocks
-        });
-      }
-    }
-  }, [peers]);
+  // Someone else is in the room but not in the call yet. Used to tell
+  // "nobody has joined voice" apart from "we cannot reach each other".
+  const others = players.filter((p) => !p.isBot && !p.isLocal && p.id !== selfId);
+  const anyFailed = voice.peers.some((p) => p.connectionState === "failed");
 
   async function connectMic() {
     if (!selfId || busy || connected) return;
@@ -65,47 +45,15 @@ export default function VoicePanel({
     // we can re-enter after the prompt resolves — otherwise opening the
     // voice panel mid-Rummy collapses the room out of landscape.
     const wasFullscreen = isFullscreenActive();
-    setBusy(true);
-    setError(null);
-    try {
-      const socket = getSocket();
-      const mgr = new VoiceManager(socket, selfId);
-      await mgr.start();
-      managerRef.current = mgr;
-      mgr.subscribe(setPeers);
-      setConnected(true);
-      await mgr.syncPeers(players.map((p) => p.id));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to access microphone";
-      setError(msg);
-    } finally {
-      setBusy(false);
-      // Best-effort fullscreen restore. We're still inside a user gesture
-      // (the Connect-mic click), so the browser's activation window is
-      // usually still open. If it's been ≳5s (rare permission delays) the
-      // call will silently fail — the in-game fullscreen toggle remains
-      // the user's escape hatch in that case.
-      if (
-        wasFullscreen &&
-        !isFullscreenActive() &&
-        isFullscreenSupported()
-      ) {
-        void enterFullscreen(restoreOrientation);
-      }
+    await voice.connect();
+    // Best-effort fullscreen restore. We're still inside a user gesture
+    // (the Connect-mic click), so the browser's activation window is
+    // usually still open. If it's been ≳5s (rare permission delays) the
+    // call will silently fail — the in-game fullscreen toggle remains
+    // the user's escape hatch in that case.
+    if (wasFullscreen && !isFullscreenActive() && isFullscreenSupported()) {
+      void enterFullscreen(restoreOrientation);
     }
-  }
-
-  function toggleMute() {
-    if (!managerRef.current) return;
-    setMuted(managerRef.current.toggleMute());
-  }
-
-  function disconnect() {
-    managerRef.current?.destroy();
-    managerRef.current = null;
-    setConnected(false);
-    setMuted(false);
-    setPeers([]);
   }
 
   function nameOf(id: string): string {
@@ -116,9 +64,7 @@ export default function VoicePanel({
     <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4 dark:bg-slate-900 dark:border-slate-700">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm uppercase text-[#7A6652] dark:text-slate-400">Voice</h3>
-        {connected && (
-          <span className="text-xs text-emerald-400">● Live</span>
-        )}
+        {connected && <span className="text-xs text-emerald-400">● Live</span>}
       </div>
 
       {!connected ? (
@@ -131,30 +77,51 @@ export default function VoicePanel({
         </button>
       ) : (
         <div className="space-y-2">
+          {/* The call keeps running when this panel closes, so say so once —
+              players were re-clicking "Connect mic" because the old panel
+              really did drop the call every time it was dismissed. */}
+          <p className="text-[11px] text-[#8A7865] dark:text-slate-500">
+            Voice stays on while you play. Use Leave to hang up.
+          </p>
+
+          {voice.audioBlocked && (
+            <button
+              onClick={voice.retryAudio}
+              className="w-full bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118] rounded py-2 text-xs font-semibold"
+            >
+              🔈 Tap to enable sound
+            </button>
+          )}
+
           <div className="flex gap-2">
             <button
-              onClick={toggleMute}
+              onClick={voice.toggleMute}
               className={`flex-1 rounded py-2 text-sm font-semibold ${
-                muted
+                voice.muted
                   ? "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118] dark:text-slate-300"
                   : "bg-[#E5D6BD] hover:bg-[#DBC8AA] text-[#3A3027] dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100"
               }`}
             >
-              {muted ? "🔇 Muted" : "🎙 Mic on"}
+              {voice.muted ? "🔇 Muted" : "🎙 Mic on"}
             </button>
             <button
-              onClick={disconnect}
+              onClick={voice.disconnect}
               className="bg-[#4A3F35] hover:bg-[#3F352C] text-[#FFF3E3] rounded px-3 text-sm"
               title="Leave voice"
             >
               Leave
             </button>
           </div>
+
           <ul className="space-y-1 text-xs">
-            {peers.length === 0 && (
-              <li className="text-[#8A7865] dark:text-slate-500">Waiting for others to connect mic…</li>
+            {voice.peers.length === 0 && (
+              <li className="text-[#8A7865] dark:text-slate-500">
+                {others.length === 0
+                  ? "No one else in the room yet."
+                  : "Waiting for others to connect mic…"}
+              </li>
             )}
-            {peers.map((p) => (
+            {voice.peers.map((p) => (
               <li
                 key={p.playerId}
                 className="flex items-center gap-2 bg-[#F1E6D3] border border-[#E1CFB1] rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-700"
@@ -168,23 +135,30 @@ export default function VoicePanel({
                       : "bg-amber-400"
                   }`}
                 />
-                <span className="flex-1 truncate text-[#3A3027] dark:text-slate-200">{nameOf(p.playerId)}</span>
-                <span className="text-[#8A7865] dark:text-slate-500">{p.connectionState}</span>
-                <audio
-                  autoPlay
-                  playsInline
-                  ref={(el) => {
-                    if (el) audioRefs.current.set(p.playerId, el);
-                    else audioRefs.current.delete(p.playerId);
-                  }}
-                />
+                <span className="flex-1 truncate text-[#3A3027] dark:text-slate-200">
+                  {nameOf(p.playerId)}
+                </span>
+                <span className="text-[#8A7865] dark:text-slate-500">
+                  {p.connectionState === "connected" && !p.stream
+                    ? "no audio"
+                    : p.connectionState}
+                </span>
               </li>
             ))}
           </ul>
+
+          {anyFailed && voice.relayless && (
+            // Mesh voice over STUN alone cannot cross two symmetric NATs.
+            // Without a TURN relay configured this is unfixable from the
+            // client, so name it rather than leaving a red dot unexplained.
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              Couldn't reach some players — their network needs a relay server.
+            </p>
+          )}
         </div>
       )}
 
-      {error && <div className="text-red-400 text-xs mt-2">{error}</div>}
+      {voice.error && <div className="text-red-400 text-xs mt-2">{voice.error}</div>}
     </div>
   );
 }

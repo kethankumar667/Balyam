@@ -20,6 +20,7 @@ import RematchPanel from "../components/RematchPanel";
 import GameOverScreen, { AUTO_LEAVE_MS } from "../components/GameOverScreen";
 import PassPhoneGate from "../components/PassPhoneGate";
 import VoicePanel from "../components/VoicePanel";
+import { destroyVoiceSession, useVoiceRoster } from "../lib/voice-session";
 import LudoColorPicker from "../components/LudoColorPicker";
 import CoinColorPicker from "../components/CoinColorPicker";
 import RpsBoard from "../games/rps/RpsBoard";
@@ -245,6 +246,18 @@ export default function Room() {
     if (others.length === 0) return;
     recordLastGang(roomState.name, others);
   }, [roomState?.game, roomState?.name, playerId, recordLastGang]);
+
+  // Voice roster. Fed from here — mounted for the whole room session —
+  // rather than from <VoicePanel>, which every call site renders behind a
+  // tab or a drawer. Peers reconcile while the panel is closed, so someone
+  // joining mid-game is pulled into the call instead of waiting for a
+  // player to happen to open the voice tab.
+  useVoiceRoster(roomState?.players, playerId);
+
+  // Leaving the room by any route (Leave button, back navigation, a route
+  // change) must release the microphone. Without this the mic indicator
+  // stays lit after the player is long gone.
+  useEffect(() => destroyVoiceSession, []);
 
   // Keeps the latest playerId reachable from inside the join effect's closure
   // without re-subscribing socket listeners on every id change. A reconnect
@@ -579,6 +592,7 @@ export default function Room() {
 
   function leaveRoom() {
     if (isFullscreenActive()) void exitFullscreen();
+    destroyVoiceSession();
     getSocket().emit("room:leave");
     reset();
     navigate("/");
