@@ -140,11 +140,11 @@
      The card is the atom, so its size is a token, not a Tailwind class
      repeated in three files. `--rm-card-w` is what the hand fans against;
      the aspect ratio is the standard poker 1:1.4. */
-  --rm-card-w:      2.5rem;   /* 40px — mobile default */
-  --rm-card-w-sm:   2.25rem;  /* 36px — dense rows, opponent rails */
-  --rm-card-w-lg:   3rem;     /* 48px — desktop melds */
-  --rm-card-w-hand: 3.75rem;  /* 60px — the desktop hand, the screen's subject */
-  --rm-card-w-pile: 5.25rem;  /* 84px — deck / wild / discard, read at a glance */
+  --rm-card-w:      3.25rem;   /* 52px — mobile default (increased from 40px) */
+  --rm-card-w-sm:   2.75rem;   /* 44px — dense rows, opponent rails (increased from 36px) */
+  --rm-card-w-lg:   3.75rem;   /* 60px — melds (increased from 48px) */
+  --rm-card-w-hand: 4.5rem;    /* 72px — desktop hand (increased from 60px) */
+  --rm-card-w-pile: 5.75rem;   /* 92px — deck / wild / discard (increased from 84px) */
   --rm-card-ratio:  1.4;
 
   /* ── Type ────────────────────────────────────────────────────────────

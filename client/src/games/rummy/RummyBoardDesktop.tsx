@@ -1210,12 +1210,11 @@ export default function RummyBoardDesktop({
           modal underneath stays interactive. */}
       {winnerBurstKey != null && <WinnerCelebrationBurst key={winnerBurstKey} />}
 
-      {/* Coach — floating, bottom-left of the felt. Kept clear of the hand
-          (bottom-centre) and the piles (centre) so the hint card never
-          covers the cards it is talking about. */}
+      {/* Coach — top-left of the felt. Kept clear of the hand action bar
+          (bottom) and the piles (centre). */}
       {state.phase === "playing" && (
-        <div className="absolute left-4 bottom-4 z-[45]">
-          <CoachHintButton coach={coach} />
+        <div className="absolute left-6 top-6 z-[45]">
+          <CoachHintButton coach={coach} align="left" />
         </div>
       )}
     </div>

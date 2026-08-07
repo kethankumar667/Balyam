@@ -137,14 +137,15 @@
 
 /* ── selected — a played/held card stands proud of the fan ────────────── */
 .rm-card.is-selected {
-  --rm-card-lift: -12px;
-  border-color: var(--rm-brass);
+  --rm-card-lift: -16px;
+  border-color: #fcd34d;
   box-shadow:
     var(--rm-lift-drag),
-    0 0 0 1px var(--rm-brass);
-  z-index: 2;
+    0 0 0 2.5px #fcd34d,
+    0 0 16px rgba(252,211,77,0.7);
+  z-index: 10;
 }
-.rm-card--interactive.is-selected:hover { --rm-card-lift: -14px; }
+.rm-card--interactive.is-selected:hover { --rm-card-lift: -18px; }
 
 /* ── 5 · disabled — present but out of play ───────────────────────────────
    Keyed to `.is-disabled` ONLY, never `:disabled`. A LOADING card is also
