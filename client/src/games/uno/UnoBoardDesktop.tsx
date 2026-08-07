@@ -281,10 +281,10 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   const fanAvailableWidth = Math.max(320, (rootBox.w - FAN_SIDE_RESERVE * 2) / fanScale);
   const seatScale = Math.min(1.5, Math.max(0.7, Math.min(boardBox.w / 1000, boardBox.h / 480)));
   const pileScale = Math.min(2.0, Math.max(0.8, Math.min(boardBox.w / 950, boardBox.h / 470) * 1.45));
-  /* Direction ring — a wide ellipse that must clear the pile on the inside
-     and the seat ring (left/right 20%, spotlight up top) on the outside. */
-  const arcW = Math.max(280, Math.min(boardBox.w * 0.58, 1180));
-  const arcH = Math.max(200, Math.min(boardBox.h * 0.78, 600));
+  /* Direction ring — perfect circular ring framing the pile. */
+  const arcSize = Math.max(240, Math.min(boardBox.h * 0.52, 300));
+  const arcW = arcSize;
+  const arcH = arcSize;
 
   const turnSecondsLeft = useTurnSecondsLeft(state.turnDeadline);
   const warningActive = (m.myTurn || m.isChallengeTarget) && state.turnDeadline != null && turnSecondsLeft <= 10 && turnSecondsLeft > 0;

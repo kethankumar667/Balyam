@@ -54,18 +54,18 @@ export function UnoActionToast({ lastAction }: UnoActionToastProps) {
   const isEmphasized = visible.startsWith("Round ") || visible.includes("chose ");
 
   return (
-    <div className="pointer-events-none flex justify-center px-2" aria-live="polite">
+    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[25] pointer-events-none flex justify-center px-2 max-w-[90vw]" aria-live="polite">
       <span
         className={`pointer-events-auto max-w-full truncate rounded-full shadow-md animate-[fadeIn_150ms_ease-out] ${
           isEmphasized
-            ? "px-6 py-2.5 text-[15px] font-black uppercase tracking-wide"
-            : "px-4 py-1.5 text-[12px] font-bold"
+            ? "px-5 py-1.5 text-[13px] font-black uppercase tracking-wide"
+            : "px-4 py-1 text-[11px] font-bold"
         }`}
         style={{
           background: "linear-gradient(135deg, #F7DA8B, #E6A11E)",
           color: "#2B2118",
           border: isEmphasized ? "2px solid #6D4323" : "1px solid #6D4323",
-          boxShadow: isEmphasized ? "0 8px 22px -4px rgba(0,0,0,0.55)" : undefined,
+          boxShadow: isEmphasized ? "0 6px 18px -4px rgba(0,0,0,0.55)" : undefined,
         }}
       >
         {visible}

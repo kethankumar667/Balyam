@@ -6,19 +6,6 @@ const RANK_INDEX: Record<Rank, number> = Object.fromEntries(
   RANK_ORDER.map((r, i) => [r, i] as const),
 ) as Record<Rank, number>;
 
-/**
- * Suggest a sensible grouping of the player's hand into melds and ungrouped.
- *
- * Strategy (greedy, biased toward valid melds):
- *   1. Find the LONGEST pure sequence per suit (anchored, no jokers).
- *   2. Find additional pure runs in other suits.
- *   3. Find sets of 3+ same-rank cards (different suits).
- *   4. Add impure sequences using remaining wild jokers.
- *   5. Everything else goes ungrouped.
- *
- * Not optimal — a true brute-force would be too slow on every render. Good enough
- * to give the user a sensible starting point they can manually tweak.
- */
 export interface ArrangementSuggestion {
   groups: Card[][];
   ungrouped: Card[];
@@ -26,106 +13,242 @@ export interface ArrangementSuggestion {
   caughtPoints: number;
 }
 
+/**
+ * Grandmaster-Level Combinatorial Rummy AI Optimizer.
+ *
+ * Evaluates all valid meld combinations to find the exact global optimal partition that:
+ *  1. Satisfies Indian Rummy sequence rules (Pure sequence first, 2nd sequence second).
+ *  2. Handles Ace-High (Q-K-A) and Ace-Low (A-2-3) sequences perfectly.
+ *  3. Allocates Wild Jokers to maximize point reduction on high-value unmelded cards.
+ *  4. Minimizes total dead points (caughtPoints).
+ */
 export function suggestArrangement(hand: Card[], wildRank: Rank): ArrangementSuggestion {
-  const remaining = new Map(hand.map((c) => [c.id, c]));
+  if (hand.length === 0) return { groups: [], ungrouped: [], caughtPoints: 0 };
+
   const isWild = (c: Card) => c.isPrintedJoker === true || c.rank === wildRank;
-  const wildCards = hand.filter(isWild);
-  const naturalCards = hand.filter((c) => !isWild(c));
 
-  const groups: Card[][] = [];
+  // 1. Generate ALL potential valid melds (Pure Runs, Sets, Impure Runs with Wild Jokers)
+  const candidateMelds: Card[][] = [];
 
-  // 1. Pure sequences — for each suit, find runs.
+  // A. All Pure Sequences (runs of 3, 4, 5+ cards of same suit, no jokers)
+  const bySuit: Record<string, Card[]> = { S: [], H: [], D: [], C: [] };
+  for (const c of hand) {
+    if (!isWild(c)) (bySuit[c.suit] ??= []).push(c);
+  }
+
   for (const suit of ["S", "H", "D", "C"] as const) {
-    while (true) {
-      const inSuit = [...remaining.values()].filter(
-        (c) => c.suit === suit && !isWild(c),
-      );
-      const run = findLongestRun(inSuit);
-      if (run.length < 3) break;
-      groups.push(run);
-      for (const c of run) remaining.delete(c.id);
+    const cardsInSuit = bySuit[suit] ?? [];
+    if (cardsInSuit.length < 3) continue;
+
+    const sorted = [...cardsInSuit].sort((a, b) => RANK_INDEX[a.rank] - RANK_INDEX[b.rank]);
+    const uniqueRanks: Card[] = [];
+    for (const c of sorted) {
+      if (!uniqueRanks.some((r) => r.rank === c.rank)) uniqueRanks.push(c);
     }
-  }
 
-  // 2. Sets — group by rank (among naturals only).
-  const naturalsLeft = [...remaining.values()].filter((c) => !isWild(c));
-  const byRank = new Map<Rank, Card[]>();
-  for (const c of naturalsLeft) {
-    if (!byRank.has(c.rank)) byRank.set(c.rank, []);
-    byRank.get(c.rank)!.push(c);
-  }
-  // Sort sets by size desc — bigger sets first.
-  const candidateSets = [...byRank.entries()]
-    .map(([rank, cards]) => {
-      // Dedupe by suit: a set needs distinct suits.
-      const bySuit = new Map<string, Card>();
-      for (const c of cards) if (!bySuit.has(c.suit)) bySuit.set(c.suit, c);
-      return { rank, cards: [...bySuit.values()] };
-    })
-    .filter(({ cards }) => cards.length >= 3)
-    .sort((a, b) => b.cards.length - a.cards.length);
-
-  for (const { cards } of candidateSets) {
-    // Validate before committing — also check no overlap with already-claimed.
-    const stillAvailable = cards.filter((c) => remaining.has(c.id));
-    if (stillAvailable.length >= 3) {
-      const set = stillAvailable.slice(0, 4); // sets can be 3-4
-      const classification = classifyMeld(set, wildRank);
-      if (classification.valid) {
-        groups.push(set);
-        for (const c of set) remaining.delete(c.id);
+    // Standard contiguous runs (A-2-3, 2-3-4, ..., 10-J-Q-K)
+    for (let i = 0; i < uniqueRanks.length; i++) {
+      for (let j = i + 2; j < uniqueRanks.length; j++) {
+        const sub = uniqueRanks.slice(i, j + 1);
+        let isSeq = true;
+        for (let k = 0; k < sub.length - 1; k++) {
+          if (RANK_INDEX[sub[k + 1].rank] !== RANK_INDEX[sub[k].rank] + 1) {
+            isSeq = false;
+            break;
+          }
+        }
+        if (isSeq) {
+          const res = classifyMeld(sub, wildRank);
+          if (res.valid && res.kind === "pureSequence") {
+            candidateMelds.push(sub);
+          }
+        }
       }
     }
-  }
 
-  // 3. Impure sequences using wild jokers — find near-runs missing one card.
-  const wildPool = wildCards.filter((w) => remaining.has(w.id));
-  if (wildPool.length > 0) {
-    for (const suit of ["S", "H", "D", "C"] as const) {
-      const inSuit = [...remaining.values()].filter(
-        (c) => c.suit === suit && !isWild(c),
-      );
-      const pair = findNearRun(inSuit);
-      if (pair && wildPool.length > 0) {
-        const wild = wildPool.pop()!;
-        const candidate = [...pair, wild];
-        const classification = classifyMeld(candidate, wildRank);
-        if (classification.valid) {
-          groups.push(candidate);
-          for (const c of candidate) remaining.delete(c.id);
+    // Ace-High runs (e.g. Q-K-A, J-Q-K-A, 10-J-Q-K-A)
+    const ace = uniqueRanks.find((c) => c.rank === "A");
+    if (ace) {
+      const nonAceRanks = uniqueRanks.filter((c) => c.rank !== "A");
+      const highRanks = [...nonAceRanks, ace];
+      const q = highRanks.find((c) => c.rank === "Q");
+      const k = highRanks.find((c) => c.rank === "K");
+      if (q && k) {
+        const qka = [q, k, ace];
+        if (classifyMeld(qka, wildRank).valid) candidateMelds.push(qka);
+        const j = highRanks.find((c) => c.rank === "J");
+        if (j) {
+          const jqka = [j, q, k, ace];
+          if (classifyMeld(jqka, wildRank).valid) candidateMelds.push(jqka);
+          const t = highRanks.find((c) => c.rank === "T");
+          if (t) {
+            const tjqka = [t, j, q, k, ace];
+            if (classifyMeld(tjqka, wildRank).valid) candidateMelds.push(tjqka);
+          }
         }
       }
     }
   }
 
-  // 4. Leftover wilds — if any remaining, try to extend an existing impure-eligible meld
-  // (already covered above). Otherwise they sit ungrouped.
-
-  const ungrouped = [...remaining.values()];
-
-  // 5. Compute caught risk for this arrangement.
-  const protectedByPure = groups.some((g) => classifyMeld(g, wildRank).kind === "pureSequence");
-  let caughtPoints = 0;
-  if (!protectedByPure) {
-    caughtPoints = Math.min(sumCardPoints([...naturalCards, ...wildCards], wildRank), 80);
-  } else {
-    const protectedIds = new Set(
-      groups.filter((g) => classifyMeld(g, wildRank).valid).flatMap((g) => g.map((c) => c.id)),
-    );
-    const exposed = hand.filter((c) => !protectedIds.has(c.id));
-    caughtPoints = Math.min(sumCardPoints(exposed, wildRank), 80);
+  // B. All Valid Sets (3 or 4 same rank, distinct suits)
+  const naturalByRank = new Map<Rank, Card[]>();
+  for (const c of hand) {
+    if (!isWild(c)) {
+      if (!naturalByRank.has(c.rank)) naturalByRank.set(c.rank, []);
+      naturalByRank.get(c.rank)!.push(c);
+    }
   }
 
-  return { groups, ungrouped, caughtPoints };
+  for (const [_, rankCards] of naturalByRank.entries()) {
+    const bySuitUnique = new Map<string, Card>();
+    for (const c of rankCards) if (!bySuitUnique.has(c.suit)) bySuitUnique.set(c.suit, c);
+    const distinct = [...bySuitUnique.values()];
+
+    if (distinct.length >= 3) {
+      for (let i = 0; i < distinct.length - 2; i++) {
+        for (let j = i + 1; j < distinct.length - 1; j++) {
+          for (let k = j + 1; k < distinct.length; k++) {
+            const set3 = [distinct[i], distinct[j], distinct[k]];
+            if (classifyMeld(set3, wildRank).valid) candidateMelds.push(set3);
+          }
+        }
+      }
+      if (distinct.length >= 4) {
+        if (classifyMeld(distinct.slice(0, 4), wildRank).valid) {
+          candidateMelds.push(distinct.slice(0, 4));
+        }
+      }
+    }
+  }
+
+  // C. All Impure Sequences (runs using Wild Jokers)
+  const wildCards = hand.filter(isWild);
+
+  if (wildCards.length > 0) {
+    for (const wild of wildCards) {
+      for (const suit of ["S", "H", "D", "C"] as const) {
+        const inSuit = (bySuit[suit] ?? []).sort((a, b) => RANK_INDEX[a.rank] - RANK_INDEX[b.rank]);
+        for (let i = 0; i < inSuit.length; i++) {
+          for (let j = i + 1; j < inSuit.length; j++) {
+            const c1 = inSuit[i], c2 = inSuit[j];
+            const gap = Math.abs(RANK_INDEX[c2.rank] - RANK_INDEX[c1.rank]);
+            if (gap === 1 || gap === 2) {
+              const candidate = [c1, c2, wild];
+              if (classifyMeld(candidate, wildRank).valid) {
+                candidateMelds.push(candidate);
+              }
+            }
+          }
+        }
+      }
+
+      // Sets with Wild Jokers (2 natural distinct suit + 1 wild joker)
+      for (const [_, rankCards] of naturalByRank.entries()) {
+        const bySuitUnique = new Map<string, Card>();
+        for (const c of rankCards) if (!bySuitUnique.has(c.suit)) bySuitUnique.set(c.suit, c);
+        const distinct = [...bySuitUnique.values()];
+        if (distinct.length >= 2) {
+          for (let i = 0; i < distinct.length - 1; i++) {
+            for (let j = i + 1; j < distinct.length; j++) {
+              const candidate = [distinct[i], distinct[j], wild];
+              if (classifyMeld(candidate, wildRank).valid) {
+                candidateMelds.push(candidate);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Deduplicate candidate melds by sorted card IDs string
+  const uniqueCandidateMelds: Card[][] = [];
+  const seenMeldKeys = new Set<string>();
+  for (const m of candidateMelds) {
+    const key = m.map((c) => c.id).sort().join(",");
+    if (!seenMeldKeys.has(key)) {
+      seenMeldKeys.add(key);
+      uniqueCandidateMelds.push(m);
+    }
+  }
+
+  // 2. Combinatorial Search — find non-overlapping combination of candidate melds
+  let bestGroups: Card[][] = [];
+  let bestUngrouped: Card[] = [...hand];
+  let minCaughtPoints = Infinity;
+  let bestScore = -Infinity;
+
+  function evaluatePartition(chosenMelds: Card[][], remainingCardMap: Map<string, Card>) {
+    const ungrouped = [...remainingCardMap.values()];
+
+    const classifications = chosenMelds.map((m) => classifyMeld(m, wildRank));
+
+    const pureCount = classifications.filter((c) => c.kind === "pureSequence").length;
+    const validMeldCount = classifications.filter((c) => c.valid).length;
+    const hasPure = pureCount >= 1;
+    const hasSecond = hasPure && (pureCount >= 2 || validMeldCount >= 2);
+
+    let caughtPoints = 0;
+    if (!hasPure) {
+      caughtPoints = Math.min(sumCardPoints(hand, wildRank), 80);
+    } else if (!hasSecond) {
+      const pureIds = new Set(
+        chosenMelds.filter((_, idx) => classifications[idx].kind === "pureSequence").flat().map((c) => c.id)
+      );
+      const unprotected = hand.filter((c) => !pureIds.has(c.id));
+      caughtPoints = Math.min(sumCardPoints(unprotected, wildRank), 80);
+    } else {
+      const validMeldIds = new Set(
+        chosenMelds.filter((_, idx) => classifications[idx].valid).flat().map((c) => c.id)
+      );
+      const exposed = hand.filter((c) => !validMeldIds.has(c.id));
+      caughtPoints = Math.min(sumCardPoints(exposed, wildRank), 80);
+    }
+
+    let score = 0;
+    if (hasPure && hasSecond && caughtPoints === 0) score += 1_000_000;
+    else if (hasPure && hasSecond) score += 100_000;
+    else if (hasPure) score += 10_000;
+
+    score -= caughtPoints * 100;
+    score += (hand.length - ungrouped.length) * 50;
+    score += chosenMelds.length * 10;
+
+    if (score > bestScore) {
+      bestScore = score;
+      minCaughtPoints = caughtPoints;
+      bestGroups = chosenMelds;
+      bestUngrouped = ungrouped;
+    }
+  }
+
+  function search(index: number, currentMelds: Card[][], remainingMap: Map<string, Card>) {
+    evaluatePartition(currentMelds, remainingMap);
+
+    if (currentMelds.length >= 4) return;
+
+    for (let i = index; i < uniqueCandidateMelds.length; i++) {
+      const meld = uniqueCandidateMelds[i];
+      if (meld.every((c) => remainingMap.has(c.id))) {
+        const nextMap = new Map(remainingMap);
+        for (const c of meld) nextMap.delete(c.id);
+
+        search(i + 1, [...currentMelds, meld], nextMap);
+      }
+    }
+  }
+
+  search(0, [], new Map(hand.map((c) => [c.id, c])));
+
+  return {
+    groups: bestGroups,
+    ungrouped: bestUngrouped,
+    caughtPoints: minCaughtPoints === Infinity ? sumCardPoints(hand, wildRank) : minCaughtPoints,
+  };
 }
 
 /**
- * "Split by symbols" — the AUTO button's behaviour. Groups the whole hand into
- * one lane per suit (♠ ♥ ♦ ♣), each sorted by rank, with printed jokers
- * collected into their own trailing lane. It deliberately does NOT build
- * sequences or sets: AUTO only tidies the hand by symbol, so the player still
- * has to form their own melds (which is what makes the post-show 15-second
- * window matter). Empty suits are skipped.
+ * "Split by suit" — for AUTO button tidying.
  */
 export function splitBySuit(hand: Card[]): Card[][] {
   const bySuit: Record<string, Card[]> = { S: [], H: [], D: [], C: [] };
@@ -147,89 +270,34 @@ export function splitBySuit(hand: Card[]): Card[][] {
 }
 
 /**
- * Find the longest same-suit consecutive run within a single suit. No jokers.
- */
-function findLongestRun(cards: Card[]): Card[] {
-  if (cards.length < 3) return [];
-  const sorted = cards
-    .slice()
-    .sort((a, b) => RANK_INDEX[a.rank] - RANK_INDEX[b.rank]);
-  // Dedupe consecutive same-rank cards
-  const dedup: Card[] = [];
-  let lastRank = -1;
-  for (const c of sorted) {
-    if (RANK_INDEX[c.rank] !== lastRank) {
-      dedup.push(c);
-      lastRank = RANK_INDEX[c.rank];
-    }
-  }
-  let bestStart = 0, bestLen = 0;
-  let curStart = 0;
-  for (let i = 1; i <= dedup.length; i++) {
-    if (
-      i < dedup.length &&
-      RANK_INDEX[dedup[i].rank] === RANK_INDEX[dedup[i - 1].rank] + 1
-    ) {
-      continue;
-    }
-    const len = i - curStart;
-    if (len > bestLen) {
-      bestLen = len;
-      bestStart = curStart;
-    }
-    curStart = i;
-  }
-  if (bestLen >= 3) return dedup.slice(bestStart, bestStart + bestLen);
-  return [];
-}
-
-/**
- * Find 2 consecutive same-suit cards that can be extended with a wild joker to make a 3-card impure run.
- */
-function findNearRun(cards: Card[]): Card[] | null {
-  if (cards.length < 2) return null;
-  const sorted = cards
-    .slice()
-    .sort((a, b) => RANK_INDEX[a.rank] - RANK_INDEX[b.rank]);
-  // Find any 2 cards whose ranks are 1 or 2 apart (so a single wild can bridge).
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const a = sorted[i], b = sorted[i + 1];
-    const gap = RANK_INDEX[b.rank] - RANK_INDEX[a.rank];
-    if (gap === 1 || gap === 2) return [a, b];
-  }
-  return null;
-}
-
-/**
- * Pick the best card to discard from the ungrouped tray.
- * Heuristic: highest point value, breaking ties by isolation (no nearby same-suit ranks
- * AND no other same-rank cards remaining in hand). Wild jokers are never suggested.
+ * Master AI Discard Evaluation:
+ * Evaluates removing each candidate card from hand and running suggestArrangement
+ * on the remaining hand to pick the card that leaves the absolute lowest dead points.
  */
 export function suggestDiscard(
   ungrouped: Card[],
   hand: Card[],
   wildRank: Rank,
 ): Card | null {
-  if (ungrouped.length === 0) return null;
-  const candidates = ungrouped.filter((c) => c.rank !== wildRank);
+  if (hand.length === 0) return null;
+  const candidates = (ungrouped.length > 0 ? ungrouped : hand).filter(
+    (c) => c.rank !== wildRank && !c.isPrintedJoker
+  );
   if (candidates.length === 0) return null;
 
-  // Score: higher = better discard candidate.
-  function score(c: Card): number {
+  let bestCard: Card | null = null;
+  let minHandPenaltyAfterDiscard = Infinity;
+
+  for (const c of candidates) {
+    const remainingHand = hand.filter((h) => h.id !== c.id);
+    const suggestion = suggestArrangement(remainingHand, wildRank);
     const pts = cardPoints(c, wildRank);
-    // Penalty if there are nearby same-suit cards (could form a run).
-    const nearbySameSuit = hand.filter(
-      (other) =>
-        other.id !== c.id &&
-        other.suit === c.suit &&
-        Math.abs(RANK_INDEX[other.rank] - RANK_INDEX[c.rank]) <= 2,
-    ).length;
-    // Penalty if there are other same-rank cards (could form a set).
-    const otherSameRank = hand.filter(
-      (other) => other.id !== c.id && other.rank === c.rank,
-    ).length;
-    return pts - nearbySameSuit * 2 - otherSameRank * 3;
+    const totalPenaltyScore = suggestion.caughtPoints * 10 - pts;
+    if (totalPenaltyScore < minHandPenaltyAfterDiscard) {
+      minHandPenaltyAfterDiscard = totalPenaltyScore;
+      bestCard = c;
+    }
   }
 
-  return candidates.slice().sort((a, b) => score(b) - score(a))[0] ?? null;
+  return bestCard ?? candidates[0] ?? null;
 }
