@@ -21,19 +21,15 @@ export default function Toast({
     <div
       className="ludo-toast-in pointer-events-none fixed left-1/2 z-40 flex items-center gap-2 rounded-2xl px-3 py-1.5 shadow-2xl"
       style={{
-        // Clears the one-row header on both shells (and any notch), and now
-        // also the roster strip — so it lands in the seam between the roster
-        // and the board rather than over either. `pointer-events-none` is the
-        // real guarantee though: wherever it ends up on an unusual viewport,
-        // it can no longer swallow a tap meant for the board underneath.
-        top: "calc(env(safe-area-inset-top, 0px) + 4.75rem)",
-        // Narrower than before. This is a passing status line, not a dialog;
-        // at 30rem a short message like "Pintu couldn't move" stretched a
-        // dark slab across most of the board's width.
-        maxWidth: "min(78vw, 22rem)",
-        background: "rgba(15,23,42,0.95)",
-        border: "1px solid rgba(148,163,184,0.28)",
-        boxShadow: `0 10px 30px rgba(0,0,0,0.45), 0 0 0 2px ${accent}`,
+        // Clears the status header AND the player cards roster strip so it lands
+        // cleanly in the open space below player cards rather than over them.
+        top: "calc(env(safe-area-inset-top, 0px) + 8.25rem)",
+        maxWidth: "min(85vw, 22rem)",
+        background: "rgba(15,23,42,0.94)",
+        backdropFilter: "blur(8px)",
+        border: `1.5px solid ${accent}`,
+        boxShadow: `0 12px 32px rgba(0,0,0,0.5), 0 0 0 2px ${accent}44`,
+        transform: "translateX(-50%)",
       }}
       role="status"
       aria-live="polite"
