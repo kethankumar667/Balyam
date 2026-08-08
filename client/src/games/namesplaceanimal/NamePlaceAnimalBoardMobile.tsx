@@ -48,12 +48,18 @@ export default function NamePlaceAnimalBoardMobile({
     thing: initialMyAnswers?.thing || "",
   }));
   const [showClues, setShowClues] = useState(false);
+  const [revealedClues, setRevealedClues] = useState<Set<NamePlaceAnimalCategory>>(new Set());
   const [now, setNow] = useState(Date.now());
+  const [isSpinningWheel, setIsSpinningWheel] = useState(true);
 
-  // Reset form when a new round starts (letter/round changes)
+  // Reset form, clues & spin roulette wheel when a new round starts
   useEffect(() => {
     setForm({ name: "", place: "", animal: "", thing: "" });
     setShowClues(false);
+    setRevealedClues(new Set());
+    setIsSpinningWheel(true);
+    const timer = setTimeout(() => setIsSpinningWheel(false), 1200);
+    return () => clearTimeout(timer);
   }, [state.round, state.letter]);
 
   useEffect(() => {
@@ -71,11 +77,25 @@ export default function NamePlaceAnimalBoardMobile({
     : totalRoundSec;
   const progressPct = Math.min(100, Math.max(0, (secondsLeft / totalRoundSec) * 100));
 
+  const categoryKeys: NamePlaceAnimalCategory[] = ["name", "place", "animal", "thing"];
+  const categoryLabels = state.categories && state.categories.length === 4
+    ? state.categories
+    : ["Name", "Place", "Animal", "Thing"];
+
   const clues = SAMPLE_CLUES[letter.toUpperCase()] ?? {
-    name: `Name starting with ${letter}`,
-    place: `City/Country starting with ${letter}`,
-    animal: `Animal starting with ${letter}`,
-    thing: `Object starting with ${letter}`,
+    name: `${categoryLabels[0]} starting with ${letter}`,
+    place: `${categoryLabels[1]} starting with ${letter}`,
+    animal: `${categoryLabels[2]} starting with ${letter}`,
+    thing: `${categoryLabels[3]} starting with ${letter}`,
+  };
+
+  const handleRequestCategoryClue = (cat: NamePlaceAnimalCategory) => {
+    setRevealedClues((prev) => {
+      const next = new Set(prev);
+      next.add(cat);
+      return next;
+    });
+    onMove("requestClue", { category: cat });
   };
 
   const handleChange = (field: keyof NamePlaceAnimalAnswers, value: string) => {
@@ -90,7 +110,7 @@ export default function NamePlaceAnimalBoardMobile({
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (hasSubmitted) return;
-    onMove("submitAnswers", form);
+    onMove("submitAnswers", { ...form, usedClues: Array.from(revealedClues) });
   };
 
   const handleStop = () => {
@@ -99,38 +119,71 @@ export default function NamePlaceAnimalBoardMobile({
     onMove("stopClock");
   };
 
+  const isStopped = Boolean(state.stoppedByPlayerId);
+
   return (
-    <div className="flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 text-ink-hi font-sans space-y-4">
-      {/* Header Banner with 30s Countdown */}
+    <div className={`flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 text-ink-hi font-sans space-y-4 transition-all duration-300 ${
+      isStopped ? "animate-shake bg-red-950/20" : ""
+    }`}>
+      {/* 🚨 Emergency STOP Lockdown Siren Banner */}
+      {isStopped && (
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="p-3 bg-red-600 text-white rounded-2xl shadow-2xl border-2 border-red-300 text-center font-extrabold animate-pulse space-y-1"
+        >
+          <div className="text-sm uppercase tracking-widest flex items-center justify-center gap-2">
+            <span>🚨</span> EMERGENCY STOP SLAMMED! <span>🚨</span>
+          </div>
+          <p className="text-xs">5-second lockdown countdown initiated! Submit your answers now!</p>
+        </motion.div>
+      )}
+
+      {/* Header Banner */}
       <div className="bg-surface-0 border border-brand-500/30 rounded-2xl p-4 shadow-lg text-center relative overflow-hidden space-y-3">
         <div className="flex justify-between items-center text-xs">
           <span className="font-semibold uppercase tracking-wider text-ink-mid">
-            Round {state.round} of {state.totalRounds}
+            Round {state.round} of {state.totalRounds} • {state.themePack?.toUpperCase() ?? "CLASSIC"}
           </span>
           <button
             onClick={() => setShowClues(!showClues)}
             className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold cursor-pointer text-[11px]"
           >
-            💡 {showClues ? "Hide Clues" : "Need a Clue?"}
+            💡 {showClues ? "Close Clues" : "Need a Clue?"}
           </button>
         </div>
 
-        {/* Big Letter Badge with 3D Roulette Rotation */}
-        <motion.div
-          key={letter}
-          initial={{ rotateY: 180, scale: 0.3, opacity: 0 }}
-          animate={{ rotateY: 360, scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 15 }}
-          className="my-1 inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-white font-display text-4xl shadow-2xl border-2 border-amber-200/50 animate-glow-pulse"
-        >
-          {letter}
-        </motion.div>
+        {/* 🔤 3D Roulette Letter Spinner */}
+        <div className="relative py-2 flex justify-center items-center">
+          <AnimatePresence mode="wait">
+            {isSpinningWheel ? (
+              <motion.div
+                key="roulette-spin"
+                animate={{ rotateY: [0, 720, 1440], scale: [0.8, 1.3, 1] }}
+                transition={{ duration: 1.2, ease: "easeInOut" }}
+                className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-600 to-amber-300 text-white font-display text-4xl flex items-center justify-center shadow-2xl border-4 border-amber-200"
+              >
+                🎲
+              </motion.div>
+            ) : (
+              <motion.div
+                key={letter}
+                initial={{ rotateY: 180, scale: 0.3, opacity: 0 }}
+                animate={{ rotateY: 360, scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 260, damping: 15 }}
+                className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-white font-display text-5xl flex items-center justify-center shadow-2xl border-4 border-amber-200 animate-glow-pulse"
+              >
+                {letter}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-        {/* 30-Second Countdown & Progress Bar */}
+        {/* Countdown & Progress Bar */}
         {state.phase === "playing" && (
           <div className="space-y-1.5 pt-1">
             <div className="flex justify-between items-center text-xs font-bold">
-              <span className={`flex items-center gap-1 ${secondsLeft <= 10 ? "text-red-500 animate-pulse font-extrabold" : "text-amber-600 dark:text-amber-400"}`}>
+              <span className={`flex items-center gap-1 ${secondsLeft <= 5 || isStopped ? "text-red-500 animate-pulse font-extrabold" : "text-amber-600 dark:text-amber-400"}`}>
                 ⏱️ {secondsLeft}s Left
               </span>
               <span className="text-[10px] text-ink-mute">Starts with '{letter}'</span>
@@ -138,7 +191,7 @@ export default function NamePlaceAnimalBoardMobile({
             <div className="w-full h-2 bg-surface-1 rounded-full overflow-hidden border border-surface-rim">
               <motion.div
                 className={`h-full transition-all duration-1000 ${
-                  secondsLeft <= 10 ? "bg-red-500" : "bg-gradient-to-r from-amber-400 to-orange-500"
+                  secondsLeft <= 5 || isStopped ? "bg-red-500 animate-pulse" : "bg-gradient-to-r from-amber-400 to-orange-500"
                 }`}
                 style={{ width: `${progressPct}%` }}
               />
@@ -147,7 +200,7 @@ export default function NamePlaceAnimalBoardMobile({
         )}
       </div>
 
-      {/* Collapsible Clues Drawer */}
+      {/* Per-Category Clue Drawer */}
       <AnimatePresence>
         {showClues && (
           <motion.div
@@ -157,25 +210,34 @@ export default function NamePlaceAnimalBoardMobile({
             className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 shadow-lg space-y-2 overflow-hidden text-xs"
           >
             <div className="font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider text-[11px]">
-              💡 Clues for Letter "{letter}"
+              💡 Select a Category for a Clue (-50% points)
             </div>
+            <p className="text-[10px] text-ink-mid">
+              Revealing a clue reduces correct score for that category from 10 pts to 5 pts.
+            </p>
             <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <div className="bg-surface-0 p-2 rounded-lg border border-surface-rim">
-                <span className="font-bold text-amber-600 dark:text-amber-400 block text-[9px] uppercase">Name</span>
-                <span className="truncate block font-medium">{clues.name}</span>
-              </div>
-              <div className="bg-surface-0 p-2 rounded-lg border border-surface-rim">
-                <span className="font-bold text-amber-600 dark:text-amber-400 block text-[9px] uppercase">Place</span>
-                <span className="truncate block font-medium">{clues.place}</span>
-              </div>
-              <div className="bg-surface-0 p-2 rounded-lg border border-surface-rim">
-                <span className="font-bold text-amber-600 dark:text-amber-400 block text-[9px] uppercase">Animal</span>
-                <span className="truncate block font-medium">{clues.animal}</span>
-              </div>
-              <div className="bg-surface-0 p-2 rounded-lg border border-surface-rim">
-                <span className="font-bold text-amber-600 dark:text-amber-400 block text-[9px] uppercase">Thing</span>
-                <span className="truncate block font-medium">{clues.thing}</span>
-              </div>
+              {categoryKeys.map((cat, idx) => {
+                const label = categoryLabels[idx];
+                const isRevealed = revealedClues.has(cat);
+                return (
+                  <div key={cat} className="bg-surface-0 p-2 rounded-lg border border-surface-rim flex flex-col justify-between">
+                    <span className="font-bold text-amber-600 dark:text-amber-400 text-[10px] uppercase">{label}</span>
+                    {isRevealed ? (
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-[11px] block mt-1">
+                        {clues[cat]}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRequestCategoryClue(cat)}
+                        className="mt-1.5 py-1 px-2 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200 font-bold hover:bg-amber-500/30 transition text-[10px] text-center cursor-pointer"
+                      >
+                        Get {label} clue
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
         )}
@@ -185,33 +247,42 @@ export default function NamePlaceAnimalBoardMobile({
       {state.phase === "playing" && (
         <form onSubmit={handleSubmit} className="space-y-3 flex-1 flex flex-col justify-between">
           <div className="space-y-3">
-            {/* Category Cards */}
-            {(["name", "place", "animal", "thing"] as const).map((cat) => {
+            {/* Category Input Cards */}
+            {categoryKeys.map((cat, idx) => {
+              const label = categoryLabels[idx];
               const val = form[cat];
               const isValidLetter = !val.trim() || val.trim()[0].toUpperCase() === letter;
+              const isClueRevealed = revealedClues.has(cat);
               return (
                 <div key={cat} className="bg-surface-0 border border-surface-rim rounded-xl p-3 shadow-md">
                   <div className="flex justify-between items-center mb-1">
                     <label className="block text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300">
-                      {cat}
+                      {label}
                     </label>
-                    <span className="text-[10px] text-ink-mute truncate max-w-[150px]">{clues[cat]}</span>
+                    {!isClueRevealed ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRequestCategoryClue(cat)}
+                        className="text-[10px] text-amber-600 dark:text-amber-300 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        💡 Get Clue (-50% pts)
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 truncate max-w-[170px]">
+                        💡 {clues[cat]}
+                      </span>
+                    )}
                   </div>
                   <input
                     type="text"
                     disabled={hasSubmitted}
-                    placeholder={`e.g. ${letter}...`}
+                    placeholder={`${label} starting with ${letter}...`}
                     value={val}
                     onChange={(e) => handleChange(cat, e.target.value)}
                     className={`w-full px-3 py-2 bg-surface-1 border ${
                       !isValidLetter ? "border-red-500 text-red-600 dark:text-red-300" : "border-surface-rim text-ink-hi"
                     } rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-60`}
                   />
-                  {!isValidLetter && (
-                    <span className="text-[10px] text-red-500 dark:text-red-400 mt-1 block">
-                      Must start with {letter}
-                    </span>
-                  )}
                 </div>
               );
             })}
@@ -223,7 +294,7 @@ export default function NamePlaceAnimalBoardMobile({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 font-bold text-sm text-white shadow-lg transition active:scale-95"
+                  className="w-full py-3 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 font-bold text-sm text-white shadow-lg transition active:scale-95 cursor-pointer"
                 >
                   Submit
                 </button>
@@ -231,19 +302,19 @@ export default function NamePlaceAnimalBoardMobile({
                   type="button"
                   onClick={handleStop}
                   disabled={!isAllFilled}
-                  className={`w-full py-3 px-4 rounded-xl font-bold text-sm text-white shadow-lg transition active:scale-95 ${
+                  className={`w-full py-3 px-4 rounded-xl font-extrabold text-sm text-white shadow-lg transition active:scale-95 ${
                     isAllFilled
-                      ? "bg-red-600 hover:bg-red-700 animate-pulse cursor-pointer"
+                      ? "bg-red-600 hover:bg-red-700 animate-bounce cursor-pointer border-2 border-red-300"
                       : "bg-surface-1 text-ink-mute opacity-50 cursor-not-allowed border border-surface-rim"
                   }`}
                 >
-                  STOP!
+                  🚨 STOP!
                 </button>
               </div>
             ) : (
               <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-center">
                 <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                  Answers submitted! Waiting for round timer...
+                  Answers submitted! Waiting for round summary...
                 </p>
               </div>
             )}
@@ -285,7 +356,8 @@ export default function NamePlaceAnimalBoardMobile({
                     </div>
 
                     <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                      {(["name", "place", "animal", "thing"] as const).map((cat) => {
+                      {categoryKeys.map((cat, idx) => {
+                        const label = categoryLabels[idx];
                         const word = pAns?.[cat] || "—";
                         const pts = pCatScores?.[cat] ?? 0;
                         return (
@@ -293,8 +365,8 @@ export default function NamePlaceAnimalBoardMobile({
                             key={cat}
                             className="bg-surface-0 p-1.5 rounded border border-surface-rim flex justify-between items-center"
                           >
-                            <span className="text-ink-mute uppercase text-[9px]">{cat}:</span>
-                            <span className="font-medium text-ink-hi truncate max-w-[80px]">
+                            <span className="text-ink-mute uppercase text-[9px] truncate max-w-[50px]">{label}:</span>
+                            <span className="font-medium text-ink-hi truncate max-w-[70px]">
                               {word}
                             </span>
                             <span
@@ -320,7 +392,7 @@ export default function NamePlaceAnimalBoardMobile({
 
           <button
             onClick={() => onMove("nextRound")}
-            className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 font-bold text-sm text-black shadow-lg transition active:scale-95"
+            className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 font-bold text-sm text-black shadow-lg transition active:scale-95 cursor-pointer"
           >
             Next Round →
           </button>

@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BingoPlayerState, ChatMessage, Player } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
-import type { BingoSeat } from "./bingo-shared";
 
-/** Props handed down from Room.tsx to the picker, then to either shell. */
 export interface BingoBoardProps {
   state: BingoPlayerState;
   players: Player[];
@@ -15,17 +13,9 @@ export interface BingoBoardProps {
   roomCode: string;
   roomPhase: string;
   onLeave: () => void;
-  /** Dismisses this board's own result modal and hands off to the
-   * platform's generic GameOverScreen — same contract as Rummy/RPS/
-   * HandCricket/UNO's own scorecards (see Room.tsx's GAMES_WITH_OWN_SCORECARD). */
   onScorecardClose: () => void;
 }
 
-/**
- * Everything both Bingo shells render from. The hook owns the socket emit
- * and every derived value; the mobile/desktop shells are pure layout over
- * this model — same split as useStarBoard/useUnoBoard.
- */
 export interface BingoBoardModel {
   state: BingoPlayerState;
   players: Player[];
@@ -35,30 +25,31 @@ export interface BingoBoardModel {
   onLeave: () => void;
   onScorecardClose: () => void;
 
-  seats: BingoSeat[];
   nameOf: (id: string) => string;
-
   isOver: boolean;
   iHaveWon: boolean;
-  /** Round is live, I haven't won yet, and (under stopOnFirstWin) nobody
-   * else has either — the only gate on showing the Claim button at all.
-   * The button stays enabled regardless of whether MY board actually has
-   * a valid pattern — the server is the sole authority on that (see
-   * AGENTS.md §14: never branch truth by pre-validating a server-owned
-   * decision client-side); an invalid tap just surfaces a toast. */
   canAttemptClaim: boolean;
-  secondsUntilNextCall: number | null;
+  secondsUntilTurnTimeout: number | null;
+  isMyTurn: boolean;
+  currentTurnPlayerName: string;
 
-  claim: () => void;
+  activeTab: "myBoard" | "allBoards";
+  setActiveTab: (tab: "myBoard" | "allBoards") => void;
+
+  shuffleBoard: () => void;
+  lockBoard: () => void;
+  callNumber: (num: number) => void;
+  claimBingo: () => void;
 }
 
-function emitMove(type: string): void {
-  getSocket().emit("game:move", { type });
+function emitMove(type: string, data?: unknown): void {
+  getSocket().emit("game:move", { type, data });
 }
 
 export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
   const { state, players, selfId } = props;
   const { play } = useAudio();
+  const [activeTab, setActiveTab] = useState<"myBoard" | "allBoards">("myBoard");
 
   const rosterById = useMemo(() => {
     const m = new Map<string, Player>();
@@ -68,43 +59,32 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
 
   const nameOf = useCallback(
     (id: string) => rosterById.get(id)?.name ?? "Player",
-    [rosterById],
+    [rosterById]
   );
 
-  const seats = useMemo<BingoSeat[]>(
-    () =>
-      state.players.map((p) => ({
-        id: p.id,
-        name: nameOf(p.id),
-        markedCount: p.markedCount,
-        hasWon: p.hasWon,
-        isBot: p.isBot,
-        isConnected: p.isConnected,
-        isSelf: p.id === selfId,
-      })),
-    [state.players, nameOf, selfId],
-  );
-
-  const isOver = state.phase === "finished";
+  const isOver = state.phase === "finished" || state.isOver;
   const me = state.players.find((p) => p.id === selfId);
-  const iHaveWon = me?.hasWon === true;
-  const canAttemptClaim =
-    !isOver && !iHaveWon && (!state.stopOnFirstWin || state.winners.length === 0);
+  const iHaveWon = me?.hasWon === true || state.winnerId === selfId;
+  const canAttemptClaim = state.canClaimBingo && !iHaveWon && !isOver;
+  const isMyTurn = state.isMyTurn;
 
-  const secondsUntilNextCall = useTurnSecondsLeft(isOver ? null : state.callDeadline);
+  const currentTurnPlayerName = useMemo(() => {
+    if (!state.currentTurnPlayerId) return "Waiting...";
+    return nameOf(state.currentTurnPlayerId);
+  }, [state.currentTurnPlayerId, nameOf]);
 
-  // Call-tick cue — one-shot per new number, mirrors StarGame's
-  // phase-transition sound pattern (identity/order tracked, not content).
-  const prevCallOrder = useRef<number | null>(null);
+  const secondsUntilTurnTimeout = useTurnSecondsLeft(
+    isOver ? null : state.callDeadline
+  );
+
+  const prevCalledCount = useRef<number>(0);
   useEffect(() => {
-    const order = state.currentCall?.order ?? null;
-    if (order != null && order !== prevCallOrder.current) {
+    if (state.calledNumbers.length > prevCalledCount.current) {
       play(AUDIO.SYS_TICK);
     }
-    prevCallOrder.current = order;
-  }, [state.currentCall, play]);
+    prevCalledCount.current = state.calledNumbers.length;
+  }, [state.calledNumbers, play]);
 
-  // Win cue — fires once, only for the player who actually won.
   const wonAlready = useRef(false);
   useEffect(() => {
     if (iHaveWon && !wonAlready.current) {
@@ -113,9 +93,27 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
     wonAlready.current = iHaveWon;
   }, [iHaveWon, play]);
 
-  const claim = useCallback(() => {
+  const shuffleBoard = useCallback(() => {
     play(AUDIO.UI_CLICK);
-    emitMove("claim");
+    emitMove("shuffleBoard");
+  }, [play]);
+
+  const lockBoard = useCallback(() => {
+    play(AUDIO.UI_CLICK);
+    emitMove("lockBoard");
+  }, [play]);
+
+  const callNumber = useCallback(
+    (num: number) => {
+      play(AUDIO.UI_CLICK);
+      emitMove("callNumber", { number: num });
+    },
+    [play]
+  );
+
+  const claimBingo = useCallback(() => {
+    play(AUDIO.SYS_SUCCESS);
+    emitMove("claimBingo");
   }, [play]);
 
   return {
@@ -127,14 +125,20 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
     onLeave: props.onLeave,
     onScorecardClose: props.onScorecardClose,
 
-    seats,
     nameOf,
-
     isOver,
     iHaveWon,
     canAttemptClaim,
-    secondsUntilNextCall: state.callDeadline != null ? secondsUntilNextCall : null,
+    secondsUntilTurnTimeout: state.callDeadline != null ? secondsUntilTurnTimeout : null,
+    isMyTurn,
+    currentTurnPlayerName,
 
-    claim,
+    activeTab,
+    setActiveTab,
+
+    shuffleBoard,
+    lockBoard,
+    callNumber,
+    claimBingo,
   };
 }

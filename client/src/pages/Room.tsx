@@ -114,6 +114,9 @@ function BotControls({
   maxPlayers: number;
   game: GameKind;
 }) {
+  if (game === "telugucinemalu" || game === "samethalu") {
+    return null;
+  }
   const [botName, setBotName] = useState("");
   const [bingoDifficulty, setBingoDifficulty] = useState<BotDifficulty>("medium");
   function addBot() {
@@ -610,10 +613,20 @@ export default function Room() {
     return <ConnectingScreen code={code} />;
   }
 
+  const minPlayersNeeded =
+    roomState.game === "telugucinemalu" ||
+    roomState.game === "samethalu" ||
+    roomState.game === "snake" ||
+    roomState.game === "spaceimpact" ||
+    roomState.game === "bounce" ||
+    roomState.game === "roadrash"
+      ? 1
+      : 2;
+
   const canStart =
     selfIsHost &&
     roomState.phase === "lobby" &&
-    roomState.players.length >= 2 &&
+    roomState.players.length >= minPlayersNeeded &&
     roomState.players.every((p) => p.isReady);
 
   /* ─── GameOverScreen meta ───────────────────────────────────────────

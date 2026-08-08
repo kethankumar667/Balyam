@@ -14,8 +14,8 @@ import { SAMETHALU_QUESTIONS } from "./questions.js";
 
 export class SamethaluEngine implements GameEngine {
   readonly kind = "samethalu" as const;
-  readonly minPlayers = 2;
-  readonly maxPlayers = 8;
+  readonly minPlayers = 1;
+  readonly maxPlayers = 1;
 
   private opts: SamethaluOptions = { ...DEFAULT_SAMETHALU_OPTIONS };
   private pendingOptions: SamethaluOptions | null = null;
@@ -71,7 +71,9 @@ export class SamethaluEngine implements GameEngine {
     this.standings = null;
 
     // Shuffle questions
-    this.questionPool = [...SAMETHALU_QUESTIONS].sort(() => this.rng() - 0.5);
+    const shuffled = [...SAMETHALU_QUESTIONS].sort(() => this.rng() - 0.5);
+    this.opts.totalRounds = Math.min(this.opts.totalRounds ?? 10, shuffled.length);
+    this.questionPool = shuffled.slice(0, this.opts.totalRounds);
 
     this.startRound();
   }
@@ -130,29 +132,23 @@ export class SamethaluEngine implements GameEngine {
     if (!this.currentQuestion) return;
 
     const correct = this.currentQuestion.correctIndex;
-    let maxPts = -1;
+    let maxPts = -999;
     let roundWinnerId: string | null = null;
 
     for (const pid of this.seatOrder) {
       const chosen = this.selectedIndices.get(pid);
-      let pts = 0;
-      if (chosen === correct) {
-        const timeTakenMs = this.answerTimes.get(pid) ?? 10000;
-        const totalMs = this.opts.questionSeconds * 1000;
-        const remainingRatio = Math.max(0, (totalMs - timeTakenMs) / totalMs);
-        const speedBonus = Math.round(remainingRatio * 50);
-        pts = 100 + speedBonus;
-      }
+      // Correct = +5, Wrong / No Answer = -2
+      const pts = chosen === correct ? 5 : -2;
       this.roundScores.set(pid, pts);
       this.scores.set(pid, (this.scores.get(pid) ?? 0) + pts);
 
-      if (pts > maxPts && pts > 0) {
+      if (pts > maxPts) {
         maxPts = pts;
         roundWinnerId = pid;
       }
     }
 
-    if (roundWinnerId) {
+    if (roundWinnerId && maxPts > 0) {
       this.roundWins.set(roundWinnerId, (this.roundWins.get(roundWinnerId) ?? 0) + 1);
     }
 

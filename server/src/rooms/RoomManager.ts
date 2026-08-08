@@ -770,6 +770,9 @@ export class RoomManager {
       if (engine instanceof TambolaEngine) {
         engine.setOptions(room.tambolaOptions);
       }
+      if (engine instanceof NamePlaceAnimalEngine) {
+        engine.setOptions(room.namesplaceanimalOptions);
+      }
       if (engine instanceof SamethaluEngine) {
         engine.setOptions(room.samethaluOptions);
       }
@@ -922,10 +925,9 @@ export class RoomManager {
      * pausing during a claim — so at a fast interval the deck could run dry
      * before the claim landed and the round ended with no winner at all.
      */
-    const humansPending =
-      engine instanceof BingoEngine
-        ? false
-        : pending.some((id) => !room.players.get(id)?.isBot && !this.isAutoDriven(room, id));
+    const humansPending = pending.some(
+      (id) => !room.players.get(id)?.isBot && !this.isAutoDriven(room, id)
+    );
     if (!humansPending) this.clearTurnTimer(room);
 
     // One sub-move per tick so multi-step turns (Ludo roll → move,
@@ -1411,13 +1413,14 @@ export class RoomManager {
     }
     if (room.engine instanceof BingoEngine) {
       const engine = room.engine;
-      if (engine.isOver()) {
-        engine.clearCallDeadline();
+      const seconds = engine.getTurnTimerSeconds();
+      if (seconds <= 0) {
+        engine.clearTurnDeadline();
         this.broadcastGameState(room);
         return;
       }
-      const ms = room.bingoOptions.callIntervalMs;
-      engine.setCallDeadline(Date.now() + ms);
+      const ms = Math.max(5, seconds) * 1000;
+      engine.setTurnDeadline(Date.now() + ms);
       this.broadcastGameState(room);
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
@@ -1430,7 +1433,8 @@ export class RoomManager {
     if (
       room.engine instanceof TeluguCinemaluEngine ||
       room.engine instanceof SamethaluEngine ||
-      room.engine instanceof NamePlaceAnimalEngine
+      room.engine instanceof NamePlaceAnimalEngine ||
+      room.engine instanceof TambolaEngine
     ) {
       const engine = room.engine;
       if (engine.isOver()) {
@@ -1540,10 +1544,8 @@ export class RoomManager {
     if (room.engine instanceof BingoEngine) {
       const engine = room.engine;
       if (engine.isOver()) return;
-      // No per-player timeout actor — BINGO's clock just calls the next
-      // number. Any bot claims that unlocks are picked up by the generic
-      // scheduleBotMoveIfNeeded() inside afterAutoMove below.
-      engine.callNext();
+      const actorId = engine.getTimeoutActor();
+      if (actorId) engine.applyAutoMove(actorId);
       this.afterAutoMove(room, engine.isOver());
       return;
     }
@@ -1551,7 +1553,8 @@ export class RoomManager {
     if (
       room.engine instanceof TeluguCinemaluEngine ||
       room.engine instanceof SamethaluEngine ||
-      room.engine instanceof NamePlaceAnimalEngine
+      room.engine instanceof NamePlaceAnimalEngine ||
+      room.engine instanceof TambolaEngine
     ) {
       const engine = room.engine;
       if (engine.isOver()) return;

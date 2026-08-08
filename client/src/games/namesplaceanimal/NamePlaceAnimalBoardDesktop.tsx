@@ -42,12 +42,18 @@ export default function NamePlaceAnimalBoardDesktop({
     thing: initialMyAnswers?.thing || "",
   }));
   const [showClues, setShowClues] = useState(false);
+  const [revealedClues, setRevealedClues] = useState<Set<NamePlaceAnimalCategory>>(new Set());
   const [now, setNow] = useState(Date.now());
+  const [isSpinningWheel, setIsSpinningWheel] = useState(true);
 
-  // Reset form when a new round starts (letter/round changes)
+  // Reset form, clues & spin roulette wheel when a new round starts
   useEffect(() => {
     setForm({ name: "", place: "", animal: "", thing: "" });
     setShowClues(false);
+    setRevealedClues(new Set());
+    setIsSpinningWheel(true);
+    const timer = setTimeout(() => setIsSpinningWheel(false), 1200);
+    return () => clearTimeout(timer);
   }, [state.round, state.letter]);
 
   // 1-second interval tick for live countdown display
@@ -66,11 +72,25 @@ export default function NamePlaceAnimalBoardDesktop({
     : totalRoundSec;
   const progressPct = Math.min(100, Math.max(0, (secondsLeft / totalRoundSec) * 100));
 
+  const categoryKeys: NamePlaceAnimalCategory[] = ["name", "place", "animal", "thing"];
+  const categoryLabels = state.categories && state.categories.length === 4
+    ? state.categories
+    : ["Name", "Place", "Animal", "Thing"];
+
   const clues = SAMPLE_CLUES[letter.toUpperCase()] ?? {
-    name: `Name starting with ${letter}`,
-    place: `City/Country starting with ${letter}`,
-    animal: `Animal starting with ${letter}`,
-    thing: `Object starting with ${letter}`,
+    name: `${categoryLabels[0]} starting with ${letter}`,
+    place: `${categoryLabels[1]} starting with ${letter}`,
+    animal: `${categoryLabels[2]} starting with ${letter}`,
+    thing: `${categoryLabels[3]} starting with ${letter}`,
+  };
+
+  const handleRequestCategoryClue = (cat: NamePlaceAnimalCategory) => {
+    setRevealedClues((prev) => {
+      const next = new Set(prev);
+      next.add(cat);
+      return next;
+    });
+    onMove("requestClue", { category: cat });
   };
 
   const handleChange = (field: keyof NamePlaceAnimalAnswers, value: string) => {
@@ -85,7 +105,7 @@ export default function NamePlaceAnimalBoardDesktop({
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (hasSubmitted) return;
-    onMove("submitAnswers", form);
+    onMove("submitAnswers", { ...form, usedClues: Array.from(revealedClues) });
   };
 
   const handleStop = () => {
@@ -94,140 +114,184 @@ export default function NamePlaceAnimalBoardDesktop({
     onMove("stopClock");
   };
 
-  return (
-    <div className="min-h-[calc(100vh-6rem)] max-w-6xl mx-auto p-6 text-ink-hi font-sans grid grid-cols-12 gap-6">
-      {/* Left Workspace Column (Inputs & Controls) */}
-      <div className="col-span-7 flex flex-col justify-between space-y-6">
-        {/* Banner Header with 30s Live Countdown Timer */}
-        <div className="bg-surface-0 border border-brand-500/30 rounded-2xl p-6 shadow-xl space-y-4 relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
-                <span>Round {state.round} of {state.totalRounds}</span>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300">
-                  30s Speed Round
-                </span>
-              </div>
-              <h1 className="text-2xl font-display text-ink-hi mt-1">Name Place Animal Thing</h1>
-              <p className="text-xs text-ink-mid mt-1">
-                Fill all categories with words starting with{" "}
-                <strong className="text-amber-600 dark:text-amber-300 font-bold">{letter}</strong>.
-              </p>
-            </div>
+  const isStopped = Boolean(state.stoppedByPlayerId);
 
-            {/* Letter Badge */}
-            <motion.div
-              key={letter}
-              initial={{ rotateY: 180, scale: 0.3, opacity: 0 }}
-              animate={{ rotateY: 360, scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 260, damping: 15 }}
-              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 flex items-center justify-center text-5xl font-display text-white shadow-2xl border-2 border-amber-200/50 animate-glow-pulse"
+  return (
+    <div className={`min-h-[calc(100vh-6rem)] max-w-6xl mx-auto p-6 text-ink-hi font-sans grid grid-cols-12 gap-6 relative transition-all duration-300 ${
+      isStopped ? "animate-shake bg-red-950/20" : ""
+    }`}>
+      {/* Left Column (Input Form & Summary) */}
+      <div className="col-span-8 space-y-6 flex flex-col justify-between">
+        {/* 🚨 Emergency STOP Lockdown Siren Banner */}
+        {isStopped && (
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="p-4 bg-red-600 text-white rounded-2xl shadow-2xl border-2 border-red-300 text-center font-extrabold animate-pulse space-y-1"
+          >
+            <div className="text-base uppercase tracking-widest flex items-center justify-center gap-2">
+              <span>🚨</span> EMERGENCY STOP SLAMMED! <span>🚨</span>
+            </div>
+            <p className="text-xs">5-second lockdown countdown initiated! Submit your answers now!</p>
+          </motion.div>
+        )}
+
+        {/* Banner with 30s Countdown */}
+        <div className="bg-surface-0 border border-brand-500/30 rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider text-ink-mid">
+            <span>Round {state.round} of {state.totalRounds} • {state.themePack?.toUpperCase() ?? "CLASSIC"}</span>
+            <button
+              onClick={() => setShowClues(!showClues)}
+              className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 font-bold transition text-xs cursor-pointer"
             >
-              {letter}
-            </motion.div>
+              💡 {showClues ? "Hide Clues" : "Need a Clue?"}
+            </button>
           </div>
 
-          {/* 30-Second Countdown Timer & Progress Bar */}
-          {state.phase === "playing" && (
-            <div className="space-y-1.5 pt-2 border-t border-surface-rim">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className={`flex items-center gap-1.5 ${secondsLeft <= 10 ? "text-red-500 animate-pulse font-extrabold" : "text-amber-600 dark:text-amber-400"}`}>
-                  ⏱️ {secondsLeft}s Remaining
-                </span>
-                <button
-                  onClick={() => setShowClues(!showClues)}
-                  className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 text-xs font-bold cursor-pointer transition flex items-center gap-1"
-                >
-                  💡 {showClues ? "Hide Clues" : "Need a Clue?"}
-                </button>
-              </div>
+          <div className="flex items-center justify-between gap-6 p-4 bg-surface-1 border border-surface-rim rounded-xl">
+            <div className="flex items-center gap-4">
+              {/* 🔤 3D Roulette Letter Spinner */}
+              <AnimatePresence mode="wait">
+                {isSpinningWheel ? (
+                  <motion.div
+                    key="roulette-spin-desktop"
+                    animate={{ rotateY: [0, 720, 1440], scale: [0.8, 1.3, 1] }}
+                    transition={{ duration: 1.2, ease: "easeInOut" }}
+                    className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-600 to-amber-300 text-white font-display text-4xl flex items-center justify-center shadow-2xl border-4 border-amber-200"
+                  >
+                    🎲
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={letter}
+                    initial={{ rotateY: 180, scale: 0.3, opacity: 0 }}
+                    animate={{ rotateY: 360, scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 15 }}
+                    className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-white font-display text-5xl flex items-center justify-center shadow-2xl border-4 border-amber-200/60 animate-glow-pulse"
+                  >
+                    {letter}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              {/* Progress Bar */}
-              <div className="w-full h-2.5 bg-surface-1 rounded-full overflow-hidden border border-surface-rim">
-                <motion.div
-                  className={`h-full transition-all duration-1000 ${
-                    secondsLeft <= 10 ? "bg-red-500" : "bg-gradient-to-r from-amber-400 to-orange-500"
-                  }`}
-                  style={{ width: `${progressPct}%` }}
-                />
+              <div>
+                <h2 className="text-2xl font-bold text-ink-hi font-display">Target Letter: '{letter}'</h2>
+                <p className="text-xs text-ink-mute">
+                  Fill all 4 categories starting with the letter <strong className="text-amber-500 font-bold">'{letter}'</strong>
+                </p>
               </div>
             </div>
-          )}
+
+            {state.phase === "playing" && (
+              <div className="text-right min-w-[140px]">
+                <div className={`text-2xl font-bold font-mono ${secondsLeft <= 5 || isStopped ? "text-red-500 animate-pulse" : "text-amber-600 dark:text-amber-400"}`}>
+                  ⏱️ {secondsLeft}s
+                </div>
+                <div className="w-36 h-2.5 bg-surface-0 rounded-full overflow-hidden border border-surface-rim mt-1">
+                  <motion.div
+                    className={`h-full transition-all duration-1000 ${
+                      secondsLeft <= 5 || isStopped ? "bg-red-500 animate-pulse" : "bg-gradient-to-r from-amber-400 to-orange-500"
+                    }`}
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Collapsible Clues Drawer */}
+        {/* Per-Category Clue Selector Drawer */}
         <AnimatePresence>
           {showClues && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 shadow-lg space-y-3 overflow-hidden"
+              className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 shadow-xl space-y-3 overflow-hidden text-xs"
             >
-              <div className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider flex items-center gap-2">
-                <span>💡 Helpful Clues for Letter "{letter}"</span>
+              <div className="font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider text-xs flex justify-between">
+                <span>💡 Select a Category for a Clue (-50% points)</span>
+                <span className="text-[10px] opacity-80">Correct score reduces from 10 pts → 5 pts for revealed clue</span>
               </div>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-surface-0 p-3 rounded-xl border border-surface-rim space-y-1">
-                  <div className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px]">Name Clue</div>
-                  <div className="text-ink-hi font-medium">{clues.name}</div>
-                </div>
-                <div className="bg-surface-0 p-3 rounded-xl border border-surface-rim space-y-1">
-                  <div className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px]">Place Clue</div>
-                  <div className="text-ink-hi font-medium">{clues.place}</div>
-                </div>
-                <div className="bg-surface-0 p-3 rounded-xl border border-surface-rim space-y-1">
-                  <div className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px]">Animal Clue</div>
-                  <div className="text-ink-hi font-medium">{clues.animal}</div>
-                </div>
-                <div className="bg-surface-0 p-3 rounded-xl border border-surface-rim space-y-1">
-                  <div className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px]">Thing Clue</div>
-                  <div className="text-ink-hi font-medium">{clues.thing}</div>
-                </div>
+              <div className="grid grid-cols-4 gap-3 text-xs">
+                {categoryKeys.map((cat, idx) => {
+                  const label = categoryLabels[idx];
+                  const isRevealed = revealedClues.has(cat);
+                  return (
+                    <div key={cat} className="bg-surface-0 p-3 rounded-xl border border-surface-rim flex flex-col justify-between space-y-2">
+                      <span className="font-bold text-amber-600 dark:text-amber-400 text-xs uppercase">{label}</span>
+                      {isRevealed ? (
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs leading-relaxed block">
+                          {clues[cat]}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleRequestCategoryClue(cat)}
+                          className="py-1.5 px-2 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200 font-bold hover:bg-amber-500/30 transition text-xs text-center cursor-pointer"
+                        >
+                          Get {label} clue
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Input Form Phase */}
+        {/* Main Playing Phase (Desktop Grid) */}
         {state.phase === "playing" && (
-          <form onSubmit={handleSubmit} className="bg-surface-0 border border-surface-rim rounded-2xl p-6 shadow-xl space-y-5 flex-1 flex flex-col justify-between">
+          <form onSubmit={handleSubmit} className="bg-surface-0 border border-surface-rim rounded-2xl p-6 shadow-xl space-y-6 flex-1 flex flex-col justify-between">
             <div className="grid grid-cols-2 gap-4">
-              {(["name", "place", "animal", "thing"] as const).map((cat) => {
+              {categoryKeys.map((cat, idx) => {
+                const label = categoryLabels[idx];
                 const val = form[cat];
                 const isValidLetter = !val.trim() || val.trim()[0].toUpperCase() === letter;
+                const isClueRevealed = revealedClues.has(cat);
                 return (
-                  <div key={cat} className="space-y-1.5">
+                  <div key={cat} className="bg-surface-1 border border-surface-rim rounded-xl p-4 shadow-sm space-y-2">
                     <div className="flex justify-between items-center">
                       <label className="block text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300">
-                        {cat}
+                        {label}
                       </label>
-                      <span className="text-[10px] text-ink-mute">Hint: {clues[cat]}</span>
+                      {!isClueRevealed ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRequestCategoryClue(cat)}
+                          className="text-xs text-amber-600 dark:text-amber-300 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          💡 Get Clue (-50% pts)
+                        </button>
+                      ) : (
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 truncate max-w-[200px]">
+                          💡 {clues[cat]}
+                        </span>
+                      )}
                     </div>
                     <input
                       type="text"
                       disabled={hasSubmitted}
-                      placeholder={`Starts with ${letter}...`}
+                      placeholder={`${label} starting with ${letter}...`}
                       value={val}
                       onChange={(e) => handleChange(cat, e.target.value)}
-                      className={`w-full px-4 py-3 bg-surface-1 border ${
+                      className={`w-full px-4 py-2.5 bg-surface-0 border ${
                         !isValidLetter ? "border-red-500 text-red-600 dark:text-red-300" : "border-surface-rim text-ink-hi"
-                      } rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-60 transition`}
+                      } rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-60`}
                     />
-                    {!isValidLetter && (
-                      <span className="text-[11px] text-red-500 dark:text-red-400 block">Must start with {letter}</span>
-                    )}
                   </div>
                 );
               })}
             </div>
 
-            <div className="flex gap-4 pt-4 border-t border-surface-rim">
+            {/* Action Buttons */}
+            <div className="pt-2">
               {!hasSubmitted ? (
-                <>
+                <div className="grid grid-cols-2 gap-4">
                   <button
                     type="submit"
-                    className="flex-1 py-3.5 px-6 rounded-xl bg-brand-500 hover:bg-brand-600 font-bold text-sm text-white shadow-lg transition active:scale-95 cursor-pointer"
+                    className="w-full py-3.5 px-6 rounded-xl bg-brand-500 hover:bg-brand-600 font-bold text-base text-white shadow-lg transition active:scale-95 cursor-pointer"
                   >
                     Submit Answers
                   </button>
@@ -235,19 +299,19 @@ export default function NamePlaceAnimalBoardDesktop({
                     type="button"
                     onClick={handleStop}
                     disabled={!isAllFilled}
-                    className={`flex-1 py-3.5 px-6 rounded-xl font-bold text-sm text-white shadow-lg transition active:scale-95 ${
+                    className={`w-full py-3.5 px-6 rounded-xl font-extrabold text-base text-white shadow-lg transition active:scale-95 ${
                       isAllFilled
-                        ? "bg-red-600 hover:bg-red-700 animate-pulse cursor-pointer"
+                        ? "bg-red-600 hover:bg-red-700 animate-bounce cursor-pointer border-2 border-red-300"
                         : "bg-surface-1 text-ink-mute opacity-50 cursor-not-allowed border border-surface-rim"
                     }`}
                   >
-                    Call STOP!
+                    🚨 STOP CLOCK!
                   </button>
-                </>
+                </div>
               ) : (
-                <div className="w-full p-4 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-center">
+                <div className="p-4 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-center">
                   <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                    Answers locked in! Waiting for round timer or players to finish...
+                    Answers submitted! Waiting for round summary...
                   </p>
                 </div>
               )}
@@ -255,67 +319,72 @@ export default function NamePlaceAnimalBoardDesktop({
           </form>
         )}
 
-        {/* Round Summary */}
-        {state.phase === "roundSummary" && (
-          <div className="bg-surface-0 border border-surface-rim rounded-2xl p-6 shadow-xl flex-1 flex flex-col justify-between space-y-4">
-            <h2 className="text-lg font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-              Round {state.round} Scoring Recap
-            </h2>
+        {/* Round Summary Phase */}
+        {state.phase === "roundSummary" && state.allAnswers && (
+          <div className="bg-surface-0 border border-surface-rim rounded-2xl p-6 shadow-xl space-y-6 flex-1 flex flex-col justify-between">
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                Round {state.round} Category Scoring Summary
+              </h2>
 
-            <div className="space-y-3 overflow-y-auto max-h-96 pr-2">
-              {state.seatOrder.map((pid) => {
-                const player = state.players.find((p) => p.id === pid);
-                const pAns = state.allAnswers?.[pid];
-                const pCatScores = state.categoryScores?.[pid];
-                const pRoundTotal = state.roundScores?.[pid] ?? 0;
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                {state.seatOrder.map((pid) => {
+                  const player = state.players.find((p) => p.id === pid);
+                  const pAns = state.allAnswers?.[pid];
+                  const pCatScores = state.categoryScores?.[pid];
+                  const pRoundTotal = state.roundScores?.[pid] ?? 0;
 
-                return (
-                  <div
-                    key={pid}
-                    className={`p-4 rounded-xl border ${
-                      pid === myPlayerId
-                        ? "bg-amber-500/10 border-amber-500/40"
-                        : "bg-surface-1 border-surface-rim"
-                    }`}
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="font-bold text-sm text-ink-hi">
-                        {player?.id === myPlayerId ? "You" : `Player (${pid.slice(0, 5)})`}
-                      </span>
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                        +{pRoundTotal} pts this round
-                      </span>
-                    </div>
+                  return (
+                    <div
+                      key={pid}
+                      className={`p-4 rounded-xl border ${
+                        pid === myPlayerId
+                          ? "bg-amber-500/10 border-amber-500/40"
+                          : "bg-surface-1 border-surface-rim"
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="font-bold text-sm text-ink-hi">
+                          {player?.id === myPlayerId ? "You" : `Player (${pid.slice(0, 5)})`}
+                        </span>
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                          +{pRoundTotal} pts
+                        </span>
+                      </div>
 
-                    <div className="grid grid-cols-4 gap-3 text-xs">
-                      {(["name", "place", "animal", "thing"] as const).map((cat) => {
-                        const word = pAns?.[cat] || "—";
-                        const pts = pCatScores?.[cat] ?? 0;
-                        return (
-                          <div
-                            key={cat}
-                            className="bg-surface-0 p-2.5 rounded-lg border border-surface-rim space-y-1"
-                          >
-                            <div className="text-[10px] text-ink-mute uppercase">{cat}</div>
-                            <div className="font-medium text-ink-hi truncate">{word}</div>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        {categoryKeys.map((cat, idx) => {
+                          const label = categoryLabels[idx];
+                          const word = pAns?.[cat] || "—";
+                          const pts = pCatScores?.[cat] ?? 0;
+                          return (
                             <div
-                              className={`text-[10px] font-bold ${
-                                pts === 10
-                                  ? "text-emerald-600 dark:text-emerald-400"
-                                  : pts === 5
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-red-600 dark:text-red-400"
-                              }`}
+                              key={cat}
+                              className="bg-surface-0 p-2.5 rounded-lg border border-surface-rim flex justify-between items-center"
                             >
-                              {pts} pts
+                              <span className="text-ink-mute uppercase text-xs font-bold">{label}:</span>
+                              <span className="font-semibold text-ink-hi truncate max-w-[120px]">
+                                {word}
+                              </span>
+                              <span
+                                className={`text-xs font-bold ${
+                                  pts === 10
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : pts === 5
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "text-red-600 dark:text-red-400"
+                                }`}
+                              >
+                                ({pts} pts)
+                              </span>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
 
             <button
@@ -328,18 +397,18 @@ export default function NamePlaceAnimalBoardDesktop({
         )}
       </div>
 
-      {/* Right Column (Live Standings & Player Progress) */}
-      <div className="col-span-5 flex flex-col space-y-6">
+      {/* Right Column (Match Leaderboard & Scoring Rules) */}
+      <div className="col-span-4 flex flex-col space-y-6">
         <div className="bg-surface-0 border border-surface-rim rounded-2xl p-6 shadow-xl flex-1 space-y-4">
           <h2 className="text-base font-bold text-ink-hi uppercase tracking-wider">
-            Player Standings
+            Match Leaderboard
           </h2>
 
           <div className="space-y-3">
             {state.players.map((p) => (
               <div
                 key={p.id}
-                className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                className={`p-4 rounded-xl border flex items-center justify-between ${
                   p.id === myPlayerId
                     ? "bg-amber-500/10 border-amber-500/30"
                     : "bg-surface-1 border-surface-rim"
@@ -356,28 +425,25 @@ export default function NamePlaceAnimalBoardDesktop({
                       {p.id === myPlayerId ? "You" : `Player (${p.id.slice(0, 5)})`}
                     </div>
                     <div className="text-xs text-ink-mute font-medium">
-                      {p.hasSubmitted ? "Submitted" : "Thinking..."}
+                      {p.hasSubmitted ? "Submitted" : "Filling..."}
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <div className="font-bold text-sm text-amber-600 dark:text-amber-400">{p.score} pts</div>
-                  <div className="text-[11px] text-ink-mute">{p.roundWins} round wins</div>
+                  <div className="font-bold text-base text-amber-600 dark:text-amber-400">{p.score} pts</div>
+                  <div className="text-xs text-ink-mute">{p.roundWins} round wins</div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Scoring Guide */}
-        <div className="bg-surface-0/80 border border-surface-rim rounded-2xl p-4 text-xs space-y-2 text-ink-mid">
-          <div className="font-bold uppercase tracking-wider text-ink-hi">Scoring Rules:</div>
-          <ul className="space-y-1 list-disc list-inside">
-            <li><strong className="text-emerald-600 dark:text-emerald-400">10 pts</strong>: Unique valid word</li>
-            <li><strong className="text-amber-600 dark:text-amber-400">5 pts</strong>: Matching word with another player</li>
-            <li><strong className="text-red-600 dark:text-red-400">0 pts</strong>: Invalid word or empty field</li>
-          </ul>
+          <div className="pt-4 border-t border-surface-rim text-xs text-ink-mid space-y-2">
+            <div className="font-bold text-ink-hi uppercase tracking-wider text-[11px]">Scoring Guide:</div>
+            <p>• <strong>10 pts</strong> for each correct category word.</p>
+            <p>• <strong>5 pts</strong> if category clue was used (-50%).</p>
+            <p>• <strong>0 pts</strong> for empty/invalid entries.</p>
+          </div>
         </div>
       </div>
     </div>

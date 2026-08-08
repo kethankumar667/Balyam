@@ -32,6 +32,7 @@ export class NamePlaceAnimalEngine implements GameEngine {
   private usedLetters = new Set<string>();
 
   private answers = new Map<string, NamePlaceAnimalAnswers>();
+  private usedCluesMap = new Map<string, Set<NamePlaceAnimalCategory>>();
   private submitted = new Set<string>();
   private stoppedByPlayerId: string | null = null;
 
@@ -52,7 +53,11 @@ export class NamePlaceAnimalEngine implements GameEngine {
   }
 
   setOptions(opts: Partial<NamePlaceAnimalOptions>): void {
-    this.pendingOptions = { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS, ...opts };
+    const merged = { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS, ...opts };
+    if (opts.difficulty && !opts.roundSeconds) {
+      merged.roundSeconds = opts.difficulty === "easy" ? 45 : opts.difficulty === "hard" ? 20 : 30;
+    }
+    this.pendingOptions = merged;
   }
 
   init(players: Player[]): void {
@@ -89,6 +94,7 @@ export class NamePlaceAnimalEngine implements GameEngine {
     this.currentLetter = this.pickLetter();
     this.phase = "playing";
     this.answers.clear();
+    this.usedCluesMap.clear();
     this.submitted.clear();
     this.stoppedByPlayerId = null;
     this.deadline = Date.now() + (this.opts.roundSeconds || 30) * 1000;
@@ -106,6 +112,8 @@ export class NamePlaceAnimalEngine implements GameEngine {
     }
 
     switch (move.type) {
+      case "requestClue":
+        return this.handleRequestClue(pid, (move.data as { category?: NamePlaceAnimalCategory })?.category);
       case "submitAnswers":
         return this.handleSubmitAnswers(pid, move.data as NamePlaceAnimalAnswers);
       case "stopClock":
@@ -119,6 +127,20 @@ export class NamePlaceAnimalEngine implements GameEngine {
     }
   }
 
+  private handleRequestClue(pid: string, category?: NamePlaceAnimalCategory): MoveResult {
+    if (this.phase !== "playing") return { ok: false, error: "Not in playing phase" };
+    if (!category || !["name", "place", "animal", "thing"].includes(category)) {
+      return { ok: false, error: "Invalid category for clue" };
+    }
+    let set = this.usedCluesMap.get(pid);
+    if (!set) {
+      set = new Set();
+      this.usedCluesMap.set(pid, set);
+    }
+    set.add(category);
+    return this.result();
+  }
+
   private handleSubmitAnswers(pid: string, data: NamePlaceAnimalAnswers | undefined): MoveResult {
     if (this.phase !== "playing") return { ok: false, error: "Not in playing phase" };
     const ans: NamePlaceAnimalAnswers = {
@@ -128,6 +150,16 @@ export class NamePlaceAnimalEngine implements GameEngine {
       thing: (data?.thing ?? "").trim(),
     };
     this.answers.set(pid, ans);
+    if (data?.usedClues && Array.isArray(data.usedClues)) {
+      let set = this.usedCluesMap.get(pid);
+      if (!set) {
+        set = new Set();
+        this.usedCluesMap.set(pid, set);
+      }
+      for (const cat of data.usedClues) {
+        set.add(cat);
+      }
+    }
     this.submitted.add(pid);
 
     if (this.submitted.size === this.seatOrder.length) {
@@ -167,28 +199,16 @@ export class NamePlaceAnimalEngine implements GameEngine {
     }
 
     // Score per category:
-    // Unique valid answer = 10 pts
-    // Match valid answer = 5 pts
+    // Correct answer without clue = 10 pts
+    // Correct answer WITH clue for category = 5 pts (50% reduction)
     // Invalid / empty = 0 pts
     for (const cat of categories) {
-      const validsPerWord = new Map<string, string[]>();
       for (const pid of this.seatOrder) {
         const isValid = validMap.get(pid)![cat];
-        if (isValid) {
-          const word = (this.answers.get(pid)?.[cat] ?? "").toLowerCase();
-          const list = validsPerWord.get(word) ?? [];
-          list.push(pid);
-          validsPerWord.set(word, list);
-        }
-      }
-
-      for (const pid of this.seatOrder) {
-        const isValid = validMap.get(pid)![cat];
+        const usedClue = this.usedCluesMap.get(pid)?.has(cat) ?? false;
         let pts = 0;
         if (isValid) {
-          const word = (this.answers.get(pid)?.[cat] ?? "").toLowerCase();
-          const matchingPlayers = validsPerWord.get(word) ?? [];
-          pts = matchingPlayers.length === 1 ? 10 : 5;
+          pts = usedClue ? 5 : 10;
         }
 
         const catScores = this.roundCategoryScores.get(pid) ?? { name: 0, place: 0, animal: 0, thing: 0 };
@@ -265,17 +285,43 @@ export class NamePlaceAnimalEngine implements GameEngine {
     }));
   }
 
+  getCategoriesForRound(): string[] {
+    const pack = this.opts.themePack ?? "classic";
+    switch (pack) {
+      case "popculture":
+        return ["Movie", "Actor", "Song", "Brand"];
+      case "foodie":
+        return ["Dish", "Fruit/Veggie", "Drink", "Snack"];
+      case "school":
+        return ["Country", "Capital", "Element", "Figure"];
+      case "random": {
+        const pools = [
+          ["Movie", "Actor", "Song", "Brand"],
+          ["Dish", "Fruit/Veggie", "Drink", "Snack"],
+          ["Country", "Capital", "Element", "Figure"],
+          ["Name", "Place", "Animal", "Thing"],
+        ];
+        return pools[(this.round - 1) % pools.length];
+      }
+      default:
+        return ["Name", "Place", "Animal", "Thing"];
+    }
+  }
+
   getPublicState(): NamePlaceAnimalPublicState {
     const allAnswersObj: Record<string, NamePlaceAnimalAnswers> = {};
-    const catScoresObj: Record<string, Record<NamePlaceAnimalCategory, number>> = {};
-    const roundScoresObj: Record<string, number> = {};
+    for (const [pid, ans] of this.answers.entries()) {
+      allAnswersObj[pid] = ans;
+    }
 
-    if (this.phase === "roundSummary" || this.phase === "finished") {
-      for (const pid of this.seatOrder) {
-        if (this.answers.has(pid)) allAnswersObj[pid] = this.answers.get(pid)!;
-        if (this.roundCategoryScores.has(pid)) catScoresObj[pid] = this.roundCategoryScores.get(pid)!;
-        if (this.roundScores.has(pid)) roundScoresObj[pid] = this.roundScores.get(pid)!;
-      }
+    const catScoresObj: Record<string, Record<NamePlaceAnimalCategory, number>> = {};
+    for (const [pid, cs] of this.roundCategoryScores.entries()) {
+      catScoresObj[pid] = cs;
+    }
+
+    const roundScoresObj: Record<string, number> = {};
+    for (const [pid, rs] of this.roundScores.entries()) {
+      roundScoresObj[pid] = rs;
     }
 
     return {
@@ -295,6 +341,8 @@ export class NamePlaceAnimalEngine implements GameEngine {
       isOver: this.isOverFlag,
       winnerId: this.winnerId,
       stoppedByPlayerId: this.stoppedByPlayerId,
+      categories: this.getCategoriesForRound(),
+      themePack: this.opts.themePack ?? "classic",
     };
   }
 
@@ -372,11 +420,13 @@ export class NamePlaceAnimalEngine implements GameEngine {
   applyAutoMove(playerId: string): MoveResult {
     if (this.phase === "playing") {
       const existing = this.answers.get(playerId) ?? { name: "", place: "", animal: "", thing: "" };
+      const diff = this.opts.difficulty ?? "medium";
+      const chance = diff === "easy" ? 0.55 : diff === "hard" ? 0.95 : 0.75;
       const botAnswers: NamePlaceAnimalAnswers = {
-        name: existing.name || getBotAnswer("name", this.currentLetter),
-        place: existing.place || getBotAnswer("place", this.currentLetter),
-        animal: existing.animal || getBotAnswer("animal", this.currentLetter),
-        thing: existing.thing || getBotAnswer("thing", this.currentLetter),
+        name: existing.name || (this.rng() < chance ? getBotAnswer("name", this.currentLetter) : ""),
+        place: existing.place || (this.rng() < chance ? getBotAnswer("place", this.currentLetter) : ""),
+        animal: existing.animal || (this.rng() < chance ? getBotAnswer("animal", this.currentLetter) : ""),
+        thing: existing.thing || (this.rng() < chance ? getBotAnswer("thing", this.currentLetter) : ""),
       };
       return this.handleSubmitAnswers(playerId, botAnswers);
     }

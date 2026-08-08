@@ -1,5 +1,6 @@
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import type {
+  CinemaCategory,
   Player,
   TeluguCinemaluOptions,
   TeluguCinemaluPhase,
@@ -14,8 +15,8 @@ import { TELUGUCINEMALU_QUESTIONS } from "./questions.js";
 
 export class TeluguCinemaluEngine implements GameEngine {
   readonly kind = "telugucinemalu" as const;
-  readonly minPlayers = 2;
-  readonly maxPlayers = 8;
+  readonly minPlayers = 1;
+  readonly maxPlayers = 1;
 
   private opts: TeluguCinemaluOptions = { ...DEFAULT_TELUGUCINEMALU_OPTIONS };
   private pendingOptions: TeluguCinemaluOptions | null = null;
@@ -24,7 +25,8 @@ export class TeluguCinemaluEngine implements GameEngine {
   private isBot = new Set<string>();
   private nameOf = new Map<string, string>();
 
-  private phase: TeluguCinemaluPhase = "playing";
+  private phase: TeluguCinemaluPhase = "categorySelection";
+  private selectedCategory: CinemaCategory | null = null;
   private round = 1;
 
   private questionPool: TeluguCinemaluQuestion[] = [];
@@ -69,11 +71,9 @@ export class TeluguCinemaluEngine implements GameEngine {
     this.isOverFlag = false;
     this.winnerId = null;
     this.standings = null;
-
-    // Shuffle questions
-    this.questionPool = [...TELUGUCINEMALU_QUESTIONS].sort(() => this.rng() - 0.5);
-
-    this.startRound();
+    this.selectedCategory = null;
+    this.phase = "categorySelection";
+    this.currentQuestion = null;
   }
 
   private startRound(): void {
@@ -82,7 +82,11 @@ export class TeluguCinemaluEngine implements GameEngine {
     this.answerTimes.clear();
     this.roundScores.clear();
 
-    this.currentQuestion = this.questionPool[(this.round - 1) % this.questionPool.length];
+    if (this.questionPool.length > 0) {
+      this.currentQuestion = this.questionPool[(this.round - 1) % this.questionPool.length];
+    } else {
+      this.currentQuestion = null;
+    }
     this.roundStartTs = Date.now();
     this.deadline = null;
   }
@@ -97,6 +101,11 @@ export class TeluguCinemaluEngine implements GameEngine {
     }
 
     switch (move.type) {
+      case "selectCategory":
+        return this.handleSelectCategory(
+          (move.data as { category?: CinemaCategory; questionCount?: number })?.category,
+          (move.data as { category?: CinemaCategory; questionCount?: number })?.questionCount
+        );
       case "submitAnswer":
         return this.handleSubmitAnswer(pid, (move.data as { optionIndex?: number })?.optionIndex);
       case "nextRound":
@@ -106,6 +115,29 @@ export class TeluguCinemaluEngine implements GameEngine {
       default:
         return { ok: false, error: `Unknown move: ${move.type}` };
     }
+  }
+
+  private handleSelectCategory(category?: CinemaCategory, questionCount?: number): MoveResult {
+    if (this.phase !== "categorySelection") return { ok: false, error: "Not in category selection phase" };
+    if (!category) return { ok: false, error: "Category is required" };
+
+    this.selectedCategory = category;
+    let filtered = TELUGUCINEMALU_QUESTIONS;
+    if (category !== "All") {
+      filtered = TELUGUCINEMALU_QUESTIONS.filter((q) => q.category === category);
+    }
+    if (filtered.length === 0) {
+      filtered = TELUGUCINEMALU_QUESTIONS;
+    }
+
+    const shuffled = [...filtered].sort(() => this.rng() - 0.5);
+    const count = Math.min(Math.max(questionCount ?? 10, 1), 30);
+    this.opts.totalRounds = Math.min(count, shuffled.length);
+    this.questionPool = shuffled.slice(0, this.opts.totalRounds);
+
+    this.round = 1;
+    this.startRound();
+    return this.result();
   }
 
   private handleSubmitAnswer(pid: string, optionIndex?: number): MoveResult {
@@ -130,29 +162,23 @@ export class TeluguCinemaluEngine implements GameEngine {
     if (!this.currentQuestion) return;
 
     const correct = this.currentQuestion.correctIndex;
-    let maxPts = -1;
+    let maxPts = -999;
     let roundWinnerId: string | null = null;
 
     for (const pid of this.seatOrder) {
       const chosen = this.selectedIndices.get(pid);
-      let pts = 0;
-      if (chosen === correct) {
-        const timeTakenMs = this.answerTimes.get(pid) ?? 10000;
-        const totalMs = this.opts.questionSeconds * 1000;
-        const remainingRatio = Math.max(0, (totalMs - timeTakenMs) / totalMs);
-        const speedBonus = Math.round(remainingRatio * 50);
-        pts = 100 + speedBonus;
-      }
+      // Correct = +5, Wrong / No Answer = -2
+      const pts = chosen === correct ? 5 : -2;
       this.roundScores.set(pid, pts);
       this.scores.set(pid, (this.scores.get(pid) ?? 0) + pts);
 
-      if (pts > maxPts && pts > 0) {
+      if (pts > maxPts) {
         maxPts = pts;
         roundWinnerId = pid;
       }
     }
 
-    if (roundWinnerId) {
+    if (roundWinnerId && maxPts > 0) {
       this.roundWins.set(roundWinnerId, (this.roundWins.get(roundWinnerId) ?? 0) + 1);
     }
 
@@ -225,6 +251,7 @@ export class TeluguCinemaluEngine implements GameEngine {
           prompt: this.currentQuestion.prompt,
           options: this.currentQuestion.options,
           trivia: this.currentQuestion.trivia,
+          category: this.currentQuestion.category,
         }
       : null;
 
@@ -235,6 +262,7 @@ export class TeluguCinemaluEngine implements GameEngine {
       totalRounds: this.opts.totalRounds,
       questionSeconds: this.opts.questionSeconds,
       deadline: this.deadline,
+      selectedCategory: this.selectedCategory,
       currentQuestion: questionPub,
       seatOrder: [...this.seatOrder],
       players: this.publicPlayers(),
@@ -308,6 +336,9 @@ export class TeluguCinemaluEngine implements GameEngine {
   }
 
   applyAutoMove(playerId: string): MoveResult {
+    if (this.phase === "categorySelection") {
+      return this.handleSelectCategory("Tollywood", 10);
+    }
     if (this.phase === "playing" && this.currentQuestion) {
       // Bots pick correct option 85% of the time, else random
       const isCorrect = this.rng() < 0.85;

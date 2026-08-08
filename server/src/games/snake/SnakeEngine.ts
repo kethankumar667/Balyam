@@ -4,13 +4,17 @@ import type {
   SnakeOptions,
   SnakePlayerPublic,
   SnakePublicState,
+  SnakeTheme,
+  SnakeWallMode,
 } from "@shared/types.js";
 import { DEFAULT_SNAKE_OPTIONS } from "@shared/types.js";
 
+type Direction = "UP" | "DOWN" | "LEFT" | "RIGHT";
+
 interface SnakeData {
   body: { x: number; y: number }[];
-  dir: "UP" | "DOWN" | "LEFT" | "RIGHT";
-  nextDir: "UP" | "DOWN" | "LEFT" | "RIGHT";
+  dir: Direction;
+  inputQueue: Direction[];
   isAlive: boolean;
   score: number;
   color: string;
@@ -50,8 +54,8 @@ export class SnakeEngine implements GameEngine {
 
     const colors = ["#22c55e", "#3b82f6", "#eab308", "#ec4899"];
     this.seatOrder.forEach((pid, idx) => {
-      const startX = 5 + (idx % 2) * 10;
-      const startY = 5 + Math.floor(idx / 2) * 10;
+      const startX = Math.min(this.opts.gridSize - 3, 5 + (idx % 2) * 8);
+      const startY = Math.min(this.opts.gridSize - 3, 5 + Math.floor(idx / 2) * 8);
       this.snakes.set(pid, {
         body: [
           { x: startX, y: startY },
@@ -59,7 +63,7 @@ export class SnakeEngine implements GameEngine {
           { x: startX - 2, y: startY },
         ],
         dir: "RIGHT",
-        nextDir: "RIGHT",
+        inputQueue: [],
         isAlive: true,
         score: 0,
         color: colors[idx % colors.length],
@@ -74,7 +78,9 @@ export class SnakeEngine implements GameEngine {
   private spawnFood(): void {
     let x: number, y: number;
     let valid = false;
-    while (!valid) {
+    let attempts = 0;
+    while (!valid && attempts < 200) {
+      attempts++;
       x = Math.floor(this.rng() * this.opts.gridSize);
       y = Math.floor(this.rng() * this.opts.gridSize);
       valid = true;
@@ -94,22 +100,34 @@ export class SnakeEngine implements GameEngine {
   applyMove(move: MoveContext): MoveResult {
     const pid = move.playerId;
     const snake = this.snakes.get(pid);
+
+    if (move.type === "tick") {
+      this.tick();
+      return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
+    }
+
     if (!snake || !snake.isAlive || this.isOverFlag) {
       return { ok: false, error: "Cannot move" };
     }
 
     if (move.type === "turn") {
-      const dir = (move.data as { dir?: string })?.dir as "UP" | "DOWN" | "LEFT" | "RIGHT";
-      const opposites: Record<string, string> = { UP: "DOWN", DOWN: "UP", LEFT: "RIGHT", RIGHT: "LEFT" };
-      if (dir && opposites[dir] !== snake.dir) {
-        snake.nextDir = dir;
+      const dir = (move.data as { dir?: string })?.dir as Direction;
+      if (!dir) return { ok: false, error: "Missing dir" };
+
+      const opposites: Record<Direction, Direction> = {
+        UP: "DOWN",
+        DOWN: "UP",
+        LEFT: "RIGHT",
+        RIGHT: "LEFT",
+      };
+
+      const lastDir = snake.inputQueue.length > 0 ? snake.inputQueue[snake.inputQueue.length - 1] : snake.dir;
+      if (dir !== lastDir && dir !== opposites[lastDir]) {
+        if (snake.inputQueue.length < 2) {
+          snake.inputQueue.push(dir);
+        }
       }
       return { ok: true };
-    }
-
-    if (move.type === "tick") {
-      this.tick();
-      return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
     }
 
     return { ok: false, error: `Unknown move: ${move.type}` };
@@ -118,10 +136,20 @@ export class SnakeEngine implements GameEngine {
   private tick(): void {
     if (this.isOverFlag) return;
 
+    // Run Bot Steering
+    for (const [pid, snake] of this.snakes.entries()) {
+      if (snake.isAlive && this.isBot.has(pid)) {
+        this.steerBot(snake);
+      }
+    }
+
     for (const [pid, snake] of this.snakes.entries()) {
       if (!snake.isAlive) continue;
 
-      snake.dir = snake.nextDir;
+      if (snake.inputQueue.length > 0) {
+        snake.dir = snake.inputQueue.shift()!;
+      }
+
       const head = { ...snake.body[0] };
 
       switch (snake.dir) {
@@ -131,20 +159,30 @@ export class SnakeEngine implements GameEngine {
         case "RIGHT": head.x += 1; break;
       }
 
-      // Wall collision
-      if (head.x < 0 || head.x >= this.opts.gridSize || head.y < 0 || head.y >= this.opts.gridSize) {
-        snake.isAlive = false;
-        continue;
+      // Handle Wall Mode
+      if (this.opts.wallMode === "wrap") {
+        if (head.x < 0) head.x = this.opts.gridSize - 1;
+        if (head.x >= this.opts.gridSize) head.x = 0;
+        if (head.y < 0) head.y = this.opts.gridSize - 1;
+        if (head.y >= this.opts.gridSize) head.y = 0;
+      } else {
+        // Solid wall collision
+        if (head.x < 0 || head.x >= this.opts.gridSize || head.y < 0 || head.y >= this.opts.gridSize) {
+          snake.isAlive = false;
+          continue;
+        }
       }
 
-      // Self or other snake body collision
+      // Body Collision check (ignore tail tip if not eating food)
       let collided = false;
       for (const s of this.snakes.values()) {
-        if (s.body.some((seg) => seg.x === head.x && seg.y === head.y)) {
+        const bodyToCheck = s.body.slice(0, s.body.length - 1);
+        if (bodyToCheck.some((seg) => seg.x === head.x && seg.y === head.y)) {
           collided = true;
           break;
         }
       }
+
       if (collided) {
         snake.isAlive = false;
         continue;
@@ -152,18 +190,21 @@ export class SnakeEngine implements GameEngine {
 
       snake.body.unshift(head);
 
-      // Check food
+      // Check food collection
       if (head.x === this.food.x && head.y === this.food.y) {
         snake.score += 10;
+        if (this.opts.speedProgression && this.opts.speedMs > 60) {
+          this.opts.speedMs = Math.max(50, this.opts.speedMs - 1);
+        }
         this.spawnFood();
       } else {
         snake.body.pop();
       }
     }
 
-    // Check game over
+    // Check game over condition
     const aliveSnakes = Array.from(this.snakes.entries()).filter(([_, s]) => s.isAlive);
-    if (aliveSnakes.length === 0) {
+    if (aliveSnakes.length === 0 || (this.seatOrder.length > 1 && aliveSnakes.length === 1)) {
       this.isOverFlag = true;
       let maxScore = -1;
       for (const [pid, s] of this.snakes.entries()) {
@@ -171,6 +212,35 @@ export class SnakeEngine implements GameEngine {
           maxScore = s.score;
           this.winnerId = pid;
         }
+      }
+    }
+  }
+
+  private steerBot(snake: SnakeData): void {
+    const head = snake.body[0];
+    const dx = this.food.x - head.x;
+    const dy = this.food.y - head.y;
+
+    const candidates: Direction[] = [];
+    if (dx > 0) candidates.push("RIGHT");
+    if (dx < 0) candidates.push("LEFT");
+    if (dy > 0) candidates.push("DOWN");
+    if (dy < 0) candidates.push("UP");
+
+    const opposites: Record<Direction, Direction> = { UP: "DOWN", DOWN: "UP", LEFT: "RIGHT", RIGHT: "LEFT" };
+    const allDirs: Direction[] = ["UP", "RIGHT", "DOWN", "LEFT"];
+
+    for (const d of candidates) {
+      if (d !== opposites[snake.dir]) {
+        snake.inputQueue.push(d);
+        return;
+      }
+    }
+
+    for (const d of allDirs) {
+      if (d !== opposites[snake.dir]) {
+        snake.inputQueue.push(d);
+        return;
       }
     }
   }
@@ -190,6 +260,9 @@ export class SnakeEngine implements GameEngine {
     return {
       kind: "snake",
       gridSize: this.opts.gridSize,
+      speedMs: this.opts.speedMs,
+      wallMode: this.opts.wallMode,
+      theme: this.opts.theme,
       snakes: snakesObj,
       food: this.food,
       players: playersPub,

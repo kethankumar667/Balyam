@@ -1,67 +1,47 @@
 import { describe, it, expect } from "vitest";
 import type { BingoBoard } from "@shared/types.js";
-import { validateWin } from "../win.js";
+import { evaluateBoardLines } from "../win.js";
 
-/** Build a board where cell `index` holds `value` (1-75, unique enough for
- * the test) for every entry in `values`; every other non-free cell gets an
- * unused filler value that is guaranteed to never be called. */
 function makeBoard(values: Record<number, number>): BingoBoard {
-  let filler = 1000; // out of the 1-75 call range - never matches calledNumbers
+  let filler = 100;
   const cells = [];
   for (let i = 0; i < 25; i++) {
-    if (i === 12) {
-      cells.push({ index: 12, letter: "N" as const, value: null, free: true, marked: true });
-      continue;
-    }
     const value = values[i] ?? filler++;
-    cells.push({ index: i, letter: "B" as const, value, free: false, marked: false });
+    cells.push({ index: i, value, marked: false });
   }
   return cells;
 }
 
-describe("validateWin", () => {
-  it("rejects a board with nothing called", () => {
+describe("evaluateBoardLines", () => {
+  it("reports 0 lines when nothing called", () => {
     const board = makeBoard({});
-    expect(validateWin(board, new Set()).valid).toBe(false);
+    const res = evaluateBoardLines(board, new Set());
+    expect(res.completedLinesCount).toBe(0);
+    expect(res.completedLetters).toEqual([]);
+    expect(res.canClaimBingo).toBe(false);
   });
 
-  it("accepts a completed row (top row, uses the FREE-less indices 0-4)", () => {
+  it("reports 1 line (B) when top row is called", () => {
     const board = makeBoard({ 0: 1, 1: 2, 2: 3, 3: 4, 4: 5 });
-    const result = validateWin(board, new Set([1, 2, 3, 4, 5]));
-    expect(result).toEqual({ valid: true, pattern: "row0" });
+    const res = evaluateBoardLines(board, new Set([1, 2, 3, 4, 5]));
+    expect(res.completedLinesCount).toBe(1);
+    expect(res.completedLetters).toEqual(["B"]);
+    expect(res.canClaimBingo).toBe(false);
   });
 
-  it("accepts a completed column that passes through the FREE center", () => {
-    // col2 = indices 2,7,12,17,22 - index 12 is FREE, so only 4 real calls needed.
-    const board = makeBoard({ 2: 31, 7: 32, 17: 33, 22: 34 });
-    const result = validateWin(board, new Set([31, 32, 33, 34]));
-    expect(result).toEqual({ valid: true, pattern: "col2" });
-  });
-
-  it("accepts a completed diagonal", () => {
-    const board = makeBoard({ 0: 1, 6: 2, 18: 3, 24: 4 }); // 12 is FREE
-    const result = validateWin(board, new Set([1, 2, 3, 4]));
-    expect(result).toEqual({ valid: true, pattern: "diagTL" });
-  });
-
-  it("accepts four corners without needing a full line", () => {
-    const board = makeBoard({ 0: 1, 4: 2, 20: 3, 24: 4 });
-    const result = validateWin(board, new Set([1, 2, 3, 4]));
-    expect(result).toEqual({ valid: true, pattern: "fourCorners" });
-  });
-
-  it("reports full house over any lesser pattern when all 25 are marked", () => {
-    const values: Record<number, number> = {};
-    for (let i = 0; i < 25; i++) if (i !== 12) values[i] = i + 1;
-    const board = makeBoard(values);
-    const called = new Set(Object.values(values));
-    const result = validateWin(board, called);
-    expect(result).toEqual({ valid: true, pattern: "fullHouse" });
-  });
-
-  it("rejects a near-miss line (4 of 5 called)", () => {
-    const board = makeBoard({ 0: 1, 1: 2, 2: 3, 3: 4, 4: 5 });
-    const result = validateWin(board, new Set([1, 2, 3, 4])); // missing 5
-    expect(result.valid).toBe(false);
+  it("reports 5 lines (B-I-N-G-O) and allows claim when 5 lines are formed", () => {
+    // 5 rows
+    const board = makeBoard({
+      0: 1, 1: 2, 2: 3, 3: 4, 4: 5,
+      5: 6, 6: 7, 7: 8, 8: 9, 9: 10,
+      10: 11, 11: 12, 12: 13, 13: 14, 14: 15,
+      15: 16, 16: 17, 17: 18, 18: 19, 19: 20,
+      20: 21, 21: 22, 22: 23, 23: 24, 24: 25,
+    });
+    const called = new Set([1,2,3,4,5, 6,7,8,9,10, 11,12,13,14,15, 16,17,18,19,20, 21,22,23,24,25]);
+    const res = evaluateBoardLines(board, called);
+    expect(res.completedLinesCount).toBe(12);
+    expect(res.completedLetters).toEqual(["B", "I", "N", "G", "O"]);
+    expect(res.canClaimBingo).toBe(true);
   });
 });
