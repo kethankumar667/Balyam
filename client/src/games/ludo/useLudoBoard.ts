@@ -351,9 +351,10 @@ export function useLudoBoard({
     /** Same copy as the toast, kept instead of discarded. Capped at 6 —
      *  this is a glance-at-it rail, not a transcript. */
     const record = (text: string, emoji: string, color?: string) =>
-      setFeed((prev) =>
-        [{ id: `${e.kind}_${e.ts}`, text, emoji, color }, ...prev].slice(0, 6),
-      );
+      setFeed((prev) => {
+        if (prev.length > 0 && prev[0].text === text) return prev;
+        return [{ id: `${e.kind}_${e.ts}_${Math.random()}`, text, emoji, color }, ...prev].slice(0, 6);
+      });
     const byName = e.byPlayerId ? nameOf(e.byPlayerId) : "";
     const victimName = e.victimPlayerId ? nameOf(e.victimPlayerId) : "";
     const byColor = e.byPlayerId ? COLOR_HEX[state.playerColors[e.byPlayerId]] : undefined;

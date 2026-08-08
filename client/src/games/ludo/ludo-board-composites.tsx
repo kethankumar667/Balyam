@@ -226,6 +226,20 @@ function TurnCountdownRing({ pct, color, box }: { pct: number; color: string; bo
   );
 }
 
+const CROSS_YARD_ANGLES: Record<string, number> = {
+  red: 315,
+  green: 45,
+  yellow: 135,
+  blue: 225,
+};
+
+const QUADRANT_ORDER: Record<number, number> = {
+  315: 1, // Top-Left
+  45: 2,  // Top-Right
+  225: 3, // Bottom-Left
+  135: 4, // Bottom-Right
+};
+
 function orderedSeats(state: LudoState, players: Player[], selfId?: string | null): LudoSeatMeta[] {
   const byId = new Map(players.map((p) => [p.id, p]));
   const seats = state.playerOrder
@@ -251,20 +265,17 @@ function orderedSeats(state: LudoState, players: Player[], selfId?: string | nul
     })
     .filter((s): s is LudoSeatMeta => !!s.color);
 
-  // ALWAYS true turn order (`state.playerOrder` — exactly what the engine's
-  // advanceTurn walks), rotated so the player AFTER you comes first and YOU
-  // come last. Reading top-left → bottom-right is then "who plays next … all
-  // the way round to me", and the highlight steps card by card.
-  //
-  // The previous colour sort is why turns looked out of sequence: colours are
-  // HAND-PICKED (`chosenColor`), so a player who joins 2nd but picks brown
-  // lands 8th in colour order while still taking the 2nd turn. Sorting cards
-  // by colour made the engine's perfectly sequential rotation look random.
-  // Self-last also puts you in the BOTTOM row, matching the board rotation
-  // that now places your yard nearest you.
-  const selfIdx = selfId ? seats.findIndex((s) => s.pid === selfId) : -1;
-  if (selfIdx < 0) return seats;
-  return [...seats.slice(selfIdx + 1), ...seats.slice(0, selfIdx + 1)];
+  const selfSeat = selfId ? seats.find((s) => s.pid === selfId) : null;
+  const selfBase = selfSeat ? (CROSS_YARD_ANGLES[selfSeat.color] ?? 225) : 225;
+  const rot = (225 - selfBase + 360) % 360;
+
+  return seats.sort((a, b) => {
+    const angleA = ((CROSS_YARD_ANGLES[a.color] ?? 0) + rot) % 360;
+    const angleB = ((CROSS_YARD_ANGLES[b.color] ?? 0) + rot) % 360;
+    const orderA = QUADRANT_ORDER[angleA] ?? 99;
+    const orderB = QUADRANT_ORDER[angleB] ?? 99;
+    return orderA - orderB;
+  });
 }
 
 /** Compact seat card. Progressive disclosure per the AAA critique: one
@@ -1009,22 +1020,26 @@ export function LudoBottomBar({
   const openPanel = (panel: string) =>
     window.dispatchEvent(new CustomEvent("bhalyam:open-room-panel", { detail: { panel } }));
   const NavBtn = ({ label, glyph, panel, badge }: { label: string; glyph: string; panel: string; badge?: number }) => (
-    <button type="button" onClick={() => openPanel(panel)} className="flex flex-col items-center gap-0.5" aria-label={label}>
+    <button type="button" onClick={() => openPanel(panel)} className="flex flex-col items-center gap-1 active:scale-95 transition cursor-pointer" aria-label={label}>
       <span
-        className="relative w-11 h-11 rounded-full flex items-center justify-center text-lg active:scale-95 transition"
-        style={{ background: "#F7E8C4", border: "2px solid #C8A66B" }}
+        className="relative w-11 h-11 rounded-full flex items-center justify-center text-xl shadow-md"
+        style={{
+          background: "linear-gradient(135deg, #FFFDF8 0%, #F5E5C0 100%)",
+          border: "2.5px solid #6D4323",
+          boxShadow: "0 4px 10px rgba(109,67,35,0.22)",
+        }}
       >
         {glyph}
         {badge != null && badge > 0 && (
           <span
-            className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center"
+            className="absolute -top-1 -right-1 min-w-[18px] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center shadow"
             style={{ background: "#DC2626", color: "#fff", border: "1.5px solid #FFFBF0" }}
           >
             {badge > 9 ? "9+" : badge}
           </span>
         )}
       </span>
-      <span className="text-[9px] font-semibold" style={{ color: "var(--paper-ink)" }}>{label}</span>
+      <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "#4A2E18", textShadow: "0 1px 0 rgba(255,255,255,0.8)" }}>{label}</span>
     </button>
   );
   return (
