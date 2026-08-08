@@ -213,6 +213,50 @@ const STAR_PASS_SPEEDS: { id: string; label: string; blurb: string }[] = [
   { id: "fast", label: "Fast", blurb: "9s pass" },
 ];
 
+const NPA_DIFFICULTIES: { id: "easy" | "medium" | "hard"; label: string; blurb: string }[] = [
+  { id: "easy",   label: "Easy",   blurb: "45s timer per round — friendly speed" },
+  { id: "medium", label: "Medium", blurb: "30s timer per round — standard speed" },
+  { id: "hard",   label: "Hard",   blurb: "20s speed round — quick thinking!" },
+];
+
+const NPA_ROUNDS: { id: "3" | "5" | "7" | "10"; label: string; blurb: string }[] = [
+  { id: "3",  label: "3 Rounds",  blurb: "Quick match" },
+  { id: "5",  label: "5 Rounds",  blurb: "Standard match" },
+  { id: "7",  label: "7 Rounds",  blurb: "Extended match" },
+  { id: "10", label: "10 Rounds", blurb: "Marathon match" },
+];
+
+const NPA_THEME_PACKS: { id: "classic" | "popculture" | "foodie" | "school" | "random"; label: string; blurb: string }[] = [
+  { id: "classic",    label: "Classic",     blurb: "Name, Place, Animal, Thing" },
+  { id: "popculture", label: "Pop Culture", blurb: "Movie, Actor, Song, Brand" },
+  { id: "foodie",     label: "Foodie",      blurb: "Dish, Fruit/Veggie, Drink, Snack" },
+  { id: "school",     label: "School",      blurb: "Country, Capital, Element, Figure" },
+  { id: "random",     label: "Random Mix",  blurb: "Changes categories every round!" },
+];
+
+const SNAKE_SPEEDS: { id: "140" | "100" | "70"; label: string; blurb: string }[] = [
+  { id: "140", label: "Slug",   blurb: "140ms tick — relaxed pace" },
+  { id: "100", label: "Normal", blurb: "100ms tick — classic arcade" },
+  { id: "70",  label: "Fast",   blurb: "70ms tick — high speed reflex" },
+];
+
+const SNAKE_GRID_SIZES: { id: "15" | "20" | "25"; label: string; blurb: string }[] = [
+  { id: "15", label: "Compact",  blurb: "15 × 15 grid" },
+  { id: "20", label: "Standard", blurb: "20 × 20 grid" },
+  { id: "25", label: "Large",    blurb: "25 × 25 grid" },
+];
+
+const SNAKE_WALL_MODES: { id: "solid" | "wrap"; label: string; blurb: string }[] = [
+  { id: "solid", label: "Solid Walls", blurb: "Hitting boundary kills snake" },
+  { id: "wrap",  label: "Wrap Around", blurb: "Passing boundary wraps to other side" },
+];
+
+const SNAKE_THEMES: { id: "nokia-monochrome" | "nokia-color" | "neon-modern"; label: string; blurb: string }[] = [
+  { id: "nokia-monochrome", label: "Nokia 3310", blurb: "Green LCD dot matrix" },
+  { id: "nokia-color",      label: "Nokia 6110", blurb: "Classic color screen" },
+  { id: "neon-modern",      label: "Neon Glow",  blurb: "Modern vibrant dark mode" },
+];
+
 const HC_FORMATS: { id: HcFormat; label: string; blurb: string }[] = [
   { id: "t20",  label: "T20",  blurb: "10 ov · 3 powerplay · 3-over bowler quota" },
   { id: "odi",  label: "ODI",  blurb: "15 ov · 3 powerplay · 4-over bowler quota" },
@@ -251,6 +295,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [unoHouseRules, setUnoHouseRules] = useState<Record<UnoHouseRuleKey, boolean>>(UNO_DEFAULT_HOUSE_RULES);
   const [bingoCallSpeed, setBingoCallSpeed] = useState<"2500" | "4000" | "6000">("4000");
   const [bingoWinMode, setBingoWinMode] = useState<"first" | "all">("first");
+  const [npaDifficulty, setNpaDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [npaRounds, setNpaRounds] = useState<number>(5);
+  const [npaThemePack, setNpaThemePack] = useState<"classic" | "popculture" | "foodie" | "school" | "random">("classic");
+  const [snakeSpeed, setSnakeSpeed] = useState<"140" | "100" | "70">("100");
+  const [snakeGridSize, setSnakeGridSize] = useState<"15" | "20" | "25">("20");
+  const [snakeWallMode, setSnakeWallMode] = useState<"solid" | "wrap">("solid");
+  const [snakeTheme, setSnakeTheme] = useState<"nokia-monochrome" | "nokia-color" | "neon-modern">("nokia-monochrome");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   /**
@@ -286,6 +337,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setUnoHouseRules(UNO_DEFAULT_HOUSE_RULES);
       setBingoCallSpeed("4000");
       setBingoWinMode("first");
+      setNpaDifficulty("medium");
+      setNpaRounds(5);
+      setNpaThemePack("classic");
     }
   }, [game, playerName]);
 
@@ -371,6 +425,15 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   stopOnFirstWin: bingoWinMode === "first",
                 }
               : undefined,
+          namesplaceanimalOptions:
+            game === "namesplaceanimal"
+              ? {
+                  difficulty: npaDifficulty,
+                  totalRounds: npaRounds,
+                  roundSeconds: npaDifficulty === "easy" ? 45 : npaDifficulty === "hard" ? 20 : 30,
+                  themePack: npaThemePack,
+                }
+              : undefined,
         },
         (res) => {
           setBusy(false);
@@ -428,6 +491,24 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         starGameOptions:
           game === "stargame"
             ? { themeId: starTheme, totalRounds: starRounds, passSpeed: starPassSpeed }
+            : undefined,
+        namesplaceanimalOptions:
+          game === "namesplaceanimal"
+            ? {
+                difficulty: npaDifficulty,
+                totalRounds: npaRounds,
+                roundSeconds: npaDifficulty === "easy" ? 45 : npaDifficulty === "hard" ? 20 : 30,
+                themePack: npaThemePack,
+              }
+            : undefined,
+        snakeOptions:
+          game === "snake"
+            ? {
+                speedMs: Number(snakeSpeed),
+                gridSize: Number(snakeGridSize),
+                wallMode: snakeWallMode,
+                theme: snakeTheme,
+              }
             : undefined,
       },
       (res) => {
@@ -798,6 +879,72 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   value={bingoWinMode}
                   onChange={setBingoWinMode}
                   cols={2}
+                />
+              </Field>
+            </>
+          )}
+
+          {game === "namesplaceanimal" && (
+            <>
+              <Field label="Category Theme Pack">
+                <OptionGrid
+                  items={NPA_THEME_PACKS}
+                  value={npaThemePack}
+                  onChange={(v) => setNpaThemePack(v as "classic" | "popculture" | "foodie" | "school" | "random")}
+                  cols={3}
+                />
+              </Field>
+              <Field label="Difficulty Level">
+                <OptionGrid
+                  items={NPA_DIFFICULTIES}
+                  value={npaDifficulty}
+                  onChange={(v) => setNpaDifficulty(v as "easy" | "medium" | "hard")}
+                  cols={3}
+                />
+              </Field>
+              <Field label="Total Rounds">
+                <OptionGrid
+                  items={NPA_ROUNDS}
+                  value={String(npaRounds)}
+                  onChange={(v) => setNpaRounds(Number(v))}
+                  cols={2}
+                />
+              </Field>
+            </>
+          )}
+
+          {game === "snake" && (
+            <>
+              <Field label="Speed Pace">
+                <OptionGrid
+                  items={SNAKE_SPEEDS}
+                  value={snakeSpeed}
+                  onChange={(v) => setSnakeSpeed(v as "140" | "100" | "70")}
+                  cols={3}
+                />
+              </Field>
+              <Field label="Grid Dimensions">
+                <OptionGrid
+                  items={SNAKE_GRID_SIZES}
+                  value={snakeGridSize}
+                  onChange={(v) => setSnakeGridSize(v as "15" | "20" | "25")}
+                  cols={3}
+                />
+              </Field>
+              <Field label="Wall Boundary Rule">
+                <OptionGrid
+                  items={SNAKE_WALL_MODES}
+                  value={snakeWallMode}
+                  onChange={(v) => setSnakeWallMode(v as "solid" | "wrap")}
+                  cols={2}
+                />
+              </Field>
+              <Field label="Visual Arcade Theme">
+                <OptionGrid
+                  items={SNAKE_THEMES}
+                  value={snakeTheme}
+                  onChange={(v) => setSnakeTheme(v as "nokia-monochrome" | "nokia-color" | "neon-modern")}
+                  cols={3}
                 />
               </Field>
             </>

@@ -1484,34 +1484,26 @@ export type BingoLetter = "B" | "I" | "N" | "G" | "O";
 export interface BingoCell {
   /** 0-24, row-major (index = row*5 + col). */
   index: number;
-  letter: BingoLetter;
-  /** null only for the FREE cell (index 12). */
-  value: number | null;
-  free: boolean;
-  /** Server-computed at serialization time from the room's calledNumbers. */
+  /** 1-25. */
+  value: number;
+  /** True if this number has been called. */
   marked: boolean;
 }
 
-/** Always length 25. Sent to a player ONLY inside their own BingoPlayerState
- *  — never appears anywhere in the broadcast BingoPublicState, and never for
- *  another player's id, even after the round ends (see BingoPlayerPublic). */
 export type BingoBoard = BingoCell[];
 
+export type BingoPhase = "arranging" | "playing" | "finished";
+
 export interface CalledNumber {
-  /** 1-75. */
+  /** 1-25. */
   value: number;
-  letter: BingoLetter;
   /** 1-based call sequence within this round. */
   order: number;
   calledAt: number;
 }
 
 export type BingoPattern =
-  | "row0" | "row1" | "row2" | "row3" | "row4"
-  | "col0" | "col1" | "col2" | "col3" | "col4"
-  | "diagTL" | "diagTR"
-  | "fourCorners"
-  | "fullHouse";
+  | "lines1" | "lines2" | "lines3" | "lines4" | "bingo5" | "fullHouse";
 
 export interface BingoWinner {
   playerId: string;
@@ -1524,12 +1516,7 @@ export interface BingoWinner {
 export type BotDifficulty = "easy" | "medium" | "hard";
 
 export interface BingoGameOptions {
-  /** Clamped server-side to a small allowed set regardless of what a
-   *  client sends — see DEFAULT_BINGO_OPTIONS and RoomManager.clampBingoOptions. */
   callIntervalMs: number;
-  /** true (default): the round ends the instant the first valid claim
-   *  lands. false: calling continues until every active player has
-   *  resolved (won or the pool is exhausted), winners ranked by claim time. */
   stopOnFirstWin: boolean;
 }
 
@@ -1540,17 +1527,20 @@ export const DEFAULT_BINGO_OPTIONS: BingoGameOptions = {
   stopOnFirstWin: true,
 };
 
-/** Opponents see only the COUNT of marked cells — never which numbers, and
- *  never the board itself, win or lose. */
 export interface BingoPlayerPublic {
   id: string;
+  name: string;
+  isReady: boolean;
   markedCount: number;
+  completedLinesCount: number;
+  completedLetters: BingoLetter[];
   hasWon: boolean;
   isBot: boolean;
   isConnected: boolean;
+  /** Board sent for all players so opponents can view each other's 5x5 boards */
+  board: BingoBoard;
 }
 
-/** One row of the room's Bingo "photo album" — a finished round's recap. */
 export interface BingoRoundRecap {
   roundNumber: number;
   winners: BingoWinner[];
@@ -1560,26 +1550,27 @@ export interface BingoRoundRecap {
 
 export interface BingoPublicState {
   kind: "bingo";
-  phase: "playing" | "finished";
+  phase: BingoPhase;
+  currentTurnPlayerId: string | null;
   players: BingoPlayerPublic[];
   calledNumbers: CalledNumber[];
-  currentCall: CalledNumber | null;
-  /** Epoch ms the NEXT call fires — a display-only countdown; the actual
-   *  call is purely server-timer-driven, never client-raced. */
+  lastCalledNumber: CalledNumber | null;
   callDeadline: number | null;
   winners: BingoWinner[];
   roundNumber: number;
   stopOnFirstWin: boolean;
   isOver: boolean;
-  /** "poolExhausted" only when calling ran out with zero winners (possible
-   *  only under stopOnFirstWin=false). null otherwise, including mid-round. */
   endReason: "poolExhausted" | null;
+  winnerId: string | null;
 }
 
 export interface BingoPlayerState extends BingoPublicState {
   myBoard: BingoBoard;
   myMarkedCount: number;
-  myPendingClaim: boolean;
+  myCompletedLinesCount: number;
+  myCompletedLetters: BingoLetter[];
+  canClaimBingo: boolean;
+  isMyTurn: boolean;
 }
 
 /** Moves flow through the existing game:move envelope — no new socket
@@ -1589,11 +1580,15 @@ export interface BingoClaimMove { type: "claim"; }
 export interface NamePlaceAnimalOptions {
   totalRounds: number;
   roundSeconds: number;
+  difficulty?: "easy" | "medium" | "hard";
+  themePack?: "classic" | "popculture" | "foodie" | "school" | "random";
 }
 
 export const DEFAULT_NAMESPLACEANIMAL_OPTIONS: NamePlaceAnimalOptions = {
   totalRounds: 5,
   roundSeconds: 30,
+  difficulty: "medium",
+  themePack: "classic",
 };
 
 export type NamePlaceAnimalCategory = "name" | "place" | "animal" | "thing";
@@ -1610,6 +1605,7 @@ export interface NamePlaceAnimalAnswers {
   place: string;
   animal: string;
   thing: string;
+  usedClues?: NamePlaceAnimalCategory[];
 }
 
 export interface NamePlaceAnimalPlayerPublic {
@@ -1644,6 +1640,8 @@ export interface NamePlaceAnimalPublicState {
   isOver: boolean;
   winnerId: string | null;
   stoppedByPlayerId: string | null;
+  categories?: string[];
+  themePack?: string;
 }
 
 export interface NamePlaceAnimalPlayerState extends NamePlaceAnimalPublicState {
@@ -1748,6 +1746,8 @@ export interface SamethaluPlayerState extends SamethaluPublicState {
   mySelectedIndex: number | null;
 }
 
+export type CinemaCategory = "Tollywood" | "Kollywood" | "Sandalwood" | "Bollywood" | "Hollywood" | "All";
+
 export interface TeluguCinemaluOptions {
   totalRounds: number;
   questionSeconds: number;
@@ -1758,7 +1758,7 @@ export const DEFAULT_TELUGUCINEMALU_OPTIONS: TeluguCinemaluOptions = {
   questionSeconds: 20,
 };
 
-export type TeluguCinemaluPhase = "playing" | "roundSummary" | "finished";
+export type TeluguCinemaluPhase = "categorySelection" | "playing" | "roundSummary" | "finished";
 
 export interface TeluguCinemaluQuestion {
   id: string;
@@ -1768,6 +1768,7 @@ export interface TeluguCinemaluQuestion {
   options: string[];
   correctIndex: number;
   trivia: string;
+  category?: CinemaCategory;
 }
 
 export interface TeluguCinemaluPlayerPublic {
@@ -1792,6 +1793,7 @@ export interface TeluguCinemaluPublicState {
   totalRounds: number;
   questionSeconds: number;
   deadline: number | null;
+  selectedCategory: CinemaCategory | null;
   currentQuestion: Omit<TeluguCinemaluQuestion, "correctIndex"> | null;
   seatOrder: string[];
   players: TeluguCinemaluPlayerPublic[];
@@ -1808,20 +1810,37 @@ export interface TeluguCinemaluPlayerState extends TeluguCinemaluPublicState {
 }
 
 // ---- Nokia Snake ----
+export type SnakeWallMode = "solid" | "wrap";
+export type SnakeTheme = "nokia-monochrome" | "nokia-color" | "neon-modern";
+
 export interface SnakeOptions {
   speedMs: number;
   gridSize: number;
+  wallMode: SnakeWallMode;
+  theme: SnakeTheme;
+  speedProgression: boolean;
 }
-export const DEFAULT_SNAKE_OPTIONS: SnakeOptions = { speedMs: 120, gridSize: 20 };
+export const DEFAULT_SNAKE_OPTIONS: SnakeOptions = {
+  speedMs: 120,
+  gridSize: 20,
+  wallMode: "solid",
+  theme: "nokia-monochrome",
+  speedProgression: true,
+};
+
 export interface SnakePlayerPublic {
   id: string;
   score: number;
   isAlive: boolean;
   color: string;
 }
+
 export interface SnakePublicState {
   kind: "snake";
   gridSize: number;
+  speedMs: number;
+  wallMode: SnakeWallMode;
+  theme: SnakeTheme;
   snakes: Record<string, { body: { x: number; y: number }[]; dir: string; isAlive: boolean }>;
   food: { x: number; y: number };
   players: SnakePlayerPublic[];

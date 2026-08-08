@@ -75,4 +75,16 @@ describe("TambolaEngine", () => {
     expect(res.ok).toBe(false);
     expect(res.error).toContain("Bogus claim");
   });
+
+  it("draws next numbers on resolveDeadline", () => {
+    const engine = new TambolaEngine();
+    engine.init(mockPlayers(1));
+    expect(engine.getPublicState().calledNumbers.length).toBe(1);
+
+    engine.resolveDeadline();
+    expect(engine.getPublicState().calledNumbers.length).toBe(2);
+
+    engine.resolveDeadline();
+    expect(engine.getPublicState().calledNumbers.length).toBe(3);
+  });
 });

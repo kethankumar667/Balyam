@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { TeluguCinemaluPlayerState } from "@shared/types";
+import type { CinemaCategory, TeluguCinemaluPlayerState } from "@shared/types";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface TeluguCinemaluBoardProps {
@@ -8,8 +8,21 @@ export interface TeluguCinemaluBoardProps {
   onMove: (type: string, data?: unknown) => void;
 }
 
+const CATEGORIES: { id: CinemaCategory; name: string; icon: string; lang: string }[] = [
+  { id: "Tollywood", name: "Tollywood", icon: "🎬", lang: "Telugu Cinema" },
+  { id: "Kollywood", name: "Kollywood", icon: "🎭", lang: "Tamil Cinema" },
+  { id: "Sandalwood", name: "Sandalwood", icon: "🌟", lang: "Kannada Cinema" },
+  { id: "Bollywood", name: "Bollywood", icon: "🎥", lang: "Hindi Cinema" },
+  { id: "Hollywood", name: "Hollywood", icon: "🍿", lang: "English Cinema" },
+  { id: "All", name: "All Industries", icon: "🌈", lang: "Mix of All Cinema" },
+];
+
+const QUESTION_COUNTS = [5, 10, 15, 20, 25, 30];
+
 export default function TeluguCinemaluBoardMobile({ state, selfId, onMove }: TeluguCinemaluBoardProps) {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(state.mySelectedIndex);
+  const [chosenCat, setChosenCat] = useState<CinemaCategory>("Tollywood");
+  const [chosenCount, setChosenCount] = useState<number>(10);
 
   // Reset selection when a new round starts
   useEffect(() => { setSelectedIdx(null); }, [state.round]);
@@ -24,6 +37,10 @@ export default function TeluguCinemaluBoardMobile({ state, selfId, onMove }: Tel
     if (hasAnswered) return;
     setSelectedIdx(idx);
     onMove("submitAnswer", { optionIndex: idx });
+  };
+
+  const handleStartGame = () => {
+    onMove("selectCategory", { category: chosenCat, questionCount: chosenCount });
   };
 
   const triggerReaction = (emoji: string) => {
@@ -56,35 +73,111 @@ export default function TeluguCinemaluBoardMobile({ state, selfId, onMove }: Tel
         </AnimatePresence>
       </div>
 
-      {/* Header Banner */}
-      <div className="bg-surface-0 border border-red-500/30 rounded-2xl p-4 shadow-lg text-center relative overflow-hidden">
-        <div className="flex justify-between items-center text-xs text-red-500 dark:text-red-400 mb-2 font-bold uppercase tracking-wider">
-          <div className="flex items-center gap-2">
-            <span>🎬 Telugu Cinema Quiz</span>
-            <button
-              onClick={() => setShowRules(true)}
-              className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-700 dark:text-red-300 hover:bg-red-500/30 text-[11px] cursor-pointer"
-            >
-              ? Rules
-            </button>
-          </div>
-          <span>Round {state.round} of {state.totalRounds}</span>
-        </div>
+      {/* Category Selection Phase */}
+      {state.phase === "categorySelection" && (
+        <div className="flex-1 flex flex-col justify-between space-y-4">
+          <div className="bg-surface-0 border border-red-500/30 rounded-2xl p-5 shadow-xl text-center space-y-4">
+            <div className="inline-block p-3 bg-red-500/10 rounded-full text-3xl mb-1">🎬</div>
+            <h2 className="text-xl font-bold text-red-600 dark:text-red-400 font-display">
+              Cinema Quiz Setup
+            </h2>
+            <p className="text-xs text-ink-mid">
+              Select your favorite film industry and total questions to begin!
+            </p>
 
-        <motion.div
-          key={q?.id}
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 240, damping: 15 }}
-          className="my-2 p-3.5 bg-red-500/10 dark:bg-red-950/40 border-2 border-amber-400/40 rounded-xl shadow-2xl relative overflow-hidden animate-glow-pulse"
-        >
-          <p className="text-xs uppercase text-amber-600 dark:text-amber-400 font-bold mb-1 tracking-wider">Mass Dialogue Challenge 🍿</p>
-          <h2 className="text-lg font-bold text-red-900 dark:text-amber-200 font-display italic">
-            "{q?.dialogue || "డైలాగ్..."}"
-          </h2>
-          <p className="text-xs text-red-800 dark:text-red-100/80 mt-2 font-medium">{q?.prompt}</p>
-        </motion.div>
-      </div>
+            {/* Category Grid */}
+            <div className="space-y-2 text-left">
+              <label className="text-xs font-bold uppercase text-red-500 dark:text-red-400 tracking-wider">
+                Select Film Industry:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setChosenCat(cat.id)}
+                    className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
+                      chosenCat === cat.id
+                        ? "bg-red-600 border-amber-400 text-white shadow-md ring-2 ring-amber-400"
+                        : "bg-surface-1 hover:bg-surface-1/80 border-surface-rim text-ink-hi"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-sm">
+                      <span>{cat.icon}</span>
+                      <span>{cat.name}</span>
+                    </div>
+                    <span className={`text-[10px] ${chosenCat === cat.id ? "text-amber-200" : "text-ink-mid"}`}>
+                      {cat.lang}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Question Count Selection */}
+            <div className="space-y-2 text-left pt-2">
+              <label className="text-xs font-bold uppercase text-red-500 dark:text-red-400 tracking-wider">
+                Number of Questions:
+              </label>
+              <div className="grid grid-cols-6 gap-1.5">
+                {QUESTION_COUNTS.map((cnt) => (
+                  <button
+                    key={cnt}
+                    onClick={() => setChosenCount(cnt)}
+                    className={`py-2 rounded-xl text-xs font-bold border transition ${
+                      chosenCount === cnt
+                        ? "bg-amber-500 border-amber-300 text-black shadow-md font-extrabold"
+                        : "bg-surface-1 hover:bg-surface-1/80 border-surface-rim text-ink-hi"
+                    }`}
+                  >
+                    {cnt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleStartGame}
+            className="w-full py-4 px-4 rounded-xl bg-red-600 hover:bg-red-700 font-bold text-base text-white shadow-xl transition active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+          >
+            <span>Start Quiz ({chosenCat} • {chosenCount} Qs)</span>
+            <span>→</span>
+          </button>
+        </div>
+      )}
+
+      {/* Header Banner for playing / summary */}
+      {state.phase !== "categorySelection" && (
+        <div className="bg-surface-0 border border-red-500/30 rounded-2xl p-4 shadow-lg text-center relative overflow-hidden">
+          <div className="flex justify-between items-center text-xs text-red-500 dark:text-red-400 mb-2 font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-2">
+              <span>🎬 {state.selectedCategory ?? "Cinema"} Quiz</span>
+              <button
+                onClick={() => setShowRules(true)}
+                className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-700 dark:text-red-300 hover:bg-red-500/30 text-[11px] cursor-pointer"
+              >
+                ? Rules
+              </button>
+            </div>
+            <span>Round {state.round} of {state.totalRounds}</span>
+          </div>
+
+          <motion.div
+            key={q?.id}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 240, damping: 15 }}
+            className="my-2 p-3.5 bg-red-500/10 dark:bg-red-950/40 border-2 border-amber-400/40 rounded-xl shadow-2xl relative overflow-hidden animate-glow-pulse"
+          >
+            <p className="text-xs uppercase text-amber-600 dark:text-amber-400 font-bold mb-1 tracking-wider">
+              {q?.category ?? "Cinema"} Challenge 🍿
+            </p>
+            <h2 className="text-lg font-bold text-red-900 dark:text-amber-200 font-display italic">
+              "{q?.dialogue || "డైలాగ్..."}"
+            </h2>
+          </motion.div>
+        </div>
+      )}
 
       {/* Main Playing Phase */}
       {state.phase === "playing" && q && (
@@ -117,7 +210,7 @@ export default function TeluguCinemaluBoardMobile({ state, selfId, onMove }: Tel
           {hasAnswered && (
             <div className="p-3 bg-red-500/15 border border-red-500/30 rounded-xl text-center">
               <p className="text-xs font-semibold text-red-600 dark:text-red-300">
-                Answer locked! Waiting for fellow fans...
+                Answer locked! Loading evaluation...
               </p>
             </div>
           )}
@@ -143,7 +236,7 @@ export default function TeluguCinemaluBoardMobile({ state, selfId, onMove }: Tel
               {state.seatOrder.map((pid) => {
                 const player = state.players.find((p) => p.id === pid);
                 const chosenIdx = state.selectedIndices?.[pid];
-                const pts = state.roundScores?.[pid] ?? 0;
+                const pts = state.roundScores?.[pid] ?? -2;
                 const isCorrect = chosenIdx === state.correctIndex;
 
                 return (
@@ -168,10 +261,10 @@ export default function TeluguCinemaluBoardMobile({ state, selfId, onMove }: Tel
                       className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                         isCorrect
                           ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
-                          : "bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30"
+                          : "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30"
                       }`}
                     >
-                      +{pts} pts
+                      {pts > 0 ? `+${pts}` : pts} pts
                     </span>
                   </div>
                 );
@@ -212,8 +305,9 @@ export default function TeluguCinemaluBoardMobile({ state, selfId, onMove }: Tel
           </div>
         </div>
       )}
+
       {/* Floating Reaction Dock */}
-      {state.phase !== "finished" && (
+      {state.phase !== "finished" && state.phase !== "categorySelection" && (
         <div className="flex justify-center gap-2 p-2 bg-surface-0 border border-surface-rim rounded-2xl shadow-xl">
           {(["🔥", "👏", "😂", "🤯", "🥳"] as const).map((emoji) => (
             <button
@@ -243,13 +337,13 @@ export default function TeluguCinemaluBoardMobile({ state, selfId, onMove }: Tel
               className="bg-surface-0 border border-red-500/30 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl"
             >
               <h3 className="text-lg font-bold text-red-600 dark:text-red-400 font-display">
-                How to Play Telugu Cinema Quiz 🎬
+                How to Play Cinema Quiz 🎬
               </h3>
               <div className="text-xs text-ink-mid space-y-2 leading-relaxed">
+                <p>• Select your preferred film industry (Tollywood, Kollywood, Sandalwood, Bollywood, Hollywood).</p>
                 <p>• Read the iconic movie dialogue prompt.</p>
                 <p>• Guess the correct movie out of 4 options.</p>
-                <p>• <strong>Scoring:</strong> 100 base points for correct answers + up to 50 speed bonus points for fast responses!</p>
-                <p>• Earn <strong>Cinema King 👑</strong> title by topping the leaderboard!</p>
+                <p>• <strong>Scoring:</strong> <strong>+5 points</strong> for correct answers and <strong>-2 points</strong> for wrong choices!</p>
               </div>
               <button
                 onClick={() => setShowRules(false)}

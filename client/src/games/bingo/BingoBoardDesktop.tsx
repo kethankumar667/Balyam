@@ -1,69 +1,187 @@
-import { useBingoBoard } from "./useBingoBoard";
 import type { BingoBoardProps } from "./useBingoBoard";
+import { useBingoBoard } from "./useBingoBoard";
 import {
+  BingoLetterBanner,
   BingoGrid,
-  CallerBall,
-  CalledHistoryStrip,
+  AllPlayerBoardsView,
   ClaimButton,
-  PlayerProgressList,
   BingoResultOverlay,
 } from "./bingo-shared";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 
-/**
- * Bingo — DESKTOP shell (>=1280px, mouse/keyboard). A real three-column
- * layout instead of the mobile shell stretched: caller + full call history
- * as a persistent left rail, the player's own board front-and-center at a
- * larger cell size with an inline (non-sticky) Claim button, and the full
- * roster's live progress on the right — desktop has the width to show
- * every opponent's mark count at once, not just a compact list.
- *
- * Pure layout over the frozen useBingoBoard model, same as the mobile
- * shell — only the arrangement differs.
- */
 export default function BingoBoardDesktop(props: BingoBoardProps) {
-  const m = useBingoBoard(props);
-  const { state, seats, selfId, players, nameOf, isOver, canAttemptClaim, claim, onLeave, onScorecardClose } = m;
+  const model = useBingoBoard(props);
+  const {
+    state,
+    onLeave,
+    isOver,
+    secondsUntilTurnTimeout,
+    isMyTurn,
+    currentTurnPlayerName,
+    activeTab,
+    setActiveTab,
+    shuffleBoard,
+    lockBoard,
+    callNumber,
+    claimBingo,
+    canAttemptClaim,
+  } = model;
+
+  const isArranging = state.phase === "arranging";
+  const myPlayer = state.players.find((p) => p.id === model.selfId);
+  const myBoard = state.myBoard ?? [];
+  const myCompletedLetters = state.myCompletedLetters ?? [];
+  const myCompletedLines = state.myCompletedLinesCount ?? 0;
 
   return (
-    <div className="grid grid-cols-[220px_1fr_260px] gap-6 items-start px-4 py-2">
-      {/* Left rail — caller + history */}
-      <div className="flex flex-col items-center gap-4 sticky top-4">
-        <CallerBall
-          current={state.currentCall}
-          secondsLeft={isOver ? null : m.secondsUntilNextCall}
-        />
-        <div className="w-full text-center text-[11px] font-semibold text-bhalyam-wood-dark/60">
-          Round {state.roundNumber} · {state.calledNumbers.length} called
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-amber-50 via-bhalyam-cream to-amber-100/60 p-6 select-none">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between gap-4 mb-4 bg-white/80 backdrop-blur-md p-4 rounded-3xl border border-bhalyam-wood/20 shadow-md">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">🎲</span>
+          <div>
+            <h1 className="text-2xl font-black text-bhalyam-wood-dark tracking-wide">
+              BINGO (1-25)
+            </h1>
+            <p className="text-xs text-bhalyam-wood-dark/60 font-semibold">
+              5x5 Grid Turn-Based Calling
+            </p>
+          </div>
         </div>
-        <div className="w-full max-h-[50vh] rounded-xl bg-white/40 p-2">
-          <CalledHistoryStrip calledNumbers={state.calledNumbers} orientation="col" max={40} />
+
+        <div className="flex items-center gap-4">
+          {state.callDeadline != null && !isOver && (
+            <TurnTimeWarning deadline={state.callDeadline} active={!isOver} />
+          )}
+          <button
+            type="button"
+            onClick={onLeave}
+            className="px-4 py-2 text-sm font-bold rounded-2xl bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 border border-rose-300/50 transition-all active:scale-95"
+          >
+            Leave Room
+          </button>
         </div>
       </div>
 
-      {/* Center — own board + claim */}
-      <div className="flex flex-col items-center gap-5 pt-2">
-        <BingoGrid board={state.myBoard} size="lg" />
-        <ClaimButton onClaim={claim} disabled={!canAttemptClaim} className="text-lg px-10 py-3.5" />
-      </div>
+      {/* Arranging Phase */}
+      {isArranging && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center py-8">
+          <div className="bg-white/90 backdrop-blur-md p-6 rounded-3xl border-2 border-bhalyam-wood/20 shadow-xl max-w-md">
+            <h2 className="text-2xl font-black text-bhalyam-wood-dark mb-2">
+              Arrange Your 5x5 Bingo Board
+            </h2>
+            <p className="text-sm text-bhalyam-wood-dark/70 mb-4">
+              Click <strong className="text-amber-600">Shuffle</strong> to re-arrange numbers 1-25 until you like your card layout, then click <strong className="text-emerald-600">Start Game</strong>!
+            </p>
+            <BingoGrid board={myBoard} size="lg" />
+          </div>
 
-      {/* Right rail — full roster progress */}
-      <div className="flex flex-col gap-2 sticky top-4">
-        <h3 className="text-[11px] font-bold uppercase tracking-widest text-bhalyam-wood-dark/60 px-1">
-          Players
-        </h3>
-        <PlayerProgressList seats={seats} />
-      </div>
+          <div className="flex gap-4 w-full max-w-sm">
+            <button
+              type="button"
+              disabled={myPlayer?.isReady}
+              onClick={shuffleBoard}
+              className="flex-1 py-3.5 px-6 rounded-2xl font-black text-base bg-amber-500 text-white shadow-lg hover:bg-amber-600 active:scale-95 disabled:opacity-50 transition-all"
+            >
+              🔄 Shuffle Board
+            </button>
+            <button
+              type="button"
+              disabled={myPlayer?.isReady}
+              onClick={lockBoard}
+              className="flex-1 py-3.5 px-6 rounded-2xl font-black text-base bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95 disabled:opacity-50 transition-all"
+            >
+              {myPlayer?.isReady ? "✓ Ready" : "🚀 Start Game"}
+            </button>
+          </div>
+        </div>
+      )}
 
+      {/* Playing Phase */}
+      {!isArranging && (
+        <div className="flex-1 flex flex-col items-center gap-6 w-full max-w-6xl mx-auto">
+          {/* Header B-I-N-G-O Letters Banner */}
+          <BingoLetterBanner completedLetters={myCompletedLetters} />
+
+          {/* Turn Indicator */}
+          <div
+            className={`w-full max-w-xl text-center py-3 px-6 rounded-2xl font-black text-base border shadow-md transition-all ${
+              isMyTurn
+                ? "bg-amber-400 text-bhalyam-wood-dark border-amber-500 animate-pulse ring-4 ring-amber-300/50"
+                : "bg-white/90 text-bhalyam-wood-dark/80 border-bhalyam-wood/20"
+            }`}
+          >
+            {isMyTurn
+              ? "👉 YOUR TURN! Click a number (1-25) to call it out!"
+              : `Waiting for ${currentTurnPlayerName} to call out a number...`}
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex bg-white/70 p-1.5 rounded-2xl border border-bhalyam-wood/20 shadow-inner w-full max-w-md">
+            <button
+              type="button"
+              onClick={() => setActiveTab("myBoard")}
+              className={`flex-1 py-2 text-sm font-black rounded-xl transition-all ${
+                activeTab === "myBoard"
+                  ? "bg-amber-500 text-white shadow-md"
+                  : "text-bhalyam-wood-dark/70 hover:text-bhalyam-wood-dark"
+              }`}
+            >
+              My Board ({myCompletedLines} Lines)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("allBoards")}
+              className={`flex-1 py-2 text-sm font-black rounded-xl transition-all ${
+                activeTab === "allBoards"
+                  ? "bg-amber-500 text-white shadow-md"
+                  : "text-bhalyam-wood-dark/70 hover:text-bhalyam-wood-dark"
+              }`}
+            >
+              Opponent Tables Scorecard 👥
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === "myBoard" ? (
+            <div className="flex flex-col items-center gap-6 my-auto">
+              <BingoGrid
+                board={myBoard}
+                isMyTurn={isMyTurn}
+                onCellClick={callNumber}
+                size="lg"
+              />
+
+              {canAttemptClaim && (
+                <ClaimButton onClaim={claimBingo} disabled={false} />
+              )}
+            </div>
+          ) : (
+            <AllPlayerBoardsView
+              players={state.players}
+              selfId={model.selfId}
+            />
+          )}
+
+          {/* Last Called Ticker */}
+          {state.lastCalledNumber && (
+            <div className="bg-white/90 px-6 py-2 rounded-full border-2 border-amber-400 text-sm font-extrabold text-bhalyam-wood-dark shadow-md">
+              Last Called Number: <span className="text-amber-600 font-black text-lg">#{state.lastCalledNumber.value}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Result Overlay */}
       {isOver && (
         <BingoResultOverlay
           winners={state.winners}
-          stopOnFirstWin={state.stopOnFirstWin}
-          nameOf={nameOf}
-          selfId={selfId}
-          players={players}
+          nameOf={model.nameOf}
+          selfId={model.selfId}
+          players={props.players}
           calledCount={state.calledNumbers.length}
           onLeave={onLeave}
-          onContinue={onScorecardClose}
+          onContinue={props.onScorecardClose}
         />
       )}
     </div>

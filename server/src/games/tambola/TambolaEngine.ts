@@ -13,7 +13,7 @@ import { generateTambolaTicket } from "./ticketGenerator.js";
 
 export class TambolaEngine implements GameEngine {
   readonly kind = "tambola" as const;
-  readonly minPlayers = 2;
+  readonly minPlayers = 1;
   readonly maxPlayers = 8;
 
   private opts: TambolaOptions = { ...DEFAULT_TAMBOLA_OPTIONS };
