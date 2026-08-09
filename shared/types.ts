@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "spaceimpact" | "bounce" | "roadrash";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "bounce" | "roadrash";
 
 export interface Player {
   id: string;
@@ -73,6 +73,8 @@ export interface ChatMessage {
 export type RoomPhase = "lobby" | "playing" | "finished";
 
 export interface RoomPublicState {
+  /** Screens attached to this room (Smart TV / Party Mode). */
+  spectatorCount?: number;
   code: string;
   game: GameKind;
   phase: RoomPhase;
@@ -1848,17 +1850,175 @@ export interface SnakePublicState {
   winnerId: string | null;
 }
 
-// ---- Space Impact ----
-export interface SpaceImpactOptions {
-  difficulty: string;
+// ---- Carrom ----
+/**
+ * Board is a square in abstract units; the client scales it. Physics are
+ * therefore identical on a phone and a projector, and nothing is in pixels.
+ */
+export const CARROM_BOARD = {
+  size: 100,
+  /** Playfield inset from the frame — coins rebound off this square. */
+  cushion: 6,
+  pocketRadius: 4.2,
+  coinRadius: 1.9,
+  strikerRadius: 2.6,
+  /** Distance of the baseline from the board edge. */
+  baseline: 18,
+} as const;
+
+export type CarromColor = "white" | "black";
+export type CarromPieceKind = CarromColor | "queen" | "striker";
+
+export interface CarromPiece {
+  id: string;
+  kind: CarromPieceKind;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Potted pieces stop being simulated but stay in state for the animation. */
+  pocketed: boolean;
 }
-export const DEFAULT_SPACEIMPACT_OPTIONS: SpaceImpactOptions = { difficulty: "normal" };
-export interface SpaceImpactPublicState {
-  kind: "spaceimpact";
-  ships: Record<string, { x: number; y: number; hp: number; score: number }>;
-  enemies: { id: string; x: number; y: number; type: string }[];
-  bullets: { x: number; y: number; isPlayer: boolean }[];
-  players: { id: string; score: number; isAlive: boolean }[];
+
+export interface CarromOptions {
+  /** Points needed to win the match. */
+  targetScore: number;
+  /** Seconds a player has to take their shot. */
+  shotTimerSeconds: number;
+}
+
+export const DEFAULT_CARROM_OPTIONS: CarromOptions = {
+  targetScore: 21,
+  shotTimerSeconds: 30,
+};
+
+/**
+ * "aiming"   — waiting for the current player's shot.
+ * "resolving"— the strike is playing out; nobody may act.
+ * "finished" — match over.
+ */
+export type CarromPhase = "aiming" | "resolving" | "finished";
+
+export interface CarromSeat {
+  playerId: string;
+  color: CarromColor;
+  score: number;
+  /** Coins of their colour still on the board. */
+  remaining: number;
+}
+
+export interface CarromPublicState {
+  kind: "carrom";
+  phase: CarromPhase;
+  turnPlayerId: string | null;
+  seats: CarromSeat[];
+  pieces: CarromPiece[];
+  /** Where the striker may be placed along the current baseline, as 0..1. */
+  strikerPos: number;
+  /** Whoever pocketed the queen and still owes a covering coin. */
+  queenPendingFor: string | null;
+  /** Human-readable outcome of the last completed shot. */
+  lastShot: string | null;
+  turnDeadline: number | null;
+  isOver: boolean;
+  winnerId: string | null;
+}
+
+// ---- Vyoma Yudh (side-scrolling shooter) ----
+/**
+ * An original side-scrolling shooter in the 90s handheld idiom.
+ *
+ * Mechanics only — waves, bosses, power-ups, lives — which are not
+ * copyrightable. No code, art, or naming is derived from any existing game.
+ * The world is 200x100 abstract units; the client scales to its canvas, so
+ * the simulation is resolution-independent and every player sees identical
+ * physics regardless of screen size.
+ */
+export const VYOMA_WORLD = { w: 200, h: 100 } as const;
+
+export type VyomaDifficulty = "easy" | "normal" | "hard";
+
+export interface VyomaYudhOptions {
+  difficulty: VyomaDifficulty;
+  /** Lives per pilot run. */
+  lives: number;
+  /** Levels to clear for a perfect run. */
+  levels: number;
+}
+
+export const DEFAULT_VYOMAYUDH_OPTIONS: VyomaYudhOptions = {
+  difficulty: "normal",
+  lives: 3,
+  levels: 8,
+};
+
+/** Special weapons. Standard fire is unlimited and is not listed here. */
+export type VyomaWeapon = "missile" | "laser" | "wall";
+
+export type VyomaEnemyKind =
+  | "scout"      // straight line, fast, fragile
+  | "weaver"     // sine-wave path
+  | "turret"     // holds position at the right edge and shoots
+  | "bomber"     // slow, tanky, fires spreads
+  | "boss";      // level guardian
+
+export interface VyomaEntity {
+  id: string;
+  x: number;
+  y: number;
+  kind: VyomaEnemyKind;
+  hp: number;
+  maxHp: number;
+}
+
+export interface VyomaShot {
+  id: string;
+  x: number;
+  y: number;
+  /** Unit velocity — lets the client interpolate between ticks. */
+  vx: number;
+  vy: number;
+  fromPlayer: boolean;
+  /** "wall" shots render as a tall bar rather than a bolt. */
+  weapon: VyomaWeapon | "basic";
+}
+
+export interface VyomaPickup {
+  id: string;
+  x: number;
+  y: number;
+  weapon: VyomaWeapon | "life";
+}
+
+/** Outcome of the run, once it has ended. */
+export interface VyomaResult {
+  score: number;
+  levelReached: number;
+  reason: "cleared" | "destroyed";
+}
+
+export interface VyomaYudhPublicState {
+  kind: "vyomayudh";
+  /** The pilot. null once the run has ended. */
+  pilotId: string | null;
+  /** Server tick counter, so the client can detect dropped frames. */
+  tick: number;
+
+  /* ── live run ── */
+  ship: { x: number; y: number; invulnUntilTick: number } | null;
+  lives: number;
+  score: number;
+  level: number;
+  /** Remaining ammo for each special weapon. */
+  ammo: Record<VyomaWeapon, number>;
+  enemies: VyomaEntity[];
+  shots: VyomaShot[];
+  pickups: VyomaPickup[];
+  /** Boss health as a 0..1 fraction while a boss is on screen, else null. */
+  bossHp: number | null;
+  /* ── meta ── */
+  /** Populated once the run is over; null while flying. */
+  result: VyomaResult | null;
   isOver: boolean;
   winnerId: string | null;
 }
@@ -1909,7 +2069,8 @@ export interface CreateRoomPayload {
   samethaluOptions?: Partial<SamethaluOptions>;
   teluguCinemaluOptions?: Partial<TeluguCinemaluOptions>;
   snakeOptions?: Partial<SnakeOptions>;
-  spaceImpactOptions?: Partial<SpaceImpactOptions>;
+  vyomaYudhOptions?: Partial<VyomaYudhOptions>;
+  carromOptions?: Partial<CarromOptions>;
   bounceOptions?: Partial<BounceOptions>;
   roadRashOptions?: Partial<RoadRashOptions>;
 }
@@ -2162,4 +2323,10 @@ export interface ClientToServerEvents {
    * someone needed help would make the button socially expensive to press.
    */
   "coach:hint": (ack: (res: CoachHintResponse) => void) => void;
+  /**
+   * Smart TV / Party Mode: watch a room without taking a seat. A spectator
+   * receives public state only and cannot send moves.
+   */
+  "room:spectate": (code: string, ack: (res: { ok: boolean; error?: string }) => void) => void;
+  "room:stopSpectate": () => void;
 }

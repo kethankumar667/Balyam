@@ -11,10 +11,15 @@ import { useTheme } from "../lib/useTheme";
 import GlobalSettings from "../components/GlobalSettings";
 import { tileHover, ctaPress, bhalyamSpring } from "../lib/motion";
 import { getSocket } from "../lib/socket";
+import CategoryFilter, {
+  filterGames,
+  type GameFilter,
+} from "../components/bhalyam/CategoryFilter";
 import { useRoomStore } from "../store/roomStore";
 import {
   BHALYAM_GAMES,
   isLocked,
+  getGameAccent,
   type BhalyamGameCard,
   type BhalyamGameSlug,
 } from "../components/bhalyam/data";
@@ -70,7 +75,8 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   stargame: StarGameGlyph,
   bingo: BingoGlyph,
   snake: StarGameGlyph,
-  spaceimpact: StarGameGlyph,
+  vyomayudh: StarGameGlyph,
+  carrom: StarGameGlyph,
   bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
 };
@@ -889,7 +895,24 @@ function Hero() {
 
 /* ───────────────────────────── Games grid ───────────────────────────── */
 
+/** Tiles the home grid shows before deferring to /games. */
+const HOME_TILE_CAP = 6;
+
 function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
+  /**
+   * The home grid filters in place rather than sending people to /games.
+   * Tapping "Board & Cards" and being thrown onto another page to see five
+   * tiles is a worse answer than showing them here, and it makes the control
+   * behave identically on both pages instead of looking the same but acting
+   * differently.
+   */
+  const [filter, setFilter] = useState<GameFilter>({ category: "all" });
+  // Coming-soon tiles are excluded here: home is the "start playing" surface,
+  // and /games keeps its own section for what is on deck.
+  const matches = filterGames(filter, false);
+  const shown = matches.slice(0, HOME_TILE_CAP);
+  const filtered = filter.category !== "all";
+
   return (
     <section className="pb-12 sm:pb-14">
       <RevealOnScroll
@@ -902,27 +925,63 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
             <span className="bhalyam-underline">Pick a game</span>
           </h2>
         </div>
-        <motion.span
-          initial={{ opacity: 0, scale: 0.85 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ ...bhalyamSpring, delay: 0.15 }}
-          className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#EA5A1F] border border-[#F2D5A9] shadow-[0_4px_10px_-3px_rgba(234,90,31,0.45)] flex-shrink-0"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#EA5A1F] animate-pulse" aria-hidden />
-          Most Played Today
-        </motion.span>
+        {/* Hidden while a filter is on: sitting above a narrowed grid, this
+            badge would be claiming those six tiles are the most played, which
+            is not what it means. */}
+        {!filtered && (
+          <motion.span
+            initial={{ opacity: 0, scale: 0.85 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ ...bhalyamSpring, delay: 0.15 }}
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#EA5A1F] border border-[#F2D5A9] shadow-[0_4px_10px_-3px_rgba(234,90,31,0.45)] flex-shrink-0"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#EA5A1F] animate-pulse" aria-hidden />
+            Most Played Today
+          </motion.span>
+        )}
       </RevealOnScroll>
 
+      <CategoryFilter
+        value={filter}
+        onChange={setFilter}
+        className="mb-3 sm:mb-4"
+      />
+
+      {/* aria-live so the new total is announced; filtering is otherwise a
+          silent change for anyone not looking at the grid. */}
+      <p
+        className="mb-3 sm:mb-4 text-[13px] font-semibold text-[#5D4B3F]"
+        aria-live="polite"
+      >
+        {matches.length === 0
+          ? "Nothing here yet. Try another filter."
+          : shown.length < matches.length
+          ? `Showing ${shown.length} of ${matches.length} games.`
+          : `${matches.length} game${matches.length === 1 ? "" : "s"}.`}
+      </p>
+
       <RevealOnScroll
+        /*
+          Remount the grid whenever the filter changes.
+
+          RevealOnScroll animates with `whileInView` + `viewport={{ once: true }}`
+          and children that start at the `hidden` variant. Once it has fired,
+          the observer is done — so tiles introduced by a later filter change
+          mounted at `hidden` (opacity 0) and had nothing left to move them to
+          `visible`. The grid looked empty. Keying on the filter gives the new
+          list a fresh reveal instead, which doubles as the transition between
+          filters.
+        */
+        key={filter.category}
         as="ul"
         staggerChildren
         amount={0.08}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
       >
-        {/* Home only shows the first 6 — order in BHALYAM_GAMES keeps the
-            playable games on top. Everything else lives at /games. */}
-        {BHALYAM_GAMES.slice(0, 6).map((game) => (
+        {/* Home shows a capped slice; the rest live at /games under the same
+            filter, which the link below carries across. */}
+        {shown.map((game) => (
           <RevealItem key={game.slug}>
             <li>
               <GameTile
@@ -948,7 +1007,7 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
           themes — readable on cream in either mode. */}
       <div className="mt-4 sm:mt-5 flex justify-center">
         <Link
-          to="/games"
+          to={filtered ? `/games?c=${filter.category}` : "/games"}
           className="inline-flex items-center gap-2 rounded-full px-5 py-2.5
                      bg-[#FCF8EF] border border-[#EEDCC2] text-[#2A221B] font-extrabold text-[14px]
                      hover:bg-[#F8EEDB] active:translate-y-px
@@ -956,7 +1015,7 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
                      shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
                      transition-colors duration-200"
         >
-          View all games
+          {filtered ? "View all in this filter" : "View all games"}
           <ArrowRightIcon className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -1007,17 +1066,20 @@ export function GameTile({
     stargame: "/StarTile.png",
     bingo: "",
     snake: "",
-    spaceimpact: "",
+    vyomayudh: "",
     bounce: "",
     roadrash: "",
+    carrom: "",
   };
 
   const underMaintenance = isLocked(game);
   const showMaintenance = game.maintenance === true;
 
+  const accent = getGameAccent(game);
+
   // Accent-tinted glow color for the hover shadow — pulled from the tile's
   // gradient end-stop so each tile glows in its own brand color.
-  const tileGlowVar = { ["--tile-glow" as string]: `${game.accent.to}aa` } as React.CSSProperties;
+  const tileGlowVar = { ["--tile-glow" as string]: `${accent.to}aa` } as React.CSSProperties;
 
   return (
     <motion.button
@@ -1042,8 +1104,8 @@ export function GameTile({
                  ${className ?? ""}`}
       style={{
         background: underMaintenance
-          ? `linear-gradient(145deg, ${game.accent.from}99, ${game.accent.to}99)`
-          : `linear-gradient(145deg, ${game.accent.from}, ${game.accent.to})`,
+          ? `linear-gradient(145deg, ${accent.from}99, ${accent.to}99)`
+          : `linear-gradient(145deg, ${accent.from}, ${accent.to})`,
         color: "#FFF7E7",
         ...tileGlowVar,
       }}

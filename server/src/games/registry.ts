@@ -15,7 +15,8 @@ import { TambolaEngine } from "./tambola/TambolaEngine.js";
 import { SamethaluEngine } from "./samethalu/SamethaluEngine.js";
 import { TeluguCinemaluEngine } from "./telugucinemalu/TeluguCinemaluEngine.js";
 import { SnakeEngine } from "./snake/SnakeEngine.js";
-import { SpaceImpactEngine } from "./spaceimpact/SpaceImpactEngine.js";
+import { VyomaYudhEngine } from "./vyomayudh/VyomaYudhEngine.js";
+import { CarromEngine } from "./carrom/CarromEngine.js";
 import { BounceEngine } from "./bounce/BounceEngine.js";
 import { RoadRashEngine } from "./roadrash/RoadRashEngine.js";
 
@@ -51,8 +52,10 @@ export function createEngine(kind: GameKind): GameEngine {
       return new TeluguCinemaluEngine();
     case "snake":
       return new SnakeEngine();
-    case "spaceimpact":
-      return new SpaceImpactEngine();
+    case "vyomayudh":
+      return new VyomaYudhEngine();
+    case "carrom":
+      return new CarromEngine();
     case "bounce":
       return new BounceEngine();
     case "roadrash":
@@ -79,7 +82,8 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     samethalu: { min: 1, max: 1 },
     telugucinemalu: { min: 1, max: 1 },
     snake: { min: 1, max: 4 },
-    spaceimpact: { min: 1, max: 4 },
+    vyomayudh: { min: 1, max: 1 },
+    carrom: { min: 2, max: 2 },
     bounce: { min: 1, max: 4 },
     roadrash: { min: 1, max: 4 },
   };

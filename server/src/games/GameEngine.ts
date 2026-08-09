@@ -51,4 +51,44 @@ export interface GameEngine {
    * default (1200-2000ms, RoomManager.ts).
    */
   getBotThinkDelayMs?(): number;
+
+  /**
+   * Real-time support (optional).
+   *
+   * A turn-based engine advances only when someone moves. An action game has
+   * to advance on its own — enemies close in whether or not you press
+   * anything — and until now every such game here (snake, bounce, roadrash,
+   * the old space shooter) got that by having the CLIENT emit a `tick` move
+   * on a setInterval.
+   *
+   * That breaks the project's second principle. A client that ticks twice as
+   * fast plays in slow motion relative to the world and dodges everything; a
+   * client that stops ticking freezes the game. Simulation rate was effectively
+   * client-supplied, which is the definition of trusting the client.
+   *
+   * An engine that declares `tickRateHz` opts into a SERVER-owned loop:
+   * RoomManager runs the interval and calls `tick()`, and the client's only
+   * job is to send intent (move, fire) and render what comes back.
+   *
+   *   tickRateHz     — simulation steps per second this game wants.
+   *   simulateTick() — advance exactly one step. Returns the same shape as
+   *                    applyMove so the room can end the game from it.
+   *
+   * Named `simulateTick` rather than `tick` because three existing engines
+   * (snake, bounce, roadrash) already have a PRIVATE `tick()` of their own.
+   * Reusing the name would force those three to either widen their internals
+   * to public or rename them, for no benefit.
+   */
+  readonly tickRateHz?: number;
+  simulateTick?(): MoveResult;
+}
+
+/** Narrowing helper for the optional real-time half of the contract above. */
+export interface RealtimeEngine extends GameEngine {
+  readonly tickRateHz: number;
+  simulateTick(): MoveResult;
+}
+
+export function isRealtimeEngine(engine: GameEngine): engine is RealtimeEngine {
+  return typeof engine.tickRateHz === "number" && typeof engine.simulateTick === "function";
 }

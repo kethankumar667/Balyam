@@ -17,6 +17,7 @@ import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import {
   BHALYAM_GAMES,
+  getGameAccent,
   type BhalyamGameSlug,
 } from "./data";
 import {
@@ -76,9 +77,10 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   stargame: StarGameGlyph,
   bingo: BingoGlyph,
   snake: StarGameGlyph,
-  spaceimpact: StarGameGlyph,
+  vyomayudh: StarGameGlyph,
   bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
+  carrom: StarGameGlyph,
 };
 
 /**
@@ -90,7 +92,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
-  "namesplaceanimal", "tambola", "samethalu", "telugucinemalu", "snake", "spaceimpact", "bounce", "roadrash",
+  "namesplaceanimal", "tambola", "samethalu", "telugucinemalu", "snake", "vyomayudh", "carrom", "bounce", "roadrash",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
@@ -605,8 +607,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           <span
             className="inline-flex w-12 h-12 rounded-2xl items-center justify-center text-bhalyam-cream-soft flex-shrink-0"
             style={{
-              background: `linear-gradient(135deg, ${meta.accent.from}, ${meta.accent.to})`,
-              boxShadow: `0 6px 14px -4px ${meta.accent.to}66`,
+              background: `linear-gradient(135deg, ${getGameAccent(meta).from}, ${getGameAccent(meta).to})`,
+              boxShadow: `0 6px 14px -4px ${getGameAccent(meta).to}66`,
             }}
             aria-hidden
           >
