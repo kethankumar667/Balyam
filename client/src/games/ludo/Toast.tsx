@@ -21,9 +21,8 @@ export default function Toast({
     <div
       className="ludo-toast-in pointer-events-none fixed left-1/2 z-40 flex items-center gap-2 rounded-2xl px-3 py-1.5 shadow-2xl"
       style={{
-        // Clears the status header AND the player cards roster strip so it lands
-        // cleanly in the open space below player cards rather than over them.
-        top: "calc(env(safe-area-inset-top, 0px) + 8.25rem)",
+        // Positioned at the top of the screen to clear the Ludo board completely.
+        top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)",
         maxWidth: "min(85vw, 22rem)",
         background: "rgba(15,23,42,0.94)",
         backdropFilter: "blur(8px)",

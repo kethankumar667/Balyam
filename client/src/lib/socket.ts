@@ -1,5 +1,6 @@
 import { io, Socket } from "socket.io-client";
 import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types";
+import { logConn } from "./connectionLog";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:4000";
 
@@ -39,12 +40,36 @@ export function getSocket(): AppSocket {
       randomizationFactor: 0.5,
       timeout: 10_000,
     });
+    installTelemetry(socket);
     installNetworkRecovery(socket);
   }
   if (!socket.connected) {
     socket.connect();
   }
   return socket;
+}
+
+/**
+ * Record what the socket does, so a failure on someone's phone leaves
+ * evidence instead of an anecdote. See lib/connectionLog.ts.
+ */
+function installTelemetry(s: AppSocket): void {
+  logConn("init", SERVER_URL);
+  s.on("connect", () => {
+    // The transport matters: a session stuck on long-polling behaves very
+    // differently from one on websocket, and carriers do block upgrades.
+    const transport = s.io.engine?.transport?.name ?? "?";
+    logConn("connect", `id=${s.id} transport=${transport}`);
+  });
+  // socket.io's reason string is the single most diagnostic value here:
+  // "transport close" (network died) and "io server disconnect" (the server
+  // hung up, and auto-reconnect is DISABLED) demand opposite fixes.
+  s.on("disconnect", (reason) => logConn("disconnect", reason));
+  s.on("connect_error", (err) => logConn("connect_error", err?.message));
+  s.io.on("reconnect_attempt", (n) => logConn("reconnect_attempt", `#${n}`));
+  s.io.on("reconnect_error", (err) => logConn("reconnect_error", err?.message));
+  s.io.on("reconnect_failed", () => logConn("reconnect_failed"));
+  s.io.on("reconnect", (n) => logConn("reconnect_ok", `after #${n}`));
 }
 
 /**
@@ -87,18 +112,28 @@ function installNetworkRecovery(s: AppSocket): void {
    */
   const kick = () => {
     if (!s.connected) {
+      logConn("kick", "not connected, dialling");
       s.connect();
       return;
     }
     s.timeout(3_000).emit("net:ping", (err: unknown) => {
-      if (!err) return;
+      if (!err) {
+        logConn("kick", "probe ok, socket healthy");
+        return;
+      }
+      logConn("kick", "probe TIMED OUT, rebuilding transport");
       s.disconnect();
       s.connect();
     });
   };
 
-  window.addEventListener("online", kick);
+  window.addEventListener("online", () => {
+    logConn("browser_online");
+    kick();
+  });
+  window.addEventListener("offline", () => logConn("browser_offline"));
   document.addEventListener("visibilitychange", () => {
+    logConn("visibility", document.visibilityState);
     if (document.visibilityState === "visible") kick();
   });
 

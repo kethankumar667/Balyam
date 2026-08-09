@@ -25,7 +25,8 @@ interface FakeSocket {
   connect: ReturnType<typeof vi.fn>;
   disconnect: ReturnType<typeof vi.fn>;
   timeout: ReturnType<typeof vi.fn>;
-  io: { on: ReturnType<typeof vi.fn> };
+  on: ReturnType<typeof vi.fn>;
+  io: { on: ReturnType<typeof vi.fn>; engine?: { transport?: { name: string } } };
 }
 
 /** Whether the fake server answers the liveness probe. */
@@ -73,8 +74,19 @@ beforeEach(() => {
         ack(pingAnswers ? null : new Error("timeout"));
       },
     })) as unknown as ReturnType<typeof vi.fn>,
-    io: { on: vi.fn() },
+    on: vi.fn(),
+    io: { on: vi.fn(), engine: { transport: { name: "websocket" } } },
   };
+
+  // connectionLog writes every socket event to localStorage. It is built to
+  // swallow failures, but stubbing it keeps the tests honest about what the
+  // telemetry actually records.
+  const store = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => store.set(k, v),
+    removeItem: (k: string) => store.delete(k),
+  });
 
   vi.stubGlobal("window", {
     addEventListener: (event: string, fn: () => void) => {
