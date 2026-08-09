@@ -2207,6 +2207,28 @@ export interface WebRTCSignalSendPayload {
   signal: WebRTCSignal;
 }
 
+/**
+ * One ICE server entry. Mirrors the browser's RTCIceServer, redeclared here
+ * because the server cannot reference DOM types.
+ */
+export interface IceServerSpec {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+}
+
+export interface IceConfigResponse {
+  iceServers: IceServerSpec[];
+  /**
+   * Whether a usable TURN relay is configured. Drives the client's
+   * "couldn't reach some players" hint; a TURN url with no credentials
+   * reports false, because it cannot actually relay.
+   */
+  hasRelay: boolean;
+  /** Seconds the issued credentials remain valid. */
+  ttlSeconds: number;
+}
+
 export interface WebRTCSignalRecvPayload {
   fromPlayerId: string;
   signal: WebRTCSignal;
@@ -2323,6 +2345,11 @@ export interface ClientToServerEvents {
    * someone needed help would make the button socially expensive to press.
    */
   "coach:hint": (ack: (res: CoachHintResponse) => void) => void;
+  /**
+   * Fetch ICE servers. Server-issued so TURN credentials never ship in the
+   * client bundle — see server/src/lib/iceServers.ts.
+   */
+  "webrtc:iceConfig": (ack: (config: IceConfigResponse) => void) => void;
   /**
    * Smart TV / Party Mode: watch a room without taking a seat. A spectator
    * receives public state only and cannot send moves.

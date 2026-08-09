@@ -101,8 +101,17 @@ function makeFakeSocket() {
     off(event: string, fn: (payload: unknown) => void) {
       handlers.get(event)?.delete(fn);
     },
-    emit(event: string, payload: SentSignal) {
-      if (event === "webrtc:signal") sent.push(payload);
+    emit(event: string, payload: SentSignal | ((res: unknown) => void)) {
+      // ICE config is fetched from the server before the mic opens. Answering
+      // SYNCHRONOUSLY matters: an unanswered ack would leave start() waiting
+      // out its 4s fallback timer in every test.
+      if (event === "webrtc:iceConfig") {
+        if (typeof payload === "function") {
+          payload({ iceServers: [{ urls: "stun:test" }], hasRelay: false, ttlSeconds: 0 });
+        }
+        return;
+      }
+      if (event === "webrtc:signal") sent.push(payload as SentSignal);
     },
     /** Simulate the server relaying a signal to this client. */
     deliver(payload: WebRTCSignalRecvPayload) {

@@ -418,6 +418,15 @@ export class RoomManager {
 
     if (existingPlayerId && room.players.has(existingPlayerId)) {
       const player = room.players.get(existingPlayerId)!;
+      const awayForMs = player.awaySince ? Date.now() - player.awaySince : 0;
+      if (!player.isConnected) {
+        logger.info({
+          message: `Seat reclaimed by ${player.name} after ${Math.round(awayForMs / 1000)}s away`,
+          module: "RECONNECT",
+          roomCode: room.code,
+          playerId: existingPlayerId,
+        });
+      }
       player.isConnected = true;
       delete player.awayUntil;
       delete player.awaySince;
@@ -1943,6 +1952,19 @@ export class RoomManager {
       this.stopSimulation(room);
     }
 
+    // Narrate the reconnect path. Debugging this from a phone is otherwise
+    // blind: the handset shows a banner and nothing else, so the server log
+    // is the only place the decision (which grace window, did the table
+    // freeze, was the seat reclaimed) is observable.
+    logger.info({
+      message: `Seat away: ${player?.name ?? playerId} - holding ${
+        soloHuman ? "10m (only human, table frozen)" : "90s (others waiting, auto-play armed)"
+      }`,
+      module: "RECONNECT",
+      roomCode: room.code,
+      playerId,
+    });
+
     const timer = setTimeout(() => {
       const stillRoom = this.rooms.get(code);
       if (!stillRoom) return;
@@ -1956,9 +1978,21 @@ export class RoomManager {
         // Only a REMAINING human counts as a forfeit win, so removePlayer runs
         // solely in that case.
         if (!this.hasHumanPlayer(stillRoom)) {
+          logger.info({
+            message: "Room abandoned - grace window expired with no humans left",
+            module: "RECONNECT",
+            roomCode: stillRoom.code,
+            playerId,
+          });
           this.abandonRoom(stillRoom);
           return;
         }
+        logger.info({
+          message: "Seat dropped - grace window expired",
+          module: "RECONNECT",
+          roomCode: stillRoom.code,
+          playerId,
+        });
         if (stillRoom.engine) stillRoom.engine.removePlayer(playerId);
         if (stillRoom.hostId === playerId) {
           const next = stillRoom.players.values().next().value;
