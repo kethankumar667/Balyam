@@ -30,12 +30,96 @@ export type BhalyamGameSlug =
   | "samethalu"
   | "telugucinemalu"
   | "snake"
-  | "spaceimpact"
+  | "vyomayudh"
   | "bounce"
-  | "roadrash";
+  | "roadrash"
+  | "carrom";
+
+/**
+ * Game filters.
+ *
+ * These are TAGS, not exclusive buckets, and a game carries as many as apply.
+ * That is forced by the set itself: "Solo Play" and "Multiplayer" describe how
+ * many people you need, while "Board & Cards", "Party & Quiz" and "Classroom"
+ * describe what kind of game it is. Ludo is genuinely both Multiplayer AND
+ * Board & Cards. Snake is Solo Play AND Multiplayer, because it seats 1 to 4.
+ *
+ * If each game were forced into one bucket, every one of those games would go
+ * missing from a filter a player would reasonably expect to find it in. Tags
+ * cost nothing and keep both questions answerable:
+ *   "who is around?"  -> Solo Play / Multiplayer
+ *   "what do I feel like?" -> Board & Cards / Party & Quiz / Classroom
+ */
+export type GameTag =
+  | "solo"
+  | "multiplayer"
+  | "board"
+  | "party"
+  | "classroom";
+
+export interface GameCategory {
+  id: GameTag;
+  label: string;
+  /** One line for the category header. */
+  blurb: string;
+  accent: { from: string; to: string };
+}
+
+/**
+ * No icon field here on purpose. Icons are React components, and this module
+ * is plain data imported by tests and by non-rendering code. The tag to
+ * pictogram map lives in categoryIcons.tsx.
+ */
+
+/** Display order everywhere in the app. Player-count first, then genre. */
+export const GAME_CATEGORIES: readonly GameCategory[] = [
+  {
+    id: "solo",
+    label: "Solo Play",
+    blurb: "Nobody around? These play fine on your own.",
+    accent: { from: "#65A30D", to: "#365314" },
+  },
+  {
+    id: "multiplayer",
+    label: "Multiplayer",
+    blurb: "Get the gang in. Share a room code and go.",
+    accent: { from: "#E95D21", to: "#7C2D12" },
+  },
+  {
+    id: "board",
+    label: "Board & Cards",
+    blurb: "The ones that live in the cupboard.",
+    accent: { from: "#E11D48", to: "#881337" },
+  },
+  {
+    id: "party",
+    label: "Party & Quiz",
+    blurb: "Big group, one caller, everyone shouting.",
+    accent: { from: "#C026D3", to: "#701A75" },
+  },
+  {
+    id: "classroom",
+    label: "Classroom",
+    blurb: "Played on the last page of a notebook, usually during maths.",
+    accent: { from: "#0284C7", to: "#0C4A6E" },
+  },
+];
+
+export function categoryById(id: GameTag): GameCategory | undefined {
+  return GAME_CATEGORIES.find((c) => c.id === id);
+}
 
 export interface BhalyamGameCard {
   slug: BhalyamGameSlug;
+  /**
+   * Every filter this game belongs to. At least one; usually two.
+   *
+   * "solo" means playing ALONE is a real experience, not merely that the
+   * engine tolerates one seat. Bingo and Tambola accept a single player so a
+   * host can open a table early, but nobody wants to call housie to
+   * themselves, so they are multiplayer only.
+   */
+  tags: readonly GameTag[];
   title: string;
   teluguTitle?: string;
   /**
@@ -73,139 +157,193 @@ export function isLocked(g: BhalyamGameCard): boolean {
   return g.maintenance === true && g.accessible !== true;
 }
 
+/**
+ * Dynamic fallback gradient generator using Golden Ratio Hue Distribution.
+ * Guarantees that any new game added in the future without an explicit accent
+ * automatically receives a 100% unique, vibrant, harmonized gradient palette.
+ */
+export function getGameAccent(game: BhalyamGameCard, index?: number): { from: string; to: string } {
+  if (game.accent?.from && game.accent?.to) {
+    return game.accent;
+  }
+
+  // Derive a deterministic unique hue using golden angle separation (137.508°)
+  const seed = index ?? Math.abs(hashString(game.slug));
+  const hue = (seed * 137.508) % 360;
+
+  return {
+    from: `hsl(${hue.toFixed(1)}, 80%, 48%)`,
+    to: `hsl(${(hue + 25) % 360}, 85%, 22%)`,
+  };
+}
+
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
+
 export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
-  // ── Top 6 (playable) — these show on the home page ─────────────────
+  // ── Top Playable Games ────────────────────────────────────────────────
   {
     slug: "handcricket",
+    tags: ["multiplayer", "classroom"],
     title: "Hand Cricket",
     blurb:
       "Odd or Even? The back-bench class champion simulator. Zero infrastructure, infinite intensity.",
-    accent: { from: "#FF8F00", to: "#7B1E2B" },
+    accent: { from: "#EA580C", to: "#7C2D12" }, // Leather Rust Orange & Mahogany
   },
   {
     slug: "rummy",
+    tags: ["multiplayer", "board"],
     title: "Rummy",
     blurb:
       "The family festival classic. Perfected during Sankranti gatherings, reimagined for your native gang.",
-    accent: { from: "#1976D2", to: "#0D47A1" },
+    accent: { from: "#2563EB", to: "#1E3A8A" }, // Royal Sapphire Blue
   },
   {
     slug: "ludo",
+    tags: ["multiplayer", "board"],
     title: "Ludo",
     blurb:
       "The ultimate hot summer afternoon time-killer while waiting for the current (power) to come back.",
-    accent: { from: "#E53935", to: "#7B1E2B" },
+    accent: { from: "#E11D48", to: "#881337" }, // Ludo Crimson Red
   },
   {
     slug: "uno",
+    tags: ["multiplayer", "board"],
     title: "UNO",
     blurb:
       "Color chaos with your gang. Match cards, drop action cards, and race to shout UNO first.",
-    accent: { from: "#EC1C24", to: "#7B1E2B" },
+    accent: { from: "#9333EA", to: "#581C87" }, // Wildcard Violet Purple
   },
   {
     slug: "dotsboxes",
+    tags: ["multiplayer", "classroom"],
     title: "Dots & Boxes",
     blurb:
       "Connect the dots, close the box, claim the square. Maths-period nostalgia at its purest.",
-    accent: { from: "#8E24AA", to: "#4A148C" },
+    accent: { from: "#06B6D4", to: "#164E63" }, // Neon Turquoise Cyan
   },
-
   {
     slug: "rps",
+    tags: ["multiplayer", "classroom"],
     title: "Rock Paper Scissors",
     blurb:
       "Stone-Paper-Scissor! The ultimate playground arbiter for deciding who bats first.",
-    accent: { from: "#F4C430", to: "#B38918" },
+    accent: { from: "#D97706", to: "#78350F" }, // Golden Amber
   },
   {
     slug: "bingo",
+    tags: ["multiplayer", "party"],
     title: "Bingo",
     blurb:
       "Eyes down! Mark your ticket as the caller reads out the numbers — first full house wins.",
-    accent: { from: "#00897B", to: "#004D40" },
+    accent: { from: "#0D9488", to: "#115E59" }, // Deep Ocean Teal
   },
-  // ── Below the fold — only on /games ───────────────────────────────
   {
     slug: "snl",
+    tags: ["multiplayer", "board"],
     title: "Snakes & Ladders",
     blurb:
       "Watch out for the big snake at 99 that ruined neighborhood friendships.",
-    accent: { from: "#43A047", to: "#1B5E20" },
+    accent: { from: "#16A34A", to: "#14532D" }, // Forest Jungle Green
   },
   {
     slug: "wordbuilding",
+    tags: ["multiplayer", "classroom"],
     title: "Word Building",
     blurb:
       "The English workbook revisited. Take turns writing letters and watch dictionary words light up like a teacher's tick.",
-    accent: { from: "#1E40AF", to: "#0F2A5A" },
+    accent: { from: "#0284C7", to: "#0C4A6E" }, // Midnight Oxford Blue
   },
   {
     slug: "stargame",
+    tags: ["multiplayer", "classroom"],
     title: "Star Game",
     theme: "Folded Paper Slips Edition",
     blurb:
       "Pick a secret, slide the chits clockwise, and slap the STAR the instant you hold all four. Pure 90's terrace nostalgia.",
-    accent: { from: "#E4B128", to: "#6D4323" },
+    accent: { from: "#CA8A04", to: "#713F12" }, // Luxe Golden Honey Bronze
   },
   {
     slug: "namesplaceanimal",
+    tags: ["multiplayer", "classroom"],
     title: "Name Place Animal Thing",
     blurb: "Pick a letter, beat the clock. Whose Bombay was the most legit?",
-    accent: { from: "#F57C00", to: "#BF360C" },
+    accent: { from: "#F97316", to: "#9A3412" }, // Bright Sunburst Coral
   },
   {
     slug: "tambola",
+    tags: ["multiplayer", "party"],
     title: "Tambola",
     teluguTitle: "Housie",
     blurb:
       "Eyes down, ticket out. Full house calling at the next wedding sangeet.",
-    accent: { from: "#C2185B", to: "#7B1B45" },
+    accent: { from: "#C026D3", to: "#701A75" }, // Vivid Fuchsia Magenta
   },
   {
     slug: "samethalu",
+    tags: ["solo", "party"],
     title: "Samethalu Quiz",
     blurb:
       "Telugu proverbs from Ammamma's verandah. Complete the saying, learn the lesson, win the round.",
-    accent: { from: "#A57B23", to: "#5E3D0E" },
+    accent: { from: "#B45309", to: "#451A03" }, // Antique Parchment Ochre
   },
   {
     slug: "telugucinemalu",
+    tags: ["solo", "party"],
     title: "Telugu Cinema Quiz",
     blurb:
       "Guess the film. Hint by hint, dialogue by dialogue. Friday-release adda energy.",
-    accent: { from: "#D84315", to: "#7B1A0A" },
+    accent: { from: "#9F1239", to: "#4C0519" }, // Cinema Ruby Velvet
   },
   {
     slug: "snake",
+    tags: ["solo", "multiplayer"],
     theme: "90s Nostalgia 🐍",
     title: "Nokia Snake",
     blurb:
       "Classic green LCD matrix. Eat food pellets, grow longer, avoid walls and self-collision.",
-    accent: { from: "#2E7D32", to: "#1B5E20" },
+    accent: { from: "#65A30D", to: "#365314" }, // Nokia 3310 Lime Matrix
   },
   {
-    slug: "spaceimpact",
+    slug: "vyomayudh",
+    tags: ["solo"],
     theme: "90s Shooter 🚀",
-    title: "Space Impact",
+    title: "Vyoma Yudh",
     blurb:
-      "Iconic Nokia space shooter. Pilot ship, fire lasers, destroy alien waves and bosses.",
-    accent: { from: "#1565C0", to: "#0D47A1" },
+      "Sky battle in the old handheld style. Fly the gunship, hold the line against enemy waves, and break the guardian at the end of every level.",
+    accent: { from: "#4F46E5", to: "#1E1B4B" }, // Cosmic Deep Space Indigo
   },
   {
     slug: "bounce",
+    tags: ["solo", "multiplayer"],
     theme: "Red Ball 🔴",
     title: "Nokia Bounce",
     blurb:
       "Classic red ball platformer. Pass through gold rings, avoid spikes, and finish the level.",
-    accent: { from: "#E65100", to: "#BF360C" },
+    accent: { from: "#F43F5E", to: "#9F1239" }, // Red Ball Electric Crimson
   },
   {
     slug: "roadrash",
+    tags: ["solo", "multiplayer"],
     theme: "90s Racer 🏍️",
     title: "Road Rash",
     blurb:
       "Retro 90s highway motorcycle racer. Steer, accelerate, punch rival bikers to win!",
-    accent: { from: "#C62828", to: "#8E0000" },
+    accent: { from: "#475569", to: "#0F172A" }, // Dark Racing Slate Charcoal
+  },
+  {
+    slug: "carrom",
+    tags: ["multiplayer", "board"],
+    theme: "Board Classic 🎯",
+    title: "Carrom",
+    blurb:
+      "Powder on the board, thumb cocked, queen in the middle. Strike, rebound and cover her before your cousin does.",
+    accent: { from: "#D97706", to: "#451A03" }, // Carrom Teak Wood & Gold
   },
 ];

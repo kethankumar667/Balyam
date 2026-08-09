@@ -1,14 +1,21 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
 import {
   BHALYAM_GAMES,
+  categoryById,
   isLocked,
   type BhalyamGameSlug,
+  type GameTag,
 } from "../components/bhalyam/data";
+import CategoryFilter, {
+  filterGames,
+  type CategorySelection,
+  type GameFilter,
+} from "../components/bhalyam/CategoryFilter";
 import { GameTile } from "./BhalyamHome";
 import { ArrowRightIcon } from "../components/bhalyam/icons";
 import { getSocket } from "../lib/socket";
@@ -29,6 +36,23 @@ export default function GamesPage() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
 
+  /* Filter state lives in the URL so a categorised view is linkable — the
+   * home page's category cards deep-link straight into it, and a player can
+   * share "here are the card games" rather than "go to games, then tap". */
+  const [params, setParams] = useSearchParams();
+  const filter: GameFilter = useMemo(() => {
+    const raw = params.get("c");
+    const valid = raw && BHALYAM_GAMES.some((g) => g.tags.includes(raw as GameTag));
+    // An unknown or stale tag falls back to All rather than an empty grid.
+    return { category: (valid ? (raw as GameTag) : "all") as CategorySelection };
+  }, [params]);
+
+  function setFilter(next: GameFilter) {
+    const p = new URLSearchParams();
+    if (next.category !== "all") p.set("c", next.category);
+    setParams(p, { replace: true });
+  }
+
   // Match BhalyamHome's title behaviour so the tab reads sensibly.
   useEffect(() => {
     const prev = document.title;
@@ -45,8 +69,13 @@ export default function GamesPage() {
     getSocket();
   }, []);
 
-  const playable = BHALYAM_GAMES.filter((g) => !isLocked(g));
-  const comingSoon = BHALYAM_GAMES.filter((g) => isLocked(g));
+  // One flat grid rather than a section per filter. Filters are tags now, so
+  // a game can carry two of them, and sectioning would print Snake under both
+  // Solo Play and Multiplayer. A single grid that narrows is both simpler to
+  // read and honest about the overlap.
+  const playable = filterGames(filter, false);
+  const comingSoon = filterGames(filter).filter(isLocked);
+  const nothingMatches = playable.length === 0 && comingSoon.length === 0;
 
   return (
     // `bhalyam-home` is overloaded as the dark-mode override anchor (see
@@ -84,26 +113,54 @@ export default function GamesPage() {
       </header>
 
       <main className="mx-auto w-full max-w-[1080px] px-4 sm:px-6 mt-6 sm:mt-8 space-y-10">
-        {/* Playable section */}
-        <section>
-          <h2
-            className="bhalyam-display text-[#1D2C4A] leading-tight mb-3 sm:mb-4"
-            style={{ fontSize: "clamp(24px, 6.5vw, 44px)" }}
-          >
-            <span className="bhalyam-underline">Ready to play</span>
-          </h2>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {playable.map((game) => (
-              <li key={game.slug}>
-                <GameTile
-                  game={game}
-                  onSelect={() => setSheetGame(game.slug)}
-                  compact
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
+        <CategoryFilter value={filter} onChange={setFilter} />
+
+        {nothingMatches && (
+          <p className="text-center text-[15px] font-semibold text-[#6E5E4D] py-8">
+            Nothing here yet. Try another filter.
+          </p>
+        )}
+
+        {playable.length > 0 && (
+          <section>
+            <h2
+              className="bhalyam-display text-[#1D2C4A] leading-tight mb-1"
+              style={{ fontSize: "clamp(22px, 5.5vw, 38px)" }}
+            >
+              <span className="bhalyam-underline">
+                {filter.category === "all"
+                  ? "Ready to play"
+                  : categoryById(filter.category)?.label ?? "Ready to play"}
+              </span>
+            </h2>
+            {/* The count moved here from the chips. On the segmented control
+                a number after every label made the track twice as wide and
+                pushed half of it off a phone screen; here it still answers
+                "how many did that narrow it to". aria-live announces the new
+                total when the filter changes, which is otherwise a silent
+                update for a screen reader. */}
+            <p
+              className="text-[13px] sm:text-[14px] font-semibold text-[#6E5E4D] mb-3 sm:mb-4"
+              aria-live="polite"
+            >
+              {playable.length} game{playable.length === 1 ? "" : "s"}.{" "}
+              {filter.category === "all"
+                ? "Every game in the lineup."
+                : categoryById(filter.category)?.blurb ?? ""}
+            </p>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {playable.map((game) => (
+                <li key={game.slug}>
+                  <GameTile
+                    game={game}
+                    onSelect={() => setSheetGame(game.slug)}
+                    compact
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Coming soon section — only shown when there's at least one
             maintenance game (the catalog might lose all of them over time). */}

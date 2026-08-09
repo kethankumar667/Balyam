@@ -290,6 +290,14 @@ body, #root, .bhalyam-paper {
   color: #f0dfc2 !important;
 }
 
+/* Category section blurbs sit DIRECTLY on the parchment rather than inside a
+   remapped cream card, so the muted-brown token above would leave them at
+   roughly 2:1 on dark. They need the same light-on-dark treatment the section
+   titles get, one step quieter. */
+:root[data-theme="dark"] .bhalyam-home .text-\[\#6E5E4D\] {
+  color: #cbb08a !important;
+}
+
 /* Dark-mode polish for the three middle cards:
    Continue Playing / Top Achievements / Invite Your Friends. */
 :root[data-theme="dark"] .bhalyam-home .middle-panels > article {

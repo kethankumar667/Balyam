@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Room from "./pages/Room";
+import PartyScreen from "./pages/PartyScreen";
 import PreviewLudo from "./pages/PreviewLudo";
 import BhalyamHome from "./pages/BhalyamHome";
 import GamesPage from "./pages/GamesPage";
@@ -78,6 +79,8 @@ export default function App() {
         <Route path="/" element={<BhalyamHome />} />
         <Route path="/games" element={<GamesPage />} />
         <Route path="/room/:code" element={<Room />} />
+        {/* Smart TV / Party Mode — big-screen, seat-less view of a room. */}
+        <Route path="/tv/:code" element={<PartyScreen />} />
         <Route path="/preview/ludo" element={<PreviewLudo />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

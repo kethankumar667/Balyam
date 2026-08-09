@@ -19,6 +19,8 @@ const MACHINE_EVENTS = new Set<string>([
   "webrtc:signal",
   "room:setOrientation",
   "rummy:arrangement",
+  "room:spectate",
+  "room:stopSpectate",
 ]);
 
 export function registerSocketHandlers(
@@ -61,7 +63,8 @@ export function registerSocketHandlers(
         payload.samethaluOptions,
         payload.teluguCinemaluOptions,
         payload.snakeOptions,
-        payload.spaceImpactOptions,
+        payload.vyomaYudhOptions,
+        payload.carromOptions,
         payload.bounceOptions,
         payload.roadRashOptions
       );
@@ -163,6 +166,15 @@ export function registerSocketHandlers(
 
   socket.on("room:sound", ({ clipId, targetPlayerId }) => {
     rooms.sendSound(socket.id, clipId, targetPlayerId);
+  });
+
+  socket.on("room:spectate", (code, ack) => {
+    const res = rooms.spectateRoom(socket.id, typeof code === "string" ? code : "");
+    if (typeof ack === "function") ack(res);
+  });
+
+  socket.on("room:stopSpectate", () => {
+    rooms.stopSpectating(socket.id);
   });
 
   socket.on("coach:hint", (ack) => {

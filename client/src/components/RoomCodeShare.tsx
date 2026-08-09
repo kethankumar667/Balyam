@@ -46,9 +46,10 @@ export default function RoomCodeShare({
     samethalu: "Samethalu Quiz",
     telugucinemalu: "Telugu Cinema Quiz",
     snake: "Nokia Snake",
-    spaceimpact: "Space Impact",
+    vyomayudh: "Vyoma Yudh",
     bounce: "Nokia Bounce",
     roadrash: "Road Rash 90s",
+    carrom: "Carrom",
   };
   /**
    * Body of the share message — keeps the URL OUT of the text. The OS

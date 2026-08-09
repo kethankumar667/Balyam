@@ -30,7 +30,8 @@ import type {
   SamethaluOptions,
   TeluguCinemaluOptions,
   SnakeOptions,
-  SpaceImpactOptions,
+  VyomaYudhOptions,
+  CarromOptions,
   BounceOptions,
   RoadRashOptions,
 } from "@shared/types.js";
@@ -49,6 +50,7 @@ import {
   DEFAULT_TAMBOLA_OPTIONS,
   DEFAULT_SAMETHALU_OPTIONS,
   DEFAULT_TELUGUCINEMALU_OPTIONS,
+  DEFAULT_CARROM_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -56,7 +58,8 @@ import type { RematchState, CoachableEngine, CoachHintResponse } from "@shared/t
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
 import { ALLOWED_SOUND_CLIPS, SOUND_RATE_LIMIT } from "@shared/soundboard.js";
 import { logger } from "../lib/logger.js";
-import type { GameEngine } from "../games/GameEngine.js";
+import type { GameEngine, RealtimeEngine } from "../games/GameEngine.js";
+import { isRealtimeEngine } from "../games/GameEngine.js";
 import { LudoEngine } from "../games/ludo/LudoEngine.js";
 import { PLAYER_COLORS_ORDER } from "../games/ludo/track.js";
 import { SnlEngine } from "../games/snl/SnlEngine.js";
@@ -72,6 +75,7 @@ import { NamePlaceAnimalEngine } from "../games/namesplaceanimal/NamePlaceAnimal
 import { TambolaEngine } from "../games/tambola/TambolaEngine.js";
 import { SamethaluEngine } from "../games/samethalu/SamethaluEngine.js";
 import { TeluguCinemaluEngine } from "../games/telugucinemalu/TeluguCinemaluEngine.js";
+import { CarromEngine } from "../games/carrom/CarromEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 /**
@@ -138,7 +142,8 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   samethalu: ["Peddaiah", "Patti", "Raja", "Saraswathi", "Subbu", "Tammudu"],
   telugucinemalu: ["Chiranjeevi", "Balayya", "Nag", "Venky", "Prabhas", "Mahesh", "NTR", "Ram Charan"],
   snake: ["Python", "Viper", "Cobra", "Mamba"],
-  spaceimpact: ["Ace", "Blaster", "Cosmo", "Defender"],
+  vyomayudh: ["Ace", "Blaster", "Cosmo", "Defender"],
+  carrom: ["Striker", "Rebound", "Cutshot", "Thumbi"],
   bounce: ["RedBall", "BounceMaster", "Hopper", "Jumper"],
   roadrash: ["Rider", "Speedy", "Biker", "Racer"],
 };
@@ -198,6 +203,10 @@ interface Room {
    *  can be told what they missed when they come back. */
   autoPlayedFor: Map<string, number>;
   turnTimer: NodeJS.Timeout | null;
+  /** Server-owned simulation loop for real-time engines. See startSimulation. */
+  simTimer: NodeJS.Timeout | null;
+  /** Socket ids watching without a seat (Smart TV / Party Mode). */
+  spectators: Set<string>;
   ludoOptions: LudoGameOptions;
   snlOptions: SnlGameOptions;
   rummyOptions: RummyGameOptions;
@@ -211,6 +220,7 @@ interface Room {
   tambolaOptions: TambolaOptions;
   samethaluOptions: SamethaluOptions;
   teluguCinemaluOptions: TeluguCinemaluOptions;
+  carromOptions: CarromOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -257,6 +267,17 @@ export class RoomManager {
    *  match ends once, but its finished state re-broadcasts on every tick. */
   private recordedLudoMatches = new WeakSet<LudoEngine>();
 
+  /**
+   * Screens watching a room, socket id -> room code.
+   *
+   * Deliberately NOT folded into `socketToRoom`. Every seat-related path in
+   * this file (disconnect takeover, turn timers, rematch, host migration)
+   * keys off that map, and a TV appearing there would be treated as a player
+   * who never moves — taking a seat, stalling turns, and inheriting the host
+   * role when the host leaves.
+   */
+  private spectatorToRoom = new Map<string, string>();
+
   constructor(private io: IO) {}
 
   getRoomCount(): number {
@@ -271,6 +292,9 @@ export class RoomManager {
       game: room.game,
       phase: room.phase,
       players: Array.from(room.players.values()),
+      // Players are told when they are on a screen. Being displayed in a
+      // room without knowing it is not something to discover later.
+      spectatorCount: room.spectators.size,
       hostId: room.hostId,
       maxPlayers: max,
       name: room.name,
@@ -302,7 +326,8 @@ export class RoomManager {
     samethaluOptions?: Partial<SamethaluOptions>,
     teluguCinemaluOptions?: Partial<TeluguCinemaluOptions>,
     snakeOptions?: Partial<SnakeOptions>,
-    spaceImpactOptions?: Partial<SpaceImpactOptions>,
+    vyomaYudhOptions?: Partial<VyomaYudhOptions>,
+    carromOptions?: Partial<CarromOptions>,
     bounceOptions?: Partial<BounceOptions>,
     roadRashOptions?: Partial<RoadRashOptions>
   ): { code: string; playerId: string } {
@@ -336,6 +361,8 @@ export class RoomManager {
       idleStrikes: new Map(),
       autoPlayedFor: new Map(),
       turnTimer: null,
+      simTimer: null,
+      spectators: new Set<string>(),
       ludoOptions: { ...DEFAULT_LUDO_OPTIONS, ...(ludoOptions ?? {}) },
       snlOptions: { ...DEFAULT_SNL_OPTIONS, ...(snlOptions ?? {}) },
       rummyOptions: { ...DEFAULT_RUMMY_OPTIONS, ...(rummyOptions ?? {}) },
@@ -349,6 +376,7 @@ export class RoomManager {
       tambolaOptions: { ...DEFAULT_TAMBOLA_OPTIONS, ...(tambolaOptions ?? {}) },
       samethaluOptions: { ...DEFAULT_SAMETHALU_OPTIONS, ...(samethaluOptions ?? {}) },
       teluguCinemaluOptions: { ...DEFAULT_TELUGUCINEMALU_OPTIONS, ...(teluguCinemaluOptions ?? {}) },
+      carromOptions: { ...DEFAULT_CARROM_OPTIONS, ...(carromOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -779,6 +807,9 @@ export class RoomManager {
       if (engine instanceof TeluguCinemaluEngine) {
         engine.setOptions(room.teluguCinemaluOptions);
       }
+      if (engine instanceof CarromEngine) {
+        engine.setOptions(room.carromOptions);
+      }
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
@@ -787,6 +818,7 @@ export class RoomManager {
       this.broadcastGameState(room);
       this.armTakeoversForAbsentSeats(room);
       this.scheduleTurnTimer(room);
+      this.startSimulation(room);
       this.scheduleBotMoveIfNeeded(room);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to start";
@@ -996,6 +1028,63 @@ export class RoomManager {
   }
 
   /**
+   * Server-owned simulation loop for real-time games.
+   *
+   * Action games used to advance because the CLIENT emitted a `tick` move on
+   * a setInterval — so the simulation rate was whatever the player's browser
+   * said it was. A modified client could slow the world to a crawl and dodge
+   * everything, or stop ticking to freeze a losing position. That is the
+   * "no client trust" principle inverted.
+   *
+   * Engines opt in by declaring `tickRateHz` (see GameEngine). The room owns
+   * the interval; the client only sends intent and renders what returns.
+   */
+  private startSimulation(room: Room): void {
+    this.stopSimulation(room);
+    const engine = room.engine;
+    if (!engine || !isRealtimeEngine(engine)) return;
+
+    const periodMs = Math.max(20, Math.round(1000 / engine.tickRateHz));
+    room.simTimer = setInterval(() => {
+      // The room may have ended or been torn down between ticks.
+      if (room.phase !== "playing" || !room.engine) {
+        this.stopSimulation(room);
+        return;
+      }
+      let result;
+      try {
+        result = (room.engine as RealtimeEngine).simulateTick();
+      } catch (err) {
+        // A crashing simulation must not leave a runaway interval behind.
+        logger.error({
+          message: `Simulation tick failed for ${room.game}: ${String(err)}`,
+          module: "SIMULATION",
+        });
+        this.stopSimulation(room);
+        return;
+      }
+      this.broadcastGameState(room);
+      if (result?.isOver || room.engine.isOver()) {
+        // Same finish sequence the move path uses (see applyMove) — phase
+        // flips, ready flags reset so a rematch can be offered, timers die.
+        this.stopSimulation(room);
+        room.phase = "finished";
+        for (const p of room.players.values()) p.isReady = false;
+        this.clearTurnTimer(room);
+        this.broadcastRoomState(room);
+        console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
+      }
+    }, periodMs);
+  }
+
+  private stopSimulation(room: Room): void {
+    if (room.simTimer) {
+      clearInterval(room.simTimer);
+      room.simTimer = null;
+    }
+  }
+
+  /**
    * Tear a room down with no result. Used when the last HUMAN leaves a game in
    * progress: the engine's `removePlayer` awards the win to the remaining
    * opponent, and when that opponent is a bot this produced the "bot declared
@@ -1008,6 +1097,7 @@ export class RoomManager {
   private abandonRoom(room: Room): void {
     room.phase = "finished";
     this.clearTurnTimer(room);
+    this.stopSimulation(room);
     for (const t of room.cleanupTimers.values()) clearTimeout(t);
     room.cleanupTimers.clear();
     for (const t of room.takeoverTimers.values()) clearTimeout(t);
@@ -1747,7 +1837,51 @@ export class RoomManager {
     this.io.to(room.code).emit("chat:message", msg);
   }
 
+  /**
+   * Attach a screen to a room (Smart TV / Party Mode).
+   *
+   * A spectator takes no seat, is not a Player, and cannot move — `applyMove`
+   * resolves the mover through `socketToPlayer`, which a screen is never in,
+   * so input is rejected by construction rather than by a permission check
+   * somebody could later forget to write.
+   */
+  spectateRoom(socketId: string, code: string): { ok: boolean; error?: string } {
+    const room = this.rooms.get(code.toUpperCase());
+    if (!room) return { ok: false, error: "Room not found" };
+    // A socket cannot be both a player and a screen.
+    if (this.socketToRoom.has(socketId)) return { ok: false, error: "Already seated in a room" };
+
+    this.stopSpectating(socketId);
+    room.spectators.add(socketId);
+    this.spectatorToRoom.set(socketId, room.code);
+    const socket = this.io.sockets.sockets.get(socketId);
+    socket?.join(room.code);
+
+    socket?.emit("room:state", this.toPublicState(room));
+    if (room.engine) socket?.emit("game:state", room.engine.getPublicState());
+    // Seated players see the count change immediately.
+    this.broadcastRoomState(room);
+    return { ok: true };
+  }
+
+  stopSpectating(socketId: string): void {
+    const code = this.spectatorToRoom.get(socketId);
+    if (!code) return;
+    this.spectatorToRoom.delete(socketId);
+    const room = this.rooms.get(code);
+    if (!room) return;
+    room.spectators.delete(socketId);
+    this.io.sockets.sockets.get(socketId)?.leave(code);
+    this.broadcastRoomState(room);
+  }
+
   handleDisconnect(socketId: string): void {
+    // A screen going dark is not a player leaving — no takeover, no seat
+    // cleanup, no host migration. Handle and return before any of that runs.
+    if (this.spectatorToRoom.has(socketId)) {
+      this.stopSpectating(socketId);
+      return;
+    }
     const code = this.socketToRoom.get(socketId);
     if (!code) return;
     const room = this.rooms.get(code);
@@ -1850,6 +1984,17 @@ export class RoomManager {
     for (const [socketId, playerId] of room.socketToPlayer.entries()) {
       const state = room.engine.getStateFor(playerId);
       this.io.sockets.sockets.get(socketId)?.emit("game:state", state);
+    }
+    // Screens get getPublicState(), NEVER getStateFor(). That distinction is
+    // the whole security model of this feature: getStateFor is where a
+    // player's private hand lives, and a TV in a living room is the least
+    // private surface in the app. Anyone glancing at it would see every
+    // card in the room if this line used the wrong method.
+    if (room.spectators.size > 0) {
+      const publicState = room.engine.getPublicState();
+      for (const socketId of room.spectators) {
+        this.io.sockets.sockets.get(socketId)?.emit("game:state", publicState);
+      }
     }
     this.recordRummyRoundIfFinished(room);
     this.recordUnoRoundIfFinished(room);

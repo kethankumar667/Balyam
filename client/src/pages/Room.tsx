@@ -42,10 +42,11 @@ import TambolaBoard from "../games/tambola/TambolaBoard";
 import SamethaluBoard from "../games/samethalu/SamethaluBoard";
 import TeluguCinemaluBoard from "../games/telugucinemalu/TeluguCinemaluBoard";
 import SnakeBoard from "../games/snake/SnakeBoard";
-import SpaceImpactBoard from "../games/spaceimpact/SpaceImpactBoard";
+import VyomaYudhBoard from "../games/vyomayudh/VyomaYudhBoard";
+import CarromBoard from "../games/carrom/CarromBoard";
 import BounceBoard from "../games/bounce/BounceBoard";
 import RoadRashBoard from "../games/roadrash/RoadRashBoard";
-import type { SnakePublicState, SpaceImpactPublicState, BouncePublicState, RoadRashPublicState } from "@shared/types";
+import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, BouncePublicState, RoadRashPublicState } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -68,7 +69,8 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   samethalu: 8,
   telugucinemalu: 8,
   snake: 4,
-  spaceimpact: 4,
+  vyomayudh: 1,
+  carrom: 2,
   bounce: 4,
   roadrash: 4,
 };
@@ -617,7 +619,8 @@ export default function Room() {
     roomState.game === "telugucinemalu" ||
     roomState.game === "samethalu" ||
     roomState.game === "snake" ||
-    roomState.game === "spaceimpact" ||
+    roomState.game === "vyomayudh" ||
+    roomState.game === "carrom" ||
     roomState.game === "bounce" ||
     roomState.game === "roadrash"
       ? 1
@@ -1097,10 +1100,29 @@ export default function Room() {
               />
             )}
 
-            {roomState.phase !== "lobby" && roomState.game === "spaceimpact" && gameState != null && (
-              <SpaceImpactBoard
-                state={gameState as SpaceImpactPublicState}
+            {roomState.phase !== "lobby" && roomState.game === "carrom" && gameState != null && (
+              <CarromBoard
+                state={gameState as CarromPublicState}
+                players={roomState.players}
                 selfId={playerId || ""}
+                messages={messages}
+                roomCode={roomState.code}
+                roomPhase={roomState.phase}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "vyomayudh" && gameState != null && (
+              <VyomaYudhBoard
+                state={gameState as VyomaYudhPublicState}
+                players={roomState.players}
+                selfId={playerId || ""}
+                messages={messages}
+                roomCode={roomState.code}
+                roomPhase={roomState.phase}
                 onMove={(type, data) => {
                   const socket = getSocket();
                   socket.emit("game:move", { type, data });
