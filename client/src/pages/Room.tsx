@@ -277,6 +277,17 @@ export default function Room() {
   // the synchronous initial join would otherwise each mint a duplicate player.
   const joinInFlightRef = useRef(false);
 
+  /**
+   * Live socket health, purely for the banner below.
+   *
+   * A dropped connection used to be completely silent: the board simply
+   * stopped responding, with nothing on screen to say whether the game had
+   * frozen, the phone was offline, or the app had crashed. The socket now
+   * retries forever (see lib/socket.ts), so the honest thing to show is that
+   * it is still trying.
+   */
+  const [linkDown, setLinkDown] = useState(false);
+
   useEffect(() => {
     if (!code) {
       navigate("/");
@@ -331,10 +342,12 @@ export default function Room() {
     if (!roomState) attemptJoin("initial");
 
     const onConnect = () => {
+      setLinkDown(false);
       // Socket reconnect after a disconnect or server restart — re-attach to our room.
       attemptJoin("reconnect");
     };
     const onDisconnect = () => {
+      setLinkDown(true);
       // A drop abandons any in-flight join ack (socket.io won't call it), so
       // clear the guard here — otherwise the reconnect rejoin above is blocked
       // forever and the player is stranded on a dead seat.
@@ -1161,7 +1174,27 @@ export default function Room() {
               side rail's full Chat panel is hidden during Rummy gameplay and
               gets pushed off-screen on mobile during other games' play, so
               this is the only way players reliably see a teammate ping. */}
-          <ChatMessageToast messages={messages} selfId={playerId} />
+          {/* Connection banner. Sits above everything because a frozen board with
+          no explanation is the single most alarming thing this app can do.
+          It is not dismissable: it disappears when the link is actually back,
+          and never before, so it cannot lie about the state of the game. */}
+      {linkDown && (
+        <div
+          role="status"
+          aria-live="assertive"
+          className="fixed top-0 inset-x-0 z-[80] flex items-center justify-center gap-2
+                     px-3 py-2 text-[13px] font-bold text-[#FFF3E3]"
+          style={{ background: "#8A5A2B", borderBottom: "1px solid #B4232A" }}
+        >
+          <span
+            aria-hidden
+            className="w-2 h-2 rounded-full bg-[#F2C879] animate-pulse flex-shrink-0"
+          />
+          Connection lost. Reconnecting you to the game...
+        </div>
+      )}
+
+      <ChatMessageToast messages={messages} selfId={playerId} />
 
       {/* Soundboard playback + attribution. Mounted here, not in the rail,
           so a clip lands on every player's screen regardless of which panel
