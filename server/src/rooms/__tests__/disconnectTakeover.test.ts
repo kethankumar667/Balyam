@@ -420,42 +420,77 @@ describe("RoomManager — disconnect takeover", () => {
     expect(bob.isAutoPlaying).toBe(true);
   });
 
-  it("Bingo: a present human is never claimed for, a dropped one is", async () => {
-    // The guarantee BingoEngine's own test used to assert at the wrong layer.
-    const mk = () => {
-      const { io } = makeIo();
-      const rooms = new RoomManager(io);
-      const { code } = rooms.createRoom(
-        "s0", "Alice", "bingo", undefined,
-        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
-        // 500ms, not the 10ms the lifecycle test uses: a 75-number round has
-        // to outlast the 10s takeover grace, or the deck runs dry before Bob
-        // is ever taken over and the test proves nothing.
-        { callIntervalMs: 500, stopOnFirstWin: true },
-      );
-      rooms.joinRoom("s1", "Bob", code);
-      rooms.setReady("s0", true);
-      rooms.setReady("s1", true);
-      rooms.startGame("s0");
-      return { rooms, code };
-    };
-    const runRound = async () => {
-      for (let i = 0; i < 1400; i++) await vi.advanceTimersByTimeAsync(50); // 70s
+  it("Bingo: a dropped player's board is locked for them, a present one's is not", async () => {
+    /*
+     * This replaces a test that could never pass. It assumed a 500ms
+     * auto-caller draining all 75 numbers inside 70 seconds, but Bingo is
+     * turn-based: players call numbers on their turn behind a 15s timer. The
+     * round it was waiting for never happened, so BOTH its assertions were
+     * meaningless — the "nobody is claimed for" half passed only because the
+     * game had not started.
+     *
+     * Chasing that failure turned up the real defect it was masking: the
+     * arranging phase had no deadline at all, so one player who never locked
+     * their board held the table forever. That is covered below.
+     */
+    const { io } = makeIo();
+    const rooms = new RoomManager(io);
+    const { code } = rooms.createRoom(
+      "s0", "Alice", "bingo", undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      { callIntervalMs: 500, stopOnFirstWin: true },
+    );
+    rooms.joinRoom("s1", "Bob", code);
+    rooms.setReady("s0", true);
+    rooms.setReady("s1", true);
+    rooms.startGame("s0");
+
+    const engine = peek(rooms, code).engine as unknown as { pendingActors(): string[] };
+    const alice = playerOf(rooms, code, "Alice").id;
+    const bob = playerOf(rooms, code, "Bob").id;
+
+    // Nobody has locked yet, so both seats are outstanding.
+    expect(engine.pendingActors().sort()).toEqual([alice, bob].sort());
+
+    rooms.handleDisconnect("s1");
+    // Past the 10s takeover grace, inside the 45s arranging window.
+    await vi.advanceTimersByTimeAsync(20_000);
+
+    // Bob's seat was locked for him because he is gone...
+    expect(engine.pendingActors()).not.toContain(bob);
+    // ...and Alice's was not, because she is sitting right there.
+    expect(engine.pendingActors()).toContain(alice);
+  });
+
+  it("Bingo: an unattended board is locked once the shared window expires", async () => {
+    // The defect the broken test was hiding. Bingo seats eight, so one person
+    // who opened the tab and wandered off used to block seven others with no
+    // timeout, no takeover, and nothing on screen explaining the wait.
+    const { io } = makeIo();
+    const rooms = new RoomManager(io);
+    const { code } = rooms.createRoom(
+      "s0", "Alice", "bingo", undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      { callIntervalMs: 500, stopOnFirstWin: true },
+    );
+    rooms.joinRoom("s1", "Bob", code);
+    rooms.setReady("s0", true);
+    rooms.setReady("s1", true);
+    rooms.startGame("s0");
+
+    const engine = peek(rooms, code).engine as unknown as {
+      pendingActors(): string[];
+      getPublicState(): { phase?: string };
     };
 
-    // Both humans present: the deck runs dry and nobody is claimed for.
-    const a = mk();
-    await runRound();
-    const aWinners = (peek(a.rooms, a.code).engine.getPublicState() as { winners?: unknown[] }).winners ?? [];
-    expect(aWinners).toHaveLength(0);
+    // Both players present, neither locks. Nothing should force them early.
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(engine.getPublicState().phase).toBe("arranging");
 
-    // Bob drops: once taken over, his completed board gets claimed for him.
-    const b = mk();
-    b.rooms.handleDisconnect("s1");
-    await runRound();
-    const bWinners = (peek(b.rooms, b.code).engine.getPublicState() as { winners?: { playerId: string }[] }).winners ?? [];
-    expect(bWinners.length).toBeGreaterThan(0);
-    expect(bWinners[0].playerId).toBe(playerOf(b.rooms, b.code, "Bob").id);
+    // Past the 45s window the server locks whatever is left and starts.
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(engine.getPublicState().phase).toBe("playing");
+    expect(engine.pendingActors()).not.toHaveLength(0);
   });
 
   it("someone who dropped in the LOBBY is covered as soon as the game starts", () => {

@@ -42,6 +42,20 @@ const server = http.createServer(app);
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
   cors: { origin: CLIENT_ORIGIN, methods: ["GET", "POST"] },
+  /**
+   * Notice dead connections sooner than the defaults allow.
+   *
+   * socket.io defaults to pingInterval 25s + pingTimeout 20s, so a client
+   * whose network vanished could go up to ~45 seconds before the server
+   * marked it away — and the client stayed equally convinced it was still
+   * connected. On a phone switching from wifi to mobile data that is most of
+   * the time the player spends staring at a frozen board.
+   *
+   * 10s + 10s halves the worst case. The cost is a heartbeat every 10s per
+   * socket, which is a few bytes.
+   */
+  pingInterval: 10_000,
+  pingTimeout: 10_000,
 });
 
 const roomManager = new RoomManager(io);

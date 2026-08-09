@@ -1543,8 +1543,19 @@ export class RoomManager {
         this.broadcastGameState(room);
         return;
       }
-      const ms = Math.max(5, seconds) * 1000;
-      engine.setTurnDeadline(Date.now() + ms);
+      // The public field is `callDeadline`, not `turnDeadline` — reading the
+      // wrong name here silently reset the window on every lock.
+      const pub = engine.getPublicState() as { phase?: string; callDeadline?: number | null };
+      let ms = Math.max(5, seconds) * 1000;
+      // Arranging is ONE shared window for the table, so a player locking
+      // their board must not restart the clock for everyone else. Rearming
+      // per lock made an eight-seat room take eight windows to start; keep
+      // whatever time is left on the existing deadline instead.
+      if (pub.phase === "arranging" && pub.callDeadline && pub.callDeadline > Date.now()) {
+        ms = pub.callDeadline - Date.now();
+      } else {
+        engine.setTurnDeadline(Date.now() + ms);
+      }
       this.broadcastGameState(room);
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
@@ -1668,8 +1679,17 @@ export class RoomManager {
     if (room.engine instanceof BingoEngine) {
       const engine = room.engine;
       if (engine.isOver()) return;
-      const actorId = engine.getTimeoutActor();
-      if (actorId) engine.applyAutoMove(actorId);
+      const phase = (engine.getPublicState() as { phase?: string }).phase;
+      if (phase === "arranging") {
+        // The lock-in window is SHARED, not per player: everyone was given
+        // the same deadline, so everyone still unlocked when it expires gets
+        // locked at once. Auto-locking one player per expiry would make an
+        // eight-seat table take eight windows to start.
+        for (const pid of engine.pendingActors()) engine.applyAutoMove(pid);
+      } else {
+        const actorId = engine.getTimeoutActor();
+        if (actorId) engine.applyAutoMove(actorId);
+      }
       this.afterAutoMove(room, engine.isOver());
       return;
     }

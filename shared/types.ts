@@ -2351,6 +2351,14 @@ export interface ClientToServerEvents {
    */
   "webrtc:iceConfig": (ack: (config: IceConfigResponse) => void) => void;
   /**
+   * Liveness probe. Answered immediately with no payload.
+   *
+   * Exists because `socket.connected` lies after a network change: the old
+   * transport is dead but nothing has noticed yet, so the client needs a way
+   * to ask "are you really there?" and force a reconnect if not.
+   */
+  "net:ping": (ack: () => void) => void;
+  /**
    * Smart TV / Party Mode: watch a room without taking a seat. A spectator
    * receives public state only and cannot send moves.
    */

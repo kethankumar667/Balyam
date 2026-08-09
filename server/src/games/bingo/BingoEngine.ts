@@ -15,6 +15,13 @@ import { DEFAULT_BINGO_OPTIONS } from "@shared/types.js";
 import { generateUniqueBoard, boardFingerprint } from "./board.js";
 import { evaluateBoardLines } from "./win.js";
 
+/**
+ * How long players get to arrange and lock their board before the server
+ * locks it for them. Generous: rearranging is the fun part, and the only
+ * job of this timer is to stop one absent player stalling the table.
+ */
+const ARRANGE_TIMER_SECONDS = 45;
+
 const TURN_TIMER_SECONDS = 15;
 
 interface InternalPlayerState {
@@ -76,6 +83,22 @@ export class BingoEngine implements GameEngine {
   getTurnTimerSeconds(): number {
     if (this.phase === "playing" && !this.isOverFlag) {
       return TURN_TIMER_SECONDS;
+    }
+    /**
+     * Arranging needs a deadline too.
+     *
+     * This returned 0 here, so RoomManager armed no timer at all during
+     * board lock-in — and because `getTimeoutActor()` and `applyAutoMove()`
+     * both already handle the arranging phase, the auto-lock machinery was
+     * fully built and simply never triggered.
+     *
+     * The effect in a real room: one player who never presses "Lock board"
+     * held the table forever. Bingo seats eight, so a single person who
+     * opened the tab and wandered off blocked seven others with no timeout,
+     * no takeover and nothing on screen explaining why.
+     */
+    if (this.phase === "arranging") {
+      return ARRANGE_TIMER_SECONDS;
     }
     return 0;
   }
