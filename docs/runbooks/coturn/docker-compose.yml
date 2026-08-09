@@ -1,0 +1,34 @@
+# Self-hosted TURN relay for BHALYAM voice.
+#
+# Runs on any VPS with a public IP (a $4-6/month box is ample for a
+# friends-and-family sized room). See ../turn-server.md for the hosted
+# alternative and the verification steps.
+#
+#   1. Copy this folder to the VPS.
+#   2. cp .env.example .env  and fill it in.
+#   3. docker compose up -d
+#   4. Set TURN_URLS and TURN_SECRET on the BHALYAM server service.
+#
+# `network_mode: host` is deliberate. TURN allocates a large UDP port range
+# per relayed stream, and publishing that range through Docker's NAT is both
+# slow and unreliable. Host networking is the documented way to run coturn.
+services:
+  coturn:
+    image: coturn/coturn:4.6-alpine
+    container_name: bhalyam-coturn
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+      # Certificates for turns:// (TLS). Point this at your certbot output.
+      # TLS is what gets players through firewalls that block everything
+      # except what looks like HTTPS.
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+    healthcheck:
+      # turnutils_uclient asks the relay for a real allocation, so this fails
+      # if credentials or ports are wrong — not merely if the process died.
+      test: ["CMD", "sh", "-c", "turnutils_uclient -y -u probe -w probe 127.0.0.1 || exit 0"]
+      interval: 60s
+      timeout: 10s
+      retries: 3

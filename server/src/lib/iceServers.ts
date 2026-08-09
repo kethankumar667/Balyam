@@ -117,3 +117,15 @@ export function buildIceConfig(identity: string, now = Date.now()): IceConfigRes
   // than advertising a relay that will reject every allocation.
   return { iceServers, hasRelay: false, ttlSeconds };
 }
+
+/** Which credential scheme is live, for logs and /health. */
+export function turnStatus(): { configured: boolean; mode: "ephemeral" | "static" | "none"; urls: number } {
+  const urls = splitList(process.env.TURN_URLS ?? process.env.TURN_URL);
+  if (urls.length === 0) return { configured: false, mode: "none", urls: 0 };
+  if (process.env.TURN_SECRET) return { configured: true, mode: "ephemeral", urls: urls.length };
+  if (process.env.TURN_USERNAME && process.env.TURN_PASSWORD) {
+    return { configured: true, mode: "static", urls: urls.length };
+  }
+  // URLs but no credentials: cannot allocate, so not configured.
+  return { configured: false, mode: "none", urls: urls.length };
+}
