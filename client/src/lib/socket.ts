@@ -64,6 +64,17 @@ function installTelemetry(s: AppSocket): void {
   // socket.io's reason string is the single most diagnostic value here:
   // "transport close" (network died) and "io server disconnect" (the server
   // hung up, and auto-reconnect is DISABLED) demand opposite fixes.
+  let lastBootId: string | null = null;
+  s.on("server:hello", (info) => {
+    const restarted = lastBootId !== null && lastBootId !== info.bootId;
+    logConn(
+      restarted ? "SERVER RESTARTED" : "server_hello",
+      `boot=${info.bootId} uptime=${info.uptimeSec}s${
+        restarted ? " (rooms from the previous process are gone)" : ""
+      }`,
+    );
+    lastBootId = info.bootId;
+  });
   s.on("disconnect", (reason) => logConn("disconnect", reason));
   s.on("connect_error", (err) => logConn("connect_error", err?.message));
   s.io.on("reconnect_attempt", (n) => logConn("reconnect_attempt", `#${n}`));
