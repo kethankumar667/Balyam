@@ -1,0 +1,88 @@
+# Typecheck, test and build both packages on every push and pull request.
+#
+# This exists because the repo has 550+ tests that nothing ran automatically.
+# A suite only protects you if something runs it without being asked — a
+# failing test nobody sees is worse than no test, because it teaches everyone
+# to ignore red.
+#
+# `client` and `server` are separate jobs rather than sequential steps so they
+# run in parallel and a server failure still tells you whether the client is
+# fine. Both check out the whole repo: `shared/` is imported by each through
+# a tsconfig path alias, so neither package builds from its own folder alone.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push supersedes an in-flight run on the same branch. Without this,
+# pushing three times in a minute queues three full runs and you wait for
+# answers about code you have already replaced.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned deliberately. Keep this in step with the Node version your
+          # Render service runs: a suite that passes here on one major and
+          # deploys onto another is checking the wrong thing.
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # `npm ci` not `npm install`: it installs exactly the lockfile and fails
+      # if package.json and the lock have drifted, which is a real bug worth
+      # catching rather than silently resolving.
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # The build is a separate signal from typecheck: `tsc-alias` rewrites
+      # path aliases into real relative paths for the published output, and it
+      # can fail on code that typechecks perfectly.
+      - name: Build
+        run: npm run build
+
+  client:
+    name: Client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # Catches what typecheck cannot: a bad import path, a missing asset, or
+      # a Vite plugin that only breaks at bundle time.
+      - name: Build
+        run: npm run build

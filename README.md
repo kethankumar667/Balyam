@@ -1,5 +1,7 @@
 # Multiplayer Games Hub
 
+[![CI](https://github.com/kethankumar667/Balyam/actions/workflows/ci.yml/badge.svg)](https://github.com/kethankumar667/Balyam/actions/workflows/ci.yml)
+
 A web-based multiplayer game lounge where friends and family join a room via code and play together with text + voice chat.
 
 ## Planned Games
