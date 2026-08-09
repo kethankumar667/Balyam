@@ -287,6 +287,9 @@ export default function Room() {
    * it is still trying.
    */
   const [linkDown, setLinkDown] = useState(false);
+  /** Reconnect attempts since the link dropped. Shown so a stuck client is
+   *  distinguishable from one that is trying and being refused. */
+  const [linkAttempts, setLinkAttempts] = useState(0);
 
   useEffect(() => {
     if (!code) {
@@ -343,16 +346,23 @@ export default function Room() {
 
     const onConnect = () => {
       setLinkDown(false);
+      setLinkAttempts(0);
       // Socket reconnect after a disconnect or server restart — re-attach to our room.
       attemptJoin("reconnect");
     };
     const onDisconnect = () => {
       setLinkDown(true);
+      setLinkAttempts(0);
       // A drop abandons any in-flight join ack (socket.io won't call it), so
       // clear the guard here — otherwise the reconnect rejoin above is blocked
       // forever and the player is stranded on a dead seat.
       joinInFlightRef.current = false;
     };
+    // Count retries so the banner can say whether anything is happening.
+    // "Reconnecting" that never increments means the client gave up; one that
+    // climbs while nothing changes means the server is refusing or asleep.
+    const onAttempt = () => setLinkAttempts((n) => n + 1);
+    socket.io.on("reconnect_attempt", onAttempt);
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("room:state", setRoomState);
@@ -363,6 +373,7 @@ export default function Room() {
     socket.on("rematch:state", setRematch);
 
     return () => {
+      socket.io.off("reconnect_attempt", onAttempt);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("room:state", setRoomState);
@@ -1190,7 +1201,21 @@ export default function Room() {
             aria-hidden
             className="w-2 h-2 rounded-full bg-[#F2C879] animate-pulse flex-shrink-0"
           />
-          Connection lost. Reconnecting you to the game...
+          <span>
+            Connection lost. Reconnecting
+            {linkAttempts > 0 ? ` (attempt ${linkAttempts})` : ""}...
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setLinkAttempts((n) => n + 1);
+              getSocket().connect();
+            }}
+            className="ml-1 rounded-full px-2.5 py-1 text-[12px] font-extrabold
+                       bg-[#FFF3E3] text-[#8A5A2B] active:translate-y-px"
+          >
+            Retry now
+          </button>
         </div>
       )}
 

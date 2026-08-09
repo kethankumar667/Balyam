@@ -69,8 +69,32 @@ function installNetworkRecovery(s: AppSocket): void {
   if (recoveryInstalled || typeof window === "undefined") return;
   recoveryInstalled = true;
 
+  /**
+   * Get back on the network, whatever state the socket thinks it is in.
+   *
+   * The naive version was `if (!s.connected) s.connect()`, and it did nothing
+   * in the case that matters most. When a phone moves from wifi to mobile
+   * data the old TCP connection dies silently: no close frame, no error. The
+   * `online` event fires while `s.connected` is still `true`, so the check
+   * skipped, and the socket sat on a dead transport until the heartbeat
+   * eventually timed out tens of seconds later.
+   *
+   * So when the socket claims to be connected we do not believe it — we ask.
+   * A `net:ping` with a short ack timeout is the only reliable way to tell a
+   * live connection from a corpse. No answer means the transport is gone, and
+   * a full disconnect/connect cycle is what rebuilds it; `connect()` alone is
+   * a no-op on a socket that thinks it is already up.
+   */
   const kick = () => {
-    if (!s.connected) s.connect();
+    if (!s.connected) {
+      s.connect();
+      return;
+    }
+    s.timeout(3_000).emit("net:ping", (err: unknown) => {
+      if (!err) return;
+      s.disconnect();
+      s.connect();
+    });
   };
 
   window.addEventListener("online", kick);

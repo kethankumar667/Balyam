@@ -21,6 +21,7 @@ const MACHINE_EVENTS = new Set<string>([
   "room:setOrientation",
   "rummy:arrangement",
   "webrtc:iceConfig",
+  "net:ping",
   "room:spectate",
   "room:stopSpectate",
 ]);
@@ -177,6 +178,10 @@ export function registerSocketHandlers(
 
   socket.on("room:stopSpectate", () => {
     rooms.stopSpectating(socket.id);
+  });
+
+  socket.on("net:ping", (ack) => {
+    if (typeof ack === "function") ack();
   });
 
   socket.on("webrtc:iceConfig", (ack) => {
