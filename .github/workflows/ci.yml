@@ -35,10 +35,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Pinned deliberately. Keep this in step with the Node version your
-          # Render service runs: a suite that passes here on one major and
-          # deploys onto another is checking the wrong thing.
-          node-version: "22"
+          # Read from .nvmrc so CI, Render and local development cannot
+          # drift onto different majors. Render reads .nvmrc too, so bumping
+          # that one file moves everything together.
+          node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: server/package-lock.json
 
@@ -70,7 +70,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: client/package-lock.json
 

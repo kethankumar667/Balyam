@@ -27,6 +27,10 @@ relayed, which makes a leaked credential somebody else's traffic on your
 invoice. The server issues short-lived credentials instead and keeps the
 secret; see `server/src/lib/iceServers.ts`.
 
+> **Ready-made config:** `docs/runbooks/coturn/` contains a `docker-compose.yml`
+> and a hardened `turnserver.conf`. Copy that folder to a VPS, fill in the
+> placeholders, `docker compose up -d`. Nothing else to write.
+
 ### Option A — coturn, self-hosted (preferred)
 
 ```bash
@@ -88,6 +92,20 @@ networks that most need a relay.
 
 ## Verifying it works
 
+**Quickest check of all:** hit `/health` on the app server. It now reports
+what the app believes:
+
+```json
+"turn": { "configured": true, "mode": "ephemeral", "urls": 3 }
+```
+
+`configured: false` means the app is serving STUN only, whatever the
+dashboard says. Note that TURN urls with no secret and no password report
+`false` on purpose — they cannot allocate, so calling them a relay would be
+a lie. The server also prints the same verdict at every boot, so a missing
+relay shows up in your Render logs instead of only in a failed call.
+
+
 1. **Config is being served.** With the server running, open the client, join a
    room, connect the mic. In devtools the `webrtc:iceConfig` ack should carry a
    `turn:` entry with a username shaped `<digits>:<socketid>`.
@@ -101,6 +119,22 @@ networks that most need a relay.
 3. **End to end.** Two phones, both on **mobile data**, different carriers if
    possible, same room. This is the case that fails without TURN. Same-wifi
    testing proves nothing here, because STUN already handles it.
+
+## Keeping a sleep-on-idle host awake
+
+Free hosting tiers spin down after a period with no inbound traffic, and a
+cold start costs the next player 30-60 seconds. Two ways to prevent it:
+
+- **External pinger** (UptimeRobot, cron-job.org) hitting `/health` every 10
+  minutes. Nothing to run, nothing in this process.
+- **Built-in self-ping.** Set `KEEPALIVE_URL` on the server to its own public
+  `/health` URL, and optionally `KEEPALIVE_INTERVAL_MS` (default 600000). Off
+  unless set.
+
+Both keep the instance awake around the clock, which consumes most of a free
+tier's monthly instance-hour allowance — fine for one service, not several.
+Neither protects an in-progress game from a redeploy or a crash; only
+persistence does that.
 
 ## Operating notes
 

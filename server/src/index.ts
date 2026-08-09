@@ -8,6 +8,7 @@ import { registerSocketHandlers } from "./sockets/index.js";
 import { RoomManager } from "./rooms/RoomManager.js";
 import { logger } from "./lib/logger.js";
 import { globalRateLimiter } from "./lib/rateLimiter.js";
+import { turnStatus } from "./lib/iceServers.js";
 
 const PORT = Number(process.env.PORT) || 4000;
 /**
@@ -62,6 +63,9 @@ app.get("/health", (_req, res) => {
     uptimeSec,
     activeRooms,
     socketCount,
+    // Lets you confirm a TURN provisioning change took effect without
+    // reading logs or starting a call. See docs/runbooks/turn-server.md.
+    turn: turnStatus(),
     memory: {
       heapUsedMb: Math.round((memoryUsage.heapUsed / 1024 / 1024) * 100) / 100,
       heapTotalMb: Math.round((memoryUsage.heapTotal / 1024 / 1024) * 100) / 100,
@@ -120,7 +124,64 @@ server.listen(PORT, "0.0.0.0", () => {
     message: `Server listening on http://0.0.0.0:${PORT} (allowed origins: ${CLIENT_ORIGINS.join(", ")})`,
     module: "SERVER",
   });
+
+  // Say this at every boot. A missing relay is invisible in normal use —
+  // voice works on wifi and fails only for players behind a symmetric NAT,
+  // which is precisely the group least able to report a useful bug.
+  const turn = turnStatus();
+  if (turn.configured) {
+    logger.info({
+      message: `TURN relay active (${turn.mode} credentials, ${turn.urls} url${turn.urls === 1 ? "" : "s"})`,
+      module: "TURN",
+    });
+  } else {
+    logger.warn({
+      message:
+        "No TURN relay configured. Voice will fail for any pair of players " +
+        "behind symmetric NATs (mobile data, corporate wifi) and there is no " +
+        "client-side workaround. See docs/runbooks/turn-server.md.",
+      module: "TURN",
+    });
+  }
 });
+
+/**
+ * Optional self-ping, to stop a sleep-on-idle host spinning the process down.
+ *
+ * Set `KEEPALIVE_URL` to this service's own public /health URL. Off unless
+ * set, because it is a workaround for a hosting limitation rather than
+ * something the app needs.
+ *
+ * Why it works: hosts that sleep do so on absence of INBOUND traffic. A
+ * request the service makes to its own public URL leaves and re-enters
+ * through the edge, so it counts. The alternative is an external uptime
+ * pinger, which is equally valid and one less thing in this process.
+ *
+ * Trade-offs, honestly: this keeps the instance awake around the clock, which
+ * consumes most of a free tier's monthly instance-hour budget, and it does
+ * NOT protect in-progress games from a redeploy or a crash. Only persistence
+ * does that.
+ */
+function startKeepAlive(): void {
+  const url = process.env.KEEPALIVE_URL;
+  if (!url) return;
+  const everyMs = Math.max(60_000, Number(process.env.KEEPALIVE_INTERVAL_MS) || 600_000);
+  logger.info({
+    message: `Keep-alive pinging ${url} every ${Math.round(everyMs / 1000)}s`,
+    module: "KEEPALIVE",
+  });
+  const timer = setInterval(() => {
+    fetch(url, { method: "GET" }).catch((err) => {
+      // A failed ping is not worth escalating: the next one is minutes away
+      // and the service is fine either way.
+      logger.warn({ message: `Keep-alive ping failed: ${String(err)}`, module: "KEEPALIVE" });
+    });
+  }, everyMs);
+  // Never hold the process open on this alone.
+  timer.unref?.();
+}
+
+startKeepAlive();
 
 function shutdown(signal: string): void {
   logger.warn({ message: `Received ${signal}, starting graceful shutdown...`, module: "SERVER" });
