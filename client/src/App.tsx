@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Room from "./pages/Room";
 import PartyScreen from "./pages/PartyScreen";
+import Diagnostics from "./pages/Diagnostics";
 import PreviewLudo from "./pages/PreviewLudo";
 import BhalyamHome from "./pages/BhalyamHome";
 import GamesPage from "./pages/GamesPage";
@@ -81,6 +82,8 @@ export default function App() {
         <Route path="/room/:code" element={<Room />} />
         {/* Smart TV / Party Mode — big-screen, seat-less view of a room. */}
         <Route path="/tv/:code" element={<PartyScreen />} />
+        {/* Connection log for debugging reconnect failures on real devices. */}
+        <Route path="/diagnostics" element={<Diagnostics />} />
         <Route path="/preview/ludo" element={<PreviewLudo />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

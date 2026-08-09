@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getSocket } from "../lib/socket";
+import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
 import {
   enterFullscreen,
@@ -312,11 +313,19 @@ export default function Room() {
       // joining as a brand-new ghost.
       if (joinInFlightRef.current) return;
       joinInFlightRef.current = true;
+      logConn("rejoin_send", `${reason} code=${joinCode} hadId=${!!playerIdRef.current}`);
       socket.emit(
         "room:join",
         { name: joinName, code: joinCode, playerId: playerIdRef.current ?? undefined },
         (res) => {
           joinInFlightRef.current = false;
+          // The decisive line: did the socket come back but the ROOM was
+          // gone? That is a completely different failure from never
+          // reconnecting, and the two are indistinguishable from the banner.
+          logConn(
+            "rejoin_ack",
+            `${reason} ok=${res.ok}${res.ok ? "" : ` error=${res.error ?? "?"}`}`,
+          );
           if (!res.ok) {
             // The room genuinely no longer exists on the server. This happens
             // when: the server cold-started (Render free tier sleeps after
