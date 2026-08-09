@@ -2271,6 +2271,13 @@ export interface ServerToClientEvents {
   "game:state": (state: unknown) => void;
   "game:error": (message: string) => void;
   "webrtc:signal": (payload: WebRTCSignalRecvPayload) => void;
+  /**
+   * Sent once per connection. `bootId` changes only when the server PROCESS
+   * restarts, which is the difference between "my socket dropped" and "the
+   * machine holding my game was replaced". On a host that sleeps when idle
+   * the second is the common case, and it is otherwise invisible.
+   */
+  "server:hello": (info: { bootId: string; uptimeSec: number }) => void;
   "room:reaction": (payload: ReactionRecvPayload) => void;
   "room:sound": (payload: SoundboardRecvPayload) => void;
   "room:cursor": (payload: CursorRecvPayload) => void;

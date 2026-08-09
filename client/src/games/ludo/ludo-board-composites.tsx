@@ -107,26 +107,9 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
       </button>
       <LudoLogo />
       <div className="flex-1 min-w-0 text-center px-1">
-        {/* The final-10s countdown chip (TurnTimeWarning, rendered by
-            LudoOverlays) is `fixed` to this exact top-centre slot, and Ludo
-            never passed it an offset — so it landed straight on top of "Roll
-            the dice". Yield the slot while it is up, the same way UNO's boards
-            hide their house-rules badge. Nothing is lost: the chip states the
-            same turn, louder. */}
-        {warningActive ? null : finished ? (
+        {finished && (
           <div className="font-script text-lg font-bold" style={{ color: "var(--paper-ink-hi)" }}>
             🏆 {state.winnerId ? `${m.nameOf(state.winnerId)} wins!` : "Game over"}
-          </div>
-        ) : m.displayMyTurn ? (
-          <>
-            <div className="font-script text-sm font-bold leading-tight" style={{ color: "var(--paper-ink-hi)" }}>Your turn</div>
-            <div className="font-display text-base leading-tight" style={{ color: "var(--paper-ink)" }}>
-              {m.displayTurnPhase === "rolling" ? "Roll the dice" : "Pick a token"}
-            </div>
-          </>
-        ) : (
-          <div className="font-script text-sm" style={{ color: "var(--paper-ink-soft)" }}>
-            {m.nameOf(m.displayTurnPlayerId)}&rsquo;s turn…
           </div>
         )}
       </div>
@@ -298,22 +281,11 @@ function LudoPlayerCard({
   deadline?: number | null;
   /** Position in the list, used to stagger the entrance animation. */
   index?: number;
-  /** 3+ cards abreast on a phone. At 390px that leaves ~111px per card, and
-   *  the full layout does not fit: measured, the name was cut 27-81% and the
-   *  4 pips overflowed their column. Dense swaps the pips for a compact
-   *  "n/4", shrinks the avatar, and drops the inline BOT tag (kept in the
-   *  tooltip) so the NAME gets the whole text column. */
   dense?: boolean;
-  /** 4 cards abreast (7-8 players on a phone) — ~81px each. Beside a 26px
-   *  avatar that leaves a ~27px text column, which cannot show a name at any
-   *  font size worth reading. Ultra stacks the card vertically so the name
-   *  gets the FULL card width instead of what's left over. */
   ultra?: boolean;
   /** The local player — marked so you can find yourself at a glance. */
   isSelf?: boolean;
-  /** Registers this card as the anchor a reaction flies TO/FROM. Without it
-   *  `reactionAnchor()` returns null and targeted reactions render nowhere —
-   *  which is why they were invisible on every 5-8 player board. */
+  /** Registers this card as the anchor a reaction flies TO/FROM. */
   registerCard?: (playerId: string, el: Element | null) => void;
   /** Tapping an opponent's card aims a reaction at them. */
   onTarget?: (playerId: string) => void;
@@ -321,12 +293,9 @@ function LudoPlayerCard({
   const rim = COLOR_HEX_DARK[seat.color];
   const tint = COLOR_HEX[seat.color];
   const offline = !seat.online;
-  const avatarPx = ultra ? 24 : dense ? 26 : 30;
+  const avatarPx = dense ? 26 : 28;
 
-  // Turn timer. The engine publishes only a deadline (not the turn's length),
-  // so the ring self-calibrates: the first tick after a new deadline arrives
-  // becomes that turn's "full" value and the arc drains from there. Urgency is
-  // carried by BOTH colour and the printed seconds (colour-blind safe).
+  // Turn timer.
   const timedKey = seat.active && !offline ? (deadline ?? null) : null;
   const secondsLeft = useTurnSecondsLeft(timedKey);
   const [track, setTrack] = useState<{ key: number | null; total: number }>({ key: null, total: 1 });
@@ -337,10 +306,6 @@ function LudoPlayerCard({
 
   return (
     <div
-      // Stacking is gated on WIDTH as well as count. 4 cards abreast on a
-      // 360px phone gives ~81px and must stack, but the same 4 on a 1024px
-      // landscape screen gives ~250px, where stacking only wastes ~59px of
-      // board height for no legibility gain. `sm:` returns those to inline.
       ref={(el) => registerCard?.(seat.pid, el)}
       onClick={onTarget && !isSelf ? () => onTarget(seat.pid) : undefined}
       role={onTarget && !isSelf ? "button" : undefined}
@@ -356,12 +321,8 @@ function LudoPlayerCard({
           : undefined
       }
       title={onTarget && !isSelf ? `React at ${seat.name}` : undefined}
-      className={`ludo-card-in relative flex-1 min-w-0 rounded-2xl overflow-hidden ${
+      className={`ludo-card-in relative flex-1 min-w-0 rounded-2xl overflow-hidden flex items-center gap-2 px-2.5 py-1.5 ${
         onTarget && !isSelf ? "cursor-pointer" : ""
-      } ${
-        ultra
-          ? "flex flex-col items-center gap-0.5 px-1 py-1 sm:flex-row sm:items-center sm:gap-2 sm:px-2"
-          : "flex items-center gap-2 px-2 py-1"
       }`}
       style={{
         background: seat.isWinner ? "rgba(255,247,214,0.98)" : "rgba(255,251,240,0.94)",
@@ -373,8 +334,6 @@ function LudoPlayerCard({
             : seat.active
               ? "0 6px 14px rgba(0,0,0,0.18)"
               : "0 3px 8px rgba(0,0,0,0.10)",
-        // Offline seats recede but stay legible (never fully hidden — you
-        // still need to see who you're waiting on).
         opacity: offline ? 0.62 : 1,
         filter: offline ? "grayscale(0.45)" : undefined,
         animationDelay: `${Math.min(index, 8) * 45}ms`,
@@ -397,21 +356,15 @@ function LudoPlayerCard({
         />
       )}
       <div className="relative flex-shrink-0">
-        {/* Glossy seat-color chip frame around the avatar (online dot kept
-            outside so `.ludo-chip`'s overflow-hidden doesn't clip it). */}
         <div className="ludo-chip rounded-full" style={{ padding: 3, ...chipVars(tint, rim) }}>
           <Avatar name={seat.name} color={seat.color} size={avatarPx} />
         </div>
         {showTimer && <TurnCountdownRing pct={pct} color={timerColor} box={avatarPx + 14} />}
-        {/* Online dot moved to the TOP-right so the "YOU" ribbon can own the
-            bottom edge without the two colliding. */}
         <span
           className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full z-10 ${offline ? "ludo-reconnect" : ""}`}
           style={{ background: seat.online ? "#37B24D" : "#F59E0B", border: "2px solid #FFFBF0" }}
           title={seat.online ? "Online" : "Reconnecting…"}
         />
-        {/* Self marker rides ON the avatar — a badge in the text row would
-            cost the very width the name is already short of. */}
         {isSelf && (
           <span
             className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-10 px-1 rounded-full text-[7px] font-black uppercase tracking-[0.1em] leading-[1.4] whitespace-nowrap"
@@ -421,12 +374,8 @@ function LudoPlayerCard({
           </span>
         )}
       </div>
-      <div className={ultra ? "min-w-0 w-full sm:flex-1" : "min-w-0 flex-1"}>
-        {/* Line 1 is the NAME and nothing else. The BOT tag and the turn chip
-            used to share this row and were eating 20px and ~34px of a ~51px
-            column — which is why the ACTIVE player's name (the one you most
-            need to read) was the most truncated card on screen. */}
-        <div className={`flex items-center gap-1 min-w-0 ${ultra ? "justify-center sm:justify-start" : ""}`}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1 min-w-0">
           {seat.isWinner && <span className="flex-shrink-0 text-[11px] leading-none" aria-hidden>👑</span>}
           {!seat.isWinner && seat.rank != null && (
             <span
@@ -438,9 +387,7 @@ function LudoPlayerCard({
             </span>
           )}
           <span
-            className={`truncate font-black uppercase tracking-wide ${
-              ultra ? "text-[10px] sm:text-[12px]" : dense ? "text-[11px]" : "text-[12px]"
-            }`}
+            className="truncate font-black uppercase tracking-wide text-[11px] sm:text-[12px]"
             style={{ color: rim }}
             title={`${seat.name}${seat.isBot ? " (bot)" : ""}`}
           >
@@ -448,11 +395,6 @@ function LudoPlayerCard({
           </span>
           {!dense && seat.isBot && <span className="flex-shrink-0 text-[8px] opacity-60">BOT</span>}
         </div>
-        {/* Gated on `offline || autoPlaying`, not offline alone: an IDLE
-            takeover is a fully connected player who has stopped responding,
-            so keying this off the socket would have hidden exactly the case
-            the table most needs explained — someone whose dot is green but
-            whose turns are being played for them. */}
         {offline || seat.autoPlaying ? (
           <div
             className="text-[9px] font-bold mt-0.5 truncate"
@@ -465,9 +407,6 @@ function LudoPlayerCard({
                   : `${seat.name} is reconnecting`
             }
           >
-            {/* Once the server has taken the seat, say so. "Reconnecting…" on
-                its own leaves the table wondering why that player keeps
-                moving while their dot is amber. */}
             {seat.autoReason === "idle"
               ? "Away · auto"
               : seat.autoPlaying
@@ -476,31 +415,20 @@ function LudoPlayerCard({
           </div>
         ) : (
           <div
-            className={`flex items-center gap-1 mt-0.5 min-w-0 ${ultra ? "justify-center sm:justify-start" : ""}`}
+            className="flex items-center gap-1 mt-0.5 min-w-0"
             title={`${seat.tokensHome}/4 tokens home`}
           >
-            {dense || ultra ? (
-              // 4 pips need ~60px; a dense card's text column is ~51px, so they
-              // were being clipped. The count says the same thing in ~20px.
-              <span className="text-[10px] font-black tabular-nums flex-shrink-0" style={{ color: rim }}>
-                {seat.tokensHome}/4
-              </span>
-            ) : (
-              [0, 1, 2, 3].map((i) =>
-                i < seat.tokensHome ? (
-                  // filled = glossy seat-color chip bead (the global color treatment)
-                  <span key={i} className="ludo-chip w-3 h-3 rounded-full flex-shrink-0" style={chipVars(tint, rim)} />
-                ) : (
-                  <span
-                    key={i}
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ background: "rgba(109,67,35,0.14)", border: "1px solid rgba(109,67,35,0.22)" }}
-                  />
-                ),
-              )
+            {[0, 1, 2, 3].map((i) =>
+              i < seat.tokensHome ? (
+                <span key={i} className="ludo-chip w-3 h-3 rounded-full flex-shrink-0" style={chipVars(tint, rim)} />
+              ) : (
+                <span
+                  key={i}
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ background: "rgba(109,67,35,0.14)", border: "1px solid rgba(109,67,35,0.22)" }}
+                />
+              ),
             )}
-            {/* Status chip lives on line 2, beside the progress — never on the
-                name's line. */}
             {seat.isWinner ? (
               <span
                 className="ludo-chip flex-shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"
@@ -526,15 +454,11 @@ function LudoPlayerCard({
   );
 }
 
-/** A row (or column) of player cards. `row="top"` shows the first half of
- *  the color-ordered seats, `row="bottom"` the rest — 2/2 for a 4-player
- *  game, matching the reference's above/below-board split. `orientation`
- *  is "row" on mobile (cards flow across above/below the board) and "col"
- *  on desktop (cards stack in a side rail flanking the board). */
+/** A row (or column) of player cards. */
 export function LudoPlayerCards({
   state,
   players,
-  row,
+  row = "all",
   orientation = "row",
   selfId,
   registerCard,
@@ -542,23 +466,19 @@ export function LudoPlayerCards({
 }: {
   state: LudoState;
   players: Player[];
-  /** "all" = every seat in one list (desktop single left rail); "top"/"bottom"
-   *  = the board-ordered halves (mobile above/below the board). */
-  row: "top" | "bottom" | "all";
+  row?: "top" | "bottom" | "all" | "grid";
   orientation?: "row" | "col";
   selfId?: string | null;
   registerCard?: (playerId: string, el: Element | null) => void;
   onTarget?: (playerId: string) => void;
 }) {
   const seats = orderedSeats(state, players, selfId);
-  const mid = Math.ceil(seats.length / 2);
-  const shown = row === "all" ? seats : row === "top" ? seats.slice(0, mid) : seats.slice(mid);
-  if (shown.length === 0) return null;
+  if (seats.length === 0) return null;
 
   if (orientation === "col") {
     return (
       <div className="flex flex-col gap-2">
-        {shown.map((s, i) => (
+        {seats.map((s, i) => (
           <LudoPlayerCard
             key={s.pid}
             seat={s}
@@ -573,17 +493,49 @@ export function LudoPlayerCards({
     );
   }
 
-  // Both mobile rows size their cards off the BUSIER row, so a 5-player game
-  // (3 up / 2 down) no longer renders 111px cards above and 170px cards below
-  // — same component, 53% different width, names truncated in one row and
-  // whole in the other. Fixed width + centring keeps the two rows identical.
-  //
-  // `all` in row orientation is the single-strip mobile roster: every seat is
-  // on one line, so it sizes off the FULL count rather than half of it.
-  const perRow = row === "all" ? Math.max(1, seats.length) : Math.max(1, mid);
+  if (row === "grid" || (row === "all" && seats.length > 2)) {
+    const mid = Math.ceil(seats.length / 2);
+    const row1 = seats.slice(0, mid);
+    const row2 = seats.slice(mid);
+    return (
+      <div className="flex flex-col gap-1.5 w-full max-w-[28rem] px-1">
+        <div className="flex justify-center gap-2">
+          {row1.map((s, i) => (
+            <div key={s.pid} className="min-w-0 flex-1" style={{ display: "flex" }}>
+              <LudoPlayerCard
+                seat={s}
+                deadline={state.turnDeadline}
+                index={i}
+                registerCard={registerCard}
+                onTarget={onTarget}
+                isSelf={s.pid === selfId}
+              />
+            </div>
+          ))}
+        </div>
+        {row2.length > 0 && (
+          <div className="flex justify-center gap-2">
+            {row2.map((s, i) => (
+              <div key={s.pid} className="min-w-0 flex-1" style={{ display: "flex" }}>
+                <LudoPlayerCard
+                  seat={s}
+                  deadline={state.turnDeadline}
+                  index={mid + i}
+                  registerCard={registerCard}
+                  onTarget={onTarget}
+                  isSelf={s.pid === selfId}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const shown = row === "top" ? seats.slice(0, Math.ceil(seats.length / 2)) : seats.slice(Math.ceil(seats.length / 2));
+  const perRow = Math.max(1, shown.length);
   const cardW = `calc((100% - ${(perRow - 1) * 0.5}rem) / ${perRow})`;
-  const dense = perRow >= 3;
-  const ultra = perRow >= 4;
   return (
     <div className="flex justify-center gap-2">
       {shown.map((s, i) => (
@@ -594,8 +546,6 @@ export function LudoPlayerCards({
             index={i}
             registerCard={registerCard}
             onTarget={onTarget}
-            dense={dense}
-            ultra={ultra}
             isSelf={s.pid === selfId}
           />
         </div>
