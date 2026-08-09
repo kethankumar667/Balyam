@@ -78,6 +78,22 @@ import { TeluguCinemaluEngine } from "../games/telugucinemalu/TeluguCinemaluEngi
 import { CarromEngine } from "../games/carrom/CarromEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
+
+/**
+ * How long a room is held for a player who was its ONLY human.
+ *
+ * The 90s above is a fairness budget: other people are sitting at the table
+ * waiting, so an absent seat cannot hold them up for long. When the leaver is
+ * the last human in the room, nobody is waiting — the remaining seats are
+ * bots — so the only thing that budget achieves is destroying a game the
+ * player is actively trying to get back into.
+ *
+ * A solo-vs-bots Ludo game is exactly that case, and 90 seconds is shorter
+ * than a phone spends switching from wifi to mobile data plus the walk back
+ * to a usable signal. Ten minutes costs one idle Map entry and turns an
+ * unrecoverable loss into a resumed game.
+ */
+const SOLO_GRACE_PERIOD_MS = 10 * 60_000;
 /**
  * How long a dropped seat is left alone before the server starts playing it.
  *
@@ -1110,6 +1126,11 @@ export class RoomManager {
     return [...room.players.values()].some((p) => !p.isBot);
   }
 
+  /** True when someone OTHER than `playerId` is a human in this room. */
+  private hasOtherHuman(room: Room, playerId: string): boolean {
+    return [...room.players.values()].some((p) => !p.isBot && p.id !== playerId);
+  }
+
   /* ── Disconnect takeover ────────────────────────────────────────────────
      A seat with no live socket behind it still has to take its turns, or the
      table stops. These four helpers are the whole mechanism; the scheduler
@@ -1366,6 +1387,10 @@ export class RoomManager {
     if (room.phase !== "playing" || !room.engine) return;
     this.broadcastGameState(room);
     this.scheduleTurnTimer(room);
+    // Real-time engines have their loop stopped while the table is
+    // unattended (see handleDisconnect), so resuming has to start it again.
+    // Without this a returning solo player gets a board that never ticks.
+    this.startSimulation(room);
     this.scheduleBotMoveIfNeeded(room);
   }
 
@@ -1898,10 +1923,24 @@ export class RoomManager {
     room.socketToPlayer.delete(socketId);
     this.socketToRoom.delete(socketId);
 
+    const soloHuman = !this.hasOtherHuman(room, playerId);
+
     // Start the clock on taking this seat over. Only mid-game: a lobby needs
     // no one to act, and a finished room has nothing left to play.
-    if (room.phase === "playing" && player && !player.isBot) {
+    //
+    // NOT when this was the only human. Auto-play exists so one absent player
+    // cannot stall everyone else, and with only bots left there is nobody to
+    // stall. Playing their seat for them would mean returning to a game the
+    // bots had already finished, which is a worse outcome than the wait.
+    // Freezing the table instead means they come back to the exact position
+    // they left.
+    if (room.phase === "playing" && player && !player.isBot && !soloHuman) {
       this.armTakeover(room, playerId);
+    } else if (room.phase === "playing" && soloHuman) {
+      // Nothing should advance while the table is unattended: no turn
+      // deadline expiring, no bots moving, no real-time engine ticking on.
+      this.clearTurnTimer(room);
+      this.stopSimulation(room);
     }
 
     const timer = setTimeout(() => {
@@ -1932,7 +1971,7 @@ export class RoomManager {
         this.resumeTable(stillRoom);
       }
       stillRoom.cleanupTimers.delete(playerId);
-    }, GRACE_PERIOD_MS);
+    }, soloHuman ? SOLO_GRACE_PERIOD_MS : GRACE_PERIOD_MS);
 
     room.cleanupTimers.set(playerId, timer);
     this.broadcastRoomState(room);
