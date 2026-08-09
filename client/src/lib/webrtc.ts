@@ -1,41 +1,63 @@
-import type { WebRTCSignal, WebRTCSignalRecvPayload } from "@shared/types";
+import type {
+  IceConfigResponse,
+  IceServerSpec,
+  WebRTCSignal,
+  WebRTCSignalRecvPayload,
+} from "@shared/types";
 import type { AppSocket } from "./socket";
 
 /**
- * ICE servers.
+ * ICE servers, fetched from the server.
  *
  * STUN alone only tells a peer its public address; it does not move audio.
  * When both sides sit behind a symmetric NAT — the norm on mobile carrier
  * data and plenty of corporate wifi — no direct path exists and the only way
- * through is a TURN relay. Without one those players connect to nobody, no
- * matter how correct the signalling above it is, which is why voice "works
- * for some people and not others".
+ * through is a TURN relay.
  *
- * Supply credentials through the client env to switch relaying on:
- *   VITE_TURN_URL=turn:turn.example.com:3478
- *   VITE_TURN_USERNAME=...
- *   VITE_TURN_CREDENTIAL=...
+ * These used to come from `VITE_TURN_USERNAME` / `VITE_TURN_CREDENTIAL`.
+ * That was wrong: Vite inlines `VITE_*` into the bundle at build time, so the
+ * relay password shipped in readable JavaScript for anyone to lift. TURN is
+ * billed per gigabyte relayed, so a leaked credential is somebody else's
+ * traffic on your invoice. The server now issues short-lived credentials and
+ * keeps the secret (see server/src/lib/iceServers.ts).
+ *
+ * Fetched once per manager and cached for the session: credentials outlive
+ * any single match, and a call must not wait on a round trip to start.
  */
-const TURN_URL = import.meta.env.VITE_TURN_URL as string | undefined;
-const TURN_USERNAME = import.meta.env.VITE_TURN_USERNAME as string | undefined;
-const TURN_CREDENTIAL = import.meta.env.VITE_TURN_CREDENTIAL as string | undefined;
+let cachedIce: IceConfigResponse | null = null;
 
-export function hasTurnServer(): boolean {
-  return Boolean(TURN_URL);
+async function fetchIceConfig(socket: AppSocket): Promise<IceConfigResponse> {
+  if (cachedIce) return cachedIce;
+  const config = await new Promise<IceConfigResponse>((resolve) => {
+    // A server that never answers must not block voice forever — fall back to
+    // STUN-only, which still works for most home networks. Bare setTimeout,
+    // not window.setTimeout: this module is exercised outside a DOM.
+    const timer = setTimeout(() => resolve(STUN_ONLY), 4000);
+    socket.emit("webrtc:iceConfig", (res) => {
+      clearTimeout(timer);
+      resolve(res && Array.isArray(res.iceServers) ? res : STUN_ONLY);
+    });
+  });
+  cachedIce = config;
+  return config;
 }
 
-function buildIceServers(): RTCIceServer[] {
-  const servers: RTCIceServer[] = [
+const STUN_ONLY: IceConfigResponse = {
+  iceServers: [
     { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
-  ];
-  if (TURN_URL) {
-    servers.push(
-      TURN_USERNAME && TURN_CREDENTIAL
-        ? { urls: TURN_URL, username: TURN_USERNAME, credential: TURN_CREDENTIAL }
-        : { urls: TURN_URL },
-    );
-  }
-  return servers;
+  ],
+  hasRelay: false,
+  ttlSeconds: 0,
+};
+
+/**
+ * Whether the session has a usable relay. Read by the voice UI to explain an
+ * unreachable peer instead of leaving a red dot unexplained. False until the
+ * first fetch resolves, which is the safe direction: it may under-promise for
+ * a moment, never over-promise.
+ */
+export function hasTurnServer(): boolean {
+  return cachedIce?.hasRelay ?? false;
 }
 
 export interface RemotePeerInfo {
@@ -90,6 +112,8 @@ export class VoiceManager {
   private muted = false;
   private targets: string[] = [];
   private destroyed = false;
+  /** Resolved before the first peer opens; see start(). */
+  private iceServers: IceServerSpec[] = STUN_ONLY.iceServers;
 
   constructor(socket: AppSocket, localPlayerId: string) {
     this.socket = socket;
@@ -99,6 +123,10 @@ export class VoiceManager {
 
   async start(): Promise<void> {
     if (this.localStream) return;
+    // Resolve ICE before the mic prompt, so the very first peer connection
+    // already has the relay. Fetching after a peer opened would leave that
+    // one connection STUN-only and quietly unreachable.
+    this.iceServers = (await fetchIceConfig(this.socket)).iceServers;
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: false,
@@ -226,7 +254,7 @@ export class VoiceManager {
   }
 
   private openPeer(playerId: string, weInitiate: boolean): PeerEntry {
-    const pc = new RTCPeerConnection({ iceServers: buildIceServers() });
+    const pc = new RTCPeerConnection({ iceServers: this.iceServers as RTCIceServer[] });
     const entry: PeerEntry = {
       pc,
       stream: null,

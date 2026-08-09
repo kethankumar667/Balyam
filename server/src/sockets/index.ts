@@ -3,6 +3,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.j
 import type { RoomManager } from "../rooms/RoomManager.js";
 import { globalRateLimiter } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
+import { buildIceConfig } from "../lib/iceServers.js";
 
 /**
  * Events that arrive WITHOUT a person doing anything — negotiation traffic and
@@ -19,6 +20,7 @@ const MACHINE_EVENTS = new Set<string>([
   "webrtc:signal",
   "room:setOrientation",
   "rummy:arrangement",
+  "webrtc:iceConfig",
   "room:spectate",
   "room:stopSpectate",
 ]);
@@ -175,6 +177,13 @@ export function registerSocketHandlers(
 
   socket.on("room:stopSpectate", () => {
     rooms.stopSpectating(socket.id);
+  });
+
+  socket.on("webrtc:iceConfig", (ack) => {
+    if (typeof ack !== "function") return;
+    // Socket id is enough of an identity: it is stable for the connection and
+    // makes relay logs traceable without exposing anything about the player.
+    ack(buildIceConfig(socket.id));
   });
 
   socket.on("coach:hint", (ack) => {
