@@ -119,12 +119,18 @@ describe("RoomManager — mid-game departure", () => {
    * passes for the wrong reason; the QUIT case above is the one that actually
    * pins the fix.
    */
-  it("a seat REAPED at 90s is removed cleanly and the room plays on", () => {
+  it("a reaped seat is removed cleanly and the room plays on", () => {
+    /*
+     * The window used to be 90s mid-match. It is now the match window (10m):
+     * a seat in a live game is being auto-played, so it blocks nobody, and
+     * deleting it early only locked out a player who was still reconnecting.
+     * The reaping BEHAVIOUR under test here is unchanged — only when it fires.
+     */
     const { rooms, code, bobId } = seatThree();
     expect(advanceToTurnOf(rooms, code, bobId)).toBe(true);
 
     rooms.handleDisconnect("sB");
-    vi.advanceTimersByTime(91_000); // grace elapses; Bob's seat is removed
+    vi.advanceTimersByTime(11 * 60_000); // past the match grace window
 
     const r = peek(rooms, code);
     expect(r.players.has(bobId)).toBe(false);
@@ -140,7 +146,7 @@ describe("RoomManager — mid-game departure", () => {
     rooms.handleDisconnect("sB");
     expect(r.takeoverTimers.has(bobId)).toBe(true);
 
-    vi.advanceTimersByTime(91_000); // seat reaped
+    vi.advanceTimersByTime(11 * 60_000); // past the match grace window
     // Scoped to the DEPARTED seat: strikes belonging to players still at the
     // table are supposed to survive.
     expect(r.takeoverTimers.has(bobId)).toBe(false);

@@ -80,7 +80,7 @@ import { CarromEngine } from "../games/carrom/CarromEngine.js";
 const GRACE_PERIOD_MS = 90_000;
 
 /**
- * How long a room is held for a player who was its ONLY human.
+ * How long a seat is held once a MATCH is under way.
  *
  * The 90s above is a fairness budget: other people are sitting at the table
  * waiting, so an absent seat cannot hold them up for long. When the leaver is
@@ -93,7 +93,7 @@ const GRACE_PERIOD_MS = 90_000;
  * to a usable signal. Ten minutes costs one idle Map entry and turns an
  * unrecoverable loss into a resumed game.
  */
-const SOLO_GRACE_PERIOD_MS = 10 * 60_000;
+const MATCH_GRACE_PERIOD_MS = 10 * 60_000;
 /**
  * How long a dropped seat is left alone before the server starts playing it.
  *
@@ -1972,14 +1972,41 @@ export class RoomManager {
       this.stopSimulation(room);
     }
 
+    /**
+     * Which window applies depends on what the empty seat is actually
+     * BLOCKING, not on who else is human.
+     *
+     * In a LOBBY the seat occupies a slot somebody else could use, so the
+     * short window is right: drop it and let the table fill.
+     *
+     * In a MATCH it blocks nobody. Either the server is auto-playing it, so
+     * the game progresses without them, or this was the only human and the
+     * table is frozen. Either way, deleting the seat achieves nothing except
+     * locking out the person trying to get back to it.
+     *
+     * Ninety seconds was far too short for a real network. A wifi-to-mobile
+     * handoff measured on this very app took over 100 seconds to recover, so
+     * the seat was routinely deleted while the player was still reconnecting.
+     * They then rejoined as a BRAND NEW player with no progress, which is
+     * exactly what "reconnecting does not work" looks like to real players.
+     */
+    const inMatch = room.phase === "playing";
+    const graceMs = inMatch || soloHuman ? MATCH_GRACE_PERIOD_MS : GRACE_PERIOD_MS;
+    // The client counts down to this, so it must be the real deadline.
+    if (player) player.awayUntil = Date.now() + graceMs;
+
     // Narrate the reconnect path. Debugging this from a phone is otherwise
     // blind: the handset shows a banner and nothing else, so the server log
     // is the only place the decision (which grace window, did the table
     // freeze, was the seat reclaimed) is observable.
     logger.info({
-      message: `Seat away: ${player?.name ?? playerId} - holding ${
-        soloHuman ? "10m (only human, table frozen)" : "90s (others waiting, auto-play armed)"
-      }`,
+      message: `Seat away: ${player?.name ?? playerId} - holding ${Math.round(graceMs / 1000)}s (${
+        !inMatch
+          ? "lobby, slot freed"
+          : soloHuman
+          ? "only human, table frozen"
+          : "others waiting, auto-play armed"
+      })`,
       module: "RECONNECT",
       roomCode: room.code,
       playerId,
@@ -2025,7 +2052,7 @@ export class RoomManager {
         this.resumeTable(stillRoom);
       }
       stillRoom.cleanupTimers.delete(playerId);
-    }, soloHuman ? SOLO_GRACE_PERIOD_MS : GRACE_PERIOD_MS);
+    }, graceMs);
 
     room.cleanupTimers.set(playerId, timer);
     this.broadcastRoomState(room);
