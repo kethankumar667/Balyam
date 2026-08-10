@@ -2,11 +2,11 @@ import React, { useMemo, useState } from "react";
 import type { ChessBoardProps } from "./ChessBoard";
 import {
   ChessBoardGrid,
-  ChessClockPill,
-  CapturedPiecesRack,
-  ChessMoveHistoryPanel,
+  ChessPieceSymbol,
 } from "./chess-shared";
-import InlineRoomRail from "../../components/InlineRoomRail";
+import ChessSkinModal from "./ChessSkinModal";
+import type { ChessBoardTheme, ChessPieceSet } from "@shared/types";
+import { getSocket } from "../../lib/socket";
 
 export default function ChessBoardMobile({
   state,
@@ -18,6 +18,12 @@ export default function ChessBoardMobile({
   onMove,
 }: ChessBoardProps) {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
+  const [skinModalOpen, setSkinModalOpen] = useState(false);
+  const [chatText, setChatText] = useState("");
+  const [hintCount, setHintCount] = useState(3);
+
+  const [localTheme, setLocalTheme] = useState<ChessBoardTheme>(state.boardTheme ?? "emerald");
+  const [localPieceSet, setLocalPieceSet] = useState<ChessPieceSet>(state.pieceSet ?? "neo");
 
   const nameOf = useMemo(() => {
     const map = new Map(players.map((p) => [p.id, p.name]));
@@ -30,12 +36,19 @@ export default function ChessBoardMobile({
   const myTurn = state.turn === myColor && state.phase === "aiming";
 
   const opponentId = isWhite ? state.blackPlayerId : state.whitePlayerId;
-  const opponentName = opponentId ? nameOf(opponentId) : "Opponent";
+  const opponentName = opponentId ? nameOf(opponentId) : "Vishy";
   const myName = nameOf(selfId);
 
   const opponentTime = isWhite ? state.blackTimeRemainingMs : state.whiteTimeRemainingMs;
-  const myTime = isWhite ? state.whiteTimeRemainingMs : state.blackTimeRemainingMs;
+  const myTime = isWhite ? state.whiteTimeRemainingMs : state.whiteTimeRemainingMs;
   const opponentColor = myColor === "w" ? "b" : "w";
+
+  function formatTime(ms: number) {
+    const secondsTotal = Math.max(0, Math.floor(ms / 1000));
+    const mins = Math.floor(secondsTotal / 60);
+    const secs = secondsTotal % 60;
+    return `${mins < 10 ? "0" : ""}${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  }
 
   function handleSquareClick(sq: string) {
     if (!myTurn) return;
@@ -50,82 +63,360 @@ export default function ChessBoardMobile({
       return;
     }
 
-    // Attempt move
     onMove("move", { from: selectedSquare, to: sq, promotion: "q" });
     setSelectedSquare(null);
   }
 
+  function handleSendChat(e: React.FormEvent) {
+    e.preventDefault();
+    if (!chatText.trim()) return;
+    const socket = getSocket();
+    socket.emit("chat:send", { text: chatText.trim() });
+    setChatText("");
+  }
+
+  const turnsList = useMemo(() => {
+    const history = state.history;
+    const pairs: Array<{ num: number; white?: string; black?: string }> = [];
+    for (let i = 0; i < history.length; i += 2) {
+      pairs.push({
+        num: Math.floor(i / 2) + 1,
+        white: history[i]?.san,
+        black: history[i + 1]?.san,
+      });
+    }
+    return pairs;
+  }, [state.history]);
+
   return (
-    <div className="flex flex-col min-h-screen bg-stone-950 text-stone-100 p-3 select-none justify-between gap-3">
-      {/* Top Header — Opponent Clock */}
-      <div className="flex flex-col gap-2">
-        <ChessClockPill
-          playerName={opponentName}
-          timeMs={opponentTime}
-          isActive={state.turn === opponentColor && state.phase === "aiming"}
-          color={opponentColor}
-        />
-        <CapturedPiecesRack captured={state.capturedPieces} />
-      </div>
+    <div className="flex flex-col min-h-screen bg-[#EEDCB9] text-[#3D2514] p-3 select-none justify-between gap-3 font-sans pb-20">
+      {/* ──────────────── 1. Top Parchment Header Card ──────────────── */}
+      <div className="rounded-3xl bg-gradient-to-b from-[#F9EEDD] via-[#F2DFBF] to-[#E5CB9E] p-3.5 border-2 border-[#B8966B] shadow-[0_8px_20px_rgba(100,70,30,0.15)] space-y-3">
+        {/* Header Title Row */}
+        <div className="flex items-center justify-between border-b border-[#B8966B]/30 pb-2.5">
+          {/* Back Button */}
+          <button
+            type="button"
+            onClick={() => (window.location.href = "/")}
+            className="w-10 h-10 rounded-full bg-[#E5CFB3] hover:bg-[#D5BFA3] border border-[#8B5A2B]/40 flex items-center justify-center font-black text-base text-[#3D2514] shadow-sm transition cursor-pointer"
+          >
+            ←
+          </button>
 
-      {/* Main Chess Board */}
-      <div className="flex-1 flex items-center justify-center py-1">
-        <ChessBoardGrid
-          fen={state.fen}
-          boardTheme={state.boardTheme}
-          myColor={myColor}
-          myTurn={myTurn}
-          lastMove={state.lastMove}
-          inCheck={state.inCheck}
-          selectedSquare={selectedSquare}
-          onSquareClick={handleSquareClick}
-        />
-      </div>
+          {/* Title & Ribbon */}
+          <div className="flex flex-col items-center">
+            <h1 className="text-xl font-black font-serif tracking-wide text-[#2B1909] flex items-center gap-1.5">
+              <span>👑</span> CHESS LOUNGE <span>✨</span>
+            </h1>
+            <div className="px-3 py-0.5 rounded-full bg-gradient-to-r from-[#2B6CB0] to-[#1A365D] text-white text-[10px] font-black uppercase tracking-widest shadow-sm">
+              CLASSIC MODE
+            </div>
+          </div>
 
-      {/* Bottom Header — My Clock & Status */}
-      <div className="flex flex-col gap-3">
-        <ChessClockPill
-          playerName={myName}
-          timeMs={myTime}
-          isActive={myTurn}
-          color={myColor}
-        />
-
-        {/* Resign / Draw Actions */}
-        {state.phase === "aiming" && (
-          <div className="flex items-center gap-2">
+          {/* Audio & Settings icons */}
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => onMove("resign")}
-              className="flex-1 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-200 text-xs font-black uppercase tracking-wider transition cursor-pointer active:scale-95"
+              className="w-9 h-9 rounded-full bg-[#E5CFB3] hover:bg-[#D5BFA3] border border-[#8B5A2B]/40 flex items-center justify-center text-sm text-[#3D2514] shadow-sm cursor-pointer"
             >
-              🏳️ Resign
+              🔊
             </button>
             <button
               type="button"
-              onClick={() => onMove("offerDraw")}
-              className="flex-1 py-2 rounded-xl bg-amber-950/80 hover:bg-amber-900 border border-amber-500/40 text-amber-200 text-xs font-black uppercase tracking-wider transition cursor-pointer active:scale-95"
+              onClick={() => setSkinModalOpen(true)}
+              className="w-9 h-9 rounded-full bg-[#E5CFB3] hover:bg-[#D5BFA3] border border-[#8B5A2B]/40 flex items-center justify-center text-sm text-[#3D2514] shadow-sm cursor-pointer"
             >
-              🤝 Offer Draw
+              ⚙️
             </button>
           </div>
-        )}
+        </div>
 
-        {/* Move History Log */}
-        <ChessMoveHistoryPanel history={state.history} />
+        {/* Player Versus Cards Row */}
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Left Player Card (You) */}
+          <div
+            className={`p-2.5 rounded-2xl border flex items-center justify-between shadow-sm transition-all ${
+              myTurn
+                ? "bg-[#EDF7ED] border-[#4E9A51] ring-2 ring-[#4E9A51]/40"
+                : "bg-[#FDF9F2]/90 border-[#C5A880]"
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-200 border border-amber-400 flex items-center justify-center text-xl shrink-0 shadow-inner">
+                🧑‍🦱
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-black text-[#2B1909] truncate">{myName}</span>
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-black bg-[#38A169] text-white uppercase">
+                    YOU
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-[#6D5432] block">
+                  1450 🏆
+                </span>
+              </div>
+            </div>
+            <div
+              className={`px-2.5 py-1.5 rounded-xl font-mono font-black text-sm shadow-inner ${
+                myTurn ? "bg-[#C6F6D5] text-[#22543D]" : "bg-[#EFE6D5] text-[#4A3B2C]"
+              }`}
+            >
+              {formatTime(myTime)}
+            </div>
+          </div>
+
+          {/* Right Player Card (Opponent) */}
+          <div
+            className={`p-2.5 rounded-2xl border flex items-center justify-between shadow-sm transition-all ${
+              state.turn === opponentColor && state.phase === "aiming"
+                ? "bg-[#EDF7ED] border-[#4E9A51] ring-2 ring-[#4E9A51]/40"
+                : "bg-[#FFF8F0]/90 border-[#E2B790]"
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-orange-200 border border-orange-400 flex items-center justify-center text-xl shrink-0 shadow-inner">
+                👨‍🦰
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-black text-[#2B1909] truncate block">{opponentName}</span>
+                <span className="text-[10px] font-bold text-[#6D5432] block">
+                  1420 🏆
+                </span>
+              </div>
+            </div>
+            <div className="px-2.5 py-1.5 rounded-xl bg-[#F4E3D0] text-[#5C3D1E] font-mono font-black text-sm shadow-inner">
+              {formatTime(opponentTime)}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Room Rail */}
-      {roomCode && (
-        <InlineRoomRail
-          code={roomCode}
-          game="chess"
-          phase={roomPhase ?? "playing"}
-          players={players}
-          selfId={selfId}
-          messages={messages}
-        />
-      )}
+      {/* ──────────────── 2. 3D Wood Board Frame & Chess Board ──────────────── */}
+      <div className="relative w-full aspect-square max-w-[500px] mx-auto p-3 rounded-3xl bg-gradient-to-br from-[#6A4724] via-[#4A3016] to-[#2B1B0C] border-4 border-[#3D2514] shadow-[0_15px_30px_rgba(40,25,10,0.6)]">
+        <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner">
+          <ChessBoardGrid
+            fen={state.fen}
+            boardTheme={localTheme}
+            myColor={myColor}
+            myTurn={myTurn}
+            lastMove={state.lastMove}
+            inCheck={state.inCheck}
+            selectedSquare={selectedSquare}
+            onSquareClick={handleSquareClick}
+          />
+        </div>
+      </div>
+
+      {/* ──────────────── 3. Under Board Action Control Bar ──────────────── */}
+      <div className="p-3 rounded-2xl bg-[#2A1D16] text-[#F5E6D3] border border-[#5C3D26] shadow-xl flex items-center justify-between gap-2">
+        {/* Turn Indicator */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className={`w-3 h-3 rounded-full shrink-0 ${
+              myTurn ? "bg-[#38A169] animate-pulse" : "bg-amber-500"
+            }`}
+          />
+          <div className="min-w-0">
+            <span className="text-xs font-black uppercase text-[#E2E8F0] block truncate">
+              {state.phase === "finished"
+                ? `Match Ended • ${state.drawReason ?? "Result declared"}`
+                : myTurn
+                ? "YOUR TURN"
+                : `${opponentName.toUpperCase()}'S TURN`}
+            </span>
+            <span className="text-[10px] text-stone-400 block truncate">
+              {myTurn ? "Make your move" : "Waiting for opponent..."}
+            </span>
+          </div>
+        </div>
+
+        {/* Action Buttons Row */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded-xl bg-[#3D2C22] hover:bg-[#4E392C] border border-[#6D4E3A] text-amber-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition active:scale-95"
+          >
+            ↶ UNDO
+          </button>
+          <button
+            type="button"
+            onClick={() => setHintCount(Math.max(0, hintCount - 1))}
+            className="relative px-3 py-1.5 rounded-xl bg-[#4A3925] hover:bg-[#5C4830] border border-[#8B6B40] text-amber-300 text-xs font-bold flex items-center gap-1 cursor-pointer transition active:scale-95"
+          >
+            💡 HINT
+            {hintCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-stone-950 font-mono text-[9px] font-black flex items-center justify-center">
+                {hintCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove("resign")}
+            className="px-3 py-1.5 rounded-xl bg-[#742A2A] hover:bg-[#9B2C2C] border border-[#9B2C2C] text-red-100 text-xs font-bold flex items-center gap-1 cursor-pointer transition active:scale-95"
+          >
+            🚩 RESIGN
+          </button>
+        </div>
+      </div>
+
+      {/* ──────────────── 4. Middle 2-Column Dashboard Cards ──────────────── */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Left Card: Move History */}
+        <div className="p-3 rounded-2xl bg-[#F5E8D3] border-2 border-[#D9C4A5] shadow-md flex flex-col min-h-[140px]">
+          <div className="flex items-center justify-between border-b border-[#D9C4A5] pb-1.5 mb-2">
+            <span className="text-xs font-black uppercase text-[#3D2514] flex items-center gap-1">
+              📋 MOVE HISTORY
+            </span>
+            <span className="text-[10px] text-[#78593A] font-bold">
+              {state.history.length} moves
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto max-h-24 space-y-1 text-xs font-mono text-[#3D2514]">
+            {turnsList.length === 0 ? (
+              <div className="text-[11px] text-[#78593A] italic flex items-center gap-1 pt-2">
+                <span>📌</span> Game just started
+              </div>
+            ) : (
+              turnsList.map((t) => (
+                <div key={t.num} className="flex items-center justify-between px-1.5 py-0.5 rounded bg-[#EAD6B8]">
+                  <span className="font-bold text-[#8B5A2B] w-6">{t.num}.</span>
+                  <span className="flex-1">{t.white ?? "..."}</span>
+                  <span className="flex-1 text-right text-[#6D4323]">{t.black ?? ""}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Right Card: Embedded Chat */}
+        <div className="p-3 rounded-2xl bg-[#F5E8D3] border-2 border-[#D9C4A5] shadow-md flex flex-col min-h-[140px]">
+          <div className="flex items-center justify-between border-b border-[#D9C4A5] pb-1.5 mb-1.5">
+            <span className="text-xs font-black uppercase text-[#3D2514] flex items-center gap-1">
+              💬 CHAT
+            </span>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              {players.length}
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto max-h-20 space-y-1 text-[11px]">
+            {messages.length === 0 ? (
+              <div className="text-[#78593A] italic pt-1">
+                <span className="font-bold text-[#C53030]">{opponentName}:</span> Good luck!
+              </div>
+            ) : (
+              messages.map((m, i) => (
+                <div key={`m-${i}`} className="flex flex-col">
+                  <span className="font-bold text-[#6D4323] text-[10px]">{m.playerName}:</span>
+                  <span className="text-[#2B1909]">{m.text}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <form onSubmit={handleSendChat} className="flex items-center gap-1 pt-1.5 border-t border-[#D9C4A5] mt-1">
+            <input
+              type="text"
+              value={chatText}
+              onChange={(e) => setChatText(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 bg-[#EAD6B8] border border-[#C5A880] rounded-xl px-2 py-1 text-xs text-[#2B1909] placeholder-[#78593A] focus:outline-none"
+            />
+            <button type="submit" className="p-1 text-base">
+              😊
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* ──────────────── 5. Bottom Fixed Parchment Navigation Bar ──────────────── */}
+      <div className="fixed bottom-2 left-2 right-2 z-40 max-w-lg mx-auto p-2 rounded-2xl bg-gradient-to-r from-[#F5E6D3] via-[#EADBCE] to-[#F5E6D3] border-2 border-[#8B5A2B] shadow-2xl flex items-center justify-around text-[#3D2514]">
+        <button
+          type="button"
+          onClick={() => {
+            const socket = getSocket();
+            socket.emit("chat:send", { text: "Good game!" });
+          }}
+          className="flex flex-col items-center gap-0.5 relative cursor-pointer active:scale-95"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-lg shadow-md">
+            💬
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-wider">CHAT</span>
+          {messages.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-emerald-600 text-white font-mono text-[9px] font-black flex items-center justify-center border border-white">
+              {messages.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            const socket = getSocket();
+            socket.emit("chat:send", { text: "😊" });
+          }}
+          className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-lg shadow-md">
+            😀
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-wider">EMOJI</span>
+        </button>
+
+        <button
+          type="button"
+          className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-lg shadow-md">
+            🎙️
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-wider">VOICE</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSkinModalOpen(true)}
+          className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-lg shadow-md">
+            👥
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-wider">PLAYERS</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSkinModalOpen(true)}
+          className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95 relative"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#3D2514] text-[#F5E6D3] flex items-center justify-center text-lg shadow-md">
+            •••
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-wider">MORE</span>
+          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-600 border border-white" />
+        </button>
+      </div>
+
+      {/* Skin Customization Modal */}
+      <ChessSkinModal
+        isOpen={skinModalOpen}
+        onClose={() => setSkinModalOpen(false)}
+        currentTheme={localTheme}
+        currentPieceSet={localPieceSet}
+        onSelectTheme={(t) => {
+          setLocalTheme(t);
+          onMove("setOptions", { boardTheme: t });
+        }}
+        onSelectPieceSet={(s) => {
+          setLocalPieceSet(s);
+          onMove("setOptions", { pieceSet: s });
+        }}
+      />
     </div>
   );
 }

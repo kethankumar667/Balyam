@@ -20,10 +20,10 @@ export interface BoardThemeConfig {
 
 export const CHESS_THEMES: Record<ChessBoardTheme, BoardThemeConfig> = {
   emerald: {
-    name: "Emerald Tournament",
-    lightSquare: "#EEEED2",
-    darkSquare: "#769656",
-    border: "#4A6B2F",
+    name: "Classic Olive",
+    lightSquare: "#E9E0C5",
+    darkSquare: "#7B9B52",
+    border: "#4E6931",
     lastMoveHighlight: "rgba(247, 247, 105, 0.5)",
     selectedHighlight: "rgba(20, 83, 45, 0.6)",
     legalDot: "rgba(107, 142, 35, 0.7)",
@@ -77,26 +77,30 @@ export function ChessPieceSymbol({
   size?: number;
 }) {
   const isWhite = color === "w";
-  const fill = isWhite ? "#FFFFFF" : "#1E293B";
-  const stroke = isWhite ? "#334155" : "#0F172A";
 
   const symbols: Record<string, string> = {
-    k: isWhite ? "♔" : "♚",
-    q: isWhite ? "♕" : "♛",
-    r: isWhite ? "♖" : "♜",
-    b: isWhite ? "♗" : "♝",
-    n: isWhite ? "♘" : "♞",
-    p: isWhite ? "♙" : "♟",
+    k: "♔",
+    q: "♕",
+    r: "♖",
+    b: "♗",
+    n: "♘",
+    p: "♙",
   };
 
   return (
     <span
-      className="inline-block select-none filter drop-shadow-md transition-transform duration-150 hover:scale-110"
+      className={`inline-block select-none transition-transform duration-150 hover:scale-110 ${
+        isWhite
+          ? "text-[#FFFBF2] drop-shadow-[0_4px_6px_rgba(0,0,0,0.6)]"
+          : "text-[#1A1817] drop-shadow-[0_4px_6px_rgba(255,255,255,0.2)]"
+      }`}
       style={{
         fontSize: `${size}px`,
         lineHeight: 1,
-        color: fill,
-        WebkitTextStroke: `1px ${stroke}`,
+        WebkitTextStroke: isWhite ? "1.5px #6D5432" : "1.5px #000000",
+        filter: isWhite
+          ? "drop-shadow(0px 3px 2px rgba(0,0,0,0.4))"
+          : "drop-shadow(0px 3px 2px rgba(0,0,0,0.6))",
       }}
     >
       {symbols[type.toLowerCase()] ?? "♟"}
