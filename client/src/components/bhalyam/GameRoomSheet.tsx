@@ -254,9 +254,9 @@ const SNAKE_WALL_MODES: { id: "solid" | "wrap"; label: string; blurb: string }[]
   { id: "wrap",  label: "Wrap Around", blurb: "Passing boundary wraps to other side" },
 ];
 
-const SNAKE_THEMES: { id: "nokia-monochrome" | "nokia-color" | "neon-modern"; label: string; blurb: string }[] = [
-  { id: "nokia-monochrome", label: "Nokia 3310", blurb: "Green LCD dot matrix" },
-  { id: "nokia-color",      label: "Nokia 6110", blurb: "Classic color screen" },
+const SNAKE_THEMES: { id: "monochrome" | "color" | "neon-modern"; label: string; blurb: string }[] = [
+  { id: "monochrome", label: "3310", blurb: "Green LCD dot matrix" },
+  { id: "color",      label: "6110", blurb: "Classic color screen" },
   { id: "neon-modern",      label: "Neon Glow",  blurb: "Modern vibrant dark mode" },
 ];
 

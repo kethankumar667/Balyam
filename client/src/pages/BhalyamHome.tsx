@@ -1065,13 +1065,13 @@ export function GameTile({
     samethalu: "/SamethaluTile.png",
     telugucinemalu: "/telugu cinemalu.png",
     stargame: "/StarTile.png",
-    bingo: "",
-    snake: "",
-    vyomayudh: "",
-    bounce: "",
-    roadrash: "",
-    carrom: "",
-    chess: "",
+    bingo: "/Bingo Tile.png",
+    snake: "/Snake Game Tile.png",
+    vyomayudh: "/Vyomyudh Game Tile.png",
+    bounce: "/Bounce Game Tile.png",
+    roadrash: "/Roadrash Game Tile.png",
+    carrom: "/Carrom Game Tile.png",
+    chess: "/Chess Game Tile.png",
   };
 
   const underMaintenance = isLocked(game);

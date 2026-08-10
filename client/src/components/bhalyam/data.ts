@@ -272,7 +272,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   },
   {
     slug: "chess",
-    tags: ["solo", "multiplayer", "board"],
+    tags: ["multiplayer", "board"],
     title: "Chess",
     theme: "Grandmaster 2026 Edition",
     blurb:
@@ -315,10 +315,10 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     slug: "snake",
     tags: ["solo", "multiplayer"],
     theme: "90s Nostalgia 🐍",
-    title: "Nokia Snake",
+    title: "Snake",
     blurb:
       "Classic green LCD matrix. Eat food pellets, grow longer, avoid walls and self-collision.",
-    accent: { from: "#65A30D", to: "#365314" }, // Nokia 3310 Lime Matrix
+    accent: { from: "#65A30D", to: "#365314" }, //  3310 Lime Matrix
   },
   {
     slug: "vyomayudh",
@@ -333,7 +333,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     slug: "bounce",
     tags: ["solo", "multiplayer"],
     theme: "Red Ball 🔴",
-    title: "Nokia Bounce",
+    title: "Bounce",
     blurb:
       "Classic red ball platformer. Pass through gold rings, avoid spikes, and finish the level.",
     accent: { from: "#F43F5E", to: "#9F1239" }, // Red Ball Electric Crimson

@@ -120,7 +120,11 @@ function BotControls({
   maxPlayers: number;
   game: GameKind;
 }) {
-  if (game === "telugucinemalu" || game === "samethalu") {
+  // Games with no bot AI — bots would be dead/frozen seats. Hide the panel entirely.
+  const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
+    "samethalu", "telugucinemalu", "snake", "vyomayudh", "bounce", "roadrash",
+  ]);
+  if (NO_BOT_GAMES.has(game)) {
     return null;
   }
   const [botName, setBotName] = useState("");

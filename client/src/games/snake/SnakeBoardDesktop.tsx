@@ -110,7 +110,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
         {/* Left Side Specs Panel */}
         <div className={`col-span-4 rounded-2xl p-6 space-y-5 shadow-xl ${themeClasses.specs}`}>
           <div>
-            <h2 className={`text-xl font-bold font-mono ${themeClasses.specsTitle}`}>Nokia Snake Arcade 🐍</h2>
+            <h2 className={`text-xl font-bold font-mono ${themeClasses.specsTitle}`}>Snake Arcade 🐍</h2>
             <p className="text-xs opacity-80 mt-1 leading-relaxed">
               Steer your pixel snake using <strong>Arrow Keys</strong>, <strong>WASD</strong>, or <strong>Numpad 2/4/6/8</strong>!
             </p>
@@ -237,7 +237,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
               exit={{ scale: 0.9, y: 20 }}
               className="bg-slate-900 border-4 border-amber-400 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-slate-100 font-sans"
             >
-              <h3 className="text-xl font-bold font-mono text-amber-400">How to Play Nokia Snake 🐍</h3>
+              <h3 className="text-xl font-bold font-mono text-amber-400">How to Play Snake 🐍</h3>
               <div className="text-xs space-y-2 leading-relaxed text-slate-300">
                 <p>• Use keyboard WASD, Arrow Keys, or Numpad to change direction.</p>
                 <p>• Collect food pellets to increase score by 10 points and extend snake length.</p>

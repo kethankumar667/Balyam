@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import type { CarromPublicState, CarromSeat, Player, StrikerSkin, BoardFeltSkin } from "@shared/types";
 import { CARROM_BOARD } from "@shared/types";
 import { HapticsManager } from "../../services/HapticsManager";
@@ -110,110 +110,363 @@ export interface AimData {
   dy: number;
 }
 
-/* ─────────────────────────── Carrom Score Header ─────────────────────────── */
-export function CarromScoreHeader({
+/* ─────────────────────────── BHALYAM Warm Palette ─────────────────────────── */
+const WARM = {
+  bg: "#F7E8C4",
+  bgSoft: "#FFF8ED",
+  bgWarm: "#F0DFB8",
+  border: "#E8D5B5",
+  borderDark: "#D4BA8E",
+  wood: "#6D4323",
+  woodDark: "#4A2C17",
+  woodDeep: "#3B2214",
+  gold: "#E4B128",
+  goldDark: "#D4960C",
+  goldLight: "#F5D06B",
+  cream: "#FFF3DB",
+  green: "#2E8B57",
+  greenDark: "#1D6B40",
+} as const;
+
+/* ─────────────────────────── Letter Avatar ─────────────────────────── */
+/** Generates a colored avatar circle with the first letter of the player's name. */
+function LetterAvatar({
+  name,
+  isWhite,
+  size = 40,
+  isSelf,
+  isTurn,
+}: {
+  name: string;
+  isWhite: boolean;
+  size?: number;
+  isSelf?: boolean;
+  isTurn?: boolean;
+}) {
+  const letter = (name[0] ?? "?").toUpperCase();
+  const bg = isWhite
+    ? "linear-gradient(135deg, #F0EAD6, #D4C4A0)"
+    : "linear-gradient(135deg, #4A3728, #2A1A10)";
+  const textColor = isWhite ? WARM.woodDark : "#E8D5B5";
+  const borderColor = isTurn ? WARM.gold : isWhite ? "#C4A87A" : "#6B4226";
+
+  return (
+    <div
+      className="relative rounded-full flex items-center justify-center flex-shrink-0 shadow-md"
+      style={{
+        width: size,
+        height: size,
+        background: bg,
+        border: `2.5px solid ${borderColor}`,
+        boxShadow: isTurn ? `0 0 12px ${WARM.gold}55` : "0 2px 6px rgba(0,0,0,0.15)",
+      }}
+    >
+      <span
+        className="font-black"
+        style={{
+          color: textColor,
+          fontSize: size * 0.42,
+          lineHeight: 1,
+        }}
+      >
+        {letter}
+      </span>
+      {isSelf && (
+        <span
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-wider px-1.5 py-0 rounded-full"
+          style={{
+            background: WARM.green,
+            color: "#fff",
+            border: `1.5px solid ${WARM.bgSoft}`,
+            lineHeight: "14px",
+          }}
+        >
+          YOU
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────── Carrom Lounge Header ─────────────────────────── */
+export function CarromLoungeHeader({
+  modeLabel,
+  onOpenSkins,
+}: {
+  modeLabel: string;
+  onOpenSkins?: () => void;
+}) {
+  return (
+    <div
+      className="w-full flex items-center justify-between px-4 py-2.5 rounded-t-2xl"
+      style={{
+        background: `linear-gradient(135deg, ${WARM.bgSoft}, ${WARM.bg})`,
+        borderBottom: `2px solid ${WARM.border}`,
+      }}
+    >
+      {/* Menu icon placeholder */}
+      <div
+        className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer active:scale-95 transition"
+        style={{ background: WARM.bgWarm, border: `1.5px solid ${WARM.border}` }}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <rect y="2" width="16" height="2" rx="1" fill={WARM.woodDark} />
+          <rect y="7" width="16" height="2" rx="1" fill={WARM.woodDark} />
+          <rect y="12" width="16" height="2" rx="1" fill={WARM.woodDark} />
+        </svg>
+      </div>
+
+      {/* Title */}
+      <div className="flex flex-col items-center">
+        <h1
+          className="font-display text-lg font-black uppercase tracking-wider leading-tight"
+          style={{ color: WARM.woodDark }}
+        >
+          Carrom Lounge
+        </h1>
+        <span
+          className="text-[9px] font-black uppercase tracking-[0.2em] px-3 py-0.5 rounded-full mt-0.5"
+          style={{
+            background: WARM.woodDark,
+            color: WARM.cream,
+            letterSpacing: "0.15em",
+          }}
+        >
+          {modeLabel} Mode
+        </span>
+      </div>
+
+      {/* Skins button */}
+      <div className="flex items-center gap-1.5">
+        {onOpenSkins && (
+          <button
+            type="button"
+            onClick={onOpenSkins}
+            className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer active:scale-95 transition"
+            style={{ background: WARM.bgWarm, border: `1.5px solid ${WARM.border}` }}
+            title="Custom Skins"
+          >
+            <span className="text-sm">🎨</span>
+          </button>
+        )}
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer active:scale-95 transition"
+          style={{ background: WARM.bgWarm, border: `1.5px solid ${WARM.border}` }}
+        >
+          <span className="text-sm">🔊</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Player Cards Row ─────────────────────────── */
+export function CarromPlayerCards({
   state,
   players,
   selfId,
-  onOpenSkins,
 }: {
   state: CarromPublicState;
   players: Player[];
   selfId: string;
-  onOpenSkins?: () => void;
 }) {
   const nameOf = useMemo(() => {
     const map = new Map(players.map((p) => [p.id, p.name]));
     return (id: string) => map.get(id) ?? "Player";
   }, [players]);
 
-  const seats = state.seats;
-  const modeLabel =
-    state.mode === "freestyle"
-      ? "Freestyle"
-      : state.mode === "discpool"
-      ? "Disc Pool"
-      : "Classic";
+  return (
+    <div
+      className="w-full flex items-stretch gap-2 px-3 py-2.5 overflow-x-auto"
+      style={{
+        background: WARM.bgSoft,
+        borderBottom: `1.5px solid ${WARM.border}`,
+      }}
+    >
+      {state.seats.map((s) => {
+        const isTurn = s.playerId === state.turnPlayerId && state.phase !== "finished";
+        const isSelf = s.playerId === selfId;
+        const name = nameOf(s.playerId);
+        const isWhite = s.color === "white";
+
+        return (
+          <div
+            key={s.playerId}
+            className="flex-1 flex flex-col items-center gap-1 p-2 rounded-xl min-w-[72px] transition-all duration-300"
+            style={{
+              background: isTurn
+                ? `linear-gradient(135deg, ${WARM.gold}22, ${WARM.goldDark}15)`
+                : WARM.cream,
+              border: isTurn
+                ? `2px solid ${WARM.gold}`
+                : `1.5px solid ${WARM.border}`,
+              boxShadow: isTurn
+                ? `0 4px 14px ${WARM.gold}30`
+                : "0 1px 3px rgba(0,0,0,0.06)",
+            }}
+          >
+            <LetterAvatar
+              name={name}
+              isWhite={isWhite}
+              size={36}
+              isSelf={isSelf}
+              isTurn={isTurn}
+            />
+            <span
+              className="text-[11px] font-bold leading-tight text-center truncate w-full mt-0.5"
+              style={{ color: WARM.woodDark }}
+            >
+              {name.split(" ")[0]}
+            </span>
+            {/* Coin indicator + remaining */}
+            <div className="flex items-center gap-1">
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{
+                  background: isWhite
+                    ? `radial-gradient(circle at 35% 35%, ${CARROM_THEME.whiteCoinStart}, ${CARROM_THEME.whiteCoinEnd})`
+                    : `radial-gradient(circle at 35% 35%, ${CARROM_THEME.blackCoinStart}, ${CARROM_THEME.blackCoinEnd})`,
+                  border: `1px solid ${isWhite ? CARROM_THEME.whiteCoinRim : CARROM_THEME.blackCoinRim}`,
+                }}
+              />
+              <span className="text-[9px] font-bold uppercase" style={{ color: WARM.wood }}>
+                {s.remaining} left
+              </span>
+            </div>
+            {/* Score */}
+            <div className="flex items-baseline gap-0.5">
+              <span
+                className="text-base font-black tabular-nums leading-none"
+                style={{ color: WARM.woodDark }}
+              >
+                {s.score}
+              </span>
+              <span
+                className="text-[8px] font-extrabold uppercase tracking-widest"
+                style={{ color: WARM.wood + "88" }}
+              >
+                PTS
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─────────────────────────── Turn Indicator Bar ─────────────────────────── */
+export function CarromTurnBar({
+  state,
+  nameOf,
+  selfId,
+}: {
+  state: CarromPublicState;
+  nameOf: (id: string) => string;
+  selfId: string;
+}) {
+  const [showRules, setShowRules] = useState(false);
+  const isMyTurn = state.turnPlayerId === selfId && state.phase !== "finished";
+  const turnName = state.turnPlayerId ? nameOf(state.turnPlayerId) : "";
+  const mySeat = state.seats.find((s) => s.playerId === selfId);
+  const myColor = mySeat?.color ?? "white";
+
+  let instruction = "Waiting for opponent…";
+  if (state.phase === "finished") {
+    instruction = state.winnerId
+      ? `🏆 ${nameOf(state.winnerId)} wins the match!`
+      : "Match finished!";
+  } else if (state.phase === "resolving") {
+    instruction = "🎯 Shot in play… watching coins…";
+  } else if (isMyTurn) {
+    if (state.queenPendingFor === selfId) {
+      instruction = "👑 Cover the Queen by pocketing your coin!";
+    } else {
+      instruction = `Pot all your ${myColor} coins and cover the Red`;
+    }
+  } else if (state.turnPlayerId) {
+    instruction = `Waiting for ${turnName.split(" ")[0]}'s shot…`;
+  }
 
   return (
-    <div className="w-full flex flex-col gap-2 p-3 rounded-2xl bg-gradient-to-r from-stone-900/90 via-stone-800/90 to-stone-900/90 border border-amber-500/20 shadow-xl backdrop-blur-md">
-      {/* Top Meta Bar */}
-      <div className="flex items-center justify-between px-1">
-        <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-          {modeLabel} Mode
-        </span>
+    <>
+      <div
+        className="w-full flex items-center justify-between px-4 py-2"
+        style={{
+          background: WARM.cream,
+          borderBottom: `1.5px solid ${WARM.border}`,
+        }}
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {state.phase !== "finished" && (
+            <div
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{
+                background: isMyTurn ? WARM.green : WARM.gold,
+                boxShadow: isMyTurn ? `0 0 8px ${WARM.green}88` : "none",
+              }}
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            {state.phase !== "finished" && state.turnPlayerId && (
+              <div
+                className="text-xs font-black uppercase tracking-wide"
+                style={{ color: WARM.woodDark }}
+              >
+                {isMyTurn ? "Your" : `${turnName.split(" ")[0]}'s`} Turn
+              </div>
+            )}
+            <div
+              className="text-[11px] font-semibold leading-tight truncate"
+              style={{ color: WARM.wood }}
+            >
+              {instruction}
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowRules((v) => !v)}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg cursor-pointer active:scale-95 transition-all"
+          style={{
+            background: WARM.bgWarm,
+            border: `1.5px solid ${WARM.borderDark}`,
+            color: WARM.woodDark,
+          }}
+        >
+          <span className="text-sm">📜</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider">Rules</span>
+        </button>
+      </div>
 
-        {onOpenSkins && (
+      {/* Rules popover */}
+      {showRules && (
+        <div
+          className="w-full px-4 py-3 text-xs space-y-1.5"
+          style={{
+            background: WARM.cream,
+            borderBottom: `1.5px solid ${WARM.border}`,
+            color: WARM.woodDark,
+          }}
+        >
+          <ul className="list-disc list-inside space-y-1 font-semibold opacity-90">
+            <li>Position your striker on the baseline, then drag to aim & shoot.</li>
+            <li>Pot all your assigned coins (white or black) to score points.</li>
+            <li>The Queen (red) is worth 5 points — but you must "cover" it by pocketing one of your own coins on the very next shot.</li>
+            <li>If you pocket the striker, your turn ends and one of your potted coins returns to the center.</li>
+            <li>First to reach the target score wins!</li>
+          </ul>
           <button
             type="button"
-            onClick={onOpenSkins}
-            className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/30 transition cursor-pointer flex items-center gap-1 active:scale-95"
+            onClick={() => setShowRules(false)}
+            className="text-[10px] font-bold uppercase px-2 py-1 rounded mt-1 cursor-pointer"
+            style={{ background: WARM.bgWarm, border: `1px solid ${WARM.border}`, color: WARM.wood }}
           >
-            🎨 Custom Skins
+            Close
           </button>
-        )}
-      </div>
-
-      {/* Players Header */}
-      <div className="flex items-stretch gap-2.5">
-        {seats.map((s) => {
-          const isTurn = s.playerId === state.turnPlayerId && state.phase !== "finished";
-          const isSelf = s.playerId === selfId;
-          const name = nameOf(s.playerId);
-          const isWhite = s.color === "white";
-
-          return (
-            <div
-              key={s.playerId}
-              className={`flex-1 flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl transition-all duration-300 ${
-                isTurn
-                  ? "bg-gradient-to-r from-amber-500/20 to-amber-600/10 border-2 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)]"
-                  : "bg-white/5 border border-white/10"
-              }`}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div
-                  className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center shadow-md"
-                  style={{
-                    background: isWhite
-                      ? `radial-gradient(circle at 35% 35%, ${CARROM_THEME.whiteCoinStart}, ${CARROM_THEME.whiteCoinEnd})`
-                      : `radial-gradient(circle at 35% 35%, ${CARROM_THEME.blackCoinStart}, ${CARROM_THEME.blackCoinEnd})`,
-                    border: `1.5px solid ${isWhite ? CARROM_THEME.whiteCoinRim : CARROM_THEME.blackCoinRim}`,
-                  }}
-                >
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      border: `1px solid ${isWhite ? "rgba(140,99,57,0.5)" : "rgba(163,109,67,0.5)"}`,
-                    }}
-                  />
-                </div>
-
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-black text-amber-100/90 truncate flex items-center gap-1">
-                    {name}
-                    {isSelf && <span className="text-[10px] text-amber-400 font-mono">(You)</span>}
-                  </span>
-                  <span className="text-[10px] font-bold text-amber-200/60 uppercase tracking-wider">
-                    {s.color} · {s.remaining} left
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end flex-shrink-0">
-                <span className="text-base font-black font-mono text-amber-300 leading-none">
-                  {s.score}
-                </span>
-                <span className="text-[8px] font-extrabold uppercase tracking-widest text-amber-400/50">
-                  PTS
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -332,18 +585,25 @@ export function CarromSvgBoard({
   return (
     <div
       id="game-board-container"
-      className="relative w-full aspect-square max-w-[650px] max-h-full mx-auto select-none touch-none rounded-3xl overflow-hidden p-3 bg-gradient-to-br from-[#1C0E06] via-[#381F0E] to-[#1C0E06] border-4 border-[#5C361E] shadow-[0_20px_50px_rgba(0,0,0,0.8)]"
+      className="relative w-full aspect-square max-w-[650px] max-h-full mx-auto select-none touch-none overflow-hidden"
+      style={{
+        borderRadius: "16px",
+        padding: "10px",
+        background: `linear-gradient(135deg, #1C0E06, #381F0E, #1C0E06)`,
+        border: `3px solid ${WARM.wood}`,
+        boxShadow: "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
+      }}
     >
-      {/* Metallic Corner Brackets */}
-      <div className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-amber-400/60 rounded-tl-lg pointer-events-none" />
-      <div className="absolute top-2 right-2 w-6 h-6 border-t-2 border-r-2 border-amber-400/60 rounded-tr-lg pointer-events-none" />
-      <div className="absolute bottom-2 left-2 w-6 h-6 border-b-2 border-l-2 border-amber-400/60 rounded-bl-lg pointer-events-none" />
-      <div className="absolute bottom-2 right-2 w-6 h-6 border-b-2 border-r-2 border-amber-400/60 rounded-br-lg pointer-events-none" />
+      {/* Warm Corner Brackets */}
+      <div className="absolute top-1.5 left-1.5 w-5 h-5 border-t-2 border-l-2 rounded-tl-md pointer-events-none" style={{ borderColor: `${WARM.gold}80` }} />
+      <div className="absolute top-1.5 right-1.5 w-5 h-5 border-t-2 border-r-2 rounded-tr-md pointer-events-none" style={{ borderColor: `${WARM.gold}80` }} />
+      <div className="absolute bottom-1.5 left-1.5 w-5 h-5 border-b-2 border-l-2 rounded-bl-md pointer-events-none" style={{ borderColor: `${WARM.gold}80` }} />
+      <div className="absolute bottom-1.5 right-1.5 w-5 h-5 border-b-2 border-r-2 rounded-br-md pointer-events-none" style={{ borderColor: `${WARM.gold}80` }} />
 
       <svg
         ref={svgRef}
         viewBox={`0 0 ${size} ${size}`}
-        className="w-full h-full rounded-2xl shadow-inner cursor-crosshair"
+        className="w-full h-full rounded-xl shadow-inner cursor-crosshair"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -418,6 +678,26 @@ export function CarromSvgBoard({
           strokeWidth={0.4}
           opacity={0.8}
         />
+
+        {/* ── Corner Arrows (diagonal red lines matching mockup) ── */}
+        {[
+          { cx: cushion + 3, cy: cushion + 3, dx: 1, dy: 1 },
+          { cx: size - cushion - 3, cy: cushion + 3, dx: -1, dy: 1 },
+          { cx: cushion + 3, cy: size - cushion - 3, dx: 1, dy: -1 },
+          { cx: size - cushion - 3, cy: size - cushion - 3, dx: -1, dy: -1 },
+        ].map((a, i) => (
+          <line
+            key={`arrow-${i}`}
+            x1={a.cx}
+            y1={a.cy}
+            x2={a.cx + a.dx * 12}
+            y2={a.cy + a.dy * 12}
+            stroke="#B91C1C"
+            strokeWidth={0.5}
+            opacity={0.7}
+            markerEnd="none"
+          />
+        ))}
 
         {/* ── Rosette & Circles ── */}
         <circle cx={center} cy={center} r={CARROM_BOARD.coinRadius * 4.8} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.5} />
@@ -502,15 +782,16 @@ export function CarromSvgBoard({
         {/* ── 1-Cushion Reflection Trajectory ── */}
         {trajectoryPoints && (
           <g>
-            {/* Direct Ray */}
+            {/* Direct Ray — white dashed line like the mockup */}
             <line
               x1={trajectoryPoints.startX}
               y1={trajectoryPoints.startY}
               x2={trajectoryPoints.hitX}
               y2={trajectoryPoints.hitY}
-              stroke="#EF4444"
-              strokeWidth={0.8}
-              strokeDasharray="1.2 0.8"
+              stroke="#FFFFFF"
+              strokeWidth={0.6}
+              strokeDasharray="1.2 1"
+              opacity={0.85}
             />
 
             {/* Rebound Ray */}
@@ -522,8 +803,9 @@ export function CarromSvgBoard({
                   x2={trajectoryPoints.endX}
                   y2={trajectoryPoints.endY}
                   stroke="#38BDF8"
-                  strokeWidth={0.7}
+                  strokeWidth={0.5}
                   strokeDasharray="1 0.7"
+                  opacity={0.6}
                 />
                 {/* Rebound Starburst Dot */}
                 <circle
@@ -542,62 +824,36 @@ export function CarromSvgBoard({
               cy={trajectoryPoints.isReflected ? trajectoryPoints.endY : trajectoryPoints.hitY}
               r={CARROM_BOARD.coinRadius}
               fill="none"
-              stroke={trajectoryPoints.isReflected ? "#38BDF8" : "#EF4444"}
+              stroke={trajectoryPoints.isReflected ? "#38BDF8" : "#FFFFFF"}
               strokeWidth={0.4}
               strokeDasharray="0.8 0.5"
             />
           </g>
         )}
       </svg>
-
-      {/* Dynamic Shot Power Gauge */}
-      {aim && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-stone-900/90 border border-amber-400/50 shadow-2xl backdrop-blur-md flex items-center gap-2 pointer-events-none animate-fade-in">
-          <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
-            ⚡ Power: {Math.round(aim.power * 100)}%
-          </span>
-          <div className="w-20 h-2 bg-stone-800 rounded-full overflow-hidden border border-white/10">
-            <div
-              className="h-full transition-all duration-75"
-              style={{
-                width: `${aim.power * 100}%`,
-                background:
-                  aim.power < 0.4
-                    ? "#22C55E"
-                    : aim.power < 0.75
-                    ? "#EAB308"
-                    : "#EF4444",
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-/* ─────────────────────────── Baseline Position & Angle Controls ─────────────────────────── */
-export function CarromControls({
+/* ─────────────────────────── Shot Controls Panel ─────────────────────────── */
+export function CarromShotControls({
   myTurn,
   strikerPos,
   onPlace,
-  queenPendingFor,
-  selfId,
-  isOver,
-  winnerId,
+  aim,
   phase,
-  nameOf,
 }: {
   myTurn: boolean;
   strikerPos: number;
   onPlace: (pos: number) => void;
-  queenPendingFor: string | null;
-  selfId: string;
-  isOver: boolean;
-  winnerId: string | null;
+  aim: AimData | null;
   phase: string;
-  nameOf: (id: string) => string;
 }) {
+  const power = aim?.power ?? 0;
+  const powerPct = Math.round(power * 100);
+  const powerColor =
+    power < 0.4 ? "#22C55E" : power < 0.75 ? "#EAB308" : "#EF4444";
+
   function step(delta: number) {
     HapticsManager.getInstance().subtle();
     const next = Math.max(0, Math.min(1, strikerPos + delta));
@@ -605,35 +861,103 @@ export function CarromControls({
   }
 
   return (
-    <div className="w-full max-w-[650px] mx-auto flex flex-col gap-3">
-      {/* Queen Cover Warning */}
-      {queenPendingFor && (
-        <div className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-950/80 to-amber-950/80 border border-red-500/40 text-center shadow-lg animate-pulse">
-          <span className="text-xs font-black text-red-200">
-            👑 QUEEN PENDING!{" "}
-            {queenPendingFor === selfId
-              ? "Cover the Queen by pocketing your coin on this shot!"
-              : `${nameOf(queenPendingFor)} must cover the Queen!`}
+    <div
+      className="w-full rounded-2xl overflow-hidden"
+      style={{
+        background: WARM.cream,
+        border: `1.5px solid ${WARM.border}`,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+      }}
+    >
+      {/* Shot Power Bar */}
+      <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: `1px solid ${WARM.border}` }}>
+        {/* Power section */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: WARM.woodDark }}>
+              Shot Power
+            </span>
+            {aim && (
+              <span
+                className="text-xs font-black tabular-nums px-2 py-0.5 rounded-full"
+                style={{ background: powerColor + "22", color: powerColor, border: `1px solid ${powerColor}44` }}
+              >
+                {powerPct}%
+              </span>
+            )}
+          </div>
+          <div
+            className="w-full h-3 rounded-full overflow-hidden"
+            style={{ background: WARM.bgWarm, border: `1px solid ${WARM.border}` }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-75"
+              style={{
+                width: `${aim ? powerPct : 0}%`,
+                background: aim
+                  ? `linear-gradient(90deg, #22C55E, #EAB308 50%, #EF4444)`
+                  : WARM.border,
+              }}
+            />
+          </div>
+          <div className="flex justify-between mt-0.5">
+            <span className="text-[8px] font-bold uppercase" style={{ color: WARM.wood + "88" }}>MIN</span>
+            <span className="text-[8px] font-bold uppercase" style={{ color: WARM.wood + "88" }}>MAX</span>
+          </div>
+        </div>
+
+        {/* Center drag-to-aim target */}
+        <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{
+              background: `radial-gradient(circle, ${WARM.cream} 30%, ${WARM.bgWarm} 60%, ${WARM.border} 100%)`,
+              border: `2.5px solid ${aim ? powerColor : WARM.borderDark}`,
+              boxShadow: aim ? `0 0 12px ${powerColor}44` : "0 2px 6px rgba(0,0,0,0.1)",
+            }}
+          >
+            {/* Concentric target rings */}
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ border: `1.5px solid ${aim ? powerColor + "66" : WARM.border}` }}
+            >
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{
+                  background: aim ? powerColor : WARM.borderDark,
+                  opacity: aim ? 0.8 : 0.4,
+                }}
+              />
+            </div>
+          </div>
+          <span className="text-[8px] font-black uppercase text-center leading-tight" style={{ color: WARM.woodDark }}>
+            {aim ? "RELEASE\nTO SHOOT" : "DRAG\nTO AIM"}
           </span>
         </div>
-      )}
 
-      {/* Position Control Slider & Nudge Buttons */}
-      {myTurn && (
-        <div className="flex items-center gap-3 p-3 rounded-2xl bg-stone-900/80 border border-amber-500/20 shadow-lg backdrop-blur-md">
-          <span className="text-xs font-black text-amber-200 uppercase tracking-wide whitespace-nowrap">
-            Striker Position:
+        {/* Right instruction */}
+        <div className="flex flex-col items-center gap-1 flex-shrink-0 w-20">
+          <span className="text-2xl">👆</span>
+          <span className="text-[9px] font-semibold text-center leading-tight" style={{ color: WARM.wood }}>
+            Slide to aim{"\n"}Release to shoot
           </span>
+        </div>
+      </div>
 
+      {/* Striker Position Slider — only when it's your turn */}
+      {myTurn && phase === "aiming" && (
+        <div className="flex items-center gap-2.5 px-4 py-2.5">
+          <span className="text-[9px] font-black uppercase tracking-wider whitespace-nowrap" style={{ color: WARM.wood }}>
+            Position:
+          </span>
           <button
             type="button"
             onClick={() => step(-0.05)}
-            className="w-8 h-8 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold flex items-center justify-center border border-amber-500/30 active:scale-95 transition cursor-pointer"
-            title="Nudge Left"
+            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer active:scale-95 transition text-xs font-bold"
+            style={{ background: WARM.bgWarm, border: `1.5px solid ${WARM.border}`, color: WARM.woodDark }}
           >
             ◀
           </button>
-
           <input
             type="range"
             min={0}
@@ -644,32 +968,110 @@ export function CarromControls({
               HapticsManager.getInstance().subtle();
               onPlace(Number(e.target.value));
             }}
-            className="flex-1 accent-amber-500 h-2 bg-stone-800 rounded-lg cursor-pointer"
+            className="flex-1 h-2 rounded-lg cursor-pointer"
+            style={{ accentColor: WARM.gold }}
           />
-
           <button
             type="button"
             onClick={() => step(0.05)}
-            className="w-8 h-8 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold flex items-center justify-center border border-amber-500/30 active:scale-95 transition cursor-pointer"
-            title="Nudge Right"
+            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer active:scale-95 transition text-xs font-bold"
+            style={{ background: WARM.bgWarm, border: `1.5px solid ${WARM.border}`, color: WARM.woodDark }}
           >
             ▶
           </button>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Status Cue Line */}
-      <div className="text-center text-xs font-bold text-amber-200/80 py-1">
-        {isOver
-          ? winnerId
-            ? `🏆 ${nameOf(winnerId)} wins the match!`
-            : "Match finished!"
-          : phase === "resolving"
-          ? "🎯 Shot in play... watching coins..."
-          : myTurn
-          ? "🎯 Pull back from striker & release to shoot!"
-          : "⏳ Waiting for opponent's shot..."}
-      </div>
+/* ─────────────────────────── Activity Log ─────────────────────────── */
+export function CarromActivityLog({
+  lastShot,
+  lastCombo,
+}: {
+  lastShot: string | null;
+  lastCombo?: string | null;
+}) {
+  if (!lastShot) return null;
+
+  const now = new Date();
+  const time = `${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, "0")} ${now.getHours() >= 12 ? "PM" : "AM"}`;
+
+  return (
+    <div
+      className="w-full flex items-center gap-2 px-4 py-2"
+      style={{
+        background: WARM.cream,
+        border: `1px solid ${WARM.border}`,
+        borderRadius: "12px",
+      }}
+    >
+      <span className="text-sm flex-shrink-0">↩️</span>
+      <span
+        className="text-[11px] font-semibold flex-1 truncate"
+        style={{ color: WARM.woodDark }}
+      >
+        {lastShot}
+        {lastCombo && (
+          <span style={{ color: WARM.gold }}> {lastCombo}</span>
+        )}
+      </span>
+      <span
+        className="text-[10px] font-bold tabular-nums flex-shrink-0"
+        style={{ color: WARM.wood + "88" }}
+      >
+        {time}
+      </span>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Bottom Action Bar ─────────────────────────── */
+export function CarromBottomBar({
+  onToggleChat,
+  chatBadge,
+}: {
+  onToggleChat?: () => void;
+  chatBadge?: number;
+}) {
+  const items = [
+    { icon: "💬", label: "Chat", badge: chatBadge, action: onToggleChat },
+    { icon: "😊", label: "Emoji", action: undefined },
+    { icon: "🎙️", label: "Voice", action: undefined },
+    { icon: "⚡", label: "Quick Chat", action: undefined },
+    { icon: "•••", label: "More", action: undefined },
+  ];
+
+  return (
+    <div
+      className="w-full flex items-center justify-around py-2 rounded-b-2xl"
+      style={{
+        background: WARM.woodDark,
+        borderTop: `2px solid ${WARM.wood}`,
+      }}
+    >
+      {items.map((item) => (
+        <button
+          key={item.label}
+          type="button"
+          onClick={item.action}
+          className="relative flex flex-col items-center gap-0.5 px-2 py-1 cursor-pointer active:scale-95 transition"
+        >
+          {item.badge != null && item.badge > 0 && (
+            <span
+              className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full text-[9px] font-black text-white"
+              style={{ background: "#EF4444" }}
+            >
+              {item.badge}
+            </span>
+          )}
+          <span className="text-lg leading-none">{item.icon}</span>
+          <span className="text-[9px] font-bold" style={{ color: WARM.cream + "CC" }}>
+            {item.label}
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

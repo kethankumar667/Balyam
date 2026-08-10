@@ -1811,7 +1811,7 @@ export interface TeluguCinemaluPlayerState extends TeluguCinemaluPublicState {
   mySelectedIndex: number | null;
 }
 
-// ---- Nokia Snake ----
+// ---- Snake ----
 export type SnakeWallMode = "solid" | "wrap";
 export type SnakeTheme = "nokia-monochrome" | "nokia-color" | "neon-modern";
 
