@@ -3,6 +3,7 @@ import { UnoCardBack } from "./uno-shared";
 import { UnoTableCenter, type UnoTableCenterProps } from "./uno-table";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import Avatar from "../rummy/Avatar";
+import QrCodeModal from "../../components/QrCodeModal";
 import { CheckIcon, ChatIcon, ClockIcon, CrownIcon, DiceIcon, GearIcon, StarIcon } from "./uno-icons";
 
 /**
@@ -714,6 +715,7 @@ export function StadiumPileCenter(props: UnoTableCenterProps) {
 
 export function StadiumRoomCodePlate({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   function copy() {
     try {
       void navigator.clipboard?.writeText(code);
@@ -725,31 +727,48 @@ export function StadiumRoomCodePlate({ code }: { code: string }) {
     window.setTimeout(() => setCopied(false), 1200);
   }
   return (
-    <div
-      className="flex items-center gap-2 rounded-xl px-2.5 py-1.5"
-      style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.18)" }}
-    >
-      <div className="flex flex-col leading-none">
-        <span className="font-bold uppercase text-[7px] tracking-[0.18em] text-white/60">Room Code</span>
-        <span className="font-mono font-black text-sm text-white tracking-wider">{code}</span>
-      </div>
-      <button
-        onClick={copy}
-        aria-label={copied ? "Room code copied" : "Copy room code"}
-        title="Copy room code"
-        className="flex items-center justify-center w-6 h-6 rounded-md text-white flex-shrink-0"
-        style={{ background: copied ? "#2F9E44" : "rgba(255,255,255,0.15)" }}
+    <>
+      <div
+        className="flex items-center gap-2 rounded-xl px-2.5 py-1.5"
+        style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.18)" }}
       >
-        {copied ? (
-          <CheckIcon size={12} />
-        ) : (
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden>
-            <rect x="9" y="9" width="11" height="11" rx="2.5" fill="currentColor" opacity="0.95" />
-            <rect x="4" y="4" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.8" />
+        <div className="flex flex-col leading-none">
+          <span className="font-bold uppercase text-[7px] tracking-[0.18em] text-white/60">Room Code</span>
+          <span className="font-mono font-black text-sm text-white tracking-wider">{code}</span>
+        </div>
+        <button
+          onClick={copy}
+          aria-label={copied ? "Room code copied" : "Copy room code"}
+          title="Copy room code"
+          className="flex items-center justify-center w-6 h-6 rounded-md text-white flex-shrink-0 cursor-pointer"
+          style={{ background: copied ? "#2F9E44" : "rgba(255,255,255,0.15)" }}
+        >
+          {copied ? (
+            <CheckIcon size={12} />
+          ) : (
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden>
+              <rect x="9" y="9" width="11" height="11" rx="2.5" fill="currentColor" opacity="0.95" />
+              <rect x="4" y="4" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.8" />
+            </svg>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowQr(true)}
+          aria-label="Show QR Code"
+          title="Show QR Code to join room"
+          className="flex items-center justify-center w-6 h-6 rounded-md text-amber-300 hover:text-amber-200 flex-shrink-0 bg-white/15 transition cursor-pointer"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 18h3v3h-3z" fill="currentColor" />
           </svg>
-        )}
-      </button>
-    </div>
+        </button>
+      </div>
+      {showQr && <QrCodeModal open={true} code={code} onClose={() => setShowQr(false)} />}
+    </>
   );
 }
 

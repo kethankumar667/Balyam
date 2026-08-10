@@ -743,7 +743,7 @@ export function NotebookBoard({
   }, [size, cellPx]);
 
   return (
-    <div className="relative" style={{ width: totalPx, height: totalPx }}>
+    <div id="dotsboxes-board-svg" className="relative" style={{ width: totalPx, height: totalPx }}>
       {/* Drawn LINES — pencil/ink strokes, render under dots */}
       {state.hLines.map((l) => {
         const pen = penOf[l.playerId];
@@ -1004,6 +1004,8 @@ export function ScoreBar({
 
 /* ─────────────────────────── End-of-game report card ─────────────────────────── */
 
+import BoardPreviewPill from "../../components/BoardPreviewPill";
+
 export function ReportCardOverlay({
   state,
   nameOf,
@@ -1017,11 +1019,21 @@ export function ReportCardOverlay({
   initialOf: (id: string) => string;
   onClose: () => void;
 }) {
+  const [previewMode, setPreviewMode] = useState(false);
   const standings = state.playerOrder
     .map((pid) => ({ pid, score: state.scores[pid] ?? 0 }))
     .sort((a, b) => b.score - a.score);
   const totalBoxes = state.claims.length;
   const champ = state.winnerId;
+
+  if (previewMode) {
+    return (
+      <BoardPreviewPill
+        onClosePreview={() => setPreviewMode(false)}
+        targetElementId="dotsboxes-board-svg"
+      />
+    );
+  }
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
@@ -1138,21 +1150,27 @@ export function ReportCardOverlay({
           })}
         </ol>
 
-        <div
-          className="mt-4 text-right"
-          style={{
-            fontSize: 22,
-            color: "#1e3a8a",
-            transform: "rotate(-3deg)",
-            borderBottom: "1px solid #1e3a8a66",
-            paddingBottom: 2,
-            display: "inline-block",
-            float: "right",
-          }}
-        >
-          ✓ Well Done!
+        <div className="mt-4 flex items-center justify-between font-sans">
+          <button
+            type="button"
+            onClick={() => setPreviewMode(true)}
+            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs inline-flex items-center gap-1 transition active:scale-95 cursor-pointer shadow"
+          >
+            👁 Board Preview
+          </button>
+          <div
+            style={{
+              fontFamily: "'Caveat', cursive",
+              fontSize: 22,
+              color: "#1e3a8a",
+              transform: "rotate(-3deg)",
+              borderBottom: "1px solid #1e3a8a66",
+              paddingBottom: 2,
+            }}
+          >
+            ✓ Well Done!
+          </div>
         </div>
-        <div style={{ clear: "both" }} />
       </motion.div>
     </div>
   );

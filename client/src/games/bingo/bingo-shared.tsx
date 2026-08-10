@@ -58,7 +58,7 @@ export function BingoGrid({
       : "h-12 w-12 sm:h-14 sm:w-14 text-sm sm:text-base";
 
   return (
-    <div className="inline-grid grid-cols-5 gap-1.5 sm:gap-2 rounded-2xl bg-bhalyam-cream/90 p-2.5 sm:p-3.5 border-3 border-bhalyam-wood/40 shadow-xl">
+    <div id="bingo-board-container" className="inline-grid grid-cols-5 gap-1.5 sm:gap-2 rounded-2xl bg-bhalyam-cream/90 p-2.5 sm:p-3.5 border-3 border-bhalyam-wood/40 shadow-xl">
       {board.map((cell) => {
         const isMarked = cell.marked || (calledSet && calledSet.has(cell.value));
         const canClick = isMyTurn && !isMarked && onCellClick;
@@ -148,6 +148,9 @@ export function ClaimButton({
   );
 }
 
+import { useState } from "react";
+import BoardPreviewPill from "../../components/BoardPreviewPill";
+
 export function BingoResultOverlay({
   winners,
   nameOf,
@@ -165,9 +168,19 @@ export function BingoResultOverlay({
   onLeave: () => void;
   onContinue: () => void;
 }) {
+  const [previewMode, setPreviewMode] = useState(false);
   const winner = winners[0];
   const winnerName = winner ? nameOf(winner.playerId) : "Player";
   const iWon = winner?.playerId === selfId;
+
+  if (previewMode) {
+    return (
+      <BoardPreviewPill
+        onClosePreview={() => setPreviewMode(false)}
+        targetElementId="bingo-board-container"
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
@@ -182,18 +195,25 @@ export function BingoResultOverlay({
 
         <RematchPanel players={players} selfId={selfId} className="mb-4" />
 
-        <div className="flex gap-3">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPreviewMode(true)}
+            className="flex-1 min-h-[46px] rounded-xl bg-amber-600 hover:bg-amber-500 py-2.5 font-black text-white shadow-md text-xs sm:text-sm transition"
+          >
+            👁 Board Preview
+          </button>
           <button
             type="button"
             onClick={onLeave}
-            className="flex-1 min-h-[46px] rounded-xl border-2 border-bhalyam-wood/30 bg-white/70 py-2.5 font-bold text-bhalyam-wood-dark hover:bg-white"
+            className="flex-1 min-h-[46px] rounded-xl border-2 border-bhalyam-wood/30 bg-white/70 py-2.5 font-bold text-bhalyam-wood-dark hover:bg-white text-xs sm:text-sm"
           >
-            Leave Room
+            Leave
           </button>
           <button
             type="button"
             onClick={onContinue}
-            className="flex-1 min-h-[46px] rounded-xl bg-amber-500 py-2.5 font-black text-white hover:bg-amber-600 shadow-md"
+            className="flex-1 min-h-[46px] rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 font-black text-white shadow-md text-xs sm:text-sm transition"
           >
             Play Again
           </button>

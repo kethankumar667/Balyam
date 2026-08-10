@@ -1,8 +1,10 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { LudoColor, LudoStats, Player } from "@shared/types";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
 import { ordinal, standingsFor } from "@shared/ludo-rules";
 import { svgToPngBlob } from "../../lib/svgExport";
+
+import BoardPreviewPill from "../../components/BoardPreviewPill";
 
 export default function EndGameCard({
   winnerId,
@@ -28,9 +30,19 @@ export default function EndGameCard({
   onRematch: () => void;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [previewMode, setPreviewMode] = useState(false);
 
   function nameOf(id: string): string {
     return players.find((p) => p.id === id)?.name ?? "?";
+  }
+
+  if (previewMode) {
+    return (
+      <BoardPreviewPill
+        onClosePreview={() => setPreviewMode(false)}
+        svgRef={svgRef}
+      />
+    );
   }
 
   const durationMs = (stats.endedAt ?? Date.now()) - stats.startedAt;
@@ -231,6 +243,13 @@ export default function EndGameCard({
         </div>
 
         <div className="flex justify-end gap-2 flex-wrap">
+          <button
+            onClick={() => setPreviewMode(true)}
+            className="bg-amber-600 hover:bg-amber-500 text-white rounded-lg px-4 py-2 text-sm font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-md"
+            title="Preview finished game board"
+          >
+            👁 Board Preview
+          </button>
           <button
             onClick={share}
             className="bg-emerald-600 hover:bg-emerald-500 rounded-lg px-4 py-2 text-sm font-semibold"

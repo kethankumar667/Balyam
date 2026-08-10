@@ -18,6 +18,7 @@ import type {
 import { getSocket } from "../../lib/socket";
 import { PlayingCard, FaceDownCard } from "./Card";
 import CardTracker from "./CardTracker";
+import QrCodeModal from "../../components/QrCodeModal";
 import "./rummy-table.css";
 import TutorialModal from "./TutorialModal";
 import {
@@ -221,6 +222,7 @@ export default function RummyBoardDesktop({
   const [activeTab, setActiveTab] = useState<RightTab>("chat");
   const [soundOn, setSoundOn] = useState<boolean>(() => isRummySoundEnabled());
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
   /* controlsOpen drives the collapsible action rail (Fix 3) */
   const [controlsOpen, setControlsOpen] = useState(false);
   /* The right rail collapses to a hairline strip so the table can own the
@@ -784,7 +786,7 @@ export default function RummyBoardDesktop({
 
   return (
     <CoachHighlightProvider ids={coach.highlight}>
-    <div className="rm-room">
+    <div id="rummy-table-container" className="rm-room">
       {/* The desk clutter (paperclip, notebook, coffee cup), the corner suit
           watermarks and the background doodle are deliberately NOT rendered
           any more. They were pure decoration competing for attention on a
@@ -837,11 +839,24 @@ export default function RummyBoardDesktop({
           <div className="rm-meta">
             <span>Table:</span>
             <span className="rm-meta__code">{roomCode ?? "—"}</span>
+            {roomCode && (
+              <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                title="Show QR Code to join room"
+                className="ml-1 px-1 py-0.5 rounded text-amber-300 hover:text-amber-200 bg-white/10 text-xs transition cursor-pointer"
+              >
+                📱 QR
+              </button>
+            )}
             <span className="rm-meta__dot">•</span>
             <span>{variantLabel}</span>
             <span className="rm-meta__dot">•</span>
             <span>{state.playerOrder.length} Players</span>
           </div>
+          {showQrModal && roomCode && (
+            <QrCodeModal open={true} code={roomCode} onClose={() => setShowQrModal(false)} />
+          )}
         </div>
 
         <TurnPill

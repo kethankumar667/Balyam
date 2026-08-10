@@ -20,6 +20,7 @@ import type {
 } from "@shared/types";
 import { HC_COUNTRIES, HC_FRANCHISES, getRosterFor } from "@shared/hc-rosters";
 import { getSocket } from "../../lib/socket";
+import QrCodeModal from "../../components/QrCodeModal";
 import {
   RoughFrame as RoughBorder,
   PaperCard,
@@ -641,6 +642,7 @@ function HcActionBarStrip({
   messages: ChatMessage[];
 }) {
   const [open, setOpen] = useState<StripPanel>(null);
+  const [showQr, setShowQr] = useState(false);
   const [lastReadCount, setLastReadCount] = useState(messages.length);
   useEffect(() => {
     if (open === "chat") setLastReadCount(messages.length);
@@ -888,23 +890,41 @@ function HcActionBarStrip({
                 >
                   {roomCode}
                 </div>
-                <button
-                  onClick={copyCode}
-                  className="font-notebook"
-                  style={{
-                    marginTop: 12,
-                    padding: "8px 16px",
-                    borderRadius: 8,
-                    fontWeight: 800,
-                    fontSize: 12,
-                    background: STAMP_G,
-                    color: "#fff",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  {copied ? "✓ Copied" : "Copy code"}
-                </button>
+                <div className="flex flex-col gap-2 mt-3">
+                  <button
+                    onClick={copyCode}
+                    className="font-notebook"
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      fontWeight: 800,
+                      fontSize: 12,
+                      background: STAMP_G,
+                      color: "#fff",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {copied ? "✓ Copied" : "📋 Copy code"}
+                  </button>
+                  <button
+                    onClick={() => setShowQr(true)}
+                    className="font-notebook"
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      fontWeight: 800,
+                      fontSize: 12,
+                      background: "rgba(228,177,40,0.2)",
+                      color: INK,
+                      border: `1.5px solid ${BORDER}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    📱 Show QR Code
+                  </button>
+                </div>
+                {showQr && <QrCodeModal open={true} code={roomCode} onClose={() => setShowQr(false)} />}
               </div>
             )}
             {open === "players" && (
