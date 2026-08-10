@@ -7,6 +7,7 @@ import {
   ClaimButton,
   BingoResultOverlay,
 } from "./bingo-shared";
+import InlineRoomRail from "../../components/InlineRoomRail";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 
 export default function BingoBoardMobile(props: BingoBoardProps) {
@@ -44,13 +45,21 @@ export default function BingoBoardMobile(props: BingoBoardProps) {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <InlineRoomRail
+            code={props.roomCode}
+            game="bingo"
+            phase={props.roomPhase}
+            players={props.players}
+            selfId={props.selfId}
+            messages={props.messages}
+          />
           {state.callDeadline != null && !isOver && (
             <TurnTimeWarning deadline={state.callDeadline} active={!isOver} />
           )}
           <button
             type="button"
             onClick={onLeave}
-            className="px-3 py-1.5 text-xs font-bold rounded-xl bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 border border-rose-300/40"
+            className="px-3 py-1.5 text-xs font-bold rounded-xl bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 border border-rose-300/40 cursor-pointer"
           >
             Leave
           </button>

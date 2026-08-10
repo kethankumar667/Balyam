@@ -1,11 +1,12 @@
 import type { Card, Player, Rank, RummyPlayerState } from "@shared/types";
 import type { ReactNode } from "react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { PlayingCard, SUIT_GLYPHS } from "./Card";
 import { classifyMeld, sumCardPoints } from "./meldCheck";
 import { suggestArrangement } from "./autoArrange";
 import RematchPanel from "../../components/RematchPanel";
 import { svgToPngBlob } from "../../lib/svgExport";
+import BoardPreviewPill from "../../components/BoardPreviewPill";
 
 /**
  * End-of-round result for single-mode Rummy — drawn as a notebook page in
@@ -36,6 +37,18 @@ export default function RummyResultModal({
   onClose: () => void;
   onLeave?: () => void;
 }) {
+  const paperRef = useRef<HTMLDivElement>(null);
+  const [previewMode, setPreviewMode] = useState(false);
+
+  if (previewMode) {
+    return (
+      <BoardPreviewPill
+        onClosePreview={() => setPreviewMode(false)}
+        targetElementId="rummy-table-container"
+      />
+    );
+  }
+
   const winnerId = state.winnerId ?? null;
   const wrongShowerId = state.invalidDeclareBy ?? null;
   const isWrongShow = wrongShowerId !== null;
@@ -368,16 +381,27 @@ export default function RummyResultModal({
             )}
             <div className="w-px h-5 bg-nostalgia-paper-edge" />
             <div className="text-nostalgia-pen/60 text-[11px] sm:text-[12px] font-semibold">{matchLabel}</div>
-            <button
-              type="button"
-              onClick={saveSheet}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-nostalgia-paper-edge
-                         text-nostalgia-pen/80 text-[11px] sm:text-[12px] font-sans font-semibold px-2.5 py-1.5
-                         flex-shrink-0 active:translate-y-px hover:bg-nostalgia-paper-edge/30 transition-colors"
-            >
-              <SaveIcon className="w-3.5 h-3.5" />
-              Save sheet
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPreviewMode(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-amber-600/40 bg-amber-500/20
+                           text-amber-900 text-[11px] sm:text-[12px] font-sans font-bold px-2.5 py-1.5
+                           flex-shrink-0 active:translate-y-px hover:bg-amber-500/30 transition-colors cursor-pointer"
+              >
+                👁 Board Preview
+              </button>
+              <button
+                type="button"
+                onClick={saveSheet}
+                className="inline-flex items-center gap-1.5 rounded-md border border-nostalgia-paper-edge
+                           text-nostalgia-pen/80 text-[11px] sm:text-[12px] font-sans font-semibold px-2.5 py-1.5
+                           flex-shrink-0 active:translate-y-px hover:bg-nostalgia-paper-edge/30 transition-colors"
+              >
+                <SaveIcon className="w-3.5 h-3.5" />
+                Save sheet
+              </button>
+            </div>
           </div>
 
           {/* Rematch — flex-shrink-0, always below footer */}

@@ -18,6 +18,7 @@ import RoomCodeShare from "../components/RoomCodeShare";
 import RoomNameEditor from "../components/RoomNameEditor";
 import RummyRoomHistory from "../components/nostalgia/RummyRoomHistory";
 import RematchPanel from "../components/RematchPanel";
+import BoardPreviewPill from "../components/BoardPreviewPill";
 import GameOverScreen, { AUTO_LEAVE_MS } from "../components/GameOverScreen";
 import PassPhoneGate from "../components/PassPhoneGate";
 import VoicePanel from "../components/VoicePanel";
@@ -1442,6 +1443,8 @@ function NameEntryForRoom({
  *  don't have their own in-board scorecard modal (Ludo, SnL, UNO, etc.).
  *  After 90 s or when the player taps "Continue", GameOverScreen takes over.
  *  The player can also leave directly. */
+
+
 function GenericScorecardModal({
   players,
   selfId,
@@ -1464,6 +1467,8 @@ function GenericScorecardModal({
   const [secondsLeft, setSecondsLeft] = useState(() =>
     Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000)),
   );
+  const [previewMode, setPreviewMode] = useState(false);
+
   useEffect(() => {
     const id = window.setInterval(() => {
       setSecondsLeft(Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000)));
@@ -1474,6 +1479,15 @@ function GenericScorecardModal({
   const pct = Math.max(0, secondsLeft / (SCORECARD_WINDOW_MS / 1000));
   const radius = 10;
   const circ = 2 * Math.PI * radius;
+
+  if (previewMode) {
+    return (
+      <BoardPreviewPill
+        onClosePreview={() => setPreviewMode(false)}
+        targetElementId="game-board-container"
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[65] bg-black/75 flex items-center justify-center p-4">
@@ -1552,8 +1566,14 @@ function GenericScorecardModal({
         {/* Actions */}
         <div className="flex gap-2 pt-1">
           <button
+            onClick={() => setPreviewMode(true)}
+            className="rounded-lg px-3 py-2 text-xs font-bold transition flex items-center justify-center gap-1 bg-amber-600 hover:bg-amber-500 text-white cursor-pointer shadow"
+          >
+            👁 Preview Board
+          </button>
+          <button
             onClick={onLeave}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold transition"
+            className="flex-1 rounded-lg py-2 text-xs font-semibold transition cursor-pointer"
             style={{
               background: "rgba(255,255,255,0.07)",
               border: "1px solid rgba(255,255,255,0.10)",
@@ -1564,7 +1584,7 @@ function GenericScorecardModal({
           </button>
           <button
             onClick={onClose}
-            className="flex-1 rounded-lg py-2.5 text-sm font-extrabold transition"
+            className="flex-1 rounded-lg py-2 text-xs font-extrabold transition cursor-pointer"
             style={{
               background: "linear-gradient(135deg, #E4B128, #9A7410)",
               color: "#1a0e00",

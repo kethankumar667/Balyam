@@ -108,9 +108,15 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
       <LudoLogo />
       <div className="flex-1 min-w-0 text-center px-1">
         {finished && (
-          <div className="font-script text-lg font-bold" style={{ color: "var(--paper-ink-hi)" }}>
+          <button
+            onClick={() => m.setShowEndCard(true)}
+            className="font-script text-lg font-bold hover:underline cursor-pointer inline-flex items-center justify-center gap-1.5 mx-auto active:scale-95 transition"
+            style={{ color: "var(--paper-ink-hi)" }}
+            title="View Game Recap & Scorecard"
+          >
             🏆 {state.winnerId ? `${m.nameOf(state.winnerId)} wins!` : "Game over"}
-          </div>
+            <span className="text-xs bg-[#6D4323]/10 text-[#6D4323] px-2 py-0.5 rounded-full border border-[#6D4323]/20 font-sans font-bold">Recap</span>
+          </button>
         )}
       </div>
       <button onClick={m.toggleSound} className={iconChip} style={chipStyle} title={m.soundOn ? "Mute" : "Unmute"} aria-label="Toggle sound">
@@ -1034,6 +1040,7 @@ export function LudoBoardArea({
       }}
       // `overflow-hidden` keeps the ROTATED board art inside the rounded card
       // — without it the spun background square's corners hang outside it.
+      id="game-board-container"
       className={`ludo-board relative w-full mx-auto aspect-square select-none rounded-2xl overflow-hidden border-4 border-slate-950 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] theme-${m.settings.theme} ${m.settings.highContrast ? "hc" : ""}`}
       style={{ maxWidth }}
     >

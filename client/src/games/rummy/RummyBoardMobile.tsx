@@ -23,6 +23,7 @@ import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
 import { useTurnHaptics, useHaptics } from "../../hooks/useHaptics";
 import TutorialModal, { hasSeenTutorial } from "./TutorialModal";
 import PlayerList from "../../components/PlayerList";
+import QrCodeModal from "../../components/QrCodeModal";
 import VoicePanel from "../../components/VoicePanel";
 import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
 import Chat from "../../components/Chat";
@@ -1099,6 +1100,7 @@ export default function RummyBoardMobile({
   return (
     <CoachHighlightProvider ids={coach.highlight}>
     <div
+      id="rummy-table-container"
       className="rounded-none sm:rounded-[28px] px-3 sm:px-5 pt-3 sm:pt-4 relative shadow-2xl flex flex-col gap-1 sm:gap-1.5 h-full overflow-hidden"
       style={{
         background: "linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%)",
@@ -1470,6 +1472,7 @@ export default function RummyBoardMobile({
            all in-game panels (z ≤ 50) but under the deal overlay (z-[55]
            fires next, replacing this one cleanly). */
         <div
+          id="rummy-table-container"
           className="absolute inset-0 z-[55] flex flex-col items-center justify-center gap-4"
           style={{ background: "linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%)" }}
         >
@@ -1906,6 +1909,7 @@ function TopStrip({
   onToggleFullscreen: () => void;
   hasUnreadChat: boolean;
 }) {
+  const [showQrModal, setShowQrModal] = useState(false);
   return (
     <div className="flex items-center justify-between gap-2 px-1 flex-shrink-0">
       {/* Left — Leave (icon + text) */}
@@ -1940,30 +1944,46 @@ function TopStrip({
       )}
 
       {/* Center — game type + room code + copy */}
-      <button
-        onClick={onCopy}
-        disabled={!roomCode}
-        aria-label={roomCode ? `Copy room code ${roomCode}` : "Room code"}
-        title={roomCode ? "Tap to copy room code" : ""}
-        className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold tracking-wide truncate max-w-[70%] disabled:cursor-default"
-        style={{
-          background: "linear-gradient(180deg, #4A2C16 0%, #3a2010 100%)",
-          border: "1px solid rgba(201,162,39,0.50)",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-          color: "#fde68a",
-          height: 22,
-        }}
-      >
-        <span className="text-[#C9A227] text-[9px]">🃏</span>
-        <span className="truncate">{gameLabel}</span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onCopy}
+          disabled={!roomCode}
+          aria-label={roomCode ? `Copy room code ${roomCode}` : "Room code"}
+          title={roomCode ? "Tap to copy room code" : ""}
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold tracking-wide truncate max-w-[70%] disabled:cursor-default"
+          style={{
+            background: "linear-gradient(180deg, #4A2C16 0%, #3a2010 100%)",
+            border: "1px solid rgba(201,162,39,0.50)",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+            color: "#fde68a",
+            height: 22,
+          }}
+        >
+          <span className="text-[#C9A227] text-[9px]">🃏</span>
+          <span className="truncate">{gameLabel}</span>
+          {roomCode && (
+            <>
+              <span className="opacity-50">·</span>
+              <span className="tabular-nums text-amber-200">#{roomCode}</span>
+              <span className="opacity-80">{copiedFlash ? "✓" : "📋"}</span>
+            </>
+          )}
+        </button>
         {roomCode && (
-          <>
-            <span className="opacity-50">·</span>
-            <span className="tabular-nums text-amber-200">#{roomCode}</span>
-            <span className="opacity-80">{copiedFlash ? "✓" : "📋"}</span>
-          </>
+          <button
+            type="button"
+            onClick={() => setShowQrModal(true)}
+            aria-label="Show QR Code"
+            title="Show QR Code to join room"
+            className="flex items-center justify-center w-6 h-5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] border border-amber-500/40 cursor-pointer"
+          >
+            📱
+          </button>
         )}
-      </button>
+      </div>
+      {showQrModal && roomCode && (
+        <QrCodeModal open={true} code={roomCode} onClose={() => setShowQrModal(false)} />
+      )}
 
       {/* Right — Fullscreen toggle + Hamburger. The fullscreen toggle is
           always visible (not buried in the menu) because players reach for
