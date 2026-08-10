@@ -81,6 +81,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
   carrom: StarGameGlyph,
+  chess: StarGameGlyph,
 };
 
 /**

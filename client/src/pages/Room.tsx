@@ -48,7 +48,8 @@ import VyomaYudhBoard from "../games/vyomayudh/VyomaYudhBoard";
 import CarromBoard from "../games/carrom/CarromBoard";
 import BounceBoard from "../games/bounce/BounceBoard";
 import RoadRashBoard from "../games/roadrash/RoadRashBoard";
-import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, BouncePublicState, RoadRashPublicState } from "@shared/types";
+import ChessBoard from "../games/chess/ChessBoard";
+import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, BouncePublicState, RoadRashPublicState, ChessPublicState } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -75,6 +76,7 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   carrom: 2,
   bounce: 4,
   roadrash: 4,
+  chess: 2,
 };
 
 /**
@@ -1137,6 +1139,21 @@ export default function Room() {
             {roomState.phase !== "lobby" && roomState.game === "carrom" && gameState != null && (
               <CarromBoard
                 state={gameState as CarromPublicState}
+                players={roomState.players}
+                selfId={playerId || ""}
+                messages={messages}
+                roomCode={roomState.code}
+                roomPhase={roomState.phase}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "chess" && gameState != null && (
+              <ChessBoard
+                state={gameState as ChessPublicState}
                 players={roomState.players}
                 selfId={playerId || ""}
                 messages={messages}

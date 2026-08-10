@@ -34,6 +34,7 @@ import type {
   CarromOptions,
   BounceOptions,
   RoadRashOptions,
+  ChessOptions,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -51,6 +52,7 @@ import {
   DEFAULT_SAMETHALU_OPTIONS,
   DEFAULT_TELUGUCINEMALU_OPTIONS,
   DEFAULT_CARROM_OPTIONS,
+  DEFAULT_CHESS_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -76,6 +78,7 @@ import { TambolaEngine } from "../games/tambola/TambolaEngine.js";
 import { SamethaluEngine } from "../games/samethalu/SamethaluEngine.js";
 import { TeluguCinemaluEngine } from "../games/telugucinemalu/TeluguCinemaluEngine.js";
 import { CarromEngine } from "../games/carrom/CarromEngine.js";
+import { ChessEngine } from "../games/chess/ChessEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -144,6 +147,8 @@ const MAX_LUDO_HISTORY = 20;
  */
 const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   handcricket: ["Sachin", "Dhoni", "Kohli", "Yuvraj", "Sehwag", "Dravid"],
+  // Chess seats two, so one opponent name is enough; the rest are spares.
+  chess: ["Vishy", "Gukesh", "Praggnanandhaa", "Humpy"],
   ludo: ["Pintu", "Chintu", "Bunty", "Babli", "Raju", "Munna", "Golu", "Tinku"],
   snl: ["Sneha", "Lalita", "Babu", "Chiklu", "Anu", "Gopi", "Ravi", "Suma", "Kiran", "Mounika"],
   rummy: ["Anand", "Babji", "Chinna", "Damodar", "Eswari", "Lakshmi"],
@@ -237,6 +242,7 @@ interface Room {
   samethaluOptions: SamethaluOptions;
   teluguCinemaluOptions: TeluguCinemaluOptions;
   carromOptions: CarromOptions;
+  chessOptions: ChessOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -345,7 +351,8 @@ export class RoomManager {
     vyomaYudhOptions?: Partial<VyomaYudhOptions>,
     carromOptions?: Partial<CarromOptions>,
     bounceOptions?: Partial<BounceOptions>,
-    roadRashOptions?: Partial<RoadRashOptions>
+    roadRashOptions?: Partial<RoadRashOptions>,
+    chessOptions?: Partial<ChessOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -393,6 +400,7 @@ export class RoomManager {
       samethaluOptions: { ...DEFAULT_SAMETHALU_OPTIONS, ...(samethaluOptions ?? {}) },
       teluguCinemaluOptions: { ...DEFAULT_TELUGUCINEMALU_OPTIONS, ...(teluguCinemaluOptions ?? {}) },
       carromOptions: { ...DEFAULT_CARROM_OPTIONS, ...(carromOptions ?? {}) },
+      chessOptions: { ...DEFAULT_CHESS_OPTIONS, ...(chessOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -835,6 +843,9 @@ export class RoomManager {
       if (engine instanceof CarromEngine) {
         engine.setOptions(room.carromOptions);
       }
+      if (engine instanceof ChessEngine) {
+        engine.setOptions(room.chessOptions);
+      }
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
@@ -1098,7 +1109,7 @@ export class RoomManager {
         this.clearTurnTimer(room);
         this.broadcastRoomState(room);
         console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
-      } else if ((result as { turnPhaseChanged?: boolean })?.turnPhaseChanged) {
+      } else if (result?.turnPhaseChanged) {
         // A real-time physics turn (e.g., Carrom strike) just completed and returned to aiming phase.
         // Re-arm turn timers and trigger bot scheduler so bot/taken-over seats take their turn!
         this.scheduleTurnTimer(room);

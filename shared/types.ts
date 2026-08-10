@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "bounce" | "roadrash";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "bounce" | "roadrash" | "chess";
 
 export interface Player {
   id: string;
@@ -2066,6 +2066,66 @@ export interface RoadRashPublicState {
   winnerId: string | null;
 }
 
+// ---- Chess ----
+export type ChessPieceColor = "w" | "b";
+export type ChessPieceType = "p" | "n" | "b" | "r" | "q" | "k";
+export type ChessBoardTheme = "emerald" | "wood" | "glass" | "cyberpunk" | "classic";
+export type ChessPieceSet = "neo" | "staunton" | "3d_glass";
+export type ChessTimeControl = "bullet_1_0" | "blitz_3_2" | "rapid_10_0" | "custom";
+
+export interface ChessOptions {
+  timeControl: ChessTimeControl;
+  initialSeconds: number;
+  incrementSeconds: number;
+  boardTheme: ChessBoardTheme;
+  pieceSet: ChessPieceSet;
+  botDifficulty: "easy" | "medium" | "master";
+}
+
+export const DEFAULT_CHESS_OPTIONS: ChessOptions = {
+  timeControl: "blitz_3_2",
+  initialSeconds: 180,
+  incrementSeconds: 2,
+  boardTheme: "emerald",
+  pieceSet: "neo",
+  botDifficulty: "medium",
+};
+
+export interface ChessMoveRecord {
+  from: string;
+  to: string;
+  san: string;
+  piece: string;
+  captured?: string;
+  promotion?: string;
+  fen: string;
+  timeTakenMs?: number;
+}
+
+export interface ChessPublicState {
+  kind: "chess";
+  phase: "aiming" | "finished";
+  fen: string;
+  turn: ChessPieceColor;
+  whitePlayerId: string | null;
+  blackPlayerId: string | null;
+  whiteTimeRemainingMs: number;
+  blackTimeRemainingMs: number;
+  turnDeadline: number | null;
+  inCheck: boolean;
+  isCheckmate: boolean;
+  isStalemate: boolean;
+  isDraw: boolean;
+  drawReason: string | null;
+  history: ChessMoveRecord[];
+  lastMove: { from: string; to: string } | null;
+  capturedPieces: { white: string[]; black: string[] };
+  boardTheme: ChessBoardTheme;
+  pieceSet: ChessPieceSet;
+  isOver: boolean;
+  winnerId: string | null;
+}
+
 // ---- Socket event payloads ----
 export interface CreateRoomPayload {
   name: string;
@@ -2088,6 +2148,7 @@ export interface CreateRoomPayload {
   vyomaYudhOptions?: Partial<VyomaYudhOptions>;
   carromOptions?: Partial<CarromOptions>;
   bounceOptions?: Partial<BounceOptions>;
+  chessOptions?: Partial<ChessOptions>;
   roadRashOptions?: Partial<RoadRashOptions>;
 }
 
