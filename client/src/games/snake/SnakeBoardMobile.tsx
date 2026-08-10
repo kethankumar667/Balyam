@@ -74,7 +74,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
       snakeSelf: "bg-[#1c2415]",
       snakeOther: "bg-[#3b4731]",
       food: "bg-[#1c2415] animate-ping",
-      obstacle: "bg-[#1c2415] border border-[#3b4731]",
+      obstacle: "bg-[#4a573f] border-2 border-[#1c2415] text-[#1c2415]",
       cellEmpty: "bg-[#9ebd9e]/40",
       keypad: "bg-[#2d3725] border-4 border-[#1c2415]",
       keyBtn: "bg-[#536248] text-white border-[#8b9bb4]",
@@ -88,7 +88,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
       snakeSelf: "bg-emerald-400 shadow-[0_0_8px_#34d399]",
       snakeOther: "bg-blue-400",
       food: "bg-red-500 animate-pulse rounded-full shadow-[0_0_10px_#ef4444]",
-      obstacle: "bg-amber-700 border border-amber-400 shadow-[0_0_8px_rgba(217,119,6,0.7)]",
+      obstacle: "bg-amber-800 border-2 border-amber-400 text-amber-200 shadow-[0_0_10px_rgba(217,119,6,0.8)]",
       cellEmpty: "bg-slate-800/40",
       keypad: "bg-slate-900 border-4 border-sky-400",
       keyBtn: "bg-slate-800 text-sky-200 border-sky-500/40",
@@ -102,12 +102,14 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
       snakeSelf: "bg-gradient-to-r from-purple-400 to-pink-500 shadow-[0_0_10px_#d946ef]",
       snakeOther: "bg-amber-400",
       food: "bg-emerald-400 animate-ping rounded-full shadow-[0_0_10px_#10b981]",
-      obstacle: "bg-rose-600 border border-rose-400 shadow-[0_0_12px_rgba(225,29,72,0.9)] animate-pulse",
+      obstacle: "bg-gradient-to-br from-red-600 to-rose-700 border-2 border-amber-300 text-amber-200 shadow-[0_0_14px_rgba(225,29,72,0.95)] animate-pulse",
       cellEmpty: "bg-purple-950/20",
       keypad: "bg-[#131b2e] border-4 border-purple-500",
       keyBtn: "bg-[#1e293b] text-purple-200 border-purple-500/40",
     },
   }[activeTheme];
+
+  const myPlayer = state.players.find((p) => p.id === selfId);
 
   return (
     <div
@@ -121,12 +123,12 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
           {reactions.map((r) => (
             <motion.div
               key={r.id}
-              initial={{ y: "80vh", opacity: 1, scale: 0.5 }}
-              animate={{ y: "20vh", opacity: 0, scale: 1.5 }}
+              initial={{ y: 0, opacity: 1, scale: 0.8 }}
+              animate={{ y: -120, opacity: 0, scale: 1.4 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 1.8, ease: "easeOut" }}
-              style={{ left: `${r.x}%` }}
-              className="absolute text-3xl select-none"
+              className="absolute text-3xl"
+              style={{ left: `${r.x}%`, bottom: "25%" }}
             >
               {r.emoji}
             </motion.div>
@@ -181,7 +183,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
             return (
               <div
                 key={idx}
-                className={`w-full h-full rounded-xs transition-all ${
+                className={`w-full h-full rounded-xs transition-all flex items-center justify-center ${
                   isObstacle
                     ? themeClasses.obstacle
                     : isFood
@@ -192,7 +194,9 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
                       : themeClasses.snakeOther
                     : themeClasses.cellEmpty
                 }`}
-              />
+              >
+                {isObstacle && <span className="text-[8px] font-black leading-none select-none opacity-90">✖</span>}
+              </div>
             );
           })}
         </div>

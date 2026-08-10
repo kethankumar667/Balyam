@@ -1825,7 +1825,7 @@ export interface SnakeOptions {
 export const DEFAULT_SNAKE_OPTIONS: SnakeOptions = {
   speedMs: 120,
   gridSize: 20,
-  wallMode: "solid",
+  wallMode: "wrap",
   theme: "nokia-monochrome",
   speedProgression: true,
 };
