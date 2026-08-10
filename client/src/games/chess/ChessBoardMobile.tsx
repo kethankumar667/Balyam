@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import type { ChessBoardProps } from "./ChessBoard";
 import {
   ChessBoardGrid,
-  ChessPieceSymbol,
 } from "./chess-shared";
 import ChessSkinModal from "./ChessSkinModal";
 import type { ChessBoardTheme, ChessPieceSet } from "@shared/types";
@@ -89,42 +88,42 @@ export default function ChessBoardMobile({
   }, [state.history]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#EEDCB9] text-[#3D2514] p-3 select-none justify-between gap-3 font-sans pb-20">
+    <div className="h-full min-h-0 overflow-hidden flex flex-col bg-[#EEDCB9] text-[#3D2514] p-2 select-none justify-between gap-1.5 font-sans pb-16">
       {/* ──────────────── 1. Top Parchment Header Card ──────────────── */}
-      <div className="rounded-3xl bg-gradient-to-b from-[#F9EEDD] via-[#F2DFBF] to-[#E5CB9E] p-3.5 border-2 border-[#B8966B] shadow-[0_8px_20px_rgba(100,70,30,0.15)] space-y-3">
+      <div className="rounded-2xl bg-gradient-to-b from-[#F9EEDD] via-[#F2DFBF] to-[#E5CB9E] p-2 border-2 border-[#B8966B] shadow-md space-y-1.5 shrink-0">
         {/* Header Title Row */}
-        <div className="flex items-center justify-between border-b border-[#B8966B]/30 pb-2.5">
+        <div className="flex items-center justify-between border-b border-[#B8966B]/30 pb-1">
           {/* Back Button */}
           <button
             type="button"
             onClick={() => (window.location.href = "/")}
-            className="w-10 h-10 rounded-full bg-[#E5CFB3] hover:bg-[#D5BFA3] border border-[#8B5A2B]/40 flex items-center justify-center font-black text-base text-[#3D2514] shadow-sm transition cursor-pointer"
+            className="w-7 h-7 rounded-full bg-[#E5CFB3] hover:bg-[#D5BFA3] border border-[#8B5A2B]/40 flex items-center justify-center font-black text-xs text-[#3D2514] shadow-sm transition cursor-pointer"
           >
             ←
           </button>
 
           {/* Title & Ribbon */}
           <div className="flex flex-col items-center">
-            <h1 className="text-xl font-black font-serif tracking-wide text-[#2B1909] flex items-center gap-1.5">
+            <h1 className="text-sm font-black font-serif tracking-wide text-[#2B1909] flex items-center gap-1">
               <span>👑</span> CHESS LOUNGE <span>✨</span>
             </h1>
-            <div className="px-3 py-0.5 rounded-full bg-gradient-to-r from-[#2B6CB0] to-[#1A365D] text-white text-[10px] font-black uppercase tracking-widest shadow-sm">
+            <div className="px-2 py-0.2 rounded-full bg-gradient-to-r from-[#2B6CB0] to-[#1A365D] text-white text-[8px] font-black uppercase tracking-widest shadow-sm">
               CLASSIC MODE
             </div>
           </div>
 
           {/* Audio & Settings icons */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <button
               type="button"
-              className="w-9 h-9 rounded-full bg-[#E5CFB3] hover:bg-[#D5BFA3] border border-[#8B5A2B]/40 flex items-center justify-center text-sm text-[#3D2514] shadow-sm cursor-pointer"
+              className="w-7 h-7 rounded-full bg-[#E5CFB3] hover:bg-[#D5BFA3] border border-[#8B5A2B]/40 flex items-center justify-center text-xs text-[#3D2514] shadow-sm cursor-pointer"
             >
               🔊
             </button>
             <button
               type="button"
               onClick={() => setSkinModalOpen(true)}
-              className="w-9 h-9 rounded-full bg-[#E5CFB3] hover:bg-[#D5BFA3] border border-[#8B5A2B]/40 flex items-center justify-center text-sm text-[#3D2514] shadow-sm cursor-pointer"
+              className="w-7 h-7 rounded-full bg-[#E5CFB3] hover:bg-[#D5BFA3] border border-[#8B5A2B]/40 flex items-center justify-center text-xs text-[#3D2514] shadow-sm cursor-pointer"
             >
               ⚙️
             </button>
@@ -132,33 +131,33 @@ export default function ChessBoardMobile({
         </div>
 
         {/* Player Versus Cards Row */}
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2">
           {/* Left Player Card (You) */}
           <div
-            className={`p-2.5 rounded-2xl border flex items-center justify-between shadow-sm transition-all ${
+            className={`p-1.5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
               myTurn
                 ? "bg-[#EDF7ED] border-[#4E9A51] ring-2 ring-[#4E9A51]/40"
                 : "bg-[#FDF9F2]/90 border-[#C5A880]"
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-amber-200 border border-amber-400 flex items-center justify-center text-xl shrink-0 shadow-inner">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-amber-200 border border-amber-400 flex items-center justify-center text-sm shrink-0 shadow-inner">
                 🧑‍🦱
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
-                  <span className="text-xs font-black text-[#2B1909] truncate">{myName}</span>
-                  <span className="px-1.5 py-0.2 rounded text-[8px] font-black bg-[#38A169] text-white uppercase">
+                  <span className="text-[11px] font-black text-[#2B1909] truncate">{myName}</span>
+                  <span className="px-1 rounded text-[7px] font-black bg-[#38A169] text-white uppercase">
                     YOU
                   </span>
                 </div>
-                <span className="text-[10px] font-bold text-[#6D5432] block">
+                <span className="text-[9px] font-bold text-[#6D5432] block">
                   1450 🏆
                 </span>
               </div>
             </div>
             <div
-              className={`px-2.5 py-1.5 rounded-xl font-mono font-black text-sm shadow-inner ${
+              className={`px-1.5 py-0.5 rounded-lg font-mono font-black text-xs shadow-inner ${
                 myTurn ? "bg-[#C6F6D5] text-[#22543D]" : "bg-[#EFE6D5] text-[#4A3B2C]"
               }`}
             >
@@ -168,85 +167,83 @@ export default function ChessBoardMobile({
 
           {/* Right Player Card (Opponent) */}
           <div
-            className={`p-2.5 rounded-2xl border flex items-center justify-between shadow-sm transition-all ${
+            className={`p-1.5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
               state.turn === opponentColor && state.phase === "aiming"
                 ? "bg-[#EDF7ED] border-[#4E9A51] ring-2 ring-[#4E9A51]/40"
                 : "bg-[#FFF8F0]/90 border-[#E2B790]"
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-orange-200 border border-orange-400 flex items-center justify-center text-xl shrink-0 shadow-inner">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-orange-200 border border-orange-400 flex items-center justify-center text-sm shrink-0 shadow-inner">
                 👨‍🦰
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-black text-[#2B1909] truncate block">{opponentName}</span>
-                <span className="text-[10px] font-bold text-[#6D5432] block">
+                <span className="text-[11px] font-black text-[#2B1909] truncate block">{opponentName}</span>
+                <span className="text-[9px] font-bold text-[#6D5432] block">
                   1420 🏆
                 </span>
               </div>
             </div>
-            <div className="px-2.5 py-1.5 rounded-xl bg-[#F4E3D0] text-[#5C3D1E] font-mono font-black text-sm shadow-inner">
+            <div className="px-1.5 py-0.5 rounded-lg bg-[#F4E3D0] text-[#5C3D1E] font-mono font-black text-xs shadow-inner">
               {formatTime(opponentTime)}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ──────────────── 2. 3D Wood Board Frame & Chess Board ──────────────── */}
-      <div className="relative w-full aspect-square max-w-[500px] mx-auto p-3 rounded-3xl bg-gradient-to-br from-[#6A4724] via-[#4A3016] to-[#2B1B0C] border-4 border-[#3D2514] shadow-[0_15px_30px_rgba(40,25,10,0.6)]">
-        <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner">
-          <ChessBoardGrid
-            fen={state.fen}
-            boardTheme={localTheme}
-            myColor={myColor}
-            myTurn={myTurn}
-            lastMove={state.lastMove}
-            inCheck={state.inCheck}
-            selectedSquare={selectedSquare}
-            onSquareClick={handleSquareClick}
-          />
-        </div>
+      {/* ──────────────── 2. Main 8x8 Chess Board ──────────────── */}
+      <div className="flex-1 flex items-center justify-center min-h-0 my-0.5 max-h-[44vh]">
+        <ChessBoardGrid
+          fen={state.fen}
+          boardTheme={localTheme}
+          myColor={myColor}
+          myTurn={myTurn}
+          lastMove={state.lastMove}
+          inCheck={state.inCheck}
+          selectedSquare={selectedSquare}
+          onSquareClick={handleSquareClick}
+        />
       </div>
 
       {/* ──────────────── 3. Under Board Action Control Bar ──────────────── */}
-      <div className="p-3 rounded-2xl bg-[#2A1D16] text-[#F5E6D3] border border-[#5C3D26] shadow-xl flex items-center justify-between gap-2">
+      <div className="p-2 rounded-xl bg-[#2A1D16] text-[#F5E6D3] border border-[#5C3D26] shadow-md flex items-center justify-between gap-2 shrink-0">
         {/* Turn Indicator */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
           <span
-            className={`w-3 h-3 rounded-full shrink-0 ${
+            className={`w-2.5 h-2.5 rounded-full shrink-0 ${
               myTurn ? "bg-[#38A169] animate-pulse" : "bg-amber-500"
             }`}
           />
           <div className="min-w-0">
-            <span className="text-xs font-black uppercase text-[#E2E8F0] block truncate">
+            <span className="text-[11px] font-black uppercase text-[#E2E8F0] block truncate">
               {state.phase === "finished"
                 ? `Match Ended • ${state.drawReason ?? "Result declared"}`
                 : myTurn
                 ? "YOUR TURN"
                 : `${opponentName.toUpperCase()}'S TURN`}
             </span>
-            <span className="text-[10px] text-stone-400 block truncate">
+            <span className="text-[9px] text-stone-400 block truncate">
               {myTurn ? "Make your move" : "Waiting for opponent..."}
             </span>
           </div>
         </div>
 
         {/* Action Buttons Row */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
-            className="px-3 py-1.5 rounded-xl bg-[#3D2C22] hover:bg-[#4E392C] border border-[#6D4E3A] text-amber-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition active:scale-95"
+            className="px-2 py-1 rounded-lg bg-[#3D2C22] hover:bg-[#4E392C] border border-[#6D4E3A] text-amber-200 text-[10px] font-bold flex items-center gap-0.5 cursor-pointer transition active:scale-95"
           >
             ↶ UNDO
           </button>
           <button
             type="button"
             onClick={() => setHintCount(Math.max(0, hintCount - 1))}
-            className="relative px-3 py-1.5 rounded-xl bg-[#4A3925] hover:bg-[#5C4830] border border-[#8B6B40] text-amber-300 text-xs font-bold flex items-center gap-1 cursor-pointer transition active:scale-95"
+            className="relative px-2 py-1 rounded-lg bg-[#4A3925] hover:bg-[#5C4830] border border-[#8B6B40] text-amber-300 text-[10px] font-bold flex items-center gap-0.5 cursor-pointer transition active:scale-95"
           >
             💡 HINT
             {hintCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-stone-950 font-mono text-[9px] font-black flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 text-stone-950 font-mono text-[8px] font-black flex items-center justify-center">
                 {hintCount}
               </span>
             )}
@@ -254,7 +251,7 @@ export default function ChessBoardMobile({
           <button
             type="button"
             onClick={() => onMove("resign")}
-            className="px-3 py-1.5 rounded-xl bg-[#742A2A] hover:bg-[#9B2C2C] border border-[#9B2C2C] text-red-100 text-xs font-bold flex items-center gap-1 cursor-pointer transition active:scale-95"
+            className="px-2 py-1 rounded-lg bg-[#742A2A] hover:bg-[#9B2C2C] border border-[#9B2C2C] text-red-100 text-[10px] font-bold flex items-center gap-0.5 cursor-pointer transition active:scale-95"
           >
             🚩 RESIGN
           </button>
@@ -262,27 +259,27 @@ export default function ChessBoardMobile({
       </div>
 
       {/* ──────────────── 4. Middle 2-Column Dashboard Cards ──────────────── */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 shrink-0">
         {/* Left Card: Move History */}
-        <div className="p-3 rounded-2xl bg-[#F5E8D3] border-2 border-[#D9C4A5] shadow-md flex flex-col min-h-[140px]">
-          <div className="flex items-center justify-between border-b border-[#D9C4A5] pb-1.5 mb-2">
-            <span className="text-xs font-black uppercase text-[#3D2514] flex items-center gap-1">
+        <div className="p-2 rounded-xl bg-[#F5E8D3] border-2 border-[#D9C4A5] shadow-sm flex flex-col max-h-24">
+          <div className="flex items-center justify-between border-b border-[#D9C4A5] pb-1 mb-1">
+            <span className="text-[10px] font-black uppercase text-[#3D2514] flex items-center gap-1">
               📋 MOVE HISTORY
             </span>
-            <span className="text-[10px] text-[#78593A] font-bold">
+            <span className="text-[9px] text-[#78593A] font-bold">
               {state.history.length} moves
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-24 space-y-1 text-xs font-mono text-[#3D2514]">
+          <div className="flex-1 overflow-y-auto space-y-0.5 text-[10px] font-mono text-[#3D2514]">
             {turnsList.length === 0 ? (
-              <div className="text-[11px] text-[#78593A] italic flex items-center gap-1 pt-2">
+              <div className="text-[10px] text-[#78593A] italic flex items-center gap-1 pt-1">
                 <span>📌</span> Game just started
               </div>
             ) : (
               turnsList.map((t) => (
-                <div key={t.num} className="flex items-center justify-between px-1.5 py-0.5 rounded bg-[#EAD6B8]">
-                  <span className="font-bold text-[#8B5A2B] w-6">{t.num}.</span>
+                <div key={t.num} className="flex items-center justify-between px-1 py-0.2 rounded bg-[#EAD6B8]">
+                  <span className="font-bold text-[#8B5A2B] w-5">{t.num}.</span>
                   <span className="flex-1">{t.white ?? "..."}</span>
                   <span className="flex-1 text-right text-[#6D4323]">{t.black ?? ""}</span>
                 </div>
@@ -292,41 +289,41 @@ export default function ChessBoardMobile({
         </div>
 
         {/* Right Card: Embedded Chat */}
-        <div className="p-3 rounded-2xl bg-[#F5E8D3] border-2 border-[#D9C4A5] shadow-md flex flex-col min-h-[140px]">
-          <div className="flex items-center justify-between border-b border-[#D9C4A5] pb-1.5 mb-1.5">
-            <span className="text-xs font-black uppercase text-[#3D2514] flex items-center gap-1">
+        <div className="p-2 rounded-xl bg-[#F5E8D3] border-2 border-[#D9C4A5] shadow-sm flex flex-col max-h-24">
+          <div className="flex items-center justify-between border-b border-[#D9C4A5] pb-1 mb-1">
+            <span className="text-[10px] font-black uppercase text-[#3D2514] flex items-center gap-1">
               💬 CHAT
             </span>
-            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {players.length}
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-20 space-y-1 text-[11px]">
+          <div className="flex-1 overflow-y-auto space-y-0.5 text-[10px]">
             {messages.length === 0 ? (
-              <div className="text-[#78593A] italic pt-1">
+              <div className="text-[#78593A] italic pt-0.5">
                 <span className="font-bold text-[#C53030]">{opponentName}:</span> Good luck!
               </div>
             ) : (
               messages.map((m, i) => (
-                <div key={`m-${i}`} className="flex flex-col">
-                  <span className="font-bold text-[#6D4323] text-[10px]">{m.playerName}:</span>
-                  <span className="text-[#2B1909]">{m.text}</span>
+                <div key={`m-${i}`} className="flex items-center gap-1">
+                  <span className="font-bold text-[#6D4323]">{m.playerName}:</span>
+                  <span className="text-[#2B1909] truncate">{m.text}</span>
                 </div>
               ))
             )}
           </div>
 
-          <form onSubmit={handleSendChat} className="flex items-center gap-1 pt-1.5 border-t border-[#D9C4A5] mt-1">
+          <form onSubmit={handleSendChat} className="flex items-center gap-1 pt-1 border-t border-[#D9C4A5] mt-0.5">
             <input
               type="text"
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 bg-[#EAD6B8] border border-[#C5A880] rounded-xl px-2 py-1 text-xs text-[#2B1909] placeholder-[#78593A] focus:outline-none"
+              className="flex-1 bg-[#EAD6B8] border border-[#C5A880] rounded-lg px-1.5 py-0.5 text-[10px] text-[#2B1909] placeholder-[#78593A] focus:outline-none"
             />
-            <button type="submit" className="p-1 text-base">
+            <button type="submit" className="p-0.5 text-xs">
               😊
             </button>
           </form>
@@ -334,7 +331,7 @@ export default function ChessBoardMobile({
       </div>
 
       {/* ──────────────── 5. Bottom Fixed Parchment Navigation Bar ──────────────── */}
-      <div className="fixed bottom-2 left-2 right-2 z-40 max-w-lg mx-auto p-2 rounded-2xl bg-gradient-to-r from-[#F5E6D3] via-[#EADBCE] to-[#F5E6D3] border-2 border-[#8B5A2B] shadow-2xl flex items-center justify-around text-[#3D2514]">
+      <div className="fixed bottom-1 left-1.5 right-1.5 z-40 max-w-lg mx-auto p-1.5 rounded-2xl bg-gradient-to-r from-[#F5E6D3] via-[#EADBCE] to-[#F5E6D3] border-2 border-[#8B5A2B] shadow-2xl flex items-center justify-around text-[#3D2514]">
         <button
           type="button"
           onClick={() => {
@@ -343,12 +340,12 @@ export default function ChessBoardMobile({
           }}
           className="flex flex-col items-center gap-0.5 relative cursor-pointer active:scale-95"
         >
-          <div className="w-10 h-10 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-lg shadow-md">
+          <div className="w-8 h-8 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-sm shadow-md">
             💬
           </div>
-          <span className="text-[9px] font-black uppercase tracking-wider">CHAT</span>
+          <span className="text-[8px] font-black uppercase tracking-wider">CHAT</span>
           {messages.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-emerald-600 text-white font-mono text-[9px] font-black flex items-center justify-center border border-white">
+            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-600 text-white font-mono text-[8px] font-black flex items-center justify-center border border-white">
               {messages.length}
             </span>
           )}
@@ -362,20 +359,20 @@ export default function ChessBoardMobile({
           }}
           className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95"
         >
-          <div className="w-10 h-10 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-lg shadow-md">
+          <div className="w-8 h-8 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-sm shadow-md">
             😀
           </div>
-          <span className="text-[9px] font-black uppercase tracking-wider">EMOJI</span>
+          <span className="text-[8px] font-black uppercase tracking-wider">EMOJI</span>
         </button>
 
         <button
           type="button"
           className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95"
         >
-          <div className="w-10 h-10 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-lg shadow-md">
+          <div className="w-8 h-8 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-sm shadow-md">
             🎙️
           </div>
-          <span className="text-[9px] font-black uppercase tracking-wider">VOICE</span>
+          <span className="text-[8px] font-black uppercase tracking-wider">VOICE</span>
         </button>
 
         <button
@@ -383,10 +380,10 @@ export default function ChessBoardMobile({
           onClick={() => setSkinModalOpen(true)}
           className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95"
         >
-          <div className="w-10 h-10 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-lg shadow-md">
+          <div className="w-8 h-8 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-sm shadow-md">
             👥
           </div>
-          <span className="text-[9px] font-black uppercase tracking-wider">PLAYERS</span>
+          <span className="text-[8px] font-black uppercase tracking-wider">PLAYERS</span>
         </button>
 
         <button
@@ -394,11 +391,11 @@ export default function ChessBoardMobile({
           onClick={() => setSkinModalOpen(true)}
           className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95 relative"
         >
-          <div className="w-10 h-10 rounded-full bg-[#3D2514] text-[#F5E6D3] flex items-center justify-center text-lg shadow-md">
+          <div className="w-8 h-8 rounded-full bg-[#3D2514] text-[#F5E6D3] flex items-center justify-center text-sm shadow-md">
             •••
           </div>
-          <span className="text-[9px] font-black uppercase tracking-wider">MORE</span>
-          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-600 border border-white" />
+          <span className="text-[8px] font-black uppercase tracking-wider">MORE</span>
+          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-600 border border-white" />
         </button>
       </div>
 

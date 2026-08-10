@@ -76,7 +76,7 @@ export default function ChessBoardDesktop({
   }
 
   return (
-    <div className="min-h-screen bg-[#110C0A] text-[#F3E5D8] flex flex-col p-4 select-none justify-between font-sans">
+    <div className="h-full min-h-0 overflow-hidden bg-[#110C0A] text-[#F3E5D8] flex flex-col p-4 select-none justify-between font-sans">
       {/* ──────────────── Top Navigation Header ──────────────── */}
       <header className="flex items-center justify-between px-2 pb-3">
         {/* Leave Room Pill */}

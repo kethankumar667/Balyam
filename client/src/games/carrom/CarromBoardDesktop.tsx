@@ -87,7 +87,7 @@ export default function CarromBoardDesktop({
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-950 via-stone-900 to-stone-950 text-stone-100 p-6 select-none flex items-start justify-center gap-6">
+    <div className="h-full min-h-0 overflow-hidden bg-gradient-to-br from-stone-950 via-stone-900 to-stone-950 text-stone-100 p-6 select-none flex items-start justify-center gap-6">
       {/* Left Column: Board & Controls */}
       <div className="flex-1 max-w-[700px] flex flex-col gap-4">
         {/* Score Header */}

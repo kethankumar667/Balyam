@@ -87,7 +87,7 @@ export default function CarromBoardMobile({
   );
 
   return (
-    <div className="flex flex-col min-h-screen bg-stone-950 text-stone-100 p-3 select-none justify-between gap-3">
+    <div className="h-full min-h-0 overflow-hidden flex flex-col bg-stone-950 text-stone-100 p-2.5 select-none justify-between gap-2 font-sans">
       {/* Score Header */}
       <CarromScoreHeader
         state={activeState}
@@ -97,7 +97,7 @@ export default function CarromBoardMobile({
       />
 
       {/* SVG Board */}
-      <div className="flex-1 flex items-center justify-center min-h-0 py-1">
+      <div className="flex-1 flex items-center justify-center min-h-0 my-0.5 max-h-[48vh]">
         <CarromSvgBoard
           state={activeState}
           selfId={selfId}

@@ -222,6 +222,29 @@ const SCORECARD_WINDOW_MS = 90_000;
  *  via onScorecardClose. GenericScorecardModal is suppressed for these. */
 const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "handcricket", "uno", "bingo", "ludo", "dotsboxes"]);
 
+/**
+ * Games whose boards own the entire viewport during play.
+ *
+ * These shells size themselves with `h-full` and expect a parent that is
+ * exactly the visible viewport with no padding. Anything NOT listed here gets
+ * the normal padded, max-width page instead.
+ *
+ * This used to be two separate inline lists, one for the outer wrapper and
+ * one for the inner. Carrom and Chess were added to neither, so their boards
+ * asked for `h-screen` inside a container that already had `p-2 sm:p-4` — the
+ * page then overflowed by exactly the padding, and `overflow-hidden` on the
+ * board clipped whatever fell off the bottom. One list means the next
+ * full-bleed game cannot be half-registered.
+ */
+const FULL_BLEED_GAMES: ReadonlySet<string> = new Set([
+  "rummy",
+  "dotsboxes",
+  "uno",
+  "stargame",
+  "carrom",
+  "chess",
+]);
+
 export default function Room() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
@@ -712,7 +735,7 @@ export default function Room() {
   return (
     <div
       className={
-        (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby"
+        FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
           ? "bhalyam-font bhalyam-paper h-dvh-safe overflow-hidden p-0"
           : ludoInPlay
             ? // Ludo's shells are viewport-locked and reserve EXACTLY this much
@@ -730,7 +753,7 @@ export default function Room() {
     >
       <div
         className={
-          (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby"
+          FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
             ? // No space-y here — the board fills the whole inner area
               // and any lastError banner overlays it via fixed positioning.
               "mx-auto h-full max-w-none"

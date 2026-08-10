@@ -332,7 +332,7 @@ export function CarromSvgBoard({
   return (
     <div
       id="game-board-container"
-      className="relative w-full aspect-square max-w-[650px] mx-auto select-none touch-none rounded-3xl overflow-hidden p-3 bg-gradient-to-br from-[#1C0E06] via-[#381F0E] to-[#1C0E06] border-4 border-[#5C361E] shadow-[0_20px_50px_rgba(0,0,0,0.8)]"
+      className="relative w-full aspect-square max-w-[650px] max-h-full mx-auto select-none touch-none rounded-3xl overflow-hidden p-3 bg-gradient-to-br from-[#1C0E06] via-[#381F0E] to-[#1C0E06] border-4 border-[#5C361E] shadow-[0_20px_50px_rgba(0,0,0,0.8)]"
     >
       {/* Metallic Corner Brackets */}
       <div className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-amber-400/60 rounded-tl-lg pointer-events-none" />

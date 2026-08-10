@@ -255,7 +255,7 @@ export function ChessBoardGrid({
   return (
     <div
       id="game-board-container"
-      className="relative w-full aspect-square max-w-[620px] mx-auto select-none rounded-3xl overflow-hidden p-3 bg-gradient-to-br from-stone-900 via-stone-850 to-stone-950 border-4 border-stone-800 shadow-[0_20px_50px_rgba(0,0,0,0.8)]"
+      className="relative w-full aspect-square max-w-[600px] max-h-full mx-auto select-none rounded-3xl overflow-hidden p-2.5 bg-gradient-to-br from-[#6A4724] via-[#4A3016] to-[#2B1B0C] border-4 border-[#3D2514] shadow-[0_15px_30px_rgba(40,25,10,0.6)]"
     >
       <div
         className="w-full h-full grid grid-cols-8 grid-rows-8 rounded-2xl overflow-hidden shadow-inner border"
