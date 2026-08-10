@@ -102,7 +102,7 @@ export default function CarromBoardMobile({
   );
 
   // Unread chat badge
-  const chatBadge = messages.length > 0 ? messages.filter((m) => !m.system).length : 0;
+  const chatBadge = messages.length;
 
   return (
     <div
