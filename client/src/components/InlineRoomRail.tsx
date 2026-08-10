@@ -16,6 +16,7 @@ const NUDGE_EMOJIS: readonly string[] = NUDGE_REACTIONS;
 import PlayerList from "./PlayerList";
 import VoicePanel from "./VoicePanel";
 import Chat from "./Chat";
+import QrCodeModal from "./QrCodeModal";
 
 /**
  * Horizontal in-board version of the room rail. Used inside a game's own
@@ -537,6 +538,8 @@ function SoundGrid({
   );
 }
 
+
+
 function RoomInfo({
   code,
   game,
@@ -547,39 +550,59 @@ function RoomInfo({
   phase: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+
   function copy() {
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     });
   }
+
   return (
-    <div className="space-y-3">
-      <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4 text-center">
-        <div className="text-[11px] uppercase tracking-widest text-[#A3886E] font-bold">
-          Room code
+    <>
+      <div className="space-y-3">
+        <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4 text-center">
+          <div className="text-[11px] uppercase tracking-widest text-[#A3886E] font-bold">
+            Room code
+          </div>
+          <div className="font-mono text-[28px] tracking-[0.35em] font-black text-[#2B3550] mt-1">
+            {code}
+          </div>
+          <div className="mt-3 flex justify-center gap-2">
+            <button
+              onClick={copy}
+              className="text-xs bg-[#EA5A1F] hover:bg-[#D84F17] text-white rounded-lg px-3 py-2 font-bold transition"
+            >
+              {copied ? "✓ Copied" : "Copy code"}
+            </button>
+            <button
+              onClick={() => setQrOpen(true)}
+              className="text-xs bg-[#FF8F00] hover:bg-[#E57F00] text-white rounded-lg px-3 py-2 font-bold transition"
+            >
+              📷 QR Code
+            </button>
+          </div>
         </div>
-        <div className="font-mono text-[28px] tracking-[0.35em] font-black text-[#2B3550] mt-1">
-          {code}
+        <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-3 text-sm text-[#5C4A38] space-y-1">
+          <div>
+            <span className="text-[#8C7A67] mr-2">Game:</span>
+            <span className="font-bold text-[#2F3A54]">{game.toUpperCase()}</span>
+          </div>
+          <div>
+            <span className="text-[#8C7A67] mr-2">Phase:</span>
+            <span className="font-bold text-[#2F3A54]">{phase}</span>
+          </div>
         </div>
-        <button
-          onClick={copy}
-          className="mt-3 inline-block text-sm bg-[#EA5A1F] hover:bg-[#D84F17] text-white rounded-lg px-4 py-2 font-bold"
-        >
-          {copied ? "✓ Copied" : "Copy code"}
-        </button>
       </div>
-      <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-3 text-sm text-[#5C4A38] space-y-1">
-        <div>
-          <span className="text-[#8C7A67] mr-2">Game:</span>
-          <span className="font-bold text-[#2F3A54]">{game.toUpperCase()}</span>
-        </div>
-        <div>
-          <span className="text-[#8C7A67] mr-2">Phase:</span>
-          <span className="font-bold text-[#2F3A54]">{phase}</span>
-        </div>
-      </div>
-    </div>
+
+      <QrCodeModal
+        open={qrOpen}
+        onClose={() => setQrOpen(false)}
+        code={code}
+        gameName={game.toUpperCase()}
+      />
+    </>
   );
 }
 

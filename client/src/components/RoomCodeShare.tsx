@@ -1,13 +1,14 @@
 import { useState } from "react";
 import type { GameKind } from "@shared/types";
+import QrCodeModal from "./QrCodeModal";
 
 /**
  * Featured lobby block for the room code.
  *
- * Three actions in one card so the host can recruit the gang without
- * leaving the lobby:
+ * Actions in one card so the host can recruit the gang without leaving the lobby:
  *   - large monospace code, copyable on tap
- *   - explicit "Copy" button (for desktop where tap-the-code is unobvious)
+ *   - explicit "Copy" button
+ *   - "QR Code" button to present a clean scan code for nearby players
  *   - "WhatsApp" share that opens wa.me with a pre-filled message
  *
  * On mobile we ALSO try the native `navigator.share` sheet first (so
@@ -28,6 +29,7 @@ export default function RoomCodeShare({
   name?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   const roomUrl = `${window.location.origin}/room/${code}`;
   const friendlyGameName: Record<GameKind, string> = {
@@ -107,52 +109,75 @@ export default function RoomCodeShare({
   }
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      {name && (
-        <div className="font-script text-2xl text-[#2B3550] -mb-1">{name}</div>
-      )}
-      <div className="text-[11px] uppercase tracking-widest font-bold text-[#A3886E]">
-        Room Code
-      </div>
-      <button
-        type="button"
-        onClick={copyCode}
-        title="Tap to copy"
-        className="font-mono text-[34px] sm:text-[42px] tracking-[0.35em] font-black text-[#2B3550]
-                   bg-white border-2 border-dashed border-[#E6C99F] rounded-lg
-                   px-5 py-2 leading-none
-                   hover:bg-[#FDF7EB] active:translate-y-px transition-all"
-      >
-        <span id="bhalyam-room-code-text">{code}</span>
-      </button>
-      <div className="flex flex-wrap justify-center gap-2">
+    <>
+      <div className="flex flex-col items-center gap-3">
+        {name && (
+          <div className="font-script text-2xl text-[#2B3550] -mb-1">{name}</div>
+        )}
+        <div className="text-[11px] uppercase tracking-widest font-bold text-[#A3886E]">
+          Room Code
+        </div>
         <button
           type="button"
           onClick={copyCode}
-          className="inline-flex items-center gap-2 rounded-full
-                     bg-[#EA5A1F] hover:bg-[#D84F17] active:translate-y-px
-                     text-white font-bold text-[13px] px-4 py-2
-                     shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
-                     transition-all duration-150"
-          aria-label="Copy room code"
+          title="Tap to copy"
+          className="font-mono text-[34px] sm:text-[42px] tracking-[0.35em] font-black text-[#2B3550]
+                     bg-white border-2 border-dashed border-[#E6C99F] rounded-lg
+                     px-5 py-2 leading-none
+                     hover:bg-[#FDF7EB] active:translate-y-px transition-all"
         >
-          <span aria-hidden>📋</span>
-          {copied ? "Copied!" : "Copy Code"}
+          <span id="bhalyam-room-code-text">{code}</span>
         </button>
-        <button
-          type="button"
-          onClick={share}
-          className="inline-flex items-center gap-2 rounded-full
-                     bg-[#25D366] hover:bg-[#1FB856] active:translate-y-px
-                     text-white font-bold text-[13px] px-4 py-2
-                     shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
-                     transition-all duration-150"
-          aria-label="Share room link"
-        >
-          <span aria-hidden>📤</span>
-          Share
-        </button>
+        <div className="flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            onClick={copyCode}
+            className="inline-flex items-center gap-2 rounded-full
+                       bg-[#EA5A1F] hover:bg-[#D84F17] active:translate-y-px
+                       text-white font-bold text-[13px] px-4 py-2
+                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
+                       transition-all duration-150"
+            aria-label="Copy room code"
+          >
+            <span aria-hidden>📋</span>
+            {copied ? "Copied!" : "Copy Code"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setQrOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full
+                       bg-[#FF8F00] hover:bg-[#E57F00] active:translate-y-px
+                       text-white font-bold text-[13px] px-4 py-2
+                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
+                       transition-all duration-150"
+            aria-label="Show QR Code"
+          >
+            <span aria-hidden>📷</span>
+            QR Code
+          </button>
+          <button
+            type="button"
+            onClick={share}
+            className="inline-flex items-center gap-2 rounded-full
+                       bg-[#25D366] hover:bg-[#1FB856] active:translate-y-px
+                       text-white font-bold text-[13px] px-4 py-2
+                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
+                       transition-all duration-150"
+            aria-label="Share room link"
+          >
+            <span aria-hidden>📤</span>
+            Share
+          </button>
+        </div>
       </div>
-    </div>
+
+      <QrCodeModal
+        open={qrOpen}
+        onClose={() => setQrOpen(false)}
+        code={code}
+        gameName={friendlyGameName[game]}
+        hostName={name}
+      />
+    </>
   );
 }
