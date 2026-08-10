@@ -19,6 +19,7 @@ import { VyomaYudhEngine } from "./vyomayudh/VyomaYudhEngine.js";
 import { CarromEngine } from "./carrom/CarromEngine.js";
 import { BounceEngine } from "./bounce/BounceEngine.js";
 import { RoadRashEngine } from "./roadrash/RoadRashEngine.js";
+import { ChessEngine } from "./chess/ChessEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
   switch (kind) {
@@ -60,6 +61,8 @@ export function createEngine(kind: GameKind): GameEngine {
       return new BounceEngine();
     case "roadrash":
       return new RoadRashEngine();
+    case "chess":
+      return new ChessEngine();
     default:
       throw new Error(`Game not implemented yet: ${kind}`);
   }
@@ -86,6 +89,7 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     carrom: { min: 2, max: 2 },
     bounce: { min: 1, max: 4 },
     roadrash: { min: 1, max: 4 },
+    chess: { min: 2, max: 2 },
   };
 
   return limits[kind] ?? { min: 2, max: 4 };

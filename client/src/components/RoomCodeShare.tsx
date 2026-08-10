@@ -52,6 +52,7 @@ export default function RoomCodeShare({
     bounce: "Nokia Bounce",
     roadrash: "Road Rash 90s",
     carrom: "Carrom",
+    chess: "Chess Grandmaster",
   };
   /**
    * Body of the share message — keeps the URL OUT of the text. The OS

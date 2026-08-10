@@ -17,6 +17,7 @@
     "@tsparticles/engine": "^4.3.2",
     "@tsparticles/react": "^4.3.2",
     "animejs": "^4.5.0",
+    "chess.js": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "country-flag-icons": "^1.6.20",

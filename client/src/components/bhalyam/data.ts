@@ -24,6 +24,7 @@ export type BhalyamGameSlug =
   | "dotsboxes"
   | "stargame"
   | "bingo"
+  | "chess"
   // Coming soon — NOT in GameKind. Maintenance tiles only.
   | "namesplaceanimal"
   | "tambola"
@@ -268,6 +269,15 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Pick a secret, slide the chits clockwise, and slap the STAR the instant you hold all four. Pure 90's terrace nostalgia.",
     accent: { from: "#CA8A04", to: "#713F12" }, // Luxe Golden Honey Bronze
+  },
+  {
+    slug: "chess",
+    tags: ["solo", "multiplayer", "board"],
+    title: "Chess",
+    theme: "Grandmaster 2026 Edition",
+    blurb:
+      "The ultimate 64-square battlefield. Real-time Bullet/Blitz/Rapid timers, 3D piece skins, move evaluation, and AI Bot tiers.",
+    accent: { from: "#059669", to: "#064E3B" }, // Emerald Grandmaster
   },
   {
     slug: "namesplaceanimal",
