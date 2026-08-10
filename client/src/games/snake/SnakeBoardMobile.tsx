@@ -280,7 +280,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
               className="bg-slate-900 border-4 border-amber-400 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-slate-100 font-sans"
             >
               <h3 className="text-lg font-bold text-amber-400 font-mono">
-                How to Play Nokia Snake 🐍
+                How to Play Snake 🐍
               </h3>
               <div className="text-xs space-y-2 leading-relaxed text-slate-300">
                 <p>• Steer your pixel snake using D-pad keys or touch swipes.</p>

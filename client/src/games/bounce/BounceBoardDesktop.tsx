@@ -67,7 +67,7 @@ export default function BounceBoardDesktop({ state, selfId, onMove }: BounceBoar
       <div className="grid grid-cols-3 gap-6">
         {/* Left Side Info */}
         <div className="col-span-1 bg-slate-900 border-2 border-amber-500/30 rounded-2xl p-6 space-y-4 shadow-xl">
-          <h2 className="text-xl font-bold text-amber-400 font-display">Nokia Bounce 🔴</h2>
+          <h2 className="text-xl font-bold text-amber-400 font-display">Bounce 🔴</h2>
           <p className="text-xs text-white/80 leading-relaxed">
             Use <strong>A/D</strong> or <strong>Left/Right Arrows</strong> to roll, and <strong>Spacebar / Up Arrow</strong> to jump!
           </p>
@@ -151,7 +151,7 @@ export default function BounceBoardDesktop({ state, selfId, onMove }: BounceBoar
               exit={{ scale: 0.9, y: 20 }}
               className="bg-slate-900 border-2 border-amber-500/40 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-amber-300 font-sans"
             >
-              <h3 className="text-xl font-bold text-amber-400 font-display">How to Play Nokia Bounce 🔴</h3>
+              <h3 className="text-xl font-bold text-amber-400 font-display">How to Play Bounce 🔴</h3>
               <div className="text-xs space-y-2 leading-relaxed text-white/80">
                 <p>• Roll red ball with Arrow Keys or A/D.</p>
                 <p>• Press Spacebar to Jump over floor obstacles.</p>

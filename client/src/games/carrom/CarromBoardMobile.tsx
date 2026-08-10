@@ -2,9 +2,17 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import type { CarromBoardProps } from "./CarromBoard";
 import type { StrikerSkin, BoardFeltSkin } from "@shared/types";
 import { CARROM_BOARD } from "@shared/types";
-import { CarromScoreHeader, CarromSvgBoard, CarromControls, type AimData } from "./carrom-shared";
+import {
+  CarromLoungeHeader,
+  CarromPlayerCards,
+  CarromTurnBar,
+  CarromSvgBoard,
+  CarromShotControls,
+  CarromActivityLog,
+  CarromBottomBar,
+  type AimData,
+} from "./carrom-shared";
 import CarromSkinModal from "./CarromSkinModal";
-import InlineRoomRail from "../../components/InlineRoomRail";
 
 export default function CarromBoardMobile({
   state,
@@ -29,6 +37,13 @@ export default function CarromBoardMobile({
     const map = new Map(players.map((p) => [p.id, p.name]));
     return (id: string) => map.get(id) ?? "Player";
   }, [players]);
+
+  const modeLabel =
+    state.mode === "freestyle"
+      ? "Freestyle"
+      : state.mode === "discpool"
+      ? "Disc Pool"
+      : "Classic";
 
   function toBoard(e: React.PointerEvent<SVGSVGElement>): { x: number; y: number } | null {
     const svg = svgRef.current;
@@ -86,18 +101,38 @@ export default function CarromBoardMobile({
     [state, localStriker, localFelt]
   );
 
+  // Unread chat badge
+  const chatBadge = messages.length > 0 ? messages.filter((m) => !m.system).length : 0;
+
   return (
-    <div className="h-full min-h-0 overflow-hidden flex flex-col bg-stone-950 text-stone-100 p-2.5 select-none justify-between gap-2 font-sans">
-      {/* Score Header */}
-      <CarromScoreHeader
-        state={activeState}
-        players={players}
-        selfId={selfId}
+    <div
+      className="h-full min-h-0 overflow-hidden flex flex-col select-none font-sans"
+      style={{
+        background: "linear-gradient(180deg, #F7E8C4 0%, #EED8B0 50%, #E8D0A0 100%)",
+      }}
+    >
+      {/* ─── Carrom Lounge Header ─── */}
+      <CarromLoungeHeader
+        modeLabel={modeLabel}
         onOpenSkins={() => setShowSkins(true)}
       />
 
-      {/* SVG Board */}
-      <div className="flex-1 flex items-center justify-center min-h-0 my-0.5 max-h-[48vh]">
+      {/* ─── Player Cards Row ─── */}
+      <CarromPlayerCards
+        state={activeState}
+        players={players}
+        selfId={selfId}
+      />
+
+      {/* ─── Turn Indicator Bar ─── */}
+      <CarromTurnBar
+        state={activeState}
+        nameOf={nameOf}
+        selfId={selfId}
+      />
+
+      {/* ─── SVG Board ─── */}
+      <div className="flex-1 flex items-center justify-center min-h-0 px-2 py-1 max-h-[50vh]">
         <CarromSvgBoard
           state={activeState}
           selfId={selfId}
@@ -110,32 +145,29 @@ export default function CarromBoardMobile({
         />
       </div>
 
-      {/* Aim & Position Controls */}
-      <CarromControls
-        myTurn={myTurn}
-        strikerPos={state.strikerPos}
-        onPlace={(pos) => onMove("place", { pos })}
-        queenPendingFor={state.queenPendingFor}
-        selfId={selfId}
-        isOver={state.phase === "finished"}
-        winnerId={state.seats.find((s) => s.remaining === 0)?.playerId ?? null}
-        phase={state.phase}
-        nameOf={nameOf}
-      />
-
-      {/* Inline Room Rail */}
-      {roomCode && (
-        <InlineRoomRail
-          code={roomCode}
-          game="carrom"
-          phase={roomPhase ?? "playing"}
-          players={players}
-          selfId={selfId}
-          messages={messages}
+      {/* ─── Shot Controls ─── */}
+      <div className="px-2 pb-1">
+        <CarromShotControls
+          myTurn={myTurn}
+          strikerPos={state.strikerPos}
+          onPlace={(pos) => onMove("place", { pos })}
+          aim={aim}
+          phase={state.phase}
         />
-      )}
+      </div>
 
-      {/* Custom Skins Modal */}
+      {/* ─── Activity Log ─── */}
+      <div className="px-2 pb-1">
+        <CarromActivityLog
+          lastShot={state.lastShot}
+          lastCombo={state.lastCombo}
+        />
+      </div>
+
+      {/* ─── Bottom Action Bar ─── */}
+      <CarromBottomBar chatBadge={chatBadge > 0 ? chatBadge : undefined} />
+
+      {/* ─── Custom Skins Modal ─── */}
       <CarromSkinModal
         open={showSkins}
         onClose={() => setShowSkins(false)}

@@ -167,7 +167,7 @@ export default function BounceBoardMobile({ state, selfId, onMove }: BounceBoard
               className="bg-slate-900 border-2 border-amber-500/40 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-amber-300 font-sans"
             >
               <h3 className="text-lg font-bold text-amber-400">
-                How to Play Nokia Bounce 🔴
+                How to Play Bounce 🔴
               </h3>
               <div className="text-xs space-y-2 leading-relaxed text-white/80">
                 <p>• Move the red ball LEFT and RIGHT and tap JUMP to bounce.</p>

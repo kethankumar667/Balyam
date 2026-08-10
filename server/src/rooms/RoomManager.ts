@@ -554,6 +554,14 @@ export class RoomManager {
   addBot(socketId: string, customName?: string, difficulty?: BotDifficulty): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
+    // Games with no bot AI — bots would be dead/frozen seats.
+    const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
+      "samethalu", "telugucinemalu", "snake", "vyomayudh", "bounce", "roadrash",
+    ]);
+    if (NO_BOT_GAMES.has(room.game)) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Bots are not available for this game");
+      return;
+    }
     if (player.id !== room.hostId) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only host can add bots");
       return;
