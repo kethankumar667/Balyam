@@ -53,6 +53,10 @@ import {
   DEFAULT_TELUGUCINEMALU_OPTIONS,
   DEFAULT_CARROM_OPTIONS,
   DEFAULT_CHESS_OPTIONS,
+  DEFAULT_SNAKE_OPTIONS,
+  DEFAULT_VYOMAYUDH_OPTIONS,
+  DEFAULT_BOUNCE_OPTIONS,
+  DEFAULT_ROADRASH_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -79,6 +83,10 @@ import { SamethaluEngine } from "../games/samethalu/SamethaluEngine.js";
 import { TeluguCinemaluEngine } from "../games/telugucinemalu/TeluguCinemaluEngine.js";
 import { CarromEngine } from "../games/carrom/CarromEngine.js";
 import { ChessEngine } from "../games/chess/ChessEngine.js";
+import { SnakeEngine } from "../games/snake/SnakeEngine.js";
+import { VyomaYudhEngine } from "../games/vyomayudh/VyomaYudhEngine.js";
+import { BounceEngine } from "../games/bounce/BounceEngine.js";
+import { RoadRashEngine } from "../games/roadrash/RoadRashEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -243,6 +251,10 @@ interface Room {
   teluguCinemaluOptions: TeluguCinemaluOptions;
   carromOptions: CarromOptions;
   chessOptions: ChessOptions;
+  snakeOptions: SnakeOptions;
+  vyomaYudhOptions: VyomaYudhOptions;
+  bounceOptions: BounceOptions;
+  roadRashOptions: RoadRashOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -401,6 +413,10 @@ export class RoomManager {
       teluguCinemaluOptions: { ...DEFAULT_TELUGUCINEMALU_OPTIONS, ...(teluguCinemaluOptions ?? {}) },
       carromOptions: { ...DEFAULT_CARROM_OPTIONS, ...(carromOptions ?? {}) },
       chessOptions: { ...DEFAULT_CHESS_OPTIONS, ...(chessOptions ?? {}) },
+      snakeOptions: { ...DEFAULT_SNAKE_OPTIONS, ...(snakeOptions ?? {}) },
+      vyomaYudhOptions: { ...DEFAULT_VYOMAYUDH_OPTIONS, ...(vyomaYudhOptions ?? {}) },
+      bounceOptions: { ...DEFAULT_BOUNCE_OPTIONS, ...(bounceOptions ?? {}) },
+      roadRashOptions: { ...DEFAULT_ROADRASH_OPTIONS, ...(roadRashOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -853,6 +869,18 @@ export class RoomManager {
       }
       if (engine instanceof ChessEngine) {
         engine.setOptions(room.chessOptions);
+      }
+      if (engine instanceof SnakeEngine) {
+        engine.setOptions(room.snakeOptions);
+      }
+      if (engine instanceof VyomaYudhEngine) {
+        engine.setOptions(room.vyomaYudhOptions);
+      }
+      if (engine instanceof BounceEngine) {
+        engine.setOptions(room.bounceOptions);
+      }
+      if (engine instanceof RoadRashEngine) {
+        engine.setOptions(room.roadRashOptions);
       }
       engine.init(playersList);
       room.engine = engine;
@@ -2432,6 +2460,16 @@ export class RoomManager {
       if (engine instanceof StarGameEngine) engine.setOptions(room.starGameOptions);
       if (engine instanceof UnoEngine) engine.setOptions(room.unoOptions);
       if (engine instanceof BingoEngine) engine.setOptions(room.bingoOptions);
+      if (engine instanceof TambolaEngine) engine.setOptions(room.tambolaOptions);
+      if (engine instanceof NamePlaceAnimalEngine) engine.setOptions(room.namesplaceanimalOptions);
+      if (engine instanceof SamethaluEngine) engine.setOptions(room.samethaluOptions);
+      if (engine instanceof TeluguCinemaluEngine) engine.setOptions(room.teluguCinemaluOptions);
+      if (engine instanceof CarromEngine) engine.setOptions(room.carromOptions);
+      if (engine instanceof ChessEngine) engine.setOptions(room.chessOptions);
+      if (engine instanceof SnakeEngine) engine.setOptions(room.snakeOptions);
+      if (engine instanceof VyomaYudhEngine) engine.setOptions(room.vyomaYudhOptions);
+      if (engine instanceof BounceEngine) engine.setOptions(room.bounceOptions);
+      if (engine instanceof RoadRashEngine) engine.setOptions(room.roadRashOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

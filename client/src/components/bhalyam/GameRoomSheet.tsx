@@ -437,6 +437,15 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   themePack: npaThemePack,
                 }
               : undefined,
+          snakeOptions:
+            game === "snake"
+              ? {
+                  speedMs: Number(snakeSpeed),
+                  gridSize: Number(snakeGridSize),
+                  wallMode: snakeWallMode,
+                  theme: snakeTheme,
+                }
+              : undefined,
         },
         (res) => {
           setBusy(false);
