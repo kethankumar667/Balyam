@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { ArrowRightIcon } from "./icons";
+import QrScannerModal from "../QrScannerModal";
 
 /* ──────────────────────────────────────────────────────────────────────────
  * BHALYAM Join Room Modal
@@ -37,6 +38,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
   const [name, setName] = useState(playerName);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   // Per-field validation errors live next to the field that produced them,
   // not in a footer banner. `formError` is reserved for cross-field /
   // server-side failures that don't belong on a single input.
@@ -55,6 +57,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
       setCodeError(null);
       setFormError(null);
       setBusy(false);
+      setScannerOpen(false);
       setCode("");
       setName(playerName);
     }
@@ -232,43 +235,68 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             />
           </Field>
 
+          {/* Scan QR Code button */}
+          <div className="flex justify-end -mb-1">
+            <button
+              type="button"
+              onClick={() => setScannerOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-bhalyam-wood
+                         hover:text-bhalyam-wood-dark active:scale-95 transition cursor-pointer"
+            >
+              <ScanIcon className="w-4 h-4 text-[#EA5A1F]" />
+              Scan QR Code
+            </button>
+          </div>
+
           {/* Room code */}
           <Field
             htmlFor="join-code"
             label="Room code"
             error={codeError}
             helpId="join-code-help"
-            help="The 6-character code your friend shared with you."
+            help="The 6-character code your friend shared with you or scan QR."
           >
-            <input
-              ref={codeInputRef}
-              id="join-code"
-              type="text"
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value.toUpperCase().replace(/\s/g, ""));
-                if (codeError) setCodeError(null);
-              }}
-              placeholder="ABC123"
-              maxLength={6}
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              inputMode="text"
-              aria-invalid={codeError ? true : undefined}
-              aria-describedby={
-                codeError ? "join-code-error" : "join-code-help"
-              }
-              className={`w-full min-h-[52px] px-3 rounded-xl
-                         bg-bhalyam-cream-soft border-2
-                         text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/30
-                         font-mono font-black text-2xl tracking-[0.45em] text-center
-                         focus:outline-none focus:ring-2
-                         transition-all duration-200
-                         ${codeError
-                           ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
-                           : "border-bhalyam-cream-edge/80 focus:border-bhalyam-gold-dark focus:ring-bhalyam-gold/40"}`}
-            />
+            <div className="relative">
+              <input
+                ref={codeInputRef}
+                id="join-code"
+                type="text"
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value.toUpperCase().replace(/\s/g, ""));
+                  if (codeError) setCodeError(null);
+                }}
+                placeholder="ABC123"
+                maxLength={6}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                inputMode="text"
+                aria-invalid={codeError ? true : undefined}
+                aria-describedby={
+                  codeError ? "join-code-error" : "join-code-help"
+                }
+                className={`w-full min-h-[52px] px-3 rounded-xl
+                           bg-bhalyam-cream-soft border-2
+                           text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/30
+                           font-mono font-black text-2xl tracking-[0.45em] text-center
+                           focus:outline-none focus:ring-2
+                           transition-all duration-200
+                           ${codeError
+                             ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
+                             : "border-bhalyam-cream-edge/80 focus:border-bhalyam-gold-dark focus:ring-bhalyam-gold/40"}`}
+              />
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                title="Scan QR Code"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg
+                           bg-bhalyam-cream-warm hover:bg-bhalyam-cream-edge active:scale-95
+                           inline-flex items-center justify-center text-bhalyam-wood-dark transition"
+              >
+                <ScanIcon className="w-5 h-5 text-[#EA5A1F]" />
+              </button>
+            </div>
           </Field>
 
           {/* Submit */}
@@ -292,9 +320,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             )}
           </button>
 
-          {/* Form-level error fallback — used only for failures that aren't
-              attributable to a single input (rare; most errors land on a
-              specific field above). */}
+          {/* Form-level error fallback */}
           {formError && (
             <div
               role="alert"
@@ -308,6 +334,38 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
           )}
         </form>
       </div>
+
+      <QrScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScanSuccess={(scannedCode: string) => {
+          setCode(scannedCode);
+          setCodeError(null);
+          // If name is already provided, attempt auto submit
+          if (name.trim()) {
+            window.setTimeout(() => {
+              const n = name.trim().slice(0, 20);
+              setBusy(true);
+              setPlayerName(n);
+              const socket = getSocket();
+              socket.emit(
+                "room:join",
+                { name: n, code: scannedCode, playerId: playerId ?? undefined },
+                (res) => {
+                  setBusy(false);
+                  if (!res.ok) {
+                    setCodeError(res.error ?? "Couldn't join that room");
+                    return;
+                  }
+                  if (res.playerId) setPlayerId(res.playerId);
+                  onClose();
+                  navigate(`/room/${scannedCode}`);
+                }
+              );
+            }, 100);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -380,6 +438,19 @@ function DoorIcon({ className }: { className?: string }) {
       <path d="M4 21h16" />
       <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
       <circle cx="15" cy="13" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function ScanIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <line x1="7" y1="12" x2="17" y2="12" />
     </svg>
   );
 }
