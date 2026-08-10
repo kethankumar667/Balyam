@@ -55,6 +55,7 @@ export class CarromEngine implements GameEngine {
   private strikerPos = 0.5;
   private queenPendingFor: string | null = null;
   private lastShot: string | null = null;
+  private lastCombo: string | null = null;
   private resolveTicks = 0;
   private pottedThisShot: CarromPiece[] = [];
   private turnDeadline: number | null = null;
@@ -204,6 +205,7 @@ export class CarromEngine implements GameEngine {
     // Settled, or the safety valve tripped — either way the shot is over.
     if (allAtRest(this.pieces) || this.resolveTicks >= MAX_RESOLVE_TICKS) {
       this.resolveShot();
+      return { ok: true, isOver: this.isOver(), winnerId: this.winnerId, turnPhaseChanged: true };
     }
     return { ok: true, isOver: this.isOver(), winnerId: this.winnerId };
   }
@@ -366,6 +368,10 @@ export class CarromEngine implements GameEngine {
       strikerPos: this.strikerPos,
       queenPendingFor: this.queenPendingFor,
       lastShot: this.lastShot,
+      lastCombo: this.lastCombo,
+      mode: this.opts.mode ?? "classic",
+      strikerSkin: this.opts.strikerSkin ?? "pearl",
+      boardSkin: this.opts.boardSkin ?? "birch",
       turnDeadline: this.turnDeadline,
       isOver: this.phase === "finished",
       winnerId: this.winnerId,
@@ -412,15 +418,24 @@ export class CarromEngine implements GameEngine {
    */
   applyAutoMove(playerId: string): MoveResult {
     const seat = this.seats.find((s) => s.playerId === playerId);
-    const striker = this.pieces.find((p) => p.kind === "striker");
+    let striker = this.pieces.find((p) => p.kind === "striker");
     if (!seat || !striker || this.phase !== "aiming") return { ok: false, error: "Cannot shoot" };
 
     const targets = this.pieces.filter((p) => !p.pocketed && p.kind === seat.color);
     const target =
       targets.sort(
         (a, b) =>
-          Math.hypot(a.x - striker.x, a.y - striker.y) - Math.hypot(b.x - striker.x, b.y - striker.y),
+          Math.hypot(a.x - striker!.x, a.y - striker!.y) - Math.hypot(b.x - striker!.x, b.y - striker!.y),
       )[0] ?? this.pieces.find((p) => !p.pocketed && p.kind === "queen");
+
+    // Align striker position with target X for optimal shot alignment
+    if (target) {
+      const span = CARROM_BOARD.size - CARROM_BOARD.cushion * 2 - CARROM_BOARD.strikerRadius * 2;
+      const targetPos = Math.max(0, Math.min(1, (target.x - CARROM_BOARD.cushion - CARROM_BOARD.strikerRadius) / span));
+      this.strikerPos = targetPos;
+      this.placeStriker();
+      striker = this.pieces.find((p) => p.kind === "striker") ?? striker;
+    }
 
     const angle = target
       ? Math.atan2(target.y - striker.y, target.x - striker.x)
@@ -431,7 +446,7 @@ export class CarromEngine implements GameEngine {
     return this.applyMove({
       playerId,
       type: "shoot",
-      data: { angle, power: 0.55 + this.rng() * 0.25 },
+      data: { angle, power: 0.6 + this.rng() * 0.25 },
     });
   }
 

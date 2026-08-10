@@ -1098,6 +1098,11 @@ export class RoomManager {
         this.clearTurnTimer(room);
         this.broadcastRoomState(room);
         console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
+      } else if ((result as { turnPhaseChanged?: boolean })?.turnPhaseChanged) {
+        // A real-time physics turn (e.g., Carrom strike) just completed and returned to aiming phase.
+        // Re-arm turn timers and trigger bot scheduler so bot/taken-over seats take their turn!
+        this.scheduleTurnTimer(room);
+        this.scheduleBotMoveIfNeeded(room);
       }
     }, periodMs);
   }

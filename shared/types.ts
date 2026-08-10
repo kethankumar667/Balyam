@@ -1880,16 +1880,28 @@ export interface CarromPiece {
   pocketed: boolean;
 }
 
+export type CarromMode = "classic" | "discpool" | "freestyle";
+export type StrikerSkin = "pearl" | "gold" | "cyber" | "ruby" | "emerald";
+export type BoardFeltSkin = "birch" | "velvet" | "emerald" | "ebony";
+
 export interface CarromOptions {
   /** Points needed to win the match. */
   targetScore: number;
   /** Seconds a player has to take their shot. */
   shotTimerSeconds: number;
+  mode: CarromMode;
+  strikerSkin: StrikerSkin;
+  boardSkin: BoardFeltSkin;
+  botDifficulty: "easy" | "medium" | "pro";
 }
 
 export const DEFAULT_CARROM_OPTIONS: CarromOptions = {
   targetScore: 21,
   shotTimerSeconds: 30,
+  mode: "classic",
+  strikerSkin: "pearl",
+  boardSkin: "birch",
+  botDifficulty: "medium",
 };
 
 /**
@@ -1919,6 +1931,10 @@ export interface CarromPublicState {
   queenPendingFor: string | null;
   /** Human-readable outcome of the last completed shot. */
   lastShot: string | null;
+  lastCombo?: string | null;
+  mode: CarromMode;
+  strikerSkin: StrikerSkin;
+  boardSkin: BoardFeltSkin;
   turnDeadline: number | null;
   isOver: boolean;
   winnerId: string | null;
