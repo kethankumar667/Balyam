@@ -93,7 +93,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
-  "namesplaceanimal", "tambola", "samethalu", "telugucinemalu", "snake", "vyomayudh", "carrom", "bounce", "roadrash",
+  "namesplaceanimal", "tambola", "samethalu", "telugucinemalu", "snake", "vyomayudh", "carrom", "bounce", "roadrash", "chess",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
