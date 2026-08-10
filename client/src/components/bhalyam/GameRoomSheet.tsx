@@ -250,8 +250,8 @@ const SNAKE_GRID_SIZES: { id: "15" | "20" | "25"; label: string; blurb: string }
 ];
 
 const SNAKE_WALL_MODES: { id: "solid" | "wrap"; label: string; blurb: string }[] = [
-  { id: "solid", label: "Solid Walls", blurb: "Hitting boundary kills snake" },
   { id: "wrap",  label: "Wrap Around", blurb: "Passing boundary wraps to other side" },
+  { id: "solid", label: "Solid Walls", blurb: "Hitting boundary kills snake" },
 ];
 
 const SNAKE_THEMES: { id: "monochrome" | "color" | "neon-modern"; label: string; blurb: string }[] = [
@@ -303,7 +303,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [npaThemePack, setNpaThemePack] = useState<"classic" | "popculture" | "foodie" | "school" | "random">("classic");
   const [snakeSpeed, setSnakeSpeed] = useState<"140" | "100" | "70">("100");
   const [snakeGridSize, setSnakeGridSize] = useState<"15" | "20" | "25">("20");
-  const [snakeWallMode, setSnakeWallMode] = useState<"solid" | "wrap">("solid");
+  const [snakeWallMode, setSnakeWallMode] = useState<"solid" | "wrap">("wrap");
   const [snakeTheme, setSnakeTheme] = useState<"nokia-monochrome" | "nokia-color" | "neon-modern">("nokia-monochrome");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);

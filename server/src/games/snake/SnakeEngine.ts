@@ -293,7 +293,7 @@ export class SnakeEngine implements GameEngine {
 
       // Check food collection
       if (head.x === this.food.x && head.y === this.food.y) {
-        snake.score += 10;
+        snake.score += 2;
         if (this.opts.speedProgression && this.opts.speedMs > 60) {
           this.opts.speedMs = Math.max(50, this.opts.speedMs - 1);
         }
