@@ -55,6 +55,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
       snakeSelf: "bg-[#1c2415]",
       snakeOther: "bg-[#3b4731]",
       food: "bg-[#1c2415] animate-ping",
+      obstacle: "bg-[#1c2415] border border-[#3b4731]",
       cellEmpty: "bg-[#9ebd9e]/40",
     },
     "nokia-color": {
@@ -67,6 +68,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
       snakeSelf: "bg-emerald-400 shadow-[0_0_10px_#34d399]",
       snakeOther: "bg-blue-400",
       food: "bg-red-500 animate-pulse rounded-full shadow-[0_0_12px_#ef4444]",
+      obstacle: "bg-amber-700 border border-amber-400 shadow-[0_0_8px_rgba(217,119,6,0.7)]",
       cellEmpty: "bg-slate-800/40",
     },
     "neon-modern": {
@@ -79,6 +81,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
       snakeSelf: "bg-gradient-to-r from-purple-400 to-pink-500 shadow-[0_0_14px_#d946ef]",
       snakeOther: "bg-amber-400",
       food: "bg-emerald-400 animate-ping rounded-full shadow-[0_0_14px_#10b981]",
+      obstacle: "bg-rose-600 border border-rose-400 shadow-[0_0_12px_rgba(225,29,72,0.9)] animate-pulse",
       cellEmpty: "bg-purple-950/20",
     },
   }[activeTheme];
@@ -106,26 +109,30 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
         </AnimatePresence>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-6 items-start">
         {/* Left Side Specs Panel */}
-        <div className={`col-span-4 rounded-2xl p-6 space-y-5 shadow-xl ${themeClasses.specs}`}>
-          <div>
-            <h2 className={`text-xl font-bold font-mono ${themeClasses.specsTitle}`}>Snake Arcade 🐍</h2>
-            <p className="text-xs opacity-80 mt-1 leading-relaxed">
-              Steer your pixel snake using <strong>Arrow Keys</strong>, <strong>WASD</strong>, or <strong>Numpad 2/4/6/8</strong>!
-            </p>
+        <div className={`col-span-4 rounded-2xl p-5 border-2 space-y-5 ${themeClasses.specs}`}>
+          <div className="flex items-center justify-between border-b pb-3 border-white/10">
+            <h2 className={`font-bold text-base tracking-wide ${themeClasses.specsTitle}`}>Snake Arcade 🐍</h2>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold uppercase">
+              Live Match
+            </span>
           </div>
 
+          <p className="text-xs opacity-80 leading-relaxed">
+            Steer your pixel snake using Arrow Keys, WASD, or Numpad 2/4/6/8!
+          </p>
+
           {/* Theme Selector */}
-          <div className="space-y-2 pt-3 border-t border-white/10">
+          <div className="space-y-2">
             <label className="text-[11px] font-bold uppercase tracking-wider block opacity-70">Visual Arcade Theme</label>
-            <div className="grid grid-cols-3 gap-1.5 text-xs">
+            <div className="grid grid-cols-3 gap-1.5">
               {(["nokia-monochrome", "nokia-color", "neon-modern"] as const).map((th) => (
                 <button
                   key={th}
                   onClick={() => setActiveTheme(th)}
-                  className={`py-1.5 px-1 rounded-lg text-[10px] font-bold uppercase transition cursor-pointer text-center ${
-                    activeTheme === th ? "bg-amber-400 text-black shadow" : "bg-black/40 text-white/70 hover:bg-black/60"
+                  className={`py-1.5 px-2 rounded-lg text-[10px] font-bold cursor-pointer transition ${
+                    activeTheme === th ? "bg-amber-400 text-black shadow" : "bg-white/10 hover:bg-white/20 text-white"
                   }`}
                 >
                   {th === "nokia-monochrome" ? "3310 LCD" : th === "nokia-color" ? "6110 Color" : "Neon"}
@@ -135,8 +142,8 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
           </div>
 
           {/* Live Scoreboard */}
-          <div className="space-y-2 pt-3 border-t border-white/10">
-            <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">Live Match Leaderboard</h3>
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300">Live Match Leaderboard</h3>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {state.players.map((p) => (
                 <div key={p.id} className="flex justify-between items-center text-xs p-2.5 bg-black/30 border border-white/10 rounded-xl">
@@ -162,7 +169,10 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
         <div className={`col-span-8 rounded-2xl p-6 shadow-2xl space-y-4 ${themeClasses.screen}`}>
           <div className={`flex justify-between items-center text-sm font-bold border-b-2 pb-2 uppercase ${themeClasses.header}`}>
             <span>LCD MATRIX ({state.gridSize}×{state.gridSize})</span>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="px-2 py-0.5 rounded bg-amber-400/20 border border-amber-400/40 text-amber-300 font-extrabold">
+                ⭐ LEVEL {state.level ?? 1}
+              </span>
               <span>{state.wallMode === "wrap" ? "🌐 WRAP MODE" : "🧱 SOLID WALLS"}</span>
               <span>Speed: {state.speedMs}ms</span>
             </div>
@@ -177,6 +187,8 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
               const y = Math.floor(idx / state.gridSize);
 
               const isFood = state.food.x === x && state.food.y === y;
+              const isObstacle = (state.obstacles ?? []).some((o) => o.x === x && o.y === y);
+              
               let isSnake = false;
               let isSelfSnake = false;
 
@@ -192,7 +204,9 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
                 <div
                   key={idx}
                   className={`w-full h-full rounded-xs transition-all ${
-                    isFood
+                    isObstacle
+                      ? themeClasses.obstacle
+                      : isFood
                       ? themeClasses.food
                       : isSnake
                       ? isSelfSnake

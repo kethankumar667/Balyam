@@ -496,6 +496,16 @@ export default function Room() {
     [roomState?.hostId, playerId]
   );
 
+  // Solo games bypass lobby — if the host lands in lobby for a solo game, auto-start immediately.
+  useEffect(() => {
+    if (!roomState || roomState.phase !== "lobby" || !selfIsHost) return;
+    const isSolo = ["samethalu", "telugucinemalu", "vyomayudh", "snake", "bounce", "roadrash"].includes(roomState.game);
+    if (isSolo) {
+      getSocket().emit("room:setReady", true);
+      getSocket().emit("room:startGame");
+    }
+  }, [roomState?.phase, roomState?.game, selfIsHost]);
+
   const selfPlayer = useMemo(
     () => roomState?.players.find((p) => p.id === playerId) ?? null,
     [roomState?.players, playerId]

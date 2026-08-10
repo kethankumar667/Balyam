@@ -74,6 +74,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
       snakeSelf: "bg-[#1c2415]",
       snakeOther: "bg-[#3b4731]",
       food: "bg-[#1c2415] animate-ping",
+      obstacle: "bg-[#1c2415] border border-[#3b4731]",
       cellEmpty: "bg-[#9ebd9e]/40",
       keypad: "bg-[#2d3725] border-4 border-[#1c2415]",
       keyBtn: "bg-[#536248] text-white border-[#8b9bb4]",
@@ -87,32 +88,32 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
       snakeSelf: "bg-emerald-400 shadow-[0_0_8px_#34d399]",
       snakeOther: "bg-blue-400",
       food: "bg-red-500 animate-pulse rounded-full shadow-[0_0_10px_#ef4444]",
+      obstacle: "bg-amber-700 border border-amber-400 shadow-[0_0_8px_rgba(217,119,6,0.7)]",
       cellEmpty: "bg-slate-800/40",
-      keypad: "bg-[#1e293b] border-4 border-[#38bdf8]",
-      keyBtn: "bg-slate-700 text-sky-300 border-sky-400/40",
+      keypad: "bg-slate-900 border-4 border-sky-400",
+      keyBtn: "bg-slate-800 text-sky-200 border-sky-500/40",
     },
     "neon-modern": {
       outer: "bg-[#090d16] text-purple-100 font-sans",
-      screen: "bg-[#0d1322] border-8 border-[#8b5cf6] shadow-[0_0_30px_rgba(139,92,246,0.3)]",
+      screen: "bg-[#0d1322] border-8 border-[#8b5cf6]",
       grid: "bg-[#090d16] border-2 border-[#a855f7]/50",
       header: "text-purple-300 border-purple-500/30",
-      button: "bg-purple-600 text-white",
-      snakeSelf: "bg-gradient-to-r from-purple-400 to-pink-500 shadow-[0_0_12px_#d946ef]",
+      button: "bg-purple-500 text-white",
+      snakeSelf: "bg-gradient-to-r from-purple-400 to-pink-500 shadow-[0_0_10px_#d946ef]",
       snakeOther: "bg-amber-400",
-      food: "bg-emerald-400 animate-ping rounded-full shadow-[0_0_12px_#10b981]",
+      food: "bg-emerald-400 animate-ping rounded-full shadow-[0_0_10px_#10b981]",
+      obstacle: "bg-rose-600 border border-rose-400 shadow-[0_0_12px_rgba(225,29,72,0.9)] animate-pulse",
       cellEmpty: "bg-purple-950/20",
-      keypad: "bg-[#131b2e] border-4 border-[#a855f7]",
-      keyBtn: "bg-purple-900/60 text-purple-200 border-purple-400/40",
+      keypad: "bg-[#131b2e] border-4 border-purple-500",
+      keyBtn: "bg-[#1e293b] text-purple-200 border-purple-500/40",
     },
   }[activeTheme];
-
-  const myPlayer = state.players.find((p) => p.id === selfId);
 
   return (
     <div
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className={`flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 space-y-4 relative overflow-hidden transition-all duration-300 ${themeClasses.outer}`}
+      className={`flex flex-col h-full min-h-screen p-3 space-y-3 relative overflow-hidden select-none ${themeClasses.outer}`}
     >
       {/* Floating Reaction Overlay */}
       <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
@@ -133,8 +134,9 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
         </AnimatePresence>
       </div>
 
-      {/* Screen Frame */}
-      <div className={`rounded-2xl p-4 shadow-2xl space-y-3 relative ${themeClasses.screen}`}>
+      {/* Screen Container */}
+      <div className={`rounded-2xl p-3 shadow-xl space-y-2 flex-1 flex flex-col justify-between ${themeClasses.screen}`}>
+        {/* Header Bar */}
         <div className={`flex justify-between items-center text-xs font-bold border-b pb-1.5 uppercase ${themeClasses.header}`}>
           <div className="flex items-center gap-2">
             <span>🐍 SNAKE</span>
@@ -146,6 +148,9 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
             </button>
           </div>
           <div className="flex items-center gap-2 text-[11px]">
+            <span className="px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-extrabold">
+              ⭐ L{state.level ?? 1}
+            </span>
             <span>{state.wallMode === "wrap" ? "🌐 WRAP" : "🧱 SOLID"}</span>
             <span>{state.speedMs}ms</span>
           </div>
@@ -161,6 +166,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
             const y = Math.floor(idx / state.gridSize);
 
             const isFood = state.food.x === x && state.food.y === y;
+            const isObstacle = (state.obstacles ?? []).some((o) => o.x === x && o.y === y);
 
             let isSnake = false;
             let isSelfSnake = false;
@@ -176,7 +182,9 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
               <div
                 key={idx}
                 className={`w-full h-full rounded-xs transition-all ${
-                  isFood
+                  isObstacle
+                    ? themeClasses.obstacle
+                    : isFood
                     ? themeClasses.food
                     : isSnake
                     ? isSelfSnake
