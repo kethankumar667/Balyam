@@ -322,6 +322,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const isSolo = game ? ["samethalu", "telugucinemalu", "vyomayudh", "snake", "bounce", "roadrash"].includes(game) : false;
+
   // Reset transient state every time a new game opens.
   useEffect(() => {
     if (game) {
@@ -454,6 +456,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             return;
           }
           if (res.playerId) setPlayerId(res.playerId);
+          if (game && ["samethalu", "telugucinemalu", "vyomayudh", "snake", "bounce", "roadrash"].includes(game)) {
+            const socket = getSocket();
+            socket.emit("room:setReady", true);
+            socket.emit("room:startGame");
+          }
           navigate(`/room/${res.code}`);
         },
       );
@@ -633,11 +640,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             </h2>
             {meta.teluguTitle ? (
               <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood">
-                {meta.teluguTitle} · Quick Match
+                {meta.teluguTitle} · {isSolo ? "Solo Play" : "Quick Match"}
               </div>
             ) : (
               <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood">
-                Quick Match
+                {isSolo ? "Solo Play" : "Quick Match"}
               </div>
             )}
           </div>
@@ -982,6 +989,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 <SparkIcon className="w-5 h-5" />
                 Start Pass &amp; Play
               </>
+            ) : isSolo ? (
+              <>
+                <SparkIcon className="w-5 h-5" />
+                Start Game
+              </>
             ) : (
               <>
                 <SparkIcon className="w-5 h-5" />
@@ -990,8 +1002,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             )}
           </button>
 
-          {/* Join divider — hidden in Pass & Play (no second device joining) */}
-          {!passPlay && (
+          {/* Join divider — hidden in Pass & Play or Solo mode */}
+          {!passPlay && !isSolo && (
             <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood/60">
               <span className="flex-1 h-px bg-bhalyam-cream-edge/80" />
               <span>Or join an existing room</span>
@@ -999,8 +1011,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             </div>
           )}
 
-          {/* Join by code — hidden in Pass & Play mode */}
-          {!passPlay && (
+          {/* Join by code — hidden in Pass & Play or Solo mode */}
+          {!passPlay && !isSolo && (
           <div className="space-y-2.5">
             <Field label="Room code" htmlFor="grs-code" error={codeError}>
               <input

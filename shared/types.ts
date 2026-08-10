@@ -1843,6 +1843,8 @@ export interface SnakePublicState {
   speedMs: number;
   wallMode: SnakeWallMode;
   theme: SnakeTheme;
+  level: number;
+  obstacles: { x: number; y: number }[];
   snakes: Record<string, { body: { x: number; y: number }[]; dir: string; isAlive: boolean }>;
   food: { x: number; y: number };
   players: SnakePlayerPublic[];

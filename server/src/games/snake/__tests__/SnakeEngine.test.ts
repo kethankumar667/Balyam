@@ -67,4 +67,39 @@ describe("SnakeEngine", () => {
     // Head wrapped from y=0 -> y=9
     expect(state.snakes["p1"].body[0].y).toBe(9);
   });
+
+  it("increases level and spawns obstacles every 10 points", () => {
+    const singlePlayer: Player[] = [
+      { id: "p1", name: "Player 1", isBot: false, isHost: true, isLocal: false, isReady: true, isConnected: true },
+    ];
+    engine.init(singlePlayer);
+    let state = engine.getPublicState();
+    expect(state.level).toBe(1);
+    expect(state.obstacles.length).toBe(0);
+
+    // Force score to 10 and tick to trigger level up
+    const snake = (engine as any).snakes.get("p1");
+    snake.score = 10;
+    (engine as any).updateLevelAndObstacles();
+
+    state = engine.getPublicState();
+    expect(state.level).toBe(2);
+    expect(state.obstacles.length).toBe(2);
+
+    // Level 3 (20 pts) -> 4 obstacles
+    snake.score = 20;
+    (engine as any).updateLevelAndObstacles();
+
+    state = engine.getPublicState();
+    expect(state.level).toBe(3);
+    expect(state.obstacles.length).toBe(4);
+
+    // Level 9 (80 pts) -> size of obstacles increases
+    snake.score = 80;
+    (engine as any).updateLevelAndObstacles();
+
+    state = engine.getPublicState();
+    expect(state.level).toBe(9);
+    expect(state.obstacles.length).toBeGreaterThan(14);
+  });
 });

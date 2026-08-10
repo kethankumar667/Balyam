@@ -33,6 +33,8 @@ export class SnakeEngine implements GameEngine {
 
   private snakes = new Map<string, SnakeData>();
   private food: { x: number; y: number } = { x: 10, y: 10 };
+  private currentLevel = 1;
+  private obstacles: { x: number; y: number }[] = [];
   private isOverFlag = false;
   private winnerId: string | null = null;
 
@@ -70,9 +72,99 @@ export class SnakeEngine implements GameEngine {
       });
     });
 
+    this.currentLevel = 1;
+    this.obstacles = [];
     this.spawnFood();
     this.isOverFlag = false;
     this.winnerId = null;
+  }
+
+  private updateLevelAndObstacles(): void {
+    const maxScore = Math.max(...Array.from(this.snakes.values()).map((s) => s.score), 0);
+    const newLevel = Math.floor(maxScore / 10) + 1;
+    if (newLevel !== this.currentLevel) {
+      this.currentLevel = newLevel;
+      this.generateObstacles(newLevel);
+    }
+  }
+
+  private generateObstacles(level: number): void {
+    this.obstacles = [];
+    if (level <= 1) return;
+
+    const grid = this.opts.gridSize;
+    let totalTargetCells = 0;
+    let blockSize = 1;
+
+    if (level <= 8) {
+      // Level 2 -> 2 small obstacles, Level 3 -> 4 small obstacles, ... Level 8 -> 14 small obstacles
+      totalTargetCells = (level - 1) * 2;
+      blockSize = 1;
+    } else {
+      // After level 8: obstacle size increases! (size 2 for level 9-11, size 3 for level 12-14, etc.)
+      blockSize = Math.min(1 + Math.floor((level - 8) / 3), 3);
+      totalTargetCells = Math.min(14 + (level - 8) * 2, Math.floor(grid * grid * 0.12));
+    }
+
+    const reserved = new Set<string>();
+
+    // Reserve snake bodies & head safety zone (3 tile radius)
+    for (const snake of this.snakes.values()) {
+      for (const seg of snake.body) {
+        reserved.add(`${seg.x},${seg.y}`);
+      }
+      const head = snake.body[0];
+      if (head) {
+        for (let dx = -3; dx <= 3; dx++) {
+          for (let dy = -3; dy <= 3; dy++) {
+            reserved.add(`${head.x + dx},${head.y + dy}`);
+          }
+        }
+      }
+    }
+    // Reserve current food position
+    reserved.add(`${this.food.x},${this.food.y}`);
+
+    const newObstacles: { x: number; y: number }[] = [];
+    const obsSet = new Set<string>();
+    let attempts = 0;
+
+    while (newObstacles.length < totalTargetCells && attempts < 500) {
+      attempts++;
+      const originX = Math.floor(this.rng() * (grid - 4)) + 2;
+      const originY = Math.floor(this.rng() * (grid - 4)) + 2;
+      const isHorizontal = this.rng() > 0.5;
+
+      let validCluster = true;
+      const clusterCells: { x: number; y: number }[] = [];
+
+      for (let i = 0; i < blockSize; i++) {
+        const cx = originX + (isHorizontal ? i : 0);
+        const cy = originY + (isHorizontal ? 0 : i);
+
+        if (cx < 1 || cx >= grid - 1 || cy < 1 || cy >= grid - 1) {
+          validCluster = false;
+          break;
+        }
+
+        const key = `${cx},${cy}`;
+        if (reserved.has(key) || obsSet.has(key)) {
+          validCluster = false;
+          break;
+        }
+        clusterCells.push({ x: cx, y: cy });
+      }
+
+      if (validCluster) {
+        for (const cell of clusterCells) {
+          obsSet.add(`${cell.x},${cell.y}`);
+          newObstacles.push(cell);
+          if (newObstacles.length >= totalTargetCells) break;
+        }
+      }
+    }
+
+    this.obstacles = newObstacles;
   }
 
   private spawnFood(): void {
@@ -90,6 +182,9 @@ export class SnakeEngine implements GameEngine {
           valid = false;
           break;
         }
+      }
+      if (valid && this.obstacles.some((o) => o.x === x && o.y === y)) {
+        valid = false;
       }
       if (valid) {
         this.food = { x, y };
@@ -173,6 +268,12 @@ export class SnakeEngine implements GameEngine {
         }
       }
 
+      // Solid Obstacle collision check
+      if (this.obstacles.some((o) => o.x === head.x && o.y === head.y)) {
+        snake.isAlive = false;
+        continue;
+      }
+
       // Body Collision check (ignore tail tip if not eating food)
       let collided = false;
       for (const s of this.snakes.values()) {
@@ -196,6 +297,7 @@ export class SnakeEngine implements GameEngine {
         if (this.opts.speedProgression && this.opts.speedMs > 60) {
           this.opts.speedMs = Math.max(50, this.opts.speedMs - 1);
         }
+        this.updateLevelAndObstacles();
         this.spawnFood();
       } else {
         snake.body.pop();
@@ -263,6 +365,8 @@ export class SnakeEngine implements GameEngine {
       speedMs: this.opts.speedMs,
       wallMode: this.opts.wallMode,
       theme: this.opts.theme,
+      level: this.currentLevel,
+      obstacles: this.obstacles,
       snakes: snakesObj,
       food: this.food,
       players: playersPub,
