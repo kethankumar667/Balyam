@@ -98,10 +98,10 @@ export interface StrikerSkinConfig {
 export const STRIKER_SKINS: Record<StrikerSkin, StrikerSkinConfig> = {
   pearl: {
     name: "Pearl Royal",
-    start: "#FFFFFF",
-    end: "#E0F2FE",
-    rim: "#0284C7",
-    core: "#0284C7",
+    start: "#2563EB",
+    end: "#1D4ED8",
+    rim: "#1E40AF",
+    core: "#60A5FA",
   },
   gold: {
     name: "Golden Emperor",
@@ -929,9 +929,9 @@ export function CarromSvgBoard({
           </radialGradient>
 
           <radialGradient id="queenGrad" cx="35%" cy="32%" r="68%">
-            <stop offset="0%" stopColor="#F87171" />
-            <stop offset="50%" stopColor={CARROM_THEME.queenStart} />
-            <stop offset="100%" stopColor={CARROM_THEME.queenEnd} />
+            <stop offset="0%" stopColor="#FF77DD" />
+            <stop offset="50%" stopColor="#E0115F" />
+            <stop offset="100%" stopColor="#770033" />
           </radialGradient>
 
           <radialGradient id="customStrikerGrad" cx="35%" cy="32%" r="68%">
@@ -986,9 +986,7 @@ export function CarromSvgBoard({
           fill="url(#bandGrad)"
         />
 
-        {/* ── Corner blocks + bolts ──
-             Rounded on the OUTER corner only. Rounding all four put a curved
-             notch on the inner edge, which read as a chip out of the frame. */}
+        {/* ── Corner blocks + Lightning Bolt Icon ── */}
         {[0, 90, 180, 270].map((deg) => {
           const b = 12;
           const rr = 3;
@@ -999,9 +997,12 @@ export function CarromSvgBoard({
                 d={`M ${x0 + rr} ${x0} L ${x0 + b} ${x0} L ${x0 + b} ${x0 + b} L ${x0} ${x0 + b} L ${x0} ${x0 + rr} A ${rr} ${rr} 0 0 1 ${x0 + rr} ${x0} Z`}
                 fill={feltSkin.frameCorner}
               />
-              <circle cx={x0 + b / 2} cy={x0 + b / 2} r={2.4} fill="url(#boltGrad)" />
-              <circle cx={x0 + b / 2} cy={x0 + b / 2} r={2.4} fill="none" stroke="#00000066" strokeWidth={0.4} />
-              <circle cx={x0 + b / 2 - 0.7} cy={x0 + b / 2 - 0.7} r={0.75} fill="#FFFFFF" opacity={0.3} />
+              <polygon
+                points={`${x0 + 4.5},${x0 + 2.2} ${x0 + 8.5},${x0 + 2.2} ${x0 + 5.8},${x0 + 6.0} ${x0 + 9.5},${x0 + 6.0} ${x0 + 3.8},${x0 + 10.5} ${x0 + 5.4},${x0 + 6.8} ${x0 + 2.8},${x0 + 6.8}`}
+                fill="#DC2626"
+                stroke="#991B1B"
+                strokeWidth={0.25}
+              />
             </g>
           );
         })}
@@ -1029,12 +1030,10 @@ export function CarromSvgBoard({
           strokeWidth={0.6}
         />
 
-        {/* ── Markings. One corner + one side, mirrored by rotation, so the
-               four quadrants cannot drift apart. ── */}
+        {/* ── Markings on all 4 corners ── */}
         {[0, 90, 180, 270].map((deg) => (
-          <g key={`mark-${deg}`} transform={`rotate(${deg} ${center} ${center})`}>
-            {/* Base-line pair. Extended past the corners so adjacent sides
-                cross, forming the small corner square a real board carries. */}
+          <g key={`mark-line-${deg}`} transform={`rotate(${deg} ${center} ${center})`}>
+            {/* Base-line pair */}
             <line x1={lineOut} y1={lineOut} x2={R + sr} y2={lineOut} stroke={feltSkin.boardLine} strokeWidth={0.9} />
             <line x1={lineOut} y1={lineIn} x2={R + sr} y2={lineIn} stroke={feltSkin.boardLine} strokeWidth={0.9} />
 
@@ -1049,25 +1048,33 @@ export function CarromSvgBoard({
             {/* Corner spot, centred in the crossing square */}
             <circle cx={L} cy={L} r={1.3} fill={feltSkin.boardLine} />
 
-            {/* Diagonal aim line, pointing out to the pocket. Stops short of
-                the pocket rim so the head reads as an arrow, not a collision. */}
-            <line x1={lineOut} y1={lineOut} x2={13.4} y2={13.4} stroke={feltSkin.boardLine} strokeWidth={0.7} />
-            <polygon points={arrowHead(11.9, 11.9, -0.7071, -0.7071, 2.2, 1.15)} fill={feltSkin.boardLine} />
+            {/* Diagonal aim line, pointing out to the pocket */}
+            <line x1={lineOut} y1={lineOut} x2={12.4} y2={12.4} stroke={feltSkin.boardLine} strokeWidth={0.7} />
+            <polygon points={arrowHead(10.9, 10.9, -0.7071, -0.7071, 2.2, 1.15)} fill={feltSkin.boardLine} />
+          </g>
+        ))}
 
-            {/* Corner sweep arrow, tucked inside the base-line corner */}
+        {/* ── Corner Sweep Arcs (Mirrored Top vs Bottom for exact Design Board Parity) ── */}
+        {[
+          { cx: L, cy: L, a0: 75, a1: 20, tipAngle: 20, dirX: Math.sin((20 * Math.PI) / 180), dirY: -Math.cos((20 * Math.PI) / 180) },
+          { cx: R, cy: L, a0: 105, a1: 160, tipAngle: 160, dirX: -Math.sin((160 * Math.PI) / 180), dirY: Math.cos((160 * Math.PI) / 180) },
+          { cx: R, cy: R, a0: 255, a1: 200, tipAngle: 200, dirX: Math.sin((200 * Math.PI) / 180), dirY: -Math.cos((200 * Math.PI) / 180) },
+          { cx: L, cy: R, a0: 285, a1: 340, tipAngle: 340, dirX: -Math.sin((340 * Math.PI) / 180), dirY: Math.cos((340 * Math.PI) / 180) },
+        ].map((arc, idx) => (
+          <g key={`corner-arc-${idx}`}>
             <path
-              d={arcPath(L, L, 9.6, 20, 70)}
+              d={arcPath(arc.cx, arc.cy, 9.6, arc.a0, arc.a1)}
               fill="none"
               stroke={feltSkin.boardLine}
-              strokeWidth={0.7}
+              strokeWidth={0.75}
               strokeLinecap="round"
             />
             <polygon
               points={arrowHead(
-                L + 9.6 * Math.cos((70 * Math.PI) / 180),
-                L + 9.6 * Math.sin((70 * Math.PI) / 180),
-                -Math.sin((70 * Math.PI) / 180),
-                Math.cos((70 * Math.PI) / 180),
+                arc.cx + 9.6 * Math.cos((arc.tipAngle * Math.PI) / 180),
+                arc.cy + 9.6 * Math.sin((arc.tipAngle * Math.PI) / 180),
+                arc.dirX,
+                arc.dirY,
                 2.1,
                 1.1
               )}
@@ -1076,28 +1083,11 @@ export function CarromSvgBoard({
           </g>
         ))}
 
-        {/* ── Centre circle: plain outer ring, scalloped red inner ring ── */}
+        {/* ── Centre circle: smooth outer ring, smooth red inner rings ── */}
         <circle cx={center} cy={center} r={11.6} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.7} />
-        {/* 36 overlapping bumps, not 26 separated ones. At 26 the spacing
-            (2.44) exceeded the bump diameter (1.9), so the ring read as a
-            cog with teeth instead of a scalloped border. */}
-        {Array.from({ length: 36 }, (_, i) => {
-          const a = (i / 36) * Math.PI * 2;
-          return (
-            <circle
-              key={`scallop-${i}`}
-              cx={center + 10.1 * Math.cos(a)}
-              cy={center + 10.1 * Math.sin(a)}
-              r={1.0}
-              fill="#C42B1C"
-            />
-          );
-        })}
-        <circle cx={center} cy={center} r={9.45} fill="none" stroke="#C42B1C" strokeWidth={1.6} />
-        {/* Centre spot, ruled not filled. As a solid red disc it was a second
-            red circle sitting a coin's width from the Queen, and the two were
-            easy to confuse once the opening rosette broke up. */}
-        <circle cx={center} cy={center} r={1.9} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.5} />
+        <circle cx={center} cy={center} r={9.45} fill="none" stroke="#C42B1C" strokeWidth={1.8} />
+        <circle cx={center} cy={center} r={7.5} fill="none" stroke="#C42B1C" strokeWidth={0.7} />
+        <circle cx={center} cy={center} r={1.9} fill="#C42B1C" />
 
         {/* ── Pockets ── */}
         {pockets.map((p, i) => (

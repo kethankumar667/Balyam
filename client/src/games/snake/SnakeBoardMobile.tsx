@@ -58,22 +58,25 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
      * (its desktop shell is a centred card), so it sizes to its content and
      * the page scrolls normally if a handset is short.
      */
-    <div className={`flex min-h-0 flex-col gap-3 p-3 select-none ${chrome.outer}`}>
-      {/* Screen */}
-      <div className={`flex flex-col gap-2 rounded-2xl p-3 shadow-xl ${chrome.screen}`}>
-        <div className={`flex items-center justify-between border-b pb-1.5 text-[11px] font-bold uppercase tracking-wide ${chrome.header}`}>
+    <div className={`flex min-h-0 flex-col gap-3 p-3 select-none transition-colors duration-500 rounded-3xl ${chrome.outerBg}`}>
+      {/* Screen Container */}
+      <div className={`flex flex-col gap-2 rounded-2xl p-3 shadow-xl backdrop-blur-md border ${chrome.panelBg} ${chrome.panelBorder}`}>
+        <div className={`flex items-center justify-between border-b border-white/10 pb-2 text-[11px] font-black uppercase tracking-wide ${chrome.headerText}`}>
           <div className="flex items-center gap-2">
-            <span className={chrome.title}>Snake</span>
+            <span className="text-base">🐍</span>
+            <span className="font-extrabold">Snake</span>
             <button
               onClick={() => setShowRules(true)}
-              className={`rounded px-2 py-0.5 text-[10px] font-bold ${chrome.pill}`}
+              className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold uppercase transition ${chrome.pillActive}`}
             >
               Rules
             </button>
           </div>
           <div className="flex items-center gap-2 text-[10px]">
-            <span className={`rounded px-1.5 py-0.5 font-extrabold ${chrome.badge}`}>LVL {state.level ?? 1}</span>
-            <span>{state.wallMode === "wrap" ? "WRAP" : "SOLID"}</span>
+            <span className="rounded-lg bg-amber-400/20 px-2 py-0.5 font-extrabold text-amber-300 border border-amber-400/30">
+              LVL {state.level ?? 1}
+            </span>
+            <span className="opacity-80 font-bold">{state.wallMode === "wrap" ? "WRAP" : "SOLID"}</span>
           </div>
         </div>
 
@@ -83,27 +86,27 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
           <SnakeCanvas state={state} selfId={selfId} theme={activeTheme} onEat={onEat} onDeath={onDeath} />
         </div>
 
-        <div className="flex items-center justify-between gap-2 pt-0.5">
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
           {state.players.map((p) => (
             <div key={p.id} className="flex items-center gap-1.5 text-[11px] font-bold">
               <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
               <span className={p.isAlive ? "" : "line-through opacity-50"}>
                 {p.id === selfId ? "You" : p.name}
               </span>
-              <span className="font-extrabold">{p.score}</span>
+              <span className={`font-black ${chrome.accentText}`}>{p.score}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Theme switcher */}
-      <div className="flex justify-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+      <div className={`flex justify-center gap-2 rounded-2xl p-2 backdrop-blur-md border ${chrome.panelBg} ${chrome.panelBorder}`}>
         {SNAKE_THEMES.map((th) => (
           <button
             key={th}
             onClick={() => setActiveTheme(th)}
-            className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase transition ${
-              activeTheme === th ? "bg-amber-400 text-black shadow" : "bg-black/40 text-white/70"
+            className={`rounded-xl px-3 py-1.5 text-[10px] font-black uppercase transition ${
+              activeTheme === th ? chrome.pillActive : chrome.pillInactive
             }`}
           >
             {THEME_LABELS[th]}
@@ -112,7 +115,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
       </div>
 
       {/* D-pad */}
-      <div className={`mt-auto flex flex-col items-center gap-2 rounded-3xl p-3 shadow-xl ${chrome.keypad}`}>
+      <div className={`mt-auto flex flex-col items-center gap-2 rounded-3xl p-4 shadow-xl backdrop-blur-md border ${chrome.panelBg} ${chrome.panelBorder}`}>
         <DPadButton chrome={chrome} label="Up" glyph="▲" onClick={() => handleTurn("UP")} />
         <div className="flex gap-4">
           <DPadButton chrome={chrome} label="Left" glyph="◄" onClick={() => handleTurn("LEFT")} />
@@ -141,7 +144,7 @@ function DPadButton({
     <button
       onClick={onClick}
       aria-label={label}
-      className={`h-12 w-16 rounded-xl border-2 text-xl font-bold shadow active:scale-95 ${chrome.keyBtn}`}
+      className={`h-12 w-16 rounded-2xl border text-xl font-bold shadow-md transition active:scale-95 ${chrome.dpadBtn}`}
     >
       {glyph}
     </button>

@@ -7,13 +7,41 @@ import { SNAKE_THEME_CHROME, THEME_LABELS, SNAKE_THEMES } from "./snakeChrome";
 
 export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardProps) {
   const [showRules, setShowRules] = useState(false);
+  const [showControls, setShowControls] = useState(false);
   const [activeTheme, setActiveTheme] = useState<SnakeTheme>(state.theme || "nokia-monochrome");
+  const [elapsedSec, setElapsedSec] = useState(0);
   const haptics = useHaptics();
+
+  const [bestScore, setBestScore] = useState<number>(() => {
+    return parseInt(localStorage.getItem("mpg.snake.best") || "0", 10);
+  });
 
   useEffect(() => {
     if (state.theme) setActiveTheme(state.theme);
   }, [state.theme]);
 
+  // Track match elapsed time
+  useEffect(() => {
+    if (state.isOver) return;
+    const interval = setInterval(() => {
+      setElapsedSec((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [state.isOver]);
+
+  // Track best score
+  const mySnake = state.snakes[selfId];
+  const myPlayer = state.players.find((p) => p.id === selfId);
+  const myScore = myPlayer?.score ?? 0;
+
+  useEffect(() => {
+    if (myScore > bestScore) {
+      setBestScore(myScore);
+      localStorage.setItem("mpg.snake.best", myScore.toString());
+    }
+  }, [myScore, bestScore]);
+
+  // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       let dir: string | null = null;
@@ -31,90 +59,247 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onMove, haptics]);
 
+  const handleDpadTurn = (dir: string) => {
+    onMove("turn", { dir });
+    haptics.turn();
+  };
+
   const chrome = SNAKE_THEME_CHROME[activeTheme];
   const onEat = useCallback(() => haptics.subtle(), [haptics]);
   const onDeath = useCallback(() => haptics.win(), [haptics]);
 
+  // Rank calculation
+  const sortedPlayers = [...state.players].sort((a, b) => b.score - a.score);
+  const userRankIdx = sortedPlayers.findIndex((p) => p.id === selfId);
+  const userRank = userRankIdx >= 0 ? userRankIdx + 1 : 1;
+
+  const formatTime = (totalSec: number) => {
+    const m = Math.floor(totalSec / 60).toString().padStart(2, "0");
+    const s = (totalSec % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
   return (
-    <div className={`mx-auto my-4 max-w-5xl rounded-3xl p-6 shadow-2xl ${chrome.outer}`}>
-      <div className="grid grid-cols-12 gap-6 items-start">
-        {/* Side panel */}
-        <aside className={`col-span-4 space-y-5 rounded-2xl border-2 p-5 ${chrome.panel}`}>
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <h2 className={`text-base font-bold tracking-wide ${chrome.panelTitle}`}>Snake Arcade</h2>
-            <span className="rounded border border-emerald-500/30 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-300">
-              Live
-            </span>
-          </div>
-
-          <p className="text-xs leading-relaxed opacity-80">
-            Steer with Arrow keys, WASD, or Numpad. Eat food to grow and outlast your opponents.
-          </p>
-
-          <div className="space-y-2">
-            <span className="block text-[11px] font-bold uppercase tracking-wider opacity-70">Arcade Theme</span>
-            <div className="grid grid-cols-3 gap-1.5">
-              {SNAKE_THEMES.map((th) => (
-                <button
-                  key={th}
-                  onClick={() => setActiveTheme(th)}
-                  className={`rounded-lg px-2 py-1.5 text-[10px] font-bold transition ${
-                    activeTheme === th ? "bg-amber-400 text-black shadow" : "bg-white/10 text-white hover:bg-white/20"
-                  }`}
-                >
-                  {THEME_LABELS[th]}
-                </button>
-              ))}
+    <div className={`min-h-screen w-full p-4 transition-colors duration-500 ${chrome.outerBg}`}>
+      <div className="mx-auto max-w-6xl">
+        <div className="grid grid-cols-12 gap-5 items-start">
+          
+          {/* LEFT SIDEBAR: Header, Theme, Leaderboard, Stats, Actions */}
+          <aside className={`col-span-4 space-y-4 rounded-3xl border p-5 backdrop-blur-md transition-all duration-300 ${chrome.panelBg} ${chrome.panelBorder}`}>
+            
+            {/* Mascot & Header */}
+            <div className="flex items-center gap-3.5">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 border border-emerald-500/40 shadow-inner">
+                <span className="text-3xl animate-bounce">🐍</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className={`text-2xl font-black tracking-wide uppercase ${chrome.headerText}`}>Snake</h1>
+                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-extrabold uppercase text-emerald-400 border border-emerald-500/30">
+                    Live
+                  </span>
+                </div>
+                <p className={`text-[11px] font-extrabold tracking-widest uppercase ${chrome.subText}`}>Arcade</p>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2 border-t border-white/10 pt-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300">Leaderboard</h3>
+            <p className={`text-xs leading-relaxed ${chrome.subText}`}>
+              Steer your snake, eat food, grow longer and outlast your opponents!
+            </p>
+
+            {/* Theme Selector Pills */}
             <div className="space-y-2">
-              {[...state.players]
-                .sort((a, b) => b.score - a.score)
-                .map((p) => (
+              <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider opacity-90">
+                <span>🎨</span> <span>Theme</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {SNAKE_THEMES.map((th) => (
+                  <button
+                    key={th}
+                    onClick={() => setActiveTheme(th)}
+                    className={`rounded-xl px-2 py-2 text-[11px] transition-all duration-200 ${
+                      activeTheme === th ? chrome.pillActive : chrome.pillInactive
+                    }`}
+                  >
+                    {THEME_LABELS[th]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Leaderboard */}
+            <div className="space-y-2 border-t border-white/10 pt-3">
+              <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider opacity-90">
+                <span>👑</span> <span>Leaderboard</span>
+              </div>
+              <div className="space-y-1.5">
+                {sortedPlayers.map((p, idx) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 p-2.5 text-xs"
+                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs border ${chrome.cardBg}`}
                   >
                     <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold">
+                        {idx + 1}
+                      </span>
                       <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
-                      <span className={`font-bold ${p.isAlive ? "" : "line-through opacity-50"}`}>
+                      <span className={`font-extrabold ${p.isAlive ? "" : "line-through opacity-50"}`}>
                         {p.id === selfId ? "You" : p.name}
                       </span>
                     </div>
-                    <span className="font-bold text-amber-300">{p.score}</span>
+                    <span className={`font-black ${chrome.accentText}`}>{p.score}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* 3 Stats Boxes */}
+            <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-3">
+              <div className={`rounded-xl p-2.5 text-center border ${chrome.cardBg}`}>
+                <div className="text-sm">🏆</div>
+                <div className="text-[10px] font-extrabold uppercase tracking-wider opacity-70">Score</div>
+                <div className={`text-lg font-black ${chrome.accentText}`}>{myScore}</div>
+              </div>
+              <div className={`rounded-xl p-2.5 text-center border ${chrome.cardBg}`}>
+                <div className="text-sm">🔆</div>
+                <div className="text-[10px] font-extrabold uppercase tracking-wider opacity-70">Best</div>
+                <div className={`text-lg font-black ${chrome.accentText}`}>{bestScore}</div>
+              </div>
+              <div className={`rounded-xl p-2.5 text-center border ${chrome.cardBg}`}>
+                <div className="text-sm">📊</div>
+                <div className="text-[10px] font-extrabold uppercase tracking-wider opacity-70">Rank</div>
+                <div className={`text-lg font-black ${chrome.accentText}`}>#{userRank}</div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-2">
+              <button
+                onClick={() => setShowRules(true)}
+                className={`w-full rounded-2xl py-3 text-xs uppercase tracking-wider transition ${chrome.btnPrimary}`}
+              >
+                ▶ How to Play
+              </button>
+              <button
+                onClick={() => setShowControls((v) => !v)}
+                className={`w-full rounded-2xl py-2.5 text-xs font-extrabold uppercase tracking-wider transition ${chrome.btnSecondary}`}
+              >
+                ⌨ Controls
+              </button>
+            </div>
+          </aside>
+
+          {/* CENTER PLAYFIELD: Screen Canvas */}
+          <div className="col-span-5 space-y-3">
+            <div className={`rounded-3xl border-2 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 ${chrome.panelBg} ${chrome.panelBorder}`}>
+              
+              {/* Header inside screen */}
+              <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-2.5 text-xs font-black uppercase tracking-wider">
+                <span className={chrome.headerText}>
+                  MATRIX {state.gridSize} × {state.gridSize}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg bg-amber-400/20 px-2.5 py-1 text-[11px] font-black text-amber-300 border border-amber-400/30">
+                    ⭐ LEVEL {state.level ?? 1}
+                  </span>
+                  <span className="rounded-lg bg-white/10 px-2.5 py-1 text-[10px] font-extrabold text-white/80">
+                    {state.wallMode === "wrap" ? "WRAP" : "WALLS"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Grid Canvas */}
+              <div className={`relative overflow-hidden rounded-2xl border ${chrome.screenBorder}`}>
+                <SnakeCanvas state={state} selfId={selfId} theme={activeTheme} onEat={onEat} onDeath={onDeath} />
+              </div>
+            </div>
+
+            {/* Bottom Tip Bar */}
+            <div className={`rounded-2xl px-4 py-2.5 text-center text-xs font-semibold backdrop-blur-md border ${chrome.tipBg}`}>
+              💡 <span className={chrome.tipText}>Tip: Plan your moves. Don't run into yourself!</span>
             </div>
           </div>
 
-          <button
-            onClick={() => setShowRules(true)}
-            className="w-full rounded-xl bg-amber-400 py-2.5 text-xs font-bold uppercase tracking-wider text-black shadow transition hover:bg-amber-300"
-          >
-            How to Play
-          </button>
-        </aside>
-
-        {/* Playfield */}
-        <div className={`col-span-8 space-y-4 rounded-2xl p-6 shadow-2xl ${chrome.screen}`}>
-          <div className={`flex items-center justify-between border-b-2 pb-2 text-sm font-bold uppercase ${chrome.header}`}>
-            <span>
-              Matrix {state.gridSize}×{state.gridSize}
-            </span>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="rounded border border-amber-400/40 bg-amber-400/20 px-2 py-0.5 font-extrabold text-amber-300">
-                Level {state.level ?? 1}
-              </span>
-              <span>{state.wallMode === "wrap" ? "Wrap" : "Solid Walls"}</span>
+          {/* RIGHT SIDEBAR: D-Pad & Quick Stats */}
+          <aside className="col-span-3 space-y-4">
+            
+            {/* DIRECTION D-Pad */}
+            <div className={`rounded-3xl border p-5 backdrop-blur-md transition-all duration-300 ${chrome.panelBg} ${chrome.panelBorder}`}>
+              <h3 className="mb-4 text-center text-xs font-black uppercase tracking-widest opacity-80">
+                Direction
+              </h3>
+              <div className="mx-auto grid grid-cols-3 gap-2 max-w-[170px]">
+                <div />
+                <button
+                  onClick={() => handleDpadTurn("UP")}
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold transition shadow-lg active:scale-95 ${chrome.dpadBtn}`}
+                >
+                  ↑
+                </button>
+                <div />
+                <button
+                  onClick={() => handleDpadTurn("LEFT")}
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold transition shadow-lg active:scale-95 ${chrome.dpadBtn}`}
+                >
+                  ←
+                </button>
+                <div />
+                <button
+                  onClick={() => handleDpadTurn("RIGHT")}
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold transition shadow-lg active:scale-95 ${chrome.dpadBtn}`}
+                >
+                  →
+                </button>
+                <div />
+                <button
+                  onClick={() => handleDpadTurn("DOWN")}
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold transition shadow-lg active:scale-95 ${chrome.dpadBtn}`}
+                >
+                  ↓
+                </button>
+                <div />
+              </div>
             </div>
-          </div>
 
-          <div className="mx-auto max-w-[520px]">
-            <SnakeCanvas state={state} selfId={selfId} theme={activeTheme} onEat={onEat} onDeath={onDeath} />
-          </div>
+            {/* QUICK STATS */}
+            <div className={`rounded-3xl border p-5 backdrop-blur-md transition-all duration-300 space-y-3 ${chrome.panelBg} ${chrome.panelBorder}`}>
+              <h3 className="text-xs font-black uppercase tracking-widest opacity-80">
+                Quick Stats
+              </h3>
+              <div className="space-y-2.5">
+                <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 border ${chrome.cardBg}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🐍</span>
+                    <span className="text-xs font-bold opacity-80">Length</span>
+                  </div>
+                  <span className={`text-sm font-black ${chrome.accentText}`}>
+                    {mySnake?.body?.length ?? 3}
+                  </span>
+                </div>
+
+                <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 border ${chrome.cardBg}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🍎</span>
+                    <span className="text-xs font-bold opacity-80">Food Eaten</span>
+                  </div>
+                  <span className={`text-sm font-black ${chrome.accentText}`}>
+                    {Math.floor(myScore / 2)}
+                  </span>
+                </div>
+
+                <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 border ${chrome.cardBg}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">⏱️</span>
+                    <span className="text-xs font-bold opacity-80">Time</span>
+                  </div>
+                  <span className={`font-mono text-sm font-black ${chrome.accentText}`}>
+                    {formatTime(elapsedSec)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </aside>
+
         </div>
       </div>
 

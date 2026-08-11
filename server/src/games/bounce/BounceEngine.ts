@@ -19,6 +19,7 @@ export class BounceEngine implements GameEngine {
   readonly kind = "bounce" as const;
   readonly minPlayers = 1;
   readonly maxPlayers = 4;
+  readonly tickRateHz = 20;
 
   private opts: BounceOptions = { ...DEFAULT_BOUNCE_OPTIONS };
   private pendingOptions: BounceOptions | null = null;
@@ -68,6 +69,14 @@ export class BounceEngine implements GameEngine {
 
     this.isOverFlag = false;
     this.winnerId = null;
+  }
+
+  simulateTick(): MoveResult {
+    if (this.isOverFlag) {
+      return { ok: true, isOver: true, winnerId: this.winnerId };
+    }
+    this.tick();
+    return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
   }
 
   applyMove(move: MoveContext): MoveResult {

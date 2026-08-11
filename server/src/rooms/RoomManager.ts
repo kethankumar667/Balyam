@@ -2486,6 +2486,7 @@ export class RoomManager {
       this.broadcastRematch(room);
       this.armTakeoversForAbsentSeats(room);
       this.scheduleTurnTimer(room);
+      this.startSimulation(room);
       this.scheduleBotMoveIfNeeded(room);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to start rematch";

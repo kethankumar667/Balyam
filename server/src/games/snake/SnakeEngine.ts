@@ -24,6 +24,7 @@ export class SnakeEngine implements GameEngine {
   readonly kind = "snake" as const;
   readonly minPlayers = 1;
   readonly maxPlayers = 4;
+  readonly tickRateHz = 10;
 
   private opts: SnakeOptions = { ...DEFAULT_SNAKE_OPTIONS };
   private pendingOptions: SnakeOptions | null = null;
@@ -37,6 +38,8 @@ export class SnakeEngine implements GameEngine {
   private obstacles: { x: number; y: number }[] = [];
   private isOverFlag = false;
   private winnerId: string | null = null;
+  private countdownTicks = 30;
+  private showGoTicks = 5;
 
   private rng: () => number = Math.random;
 
@@ -82,6 +85,8 @@ export class SnakeEngine implements GameEngine {
     this.spawnFood();
     this.isOverFlag = false;
     this.winnerId = null;
+    this.countdownTicks = 30;
+    this.showGoTicks = 5;
   }
 
   private updateLevelAndObstacles(): void {
@@ -195,6 +200,18 @@ export class SnakeEngine implements GameEngine {
         this.food = { x, y };
       }
     }
+  }
+
+  simulateTick(): MoveResult {
+    if (this.isOverFlag) {
+      return { ok: true, isOver: true, winnerId: this.winnerId };
+    }
+    if (this.countdownTicks > 0) {
+      this.countdownTicks--;
+      return { ok: true, isOver: false, winnerId: null };
+    }
+    this.tick();
+    return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
   }
 
   applyMove(move: MoveContext): MoveResult {
@@ -370,6 +387,15 @@ export class SnakeEngine implements GameEngine {
       }
     }
 
+    let countdownStr: string | null = null;
+    if (this.countdownTicks > 20) countdownStr = "3";
+    else if (this.countdownTicks > 10) countdownStr = "2";
+    else if (this.countdownTicks > 0) countdownStr = "1";
+    else if (this.countdownTicks === 0 && this.showGoTicks > 0) {
+      countdownStr = "GO!";
+      this.showGoTicks--;
+    }
+
     return {
       kind: "snake",
       gridSize: this.opts.gridSize,
@@ -381,6 +407,7 @@ export class SnakeEngine implements GameEngine {
       snakes: snakesObj,
       food: this.food,
       players: playersPub,
+      countdown: countdownStr,
       isOver: this.isOverFlag,
       winnerId: this.winnerId,
     };

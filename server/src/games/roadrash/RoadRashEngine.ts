@@ -18,6 +18,7 @@ export class RoadRashEngine implements GameEngine {
   readonly kind = "roadrash" as const;
   readonly minPlayers = 1;
   readonly maxPlayers = 4;
+  readonly tickRateHz = 20;
 
   private opts: RoadRashOptions = { ...DEFAULT_ROADRASH_OPTIONS };
   private pendingOptions: RoadRashOptions | null = null;
@@ -48,6 +49,14 @@ export class RoadRashEngine implements GameEngine {
 
     this.isOverFlag = false;
     this.winnerId = null;
+  }
+
+  simulateTick(): MoveResult {
+    if (this.isOverFlag) {
+      return { ok: true, isOver: true, winnerId: this.winnerId };
+    }
+    this.tick();
+    return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
   }
 
   applyMove(move: MoveContext): MoveResult {
