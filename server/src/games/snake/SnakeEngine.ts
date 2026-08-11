@@ -25,6 +25,23 @@ export class SnakeEngine implements GameEngine {
   readonly minPlayers = 1;
   readonly maxPlayers = 4;
 
+  /**
+   * Real-time opt-in. Declaring `tickRateHz` hands the clock to the
+   * server: RoomManager runs the loop and calls `simulateTick()`, so the
+   * simulation advances at the same rate for everyone regardless of how
+   * fast (or slow, or not at all) any client renders. The old design had
+   * every client emit a `tick` move on a setInterval, which meant N players
+   * advanced the shared world N times per step — the world literally ran
+   * faster the more people watched. This fixes that.
+   *
+   * The loop fires every 1000/20 = 50ms, but a snake should only step every
+   * `speedMs` (which shrinks as players speed up). `stepAccumulatorMs` bridges
+   * the two: we bank elapsed loop time and take a logical step whenever we've
+   * banked a full `speedMs`.
+   */
+  readonly tickRateHz = 20;
+  private stepAccumulatorMs = 0;
+
   private opts: SnakeOptions = { ...DEFAULT_SNAKE_OPTIONS };
   private pendingOptions: SnakeOptions | null = null;
 
@@ -77,6 +94,30 @@ export class SnakeEngine implements GameEngine {
     this.spawnFood();
     this.isOverFlag = false;
     this.winnerId = null;
+    this.stepAccumulatorMs = 0;
+  }
+
+  /**
+   * One iteration of the server-owned loop (fires every ~50ms). Banks the
+   * elapsed time and advances one logical step per `speedMs` of banked time,
+   * so the snake's pace stays tied to `speedMs` (and to speed progression)
+   * independent of the fixed loop rate. Usually zero or one step per call;
+   * the `while` only ever runs twice if the loop itself stalls.
+   */
+  simulateTick(): MoveResult {
+    if (this.isOverFlag) return { ok: true, isOver: true, winnerId: this.winnerId };
+
+    this.stepAccumulatorMs += 1000 / this.tickRateHz;
+    const step = Math.max(30, this.opts.speedMs);
+    let steps = 0;
+    while (this.stepAccumulatorMs >= step && steps < 3) {
+      this.stepAccumulatorMs -= step;
+      this.tick();
+      steps++;
+      if (this.isOverFlag) break;
+    }
+
+    return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
   }
 
   private updateLevelAndObstacles(): void {
@@ -197,7 +238,10 @@ export class SnakeEngine implements GameEngine {
     const snake = this.snakes.get(pid);
 
     if (move.type === "tick") {
-      this.tick();
+      // The simulation is now server-owned (see `tickRateHz` / `simulateTick`).
+      // A client emitting `tick` must not be able to advance the shared world —
+      // that was exactly the exploit this refactor closes — so we simply ack
+      // and ignore it. Kept as a harmless no-op for older clients still sending it.
       return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
     }
 

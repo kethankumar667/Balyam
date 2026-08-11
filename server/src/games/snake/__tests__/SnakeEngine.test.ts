@@ -24,6 +24,12 @@ describe("SnakeEngine", () => {
     expect(state.snakes["p2"]).toBeDefined();
   });
 
+  // The simulation is now server-owned: RoomManager calls `simulateTick`, and
+  // the per-step logic lives in the private `tick()`. Tests advance the world
+  // by calling `tick()` directly (one deterministic logical step), the same way
+  // the server loop does internally.
+  const step = (e: SnakeEngine) => (e as any).tick();
+
   it("handles valid turn inputs and queues turns", () => {
     const res = engine.applyMove({
       playerId: "p1",
@@ -32,9 +38,29 @@ describe("SnakeEngine", () => {
     });
     expect(res.ok).toBe(true);
 
-    engine.applyMove({ playerId: "p1", type: "tick" });
+    step(engine);
     const state = engine.getPublicState();
     expect(state.snakes["p1"].dir).toBe("DOWN");
+  });
+
+  it("ignores client-driven tick moves (server owns the clock)", () => {
+    const before = engine.getPublicState();
+    const beforeHead = { ...before.snakes["p1"].body[0] };
+    const res = engine.applyMove({ playerId: "p1", type: "tick" });
+    expect(res.ok).toBe(true);
+    const after = engine.getPublicState();
+    // A client "tick" must not advance the shared world.
+    expect(after.snakes["p1"].body[0]).toEqual(beforeHead);
+  });
+
+  it("advances the world from the server-owned simulateTick loop", () => {
+    engine.setOptions({ speedMs: 40, gridSize: 20 });
+    engine.init(players);
+    const startX = engine.getPublicState().snakes["p1"].body[0].x;
+    // At 20Hz each call banks 50ms; with speedMs=40 that is one step per call.
+    engine.simulateTick();
+    const after = engine.getPublicState();
+    expect(after.snakes["p1"].body[0].x).toBe(startX + 1);
   });
 
   it("ignores opposite direction inputs", () => {
@@ -44,7 +70,7 @@ describe("SnakeEngine", () => {
       type: "turn",
       data: { dir: "LEFT" },
     });
-    engine.applyMove({ playerId: "p1", type: "tick" });
+    step(engine);
     const state = engine.getPublicState();
     expect(state.snakes["p1"].dir).toBe("RIGHT");
   });
@@ -59,7 +85,7 @@ describe("SnakeEngine", () => {
     // Turn p1 UP and move off grid top boundary
     engine.applyMove({ playerId: "p1", type: "turn", data: { dir: "UP" } });
     for (let i = 0; i < 6; i++) {
-      engine.applyMove({ playerId: "p1", type: "tick" });
+      step(engine);
     }
 
     const state = engine.getPublicState();

@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { SnakePublicState, SnakeTheme } from "@shared/types";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import SnakeCanvas from "./SnakeCanvas";
+import { useHaptics } from "../../hooks/useHaptics";
+import { SNAKE_THEME_CHROME, THEME_LABELS, SNAKE_THEMES } from "./snakeChrome";
 
 export interface SnakeBoardProps {
   state: SnakePublicState;
@@ -11,38 +14,21 @@ export interface SnakeBoardProps {
 export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardProps) {
   const [showRules, setShowRules] = useState(false);
   const [activeTheme, setActiveTheme] = useState<SnakeTheme>(state.theme || "nokia-monochrome");
-  const [reactions, setReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const haptics = useHaptics();
 
-  // Sync theme if state changes
   useEffect(() => {
     if (state.theme) setActiveTheme(state.theme);
   }, [state.theme]);
 
-  // Automatic game tick loop synced to state.speedMs
-  useEffect(() => {
-    if (state.isOver) return;
-    const intervalTime = state.speedMs || 120;
-    const interval = setInterval(() => {
-      onMove("tick");
-    }, intervalTime);
-    return () => clearInterval(interval);
-  }, [state.isOver, state.speedMs, onMove]);
+  const handleTurn = useCallback(
+    (dir: string) => {
+      onMove("turn", { dir });
+      haptics.turn();
+    },
+    [onMove, haptics],
+  );
 
-  const triggerReaction = (emoji: string) => {
-    const id = `${Date.now()}_${Math.random()}`;
-    const x = Math.random() * 80 + 10;
-    setReactions((prev) => [...prev.slice(-6), { id, emoji, x }]);
-    setTimeout(() => {
-      setReactions((prev) => prev.filter((r) => r.id !== id));
-    }, 2000);
-  };
-
-  const handleTurn = (dir: string) => {
-    onMove("turn", { dir });
-  };
-
-  // Touch Swipe Handler
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
@@ -54,261 +40,138 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
     const dx = touch.clientX - touchStartRef.current.x;
     const dy = touch.clientY - touchStartRef.current.y;
     touchStartRef.current = null;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 30) handleTurn("RIGHT");
-      else if (dx < -30) handleTurn("LEFT");
-    } else {
-      if (dy > 30) handleTurn("DOWN");
-      else if (dy < -30) handleTurn("UP");
-    }
+    if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
+    if (Math.abs(dx) > Math.abs(dy)) handleTurn(dx > 0 ? "RIGHT" : "LEFT");
+    else handleTurn(dy > 0 ? "DOWN" : "UP");
   };
 
-  const themeClasses = {
-    "nokia-monochrome": {
-      outer: "bg-[#8b9bb4] text-emerald-950 font-mono",
-      screen: "bg-[#9ebd9e] border-8 border-[#3b4731]",
-      grid: "bg-[#4a573f]/20 border-2 border-[#1c2415]",
-      header: "text-[#1c2415] border-[#3b4731]",
-      button: "bg-[#3b4731] text-[#9ebd9e]",
-      snakeSelf: "bg-[#1c2415]",
-      snakeOther: "bg-[#3b4731]",
-      food: "bg-[#1c2415] animate-ping",
-      obstacle: "bg-[#4a573f] border-2 border-[#1c2415] text-[#1c2415]",
-      cellEmpty: "bg-[#9ebd9e]/40",
-      keypad: "bg-[#2d3725] border-4 border-[#1c2415]",
-      keyBtn: "bg-[#536248] text-white border-[#8b9bb4]",
-    },
-    "nokia-color": {
-      outer: "bg-[#0f172a] text-slate-100 font-sans",
-      screen: "bg-[#1e293b] border-8 border-[#38bdf8]",
-      grid: "bg-[#0f172a]/60 border-2 border-[#38bdf8]/40",
-      header: "text-sky-300 border-sky-500/30",
-      button: "bg-sky-500 text-slate-900",
-      snakeSelf: "bg-emerald-400 shadow-[0_0_8px_#34d399]",
-      snakeOther: "bg-blue-400",
-      food: "bg-red-500 animate-pulse rounded-full shadow-[0_0_10px_#ef4444]",
-      obstacle: "bg-amber-800 border-2 border-amber-400 text-amber-200 shadow-[0_0_10px_rgba(217,119,6,0.8)]",
-      cellEmpty: "bg-slate-800/40",
-      keypad: "bg-slate-900 border-4 border-sky-400",
-      keyBtn: "bg-slate-800 text-sky-200 border-sky-500/40",
-    },
-    "neon-modern": {
-      outer: "bg-[#090d16] text-purple-100 font-sans",
-      screen: "bg-[#0d1322] border-8 border-[#8b5cf6]",
-      grid: "bg-[#090d16] border-2 border-[#a855f7]/50",
-      header: "text-purple-300 border-purple-500/30",
-      button: "bg-purple-500 text-white",
-      snakeSelf: "bg-gradient-to-r from-purple-400 to-pink-500 shadow-[0_0_10px_#d946ef]",
-      snakeOther: "bg-amber-400",
-      food: "bg-emerald-400 animate-ping rounded-full shadow-[0_0_10px_#10b981]",
-      obstacle: "bg-gradient-to-br from-red-600 to-rose-700 border-2 border-amber-300 text-amber-200 shadow-[0_0_14px_rgba(225,29,72,0.95)] animate-pulse",
-      cellEmpty: "bg-purple-950/20",
-      keypad: "bg-[#131b2e] border-4 border-purple-500",
-      keyBtn: "bg-[#1e293b] text-purple-200 border-purple-500/40",
-    },
-  }[activeTheme];
-
-  const myPlayer = state.players.find((p) => p.id === selfId);
+  const chrome = SNAKE_THEME_CHROME[activeTheme];
+  const onEat = useCallback(() => haptics.subtle(), [haptics]);
+  const onDeath = useCallback(() => haptics.win(), [haptics]);
 
   return (
-    <div
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      className={`flex flex-col h-full min-h-screen p-3 space-y-3 relative overflow-hidden select-none ${themeClasses.outer}`}
-    >
-      {/* Floating Reaction Overlay */}
-      <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
-        <AnimatePresence>
-          {reactions.map((r) => (
-            <motion.div
-              key={r.id}
-              initial={{ y: 0, opacity: 1, scale: 0.8 }}
-              animate={{ y: -120, opacity: 0, scale: 1.4 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 1.8, ease: "easeOut" }}
-              className="absolute text-3xl"
-              style={{ left: `${r.x}%`, bottom: "25%" }}
-            >
-              {r.emoji}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* Screen Container */}
-      <div className={`rounded-2xl p-3 shadow-xl space-y-2 flex-1 flex flex-col justify-between ${themeClasses.screen}`}>
-        {/* Header Bar */}
-        <div className={`flex justify-between items-center text-xs font-bold border-b pb-1.5 uppercase ${themeClasses.header}`}>
+    <div className={`flex flex-col h-full min-h-screen gap-3 p-3 select-none ${chrome.outer}`}>
+      {/* Screen */}
+      <div className={`flex flex-col gap-2 rounded-2xl p-3 shadow-xl ${chrome.screen}`}>
+        <div className={`flex items-center justify-between border-b pb-1.5 text-[11px] font-bold uppercase tracking-wide ${chrome.header}`}>
           <div className="flex items-center gap-2">
-            <span>🐍 SNAKE</span>
+            <span className={chrome.title}>Snake</span>
             <button
               onClick={() => setShowRules(true)}
-              className={`px-2 py-0.5 rounded text-[10px] cursor-pointer font-bold ${themeClasses.button}`}
+              className={`rounded px-2 py-0.5 text-[10px] font-bold ${chrome.pill}`}
             >
-              ? Rules
+              Rules
             </button>
           </div>
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-extrabold">
-              ⭐ L{state.level ?? 1}
-            </span>
-            <span>{state.wallMode === "wrap" ? "🌐 WRAP" : "🧱 SOLID"}</span>
-            <span>{state.speedMs}ms</span>
+          <div className="flex items-center gap-2 text-[10px]">
+            <span className={`rounded px-1.5 py-0.5 font-extrabold ${chrome.badge}`}>LVL {state.level ?? 1}</span>
+            <span>{state.wallMode === "wrap" ? "WRAP" : "SOLID"}</span>
           </div>
         </div>
 
-        {/* Snake Grid Matrix */}
-        <div
-          className={`grid gap-0.5 p-1 rounded aspect-square ${themeClasses.grid}`}
-          style={{ gridTemplateColumns: `repeat(${state.gridSize}, minmax(0, 1fr))` }}
-        >
-          {Array.from({ length: state.gridSize * state.gridSize }).map((_, idx) => {
-            const x = idx % state.gridSize;
-            const y = Math.floor(idx / state.gridSize);
-
-            const isFood = state.food.x === x && state.food.y === y;
-            const isObstacle = (state.obstacles ?? []).some((o) => o.x === x && o.y === y);
-
-            let isSnake = false;
-            let isSelfSnake = false;
-            for (const [pid, s] of Object.entries(state.snakes)) {
-              if (s.body.some((seg) => seg.x === x && seg.y === y)) {
-                isSnake = true;
-                if (pid === selfId) isSelfSnake = true;
-                break;
-              }
-            }
-
-            return (
-              <div
-                key={idx}
-                className={`w-full h-full rounded-xs transition-all flex items-center justify-center ${
-                  isObstacle
-                    ? themeClasses.obstacle
-                    : isFood
-                    ? themeClasses.food
-                    : isSnake
-                    ? isSelfSnake
-                      ? themeClasses.snakeSelf
-                      : themeClasses.snakeOther
-                    : themeClasses.cellEmpty
-                }`}
-              >
-                {isObstacle && <span className="text-[8px] font-black leading-none select-none opacity-90">✖</span>}
-              </div>
-            );
-          })}
+        <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+          <SnakeCanvas state={state} selfId={selfId} theme={activeTheme} onEat={onEat} onDeath={onDeath} />
         </div>
 
-        {/* Scoreboard */}
-        <div className="flex justify-between items-center text-xs font-bold pt-1">
+        <div className="flex items-center justify-between gap-2 pt-0.5">
           {state.players.map((p) => (
-            <div key={p.id} className="flex items-center gap-1.5">
-              <span
-                className="w-2.5 h-2.5 rounded-full inline-block"
-                style={{ backgroundColor: p.color }}
-              />
-              <span>{p.id === selfId ? "You" : `P (${p.id.slice(0, 4)})`}:</span>
-              <span className="font-extrabold">{p.score} pts</span>
+            <div key={p.id} className="flex items-center gap-1.5 text-[11px] font-bold">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+              <span className={p.isAlive ? "" : "line-through opacity-50"}>
+                {p.id === selfId ? "You" : p.id.slice(0, 4)}
+              </span>
+              <span className="font-extrabold">{p.score}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Theme Switcher Bar */}
-      <div className="flex justify-center gap-2 bg-black/20 p-2 rounded-xl border border-white/10 text-xs">
-        {(["nokia-monochrome", "nokia-color", "neon-modern"] as const).map((th) => (
+      {/* Theme switcher */}
+      <div className="flex justify-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+        {SNAKE_THEMES.map((th) => (
           <button
             key={th}
             onClick={() => setActiveTheme(th)}
-            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition cursor-pointer ${
+            className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase transition ${
               activeTheme === th ? "bg-amber-400 text-black shadow" : "bg-black/40 text-white/70"
             }`}
           >
-            {th === "nokia-monochrome" ? "LCD 3310" : th === "nokia-color" ? "6110 Color" : "Neon Glow"}
+            {THEME_LABELS[th]}
           </button>
         ))}
       </div>
 
-      {/* Retro Keypad */}
-      <div className={`flex flex-col items-center gap-2 p-3 rounded-3xl shadow-xl ${themeClasses.keypad}`}>
-        <button
-          onClick={() => handleTurn("UP")}
-          className={`w-16 h-12 font-bold text-xl rounded-xl border-2 shadow active:scale-95 cursor-pointer ${themeClasses.keyBtn}`}
-        >
-          ▲
-        </button>
+      {/* D-pad */}
+      <div className={`mt-auto flex flex-col items-center gap-2 rounded-3xl p-3 shadow-xl ${chrome.keypad}`}>
+        <DPadButton chrome={chrome} label="Up" glyph="▲" onClick={() => handleTurn("UP")} />
         <div className="flex gap-4">
-          <button
-            onClick={() => handleTurn("LEFT")}
-            className={`w-16 h-12 font-bold text-xl rounded-xl border-2 shadow active:scale-95 cursor-pointer ${themeClasses.keyBtn}`}
-          >
-            ◄
-          </button>
-          <button
-            onClick={() => handleTurn("DOWN")}
-            className={`w-16 h-12 font-bold text-xl rounded-xl border-2 shadow active:scale-95 cursor-pointer ${themeClasses.keyBtn}`}
-          >
-            ▼
-          </button>
-          <button
-            onClick={() => handleTurn("RIGHT")}
-            className={`w-16 h-12 font-bold text-xl rounded-xl border-2 shadow active:scale-95 cursor-pointer ${themeClasses.keyBtn}`}
-          >
-            ►
-          </button>
+          <DPadButton chrome={chrome} label="Left" glyph="◄" onClick={() => handleTurn("LEFT")} />
+          <DPadButton chrome={chrome} label="Down" glyph="▼" onClick={() => handleTurn("DOWN")} />
+          <DPadButton chrome={chrome} label="Right" glyph="►" onClick={() => handleTurn("RIGHT")} />
         </div>
       </div>
 
-      {/* Floating Reaction Dock */}
-      {!state.isOver && (
-        <div className="flex justify-center gap-2 p-2 bg-black/20 border border-white/10 rounded-2xl shadow-xl">
-          {(["🔥", "👏", "😂", "🤯", "🥳"] as const).map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => triggerReaction(emoji)}
-              className="p-2 rounded-xl hover:bg-white/10 text-xl transition active:scale-125 cursor-pointer"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Rules Modal */}
-      <AnimatePresence>
-        {showRules && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-slate-900 border-4 border-amber-400 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-slate-100 font-sans"
-            >
-              <h3 className="text-lg font-bold text-amber-400 font-mono">
-                How to Play Snake 🐍
-              </h3>
-              <div className="text-xs space-y-2 leading-relaxed text-slate-300">
-                <p>• Steer your pixel snake using D-pad keys or touch swipes.</p>
-                <p>• Collect food pellets to gain 10 points and increase length.</p>
-                <p>• Avoid hitting solid walls (unless Wrap mode is active) and snake bodies!</p>
-              </div>
-              <button
-                onClick={() => setShowRules(false)}
-                className="w-full py-2.5 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition cursor-pointer"
-              >
-                Got It!
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <RulesModal open={showRules} onClose={() => setShowRules(false)} />
     </div>
+  );
+}
+
+function DPadButton({
+  chrome,
+  label,
+  glyph,
+  onClick,
+}: {
+  chrome: (typeof SNAKE_THEME_CHROME)[SnakeTheme];
+  label: string;
+  glyph: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className={`h-12 w-16 rounded-xl border-2 text-xl font-bold shadow active:scale-95 ${chrome.keyBtn}`}
+    >
+      {glyph}
+    </button>
+  );
+}
+
+export function RulesModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm space-y-4 rounded-2xl border-2 border-amber-400/60 bg-slate-900 p-6 text-slate-100 shadow-2xl"
+          >
+            <h3 className="font-mono text-lg font-bold text-amber-400">How to Play</h3>
+            <div className="space-y-2 text-xs leading-relaxed text-slate-300">
+              <p>Steer with the D-pad or by swiping across the screen.</p>
+              <p>Eat glowing food to score and grow longer.</p>
+              <p>Avoid obstacles and snake bodies. In Solid mode, walls are deadly; in Wrap mode you pass through edges.</p>
+              <p>Outlast your opponents to win the match.</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-full rounded-xl bg-amber-400 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-950"
+            >
+              Got it
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
