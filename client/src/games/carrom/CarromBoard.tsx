@@ -11,6 +11,9 @@ export interface CarromBoardProps {
   roomCode?: string;
   roomPhase?: string;
   onMove: (type: string, data?: unknown) => void;
+  /** Carrom draws its own full-width header, so it owns the Leave control.
+   *  The room shell no longer floats a second one over the top-right corner. */
+  onLeave?: () => void;
 }
 
 /** Desktop layout gate: real desktop viewports (hover fine pointer, width >= 1024px) */

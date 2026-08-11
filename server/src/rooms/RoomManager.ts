@@ -172,7 +172,9 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   telugucinemalu: ["Chiranjeevi", "Balayya", "Nag", "Venky", "Prabhas", "Mahesh", "NTR", "Ram Charan"],
   snake: ["Python", "Viper", "Cobra", "Mamba"],
   vyomayudh: ["Ace", "Blaster", "Cosmo", "Defender"],
-  carrom: ["Striker", "Rebound", "Cutshot", "Thumbi"],
+  // "Striker" was dropped: it is the name of a piece on the board, so the
+  // player list read "Striker · 9 left" next to a striker the player aims.
+  carrom: ["Breaker", "Rebound", "Cutshot", "Thumbi"],
   bounce: ["RedBall", "BounceMaster", "Hopper", "Jumper"],
   roadrash: ["Rider", "Speedy", "Biker", "Racer"],
 };
