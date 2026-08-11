@@ -65,9 +65,7 @@ export default function SnakeCanvas({ state, selfId, theme, onEat, onDeath, clas
   const themeRef = useRef<SnakeTheme>(theme);
   const selfScoreRef = useRef<number>(state.players.find((p) => p.id === selfId)?.score ?? 0);
 
-  const [countdown, setCountdown] = useState<string | null>(null);
-  const wasOverRef = useRef<boolean>(state.isOver);
-  const startedRef = useRef<boolean>(false);
+  const countdown = state.countdown ?? null;
 
   useEffect(() => {
     themeRef.current = theme;
@@ -85,8 +83,6 @@ export default function SnakeCanvas({ state, selfId, theme, onEat, onDeath, clas
       prevFoodRef.current = currFoodRef.current;
       currFoodRef.current = { ...state.food };
       const measured = now - arrivalRef.current;
-      // Clamp so a stalled connection can't produce a multi-second crawl or a
-      // zero-length pop; fall back to the server's intended cadence.
       durationRef.current = Math.min(400, Math.max(70, measured || state.speedMs || 120));
       arrivalRef.current = now;
       sigRef.current = sig;
@@ -107,34 +103,11 @@ export default function SnakeCanvas({ state, selfId, theme, onEat, onDeath, clas
           if (p.id === selfId) onDeath?.();
         }
         if (p.isAlive && deadAtRef.current[p.id] !== undefined) {
-          delete deadAtRef.current[p.id]; // rematch revived them
+          delete deadAtRef.current[p.id];
         }
       }
     }
   }, [state, selfId, onEat, onDeath]);
-
-  // 3 - 2 - 1 - GO intro at the start of every fresh match.
-  useEffect(() => {
-    const freshStart = (!state.isOver && !startedRef.current) || (wasOverRef.current && !state.isOver);
-    if (freshStart) {
-      startedRef.current = true;
-      const seq = ["3", "2", "1", "GO!"];
-      let i = 0;
-      setCountdown(seq[i]);
-      const timer = setInterval(() => {
-        i++;
-        if (i >= seq.length) {
-          clearInterval(timer);
-          setCountdown(null);
-        } else {
-          setCountdown(seq[i]);
-        }
-      }, 650);
-      wasOverRef.current = state.isOver;
-      return () => clearInterval(timer);
-    }
-    wasOverRef.current = state.isOver;
-  }, [state.isOver]);
 
   // The render loop. Runs for the lifetime of the component.
   useEffect(() => {

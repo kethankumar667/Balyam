@@ -147,6 +147,13 @@ export class CarromEngine implements GameEngine {
   /* ────────────────────────────── input ────────────────────────────── */
 
   applyMove(move: MoveContext): MoveResult {
+    if (move.type === "setOptions") {
+      const optData = (move.data as Partial<CarromOptions>) ?? {};
+      if (optData.strikerSkin) this.opts.strikerSkin = optData.strikerSkin;
+      if (optData.boardSkin) this.opts.boardSkin = optData.boardSkin;
+      return { ok: true };
+    }
+
     if (this.phase === "finished") return { ok: false, error: "Game over" };
     const seat = this.currentSeat;
     if (!seat || move.playerId !== seat.playerId) return { ok: false, error: "Not your turn" };

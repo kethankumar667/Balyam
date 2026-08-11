@@ -1854,6 +1854,7 @@ export interface SnakePublicState {
   snakes: Record<string, { body: { x: number; y: number }[]; dir: string; isAlive: boolean }>;
   food: { x: number; y: number };
   players: SnakePlayerPublic[];
+  countdown?: string | null;
   isOver: boolean;
   winnerId: string | null;
 }

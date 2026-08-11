@@ -136,6 +136,7 @@ export function drawBackground(
   ctx.fillStyle = pal.screenBg;
   ctx.fillRect(0, 0, size, size);
 
+  // Radar grid lines
   ctx.lineWidth = 1;
   ctx.strokeStyle = pal.gridLine;
   ctx.beginPath();
@@ -147,6 +148,19 @@ export function drawBackground(
     ctx.lineTo(size, p);
   }
   ctx.stroke();
+
+  // Radar corner dots at grid intersections
+  ctx.fillStyle = pal.gridLine.replace(/0\.\d+\)/, "0.45)");
+  const dotR = Math.max(1, cell * 0.05);
+  for (let x = 0; x <= gridSize; x++) {
+    for (let y = 0; y <= gridSize; y++) {
+      const px = x * cell;
+      const py = y * cell;
+      ctx.beginPath();
+      ctx.arc(px, py, dotR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
   if (pal.vignette) {
     const g = ctx.createRadialGradient(size / 2, size / 2, size * 0.3, size / 2, size / 2, size * 0.72);
@@ -189,29 +203,42 @@ export function drawFood(
   const cx = food.x * cell + cell / 2;
   const cy = food.y * cell + cell / 2;
   const pulse = 0.5 + 0.5 * Math.sin(time / 180);
-  const r = cell * (0.28 + pulse * 0.07);
+  const r = cell * (0.34 + pulse * 0.04);
 
+  ctx.save();
   if (pal.foodGlow) {
-    ctx.save();
     ctx.shadowColor = pal.foodGlow;
-    ctx.shadowBlur = cell * (0.6 + pulse * 0.6);
-    ctx.fillStyle = pal.food;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  } else {
-    ctx.fillStyle = pal.food;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.shadowBlur = cell * (0.6 + pulse * 0.4);
   }
 
-  // Bright core / shine.
-  ctx.fillStyle = pal.foodCore;
+  // 3D Shiny Red Apple Body
+  const appleGrad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+  appleGrad.addColorStop(0, "#ff8888");
+  appleGrad.addColorStop(0.3, "#ef4444");
+  appleGrad.addColorStop(0.85, "#dc2626");
+  appleGrad.addColorStop(1, "#991b1b");
+
+  ctx.fillStyle = appleGrad;
   ctx.beginPath();
-  ctx.arc(cx - r * 0.28, cy - r * 0.28, r * 0.36, 0, Math.PI * 2);
+  ctx.arc(cx - r * 0.22, cy - r * 0.1, r * 0.78, 0, Math.PI * 2);
+  ctx.arc(cx + r * 0.22, cy - r * 0.1, r * 0.78, 0, Math.PI * 2);
+  ctx.arc(cx, cy + r * 0.2, r * 0.75, 0, Math.PI * 2);
   ctx.fill();
+
+  // Green Leaf on top
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#84cc16";
+  ctx.beginPath();
+  ctx.ellipse(cx + r * 0.2, cy - r * 0.85, r * 0.35, r * 0.18, Math.PI * 0.25, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Specular Shine
+  ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+  ctx.beginPath();
+  ctx.ellipse(cx - r * 0.35, cy - r * 0.35, r * 0.24, r * 0.12, -Math.PI * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
 }
 
 export interface DrawSnakeOpts {
@@ -224,11 +251,6 @@ export interface DrawSnakeOpts {
   alpha: number;
 }
 
-/**
- * Paint a single snake as a connected rounded body with a distinct head and
- * eyes. The body is one round-capped, round-joined stroke so the segments read
- * as a continuous creature rather than a chain of squares.
- */
 export function drawSnake({ ctx, pal, body, dir, cell, isSelf, alpha }: DrawSnakeOpts): void {
   if (body.length === 0) return;
   const stops = isSelf ? pal.self : pal.other;
@@ -244,62 +266,83 @@ export function drawSnake({ ctx, pal, body, dir, cell, isSelf, alpha }: DrawSnak
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
-  // Gradient along the head->tail axis for depth.
-  const head = pts[0];
-  const tail = pts[pts.length - 1];
-  const grad = ctx.createLinearGradient(head.x, head.y, tail.x, tail.y);
-  grad.addColorStop(0, stops[0]);
-  grad.addColorStop(1, stops[1]);
-
   if (glow) {
     ctx.shadowColor = glow;
-    ctx.shadowBlur = cell * 0.5;
+    ctx.shadowBlur = cell * 0.4;
   }
 
-  // Body: taper slightly toward the tail by stroking in two passes.
-  ctx.strokeStyle = grad;
-  ctx.lineWidth = cell * 0.82;
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-  ctx.stroke();
+  // Draw 3D glossy body segments (tail to head so head overlays cleanly)
+  const r = cell * 0.42;
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const pt = pts[i];
+    const isHead = i === 0;
+    const progress = i / Math.max(1, pts.length - 1);
+    const segR = isHead ? r * 1.08 : r * (1 - progress * 0.18);
 
-  // Tail taper: redraw the last stretch narrower with the backdrop punched out
-  // would be costly; instead lay a small rounded cap of body colour at the tip.
-  ctx.shadowBlur = 0;
+    // 3D sphere gradient highlight
+    const g = ctx.createRadialGradient(
+      pt.x - segR * 0.3,
+      pt.y - segR * 0.3,
+      segR * 0.1,
+      pt.x,
+      pt.y,
+      segR
+    );
+    g.addColorStop(0, stops[0]);
+    g.addColorStop(0.7, stops[1]);
+    g.addColorStop(1, stops[1]);
 
-  // Head bulge.
-  ctx.fillStyle = stops[0];
-  ctx.beginPath();
-  ctx.arc(head.x, head.y, cell * 0.5, 0, Math.PI * 2);
-  ctx.fill();
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, segR, 0, Math.PI * 2);
+    ctx.fill();
 
-  // Eyes, oriented by travel direction.
-  const eyeR = cell * 0.11;
-  const pupilR = cell * 0.055;
+    // Glossy specular highlight
+    ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
+    ctx.beginPath();
+    ctx.arc(pt.x - segR * 0.3, pt.y - segR * 0.3, segR * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Cute cartoon eyes on head oriented by travel direction
+  const head = pts[0];
+  const eyeR = cell * 0.12;
+  const pupilR = cell * 0.06;
   let ex = 0;
   let ey = 0;
   if (dir === "LEFT") ex = -1;
   else if (dir === "RIGHT") ex = 1;
   else if (dir === "UP") ey = -1;
   else ey = 1;
-  // Perpendicular offset for the two eyes.
+
   const px = ey;
   const py = ex;
-  const fwd = cell * 0.18;
-  const spread = cell * 0.2;
+  const fwd = cell * 0.2;
+  const spread = cell * 0.22;
+
   for (const s of [-1, 1]) {
     const eyeX = head.x + ex * fwd + px * spread * s;
     const eyeY = head.y + ey * fwd + py * spread * s;
+    
+    // Outer white eye
     ctx.fillStyle = pal.eye;
     ctx.beginPath();
     ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
     ctx.fill();
+
+    // Inner dark pupil looking forward
     ctx.fillStyle = pal.pupil;
     ctx.beginPath();
     ctx.arc(eyeX + ex * eyeR * 0.35, eyeY + ey * eyeR * 0.35, pupilR, 0, Math.PI * 2);
     ctx.fill();
+
+    // Tiny white eye reflection dot
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(eyeX + ex * eyeR * 0.2 - eyeR * 0.2, eyeY + ey * eyeR * 0.2 - eyeR * 0.2, pupilR * 0.45, 0, Math.PI * 2);
+    ctx.fill();
   }
+
   ctx.restore();
 }
 
