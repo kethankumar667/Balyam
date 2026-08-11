@@ -779,9 +779,11 @@ export default function Room() {
         }
       >
         {/* Room header. Three shapes:
-              1. Rummy/wordbuilding/dotsboxes/UNO in play: hidden entirely —
-                 each of these renders its own full in-board header (room
-                 code, Leave, etc.) instead.
+              1. Rummy/wordbuilding/dotsboxes/UNO/Ludo/Carrom in play: hidden
+                 entirely — each of these renders its own full in-board header
+                 (room code, Leave, etc.) instead. Carrom joined this list
+                 because the floating Leave button landed on top of its own
+                 lounge header, flush against the viewport corner.
               2. Any game during the lobby: full header with code + Leave.
               3. Every other game during play/finished: slim header — just
                  a right-aligned Leave button. The room code, players, voice
@@ -814,7 +816,7 @@ export default function Room() {
             </button>
           </header>
         )}
-        {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && (
+        {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && (
           // Star Game runs full-bleed on its own desk surface, so this header
           // must FLOAT over the board. In normal flow it consumed a strip of
           // the cream page above the desk, which read as a stray band across
@@ -1181,6 +1183,7 @@ export default function Room() {
                 messages={messages}
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
+                onLeave={leaveRoom}
                 onMove={(type, data) => {
                   const socket = getSocket();
                   socket.emit("game:move", { type, data });

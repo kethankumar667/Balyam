@@ -10,9 +10,12 @@ import {
   CarromShotControls,
   CarromActivityLog,
   CarromBottomBar,
+  CarromRulesList,
+  useCarromFeed,
   type AimData,
 } from "./carrom-shared";
 import CarromSkinModal from "./CarromSkinModal";
+import InlineRoomRail from "../../components/InlineRoomRail";
 
 export default function CarromBoardMobile({
   state,
@@ -22,14 +25,16 @@ export default function CarromBoardMobile({
   roomCode,
   roomPhase,
   onMove,
+  onLeave,
 }: CarromBoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [showSkins, setShowSkins] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const [unread, setUnread] = useState(0);
   const [localStriker, setLocalStriker] = useState<StrikerSkin>(state.strikerSkin ?? "pearl");
   const [localFelt, setLocalFelt] = useState<BoardFeltSkin>(state.boardSkin ?? "birch");
 
-  const mySeat = state.seats.find((s) => s.playerId === selfId);
   const myTurn = state.turnPlayerId === selfId && state.phase === "aiming";
   const striker = state.pieces.find((p) => p.kind === "striker");
 
@@ -101,8 +106,7 @@ export default function CarromBoardMobile({
     [state, localStriker, localFelt]
   );
 
-  // Unread chat badge
-  const chatBadge = messages.length;
+  const feed = useCarromFeed(state.phase, state.lastShot, state.lastCombo);
 
   return (
     <div
@@ -115,7 +119,28 @@ export default function CarromBoardMobile({
       <CarromLoungeHeader
         modeLabel={modeLabel}
         onOpenSkins={() => setShowSkins(true)}
+        onLeave={onLeave}
+        onToggleRules={() => setShowRules((v) => !v)}
+        rulesOpen={showRules}
       />
+
+      {/* ─── Rules sheet (desktop keeps these permanently open in a column) ─── */}
+      {showRules && (
+        <div
+          className="px-4 py-3 flex-shrink-0"
+          style={{ background: "#FFF3DB", borderBottom: "1.5px solid #E8D5B5" }}
+        >
+          <CarromRulesList />
+          <button
+            type="button"
+            onClick={() => setShowRules(false)}
+            className="text-[10px] font-bold uppercase px-2 py-1 rounded mt-2 cursor-pointer"
+            style={{ background: "#F0DFB8", border: "1px solid #E8D5B5", color: "#6D4323" }}
+          >
+            Close
+          </button>
+        </div>
+      )}
 
       {/* ─── Player Cards Row ─── */}
       <CarromPlayerCards
@@ -158,14 +183,29 @@ export default function CarromBoardMobile({
 
       {/* ─── Activity Log ─── */}
       <div className="px-2 pb-1">
-        <CarromActivityLog
-          lastShot={state.lastShot}
-          lastCombo={state.lastCombo}
-        />
+        <CarromActivityLog entries={feed} />
       </div>
 
       {/* ─── Bottom Action Bar ─── */}
-      <CarromBottomBar chatBadge={chatBadge > 0 ? chatBadge : undefined} />
+      <CarromBottomBar unread={unread} />
+
+      {/* Strip-less room rail: the bottom bar above is the only visible
+          toolbar, and it opens these panels through the
+          `bhalyam:open-room-panel` bridge — the same arrangement Ludo mobile
+          uses. Without this mount, mobile Carrom had no chat, voice, player
+          list or room code at all. */}
+      {roomCode && (
+        <InlineRoomRail
+          code={roomCode}
+          game="carrom"
+          phase={roomPhase ?? "playing"}
+          players={players}
+          selfId={selfId}
+          messages={messages}
+          hideStrip
+          onUnreadChange={setUnread}
+        />
+      )}
 
       {/* ─── Custom Skins Modal ─── */}
       <CarromSkinModal

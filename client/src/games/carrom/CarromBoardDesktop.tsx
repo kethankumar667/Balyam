@@ -9,6 +9,8 @@ import {
   CarromSvgBoard,
   CarromShotControls,
   CarromActivityLog,
+  CarromRulesList,
+  useCarromFeed,
   type AimData,
 } from "./carrom-shared";
 import CarromSkinModal from "./CarromSkinModal";
@@ -22,6 +24,7 @@ export default function CarromBoardDesktop({
   roomCode,
   roomPhase,
   onMove,
+  onLeave,
 }: CarromBoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
@@ -29,7 +32,6 @@ export default function CarromBoardDesktop({
   const [localStriker, setLocalStriker] = useState<StrikerSkin>(state.strikerSkin ?? "pearl");
   const [localFelt, setLocalFelt] = useState<BoardFeltSkin>(state.boardSkin ?? "birch");
 
-  const mySeat = state.seats.find((s) => s.playerId === selfId);
   const myTurn = state.turnPlayerId === selfId && state.phase === "aiming";
   const striker = state.pieces.find((p) => p.kind === "striker");
 
@@ -101,6 +103,8 @@ export default function CarromBoardDesktop({
     [state, localStriker, localFelt]
   );
 
+  const feed = useCarromFeed(state.phase, state.lastShot, state.lastCombo);
+
   return (
     <div
       className="h-full min-h-0 overflow-hidden select-none font-sans flex flex-col"
@@ -112,111 +116,30 @@ export default function CarromBoardDesktop({
       <CarromLoungeHeader
         modeLabel={modeLabel}
         onOpenSkins={() => setShowSkins(true)}
+        onLeave={onLeave}
       />
 
-      {/* ─── 3-Column Desktop Layout ─── */}
-      <div className="flex-1 flex items-start justify-center gap-5 p-5 min-h-0 overflow-y-auto">
+      {/* ─── 3-Column Desktop Layout ───
+          `items-stretch`, not `items-start`. The side columns used to hug the
+          top, which left roughly 650px of bare background under each of them
+          while the board column ran the full height. Both columns now span the
+          row and hand their spare height to a panel that can use it — the shot
+          history on the left, the room rail (chat) on the right. */}
+      <div className="flex-1 flex items-stretch justify-center gap-5 p-5 min-h-0">
 
         {/* ─── LEFT PANEL: Players + Turn + Activity ─── */}
-        <aside
-          className="w-72 shrink-0 flex flex-col gap-3 sticky top-0"
-        >
-          {/* Player Cards — stacked vertically on desktop */}
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{
-              background: "#FFF8ED",
-              border: "1.5px solid #E8D5B5",
-              boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-            }}
-          >
-            <div className="px-3 py-2" style={{ borderBottom: "1px solid #E8D5B5" }}>
-              <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#4A2C17" }}>
-                Players
-              </span>
-            </div>
-            {state.seats.map((s) => {
-              const isTurn = s.playerId === state.turnPlayerId && state.phase !== "finished";
-              const isSelf = s.playerId === selfId;
-              const name = nameOf(s.playerId);
-              const isWhite = s.color === "white";
-
-              return (
-                <div
-                  key={s.playerId}
-                  className="flex items-center gap-3 px-3 py-2.5 transition-all duration-200"
-                  style={{
-                    background: isTurn ? "#E4B12815" : "transparent",
-                    borderBottom: "1px solid #E8D5B5",
-                    borderLeft: isTurn ? "3px solid #E4B128" : "3px solid transparent",
-                  }}
-                >
-                  {/* Avatar */}
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm"
-                    style={{
-                      background: isWhite
-                        ? "linear-gradient(135deg, #F0EAD6, #D4C4A0)"
-                        : "linear-gradient(135deg, #4A3728, #2A1A10)",
-                      border: `2px solid ${isTurn ? "#E4B128" : isWhite ? "#C4A87A" : "#6B4226"}`,
-                    }}
-                  >
-                    <span
-                      className="font-black text-sm"
-                      style={{ color: isWhite ? "#4A2C17" : "#E8D5B5" }}
-                    >
-                      {(name[0] ?? "?").toUpperCase()}
-                    </span>
-                  </div>
-
-                  {/* Name + info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold truncate" style={{ color: "#4A2C17" }}>
-                        {name}
-                      </span>
-                      {isSelf && (
-                        <span
-                          className="text-[8px] font-black uppercase px-1.5 py-0 rounded-full"
-                          style={{ background: "#2E8B57", color: "#fff", lineHeight: "13px" }}
-                        >
-                          YOU
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{
-                          background: isWhite
-                            ? "radial-gradient(circle at 35% 35%, #FFFDF7, #E3D3B4)"
-                            : "radial-gradient(circle at 35% 35%, #3A3029, #1A130E)",
-                          border: `1px solid ${isWhite ? "#8C6339" : "#A36D43"}`,
-                        }}
-                      />
-                      <span className="text-[9px] font-bold uppercase" style={{ color: "#6D432388" }}>
-                        {s.remaining} left
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Score */}
-                  <div className="flex flex-col items-end flex-shrink-0">
-                    <span className="text-lg font-black tabular-nums leading-none" style={{ color: "#4A2C17" }}>
-                      {s.score}
-                    </span>
-                    <span className="text-[7px] font-extrabold uppercase tracking-widest" style={{ color: "#6D432366" }}>
-                      PTS
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <aside className="w-72 shrink-0 flex flex-col gap-3 min-h-0">
+          {/* Player Cards — the vertical variant of the shared component */}
+          <CarromPlayerCards
+            state={activeState}
+            players={players}
+            selfId={selfId}
+            orientation="column"
+          />
 
           {/* Turn Indicator */}
           <div
-            className="rounded-2xl overflow-hidden"
+            className="rounded-2xl overflow-hidden flex-shrink-0"
             style={{
               background: "#FFF3DB",
               border: "1.5px solid #E8D5B5",
@@ -230,15 +153,12 @@ export default function CarromBoardDesktop({
             />
           </div>
 
-          {/* Activity Log */}
-          <CarromActivityLog
-            lastShot={state.lastShot}
-            lastCombo={state.lastCombo}
-          />
+          {/* Shot history — absorbs the leftover column height */}
+          <CarromActivityLog entries={feed} fill />
         </aside>
 
         {/* ─── CENTER: Board + Shot Controls ─── */}
-        <div className="flex-1 max-w-[680px] flex flex-col gap-3 min-h-0">
+        <div className="flex-1 max-w-[680px] flex flex-col gap-3 min-h-0 overflow-y-auto">
           <CarromSvgBoard
             state={activeState}
             selfId={selfId}
@@ -260,10 +180,10 @@ export default function CarromBoardDesktop({
         </div>
 
         {/* ─── RIGHT PANEL: Rules + Room Rail ─── */}
-        <aside className="w-72 shrink-0 sticky top-0 flex flex-col gap-3">
+        <aside className="w-72 shrink-0 flex flex-col gap-3 min-h-0">
           {/* How to Play */}
           <div
-            className="p-4 rounded-2xl space-y-2"
+            className="p-4 rounded-2xl space-y-2 flex-shrink-0"
             style={{
               background: "#FFF8ED",
               border: "1.5px solid #E8D5B5",
@@ -271,27 +191,18 @@ export default function CarromBoardDesktop({
             }}
           >
             <h3
-              className="text-xs font-black uppercase tracking-wide flex items-center gap-2"
+              className="text-xs font-black uppercase tracking-wide"
               style={{ color: "#4A2C17" }}
             >
-              📜 Carrom Lounge Rules
+              How to Play
             </h3>
-            <ul
-              className="text-[11px] font-semibold space-y-1.5 list-disc list-inside"
-              style={{ color: "#6D4323" }}
-            >
-              <li>Slide the position slider to place your striker on the baseline.</li>
-              <li>Drag backward from the striker to set aim angle & power.</li>
-              <li>The dashed line shows predicted trajectory — including bank shots!</li>
-              <li>Pot all your coins + cover the Queen to win.</li>
-              <li>Customize Striker & Board skins anytime via 🎨 button.</li>
-            </ul>
+            <CarromRulesList />
           </div>
 
           {/* Room Rail (Chat / Voice / Players) */}
           {roomCode && (
             <div
-              className="rounded-2xl overflow-hidden"
+              className="rounded-2xl overflow-hidden flex-1 min-h-0 flex flex-col justify-end"
               style={{
                 border: "1.5px solid #E8D5B5",
                 boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
