@@ -66,8 +66,16 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
             <span className="text-base">🐍</span>
             <span className="font-extrabold">Snake</span>
             <button
+              onClick={() => onMove("togglePause")}
+              className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold uppercase transition ${
+                state.isPaused ? "bg-amber-400 text-black font-black" : chrome.pillActive
+              }`}
+            >
+              {state.isPaused ? "▶ Resume" : "⏸ Pause"}
+            </button>
+            <button
               onClick={() => setShowRules(true)}
-              className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold uppercase transition ${chrome.pillActive}`}
+              className="rounded-lg bg-white/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-white/80"
             >
               Rules
             </button>
@@ -82,8 +90,20 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
 
         {/* `touch-none` is load-bearing: without it a downward swipe turns the
             snake AND scrolls the page, so steering fights the browser. */}
-        <div className="touch-none" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        <div className="relative touch-none" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <SnakeCanvas state={state} selfId={selfId} theme={activeTheme} onEat={onEat} onDeath={onDeath} />
+          {state.isPaused && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md p-4 text-center rounded-2xl">
+              <div className="text-4xl animate-bounce">⏸️</div>
+              <h2 className="mt-2 text-xl font-black uppercase tracking-wider text-amber-400">Game Paused</h2>
+              <button
+                onClick={() => onMove("resume")}
+                className="mt-4 rounded-xl bg-gradient-to-r from-emerald-400 to-green-500 px-6 py-2.5 text-xs font-black uppercase text-black shadow-lg transition active:scale-95"
+              >
+                ▶ Resume Game
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">

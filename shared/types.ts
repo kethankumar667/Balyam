@@ -1855,6 +1855,7 @@ export interface SnakePublicState {
   food: { x: number; y: number };
   players: SnakePlayerPublic[];
   countdown?: string | null;
+  isPaused?: boolean;
   isOver: boolean;
   winnerId: string | null;
 }
@@ -2058,6 +2059,7 @@ export interface BouncePublicState {
   balls: Record<string, { x: number; y: number; vx: number; vy: number; ringsCollected: number; isAlive: boolean }>;
   rings: { id: string; x: number; y: number; collected: boolean }[];
   players: { id: string; ringsCollected: number; isAlive: boolean }[];
+  isPaused?: boolean;
   isOver: boolean;
   winnerId: string | null;
 }
@@ -2071,6 +2073,7 @@ export interface RoadRashPublicState {
   kind: "roadrash";
   bikes: Record<string, { position: number; lane: number; speed: number; isAttacking: boolean; isKnockedOut: boolean }>;
   players: { id: string; position: number; rank: number; isKnockedOut: boolean }[];
+  isPaused?: boolean;
   isOver: boolean;
   winnerId: string | null;
 }

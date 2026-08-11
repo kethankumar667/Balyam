@@ -27,6 +27,7 @@ export class RoadRashEngine implements GameEngine {
   private bikes = new Map<string, BikeData>();
   private isOverFlag = false;
   private winnerId: string | null = null;
+  private isPaused = false;
 
   setOptions(opts: Partial<RoadRashOptions>): void {
     this.pendingOptions = { ...DEFAULT_ROADRASH_OPTIONS, ...opts };
@@ -49,11 +50,15 @@ export class RoadRashEngine implements GameEngine {
 
     this.isOverFlag = false;
     this.winnerId = null;
+    this.isPaused = false;
   }
 
   simulateTick(): MoveResult {
     if (this.isOverFlag) {
       return { ok: true, isOver: true, winnerId: this.winnerId };
+    }
+    if (this.isPaused) {
+      return { ok: true, isOver: false, winnerId: null };
     }
     this.tick();
     return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
@@ -62,6 +67,22 @@ export class RoadRashEngine implements GameEngine {
   applyMove(move: MoveContext): MoveResult {
     const pid = move.playerId;
     const bike = this.bikes.get(pid);
+
+    if (move.type === "pause") {
+      this.isPaused = true;
+      return { ok: true };
+    }
+
+    if (move.type === "resume") {
+      this.isPaused = false;
+      return { ok: true };
+    }
+
+    if (move.type === "togglePause") {
+      this.isPaused = !this.isPaused;
+      return { ok: true };
+    }
+
     if (!bike || bike.isKnockedOut || this.isOverFlag) {
       return { ok: false, error: "Cannot move" };
     }
@@ -94,7 +115,7 @@ export class RoadRashEngine implements GameEngine {
     }
 
     if (move.type === "tick") {
-      this.tick();
+      if (!this.isPaused) this.tick();
       return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
     }
 
@@ -140,6 +161,7 @@ export class RoadRashEngine implements GameEngine {
       kind: "roadrash",
       bikes: bikesObj,
       players: playersPub,
+      isPaused: this.isPaused,
       isOver: this.isOverFlag,
       winnerId: this.winnerId,
     };

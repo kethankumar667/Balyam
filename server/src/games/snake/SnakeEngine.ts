@@ -40,6 +40,7 @@ export class SnakeEngine implements GameEngine {
   private winnerId: string | null = null;
   private countdownTicks = 30;
   private showGoTicks = 5;
+  private isPaused = false;
 
   private rng: () => number = Math.random;
 
@@ -87,6 +88,7 @@ export class SnakeEngine implements GameEngine {
     this.winnerId = null;
     this.countdownTicks = 30;
     this.showGoTicks = 5;
+    this.isPaused = false;
   }
 
   private updateLevelAndObstacles(): void {
@@ -206,6 +208,9 @@ export class SnakeEngine implements GameEngine {
     if (this.isOverFlag) {
       return { ok: true, isOver: true, winnerId: this.winnerId };
     }
+    if (this.isPaused) {
+      return { ok: true, isOver: false, winnerId: null };
+    }
     if (this.countdownTicks > 0) {
       this.countdownTicks--;
       return { ok: true, isOver: false, winnerId: null };
@@ -218,8 +223,23 @@ export class SnakeEngine implements GameEngine {
     const pid = move.playerId;
     const snake = this.snakes.get(pid);
 
+    if (move.type === "pause") {
+      this.isPaused = true;
+      return { ok: true };
+    }
+
+    if (move.type === "resume") {
+      this.isPaused = false;
+      return { ok: true };
+    }
+
+    if (move.type === "togglePause") {
+      this.isPaused = !this.isPaused;
+      return { ok: true };
+    }
+
     if (move.type === "tick") {
-      this.tick();
+      if (!this.isPaused) this.tick();
       return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
     }
 
@@ -408,6 +428,7 @@ export class SnakeEngine implements GameEngine {
       food: this.food,
       players: playersPub,
       countdown: countdownStr,
+      isPaused: this.isPaused,
       isOver: this.isOverFlag,
       winnerId: this.winnerId,
     };

@@ -29,6 +29,7 @@ export class BounceEngine implements GameEngine {
   private rings: { id: string; x: number; y: number; collected: boolean }[] = [];
   private isOverFlag = false;
   private winnerId: string | null = null;
+  private isPaused = false;
 
   private rng: () => number = Math.random;
 
@@ -69,11 +70,15 @@ export class BounceEngine implements GameEngine {
 
     this.isOverFlag = false;
     this.winnerId = null;
+    this.isPaused = false;
   }
 
   simulateTick(): MoveResult {
     if (this.isOverFlag) {
       return { ok: true, isOver: true, winnerId: this.winnerId };
+    }
+    if (this.isPaused) {
+      return { ok: true, isOver: false, winnerId: null };
     }
     this.tick();
     return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
@@ -82,6 +87,22 @@ export class BounceEngine implements GameEngine {
   applyMove(move: MoveContext): MoveResult {
     const pid = move.playerId;
     const ball = this.balls.get(pid);
+
+    if (move.type === "pause") {
+      this.isPaused = true;
+      return { ok: true };
+    }
+
+    if (move.type === "resume") {
+      this.isPaused = false;
+      return { ok: true };
+    }
+
+    if (move.type === "togglePause") {
+      this.isPaused = !this.isPaused;
+      return { ok: true };
+    }
+
     if (!ball || !ball.isAlive || this.isOverFlag) {
       return { ok: false, error: "Cannot move" };
     }
@@ -95,7 +116,7 @@ export class BounceEngine implements GameEngine {
     }
 
     if (move.type === "tick") {
-      this.tick();
+      if (!this.isPaused) this.tick();
       return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
     }
 
@@ -155,6 +176,7 @@ export class BounceEngine implements GameEngine {
       balls: ballsObj,
       rings: [...this.rings],
       players: playersPub,
+      isPaused: this.isPaused,
       isOver: this.isOverFlag,
       winnerId: this.winnerId,
     };
