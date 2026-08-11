@@ -18,36 +18,72 @@ export interface SkinConfig {
   boardBgEnd: string;
   boardLine: string;
   pocketRim: string;
+  /** Outer wooden frame — the band the playing surface is set into. */
+  frameStart: string;
+  frameEnd: string;
+  /** Lighter corner blocks on the frame. */
+  frameCorner: string;
+  /** Lacquered band between the frame and the playing surface. */
+  bandStart: string;
+  bandEnd: string;
+  /** Grain streaks brushed over the playing surface. */
+  grain: string;
 }
 
 export const BOARD_SKINS: Record<BoardFeltSkin, SkinConfig> = {
   birch: {
     name: "Classic Birch",
-    boardBgStart: "#F9EBD0",
-    boardBgEnd: "#EED8B0",
-    boardLine: "#6B4226",
-    pocketRim: "#D4AF37",
+    boardBgStart: "#F0D6A6",
+    boardBgEnd: "#D9B77E",
+    // Real boards rule their markings in black, not brown. The old brown
+    // lines were a large part of why the board read as an illustration.
+    boardLine: "#1F1408",
+    pocketRim: "#3A3A3A",
+    frameStart: "#F3AC53",
+    frameEnd: "#BE6F1E",
+    frameCorner: "#F8CE52",
+    bandStart: "#9A1F1F",
+    bandEnd: "#5A0C0C",
+    grain: "#9C7440",
   },
   velvet: {
     name: "Royal Velvet Blue",
     boardBgStart: "#1E293B",
     boardBgEnd: "#0F172A",
-    boardLine: "#94A3B8",
+    boardLine: "#CBD5E1",
     pocketRim: "#38BDF8",
+    frameStart: "#3B5A8C",
+    frameEnd: "#1B2C4E",
+    frameCorner: "#7BA7E0",
+    bandStart: "#132444",
+    bandEnd: "#060D1C",
+    grain: "#2C4468",
   },
   emerald: {
     name: "Emerald Green",
-    boardBgStart: "#065F46",
-    boardBgEnd: "#044E35",
-    boardLine: "#A7F3D0",
+    boardBgStart: "#0A6B4F",
+    boardBgEnd: "#04452D",
+    boardLine: "#D1FAE5",
     pocketRim: "#F59E0B",
+    frameStart: "#3E8C64",
+    frameEnd: "#12432C",
+    frameCorner: "#8FE3B8",
+    bandStart: "#0B3A26",
+    bandEnd: "#04200F",
+    grain: "#0C5138",
   },
   ebony: {
     name: "Midnight Ebony",
-    boardBgStart: "#18181B",
-    boardBgEnd: "#09090B",
-    boardLine: "#D4AF37",
+    boardBgStart: "#25252A",
+    boardBgEnd: "#101014",
+    boardLine: "#E7C86B",
     pocketRim: "#EAB308",
+    frameStart: "#4C4C4C",
+    frameEnd: "#1A1A1A",
+    frameCorner: "#D4AF37",
+    bandStart: "#2A2A2A",
+    bandEnd: "#0A0A0A",
+    grain: "#33333A",
   },
 };
 
@@ -116,6 +152,34 @@ export interface AimData {
   power: number;
   dx: number;
   dy: number;
+}
+
+/* ─────────────────────────── Board viewport ───────────────────────────
+ * The engine's coordinate space is 0..100 with the playfield inset by
+ * `cushion` (6), so coins rebound inside 6..94. A real board's frame sits
+ * OUTSIDE that surface, so the SVG viewBox is widened past the engine space
+ * rather than stealing width from the playfield. Physics is untouched: a coin
+ * at (50,50) is still dead centre.
+ */
+export const BOARD_VIEW = {
+  /** Outer edge of the wooden frame, in engine units. */
+  min: -8.5,
+  /** Total width/height of the viewBox. */
+  span: 117,
+} as const;
+
+/** Maps a pointer event to engine board coordinates. Must track BOARD_VIEW —
+ *  the SVG is square and uses the default `xMidYMid meet`, so the viewBox maps
+ *  linearly onto the element's box. */
+export function pointerToBoard(
+  rect: { left: number; top: number; width: number; height: number },
+  clientX: number,
+  clientY: number
+): { x: number; y: number } {
+  return {
+    x: BOARD_VIEW.min + ((clientX - rect.left) / rect.width) * BOARD_VIEW.span,
+    y: BOARD_VIEW.min + ((clientY - rect.top) / rect.height) * BOARD_VIEW.span,
+  };
 }
 
 /* ─────────────────────────── BHALYAM Warm Palette ─────────────────────────── */
@@ -616,6 +680,36 @@ export function CarromTurnBar({
 }
 
 /* ─────────────────────────── SVG High-Definition Carrom Board ─────────────────────────── */
+
+/** Arrowhead triangle as an SVG `points` string. `dir` must be a unit vector
+ *  pointing the way the arrow travels. */
+function arrowHead(
+  tipX: number,
+  tipY: number,
+  dirX: number,
+  dirY: number,
+  len: number,
+  half: number
+): string {
+  const bx = tipX - dirX * len;
+  const by = tipY - dirY * len;
+  const px = -dirY;
+  const py = dirX;
+  return `${tipX},${tipY} ${bx + px * half},${by + py * half} ${bx - px * half},${by - py * half}`;
+}
+
+/** Arc between two angles (degrees, y-down screen convention). */
+function arcPath(cx: number, cy: number, r: number, a0: number, a1: number): string {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const x0 = cx + r * Math.cos(rad(a0));
+  const y0 = cy + r * Math.sin(rad(a0));
+  const x1 = cx + r * Math.cos(rad(a1));
+  const y1 = cy + r * Math.sin(rad(a1));
+  const large = Math.abs(a1 - a0) > 180 ? 1 : 0;
+  const sweep = a1 > a0 ? 1 : 0;
+  return `M ${x0} ${y0} A ${r} ${r} 0 ${large} ${sweep} ${x1} ${y1}`;
+}
+
 export function CarromSvgBoard({
   state,
   selfId,
@@ -727,152 +821,319 @@ export function CarromSvgBoard({
     };
   }, [aim, striker, cushion, size]);
 
+  /* Board geometry, all in engine units. The playing surface is exactly the
+   * rebound area (cushion..size-cushion); the frame is drawn OUTSIDE it. */
+  const play = cushion;                 // 6  — surface edge / rebound wall
+  const playW = size - cushion * 2;     // 88 — surface width
+  const frameOut = BOARD_VIEW.min;      // -8.5 — outer edge of the wood frame
+  const bandIn = 3.0;                   // lacquered band starts here
+  const L = CARROM_BOARD.baseline;      // 18 — centre of the base-line channel
+  const R = size - L;                   // 82
+  /* The engine parks the striker centre exactly on `baseline`, so the two base
+   * lines straddle it one striker-radius out. That is how a real board is
+   * ruled — the striker must be placed touching both lines — and it means the
+   * channel width is correct by construction rather than by eye. */
+  const sr = CARROM_BOARD.strikerRadius; // 2.6
+  const lineOut = L - sr;                // 15.4
+  const lineIn = L + sr;                 // 20.6
+
   return (
     <div
       id="game-board-container"
-      className="relative w-full aspect-square max-w-[650px] max-h-full mx-auto select-none touch-none overflow-hidden"
-      style={{
-        borderRadius: "16px",
-        padding: "10px",
-        background: `linear-gradient(135deg, #1C0E06, #381F0E, #1C0E06)`,
-        border: `3px solid ${WARM.wood}`,
-        boxShadow: "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
-      }}
+      className="relative w-full aspect-square max-w-[650px] max-h-full mx-auto select-none touch-none"
+      style={{ filter: "drop-shadow(0 14px 34px rgba(0,0,0,0.45))" }}
     >
-      {/* Warm Corner Brackets */}
-      <div className="absolute top-1.5 left-1.5 w-5 h-5 border-t-2 border-l-2 rounded-tl-md pointer-events-none" style={{ borderColor: `${WARM.gold}80` }} />
-      <div className="absolute top-1.5 right-1.5 w-5 h-5 border-t-2 border-r-2 rounded-tr-md pointer-events-none" style={{ borderColor: `${WARM.gold}80` }} />
-      <div className="absolute bottom-1.5 left-1.5 w-5 h-5 border-b-2 border-l-2 rounded-bl-md pointer-events-none" style={{ borderColor: `${WARM.gold}80` }} />
-      <div className="absolute bottom-1.5 right-1.5 w-5 h-5 border-b-2 border-r-2 rounded-br-md pointer-events-none" style={{ borderColor: `${WARM.gold}80` }} />
-
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${size} ${size}`}
-        className="w-full h-full rounded-xl shadow-inner cursor-crosshair"
+        viewBox={`${BOARD_VIEW.min} ${BOARD_VIEW.min} ${BOARD_VIEW.span} ${BOARD_VIEW.span}`}
+        className="w-full h-full cursor-crosshair"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
         <defs>
-          <radialGradient id="boardVarnish" cx="50%" cy="50%" r="70%">
-            <stop offset="0%" stopColor={feltSkin.boardBgStart} />
-            <stop offset="100%" stopColor={feltSkin.boardBgEnd} />
-          </radialGradient>
-
-          <linearGradient id="cushionBorder" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#4A2C17" />
-            <stop offset="50%" stopColor="#6B4226" />
-            <stop offset="100%" stopColor="#381F0E" />
+          <linearGradient id="frameGrad" x1="0%" y1="0%" x2="30%" y2="100%">
+            <stop offset="0%" stopColor={feltSkin.frameStart} />
+            <stop offset="48%" stopColor={feltSkin.frameStart} />
+            <stop offset="100%" stopColor={feltSkin.frameEnd} />
           </linearGradient>
 
-          <radialGradient id="pocketInner" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#050302" />
-            <stop offset="80%" stopColor="#140B05" />
-            <stop offset="100%" stopColor={feltSkin.pocketRim} />
+          <linearGradient id="bandGrad" x1="0%" y1="0%" x2="60%" y2="100%">
+            <stop offset="0%" stopColor={feltSkin.bandStart} />
+            <stop offset="100%" stopColor={feltSkin.bandEnd} />
+          </linearGradient>
+
+          <linearGradient id="surfaceGrad" x1="0%" y1="0%" x2="20%" y2="100%">
+            <stop offset="0%" stopColor={feltSkin.boardBgStart} />
+            <stop offset="100%" stopColor={feltSkin.boardBgEnd} />
+          </linearGradient>
+
+          {/* Wood grain. feTurbulence stretched wide and squeezed tall gives
+              the long horizontal streaks of a planed board. Static geometry,
+              so the browser filters it once rather than every frame. */}
+          <filter id="grainNoise" x="0%" y="0%" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.035 0.3" numOctaves={5} seed={7} />
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.7 0 0 0 -0.30"
+            />
+          </filter>
+          {/* One mask spanning the whole board, not just the playing surface.
+              feTurbulence is evaluated in user space, so every element masked
+              with it samples the same continuous grain — the pocket aprons
+              line up with the bed instead of showing as bare pale discs. A
+              surface-sized mask clipped them to a quadrant. */}
+          <mask id="grainMask">
+            <rect
+              x={frameOut}
+              y={frameOut}
+              width={BOARD_VIEW.span}
+              height={BOARD_VIEW.span}
+              filter="url(#grainNoise)"
+            />
+          </mask>
+
+          <radialGradient id="surfaceVignette" cx="50%" cy="44%" r="74%">
+            <stop offset="52%" stopColor="#000000" stopOpacity={0} />
+            <stop offset="100%" stopColor="#000000" stopOpacity={0.22} />
           </radialGradient>
 
-          <radialGradient id="whiteCoinGrad" cx="35%" cy="35%" r="65%">
+          <linearGradient id="boardGloss" x1="0%" y1="0%" x2="55%" y2="100%">
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.20} />
+            <stop offset="42%" stopColor="#FFFFFF" stopOpacity={0.04} />
+            <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0} />
+          </linearGradient>
+
+          <radialGradient id="pocketInner" cx="50%" cy="42%" r="62%">
+            <stop offset="0%" stopColor="#000000" />
+            <stop offset="62%" stopColor="#0B0B0B" />
+            <stop offset="100%" stopColor="#2A2A2A" />
+          </radialGradient>
+
+          <linearGradient id="boltGrad" x1="0%" y1="0%" x2="60%" y2="100%">
+            <stop offset="0%" stopColor="#6E6E6E" />
+            <stop offset="100%" stopColor="#2B2B2B" />
+          </linearGradient>
+
+          <radialGradient id="whiteCoinGrad" cx="35%" cy="32%" r="68%">
             <stop offset="0%" stopColor={CARROM_THEME.whiteCoinStart} />
             <stop offset="70%" stopColor="#ECE0C8" />
             <stop offset="100%" stopColor={CARROM_THEME.whiteCoinEnd} />
           </radialGradient>
 
-          <radialGradient id="blackCoinGrad" cx="35%" cy="35%" r="65%">
-            <stop offset="0%" stopColor={CARROM_THEME.blackCoinStart} />
-            <stop offset="70%" stopColor="#241B15" />
+          <radialGradient id="blackCoinGrad" cx="35%" cy="32%" r="68%">
+            <stop offset="0%" stopColor="#4A403A" />
+            <stop offset="60%" stopColor={CARROM_THEME.blackCoinStart} />
             <stop offset="100%" stopColor={CARROM_THEME.blackCoinEnd} />
           </radialGradient>
 
-          <radialGradient id="queenGrad" cx="35%" cy="35%" r="65%">
+          <radialGradient id="queenGrad" cx="35%" cy="32%" r="68%">
             <stop offset="0%" stopColor="#F87171" />
             <stop offset="50%" stopColor={CARROM_THEME.queenStart} />
             <stop offset="100%" stopColor={CARROM_THEME.queenEnd} />
           </radialGradient>
 
-          <radialGradient id="customStrikerGrad" cx="35%" cy="35%" r="65%">
+          <radialGradient id="customStrikerGrad" cx="35%" cy="32%" r="68%">
             <stop offset="0%" stopColor={strikerSkin.start} />
             <stop offset="100%" stopColor={strikerSkin.end} />
           </radialGradient>
 
-          <filter id="pieceShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0.4" dy="0.7" stdDeviation="0.4" floodColor="#000" floodOpacity="0.4" />
+          <filter id="pieceShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0.3" dy="0.55" stdDeviation="0.35" floodColor="#000" floodOpacity="0.45" />
           </filter>
         </defs>
 
-        {/* Felt Surface */}
-        <rect x={0} y={0} width={size} height={size} fill="url(#boardVarnish)" />
-
-        {/* Cushion Frame */}
+        {/* ── Wooden frame ── */}
         <rect
-          x={cushion}
-          y={cushion}
-          width={size - cushion * 2}
-          height={size - cushion * 2}
+          x={frameOut}
+          y={frameOut}
+          width={BOARD_VIEW.span}
+          height={BOARD_VIEW.span}
+          rx={4}
+          fill="url(#frameGrad)"
+        />
+        {/* Grain on the frame too — a flat orange band was the last thing
+            still reading as vector art rather than timber. */}
+        <rect
+          x={frameOut}
+          y={frameOut}
+          width={BOARD_VIEW.span}
+          height={BOARD_VIEW.span}
+          rx={4}
+          fill="#3A1F06"
+          mask="url(#grainMask)"
+          opacity={0.16}
+        />
+        <rect
+          x={frameOut}
+          y={frameOut}
+          width={BOARD_VIEW.span}
+          height={BOARD_VIEW.span}
+          rx={4}
           fill="none"
-          stroke="url(#cushionBorder)"
+          stroke="#00000055"
           strokeWidth={0.8}
         />
+
+        {/* ── Lacquered band ── */}
         <rect
-          x={cushion + 0.5}
-          y={cushion + 0.5}
-          width={size - cushion * 2 - 1}
-          height={size - cushion * 2 - 1}
-          fill="none"
-          stroke={feltSkin.boardLine}
-          strokeWidth={0.4}
-          opacity={0.8}
+          x={bandIn}
+          y={bandIn}
+          width={size - bandIn * 2}
+          height={size - bandIn * 2}
+          rx={1.6}
+          fill="url(#bandGrad)"
         />
 
-        {/* ── Corner Arrows (diagonal red lines matching mockup) ── */}
-        {[
-          { cx: cushion + 3, cy: cushion + 3, dx: 1, dy: 1 },
-          { cx: size - cushion - 3, cy: cushion + 3, dx: -1, dy: 1 },
-          { cx: cushion + 3, cy: size - cushion - 3, dx: 1, dy: -1 },
-          { cx: size - cushion - 3, cy: size - cushion - 3, dx: -1, dy: -1 },
-        ].map((a, i) => (
-          <line
-            key={`arrow-${i}`}
-            x1={a.cx}
-            y1={a.cy}
-            x2={a.cx + a.dx * 12}
-            y2={a.cy + a.dy * 12}
-            stroke="#B91C1C"
-            strokeWidth={0.5}
-            opacity={0.7}
-            markerEnd="none"
-          />
+        {/* ── Corner blocks + bolts ──
+             Rounded on the OUTER corner only. Rounding all four put a curved
+             notch on the inner edge, which read as a chip out of the frame. */}
+        {[0, 90, 180, 270].map((deg) => {
+          const b = 12;
+          const rr = 3;
+          const x0 = frameOut;
+          return (
+            <g key={`corner-${deg}`} transform={`rotate(${deg} ${center} ${center})`}>
+              <path
+                d={`M ${x0 + rr} ${x0} L ${x0 + b} ${x0} L ${x0 + b} ${x0 + b} L ${x0} ${x0 + b} L ${x0} ${x0 + rr} A ${rr} ${rr} 0 0 1 ${x0 + rr} ${x0} Z`}
+                fill={feltSkin.frameCorner}
+              />
+              <circle cx={x0 + b / 2} cy={x0 + b / 2} r={2.4} fill="url(#boltGrad)" />
+              <circle cx={x0 + b / 2} cy={x0 + b / 2} r={2.4} fill="none" stroke="#00000066" strokeWidth={0.4} />
+              <circle cx={x0 + b / 2 - 0.7} cy={x0 + b / 2 - 0.7} r={0.75} fill="#FFFFFF" opacity={0.3} />
+            </g>
+          );
+        })}
+
+        {/* ── Playing surface ── */}
+        <rect x={play} y={play} width={playW} height={playW} fill="url(#surfaceGrad)" />
+        <rect
+          x={play}
+          y={play}
+          width={playW}
+          height={playW}
+          fill={feltSkin.grain}
+          mask="url(#grainMask)"
+          opacity={0.38}
+        />
+        <rect x={play} y={play} width={playW} height={playW} fill="url(#surfaceVignette)" />
+        {/* Crisp edge where the surface meets the lacquered band */}
+        <rect
+          x={play}
+          y={play}
+          width={playW}
+          height={playW}
+          fill="none"
+          stroke="#00000070"
+          strokeWidth={0.6}
+        />
+
+        {/* ── Markings. One corner + one side, mirrored by rotation, so the
+               four quadrants cannot drift apart. ── */}
+        {[0, 90, 180, 270].map((deg) => (
+          <g key={`mark-${deg}`} transform={`rotate(${deg} ${center} ${center})`}>
+            {/* Base-line pair. Extended past the corners so adjacent sides
+                cross, forming the small corner square a real board carries. */}
+            <line x1={lineOut} y1={lineOut} x2={R + sr} y2={lineOut} stroke={feltSkin.boardLine} strokeWidth={0.9} />
+            <line x1={lineOut} y1={lineIn} x2={R + sr} y2={lineIn} stroke={feltSkin.boardLine} strokeWidth={0.9} />
+
+            {/* Red base circles, one at each end of the channel */}
+            {[L + 4.8, R - 4.8].map((bx) => (
+              <g key={`base-${bx}`}>
+                <circle cx={bx} cy={L} r={2.55} fill="#C42B1C" />
+                <circle cx={bx} cy={L} r={2.55} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.6} />
+              </g>
+            ))}
+
+            {/* Corner spot, centred in the crossing square */}
+            <circle cx={L} cy={L} r={1.3} fill={feltSkin.boardLine} />
+
+            {/* Diagonal aim line, pointing out to the pocket. Stops short of
+                the pocket rim so the head reads as an arrow, not a collision. */}
+            <line x1={lineOut} y1={lineOut} x2={13.4} y2={13.4} stroke={feltSkin.boardLine} strokeWidth={0.7} />
+            <polygon points={arrowHead(11.9, 11.9, -0.7071, -0.7071, 2.2, 1.15)} fill={feltSkin.boardLine} />
+
+            {/* Corner sweep arrow, tucked inside the base-line corner */}
+            <path
+              d={arcPath(L, L, 9.6, 20, 70)}
+              fill="none"
+              stroke={feltSkin.boardLine}
+              strokeWidth={0.7}
+              strokeLinecap="round"
+            />
+            <polygon
+              points={arrowHead(
+                L + 9.6 * Math.cos((70 * Math.PI) / 180),
+                L + 9.6 * Math.sin((70 * Math.PI) / 180),
+                -Math.sin((70 * Math.PI) / 180),
+                Math.cos((70 * Math.PI) / 180),
+                2.1,
+                1.1
+              )}
+              fill={feltSkin.boardLine}
+            />
+          </g>
         ))}
 
-        {/* ── Rosette & Circles ── */}
-        <circle cx={center} cy={center} r={CARROM_BOARD.coinRadius * 4.8} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.5} />
-        <circle cx={center} cy={center} r={CARROM_BOARD.coinRadius * 4.2} fill="none" stroke="#B91C1C" strokeWidth={0.35} strokeDasharray="1.5 1" />
-        <circle cx={center} cy={center} r={CARROM_BOARD.coinRadius * 1.3} fill="#B91C1C" opacity={0.85} />
-        <circle cx={center} cy={center} r={CARROM_BOARD.coinRadius * 1.3} fill="none" stroke={feltSkin.pocketRim} strokeWidth={0.3} />
-
-        {/* ── 4 Baselines ── */}
-        <line x1={cushion + 7} y1={CARROM_BOARD.baseline} x2={size - cushion - 7} y2={CARROM_BOARD.baseline} stroke={feltSkin.boardLine} strokeWidth={0.5} />
-        <line x1={cushion + 7} y1={CARROM_BOARD.baseline - 1.5} x2={size - cushion - 7} y2={CARROM_BOARD.baseline - 1.5} stroke={feltSkin.boardLine} strokeWidth={0.3} />
-        <circle cx={cushion + 7} cy={CARROM_BOARD.baseline - 0.75} r={1.5} fill="none" stroke="#B91C1C" strokeWidth={0.4} />
-        <circle cx={cushion + 7} cy={CARROM_BOARD.baseline - 0.75} r={0.7} fill="#B91C1C" />
-        <circle cx={size - cushion - 7} cy={CARROM_BOARD.baseline - 0.75} r={1.5} fill="none" stroke="#B91C1C" strokeWidth={0.4} />
-        <circle cx={size - cushion - 7} cy={CARROM_BOARD.baseline - 0.75} r={0.7} fill="#B91C1C" />
-
-        <line x1={cushion + 7} y1={size - CARROM_BOARD.baseline} x2={size - cushion - 7} y2={size - CARROM_BOARD.baseline} stroke={feltSkin.boardLine} strokeWidth={0.5} />
-        <line x1={cushion + 7} y1={size - CARROM_BOARD.baseline + 1.5} x2={size - cushion - 7} y2={size - CARROM_BOARD.baseline + 1.5} stroke={feltSkin.boardLine} strokeWidth={0.3} />
-        <circle cx={cushion + 7} cy={size - CARROM_BOARD.baseline + 0.75} r={1.5} fill="none" stroke="#B91C1C" strokeWidth={0.4} />
-        <circle cx={cushion + 7} cy={size - CARROM_BOARD.baseline + 0.75} r={0.7} fill="#B91C1C" />
-        <circle cx={size - cushion - 7} cy={size - CARROM_BOARD.baseline + 0.75} r={1.5} fill="none" stroke="#B91C1C" strokeWidth={0.4} />
-        <circle cx={size - cushion - 7} cy={size - CARROM_BOARD.baseline + 0.75} r={0.7} fill="#B91C1C" />
-
-        <line x1={CARROM_BOARD.baseline} y1={cushion + 7} x2={CARROM_BOARD.baseline} y2={size - cushion - 7} stroke={feltSkin.boardLine} strokeWidth={0.5} />
-        <line x1={CARROM_BOARD.baseline - 1.5} y1={cushion + 7} x2={CARROM_BOARD.baseline - 1.5} y2={size - cushion - 7} stroke={feltSkin.boardLine} strokeWidth={0.3} />
-        <line x1={size - CARROM_BOARD.baseline} y1={cushion + 7} x2={size - CARROM_BOARD.baseline} y2={size - cushion - 7} stroke={feltSkin.boardLine} strokeWidth={0.5} />
-        <line x1={size - CARROM_BOARD.baseline + 1.5} y1={cushion + 7} x2={size - CARROM_BOARD.baseline + 1.5} y2={size - cushion - 7} stroke={feltSkin.boardLine} strokeWidth={0.3} />
+        {/* ── Centre circle: plain outer ring, scalloped red inner ring ── */}
+        <circle cx={center} cy={center} r={11.6} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.7} />
+        {/* 36 overlapping bumps, not 26 separated ones. At 26 the spacing
+            (2.44) exceeded the bump diameter (1.9), so the ring read as a
+            cog with teeth instead of a scalloped border. */}
+        {Array.from({ length: 36 }, (_, i) => {
+          const a = (i / 36) * Math.PI * 2;
+          return (
+            <circle
+              key={`scallop-${i}`}
+              cx={center + 10.1 * Math.cos(a)}
+              cy={center + 10.1 * Math.sin(a)}
+              r={1.0}
+              fill="#C42B1C"
+            />
+          );
+        })}
+        <circle cx={center} cy={center} r={9.45} fill="none" stroke="#C42B1C" strokeWidth={1.6} />
+        {/* Centre spot, ruled not filled. As a solid red disc it was a second
+            red circle sitting a coin's width from the Queen, and the two were
+            easy to confuse once the opening rosette broke up. */}
+        <circle cx={center} cy={center} r={1.9} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.5} />
 
         {/* ── Pockets ── */}
         {pockets.map((p, i) => (
-          <circle key={`pocket-${i}`} cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius} fill="url(#pocketInner)" stroke={feltSkin.pocketRim} strokeWidth={0.4} />
+          <g key={`pocket-${i}`}>
+            {/* Bed wrapped around the hole. Without this the lacquer band ran
+                straight behind the pocket and it read as a black blob resting
+                on the frame rather than a hole cut into the playing surface. */}
+            <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 1.3} fill="url(#surfaceGrad)" />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={CARROM_BOARD.pocketRadius + 1.3}
+              fill={feltSkin.grain}
+              mask="url(#grainMask)"
+              opacity={0.38}
+            />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={CARROM_BOARD.pocketRadius + 1.3}
+              fill="none"
+              stroke="#00000040"
+              strokeWidth={0.4}
+            />
+            <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 0.6} fill={feltSkin.pocketRim} opacity={0.9} />
+            <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius} fill="url(#pocketInner)" />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={CARROM_BOARD.pocketRadius}
+              fill="none"
+              stroke="#000000"
+              strokeWidth={0.5}
+              opacity={0.7}
+            />
+          </g>
         ))}
 
         {/* ── Rendered Pieces ── */}
@@ -883,6 +1144,11 @@ export function CarromSvgBoard({
             const isQueen = p.kind === "queen";
             const isWhite = p.kind === "white";
             const r = isStriker ? CARROM_BOARD.strikerRadius : CARROM_BOARD.coinRadius;
+            const ringColor = isStriker
+              ? strikerSkin.core
+              : isWhite
+              ? "#00000030"
+              : "#FFFFFF2E";
 
             return (
               <g key={p.id} filter="url(#pieceShadow)">
@@ -910,16 +1176,22 @@ export function CarromSvgBoard({
                   }
                   strokeWidth={isStriker ? 0.45 : 0.35}
                 />
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r={r * 0.65}
-                  fill="none"
-                  stroke={isStriker ? strikerSkin.core : "rgba(255,255,255,0.3)"}
-                  strokeWidth={0.25}
+                {/* Turned concentric grooves — the detail that reads as a
+                    machined disc rather than a flat dot. */}
+                <circle cx={p.x} cy={p.y} r={r * 0.72} fill="none" stroke={ringColor} strokeWidth={0.3} />
+                <circle cx={p.x} cy={p.y} r={r * 0.48} fill="none" stroke={ringColor} strokeWidth={0.25} />
+                {/* Specular highlight */}
+                <ellipse
+                  cx={p.x - r * 0.3}
+                  cy={p.y - r * 0.36}
+                  rx={r * 0.32}
+                  ry={r * 0.22}
+                  fill="#FFFFFF"
+                  opacity={isWhite || isStriker ? 0.5 : 0.24}
+                  transform={`rotate(-35 ${p.x - r * 0.3} ${p.y - r * 0.36})`}
                 />
                 {isQueen && <circle cx={p.x} cy={p.y} r={r * 0.25} fill="#F59E0B" opacity={0.9} />}
-                {isStriker && <circle cx={p.x} cy={p.y} r={r * 0.3} fill={strikerSkin.core} opacity={0.9} />}
+                {isStriker && <circle cx={p.x} cy={p.y} r={r * 0.26} fill={strikerSkin.core} />}
               </g>
             );
           })}
@@ -975,6 +1247,17 @@ export function CarromSvgBoard({
             />
           </g>
         )}
+
+        {/* Lacquer sheen across the whole board, struck from the top-left. */}
+        <rect
+          x={frameOut}
+          y={frameOut}
+          width={BOARD_VIEW.span}
+          height={BOARD_VIEW.span}
+          rx={4}
+          fill="url(#boardGloss)"
+          pointerEvents="none"
+        />
       </svg>
     </div>
   );
