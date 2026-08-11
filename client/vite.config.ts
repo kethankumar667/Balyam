@@ -18,5 +18,6 @@ export default defineConfig({
     // strictPort means Vite fails loudly instead of silently moving to
     // 5174 — saves the "why did the QR-code in the terminal stop working?" hunt.
     strictPort: true,
+    allowedHosts: ["sb-7f553oi3nr9l.vercel.run"],
   },
 });
