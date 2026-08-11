@@ -1,8 +1,6 @@
 import React, { useMemo, useState } from "react";
 import type { ChessBoardProps } from "./ChessBoard";
-import {
-  ChessBoardGrid,
-} from "./chess-shared";
+import { ChessBoardGrid, legalTargetsFor } from "./chess-shared";
 import ChessSkinModal from "./ChessSkinModal";
 import type { ChessBoardTheme, ChessPieceSet } from "@shared/types";
 import { getSocket } from "../../lib/socket";
@@ -49,16 +47,37 @@ export default function ChessBoardMobile({
     return `${mins < 10 ? "0" : ""}${mins}:${secs < 10 ? "0" : ""}${secs}`;
   }
 
+  /**
+   * Recomputed only when the position or the selection changes — parsing a
+   * FEN on every render would run on every clock tick, which is twice a
+   * second.
+   */
+  const legalTargets = useMemo(
+    () => legalTargetsFor(state.fen, selectedSquare),
+    [state.fen, selectedSquare],
+  );
+
   function handleSquareClick(sq: string) {
     if (!myTurn) return;
 
     if (!selectedSquare) {
-      setSelectedSquare(sq);
+      // Only select something that has somewhere to go. Selecting an empty
+      // square or an opponent's piece used to light up the ring and show no
+      // dots, which reads as "this piece cannot move" rather than "you did
+      // not pick one of yours".
+      if (legalTargetsFor(state.fen, sq).length > 0) setSelectedSquare(sq);
       return;
     }
 
     if (selectedSquare === sq) {
       setSelectedSquare(null);
+      return;
+    }
+
+    // Clicking another of your own movable pieces re-targets rather than
+    // firing a move the server would only reject.
+    if (!legalTargets.includes(sq)) {
+      setSelectedSquare(legalTargetsFor(state.fen, sq).length > 0 ? sq : null);
       return;
     }
 
@@ -201,6 +220,7 @@ export default function ChessBoardMobile({
           lastMove={state.lastMove}
           inCheck={state.inCheck}
           selectedSquare={selectedSquare}
+          legalTargets={legalTargets}
           onSquareClick={handleSquareClick}
         />
       </div>

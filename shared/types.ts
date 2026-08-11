@@ -1832,6 +1832,12 @@ export const DEFAULT_SNAKE_OPTIONS: SnakeOptions = {
 
 export interface SnakePlayerPublic {
   id: string;
+  /**
+   * Display name. Without this the boards fell back to `id.slice(0, 4)` and
+   * rendered opaque fragments like "p_17" — in a multiplayer game you could
+   * not tell who you were playing against.
+   */
+  name: string;
   score: number;
   isAlive: boolean;
   color: string;

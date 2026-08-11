@@ -48,9 +48,14 @@ export class SnakeEngine implements GameEngine {
     this.pendingOptions = { ...DEFAULT_SNAKE_OPTIONS, ...opts };
   }
 
+  private names = new Map<string, string>();
+
   init(players: Player[]): void {
     this.opts = this.pendingOptions ?? { ...DEFAULT_SNAKE_OPTIONS };
     this.seatOrder = players.map((p) => p.id);
+    // Names are only available here, at init. The public state is built from
+    // `snakes`, which holds no identity of its own.
+    this.names = new Map(players.map((p) => [p.id, p.name]));
     this.isBot = new Set(players.filter((p) => p.isBot).map((p) => p.id));
     this.snakes.clear();
 
@@ -355,7 +360,13 @@ export class SnakeEngine implements GameEngine {
       const s = this.snakes.get(pid);
       if (s) {
         snakesObj[pid] = { body: s.body, dir: s.dir, isAlive: s.isAlive };
-        playersPub.push({ id: pid, score: s.score, isAlive: s.isAlive, color: s.color });
+        playersPub.push({
+          id: pid,
+          name: this.names.get(pid) || "Player",
+          score: s.score,
+          isAlive: s.isAlive,
+          color: s.color,
+        });
       }
     }
 

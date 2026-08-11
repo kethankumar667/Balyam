@@ -103,3 +103,28 @@ describe("SnakeEngine", () => {
     expect(state.obstacles.length).toBeGreaterThan(14);
   });
 });
+
+describe("public state carries identity", () => {
+  it("gives every player their real name, not an id fragment", () => {
+    // The boards used to render `p.id.slice(0, 4)`, so opponents appeared as
+    // strings like "p_17". `snakes` holds no identity, so the name has to be
+    // captured at init and re-attached here.
+    const e = new SnakeEngine();
+    e.init([
+      { id: "p0", name: "Kethan", isHost: true, isReady: true, isConnected: true },
+      { id: "p1", name: "Ravi", isHost: false, isReady: true, isConnected: true },
+    ] as never);
+
+    const names = e.getPublicState().players.map((p) => p.name);
+    expect(names).toEqual(["Kethan", "Ravi"]);
+  });
+
+  it("falls back to a readable label rather than undefined", () => {
+    const e = new SnakeEngine();
+    e.init([
+      { id: "p0", name: "", isHost: true, isReady: true, isConnected: true },
+    ] as never);
+    const name = e.getPublicState().players[0].name;
+    expect(name.length).toBeGreaterThan(0);
+  });
+});

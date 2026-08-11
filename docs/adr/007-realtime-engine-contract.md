@@ -91,11 +91,21 @@ prediction is a client concern layered over the same broadcasts.
 - Broadcast volume rises with tick rate. Vyoma Yudh runs at 20 Hz, Carrom at
   60 Hz during resolution only. At Phase E scale this becomes a real cost and
   will want delta-encoding or interest management — noted, not built.
-- The three legacy client-ticked games (**snake, bounce, roadrash**) are
-  **not yet migrated**. They still accept a client `tick` and still carry the
-  vulnerability. Migrating them is mechanical — declare `tickRateHz`, rename
-  their private `tick`, delete the client interval — and should be done before
-  Phase B closes.
+- **Snake is migrated** (2026-08-10). It declares `tickRateHz = 20` and banks
+  elapsed loop time in `stepAccumulatorMs`, taking one logical step per
+  `speedMs`, so pace stays tied to the game's own speed rather than the loop
+  rate. It still accepts a client `tick` as a deliberate no-op, so a stale
+  cached bundle degrades instead of erroring.
+
+  That migration also revealed a second defect the anti-cheat framing above
+  missed: with every client emitting `tick`, N players advanced the shared
+  world N times per step. The game literally ran faster the more people
+  watched it.
+
+- **Bounce and roadrash are NOT migrated** and still carry the vulnerability.
+  Deferred deliberately: both are incomplete games, so migrating them now
+  would be reworked as soon as they are finished. Do it as part of completing
+  them, using Snake as the template.
 
 ## Validation
 

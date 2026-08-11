@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from "react";
+// Re-exported so the board and its shells keep one import site.
+export { legalTargetsFor } from "./chessMoves";
 import type {
   ChessBoardTheme,
   ChessMoveRecord,
