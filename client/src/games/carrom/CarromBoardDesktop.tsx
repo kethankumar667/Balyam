@@ -11,6 +11,7 @@ import {
   CarromActivityLog,
   CarromRulesList,
   useCarromFeed,
+  pointerToBoard,
   type AimData,
 } from "./carrom-shared";
 import CarromSkinModal from "./CarromSkinModal";
@@ -50,11 +51,7 @@ export default function CarromBoardDesktop({
   function toBoard(e: React.PointerEvent<SVGSVGElement>): { x: number; y: number } | null {
     const svg = svgRef.current;
     if (!svg) return null;
-    const r = svg.getBoundingClientRect();
-    return {
-      x: ((e.clientX - r.left) / r.width) * CARROM_BOARD.size,
-      y: ((e.clientY - r.top) / r.height) * CARROM_BOARD.size,
-    };
+    return pointerToBoard(svg.getBoundingClientRect(), e.clientX, e.clientY);
   }
 
   const aim: AimData | null = useMemo(() => {
