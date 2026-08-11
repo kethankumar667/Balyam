@@ -1,6 +1,27 @@
-import type { TeluguCinemaluQuestion } from "@shared/types.js";
+/**
+ * ARCHIVE — the pre-rebuild question bank.
+ *
+ * This was the flat five-industry quiz (Tollywood / Bollywood / Hollywood /
+ * Kollywood / Sandalwood, 30 each) that the game used before the four-round
+ * format. Nothing imports it; it is kept because the 30 Tollywood entries are
+ * usable source material when expanding `sets.ts` from two sets to ten, and
+ * because the Telugu-script dialogues here were worth writing once.
+ *
+ * It carries its own local type so it stays compilable without being tied to
+ * the live schema.
+ */
+interface LegacyCinemaQuestion {
+  id: string;
+  movieTitle: string;
+  dialogue: string;
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  trivia: string;
+  category?: string;
+}
 
-export const TELUGUCINEMALU_QUESTIONS: TeluguCinemaluQuestion[] = [
+export const LEGACY_TELUGUCINEMALU_QUESTIONS: LegacyCinemaQuestion[] = [
   // ==================== TOLLYWUD (30 Questions) ====================
   {
     id: "tq_t1",

@@ -1,18 +1,42 @@
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import type {
-  CinemaCategory,
   Player,
+  TcDifficulty,
+  TcRole,
+  TcRoundKind,
   TeluguCinemaluOptions,
+  TeluguCinemaluPersonCard,
+  TeluguCinemaluPersonality,
   TeluguCinemaluPhase,
   TeluguCinemaluPlayerPublic,
   TeluguCinemaluPlayerState,
   TeluguCinemaluPublicState,
   TeluguCinemaluQuestion,
+  TeluguCinemaluRoundResult,
+  TeluguCinemaluSet,
   TeluguCinemaluStanding,
 } from "@shared/types.js";
-import { DEFAULT_TELUGUCINEMALU_OPTIONS } from "@shared/types.js";
-import { TELUGUCINEMALU_QUESTIONS } from "./questions.js";
+import {
+  DEFAULT_TELUGUCINEMALU_OPTIONS,
+  TC_DIFFICULTY_POINTS,
+  TC_ROUND_PLAN,
+  TC_TOTAL_QUESTIONS,
+} from "@shared/types.js";
+import { TELUGUCINEMALU_PERSONALITIES } from "./personalities.js";
+import { TELUGUCINEMALU_SETS } from "./sets.js";
 
+/**
+ * Four-round Telugu cinema quiz.
+ *
+ *   roleSelection   pick Hero / Heroine / Director / Music Director
+ *   personSelection pick one of the shuffled name cards for that role
+ *   playing         answer the current question
+ *   questionSummary reveal the answer, the points and any trivia
+ *   roundSummary    round tally, then on to the next round
+ *
+ * Rounds 2-4 are drawn from a single randomly chosen set so that questions
+ * within one game never give each other away.
+ */
 export class TeluguCinemaluEngine implements GameEngine {
   readonly kind = "telugucinemalu" as const;
   readonly minPlayers = 1;
@@ -23,21 +47,27 @@ export class TeluguCinemaluEngine implements GameEngine {
 
   private seatOrder: string[] = [];
   private isBot = new Set<string>();
-  private nameOf = new Map<string, string>();
 
-  private phase: TeluguCinemaluPhase = "categorySelection";
-  private selectedCategory: CinemaCategory | null = null;
-  private round = 1;
+  private phase: TeluguCinemaluPhase = "roleSelection";
+  private selectedRole: TcRole | null = null;
+  private personChoices: TeluguCinemaluPersonality[] = [];
+  private selectedPerson: TeluguCinemaluPersonality | null = null;
 
-  private questionPool: TeluguCinemaluQuestion[] = [];
-  private currentQuestion: TeluguCinemaluQuestion | null = null;
-  private roundStartTs = 0;
+  /** Flattened plan: one entry per question, in play order. */
+  private plan: { round: number; kind: TcRoundKind; question: TeluguCinemaluQuestion }[] = [];
+  private cursor = 0;
 
   private selectedIndices = new Map<string, number>();
-  private answerTimes = new Map<string, number>();
+  private lastAwarded = new Map<string, number>();
   private scores = new Map<string, number>();
-  private roundWins = new Map<string, number>();
-  private roundScores = new Map<string, number>();
+  private correctCounts = new Map<string, number>();
+  private streaks = new Map<string, number>();
+  private roundResults: TeluguCinemaluRoundResult[] = [];
+  /** Accumulators for the round in progress, folded into `roundResults` when
+   *  the round's last question is dismissed. Solo game, so one seat's tally
+   *  is the round's tally. */
+  private roundCorrect = 0;
+  private roundPoints = 0;
 
   private deadline: number | null = null;
   private isOverFlag = false;
@@ -61,138 +91,235 @@ export class TeluguCinemaluEngine implements GameEngine {
     this.opts = this.pendingOptions ?? { ...DEFAULT_TELUGUCINEMALU_OPTIONS };
     this.seatOrder = players.map((p) => p.id);
     this.isBot = new Set(players.filter((p) => p.isBot).map((p) => p.id));
-    this.nameOf = new Map(players.map((p) => [p.id, p.name]));
 
     for (const id of this.seatOrder) {
       this.scores.set(id, 0);
-      this.roundWins.set(id, 0);
+      this.correctCounts.set(id, 0);
+      this.streaks.set(id, 0);
     }
-    this.round = 1;
+
+    this.phase = "roleSelection";
+    this.selectedRole = null;
+    this.personChoices = [];
+    this.selectedPerson = null;
+    this.plan = [];
+    this.cursor = 0;
+    this.roundResults = [];
+    this.selectedIndices.clear();
+    this.lastAwarded.clear();
     this.isOverFlag = false;
     this.winnerId = null;
     this.standings = null;
-    this.selectedCategory = null;
-    this.phase = "categorySelection";
-    this.currentQuestion = null;
+    this.deadline = null;
   }
 
-  private startRound(): void {
-    this.phase = "playing";
-    this.selectedIndices.clear();
-    this.answerTimes.clear();
-    this.roundScores.clear();
-
-    if (this.questionPool.length > 0) {
-      this.currentQuestion = this.questionPool[(this.round - 1) % this.questionPool.length];
-    } else {
-      this.currentQuestion = null;
+  private shuffle<T>(items: readonly T[]): T[] {
+    const out = [...items];
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(this.rng() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
     }
-    this.roundStartTs = Date.now();
-    this.deadline = null;
+    return out;
+  }
+
+  /**
+   * Draws one question per difficulty slot in `mix`, never repeating a question
+   * within the round. If a pool is short of a given difficulty the slot falls
+   * back to any unused question, so a thin pool degrades to a shorter ladder
+   * rather than throwing mid-game.
+   */
+  private pickByMix(
+    pool: readonly TeluguCinemaluQuestion[],
+    mix: readonly TcDifficulty[]
+  ): TeluguCinemaluQuestion[] {
+    const remaining = this.shuffle(pool);
+    const used = new Set<string>();
+    const picked: TeluguCinemaluQuestion[] = [];
+
+    for (const want of mix) {
+      let q = remaining.find((c) => !used.has(c.id) && c.difficulty === want);
+      if (!q) q = remaining.find((c) => !used.has(c.id));
+      if (!q) break;
+      used.add(q.id);
+      picked.push(q);
+    }
+    return picked;
+  }
+
+  private buildPlan(person: TeluguCinemaluPersonality, set: TeluguCinemaluSet): void {
+    const byKind: Record<TcRoundKind, readonly TeluguCinemaluQuestion[]> = {
+      personality: person.questions,
+      narration: set.narration,
+      dialogue: set.dialogue,
+      combination: set.combination,
+    };
+
+    this.plan = [];
+    TC_ROUND_PLAN.forEach((spec, i) => {
+      for (const q of this.pickByMix(byKind[spec.kind], spec.mix)) {
+        this.plan.push({ round: i + 1, kind: spec.kind, question: q });
+      }
+    });
+    this.cursor = 0;
+  }
+
+  private current(): { round: number; kind: TcRoundKind; question: TeluguCinemaluQuestion } | null {
+    return this.plan[this.cursor] ?? null;
   }
 
   applyMove(move: MoveContext): MoveResult {
     const pid = move.playerId;
-    if (!this.seatOrder.includes(pid)) {
-      return { ok: false, error: "Not a player in this game" };
-    }
-    if (this.isOverFlag) {
-      return { ok: false, error: "Game is over" };
-    }
+    if (!this.seatOrder.includes(pid)) return { ok: false, error: "Not a player in this game" };
+    if (this.isOverFlag) return { ok: false, error: "Game is over" };
 
     switch (move.type) {
-      case "selectCategory":
-        return this.handleSelectCategory(
-          (move.data as { category?: CinemaCategory; questionCount?: number })?.category,
-          (move.data as { category?: CinemaCategory; questionCount?: number })?.questionCount
-        );
+      case "selectRole":
+        return this.handleSelectRole((move.data as { role?: TcRole })?.role);
+      case "selectPerson":
+        return this.handleSelectPerson((move.data as { personId?: string })?.personId);
       case "submitAnswer":
         return this.handleSubmitAnswer(pid, (move.data as { optionIndex?: number })?.optionIndex);
-      case "nextRound":
-        if (this.phase !== "roundSummary") return { ok: false, error: "Not in summary phase" };
-        this.advanceAfterSummary();
-        return this.result();
+      case "next":
+        return this.handleNext();
       default:
         return { ok: false, error: `Unknown move: ${move.type}` };
     }
   }
 
-  private handleSelectCategory(category?: CinemaCategory, questionCount?: number): MoveResult {
-    if (this.phase !== "categorySelection") return { ok: false, error: "Not in category selection phase" };
-    if (!category) return { ok: false, error: "Category is required" };
+  private handleSelectRole(role?: TcRole): MoveResult {
+    if (this.phase !== "roleSelection") return { ok: false, error: "Not in role selection" };
+    if (!role) return { ok: false, error: "Role is required" };
 
-    this.selectedCategory = category;
-    let filtered = TELUGUCINEMALU_QUESTIONS;
-    if (category !== "All") {
-      filtered = TELUGUCINEMALU_QUESTIONS.filter((q) => q.category === category);
-    }
-    if (filtered.length === 0) {
-      filtered = TELUGUCINEMALU_QUESTIONS;
-    }
+    const forRole = TELUGUCINEMALU_PERSONALITIES.filter((p) => p.role === role);
+    if (forRole.length === 0) return { ok: false, error: `No personalities for role ${role}` };
 
-    const shuffled = [...filtered].sort(() => this.rng() - 0.5);
-    const count = Math.min(Math.max(questionCount ?? 10, 1), 30);
-    this.opts.totalRounds = Math.min(count, shuffled.length);
-    this.questionPool = shuffled.slice(0, this.opts.totalRounds);
+    this.selectedRole = role;
+    this.personChoices = this.shuffle(forRole).slice(
+      0,
+      Math.max(1, Math.min(this.opts.personChoiceCount, forRole.length))
+    );
+    this.phase = "personSelection";
+    this.deadline = null;
+    return this.result();
+  }
 
-    this.round = 1;
-    this.startRound();
+  private handleSelectPerson(personId?: string): MoveResult {
+    if (this.phase !== "personSelection") return { ok: false, error: "Not in person selection" };
+    const person = this.personChoices.find((p) => p.id === personId);
+    if (!person) return { ok: false, error: "That person was not offered" };
+
+    const set = this.shuffle(TELUGUCINEMALU_SETS)[0];
+    if (!set) return { ok: false, error: "No question sets available" };
+
+    this.selectedPerson = person;
+    this.buildPlan(person, set);
+    if (this.plan.length === 0) return { ok: false, error: "Could not build a question plan" };
+
+    this.phase = "playing";
+    this.selectedIndices.clear();
+    this.lastAwarded.clear();
+    this.deadline = null;
     return this.result();
   }
 
   private handleSubmitAnswer(pid: string, optionIndex?: number): MoveResult {
     if (this.phase !== "playing") return { ok: false, error: "Not in playing phase" };
-    if (optionIndex == null || optionIndex < 0 || optionIndex > 3) {
+    const entry = this.current();
+    if (!entry) return { ok: false, error: "No current question" };
+    if (optionIndex == null || optionIndex < 0 || optionIndex >= entry.question.options.length) {
       return { ok: false, error: "Invalid option index" };
     }
-    if (this.selectedIndices.has(pid)) {
-      return { ok: false, error: "Already submitted answer" };
-    }
+    if (this.selectedIndices.has(pid)) return { ok: false, error: "Already answered" };
 
     this.selectedIndices.set(pid, optionIndex);
-    this.answerTimes.set(pid, Date.now() - this.roundStartTs);
-
-    if (this.selectedIndices.size === this.seatOrder.length) {
-      this.evaluateRound();
-    }
+    if (this.selectedIndices.size >= this.seatOrder.length) this.revealQuestion();
     return this.result();
   }
 
-  private evaluateRound(): void {
-    if (!this.currentQuestion) return;
-
-    const correct = this.currentQuestion.correctIndex;
-    let maxPts = -999;
-    let roundWinnerId: string | null = null;
+  /** Scores the current question and moves to the reveal. */
+  private revealQuestion(): void {
+    const entry = this.current();
+    if (!entry) return;
 
     for (const pid of this.seatOrder) {
       const chosen = this.selectedIndices.get(pid);
-      // Correct = +5, Wrong / No Answer = -2
-      const pts = chosen === correct ? 5 : -2;
-      this.roundScores.set(pid, pts);
-      this.scores.set(pid, (this.scores.get(pid) ?? 0) + pts);
+      const right = chosen === entry.question.correctIndex;
+      // A miss scores zero rather than going negative: the difficulty ladder
+      // already separates players, and negative marking on a 150-point extreme
+      // question would swing a whole round on one guess.
+      const pts = right ? TC_DIFFICULTY_POINTS[entry.question.difficulty] : 0;
 
-      if (pts > maxPts) {
-        maxPts = pts;
-        roundWinnerId = pid;
+      this.lastAwarded.set(pid, pts);
+      this.scores.set(pid, (this.scores.get(pid) ?? 0) + pts);
+      if (right) {
+        this.correctCounts.set(pid, (this.correctCounts.get(pid) ?? 0) + 1);
+        this.streaks.set(pid, (this.streaks.get(pid) ?? 0) + 1);
+      } else {
+        this.streaks.set(pid, 0);
+      }
+
+      if (pid === this.seatOrder[0]) {
+        if (right) this.roundCorrect += 1;
+        this.roundPoints += pts;
       }
     }
 
-    if (roundWinnerId && maxPts > 0) {
-      this.roundWins.set(roundWinnerId, (this.roundWins.get(roundWinnerId) ?? 0) + 1);
-    }
-
-    this.phase = "roundSummary";
+    this.phase = "questionSummary";
     this.deadline = null;
   }
 
-  private advanceAfterSummary(): void {
-    if (this.round >= this.opts.totalRounds) {
-      this.finalizeGame();
-    } else {
-      this.round += 1;
-      this.startRound();
+  private handleNext(): MoveResult {
+    if (this.phase === "questionSummary") {
+      // Both of these must be read BEFORE the cursor moves: afterwards
+      // `plan[cursor]` is the next round's first question, so the tally would
+      // be filed against the wrong round.
+      const finished = this.plan[this.cursor];
+      const wasLastOfRound = this.isLastQuestionOfRound();
+
+      this.cursor += 1;
+      this.selectedIndices.clear();
+
+      if (wasLastOfRound && finished) this.recordRound(finished.round, finished.kind);
+
+      if (this.cursor >= this.plan.length) {
+        this.finalizeGame();
+      } else if (wasLastOfRound) {
+        this.phase = "roundSummary";
+      } else {
+        this.phase = "playing";
+      }
+      this.deadline = null;
+      return this.result();
     }
+
+    if (this.phase === "roundSummary") {
+      this.phase = "playing";
+      this.lastAwarded.clear();
+      this.deadline = null;
+      return this.result();
+    }
+
+    return { ok: false, error: "Nothing to advance" };
+  }
+
+  private isLastQuestionOfRound(): boolean {
+    const here = this.plan[this.cursor];
+    const next = this.plan[this.cursor + 1];
+    if (!here) return false;
+    return !next || next.round !== here.round;
+  }
+
+  /** Files the tally for a completed round and resets the accumulators. */
+  private recordRound(round: number, kind: TcRoundKind): void {
+    if (this.roundResults.some((r) => r.kind === kind)) return;
+    this.roundResults.push({
+      kind,
+      correct: this.roundCorrect,
+      asked: this.plan.filter((p) => p.round === round).length,
+      points: this.roundPoints,
+    });
+    this.roundCorrect = 0;
+    this.roundPoints = 0;
   }
 
   private finalizeGame(): void {
@@ -207,14 +334,11 @@ export class TeluguCinemaluEngine implements GameEngine {
     const rows = this.seatOrder.map((pid) => ({
       playerId: pid,
       score: this.scores.get(pid) ?? 0,
-      roundWins: this.roundWins.get(pid) ?? 0,
+      correctCount: this.correctCounts.get(pid) ?? 0,
     }));
-
-    rows.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return b.roundWins - a.roundWins;
-    });
-
+    rows.sort((a, b) =>
+      b.score !== a.score ? b.score - a.score : b.correctCount - a.correctCount
+    );
     const medals: ("gold" | "silver" | "bronze")[] = ["gold", "silver", "bronze"];
     return rows.map((r, i) => ({ ...r, rank: i, medal: medals[i] ?? null }));
   }
@@ -228,47 +352,68 @@ export class TeluguCinemaluEngine implements GameEngine {
       id: pid,
       hasAnswered: this.selectedIndices.has(pid),
       score: this.scores.get(pid) ?? 0,
-      roundWins: this.roundWins.get(pid) ?? 0,
+      correctCount: this.correctCounts.get(pid) ?? 0,
+      streak: this.streaks.get(pid) ?? 0,
     }));
   }
 
+  private personCards(): TeluguCinemaluPersonCard[] {
+    return this.personChoices.map((p) => ({ id: p.id, name: p.name, knownFor: p.knownFor }));
+  }
+
   getPublicState(): TeluguCinemaluPublicState {
-    const selectedIndicesObj: Record<string, number> = {};
-    const roundScoresObj: Record<string, number> = {};
+    const entry = this.current();
+    const revealed = this.phase === "questionSummary" || this.phase === "roundSummary" || this.phase === "finished";
 
-    if (this.phase === "roundSummary" || this.phase === "finished") {
-      for (const pid of this.seatOrder) {
-        if (this.selectedIndices.has(pid)) selectedIndicesObj[pid] = this.selectedIndices.get(pid)!;
-        if (this.roundScores.has(pid)) roundScoresObj[pid] = this.roundScores.get(pid)!;
-      }
-    }
+    const inRound = entry ? this.plan.filter((p) => p.round === entry.round) : [];
+    const positionInRound = entry ? inRound.findIndex((p) => p.question.id === entry.question.id) + 1 : 0;
 
-    const questionPub = this.currentQuestion
+    // The answer is withheld until the reveal. Shipping the whole plan up
+    // front would put every correct index in the client bundle's memory.
+    const questionPub = entry
       ? {
-          id: this.currentQuestion.id,
-          movieTitle: this.currentQuestion.movieTitle,
-          dialogue: this.currentQuestion.dialogue,
-          prompt: this.currentQuestion.prompt,
-          options: this.currentQuestion.options,
-          trivia: this.currentQuestion.trivia,
-          category: this.currentQuestion.category,
+          id: entry.question.id,
+          difficulty: entry.question.difficulty,
+          prompt: entry.question.prompt,
+          body: entry.question.body,
+          options: entry.question.options,
+          trivia: revealed ? entry.question.trivia : undefined,
         }
       : null;
+
+    const selectedObj: Record<string, number> = {};
+    const awardedObj: Record<string, number> = {};
+    if (revealed) {
+      for (const pid of this.seatOrder) {
+        const s = this.selectedIndices.get(pid);
+        if (s != null) selectedObj[pid] = s;
+        const a = this.lastAwarded.get(pid);
+        if (a != null) awardedObj[pid] = a;
+      }
+    }
 
     return {
       kind: "telugucinemalu",
       phase: this.phase,
-      round: this.round,
-      totalRounds: this.opts.totalRounds,
+      round: entry?.round ?? (this.isOverFlag ? TC_ROUND_PLAN.length : 1),
+      roundKind: entry?.kind ?? TC_ROUND_PLAN[0].kind,
+      totalRounds: TC_ROUND_PLAN.length,
+      questionInRound: positionInRound,
+      questionsInRound: inRound.length,
+      questionsAnswered: this.cursor,
+      totalQuestions: TC_TOTAL_QUESTIONS,
       questionSeconds: this.opts.questionSeconds,
       deadline: this.deadline,
-      selectedCategory: this.selectedCategory,
+      selectedRole: this.selectedRole,
+      selectedPersonName: this.selectedPerson?.name ?? null,
+      personChoices: this.phase === "personSelection" ? this.personCards() : null,
       currentQuestion: questionPub,
       seatOrder: [...this.seatOrder],
       players: this.publicPlayers(),
-      selectedIndices: this.phase === "roundSummary" || this.phase === "finished" ? selectedIndicesObj : null,
-      correctIndex: this.phase === "roundSummary" || this.phase === "finished" ? (this.currentQuestion?.correctIndex ?? null) : null,
-      roundScores: this.phase === "roundSummary" || this.phase === "finished" ? roundScoresObj : null,
+      selectedIndices: revealed ? selectedObj : null,
+      correctIndex: revealed ? entry?.question.correctIndex ?? null : null,
+      lastAwarded: revealed ? awardedObj : null,
+      roundResults: [...this.roundResults],
       standings: this.standings,
       isOver: this.isOverFlag,
       winnerId: this.winnerId,
@@ -276,11 +421,7 @@ export class TeluguCinemaluEngine implements GameEngine {
   }
 
   getStateFor(playerId: string): TeluguCinemaluPlayerState {
-    const pub = this.getPublicState();
-    return {
-      ...pub,
-      mySelectedIndex: this.selectedIndices.get(playerId) ?? null,
-    };
+    return { ...this.getPublicState(), mySelectedIndex: this.selectedIndices.get(playerId) ?? null };
   }
 
   isOver(): boolean {
@@ -292,11 +433,8 @@ export class TeluguCinemaluEngine implements GameEngine {
     this.seatOrder = this.seatOrder.filter((id) => id !== playerId);
     this.isBot.delete(playerId);
     this.selectedIndices.delete(playerId);
-
-    if (this.seatOrder.length < this.minPlayers) {
-      if (!this.isOverFlag && this.seatOrder.length > 0) {
-        this.finalizeGame();
-      }
+    if (this.seatOrder.length < this.minPlayers && !this.isOverFlag) {
+      this.finalizeGame();
     }
   }
 
@@ -304,9 +442,13 @@ export class TeluguCinemaluEngine implements GameEngine {
     switch (this.phase) {
       case "playing":
         return this.opts.questionSeconds;
+      case "questionSummary":
+        return 6;
       case "roundSummary":
-        return 7;
+        return 8;
       default:
+        // Role and person selection are deliberately untimed — the player is
+        // choosing what the whole first round will be about.
         return 0;
     }
   }
@@ -322,9 +464,9 @@ export class TeluguCinemaluEngine implements GameEngine {
 
   resolveDeadline(): void {
     if (this.phase === "playing") {
-      this.evaluateRound();
-    } else if (this.phase === "roundSummary") {
-      this.advanceAfterSummary();
+      this.revealQuestion();
+    } else if (this.phase === "questionSummary" || this.phase === "roundSummary") {
+      this.handleNext();
     }
   }
 
@@ -336,15 +478,17 @@ export class TeluguCinemaluEngine implements GameEngine {
   }
 
   applyAutoMove(playerId: string): MoveResult {
-    if (this.phase === "categorySelection") {
-      return this.handleSelectCategory("Tollywood", 10);
+    if (this.phase === "roleSelection") return this.handleSelectRole("hero");
+    if (this.phase === "personSelection") {
+      return this.handleSelectPerson(this.personChoices[0]?.id);
     }
-    if (this.phase === "playing" && this.currentQuestion) {
-      // Bots pick correct option 85% of the time, else random
-      const isCorrect = this.rng() < 0.85;
-      const choice = isCorrect
-        ? this.currentQuestion.correctIndex
-        : Math.floor(this.rng() * 4);
+    if (this.phase === "playing") {
+      const entry = this.current();
+      if (!entry) return { ok: false, error: "Nothing to auto-play" };
+      const right = this.rng() < 0.7;
+      const choice = right
+        ? entry.question.correctIndex
+        : Math.floor(this.rng() * entry.question.options.length);
       return this.handleSubmitAnswer(playerId, choice);
     }
     return { ok: false, error: "Nothing to auto-play" };

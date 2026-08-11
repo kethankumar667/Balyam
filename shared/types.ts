@@ -1748,60 +1748,161 @@ export interface SamethaluPlayerState extends SamethaluPublicState {
   mySelectedIndex: number | null;
 }
 
-export type CinemaCategory = "Tollywood" | "Kollywood" | "Sandalwood" | "Bollywood" | "Hollywood" | "All";
-
 export interface TeluguCinemaluOptions {
+  /** Fixed at 4 by TC_ROUND_PLAN; kept so the lobby options shape is stable. */
   totalRounds: number;
   questionSeconds: number;
+  /** How many name cards to offer in `personSelection` (the brief said 6-10). */
+  personChoiceCount: number;
 }
 
 export const DEFAULT_TELUGUCINEMALU_OPTIONS: TeluguCinemaluOptions = {
-  totalRounds: 5,
+  totalRounds: 4,
   questionSeconds: 20,
+  personChoiceCount: 8,
 };
 
-export type TeluguCinemaluPhase = "categorySelection" | "playing" | "roundSummary" | "finished";
+/* ── Telugu Cinema Quiz: four-round format ──────────────────────────────
+ * R1 Personality — pick a role, pick a person, answer about them
+ * R2 Narration   — a plot summary, name the film
+ * R3 Dialogue    — name the film/actor, or complete the line
+ * R4 Combination — cast/crew triples, name the missing piece
+ */
+export type TcRole = "hero" | "heroine" | "director" | "musicDirector";
+export type TcDifficulty = "easy" | "moderate" | "hard" | "extreme";
+export type TcRoundKind = "personality" | "narration" | "dialogue" | "combination";
+
+/** Harder questions pay more. The brief said "50 points" for round one, which
+ *  is kept as the easy-tier value; flat scoring is a one-line change here. */
+export const TC_DIFFICULTY_POINTS: Record<TcDifficulty, number> = {
+  easy: 50,
+  moderate: 75,
+  hard: 100,
+  extreme: 150,
+};
+
+export const TC_ROLE_LABELS: Record<TcRole, string> = {
+  hero: "Hero",
+  heroine: "Heroine",
+  director: "Director",
+  musicDirector: "Music Director",
+};
+
+/** The exact difficulty ladder each round is built from; the array length is
+ *  the round's question count. Round 4 was specified as "8 questions
+ *  (2 easy, 1 moderate, 1 hard, 1 extreme)" — five slots for eight questions.
+ *  The three unassigned ones are placed as 1 easy, 1 moderate, 1 hard, which
+ *  keeps the round's centre of gravity where the other three sit. */
+export const TC_ROUND_PLAN: readonly { kind: TcRoundKind; mix: readonly TcDifficulty[] }[] = [
+  { kind: "personality", mix: ["easy", "easy", "moderate", "hard", "extreme"] },
+  { kind: "narration", mix: ["easy", "easy", "moderate", "hard", "extreme"] },
+  { kind: "dialogue", mix: ["easy", "easy", "moderate", "hard", "extreme"] },
+  {
+    kind: "combination",
+    mix: ["easy", "easy", "easy", "moderate", "moderate", "hard", "hard", "extreme"],
+  },
+] as const;
+
+export const TC_TOTAL_QUESTIONS = TC_ROUND_PLAN.reduce((n, r) => n + r.mix.length, 0); // 23
 
 export interface TeluguCinemaluQuestion {
   id: string;
-  movieTitle: string;
-  dialogue: string;
+  difficulty: TcDifficulty;
+  /** Question text, e.g. "Which film features this dialogue?" */
   prompt: string;
+  /** Optional block shown above the prompt — the dialogue or plot summary. */
+  body?: string;
   options: string[];
   correctIndex: number;
-  trivia: string;
-  category?: CinemaCategory;
+  trivia?: string;
 }
+
+/** A Round-1 subject with its own question pool. */
+export interface TeluguCinemaluPersonality {
+  id: string;
+  role: TcRole;
+  name: string;
+  /** Subtitle on the selection card. */
+  knownFor: string;
+  questions: TeluguCinemaluQuestion[];
+}
+
+/** One playable set of rounds 2-4. */
+export interface TeluguCinemaluSet {
+  id: string;
+  narration: TeluguCinemaluQuestion[];
+  dialogue: TeluguCinemaluQuestion[];
+  combination: TeluguCinemaluQuestion[];
+}
+
+/** A person card offered during `personSelection`. */
+export interface TeluguCinemaluPersonCard {
+  id: string;
+  name: string;
+  knownFor: string;
+}
+
+export type TeluguCinemaluPhase =
+  | "roleSelection"
+  | "personSelection"
+  | "playing"
+  | "questionSummary"
+  | "roundSummary"
+  | "finished";
 
 export interface TeluguCinemaluPlayerPublic {
   id: string;
   hasAnswered: boolean;
   score: number;
-  roundWins: number;
+  correctCount: number;
+  /** Consecutive correct answers, reset by a miss. */
+  streak: number;
 }
 
 export interface TeluguCinemaluStanding {
   playerId: string;
   rank: number;
   score: number;
-  roundWins: number;
+  correctCount: number;
   medal: "gold" | "silver" | "bronze" | null;
+}
+
+/** Per-round tally shown on the round card and the final scorecard. */
+export interface TeluguCinemaluRoundResult {
+  kind: TcRoundKind;
+  correct: number;
+  asked: number;
+  points: number;
 }
 
 export interface TeluguCinemaluPublicState {
   kind: "telugucinemalu";
   phase: TeluguCinemaluPhase;
+  /** 1-based index into TC_ROUND_PLAN. */
   round: number;
+  roundKind: TcRoundKind;
   totalRounds: number;
+  /** 1-based position within the current round. */
+  questionInRound: number;
+  questionsInRound: number;
+  questionsAnswered: number;
+  totalQuestions: number;
   questionSeconds: number;
   deadline: number | null;
-  selectedCategory: CinemaCategory | null;
+  selectedRole: TcRole | null;
+  selectedPersonName: string | null;
+  /** Only populated during `personSelection`. */
+  personChoices: TeluguCinemaluPersonCard[] | null;
+  /** The answer is stripped until the reveal — see `correctIndex` below. */
   currentQuestion: Omit<TeluguCinemaluQuestion, "correctIndex"> | null;
   seatOrder: string[];
   players: TeluguCinemaluPlayerPublic[];
   selectedIndices: Record<string, number> | null;
+  /** Non-null only from `questionSummary` onward. */
   correctIndex: number | null;
-  roundScores: Record<string, number> | null;
+  /** Points awarded for the question just revealed. */
+  lastAwarded: Record<string, number> | null;
+  roundResults: TeluguCinemaluRoundResult[];
   standings: TeluguCinemaluStanding[] | null;
   isOver: boolean;
   winnerId: string | null;
