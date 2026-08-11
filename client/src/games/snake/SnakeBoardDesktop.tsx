@@ -41,7 +41,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
     }
   }, [myScore, bestScore]);
 
-  // Keyboard controls
+  // Keyboard controls & Pause shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       let dir: string | null = null;
@@ -49,10 +49,15 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
       else if (["ArrowDown", "s", "S", "2"].includes(e.key)) dir = "DOWN";
       else if (["ArrowLeft", "a", "A", "4"].includes(e.key)) dir = "LEFT";
       else if (["ArrowRight", "d", "D", "6"].includes(e.key)) dir = "RIGHT";
+
       if (dir) {
         e.preventDefault();
         onMove("turn", { dir });
         haptics.turn();
+      } else if (["p", "P", "Escape", " "].includes(e.key)) {
+        e.preventDefault();
+        onMove("togglePause");
+        haptics.subtle();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -175,16 +180,18 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
             {/* Action Buttons */}
             <div className="space-y-2 pt-2">
               <button
-                onClick={() => setShowRules(true)}
-                className={`w-full rounded-2xl py-3 text-xs uppercase tracking-wider transition ${chrome.btnPrimary}`}
+                onClick={() => onMove("togglePause")}
+                className={`w-full rounded-2xl py-3 text-xs font-black uppercase tracking-wider transition ${
+                  state.isPaused ? chrome.btnPrimary : chrome.btnSecondary
+                }`}
               >
-                ▶ How to Play
+                {state.isPaused ? "▶ Resume Game" : "⏸ Pause Game"}
               </button>
               <button
-                onClick={() => setShowControls((v) => !v)}
+                onClick={() => setShowRules(true)}
                 className={`w-full rounded-2xl py-2.5 text-xs font-extrabold uppercase tracking-wider transition ${chrome.btnSecondary}`}
               >
-                ⌨ Controls
+                ▶ How to Play
               </button>
             </div>
           </aside>
@@ -211,6 +218,19 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
               {/* Grid Canvas */}
               <div className={`relative overflow-hidden rounded-2xl border ${chrome.screenBorder}`}>
                 <SnakeCanvas state={state} selfId={selfId} theme={activeTheme} onEat={onEat} onDeath={onDeath} />
+                {state.isPaused && (
+                  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md p-4 text-center">
+                    <div className="text-5xl animate-bounce">⏸️</div>
+                    <h2 className="mt-3 text-2xl font-black uppercase tracking-wider text-amber-400">Game Paused</h2>
+                    <p className="mt-1 text-xs text-white/70">Press P, Space, Esc, or click Resume to continue</p>
+                    <button
+                      onClick={() => onMove("resume")}
+                      className="mt-5 rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 px-7 py-3 text-xs font-black uppercase text-black shadow-lg transition hover:brightness-110 active:scale-95"
+                    >
+                      ▶ Resume Game
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
