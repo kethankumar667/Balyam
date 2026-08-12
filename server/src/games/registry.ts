@@ -18,7 +18,6 @@ import { SnakeEngine } from "./snake/SnakeEngine.js";
 import { VyomaYudhEngine } from "./vyomayudh/VyomaYudhEngine.js";
 import { CarromEngine } from "./carrom/CarromEngine.js";
 import { BounceEngine } from "./bounce/BounceEngine.js";
-import { RoadRashEngine } from "./roadrash/RoadRashEngine.js";
 import { ChessEngine } from "./chess/ChessEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
@@ -59,8 +58,6 @@ export function createEngine(kind: GameKind): GameEngine {
       return new CarromEngine();
     case "bounce":
       return new BounceEngine();
-    case "roadrash":
-      return new RoadRashEngine();
     case "chess":
       return new ChessEngine();
     default:
@@ -88,7 +85,6 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     vyomayudh: { min: 1, max: 1 },
     carrom: { min: 2, max: 2 },
     bounce: { min: 1, max: 4 },
-    roadrash: { min: 1, max: 4 },
     chess: { min: 2, max: 2 },
   };
 

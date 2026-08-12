@@ -47,9 +47,8 @@ import SnakeBoard from "../games/snake/SnakeBoard";
 import VyomaYudhBoard from "../games/vyomayudh/VyomaYudhBoard";
 import CarromBoard from "../games/carrom/CarromBoard";
 import BounceBoard from "../games/bounce/BounceBoard";
-import RoadRashBoard from "../games/roadrash/RoadRashBoard";
 import ChessBoard from "../games/chess/ChessBoard";
-import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, BouncePublicState, RoadRashPublicState, ChessPublicState } from "@shared/types";
+import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, BouncePublicState, ChessPublicState } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -122,7 +121,7 @@ function BotControls({
 }) {
   // Games with no bot AI — bots would be dead/frozen seats. Hide the panel entirely.
   const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-    "samethalu", "telugucinemalu", "snake", "vyomayudh", "bounce", "roadrash",
+    "samethalu", "telugucinemalu", "snake", "vyomayudh", "bounce",
   ]);
   if (NO_BOT_GAMES.has(game)) {
     return null;
@@ -499,7 +498,7 @@ export default function Room() {
   // Solo games bypass lobby — if the host lands in lobby for a solo game, auto-start immediately.
   useEffect(() => {
     if (!roomState || roomState.phase !== "lobby" || !selfIsHost) return;
-    const isSolo = ["samethalu", "telugucinemalu", "vyomayudh", "snake", "bounce", "roadrash"].includes(roomState.game);
+    const isSolo = ["samethalu", "telugucinemalu", "vyomayudh", "snake", "bounce"].includes(roomState.game);
     if (isSolo) {
       getSocket().emit("room:setReady", true);
       getSocket().emit("room:startGame");
@@ -694,8 +693,7 @@ export default function Room() {
     roomState.game === "snake" ||
     roomState.game === "vyomayudh" ||
     roomState.game === "carrom" ||
-    roomState.game === "bounce" ||
-    roomState.game === "roadrash"
+    roomState.game === "bounce"
       ? 1
       : 2;
 
@@ -1224,17 +1222,6 @@ export default function Room() {
             {roomState.phase !== "lobby" && roomState.game === "bounce" && gameState != null && (
               <BounceBoard
                 state={gameState as BouncePublicState}
-                selfId={playerId || ""}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
-              />
-            )}
-
-            {roomState.phase !== "lobby" && roomState.game === "roadrash" && gameState != null && (
-              <RoadRashBoard
-                state={gameState as RoadRashPublicState}
                 selfId={playerId || ""}
                 onMove={(type, data) => {
                   const socket = getSocket();

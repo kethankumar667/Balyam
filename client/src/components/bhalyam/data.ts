@@ -346,6 +346,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Retro 90s highway motorcycle racer. Steer, accelerate, punch rival bikers to win!",
     accent: { from: "#475569", to: "#0F172A" }, // Dark Racing Slate Charcoal
+    maintenance: true,
   },
   {
     slug: "carrom",

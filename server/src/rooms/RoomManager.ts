@@ -33,7 +33,6 @@ import type {
   VyomaYudhOptions,
   CarromOptions,
   BounceOptions,
-  RoadRashOptions,
   ChessOptions,
 } from "@shared/types.js";
 import {
@@ -56,7 +55,6 @@ import {
   DEFAULT_SNAKE_OPTIONS,
   DEFAULT_VYOMAYUDH_OPTIONS,
   DEFAULT_BOUNCE_OPTIONS,
-  DEFAULT_ROADRASH_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -86,7 +84,6 @@ import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
 import { VyomaYudhEngine } from "../games/vyomayudh/VyomaYudhEngine.js";
 import { BounceEngine } from "../games/bounce/BounceEngine.js";
-import { RoadRashEngine } from "../games/roadrash/RoadRashEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -256,7 +253,6 @@ interface Room {
   snakeOptions: SnakeOptions;
   vyomaYudhOptions: VyomaYudhOptions;
   bounceOptions: BounceOptions;
-  roadRashOptions: RoadRashOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -365,7 +361,6 @@ export class RoomManager {
     vyomaYudhOptions?: Partial<VyomaYudhOptions>,
     carromOptions?: Partial<CarromOptions>,
     bounceOptions?: Partial<BounceOptions>,
-    roadRashOptions?: Partial<RoadRashOptions>,
     chessOptions?: Partial<ChessOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
@@ -418,7 +413,6 @@ export class RoomManager {
       snakeOptions: { ...DEFAULT_SNAKE_OPTIONS, ...(snakeOptions ?? {}) },
       vyomaYudhOptions: { ...DEFAULT_VYOMAYUDH_OPTIONS, ...(vyomaYudhOptions ?? {}) },
       bounceOptions: { ...DEFAULT_BOUNCE_OPTIONS, ...(bounceOptions ?? {}) },
-      roadRashOptions: { ...DEFAULT_ROADRASH_OPTIONS, ...(roadRashOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -880,9 +874,6 @@ export class RoomManager {
       }
       if (engine instanceof BounceEngine) {
         engine.setOptions(room.bounceOptions);
-      }
-      if (engine instanceof RoadRashEngine) {
-        engine.setOptions(room.roadRashOptions);
       }
       engine.init(playersList);
       room.engine = engine;
@@ -2471,7 +2462,6 @@ export class RoomManager {
       if (engine instanceof SnakeEngine) engine.setOptions(room.snakeOptions);
       if (engine instanceof VyomaYudhEngine) engine.setOptions(room.vyomaYudhOptions);
       if (engine instanceof BounceEngine) engine.setOptions(room.bounceOptions);
-      if (engine instanceof RoadRashEngine) engine.setOptions(room.roadRashOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

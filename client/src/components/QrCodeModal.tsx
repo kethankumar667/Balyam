@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { captureAndShareScreenshot } from "../lib/screenshot";
 
 export interface QrCodeModalProps {
   open: boolean;
@@ -183,12 +184,22 @@ export default function QrCodeModal({
 
           <button
             type="button"
-            onClick={copyCode}
-            className="flex-1 inline-flex items-center justify-center gap-2 min-h-[44px]
-                       rounded-xl bhalyam-gold-leaf text-bhalyam-wood-dark font-bold text-xs
-                       border border-bhalyam-gold-dark hover:brightness-105 active:scale-[0.98] transition shadow-md"
+            onClick={async () => {
+              const res = await captureAndShareScreenshot();
+              if (res.message) {
+                const toast = document.createElement("div");
+                toast.className = "fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900/90 text-white font-bold text-xs shadow-2xl border border-amber-400/40 animate-fade-in";
+                toast.innerText = res.message;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2500);
+              }
+            }}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px]
+                       rounded-xl bg-[#8B5CF6] text-white font-bold text-xs
+                       hover:bg-[#7C3AED] active:scale-[0.98] transition shadow-md"
           >
-            {copiedCode ? "Copied!" : "Copy Code"}
+            <span>📸</span>
+            Share Image
           </button>
         </div>
       </div>

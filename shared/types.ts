@@ -2165,20 +2165,6 @@ export interface BouncePublicState {
   winnerId: string | null;
 }
 
-// ---- Road Rash ----
-export interface RoadRashOptions {
-  trackLength: number;
-}
-export const DEFAULT_ROADRASH_OPTIONS: RoadRashOptions = { trackLength: 1000 };
-export interface RoadRashPublicState {
-  kind: "roadrash";
-  bikes: Record<string, { position: number; lane: number; speed: number; isAttacking: boolean; isKnockedOut: boolean }>;
-  players: { id: string; position: number; rank: number; isKnockedOut: boolean }[];
-  isPaused?: boolean;
-  isOver: boolean;
-  winnerId: string | null;
-}
-
 // ---- Chess ----
 export type ChessPieceColor = "w" | "b";
 export type ChessPieceType = "p" | "n" | "b" | "r" | "q" | "k";
@@ -2262,7 +2248,6 @@ export interface CreateRoomPayload {
   carromOptions?: Partial<CarromOptions>;
   bounceOptions?: Partial<BounceOptions>;
   chessOptions?: Partial<ChessOptions>;
-  roadRashOptions?: Partial<RoadRashOptions>;
 }
 
 export interface SetTokenNicknamesPayload {
