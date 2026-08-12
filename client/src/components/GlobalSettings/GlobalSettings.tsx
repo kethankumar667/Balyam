@@ -1,8 +1,10 @@
 import { memo, useCallback } from "react";
 import { useAudio } from "../../hooks/useAudio";
 import { useHaptics } from "../../hooks/useHaptics";
+import { useTranslation } from "../../hooks/useTranslation";
 import { AUDIO, type AudioThemeId } from "../../constants/audio";
 import { THEMES } from "../../assets/audio/themes/manifests";
+import LanguageSettings from "../LanguageSettings/LanguageSettings";
 
 /**
  * Application-wide preferences panel. Holds independent toggles for
@@ -21,6 +23,7 @@ import { THEMES } from "../../assets/audio/themes/manifests";
 function GlobalSettingsImpl({ className }: { className?: string }) {
   const a = useAudio();
   const h = useHaptics();
+  const { t } = useTranslation();
   const { settings, isAudioUnlocked } = a;
 
   const onMuteSound = useCallback(() => {
@@ -45,43 +48,43 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
   return (
     <section
       className={`bg-[#F7EEDC] dark:bg-slate-900 border border-[#E6D4B7] dark:border-slate-700 rounded-xl p-4 space-y-5 ${className ?? ""}`}
-      aria-label="Global settings"
+      aria-label={t("settings.label")}
     >
       {/* ── Sound ───────────────────────────────────────────────── */}
       <div className="space-y-3">
         <header className="flex items-center justify-between gap-2">
           <h3 className="text-sm uppercase tracking-wider text-[#7A6652] dark:text-slate-400 font-bold">
-            Sound
+            {t("sound.title")}
           </h3>
           <ToggleSwitch
             checked={!settings.isMuted}
             onChange={onMuteSound}
-            onLabel="On"
-            offLabel="Muted"
-            ariaLabel={settings.isMuted ? "Unmute sound" : "Mute sound"}
+            onLabel={t("common.on")}
+            offLabel={t("audio.muted")}
+            ariaLabel={settings.isMuted ? t("sound.unmute") : t("sound.mute")}
           />
         </header>
 
         {!isAudioUnlocked && (
           <p className="text-[11px] text-[#7A6652] dark:text-slate-400 italic">
-            Tap anywhere to enable sound — browsers block audio until you interact with the page.
+            {t("audio.unlockHint")}
           </p>
         )}
 
         <VolumeSlider
-          label="Master"
+          label={t("audio.master")}
           value={settings.masterVolume}
           onChange={a.setMasterVolume}
           disabled={settings.isMuted}
         />
         <VolumeSlider
-          label="Music"
+          label={t("audio.music")}
           value={settings.musicVolume}
           onChange={a.setMusicVolume}
           disabled={settings.isMuted}
         />
         <VolumeSlider
-          label="Effects"
+          label={t("audio.effects")}
           value={settings.effectsVolume}
           onChange={a.setEffectsVolume}
           disabled={settings.isMuted}
@@ -92,21 +95,19 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
       <div className="space-y-2 pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
         <header className="flex items-center justify-between gap-2">
           <h3 className="text-sm uppercase tracking-wider text-[#7A6652] dark:text-slate-400 font-bold">
-            Vibration
+            {t("vibration.title")}
           </h3>
           <ToggleSwitch
             checked={h.enabled}
             disabled={!h.supported}
             onChange={onToggleHaptics}
-            onLabel="On"
-            offLabel="Off"
-            ariaLabel={h.enabled ? "Disable vibration" : "Enable vibration"}
+            onLabel={t("common.on")}
+            offLabel={t("common.off")}
+            ariaLabel={h.enabled ? t("vibration.disable") : t("vibration.enable")}
           />
         </header>
         <p className="text-[11px] text-[#7A6652] dark:text-slate-400 leading-snug">
-          {h.supported
-            ? "Short buzz when it's your turn in any game."
-            : "Your device or browser doesn't support vibration."}
+          {h.supported ? t("vibration.hint") : t("vibration.unsupported")}
         </p>
       </div>
 
@@ -114,7 +115,7 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
       <div className="space-y-2 pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
         <div className="flex items-center justify-between">
           <span className="text-xs uppercase tracking-wider text-[#7A6652] dark:text-slate-400 font-bold">
-            Audio theme
+            {t("audio.theme")}
           </span>
           <span className="text-[11px] text-[#9B8770] dark:text-slate-500">
             {THEMES.find((t) => t.id === settings.selectedAudioTheme)?.name}
@@ -148,6 +149,9 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
           })}
         </div>
       </div>
+
+      {/* ── Language ────────────────────────────────────────────── */}
+      <LanguageSettings embedded />
     </section>
   );
 }
@@ -165,6 +169,7 @@ function VolumeSlider({
   onChange: (v: number) => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const pct = Math.round(value * 100);
   return (
     <label className="block">
@@ -178,7 +183,7 @@ function VolumeSlider({
         max={100}
         value={pct}
         disabled={disabled}
-        aria-label={`${label} volume`}
+        aria-label={t("audio.volumeLabel", { label })}
         onChange={(e) => onChange(Number(e.currentTarget.value) / 100)}
         className="w-full accent-[#EA5A1F] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
       />

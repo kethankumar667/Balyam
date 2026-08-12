@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node scripts/gen-placeholder-audio.mjs",
     "dev": "vite",
+    "audio:placeholders": "node scripts/gen-placeholder-audio.mjs",
+    "i18n:coverage": "node scripts/i18n-coverage.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

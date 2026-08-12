@@ -8,3 +8,9 @@ build/
 .vscode/
 .idea/
 coverage/
+
+# Generated placeholder audio (client/scripts/gen-placeholder-audio.mjs).
+# ~7 MB of synthesized stand-ins, rebuilt by `npm run audio:placeholders`
+# and automatically on `npm run dev`. Real recordings are committed as .mp3
+# at the same paths and take precedence over these.
+client/public/audio/themes/**/*.wav

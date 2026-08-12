@@ -1,4 +1,9 @@
-import { useLudoSettings } from "./settings";
+import {
+  LUDO_THEMES,
+  LUDO_THEME_LABELS,
+  LUDO_THEME_SWATCH,
+  useLudoSettings,
+} from "./settings";
 
 export default function SettingsMenu({ onClose }: { onClose: () => void }) {
   const [s, update] = useLudoSettings();
@@ -15,18 +20,32 @@ export default function SettingsMenu({ onClose }: { onClose: () => void }) {
 
         <Section title="Board theme">
           <div className="grid grid-cols-3 gap-2">
-            {(["classic", "neon", "paper"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => update({ theme: t })}
-                className={`rounded-lg p-3 text-sm font-semibold capitalize transition ${
-                  s.theme === t ? "ring-2 ring-amber-400 scale-105" : "hover:bg-slate-700"
-                }`}
-                style={{ background: themePreviewBg(t) }}
-              >
-                {t}
-              </button>
-            ))}
+            {LUDO_THEMES.map((t) => {
+              const [field, ink] = LUDO_THEME_SWATCH[t];
+              const active = s.theme === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => update({ theme: t })}
+                  aria-pressed={active}
+                  className={`rounded-lg overflow-hidden text-sm font-semibold transition border ${
+                    active
+                      ? "ring-2 ring-amber-400 scale-105 border-amber-400"
+                      : "border-slate-600 hover:border-slate-400"
+                  }`}
+                >
+                  {/* Swatch shows the actual field colour with a grid-ink bar,
+                      so the tile previews the board rather than just naming it. */}
+                  <span className="block h-8 w-full" style={{ background: field }}>
+                    <span className="block h-2 w-full" style={{ background: ink }} />
+                  </span>
+                  <span className="block py-1.5 bg-slate-900/80 text-slate-100">
+                    {LUDO_THEME_LABELS[t]}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </Section>
 
@@ -113,13 +132,3 @@ function Toggle({
   );
 }
 
-function themePreviewBg(theme: "classic" | "neon" | "paper"): string {
-  switch (theme) {
-    case "classic":
-      return "linear-gradient(135deg, #fafafa 0%, #e5e7eb 100%)";
-    case "neon":
-      return "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
-    case "paper":
-      return "linear-gradient(135deg, #f5f0e8, #d6cdb8)";
-  }
-}
