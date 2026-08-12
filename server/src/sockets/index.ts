@@ -69,7 +69,7 @@ export function registerSocketHandlers(
         payload.vyomaYudhOptions,
         payload.carromOptions,
         payload.bounceOptions,
-        payload.roadRashOptions
+        payload.chessOptions
       );
       ack({ ok: true, code, playerId });
     } catch (err) {

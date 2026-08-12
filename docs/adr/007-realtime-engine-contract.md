@@ -102,10 +102,24 @@ prediction is a client concern layered over the same broadcasts.
   world N times per step. The game literally ran faster the more people
   watched it.
 
-- **Bounce and roadrash are NOT migrated** and still carry the vulnerability.
-  Deferred deliberately: both are incomplete games, so migrating them now
-  would be reworked as soon as they are finished. Do it as part of completing
-  them, using Snake as the template.
+- **Road Rash was rebuilt on this contract (2026-08-11).** It had reached the
+  worst possible middle state: it declared `tickRateHz` *and* still handled a
+  client `"tick"` move, while both client boards drove a `setInterval`. So the
+  world advanced twice per step, and a modified client could tick the field to
+  the finish line. The rebuild deletes the `"tick"` branch entirely, moves all
+  physics into `simulateTick`, and sends the track as a **seed** the client
+  regenerates locally rather than streaming segments. Controls are intent
+  (`{ steer, throttle }`), never positions.
+
+  The lesson worth keeping: a half-migration is more dangerous than no
+  migration. Declaring `tickRateHz` starts RoomManager's loop immediately, so
+  leaving the old client path in place doubles the simulation rate silently.
+  **Remove the client `tick` in the same commit that adds `tickRateHz`.**
+
+- **Bounce is NOT migrated** and still carries the vulnerability. Deferred
+  deliberately: it is an incomplete game, so migrating now would be reworked
+  as soon as it is finished. Do it as part of completing it, using Snake or
+  Road Rash as the template.
 
 ## Validation
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { GameKind } from "@shared/types";
 import QrCodeModal from "./QrCodeModal";
+import { captureAndShareScreenshot } from "../lib/screenshot";
 
 /**
  * Featured lobby block for the room code.
@@ -167,7 +168,29 @@ export default function RoomCodeShare({
             aria-label="Share room link"
           >
             <span aria-hidden>📤</span>
-            Share
+            Share Link
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              const res = await captureAndShareScreenshot();
+              if (res.message) {
+                const toast = document.createElement("div");
+                toast.className = "fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900/90 text-white font-bold text-xs shadow-2xl border border-amber-400/40 animate-fade-in";
+                toast.innerText = res.message;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2500);
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-full
+                       bg-[#8B5CF6] hover:bg-[#7C3AED] active:translate-y-px
+                       text-white font-bold text-[13px] px-4 py-2
+                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
+                       transition-all duration-150"
+            aria-label="Share Screenshot Image"
+          >
+            <span aria-hidden>📸</span>
+            Share Image
           </button>
         </div>
       </div>
