@@ -40,7 +40,12 @@ export default function EndGameCard({
     return (
       <BoardPreviewPill
         onClosePreview={() => setPreviewMode(false)}
-        svgRef={svgRef}
+        // NOT `svgRef`. That ref points at the miniature board inside this
+        // card's own body — the subtree this very branch unmounts — so by
+        // the time the player taps 📸 it is always null and the capture
+        // silently fell through to window.print(). Target the live board on
+        // screen instead, which is what preview mode is showing them anyway.
+        targetElementId="game-board-container"
       />
     );
   }

@@ -57,7 +57,15 @@ export default function BoardPreviewPill({
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 animate-fade-in flex items-center gap-2 bg-slate-900/95 text-white border-2 border-amber-400/90 px-3.5 py-2 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.65)] backdrop-blur-md font-bold">
+    /* z-[300] because this pill is the ONLY way out of preview mode, so it
+       has to outrank every overlay that can appear while it is up. At its
+       previous z-50 it sat under GameOverScreen (z-[70], which mounts on a
+       timer once the scorecard window expires), the Room status banner
+       (z-[80]), the Rummy overlay at z-[120] and the room-history sheets at
+       z-[200] — any of which covered the ✕ and stranded the player on the
+       board with no way back to the results. Also nudged clear of the safe
+       area so the notch does not eat it on a phone. */
+    <div className="fixed top-[max(1rem,env(safe-area-inset-top))] right-4 z-[300] animate-fade-in flex items-center gap-2 bg-slate-900/95 text-white border-2 border-amber-400/90 px-3.5 py-2 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.65)] backdrop-blur-md font-bold">
       <span className="flex items-center gap-1.5 text-xs sm:text-sm text-amber-300">
         👁 Board Preview
       </span>

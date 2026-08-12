@@ -26,6 +26,13 @@ export interface AudioSettings {
 
 const STORAGE_KEY = "bhalyam.audio.settings";
 
+/**
+ * Manifest `.mp3` URL → generated `.wav` placeholder, populated lazily the
+ * first time a real recording turns out to be absent. See
+ * `tryPlaceholderFallback` for why this exists and why it is module-level.
+ */
+const PLACEHOLDER_FALLBACKS = new Map<string, string>();
+
 const DEFAULT_SETTINGS: AudioSettings = {
   masterVolume: 0.8,
   musicVolume: 0.55,
@@ -206,7 +213,9 @@ export class AudioManager {
    * ──────────────────────────────────────────────────────────────── */
 
   private resolveFile(key: AudioKey): string | null {
-    return this.theme.files[key] ?? null;
+    const file = this.theme.files[key] ?? null;
+    if (!file) return null;
+    return PLACEHOLDER_FALLBACKS.get(file) ?? file;
   }
 
   private getOrCreateHowl(
@@ -225,7 +234,10 @@ export class AudioManager {
       html5: isMusic,
       preload: true,
       volume: isMusic ? 0 : this.settings.effectsVolume,
-      onloaderror: (_id, err) => warn(`Failed to load ${file}`, err),
+      onloaderror: (_id, err) => {
+        if (this.tryPlaceholderFallback(cache, file, isMusic)) return;
+        warn(`Failed to load ${file}`, err);
+      },
       onplayerror: (_id, err) => {
         warn(`Play failed ${file}`, err);
         // Howler suggests this dance to recover from autoplay rejections.
@@ -238,6 +250,45 @@ export class AudioManager {
     });
     cache.set(file, howl);
     return howl;
+  }
+
+  /**
+   * Swap a missing `.mp3` for its generated `.wav` placeholder.
+   *
+   * `public/audio/themes/**` ships no real recordings yet, so every manifest
+   * URL 404s and the app is silent. `scripts/gen-placeholder-audio.mjs`
+   * synthesizes a stand-in for each one, written as a `.wav` sibling because
+   * encoding MP3 would mean a build dependency for throwaway assets.
+   *
+   * The direction matters: the manifest keeps naming `.mp3`, so dropping a
+   * real recording in place makes it win with no code or manifest change —
+   * the fallback simply stops firing. Nothing here is load-bearing once the
+   * real pack exists.
+   *
+   * The mapping is module-level rather than per-instance so a theme switch
+   * (which clears the Howl caches) doesn't re-pay the failed request for a
+   * file already known to be missing.
+   *
+   * Returns true when a fallback was armed, so the caller can skip the
+   * "failed to load" warning for what is an expected miss. The play that
+   * triggered the miss is lost; the next one uses the placeholder.
+   */
+  private tryPlaceholderFallback(
+    cache: Map<string, Howl>,
+    file: string,
+    isMusic: boolean,
+  ): boolean {
+    if (!file.endsWith(".mp3")) return false;
+    if (PLACEHOLDER_FALLBACKS.has(file)) return false;
+
+    const wav = file.replace(/\.mp3$/, ".wav");
+    PLACEHOLDER_FALLBACKS.set(file, wav);
+    cache.delete(file);
+    // Build the replacement eagerly so it is decoded and ready before the
+    // next trigger, rather than on the critical path of a game event.
+    this.getOrCreateHowl(cache, wav, isMusic);
+    warn(`${file} missing — using generated placeholder ${wav}`);
+    return true;
   }
 
   private scheduleFade(ms: number, fn: () => void): void {

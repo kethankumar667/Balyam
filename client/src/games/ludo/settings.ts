@@ -1,9 +1,47 @@
 import { useEffect, useState } from "react";
 
+/**
+ * Board themes.
+ *
+ * Surface only — paper, cells, grid ink, stars, hub. Seat colours are player
+ * identity and never change with the theme (see the Ludo theme block in
+ * index.css for why). Each id must have a matching `.theme-<id>` variable
+ * block there; `LUDO_THEME_LABELS` below is what the picker renders.
+ */
+export const LUDO_THEMES = [
+  "classic",
+  "paper",
+  "neon",
+  "emerald",
+  "midnight",
+  "sunset",
+] as const;
+
+export type LudoTheme = (typeof LUDO_THEMES)[number];
+
+export const LUDO_THEME_LABELS: Record<LudoTheme, string> = {
+  classic: "Classic",
+  paper: "Paper",
+  neon: "Neon",
+  emerald: "Emerald",
+  midnight: "Midnight",
+  sunset: "Sunset",
+};
+
+/** Two-stop swatch for the picker: board field over grid ink. */
+export const LUDO_THEME_SWATCH: Record<LudoTheme, [string, string]> = {
+  classic: ["#ffffff", "#23201E"],
+  paper: ["#F6EFE0", "#6B563C"],
+  neon: ["#1B1650", "#6D28D9"],
+  emerald: ["#14624A", "#08301F"],
+  midnight: ["#253044", "#0B0F18"],
+  sunset: ["#FFE3C4", "#9A4B23"],
+};
+
 export interface LudoSettings {
   colorBlindMode: boolean;
   highContrast: boolean;
-  theme: "classic" | "neon" | "paper";
+  theme: LudoTheme;
   showHoverPreview: boolean;
   reducedMotion: boolean;
   goldenTokens: boolean;

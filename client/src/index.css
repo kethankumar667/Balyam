@@ -892,11 +892,103 @@ body, #root, .bhalyam-paper {
 }
 .timer-warn { animation: timer-warn 0.6s ease-in-out infinite; }
 
-/* Themes: applied to .ludo-board element */
-.theme-neon .board-bg-rect { fill: #0f0c29; }
-.theme-neon .track-cell { stroke: #5b21b6; }
-.theme-paper .board-bg-rect { fill: #f5f0e8; }
-.theme-paper .track-cell { stroke: #8b7355; }
+/* ── Ludo board themes ─────────────────────────────────────────────────
+   Applied to the .ludo-board element, which also carries .theme-<id>.
+
+   This used to be four rules: two on `.board-bg-rect` and two on
+   `.track-cell`. Neither did anything visible. `.track-cell` was not a class
+   any element in PrintBoardSVG carried, so those two matched nothing at all;
+   and `.board-bg-rect` is the backing rect that the board silhouette polygon
+   paints straight over, so recolouring it showed only in the corners the
+   wrapper already clips. Picking "Neon" or "Paper" left the board looking
+   exactly like Classic, which is why players kept asking for board themes
+   that were, on paper, already shipped.
+
+   The fix is to theme the surfaces players actually see, driven by custom
+   properties so a new theme is one block of variables rather than a new set
+   of rules.
+
+   SEAT COLOURS ARE DELIBERATELY NOT THEMED. Those are player identity —
+   red player is red on every theme — and they live in print-board.ts
+   SEAT_COLORS / board-layout.ts COLOR_HEX, which must stay in sync with
+   each other. A theme that repainted them would break recognition at a
+   glance, which is the one thing the board has to get right.
+
+   Each rule keeps the SVG's hardcoded presentation attribute as the
+   fallback: if this stylesheet ever fails to apply, the board renders the
+   Classic print look rather than losing its fills. */
+
+.ludo-board {
+  --ludo-bg: #ffffff;      /* backing rect behind the board silhouette */
+  --ludo-paper: #ffffff;   /* the board field itself */
+  --ludo-cell: #ffffff;    /* plain loop / entry / cap cells */
+  --ludo-ink: #23201E;     /* every grid line and cell outline */
+  --ludo-star: #ffffff;    /* safe-cell stars */
+  --ludo-hub: #ffffff;     /* centre medallion clearing */
+  --ludo-label: #23201E;   /* the big rotated arm labels */
+}
+
+.ludo-board .board-bg-rect  { fill: var(--ludo-bg); }
+.ludo-board .ludo-paper     { fill: var(--ludo-paper); stroke: var(--ludo-ink); }
+.ludo-board .track-cell     { fill: var(--ludo-cell); stroke: var(--ludo-ink); }
+.ludo-board .ludo-grid      { stroke: var(--ludo-ink); }
+.ludo-board .ludo-lane      { stroke: var(--ludo-ink); }
+.ludo-board .ludo-star      { fill: var(--ludo-star); }
+.ludo-board .ludo-hub       { fill: var(--ludo-hub); stroke: var(--ludo-ink); }
+.ludo-board .ludo-arm-label { fill: var(--ludo-label); }
+
+/* The wrapper carries Tailwind's `bg-white`. Doubling up the class here
+   (0,2,0) outranks that utility (0,1,0) without reaching for !important,
+   so a dark theme doesn't sit in a white frame. */
+.ludo-board.theme-classic  { background: #ffffff; }
+.ludo-board.theme-paper    { background: #EFE4CF; }
+.ludo-board.theme-neon     { background: #0B0824; }
+.ludo-board.theme-emerald  { background: #072B20; }
+.ludo-board.theme-midnight { background: #10141F; }
+.ludo-board.theme-sunset   { background: #F6D9B8; }
+
+/* Classic — the reference print board. Same values as the defaults above;
+   spelled out so the set reads as one comparable table. */
+.theme-classic {
+  --ludo-bg: #ffffff; --ludo-paper: #ffffff; --ludo-cell: #ffffff;
+  --ludo-ink: #23201E; --ludo-star: #ffffff; --ludo-hub: #ffffff;
+  --ludo-label: #23201E;
+}
+
+/* Paper — aged newsprint, the boards these games were printed on. */
+.theme-paper {
+  --ludo-bg: #EFE4CF; --ludo-paper: #F6EFE0; --ludo-cell: #FBF6EA;
+  --ludo-ink: #6B563C; --ludo-star: #FFFDF6; --ludo-hub: #F6EFE0;
+  --ludo-label: #5A462F;
+}
+
+/* Neon — dark arcade. Seat colours read hot against the violet grid. */
+.theme-neon {
+  --ludo-bg: #0B0824; --ludo-paper: #14103A; --ludo-cell: #1B1650;
+  --ludo-ink: #6D28D9; --ludo-star: #F0ABFC; --ludo-hub: #241C6B;
+  --ludo-label: #C4B5FD;
+}
+
+/* Emerald — card-table felt. */
+.theme-emerald {
+  --ludo-bg: #072B20; --ludo-paper: #0E4534; --ludo-cell: #14624A;
+  --ludo-ink: #08301F; --ludo-star: #ECFDF5; --ludo-hub: #0E4534;
+  --ludo-label: #A7F3D0;
+}
+
+/* Midnight — neutral dark, for players who want low glare without a hue. */
+.theme-midnight {
+  --ludo-bg: #10141F; --ludo-paper: #1B2130; --ludo-cell: #253044;
+  --ludo-ink: #0B0F18; --ludo-star: #E2E8F0; --ludo-hub: #1B2130;
+  --ludo-label: #94A3B8;
+}
+
+/* Sunset — warm terracotta, the brightest of the light themes. */
+.theme-sunset {
+  --ludo-bg: #F6D9B8; --ludo-paper: #FFF1E0; --ludo-cell: #FFE3C4;
+  --ludo-ink: #9A4B23; --ludo-star: #FFFFFF; --ludo-hub: #FFF1E0;
+  --ludo-label: #7C3A18;
+}
 
 /* Color-blind: shape patterns layered on top of token bodies */
 .cb-pattern-red    { background-image: repeating-linear-gradient(45deg, transparent 0 5px, rgba(255,255,255,0.45) 5px 7px); }

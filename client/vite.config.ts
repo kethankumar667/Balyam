@@ -20,4 +20,11 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: ["sb-7f553oi3nr9l.vercel.run"],
   },
+  test: {
+    // Vitest stubs CSS imports to an empty string by default. The Ludo board
+    // theme test reads index.css via `?raw` to check that every declared
+    // theme actually has a stylesheet block behind it — the exact defect it
+    // exists to prevent — so it needs the real file contents.
+    css: true,
+  },
 });

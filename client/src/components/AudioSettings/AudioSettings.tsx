@@ -1,5 +1,6 @@
 import { memo, useCallback } from "react";
 import { useAudio } from "../../hooks/useAudio";
+import { useTranslation } from "../../hooks/useTranslation";
 import { AUDIO, type AudioThemeId } from "../../constants/audio";
 import { THEMES } from "../../assets/audio/themes/manifests";
 
@@ -17,6 +18,7 @@ import { THEMES } from "../../assets/audio/themes/manifests";
  */
 function AudioSettingsImpl({ className }: { className?: string }) {
   const a = useAudio();
+  const { t } = useTranslation();
   const { settings, isAudioUnlocked } = a;
 
   // Wired-up handlers — small click-feedback on toggles + theme picks.
@@ -36,48 +38,47 @@ function AudioSettingsImpl({ className }: { className?: string }) {
   return (
     <section
       className={`bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4 space-y-4 dark:bg-slate-900 dark:border-slate-700 ${className ?? ""}`}
-      aria-label="Audio settings"
+      aria-label={t("audio.settingsLabel")}
     >
       <header className="flex items-center justify-between gap-2">
         <h3 className="text-sm uppercase tracking-wider text-[#7A6652] font-bold dark:text-slate-400">
-          Audio
+          {t("audio.title")}
         </h3>
         <button
           type="button"
           onClick={onMute}
           aria-pressed={settings.isMuted}
-          aria-label={settings.isMuted ? "Unmute audio" : "Mute audio"}
+          aria-label={settings.isMuted ? t("audio.unmute") : t("audio.mute")}
           className={`text-xs font-bold px-3 py-1.5 rounded-full transition-colors ${
             settings.isMuted
               ? "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118] dark:text-slate-300"
               : "bg-[#31A157] hover:bg-[#2A8B4B] text-white"
           }`}
         >
-          {settings.isMuted ? "🔇 Muted" : "🔊 Sound on"}
+          {settings.isMuted ? `🔇 ${t("audio.muted")}` : `🔊 ${t("audio.soundOn")}`}
         </button>
       </header>
 
       {!isAudioUnlocked && (
         <p className="text-[11px] text-[#7A6652] italic dark:text-slate-500">
-          Tap anywhere to enable sound — browsers block audio until you
-          interact with the page.
+          {t("audio.unlockHint")}
         </p>
       )}
 
       <VolumeSlider
-        label="Master"
+        label={t("audio.master")}
         value={settings.masterVolume}
         onChange={a.setMasterVolume}
         disabled={settings.isMuted}
       />
       <VolumeSlider
-        label="Music"
+        label={t("audio.music")}
         value={settings.musicVolume}
         onChange={a.setMusicVolume}
         disabled={settings.isMuted}
       />
       <VolumeSlider
-        label="Effects"
+        label={t("audio.effects")}
         value={settings.effectsVolume}
         onChange={a.setEffectsVolume}
         disabled={settings.isMuted}
@@ -86,7 +87,7 @@ function AudioSettingsImpl({ className }: { className?: string }) {
       <div className="pt-2 border-t border-[#E6D4B7] space-y-2 dark:border-slate-700">
         <div className="flex items-center justify-between">
           <span className="text-xs uppercase tracking-wider text-[#7A6652] font-bold dark:text-slate-400">
-            Audio theme
+            {t("audio.theme")}
           </span>
           <span className="text-[11px] text-[#9B8770] dark:text-slate-500">
             {THEMES.find((t) => t.id === settings.selectedAudioTheme)?.name}
@@ -135,6 +136,7 @@ function VolumeSlider({
   onChange: (v: number) => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const pct = Math.round(value * 100);
   return (
     <label className="block">
@@ -148,7 +150,7 @@ function VolumeSlider({
         max={100}
         value={pct}
         disabled={disabled}
-        aria-label={`${label} volume`}
+        aria-label={t("audio.volumeLabel", { label })}
         onChange={(e) => onChange(Number(e.currentTarget.value) / 100)}
         className="w-full accent-[#EA5A1F] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
       />

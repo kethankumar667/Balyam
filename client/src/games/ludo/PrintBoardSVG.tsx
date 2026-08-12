@@ -177,6 +177,7 @@ export default function PrintBoardSVG({
           ~70.7, so this spans any rotation; the wrapper clips the excess. */}
       <rect className="board-bg-rect" x={-25} y={-25} width={150} height={150} fill="#ffffff" />
       <polygon
+        className="ludo-paper"
         points={silhouette}
         fill="#ffffff"
         stroke={INK}
@@ -224,6 +225,7 @@ export default function PrintBoardSVG({
               // gets shorter AND narrower rather than just smaller.
               fontSize={1.65}
               fontWeight={800}
+              className="ludo-arm-label"
               fill="#23201E"
               fillOpacity={0.82}
               style={{ fontFamily: "'Poppins','Nunito',sans-serif", letterSpacing: "0.12em" }}
@@ -236,7 +238,7 @@ export default function PrintBoardSVG({
 
       {/* Thin baseline edge under each yard */}
       {art.rimSegments.map(({ a, b }, i) => (
-        <line key={"rim" + i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={INK} strokeWidth={GRID_STROKE} />
+        <line className="ludo-grid" key={"rim" + i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={INK} strokeWidth={GRID_STROKE} />
       ))}
 
       {/* Yard sectors: just the flat colored triangle — tokens (rendered by
@@ -280,7 +282,7 @@ export default function PrintBoardSVG({
       {/* Loop cells (side columns) — plain white, thin outline */}
       {art.whiteCells.map(({ pt, angle }, i) => (
         <g key={"w" + i} transform={`translate(${pt.x} ${pt.y}) rotate(${angle})`}>
-          <rect x={-half} y={-half} width={cell} height={cell} fill="#ffffff" stroke={INK} strokeWidth={GRID_STROKE} />
+          <rect className="track-cell" x={-half} y={-half} width={cell} height={cell} fill="#ffffff" stroke={INK} strokeWidth={GRID_STROKE} />
         </g>
       ))}
 
@@ -305,7 +307,7 @@ export default function PrintBoardSVG({
         const c = seatColor(i);
         return (
           <g key={"arrow" + i} transform={`translate(${pt.x} ${pt.y}) rotate(${angle})`}>
-            <rect x={-half} y={-half} width={cell} height={cell} fill="#ffffff" stroke={INK} strokeWidth={GRID_STROKE} />
+            <rect className="track-cell" x={-half} y={-half} width={cell} height={cell} fill="#ffffff" stroke={INK} strokeWidth={GRID_STROKE} />
             {/* local −y = outward, so the arrow points +y (toward the center) */}
             <line x1={0} y1={-cell * 0.26} x2={0} y2={cell * 0.1} stroke={c} strokeWidth={cell * 0.09} />
             <polygon
@@ -322,7 +324,7 @@ export default function PrintBoardSVG({
           a wide banner that painted over its two neighbors. */}
       {art.caps.map(({ pt, angle }, i) => (
         <g key={"cap" + i} transform={`translate(${pt.x} ${pt.y}) rotate(${angle})`}>
-          <rect x={-half} y={-half} width={cell} height={cell} fill="#ffffff" stroke={INK} strokeWidth={GRID_STROKE} />
+          <rect className="track-cell" x={-half} y={-half} width={cell} height={cell} fill="#ffffff" stroke={INK} strokeWidth={GRID_STROKE} />
         </g>
       ))}
 
@@ -346,8 +348,8 @@ export default function PrintBoardSVG({
           actual entry/safe cell, one per arm) */}
       {art.starts.map(({ pt, angle }, i) => (
         <g key={"startcell" + i} transform={`translate(${pt.x} ${pt.y}) rotate(${angle})`}>
-          <rect x={-half} y={-half} width={cell} height={cell} fill={`url(#${gid}-seat-${i})`} stroke={INK} strokeWidth={GRID_STROKE} />
-          <polygon points={star} fill="#ffffff" />
+          <rect className="ludo-lane" x={-half} y={-half} width={cell} height={cell} fill={`url(#${gid}-seat-${i})`} stroke={INK} strokeWidth={GRID_STROKE} />
+          <polygon className="ludo-star" points={star} fill="#ffffff" />
         </g>
       ))}
 
@@ -455,7 +457,7 @@ export default function PrintBoardSVG({
         const med = Math.min(cell * 1.15, rC * 0.3);
         return (
           <g transform="translate(50 50)">
-            <circle r={med} fill="#ffffff" stroke={INK} strokeWidth={LANE_STROKE} />
+            <circle className="ludo-hub" r={med} fill="#ffffff" stroke={INK} strokeWidth={LANE_STROKE} />
             <circle r={med * 0.78} fill={`url(#${gid}-hub)`} />
             {/* Thin inner highlight along the boss's upper rim. */}
             <circle

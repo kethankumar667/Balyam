@@ -7,6 +7,36 @@ via `/audio/themes/<theme>/<category>/<file>`.
 Missing files **do not crash** the app — the manager swallows load
 errors and logs a single console warning in development.
 
+## Placeholders (read this first)
+
+No real recordings exist yet. Because missing files fail silently, that
+made the app **completely silent in production** with nothing pointing at
+the cause.
+
+`client/scripts/gen-placeholder-audio.mjs` synthesizes a stand-in for every
+one of the 195 URLs named in `src/assets/audio/themes/manifests.ts`:
+
+```
+npm run audio:placeholders           # generate (skips existing)
+npm run audio:placeholders -- --force  # regenerate everything
+```
+
+It also runs automatically before `npm run dev`. Output is gitignored —
+it is ~7 MB of throwaway audio, rebuilt from the manifest in a second.
+
+Placeholders are written as **`.wav` siblings** (`dice.mp3` → `dice.wav`),
+because encoding MP3 would mean a build dependency for disposable assets.
+`AudioManager.tryPlaceholderFallback` retries the `.wav` when the `.mp3`
+404s, so:
+
+> **Dropping a real `.mp3` at the path the manifest names makes it win
+> immediately.** No code change, no manifest change — the fallback just
+> stops firing for that file.
+
+The synthesized sounds are deliberately plain. They exist to prove the
+wiring, the volume buses, the theme picker and the crossfade all work —
+not to be shipped to players.
+
 ## Structure
 
 ```
