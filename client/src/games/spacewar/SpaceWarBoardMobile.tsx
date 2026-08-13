@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import type { SpaceWarPublicState } from "@shared/types";
-import { renderSpaceWarCanvas } from "./render";
+import { useSpaceWarCanvas } from "./useSpaceWarCanvas";
 import { useHaptics } from "../../hooks/useHaptics";
 
 interface SpaceWarBoardMobileProps {
@@ -14,19 +14,19 @@ export default function SpaceWarBoardMobile({
   selfId,
   onMove,
 }: SpaceWarBoardMobileProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { subtle } = useHaptics();
   const [isMuted, setIsMuted] = useState(false);
 
-  // Render loop on canvas in VERTICAL PORTRAIT MODE
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    renderSpaceWarCanvas(ctx, state, "vertical");
-  }, [state]);
+  /**
+   * Portrait canvas, driven on requestAnimationFrame.
+   *
+   * This used to be `useEffect(() => render(...), [state])`, which painted
+   * only when a broadcast landed — so the frame rate WAS the packet rate
+   * (30fps), the canvas work happened inside a React commit, and nothing
+   * smoothed the gap between ticks. The hook owns all of that now, plus
+   * sizing the buffer to the pixels the phone actually has.
+   */
+  const canvasRef = useSpaceWarCanvas(state, "vertical");
 
   const handlePointerDown = (key: string) => {
     subtle();
@@ -169,7 +169,11 @@ export default function SpaceWarBoardMobile({
                   subtle();
                   onMove("fire");
                 }}
-                className="w-22 h-22 sm:w-26 sm:h-26 rounded-full bg-gradient-to-b from-[#ff4d4d] via-[#e60000] to-[#990000] border-4 border-[#ffb3b3] shadow-[0_7px_0_#660000] active:translate-y-1 flex items-center justify-center text-white font-extrabold tracking-wider text-xl sm:text-2xl drop-shadow-md"
+                /* sm:w-24, not sm:w-26 — `26` is not on Tailwind's scale, so
+                   the class generated nothing and the button never grew on a
+                   larger screen. Harmless next to Snake's `h-15` (which cost
+                   it the touch target entirely), but the same mistake. */
+                className="w-22 h-22 sm:w-24 sm:h-24 rounded-full bg-gradient-to-b from-[#ff4d4d] via-[#e60000] to-[#990000] border-4 border-[#ffb3b3] shadow-[0_7px_0_#660000] active:translate-y-1 flex items-center justify-center text-white font-extrabold tracking-wider text-xl sm:text-2xl drop-shadow-md"
                 aria-label="Fire Weapon"
               >
                 FIRE

@@ -2297,6 +2297,16 @@ export interface SpaceWarEnemy {
   speedY: number;
 }
 
+/**
+ * Simulation rate, shared so the board interpolates against the real one.
+ *
+ * Third game to need this. Snake shipped a published period that disagreed
+ * with the rate it actually stepped at and stuttered for weeks; a renderer
+ * smoothing between server frames needs the authoritative interval, and the
+ * only way it cannot drift is if there is exactly one copy of the number.
+ */
+export const SPACEWAR_TICK_HZ = 30;
+
 export interface SpaceWarPublicState {
   kind: "spacewar";
   player: {

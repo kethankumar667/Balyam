@@ -178,7 +178,13 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
                   e.preventDefault();
                   handleTurn("UP");
                 }}
-                className="absolute top-2.5 z-20 w-11 h-15 sm:w-12 sm:h-16 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
+                /* w-12 h-14, not w-11 h-15: `15` is not on Tailwind's scale
+                   (this config extends it with 18/22/30 only), so `h-15`
+                   generated no rule and the capsule collapsed to the height
+                   of the glyph — about 28px, well under the 44px minimum
+                   touch target, on every phone. `sm:` starts at 640px, which
+                   is a tablet, so nothing rescued it. */
+                className="absolute top-2.5 z-20 w-12 h-14 sm:w-14 sm:h-16 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
                 aria-label="Up"
               >
                 ▲
@@ -190,7 +196,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
                   e.preventDefault();
                   handleTurn("LEFT");
                 }}
-                className="absolute left-2.5 z-20 w-15 h-11 sm:w-16 sm:h-12 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
+                className="absolute left-2.5 z-20 w-14 h-12 sm:w-16 sm:h-14 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
                 aria-label="Left"
               >
                 ◀
@@ -202,7 +208,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
                   e.preventDefault();
                   handleTurn("RIGHT");
                 }}
-                className="absolute right-2.5 z-20 w-15 h-11 sm:w-16 sm:h-12 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
+                className="absolute right-2.5 z-20 w-14 h-12 sm:w-16 sm:h-14 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
                 aria-label="Right"
               >
                 ▶
@@ -214,7 +220,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
                   e.preventDefault();
                   handleTurn("DOWN");
                 }}
-                className="absolute bottom-2.5 z-20 w-11 h-15 sm:w-12 sm:h-16 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
+                className="absolute bottom-2.5 z-20 w-12 h-14 sm:w-14 sm:h-16 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
                 aria-label="Down"
               >
                 ▼

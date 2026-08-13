@@ -10,6 +10,7 @@ import type {
   SpaceWarSpecialAttack,
   SpaceWarPowerUp,
 } from "@shared/types.js";
+import { SPACEWAR_TICK_HZ } from "@shared/types.js";
 import type { MoveContext, MoveResult, RealtimeEngine } from "../GameEngine.js";
 
 const CANVAS_WIDTH = 840;
@@ -19,7 +20,9 @@ export class SpaceWarEngine implements RealtimeEngine {
   readonly kind: GameKind = "spacewar";
   readonly minPlayers = 1;
   readonly maxPlayers = 1;
-  readonly tickRateHz = 30;
+  // From shared: the board interpolates between broadcasts using this exact
+  // number, and a private copy is a copy that drifts.
+  readonly tickRateHz = SPACEWAR_TICK_HZ;
 
   private options: SpaceWarOptions = { startingLives: 4, theme: "cyberpunk" };
   private theme: SpaceWarThemeId = "cyberpunk";
