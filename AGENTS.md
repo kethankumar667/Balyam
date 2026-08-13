@@ -43,7 +43,7 @@ Detected from `package.json`, config files, and source imports.
 | Testing | Vitest 1 (server only — no client test setup detected) |
 | Linting / formatting | **Not present in the repository.** No ESLint config, no Prettier config. Code style is established by convention. |
 | Database | **None.** All room state is in-memory inside `RoomManager`. The top-level README mentions MongoDB as a "Phase 6" idea, but no Mongo client, schema, or connection code exists. |
-| Auth | **None.** There is no login flow; player identity is a `playerId` string persisted to `localStorage` (`mpg.playerId`) so a refresh keeps a player's seat. |
+| Auth | **No accounts yet — but seats are authenticated.** There is no login flow; players are anonymous. A seat is identified by a public `playerId` (broadcast in `room:state`, used to address reactions) and *owned* via a server-signed `seatToken` (`server/src/lib/seatToken.ts`), issued only in the `room:create` / `room:join` ack and stored per room code under `mpg.seats`. Reclaiming a seat requires that token. Accounts (Google + email/password, required to host) are the next phase and need `DATABASE_URL`. |
 | Hosting (per README) | Vercel (client), Render (server) |
 
 ---
@@ -319,6 +319,7 @@ A game implementation is **not complete** until both layouts exist, both have be
 - **Server is authoritative** for everything that affects gameplay (turn order, hands, scores, dice rolls, valid moves). Clients only emit intents (`game:move`) and re-render whatever state arrives via `game:state` / `room:state`.
 - **Client global state** lives in `useRoomStore` (`client/src/store/roomStore.ts`):
   - `playerId`, `playerName` — persisted to `localStorage` under `mpg.playerId` / `mpg.playerName`.
+  - `seats` — seat credentials keyed by room code, in `mpg.seats`. `seatFor(code)` / `rememberSeat(...)`. This is what proves a seat is yours on rejoin; never put a `seatToken` anywhere it can be broadcast.
   - `roomState` — last `RoomPublicState` from the server.
   - `gameState` — last per-player game state (typed `unknown`; components narrow with `as`).
   - `messages` — chat log, capped to the last 200 entries.

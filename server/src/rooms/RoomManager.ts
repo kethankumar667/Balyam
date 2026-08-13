@@ -57,6 +57,7 @@ import {
   DEFAULT_SPACEWAR_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
+import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
 import type { RematchState, CoachableEngine, CoachHintResponse } from "@shared/types.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
@@ -261,6 +262,17 @@ interface Room {
   rematchStartTimer: NodeJS.Timeout | null;
 }
 
+/**
+ * Mint a player id. Server-side only, and the only place ids are made.
+ *
+ * The id is public — it is broadcast to the whole room and used to address
+ * reactions and targeted sounds — so it needs to be unique, not unguessable.
+ * Ownership of a seat is proved with the seat token instead (lib/seatToken).
+ */
+function newPlayerId(): string {
+  return `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function emptyRematchState(): RematchState {
   return {
     status: "idle",
@@ -339,11 +351,19 @@ export class RoomManager {
     };
   }
 
+  /**
+   * Open a new room and seat the creator as host.
+   *
+   * The caller does NOT get to choose their player id. It used to: whatever
+   * `playerId` arrived in the payload became the host's id verbatim, so a
+   * client could seat itself as `"system"` — the reserved id this file stamps
+   * on table announcements (see `announce`) — and speak as the table. Minting
+   * server-side removes the class of bug rather than blacklisting one value.
+   */
   createRoom(
     socketId: string,
     name: string,
     game: GameKind,
-    existingPlayerId?: string,
     ludoOptions?: Partial<LudoGameOptions>,
     snlOptions?: Partial<SnlGameOptions>,
     rummyOptions?: Partial<RummyGameOptions>,
@@ -362,11 +382,11 @@ export class RoomManager {
     chessOptions?: Partial<ChessOptions>,
     blockBlastOptions?: Partial<BlockBlastOptions>,
     spaceWarOptions?: Partial<SpaceWarOptions>
-  ): { code: string; playerId: string } {
+  ): { code: string; playerId: string; seatToken: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
 
-    const playerId = existingPlayerId ?? `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const playerId = newPlayerId();
     const player: Player = {
       id: playerId,
       name: name.trim().slice(0, 20) || "Player",
@@ -424,19 +444,38 @@ export class RoomManager {
     socket?.join(code);
 
     this.broadcastRoomState(room);
-    return { code, playerId };
+    return { code, playerId, seatToken: mintSeatToken(code, playerId) };
   }
 
+  /**
+   * Take a seat, or reclaim the one you already had.
+   *
+   * Reclaiming requires the seat token issued when the seat was taken — see
+   * lib/seatToken. Presenting an id alone used to be enough, which meant any
+   * id you could read off the broadcast room state was a seat you could take,
+   * hand and all.
+   *
+   * A failed claim is NOT an error: it falls through to the ordinary new-seat
+   * path below. That keeps the honest cases working — a player whose storage
+   * was cleared, or who followed a link into a room they have never been in —
+   * and gives an attacker no signal that the id they tried was real, since a
+   * bogus id and a stolen one now behave identically.
+   */
   joinRoom(
     socketId: string,
     name: string,
     code: string,
-    existingPlayerId?: string
-  ): { ok: true; playerId: string } | { ok: false; error: string } {
+    existingPlayerId?: string,
+    seatToken?: string
+  ): { ok: true; playerId: string; seatToken: string } | { ok: false; error: string } {
     const room = this.rooms.get(code.toUpperCase());
     if (!room) return { ok: false, error: "Room not found" };
 
-    if (existingPlayerId && room.players.has(existingPlayerId)) {
+    if (
+      existingPlayerId &&
+      room.players.has(existingPlayerId) &&
+      verifySeatToken(room.code, existingPlayerId, seatToken)
+    ) {
       const player = room.players.get(existingPlayerId)!;
       const awayForMs = player.awaySince ? Date.now() - player.awaySince : 0;
       if (!player.isConnected) {
@@ -475,7 +514,11 @@ export class RoomManager {
       // Catch the rejoiner up on any rematch vote in progress so they don't
       // see a stale "Game Over" with no prompt.
       this.io.sockets.sockets.get(socketId)?.emit("rematch:state", room.rematch);
-      return { ok: true, playerId: existingPlayerId };
+      return {
+        ok: true,
+        playerId: existingPlayerId,
+        seatToken: mintSeatToken(room.code, existingPlayerId),
+      };
     }
 
     // Idempotency guard. A single socket maps to exactly one player in one
@@ -488,14 +531,17 @@ export class RoomManager {
     const seatedId = room.socketToPlayer.get(socketId);
     if (seatedId && room.players.has(seatedId)) {
       this.broadcastRoomState(room);
-      return { ok: true, playerId: seatedId };
+      // Re-issuing here is safe and necessary: this socket already holds the
+      // seat, and a duplicate join must not leave the client without the
+      // credential its first join was still waiting on.
+      return { ok: true, playerId: seatedId, seatToken: mintSeatToken(room.code, seatedId) };
     }
 
     const { max } = getGameLimits(room.game);
     if (room.players.size >= max) return { ok: false, error: "Room is full" };
     if (room.phase !== "lobby") return { ok: false, error: "Game already in progress" };
 
-    const playerId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const playerId = newPlayerId();
     const player: Player = {
       id: playerId,
       name: name.trim().slice(0, 20) || "Player",
@@ -509,7 +555,7 @@ export class RoomManager {
     this.io.sockets.sockets.get(socketId)?.join(room.code);
 
     this.broadcastRoomState(room);
-    return { ok: true, playerId };
+    return { ok: true, playerId, seatToken: mintSeatToken(room.code, playerId) };
   }
 
   leaveRoom(socketId: string): void {
@@ -1110,15 +1156,51 @@ export class RoomManager {
     if (!engine || !isRealtimeEngine(engine)) return;
 
     const periodMs = this.periodFor(engine)!;
+    /**
+     * Wall-clock catch-up.
+     *
+     * `setInterval(33)` does not fire every 33ms. Windows has a ~15.6ms timer
+     * granularity, so it fires at 46.7 — measured, with an empty callback, so
+     * it is the clock and not our work. Space War therefore simulated at 21Hz
+     * while declaring 30, which is not merely late: the ship advances a fixed
+     * 7px per tick, so the whole game ran at 70% speed with a third fewer
+     * positions to interpolate between. That coarser source is what was left
+     * of the stutter once the render loop was smooth.
+     *
+     * Stepping until the simulation catches up with elapsed real time makes
+     * pace independent of the platform's timer. This is the standard fixed-
+     * timestep loop, and it is MORE correct for physics (Carrom) than a
+     * variable one, not less.
+     */
+    let simulatedUntil = Date.now();
+    /** Ceiling per wake-up. Without it, a stalled process wakes and tries to
+     *  replay the whole gap at once — the spiral of death. */
+    const MAX_CATCHUP_STEPS = 4;
+
     room.simTimer = setInterval(() => {
       // The room may have ended or been torn down between ticks.
       if (room.phase !== "playing" || !room.engine) {
         this.stopSimulation(room);
         return;
       }
+      const now = Date.now();
+      let steps = Math.floor((now - simulatedUntil) / periodMs);
+      if (steps < 1) return; // woke early; nothing is owed yet
+      if (steps > MAX_CATCHUP_STEPS) {
+        // Long stall (GC, a suspended container). Skip the debt rather than
+        // fast-forwarding the match through it.
+        steps = 1;
+        simulatedUntil = now;
+      } else {
+        simulatedUntil += steps * periodMs;
+      }
+
       let result;
       try {
-        result = (room.engine as RealtimeEngine).simulateTick();
+        for (let i = 0; i < steps; i++) {
+          result = (room.engine as RealtimeEngine).simulateTick();
+          if (result?.isOver || room.engine.isOver()) break;
+        }
       } catch (err) {
         // A crashing simulation must not leave a runaway interval behind.
         logger.error({
@@ -1159,7 +1241,9 @@ export class RoomManager {
          */
         this.startSimulation(room);
       }
-    }, periodMs);
+      // Aim below the period: an over-long OS tick is then corrected by the
+      // next wake-up instead of compounding.
+    }, Math.max(8, Math.floor(periodMs / 2)));
   }
 
   /** The interval an engine is currently asking for, in ms. */

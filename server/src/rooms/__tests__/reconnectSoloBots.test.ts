@@ -47,22 +47,22 @@ function makeHarness() {
 /** Alice alone against one bot, mid-game. */
 function soloVsBots() {
   const h = makeHarness();
-  const { code, playerId } = h.rooms.createRoom("sockA", "Alice", "ludo");
+  const { code, playerId, seatToken } = h.rooms.createRoom("sockA", "Alice", "ludo");
   h.rooms.addBot("sockA", "Botty");
   h.rooms.setReady("sockA", true);
   h.rooms.startGame("sockA");
-  return { ...h, code, playerId };
+  return { ...h, code, playerId, seatToken };
 }
 
 /** Alice and Bob, both human. */
 function twoHumans() {
   const h = makeHarness();
-  const { code, playerId } = h.rooms.createRoom("sockA", "Alice", "ludo");
+  const { code, playerId, seatToken } = h.rooms.createRoom("sockA", "Alice", "ludo");
   h.rooms.joinRoom("sockB", "Bob", code);
   h.rooms.setReady("sockA", true);
   h.rooms.setReady("sockB", true);
   h.rooms.startGame("sockA");
-  return { ...h, code, playerId };
+  return { ...h, code, playerId, seatToken };
 }
 
 function roomExists(rooms: RoomManager, code: string): boolean {
@@ -94,7 +94,7 @@ describe("solo player vs bots loses connection", () => {
     g.rooms.handleDisconnect("sockA");
     vi.advanceTimersByTime(5 * 60_000);
 
-    const res = g.rooms.joinRoom("sockA2", "Alice", g.code, g.playerId);
+    const res = g.rooms.joinRoom("sockA2", "Alice", g.code, g.playerId, g.seatToken);
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.playerId).toBe(g.playerId);
   });
@@ -169,7 +169,7 @@ describe("multiplayer: the seat survives a real-world outage", () => {
     g.rooms.handleDisconnect("sockA");
     vi.advanceTimersByTime(4 * 60_000);
 
-    const res = g.rooms.joinRoom("sockA2", "Alice", g.code, g.playerId);
+    const res = g.rooms.joinRoom("sockA2", "Alice", g.code, g.playerId, g.seatToken);
     expect(res.ok).toBe(true);
     // The SAME id — not a fresh seat. A new id means lost progress.
     if (res.ok) expect(res.playerId).toBe(g.playerId);

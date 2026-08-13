@@ -47,11 +47,10 @@ export function registerSocketHandlers(
 
   socket.on("room:create", (payload, ack) => {
     try {
-      const { code, playerId } = rooms.createRoom(
+      const { code, playerId, seatToken } = rooms.createRoom(
         socket.id,
         payload.name,
         payload.game,
-        payload.playerId,
         payload.ludoOptions,
         payload.snlOptions,
         payload.rummyOptions,
@@ -71,7 +70,8 @@ export function registerSocketHandlers(
         payload.blockBlastOptions,
         payload.spaceWarOptions
       );
-      ack({ ok: true, code, playerId });
+      // `seatToken` goes to this socket's ack only — never into a broadcast.
+      ack({ ok: true, code, playerId, seatToken });
     } catch (err) {
       const error = err instanceof Error ? err.message : "Failed to create room";
       ack({ ok: false, error });
@@ -80,12 +80,18 @@ export function registerSocketHandlers(
 
   socket.on("room:join", (payload, ack) => {
     try {
-      const result = rooms.joinRoom(socket.id, payload.name, payload.code, payload.playerId);
+      const result = rooms.joinRoom(
+        socket.id,
+        payload.name,
+        payload.code,
+        payload.playerId,
+        payload.seatToken
+      );
       if (!result.ok) {
         ack({ ok: false, error: result.error });
         return;
       }
-      ack({ ok: true, playerId: result.playerId });
+      ack({ ok: true, playerId: result.playerId, seatToken: result.seatToken });
     } catch (err) {
       // Without this, a thrown error here (e.g. a stale engine reference on
       // a room left mid-rematch-failure) never calls `ack` — the client has

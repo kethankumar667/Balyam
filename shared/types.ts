@@ -2457,7 +2457,11 @@ export interface BlockBlastSelfState extends BlockBlastPublicState {
 export interface CreateRoomPayload {
   name: string;
   game: GameKind;
-  playerId?: string;
+  /**
+   * No `playerId` here on purpose. The creator used to be able to name
+   * themselves anything, including `"system"` — the id reserved for table
+   * announcements. The server mints it now and returns it in the ack.
+   */
   ludoOptions?: Partial<LudoGameOptions>;
   snlOptions?: Partial<SnlGameOptions>;
   rummyOptions?: Partial<RummyGameOptions>;
@@ -2485,7 +2489,13 @@ export interface SetTokenNicknamesPayload {
 export interface JoinRoomPayload {
   name: string;
   code: string;
+  /** The seat being reclaimed. Public, and worthless without `seatToken`. */
   playerId?: string;
+  /**
+   * Proof that this seat is yours, from the ack that first seated you.
+   * Without a matching one the server seats you as a new player instead.
+   */
+  seatToken?: string;
 }
 
 export interface ChatSendPayload {
@@ -2689,13 +2699,29 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
+  /**
+   * `seatToken` in these acks is a credential: it is sent to the one socket
+   * that took the seat and to nobody else. It must never be echoed into
+   * `RoomPublicState`, chat, or any other broadcast.
+   */
   "room:create": (
     payload: CreateRoomPayload,
-    ack: (response: { ok: boolean; code?: string; playerId?: string; error?: string }) => void
+    ack: (response: {
+      ok: boolean;
+      code?: string;
+      playerId?: string;
+      seatToken?: string;
+      error?: string;
+    }) => void
   ) => void;
   "room:join": (
     payload: JoinRoomPayload,
-    ack: (response: { ok: boolean; playerId?: string; error?: string }) => void
+    ack: (response: {
+      ok: boolean;
+      playerId?: string;
+      seatToken?: string;
+      error?: string;
+    }) => void
   ) => void;
   "room:leave": () => void;
   "room:setReady": (ready: boolean) => void;

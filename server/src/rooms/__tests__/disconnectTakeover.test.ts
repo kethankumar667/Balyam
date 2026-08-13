@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Server } from "socket.io";
 import { RoomManager } from "../RoomManager.js";
+import { mintSeatToken } from "../../lib/seatToken.js";
 import type {
   ChatMessage,
   ClientToServerEvents,
@@ -132,7 +133,7 @@ describe("RoomManager — disconnect takeover", () => {
     vi.advanceTimersByTime(9_000);
     expect(bob.isAutoPlaying).not.toBe(true);
 
-    rooms.joinRoom("sockB2", "Bob", code, bob.id);
+    rooms.joinRoom("sockB2", "Bob", code, bob.id, mintSeatToken(code, bob.id));
     // Short window on purpose. Advancing a minute here would let the IDLE
     // takeover fire legitimately (nobody in this test ever plays), and the
     // assertion would be about the wrong feature.
@@ -160,7 +161,7 @@ describe("RoomManager — disconnect takeover", () => {
     vi.advanceTimersByTime(11_000);
     expect(bob.isAutoPlaying).toBe(true);
 
-    rooms.joinRoom("sockB2", "Bob", code, bob.id);
+    rooms.joinRoom("sockB2", "Bob", code, bob.id, mintSeatToken(code, bob.id));
     expect(bob.isAutoPlaying).toBe(false);
     expect(chat.some((m) => m.playerId === "system" && /Bob is back/i.test(m.text))).toBe(true);
   });
@@ -179,7 +180,7 @@ describe("RoomManager — disconnect takeover", () => {
     expect(played).toBeGreaterThan(0);
 
     direct.length = 0;
-    rooms.joinRoom("sockA2", "Alice", code, alice.id);
+    rooms.joinRoom("sockA2", "Alice", code, alice.id, mintSeatToken(code, alice.id));
 
     expect(
       direct.some((m) => m.playerId === "system" && /Welcome back .* played for you/i.test(m.text)),
@@ -193,7 +194,7 @@ describe("RoomManager — disconnect takeover", () => {
     rooms.handleDisconnect("sockB");
     vi.advanceTimersByTime(3_000); // back inside the blip window
     direct.length = 0;
-    rooms.joinRoom("sockB2", "Bob", code, bob.id);
+    rooms.joinRoom("sockB2", "Bob", code, bob.id, mintSeatToken(code, bob.id));
 
     expect(direct.some((m) => /Welcome back/i.test(m.text))).toBe(false);
   });
@@ -280,7 +281,7 @@ describe("RoomManager — disconnect takeover", () => {
     const returning = ["Alice", "Bob"]
       .map((n) => playerOf(rooms, code, n))
       .find((p) => p.id !== turnHolder)!;
-    rooms.joinRoom("sock_back", returning.name, code, returning.id);
+    rooms.joinRoom("sock_back", returning.name, code, returning.id, mintSeatToken(code, returning.id));
 
     const before = totalRolls(rooms, code);
     vi.advanceTimersByTime(60_000);
@@ -436,7 +437,7 @@ describe("RoomManager — disconnect takeover", () => {
     const { io } = makeIo();
     const rooms = new RoomManager(io);
     const { code } = rooms.createRoom(
-      "s0", "Alice", "bingo", undefined,
+      "s0", "Alice", "bingo",
       undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       { callIntervalMs: 500, stopOnFirstWin: true },
     );
@@ -469,7 +470,7 @@ describe("RoomManager — disconnect takeover", () => {
     const { io } = makeIo();
     const rooms = new RoomManager(io);
     const { code } = rooms.createRoom(
-      "s0", "Alice", "bingo", undefined,
+      "s0", "Alice", "bingo",
       undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       { callIntervalMs: 500, stopOnFirstWin: true },
     );

@@ -14,9 +14,10 @@ A web-based multiplayer game lounge where friends and family join a room via cod
 ## Tech Stack
 - **Frontend:** React + Vite + TypeScript + TailwindCSS + Zustand
 - **Backend:** Node.js + Express + Socket.IO + TypeScript
-- **Database:** MongoDB (added in Phase 6 for optional accounts)
+- **Database:** none yet. Postgres + Prisma is the chosen stack for durable accounts and profiles; the layer no-ops while `DATABASE_URL` is unset, so local dev needs no database. (An earlier note here said MongoDB; that was never built.)
+- **Auth:** anonymous players, but seats are authenticated — a server-signed seat token owns the seat (`server/src/lib/seatToken.ts`). Accounts are the next phase.
 - **Voice:** WebRTC peer-to-peer via `simple-peer` (Phase 2)
-- **Hosting:** Frontend on Vercel, Backend on Render
+- **Hosting:** both the client and the server run on Render's free tier. Note the asymmetry: a static site never sleeps, a free web service spins down after ~15 minutes idle, so the page can load instantly while the first socket connection waits on a cold boot.
 
 ## Project Structure
 ```

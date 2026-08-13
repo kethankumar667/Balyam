@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import YourDataPanel from "../components/privacy/YourDataPanel";
+import { PencilIcon } from "../components/auth/authIcons";
+import { findAvatar } from "../lib/avatars";
+import SelfAvatar from "../components/profile/SelfAvatar";
 import { motion, AnimatePresence } from "framer-motion";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
@@ -162,10 +166,20 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
               onClick={() => navigate("/games")}
               icon={<GamepadGlyph className="w-[20px] h-[20px]" />}
             />
+            {/* The chosen avatar fills the button when there is one, so the
+                header stops showing a stranger's silhouette to someone who
+                already picked a face. `overflow-hidden` on the button lets the
+                image reach the rim instead of floating inside it. */}
             <IconCircleButton
               label="Your profile"
               onClick={() => setProfileOpen(true)}
-              icon={<UserGlyph className="w-[18px] h-[18px]" />}
+              fill
+              icon={
+                <SelfAvatar
+                  className="w-full h-full"
+                  fallback={<UserGlyph className="w-[18px] h-[18px]" />}
+                />
+              }
             />
             <IconCircleButton
               label="Open menu"
@@ -243,10 +257,13 @@ function IconCircleButton({
   icon,
   label,
   onClick,
+  /** Let the icon fill the circle edge to edge — used for avatar images. */
+  fill = false,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
+  fill?: boolean;
 }) {
   return (
     <motion.button
@@ -259,11 +276,12 @@ function IconCircleButton({
       transition={bhalyamSpring}
       aria-label={label}
       title={label}
-      className="w-11 h-11 rounded-full inline-flex items-center justify-center cursor-pointer
+      className={`w-11 h-11 rounded-full inline-flex items-center justify-center cursor-pointer
                  bg-[#FCF8EF] border border-[#EEDCC2] shadow-sm text-[#2A221B]
+                 ${fill ? "overflow-hidden p-0" : ""}
                  hover:bg-[#F8EEDB]
                  focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
-                 transition-colors duration-200"
+                 transition-colors duration-200`}
     >
       {icon}
     </motion.button>
@@ -344,19 +362,27 @@ function SheetShell({
             role="dialog"
             aria-modal="true"
             aria-label={ariaLabel}
-            className="fixed top-0 right-0 bottom-0 z-[71] w-[86vw] max-w-[380px] sm:max-w-[420px]
-                       bg-[#FBF2E3] border-l border-[#E8D8BE] shadow-[-12px_0_36px_-12px_rgba(0,0,0,0.55)]
+            /* `auth-shell` brings the token set that flips panel AND ink
+               together. Without it the dark tuning forced this panel light
+               while the inherited ink stayed light too — cream on cream,
+               measured at 1.04:1. */
+            className="auth-shell fixed top-0 right-0 bottom-0 z-[71] w-[86vw] max-w-[380px] sm:max-w-[420px]
+                       bg-[var(--auth-card)] border-l border-[var(--auth-card-edge)]
+                       text-[var(--auth-ink)] shadow-[-12px_0_36px_-12px_rgba(0,0,0,0.55)]
                        flex flex-col"
             style={{ paddingTop: "max(env(safe-area-inset-top, 0px) + 8px, 18px)" }}
           >
-            <div className="flex items-center justify-between px-5 pb-4 border-b border-[#E8D8BE]">
+            <div className="flex items-center justify-between px-5 pb-4 border-b border-[var(--auth-card-edge)]">
               <div className="flex items-center gap-2 min-w-0">{titleLeft}</div>
               <motion.button
                 type="button"
                 onClick={onClose}
                 whileTap={{ scale: 0.92 }}
                 aria-label="Close"
-                className="w-9 h-9 rounded-full inline-flex items-center justify-center bg-white border border-[#E8D8BE] text-[#2A221B] flex-shrink-0"
+                className="w-11 h-11 rounded-full inline-flex items-center justify-center
+                           bg-[var(--auth-field)] border border-[var(--auth-card-edge)]
+                           text-[var(--auth-ink)] flex-shrink-0
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
               >
                 <CloseGlyph className="w-4 h-4" />
               </motion.button>
@@ -388,6 +414,17 @@ function ProfileSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  const { playerName, avatarId } = useRoomStore();
+  const avatar = findAvatar(avatarId);
+  const named = playerName.trim().length > 0;
+
+  /**
+   * There is no signed-in state yet — accounts are unbuilt, so everyone here
+   * is a guest. Kept as one named value rather than sprinkled `false`s so the
+   * day accounts land, this is the single line that changes.
+   */
+  const signedIn = false;
+
   return (
     <SheetShell
       open={open}
@@ -395,34 +432,85 @@ function ProfileSheet({
       ariaLabel="Your profile"
       titleLeft={
         <>
-          <UserGlyph className="w-5 h-5 text-[#2A221B]" />
-          <span className="bhalyam-display text-[20px] text-[#2A221B] tracking-tight">
+          <UserGlyph className="w-5 h-5 text-[var(--auth-ink)]" />
+          <span className="bhalyam-display text-[20px] text-[var(--auth-ink)] tracking-tight">
             Profile
           </span>
         </>
       }
     >
-      {/* Hero card — locked / coming soon state */}
+      {/*
+        Hero — who you are, not a locked teaser. The avatar and name are real
+        and set on this device, so showing "Your profile / Coming soon" over a
+        blank silhouette was describing the feature instead of the person.
+        The pencil is the one affordance here: everything editable lives on
+        /profile, so the card points there rather than growing its own form.
+      */}
       <div
         className="rounded-2xl p-5 border border-[#E0AE3B] bg-gradient-to-br from-[#FFF7E2] to-[#FBE7BD]
                    shadow-[0_4px_14px_-6px_rgba(228,177,40,0.55)] text-center"
       >
-        <div className="mx-auto w-20 h-20 rounded-full bhalyam-gold-leaf flex items-center justify-center text-bhalyam-wood-dark mb-3 shadow-[0_8px_18px_-6px_rgba(228,177,40,0.55)]">
-          <UserGlyph className="w-9 h-9" />
+        <div className="relative mx-auto w-20 h-20 mb-3">
+          <span
+            className="block w-20 h-20 rounded-full overflow-hidden bhalyam-gold-leaf
+                       shadow-[0_8px_18px_-6px_rgba(228,177,40,0.55)]
+                       flex items-center justify-center text-bhalyam-wood-dark"
+          >
+            {avatar ? (
+              <img src={avatar.src} alt="" className="w-full h-full object-cover object-[50%_22%]" />
+            ) : (
+              <UserGlyph className="w-9 h-9" />
+            )}
+          </span>
+          {/*
+            Straddles the rim at 45°, rather than sitting inside it.
+
+            The avatar is an 80px circle, so its bottom-right rim point is
+            0.707r from the centre — about 68px along each axis. A 36px badge
+            pinned at `-0.5` centred at 64px, six pixels INSIDE the edge, which
+            is why the pencil landed on the avatar's shoulder instead of its
+            border. A 32px badge offset 4px out centres at 68px: tangent to the
+            circle, half on and half off, clear of the face.
+
+            Tap target stays 44px via the padded ::after below the visual.
+          */}
+          <Link
+            to="/profile"
+            onClick={onClose}
+            aria-label={avatar ? "Change your avatar and name" : "Choose an avatar and set your name"}
+            className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full inline-flex items-center
+                       justify-center bg-[#FFFDF8] text-[#7B5024]
+                       ring-2 ring-[#FBE7BD] border border-[#E0AE3B]
+                       shadow-[0_2px_6px_-1px_rgba(74,44,18,0.4)]
+                       after:absolute after:-inset-1.5 after:content-['']
+                       hover:bg-[#FFF4DE] active:scale-95
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark
+                       focus-visible:ring-offset-2 focus-visible:ring-offset-[#FBE7BD]
+                       transition-[background-color,transform] duration-150"
+          >
+            <PencilIcon className="w-[15px] h-[15px]" />
+          </Link>
         </div>
-        <div className="bhalyam-display text-[#2A221B] text-[22px] leading-tight">
-          Your profile
+
+        <div className="bhalyam-display text-[var(--auth-ink)] text-[22px] leading-tight break-words">
+          {named ? playerName : "Add your name"}
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] bg-[#FFF4E4] text-[#E54D0D] border border-[#F2D5A9] mt-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#E54D0D]" aria-hidden />
-          Coming soon
-        </span>
-        <p className="bhalyam-script text-[#7B5024] text-[20px] leading-[1.15] mt-4">
-          Sign in to make BHALYAM your own.
+
+        <p className="mt-1 text-[12.5px] font-semibold text-[var(--auth-accent)]">
+          {signedIn ? "Signed in" : "Playing as a guest"}
         </p>
+
+        {!named ? (
+          <p className="bhalyam-script text-[var(--auth-accent)] text-[19px] leading-[1.15] mt-3">
+            Tap the pencil so the table knows who you are.
+          </p>
+        ) : null}
       </div>
 
-      {/* What's planned */}
+      {/* What's coming — for signed-in players only. A guest is here to set a
+          name and get back to a game; a roadmap for account features they have
+          not opted into is someone else's agenda taking up their screen. */}
+      {signedIn ? (
       <div className="rounded-2xl p-4 border border-[#E8D8BE] bg-white">
         <div className="text-[11px] uppercase tracking-[0.22em] font-extrabold text-[#7B5024] mb-3">
           What's coming
@@ -450,19 +538,59 @@ function ProfileSheet({
           />
         </ul>
       </div>
+      ) : null}
 
-      {/* Notify-me CTA — disabled until the feature ships, but visible so
-          users know it's intentional, not broken. */}
-      <button
-        type="button"
-        disabled
-        className="w-full h-12 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] text-[#7B5024]
-                   font-extrabold text-[14px] inline-flex items-center justify-center gap-2 opacity-80 cursor-not-allowed"
-        aria-disabled="true"
-      >
-        <BellGlyph className="w-4 h-4" />
-        Notify me when profile is live
-      </button>
+      {/* Account. Replaces a disabled "Notify me" button: the screens now
+          exist, so sending people to them beats promising to tell them later.
+          The pages themselves say plainly that nothing signs you in yet, so
+          the honesty lives at the destination rather than in a dead control. */}
+      <div className="space-y-2">
+        <Link
+          to="/login"
+          onClick={onClose}
+          className="w-full h-12 rounded-full bhalyam-gold-leaf bhalyam-cta-shine
+                     border border-bhalyam-gold-dark text-bhalyam-wood-dark
+                     font-extrabold text-[14px] inline-flex items-center justify-center gap-2
+                     hover:brightness-[1.04] shadow-[0_8px_18px_-6px_rgba(228,177,40,0.6)]
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                     transition-[filter,box-shadow] duration-200"
+        >
+          <UserGlyph className="w-4 h-4" />
+          Sign in
+        </Link>
+        <Link
+          to="/signup"
+          onClick={onClose}
+          className="w-full h-12 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] text-[#7B5024]
+                     font-extrabold text-[14px] inline-flex items-center justify-center gap-2
+                     hover:bg-[#F8EEDB] active:scale-[0.99]
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                     transition-[background-color,transform] duration-200"
+        >
+          Create an account
+        </Link>
+        <Link
+          to="/profile"
+          onClick={onClose}
+          className="w-full h-12 rounded-full bg-transparent border border-[#EEDCC2] text-[#7B5024]
+                     font-extrabold text-[14px] inline-flex items-center justify-center gap-2
+                     hover:bg-[#F8EEDB] active:scale-[0.99]
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                     transition-[background-color,transform] duration-200"
+        >
+          Edit profile
+        </Link>
+        <p className="text-center text-[11.5px] leading-relaxed text-[var(--auth-ink-soft)]">
+          You never need an account to join a friend&apos;s room.
+        </p>
+      </div>
+
+      {/* Your data — DPDP Sections 11, 12 and 13. It belongs beside the
+          account controls, not buried in sound settings: the person asking
+          what is held about them is the same person looking at their profile. */}
+      <div className="rounded-2xl p-4 border border-[#E8D8BE] bg-white">
+        <YourDataPanel />
+      </div>
     </SheetShell>
   );
 }
@@ -614,16 +742,6 @@ function StarGlyph({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
       <path d="M12 2l2.9 6.6 7.1.7-5.4 5 1.6 7-6.2-3.6L5.8 21.3 7.4 14.3 2 9.3l7.1-.7L12 2z" />
-    </svg>
-  );
-}
-
-function BellGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9z" />
-      <path d="M10 21a2 2 0 0 0 4 0" />
     </svg>
   );
 }

@@ -7,6 +7,15 @@ import PreviewLudo from "./pages/PreviewLudo";
 import BhalyamHome from "./pages/BhalyamHome";
 import GamesPage from "./pages/GamesPage";
 import NotFound from "./pages/NotFound";
+import ProfilePage from "./pages/ProfilePage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import ConsentModal from "./components/privacy/ConsentModal";
+import { enforceConsentOnLoad } from "./lib/privacy/consent";
+import LoginPage from "./pages/auth/LoginPage";
+import SignUpPage from "./pages/auth/SignUpPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
+import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 
 /**
  * On every route change, snap the window scroll back to the top so the
@@ -69,6 +78,9 @@ import { getSocket } from "./lib/socket";
 
 export default function App() {
   useEffect(() => {
+    // Before anything else: a player who chose essential-only should not find
+    // optional keys quietly restored by whatever ran first last session.
+    enforceConsentOnLoad();
     // Warm up socket connection on app load so room creation is instantaneous
     getSocket();
   }, []);
@@ -76,9 +88,20 @@ export default function App() {
   return (
     <>
       <ScrollToTopOnRouteChange />
+      <ConsentModal />
       <Routes>
         <Route path="/" element={<BhalyamHome />} />
         <Route path="/games" element={<GamesPage />} />
+        {/* Accounts. Design-stage: the screens are real, nothing behind them
+            signs anyone in yet. Guests never have to come through here —
+            joining a room with a code needs no account. */}
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/room/:code" element={<Room />} />
         {/* Smart TV / Party Mode — big-screen, seat-less view of a room. */}
         <Route path="/tv/:code" element={<PartyScreen />} />

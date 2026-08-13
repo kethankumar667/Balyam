@@ -1943,3 +1943,211 @@ body, #root, .bhalyam-paper {
   .bb-flash { animation: bb-flash 200ms linear forwards; }
   .bb-gain  { animation: none; opacity: 1; }
 }
+
+/* ─────────────────────────── Auth surfaces ───────────────────────────
+   The parts of the sign-in screens the browser draws for us. Left at their
+   defaults, a caret, a text selection and an autofilled field are the three
+   places a carefully built page suddenly looks like a stock form — Chrome's
+   autofill in particular repaints the input a hard #E8F0FE blue that has
+   nothing to do with this palette. */
+
+.bhalyam-home ::selection {
+  background: rgba(228, 177, 40, 0.32);
+  color: #2A221B;
+}
+
+.bhalyam-home input,
+.bhalyam-home textarea {
+  caret-color: #B38918;
+}
+
+/* Chrome/Safari autofill. The colour cannot be set directly, so the inset
+   shadow paints over it and the long delay keeps the transition from ever
+   reaching the browser's own background. */
+.bhalyam-home input:-webkit-autofill,
+.bhalyam-home input:-webkit-autofill:hover,
+.bhalyam-home input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #2A221B;
+  -webkit-box-shadow: 0 0 0 40px #FDF6E7 inset;
+  box-shadow: 0 0 0 40px #FDF6E7 inset;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #B38918;
+}
+
+/* The one indeterminate spinner in the auth flow. */
+@keyframes auth-spin {
+  to { transform: rotate(360deg); }
+}
+.auth-spin {
+  animation: auth-spin 720ms linear infinite;
+  transform-origin: 50% 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* A busy button still has to read as busy, so the spinner stays — slowed
+     to a pace that reads as "working" rather than as motion. */
+  .auth-spin { animation-duration: 2.4s; }
+}
+
+/* ── Auth surface tokens ──────────────────────────────────────────────
+   The sign-in screens are one self-contained world, so their palette lives
+   in one place and flips whole rather than per-declaration.
+
+   Two collisions with the global BHALYAM styles are settled here:
+
+   1. `.bhalyam-font h1..h4` (way above) sets Poppins with a higher
+      specificity than `.bhalyam-display`, so a heading tagged for Righteous
+      silently rendered in Poppins — the display face never even downloaded,
+      because nothing on the page ever resolved to it. Scoped to `.auth-shell`
+      rather than fixed globally: the same collision affects the home page's
+      section headings, and changing that surface is not this change's call.
+
+   2. The dark-mode readability tuning assumes dark panels. This card is warm
+      paper in both themes, so the tuning has to be answered explicitly rather
+      than inherited. */
+
+.auth-shell {
+  --auth-card: #FFFBF2;
+  --auth-card-edge: #E8D8BE;
+  --auth-ink: #2A221B;
+  --auth-ink-soft: #6D5540;
+  --auth-ink-mute: #7E653F;
+  --auth-field: #FDF6E7;
+  --auth-field-edge: #E8D8BE;
+  --auth-rule: #E5D4B4;
+  --auth-hairline: rgba(74, 44, 18, 0.14);
+}
+
+:root[data-theme="dark"] .auth-shell {
+  --auth-card: #2A1D11;
+  --auth-card-edge: #4B361F;
+  --auth-ink: #F6EDDC;
+  --auth-ink-soft: #D3BF9F;
+  --auth-ink-mute: #B49B75;
+  --auth-field: #201509;
+  --auth-field-edge: #58411F;
+  --auth-rule: #4B361F;
+  --auth-hairline: rgba(0, 0, 0, 0.5);
+}
+
+/* Righteous, actually applied — see note 1 above. */
+.auth-shell .bhalyam-display {
+  font-family: 'Righteous', 'Poppins', system-ui, sans-serif;
+}
+
+/* The dark tuning above forces `.bhalyam-home h2` to near-black `!important`,
+   because that strategy keeps BHALYAM's paper panels light in dark mode and
+   darkens their ink to suit. This card goes genuinely dark instead, so that
+   rule would paint the heading the same colour as the surface behind it —
+   invisible, measured at 1.05:1. `!important` is the only thing that outranks
+   `!important`, and it is how the block above states its own intent. */
+:root[data-theme="dark"] .auth-shell h1,
+:root[data-theme="dark"] .auth-shell h2,
+:root[data-theme="dark"] .auth-shell h3 {
+  color: var(--auth-ink) !important;
+}
+
+:root[data-theme="dark"] .auth-shell input:-webkit-autofill,
+:root[data-theme="dark"] .auth-shell input:-webkit-autofill:hover,
+:root[data-theme="dark"] .auth-shell input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--auth-ink);
+  -webkit-box-shadow: 0 0 0 40px var(--auth-field) inset;
+  box-shadow: 0 0 0 40px var(--auth-field) inset;
+}
+
+/* Accent + message tints for the auth surface, both themes. */
+.auth-shell {
+  --auth-accent: #7B5024;
+  --auth-note-bg: #FBF1DA;
+  --auth-note-edge: #E3CE9F;
+  --auth-note-ink: #6B5323;
+  --auth-ok-bg: #EAF4E7;
+  --auth-ok-edge: #BFDCB6;
+  --auth-ok-ink: #2E5B2B;
+  --auth-bad-bg: #FBE9E6;
+  --auth-bad-edge: #EFC2BB;
+  --auth-bad-ink: #8E2B22;
+  --auth-field-error: #A3231B;
+}
+
+:root[data-theme="dark"] .auth-shell {
+  --auth-accent: #E7BE73;
+  --auth-note-bg: #33240F;
+  --auth-note-edge: #59421C;
+  --auth-note-ink: #EBD3A0;
+  --auth-ok-bg: #1D2E1B;
+  --auth-ok-edge: #3B5C36;
+  --auth-ok-ink: #B7DDAF;
+  --auth-bad-bg: #3A1D18;
+  --auth-bad-edge: #6B342B;
+  --auth-bad-ink: #F0B4AA;
+  --auth-field-error: #F0A79C;
+}
+
+/* The dark-mode readability block far above forces `.bhalyam-home` panels to
+   light cream `!important` and `.bhalyam-home` ink to light cream too. That
+   pairing is coherent only where the panel really is light; inside a token
+   surface it produced cream-on-cream at 1.04:1. Tokens win here, and only
+   `!important` outranks `!important`.
+ *
+ * EVERY light surface in the sheet has to be listed. A first pass flipped the
+ * ink and only some of the backgrounds, which left the menu's icon discs pale
+ * with pale glyphs on them — the same failure moved one layer in. The rule is
+ * all-or-nothing: if the ink flips, every surface under it flips too. */
+:root[data-theme="dark"] .auth-shell,
+:root[data-theme="dark"] .auth-shell .bg-\[\#FCF8EF\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#FBF2E3\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#FFF8EE\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#F8EEDB\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#F5ECE0\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#FBF4E8\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#FAF2E6\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#F7EFE0\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#EFE2CF\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#FFFDF8\],
+:root[data-theme="dark"] .auth-shell .bg-white {
+  background-color: var(--auth-field) !important;
+}
+
+/* The sheet's own shell stays the card colour; only the insets go one step
+   darker so discs and rows still read as raised. */
+:root[data-theme="dark"] .auth-shell {
+  background-color: var(--auth-card) !important;
+}
+:root[data-theme="dark"] .auth-shell .border-\[\#E8D8BE\],
+:root[data-theme="dark"] .auth-shell .border-\[\#EEDCC2\] {
+  border-color: var(--auth-card-edge) !important;
+}
+:root[data-theme="dark"] .auth-shell h3,
+:root[data-theme="dark"] .auth-shell h4,
+:root[data-theme="dark"] .auth-shell .text-\[\#2A221B\],
+:root[data-theme="dark"] .auth-shell .text-\[\#3F2A1D\] {
+  color: var(--auth-ink) !important;
+}
+:root[data-theme="dark"] .auth-shell .text-\[\#7B5024\],
+:root[data-theme="dark"] .auth-shell .text-\[\#7A6652\],
+:root[data-theme="dark"] .auth-shell .text-\[\#6D5540\] {
+  color: var(--auth-ink-soft) !important;
+}
+
+/* The hero card paints itself with a light gradient (`bg-gradient-to-br
+   from-[#FFF7E2]`), which a background-COLOR override cannot touch — a
+   gradient is a background-image. So in dark mode the card stayed cream while
+   the ink above flipped to cream: the player's own name disappeared. Caught by
+   eye, not by the contrast pass, because the measurement walks up looking for
+   a background colour and a gradient has none. */
+:root[data-theme="dark"] .auth-shell .from-\[\#FFF7E2\] {
+  background-image: linear-gradient(to bottom right, #3A2916, #2A1D11) !important;
+  border-color: var(--auth-card-edge) !important;
+}
+
+/* Gold is a light surface in BOTH themes, so anything sitting on it keeps dark
+   ink whatever the theme says. Without this the primary menu row inverted the
+   wrong way in dark mode: a dark disc on gold, and a pale subtitle on gold. */
+:root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf,
+:root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf * {
+  color: #2A221B !important;
+}
+:root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf .bg-\[\#FFF6DC\] {
+  background-color: #FFF6DC !important;
+}

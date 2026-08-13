@@ -153,7 +153,7 @@ describe("RoomManager — UNO round history + house champion", () => {
 
     const { code } = rooms.createRoom(
       "s0", "Anand", "uno",
-      undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       { targetScore: 300 }, // high enough to virtually guarantee 2+ rounds
     );
     rooms.joinRoom("s1", "Babji", code);

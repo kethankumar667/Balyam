@@ -287,7 +287,7 @@ const HC_CATEGORIES: { id: HcCategory; label: string; blurb: string }[] = [
 
 export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const navigate = useNavigate();
-  const { playerName, setPlayerName, setPlayerId, playerId } = useRoomStore();
+  const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor } = useRoomStore();
 
   const [name, setName] = useState(playerName);
   const [difficulty, setDifficulty] = useState<SnlDifficulty>("medium");
@@ -408,7 +408,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         {
           name: n,
           game: asGameKind(game),
-          playerId: playerId ?? undefined,
           snlOptions: game === "snl" ? { difficulty } : undefined,
           rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
           hcOptions:
@@ -475,6 +474,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             return;
           }
           if (res.playerId) setPlayerId(res.playerId);
+          if (res.code && res.playerId && res.seatToken) {
+            rememberSeat(res.code, res.playerId, res.seatToken);
+          }
           if (game && ["samethalu", "telugucinemalu", "snake", "roadrash", "spacewar"].includes(game)) {
             const socket = getSocket();
             socket.emit("room:setReady", true);
@@ -518,7 +520,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       {
         name: n,
         game: asGameKind(game),
-        playerId: playerId ?? undefined,
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
           game === "wordbuilding"
@@ -558,6 +559,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           return;
         }
         if (res.playerId) setPlayerId(res.playerId);
+        if (res.code && res.playerId && res.seatToken) {
+          rememberSeat(res.code, res.playerId, res.seatToken);
+        }
         const roomCode = res.code;
         // Add each local seat sequentially. Server validates max-players
         // per game; any overflow surfaces as a `room:error`.
@@ -595,7 +599,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     const socket = getSocket();
     socket.emit(
       "room:join",
-      { name: n, code, playerId: playerId ?? undefined },
+      { name: n, code, ...(seatFor(code) ?? {}) },
       (res) => {
         setBusy(false);
         if (!res.ok) {
@@ -606,6 +610,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           return;
         }
         if (res.playerId) setPlayerId(res.playerId);
+        if (res.playerId && res.seatToken) rememberSeat(code, res.playerId, res.seatToken);
         navigate(`/room/${code}`);
       },
     );

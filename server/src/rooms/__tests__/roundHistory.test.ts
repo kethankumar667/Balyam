@@ -72,7 +72,7 @@ describe("RoomManager — Rummy round history + house champion (docs/rummy/roadm
     addSocket("s1");
     const rooms = new RoomManager(io);
 
-    const { code } = rooms.createRoom("s0", "Anand", "rummy", undefined, undefined, undefined, { mode: "pool101" });
+    const { code } = rooms.createRoom("s0", "Anand", "rummy", undefined, undefined, { mode: "pool101" });
     rooms.joinRoom("s1", "Babji", code);
     rooms.setRoomName("s0", "Test Gang");
     rooms.setReady("s0", true);

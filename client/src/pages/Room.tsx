@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState , useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
@@ -261,6 +261,8 @@ export default function Room() {
     rematch,
     setPlayerId,
     setPlayerName,
+    rememberSeat,
+    seatFor,
     setRoomState,
     setGameState,
     addMessage,
@@ -295,12 +297,10 @@ export default function Room() {
   // stays lit after the player is long gone.
   useEffect(() => destroyVoiceSession, []);
 
-  // Keeps the latest playerId reachable from inside the join effect's closure
-  // without re-subscribing socket listeners on every id change. A reconnect
-  // that fires after the first join resolved must rejoin with the REAL id
-  // (reclaim the seat) rather than the stale null it closed over (a ghost).
-  const playerIdRef = useRef(playerId);
-  playerIdRef.current = playerId;
+  // The join effect used to mirror `playerId` into a ref so a reconnect that
+  // fired after the first join resolved would rejoin with the REAL id instead
+  // of the stale null it closed over. `seatFor(code)` reads live store state
+  // through zustand's `get()`, so it is never stale and the ref is gone.
 
   // Blocks overlapping room:join emits before the first ack returns. Both
   // StrictMode's double-invoked effect and the connect-event rejoin racing
@@ -342,10 +342,13 @@ export default function Room() {
       // joining as a brand-new ghost.
       if (joinInFlightRef.current) return;
       joinInFlightRef.current = true;
-      logConn("rejoin_send", `${reason} code=${joinCode} hadId=${!!playerIdRef.current}`);
+      // The credential for THIS room, not whatever id happens to be current.
+      // A seat token only reclaims the room it was issued for.
+      const seat = seatFor(joinCode);
+      logConn("rejoin_send", `${reason} code=${joinCode} hadSeat=${!!seat}`);
       socket.emit(
         "room:join",
-        { name: joinName, code: joinCode, playerId: playerIdRef.current ?? undefined },
+        { name: joinName, code: joinCode, playerId: seat?.playerId, seatToken: seat?.seatToken },
         (res) => {
           joinInFlightRef.current = false;
           // The decisive line: did the socket come back but the ROOM was
@@ -376,6 +379,9 @@ export default function Room() {
             return;
           }
           if (res.playerId) setPlayerId(res.playerId);
+          if (res.playerId && res.seatToken) {
+            rememberSeat(joinCode, res.playerId, res.seatToken);
+          }
         }
       );
     }
@@ -433,6 +439,17 @@ export default function Room() {
     // the user reloads (which seeds playerName from localStorage on mount).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, playerName]);
+
+  /**
+   * One stable `game:move` sender.
+   *
+   * The boards are memoized, and an inline arrow prop would defeat that
+   * instantly — a new function identity every render is a new prop, so the
+   * board would re-render on every broadcast anyway.
+   */
+  const sendMove = useCallback((type: string, data?: unknown) => {
+    getSocket().emit("game:move", { type, data });
+  }, []);
 
   // Snap to top once roomState lands — the page renders a slim "Connecting…"
   // shell first and then expands to the full lobby card, which can leave the
@@ -1168,12 +1185,9 @@ export default function Room() {
 
             {roomState.phase !== "lobby" && roomState.game === "snake" && gameState != null && (
               <SnakeBoard
+                onMove={sendMove}
                 state={gameState as SnakePublicState}
                 selfId={playerId || ""}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
               />
             )}
 
@@ -1221,12 +1235,9 @@ export default function Room() {
 
             {roomState.phase !== "lobby" && roomState.game === "spacewar" && gameState != null && (
               <SpaceWarBoard
+                onMove={sendMove}
                 state={gameState as SpaceWarPublicState}
                 selfId={playerId || ""}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
               />
             )}
 

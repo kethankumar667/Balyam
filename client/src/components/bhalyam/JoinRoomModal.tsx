@@ -33,7 +33,7 @@ export interface JoinRoomModalProps {
 
 export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
   const navigate = useNavigate();
-  const { playerName, setPlayerName, setPlayerId, playerId } = useRoomStore();
+  const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor } = useRoomStore();
 
   const [name, setName] = useState(playerName);
   const [code, setCode] = useState("");
@@ -125,7 +125,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
     const socket = getSocket();
     socket.emit(
       "room:join",
-      { name: n, code: c, playerId: playerId ?? undefined },
+      { name: n, code: c, ...(seatFor(c) ?? {}) },
       (res) => {
         setBusy(false);
         if (!res.ok) {
@@ -137,6 +137,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
           return;
         }
         if (res.playerId) setPlayerId(res.playerId);
+        if (res.playerId && res.seatToken) rememberSeat(c, res.playerId, res.seatToken);
         onClose();
         navigate(`/room/${c}`);
       },
@@ -350,7 +351,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               const socket = getSocket();
               socket.emit(
                 "room:join",
-                { name: n, code: scannedCode, playerId: playerId ?? undefined },
+                { name: n, code: scannedCode, ...(seatFor(scannedCode) ?? {}) },
                 (res) => {
                   setBusy(false);
                   if (!res.ok) {
@@ -358,6 +359,9 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                     return;
                   }
                   if (res.playerId) setPlayerId(res.playerId);
+                  if (res.playerId && res.seatToken) {
+                    rememberSeat(scannedCode, res.playerId, res.seatToken);
+                  }
                   onClose();
                   navigate(`/room/${scannedCode}`);
                 }

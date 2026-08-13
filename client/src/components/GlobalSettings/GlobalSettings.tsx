@@ -5,6 +5,7 @@ import { useTranslation } from "../../hooks/useTranslation";
 import { AUDIO, type AudioThemeId } from "../../constants/audio";
 import { THEMES } from "../../assets/audio/themes/manifests";
 import LanguageSettings from "../LanguageSettings/LanguageSettings";
+import YourDataPanel from "../privacy/YourDataPanel";
 
 /**
  * Application-wide preferences panel. Holds independent toggles for
@@ -53,7 +54,7 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
       {/* ── Sound ───────────────────────────────────────────────── */}
       <div className="space-y-3">
         <header className="flex items-center justify-between gap-2">
-          <h3 className="text-sm uppercase tracking-wider text-[#7A6652] dark:text-slate-400 font-bold">
+          <h3 className="text-sm uppercase tracking-wider text-[#6B573F] dark:text-slate-300 font-bold">
             {t("sound.title")}
           </h3>
           <ToggleSwitch
@@ -66,7 +67,7 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
         </header>
 
         {!isAudioUnlocked && (
-          <p className="text-[11px] text-[#7A6652] dark:text-slate-400 italic">
+          <p className="text-[11px] text-[#6B573F] dark:text-slate-300 italic">
             {t("audio.unlockHint")}
           </p>
         )}
@@ -94,7 +95,7 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
       {/* ── Vibration ───────────────────────────────────────────── */}
       <div className="space-y-2 pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
         <header className="flex items-center justify-between gap-2">
-          <h3 className="text-sm uppercase tracking-wider text-[#7A6652] dark:text-slate-400 font-bold">
+          <h3 className="text-sm uppercase tracking-wider text-[#6B573F] dark:text-slate-300 font-bold">
             {t("vibration.title")}
           </h3>
           <ToggleSwitch
@@ -106,7 +107,7 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
             ariaLabel={h.enabled ? t("vibration.disable") : t("vibration.enable")}
           />
         </header>
-        <p className="text-[11px] text-[#7A6652] dark:text-slate-400 leading-snug">
+        <p className="text-[11px] text-[#6B573F] dark:text-slate-300 leading-snug">
           {h.supported ? t("vibration.hint") : t("vibration.unsupported")}
         </p>
       </div>
@@ -114,10 +115,10 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
       {/* ── Audio theme ─────────────────────────────────────────── */}
       <div className="space-y-2 pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
         <div className="flex items-center justify-between">
-          <span className="text-xs uppercase tracking-wider text-[#7A6652] dark:text-slate-400 font-bold">
+          <span className="text-xs uppercase tracking-wider text-[#6B573F] dark:text-slate-300 font-bold">
             {t("audio.theme")}
           </span>
-          <span className="text-[11px] text-[#9B8770] dark:text-slate-500">
+          <span className="text-[11px] text-[#6B573F] dark:text-slate-300">
             {THEMES.find((t) => t.id === settings.selectedAudioTheme)?.name}
           </span>
         </div>
@@ -139,7 +140,7 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
                 <div className="text-sm font-bold leading-tight">{t.name}</div>
                 <div
                   className={`text-[11px] leading-snug mt-0.5 ${
-                    active ? "text-white/90" : "text-[#7A6652] dark:text-slate-400"
+                    active ? "text-white/90" : "text-[#6B573F] dark:text-slate-300"
                   }`}
                 >
                   {t.description}
@@ -152,6 +153,11 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
 
       {/* ── Language ────────────────────────────────────────────── */}
       <LanguageSettings embedded />
+
+      {/* ── Your data (DPDP Sections 11, 12, 13) ────────────────── */}
+      <div className="pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
+        <YourDataPanel />
+      </div>
     </section>
   );
 }
@@ -185,7 +191,9 @@ function VolumeSlider({
         disabled={disabled}
         aria-label={t("audio.volumeLabel", { label })}
         onChange={(e) => onChange(Number(e.currentTarget.value) / 100)}
-        className="w-full accent-[#EA5A1F] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        /* h-11 gives the 44px target WCAG 2.5.8 asks for; the painted track
+           stays slim because a range input draws its own. */
+        className="w-full h-11 accent-[#EA5A1F] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
       />
     </label>
   );
@@ -214,9 +222,9 @@ function ToggleSwitch({
       aria-label={ariaLabel}
       onClick={onChange}
       disabled={disabled}
-      className={`inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full transition-colors ${
+      className={`inline-flex items-center gap-2 text-xs font-bold px-3 min-h-[44px] rounded-full transition-colors ${
         disabled
-          ? "bg-[#E5D6BD] dark:bg-slate-700 text-[#9B8770] dark:text-slate-500 cursor-not-allowed"
+          ? "bg-[#E5D6BD] dark:bg-slate-700 text-[#6B573F] dark:text-slate-300 cursor-not-allowed"
           : checked
             ? "bg-[#31A157] hover:bg-[#2A8B4B] text-white"
             : "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118] dark:text-slate-300"

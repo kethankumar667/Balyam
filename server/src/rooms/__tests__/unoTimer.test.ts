@@ -54,7 +54,6 @@ describe("RoomManager — UNO turn timer wiring", () => {
       "s0",
       "Anand",
       "uno",
-      undefined, // existingPlayerId
       undefined, // ludoOptions
       undefined, // snlOptions
       undefined, // rummyOptions
