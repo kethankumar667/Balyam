@@ -2144,7 +2144,9 @@ export interface VyomaYudhOptions {
 export const DEFAULT_VYOMAYUDH_OPTIONS: VyomaYudhOptions = {
   difficulty: "normal",
   lives: 3,
-  levels: 8,
+  // Ten, matching the three complexity bands the engine now runs
+  // (see VYOMA_BANDS): 1-3 patrol, 4-7 assault, 8-10 siege.
+  levels: 10,
 };
 
 /** Special weapons. Standard fire is unlimited and is not listed here. */

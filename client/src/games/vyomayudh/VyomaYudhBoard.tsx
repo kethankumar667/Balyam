@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, Player, VyomaWeapon, VyomaYudhPublicState } from "@shared/types";
 import { VYOMA_WORLD } from "@shared/types";
 import InlineRoomRail from "../../components/InlineRoomRail";
@@ -37,6 +37,20 @@ export default function VyomaYudhBoard({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  /**
+   * `onMove` arrives as an inline arrow from Room.tsx, so it is a NEW
+   * function on every render. Both steer pumps below used to list it as an
+   * effect dependency, which meant every server broadcast tore down the
+   * 50ms interval and started a fresh one — and this engine broadcasts at
+   * 20Hz, i.e. every 50ms. The interval was racing the exact rate that
+   * reset it and lost most of the time, so steering fired erratically or
+   * not at all. That is the "not smooth" report, and it hit keyboard too.
+   *
+   * Holding it in a ref lets the pumps run for the life of the board.
+   */
+  const onMoveRef = useRef(onMove);
+  onMoveRef.current = onMove;
 
   const isPilot = state.pilotId === selfId;
   const nameOf = useMemo(() => {
@@ -93,18 +107,18 @@ export default function VyomaYudhBoard({
         held.current.add(k);
         e.preventDefault();
       }
-      if (k === " ") { onMove("fire"); e.preventDefault(); }
-      if (k === "1") onMove("special", { weapon: "missile" as VyomaWeapon });
-      if (k === "2") onMove("special", { weapon: "laser" as VyomaWeapon });
-      if (k === "3") onMove("special", { weapon: "wall" as VyomaWeapon });
+      if (k === " ") { onMoveRef.current("fire"); e.preventDefault(); }
+      if (k === "1") onMoveRef.current("special", { weapon: "missile" as VyomaWeapon });
+      if (k === "2") onMoveRef.current("special", { weapon: "laser" as VyomaWeapon });
+      if (k === "3") onMoveRef.current("special", { weapon: "wall" as VyomaWeapon });
     };
     const up = (e: KeyboardEvent) => held.current.delete(e.key.toLowerCase());
 
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     const pump = window.setInterval(() => {
-      if (held.current.has("arrowup") || held.current.has("w")) onMove("steer", { dy: -1 });
-      if (held.current.has("arrowdown") || held.current.has("s")) onMove("steer", { dy: 1 });
+      if (held.current.has("arrowup") || held.current.has("w")) onMoveRef.current("steer", { dy: -1 });
+      if (held.current.has("arrowdown") || held.current.has("s")) onMoveRef.current("steer", { dy: 1 });
     }, 50);
     return () => {
       window.removeEventListener("keydown", down);
@@ -112,15 +126,27 @@ export default function VyomaYudhBoard({
       window.clearInterval(pump);
       held.current.clear();
     };
-  }, [isPilot, state.isOver, onMove]);
+  }, [isPilot, state.isOver]);
 
-  /* ── touch: drag anywhere on the canvas to steer ── */
+  /* ── touch / on-screen pad ── */
   const [touchDir, setTouchDir] = useState<-1 | 0 | 1>(0);
+  const touchDirRef = useRef<-1 | 0 | 1>(0);
+  const steer = useCallback((d: -1 | 0 | 1) => {
+    // Ref drives the pump, state drives the button's pressed styling. Keeping
+    // the pump off state means changing direction mid-hold does not restart
+    // the interval and drop a beat.
+    touchDirRef.current = d;
+    setTouchDir(d);
+  }, []);
+
   useEffect(() => {
-    if (!isPilot || touchDir === 0) return;
-    const t = window.setInterval(() => onMove("steer", { dy: touchDir }), 50);
+    if (!isPilot) return;
+    const t = window.setInterval(() => {
+      const d = touchDirRef.current;
+      if (d !== 0) onMoveRef.current("steer", { dy: d });
+    }, 50);
     return () => window.clearInterval(t);
-  }, [isPilot, touchDir, onMove]);
+  }, [isPilot]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -156,23 +182,23 @@ export default function VyomaYudhBoard({
             if (!isPilot) return;
             e.currentTarget.setPointerCapture(e.pointerId);
             const r = e.currentTarget.getBoundingClientRect();
-            setTouchDir(e.clientY - r.top < r.height / 2 ? -1 : 1);
+            steer(e.clientY - r.top < r.height / 2 ? -1 : 1);
           }}
           /* Drag now re-aims. Before, direction was sampled once on press, so
              sliding from the top half to the bottom without lifting kept
              flying UP — you had to release and re-press to turn around. */
           onPointerMove={(e) => {
-            if (!isPilot || touchDir === 0) return;
+            if (!isPilot || touchDirRef.current === 0) return;
             const r = e.currentTarget.getBoundingClientRect();
-            setTouchDir(e.clientY - r.top < r.height / 2 ? -1 : 1);
+            steer(e.clientY - r.top < r.height / 2 ? -1 : 1);
           }}
-          onPointerUp={() => setTouchDir(0)}
-          onPointerLeave={() => setTouchDir(0)}
+          onPointerUp={() => steer(0)}
+          onPointerLeave={() => steer(0)}
           /* Without this the ship flies on forever when the browser takes the
              pointer away — an incoming notification, a scroll gesture the OS
              claims, a palm touch. `pointercancel` fires instead of
              `pointerup`, so the old code never stopped steering. */
-          onPointerCancel={() => setTouchDir(0)}
+          onPointerCancel={() => steer(0)}
         />
       </div>
 
@@ -196,8 +222,8 @@ export default function VyomaYudhBoard({
       {isPilot && !state.isOver && (
         <div className="flex items-stretch justify-between gap-3">
           <div className="flex flex-col gap-2">
-            <SteerButton dir={-1} label="Fly up" onHold={setTouchDir} active={touchDir === -1} />
-            <SteerButton dir={1} label="Fly down" onHold={setTouchDir} active={touchDir === 1} />
+            <SteerButton dir={-1} label="Fly up" onHold={steer} active={touchDir === -1} />
+            <SteerButton dir={1} label="Fly down" onHold={steer} active={touchDir === 1} />
           </div>
 
           <div className="flex flex-1 flex-col gap-2">
@@ -296,7 +322,11 @@ function SteerButton({
         onHold(dir);
       }}
       onPointerUp={stop}
-      onPointerLeave={stop}
+      /* No `onPointerLeave`. The pointer is CAPTURED on press, so this button
+         is guaranteed the up/cancel event wherever the finger ends up — and
+         with capture active, a leave firing as the thumb drifts a few pixels
+         off the edge would stop the ship mid-hold, which is the opposite of
+         what capture is for. */
       onPointerCancel={stop}
       className="rounded-lg px-5 touch-none select-none transition-transform active:scale-95"
       style={{

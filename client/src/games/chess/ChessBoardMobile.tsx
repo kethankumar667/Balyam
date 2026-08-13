@@ -221,6 +221,7 @@ export default function ChessBoardMobile({
           inCheck={state.inCheck}
           selectedSquare={selectedSquare}
           legalTargets={legalTargets}
+          pieceSet={localPieceSet}
           onSquareClick={handleSquareClick}
         />
       </div>

@@ -271,6 +271,7 @@ export default function ChessBoardDesktop({
             inCheck={state.inCheck}
             selectedSquare={selectedSquare}
           legalTargets={legalTargets}
+          pieceSet={localPieceSet}
             onSquareClick={handleSquareClick}
           />
 
