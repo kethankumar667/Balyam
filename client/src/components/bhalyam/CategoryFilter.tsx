@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   BHALYAM_GAMES,
@@ -79,6 +79,25 @@ interface Segment {
   label: string;
 }
 
+/**
+ * Edge-fade mask for the scrolling track.
+ *
+ * 28px is wide enough to read as a fade rather than a clipped edge, and
+ * narrow enough that it never swallows a whole label. Returns an empty style
+ * when nothing overflows, so a track that fits shows no fade at all.
+ */
+function maskFor(edges: { left: boolean; right: boolean }): React.CSSProperties {
+  if (!edges.left && !edges.right) return {};
+  const stops = [
+    edges.left ? "transparent 0, #000 28px" : "#000 0",
+    edges.right ? "#000 calc(100% - 28px), transparent 100%" : "#000 100%",
+  ].join(", ");
+  const image = `linear-gradient(to right, ${stops})`;
+  // Both spellings: WebkitMaskImage is still required on Safari/iOS, which
+  // is most of the audience reporting this.
+  return { maskImage: image, WebkitMaskImage: image };
+}
+
 export default function CategoryFilter({
   value,
   onChange,
@@ -90,6 +109,50 @@ export default function CategoryFilter({
 }) {
   const reduceMotion = useReducedMotion();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Which edges have more track behind them.
+   *
+   * Six segments do not fit a 375px phone, so the track scrolls — and the
+   * scrollbar is deliberately hidden (it would sit across the pills). That
+   * left NOTHING on screen saying the row continued: players reported
+   * believing Board & Cards was the last category, and the two behind it
+   * were effectively unshipped.
+   *
+   * Measured rather than assumed. A static fade on the right is a lie the
+   * moment you reach the end, and the count that fits changes with font
+   * scaling and locale — the labels are translated now, so "Board & Cards"
+   * is not the same width in Telugu as in English.
+   */
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  const measure = useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    // 1px slack: sub-pixel layout means scrollLeft rarely hits the exact end.
+    const max = el.scrollWidth - el.clientWidth;
+    setEdges({ left: el.scrollLeft > 1, right: el.scrollLeft < max - 1 });
+  }, []);
+
+  // Layout effect so the fade is correct on first paint rather than
+  // appearing a frame later.
+  useLayoutEffect(measure, [measure, value.category]);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", measure, { passive: true });
+    // Font loading, orientation change and a language switch all change the
+    // track width without a scroll or a re-render.
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const child of Array.from(el.children)) ro.observe(child);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      ro.disconnect();
+    };
+  }, [measure]);
 
   const segments: Segment[] = [
     { id: "all", label: "All" },
@@ -99,6 +162,23 @@ export default function CategoryFilter({
     0,
     segments.findIndex((s) => s.id === value.category),
   );
+
+  /**
+   * Keep the chosen segment on screen.
+   *
+   * Tapping a half-visible segment used to select it and leave it half
+   * visible, so the sliding thumb ran off the edge and the control looked
+   * like it had lost its selection. `inline: "nearest"` only scrolls when
+   * the segment is actually clipped, so a segment already in view does not
+   * jump under the user's finger.
+   */
+  useEffect(() => {
+    refs.current[activeIndex]?.scrollIntoView({
+      inline: "nearest",
+      block: "nearest",
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  }, [activeIndex, reduceMotion]);
 
   /**
    * Arrow keys move selection AND focus together, which is the radio-group
@@ -145,9 +225,23 @@ export default function CategoryFilter({
             375px phone, and a segmented control that breaks onto two lines
             stops reading as one control. */}
         <div
+          ref={trackRef}
           className="flex w-full items-stretch gap-0.5 overflow-x-auto
-                     sm:overflow-visible
+                     sm:overflow-visible sm:[mask-image:none]
+                     scroll-smooth overscroll-x-contain
                      [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          /* The affordance: the segment at a scrollable edge dissolves
+             instead of ending flush, which reads as "this continues" the way
+             a hard edge reads as "this is the end". Applied per-edge from
+             measured scroll state, so it never claims content that is not
+             there. Cleared from `sm` up, where every segment fits.
+
+             Chosen over the obvious chevron button for two reasons: a button
+             inside `role="radiogroup"` that is not a `radio` breaks the
+             roving-tabindex contract this control depends on, and a control
+             that must be TAPPED to reveal content is a worse answer than one
+             that shows the content is there. */
+          style={maskFor(edges)}
         >
           {segments.map((seg, i) => {
             const active = seg.id === value.category;

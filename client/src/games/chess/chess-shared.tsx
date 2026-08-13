@@ -307,13 +307,48 @@ export function ChessBoardGrid({
                 )}
 
                 {/* Legal Move Dot */}
+                {/*
+                  Move hints.
+
+                  Four things were wrong with the previous version, none of
+                  them the disc/ring split — that part was already right:
+
+                  • `shadow-md` made the disc float ABOVE the board. A hint
+                    belongs ON the square, like ink on the wood.
+                  • `bg-amber-400/90` is opaque, not translucent, so it hid
+                    the square instead of tinting it.
+                  • Fixed `w-4`/`w-8` sizes do not scale with the square, so
+                    the same dot was oversized on a phone board and lost on
+                    a desktop one. Percentages track the square.
+                  • The colour was hardcoded amber while every board theme
+                    already defined its own `legalDot` — which nothing read,
+                    so all five themes showed the same amber hint.
+                */}
                 {isTarget && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div
-                      className={`rounded-full ${
-                        cell.piece ? "w-8 h-8 border-4 border-amber-400/80" : "w-4 h-4 bg-amber-400/90 shadow-md"
-                      }`}
-                    />
+                    {cell.piece ? (
+                      // Capture: a ring around the piece, so the piece stays
+                      // readable underneath. Border scales too, or it turns
+                      // into a solid blob on a small board.
+                      <div
+                        className="rounded-full"
+                        style={{
+                          width: "88%",
+                          height: "88%",
+                          border: `0.6vmin solid ${theme.legalDot}`,
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="rounded-full"
+                        style={{
+                          width: "30%",
+                          height: "30%",
+                          background: theme.legalDot,
+                        }}
+                      />
+                    )}
                   </div>
                 )}
 
