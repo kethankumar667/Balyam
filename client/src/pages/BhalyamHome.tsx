@@ -80,6 +80,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
   chess: StarGameGlyph,
+  spacewar: StarGameGlyph,
 };
 
 export default function BhalyamHome() {
@@ -1072,6 +1073,7 @@ export function GameTile({
     roadrash: "/Roadrash Game Tile.png",
     carrom: "/Carrom Game Tile.png",
     chess: "/Chess Game Tile.png",
+    spacewar: "/Vyomyudh Game Tile.png",
   };
 
   const underMaintenance = isLocked(game);
