@@ -61,6 +61,34 @@ const TUNING: Record<VyomaDifficulty, DifficultyTuning> = {
   hard:   { spawnEveryTicks: 11, enemySpeed: 31, enemyFireChance: 0.038, bossHp: 52 },
 };
 
+/**
+ * Difficulty bands across the ten levels.
+ *
+ * Levels used to differ only by `spawnEveryTicks - level` and a boss HP bump,
+ * and the enemy table stopped changing after level 3 — so levels 4 through 10
+ * played almost identically. A run has to CHANGE shape to stay interesting,
+ * not just tighten by one tick per level.
+ *
+ *   0  PATROL  (1-3)  scouts and weavers; learn to fly and shoot
+ *   1  ASSAULT (4-7)  turrets and bombers become the level, not a garnish
+ *   2  SIEGE   (8-10) weighted to heavies, tighter floor, a real boss
+ *
+ * The multipliers sit on top of the chosen difficulty tier rather than
+ * replacing it, so "easy siege" is still easier than "hard patrol" — the
+ * tier is the player's declared appetite and must keep meaning something.
+ */
+export function bandFor(level: number): 0 | 1 | 2 {
+  if (level <= 3) return 0;
+  if (level <= 7) return 1;
+  return 2;
+}
+
+const VYOMA_BANDS = [
+  { spawnScale: 1.0, fireScale: 1.0, bossScale: 1.0, spawnFloor: 9 },
+  { spawnScale: 0.82, fireScale: 1.35, bossScale: 1.25, spawnFloor: 7 },
+  { spawnScale: 0.66, fireScale: 1.8, bossScale: 1.6, spawnFloor: 5 },
+] as const;
+
 /** Kills needed to summon the level boss. Grows with depth. */
 function killsForBoss(level: number): number {
   return 8 + level * 2;
@@ -282,8 +310,13 @@ export class VyomaYudhEngine implements GameEngine {
   private spawnWave(): void {
     if (!this.run || this.run.bossActive) return;
     const t = this.tuning();
-    // Deeper levels spawn faster, with a floor so it stays playable.
-    const interval = Math.max(5, t.spawnEveryTicks - this.run.level);
+    // Deeper levels spawn faster, with a per-band floor so the top band is
+    // relentless without becoming unsurvivable.
+    const band = VYOMA_BANDS[bandFor(this.run.level)];
+    const interval = Math.max(
+      band.spawnFloor,
+      Math.round((t.spawnEveryTicks - this.run.level) * band.spawnScale),
+    );
     if (this.tickCount - this.lastSpawnTick < interval) return;
     this.lastSpawnTick = this.tickCount;
 
@@ -301,11 +334,24 @@ export class VyomaYudhEngine implements GameEngine {
 
   private pickEnemyKind(level: number): VyomaEnemyKind {
     const r = this.rng();
-    // Early levels are almost all scouts; variety arrives with depth so a
-    // new player is not meeting bombers on level 1.
-    if (level <= 1) return r < 0.85 ? "scout" : "weaver";
-    if (level <= 3) return r < 0.55 ? "scout" : r < 0.85 ? "weaver" : "turret";
-    return r < 0.4 ? "scout" : r < 0.65 ? "weaver" : r < 0.85 ? "turret" : "bomber";
+    const band = bandFor(level);
+
+    // PATROL — learn to fly and shoot. No enemy that shoots back on level 1.
+    if (band === 0) {
+      if (level <= 1) return r < 0.85 ? "scout" : "weaver";
+      return r < 0.55 ? "scout" : r < 0.85 ? "weaver" : "turret";
+    }
+
+    // ASSAULT — turrets and bombers become the shape of the level, not a
+    // garnish on it.
+    if (band === 1) {
+      return r < 0.35 ? "scout" : r < 0.6 ? "weaver" : r < 0.85 ? "turret" : "bomber";
+    }
+
+    // SIEGE — weighted to the heavies. Previously levels 4 and 10 drew from
+    // the SAME table, so the back half of the run had no escalation beyond a
+    // slightly shorter spawn interval.
+    return r < 0.15 ? "scout" : r < 0.4 ? "weaver" : r < 0.7 ? "turret" : "bomber";
   }
 
   private stepEnemies(): void {
@@ -328,7 +374,10 @@ export class VyomaYudhEngine implements GameEngine {
         e.x -= (e.kind === "bomber" ? t.enemySpeed * 0.6 : t.enemySpeed) * DT;
       }
 
-      if (this.rng() < t.enemyFireChance * (e.kind === "boss" ? 5 : 1)) {
+      // Band raises the rate of incoming fire, which is what actually makes
+      // the later levels demand movement rather than just more shooting.
+      const fireScale = VYOMA_BANDS[bandFor(this.run.level)].fireScale;
+      if (this.rng() < t.enemyFireChance * fireScale * (e.kind === "boss" ? 5 : 1)) {
         this.enemyFire(e);
       }
     }
@@ -474,7 +523,9 @@ export class VyomaYudhEngine implements GameEngine {
   }
 
   private summonBoss(run: RunState): void {
-    const hp = this.tuning().bossHp + run.level * 6;
+    const hp = Math.round(
+      (this.tuning().bossHp + run.level * 6) * VYOMA_BANDS[bandFor(run.level)].bossScale,
+    );
     run.bossActive = true;
     this.enemies.push({
       id: this.id("boss"),
