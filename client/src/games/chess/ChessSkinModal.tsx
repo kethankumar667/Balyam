@@ -28,9 +28,9 @@ export default function ChessSkinModal({
   ];
 
   const pieceSets: { id: ChessPieceSet; name: string; preview: string }[] = [
-    { id: "neo", name: "Neo Modern", preview: "♔ ♕ ♖ ♗ ♘ ♟" },
-    { id: "staunton", name: "Staunton Classic", preview: "♔ ♕ ♜ ♝ ♞ ♟" },
-    { id: "3d_glass", name: "3D Glass Prism", preview: "♔ ♕ ♖ ♗ ♘ ♙" },
+    { id: "neo", name: "Neo Modern", preview: "Flat geometric masses" },
+    { id: "staunton", name: "Staunton Classic", preview: "Turned-wood silhouettes" },
+    { id: "3d_glass", name: "3D Glass Prism", preview: "Neo shapes, glass finish" },
   ];
 
   return (
