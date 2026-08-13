@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "bounce" | "roadrash" | "chess";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "roadrash" | "chess" | "spacewar";
 
 export interface Player {
   id: string;
@@ -2220,20 +2220,90 @@ export interface VyomaYudhPublicState {
   winnerId: string | null;
 }
 
-// ---- Bounce ----
-export interface BounceOptions {
-  targetRings: number;
+// ---- Space War ----
+export type SpaceWarSpecialType = "missile" | "laser" | "wall";
+export type SpaceWarThemeId = "cyberpunk" | "retro_nokia" | "neon_synthwave" | "solar_flare";
+
+export interface SpaceWarOptions {
+  startingLives: number;
+  theme?: SpaceWarThemeId;
 }
-export const DEFAULT_BOUNCE_OPTIONS: BounceOptions = { targetRings: 10 };
-export interface BouncePublicState {
-  kind: "bounce";
-  balls: Record<string, { x: number; y: number; vx: number; vy: number; ringsCollected: number; isAlive: boolean }>;
-  rings: { id: string; x: number; y: number; collected: boolean }[];
-  players: { id: string; ringsCollected: number; isAlive: boolean }[];
-  isPaused?: boolean;
+export const DEFAULT_SPACEWAR_OPTIONS: SpaceWarOptions = { startingLives: 4, theme: "cyberpunk" };
+
+export interface SpaceWarProjectile {
+  id: string;
+  isPlayer: boolean;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  width: number;
+  height: number;
+}
+
+export interface SpaceWarSpecialAttack {
+  id: string;
+  type: SpaceWarSpecialType;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  width: number;
+  height: number;
+  targetId?: string;
+}
+
+export interface SpaceWarPowerUp {
+  id: string;
+  type: "life" | "ammo" | "shield";
+  x: number;
+  y: number;
+  speedX: number;
+}
+
+export interface SpaceWarEnemy {
+  id: string;
+  type: "scouter" | "zigzag" | "kamikaze" | "heavy" | "boss";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  hp: number;
+  maxHp: number;
+  speedX: number;
+  speedY: number;
+}
+
+export interface SpaceWarPublicState {
+  kind: "spacewar";
+  player: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    lives: number;
+    maxLives: number;
+    shieldOn: boolean;
+    shieldTimeLeft: number;
+    specialAttack: SpaceWarSpecialType;
+    specialCount: number;
+  };
+  score: number;
+  highScore: number;
+  level: number;
+  maxLevels: number;
+  projectiles: SpaceWarProjectile[];
+  specials: SpaceWarSpecialAttack[];
+  enemies: SpaceWarEnemy[];
+  powerUps: SpaceWarPowerUp[];
+  bossHp: number | null;
+  bossMaxHp: number | null;
+  isPaused: boolean;
   isOver: boolean;
   winnerId: string | null;
+  theme: SpaceWarThemeId;
 }
+
 
 // ---- Chess ----
 export type ChessPieceColor = "w" | "b";
@@ -2316,8 +2386,8 @@ export interface CreateRoomPayload {
   snakeOptions?: Partial<SnakeOptions>;
   vyomaYudhOptions?: Partial<VyomaYudhOptions>;
   carromOptions?: Partial<CarromOptions>;
-  bounceOptions?: Partial<BounceOptions>;
   chessOptions?: Partial<ChessOptions>;
+  spaceWarOptions?: Partial<SpaceWarOptions>;
 }
 
 export interface SetTokenNicknamesPayload {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { HcState, Player } from "@shared/types";
 import { getSocket } from "../../lib/socket";
-import { HcProInnings } from "./hc-broadcast";
+import { HcProScorecard } from "./hc-broadcast";
 
 /**
  * The innings break.
@@ -44,6 +44,19 @@ export default function InningsBreakOverlay({
   if (!innings1) return null;
 
   const secondsLeft = Math.max(0, Math.ceil((until - now) / 1000));
+
+  /**
+   * Close on the deadline without waiting for the server to say so.
+   *
+   * The engine clears `inningsBreakUntil` lazily — on the next move that
+   * consults it — so with nobody acting, the flag stayed set and this overlay
+   * sat on screen reading "Innings 2 starts in 0s" indefinitely. Once the
+   * deadline passes the break is over for everyone regardless of who pressed
+   * Continue, and the next move settles it server-side, so hiding here is
+   * safe and matches what the player was just told.
+   */
+  if (secondsLeft <= 0) return null;
+
   const ready = new Set(state.inningsBreakReady ?? []);
   const iAmReady = ready.has(selfId);
 
@@ -81,14 +94,15 @@ export default function InningsBreakOverlay({
           </div>
         </header>
 
-        {/* The full card, reusing the same component the match uses — no
-            second implementation of a scorecard to keep in step. */}
-        <HcProInnings
-          state={state}
-          selfId={selfId}
-          players={players}
-          compact
-        />
+        {/*
+          `HcProScorecard` with innings1 passed explicitly — NOT `HcProInnings`.
+          `endCurrentInnings` sets phase to "innings2" before the break opens,
+          so anything that renders "the current innings" shows the empty innings
+          2 panel and its bowler picker. That is what was appearing under an
+          "End of innings 1" heading: a live 0/0 card for the innings that has
+          not started.
+        */}
+        <HcProScorecard state={state} innings={innings1} players={players} />
 
         <div className="sticky bottom-0 space-y-2 rounded-xl bg-slate-900/95 p-3">
           <button

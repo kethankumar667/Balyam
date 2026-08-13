@@ -46,9 +46,9 @@ import TeluguCinemaluBoard from "../games/telugucinemalu/TeluguCinemaluBoard";
 import SnakeBoard from "../games/snake/SnakeBoard";
 import VyomaYudhBoard from "../games/vyomayudh/VyomaYudhBoard";
 import CarromBoard from "../games/carrom/CarromBoard";
-import BounceBoard from "../games/bounce/BounceBoard";
 import ChessBoard from "../games/chess/ChessBoard";
-import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, BouncePublicState, ChessPublicState } from "@shared/types";
+import SpaceWarBoard from "../games/spacewar/SpaceWarBoard";
+import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -73,9 +73,9 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   snake: 4,
   vyomayudh: 1,
   carrom: 2,
-  bounce: 4,
   roadrash: 4,
   chess: 2,
+  spacewar: 1,
 };
 
 /**
@@ -121,7 +121,7 @@ function BotControls({
 }) {
   // Games with no bot AI — bots would be dead/frozen seats. Hide the panel entirely.
   const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-    "samethalu", "telugucinemalu", "snake", "vyomayudh", "bounce",
+    "samethalu", "telugucinemalu", "snake", "vyomayudh", "spacewar",
   ]);
   if (NO_BOT_GAMES.has(game)) {
     return null;
@@ -498,7 +498,7 @@ export default function Room() {
   // Solo games bypass lobby — if the host lands in lobby for a solo game, auto-start immediately.
   useEffect(() => {
     if (!roomState || roomState.phase !== "lobby" || !selfIsHost) return;
-    const isSolo = ["samethalu", "telugucinemalu", "vyomayudh", "snake", "bounce"].includes(roomState.game);
+    const isSolo = ["samethalu", "telugucinemalu", "vyomayudh", "snake", "spacewar"].includes(roomState.game);
     if (isSolo) {
       getSocket().emit("room:setReady", true);
       getSocket().emit("room:startGame");
@@ -691,9 +691,8 @@ export default function Room() {
     roomState.game === "telugucinemalu" ||
     roomState.game === "samethalu" ||
     roomState.game === "snake" ||
-    roomState.game === "vyomayudh" ||
-    roomState.game === "carrom" ||
-    roomState.game === "bounce"
+    roomState.game === "spacewar" ||
+    roomState.game === "carrom"
       ? 1
       : 2;
 
@@ -856,7 +855,7 @@ export default function Room() {
 
         <div
           className={(() => {
-            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby";
+            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame" || roomState.game === "spacewar") && roomState.phase !== "lobby";
             const compactPlay = !fullPlay && roomState.phase !== "lobby";
             if (fullPlay) return "h-full";
             // Compact gameplay: the side rail collapses into the floating
@@ -867,7 +866,7 @@ export default function Room() {
         >
           <div
             className={(() => {
-              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby";
+              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame" || roomState.game === "spacewar") && roomState.phase !== "lobby";
               const compactPlay = !fullPlay && roomState.phase !== "lobby";
               if (fullPlay) return "h-full";
               if (compactPlay) return "w-full space-y-4";
@@ -1219,9 +1218,9 @@ export default function Room() {
               />
             )}
 
-            {roomState.phase !== "lobby" && roomState.game === "bounce" && gameState != null && (
-              <BounceBoard
-                state={gameState as BouncePublicState}
+            {roomState.phase !== "lobby" && roomState.game === "spacewar" && gameState != null && (
+              <SpaceWarBoard
+                state={gameState as SpaceWarPublicState}
                 selfId={playerId || ""}
                 onMove={(type, data) => {
                   const socket = getSocket();
@@ -1229,6 +1228,7 @@ export default function Room() {
                 }}
               />
             )}
+
 
             {/* Generic rematch panel is removed — it has moved into
                 GameOverScreen, which renders as a fixed full-screen overlay
