@@ -10,11 +10,10 @@ import type { SpaceWarPublicState } from "@shared/types";
  * a bad one, because it was never a connection problem: the game was showing
  * 30 discrete positions a second and calling it motion.
  *
- * Same treatment as Vyoma Yudh next door — keep the last two broadcasts,
- * match entities by id, draw each part-way between. The cost is displaying
- * the world one tick (~33ms) in the past, which nobody can see.
+ * Keep the last two broadcasts, match entities by id, draw each part-way between.
+ * The cost is displaying the world one tick (~33ms) in the past, which nobody can see.
  *
- * Unlike Vyoma, the local ship is NOT predicted here. Space War's input is
+ * The local ship is NOT predicted here. Space War's input is
  * already held server-side (`activeKeys`), so the ship moves every tick for
  * as long as a finger is down rather than once per delivered packet — the
  * responsiveness problem that made prediction worth the complexity over

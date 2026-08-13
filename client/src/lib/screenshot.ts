@@ -82,7 +82,7 @@ async function renderElementToBlob(element: HTMLElement): Promise<Blob | null> {
   ctx.fillStyle = "#1e1b18";
   ctx.fillRect(0, 0, width, height);
 
-  // Clone canvas elements if any (e.g. Snake, Vyoma Yudh)
+  // Clone canvas elements if any (e.g. Snake, Space War)
   const childCanvases = element.querySelectorAll("canvas");
   childCanvases.forEach((c) => {
     try {

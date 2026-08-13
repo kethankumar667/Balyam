@@ -66,7 +66,6 @@ export function registerSocketHandlers(
         payload.samethaluOptions,
         payload.teluguCinemaluOptions,
         payload.snakeOptions,
-        payload.vyomaYudhOptions,
         payload.carromOptions,
         payload.chessOptions,
         payload.blockBlastOptions,

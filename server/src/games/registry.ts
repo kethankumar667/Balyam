@@ -15,7 +15,6 @@ import { TambolaEngine } from "./tambola/TambolaEngine.js";
 import { SamethaluEngine } from "./samethalu/SamethaluEngine.js";
 import { TeluguCinemaluEngine } from "./telugucinemalu/TeluguCinemaluEngine.js";
 import { SnakeEngine } from "./snake/SnakeEngine.js";
-import { VyomaYudhEngine } from "./vyomayudh/VyomaYudhEngine.js";
 import { CarromEngine } from "./carrom/CarromEngine.js";
 import { ChessEngine } from "./chess/ChessEngine.js";
 import { BlockBlastEngine } from "./blockblast/BlockBlastEngine.js";
@@ -53,8 +52,6 @@ export function createEngine(kind: GameKind): GameEngine {
       return new TeluguCinemaluEngine();
     case "snake":
       return new SnakeEngine();
-    case "vyomayudh":
-      return new VyomaYudhEngine();
     case "carrom":
       return new CarromEngine();
     case "chess":
@@ -85,7 +82,6 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     samethalu: { min: 1, max: 1 },
     telugucinemalu: { min: 1, max: 1 },
     snake: { min: 1, max: 4 },
-    vyomayudh: { min: 1, max: 1 },
     carrom: { min: 2, max: 2 },
     chess: { min: 2, max: 2 },
     // One seat is a legitimate game here (endless solo), not a lobby waiting

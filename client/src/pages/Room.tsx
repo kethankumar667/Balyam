@@ -44,12 +44,11 @@ import TambolaBoard from "../games/tambola/TambolaBoard";
 import SamethaluBoard from "../games/samethalu/SamethaluBoard";
 import TeluguCinemaluBoard from "../games/telugucinemalu/TeluguCinemaluBoard";
 import SnakeBoard from "../games/snake/SnakeBoard";
-import VyomaYudhBoard from "../games/vyomayudh/VyomaYudhBoard";
 import BlockBlastBoard from "../games/blockblast/BlockBlastBoard";
 import CarromBoard from "../games/carrom/CarromBoard";
 import ChessBoard from "../games/chess/ChessBoard";
 import SpaceWarBoard from "../games/spacewar/SpaceWarBoard";
-import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, ChessPublicState, BlockBlastSelfState, SpaceWarPublicState } from "@shared/types";
+import type { SnakePublicState, CarromPublicState, ChessPublicState, BlockBlastSelfState, SpaceWarPublicState } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -72,7 +71,6 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   samethalu: 8,
   telugucinemalu: 8,
   snake: 4,
-  vyomayudh: 1,
   carrom: 2,
   roadrash: 4,
   chess: 2,
@@ -123,7 +121,7 @@ function BotControls({
 }) {
   // Games with no bot AI — bots would be dead/frozen seats. Hide the panel entirely.
   const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-    "samethalu", "telugucinemalu", "snake", "vyomayudh", "spacewar",
+    "samethalu", "telugucinemalu", "snake", "spacewar",
   ]);
   if (NO_BOT_GAMES.has(game)) {
     return null;
@@ -500,7 +498,7 @@ export default function Room() {
   // Solo games bypass lobby — if the host lands in lobby for a solo game, auto-start immediately.
   useEffect(() => {
     if (!roomState || roomState.phase !== "lobby" || !selfIsHost) return;
-    const isSolo = ["samethalu", "telugucinemalu", "vyomayudh", "snake", "spacewar"].includes(roomState.game);
+    const isSolo = ["samethalu", "telugucinemalu", "snake", "spacewar"].includes(roomState.game);
     if (isSolo) {
       getSocket().emit("room:setReady", true);
       getSocket().emit("room:startGame");
@@ -1214,21 +1212,6 @@ export default function Room() {
               <BlockBlastBoard
                 state={gameState as BlockBlastSelfState}
                 selfId={playerId || ""}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
-              />
-            )}
-
-            {roomState.phase !== "lobby" && roomState.game === "vyomayudh" && gameState != null && (
-              <VyomaYudhBoard
-                state={gameState as VyomaYudhPublicState}
-                players={roomState.players}
-                selfId={playerId || ""}
-                messages={messages}
-                roomCode={roomState.code}
-                roomPhase={roomState.phase}
                 onMove={(type, data) => {
                   const socket = getSocket();
                   socket.emit("game:move", { type, data });
