@@ -31,7 +31,9 @@ describe("SnakeEngine", () => {
     const turnRes = engine.applyMove({ playerId: "p1", type: "turn", data: { dir: "DOWN" } });
     expect(turnRes.ok).toBe(true);
 
-    const tickRes = engine.applyMove({ playerId: "p1", type: "tick" });
+    // Via the server's own loop, not a client `tick` move — that hole is
+    // closed now. See speed.test.ts.
+    const tickRes = engine.simulateTick();
     expect(tickRes.ok).toBe(true);
   });
 });

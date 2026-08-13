@@ -97,6 +97,21 @@ function killsForBoss(level: number): number {
 interface RunState {
   playerId: string;
   shipY: number;
+  /**
+   * Which way the pilot is currently holding, -1 up / 0 / +1 down.
+   *
+   * The ship used to move a fixed distance PER `steer` MESSAGE, and the
+   * client sent one every 50ms on an interval. That makes speed a function
+   * of how many packets survive the trip rather than of elapsed time: on a
+   * phone, jitter and loss and socket buffering meant the ship crawled,
+   * stalled, then lurched. It is the whole reason the controls felt heavy.
+   *
+   * Now the client sends intent — one message when the direction CHANGES —
+   * and the ship moves once per simulated tick at exactly SHIP_SPEED. The
+   * pace is identical on a perfect connection and a terrible one, and
+   * upstream traffic drops by roughly twenty times.
+   */
+  steerDir: -1 | 0 | 1;
   lives: number;
   score: number;
   level: number;
@@ -171,6 +186,7 @@ export class VyomaYudhEngine implements GameEngine {
     this.run = {
       playerId: this.pilotId,
       shipY: VYOMA_WORLD.h / 2,
+      steerDir: 0,
       lives: this.opts.lives,
       score: 0,
       level: 1,
@@ -217,10 +233,16 @@ export class VyomaYudhEngine implements GameEngine {
         if (typeof dy !== "number" || !Number.isFinite(dy)) {
           return { ok: false, error: "Bad steer" };
         }
-        // Clamp the REQUEST, not just the result: a client asking to move
-        // 900 units in one input must not teleport across the board.
-        const step = Math.max(-1, Math.min(1, dy)) * SHIP_SPEED * DT;
-        this.run.shipY = clamp(this.run.shipY + step, 4, VYOMA_WORLD.h - 4);
+        /**
+         * Records intent; it does NOT move the ship. `stepShip` does that,
+         * once per tick, so a player on a bad connection flies at the same
+         * speed as one on a good one.
+         *
+         * The value is clamped to a direction rather than trusted as a
+         * distance — a client asking for 900 must not teleport, and now it
+         * cannot even ask.
+         */
+        this.run.steerDir = dy < 0 ? -1 : dy > 0 ? 1 : 0;
         return { ok: true };
       }
       case "fire": {
@@ -297,6 +319,7 @@ export class VyomaYudhEngine implements GameEngine {
 
     if (!this.run) return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
 
+    this.stepShip();
     this.spawnWave();
     this.stepEnemies();
     this.stepShots();
@@ -305,6 +328,19 @@ export class VyomaYudhEngine implements GameEngine {
     this.checkLevelProgress();
 
     return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
+  }
+
+  /**
+   * One tick of flight, at a rate the network cannot change.
+   *
+   * SHIP_SPEED is world units per second, so multiplying by DT gives the
+   * distance for exactly one step — the same arithmetic the old per-message
+   * path used, moved to the only place where it is honest.
+   */
+  private stepShip(): void {
+    const run = this.run;
+    if (!run || run.steerDir === 0) return;
+    run.shipY = clamp(run.shipY + run.steerDir * SHIP_SPEED * DT, 4, VYOMA_WORLD.h - 4);
   }
 
   private spawnWave(): void {
@@ -510,6 +546,10 @@ export class VyomaYudhEngine implements GameEngine {
     // Respawn: clear the immediate area so the pilot is not killed again on
     // the tick they return, and grant brief invulnerability.
     run.shipY = VYOMA_WORLD.h / 2;
+    // Drop the held direction too. Steering is now sticky by design, so a
+    // pilot who died mid-climb would otherwise respawn already flying into
+    // the ceiling with their thumb nowhere near the screen.
+    run.steerDir = 0;
     run.invulnUntilTick = this.tickCount + INVULN_TICKS;
     this.shots = this.shots.filter((s) => s.fromPlayer || s.x > SHIP_X + 25);
     this.enemies = this.enemies.filter((e) => e.x > SHIP_X + 25);

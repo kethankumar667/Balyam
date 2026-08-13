@@ -94,17 +94,59 @@ export default function VyomaYudhBoard({
     return () => window.removeEventListener("resize", resize);
   }, []);
 
-  /* ── keyboard ──
-   * Held keys are re-sent on an interval because `steer` is a per-tick
-   * nudge on the server, not a velocity. Holding Up must keep nudging. */
-  const held = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!isPilot || state.isOver) return;
+  /* ── steering ────────────────────────────────────────────────────────
+   *
+   * ONE message per direction change. Not a stream.
+   *
+   * This used to pump `steer` every 50ms while a key or the screen was
+   * held, because the server moved the ship a fixed distance per message.
+   * That made flight speed a function of how many packets survived the
+   * trip: on a phone, jitter and loss and socket buffering turned a steady
+   * hold into a crawl, a stall, then a lurch. It is why the controls felt
+   * heavy.
+   *
+   * The server now holds the direction and flies the ship on its own clock,
+   * so the only thing that has to reach it is the moment the pilot changes
+   * their mind. Twenty times less upstream traffic, and identical handling
+   * on a good connection and a bad one.
+   */
+  const [touchDir, setTouchDir] = useState<-1 | 0 | 1>(0);
+  const steerRef = useRef<-1 | 0 | 1>(0);
 
-    const down = (e: KeyboardEvent) => {
+  const steer = useCallback((d: -1 | 0 | 1) => {
+    // Deduped: re-sending a direction already held is the packet stream this
+    // change exists to remove, and `pointermove` fires constantly.
+    if (steerRef.current === d) return;
+    steerRef.current = d;
+    setTouchDir(d);
+    onMoveRef.current("steer", { dy: d });
+  }, []);
+
+  /**
+   * Steering is sticky now, so releasing has to be said out loud. Any path
+   * that ends a hold — key up, pointer up, cancel, the run ending, the
+   * board unmounting — must send a zero or the ship flies on by itself.
+   */
+  useEffect(() => {
+    if (!isPilot || state.isOver) {
+      if (steerRef.current !== 0) steer(0);
+      return;
+    }
+
+    const held = new Set<string>();
+    const dirFor = () => {
+      const up = held.has("arrowup") || held.has("w");
+      const down = held.has("arrowdown") || held.has("s");
+      // Both at once cancels, rather than letting whichever was added last
+      // win — that is what a physical stick does.
+      return up && !down ? -1 : down && !up ? 1 : 0;
+    };
+
+    const onDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       if (["arrowup", "w", "arrowdown", "s"].includes(k)) {
-        held.current.add(k);
+        held.add(k);
+        steer(dirFor());
         e.preventDefault();
       }
       if (k === " ") { onMoveRef.current("fire"); e.preventDefault(); }
@@ -112,41 +154,28 @@ export default function VyomaYudhBoard({
       if (k === "2") onMoveRef.current("special", { weapon: "laser" as VyomaWeapon });
       if (k === "3") onMoveRef.current("special", { weapon: "wall" as VyomaWeapon });
     };
-    const up = (e: KeyboardEvent) => held.current.delete(e.key.toLowerCase());
-
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    const pump = window.setInterval(() => {
-      if (held.current.has("arrowup") || held.current.has("w")) onMoveRef.current("steer", { dy: -1 });
-      if (held.current.has("arrowdown") || held.current.has("s")) onMoveRef.current("steer", { dy: 1 });
-    }, 50);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-      window.clearInterval(pump);
-      held.current.clear();
+    const onUp = (e: KeyboardEvent) => {
+      held.delete(e.key.toLowerCase());
+      steer(dirFor());
     };
-  }, [isPilot, state.isOver]);
+    // Alt-tabbing away with a key down would otherwise leave it held
+    // forever — the browser never delivers the keyup.
+    const onBlur = () => {
+      held.clear();
+      steer(0);
+    };
 
-  /* ── touch / on-screen pad ── */
-  const [touchDir, setTouchDir] = useState<-1 | 0 | 1>(0);
-  const touchDirRef = useRef<-1 | 0 | 1>(0);
-  const steer = useCallback((d: -1 | 0 | 1) => {
-    // Ref drives the pump, state drives the button's pressed styling. Keeping
-    // the pump off state means changing direction mid-hold does not restart
-    // the interval and drop a beat.
-    touchDirRef.current = d;
-    setTouchDir(d);
-  }, []);
-
-  useEffect(() => {
-    if (!isPilot) return;
-    const t = window.setInterval(() => {
-      const d = touchDirRef.current;
-      if (d !== 0) onMoveRef.current("steer", { dy: d });
-    }, 50);
-    return () => window.clearInterval(t);
-  }, [isPilot]);
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+      window.removeEventListener("blur", onBlur);
+      held.clear();
+      if (steerRef.current !== 0) steer(0);
+    };
+  }, [isPilot, state.isOver, steer]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -188,7 +217,7 @@ export default function VyomaYudhBoard({
              sliding from the top half to the bottom without lifting kept
              flying UP — you had to release and re-press to turn around. */
           onPointerMove={(e) => {
-            if (!isPilot || touchDirRef.current === 0) return;
+            if (!isPilot || steerRef.current === 0) return;
             const r = e.currentTarget.getBoundingClientRect();
             steer(e.clientY - r.top < r.height / 2 ? -1 : 1);
           }}
