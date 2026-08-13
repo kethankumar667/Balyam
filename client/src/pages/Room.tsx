@@ -48,7 +48,8 @@ import VyomaYudhBoard from "../games/vyomayudh/VyomaYudhBoard";
 import BlockBlastBoard from "../games/blockblast/BlockBlastBoard";
 import CarromBoard from "../games/carrom/CarromBoard";
 import ChessBoard from "../games/chess/ChessBoard";
-import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, ChessPublicState, BlockBlastSelfState } from "@shared/types";
+import SpaceWarBoard from "../games/spacewar/SpaceWarBoard";
+import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, ChessPublicState, BlockBlastSelfState, SpaceWarPublicState } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -76,6 +77,7 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   roadrash: 4,
   chess: 2,
   blockblast: 8,
+  spacewar: 1,
 };
 
 /**
@@ -121,7 +123,7 @@ function BotControls({
 }) {
   // Games with no bot AI — bots would be dead/frozen seats. Hide the panel entirely.
   const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-    "samethalu", "telugucinemalu", "snake", "vyomayudh",
+    "samethalu", "telugucinemalu", "snake", "vyomayudh", "spacewar",
   ]);
   if (NO_BOT_GAMES.has(game)) {
     return null;
@@ -498,7 +500,7 @@ export default function Room() {
   // Solo games bypass lobby — if the host lands in lobby for a solo game, auto-start immediately.
   useEffect(() => {
     if (!roomState || roomState.phase !== "lobby" || !selfIsHost) return;
-    const isSolo = ["samethalu", "telugucinemalu", "vyomayudh", "snake"].includes(roomState.game);
+    const isSolo = ["samethalu", "telugucinemalu", "vyomayudh", "snake", "spacewar"].includes(roomState.game);
     if (isSolo) {
       getSocket().emit("room:setReady", true);
       getSocket().emit("room:startGame");
@@ -692,6 +694,7 @@ export default function Room() {
     roomState.game === "samethalu" ||
     roomState.game === "snake" ||
     roomState.game === "carrom" ||
+    roomState.game === "spacewar" ||
     // One seat is a real game of Block Blast, not a lobby waiting to fill:
     // the engine switches to endless solo on seat count. Gating Start at two
     // would leave a lone player staring at a button they cannot press with
@@ -859,7 +862,7 @@ export default function Room() {
 
         <div
           className={(() => {
-            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby";
+            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame" || roomState.game === "spacewar") && roomState.phase !== "lobby";
             const compactPlay = !fullPlay && roomState.phase !== "lobby";
             if (fullPlay) return "h-full";
             // Compact gameplay: the side rail collapses into the floating
@@ -870,7 +873,7 @@ export default function Room() {
         >
           <div
             className={(() => {
-              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame") && roomState.phase !== "lobby";
+              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame" || roomState.game === "spacewar") && roomState.phase !== "lobby";
               const compactPlay = !fullPlay && roomState.phase !== "lobby";
               if (fullPlay) return "h-full";
               if (compactPlay) return "w-full space-y-4";
@@ -1226,6 +1229,17 @@ export default function Room() {
                 messages={messages}
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "spacewar" && gameState != null && (
+              <SpaceWarBoard
+                state={gameState as SpaceWarPublicState}
+                selfId={playerId || ""}
                 onMove={(type, data) => {
                   const socket = getSocket();
                   socket.emit("game:move", { type, data });

@@ -82,6 +82,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   roadrash: StarGameGlyph,
   chess: StarGameGlyph,
   blockblast: BlockBlastGlyph,
+  spacewar: StarGameGlyph,
 };
 
 export default function BhalyamHome() {
@@ -1078,6 +1079,9 @@ export function GameTile({
     // layer" path (see GameTileArt) — a made-up filename would render a
     // broken image and then silently fall back anyway, one retry later.
     blockblast: "",
+    // Borrowed from Vyoma Yudh for now. Two different games sharing one
+    // tile is a placeholder, not a decision.
+    spacewar: "/Vyomyudh Game Tile.png",
   };
 
   const underMaintenance = isLocked(game);
