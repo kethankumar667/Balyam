@@ -2,6 +2,19 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { SnakeEngine } from "../SnakeEngine.js";
 import type { Player } from "@shared/types.js";
 
+/**
+ * Runs out the "3, 2, 1, GO" countdown so the snake actually moves.
+ *
+ * These tests used to drive the engine with `applyMove({ type: "tick" })`,
+ * which called the step function directly and skipped the countdown as a
+ * side effect. That move is refused now — an engine that owns a server loop
+ * must not also take ticks from clients (see speed.test.ts) — so the tests
+ * go through `simulateTick`, which honours the countdown like a real game.
+ */
+function beginPlay(engine: SnakeEngine): void {
+  for (let i = 0; i < 30; i++) engine.simulateTick();
+}
+
 describe("SnakeEngine", () => {
   let engine: SnakeEngine;
   const players: Player[] = [
@@ -12,6 +25,7 @@ describe("SnakeEngine", () => {
   beforeEach(() => {
     engine = new SnakeEngine();
     engine.init(players);
+    beginPlay(engine);
   });
 
   it("initializes players and food correctly", () => {
@@ -32,7 +46,7 @@ describe("SnakeEngine", () => {
     });
     expect(res.ok).toBe(true);
 
-    engine.applyMove({ playerId: "p1", type: "tick" });
+    engine.simulateTick();
     const state = engine.getPublicState();
     expect(state.snakes["p1"].dir).toBe("DOWN");
   });
@@ -44,7 +58,7 @@ describe("SnakeEngine", () => {
       type: "turn",
       data: { dir: "LEFT" },
     });
-    engine.applyMove({ playerId: "p1", type: "tick" });
+    engine.simulateTick();
     const state = engine.getPublicState();
     expect(state.snakes["p1"].dir).toBe("RIGHT");
   });
@@ -55,11 +69,12 @@ describe("SnakeEngine", () => {
     ];
     engine.setOptions({ wallMode: "wrap", gridSize: 10 });
     engine.init(singlePlayer);
+    beginPlay(engine);
 
     // Turn p1 UP and move off grid top boundary
     engine.applyMove({ playerId: "p1", type: "turn", data: { dir: "UP" } });
     for (let i = 0; i < 6; i++) {
-      engine.applyMove({ playerId: "p1", type: "tick" });
+      engine.simulateTick();
     }
 
     const state = engine.getPublicState();

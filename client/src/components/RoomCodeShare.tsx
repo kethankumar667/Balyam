@@ -53,6 +53,7 @@ export default function RoomCodeShare({
     roadrash: "Road Rash 90s",
     carrom: "Carrom",
     chess: "Chess Grandmaster",
+    blockblast: "Block Blast",
     spacewar: "Space War",
   };
   /**

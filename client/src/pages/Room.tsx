@@ -45,10 +45,11 @@ import SamethaluBoard from "../games/samethalu/SamethaluBoard";
 import TeluguCinemaluBoard from "../games/telugucinemalu/TeluguCinemaluBoard";
 import SnakeBoard from "../games/snake/SnakeBoard";
 import VyomaYudhBoard from "../games/vyomayudh/VyomaYudhBoard";
+import BlockBlastBoard from "../games/blockblast/BlockBlastBoard";
 import CarromBoard from "../games/carrom/CarromBoard";
 import ChessBoard from "../games/chess/ChessBoard";
 import SpaceWarBoard from "../games/spacewar/SpaceWarBoard";
-import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState } from "@shared/types";
+import type { SnakePublicState, VyomaYudhPublicState, CarromPublicState, ChessPublicState, BlockBlastSelfState, SpaceWarPublicState } from "@shared/types";
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -75,6 +76,7 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   carrom: 2,
   roadrash: 4,
   chess: 2,
+  blockblast: 8,
   spacewar: 1,
 };
 
@@ -691,8 +693,13 @@ export default function Room() {
     roomState.game === "telugucinemalu" ||
     roomState.game === "samethalu" ||
     roomState.game === "snake" ||
+    roomState.game === "carrom" ||
     roomState.game === "spacewar" ||
-    roomState.game === "carrom"
+    // One seat is a real game of Block Blast, not a lobby waiting to fill:
+    // the engine switches to endless solo on seat count. Gating Start at two
+    // would leave a lone player staring at a button they cannot press with
+    // no explanation of what they are waiting for.
+    roomState.game === "blockblast"
       ? 1
       : 2;
 
@@ -1196,6 +1203,17 @@ export default function Room() {
                 messages={messages}
                 roomCode={roomState.code}
                 roomPhase={roomState.phase}
+                onMove={(type, data) => {
+                  const socket = getSocket();
+                  socket.emit("game:move", { type, data });
+                }}
+              />
+            )}
+
+            {roomState.phase !== "lobby" && roomState.game === "blockblast" && gameState != null && (
+              <BlockBlastBoard
+                state={gameState as BlockBlastSelfState}
+                selfId={playerId || ""}
                 onMove={(type, data) => {
                   const socket = getSocket();
                   socket.emit("game:move", { type, data });

@@ -164,11 +164,70 @@ Steps 1–3 are the risk. Everything after is additive.
 
 ---
 
-## 8. Open decisions
+## 8. Balance — measured, not guessed
 
-- **Piece set.** Block Blast uses ~20 polyominoes. Ours should be tuned so a
-  bad draw is rare but possible — needs playtesting, not derivation.
-- **Race duration.** 3 minutes is a guess. Long enough for a comeback, short
-  enough for "again".
+Simulated by running the shipped bot over 400 full solo games and 20k tray
+draws. The bot is 1-ply greedy with noise, so a good human beats it; treat
+survival numbers as a floor.
+
+### The economy
+
+The bag averages **3.66 cells per piece → ~11 cells per tray**. A line clear
+removes 8. So **1.37 lines per tray** is break-even; the bot manages **1.04**.
+That gap is the difficulty curve, and it is why every run ends.
+
+| | |
+|---|---|
+| Pieces / total weight | 29 / 120 |
+| ≤3 cells (flexible) | 47.5% |
+| ≥5 cells (heavy) | 21.7% |
+| Trays with a 1×1 rescue | 13.1% |
+| Heaviest legal tray | 17 cells (27% of the board) |
+| Bot score | p10 159 · median 371 · p90 939 |
+| Bot placements survived | p10 23 · median 49 · p90 110 |
+
+### Two things this measurement changed
+
+**Race default 180s → 120s.** At a realistic 2.5s per placement, survival to
+the whistle is 51% / 25% / 7% for 120 / 180 / 300s. The old default meant
+three players in four spent the back half watching. 180 and 300 are still
+offered — they are a real choice — but the default should be the length most
+people finish.
+
+**Streak cap 6 steps (4×) → 3 steps (2.5×).** At 6 steps, exactly ONE run in
+400 ever reached the ceiling: two thirds of the ramp was content that existed
+only in the source. At 3 steps, 15% of runs reach it, and the multiplier has
+a real distribution (74.5% at 1×, 20.9% at 1.5×, 3.5% at 2×, ~1% at 2.5×).
+
+### Known, not yet acted on
+
+- **Multi-line clears barely happen.** Best clear across 400 games was 3
+  lines. `lineScore(4) = 100` is unreachable content, same failure the streak
+  cap had. Wait for human data — a good player sets up more than the bot does.
+- **Perfect clear is 300 flat** against a median score of 371, occurring 5
+  times in 400 games. One lucky perfect could decide a race on a rare event
+  rather than on play. Consider scaling it by cells cleared.
+- **A dead racer has nothing to do.** Score freezes, they watch. Shortening
+  the race helps; letting them restart with their best kept would fix it.
+
+### The constraint that rules out the obvious fix
+
+Block Blast is widely believed to bias its bag toward pieces that fit when
+the board is tight. **We cannot do that in Race.** An adaptive bag depends on
+board state, boards diverge between players, so trays would diverge — and
+"everyone gets the same pieces" becomes false in exactly the matches where it
+is the entire pitch.
+
+Adaptive difficulty and same-seed racing are mutually exclusive. A mercy rule
+is possible in solo only, at the cost of solo and race scores no longer
+measuring the same game — which is already why race scores are kept out of
+the personal best.
+
+## 9. Still open
+
+- **Piece weights.** Sound on paper; unvalidated against a human who clears
+  meaningfully above 1.04 lines per tray. If a real player does, the
+  difficulty reads completely differently and these weights may already be
+  right.
 - **Does solo score feed a leaderboard?** That needs the database, which is
   still unbuilt. Ship solo as personal-best-in-localStorage first.

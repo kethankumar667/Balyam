@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, Player, VyomaWeapon, VyomaYudhPublicState } from "@shared/types";
-import { VYOMA_WORLD } from "@shared/types";
+import {
+  VYOMA_SHIP_MARGIN,
+  VYOMA_SHIP_SPEED,
+  VYOMA_TICK_HZ,
+  VYOMA_WORLD,
+} from "@shared/types";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { draw, PALETTE } from "./render";
+import { interpolateState, reconcileShipY, type Snapshot } from "./interpolate";
 
 export interface VyomaYudhBoardProps {
   state: VyomaYudhPublicState;
@@ -36,7 +42,30 @@ export default function VyomaYudhBoard({
 }: VyomaYudhBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef(state);
+
+  /**
+   * The last two broadcasts, and when each arrived.
+   *
+   * The simulation runs at 20Hz and this canvas redraws at 60, so drawing
+   * the newest broadcast directly means every enemy and bullet freezes for
+   * three frames and then jumps. That is not a network problem — it happens
+   * on a perfect connection — it is the game showing 20 positions a second
+   * and calling it motion. Keeping the previous frame is what makes
+   * smoothing possible at all.
+   */
+  const snapshots = useRef<{ prev: Snapshot | null; cur: Snapshot | null }>({
+    prev: null,
+    cur: null,
+  });
+
+  if (stateRef.current !== state) {
+    const now = performance.now();
+    snapshots.current = { prev: snapshots.current.cur, cur: { state, at: now } };
+  }
   stateRef.current = state;
+  if (!snapshots.current.cur) {
+    snapshots.current = { prev: null, cur: { state, at: performance.now() } };
+  }
 
   /**
    * `onMove` arrives as an inline arrow from Room.tsx, so it is a NEW
@@ -53,21 +82,92 @@ export default function VyomaYudhBoard({
   onMoveRef.current = onMove;
 
   const isPilot = state.pilotId === selfId;
+
+  /**
+   * The direction currently held, and whether this seat flies at all.
+   *
+   * Declared here rather than beside the input handlers because the render
+   * loop reads them every frame to predict the ship, and that loop mounts
+   * once — so anything it touches has to be a ref, not a value captured at
+   * the render that happened to set the loop up.
+   */
+  const steerRef = useRef<-1 | 0 | 1>(0);
+  const isPilotRef = useRef(isPilot);
+  isPilotRef.current = isPilot;
   const nameOf = useMemo(() => {
     const map = new Map(players.map((p) => [p.id, p.name]));
     return (id: string) => map.get(id) ?? "Pilot";
   }, [players]);
 
+  /**
+   * The predicted position of the local ship, in world units.
+   *
+   * null until the first broadcast that has a ship in it, so a spectator or
+   * a finished run never invents one.
+   */
+  const predictedY = useRef<number | null>(null);
+
   /* ── render loop ──────────────────────────────────────────────────
-   * Runs on requestAnimationFrame purely to ANIMATE (blink, starfield
-   * drift) between server broadcasts. It never advances game state — the
-   * only source of truth is `state`, which arrives from the server. */
+   *
+   * Draws 60 times a second from a world that updates 20 times a second.
+   * Two different jobs, and they need different treatment:
+   *
+   *   Everything you do not control — enemies, bullets, pickups — is drawn
+   *   part-way between the last two broadcasts. Smooth, at the cost of
+   *   showing the world one tick (50ms) in the past, which nobody can see.
+   *
+   *   Your own ship does NOT pay that, because it is already waiting on a
+   *   round trip before the server even hears that you pressed. It is flown
+   *   locally at the same speed the server uses and pulled back toward the
+   *   authoritative value every frame.
+   *
+   * The loop still advances no game state. Prediction is a drawing decision
+   * that the next broadcast overrules; the server remains the only authority
+   * on where the ship actually is.
+   */
   useEffect(() => {
     let raf = 0;
     let frame = 0;
+    let last = performance.now();
+    const tickMs = 1000 / VYOMA_TICK_HZ;
+
     const loop = () => {
       const canvas = canvasRef.current;
-      if (canvas) draw(canvas, stateRef.current, frame++);
+      const now = performance.now();
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+
+      const { prev, cur } = snapshots.current;
+      if (canvas && cur) {
+        // Clamped at 1: if broadcasts stall, hold at the newest known
+        // position rather than extrapolating into a guess that has to be
+        // yanked back when the connection returns.
+        const alpha = Math.min(1, (now - cur.at) / tickMs);
+        const view = prev ? interpolateState(prev.state, cur.state, alpha) : cur.state;
+
+        const authoritative = cur.state.ship?.y ?? null;
+        if (authoritative == null) {
+          predictedY.current = null;
+        } else {
+          predictedY.current = reconcileShipY(
+            predictedY.current ?? authoritative,
+            authoritative,
+            dt,
+            isPilotRef.current ? steerRef.current : 0,
+            VYOMA_SHIP_SPEED,
+            VYOMA_SHIP_MARGIN,
+            VYOMA_WORLD.h - VYOMA_SHIP_MARGIN,
+          );
+        }
+
+        draw(
+          canvas,
+          predictedY.current != null && view.ship
+            ? { ...view, ship: { ...view.ship, y: predictedY.current } }
+            : view,
+          frame++,
+        );
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -94,17 +194,58 @@ export default function VyomaYudhBoard({
     return () => window.removeEventListener("resize", resize);
   }, []);
 
-  /* ── keyboard ──
-   * Held keys are re-sent on an interval because `steer` is a per-tick
-   * nudge on the server, not a velocity. Holding Up must keep nudging. */
-  const held = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!isPilot || state.isOver) return;
+  /* ── steering ────────────────────────────────────────────────────────
+   *
+   * ONE message per direction change. Not a stream.
+   *
+   * This used to pump `steer` every 50ms while a key or the screen was
+   * held, because the server moved the ship a fixed distance per message.
+   * That made flight speed a function of how many packets survived the
+   * trip: on a phone, jitter and loss and socket buffering turned a steady
+   * hold into a crawl, a stall, then a lurch. It is why the controls felt
+   * heavy.
+   *
+   * The server now holds the direction and flies the ship on its own clock,
+   * so the only thing that has to reach it is the moment the pilot changes
+   * their mind. Twenty times less upstream traffic, and identical handling
+   * on a good connection and a bad one.
+   */
+  const [touchDir, setTouchDir] = useState<-1 | 0 | 1>(0);
 
-    const down = (e: KeyboardEvent) => {
+  const steer = useCallback((d: -1 | 0 | 1) => {
+    // Deduped: re-sending a direction already held is the packet stream this
+    // change exists to remove, and `pointermove` fires constantly.
+    if (steerRef.current === d) return;
+    steerRef.current = d;
+    setTouchDir(d);
+    onMoveRef.current("steer", { dy: d });
+  }, []);
+
+  /**
+   * Steering is sticky now, so releasing has to be said out loud. Any path
+   * that ends a hold — key up, pointer up, cancel, the run ending, the
+   * board unmounting — must send a zero or the ship flies on by itself.
+   */
+  useEffect(() => {
+    if (!isPilot || state.isOver) {
+      if (steerRef.current !== 0) steer(0);
+      return;
+    }
+
+    const held = new Set<string>();
+    const dirFor = () => {
+      const up = held.has("arrowup") || held.has("w");
+      const down = held.has("arrowdown") || held.has("s");
+      // Both at once cancels, rather than letting whichever was added last
+      // win — that is what a physical stick does.
+      return up && !down ? -1 : down && !up ? 1 : 0;
+    };
+
+    const onDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       if (["arrowup", "w", "arrowdown", "s"].includes(k)) {
-        held.current.add(k);
+        held.add(k);
+        steer(dirFor());
         e.preventDefault();
       }
       if (k === " ") { onMoveRef.current("fire"); e.preventDefault(); }
@@ -112,41 +253,28 @@ export default function VyomaYudhBoard({
       if (k === "2") onMoveRef.current("special", { weapon: "laser" as VyomaWeapon });
       if (k === "3") onMoveRef.current("special", { weapon: "wall" as VyomaWeapon });
     };
-    const up = (e: KeyboardEvent) => held.current.delete(e.key.toLowerCase());
-
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    const pump = window.setInterval(() => {
-      if (held.current.has("arrowup") || held.current.has("w")) onMoveRef.current("steer", { dy: -1 });
-      if (held.current.has("arrowdown") || held.current.has("s")) onMoveRef.current("steer", { dy: 1 });
-    }, 50);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-      window.clearInterval(pump);
-      held.current.clear();
+    const onUp = (e: KeyboardEvent) => {
+      held.delete(e.key.toLowerCase());
+      steer(dirFor());
     };
-  }, [isPilot, state.isOver]);
+    // Alt-tabbing away with a key down would otherwise leave it held
+    // forever — the browser never delivers the keyup.
+    const onBlur = () => {
+      held.clear();
+      steer(0);
+    };
 
-  /* ── touch / on-screen pad ── */
-  const [touchDir, setTouchDir] = useState<-1 | 0 | 1>(0);
-  const touchDirRef = useRef<-1 | 0 | 1>(0);
-  const steer = useCallback((d: -1 | 0 | 1) => {
-    // Ref drives the pump, state drives the button's pressed styling. Keeping
-    // the pump off state means changing direction mid-hold does not restart
-    // the interval and drop a beat.
-    touchDirRef.current = d;
-    setTouchDir(d);
-  }, []);
-
-  useEffect(() => {
-    if (!isPilot) return;
-    const t = window.setInterval(() => {
-      const d = touchDirRef.current;
-      if (d !== 0) onMoveRef.current("steer", { dy: d });
-    }, 50);
-    return () => window.clearInterval(t);
-  }, [isPilot]);
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+      window.removeEventListener("blur", onBlur);
+      held.clear();
+      if (steerRef.current !== 0) steer(0);
+    };
+  }, [isPilot, state.isOver, steer]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -188,7 +316,7 @@ export default function VyomaYudhBoard({
              sliding from the top half to the bottom without lifting kept
              flying UP — you had to release and re-press to turn around. */
           onPointerMove={(e) => {
-            if (!isPilot || touchDirRef.current === 0) return;
+            if (!isPilot || steerRef.current === 0) return;
             const r = e.currentTarget.getBoundingClientRect();
             steer(e.clientY - r.top < r.height / 2 ? -1 : 1);
           }}

@@ -18,6 +18,7 @@ import { SnakeEngine } from "./snake/SnakeEngine.js";
 import { VyomaYudhEngine } from "./vyomayudh/VyomaYudhEngine.js";
 import { CarromEngine } from "./carrom/CarromEngine.js";
 import { ChessEngine } from "./chess/ChessEngine.js";
+import { BlockBlastEngine } from "./blockblast/BlockBlastEngine.js";
 import { SpaceWarEngine } from "./spacewar/SpaceWarEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
@@ -58,6 +59,8 @@ export function createEngine(kind: GameKind): GameEngine {
       return new CarromEngine();
     case "chess":
       return new ChessEngine();
+    case "blockblast":
+      return new BlockBlastEngine();
     case "spacewar":
       return new SpaceWarEngine();
     default:
@@ -85,6 +88,9 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     vyomayudh: { min: 1, max: 1 },
     carrom: { min: 2, max: 2 },
     chess: { min: 2, max: 2 },
+    // One seat is a legitimate game here (endless solo), not a lobby waiting
+    // to fill — the engine switches mode on seat count.
+    blockblast: { min: 1, max: 8 },
     spacewar: { min: 1, max: 1 },
   };
 
