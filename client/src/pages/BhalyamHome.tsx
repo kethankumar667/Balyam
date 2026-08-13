@@ -76,7 +76,6 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   stargame: StarGameGlyph,
   bingo: BingoGlyph,
   snake: StarGameGlyph,
-  vyomayudh: StarGameGlyph,
   carrom: StarGameGlyph,
   bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
@@ -1070,7 +1069,6 @@ export function GameTile({
     stargame: "/StarTile.png",
     bingo: "/Bingo Tile.png",
     snake: "/Snake Game Tile.png",
-    vyomayudh: "/Vyomyudh Game Tile.png",
     bounce: "/Bounce Game Tile.png",
     roadrash: "/Roadrash Game Tile.png",
     carrom: "/Carrom Game Tile.png",
@@ -1079,9 +1077,7 @@ export function GameTile({
     // layer" path (see GameTileArt) — a made-up filename would render a
     // broken image and then silently fall back anyway, one retry later.
     blockblast: "",
-    // Borrowed from Vyoma Yudh for now. Two different games sharing one
-    // tile is a placeholder, not a decision.
-    spacewar: "/Vyomyudh Game Tile.png",
+    spacewar: "/SpacewarTile.png",
   };
 
   const underMaintenance = isLocked(game);

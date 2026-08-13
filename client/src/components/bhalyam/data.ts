@@ -33,7 +33,6 @@ export type BhalyamGameSlug =
   | "samethalu"
   | "telugucinemalu"
   | "snake"
-  | "vyomayudh"
   | "bounce"
   | "roadrash"
   | "carrom";
@@ -330,15 +329,6 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Drop blocks, clear lines. Alone it never ends — together everyone gets the exact same pieces and the highest score in three minutes wins.",
     accent: { from: "#7C3AED", to: "#2E1065" }, // Lacquer Violet
-  },
-  {
-    slug: "vyomayudh",
-    tags: ["solo"],
-    theme: "90s Shooter 🚀",
-    title: "Vyoma Yudh",
-    blurb:
-      "Sky battle in the old handheld style. Fly the gunship, hold the line against enemy waves, and break the guardian at the end of every level.",
-    accent: { from: "#4F46E5", to: "#1E1B4B" }, // Cosmic Deep Space Indigo
   },
   {
     slug: "bounce",

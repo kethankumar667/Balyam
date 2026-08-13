@@ -30,7 +30,6 @@ import type {
   SamethaluOptions,
   TeluguCinemaluOptions,
   SnakeOptions,
-  VyomaYudhOptions,
   CarromOptions,
   ChessOptions,
   BlockBlastOptions,
@@ -54,7 +53,6 @@ import {
   DEFAULT_CARROM_OPTIONS,
   DEFAULT_CHESS_OPTIONS,
   DEFAULT_SNAKE_OPTIONS,
-  DEFAULT_VYOMAYUDH_OPTIONS,
   DEFAULT_BLOCKBLAST_OPTIONS,
   DEFAULT_SPACEWAR_OPTIONS,
 } from "@shared/types.js";
@@ -84,7 +82,6 @@ import { TeluguCinemaluEngine } from "../games/telugucinemalu/TeluguCinemaluEngi
 import { CarromEngine } from "../games/carrom/CarromEngine.js";
 import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
-import { VyomaYudhEngine } from "../games/vyomayudh/VyomaYudhEngine.js";
 import { BlockBlastEngine } from "../games/blockblast/BlockBlastEngine.js";
 import { SpaceWarEngine } from "../games/spacewar/SpaceWarEngine.js";
 
@@ -171,7 +168,6 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   samethalu: ["Peddaiah", "Patti", "Raja", "Saraswathi", "Subbu", "Tammudu"],
   telugucinemalu: ["Chiranjeevi", "Balayya", "Nag", "Venky", "Prabhas", "Mahesh", "NTR", "Ram Charan"],
   snake: ["Python", "Viper", "Cobra", "Mamba"],
-  vyomayudh: ["Ace", "Blaster", "Cosmo", "Defender"],
   blockblast: ["Tetra", "Chotu", "Gattu", "Rubik", "Pixel", "Mosaic", "Bittu", "Domino"],
   // "Striker" was dropped: it is the name of a piece on the board, so the
   // player list read "Striker · 9 left" next to a striker the player aims.
@@ -255,7 +251,6 @@ interface Room {
   carromOptions: CarromOptions;
   chessOptions: ChessOptions;
   snakeOptions: SnakeOptions;
-  vyomaYudhOptions: VyomaYudhOptions;
   blockBlastOptions: BlockBlastOptions;
   spaceWarOptions: SpaceWarOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
@@ -363,7 +358,6 @@ export class RoomManager {
     samethaluOptions?: Partial<SamethaluOptions>,
     teluguCinemaluOptions?: Partial<TeluguCinemaluOptions>,
     snakeOptions?: Partial<SnakeOptions>,
-    vyomaYudhOptions?: Partial<VyomaYudhOptions>,
     carromOptions?: Partial<CarromOptions>,
     chessOptions?: Partial<ChessOptions>,
     blockBlastOptions?: Partial<BlockBlastOptions>,
@@ -417,7 +411,6 @@ export class RoomManager {
       carromOptions: { ...DEFAULT_CARROM_OPTIONS, ...(carromOptions ?? {}) },
       chessOptions: { ...DEFAULT_CHESS_OPTIONS, ...(chessOptions ?? {}) },
       snakeOptions: { ...DEFAULT_SNAKE_OPTIONS, ...(snakeOptions ?? {}) },
-      vyomaYudhOptions: { ...DEFAULT_VYOMAYUDH_OPTIONS, ...(vyomaYudhOptions ?? {}) },
       blockBlastOptions: { ...DEFAULT_BLOCKBLAST_OPTIONS, ...(blockBlastOptions ?? {}) },
       spaceWarOptions: { ...DEFAULT_SPACEWAR_OPTIONS, ...(spaceWarOptions ?? {}) },
       rematch: emptyRematchState(),
@@ -575,7 +568,7 @@ export class RoomManager {
     if (!room || !player) return;
     // Games with no bot AI — bots would be dead/frozen seats.
     const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-      "samethalu", "telugucinemalu", "snake", "vyomayudh", "roadrash", "spacewar",
+      "samethalu", "telugucinemalu", "snake", "roadrash", "spacewar",
     ]);
     if (NO_BOT_GAMES.has(room.game)) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Bots are not available for this game");
@@ -875,9 +868,6 @@ export class RoomManager {
       }
       if (engine instanceof SnakeEngine) {
         engine.setOptions(room.snakeOptions);
-      }
-      if (engine instanceof VyomaYudhEngine) {
-        engine.setOptions(room.vyomaYudhOptions);
       }
       if (engine instanceof BlockBlastEngine) {
         engine.setOptions(room.blockBlastOptions);
@@ -2528,7 +2518,6 @@ export class RoomManager {
       if (engine instanceof CarromEngine) engine.setOptions(room.carromOptions);
       if (engine instanceof ChessEngine) engine.setOptions(room.chessOptions);
       if (engine instanceof SnakeEngine) engine.setOptions(room.snakeOptions);
-      if (engine instanceof VyomaYudhEngine) engine.setOptions(room.vyomaYudhOptions);
       if (engine instanceof BlockBlastEngine) engine.setOptions(room.blockBlastOptions);
       if (engine instanceof SpaceWarEngine) engine.setOptions(room.spaceWarOptions);
       engine.init(playersList);

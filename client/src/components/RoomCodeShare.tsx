@@ -49,7 +49,6 @@ export default function RoomCodeShare({
     samethalu: "Samethalu Quiz",
     telugucinemalu: "Telugu Cinema Quiz",
     snake: "Snake",
-    vyomayudh: "Vyoma Yudh",
     roadrash: "Road Rash 90s",
     carrom: "Carrom",
     chess: "Chess Grandmaster",

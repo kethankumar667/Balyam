@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar";
 
 export interface Player {
   id: string;
@@ -2119,129 +2119,6 @@ export interface CarromPublicState {
   winnerId: string | null;
 }
 
-// ---- Vyoma Yudh (side-scrolling shooter) ----
-/**
- * An original side-scrolling shooter in the 90s handheld idiom.
- *
- * Mechanics only — waves, bosses, power-ups, lives — which are not
- * copyrightable. No code, art, or naming is derived from any existing game.
- * The world is 200x100 abstract units; the client scales to its canvas, so
- * the simulation is resolution-independent and every player sees identical
- * physics regardless of screen size.
- */
-export const VYOMA_WORLD = { w: 200, h: 100 } as const;
-
-/**
- * Simulation rate, shared so the board can interpolate against the real one.
- *
- * Snake shipped a `speedMs` in its state that did not match the rate it
- * actually stepped at, and the client — which draws motion over exactly that
- * duration — stuttered for weeks as a result. The lesson is that a renderer
- * smoothing between server frames needs the authoritative interval, and the
- * only way it cannot drift is if there is one copy of the number.
- */
-export const VYOMA_TICK_HZ = 20;
-
-/**
- * Gunship speed in world units per second.
- *
- * Shared because the board predicts its own ship locally — see the board's
- * prediction block. A second, differing constant here would show up as the
- * ship creeping away from where the server thinks it is.
- */
-export const VYOMA_SHIP_SPEED = 55;
-
-/** How close to the top and bottom edges the gunship may fly. */
-export const VYOMA_SHIP_MARGIN = 4;
-
-export type VyomaDifficulty = "easy" | "normal" | "hard";
-
-export interface VyomaYudhOptions {
-  difficulty: VyomaDifficulty;
-  /** Lives per pilot run. */
-  lives: number;
-  /** Levels to clear for a perfect run. */
-  levels: number;
-}
-
-export const DEFAULT_VYOMAYUDH_OPTIONS: VyomaYudhOptions = {
-  difficulty: "normal",
-  lives: 3,
-  // Ten, matching the three complexity bands the engine now runs
-  // (see VYOMA_BANDS): 1-3 patrol, 4-7 assault, 8-10 siege.
-  levels: 10,
-};
-
-/** Special weapons. Standard fire is unlimited and is not listed here. */
-export type VyomaWeapon = "missile" | "laser" | "wall";
-
-export type VyomaEnemyKind =
-  | "scout"      // straight line, fast, fragile
-  | "weaver"     // sine-wave path
-  | "turret"     // holds position at the right edge and shoots
-  | "bomber"     // slow, tanky, fires spreads
-  | "boss";      // level guardian
-
-export interface VyomaEntity {
-  id: string;
-  x: number;
-  y: number;
-  kind: VyomaEnemyKind;
-  hp: number;
-  maxHp: number;
-}
-
-export interface VyomaShot {
-  id: string;
-  x: number;
-  y: number;
-  /** Unit velocity — lets the client interpolate between ticks. */
-  vx: number;
-  vy: number;
-  fromPlayer: boolean;
-  /** "wall" shots render as a tall bar rather than a bolt. */
-  weapon: VyomaWeapon | "basic";
-}
-
-export interface VyomaPickup {
-  id: string;
-  x: number;
-  y: number;
-  weapon: VyomaWeapon | "life";
-}
-
-/** Outcome of the run, once it has ended. */
-export interface VyomaResult {
-  score: number;
-  levelReached: number;
-  reason: "cleared" | "destroyed";
-}
-
-export interface VyomaYudhPublicState {
-  kind: "vyomayudh";
-  /** The pilot. null once the run has ended. */
-  pilotId: string | null;
-  /** Server tick counter, so the client can detect dropped frames. */
-  tick: number;
-
-  /* ── live run ── */
-  ship: { x: number; y: number; invulnUntilTick: number } | null;
-  lives: number;
-  score: number;
-  level: number;
-  /** Remaining ammo for each special weapon. */
-  ammo: Record<VyomaWeapon, number>;
-  enemies: VyomaEntity[];
-  shots: VyomaShot[];
-  pickups: VyomaPickup[];
-  /** Boss health as a 0..1 fraction while a boss is on screen, else null. */
-  bossHp: number | null;
-  /* ── meta ── */
-  /** Populated once the run is over; null while flying. */
-  result: VyomaResult | null;
-  isOver: boolean;
-  winnerId: string | null;
-}
 
 // ---- Space War ----
 export type SpaceWarSpecialType = "missile" | "laser" | "wall";
@@ -2575,7 +2452,6 @@ export interface CreateRoomPayload {
   samethaluOptions?: Partial<SamethaluOptions>;
   teluguCinemaluOptions?: Partial<TeluguCinemaluOptions>;
   snakeOptions?: Partial<SnakeOptions>;
-  vyomaYudhOptions?: Partial<VyomaYudhOptions>;
   carromOptions?: Partial<CarromOptions>;
   chessOptions?: Partial<ChessOptions>;
   blockBlastOptions?: Partial<BlockBlastOptions>;
