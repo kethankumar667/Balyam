@@ -20,7 +20,20 @@ let prevEnemyCount = 0;
 export function renderSpaceWarCanvas(
   ctx: CanvasRenderingContext2D,
   state: SpaceWarPublicState,
-  orientation: "horizontal" | "vertical" = "horizontal"
+  orientation: "horizontal" | "vertical" = "horizontal",
+  /**
+   * How much of a server tick this frame represents.
+   *
+   * The particle burst below advances once per CALL — it was written when
+   * this function ran exactly when a packet landed, i.e. 30 times a second.
+   * Now the board draws on requestAnimationFrame so it can interpolate
+   * between packets, which means ~60 calls a second and sparks that would
+   * fly and die twice as fast as they were tuned to.
+   *
+   * 1 keeps the original per-packet pacing, so a caller that has not been
+   * updated behaves exactly as before.
+   */
+  stepScale = 1
 ) {
   const isVertical = orientation === "vertical";
   const screenW = isVertical ? 480 : 840;
@@ -474,9 +487,11 @@ export function renderSpaceWarCanvas(
     ctx.save();
     for (let i = particles.length - 1; i >= 0; i--) {
       const pt = particles[i];
-      pt.x += pt.vx;
-      pt.y += pt.vy;
-      pt.life++;
+      // Scaled by the frame's share of a tick, so sparks keep the speed and
+      // lifetime they were tuned with whatever rate the board draws at.
+      pt.x += pt.vx * stepScale;
+      pt.y += pt.vy * stepScale;
+      pt.life += stepScale;
       const alpha = Math.max(0, 1 - pt.life / pt.maxLife);
       ctx.fillStyle = pt.color;
       ctx.shadowColor = pt.color;
