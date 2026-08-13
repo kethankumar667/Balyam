@@ -22,6 +22,7 @@ export default function BoardPreviewPill({
 }: BoardPreviewPillProps) {
   const [capturing, setCapturing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   async function takeScreenshot() {
     setCapturing(true);
@@ -34,23 +35,54 @@ export default function BoardPreviewPill({
         }
       }
 
+      let blob: Blob | null = null;
+
       if (targetSvg) {
-        const blob = await svgToPngBlob(targetSvg, window.devicePixelRatio || 2);
-        if (blob) {
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = `bhalyam-board-${Date.now()}.png`;
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-          setSaved(true);
-          setTimeout(() => setSaved(false), 2000);
+        // SVG boards (Ludo, Carrom, Chess) rasterise from the vector, which
+        // is sharper than screen-scraping the DOM.
+        blob = await svgToPngBlob(targetSvg, window.devicePixelRatio || 2);
+      } else if (targetElementId) {
+        /**
+         * HTML boards (Rummy, UNO, the Hand Cricket scorecard) have no SVG to
+         * rasterise, so this branch used to call `window.print()` — which on
+         * a phone opens a print dialog or does nothing at all. That is what
+         * players reported as the screenshot button being broken: it was
+         * never capable of capturing a non-SVG board.
+         */
+        const node = document.getElementById(targetElementId);
+        if (node) {
+          const { toBlob } = await import("html-to-image");
+          blob = await toBlob(node, {
+            pixelRatio: window.devicePixelRatio || 2,
+            // The board sits on the page background; without this the PNG
+            // has a transparent ground and looks broken in most viewers.
+            backgroundColor: "#1a2236",
+            // Skip anything explicitly marked as chrome — this pill itself
+            // is fixed-position over the board and would otherwise appear in
+            // every screenshot.
+            filter: (el) =>
+              !(el instanceof HTMLElement && el.dataset.screenshotHide === "true"),
+          });
         }
+      }
+
+      if (blob) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `bhalyam-board-${Date.now()}.png`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
       } else {
-        // Native browser print/save fallback if no SVG target found
-        window.print();
+        setFailed(true);
+        setTimeout(() => setFailed(false), 2500);
       }
     } catch {
-      // Fallback
+      // Say so rather than leaving the button looking like it worked. A
+      // silent failure here is exactly how this shipped broken for months.
+      setFailed(true);
+      setTimeout(() => setFailed(false), 2500);
     } finally {
       setCapturing(false);
     }
@@ -65,7 +97,7 @@ export default function BoardPreviewPill({
        z-[200] — any of which covered the ✕ and stranded the player on the
        board with no way back to the results. Also nudged clear of the safe
        area so the notch does not eat it on a phone. */
-    <div className="fixed top-[max(1rem,env(safe-area-inset-top))] right-4 z-[300] animate-fade-in flex items-center gap-2 bg-slate-900/95 text-white border-2 border-amber-400/90 px-3.5 py-2 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.65)] backdrop-blur-md font-bold">
+    <div data-screenshot-hide="true" className="fixed top-[max(1rem,env(safe-area-inset-top))] right-4 z-[300] animate-fade-in flex items-center gap-2 bg-slate-900/95 text-white border-2 border-amber-400/90 px-3.5 py-2 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.65)] backdrop-blur-md font-bold">
       <span className="flex items-center gap-1.5 text-xs sm:text-sm text-amber-300">
         👁 Board Preview
       </span>
@@ -78,7 +110,7 @@ export default function BoardPreviewPill({
         title="Download high-res PNG screenshot of board"
       >
         <span>📸</span>
-        <span>{saved ? "Saved!" : capturing ? "Saving..." : "Screenshot"}</span>
+        <span>{failed ? "Failed" : saved ? "Saved!" : capturing ? "Saving..." : "Screenshot"}</span>
       </button>
 
       <button
