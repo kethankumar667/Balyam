@@ -58,6 +58,11 @@ describe("BingoEngine", () => {
   it("allows claimBingo when 5 lines are formed", () => {
     e.applyMove({ playerId: "p0", type: "lockBoard" });
     e.applyMove({ playerId: "p1", type: "lockBoard" });
+    // Numbers are no longer marked just by being called — each player marks
+    // their own. This test is about CLAIMING, so delegate marking rather
+    // than tapping 25 numbers twice.
+    e.applyMove({ playerId: "p0", type: "setAutoMark", data: { on: true } });
+    e.applyMove({ playerId: "p1", type: "setAutoMark", data: { on: true } });
 
     // Rig p0 board
     (e as any).players.get("p0").board = riggedBoard();

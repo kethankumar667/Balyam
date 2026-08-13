@@ -640,6 +640,17 @@ export const HC_GALLI_MAX_OVERS = 20;
 /** Wickets allowed per innings (standard cricket: 10 — losing the 11th = all out). */
 export const HC_WICKETS_PER_INNINGS = 10;
 
+/**
+ * The innings break.
+ *
+ * The first innings used to end and the second BEGIN in the same tick — the
+ * scoreboard swapped mid-glance and the next ball was immediately bowlable,
+ * so players reported the second innings "starting continuously" and losing
+ * track of whose turn it was. A real match stops here: you are told the
+ * innings is over and what the target is, and only then does play resume.
+ */
+export const HC_INNINGS_BREAK_MS = 10_000;
+
 /** Country IDs for international play. */
 export type HcCountry =
   | "india"
@@ -783,6 +794,21 @@ export interface HcState {
   result: HcResult | null;
   /** Wickets per innings (10 by default). */
   maxWickets: number;
+  /**
+   * While set and in the future, the innings break is running: innings 2
+   * exists and the target is known, but no ball may be bowled yet. Null at
+   * every other point in a match.
+   */
+  inningsBreakUntil: number | null;
+  /**
+   * Who has pressed Continue on the innings-1 scorecard.
+   *
+   * The break ends on whichever comes first: everyone continuing, or the
+   * deadline. Same shape as the Bingo mark gate — one player still reading
+   * must be able to hold the restart, but must never be able to hold it
+   * forever.
+   */
+  inningsBreakReady: string[];
   /** Overs per innings, derived from format. */
   oversPerInnings: number;
   startedAt: number;
@@ -1475,11 +1501,27 @@ export type StarMove =
 
 // ---- Bingo ----
 //
-// 75-ball American Bingo. 5x5 board, columns B-I-N-G-O (1-15/16-30/31-45/
-// 46-60/61-75), center is FREE. Server owns board generation, the call
-// pool, every mark, and win validation — the client only ever renders
-// state and sends intents (claim / optional manual mark). See
-// docs/bingo/roadmap.md for the full design record.
+// 25-ball Bingo. Each player's 5x5 board holds 1-25 shuffled, so EVERY
+// called number is on EVERY board — only its position differs. There is no
+// FREE centre and no B-I-N-G-O column ranges.
+//
+// (This comment previously described 75-ball American Bingo with 1-15/16-30/
+// … columns and a free centre. That game was never implemented; board.ts has
+// always dealt 1-25. Corrected because the types are what people read to
+// learn the rules.)
+//
+// Server owns board generation, the call pool, mark validation and win
+// validation — the client renders state and sends intents (mark / claim).
+//
+// ── Marking ───────────────────────────────────────────────────────────
+// A called number is NOT marked for everyone on arrival. Each player either
+// taps it on their own board within BINGO_MARK_WINDOW_MS, or has auto-mark
+// switched on and gets it instantly. When the window closes, anyone who
+// missed it is marked automatically — boards never diverge permanently, so
+// a dropped connection cannot cost a player the round.
+//
+// The stake is attention, not punishment: a player who lets everything
+// auto-mark never watches their own board, and loses the race to `claim`.
 
 export type BingoLetter = "B" | "I" | "N" | "G" | "O";
 
@@ -1524,6 +1566,15 @@ export interface BingoGameOptions {
 
 export const BINGO_CALL_INTERVAL_TIERS = [2500, 4000, 6000] as const;
 
+/**
+ * How long players get to find and tap a called number.
+ *
+ * Longer than every call-interval tier on purpose: the window GATES the next
+ * call rather than racing it. The caller cannot move on while a number is
+ * still open, which is what keeps every board on the same number.
+ */
+export const BINGO_MARK_WINDOW_MS = 8000;
+
 export const DEFAULT_BINGO_OPTIONS: BingoGameOptions = {
   callIntervalMs: 4000,
   stopOnFirstWin: true,
@@ -1541,6 +1592,17 @@ export interface BingoPlayerPublic {
   isConnected: boolean;
   /** Board sent for all players so opponents can view each other's 5x5 boards */
   board: BingoBoard;
+  /**
+   * Per-PLAYER preference, not a room setting — it is an accessibility
+   * choice (motor control, low vision, a child playing along), so one
+   * player's need must not decide it for the table.
+   */
+  autoMark: boolean;
+  /**
+   * Whether this player has dealt with the number currently on the clock.
+   * Drives the "waiting for…" read on other players' cards.
+   */
+  hasMarkedCurrent: boolean;
 }
 
 export interface BingoRoundRecap {
@@ -1558,6 +1620,12 @@ export interface BingoPublicState {
   calledNumbers: CalledNumber[];
   lastCalledNumber: CalledNumber | null;
   callDeadline: number | null;
+  /**
+   * When the open number stops accepting taps and is auto-marked for anyone
+   * who missed it. Null when no number is awaiting marks — which is also the
+   * signal that the caller may call the next one.
+   */
+  markDeadline: number | null;
   winners: BingoWinner[];
   roundNumber: number;
   stopOnFirstWin: boolean;
