@@ -2131,6 +2131,29 @@ export interface CarromPublicState {
  */
 export const VYOMA_WORLD = { w: 200, h: 100 } as const;
 
+/**
+ * Simulation rate, shared so the board can interpolate against the real one.
+ *
+ * Snake shipped a `speedMs` in its state that did not match the rate it
+ * actually stepped at, and the client — which draws motion over exactly that
+ * duration — stuttered for weeks as a result. The lesson is that a renderer
+ * smoothing between server frames needs the authoritative interval, and the
+ * only way it cannot drift is if there is one copy of the number.
+ */
+export const VYOMA_TICK_HZ = 20;
+
+/**
+ * Gunship speed in world units per second.
+ *
+ * Shared because the board predicts its own ship locally — see the board's
+ * prediction block. A second, differing constant here would show up as the
+ * ship creeping away from where the server thinks it is.
+ */
+export const VYOMA_SHIP_SPEED = 55;
+
+/** How close to the top and bottom edges the gunship may fly. */
+export const VYOMA_SHIP_MARGIN = 4;
+
 export type VyomaDifficulty = "easy" | "normal" | "hard";
 
 export interface VyomaYudhOptions {

@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, Player, VyomaWeapon, VyomaYudhPublicState } from "@shared/types";
-import { VYOMA_WORLD } from "@shared/types";
+import {
+  VYOMA_SHIP_MARGIN,
+  VYOMA_SHIP_SPEED,
+  VYOMA_TICK_HZ,
+  VYOMA_WORLD,
+} from "@shared/types";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { draw, PALETTE } from "./render";
+import { interpolateState, reconcileShipY, type Snapshot } from "./interpolate";
 
 export interface VyomaYudhBoardProps {
   state: VyomaYudhPublicState;
@@ -36,7 +42,30 @@ export default function VyomaYudhBoard({
 }: VyomaYudhBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef(state);
+
+  /**
+   * The last two broadcasts, and when each arrived.
+   *
+   * The simulation runs at 20Hz and this canvas redraws at 60, so drawing
+   * the newest broadcast directly means every enemy and bullet freezes for
+   * three frames and then jumps. That is not a network problem — it happens
+   * on a perfect connection — it is the game showing 20 positions a second
+   * and calling it motion. Keeping the previous frame is what makes
+   * smoothing possible at all.
+   */
+  const snapshots = useRef<{ prev: Snapshot | null; cur: Snapshot | null }>({
+    prev: null,
+    cur: null,
+  });
+
+  if (stateRef.current !== state) {
+    const now = performance.now();
+    snapshots.current = { prev: snapshots.current.cur, cur: { state, at: now } };
+  }
   stateRef.current = state;
+  if (!snapshots.current.cur) {
+    snapshots.current = { prev: null, cur: { state, at: performance.now() } };
+  }
 
   /**
    * `onMove` arrives as an inline arrow from Room.tsx, so it is a NEW
@@ -53,21 +82,92 @@ export default function VyomaYudhBoard({
   onMoveRef.current = onMove;
 
   const isPilot = state.pilotId === selfId;
+
+  /**
+   * The direction currently held, and whether this seat flies at all.
+   *
+   * Declared here rather than beside the input handlers because the render
+   * loop reads them every frame to predict the ship, and that loop mounts
+   * once — so anything it touches has to be a ref, not a value captured at
+   * the render that happened to set the loop up.
+   */
+  const steerRef = useRef<-1 | 0 | 1>(0);
+  const isPilotRef = useRef(isPilot);
+  isPilotRef.current = isPilot;
   const nameOf = useMemo(() => {
     const map = new Map(players.map((p) => [p.id, p.name]));
     return (id: string) => map.get(id) ?? "Pilot";
   }, [players]);
 
+  /**
+   * The predicted position of the local ship, in world units.
+   *
+   * null until the first broadcast that has a ship in it, so a spectator or
+   * a finished run never invents one.
+   */
+  const predictedY = useRef<number | null>(null);
+
   /* ── render loop ──────────────────────────────────────────────────
-   * Runs on requestAnimationFrame purely to ANIMATE (blink, starfield
-   * drift) between server broadcasts. It never advances game state — the
-   * only source of truth is `state`, which arrives from the server. */
+   *
+   * Draws 60 times a second from a world that updates 20 times a second.
+   * Two different jobs, and they need different treatment:
+   *
+   *   Everything you do not control — enemies, bullets, pickups — is drawn
+   *   part-way between the last two broadcasts. Smooth, at the cost of
+   *   showing the world one tick (50ms) in the past, which nobody can see.
+   *
+   *   Your own ship does NOT pay that, because it is already waiting on a
+   *   round trip before the server even hears that you pressed. It is flown
+   *   locally at the same speed the server uses and pulled back toward the
+   *   authoritative value every frame.
+   *
+   * The loop still advances no game state. Prediction is a drawing decision
+   * that the next broadcast overrules; the server remains the only authority
+   * on where the ship actually is.
+   */
   useEffect(() => {
     let raf = 0;
     let frame = 0;
+    let last = performance.now();
+    const tickMs = 1000 / VYOMA_TICK_HZ;
+
     const loop = () => {
       const canvas = canvasRef.current;
-      if (canvas) draw(canvas, stateRef.current, frame++);
+      const now = performance.now();
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+
+      const { prev, cur } = snapshots.current;
+      if (canvas && cur) {
+        // Clamped at 1: if broadcasts stall, hold at the newest known
+        // position rather than extrapolating into a guess that has to be
+        // yanked back when the connection returns.
+        const alpha = Math.min(1, (now - cur.at) / tickMs);
+        const view = prev ? interpolateState(prev.state, cur.state, alpha) : cur.state;
+
+        const authoritative = cur.state.ship?.y ?? null;
+        if (authoritative == null) {
+          predictedY.current = null;
+        } else {
+          predictedY.current = reconcileShipY(
+            predictedY.current ?? authoritative,
+            authoritative,
+            dt,
+            isPilotRef.current ? steerRef.current : 0,
+            VYOMA_SHIP_SPEED,
+            VYOMA_SHIP_MARGIN,
+            VYOMA_WORLD.h - VYOMA_SHIP_MARGIN,
+          );
+        }
+
+        draw(
+          canvas,
+          predictedY.current != null && view.ship
+            ? { ...view, ship: { ...view.ship, y: predictedY.current } }
+            : view,
+          frame++,
+        );
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -111,7 +211,6 @@ export default function VyomaYudhBoard({
    * on a good connection and a bad one.
    */
   const [touchDir, setTouchDir] = useState<-1 | 0 | 1>(0);
-  const steerRef = useRef<-1 | 0 | 1>(0);
 
   const steer = useCallback((d: -1 | 0 | 1) => {
     // Deduped: re-sending a direction already held is the packet stream this
