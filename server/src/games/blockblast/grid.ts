@@ -1,4 +1,4 @@
-import { BLOCK_CELLS, BLOCK_GRID } from "@shared/types.js";
+import { BLOCK_CELLS, BLOCK_GRID, blockStreakMultiplier } from "@shared/types.js";
 import type { BlockPiece } from "./pieces.js";
 
 /**
@@ -118,8 +118,6 @@ export function allFits(grid: Grid, piece: BlockPiece): { r: number; c: number }
 export const LINE_BASE = 10;
 /** Emptying the board completely. The rarest thing a player can do. */
 export const PERFECT_CLEAR_BONUS = 300;
-/** Streak multiplier climbs by a half each time and stops here. */
-export const MAX_STREAK_STEPS = 6;
 
 /**
  * Clearing several lines in one placement is worth far more than clearing
@@ -133,13 +131,10 @@ export function lineScore(lines: number): number {
 }
 
 /**
- * Consecutive clearing placements multiply. `streak` is the count including
- * the placement being scored, so the first clear multiplies by 1.
+ * Re-exported from shared so the engine and the scoreboard cannot disagree
+ * about what multiplier a streak is worth. See `blockStreakMultiplier`.
  */
-export function streakMultiplier(streak: number): number {
-  const steps = Math.min(Math.max(streak - 1, 0), MAX_STREAK_STEPS);
-  return 1 + steps * 0.5;
-}
+export const streakMultiplier = blockStreakMultiplier;
 
 export interface PlacementScore {
   /** What the player gains in total. */
