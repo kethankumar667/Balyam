@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type { SnakePublicState, SnakeTheme } from "@shared/types";
 import { AnimatePresence, motion } from "framer-motion";
 import SnakeCanvas from "./SnakeCanvas";
+import QuadDPad, { type PadDir } from "../../components/QuadDPad";
 import { useHaptics } from "../../hooks/useHaptics";
 import { SNAKE_THEME_CHROME, THEME_LABELS, SNAKE_THEMES } from "./snakeChrome";
 
@@ -15,34 +16,56 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
   const [showRules, setShowRules] = useState(false);
   const [activeTheme, setActiveTheme] = useState<SnakeTheme>(state.theme || "nokia-monochrome");
   const [isMuted, setIsMuted] = useState(false);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipeRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const haptics = useHaptics();
 
   useEffect(() => {
     if (state.theme) setActiveTheme(state.theme);
   }, [state.theme]);
 
+  // `onMove` is a new closure on every broadcast; the pad and the swipe
+  // handler both read it from here so neither can hold a stale one.
+  const moveRef = useRef(onMove);
+  moveRef.current = onMove;
+
   const handleTurn = useCallback(
-    (dir: string) => {
-      onMove("turn", { dir });
+    (dir: PadDir) => {
+      moveRef.current("turn", { dir });
+      haptics.subtle();
     },
-    [onMove],
+    [haptics],
   );
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  /**
+   * Swiping the playfield, on pointer events rather than touch.
+   *
+   * Two things were wrong with the old version. It only decided on
+   * `touchend`, so a turn landed when the finger LIFTED — at 8 steps a second
+   * that is most of a cell too late, and it is why swiping felt like it was
+   * ignoring you. And the 24px threshold meant a quick flick that travelled
+   * 20px did nothing at all.
+   *
+   * Now the direction fires the moment the swipe is unambiguous, and the
+   * origin resets so one continuous drag can round a corner: swipe right,
+   * keep going down, and both turns queue.
+   */
+  const handleSwipeStart = (e: React.PointerEvent) => {
+    swipeRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - touchStartRef.current.x;
-    const dy = touch.clientY - touchStartRef.current.y;
-    touchStartRef.current = null;
-    if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
-    if (Math.abs(dx) > Math.abs(dy)) handleTurn(dx > 0 ? "RIGHT" : "LEFT");
-    else handleTurn(dy > 0 ? "DOWN" : "UP");
+  const handleSwipeMove = (e: React.PointerEvent) => {
+    const origin = swipeRef.current;
+    if (!origin || origin.id !== e.pointerId) return;
+    const dx = e.clientX - origin.x;
+    const dy = e.clientY - origin.y;
+    const THRESHOLD = 16;
+    if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) return;
+    handleTurn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "RIGHT" : "LEFT") : dy > 0 ? "DOWN" : "UP");
+    swipeRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  };
+
+  const handleSwipeEnd = () => {
+    swipeRef.current = null;
   };
 
   const chrome = SNAKE_THEME_CHROME[activeTheme];
@@ -100,7 +123,14 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
         <div className="w-full flex-1 h-[48%] bg-[#080b14] border-2 border-[#00ff88]/20 rounded-2xl p-2 shadow-[inset_0_0_20px_rgba(0,0,0,0.9)] flex flex-col justify-between relative min-h-0">
           
           {/* CANVAS PLAYFIELD */}
-          <div className="relative w-full flex-1 flex items-center justify-center overflow-hidden min-h-0" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+          <div
+            className="relative w-full flex-1 flex items-center justify-center overflow-hidden min-h-0"
+            style={{ touchAction: "none" }}
+            onPointerDown={handleSwipeStart}
+            onPointerMove={handleSwipeMove}
+            onPointerUp={handleSwipeEnd}
+            onPointerCancel={handleSwipeEnd}
+          >
             <SnakeCanvas state={state} selfId={selfId} theme={activeTheme} onEat={onEat} onDeath={onDeath} className="h-full max-h-full aspect-square" />
             {state.isPaused && (
               <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md p-4 text-center rounded-xl">
@@ -165,76 +195,20 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
         {/* 2. BOTTOM CARD: 4-SECTOR DIVIDED CYBER D-PAD CONTROLLER DECK */}
         <div className="w-full flex-1 h-[48%] flex flex-col justify-between bg-gradient-to-b from-[#1a1e33] to-[#101222] border-2 border-[#2b324d] rounded-2xl p-2.5 sm:p-3 shadow-2xl min-h-0 overflow-hidden gap-2">
           
-          {/* MAIN CONTROLLER AREA: 4-SECTOR DIVIDED WHEEL WITH GLOWING CAPSULE BUTTONS */}
+          {/* MAIN CONTROLLER AREA: FOUR-SECTOR WHEEL.
+              Each quarter of the wheel IS the button — the capsules that used
+              to sit inside them were the only live part of a control four
+              times their size, so a thumb that landed anywhere else in the
+              quarter turned nothing. Dragging between quarters steers too, so
+              a corner is one motion instead of lift-aim-tap-lift-aim-tap. */}
           <div className="w-full flex-1 flex items-center justify-center min-h-0">
-            <div className="relative w-48 h-48 sm:w-54 sm:h-54 bg-[#0a0c16] rounded-full border-2 border-[#00ff88]/40 shadow-[inset_0_0_25px_rgba(0,0,0,0.9)] flex items-center justify-center shrink-0 overflow-hidden">
-              
-              {/* RED DIAGONAL SECTOR DIVIDER LINES */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100">
-                <line x1="15" y1="15" x2="85" y2="85" stroke="#ff2a5f" strokeWidth="3" opacity="0.9" />
-                <line x1="85" y1="15" x2="15" y2="85" stroke="#ff2a5f" strokeWidth="3" opacity="0.9" />
-              </svg>
-
-              {/* CENTER HUB RING */}
-              <div className="w-12 h-12 rounded-full border-2 border-[#00ff88] bg-[#0c0e18] z-10 flex items-center justify-center shadow-[0_0_12px_rgba(0,255,136,0.4)]">
-                <div className="w-3.5 h-3.5 rounded-full bg-[#00ff88] shadow-[0_0_8px_#00ff88] animate-ping" />
-              </div>
-
-              {/* TOP SECTOR CAPSULE BUTTON (UP) */}
-              <button
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  handleTurn("UP");
-                }}
-                /* w-12 h-14, not w-11 h-15: `15` is not on Tailwind's scale
-                   (this config extends it with 18/22/30 only), so `h-15`
-                   generated no rule and the capsule collapsed to the height
-                   of the glyph — about 28px, well under the 44px minimum
-                   touch target, on every phone. `sm:` starts at 640px, which
-                   is a tablet, so nothing rescued it. */
-                className="absolute top-2.5 z-20 w-12 h-14 sm:w-14 sm:h-16 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
-                aria-label="Up"
-              >
-                ▲
-              </button>
-
-              {/* LEFT SECTOR CAPSULE BUTTON (LEFT) */}
-              <button
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  handleTurn("LEFT");
-                }}
-                className="absolute left-2.5 z-20 w-14 h-12 sm:w-16 sm:h-14 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
-                aria-label="Left"
-              >
-                ◀
-              </button>
-
-              {/* RIGHT SECTOR CAPSULE BUTTON (RIGHT) */}
-              <button
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  handleTurn("RIGHT");
-                }}
-                className="absolute right-2.5 z-20 w-14 h-12 sm:w-16 sm:h-14 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
-                aria-label="Right"
-              >
-                ▶
-              </button>
-
-              {/* BOTTOM SECTOR CAPSULE BUTTON (DOWN) */}
-              <button
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  handleTurn("DOWN");
-                }}
-                className="absolute bottom-2.5 z-20 w-12 h-14 sm:w-14 sm:h-16 bg-[#121829] border-2 border-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.6)] active:scale-95 flex items-center justify-center text-[#00ff88] text-xl font-black"
-                aria-label="Down"
-              >
-                ▼
-              </button>
-
-            </div>
+            <QuadDPad
+              onPress={handleTurn}
+              accent="#00ff88"
+              divider="#ff2a5f"
+              ariaLabel="Steering"
+              disabled={!!state.isOver}
+            />
           </div>
 
           {/* BOTTOM UTILITY BUTTONS ROW (4 RECTANGULAR ACTION BUTTONS) */}
@@ -308,7 +282,10 @@ export function RulesModal({ open, onClose }: { open: boolean; onClose: () => vo
           >
             <h3 className="font-mono text-lg font-bold text-emerald-400">How to Play Snake</h3>
             <div className="space-y-2 text-xs leading-relaxed text-slate-300">
-              <p>Steer with the Centered 3D D-Pad or by swiping across the playfield.</p>
+              <p>
+                Steer by pressing a quarter of the wheel — the whole quarter works, and you can
+                slide between them without lifting. Swiping across the playfield turns too.
+              </p>
               <p>Eat glowing food to score points and grow your snake.</p>
               <p>Avoid collisions with walls and snake bodies!</p>
             </div>

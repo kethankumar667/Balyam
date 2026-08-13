@@ -10,11 +10,13 @@ import type {
   SpaceWarSpecialAttack,
   SpaceWarPowerUp,
 } from "@shared/types.js";
-import { SPACEWAR_TICK_HZ } from "@shared/types.js";
+import { SPACEWAR_TICK_HZ, SPACEWAR_WORLD } from "@shared/types.js";
 import type { MoveContext, MoveResult, RealtimeEngine } from "../GameEngine.js";
 
-const CANVAS_WIDTH = 840;
-const CANVAS_HEIGHT = 480;
+// One copy of the flight envelope, shared with the board so its local
+// prediction cannot drift from the simulation it is predicting.
+const CANVAS_WIDTH = SPACEWAR_WORLD.width;
+const CANVAS_HEIGHT = SPACEWAR_WORLD.height;
 
 export class SpaceWarEngine implements RealtimeEngine {
   readonly kind: GameKind = "spacewar";
@@ -29,8 +31,8 @@ export class SpaceWarEngine implements RealtimeEngine {
   private player = {
     x: 20,
     y: 205,
-    width: 90,
-    height: 60,
+    width: SPACEWAR_WORLD.shipWidth,
+    height: SPACEWAR_WORLD.shipHeight,
     lives: 4,
     maxLives: 7,
     shieldOn: true,
@@ -207,7 +209,8 @@ export class SpaceWarEngine implements RealtimeEngine {
 
     const dtMs = 1000 / this.tickRateHz;
 
-    const speed = 7;
+    const speed = SPACEWAR_WORLD.shipSpeed;
+    const margin = SPACEWAR_WORLD.shipMarginY;
     if (this.activeKeys.has("ArrowLeft") || this.activeKeys.has("a") || this.activeKeys.has("A")) {
       this.player.x = Math.max(0, this.player.x - speed);
     }
@@ -215,10 +218,10 @@ export class SpaceWarEngine implements RealtimeEngine {
       this.player.x = Math.min(CANVAS_WIDTH - this.player.width, this.player.x + speed);
     }
     if (this.activeKeys.has("ArrowUp") || this.activeKeys.has("w") || this.activeKeys.has("W")) {
-      this.player.y = Math.max(10, this.player.y - speed);
+      this.player.y = Math.max(margin, this.player.y - speed);
     }
     if (this.activeKeys.has("ArrowDown") || this.activeKeys.has("s") || this.activeKeys.has("S")) {
-      this.player.y = Math.min(CANVAS_HEIGHT - this.player.height - 10, this.player.y + speed);
+      this.player.y = Math.min(CANVAS_HEIGHT - this.player.height - margin, this.player.y + speed);
     }
 
     if (this.player.shieldOn) {

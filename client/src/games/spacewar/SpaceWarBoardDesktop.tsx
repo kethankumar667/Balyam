@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import type { SpaceWarPublicState } from "@shared/types";
 import { useSpaceWarCanvas } from "./useSpaceWarCanvas";
+import { useSpaceWarInput } from "./useSpaceWarInput";
+import { STEERING_KEYS } from "./controls";
 import { useHaptics } from "../../hooks/useHaptics";
 
 interface SpaceWarBoardDesktopProps {
@@ -32,25 +34,30 @@ export default function SpaceWarBoardDesktop({
     prevOverRef.current = !!state.isOver;
   }, [state.player?.lives, state.isOver, win]);
 
+  const input = useSpaceWarInput(onMove);
+  const { press, release } = input;
+
   // Keyboard Event Listeners
   useEffect(() => {
+    const ACTIONS = [" ", "x", "X", "p", "P"];
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "x", "X", "p", "P"].includes(
-          e.key
-        )
-      ) {
+      if (STEERING_KEYS.has(e.key)) {
+        e.preventDefault();
+        // Through the input hook: it de-duplicates the OS auto-repeat (which
+        // otherwise sent a `keydown` every ~30ms for as long as a key was
+        // held) and guarantees the release even if focus is lost mid-press.
+        press(e.key);
+      } else if (ACTIONS.includes(e.key)) {
         e.preventDefault();
         onMove("keydown", e.key);
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (
-        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "x", "X", "p", "P"].includes(
-          e.key
-        )
-      ) {
+      if (STEERING_KEYS.has(e.key)) {
+        release(e.key);
+      } else if (ACTIONS.includes(e.key)) {
         onMove("keyup", e.key);
       }
     };
@@ -61,14 +68,14 @@ export default function SpaceWarBoardDesktop({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [onMove]);
+  }, [onMove, press, release]);
 
   /**
    * Landscape canvas on requestAnimationFrame — see the hook. Painting only
    * when a broadcast arrived capped this at the 30Hz simulation rate and
    * left every ship and bullet stepping between fixed positions.
    */
-  const canvasRef = useSpaceWarCanvas(state, "horizontal");
+  const canvasRef = useSpaceWarCanvas(state, "horizontal", input.held);
 
   return (
     <div className="flex flex-col lg:flex-row items-start justify-center gap-6 w-full max-w-[1280px] mx-auto p-4 select-none">

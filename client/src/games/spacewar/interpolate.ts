@@ -10,15 +10,16 @@ import type { SpaceWarPublicState } from "@shared/types";
  * a bad one, because it was never a connection problem: the game was showing
  * 30 discrete positions a second and calling it motion.
  *
- * Keep the last two broadcasts, match entities by id, draw each part-way between.
- * The cost is displaying the world one tick (~33ms) in the past, which nobody can see.
+ * Buffer the broadcasts, match entities by id, draw each part-way between.
+ * The cost is displaying the world about one tick (~33ms) in the past, which
+ * nobody can see. Which two snapshots to blend, and how far between them, is
+ * SnapshotTimeline's job; this module only does the blending.
  *
- * The local ship is NOT predicted here. Space War's input is
- * already held server-side (`activeKeys`), so the ship moves every tick for
- * as long as a finger is down rather than once per delivered packet — the
- * responsiveness problem that made prediction worth the complexity over
- * there does not exist here. Interpolating it with everything else keeps one
- * coherent world rather than a ship living slightly in the future.
+ * The local ship is interpolated here like everything else and then given a
+ * separate, decaying lead by the board (see predict.ts). Keeping the two apart
+ * is deliberate: this function stays a pure function of two server states, so
+ * the prediction can be switched off — paused, finished, spectating — by
+ * simply not applying it.
  */
 
 export interface Snapshot {

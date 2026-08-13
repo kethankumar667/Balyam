@@ -14,6 +14,7 @@ import {
   type Particle,
   type Pt,
 } from "./snakeRender";
+import { SnapshotTimeline } from "../shared/snapshotTimeline";
 
 interface SnakeCanvasProps {
   state: SnakePublicState;
@@ -26,39 +27,54 @@ interface SnakeCanvasProps {
   className?: string;
 }
 
-type Snapshot = Record<string, Pt[]>;
+/** One logical step, kept as flat data so the render loop touches nothing else. */
+interface Step {
+  bodies: Record<string, Pt[]>;
+  dirs: Record<string, string>;
+  food: Pt;
+}
 
-function cloneBodies(state: SnakePublicState): Snapshot {
-  const out: Snapshot = {};
+function toStep(state: SnakePublicState): Step {
+  const bodies: Record<string, Pt[]> = {};
+  const dirs: Record<string, string> = {};
   for (const pid of Object.keys(state.snakes)) {
-    out[pid] = state.snakes[pid].body.map((s) => ({ x: s.x, y: s.y }));
+    bodies[pid] = state.snakes[pid].body.map((s) => ({ x: s.x, y: s.y }));
+    dirs[pid] = state.snakes[pid].dir;
   }
-  return out;
+  return { bodies, dirs, food: { ...state.food } };
 }
 
 /**
  * The whole playfield is drawn on one <canvas> via requestAnimationFrame.
  *
  * The server publishes discrete logical steps; rendering them raw would look
- * like a jittery slideshow. Instead we keep the previous and current step and
- * interpolate between them on the render clock, using the measured time between
- * arrivals as the tween duration. That decouples silky 60fps motion from the
- * (slower, slightly irregular) server tick without ever letting the client
- * decide game state — it only decides how to *draw* the states it is given.
+ * like a jittery slideshow. Instead the steps go into a small jitter buffer
+ * (see SnapshotTimeline) and the loop draws a blend of the two that straddle a
+ * render clock running a measured distance behind live.
+ *
+ * The previous version tweened the newest step over exactly `state.speedMs`.
+ * That is correct only if packets arrive exactly one step apart — every
+ * millisecond they run late, the tween had already finished and the snake sat
+ * still. Eight steps a second on a phone meant eight small freezes a second,
+ * which is what "the movement is not smooth" was. The buffer converts that
+ * lateness into slack instead of stalls.
+ *
+ * The client still never decides game state; it only decides how to *draw* the
+ * states it is given.
  */
 export default function SnakeCanvas({ state, selfId, theme, onEat, onDeath, className }: SnakeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  // Latest state + interpolation buffers (refs so the RAF loop reads fresh
+  // Latest state + interpolation buffer (refs so the RAF loop reads fresh
   // values without re-subscribing every render).
   const stateRef = useRef(state);
-  const prevRef = useRef<Snapshot>(cloneBodies(state));
-  const currRef = useRef<Snapshot>(cloneBodies(state));
+  const timelineRef = useRef<SnapshotTimeline<Step> | null>(null);
+  if (timelineRef.current === null) {
+    timelineRef.current = new SnapshotTimeline<Step>({ stepMs: state.speedMs || 120 });
+    timelineRef.current.push(toStep(state), performance.now());
+  }
   const prevFoodRef = useRef<Pt>({ ...state.food });
-  const currFoodRef = useRef<Pt>({ ...state.food });
-  const arrivalRef = useRef<number>(performance.now());
-  const durationRef = useRef<number>(state.speedMs || 120);
   const sigRef = useRef<string>(stepSignature(state));
   const particlesRef = useRef<Particle[]>([]);
   const deadAtRef = useRef<Record<string, number>>({});
@@ -78,34 +94,17 @@ export default function SnakeCanvas({ state, selfId, theme, onEat, onDeath, clas
     const sig = stepSignature(state);
     if (sig !== sigRef.current) {
       const now = performance.now();
-      prevRef.current = currRef.current;
-      currRef.current = cloneBodies(state);
-      prevFoodRef.current = currFoodRef.current;
-      currFoodRef.current = { ...state.food };
+      const timeline = timelineRef.current!;
       /**
-       * Interpolate over the SERVER's step interval, not the wall-clock gap
-       * between packets.
-       *
-       * This used to prefer `measured` — the time since the last broadcast
-       * arrived — which folds every scrap of network jitter straight into
-       * the animation. On mobile data the snake visibly surged and stalled
-       * as latency wandered, which is what players reported as glitchy
-       * movement. The snake was moving at a perfectly constant rate; only
-       * the drawing was uneven.
-       *
-       * `state.speedMs` is authoritative and stable: it is the interval the
-       * engine actually steps at, and it changes only when speed
-       * progression changes it. `measured` survives as a fallback, lightly
-       * smoothed so one late packet cannot snap the animation.
+       * `state.speedMs` is the authoritative step: the interval the engine
+       * genuinely runs at (RoomManager re-arms its loop when the getter
+       * changes), so the buffer paces against the real thing rather than
+       * against wall-clock gaps that carry every scrap of network jitter.
        */
-      const measured = now - arrivalRef.current;
       const authoritative = state.speedMs || 0;
-      const target = authoritative > 0 ? authoritative : measured || 120;
-      const prevDur = durationRef.current || target;
-      // Ease toward the target rather than jumping, so a speed-progression
-      // change eases in instead of stuttering on the step it lands.
-      durationRef.current = Math.min(400, Math.max(50, prevDur * 0.25 + target * 0.75));
-      arrivalRef.current = now;
+      if (authoritative > 0) timeline.setStepMs(Math.min(400, Math.max(50, authoritative)));
+      prevFoodRef.current = timeline.latest()?.food ?? { ...state.food };
+      timeline.push(toStep(state), now);
       sigRef.current = sig;
 
       // Eat burst when the local snake's score climbs.
@@ -168,24 +167,33 @@ export default function SnakeCanvas({ state, selfId, theme, onEat, onDeath, clas
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // What the render clock says the world looks like right now: two
+      // delivered steps and how far between them we are.
+      const view = timelineRef.current!.sample(now);
+      const prevStep = view?.prev ?? null;
+      const curStep = view?.cur ?? null;
+      const t = view ? view.t : 1;
+
       drawBackground(ctx, pal, grid, cell);
       drawObstacles(ctx, pal, st.obstacles ?? [], cell);
-      drawFood(ctx, pal, currFoodRef.current, cell, now);
-
-      const t = Math.min(1, (now - arrivalRef.current) / durationRef.current);
+      drawFood(ctx, pal, curStep?.food ?? st.food, cell, now);
 
       // Draw opponents first, local snake last (on top).
-      const ids = Object.keys(st.snakes).sort((a, b) => (a === selfId ? 1 : b === selfId ? -1 : 0));
+      const ids = Object.keys(curStep?.bodies ?? st.snakes).sort((a, b) =>
+        a === selfId ? 1 : b === selfId ? -1 : 0,
+      );
       for (const pid of ids) {
         const snake = st.snakes[pid];
-        if (!snake || snake.body.length === 0) continue;
-        const body = interpBody(prevRef.current[pid], currRef.current[pid] ?? snake.body, t);
+        const curBody = curStep?.bodies[pid] ?? snake?.body;
+        if (!curBody || curBody.length === 0) continue;
+        const body = interpBody(prevStep?.bodies[pid], curBody, t);
         let alpha = 1;
         const deadAt = deadAtRef.current[pid];
         if (deadAt !== undefined) {
           alpha = Math.max(0.18, 1 - (now - deadAt) / 600);
         }
-        drawSnake({ ctx, pal, body, dir: snake.dir, cell, isSelf: pid === selfId, alpha });
+        const dir = curStep?.dirs[pid] ?? snake?.dir ?? "RIGHT";
+        drawSnake({ ctx, pal, body, dir, cell, isSelf: pid === selfId, alpha });
       }
 
       // Particles.

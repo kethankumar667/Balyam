@@ -2184,6 +2184,26 @@ export interface SpaceWarEnemy {
  */
 export const SPACEWAR_TICK_HZ = 30;
 
+/**
+ * The flight envelope, shared for the same reason the tick rate is.
+ *
+ * The board predicts the local ship so the pilot sees their own thumb take
+ * effect on the next frame instead of after a round trip. A prediction that
+ * uses different numbers from the simulation is not a prediction, it is a
+ * second game that disagrees with the first — so the engine and the board read
+ * these, and only these.
+ */
+export const SPACEWAR_WORLD = {
+  width: 840,
+  height: 480,
+  shipWidth: 90,
+  shipHeight: 60,
+  /** Pixels per tick, applied per axis. */
+  shipSpeed: 7,
+  /** Vertical margin the ship may not fly past, top and bottom. */
+  shipMarginY: 10,
+} as const;
+
 export interface SpaceWarPublicState {
   kind: "spacewar";
   player: {

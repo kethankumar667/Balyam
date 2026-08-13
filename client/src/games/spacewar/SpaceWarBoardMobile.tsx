@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { SpaceWarPublicState } from "@shared/types";
 import { useSpaceWarCanvas } from "./useSpaceWarCanvas";
+import { useSpaceWarInput } from "./useSpaceWarInput";
+import { shipKeyFor } from "./controls";
+import QuadDPad, { type PadDir } from "../../components/QuadDPad";
 import { useHaptics } from "../../hooks/useHaptics";
 
 interface SpaceWarBoardMobileProps {
@@ -14,13 +17,19 @@ export default function SpaceWarBoardMobile({
   selfId,
   onMove,
 }: SpaceWarBoardMobileProps) {
-  const { win } = useHaptics();
+  const haptics = useHaptics();
+  const { win } = haptics;
   const [isMuted, setIsMuted] = useState(false);
 
+  // One owner for held keys: the pad presses into it, the canvas predicts from
+  // it, and every way out of a press releases through it.
+  const input = useSpaceWarInput(onMove);
+
   /**
-   * Portrait canvas, driven on requestAnimationFrame.
+   * Portrait canvas, driven on requestAnimationFrame and predicting the ship
+   * from the same held-key set the pad writes to.
    */
-  const canvasRef = useSpaceWarCanvas(state, "vertical");
+  const canvasRef = useSpaceWarCanvas(state, "vertical", input.held);
 
   // Fire vibration when player ship gets killed (lives decrease) or game is over
   const prevLivesRef = useRef(state.player?.lives);
@@ -38,13 +47,57 @@ export default function SpaceWarBoardMobile({
     prevOverRef.current = !!state.isOver;
   }, [state.player?.lives, state.isOver, win]);
 
-  const handlePointerDown = (key: string) => {
-    onMove("keydown", key);
-  };
+  /**
+   * Portrait draws the landscape world rotated a quarter turn, so screen
+   * directions are not engine directions — `shipKeyFor` owns that translation.
+   */
+  const { press, release, releaseAll } = input;
 
-  const handlePointerUp = (key: string) => {
-    onMove("keyup", key);
-  };
+  const handlePadPress = useCallback(
+    (dir: PadDir) => {
+      press(shipKeyFor(dir, "vertical"));
+      haptics.subtle();
+    },
+    [press, haptics],
+  );
+
+  const handlePadRelease = useCallback(
+    (dir: PadDir) => {
+      release(shipKeyFor(dir, "vertical"));
+    },
+    [release],
+  );
+
+  // A run that ends or pauses with a finger down must not leave the ship
+  // flying: the engine keeps applying held keys the moment it resumes.
+  useEffect(() => {
+    if (state.isOver || state.isPaused) releaseAll();
+  }, [state.isOver, state.isPaused, releaseAll]);
+
+  // Hold-to-fire. `onMove` is a fresh closure on every broadcast, so the
+  // interval reads it from a ref rather than capturing a stale one.
+  const moveRef = useRef(onMove);
+  moveRef.current = onMove;
+  const fireTimer = useRef<number | null>(null);
+
+  const stopFire = useCallback(() => {
+    if (fireTimer.current !== null) {
+      window.clearInterval(fireTimer.current);
+      fireTimer.current = null;
+    }
+  }, []);
+
+  const startFire = useCallback(() => {
+    stopFire();
+    moveRef.current("fire");
+    haptics.subtle();
+    fireTimer.current = window.setInterval(() => moveRef.current("fire"), 110);
+  }, [stopFire, haptics]);
+
+  useEffect(() => stopFire, [stopFire]);
+  useEffect(() => {
+    if (state.isOver || state.isPaused) stopFire();
+  }, [state.isOver, state.isPaused, stopFire]);
 
   return (
     <div className="w-full h-full min-h-[calc(100vh-64px)] flex flex-col items-center justify-between bg-[#060810] text-[#00f0ff] p-1.5 sm:p-2.5 select-none touch-none overflow-hidden">
@@ -75,64 +128,30 @@ export default function SpaceWarBoardMobile({
           />
         </div>
 
-        {/* 2. BOTTOM CARD: ERGONOMIC CONTROLLER DECK & THEMES (EXACT 50% EQUAL FLEX SHARE) */}
+        {/* 2. BOTTOM CARD: ERGONOMIC CONTROLLER DECK & THEMES */}
         <div className="w-full flex-1 h-[48%] flex flex-col justify-between gap-1.5 min-h-0 overflow-hidden">
           
           {/* MAIN CONTROLLER DECK (12-COLUMN GRID) */}
           <div className="w-full flex-1 grid grid-cols-12 gap-1 items-center bg-gradient-to-b from-[#1f2438] to-[#141626] border-2 border-[#2f364f] rounded-2xl p-2 sm:p-3 shadow-2xl overflow-hidden">
             
-            {/* LEFT 5 COLUMNS: PROPORTIONAL 3D GOLDEN D-PAD */}
-            <div className="col-span-5 flex items-center justify-center h-full">
-              <div className="relative w-30 h-30 sm:w-36 sm:h-36 bg-[#0e101a] rounded-full p-1 border-2 border-[#00f0ff]/30 shadow-[inset_0_0_12px_rgba(0,0,0,0.8)] flex items-center justify-center shrink-0">
-                {/* UP */}
-                <button
-                  onPointerDown={() => handlePointerDown("ArrowLeft")}
-                  onPointerUp={() => handlePointerUp("ArrowLeft")}
-                  onPointerLeave={() => handlePointerUp("ArrowLeft")}
-                  className="absolute top-1 w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-b from-[#ffe066] via-[#ffcc00] to-[#cc9900] active:translate-y-0.5 rounded-xl border-2 border-[#fff0b3] shadow-[0_3px_0_#806000] flex items-center justify-center text-base sm:text-lg text-white font-extrabold"
-                  aria-label="Up"
-                >
-                  ▲
-                </button>
-
-                {/* LEFT */}
-                <button
-                  onPointerDown={() => handlePointerDown("ArrowUp")}
-                  onPointerUp={() => handlePointerUp("ArrowUp")}
-                  onPointerLeave={() => handlePointerUp("ArrowUp")}
-                  className="absolute left-1 w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-b from-[#ffe066] via-[#ffcc00] to-[#cc9900] active:translate-x-0.5 rounded-xl border-2 border-[#fff0b3] shadow-[0_3px_0_#806000] flex items-center justify-center text-base sm:text-lg text-white font-extrabold"
-                  aria-label="Left"
-                >
-                  ◀
-                </button>
-
-                {/* CENTER HUB */}
-                <div className="w-7 h-7 rounded-full bg-[#161928] border-2 border-[#00f0ff]/40 flex items-center justify-center shadow-inner">
-                  <div className="w-2 h-2 rounded-full bg-[#00f0ff]/60" />
-                </div>
-
-                {/* RIGHT */}
-                <button
-                  onPointerDown={() => handlePointerDown("ArrowDown")}
-                  onPointerUp={() => handlePointerUp("ArrowDown")}
-                  onPointerLeave={() => handlePointerUp("ArrowDown")}
-                  className="absolute right-1 w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-b from-[#ffe066] via-[#ffcc00] to-[#cc9900] active:-translate-x-0.5 rounded-xl border-2 border-[#fff0b3] shadow-[0_3px_0_#806000] flex items-center justify-center text-base sm:text-lg text-white font-extrabold"
-                  aria-label="Right"
-                >
-                  ▶
-                </button>
-
-                {/* DOWN */}
-                <button
-                  onPointerDown={() => handlePointerDown("ArrowRight")}
-                  onPointerUp={() => handlePointerUp("ArrowRight")}
-                  onPointerLeave={() => handlePointerUp("ArrowRight")}
-                  className="absolute bottom-1 w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-b from-[#ffe066] via-[#ffcc00] to-[#cc9900] active:-translate-y-0.5 rounded-xl border-2 border-[#fff0b3] shadow-[0_3px_0_#806000] flex items-center justify-center text-base sm:text-lg text-white font-extrabold"
-                  aria-label="Down"
-                >
-                  ▼
-                </button>
-              </div>
+            {/* LEFT 5 COLUMNS: FOUR-SECTOR FLIGHT PAD — the whole quarter is
+                the control, and a finger can slide between quarters without
+                lifting. Sized off the deck height so it fills the column. */}
+            <div className="col-span-6 flex items-center justify-center h-full min-h-0">
+              <QuadDPad
+                onPress={handlePadPress}
+                onRelease={handlePadRelease}
+                accent="#00f0ff"
+                divider="#ff2a5f"
+                ariaLabel="Flight controls"
+                disabled={state.isOver}
+                minSize={120}
+                maxSize={200}
+                /* Lower than Snake's share: this deck also carries the fire
+                   button, the utility stack and the theme row, and a short
+                   phone has to fit all of it. */
+                heightFraction={0.19}
+              />
             </div>
 
             {/* CENTER 2 COLUMNS: UTILITIES & SPECIAL WEAPON */}
@@ -170,12 +189,21 @@ export default function SpaceWarBoardMobile({
               </div>
             </div>
 
-            {/* RIGHT 5 COLUMNS: MASSIVE ROUND 3D RED FIRE BUTTON */}
-            <div className="col-span-5 flex items-center justify-center h-full">
+            {/* RIGHT 4 COLUMNS: MASSIVE ROUND 3D RED FIRE BUTTON.
+                Held, it keeps firing — one shot per tap meant a thumb had to
+                out-drum the enemy spawner to clear a wave. */}
+            <div className="col-span-4 flex items-center justify-center h-full min-h-0">
               <button
-                onPointerDown={() => {
-                  onMove("fire");
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.setPointerCapture?.(e.pointerId);
+                  startFire();
                 }}
+                onPointerUp={stopFire}
+                onPointerCancel={stopFire}
+                onLostPointerCapture={stopFire}
+                onContextMenu={(e) => e.preventDefault()}
+                style={{ touchAction: "none" }}
                 /* sm:w-24, not sm:w-26 — `26` is not on Tailwind's scale, so
                    the class generated nothing and the button never grew on a
                    larger screen. Harmless next to Snake's `h-15` (which cost
