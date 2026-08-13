@@ -53,6 +53,7 @@ export default function RoomCodeShare({
     roadrash: "Road Rash 90s",
     carrom: "Carrom",
     chess: "Chess Grandmaster",
+    blockblast: "Block Blast",
   };
   /**
    * Body of the share message — keeps the URL OUT of the text. The OS

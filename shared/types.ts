@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "roadrash" | "chess";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "roadrash" | "chess" | "blockblast";
 
 export interface Player {
   id: string;
@@ -2281,6 +2281,129 @@ export interface ChessPublicState {
   winnerId: string | null;
 }
 
+// ---- Block Blast (grid placement) ----
+
+/** Board is 8x8. Every index in a grid array is `row * BLOCK_GRID + col`. */
+export const BLOCK_GRID = 8;
+export const BLOCK_CELLS = BLOCK_GRID * BLOCK_GRID;
+/** Pieces offered at once. The tray only refills when all three are gone. */
+export const BLOCK_TRAY_SIZE = 3;
+
+/**
+ * Solo is endless and personal; race is the reason this game is in a hub at
+ * all — every player draws the SAME piece sequence from one seed, so the only
+ * variable is where you put them.
+ *
+ * Derived from seat count at `init`, not chosen in a menu. A mode picker that
+ * disagrees with how many people are in the room is a bug generator, and the
+ * answer is never ambiguous.
+ */
+export type BlockBlastMode = "solo" | "race";
+
+export interface BlockBlastOptions {
+  /** Race length. Ignored in a one-seat room, which is always endless. */
+  raceSeconds: number;
+}
+
+export const DEFAULT_BLOCKBLAST_OPTIONS: BlockBlastOptions = {
+  // Long enough for a bad opening to be recoverable, short enough that
+  // losing makes you want another one immediately.
+  raceSeconds: 180,
+};
+
+/**
+ * A tray piece, as the client renders it.
+ *
+ * `cells` is sent explicitly rather than looked up from a shared piece table.
+ * A duplicated table is a desync waiting to happen: the server would validate
+ * one shape while the client drew another, and the bug would present as
+ * "placement rejected for no reason". The wire carries the truth.
+ */
+export interface BlockBlastPieceView {
+  /** Stable id from the server table. For analytics and keys, never geometry. */
+  id: string;
+  /** Offsets from the piece's own top-left corner. */
+  cells: { r: number; c: number }[];
+  /** Bounding box, so the client can size a slot without scanning cells. */
+  w: number;
+  h: number;
+  /** Palette index 1..8; 0 is reserved for "empty". */
+  color: number;
+}
+
+export interface BlockBlastPlayerPublic {
+  id: string;
+  name: string;
+  score: number;
+  /** Consecutive clearing placements. Drives the multiplier. */
+  streak: number;
+  /** Most lines taken down in a single placement this match. */
+  bestClear: number;
+  linesCleared: number;
+  isBot: boolean;
+  isConnected: boolean;
+  /**
+   * No piece in their tray fits anywhere. Their score is frozen; in a race
+   * everyone else plays on.
+   */
+  isOut: boolean;
+  /**
+   * Full 64-cell grid, row-major, palette indices. Sent for every player so
+   * rival boards can be shown live — watching someone else's grid choke is
+   * the tension a single-player block game cannot manufacture.
+   */
+  grid: number[];
+}
+
+export interface BlockBlastResultRow {
+  playerId: string;
+  name: string;
+  score: number;
+  linesCleared: number;
+  bestClear: number;
+  rank: number;
+}
+
+export interface BlockBlastPublicState {
+  kind: "blockblast";
+  mode: BlockBlastMode;
+  /**
+   * Match seed. Shown in the recap on purpose: two players who disagree about
+   * a result can replay the exact sequence.
+   */
+  seed: number;
+  /** Epoch ms the race ends. null in solo, which never ends on a clock. */
+  deadline: number | null;
+  /**
+   * Server clock at the moment this state was built. The countdown is drawn
+   * from `deadline - serverNow`, not from the client's own `Date.now()`, so a
+   * phone with a skewed clock still sees the real time remaining.
+   */
+  serverNow: number;
+  players: BlockBlastPlayerPublic[];
+  isOver: boolean;
+  winnerId: string | null;
+  result: BlockBlastResultRow[] | null;
+}
+
+export interface BlockBlastSelfState extends BlockBlastPublicState {
+  you: {
+    id: string;
+    /** Three slots. A slot is null once its piece has been placed. */
+    tray: (BlockBlastPieceView | null)[];
+    /**
+     * Per-slot: does this piece fit anywhere on your grid right now?
+     *
+     * Computed server-side because the client must not be the authority on
+     * what is playable — and because greying out a dead piece is the single
+     * clearest way to tell a player why the game is about to end.
+     */
+    playable: boolean[];
+    score: number;
+    isOut: boolean;
+  };
+}
+
 // ---- Socket event payloads ----
 export interface CreateRoomPayload {
   name: string;
@@ -2303,6 +2426,7 @@ export interface CreateRoomPayload {
   vyomaYudhOptions?: Partial<VyomaYudhOptions>;
   carromOptions?: Partial<CarromOptions>;
   chessOptions?: Partial<ChessOptions>;
+  blockBlastOptions?: Partial<BlockBlastOptions>;
 }
 
 export interface SetTokenNicknamesPayload {

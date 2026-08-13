@@ -37,6 +37,7 @@ import {
   SamethaluGlyph,
   StarGameGlyph,
   BingoGlyph,
+  BlockBlastGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   roadrash: StarGameGlyph,
   carrom: StarGameGlyph,
   chess: StarGameGlyph,
+  blockblast: BlockBlastGlyph,
 };
 
 /**
@@ -94,6 +96,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
   "namesplaceanimal", "tambola", "samethalu", "telugucinemalu", "snake", "vyomayudh", "carrom", "roadrash", "chess",
+  "blockblast",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
@@ -237,6 +240,17 @@ const NPA_THEME_PACKS: { id: "classic" | "popculture" | "foodie" | "school" | "r
   { id: "random",     label: "Random Mix",  blurb: "Changes categories every round!" },
 ];
 
+/**
+ * Race length. Only meaningful with two or more seats — one player gets the
+ * endless game and no clock at all, which the engine decides from the seat
+ * count rather than from anything chosen here.
+ */
+const BLOCKBLAST_RACE_LENGTHS: { id: "120" | "180" | "300"; label: string; blurb: string }[] = [
+  { id: "120", label: "Sprint", blurb: "2 min — one bad tray decides it" },
+  { id: "180", label: "Standard", blurb: "3 min — room for a comeback" },
+  { id: "300", label: "Long", blurb: "5 min — settles who is actually better" },
+];
+
 const SNAKE_SPEEDS: { id: "140" | "100" | "70"; label: string; blurb: string }[] = [
   { id: "140", label: "Slug",   blurb: "140ms tick — relaxed pace" },
   { id: "100", label: "Normal", blurb: "100ms tick — classic arcade" },
@@ -301,6 +315,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [npaDifficulty, setNpaDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [npaRounds, setNpaRounds] = useState<number>(5);
   const [npaThemePack, setNpaThemePack] = useState<"classic" | "popculture" | "foodie" | "school" | "random">("classic");
+  const [blockBlastRaceLength, setBlockBlastRaceLength] = useState<"120" | "180" | "300">("180");
   const [snakeSpeed, setSnakeSpeed] = useState<"140" | "100" | "70">("100");
   const [snakeGridSize, setSnakeGridSize] = useState<"15" | "20" | "25">("20");
   const [snakeWallMode, setSnakeWallMode] = useState<"solid" | "wrap">("wrap");
@@ -448,6 +463,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   theme: snakeTheme,
                 }
               : undefined,
+          blockBlastOptions:
+            game === "blockblast"
+              ? { raceSeconds: Number(blockBlastRaceLength) }
+              : undefined,
         },
         (res) => {
           setBusy(false);
@@ -529,6 +548,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 theme: snakeTheme,
               }
             : undefined,
+        blockBlastOptions:
+          game === "blockblast" ? { raceSeconds: Number(blockBlastRaceLength) } : undefined,
       },
       (res) => {
         if (!res.ok || !res.code) {
@@ -930,6 +951,17 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 />
               </Field>
             </>
+          )}
+
+          {game === "blockblast" && (
+            <Field label="Race Length">
+              <OptionGrid
+                items={BLOCKBLAST_RACE_LENGTHS}
+                value={blockBlastRaceLength}
+                onChange={(v) => setBlockBlastRaceLength(v as "120" | "180" | "300")}
+                cols={3}
+              />
+            </Field>
           )}
 
           {game === "snake" && (
