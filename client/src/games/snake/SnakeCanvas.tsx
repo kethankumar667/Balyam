@@ -82,8 +82,29 @@ export default function SnakeCanvas({ state, selfId, theme, onEat, onDeath, clas
       currRef.current = cloneBodies(state);
       prevFoodRef.current = currFoodRef.current;
       currFoodRef.current = { ...state.food };
+      /**
+       * Interpolate over the SERVER's step interval, not the wall-clock gap
+       * between packets.
+       *
+       * This used to prefer `measured` — the time since the last broadcast
+       * arrived — which folds every scrap of network jitter straight into
+       * the animation. On mobile data the snake visibly surged and stalled
+       * as latency wandered, which is what players reported as glitchy
+       * movement. The snake was moving at a perfectly constant rate; only
+       * the drawing was uneven.
+       *
+       * `state.speedMs` is authoritative and stable: it is the interval the
+       * engine actually steps at, and it changes only when speed
+       * progression changes it. `measured` survives as a fallback, lightly
+       * smoothed so one late packet cannot snap the animation.
+       */
       const measured = now - arrivalRef.current;
-      durationRef.current = Math.min(400, Math.max(70, measured || state.speedMs || 120));
+      const authoritative = state.speedMs || 0;
+      const target = authoritative > 0 ? authoritative : measured || 120;
+      const prevDur = durationRef.current || target;
+      // Ease toward the target rather than jumping, so a speed-progression
+      // change eases in instead of stuttering on the step it lands.
+      durationRef.current = Math.min(400, Math.max(50, prevDur * 0.25 + target * 0.75));
       arrivalRef.current = now;
       sigRef.current = sig;
 

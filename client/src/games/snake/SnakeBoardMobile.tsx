@@ -137,7 +137,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
       {/* D-pad */}
       <div className={`mt-auto flex flex-col items-center gap-2 rounded-3xl p-4 shadow-xl backdrop-blur-md border ${chrome.panelBg} ${chrome.panelBorder}`}>
         <DPadButton chrome={chrome} label="Up" onClick={() => handleTurn("UP")} />
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <DPadButton chrome={chrome} label="Left" onClick={() => handleTurn("LEFT")} />
           <DPadButton chrome={chrome} label="Down" onClick={() => handleTurn("DOWN")} />
           <DPadButton chrome={chrome} label="Right" onClick={() => handleTurn("RIGHT")} />
@@ -187,15 +187,15 @@ function DPadButton({
       /* 64x80: the old 48x64 sat barely over the 44px floor, and this is a
          control you hit repeatedly under time pressure, not once in a form.
          `touch-none` keeps the gesture from being claimed mid-game. */
-      className={`h-16 w-20 touch-none select-none rounded-2xl border font-bold shadow-md transition active:scale-95 ${chrome.dpadBtn}`}
+      className={`h-20 w-24 touch-none select-none rounded-2xl border text-2xl font-bold shadow-md transition active:scale-95 ${chrome.dpadBtn}`}
     >
       {/* Drawn, not "▲". The block arrows render at different weights and
           baselines on every platform, so the pad looked misaligned on some
           phones and washed out on others. */}
       <svg
         viewBox="0 0 24 24"
-        width={26}
-        height={26}
+        width={34}
+        height={34}
         fill="none"
         stroke="currentColor"
         strokeWidth={3}
