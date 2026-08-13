@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import type { SpaceWarPublicState } from "@shared/types";
 import { useSpaceWarCanvas } from "./useSpaceWarCanvas";
+import { useHaptics } from "../../hooks/useHaptics";
 
 interface SpaceWarBoardDesktopProps {
   state: SpaceWarPublicState;
@@ -13,6 +14,23 @@ export default function SpaceWarBoardDesktop({
   selfId,
   onMove,
 }: SpaceWarBoardDesktopProps) {
+  const { win } = useHaptics();
+
+  // Fire vibration when player ship gets killed (lives decrease) or game is over
+  const prevLivesRef = useRef(state.player?.lives);
+  const prevOverRef = useRef(state.isOver);
+
+  useEffect(() => {
+    const currentLives = state.player?.lives;
+    if (
+      (prevLivesRef.current !== undefined && currentLives < prevLivesRef.current) ||
+      (state.isOver && !prevOverRef.current)
+    ) {
+      win();
+    }
+    prevLivesRef.current = currentLives;
+    prevOverRef.current = !!state.isOver;
+  }, [state.player?.lives, state.isOver, win]);
 
   // Keyboard Event Listeners
   useEffect(() => {
