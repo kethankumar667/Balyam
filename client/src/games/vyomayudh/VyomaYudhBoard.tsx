@@ -154,36 +154,77 @@ export default function VyomaYudhBoard({
           style={{ border: `2px solid ${PALETTE.hot}`, imageRendering: "pixelated" }}
           onPointerDown={(e) => {
             if (!isPilot) return;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            const r = e.currentTarget.getBoundingClientRect();
+            setTouchDir(e.clientY - r.top < r.height / 2 ? -1 : 1);
+          }}
+          /* Drag now re-aims. Before, direction was sampled once on press, so
+             sliding from the top half to the bottom without lifting kept
+             flying UP — you had to release and re-press to turn around. */
+          onPointerMove={(e) => {
+            if (!isPilot || touchDir === 0) return;
             const r = e.currentTarget.getBoundingClientRect();
             setTouchDir(e.clientY - r.top < r.height / 2 ? -1 : 1);
           }}
           onPointerUp={() => setTouchDir(0)}
           onPointerLeave={() => setTouchDir(0)}
+          /* Without this the ship flies on forever when the browser takes the
+             pointer away — an incoming notification, a scroll gesture the OS
+             claims, a palm touch. `pointercancel` fires instead of
+             `pointerup`, so the old code never stopped steering. */
+          onPointerCancel={() => setTouchDir(0)}
         />
       </div>
 
-      {/* Touch controls — only for the pilot, and only the actions that exist */}
+      {/*
+        Touch controls.
+
+        Steering used to be an undocumented gesture on the canvas itself, with
+        nothing on screen naming it — so players found the four labelled
+        buttons, concluded firing was the whole game, and reported "no
+        movement controls on mobile". It also meant holding a thumb over the
+        play area, hiding the ship you are trying to fly.
+
+        Now it is an explicit pad, off the canvas: movement under the left
+        thumb, actions under the right, the way a phone is actually held. The
+        canvas gesture still works for anyone who found it.
+
+        Only up/down exist because that is the whole movement model — the
+        engine's `steer` carries `dy` alone and the run has only `shipY`.
+        Desktop keyboard is the same two directions.
+      */}
       {isPilot && !state.isOver && (
-        <div className="flex items-center justify-center gap-2">
-          <button
-            onPointerDown={() => onMove("fire")}
-            className="flex-1 rounded-lg py-3 font-mono font-bold"
-            style={{ background: PALETTE.hot, color: PALETTE.bg }}
-          >
-            FIRE
-          </button>
-          {(["missile", "laser", "wall"] as VyomaWeapon[]).map((w) => (
+        <div className="flex items-stretch justify-between gap-3">
+          <div className="flex flex-col gap-2">
+            <SteerButton dir={-1} label="Fly up" onHold={setTouchDir} active={touchDir === -1} />
+            <SteerButton dir={1} label="Fly down" onHold={setTouchDir} active={touchDir === 1} />
+          </div>
+
+          <div className="flex flex-1 flex-col gap-2">
             <button
-              key={w}
-              onPointerDown={() => onMove("special", { weapon: w })}
-              disabled={state.ammo[w] <= 0}
-              className="rounded-lg px-3 py-3 font-mono text-xs font-bold disabled:opacity-40"
-              style={{ background: PALETTE.dim, color: PALETTE.ink }}
+              onPointerDown={() => onMove("fire")}
+              aria-label="Fire"
+              className="flex-1 rounded-lg py-3 font-mono font-bold active:scale-95 transition-transform"
+              style={{ background: PALETTE.hot, color: PALETTE.bg, minHeight: 56 }}
             >
-              {w[0].toUpperCase()}
-              <span className="ml-1 tabular-nums">{state.ammo[w]}</span>
+              FIRE
             </button>
-          ))}
+            <div className="flex gap-2">
+              {(["missile", "laser", "wall"] as VyomaWeapon[]).map((w) => (
+                <button
+                  key={w}
+                  onPointerDown={() => onMove("special", { weapon: w })}
+                  disabled={state.ammo[w] <= 0}
+                  aria-label={`${w}, ${state.ammo[w]} left`}
+                  className="flex-1 rounded-lg px-3 font-mono text-xs font-bold disabled:opacity-40 active:scale-95 transition-transform"
+                  style={{ background: PALETTE.dim, color: PALETTE.ink, minHeight: 44 }}
+                >
+                  {w[0].toUpperCase()}
+                  <span className="ml-1 tabular-nums">{state.ammo[w]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -213,5 +254,76 @@ export default function VyomaYudhBoard({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Hold-to-fly control.
+ *
+ * Press and hold to keep moving — the steer pump in the board component
+ * re-sends `steer` every 50ms while a direction is held, so this only has to
+ * own the direction, not the repeat.
+ *
+ * Releasing has three endings, and all three must clear the direction:
+ * `pointerup` (finger lifted), `pointerleave` (finger slid off the button
+ * mid-press) and `pointercancel` (the OS took the pointer — a notification,
+ * a scroll the browser claimed). Miss the last one and the ship flies into
+ * the wall on its own, which is the bug the canvas gesture had.
+ *
+ * 56px tall: comfortably over the 44px touch floor, and tall enough to hold
+ * under a thumb without looking for it.
+ */
+function SteerButton({
+  dir,
+  label,
+  onHold,
+  active,
+}: {
+  dir: -1 | 1;
+  label: string;
+  onHold: (d: -1 | 0 | 1) => void;
+  active: boolean;
+}) {
+  const stop = () => onHold(0);
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onPointerDown={(e) => {
+        // Capture so a finger that drifts off the button keeps steering
+        // until it is actually lifted.
+        e.currentTarget.setPointerCapture(e.pointerId);
+        onHold(dir);
+      }}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      className="rounded-lg px-5 touch-none select-none transition-transform active:scale-95"
+      style={{
+        minHeight: 56,
+        minWidth: 64,
+        background: active ? PALETTE.hot : PALETTE.dim,
+        color: active ? PALETTE.bg : PALETTE.ink,
+        border: `2px solid ${PALETTE.hot}`,
+      }}
+    >
+      {/* Drawn, not a "▲" glyph — a text arrow inherits the font's metrics
+          and sits off-centre in a button this size. */}
+      <svg
+        viewBox="0 0 24 24"
+        width={22}
+        height={22}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className="mx-auto"
+        style={{ transform: dir === 1 ? "rotate(180deg)" : undefined }}
+      >
+        <path d="M5 15l7-7 7 7" />
+      </svg>
+    </button>
   );
 }

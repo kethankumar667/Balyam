@@ -33,6 +33,10 @@ describe("BingoEngine Bot support", () => {
     e.applyMove({ playerId: "p0", type: "callNumber", data: { number: 1 } });
     expect(e.getPublicState().currentTurnPlayerId).toBe("p1");
 
+    // The caller has to mark it too. Until every human seat resolves the
+    // open number, the next call is gated — that gate is the feature.
+    e.applyMove({ playerId: "p0", type: "markNumber", data: { number: 1 } });
+
     // p1 (bot) plays auto move
     const autoRes = e.applyAutoMove("p1");
     expect(autoRes.ok).toBe(true);

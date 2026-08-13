@@ -136,11 +136,11 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
 
       {/* D-pad */}
       <div className={`mt-auto flex flex-col items-center gap-2 rounded-3xl p-4 shadow-xl backdrop-blur-md border ${chrome.panelBg} ${chrome.panelBorder}`}>
-        <DPadButton chrome={chrome} label="Up" glyph="▲" onClick={() => handleTurn("UP")} />
+        <DPadButton chrome={chrome} label="Up" onClick={() => handleTurn("UP")} />
         <div className="flex gap-4">
-          <DPadButton chrome={chrome} label="Left" glyph="◄" onClick={() => handleTurn("LEFT")} />
-          <DPadButton chrome={chrome} label="Down" glyph="▼" onClick={() => handleTurn("DOWN")} />
-          <DPadButton chrome={chrome} label="Right" glyph="►" onClick={() => handleTurn("RIGHT")} />
+          <DPadButton chrome={chrome} label="Left" onClick={() => handleTurn("LEFT")} />
+          <DPadButton chrome={chrome} label="Down" onClick={() => handleTurn("DOWN")} />
+          <DPadButton chrome={chrome} label="Right" onClick={() => handleTurn("RIGHT")} />
         </div>
       </div>
 
@@ -149,24 +149,64 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
   );
 }
 
+/** Rotation per direction — one drawn arrow, pointed four ways. */
+const DPAD_ROTATION: Record<string, number> = {
+  Up: 0,
+  Right: 90,
+  Down: 180,
+  Left: 270,
+};
+
 function DPadButton({
   chrome,
   label,
-  glyph,
   onClick,
 }: {
   chrome: (typeof SNAKE_THEME_CHROME)[SnakeTheme];
   label: string;
-  glyph: string;
   onClick: () => void;
 }) {
   return (
     <button
-      onClick={onClick}
+      type="button"
+      /*
+       * `onPointerDown`, not `onClick`.
+       *
+       * A click does not fire until the finger LIFTS, so every turn carried
+       * the full press-and-release as input lag — in a game where the snake
+       * is already moving, that reads as the controls being unresponsive or
+       * the snake "missing" a turn. Firing on touch-down removes it.
+       */
+      onPointerDown={(e) => {
+        // Stop the browser turning a fast tap into a scroll or a double-tap
+        // zoom, which on a repeated-tap control it otherwise does.
+        e.preventDefault();
+        onClick();
+      }}
       aria-label={label}
-      className={`h-12 w-16 rounded-2xl border text-xl font-bold shadow-md transition active:scale-95 ${chrome.dpadBtn}`}
+      /* 64x80: the old 48x64 sat barely over the 44px floor, and this is a
+         control you hit repeatedly under time pressure, not once in a form.
+         `touch-none` keeps the gesture from being claimed mid-game. */
+      className={`h-16 w-20 touch-none select-none rounded-2xl border font-bold shadow-md transition active:scale-95 ${chrome.dpadBtn}`}
     >
-      {glyph}
+      {/* Drawn, not "▲". The block arrows render at different weights and
+          baselines on every platform, so the pad looked misaligned on some
+          phones and washed out on others. */}
+      <svg
+        viewBox="0 0 24 24"
+        width={26}
+        height={26}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className="mx-auto"
+        style={{ transform: `rotate(${DPAD_ROTATION[label] ?? 0}deg)` }}
+      >
+        <path d="M5 15l7-7 7 7" />
+      </svg>
     </button>
   );
 }

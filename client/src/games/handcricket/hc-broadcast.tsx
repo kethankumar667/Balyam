@@ -1800,17 +1800,6 @@ export function HcProScorecard({
         </table>
       </div>
 
-      {/* Fall of wickets belongs on the scorecard, between the two tables —
-          exactly where a printed scorecard puts it. */}
-      {innings.wickets > 0 && (
-        <>
-          <ProLabel className="mb-1.5">Fall of wickets</ProLabel>
-          <div className="mb-3">
-            <HcProFallOfWickets state={state} innings={innings} />
-          </div>
-        </>
-      )}
-
       <ProLabel className="mb-1.5">Bowling</ProLabel>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-[11px]">
@@ -1850,6 +1839,19 @@ export function HcProScorecard({
           </tbody>
         </table>
       </div>
+
+      {/* Fall of wickets closes the card, after both tables.
+          It sat BETWEEN batting and bowling before, which is where a printed
+          scorecard puts it — but players read this as the two tables being
+          unrelated and reported it as a layout bug. Batting then bowling is
+          the pairing they expect; the wicket list is reference material they
+          consult after, so it reads better as a footer than as a wedge. */}
+      {innings.wickets > 0 && (
+        <div className="mt-3">
+          <ProLabel className="mb-1.5">Fall of wickets</ProLabel>
+          <HcProFallOfWickets state={state} innings={innings} />
+        </div>
+      )}
     </ProPanel>
   );
 }
@@ -2169,11 +2171,12 @@ export function HcProInnings({
             <HcProRecentForm innings={innings} />
           </div>
         </ProPanel>
+        {/* Bowling before fall of wickets, matching the scorecard above. */}
+        <HcProBowlingFigures state={state} innings={innings} />
         <ProPanel>
           <ProLabel className="mb-2">Fall of wickets</ProLabel>
           <HcProFallOfWickets state={state} innings={innings} />
         </ProPanel>
-        <HcProBowlingFigures state={state} innings={innings} />
       </div>
     </div>
   );

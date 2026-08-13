@@ -138,6 +138,15 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
 
   beforeEach(() => {
     engine = new HandCricketEngine();
+    // Innings 2 now opens behind an 8s break (HC_INNINGS_BREAK_MS) so the
+    // scoreboard does not swap under the players mid-glance. These tests
+    // play straight through, so run them on a clock already past it rather
+    // than sleeping — the break itself is covered in inningsBreak.test.ts.
+    // A clock that jumps a minute per read. A fixed offset would not work:
+    // the break deadline is derived from this same clock, so it would move
+    // with it and never elapse.
+    let t = Date.now();
+    engine.setClock(() => (t += 60_000));
     // Default options = T20 (10 overs). Override per test if needed.
   });
 
