@@ -4,9 +4,11 @@ export { legalTargetsFor } from "./chessMoves";
 import type {
   ChessBoardTheme,
   ChessMoveRecord,
+  ChessPieceSet,
   ChessPublicState,
   Player,
 } from "@shared/types";
+import PieceGlyph from "./ChessPieces";
 import { HapticsManager } from "../../services/HapticsManager";
 
 /* ─────────────────────────── Theme Definitions ─────────────────────────── */
@@ -73,39 +75,30 @@ export function ChessPieceSymbol({
   type,
   color,
   size = 40,
+  set = "neo",
 }: {
   type: string;
   color: "w" | "b";
   size?: number;
+  set?: ChessPieceSet;
 }) {
-  const isWhite = color === "w";
-
-  const symbols: Record<string, string> = {
-    k: "♔",
-    q: "♕",
-    r: "♖",
-    b: "♗",
-    n: "♘",
-    p: "♙",
-  };
-
+  /**
+   * Was a Unicode glyph (`♔` and friends) styled with `WebkitTextStroke`.
+   * Two problems: the character renders from whatever font the device has —
+   * filled here, outline-only there, different proportions everywhere — and
+   * the selected `pieceSet` was never consulted, so all three sets looked
+   * identical. Drawn pieces fix both. See ChessPieces.tsx.
+   */
   return (
     <span
-      className={`inline-block select-none transition-transform duration-150 hover:scale-110 ${
-        isWhite
-          ? "text-[#FFFBF2] drop-shadow-[0_4px_6px_rgba(0,0,0,0.6)]"
-          : "text-[#1A1817] drop-shadow-[0_4px_6px_rgba(255,255,255,0.2)]"
-      }`}
-      style={{
-        fontSize: `${size}px`,
-        lineHeight: 1,
-        WebkitTextStroke: isWhite ? "1.5px #6D5432" : "1.5px #000000",
-        filter: isWhite
-          ? "drop-shadow(0px 3px 2px rgba(0,0,0,0.4))"
-          : "drop-shadow(0px 3px 2px rgba(0,0,0,0.6))",
-      }}
+      className="inline-block select-none transition-transform duration-150 hover:scale-110"
+      style={{ width: size, height: size, lineHeight: 0 }}
     >
-      {symbols[type.toLowerCase()] ?? "♟"}
+      <PieceGlyph
+        type={(type.toLowerCase() as "k" | "q" | "r" | "b" | "n" | "p") ?? "p"}
+        color={color}
+        set={set}
+      />
     </span>
   );
 }
@@ -201,9 +194,13 @@ export function ChessBoardGrid({
   onSquareClick,
   selectedSquare,
   legalTargets = [],
+  pieceSet = "neo",
 }: {
   fen: string;
   boardTheme?: ChessBoardTheme;
+  /** Which drawn set to render. Previously accepted nowhere, so the picker
+   *  wrote a value that never reached a piece. */
+  pieceSet?: ChessPieceSet;
   myColor?: "w" | "b";
   myTurn: boolean;
   lastMove: { from: string; to: string } | null;
@@ -303,7 +300,7 @@ export function ChessBoardGrid({
 
                 {/* Render Piece */}
                 {cell.piece && (
-                  <ChessPieceSymbol type={cell.piece.type} color={cell.piece.color} size={42} />
+                  <ChessPieceSymbol type={cell.piece.type} color={cell.piece.color} size={42} set={pieceSet} />
                 )}
 
                 {/* Legal Move Dot */}

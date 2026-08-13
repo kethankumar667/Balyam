@@ -12,14 +12,20 @@ export default function BounceBoardMobile({ state, selfId, onMove }: BounceBoard
   const [showRules, setShowRules] = useState(false);
   const [reactions, setReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
 
-  // Automatic game tick
-  useEffect(() => {
-    if (state.isOver) return;
-    const interval = setInterval(() => {
-      onMove("tick");
-    }, 100);
-    return () => clearInterval(interval);
-  }, [state.isOver, onMove]);
+  /*
+   * The client tick pump lived here and is deliberately gone.
+   *
+   * It sent `onMove("tick")` every 100ms to advance the simulation. But
+   * BounceEngine declares `tickRateHz = 20`, so RoomManager already drives
+   * the physics — and the engine ALSO stepped on every client tick, so the
+   * simulation took the server's steps plus one per connected client. Two
+   * players advanced the game roughly twice as fast as one, and the rate was
+   * whatever a client chose to send: the client-supplied simulation rate the
+   * GameEngine real-time contract exists to prevent.
+   *
+   * The engine now refuses `tick`. Nothing replaces this: the server
+   * broadcasts state and this board renders it.
+   */
 
   const triggerReaction = (emoji: string) => {
     const id = `${Date.now()}_${Math.random()}`;
