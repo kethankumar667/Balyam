@@ -30,7 +30,15 @@ describe("BounceEngine", () => {
     const jumpRes = engine.applyMove({ playerId: "p1", type: "move", data: { dir: "JUMP" } });
     expect(jumpRes.ok).toBe(true);
 
+    // The server owns the clock: this engine declares tickRateHz, so
+    // RoomManager drives simulateTick(). Accepting a client `tick` on top of
+    // that meant the physics advanced once per server step PLUS once per
+    // connected client, so two players ran the game roughly twice as fast as
+    // one — and the rate was whatever a client chose to send.
     const tickRes = engine.applyMove({ playerId: "p1", type: "tick" });
-    expect(tickRes.ok).toBe(true);
+    expect(tickRes.ok).toBe(false);
+
+    // Physics still advances — through the server-owned path.
+    expect(engine.simulateTick().ok).toBe(true);
   });
 });
