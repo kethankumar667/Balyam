@@ -2306,10 +2306,45 @@ export interface BlockBlastOptions {
 }
 
 export const DEFAULT_BLOCKBLAST_OPTIONS: BlockBlastOptions = {
-  // Long enough for a bad opening to be recoverable, short enough that
-  // losing makes you want another one immediately.
-  raceSeconds: 180,
+  /**
+   * Two minutes, and this number is measured rather than chosen.
+   *
+   * Simulating the shipped bot over 400 games: at a realistic 2.5s per
+   * placement, 51% are still alive at 120s, 25% at 180s and 7% at 300s. The
+   * original 180 meant three players in four spent the back half of a race
+   * watching, and dead time is the worst thing this game can produce.
+   *
+   * Longer races are still offered — they are a real choice, not a mistake —
+   * but the default should be the length most people finish.
+   */
+  raceSeconds: 120,
 };
+
+/**
+ * How many times the streak multiplier can step up before it stops.
+ *
+ * Was 6 (a 4x ceiling). Across 400 simulated games exactly ONE run ever
+ * reached a 7-placement clearing streak, so two thirds of the curve was
+ * content nobody would ever see. Three steps puts the top of the ramp
+ * inside what an ordinary good run actually reaches.
+ */
+export const BLOCK_MAX_STREAK_STEPS = 3;
+
+/**
+ * Consecutive clearing placements multiply: 1x, 1.5x, 2x, 2.5x, then flat.
+ *
+ * Lives in shared and not in the engine because the board draws this number
+ * next to the score. It was briefly duplicated on the client, which is the
+ * kind of copy that silently disagrees with the server the first time
+ * anybody tunes it — and then the multiplier a player is shown is not the
+ * multiplier they are paid.
+ *
+ * `streak` counts the placement being scored, so the first clear is 1x.
+ */
+export function blockStreakMultiplier(streak: number): number {
+  const steps = Math.min(Math.max(streak - 1, 0), BLOCK_MAX_STREAK_STEPS);
+  return 1 + steps * 0.5;
+}
 
 /**
  * A tray piece, as the client renders it.

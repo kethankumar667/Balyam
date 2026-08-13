@@ -246,9 +246,9 @@ const NPA_THEME_PACKS: { id: "classic" | "popculture" | "foodie" | "school" | "r
  * count rather than from anything chosen here.
  */
 const BLOCKBLAST_RACE_LENGTHS: { id: "120" | "180" | "300"; label: string; blurb: string }[] = [
-  { id: "120", label: "Sprint", blurb: "2 min — one bad tray decides it" },
-  { id: "180", label: "Standard", blurb: "3 min — room for a comeback" },
-  { id: "300", label: "Long", blurb: "5 min — settles who is actually better" },
+  { id: "120", label: "Standard", blurb: "2 min — most boards survive to the whistle" },
+  { id: "180", label: "Long",     blurb: "3 min — expect to be knocked out early" },
+  { id: "300", label: "Marathon", blurb: "5 min — last board standing usually wins" },
 ];
 
 const SNAKE_SPEEDS: { id: "140" | "100" | "70"; label: string; blurb: string }[] = [
@@ -315,7 +315,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [npaDifficulty, setNpaDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [npaRounds, setNpaRounds] = useState<number>(5);
   const [npaThemePack, setNpaThemePack] = useState<"classic" | "popculture" | "foodie" | "school" | "random">("classic");
-  const [blockBlastRaceLength, setBlockBlastRaceLength] = useState<"120" | "180" | "300">("180");
+  const [blockBlastRaceLength, setBlockBlastRaceLength] = useState<"120" | "180" | "300">("120");
   const [snakeSpeed, setSnakeSpeed] = useState<"140" | "100" | "70">("100");
   const [snakeGridSize, setSnakeGridSize] = useState<"15" | "20" | "25">("20");
   const [snakeWallMode, setSnakeWallMode] = useState<"solid" | "wrap">("wrap");

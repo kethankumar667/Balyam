@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { BlockBlastPieceView, BlockBlastPublicState } from "@shared/types";
-import { BLOCK_GRID } from "@shared/types";
+import { BLOCK_GRID, blockStreakMultiplier } from "@shared/types";
 
 /**
  * The look.
@@ -352,7 +352,10 @@ export function ScoreReadout({
           pinned at x1 all game is chrome nobody reads. */}
       {streak > 1 && (
         <span className="mt-0.5 rounded-full bg-amber-400/20 px-1.5 py-px text-[10px] font-black text-amber-300">
-          x{(1 + Math.min(streak - 1, 6) * 0.5).toFixed(1)} streak
+          {/* From shared, not recomputed here. A local copy of this formula
+              disagrees with the server the first time anyone tunes the cap,
+              and then the multiplier shown is not the one being paid. */}
+          x{blockStreakMultiplier(streak).toFixed(1)} streak
         </span>
       )}
       {gain && (

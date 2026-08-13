@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BLOCK_GRID } from "@shared/types.js";
+import { BLOCK_GRID, BLOCK_MAX_STREAK_STEPS } from "@shared/types.js";
 import {
   anyFit,
   clearLines,
@@ -144,10 +144,27 @@ describe("scoring", () => {
   it("starts the streak multiplier at 1 and caps it", () => {
     expect(streakMultiplier(1)).toBe(1);
     expect(streakMultiplier(2)).toBe(1.5);
-    expect(streakMultiplier(7)).toBe(4);
+    expect(streakMultiplier(3)).toBe(2);
+    expect(streakMultiplier(4)).toBe(2.5);
     // Capped — an unbounded multiplier makes one lucky run worth more than
     // every other score in the room combined.
-    expect(streakMultiplier(50)).toBe(4);
+    expect(streakMultiplier(50)).toBe(2.5);
+  });
+
+  it("caps the streak somewhere a real run can actually reach", () => {
+    /**
+     * The ceiling used to be 4x at a seven-placement streak. Simulating 400
+     * games, exactly one run ever got there — so two thirds of the ramp was
+     * content that existed only in the source.
+     *
+     * This test is the guard on that: a cap high enough to be unreachable is
+     * indistinguishable from no top end at all, and nothing else would fail
+     * if someone raised it back.
+     */
+    expect(BLOCK_MAX_STREAK_STEPS).toBeLessThanOrEqual(4);
+    expect(streakMultiplier(1 + BLOCK_MAX_STREAK_STEPS)).toBe(
+      streakMultiplier(1 + BLOCK_MAX_STREAK_STEPS + 10),
+    );
   });
 
   it("pays one point per cell and breaks the streak when nothing clears", () => {
