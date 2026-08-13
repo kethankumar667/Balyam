@@ -17,8 +17,8 @@ import { TeluguCinemaluEngine } from "./telugucinemalu/TeluguCinemaluEngine.js";
 import { SnakeEngine } from "./snake/SnakeEngine.js";
 import { VyomaYudhEngine } from "./vyomayudh/VyomaYudhEngine.js";
 import { CarromEngine } from "./carrom/CarromEngine.js";
-import { BounceEngine } from "./bounce/BounceEngine.js";
 import { ChessEngine } from "./chess/ChessEngine.js";
+import { SpaceWarEngine } from "./spacewar/SpaceWarEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
   switch (kind) {
@@ -56,10 +56,10 @@ export function createEngine(kind: GameKind): GameEngine {
       return new VyomaYudhEngine();
     case "carrom":
       return new CarromEngine();
-    case "bounce":
-      return new BounceEngine();
     case "chess":
       return new ChessEngine();
+    case "spacewar":
+      return new SpaceWarEngine();
     default:
       throw new Error(`Game not implemented yet: ${kind}`);
   }
@@ -84,8 +84,8 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     snake: { min: 1, max: 4 },
     vyomayudh: { min: 1, max: 1 },
     carrom: { min: 2, max: 2 },
-    bounce: { min: 1, max: 4 },
     chess: { min: 2, max: 2 },
+    spacewar: { min: 1, max: 1 },
   };
 
   return limits[kind] ?? { min: 2, max: 4 };
