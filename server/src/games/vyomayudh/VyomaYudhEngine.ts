@@ -11,7 +11,13 @@ import type {
   VyomaYudhOptions,
   VyomaYudhPublicState,
 } from "@shared/types.js";
-import { DEFAULT_VYOMAYUDH_OPTIONS, VYOMA_WORLD } from "@shared/types.js";
+import {
+  DEFAULT_VYOMAYUDH_OPTIONS,
+  VYOMA_SHIP_MARGIN,
+  VYOMA_SHIP_SPEED,
+  VYOMA_TICK_HZ,
+  VYOMA_WORLD,
+} from "@shared/types.js";
 
 /**
  * Vyoma Yudh — an original side-scrolling shooter.
@@ -32,11 +38,13 @@ import { DEFAULT_VYOMAYUDH_OPTIONS, VYOMA_WORLD } from "@shared/types.js";
  * phone and a desktop, and no state is expressed in pixels.
  */
 
-const TICK_HZ = 20;
+// From shared, not redeclared: the board interpolates and predicts against
+// these exact numbers, and a private copy here is a copy that drifts.
+const TICK_HZ = VYOMA_TICK_HZ;
 /** Seconds per tick, as a multiplier for the per-second speeds below. */
 const DT = 1 / TICK_HZ;
 
-const SHIP_SPEED = 55;      // world units per second
+const SHIP_SPEED = VYOMA_SHIP_SPEED; // world units per second
 const BASIC_SPEED = 90;
 const MISSILE_SPEED = 60;
 const LASER_SPEED = 170;
@@ -340,7 +348,11 @@ export class VyomaYudhEngine implements GameEngine {
   private stepShip(): void {
     const run = this.run;
     if (!run || run.steerDir === 0) return;
-    run.shipY = clamp(run.shipY + run.steerDir * SHIP_SPEED * DT, 4, VYOMA_WORLD.h - 4);
+    run.shipY = clamp(
+      run.shipY + run.steerDir * SHIP_SPEED * DT,
+      VYOMA_SHIP_MARGIN,
+      VYOMA_WORLD.h - VYOMA_SHIP_MARGIN,
+    );
   }
 
   private spawnWave(): void {
