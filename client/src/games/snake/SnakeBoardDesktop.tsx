@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { SnakeTheme } from "@shared/types";
 import SnakeCanvas from "./SnakeCanvas";
 import { RulesModal, type SnakeBoardProps } from "./SnakeBoardMobile";
@@ -53,25 +53,31 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
       if (dir) {
         e.preventDefault();
         onMove("turn", { dir });
-        haptics.turn();
       } else if (["p", "P", "Escape", " "].includes(e.key)) {
         e.preventDefault();
         onMove("togglePause");
-        haptics.subtle();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onMove, haptics]);
+  }, [onMove]);
 
   const handleDpadTurn = (dir: string) => {
     onMove("turn", { dir });
-    haptics.turn();
   };
 
   const chrome = SNAKE_THEME_CHROME[activeTheme];
   const onEat = useCallback(() => haptics.subtle(), [haptics]);
   const onDeath = useCallback(() => haptics.win(), [haptics]);
+
+  // Haptic feedback on game over finish
+  const prevOverRef = useRef(false);
+  useEffect(() => {
+    if (state.isOver && !prevOverRef.current) {
+      haptics.win();
+    }
+    prevOverRef.current = !!state.isOver;
+  }, [state.isOver, haptics]);
 
   // Rank calculation
   const sortedPlayers = [...state.players].sort((a, b) => b.score - a.score);
