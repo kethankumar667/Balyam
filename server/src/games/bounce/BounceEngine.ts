@@ -116,8 +116,21 @@ export class BounceEngine implements GameEngine {
     }
 
     if (move.type === "tick") {
-      if (!this.isPaused) this.tick();
-      return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
+      /**
+       * Refused. This engine declares `tickRateHz` and `simulateTick`, so
+       * RoomManager owns the clock — and it was ALSO advancing here on every
+       * client tick. The simulation therefore ran at the server's 20Hz plus
+       * one extra step per client pump, which means two players advanced the
+       * physics roughly twice as fast as one, and a modified client could set
+       * the rate itself.
+       *
+       * That is precisely the "client-supplied simulation rate" defect the
+       * GameEngine real-time contract exists to prevent; VyomaYudh already
+       * rejects this move for the same reason. Answering with an error rather
+       * than silently ignoring it means an old client fails visibly instead of
+       * looking like it works.
+       */
+      return { ok: false, error: "Server owns the clock; `tick` is not accepted" };
     }
 
     return { ok: false, error: `Unknown move: ${move.type}` };
