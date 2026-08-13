@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import HandCricketBoardMobile from "./HandCricketBoardMobile";
 import HandCricketBoardDesktop from "./HandCricketBoardDesktop";
 import HcBroadcastShell from "./HcBroadcastShell";
+import InningsBreakOverlay from "./InningsBreakOverlay";
 import { useSkin } from "../skin";
 import type { HandCricketBoardProps } from "./hc-shared";
 
@@ -35,15 +36,41 @@ export default function HandCricketBoard(props: HandCricketBoardProps) {
   // until we know who's asking (e.g. a spectating socket with no seat).
   if (!props.selfId) return null;
 
+  /**
+   * The innings break sits ABOVE whichever board renders below.
+   *
+   * Mounted here rather than inside the mobile and desktop boards because it
+   * is identical for both and must not be forgotten in one of them — the
+   * server refuses play for ten seconds either way, and a board without this
+   * overlay just looks frozen.
+   */
+  const breakOverlay = (
+    <InningsBreakOverlay
+      state={props.state}
+      players={props.players}
+      selfId={props.selfId}
+    />
+  );
+
   if (skin === "broadcast") {
     // One shell for both layouts — the broadcast composition is a single
     // centred column, so only its max-width and density change.
-    return <HcBroadcastShell {...props} compact={!isDesktop} />;
+    return (
+      <>
+        <HcBroadcastShell {...props} compact={!isDesktop} />
+        {breakOverlay}
+      </>
+    );
   }
 
-  return isDesktop ? (
-    <HandCricketBoardDesktop {...props} />
-  ) : (
-    <HandCricketBoardMobile {...props} />
+  return (
+    <>
+      {isDesktop ? (
+        <HandCricketBoardDesktop {...props} />
+      ) : (
+        <HandCricketBoardMobile {...props} />
+      )}
+      {breakOverlay}
+    </>
   );
 }

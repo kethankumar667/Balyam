@@ -3,6 +3,8 @@ import { useBingoBoard } from "./useBingoBoard";
 import {
   BingoLetterBanner,
   BingoGrid,
+  CallOutPanel,
+  AutoMarkToggle,
   AllPlayerBoardsView,
   ClaimButton,
   BingoResultOverlay,
@@ -24,6 +26,14 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
     shuffleBoard,
     lockBoard,
     callNumber,
+    pendingNumber,
+    markNumber,
+    secondsToMark,
+    iHaveMarkedCurrent,
+    waitingOn,
+    wasAutoMarkedForMe,
+    autoMark,
+    setAutoMark,
     claimBingo,
     canAttemptClaim,
   } = model;
@@ -154,12 +164,23 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
           {/* Tab Content */}
           {activeTab === "myBoard" ? (
             <div className="flex flex-col items-center gap-6 my-auto">
+              <CallOutPanel
+                number={pendingNumber}
+                secondsLeft={secondsToMark}
+                iHaveMarked={iHaveMarkedCurrent}
+                waitingOn={waitingOn}
+                wasAutoMarkedForMe={wasAutoMarkedForMe}
+              />
               <BingoGrid
                 board={myBoard}
                 isMyTurn={isMyTurn}
                 onCellClick={callNumber}
                 size="lg"
+                markableNumber={pendingNumber}
+                onMarkCell={markNumber}
               />
+
+              <AutoMarkToggle enabled={autoMark} onChange={setAutoMark} />
 
               {canAttemptClaim && (
                 <ClaimButton onClaim={claimBingo} disabled={false} />

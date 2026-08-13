@@ -37,18 +37,210 @@ export function BingoLetterBanner({
 }
 
 /** 5x5 Grid representing a player's Bingo board (numbers 1-25) */
+/**
+ * The pen stroke over a struck number.
+ *
+ * Marked cells used to become solid green tiles. That reads as a spreadsheet
+ * selection, and worse, it hid the grid — you scan a bingo card for LINES,
+ * and five filled blocks are harder to read as a line than five struck
+ * numbers on a page.
+ *
+ * Jitter is derived from the cell index rather than random, so a given cell
+ * always strikes the same way: it re-renders on every broadcast, and a
+ * stroke that wriggled each time would be a distraction. Different per cell,
+ * stable per cell — which is exactly how a page of real pen marks looks.
+ *
+ * Hand-rolled SVG rather than roughjs (already a dependency): roughjs draws
+ * to canvas, and 25 canvases inside a grid that re-renders on every call is
+ * a lot of machinery for two strokes.
+ */
+function PenStrike({ seed }: { seed: number }) {
+  // Cheap deterministic hash → a few stable pseudo-random offsets.
+  const j = (n: number, spread: number) =>
+    (((Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453) % 1) + 1) % 1 * spread - spread / 2;
+
+  return (
+    <svg
+      viewBox="0 0 40 40"
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      aria-hidden
+    >
+      <g
+        stroke="#C2410C"
+        strokeWidth={3.2}
+        strokeLinecap="round"
+        opacity={0.85}
+        fill="none"
+      >
+        <path
+          d={`M ${7 + j(1, 4)} ${9 + j(2, 4)} Q 20 ${20 + j(3, 6)} ${33 + j(4, 4)} ${31 + j(5, 4)}`}
+        />
+        <path
+          d={`M ${33 + j(6, 4)} ${9 + j(7, 4)} Q 20 ${20 + j(8, 6)} ${7 + j(9, 4)} ${31 + j(10, 4)}`}
+        />
+      </g>
+    </svg>
+  );
+}
+
+/**
+ * The number on the clock, and why the table is waiting.
+ *
+ * The engine holds the next call until every seat resolves the current one.
+ * That pause is the feature — it is what keeps all boards on the same
+ * number — but a board that does not SAY why it stopped reads as a freeze,
+ * and freezes get reported as bugs. This panel is the explanation.
+ */
+export function CallOutPanel({
+  number,
+  secondsLeft,
+  iHaveMarked,
+  waitingOn,
+  wasAutoMarkedForMe,
+}: {
+  number: number | null;
+  secondsLeft: number | null;
+  iHaveMarked: boolean;
+  waitingOn: string[];
+  wasAutoMarkedForMe: boolean;
+}) {
+  if (number == null) {
+    // The rescue is otherwise invisible — the cell just fills in — so
+    // players never learn that missing one costs them nothing.
+    if (!wasAutoMarkedForMe) return null;
+    return (
+      <div className="w-full rounded-xl border-2 border-bhalyam-wood/25 bg-bhalyam-cream/80 px-3 py-2 text-center text-sm font-bold text-bhalyam-wood-dark/80">
+        Marked for you — you never lose a number
+      </div>
+    );
+  }
+
+  const urgent = secondsLeft != null && secondsLeft <= 3;
+
+  return (
+    <div
+      className={`w-full rounded-xl border-2 px-3 py-2.5 ${
+        iHaveMarked
+          ? "border-bhalyam-wood/25 bg-bhalyam-cream/80"
+          : urgent
+          ? "border-red-500 bg-red-50"
+          : "border-amber-500 bg-amber-100"
+      }`}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="text-[11px] font-black uppercase tracking-wider text-bhalyam-wood-dark/60">
+            Called
+          </span>
+          <span className="text-2xl font-black tabular-nums text-bhalyam-wood-dark">
+            {number}
+          </span>
+        </div>
+
+        {!iHaveMarked ? (
+          <span
+            className={`text-sm font-black tabular-nums ${
+              urgent ? "text-red-600" : "text-bhalyam-wood-dark/80"
+            }`}
+          >
+            Tap it — {secondsLeft ?? 0}s
+          </span>
+        ) : waitingOn.length > 0 ? (
+          // Named, not a spinner: "waiting for Ravi" is a fact players can
+          // act on (nudge him), where a spinner is just a stalled screen.
+          <span className="truncate text-xs font-bold text-bhalyam-wood-dark/70">
+            Waiting for {waitingOn.slice(0, 2).join(", ")}
+            {waitingOn.length > 2 ? ` +${waitingOn.length - 2}` : ""}
+          </span>
+        ) : (
+          <span className="text-xs font-bold text-emerald-700">Marked ✓</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Auto-mark switch.
+ *
+ * An accessibility setting, not a difficulty setting — which is why it lives
+ * on the player and not on the room. Finding one number among 25 under an
+ * 8-second clock is the game for most people and a wall for some (motor
+ * control, low vision, a young child playing along), and one player's need
+ * must not decide it for the table.
+ *
+ * Worded as what it does, not as "easy mode". Nobody should have to call
+ * themselves bad at Bingo to be able to play it.
+ */
+export function AutoMarkToggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      onClick={() => onChange(!enabled)}
+      className={`flex w-full items-center justify-between gap-3 rounded-xl border-2 px-3 py-2 text-left transition-colors ${
+        enabled
+          ? "border-emerald-600 bg-emerald-50"
+          : "border-bhalyam-wood/25 bg-bhalyam-cream/70 hover:border-bhalyam-wood/40"
+      }`}
+    >
+      <span>
+        <span className="block text-xs font-black uppercase tracking-wider text-bhalyam-wood-dark/70">
+          Mark for me
+        </span>
+        <span className="block text-[11px] leading-snug text-bhalyam-wood-dark/60">
+          {enabled
+            ? "Numbers are struck off automatically"
+            : "Tap each number yourself"}
+        </span>
+      </span>
+      <span
+        aria-hidden
+        className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
+          enabled ? "bg-emerald-600" : "bg-bhalyam-wood/30"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+            enabled ? "left-[22px]" : "left-0.5"
+          }`}
+        />
+      </span>
+    </button>
+  );
+}
+
 export function BingoGrid({
   board,
   onCellClick,
   isMyTurn,
   calledSet,
   size = "md",
+  markableNumber = null,
+  onMarkCell,
 }: {
   board: BingoBoard;
   onCellClick?: (val: number) => void;
   isMyTurn?: boolean;
   calledSet?: Set<number>;
   size?: "sm" | "md" | "lg";
+  /**
+   * The number currently open for marking, if this is the viewer's own card.
+   * That one cell becomes tappable no matter whose turn it is to call —
+   * finding it is the player's job every single call, and it is what turned
+   * this from something you watch into something you play.
+   */
+  markableNumber?: number | null;
+  onMarkCell?: (val: number) => void;
 }) {
   const cellDimensions =
     size === "lg"
@@ -62,22 +254,37 @@ export function BingoGrid({
       {board.map((cell) => {
         const isMarked = cell.marked || (calledSet && calledSet.has(cell.value));
         const canClick = isMyTurn && !isMarked && onCellClick;
+        const canMark = !isMarked && onMarkCell && cell.value === markableNumber;
 
         return (
           <button
             key={cell.index}
             type="button"
-            disabled={!canClick}
-            onClick={() => canClick && onCellClick(cell.value)}
-            className={`${cellDimensions} flex items-center justify-center rounded-xl font-black tabular-nums transition-all duration-200 shadow-sm border-2 ${
+            disabled={!canClick && !canMark}
+            onClick={() => {
+              // Marking wins over calling: if this is the open number, the
+              // tap is the player striking their own card, even on the turn
+              // where they are also the caller.
+              if (canMark) onMarkCell(cell.value);
+              else if (canClick) onCellClick(cell.value);
+            }}
+            aria-label={canMark ? `Mark ${cell.value}` : String(cell.value)}
+            className={`${cellDimensions} relative flex items-center justify-center rounded-xl font-black tabular-nums transition-all duration-200 shadow-sm border-2 ${
               isMarked
-                ? "bg-gradient-to-br from-emerald-500 to-emerald-600 border-emerald-700 text-white scale-[1.03] shadow-emerald-500/30"
+                ? // Struck, not filled. The number stays readable underneath
+                  // because that is what a pen does to paper — and because a
+                  // solid tile hides the board you are trying to read lines
+                  // across.
+                  "bg-white/90 border-bhalyam-wood/25 text-bhalyam-wood-dark/70"
+                : canMark
+                ? "bg-amber-200 border-amber-500 text-bhalyam-wood-dark cursor-pointer active:scale-95 ring-4 ring-amber-400/70 animate-pulse"
                 : canClick
                 ? "bg-white hover:bg-amber-100 border-amber-400 text-bhalyam-wood-dark cursor-pointer active:scale-95 ring-2 ring-amber-400/50"
                 : "bg-white/90 border-bhalyam-wood/20 text-bhalyam-wood-dark opacity-90"
             }`}
           >
             {cell.value}
+            {isMarked && <PenStrike seed={cell.index} />}
           </button>
         );
       })}

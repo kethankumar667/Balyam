@@ -11,7 +11,7 @@ import type {
   CalledNumber,
   Player,
 } from "@shared/types.js";
-import { DEFAULT_BINGO_OPTIONS } from "@shared/types.js";
+import { BINGO_MARK_WINDOW_MS, DEFAULT_BINGO_OPTIONS } from "@shared/types.js";
 import { generateUniqueBoard, boardFingerprint } from "./board.js";
 import { evaluateBoardLines } from "./win.js";
 
@@ -32,6 +32,22 @@ interface InternalPlayerState {
   isBot: boolean;
   isConnected: boolean;
   hasWon: boolean;
+  /**
+   * Numbers THIS player has actually marked.
+   *
+   * Marking used to be global: `callNumber` set `marked` on every board at
+   * once, and both `getStateFor` and win evaluation read the shared
+   * `calledSet`, so the per-cell flag was decorative. That is the whole
+   * reason the game played like a screensaver — no call ever needed a
+   * player to do anything.
+   *
+   * Now each player owns their marks. It converges back to `calledSet` when
+   * a window closes (missed numbers are auto-marked), so this can never
+   * permanently disagree with what was called.
+   */
+  markedSet: Set<number>;
+  /** Per-player accessibility preference; see BingoPlayerPublic.autoMark. */
+  autoMark: boolean;
 }
 
 export class BingoEngine implements GameEngine {
@@ -49,6 +65,16 @@ export class BingoEngine implements GameEngine {
   private calledNumbers: CalledNumber[] = [];
   private calledSet = new Set<number>();
   private lastCalledNumber: CalledNumber | null = null;
+
+  /**
+   * The number currently awaiting marks, and when it stops waiting.
+   *
+   * Non-null means the caller is blocked: no new number goes out while one
+   * is still open. That gating is what keeps every board on the same call
+   * even though the mark window (8s) is longer than every call-interval
+   * tier (2.5-6s).
+   */
+  private pendingMark: { value: number; deadline: number } | null = null;
 
   private winners: BingoWinner[] = [];
   private winnerId: string | null = null;
@@ -116,7 +142,7 @@ export class BingoEngine implements GameEngine {
       for (const pid of this.seatOrder) {
         const p = this.players.get(pid);
         if (p && !p.hasWon) {
-          const check = evaluateBoardLines(p.board, this.calledSet);
+          const check = evaluateBoardLines(p.board, p.markedSet);
           if (check.canClaimBingo) return pid;
         }
       }
@@ -146,6 +172,10 @@ export class BingoEngine implements GameEngine {
         isBot: p.isBot === true,
         isConnected: p.isConnected,
         hasWon: false,
+        markedSet: new Set<number>(),
+        // Default OFF: manual marking IS the game now. Auto-mark is the
+        // accessibility escape hatch, not the default experience.
+        autoMark: false,
       });
     }
 
@@ -154,6 +184,7 @@ export class BingoEngine implements GameEngine {
     this.calledNumbers = [];
     this.calledSet.clear();
     this.lastCalledNumber = null;
+    this.pendingMark = null;
     this.winners = [];
     this.winnerId = null;
     this.isOverFlag = false;
@@ -185,6 +216,10 @@ export class BingoEngine implements GameEngine {
           pid,
           (move.data as { number?: number })?.number
         );
+      case "markNumber":
+        return this.handleMarkNumber(pid, (move.data as { number?: number })?.number);
+      case "setAutoMark":
+        return this.handleSetAutoMark(pid, (move.data as { on?: boolean })?.on);
       case "claimBingo":
       case "claim":
         return this.handleClaimBingo(pid);
@@ -235,9 +270,91 @@ export class BingoEngine implements GameEngine {
     this.turnIndex = 0;
   }
 
+  /**
+   * The player found the open number on their board and tapped it.
+   *
+   * Only the number currently on the clock is accepted. Letting a client
+   * mark anything it liked would hand it the ability to fake a line, and
+   * win validation reads the same marked set.
+   */
+  private handleMarkNumber(pid: string, num?: number): MoveResult {
+    if (this.phase !== "playing") {
+      return { ok: false, error: "Game is not in playing phase" };
+    }
+    const p = this.players.get(pid);
+    if (!p) return { ok: false, error: "Not a player in this match" };
+
+    const pending = this.pendingMark;
+    if (!pending) return { ok: false, error: "No number is open for marking" };
+    if (this.pendingMarkExpired()) {
+      // The window lapsed between the tap leaving the phone and arriving.
+      // Settling gives them the number anyway, so a late tap is never worse
+      // than not tapping.
+      this.settlePendingMark();
+      return { ok: true };
+    }
+    if (num !== pending.value) {
+      return { ok: false, error: "That is not the number being called" };
+    }
+    if (p.markedSet.has(num)) return { ok: false, error: "Already marked" };
+
+    p.markedSet.add(num);
+    this.settleIfAllMarked();
+    return { ok: true };
+  }
+
+  /** Toggle this player's auto-mark preference. Takes effect next call. */
+  private handleSetAutoMark(pid: string, on?: boolean): MoveResult {
+    const p = this.players.get(pid);
+    if (!p) return { ok: false, error: "Not a player in this match" };
+    p.autoMark = on !== false;
+    // Switching it ON mid-window should not leave them waiting on a number
+    // they just delegated.
+    if (p.autoMark && this.pendingMark) {
+      p.markedSet.add(this.pendingMark.value);
+      this.settleIfAllMarked();
+    }
+    return { ok: true };
+  }
+
+  /**
+   * Close the open number: anyone who did not tap it in time gets it marked
+   * for them. Idempotent, and safe to call when nothing is pending.
+   */
+  private settlePendingMark(): void {
+    const pending = this.pendingMark;
+    if (!pending) return;
+    for (const p of this.players.values()) p.markedSet.add(pending.value);
+    this.pendingMark = null;
+  }
+
+  /** Close early once every seat has the number — no need to burn the clock. */
+  private settleIfAllMarked(): void {
+    const pending = this.pendingMark;
+    if (!pending) return;
+    for (const p of this.players.values()) {
+      if (!p.markedSet.has(pending.value)) return;
+    }
+    this.pendingMark = null;
+  }
+
+  /** True once the open number can be closed: everyone marked, or time is up. */
+  private pendingMarkExpired(): boolean {
+    return this.pendingMark != null && this.now() >= this.pendingMark.deadline;
+  }
+
   private handleCallNumber(pid: string, num?: number): MoveResult {
     if (this.phase !== "playing") {
       return { ok: false, error: "Game is not in playing phase" };
+    }
+    // A number still open blocks the next one. The caller (bot or timer)
+    // simply retries; once the window lapses this settles it and proceeds,
+    // so no external timer is needed to close the window.
+    if (this.pendingMark) {
+      if (!this.pendingMarkExpired()) {
+        return { ok: false, error: "Players are still marking the last number" };
+      }
+      this.settlePendingMark();
     }
     if (pid !== this.currentTurnPlayerId()) {
       return { ok: false, error: "Not your turn to call a number" };
@@ -258,21 +375,25 @@ export class BingoEngine implements GameEngine {
     this.calledSet.add(num);
     this.lastCalledNumber = called;
 
-    // Update marked status on all players' boards
+    // The number goes out UNMARKED. Players who opted into auto-mark get it
+    // immediately; everyone else has to find it on their own board before
+    // the window closes.
+    this.pendingMark = { value: num, deadline: this.now() + BINGO_MARK_WINDOW_MS };
     for (const p of this.players.values()) {
-      for (const cell of p.board) {
-        if (cell.value === num) {
-          cell.marked = true;
-        }
+      if (p.autoMark || p.isBot || !p.isConnected) {
+        // Bots and disconnected seats resolve instantly: neither can tap,
+        // and making the table wait 8s on them would punish the humans.
+        p.markedSet.add(num);
       }
     }
+    this.settleIfAllMarked();
 
     // Check if remaining numbers in 1-25 are exhausted
     if (this.calledSet.size >= 25) {
       // Check if anyone can claim Bingo, else auto-finish
       let anyCanClaim = false;
       for (const p of this.players.values()) {
-        const check = evaluateBoardLines(p.board, this.calledSet);
+        const check = evaluateBoardLines(p.board, p.markedSet);
         if (check.canClaimBingo) anyCanClaim = true;
       }
       if (!anyCanClaim) {
@@ -294,7 +415,7 @@ export class BingoEngine implements GameEngine {
     if (!p) return { ok: false, error: "Player not found" };
     if (p.hasWon) return { ok: false, error: "Already claimed Bingo" };
 
-    const check = evaluateBoardLines(p.board, this.calledSet);
+    const check = evaluateBoardLines(p.board, p.markedSet);
     if (!check.canClaimBingo) {
       return { ok: false, error: "You need 5 completed lines (B-I-N-G-O) to claim Bingo!" };
     }
@@ -323,11 +444,11 @@ export class BingoEngine implements GameEngine {
   private publicPlayers(): BingoPlayerPublic[] {
     return this.seatOrder.map((id) => {
       const p = this.players.get(id)!;
-      const evalRes = evaluateBoardLines(p.board, this.calledSet);
+      const evalRes = evaluateBoardLines(p.board, p.markedSet);
       // Map cell marked state
       const boardWithMarked = p.board.map((c) => ({
         ...c,
-        marked: this.calledSet.has(c.value),
+        marked: p.markedSet.has(c.value),
       }));
 
       return {
@@ -340,6 +461,9 @@ export class BingoEngine implements GameEngine {
         hasWon: p.hasWon,
         isBot: p.isBot,
         isConnected: p.isConnected,
+        autoMark: p.autoMark,
+        hasMarkedCurrent:
+          this.pendingMark == null || p.markedSet.has(this.pendingMark.value),
         board: boardWithMarked,
       };
     });
@@ -354,6 +478,7 @@ export class BingoEngine implements GameEngine {
       calledNumbers: [...this.calledNumbers],
       lastCalledNumber: this.lastCalledNumber,
       callDeadline: this.turnDeadline,
+      markDeadline: this.pendingMark?.deadline ?? null,
       winners: [...this.winners],
       roundNumber: this.roundNumber,
       stopOnFirstWin: this.opts.stopOnFirstWin,
@@ -367,11 +492,13 @@ export class BingoEngine implements GameEngine {
     const pub = this.getPublicState();
     const p = this.players.get(playerId);
     const rawBoard = p?.board ?? [];
+    // A spectator has no seat and therefore no marks of their own.
+    const myMarks = p?.markedSet ?? new Set<number>();
     const myBoard = rawBoard.map((c) => ({
       ...c,
-      marked: this.calledSet.has(c.value),
+      marked: myMarks.has(c.value),
     }));
-    const evalRes = evaluateBoardLines(myBoard, this.calledSet);
+    const evalRes = evaluateBoardLines(myBoard, myMarks);
 
     return {
       ...pub,
@@ -407,7 +534,7 @@ export class BingoEngine implements GameEngine {
       for (const pid of this.seatOrder) {
         const p = this.players.get(pid);
         if (p && !p.hasWon) {
-          const check = evaluateBoardLines(p.board, this.calledSet);
+          const check = evaluateBoardLines(p.board, p.markedSet);
           if (check.canClaimBingo) return [pid];
         }
       }
@@ -424,7 +551,7 @@ export class BingoEngine implements GameEngine {
     if (this.phase === "playing") {
       const p = this.players.get(playerId);
       if (p) {
-        const check = evaluateBoardLines(p.board, this.calledSet);
+        const check = evaluateBoardLines(p.board, p.markedSet);
         if (check.canClaimBingo) {
           return this.handleClaimBingo(playerId);
         }

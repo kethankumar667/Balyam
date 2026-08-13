@@ -17,6 +17,7 @@ import {
   HC_MAX_OVERS_PER_BOWLER,
   HC_OVERS_BY_FORMAT,
   HC_POWERPLAY_OVERS,
+  HC_INNINGS_BREAK_MS,
   HC_WICKETS_PER_INNINGS,
 } from "@shared/types.js";
 import {
@@ -129,6 +130,8 @@ export class HandCricketEngine implements GameEngine {
       winnerId: null,
       result: null,
       maxWickets: HC_WICKETS_PER_INNINGS,
+      inningsBreakUntil: null,
+      inningsBreakReady: [],
       oversPerInnings,
       startedAt: Date.now(),
     };
@@ -165,6 +168,8 @@ export class HandCricketEngine implements GameEngine {
         return this.handleTossPick(move);
       case "tossChoice":
         return this.handleTossChoice(move);
+      case "continueInnings":
+        return this.handleContinueInnings(move.playerId);
       case "selectBowler":
         return this.handleSelectBowler(move);
       case "pick":
@@ -335,6 +340,9 @@ export class HandCricketEngine implements GameEngine {
     if (this.state.phase !== "innings1" && this.state.phase !== "innings2") {
       return { ok: false, error: "Not in a live innings" };
     }
+    if (this.inningsBreakActive()) {
+      return { ok: false, error: "Innings break — play resumes shortly" };
+    }
     const innings = this.currentInnings();
     if (move.playerId !== innings.bowlingPlayerId) {
       return { ok: false, error: "Only the bowling team picks the bowler" };
@@ -392,6 +400,9 @@ export class HandCricketEngine implements GameEngine {
   private handlePick(move: MoveContext): MoveResult {
     if (this.state.phase !== "innings1" && this.state.phase !== "innings2") {
       return { ok: false, error: "Not in a live innings" };
+    }
+    if (this.inningsBreakActive()) {
+      return { ok: false, error: "Innings break — play resumes shortly" };
     }
     const innings = this.currentInnings();
     if (innings.needsNextBatterPick) {
@@ -630,6 +641,66 @@ export class HandCricketEngine implements GameEngine {
     this.clearPendingPicks();
   }
 
+  /**
+   * True while the innings break is still running.
+   *
+   * Also CLEARS the deadline once it has passed, so the break is
+   * self-expiring: no external timer has to fire for play to resume, and a
+   * server restart or a paused tab cannot leave a match stuck at the break.
+   */
+  private now: () => number = Date.now;
+
+  private inningsBreakActive(): boolean {
+    const until = this.state.inningsBreakUntil;
+    if (until == null) return false;
+    if (this.now() >= until) {
+      this.endInningsBreak();
+      return false;
+    }
+    // Everyone has read the scorecard and pressed Continue — no reason to
+    // sit out the rest of the clock.
+    const ready = new Set(this.state.inningsBreakReady);
+    if (this.state.playerOrder.every((id) => ready.has(id))) {
+      this.endInningsBreak();
+      return false;
+    }
+    return true;
+  }
+
+  private endInningsBreak(): void {
+    this.state.inningsBreakUntil = null;
+    this.state.inningsBreakReady = [];
+  }
+
+  /**
+   * "I have finished reading the innings-1 scorecard."
+   *
+   * One player pressing Continue does NOT restart the match — it records
+   * them and waits for the rest, which is what the second player asked for:
+   * time to actually study the card without the first player skipping it out
+   * from under them. The deadline is the backstop so a bot, an absent seat
+   * or someone who wandered off cannot hold the match open.
+   */
+  private handleContinueInnings(pid: string): MoveResult {
+    if (this.state.inningsBreakUntil == null) {
+      return { ok: false, error: "Not in an innings break" };
+    }
+    if (!this.state.inningsBreakReady.includes(pid)) {
+      this.state.inningsBreakReady.push(pid);
+    }
+    // Re-check: this may have been the last player the break was waiting on.
+    this.inningsBreakActive();
+    return { ok: true };
+  }
+
+  /**
+   * Injectable clock, matching BingoEngine's seam. Tests need to step past
+   * the innings break without sleeping 8 real seconds.
+   */
+  setClock(now: () => number): void {
+    this.now = now;
+  }
+
   private endCurrentInnings(): void {
     if (this.state.phase === "innings1") {
       const i1 = this.state.innings1!;
@@ -644,6 +715,12 @@ export class HandCricketEngine implements GameEngine {
         this.squadFor(i1.battingPlayerId),
       );
       this.state.phase = "innings2";
+      // Hold play while everyone reads the first-innings total and the
+      // target. Without this the swap and the next delivery land in the
+      // same instant, which is what players reported as innings 2 starting
+      // on its own.
+      this.state.inningsBreakUntil = this.now() + HC_INNINGS_BREAK_MS;
+      this.state.inningsBreakReady = [];
       this.clearPendingPicks();
       return;
     }
