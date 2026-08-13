@@ -1109,7 +1109,7 @@ export class RoomManager {
     const engine = room.engine;
     if (!engine || !isRealtimeEngine(engine)) return;
 
-    const periodMs = Math.max(20, Math.round(1000 / engine.tickRateHz));
+    const periodMs = this.periodFor(engine)!;
     room.simTimer = setInterval(() => {
       // The room may have ended or been torn down between ticks.
       if (room.phase !== "playing" || !room.engine) {
@@ -1143,8 +1143,29 @@ export class RoomManager {
         // Re-arm turn timers and trigger bot scheduler so bot/taken-over seats take their turn!
         this.scheduleTurnTimer(room);
         this.scheduleBotMoveIfNeeded(room);
+      } else if (this.periodFor(room.engine) !== periodMs) {
+        /**
+         * The engine changed its own pace mid-game.
+         *
+         * Snake speeds up as the snake grows, and that is the entire point
+         * of the speed-progression option — but `setInterval` was armed once
+         * with the opening rate and never revisited, so the game published a
+         * `speedMs` that fell steadily while actually stepping at a fixed
+         * rate forever. Clients interpolate their motion over the published
+         * number, so the two drifted apart and the board stuttered.
+         *
+         * Re-arming is generic rather than Snake-specific: any engine whose
+         * `tickRateHz` is a getter now gets an honest loop.
+         */
+        this.startSimulation(room);
       }
     }, periodMs);
+  }
+
+  /** The interval an engine is currently asking for, in ms. */
+  private periodFor(engine: GameEngine | null): number | null {
+    if (!engine || !isRealtimeEngine(engine)) return null;
+    return Math.max(20, Math.round(1000 / engine.tickRateHz));
   }
 
   private stopSimulation(room: Room): void {

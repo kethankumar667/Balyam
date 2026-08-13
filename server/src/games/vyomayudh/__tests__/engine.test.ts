@@ -77,6 +77,14 @@ describe("run ownership", () => {
     const startY = e.getPublicState().ship!.y;
     // A hostile client asking to jump the full board height in one input.
     e.applyMove({ playerId: "p0", type: "steer", data: { dy: 9999 } });
+    /**
+     * The steer records a DIRECTION and the tick flies the ship, so the
+     * distance is measured after a tick rather than at the moment the
+     * message lands. Flight speed used to be a function of how many packets
+     * arrived, which is what made the controls feel heavy on a phone —
+     * see steering.test.ts.
+     */
+    e.simulateTick();
     const moved = e.getPublicState().ship!.y - startY;
     expect(moved).toBeGreaterThan(0);
     expect(moved).toBeLessThan(5);

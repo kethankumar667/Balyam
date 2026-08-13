@@ -24,7 +24,35 @@ export class SnakeEngine implements GameEngine {
   readonly kind = "snake" as const;
   readonly minPlayers = 1;
   readonly maxPlayers = 4;
-  readonly tickRateHz = 10;
+
+  /**
+   * Steps per second, derived from the chosen speed rather than fixed.
+   *
+   * This was a hard `10`, which made the game step every 100ms no matter
+   * what. Two things broke because of it, and neither one threw:
+   *
+   *   • The Speed picker (Slug / Normal / Fast) did nothing at all. So did
+   *     speed progression — `speedMs` was decremented on every pellet and
+   *     nothing ever read it.
+   *   • Worse, `speedMs` is published in the state and the client
+   *     interpolates its motion over exactly that duration. It began at 120
+   *     against a real 100ms step and drifted down to 50, so the board was
+   *     drawing the snake at a rate that had no relationship to when new
+   *     positions arrived. That mismatch IS the stutter players kept
+   *     reporting after the interpolation was "fixed" — the interpolation
+   *     was right and the number it trusted was wrong.
+   *
+   * A getter, because RoomManager reads this AFTER `setOptions` and `init`
+   * (see startGame), so by the time it is asked the chosen speed is known.
+   */
+  get tickRateHz(): number {
+    return 1000 / this.stepMs();
+  }
+
+  /** The real step period, clamped to what the loop can honour. */
+  private stepMs(): number {
+    return Math.max(50, Math.min(400, this.opts.speedMs || 120));
+  }
 
   private opts: SnakeOptions = { ...DEFAULT_SNAKE_OPTIONS };
   private pendingOptions: SnakeOptions | null = null;
@@ -238,9 +266,15 @@ export class SnakeEngine implements GameEngine {
       return { ok: true };
     }
 
+    /**
+     * Not accepted. Snake declares `tickRateHz`, so RoomManager owns the
+     * clock — and an engine that ticks itself AND takes ticks from clients
+     * is the exact shape of the Bounce bug, where two players ran the game
+     * at double speed. Nothing in the client sends this today; the point is
+     * that nothing can.
+     */
     if (move.type === "tick") {
-      if (!this.isPaused) this.tick();
-      return { ok: true, isOver: this.isOverFlag, winnerId: this.winnerId };
+      return { ok: false, error: "Server owns the clock; `tick` is not accepted" };
     }
 
     if (!snake || !snake.isAlive || this.isOverFlag) {
