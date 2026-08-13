@@ -32,7 +32,6 @@ import type {
   SnakeOptions,
   VyomaYudhOptions,
   CarromOptions,
-  BounceOptions,
   ChessOptions,
 } from "@shared/types.js";
 import {
@@ -54,7 +53,6 @@ import {
   DEFAULT_CHESS_OPTIONS,
   DEFAULT_SNAKE_OPTIONS,
   DEFAULT_VYOMAYUDH_OPTIONS,
-  DEFAULT_BOUNCE_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -83,7 +81,6 @@ import { CarromEngine } from "../games/carrom/CarromEngine.js";
 import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
 import { VyomaYudhEngine } from "../games/vyomayudh/VyomaYudhEngine.js";
-import { BounceEngine } from "../games/bounce/BounceEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -172,7 +169,6 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   // "Striker" was dropped: it is the name of a piece on the board, so the
   // player list read "Striker · 9 left" next to a striker the player aims.
   carrom: ["Breaker", "Rebound", "Cutshot", "Thumbi"],
-  bounce: ["RedBall", "BounceMaster", "Hopper", "Jumper"],
   roadrash: ["Rider", "Speedy", "Biker", "Racer"],
 };
 
@@ -252,7 +248,6 @@ interface Room {
   chessOptions: ChessOptions;
   snakeOptions: SnakeOptions;
   vyomaYudhOptions: VyomaYudhOptions;
-  bounceOptions: BounceOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -360,7 +355,6 @@ export class RoomManager {
     snakeOptions?: Partial<SnakeOptions>,
     vyomaYudhOptions?: Partial<VyomaYudhOptions>,
     carromOptions?: Partial<CarromOptions>,
-    bounceOptions?: Partial<BounceOptions>,
     chessOptions?: Partial<ChessOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
@@ -412,7 +406,6 @@ export class RoomManager {
       chessOptions: { ...DEFAULT_CHESS_OPTIONS, ...(chessOptions ?? {}) },
       snakeOptions: { ...DEFAULT_SNAKE_OPTIONS, ...(snakeOptions ?? {}) },
       vyomaYudhOptions: { ...DEFAULT_VYOMAYUDH_OPTIONS, ...(vyomaYudhOptions ?? {}) },
-      bounceOptions: { ...DEFAULT_BOUNCE_OPTIONS, ...(bounceOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -568,7 +561,7 @@ export class RoomManager {
     if (!room || !player) return;
     // Games with no bot AI — bots would be dead/frozen seats.
     const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-      "samethalu", "telugucinemalu", "snake", "vyomayudh", "bounce", "roadrash",
+      "samethalu", "telugucinemalu", "snake", "vyomayudh", "roadrash",
     ]);
     if (NO_BOT_GAMES.has(room.game)) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Bots are not available for this game");
@@ -871,9 +864,6 @@ export class RoomManager {
       }
       if (engine instanceof VyomaYudhEngine) {
         engine.setOptions(room.vyomaYudhOptions);
-      }
-      if (engine instanceof BounceEngine) {
-        engine.setOptions(room.bounceOptions);
       }
       engine.init(playersList);
       room.engine = engine;
@@ -2461,7 +2451,6 @@ export class RoomManager {
       if (engine instanceof ChessEngine) engine.setOptions(room.chessOptions);
       if (engine instanceof SnakeEngine) engine.setOptions(room.snakeOptions);
       if (engine instanceof VyomaYudhEngine) engine.setOptions(room.vyomaYudhOptions);
-      if (engine instanceof BounceEngine) engine.setOptions(room.bounceOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

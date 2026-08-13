@@ -337,6 +337,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Classic red ball platformer. Pass through gold rings, avoid spikes, and finish the level.",
     accent: { from: "#F43F5E", to: "#9F1239" }, // Red Ball Electric Crimson
+    maintenance: true,
   },
   {
     slug: "roadrash",

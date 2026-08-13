@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "bounce" | "roadrash" | "chess";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "vyomayudh" | "carrom" | "roadrash" | "chess";
 
 export interface Player {
   id: string;
@@ -2220,20 +2220,6 @@ export interface VyomaYudhPublicState {
   winnerId: string | null;
 }
 
-// ---- Bounce ----
-export interface BounceOptions {
-  targetRings: number;
-}
-export const DEFAULT_BOUNCE_OPTIONS: BounceOptions = { targetRings: 10 };
-export interface BouncePublicState {
-  kind: "bounce";
-  balls: Record<string, { x: number; y: number; vx: number; vy: number; ringsCollected: number; isAlive: boolean }>;
-  rings: { id: string; x: number; y: number; collected: boolean }[];
-  players: { id: string; ringsCollected: number; isAlive: boolean }[];
-  isPaused?: boolean;
-  isOver: boolean;
-  winnerId: string | null;
-}
 
 // ---- Chess ----
 export type ChessPieceColor = "w" | "b";
@@ -2316,7 +2302,6 @@ export interface CreateRoomPayload {
   snakeOptions?: Partial<SnakeOptions>;
   vyomaYudhOptions?: Partial<VyomaYudhOptions>;
   carromOptions?: Partial<CarromOptions>;
-  bounceOptions?: Partial<BounceOptions>;
   chessOptions?: Partial<ChessOptions>;
 }
 
