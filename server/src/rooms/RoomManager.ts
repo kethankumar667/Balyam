@@ -33,6 +33,7 @@ import type {
   VyomaYudhOptions,
   CarromOptions,
   ChessOptions,
+  BlockBlastOptions,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -53,6 +54,7 @@ import {
   DEFAULT_CHESS_OPTIONS,
   DEFAULT_SNAKE_OPTIONS,
   DEFAULT_VYOMAYUDH_OPTIONS,
+  DEFAULT_BLOCKBLAST_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -81,6 +83,7 @@ import { CarromEngine } from "../games/carrom/CarromEngine.js";
 import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
 import { VyomaYudhEngine } from "../games/vyomayudh/VyomaYudhEngine.js";
+import { BlockBlastEngine } from "../games/blockblast/BlockBlastEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -166,6 +169,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   telugucinemalu: ["Chiranjeevi", "Balayya", "Nag", "Venky", "Prabhas", "Mahesh", "NTR", "Ram Charan"],
   snake: ["Python", "Viper", "Cobra", "Mamba"],
   vyomayudh: ["Ace", "Blaster", "Cosmo", "Defender"],
+  blockblast: ["Tetra", "Chotu", "Gattu", "Rubik", "Pixel", "Mosaic", "Bittu", "Domino"],
   // "Striker" was dropped: it is the name of a piece on the board, so the
   // player list read "Striker · 9 left" next to a striker the player aims.
   carrom: ["Breaker", "Rebound", "Cutshot", "Thumbi"],
@@ -248,6 +252,7 @@ interface Room {
   chessOptions: ChessOptions;
   snakeOptions: SnakeOptions;
   vyomaYudhOptions: VyomaYudhOptions;
+  blockBlastOptions: BlockBlastOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -355,7 +360,8 @@ export class RoomManager {
     snakeOptions?: Partial<SnakeOptions>,
     vyomaYudhOptions?: Partial<VyomaYudhOptions>,
     carromOptions?: Partial<CarromOptions>,
-    chessOptions?: Partial<ChessOptions>
+    chessOptions?: Partial<ChessOptions>,
+    blockBlastOptions?: Partial<BlockBlastOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -406,6 +412,7 @@ export class RoomManager {
       chessOptions: { ...DEFAULT_CHESS_OPTIONS, ...(chessOptions ?? {}) },
       snakeOptions: { ...DEFAULT_SNAKE_OPTIONS, ...(snakeOptions ?? {}) },
       vyomaYudhOptions: { ...DEFAULT_VYOMAYUDH_OPTIONS, ...(vyomaYudhOptions ?? {}) },
+      blockBlastOptions: { ...DEFAULT_BLOCKBLAST_OPTIONS, ...(blockBlastOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -865,6 +872,9 @@ export class RoomManager {
       if (engine instanceof VyomaYudhEngine) {
         engine.setOptions(room.vyomaYudhOptions);
       }
+      if (engine instanceof BlockBlastEngine) {
+        engine.setOptions(room.blockBlastOptions);
+      }
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
@@ -1270,6 +1280,13 @@ export class RoomManager {
      * would mark every present player idle within a lap.
      */
     if (engine instanceof BingoEngine) return;
+    /**
+     * Same reasoning for Block Blast: its timer is the race deadline, not
+     * anybody's turn. Everyone still playing is in `pendingActors` when it
+     * fires, so counting it would hand every active player an idle strike for
+     * the crime of being alive at the final whistle.
+     */
+    if (engine instanceof BlockBlastEngine) return;
 
     let stalled: string[] = [];
     try {
@@ -1570,6 +1587,29 @@ export class RoomManager {
       room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
       return;
     }
+    /**
+     * Block Blast has no turns at all — everybody places at their own pace.
+     * The only clock in the game is the race deadline, and it is ONE absolute
+     * timestamp fixed at `init`.
+     *
+     * This branch is re-entered after every placement (and every bot move),
+     * so it must re-derive the remaining time from that fixed deadline rather
+     * than start a fresh window. Arming a new N-second timer here would mean
+     * the race never ends as long as anyone keeps playing — which is exactly
+     * the population that would still be playing.
+     *
+     * Solo returns null and gets no timer: an endless game has nothing to
+     * count down, and a heartbeat firing at an idle player is pure battery.
+     */
+    if (room.engine instanceof BlockBlastEngine) {
+      const deadline = room.engine.getRaceDeadline();
+      if (deadline == null || room.engine.isOver()) return;
+      room.turnTimer = setTimeout(
+        () => this.onTurnTimeout(room),
+        Math.max(0, deadline - Date.now()),
+      );
+      return;
+    }
     if (room.engine instanceof BingoEngine) {
       const engine = room.engine;
       const seconds = engine.getTurnTimerSeconds();
@@ -1631,6 +1671,13 @@ export class RoomManager {
     // Before the engine resolves this turn for them, note WHO let it lapse —
     // afterwards the engine has moved on and that information is gone.
     this.recordTurnTimeout(room);
+    // Full time on the race. Nobody timed out — the match simply ended.
+    if (room.engine instanceof BlockBlastEngine) {
+      const engine = room.engine;
+      engine.finishOnDeadline();
+      this.afterAutoMove(room, engine.isOver());
+      return;
+    }
     if (room.engine instanceof RpsEngine) {
       const engine = room.engine;
       if (engine.isOver()) return;
@@ -2451,6 +2498,7 @@ export class RoomManager {
       if (engine instanceof ChessEngine) engine.setOptions(room.chessOptions);
       if (engine instanceof SnakeEngine) engine.setOptions(room.snakeOptions);
       if (engine instanceof VyomaYudhEngine) engine.setOptions(room.vyomaYudhOptions);
+      if (engine instanceof BlockBlastEngine) engine.setOptions(room.blockBlastOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

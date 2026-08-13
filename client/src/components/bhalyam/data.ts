@@ -25,6 +25,7 @@ export type BhalyamGameSlug =
   | "stargame"
   | "bingo"
   | "chess"
+  | "blockblast"
   // Coming soon — NOT in GameKind. Maintenance tiles only.
   | "namesplaceanimal"
   | "tambola"
@@ -319,6 +320,15 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Classic green LCD matrix. Eat food pellets, grow longer, avoid walls and self-collision.",
     accent: { from: "#65A30D", to: "#365314" }, //  3310 Lime Matrix
+  },
+  {
+    slug: "blockblast",
+    tags: ["solo", "multiplayer"],
+    theme: "Same Deal ⬛",
+    title: "Block Blast",
+    blurb:
+      "Drop blocks, clear lines. Alone it never ends — together everyone gets the exact same pieces and the highest score in three minutes wins.",
+    accent: { from: "#7C3AED", to: "#2E1065" }, // Lacquer Violet
   },
   {
     slug: "vyomayudh",
