@@ -79,25 +79,6 @@ interface Segment {
   label: string;
 }
 
-/**
- * Edge-fade mask for the scrolling track.
- *
- * 28px is wide enough to read as a fade rather than a clipped edge, and
- * narrow enough that it never swallows a whole label. Returns an empty style
- * when nothing overflows, so a track that fits shows no fade at all.
- */
-function maskFor(edges: { left: boolean; right: boolean }): React.CSSProperties {
-  if (!edges.left && !edges.right) return {};
-  const stops = [
-    edges.left ? "transparent 0, #000 28px" : "#000 0",
-    edges.right ? "#000 calc(100% - 28px), transparent 100%" : "#000 100%",
-  ].join(", ");
-  const image = `linear-gradient(to right, ${stops})`;
-  // Both spellings: WebkitMaskImage is still required on Safari/iOS, which
-  // is most of the audience reporting this.
-  return { maskImage: image, WebkitMaskImage: image };
-}
-
 export default function CategoryFilter({
   value,
   onChange,
@@ -120,7 +101,7 @@ export default function CategoryFilter({
    * believing Board & Cards was the last category, and the two behind it
    * were effectively unshipped.
    *
-   * Measured rather than assumed. A static fade on the right is a lie the
+   * Measured rather than assumed. A static cue on the right is a lie the
    * moment you reach the end, and the count that fits changes with font
    * scaling and locale — the labels are translated now, so "Board & Cards"
    * is not the same width in Telugu as in English.
@@ -215,33 +196,26 @@ export default function CategoryFilter({
   return (
     <div className={className}>
       <div
-        role="radiogroup"
-        aria-label="Filter games"
-        className="flex w-full rounded-full p-1
+        /* `relative` so the edge cues can be positioned against the track.
+           They are SIBLINGS of the radiogroup's buttons, never children:
+           anything inside `role="radiogroup"` that is not a `radio` breaks
+           the roving-tabindex contract this control depends on. */
+        className="relative flex w-full rounded-full p-1
                    bg-[#FCF8EF] border-2 border-[#E8D8BE]
                    shadow-[0_2px_8px_-4px_rgba(74,44,22,0.35)]"
       >
+        <EdgeCue side="left" show={edges.left} />
+        <EdgeCue side="right" show={edges.right} />
+        <div role="radiogroup" aria-label="Filter games" className="flex w-full">
         {/* The track scrolls rather than wrapping: six labels do not fit on a
             375px phone, and a segmented control that breaks onto two lines
             stops reading as one control. */}
         <div
           ref={trackRef}
           className="flex w-full items-stretch gap-0.5 overflow-x-auto
-                     sm:overflow-visible sm:[mask-image:none]
+                     sm:overflow-visible
                      scroll-smooth overscroll-x-contain
                      [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          /* The affordance: the segment at a scrollable edge dissolves
-             instead of ending flush, which reads as "this continues" the way
-             a hard edge reads as "this is the end". Applied per-edge from
-             measured scroll state, so it never claims content that is not
-             there. Cleared from `sm` up, where every segment fits.
-
-             Chosen over the obvious chevron button for two reasons: a button
-             inside `role="radiogroup"` that is not a `radio` breaks the
-             roving-tabindex contract this control depends on, and a control
-             that must be TAPPED to reveal content is a worse answer than one
-             that shows the content is there. */
-          style={maskFor(edges)}
         >
           {segments.map((seg, i) => {
             const active = seg.id === value.category;
@@ -298,8 +272,58 @@ export default function CategoryFilter({
               </button>
             );
           })}
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The "there is more" cue at a scrollable edge.
+ *
+ * A mask-only fade shipped first and was invisible in practice: inactive
+ * segments are bare dark text on the track's OWN cream, so fading them
+ * toward transparent over that same cream only made the text a little
+ * lighter. Nothing with a distinct shape was dissolving, so nothing read as
+ * continuing. Correct behaviour, useless perception.
+ *
+ * Drawn as a real element instead: an opaque-to-transparent veil in the
+ * track colour, with a chevron on it. The veil gives labels something solid
+ * to pass UNDER, which is what makes a row read as scrollable; the chevron
+ * names the direction for anyone who does not read the gradient.
+ *
+ * `pointer-events-none` throughout — the affordance must never eat a tap
+ * meant for the segment beneath it, and the segments remain the only
+ * interactive things in the control.
+ */
+function EdgeCue({ side, show }: { side: "left" | "right"; show: boolean }) {
+  const isRight = side === "right";
+  return (
+    <div
+      aria-hidden
+      className={`pointer-events-none absolute inset-y-1 z-10 flex w-12 items-center
+                  transition-opacity duration-200 sm:hidden
+                  ${isRight ? "right-1 justify-end rounded-r-full" : "left-1 justify-start rounded-l-full"}
+                  ${show ? "opacity-100" : "opacity-0"}`}
+      style={{
+        background: `linear-gradient(to ${isRight ? "right" : "left"}, rgba(252,248,239,0) 0%, #FCF8EF 62%)`,
+      }}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width={16}
+        height={16}
+        fill="none"
+        stroke="#7A5C3A"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={isRight ? "mr-0.5" : "ml-0.5"}
+        style={{ transform: isRight ? undefined : "rotate(180deg)" }}
+      >
+        <path d="M9 6l6 6-6 6" />
+      </svg>
     </div>
   );
 }
