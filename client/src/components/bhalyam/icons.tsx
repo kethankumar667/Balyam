@@ -222,6 +222,18 @@ export const BingoGlyph = makeIcon(
   </>,
 );
 
+export const BlockBlastGlyph = makeIcon(
+  <>
+    {/* The board, with one row about to go. Drawn as "a piece and a gap it
+        fits" rather than a generic grid — the icon states the verb. */}
+    <rect x="3" y="3" width="18" height="18" rx="2.5" />
+    <rect x="6" y="6" width="4" height="4" rx="1" fill="currentColor" stroke="none" />
+    <rect x="11" y="6" width="4" height="4" rx="1" fill="currentColor" stroke="none" />
+    <rect x="6" y="11" width="4" height="4" rx="1" fill="currentColor" stroke="none" />
+    <rect x="16" y="16" width="2.4" height="2.4" rx="0.7" fill="currentColor" stroke="none" />
+  </>,
+);
+
 // Back-compat re-export: existing imports keep working while the home
 // header now uses GamepadGlyph for clearer "games" reading.
 export const JoystickGlyph = GamepadGlyph;

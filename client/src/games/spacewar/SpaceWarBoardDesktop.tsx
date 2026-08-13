@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import type { SpaceWarPublicState } from "@shared/types";
-import { renderSpaceWarCanvas } from "./render";
+import { useSpaceWarCanvas } from "./useSpaceWarCanvas";
 
 interface SpaceWarBoardDesktopProps {
   state: SpaceWarPublicState;
@@ -13,7 +13,6 @@ export default function SpaceWarBoardDesktop({
   selfId,
   onMove,
 }: SpaceWarBoardDesktopProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Keyboard Event Listeners
   useEffect(() => {
@@ -46,15 +45,12 @@ export default function SpaceWarBoardDesktop({
     };
   }, [onMove]);
 
-  // Render loop on canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    renderSpaceWarCanvas(ctx, state);
-  }, [state]);
+  /**
+   * Landscape canvas on requestAnimationFrame — see the hook. Painting only
+   * when a broadcast arrived capped this at the 30Hz simulation rate and
+   * left every ship and bullet stepping between fixed positions.
+   */
+  const canvasRef = useSpaceWarCanvas(state, "horizontal");
 
   return (
     <div className="flex flex-col lg:flex-row items-start justify-center gap-6 w-full max-w-[1280px] mx-auto p-4 select-none">

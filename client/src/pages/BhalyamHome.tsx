@@ -40,6 +40,7 @@ import {
   GamepadGlyph,
   StarGameGlyph,
   BingoGlyph,
+  BlockBlastGlyph,
 } from "../components/bhalyam/icons";
 
 /**
@@ -80,6 +81,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
   chess: StarGameGlyph,
+  blockblast: BlockBlastGlyph,
   spacewar: StarGameGlyph,
 };
 
@@ -1073,6 +1075,12 @@ export function GameTile({
     roadrash: "/Roadrash Game Tile.png",
     carrom: "/Carrom Game Tile.png",
     chess: "/Chess Game Tile.png",
+    // No painted tile yet. Empty string is the supported "use the glyph
+    // layer" path (see GameTileArt) — a made-up filename would render a
+    // broken image and then silently fall back anyway, one retry later.
+    blockblast: "",
+    // Borrowed from Vyoma Yudh for now. Two different games sharing one
+    // tile is a placeholder, not a decision.
     spacewar: "/Vyomyudh Game Tile.png",
   };
 
