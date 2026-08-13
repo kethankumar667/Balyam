@@ -52,10 +52,15 @@ Now:
    hardcoded Unicode map. Needs real SVG sets (Cburnett + Merida are the standard
    CC-licensed ones). ~36 drawings. Recommend dropping `3d_glass` unless art
    exists — a third named set with no distinct assets just recreates the bug.
-2. **Screenshot button** — `svgToPngBlob` only works on SVG boards. Hand Cricket,
-   Rummy and UNO are HTML/CSS, so the button silently falls through to
-   `window.print()`. Fix: `html-to-image` (~10KB), fixes all three at once.
-   Dependency is pre-approved.
+2. ~~**Screenshot button**~~ — **DONE.** `svgToPngBlob` only handled SVG boards,
+   so HTML/CSS boards fell through to `window.print()`. SVG boards (Ludo, Carrom,
+   Chess) keep vector rasterisation; the rest capture the DOM via `html-to-image`.
+   Not yet confirmed with a real tap — DOM capture is sensitive to cross-origin
+   images and un-inlinable CSS, so one manual check is worth doing.
+
+   **UNO is deliberately out of scope for board preview / screenshot.** It has no
+   `BoardPreviewPill` and no `previewMode`, and that is intentional — do not
+   "fix" it by adding them.
 3. **Snake movement glitches** — the `onPointerDown` fix may have resolved this.
    **Re-test on a real phone before investigating further.** If it persists, we
    need to know which: stutter (rendering), lag (network), or the snake jumping
