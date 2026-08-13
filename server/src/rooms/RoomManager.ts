@@ -33,6 +33,7 @@ import type {
   VyomaYudhOptions,
   CarromOptions,
   ChessOptions,
+  SpaceWarOptions,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -53,6 +54,7 @@ import {
   DEFAULT_CHESS_OPTIONS,
   DEFAULT_SNAKE_OPTIONS,
   DEFAULT_VYOMAYUDH_OPTIONS,
+  DEFAULT_SPACEWAR_OPTIONS,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
@@ -81,6 +83,7 @@ import { CarromEngine } from "../games/carrom/CarromEngine.js";
 import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
 import { VyomaYudhEngine } from "../games/vyomayudh/VyomaYudhEngine.js";
+import { SpaceWarEngine } from "../games/spacewar/SpaceWarEngine.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -170,6 +173,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   // player list read "Striker · 9 left" next to a striker the player aims.
   carrom: ["Breaker", "Rebound", "Cutshot", "Thumbi"],
   roadrash: ["Rider", "Speedy", "Biker", "Racer"],
+  spacewar: ["Ace", "Blaster", "Cosmo", "Defender"],
 };
 
 function pickBotName(game: GameKind, idx: number): string {
@@ -248,6 +252,7 @@ interface Room {
   chessOptions: ChessOptions;
   snakeOptions: SnakeOptions;
   vyomaYudhOptions: VyomaYudhOptions;
+  spaceWarOptions: SpaceWarOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -355,7 +360,8 @@ export class RoomManager {
     snakeOptions?: Partial<SnakeOptions>,
     vyomaYudhOptions?: Partial<VyomaYudhOptions>,
     carromOptions?: Partial<CarromOptions>,
-    chessOptions?: Partial<ChessOptions>
+    chessOptions?: Partial<ChessOptions>,
+    spaceWarOptions?: Partial<SpaceWarOptions>
   ): { code: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -406,6 +412,7 @@ export class RoomManager {
       chessOptions: { ...DEFAULT_CHESS_OPTIONS, ...(chessOptions ?? {}) },
       snakeOptions: { ...DEFAULT_SNAKE_OPTIONS, ...(snakeOptions ?? {}) },
       vyomaYudhOptions: { ...DEFAULT_VYOMAYUDH_OPTIONS, ...(vyomaYudhOptions ?? {}) },
+      spaceWarOptions: { ...DEFAULT_SPACEWAR_OPTIONS, ...(spaceWarOptions ?? {}) },
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -561,7 +568,7 @@ export class RoomManager {
     if (!room || !player) return;
     // Games with no bot AI — bots would be dead/frozen seats.
     const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-      "samethalu", "telugucinemalu", "snake", "vyomayudh", "roadrash",
+      "samethalu", "telugucinemalu", "snake", "vyomayudh", "roadrash", "spacewar",
     ]);
     if (NO_BOT_GAMES.has(room.game)) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Bots are not available for this game");
@@ -864,6 +871,9 @@ export class RoomManager {
       }
       if (engine instanceof VyomaYudhEngine) {
         engine.setOptions(room.vyomaYudhOptions);
+      }
+      if (engine instanceof SpaceWarEngine) {
+        engine.setOptions(room.spaceWarOptions);
       }
       engine.init(playersList);
       room.engine = engine;
@@ -2451,6 +2461,7 @@ export class RoomManager {
       if (engine instanceof ChessEngine) engine.setOptions(room.chessOptions);
       if (engine instanceof SnakeEngine) engine.setOptions(room.snakeOptions);
       if (engine instanceof VyomaYudhEngine) engine.setOptions(room.vyomaYudhOptions);
+      if (engine instanceof SpaceWarEngine) engine.setOptions(room.spaceWarOptions);
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";

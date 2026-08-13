@@ -18,6 +18,7 @@ import { SnakeEngine } from "./snake/SnakeEngine.js";
 import { VyomaYudhEngine } from "./vyomayudh/VyomaYudhEngine.js";
 import { CarromEngine } from "./carrom/CarromEngine.js";
 import { ChessEngine } from "./chess/ChessEngine.js";
+import { SpaceWarEngine } from "./spacewar/SpaceWarEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
   switch (kind) {
@@ -57,6 +58,8 @@ export function createEngine(kind: GameKind): GameEngine {
       return new CarromEngine();
     case "chess":
       return new ChessEngine();
+    case "spacewar":
+      return new SpaceWarEngine();
     default:
       throw new Error(`Game not implemented yet: ${kind}`);
   }
@@ -82,6 +85,7 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     vyomayudh: { min: 1, max: 1 },
     carrom: { min: 2, max: 2 },
     chess: { min: 2, max: 2 },
+    spacewar: { min: 1, max: 1 },
   };
 
   return limits[kind] ?? { min: 2, max: 4 };

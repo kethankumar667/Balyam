@@ -25,6 +25,7 @@ export type BhalyamGameSlug =
   | "stargame"
   | "bingo"
   | "chess"
+  | "spacewar"
   // Coming soon — NOT in GameKind. Maintenance tiles only.
   | "namesplaceanimal"
   | "tambola"
@@ -357,5 +358,14 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Powder on the board, thumb cocked, queen in the middle. Strike, rebound and cover her before your cousin does.",
     accent: { from: "#D97706", to: "#451A03" }, // Carrom Teak Wood & Gold
+  },
+  {
+    slug: "spacewar",
+    tags: ["solo"],
+    theme: "Nokia 3310 Retro 🚀",
+    title: "Space War",
+    blurb:
+      "The legendary Nokia 3310 retro space shooter! Pilot your starship, fire laser beams and homing missiles, collect power-ups, and defeat level bosses.",
+    accent: { from: "#059669", to: "#064E3B" }, // Nokia LCD Phosphor Green & Dark Emerald
   },
 ];
