@@ -25,9 +25,8 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
   const handleTurn = useCallback(
     (dir: string) => {
       onMove("turn", { dir });
-      haptics.turn();
     },
-    [onMove, haptics],
+    [onMove],
   );
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -49,6 +48,15 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
   const chrome = SNAKE_THEME_CHROME[activeTheme];
   const onEat = useCallback(() => haptics.subtle(), [haptics]);
   const onDeath = useCallback(() => haptics.win(), [haptics]);
+
+  // Haptic feedback on game over finish
+  const prevOverRef = useRef(false);
+  useEffect(() => {
+    if (state.isOver && !prevOverRef.current) {
+      haptics.win();
+    }
+    prevOverRef.current = !!state.isOver;
+  }, [state.isOver, haptics]);
 
   const me = state.players.find((p) => p.id === selfId);
 

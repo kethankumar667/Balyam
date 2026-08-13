@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { SpaceWarPublicState } from "@shared/types";
 import { useSpaceWarCanvas } from "./useSpaceWarCanvas";
 import { useHaptics } from "../../hooks/useHaptics";
@@ -14,22 +14,31 @@ export default function SpaceWarBoardMobile({
   selfId,
   onMove,
 }: SpaceWarBoardMobileProps) {
-  const { subtle } = useHaptics();
+  const { win } = useHaptics();
   const [isMuted, setIsMuted] = useState(false);
 
   /**
    * Portrait canvas, driven on requestAnimationFrame.
-   *
-   * This used to be `useEffect(() => render(...), [state])`, which painted
-   * only when a broadcast landed — so the frame rate WAS the packet rate
-   * (30fps), the canvas work happened inside a React commit, and nothing
-   * smoothed the gap between ticks. The hook owns all of that now, plus
-   * sizing the buffer to the pixels the phone actually has.
    */
   const canvasRef = useSpaceWarCanvas(state, "vertical");
 
+  // Fire vibration when player ship gets killed (lives decrease) or game is over
+  const prevLivesRef = useRef(state.player?.lives);
+  const prevOverRef = useRef(state.isOver);
+
+  useEffect(() => {
+    const currentLives = state.player?.lives;
+    if (
+      (prevLivesRef.current !== undefined && currentLives < prevLivesRef.current) ||
+      (state.isOver && !prevOverRef.current)
+    ) {
+      win();
+    }
+    prevLivesRef.current = currentLives;
+    prevOverRef.current = !!state.isOver;
+  }, [state.player?.lives, state.isOver, win]);
+
   const handlePointerDown = (key: string) => {
-    subtle();
     onMove("keydown", key);
   };
 
@@ -151,7 +160,6 @@ export default function SpaceWarBoardMobile({
                 <span className="text-[8px] font-extrabold text-[#8e9ab5] tracking-tighter uppercase">SPECIAL</span>
                 <button
                   onPointerDown={() => {
-                    subtle();
                     onMove("special");
                   }}
                   className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-b from-[#ffe066] via-[#ffcc00] to-[#cc9900] border-2 border-[#fff0b3] shadow-[0_3px_0_#806000] active:translate-y-0.5 flex items-center justify-center text-xl shadow-lg"
@@ -166,7 +174,6 @@ export default function SpaceWarBoardMobile({
             <div className="col-span-5 flex items-center justify-center h-full">
               <button
                 onPointerDown={() => {
-                  subtle();
                   onMove("fire");
                 }}
                 /* sm:w-24, not sm:w-26 — `26` is not on Tailwind's scale, so
