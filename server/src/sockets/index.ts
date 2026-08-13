@@ -68,7 +68,6 @@ export function registerSocketHandlers(
         payload.snakeOptions,
         payload.vyomaYudhOptions,
         payload.carromOptions,
-        payload.bounceOptions,
         payload.chessOptions
       );
       ack({ ok: true, code, playerId });
