@@ -78,7 +78,6 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   stargame: StarGameGlyph,
   bingo: BingoGlyph,
   snake: StarGameGlyph,
-  vyomayudh: StarGameGlyph,
   bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
   carrom: StarGameGlyph,
@@ -96,7 +95,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
-  "namesplaceanimal", "tambola", "samethalu", "telugucinemalu", "snake", "vyomayudh", "carrom", "roadrash", "chess",
+  "namesplaceanimal", "tambola", "samethalu", "telugucinemalu", "snake", "carrom", "roadrash", "chess",
   "blockblast", "spacewar",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
@@ -338,7 +337,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const isSolo = game ? ["samethalu", "telugucinemalu", "vyomayudh", "snake", "roadrash", "spacewar"].includes(game) : false;
+  const isSolo = game ? ["samethalu", "telugucinemalu", "snake", "roadrash", "spacewar"].includes(game) : false;
 
   // Reset transient state every time a new game opens.
   useEffect(() => {
@@ -476,7 +475,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             return;
           }
           if (res.playerId) setPlayerId(res.playerId);
-          if (game && ["samethalu", "telugucinemalu", "vyomayudh", "snake", "roadrash", "spacewar"].includes(game)) {
+          if (game && ["samethalu", "telugucinemalu", "snake", "roadrash", "spacewar"].includes(game)) {
             const socket = getSocket();
             socket.emit("room:setReady", true);
             socket.emit("room:startGame");
