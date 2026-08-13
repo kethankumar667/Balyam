@@ -54,6 +54,7 @@ export default function RoomCodeShare({
     carrom: "Carrom",
     chess: "Chess Grandmaster",
     blockblast: "Block Blast",
+    spacewar: "Space War",
   };
   /**
    * Body of the share message — keeps the URL OUT of the text. The OS

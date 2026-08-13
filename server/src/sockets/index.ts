@@ -69,7 +69,8 @@ export function registerSocketHandlers(
         payload.vyomaYudhOptions,
         payload.carromOptions,
         payload.chessOptions,
-        payload.blockBlastOptions
+        payload.blockBlastOptions,
+        payload.spaceWarOptions
       );
       ack({ ok: true, code, playerId });
     } catch (err) {
