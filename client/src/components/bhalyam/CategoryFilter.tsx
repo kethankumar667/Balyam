@@ -145,6 +145,23 @@ export default function CategoryFilter({
   );
 
   /**
+   * Scroll the track when the edge cue is tapped.
+   *
+   * It looked like a button, so people tapped it — and it was
+   * `pointer-events-none`, so nothing happened. An affordance that invites a
+   * tap and then ignores it is worse than no affordance at all.
+   *
+   * Moves by most of a viewport rather than a fixed pixel count, so it works
+   * the same whether two labels are off-screen or five, and in any language.
+   */
+  const nudge = useCallback((side: "left" | "right") => {
+    const el = trackRef.current;
+    if (!el) return;
+    const step = Math.max(80, el.clientWidth * 0.7);
+    el.scrollBy({ left: side === "right" ? step : -step, behavior: "smooth" });
+  }, []);
+
+  /**
    * Keep the chosen segment on screen.
    *
    * Tapping a half-visible segment used to select it and leave it half
@@ -204,8 +221,8 @@ export default function CategoryFilter({
                    bg-[#FCF8EF] border-2 border-[#E8D8BE]
                    shadow-[0_2px_8px_-4px_rgba(74,44,22,0.35)]"
       >
-        <EdgeCue side="left" show={edges.left} />
-        <EdgeCue side="right" show={edges.right} />
+        <EdgeCue side="left" show={edges.left} onNudge={nudge} />
+        <EdgeCue side="right" show={edges.right} onNudge={nudge} />
         <div role="radiogroup" aria-label="Filter games" className="flex w-full">
         {/* The track scrolls rather than wrapping: six labels do not fit on a
             375px phone, and a segmented control that breaks onto two lines
@@ -214,7 +231,7 @@ export default function CategoryFilter({
           ref={trackRef}
           className="flex w-full items-stretch gap-0.5 overflow-x-auto
                      sm:overflow-visible
-                     scroll-smooth overscroll-x-contain
+                     scroll-smooth overscroll-x-contain scroll-px-12
                      [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {segments.map((seg, i) => {
@@ -297,15 +314,30 @@ export default function CategoryFilter({
  * meant for the segment beneath it, and the segments remain the only
  * interactive things in the control.
  */
-function EdgeCue({ side, show }: { side: "left" | "right"; show: boolean }) {
+function EdgeCue({
+  side,
+  show,
+  onNudge,
+}: {
+  side: "left" | "right";
+  show: boolean;
+  onNudge: (side: "left" | "right") => void;
+}) {
   const isRight = side === "right";
   return (
-    <div
+    <button
+      type="button"
+      /* Pointer-only convenience: keyboard users already move through the
+         group with arrow keys, so announcing a second control would just be
+         noise. Hidden from AT, unreachable by Tab, fully tappable. */
       aria-hidden
-      className={`pointer-events-none absolute inset-y-1 z-10 flex w-12 items-center
+      tabIndex={-1}
+      disabled={!show}
+      onClick={() => onNudge(side)}
+      className={`absolute inset-y-1 z-10 flex w-12 items-center
                   transition-opacity duration-200 sm:hidden
                   ${isRight ? "right-1 justify-end rounded-r-full" : "left-1 justify-start rounded-l-full"}
-                  ${show ? "opacity-100" : "opacity-0"}`}
+                  ${show ? "opacity-100" : "pointer-events-none opacity-0"}`}
       style={{
         background: `linear-gradient(to ${isRight ? "right" : "left"}, rgba(252,248,239,0) 0%, #FCF8EF 62%)`,
       }}
@@ -324,6 +356,6 @@ function EdgeCue({ side, show }: { side: "left" | "right"; show: boolean }) {
       >
         <path d="M9 6l6 6-6 6" />
       </svg>
-    </div>
+    </button>
   );
 }
