@@ -626,7 +626,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     <div
       aria-hidden={false}
       className="fixed inset-0 z-50 flex items-end md:items-center justify-center
-                 bg-bhalyam-wood-dark/70 backdrop-blur-sm animate-fade-in"
+                 bg-black/60 dark:bg-black/80 backdrop-blur-sm dark:backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
       <div
@@ -634,24 +634,24 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         aria-modal="true"
         aria-labelledby="game-room-sheet-title"
         onClick={(e) => e.stopPropagation()}
-        className="auth-shell bhalyam-font relative w-full md:max-w-md
+        className="bhalyam-font custom-scrollbar relative w-full max-w-lg md:max-w-3xl lg:max-w-4xl
                    max-h-[92dvh] overflow-y-auto
-                   bg-bhalyam-cream-soft text-bhalyam-wood-dark
-                   border-2 border-bhalyam-cream-edge/70
+                   bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
+                   border-2 border-[#EEDBCA] dark:border-slate-800
                    rounded-t-3xl md:rounded-3xl
                    shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
-                   md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)]"
+                   md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {/* Pull handle (mobile bottom-sheet only) */}
         <div className="md:hidden flex justify-center pt-2.5">
-          <span aria-hidden className="w-10 h-1.5 rounded-full bg-bhalyam-wood/30" />
+          <span aria-hidden className="w-10 h-1.5 rounded-full bg-[#EEDBCA] dark:bg-slate-700" />
         </div>
 
         {/* Header */}
-        <header className="flex items-center gap-3 p-4 pb-3 border-b-2 border-bhalyam-cream-edge/50">
+        <header className="flex items-center gap-3 p-4 md:px-6 md:py-4 border-b-2 border-[#EEDBCA]/60 dark:border-slate-800">
           <span
-            className="inline-flex w-12 h-12 rounded-2xl items-center justify-center text-bhalyam-cream-soft flex-shrink-0"
+            className="inline-flex w-12 h-12 rounded-2xl items-center justify-center text-white flex-shrink-0 shadow-md"
             style={{
               background: `linear-gradient(135deg, ${getGameAccent(meta).from}, ${getGameAccent(meta).to})`,
               boxShadow: `0 6px 14px -4px ${getGameAccent(meta).to}66`,
@@ -663,16 +663,16 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           <div className="min-w-0 flex-1">
             <h2
               id="game-room-sheet-title"
-              className="font-bold text-bhalyam-wood-dark text-lg leading-tight truncate"
+              className="font-bold text-[#2B3550] dark:text-slate-100 text-lg md:text-xl leading-tight truncate"
             >
               {meta.title}
             </h2>
             {meta.teluguTitle ? (
-              <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-[#8A6D4B] dark:text-slate-400">
                 {meta.teluguTitle} · {isSolo ? "Solo Play" : "Quick Match"}
               </div>
             ) : (
-              <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-[#8A6D4B] dark:text-slate-400">
                 {isSolo ? "Solo Play" : "Quick Match"}
               </div>
             )}
@@ -682,245 +682,209 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             onClick={onClose}
             aria-label="Close"
             className="w-10 h-10 rounded-full inline-flex items-center justify-center
-                       bg-bhalyam-cream-warm text-bhalyam-wood-dark
-                       hover:bg-bhalyam-cream-edge active:scale-95 transition-all duration-150"
+                       bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200
+                       hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 transition-all duration-150 cursor-pointer"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
         </header>
 
-        {/* Body */}
-        <div className="p-4 space-y-4">
-          {/* Name input */}
-          <Field label="Your name" htmlFor="grs-name" error={nameError}>
-            <input
-              id="grs-name"
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (nameError) setNameError(null);
-              }}
-              placeholder="e.g. Sri Krishna"
-              maxLength={20}
-              aria-invalid={nameError ? true : undefined}
-              aria-describedby={nameError ? "grs-name-error" : undefined}
-              className={`w-full min-h-[44px] px-3 rounded-xl
-                         bg-bhalyam-cream-soft border-2
-                         text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
-                         font-semibold
-                         focus:outline-none focus:ring-2
-                         transition-all duration-200
-                         ${nameError
-                           ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
-                           : "border-bhalyam-cream-edge/80 focus:border-bhalyam-gold-dark focus:ring-bhalyam-gold/40"}`}
-            />
-          </Field>
-
-          {/* Pass & Play toggle — open-information games only (the board
-              is fully visible to everyone, so screen-sharing is fair).
-              Word Building qualifies; Rummy/UNO/RPS/HC don't. */}
-          {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes") && (
-            <PassPlayBlock
-              on={passPlay}
-              onToggle={() => setPassPlay((v) => !v)}
-              names={localNames}
-              onNamesChange={setLocalNames}
-              maxExtraSeats={
-                game === "ludo"
-                  ? 3
-                  : game === "wordbuilding" || game === "dotsboxes"
-                  ? 3
-                  : 9
-              }
-            />
-          )}
-
-          {/* Per-game options */}
-          {game === "snl" && (
-            <Field label="Difficulty">
-              <OptionGrid
-                items={DIFFICULTIES}
-                value={difficulty}
-                onChange={setDifficulty}
-                cols={2}
+        {/* Body: Responsive 2-Column on Desktop (md:), Stack on Mobile */}
+        <div className="p-4 md:p-6 md:grid md:grid-cols-12 md:gap-6 space-y-4 md:space-y-0">
+          
+          {/* Left Column: Name, Pass & Play, Core Rules & Customization */}
+          <div className="md:col-span-7 space-y-4">
+            {/* Name input */}
+            <Field label="Your name" htmlFor="grs-name" error={nameError}>
+              <input
+                id="grs-name"
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (nameError) setNameError(null);
+                }}
+                placeholder="e.g. Sri Krishna"
+                maxLength={20}
+                aria-invalid={nameError ? true : undefined}
+                aria-describedby={nameError ? "grs-name-error" : undefined}
+                className={`w-full min-h-[46px] px-3.5 rounded-2xl
+                           bg-[#FFF9EE] dark:bg-[#0B0F19] border-2
+                           text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
+                           font-bold text-sm
+                           focus:outline-none focus:ring-4
+                           transition-all duration-200
+                           ${nameError
+                             ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
+                             : "border-[#EEDBCA] dark:border-slate-700/80 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
               />
             </Field>
-          )}
 
-          {game === "rummy" && (
-            <Field label="Match mode">
-              <OptionGrid
-                items={RUMMY_MODES}
-                value={rummyMode}
-                onChange={setRummyMode}
-                cols={1}
+            {/* Pass & Play toggle */}
+            {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes") && (
+              <PassPlayBlock
+                on={passPlay}
+                onToggle={() => setPassPlay((v) => !v)}
+                names={localNames}
+                onNamesChange={setLocalNames}
+                maxExtraSeats={
+                  game === "ludo"
+                    ? 3
+                    : game === "wordbuilding" || game === "dotsboxes"
+                    ? 3
+                    : 9
+                }
               />
-            </Field>
-          )}
+            )}
 
-          {game === "uno" && (
-            <>
-              <Field label="Turn timer">
+            {/* Per-game Primary Options */}
+            {game === "snl" && (
+              <Field label="Difficulty">
                 <OptionGrid
-                  items={UNO_TURN_TIMERS}
-                  value={unoTurnTimer}
-                  onChange={setUnoTurnTimer}
+                  items={DIFFICULTIES}
+                  value={difficulty}
+                  onChange={setDifficulty}
                   cols={2}
                 />
               </Field>
-              <Field label="Match length">
+            )}
+
+            {game === "rummy" && (
+              <Field label="Match mode">
                 <OptionGrid
-                  items={UNO_MATCH_LENGTHS}
-                  value={unoMatchLength}
-                  onChange={setUnoMatchLength}
-                  cols={2}
+                  items={RUMMY_MODES}
+                  value={rummyMode}
+                  onChange={setRummyMode}
+                  cols={1}
                 />
               </Field>
-              <Field label="House rules (optional)">
-                <UnoHouseRuleGrid flags={unoHouseRules} onToggle={(id) =>
-                  setUnoHouseRules((prev) => ({ ...prev, [id]: !prev[id] }))
-                } />
-              </Field>
-            </>
-          )}
+            )}
 
-          {game === "handcricket" && (
-            <>
-              <Field label="Mode">
-                <OptionGrid
-                  items={HC_MODES}
-                  value={hcMode}
-                  onChange={setHcMode}
-                  cols={3}
-                  disabledIds={["tournament"]}
-                />
-              </Field>
-
-              {hcMode !== "galli" && (
-                <Field label="Format">
+            {game === "uno" && (
+              <>
+                <Field label="Match length">
                   <OptionGrid
-                    items={HC_FORMATS}
-                    value={hcFormat}
-                    onChange={setHcFormat}
+                    items={UNO_MATCH_LENGTHS}
+                    value={unoMatchLength}
+                    onChange={setUnoMatchLength}
+                    cols={2}
+                  />
+                </Field>
+                <Field label="House rules (optional)">
+                  <UnoHouseRuleGrid flags={unoHouseRules} onToggle={(id) =>
+                    setUnoHouseRules((prev) => ({ ...prev, [id]: !prev[id] }))
+                  } />
+                </Field>
+              </>
+            )}
+
+            {game === "handcricket" && (
+              <>
+                <Field label="Mode">
+                  <OptionGrid
+                    items={HC_MODES}
+                    value={hcMode}
+                    onChange={setHcMode}
+                    cols={3}
+                    disabledIds={["tournament"]}
+                  />
+                </Field>
+
+                {hcMode !== "galli" && (
+                  <Field label="Format">
+                    <OptionGrid
+                      items={HC_FORMATS}
+                      value={hcFormat}
+                      onChange={setHcFormat}
+                      cols={3}
+                    />
+                  </Field>
+                )}
+
+                {hcMode === "galli" && (
+                  <Field label="Overs per innings">
+                    <div className="rounded-2xl p-3 bg-amber-500/10 border-2 border-amber-500/30">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-widest">
+                          Street cricket
+                        </span>
+                        <span className="text-lg font-black tabular-nums text-amber-700 dark:text-amber-300">
+                          {hcGalliOvers}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={HC_GALLI_MIN_OVERS}
+                        max={HC_GALLI_MAX_OVERS}
+                        value={hcGalliOvers}
+                        onChange={(e) => setHcGalliOvers(Number(e.target.value))}
+                        className="w-full accent-amber-500"
+                      />
+                      <div className="flex justify-between text-[10px] text-[#8A6D4B] dark:text-slate-400 mt-1 font-semibold">
+                        <span>{HC_GALLI_MIN_OVERS}</span>
+                        <span>10</span>
+                        <span>{HC_GALLI_MAX_OVERS}</span>
+                      </div>
+                    </div>
+                  </Field>
+                )}
+              </>
+            )}
+
+            {game === "wordbuilding" && (
+              <>
+                <Field label="Dictionary">
+                  <OptionGrid
+                    items={WB_DICT_MODES}
+                    value={wbDictMode}
+                    onChange={setWbDictMode}
+                    cols={2}
+                  />
+                </Field>
+                <Field label="Board size">
+                  <OptionGrid
+                    items={WB_BOARD_SIZES}
+                    value={String(wbBoardSize) as "8" | "10" | "15"}
+                    onChange={(v) => setWbBoardSize(Number(v) as 8 | 10 | 15)}
                     cols={3}
                   />
                 </Field>
-              )}
+              </>
+            )}
 
-              {hcMode === "galli" && (
-                <Field label="Overs per innings">
-                  <div className="rounded-xl p-3 bg-bhalyam-gold/15 border-2 border-bhalyam-gold/40">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[11px] font-bold text-bhalyam-gold-ink uppercase tracking-widest">
-                        Street cricket
-                      </span>
-                      <span className="text-lg font-black tabular-nums text-bhalyam-gold-ink">
-                        {hcGalliOvers}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={HC_GALLI_MIN_OVERS}
-                      max={HC_GALLI_MAX_OVERS}
-                      value={hcGalliOvers}
-                      onChange={(e) => setHcGalliOvers(Number(e.target.value))}
-                      className="w-full accent-bhalyam-gold-dark"
-                    />
-                    <div className="flex justify-between text-[10px] text-bhalyam-wood-dark/70 mt-1">
-                      <span>{HC_GALLI_MIN_OVERS}</span>
-                      <span>10</span>
-                      <span>{HC_GALLI_MAX_OVERS}</span>
-                    </div>
-                    <p className="text-[10px] italic text-bhalyam-wood-dark/70 mt-1">
-                      No composition rules, no bowler quota, no powerplay.
-                    </p>
-                  </div>
-                </Field>
-              )}
-
-              <Field label="Category">
-                <OptionGrid
-                  items={HC_CATEGORIES}
-                  value={hcCategory}
-                  onChange={setHcCategory}
-                  cols={2}
-                />
-              </Field>
-            </>
-          )}
-
-          {game === "wordbuilding" && (
-            <>
-              <Field label="Dictionary">
-                <OptionGrid
-                  items={WB_DICT_MODES}
-                  value={wbDictMode}
-                  onChange={setWbDictMode}
-                  cols={2}
-                />
-              </Field>
+            {game === "dotsboxes" && (
               <Field label="Board size">
                 <OptionGrid
-                  items={WB_BOARD_SIZES}
-                  value={String(wbBoardSize) as "8" | "10" | "15"}
-                  onChange={(v) => setWbBoardSize(Number(v) as 8 | 10 | 15)}
+                  items={DB_BOARD_SIZES}
+                  value={String(dbBoardSize) as "5" | "7" | "9"}
+                  onChange={(v) => setDbBoardSize(Number(v) as 5 | 7 | 9)}
                   cols={3}
                 />
               </Field>
-            </>
-          )}
+            )}
 
-          {game === "dotsboxes" && (
-            <Field label="Board size">
-              <OptionGrid
-                items={DB_BOARD_SIZES}
-                value={String(dbBoardSize) as "5" | "7" | "9"}
-                onChange={(v) => setDbBoardSize(Number(v) as 5 | 7 | 9)}
-                cols={3}
-              />
-            </Field>
-          )}
+            {game === "stargame" && (
+              <>
+                <Field label="Theme">
+                  <OptionGrid
+                    items={STAR_THEMES.map((t) => ({ id: t.id, label: t.label, blurb: t.glyph }))}
+                    value={starTheme}
+                    onChange={setStarTheme}
+                    cols={3}
+                  />
+                </Field>
+                <Field label="Rounds">
+                  <OptionGrid
+                    items={STAR_ROUNDS}
+                    value={String(starRounds)}
+                    onChange={(v) => setStarRounds(Number(v))}
+                    cols={2}
+                  />
+                </Field>
+              </>
+            )}
 
-          {game === "stargame" && (
-            <>
-              <Field label="Theme">
-                <OptionGrid
-                  items={STAR_THEMES.map((t) => ({ id: t.id, label: t.label, blurb: t.glyph }))}
-                  value={starTheme}
-                  onChange={setStarTheme}
-                  cols={3}
-                />
-              </Field>
-              <Field label="Rounds">
-                <OptionGrid
-                  items={STAR_ROUNDS}
-                  value={String(starRounds)}
-                  onChange={(v) => setStarRounds(Number(v))}
-                  cols={2}
-                />
-              </Field>
-              <Field label="Pass speed">
-                <OptionGrid
-                  items={STAR_PASS_SPEEDS}
-                  value={starPassSpeed}
-                  onChange={(v) => setStarPassSpeed(v as "normal" | "fast")}
-                  cols={2}
-                />
-              </Field>
-            </>
-          )}
-
-          {game === "bingo" && (
-            <>
-              <Field label="Call speed">
-                <OptionGrid
-                  items={BINGO_CALL_SPEEDS}
-                  value={bingoCallSpeed}
-                  onChange={setBingoCallSpeed}
-                  cols={3}
-                />
-              </Field>
+            {game === "bingo" && (
               <Field label="Win condition">
                 <OptionGrid
                   items={BINGO_WIN_MODES}
@@ -929,189 +893,278 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   cols={2}
                 />
               </Field>
-            </>
-          )}
+            )}
 
-          {game === "namesplaceanimal" && (
-            <>
-              <Field label="Category Theme Pack">
-                <OptionGrid
-                  items={NPA_THEME_PACKS}
-                  value={npaThemePack}
-                  onChange={(v) => setNpaThemePack(v as "classic" | "popculture" | "foodie" | "school" | "random")}
-                  cols={3}
-                />
-              </Field>
-              <Field label="Difficulty Level">
-                <OptionGrid
-                  items={NPA_DIFFICULTIES}
-                  value={npaDifficulty}
-                  onChange={(v) => setNpaDifficulty(v as "easy" | "medium" | "hard")}
-                  cols={3}
-                />
-              </Field>
-              <Field label="Total Rounds">
-                <OptionGrid
-                  items={NPA_ROUNDS}
-                  value={String(npaRounds)}
-                  onChange={(v) => setNpaRounds(Number(v))}
-                  cols={2}
-                />
-              </Field>
-            </>
-          )}
-
-          {game === "blockblast" && (
-            <Field label="Race Length">
-              <OptionGrid
-                items={BLOCKBLAST_RACE_LENGTHS}
-                value={blockBlastRaceLength}
-                onChange={(v) => setBlockBlastRaceLength(v as "120" | "180" | "300")}
-                cols={3}
-              />
-            </Field>
-          )}
-
-          {game === "snake" && (
-            <>
-              <Field label="Speed Pace">
-                <OptionGrid
-                  items={SNAKE_SPEEDS}
-                  value={snakeSpeed}
-                  onChange={(v) => setSnakeSpeed(v as "140" | "100" | "70")}
-                  cols={3}
-                />
-              </Field>
-              <Field label="Grid Dimensions">
-                <OptionGrid
-                  items={SNAKE_GRID_SIZES}
-                  value={snakeGridSize}
-                  onChange={(v) => setSnakeGridSize(v as "15" | "20" | "25")}
-                  cols={3}
-                />
-              </Field>
-              <Field label="Wall Boundary Rule">
-                <OptionGrid
-                  items={SNAKE_WALL_MODES}
-                  value={snakeWallMode}
-                  onChange={(v) => setSnakeWallMode(v as "solid" | "wrap")}
-                  cols={2}
-                />
-              </Field>
-              <Field label="Visual Arcade Theme">
-                <OptionGrid
-                  items={SNAKE_THEMES}
-                  value={snakeTheme}
-                  onChange={(v) => setSnakeTheme(v as "nokia-monochrome" | "nokia-color" | "neon-modern")}
-                  cols={3}
-                />
-              </Field>
-            </>
-          )}
-
-          {/* Primary CTA — swaps label/handler in Pass & Play mode */}
-          <button
-            type="button"
-            onClick={passPlay ? startPassAndPlay : createRoom}
-            disabled={busy}
-            className="w-full inline-flex items-center justify-center gap-2
-                       min-h-[52px] rounded-2xl
-                       bhalyam-gold-leaf text-bhalyam-wood-dark font-bold text-[15px]
-                       border border-bhalyam-gold-dark
-                       disabled:opacity-50 disabled:cursor-wait
-                       active:scale-[0.98] transition-all duration-150 bhalyam-press-feedback
-                       shadow-[0_6px_14px_-4px_rgba(228,177,40,0.6)]"
-          >
-            {busy ? (
-              "Working…"
-            ) : passPlay ? (
+            {game === "namesplaceanimal" && (
               <>
-                <SparkIcon className="w-5 h-5" />
-                Start Pass &amp; Play
-              </>
-            ) : isSolo ? (
-              <>
-                <SparkIcon className="w-5 h-5" />
-                Start Game
-              </>
-            ) : (
-              <>
-                <SparkIcon className="w-5 h-5" />
-                Create Room
+                <Field label="Category Theme Pack">
+                  <OptionGrid
+                    items={NPA_THEME_PACKS}
+                    value={npaThemePack}
+                    onChange={(v) => setNpaThemePack(v as "classic" | "popculture" | "foodie" | "school" | "random")}
+                    cols={3}
+                  />
+                </Field>
+                <Field label="Total Rounds">
+                  <OptionGrid
+                    items={NPA_ROUNDS}
+                    value={String(npaRounds)}
+                    onChange={(v) => setNpaRounds(Number(v))}
+                    cols={2}
+                  />
+                </Field>
               </>
             )}
-          </button>
 
-          {/* Join divider — hidden in Pass & Play or Solo mode */}
-          {!passPlay && !isSolo && (
-            <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood/60">
-              <span className="flex-1 h-px bg-bhalyam-cream-edge/80" />
-              <span>Or join an existing room</span>
-              <span className="flex-1 h-px bg-bhalyam-cream-edge/80" />
-            </div>
-          )}
+            {game === "blockblast" && (
+              <Field label="Race Length">
+                <OptionGrid
+                  items={BLOCKBLAST_RACE_LENGTHS}
+                  value={blockBlastRaceLength}
+                  onChange={(v) => setBlockBlastRaceLength(v as "120" | "180" | "300")}
+                  cols={3}
+                />
+              </Field>
+            )}
 
-          {/* Join by code — hidden in Pass & Play or Solo mode */}
-          {!passPlay && !isSolo && (
-          <div className="space-y-2.5">
-            <Field label="Room code" htmlFor="grs-code" error={codeError}>
-              <input
-                id="grs-code"
-                type="text"
-                value={joinCode}
-                onChange={(e) => {
-                  setJoinCode(e.target.value.toUpperCase());
-                  if (codeError) setCodeError(null);
-                }}
-                placeholder="ROOM CODE"
-                maxLength={6}
-                aria-invalid={codeError ? true : undefined}
-                aria-describedby={codeError ? "grs-code-error" : undefined}
-                className={`w-full min-h-[44px] px-3 rounded-xl
-                           bg-bhalyam-cream-soft border-2
-                           text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
-                           font-mono font-bold tracking-[0.3em] text-center
-                           focus:outline-none focus:ring-2
-                           transition-all duration-200
-                           ${codeError
-                             ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
-                             : "border-bhalyam-cream-edge/80 focus:border-bhalyam-gold-dark focus:ring-bhalyam-gold/40"}`}
-              />
-            </Field>
-            <button
-              type="button"
-              onClick={joinRoom}
-              disabled={busy}
-              className="w-full inline-flex items-center justify-center gap-2
-                         min-h-[48px] rounded-2xl
-                         bg-bhalyam-wood-dark text-bhalyam-cream-soft font-bold text-[14px]
-                         border border-bhalyam-gold/30
-                         disabled:opacity-50 disabled:cursor-wait
-                         active:scale-[0.98] transition-all duration-150 bhalyam-press-feedback
-                         shadow-[0_4px_10px_-3px_rgba(74,44,22,0.55)]"
-            >
-              {busy ? "Working…" : (
-                <>
-                  Join Room <ArrowRightIcon className="w-4 h-4" />
-                </>
-              )}
-            </button>
+            {game === "snake" && (
+              <>
+                <Field label="Grid Dimensions">
+                  <OptionGrid
+                    items={SNAKE_GRID_SIZES}
+                    value={snakeGridSize}
+                    onChange={(v) => setSnakeGridSize(v as "15" | "20" | "25")}
+                    cols={3}
+                  />
+                </Field>
+                <Field label="Wall Boundary Rule">
+                  <OptionGrid
+                    items={SNAKE_WALL_MODES}
+                    value={snakeWallMode}
+                    onChange={(v) => setSnakeWallMode(v as "solid" | "wrap")}
+                    cols={2}
+                  />
+                </Field>
+                <Field label="Visual Arcade Theme">
+                  <OptionGrid
+                    items={SNAKE_THEMES}
+                    value={snakeTheme}
+                    onChange={(v) => setSnakeTheme(v as "nokia-monochrome" | "nokia-color" | "neon-modern")}
+                    cols={3}
+                  />
+                </Field>
+              </>
+            )}
           </div>
-          )}
 
-          {/* Form-level error fallback — used only when the failure isn't
-              attributable to one input (e.g. server "Failed to create room"). */}
-          {formError && (
-            <div
-              role="alert"
-              aria-live="polite"
-              className="text-sm text-bhalyam-ludo-red font-bold text-center
-                         bg-bhalyam-ludo-red/10 border border-bhalyam-ludo-red/30
-                         rounded-xl p-2"
-            >
-              {formError}
+          {/* Right Column: Secondary Timers, Feature Info Card & Action Buttons */}
+          <div className="md:col-span-5 flex flex-col justify-between space-y-4 md:border-l-2 md:border-[#EEDBCA]/60 md:dark:border-slate-800 md:pl-6">
+            
+            {/* Top section: Secondary Timers & Game Highlights */}
+            <div className="space-y-4">
+              {/* Turn timer for UNO */}
+              {game === "uno" && (
+                <Field label="Turn timer">
+                  <OptionGrid
+                    items={UNO_TURN_TIMERS}
+                    value={unoTurnTimer}
+                    onChange={setUnoTurnTimer}
+                    cols={2}
+                  />
+                </Field>
+              )}
+
+              {/* Category for Hand Cricket */}
+              {game === "handcricket" && (
+                <Field label="Category">
+                  <OptionGrid
+                    items={HC_CATEGORIES}
+                    value={hcCategory}
+                    onChange={setHcCategory}
+                    cols={2}
+                  />
+                </Field>
+              )}
+
+              {/* Pass Speed for Star Game */}
+              {game === "stargame" && (
+                <Field label="Pass speed">
+                  <OptionGrid
+                    items={STAR_PASS_SPEEDS}
+                    value={starPassSpeed}
+                    onChange={(v) => setStarPassSpeed(v as "normal" | "fast")}
+                    cols={2}
+                  />
+                </Field>
+              )}
+
+              {/* Call Speed for Bingo */}
+              {game === "bingo" && (
+                <Field label="Call speed">
+                  <OptionGrid
+                    items={BINGO_CALL_SPEEDS}
+                    value={bingoCallSpeed}
+                    onChange={setBingoCallSpeed}
+                    cols={3}
+                  />
+                </Field>
+              )}
+
+              {/* Difficulty for Name Place Animal */}
+              {game === "namesplaceanimal" && (
+                <Field label="Difficulty Level">
+                  <OptionGrid
+                    items={NPA_DIFFICULTIES}
+                    value={npaDifficulty}
+                    onChange={(v) => setNpaDifficulty(v as "easy" | "medium" | "hard")}
+                    cols={3}
+                  />
+                </Field>
+              )}
+
+              {/* Speed pace for Snake */}
+              {game === "snake" && (
+                <Field label="Speed Pace">
+                  <OptionGrid
+                    items={SNAKE_SPEEDS}
+                    value={snakeSpeed}
+                    onChange={(v) => setSnakeSpeed(v as "140" | "100" | "70")}
+                    cols={3}
+                  />
+                </Field>
+              )}
+
+              {/* Mini Summary Card */}
+              <div className="rounded-2xl p-3 bg-[#FFF9EE] dark:bg-[#161D2B] border border-[#EEDBCA] dark:border-slate-700/60 flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm"
+                  style={{
+                    background: `linear-gradient(135deg, ${getGameAccent(meta).from}, ${getGameAccent(meta).to})`,
+                  }}
+                >
+                  <Glyph className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-xs text-[#2B3550] dark:text-slate-100 flex items-center gap-1.5">
+                    <span>{meta.title}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-extrabold uppercase">
+                      {isSolo ? "Solo" : "Live Room"}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-[#8A6D4B] dark:text-slate-400 truncate mt-0.5 font-medium">
+                    {!isSolo ? "⚡ Real-time match · 🤖 AI practice bots" : "✨ Solo arcade challenge"}
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Bottom Actions: CTA & Join by Code */}
+            <div className="space-y-3 pt-2">
+              {/* Primary CTA — swaps label/handler in Pass & Play mode */}
+              <button
+                type="button"
+                onClick={passPlay ? startPassAndPlay : createRoom}
+                disabled={busy}
+                className="w-full inline-flex items-center justify-center gap-2
+                           min-h-[52px] rounded-2xl
+                           bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400
+                           text-slate-950 font-black text-[15px]
+                           border border-amber-300/60
+                           disabled:opacity-50 disabled:cursor-wait
+                           active:scale-[0.98] transition-all duration-150 cursor-pointer
+                           shadow-[0_6px_20px_-4px_rgba(245,158,11,0.55)] hover:shadow-[0_8px_24px_-4px_rgba(245,158,11,0.7)]"
+              >
+                {busy ? (
+                  "Working…"
+                ) : passPlay ? (
+                  <>
+                    <SparkIcon className="w-5 h-5" />
+                    Start Pass &amp; Play
+                  </>
+                ) : isSolo ? (
+                  <>
+                    <SparkIcon className="w-5 h-5" />
+                    Start Game
+                  </>
+                ) : (
+                  <>
+                    <SparkIcon className="w-5 h-5" />
+                    Create Room
+                  </>
+                )}
+              </button>
+
+              {/* Join divider — hidden in Pass & Play or Solo mode */}
+              {!passPlay && !isSolo && (
+                <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest font-extrabold text-[#8A6D4B] dark:text-slate-400 py-0.5">
+                  <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
+                  <span>Or join room</span>
+                  <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
+                </div>
+              )}
+
+              {/* Join by code — hidden in Pass & Play or Solo mode */}
+              {!passPlay && !isSolo && (
+                <div className="space-y-2.5">
+                  <Field label="Room code" htmlFor="grs-code" error={codeError}>
+                    <input
+                      id="grs-code"
+                      type="text"
+                      value={joinCode}
+                      onChange={(e) => {
+                        setJoinCode(e.target.value.toUpperCase());
+                        if (codeError) setCodeError(null);
+                      }}
+                      placeholder="ROOM CODE"
+                      maxLength={6}
+                      aria-invalid={codeError ? true : undefined}
+                      aria-describedby={codeError ? "grs-code-error" : undefined}
+                      className={`w-full min-h-[44px] px-3.5 rounded-2xl
+                                 bg-[#FFF9EE] dark:bg-[#0B0F19] border-2 border-dashed
+                                 text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
+                                 font-mono font-black tracking-[0.35em] text-center text-base
+                                 focus:outline-none focus:ring-4
+                                 transition-all duration-200
+                                 ${codeError
+                                   ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
+                                   : "border-[#EEDBCA] dark:border-amber-500/40 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
+                    />
+                  </Field>
+                  <button
+                    type="button"
+                    onClick={joinRoom}
+                    disabled={busy}
+                    className="w-full inline-flex items-center justify-center gap-2
+                               min-h-[44px] rounded-2xl
+                               bg-[#2B3550] hover:bg-[#1E2738] dark:bg-slate-800 hover:dark:bg-slate-700 text-white font-bold text-[13px]
+                               border border-transparent dark:border-slate-700/80 hover:dark:border-amber-400/40
+                               disabled:opacity-50 disabled:cursor-wait
+                               active:scale-[0.98] transition-all duration-150 cursor-pointer
+                               shadow-md"
+                  >
+                    {busy ? "Working…" : (
+                      <>
+                        Join Room <ArrowRightIcon className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Form-level error fallback */}
+              {formError && (
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="text-xs text-rose-600 dark:text-rose-400 font-bold text-center
+                             bg-rose-500/10 border border-rose-500/30
+                             rounded-2xl p-2"
+                >
+                  {formError}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1137,7 +1190,7 @@ function Field({
     <div className="space-y-1.5">
       <label
         htmlFor={htmlFor}
-        className="block text-[11px] uppercase tracking-widest font-bold text-bhalyam-wood"
+        className="block text-[11px] uppercase tracking-widest font-extrabold text-[#8A6D4B] dark:text-slate-400"
       >
         {label}
       </label>
@@ -1147,7 +1200,7 @@ function Field({
           id={htmlFor ? `${htmlFor}-error` : undefined}
           role="alert"
           aria-live="polite"
-          className="text-[12px] font-semibold text-bhalyam-ludo-red leading-tight pl-0.5"
+          className="text-[12px] font-semibold text-rose-600 dark:text-rose-400 leading-tight pl-0.5"
         >
           {error}
         </p>
@@ -1192,17 +1245,17 @@ function OptionGrid<T extends string>({
             type="button"
             disabled={isDisabled}
             onClick={() => onChange(item.id)}
-            className={`text-left rounded-xl p-2.5 border-2 min-h-[64px]
-                        active:scale-[0.98] transition-all duration-150 bhalyam-press-feedback
+            className={`text-left rounded-2xl p-3 border-2 min-h-[64px]
+                        active:scale-[0.98] transition-all duration-150 cursor-pointer
                         disabled:opacity-50 disabled:cursor-not-allowed
                         ${isActive
-                          ? "bg-bhalyam-gold/20 border-bhalyam-gold-dark shadow-[0_4px_10px_-3px_rgba(228,177,40,0.45)]"
-                          : "bg-bhalyam-cream-soft border-bhalyam-cream-edge/80 hover:border-bhalyam-wood/40"}`}
+                          ? "bg-amber-50 dark:bg-amber-500/15 border-amber-500 dark:border-amber-400 text-slate-950 dark:text-amber-300 shadow-[0_4px_14px_rgba(245,158,11,0.25)] dark:shadow-[0_0_18px_rgba(245,158,11,0.25)]"
+                          : "bg-[#FFF9EE] dark:bg-[#161D2B] border-[#EEDBCA] dark:border-slate-700/70 text-[#2B3550] dark:text-slate-200 hover:border-amber-400/60 dark:hover:border-slate-600 dark:hover:bg-[#1C2536]"}`}
           >
-            <div className="font-bold text-bhalyam-wood-dark text-[13px] leading-tight">
+            <div className={`font-bold text-[13px] leading-tight ${isActive ? "text-slate-950 dark:text-amber-300" : "text-[#2B3550] dark:text-slate-200"}`}>
               {item.label}
             </div>
-            <div className="text-[10px] text-bhalyam-wood-dark/70 mt-0.5 leading-tight">
+            <div className={`text-[10px] mt-1 leading-snug ${isActive ? "text-amber-900/90 dark:text-amber-200/90" : "text-[#8A6D4B] dark:text-slate-400"}`}>
               {item.blurb}
             </div>
           </button>
@@ -1229,16 +1282,16 @@ function UnoHouseRuleGrid({
             type="button"
             onClick={() => onToggle(rule.id)}
             aria-pressed={isActive}
-            className={`text-left rounded-xl p-2.5 border-2 min-h-[64px]
-                        active:scale-[0.98] transition-all duration-150 bhalyam-press-feedback
+            className={`text-left rounded-2xl p-3 border-2 min-h-[64px]
+                        active:scale-[0.98] transition-all duration-150 cursor-pointer
                         ${isActive
-                          ? "bg-bhalyam-gold/20 border-bhalyam-gold-dark shadow-[0_4px_10px_-3px_rgba(228,177,40,0.45)]"
-                          : "bg-bhalyam-cream-soft border-bhalyam-cream-edge/80 hover:border-bhalyam-wood/40"}`}
+                          ? "bg-amber-50 dark:bg-amber-500/15 border-amber-500 dark:border-amber-400 text-slate-950 dark:text-amber-300 shadow-[0_4px_14px_rgba(245,158,11,0.25)] dark:shadow-[0_0_18px_rgba(245,158,11,0.25)]"
+                          : "bg-[#FFF9EE] dark:bg-[#161D2B] border-[#EEDBCA] dark:border-slate-700/70 text-[#2B3550] dark:text-slate-200 hover:border-amber-400/60 dark:hover:border-slate-600 dark:hover:bg-[#1C2536]"}`}
           >
-            <div className="font-bold text-bhalyam-wood-dark text-[13px] leading-tight">
+            <div className={`font-bold text-[13px] leading-tight ${isActive ? "text-slate-950 dark:text-amber-300" : "text-[#2B3550] dark:text-slate-200"}`}>
               {rule.label}
             </div>
-            <div className="text-[10px] text-bhalyam-wood-dark/70 mt-0.5 leading-tight">
+            <div className={`text-[10px] mt-1 leading-snug ${isActive ? "text-amber-900/90 dark:text-amber-200/90" : "text-[#8A6D4B] dark:text-slate-400"}`}>
               {rule.blurb}
             </div>
           </button>
@@ -1296,24 +1349,24 @@ function PassPlayBlock({
   }
   return (
     <div
-      className={`rounded-xl border-2 p-3 transition-colors duration-200
+      className={`rounded-2xl border-2 p-3.5 transition-colors duration-200
                   ${on
-                    ? "border-bhalyam-gold-dark bg-bhalyam-gold/10"
-                    : "border-bhalyam-cream-edge/80 bg-bhalyam-cream-soft"}`}
+                    ? "border-amber-500 dark:border-amber-400/80 bg-amber-500/10 dark:bg-amber-500/10"
+                    : "border-[#EEDBCA] dark:border-slate-700/70 bg-[#FFF9EE] dark:bg-[#161D2B]"}`}
     >
       <label className="flex items-start gap-3 cursor-pointer">
         <input
           type="checkbox"
           checked={on}
           onChange={onToggle}
-          className="mt-0.5 w-5 h-5 accent-bhalyam-gold-dark cursor-pointer"
+          className="mt-0.5 w-5 h-5 accent-amber-500 rounded cursor-pointer"
           aria-label="Toggle Pass and Play mode"
         />
         <span className="flex-1 min-w-0">
-          <span className="block font-bold text-bhalyam-wood-dark text-[14px] leading-tight">
+          <span className="block font-bold text-[#2B3550] dark:text-slate-100 text-[14px] leading-tight">
             Pass &amp; Play (1 device)
           </span>
-          <span className="block text-[11px] text-bhalyam-wood-dark/70 mt-0.5">
+          <span className="block text-[11px] text-[#8A6D4B] dark:text-slate-400 mt-0.5">
             Two or more players share this phone and take turns. No room code
             needed.
           </span>
@@ -1330,12 +1383,12 @@ function PassPlayBlock({
                 onChange={(e) => setAt(i, e.target.value)}
                 placeholder={`Player ${i + 2}`}
                 maxLength={20}
-                className="flex-1 min-h-[40px] px-3 rounded-lg
-                           bg-white border-2 border-bhalyam-cream-edge/80
-                           text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
+                className="flex-1 min-h-[42px] px-3.5 rounded-xl
+                           bg-white dark:bg-[#0B0F19] border-2 border-[#EEDBCA] dark:border-slate-700
+                           text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
                            font-semibold text-[13px]
-                           focus:outline-none focus:border-bhalyam-gold-dark
-                           focus:ring-2 focus:ring-bhalyam-gold/40
+                           focus:outline-none focus:border-amber-500 dark:focus:border-amber-400
+                           focus:ring-2 focus:ring-amber-400/20 dark:focus:ring-amber-500/20
                            transition-all duration-200"
                 aria-label={`Name for player ${i + 2}`}
               />
@@ -1345,9 +1398,9 @@ function PassPlayBlock({
                   onClick={() => removeSlot(i)}
                   aria-label={`Remove player ${i + 2}`}
                   className="w-9 h-9 rounded-full inline-flex items-center justify-center
-                             bg-bhalyam-cream-warm text-bhalyam-wood-dark
-                             hover:bg-bhalyam-cream-edge active:scale-95 cursor-pointer
-                             focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
+                             bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200
+                             hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 cursor-pointer
+                             focus:outline-none focus:ring-2 focus:ring-amber-500
                              transition-all duration-200"
                 >
                   <CloseIcon className="w-3 h-3" />
@@ -1359,9 +1412,9 @@ function PassPlayBlock({
             <button
               type="button"
               onClick={addSlot}
-              className="w-full min-h-[36px] rounded-lg border-2 border-dashed
-                         border-bhalyam-gold-dark/40 text-bhalyam-wood-dark
-                         text-[12px] font-bold hover:bg-bhalyam-gold/10
+              className="w-full min-h-[38px] rounded-xl border-2 border-dashed
+                         border-amber-500/50 dark:border-amber-400/50 text-[#8A6D4B] dark:text-amber-300
+                         text-[12px] font-bold hover:bg-amber-500/10
                          transition-colors duration-200 cursor-pointer"
             >
               + Add another player
@@ -1372,3 +1425,4 @@ function PassPlayBlock({
     </div>
   );
 }
+

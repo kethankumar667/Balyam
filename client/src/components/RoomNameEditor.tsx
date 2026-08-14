@@ -58,9 +58,10 @@ export default function RoomNameEditor({
       <button
         type="button"
         onClick={startEdit}
-        className="text-sm text-[#A3886E] hover:text-[#786350] italic underline-offset-2 hover:underline"
+        className="inline-flex items-center gap-1 text-sm font-semibold text-[#8A6D4B] dark:text-slate-400 hover:text-[#EA5A1F] dark:hover:text-amber-400 transition underline underline-offset-4 decoration-dashed decoration-[#C9A876] cursor-pointer"
       >
-        + Name this table
+        <span aria-hidden>✏️</span>
+        Name this table
       </button>
     );
   }
@@ -71,11 +72,12 @@ export default function RoomNameEditor({
       onClick={isHost ? startEdit : undefined}
       disabled={!isHost}
       title={isHost ? "Click to rename" : undefined}
-      className={`font-script text-lg text-[#2B3550] ${
+      className={`font-script text-xl text-[#2B3550] dark:text-amber-300 ${
         isHost ? "hover:text-[#EA5A1F] cursor-text" : "cursor-default"
       }`}
     >
-      {name}
+      ✏️ {name}
     </button>
   );
 }
+

@@ -7,6 +7,7 @@ import {
   type BhalyamGameCard,
   type GameTag,
 } from "./data";
+import { useTheme } from "../../lib/useTheme";
 
 /**
  * Game filter — a segmented control.
@@ -210,6 +211,9 @@ export default function CategoryFilter({
     refs.current[next]?.focus();
   }
 
+  const [theme] = useTheme();
+  const isDark = theme === "dark";
+
   return (
     <div className={className}>
       <div
@@ -217,9 +221,11 @@ export default function CategoryFilter({
            They are SIBLINGS of the radiogroup's buttons, never children:
            anything inside `role="radiogroup"` that is not a `radio` breaks
            the roving-tabindex contract this control depends on. */
-        className="relative flex w-full rounded-full p-1
-                   bg-[#FCF8EF] border-2 border-[#E8D8BE]
-                   shadow-[0_2px_8px_-4px_rgba(74,44,22,0.35)]"
+        className={`relative flex w-full rounded-full p-1.5 transition-all duration-300 ${
+          isDark
+            ? "bg-[#111927]/90 backdrop-blur-xl border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
+            : "bg-[#FCF8EF] border border-[#E4D1B5] shadow-[0_4px_16px_rgba(74,44,22,0.08),inset_0_1px_2px_rgba(255,255,255,0.9)]"
+        }`}
       >
         <EdgeCue side="left" show={edges.left} onNudge={nudge} />
         <EdgeCue side="right" show={edges.right} onNudge={nudge} />
@@ -229,7 +235,7 @@ export default function CategoryFilter({
             stops reading as one control. */}
         <div
           ref={trackRef}
-          className="flex w-full items-stretch gap-0.5 overflow-x-auto
+          className="flex w-full items-stretch gap-1 overflow-x-auto
                      sm:overflow-visible
                      scroll-smooth overscroll-x-contain scroll-px-12
                      [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -259,14 +265,21 @@ export default function CategoryFilter({
                             cursor-pointer rounded-full
                             px-4 min-h-[40px] flex items-center justify-center
                             text-[13px] whitespace-nowrap
-                            transition-colors duration-200 ease-out
+                            transition-all duration-200 ease-out
                             focus:outline-none focus-visible:ring-2
-                            focus-visible:ring-offset-2 focus-visible:ring-offset-[#FCF8EF]
-                            focus-visible:ring-[#1D2C4A]
+                            focus-visible:ring-offset-2
                             ${
-                              active
-                                ? "text-[#FCF8EF] font-extrabold"
-                                : "text-[#3F2F24] font-bold hover:bg-[#F1E4CC]"
+                              isDark
+                                ? `focus-visible:ring-offset-[#111927] focus-visible:ring-amber-400 ${
+                                    active
+                                      ? "text-white font-black"
+                                      : "text-zinc-300 font-bold hover:text-white hover:bg-white/10"
+                                  }`
+                                : `focus-visible:ring-offset-[#FCF8EF] focus-visible:ring-amber-500 ${
+                                    active
+                                      ? "text-white font-black"
+                                      : "text-[#5C4532] font-extrabold hover:text-[#2A1D13] hover:bg-[#F2E4CF]"
+                                  }`
                             }`}
               >
                 {active && (
@@ -277,7 +290,7 @@ export default function CategoryFilter({
                     // independent lights.
                     layoutId="bhalyam-filter-thumb"
                     aria-hidden
-                    className="absolute inset-0 rounded-full bg-[#1D2C4A]"
+                    className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 shadow-[0_3px_14px_rgba(245,158,11,0.45)] border border-amber-300/40"
                     transition={
                       reduceMotion
                         ? { duration: 0 }

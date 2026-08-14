@@ -113,40 +113,20 @@ export function categoryById(id: GameTag): GameCategory | undefined {
 
 export interface BhalyamGameCard {
   slug: BhalyamGameSlug;
-  /**
-   * Every filter this game belongs to. At least one; usually two.
-   *
-   * "solo" means playing ALONE is a real experience, not merely that the
-   * engine tolerates one seat. Bingo and Tambola accept a single player so a
-   * host can open a table early, but nobody wants to call housie to
-   * themselves, so they are multiplayer only.
-   */
   tags: readonly GameTag[];
   title: string;
   teluguTitle?: string;
-  /**
-   * Nostalgic "edition" name from the BHALYAM theme catalog. Renders as
-   * a small uppercase subtitle on the lobby tile + `/games` card so
-   * each game's identity reads even before the artwork loads. Phase-2
-   * board theming derives its palette + decoration vocabulary from
-   * this label.
-   */
   theme?: string;
   blurb: string;
-  /** Hex pair used as the card art gradient (light → dark). */
+  badge?: string;
+  nostalgiaQuote?: string;
+  playerRange?: string;
+  duration?: string;
+  paperBg?: string;
+  paperBorder?: string;
+  btnGradient?: { from: string; to: string; shadow: string };
   accent: { from: string; to: string };
-  /**
-   * When true the home tile renders in a "coming soon" state — the tile is
-   * still visible (so players know it exists) but clicks are absorbed
-   * locally rather than opening the lobby sheet. Use this to feature a
-   * game that exists in code but is paused for content or balance work.
-   */
   maintenance?: boolean;
-  /**
-   * When true the tile keeps its "Maintenance" badge but stays fully
-   * playable — players can still open a room. Pairs with `maintenance` to
-   * flag a game as flaky / under-work without locking players out.
-   */
   accessible?: boolean;
 }
 
@@ -194,160 +174,293 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     slug: "handcricket",
     tags: ["multiplayer", "classroom"],
     title: "Hand Cricket",
+    badge: "🔥 School Favourite",
+    nostalgiaQuote: "Every school break had one.",
+    playerRange: "2 Players",
+    duration: "5–10 min",
+    paperBg: "linear-gradient(155deg, #2D1405 0%, #1A0B02 45%, #0B0401 100%)",
+    paperBorder: "rgba(245, 158, 11, 0.55)",
+    btnGradient: { from: "#F59E0B", to: "#EA580C", shadow: "#9A3412" },
     blurb:
       "Odd or Even? The back-bench class champion simulator. Zero infrastructure, infinite intensity.",
-    accent: { from: "#EA580C", to: "#7C2D12" }, // Leather Rust Orange & Mahogany
+    accent: { from: "#F59E0B", to: "#EA580C" },
   },
   {
     slug: "rummy",
     tags: ["multiplayer", "board"],
     title: "Rummy",
+    badge: "♠ Classic",
+    nostalgiaQuote: "Cards on the classroom bench.",
+    playerRange: "2–6 Players",
+    duration: "10–20 min",
+    paperBg: "linear-gradient(155deg, #0A1E4A 0%, #05102A 45%, #020713 100%)",
+    paperBorder: "rgba(59, 130, 246, 0.55)",
+    btnGradient: { from: "#3B82F6", to: "#1D4ED8", shadow: "#1E3A8A" },
     blurb:
       "The family festival classic. Perfected during Sankranti gatherings, reimagined for your native gang.",
-    accent: { from: "#2563EB", to: "#1E3A8A" }, // Royal Sapphire Blue
+    accent: { from: "#3B82F6", to: "#1D4ED8" },
   },
   {
     slug: "ludo",
     tags: ["multiplayer", "board"],
     title: "Ludo",
+    badge: "👥 Most Played",
+    nostalgiaQuote: "One more game?",
+    playerRange: "2–8 Players",
+    duration: "10–30 min",
+    paperBg: "linear-gradient(155deg, #380711 0%, #1E0308 45%, #0D0104 100%)",
+    paperBorder: "rgba(239, 68, 68, 0.55)",
+    btnGradient: { from: "#EF4444", to: "#DC2626", shadow: "#991B1B" },
     blurb:
       "The ultimate hot summer afternoon time-killer while waiting for the current (power) to come back.",
-    accent: { from: "#E11D48", to: "#881337" }, // Ludo Crimson Red
+    accent: { from: "#EF4444", to: "#DC2626" },
   },
   {
     slug: "uno",
     tags: ["multiplayer", "board"],
     title: "UNO",
+    badge: "⚡ Party Favourite",
+    nostalgiaQuote: "Friendship ends at +4.",
+    playerRange: "2–8 Players",
+    duration: "10–20 min",
+    paperBg: "linear-gradient(155deg, #2A0944 0%, #160424 45%, #0B0212 100%)",
+    paperBorder: "rgba(168, 85, 247, 0.55)",
+    btnGradient: { from: "#A855F7", to: "#7E22CE", shadow: "#581C87" },
     blurb:
       "Color chaos with your gang. Match cards, drop action cards, and race to shout UNO first.",
-    accent: { from: "#9333EA", to: "#581C87" }, // Wildcard Violet Purple
+    accent: { from: "#A855F7", to: "#7E22CE" },
   },
   {
     slug: "dotsboxes",
     tags: ["multiplayer", "classroom"],
     title: "Dots & Boxes",
+    badge: "✏️ Classroom Classic",
+    nostalgiaQuote: "Draw the line. Claim the box.",
+    playerRange: "2 Players",
+    duration: "5–15 min",
+    paperBg: "linear-gradient(155deg, #062F29 0%, #031A17 45%, #010D0B 100%)",
+    paperBorder: "rgba(20, 184, 166, 0.55)",
+    btnGradient: { from: "#14B8A6", to: "#0F766E", shadow: "#115E59" },
     blurb:
       "Connect the dots, close the box, claim the square. Maths-period nostalgia at its purest.",
-    accent: { from: "#06B6D4", to: "#164E63" }, // Neon Turquoise Cyan
+    accent: { from: "#14B8A6", to: "#0F766E" },
   },
   {
     slug: "rps",
     tags: ["multiplayer", "classroom"],
     title: "Rock Paper Scissors",
+    badge: "🏆 Quick Battle",
+    nostalgiaQuote: "Best of three. No cheating!",
+    playerRange: "2 Players",
+    duration: "2–5 min",
+    paperBg: "linear-gradient(155deg, #2B1603 0%, #170B01 45%, #0A0500 100%)",
+    paperBorder: "rgba(245, 158, 11, 0.55)",
+    btnGradient: { from: "#F59E0B", to: "#D97706", shadow: "#B45309" },
     blurb:
       "Stone-Paper-Scissor! The ultimate playground arbiter for deciding who bats first.",
-    accent: { from: "#D97706", to: "#78350F" }, // Golden Amber
+    accent: { from: "#F59E0B", to: "#D97706" },
   },
   {
     slug: "bingo",
     tags: ["multiplayer", "party"],
     title: "Bingo",
+    badge: "🎟️ Lucky House",
+    nostalgiaQuote: "Strike 5 lines to shout BINGO!",
+    playerRange: "2–8 Players",
+    duration: "5–15 min",
+    paperBg: "linear-gradient(155deg, #062F2B 0%, #031A18 45%, #010D0C 100%)",
+    paperBorder: "rgba(13, 148, 136, 0.55)",
+    btnGradient: { from: "#0D9488", to: "#0F766E", shadow: "#115E59" },
     blurb:
       "Eyes down! Mark your ticket as the caller reads out the numbers — first full house wins.",
-    accent: { from: "#0D9488", to: "#115E59" }, // Deep Ocean Teal
+    accent: { from: "#0D9488", to: "#0F766E" },
   },
   {
     slug: "snl",
     tags: ["multiplayer", "board"],
     title: "Snakes & Ladders",
+    badge: "🐍 Classic Race",
+    nostalgiaQuote: "Climb high, avoid the 99 snake!",
+    playerRange: "2–6 Players",
+    duration: "10–20 min",
+    paperBg: "linear-gradient(155deg, #072F12 0%, #031B0A 45%, #010E05 100%)",
+    paperBorder: "rgba(22, 163, 74, 0.55)",
+    btnGradient: { from: "#16A34A", to: "#15803D", shadow: "#14532D" },
     blurb:
       "Watch out for the big snake at 99 that ruined neighborhood friendships.",
-    accent: { from: "#16A34A", to: "#14532D" }, // Forest Jungle Green
+    accent: { from: "#16A34A", to: "#15803D" },
   },
   {
     slug: "wordbuilding",
     tags: ["multiplayer", "classroom"],
     title: "Word Building",
+    badge: "📚 English Period",
+    nostalgiaQuote: "Spell words, build the chain.",
+    playerRange: "2–4 Players",
+    duration: "5–15 min",
+    paperBg: "linear-gradient(155deg, #06233B 0%, #031321 45%, #010A12 100%)",
+    paperBorder: "rgba(2, 132, 199, 0.55)",
+    btnGradient: { from: "#0284C7", to: "#0369A1", shadow: "#075985" },
     blurb:
       "The English workbook revisited. Take turns writing letters and watch dictionary words light up like a teacher's tick.",
-    accent: { from: "#0284C7", to: "#0C4A6E" }, // Midnight Oxford Blue
+    accent: { from: "#0284C7", to: "#0369A1" },
   },
   {
     slug: "stargame",
     tags: ["multiplayer", "classroom"],
     title: "Star Game",
     theme: "Folded Paper Slips Edition",
+    badge: "⭐ Slap the Chit",
+    nostalgiaQuote: "Four identical chits. Slap the star!",
+    playerRange: "4 Players",
+    duration: "5–10 min",
+    paperBg: "linear-gradient(155deg, #2A1F03 0%, #181101 45%, #0A0700 100%)",
+    paperBorder: "rgba(202, 138, 4, 0.55)",
+    btnGradient: { from: "#CA8A04", to: "#A16207", shadow: "#713F12" },
     blurb:
       "Pick a secret, slide the chits clockwise, and slap the STAR the instant you hold all four. Pure 90's terrace nostalgia.",
-    accent: { from: "#CA8A04", to: "#713F12" }, // Luxe Golden Honey Bronze
+    accent: { from: "#CA8A04", to: "#A16207" },
   },
   {
     slug: "chess",
     tags: ["multiplayer", "board"],
     title: "Chess",
     theme: "Grandmaster 2026 Edition",
+    badge: "♟️ Strategy",
+    nostalgiaQuote: "Checkmate the master.",
+    playerRange: "2 Players",
+    duration: "10–30 min",
+    paperBg: "linear-gradient(155deg, #052B1E 0%, #021710 45%, #010C08 100%)",
+    paperBorder: "rgba(5, 150, 105, 0.55)",
+    btnGradient: { from: "#059669", to: "#047857", shadow: "#064E3B" },
     blurb:
       "The ultimate 64-square battlefield. Real-time Bullet/Blitz/Rapid timers, 3D piece skins, move evaluation, and AI Bot tiers.",
-    accent: { from: "#059669", to: "#064E3B" }, // Emerald Grandmaster
+    accent: { from: "#059669", to: "#047857" },
   },
   {
     slug: "namesplaceanimal",
     tags: ["multiplayer", "classroom"],
     title: "Name Place Animal Thing",
+    badge: "📝 90s Notebook",
+    nostalgiaQuote: "Stop! Time is up!",
+    playerRange: "2–6 Players",
+    duration: "5–15 min",
+    paperBg: "linear-gradient(155deg, #321203 0%, #1C0901 45%, #0E0400 100%)",
+    paperBorder: "rgba(249, 115, 22, 0.55)",
+    btnGradient: { from: "#F97316", to: "#EA580C", shadow: "#9A3412" },
     blurb: "Pick a letter, beat the clock. Whose Bombay was the most legit?",
-    accent: { from: "#F97316", to: "#9A3412" }, // Bright Sunburst Coral
+    accent: { from: "#F97316", to: "#EA580C" },
   },
   {
     slug: "tambola",
     tags: ["multiplayer", "party"],
     title: "Tambola",
     teluguTitle: "Housie",
+    badge: "🎉 Wedding Sangeet",
+    nostalgiaQuote: "Early five, corners, full house!",
+    playerRange: "2–10 Players",
+    duration: "10–25 min",
+    paperBg: "linear-gradient(155deg, #330839 0%, #1C041F 45%, #0E0210 100%)",
+    paperBorder: "rgba(192, 38, 211, 0.55)",
+    btnGradient: { from: "#C026D3", to: "#A21CAF", shadow: "#701A75" },
     blurb:
       "Eyes down, ticket out. Full house calling at the next wedding sangeet.",
-    accent: { from: "#C026D3", to: "#701A75" }, // Vivid Fuchsia Magenta
+    accent: { from: "#C026D3", to: "#A21CAF" },
   },
   {
     slug: "samethalu",
     tags: ["solo", "party"],
     title: "Samethalu Quiz",
+    badge: "📜 Telugu Lore",
+    nostalgiaQuote: "Ammamma's verandah wisdom.",
+    playerRange: "1–4 Players",
+    duration: "5–10 min",
+    paperBg: "linear-gradient(155deg, #2C1603 0%, #180B01 45%, #0A0500 100%)",
+    paperBorder: "rgba(217, 119, 6, 0.55)",
+    btnGradient: { from: "#D97706", to: "#B45309", shadow: "#78350F" },
     blurb:
       "Telugu proverbs from Ammamma's verandah. Complete the saying, learn the lesson, win the round.",
-    accent: { from: "#B45309", to: "#451A03" }, // Antique Parchment Ochre
+    accent: { from: "#D97706", to: "#B45309" },
   },
   {
     slug: "telugucinemalu",
     tags: ["solo", "party"],
     title: "Telugu Cinema Quiz",
+    badge: "🎬 Tollywood Adda",
+    nostalgiaQuote: "Guess the blockbuster dialogue.",
+    playerRange: "1–4 Players",
+    duration: "5–10 min",
+    paperBg: "linear-gradient(155deg, #350612 0%, #1D030A 45%, #0E0105 100%)",
+    paperBorder: "rgba(225, 29, 72, 0.55)",
+    btnGradient: { from: "#E11D48", to: "#BE123C", shadow: "#881337" },
     blurb:
       "Guess the film. Hint by hint, dialogue by dialogue. Friday-release adda energy.",
-    accent: { from: "#9F1239", to: "#4C0519" }, // Cinema Ruby Velvet
+    accent: { from: "#E11D48", to: "#BE123C" },
   },
   {
     slug: "snake",
     tags: ["solo", "multiplayer"],
     theme: "90s Nostalgia 🐍",
+    badge: "📱 3310 Classic",
+    nostalgiaQuote: "Eat pellets, don't bite your tail!",
     title: "Snake",
+    playerRange: "1–2 Players",
+    duration: "3–10 min",
+    paperBg: "linear-gradient(155deg, #1C2E03 0%, #0F1901 45%, #070D00 100%)",
+    paperBorder: "rgba(101, 163, 13, 0.55)",
+    btnGradient: { from: "#65A30D", to: "#4D7C0F", shadow: "#365314" },
     blurb:
       "Classic green LCD matrix. Eat food pellets, grow longer, avoid walls and self-collision.",
-    accent: { from: "#65A30D", to: "#365314" }, //  3310 Lime Matrix
+    accent: { from: "#65A30D", to: "#4D7C0F" },
   },
   {
     slug: "blockblast",
     tags: ["solo", "multiplayer"],
     theme: "Same Deal ⬛",
+    badge: "🧩 Line Clear",
+    nostalgiaQuote: "Clear rows, beat the high score.",
     title: "Block Blast",
+    playerRange: "1–4 Players",
+    duration: "3–8 min",
+    paperBg: "linear-gradient(155deg, #220C47 0%, #120627 45%, #090314 100%)",
+    paperBorder: "rgba(124, 58, 237, 0.55)",
+    btnGradient: { from: "#7C3AED", to: "#6D28D9", shadow: "#4C1D95" },
     blurb:
       "Drop blocks, clear lines. Alone it never ends — together everyone gets the exact same pieces and the highest score in three minutes wins.",
-    accent: { from: "#7C3AED", to: "#2E1065" }, // Lacquer Violet
+    accent: { from: "#7C3AED", to: "#6D28D9" },
   },
   {
     slug: "bounce",
     tags: ["solo", "multiplayer"],
     theme: "Red Ball 🔴",
+    badge: "🔴 Red Ball 3310",
+    nostalgiaQuote: "Pass rings, avoid spikes!",
     title: "Bounce",
+    playerRange: "1 Player",
+    duration: "5–15 min",
+    paperBg: "linear-gradient(155deg, #370614 0%, #1E030A 45%, #0F0105 100%)",
+    paperBorder: "rgba(244, 63, 94, 0.55)",
+    btnGradient: { from: "#F43F5E", to: "#E11D48", shadow: "#9F1239" },
     blurb:
       "Classic red ball platformer. Pass through gold rings, avoid spikes, and finish the level.",
-    accent: { from: "#F43F5E", to: "#9F1239" }, // Red Ball Electric Crimson
+    accent: { from: "#F43F5E", to: "#E11D48" },
     maintenance: true,
   },
   {
     slug: "roadrash",
     tags: ["solo", "multiplayer"],
     theme: "90s Racer 🏍️",
+    badge: "🏍️ Nitro Speed",
+    nostalgiaQuote: "Kick the rivals, win the cup!",
     title: "Road Rash",
+    playerRange: "1–2 Players",
+    duration: "5–15 min",
+    paperBg: "linear-gradient(155deg, #2E1104 0%, #190902 45%, #0C0401 100%)",
+    paperBorder: "rgba(234, 88, 12, 0.55)",
+    btnGradient: { from: "#EA580C", to: "#C2410C", shadow: "#7C2D12" },
     blurb:
       "Retro 90s highway motorcycle racer. Steer, accelerate, punch rival bikers to win!",
-    accent: { from: "#475569", to: "#0F172A" }, // Dark Racing Slate Charcoal
+    accent: { from: "#EA580C", to: "#C2410C" },
     maintenance: true,
   },
   {
@@ -355,17 +468,31 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     tags: ["multiplayer", "board"],
     theme: "Board Classic 🎯",
     title: "Carrom",
+    badge: "🎯 Queen Cover",
+    nostalgiaQuote: "Powder on board, thumb the striker!",
+    playerRange: "2–4 Players",
+    duration: "10–25 min",
+    paperBg: "linear-gradient(155deg, #2A1504 0%, #170A01 45%, #0A0400 100%)",
+    paperBorder: "rgba(217, 119, 6, 0.55)",
+    btnGradient: { from: "#D97706", to: "#B45309", shadow: "#78350F" },
     blurb:
       "Powder on the board, thumb cocked, queen in the middle. Strike, rebound and cover her before your cousin does.",
-    accent: { from: "#D97706", to: "#451A03" }, // Carrom Teak Wood & Gold
+    accent: { from: "#D97706", to: "#B45309" },
   },
   {
     slug: "spacewar",
     tags: ["solo"],
     theme: "Nokia 3310 Retro 🚀",
     title: "Space War",
+    badge: "🚀 Retro Space",
+    nostalgiaQuote: "Blast invaders, save galaxy!",
+    playerRange: "1 Player",
+    duration: "3–10 min",
+    paperBg: "linear-gradient(155deg, #052C1E 0%, #021810 45%, #010C08 100%)",
+    paperBorder: "rgba(5, 150, 105, 0.55)",
+    btnGradient: { from: "#059669", to: "#047857", shadow: "#064E3B" },
     blurb:
       "The legendary Nokia 3310 retro space shooter! Pilot your starship, fire laser beams and homing missiles, collect power-ups, and defeat level bosses.",
-    accent: { from: "#059669", to: "#064E3B" }, // Nokia LCD Phosphor Green & Dark Emerald
+    accent: { from: "#059669", to: "#047857" },
   },
 ];

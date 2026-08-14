@@ -11,13 +11,16 @@ export default function PlayerList({
   onTapPlayer?: (id: string) => void;
 }) {
   return (
-    <div className="bg-[var(--room-panel)] border border-[var(--room-panel-edge)] rounded-xl p-4">
-      <h3 className="text-sm uppercase text-[var(--room-ink-soft)] mb-3">Players ({players.length})</h3>
-      {/* Cap the visible list to ~3 rows; the rest scroll. Keeps the lobby
-          card compact instead of growing tall with a 6-player table. */}
+    <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1.5">
+          <span aria-hidden>👥</span>
+          <span>Players ({players.length})</span>
+        </h3>
+      </div>
+
       <ul
-        className="space-y-2 overflow-y-auto pr-1 rummy-scroll-soft"
-        style={{ maxHeight: "13.5rem" }}
+        className="space-y-1.5 overflow-y-auto pr-1 custom-scrollbar max-h-[14rem]"
       >
         {players.map((p) => (
           <li
@@ -25,59 +28,81 @@ export default function PlayerList({
             onClick={p.id !== selfId && onTapPlayer ? () => onTapPlayer(p.id) : undefined}
             role={p.id !== selfId && onTapPlayer ? "button" : undefined}
             tabIndex={p.id !== selfId && onTapPlayer ? 0 : undefined}
-            className={`flex items-center gap-2 bg-[var(--room-inset)] border border-[var(--room-inset-edge)] rounded-lg px-3 py-2 ${
-              p.id !== selfId && onTapPlayer ? "cursor-pointer hover:bg-[#EAD9BC] active:scale-[0.99] transition" : ""
+            className={`flex items-center gap-2.5 bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 rounded-xl px-3 py-1.5 transition ${
+              p.id !== selfId && onTapPlayer ? "cursor-pointer hover:bg-[#FFF4E0] dark:hover:bg-[#1E2738] active:scale-[0.99]" : ""
             }`}
           >
-            {/* Face, then presence dot, then name. The dot moves onto the
-                avatar's corner so the row gains a portrait without gaining a
-                column — these rows are capped at ~3 visible and every pixel of
-                width is already spoken for. */}
+            {/* Avatar with presence ring */}
             <span className="relative flex-shrink-0">
-              <SeatAvatar avatar={p.avatar} name={p.name} className="w-8 h-8" />
+              <SeatAvatar avatar={p.avatar} name={p.name} className="w-7 h-7" />
               <span
-                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full
-                            ring-2 ring-[var(--room-inset)] ${
-                              p.isConnected ? "bg-emerald-400" : "bg-amber-400"
-                            }`}
+                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-[#FFF9EE] dark:ring-[#182234] ${
+                  p.isConnected ? "bg-emerald-500" : "bg-amber-500"
+                }`}
                 title={p.isConnected ? "Online" : "Reconnecting..."}
               />
             </span>
-            <span className="flex-1 truncate text-[var(--room-ink)]">
-              {p.name}
-              {p.id === selfId && <span className="text-[var(--room-ink-mute)] text-xs ml-1">(you)</span>}
-            </span>
-            {/* The server is holding this seat. Said explicitly because the
-                amber dot alone reads as "flaky", not as "their turns are
-                being played for them" — and the table needs to know why moves
-                are happening without them. The reason matters: one ends when
-                they reconnect, the other the moment they play. */}
-            {p.isAutoPlaying && (
-              <span
-                className="text-[10px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                title={
-                  p.autoPlayReason === "idle"
-                    ? `${p.name} isn't responding — the table is playing their turns. Any move takes the seat back.`
-                    : `${p.name} lost connection — the table is playing their turns until they return.`
-                }
-              >
-                Auto
+
+            {/* Name + details */}
+            <div className="flex-1 min-w-0 flex items-center gap-1">
+              <span className="truncate font-semibold text-xs sm:text-sm text-[#2B3550] dark:text-slate-100">
+                {p.name}
               </span>
-            )}
-            {p.isHost && (
-              <span className="text-xs bg-[#2E476E] text-white rounded px-1.5 py-0.5">HOST</span>
-            )}
-            {p.isReady ? (
-              <span className="text-xs text-emerald-400">READY</span>
-            ) : (
-              <span className="text-xs text-[var(--room-ink-mute)]">…</span>
-            )}
-            {p.id !== selfId && onTapPlayer && (
-              <span className="text-sm" title={`React at ${p.name}`}>🎯</span>
-            )}
+              {p.id === selfId && (
+                <span className="text-[11px] text-[#8A6D4B] dark:text-slate-400">
+                  (you)
+                </span>
+              )}
+              {p.isHost && (
+                <span className="text-amber-500 text-xs" title="Room Host">
+                  👑
+                </span>
+              )}
+            </div>
+
+            {/* Badges */}
+            <div className="flex items-center gap-1.5">
+              {p.isAutoPlaying && (
+                <span
+                  className="text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.2 bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                  title="Auto-playing"
+                >
+                  Auto
+                </span>
+              )}
+              {p.isHost && (
+                <span className="text-[9px] font-extrabold uppercase tracking-wider bg-orange-500/10 text-[#EA5A1F] dark:text-orange-400 border border-[#EA5A1F]/30 rounded-full px-2 py-0.2">
+                  Host
+                </span>
+              )}
+              {p.isReady ? (
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  ✓
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-[#8A6D4B] dark:text-slate-500">
+                  •••
+                </span>
+              )}
+              {p.id !== selfId && onTapPlayer && (
+                <button
+                  type="button"
+                  className="text-xs text-[#8A6D4B] hover:text-[#EA5A1F]"
+                  title={`React at ${p.name}`}
+                >
+                  🎯
+                </button>
+              )}
+            </div>
           </li>
         ))}
       </ul>
+
+      <div className="flex items-center gap-1.5 text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium">
+        <span aria-hidden>👥</span>
+        <span>{players.length >= 6 ? "Table full · All ready!" : "Waiting for players..."}</span>
+      </div>
     </div>
   );
 }
+

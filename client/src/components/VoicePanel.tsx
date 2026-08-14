@@ -66,33 +66,40 @@ export default function VoicePanel({
   }
 
   return (
-    <div className="bg-[var(--room-panel)] border border-[var(--room-panel-edge)] rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm uppercase text-[var(--room-ink-soft)]">Voice</h3>
-        {connected && <span className="text-xs text-emerald-400">● Live</span>}
+    <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1.5">
+          <span aria-hidden>🎙</span>
+          <span>Voice Chat</span>
+        </h3>
+        {connected && <span className="text-xs font-bold text-emerald-500">● Live</span>}
       </div>
 
       {!connected ? (
-        <button
-          onClick={connectMic}
-          disabled={busy}
-          className="w-full bg-[#31A157] hover:bg-[#2A8B4B] text-white disabled:opacity-50 rounded py-2 text-sm font-semibold"
-        >
-          {busy ? "Requesting mic..." : "🎙 Connect mic"}
-        </button>
+        <div className="space-y-1.5">
+          <button
+            type="button"
+            onClick={connectMic}
+            disabled={busy}
+            className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold py-2 sm:py-2.5 rounded-xl shadow-sm transition active:scale-95 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer disabled:opacity-50"
+          >
+            <span aria-hidden>🎙</span>
+            <span>{busy ? "Requesting mic..." : "Connect mic"}</span>
+          </button>
+          <p className="text-[11px] text-center text-[#8A6D4B] dark:text-slate-400 font-medium">
+            Speak with your friends during the game.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-2">
-          {/* The call keeps running when this panel closes, so say so once —
-              players were re-clicking "Connect mic" because the old panel
-              really did drop the call every time it was dismissed. */}
-          <p className="text-[11px] text-[var(--room-ink-mute)]">
+        <div className="space-y-2.5">
+          <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400">
             Voice stays on while you play. Use Leave to hang up.
           </p>
 
           {voice.audioBlocked && (
             <button
               onClick={voice.retryAudio}
-              className="w-full bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118] rounded py-2 text-xs font-semibold"
+              className="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 rounded-xl py-2 text-xs font-bold shadow-sm"
             >
               🔈 Tap to enable sound
             </button>
@@ -101,26 +108,26 @@ export default function VoicePanel({
           <div className="flex gap-2">
             <button
               onClick={voice.toggleMute}
-              className={`flex-1 rounded py-2 text-sm font-semibold ${
+              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition shadow-sm ${
                 voice.muted
-                  ? "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118]"
-                  : "bg-[var(--room-chip)] hover:bg-[var(--room-chip-hover)] text-[var(--room-ink)]"
+                  ? "bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950"
+                  : "bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700 hover:bg-[#FFF4E0] text-[#2B3550] dark:text-slate-100"
               }`}
             >
               {voice.muted ? "🔇 Muted" : "🎙 Mic on"}
             </button>
             <button
               onClick={voice.disconnect}
-              className="bg-[#4A3F35] hover:bg-[#3F352C] text-[#FFF3E3] rounded px-3 text-sm"
+              className="bg-slate-200 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950/50 hover:text-red-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl px-4 text-sm font-semibold transition"
               title="Leave voice"
             >
               Leave
             </button>
           </div>
 
-          <ul className="space-y-1 text-xs">
+          <ul className="space-y-1.5 text-xs">
             {voice.peers.length === 0 && (
-              <li className="text-[var(--room-ink-mute)]">
+              <li className="text-[#8A6D4B] dark:text-slate-400 py-1">
                 {others.length === 0
                   ? "No one else in the room yet."
                   : "Waiting for others to connect mic…"}
@@ -129,10 +136,8 @@ export default function VoicePanel({
             {voice.peers.map((p) => (
               <li
                 key={p.playerId}
-                className="flex items-center gap-2 bg-[var(--room-inset)] border border-[var(--room-inset-edge)] rounded px-2 py-1"
+                className="flex items-center gap-2.5 bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 rounded-xl px-3 py-1.5"
               >
-                {/* Same face as the players list, so a voice row and a seat
-                    row are recognisably the same person. */}
                 <span className="relative flex-shrink-0">
                   <SeatAvatar
                     avatar={avatarOf(p.playerId)}
@@ -141,20 +146,19 @@ export default function VoicePanel({
                     textClassName="text-[10px]"
                   />
                   <span
-                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full
-                                ring-2 ring-[var(--room-inset)] ${
-                                  p.connectionState === "connected"
-                                    ? "bg-emerald-400"
-                                    : p.connectionState === "failed"
-                                    ? "bg-red-400"
-                                    : "bg-amber-400"
-                                }`}
+                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-1 ring-white ${
+                      p.connectionState === "connected"
+                        ? "bg-emerald-400"
+                        : p.connectionState === "failed"
+                        ? "bg-red-400"
+                        : "bg-amber-400"
+                    }`}
                   />
                 </span>
-                <span className="flex-1 truncate text-[var(--room-ink)]">
+                <span className="flex-1 truncate text-[#2B3550] dark:text-slate-100 font-medium">
                   {nameOf(p.playerId)}
                 </span>
-                <span className="text-[var(--room-ink-mute)]">
+                <span className="text-[#8A6D4B] dark:text-slate-400 text-[10px]">
                   {p.connectionState === "connected" && !p.stream
                     ? "no audio"
                     : p.connectionState}
@@ -164,9 +168,6 @@ export default function VoicePanel({
           </ul>
 
           {anyFailed && voice.relayless && (
-            // Mesh voice over STUN alone cannot cross two symmetric NATs.
-            // Without a TURN relay configured this is unfixable from the
-            // client, so name it rather than leaving a red dot unexplained.
             <p className="text-[11px] text-amber-600 dark:text-amber-400">
               Couldn't reach some players — their network needs a relay server.
             </p>
@@ -174,7 +175,8 @@ export default function VoicePanel({
         </div>
       )}
 
-      {voice.error && <div className="text-red-400 text-xs mt-2">{voice.error}</div>}
+      {voice.error && <div className="text-red-500 text-xs mt-2">{voice.error}</div>}
     </div>
   );
 }
+

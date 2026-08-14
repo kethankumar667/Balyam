@@ -88,25 +88,17 @@
 }
 
 :root[data-theme="dark"] {
-  --surface-0: #020617;
-  --surface-1: #0b1220;
-  --surface-2: #111c2e;
-  --surface-3: #1e293b;
-  --text-hi:   #f8fafc;
-  --text-mid:  #cbd5e1;
-  --text-lo:   #94a3b8;
-  /* Was #64748b, carried over unchanged from the light theme, where it is
-     fine. On these surfaces it measures 4.24 / 3.93 / 3.59 / 3.07 against
-     surface-0..3 — failing AA on every one of them, worst on the lightest
-     panel. #8592a4 is the darkest value that clears 4.5:1 on all four, so the
-     tier stays visibly quieter than --text-lo instead of collapsing into it
-     (bumping it to #94a3b8 would have made the two identical).
-
-     Latent, not live: nothing references --text-mute today. Fixed rather than
-     deleted so the next component to reach for it inherits a passing value. */
-  --text-mute: #8592a4;
-  --rim-soft:  rgba(255,255,255,0.08);
-  --ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--color-brand-400);
+  --surface-0: #0B0F19;
+  --surface-1: #131926;
+  --surface-2: #192233;
+  --surface-3: #222D42;
+  --text-hi:   #F8FAFC;
+  --text-mid:  #CBD5E1;
+  --text-lo:   #94A3B8;
+  --text-mute: #64748B;
+  --rim-gold:  rgba(245, 158, 11, 0.4);
+  --rim-soft:  rgba(255, 255, 255, 0.08);
+  --ring: 0 0 0 2px var(--surface-0), 0 0 0 4px #F59E0B;
 }
 
 html, body, #root {
@@ -193,11 +185,11 @@ body, #root, .bhalyam-paper {
   --nostalgia-brass: 156 122 60;
 }
 :root[data-theme="dark"] {
-  --nostalgia-paper: 42 33 20;        /* matches .nostalgia-paper dark sheet */
-  --nostalgia-paper-edge: 74 59 38;
-  --nostalgia-pen: 240 227 202;       /* light ink on the dark sheet */
-  --nostalgia-pen-red: 232 117 107;   /* red-pen circle, readable on dark */
-  --nostalgia-brass: 201 174 135;
+  --nostalgia-paper: 19 25 38;        /* #131926 */
+  --nostalgia-paper-edge: 34 45 66;   /* #222D42 */
+  --nostalgia-pen: 248 250 252;       /* #F8FAFC */
+  --nostalgia-pen-red: 251 113 133;   /* #FB7185 */
+  --nostalgia-brass: 245 158 11;      /* #F59E0B */
 }
 
 ::selection {
@@ -205,8 +197,8 @@ body, #root, .bhalyam-paper {
   color: #ffffff;
 }
 :root[data-theme="dark"] ::selection {
-  background: #7BD88F;
-  color: #10261a;
+  background: #3B82F6;
+  color: #FFFFFF;
 }
 
 :root {
@@ -215,9 +207,9 @@ body, #root, .bhalyam-paper {
   --paper-ink-hi: #2E7D32;     /* "your turn" affirmative */
 }
 :root[data-theme="dark"] {
-  --paper-ink: #F0DFC2;
-  --paper-ink-soft: #C9AE87;
-  --paper-ink-hi: #7BD88F;
+  --paper-ink: #F8FAFC;
+  --paper-ink-soft: #94A3B8;
+  --paper-ink-hi: #34D399;
 }
 
 .bhalyam-paper {
@@ -235,15 +227,17 @@ body, #root, .bhalyam-paper {
 }
 
 :root[data-theme="dark"] .bhalyam-paper {
-  background-color: #23180f;
+  background-color: #0B0F19;
   background-image:
-    radial-gradient(rgba(196, 142, 52, 0.14) 1px, transparent 1px),
-    radial-gradient(rgba(255, 224, 178, 0.06) 1px, transparent 1px),
-    linear-gradient(135deg, rgba(86, 58, 32, 0.36), rgba(28, 18, 11, 0.82) 72%);
+    radial-gradient(rgba(245, 158, 11, 0.04) 1px, transparent 1px),
+    radial-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(30, 41, 59, 0.35), rgba(11, 15, 25, 0.96) 75%);
+  background-size: 16px 16px, 24px 24px, 100% 100%;
+  background-position: 0 0, 8px 12px, 0 0;
 }
 
 :root[data-theme="dark"] .bhalyam-home {
-  color: #f3eadb;
+  color: #F8FAFC;
 }
 
 /* Dark mode readability tuning for BHALYAM panels and headings. */
@@ -254,21 +248,23 @@ body, #root, .bhalyam-paper {
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#FCF8EF\],
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#FAF2E6\],
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#F7EFE0\],
-:root[data-theme="dark"] .bhalyam-home .bg-\[\#EFE2CF\] {
-  /* Was `#f7efdf` — a light cream panel deliberately kept light in dark mode,
-     with its ink darkened to suit. That is why the feature strip and the whole
-     footer card still glowed white on a dark page, and why every surface built
-     on tokens had to fight it. Panels now go dark and the ink below goes
-     light, which is what "dark mode" means. */
-  background-color: #2A1D11 !important;
-  border-color: #4B361F !important;
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#EFE2CF\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#F8EEDB\] {
+  background-color: #131926 !important;
+  border-color: rgba(148, 163, 184, 0.15) !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .border-\[\#E8D9C1\],
 :root[data-theme="dark"] .bhalyam-home .border-\[\#E8D8BE\],
 :root[data-theme="dark"] .bhalyam-home .border-\[\#E6D4B8\],
-:root[data-theme="dark"] .bhalyam-home .border-\[\#E6D4B7\] {
-  border-color: #4B361F !important;
+:root[data-theme="dark"] .bhalyam-home .border-\[\#E6D4B7\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#E2D3BA\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#E7D9C1\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#EBDDC7\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#E0CFA8\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#EEDCC2\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#D8C4A3\] {
+  border-color: rgba(148, 163, 184, 0.16) !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home h2,
@@ -278,8 +274,11 @@ body, #root, .bhalyam-paper {
 :root[data-theme="dark"] .bhalyam-home .text-\[\#2E3C57\],
 :root[data-theme="dark"] .bhalyam-home .text-\[\#3F2F24\],
 :root[data-theme="dark"] .bhalyam-home .text-\[\#3C2A1E\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#2A221B\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#4A2508\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#0E2D66\],
 :root[data-theme="dark"] .bhalyam-home .text-bhalyam-wood-dark {
-  color: #F6EDDC !important;
+  color: #F8FAFC !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .text-\[\#5B534A\],
@@ -287,74 +286,140 @@ body, #root, .bhalyam-paper {
 :root[data-theme="dark"] .bhalyam-home .text-\[\#6D7584\],
 :root[data-theme="dark"] .bhalyam-home .text-\[\#6E7482\],
 :root[data-theme="dark"] .bhalyam-home .text-\[\#5D4B3F\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#7A5B3E\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#9C7E63\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#5C4A38\],
 :root[data-theme="dark"] .bhalyam-home .text-\[\#677080\] {
-  color: #D3BF9F !important;
+  color: #94A3B8 !important;
 }
 
-/* Keep section title visible on dark parchment (e.g. "Pick a game"). */
+/* Keep section title visible and crisp on dark background (e.g. "Pick a game"). */
 :root[data-theme="dark"] .bhalyam-home .text-\[\#1D2C4A\] {
-  color: #f0dfc2 !important;
+  color: #F8FAFC !important;
 }
 
-/* Category section blurbs sit DIRECTLY on the parchment rather than inside a
-   remapped cream card, so the muted-brown token above would leave them at
-   roughly 2:1 on dark. They need the same light-on-dark treatment the section
-   titles get, one step quieter. */
+/* Category section blurbs */
 :root[data-theme="dark"] .bhalyam-home .text-\[\#6E5E4D\] {
-  color: #cbb08a !important;
+  color: #94A3B8 !important;
+}
+
+/* Accent texts in dark mode */
+:root[data-theme="dark"] .bhalyam-home .text-\[\#7B2F0E\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#7B5024\] {
+  color: #FBBF24 !important;
+}
+:root[data-theme="dark"] .bhalyam-home .text-\[\#2E8E4C\],
+:root[data-theme="dark"] .bhalyam-home .text-\[\#2FA25A\] {
+  color: #34D399 !important;
+}
+
+/* Dark-mode polish for Category Filter segmented track */
+:root[data-theme="dark"] .bhalyam-home [role="radiogroup"] > div {
+  background-color: transparent !important;
+}
+:root[data-theme="dark"] .bhalyam-home .relative.flex.w-full.rounded-full.p-1 {
+  background-color: #131926 !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.5) !important;
+}
+:root[data-theme="dark"] .bhalyam-home [role="radio"] {
+  color: #94A3B8 !important;
+}
+:root[data-theme="dark"] .bhalyam-home [role="radio"]:hover {
+  background-color: #192233 !important;
+  color: #F8FAFC !important;
+}
+:root[data-theme="dark"] .bhalyam-home [role="radio"][aria-checked="true"] {
+  color: #FFFFFF !important;
+}
+:root[data-theme="dark"] .bhalyam-home #bhalyam-filter-thumb,
+:root[data-theme="dark"] .bhalyam-home [data-projection-id*="filter-thumb"],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#1D2C4A\] {
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+}
+
+/* Most Played Today tag in Dark Mode */
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#FFF4E4\] {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  color: #FBBF24 !important;
+  box-shadow: 0 4px 12px -3px rgba(245, 158, 11, 0.25) !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#FFF4E4\] .bg-\[\#EA5A1F\] {
+  background-color: #F59E0B !important;
+}
+
+/* Game Tile polish in Dark Mode */
+:root[data-theme="dark"] .bhalyam-home .border-\[\#F4D6B7\] {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 14px 28px -12px rgba(0, 0, 0, 0.65) !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bg-bhalyam-cream-soft.text-bhalyam-wood-dark {
+  background: rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #FFFFFF !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bg-bhalyam-cream-soft.text-bhalyam-wood-dark:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
 }
 
 /* Dark-mode polish for the three middle cards:
    Continue Playing / Top Achievements / Invite Your Friends. */
 :root[data-theme="dark"] .bhalyam-home .middle-panels > article {
-  background: linear-gradient(165deg, #2a1f16 0%, #21170f 100%) !important;
-  border-color: #8e653a !important;
-  box-shadow: 0 16px 28px -18px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 234, 200, 0.08);
+  background: linear-gradient(180deg, #161D2B 0%, #111622 100%) !important;
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  box-shadow: 0 16px 32px -16px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .middle-panels h3,
 :root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#2A354D\] {
-  color: #ffe8c3 !important;
+  color: #F8FAFC !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#273248\],
 :root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#2E3C57\] {
-  color: #f7e0bc !important;
+  color: #F8FAFC !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#5F6A79\],
 :root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#6D7584\],
 :root[data-theme="dark"] .bhalyam-home .middle-panels .text-\[\#6E7482\] {
-  color: #e5c9a5 !important;
+  color: #94A3B8 !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#EFE2CF\],
 :root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#F7EFE0\],
-:root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#FAF2E6\] {
-  background: linear-gradient(180deg, #3a2a1d 0%, #322317 100%) !important;
+:root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#FAF2E6\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#FBF4E8\] {
+  background: #182234 !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .middle-panels .border-\[\#E6D4B8\],
 :root[data-theme="dark"] .bhalyam-home .middle-panels .border-\[\#E8D8BE\],
-:root[data-theme="dark"] .bhalyam-home .middle-panels .border-\[\#E3D2B5\] {
-  border-color: #89613a !important;
+:root[data-theme="dark"] .bhalyam-home .middle-panels .border-\[\#E3D2B5\],
+:root[data-theme="dark"] .bhalyam-home .middle-panels .border-\[\#D8C4A3\] {
+  border-color: rgba(148, 163, 184, 0.14) !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#F0C15F\] {
-  background-color: #f2b84a !important;
-  box-shadow: 0 0 0 3px rgba(242, 184, 74, 0.2);
+  background-color: #F59E0B !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4) !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#25D366\],
 :root[data-theme="dark"] .bhalyam-home .middle-panels .bg-\[\#32B34F\] {
-  box-shadow: 0 10px 18px -12px rgba(37, 211, 102, 0.85);
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  box-shadow: 0 8px 20px -6px rgba(16, 185, 129, 0.45) !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .middle-panels button[class*="bg-\[\#FAF2E6\]"] {
-  background: linear-gradient(180deg, #4a3526 0%, #3e2d20 100%) !important;
-  border-color: #b88c5c !important;
-  color: #ffe6be !important;
-  box-shadow: 0 8px 14px -10px rgba(0, 0, 0, 0.7);
+  background: #1E2738 !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  color: #F8FAFC !important;
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Gold-leaf gradient for premium chips, primary CTAs, BhalyamLogo fallback. */
@@ -413,11 +478,11 @@ body, #root, .bhalyam-paper {
 }
 
 :root[data-theme="dark"] .nostalgia-paper {
-  background-color: #2A2114;
+  background-color: #131926;
   background-image:
-    radial-gradient(rgba(255, 196, 102, 0.12) 1px, transparent 1px),
-    radial-gradient(rgba(255, 224, 178, 0.05) 1px, transparent 1px),
-    linear-gradient(135deg, rgba(86, 58, 32, 0.40), rgba(28, 18, 11, 0.85) 72%);
+    radial-gradient(rgba(245, 158, 11, 0.05) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(30, 41, 59, 0.35), rgba(11, 15, 25, 0.92) 72%);
   background-size: 14px 14px, 22px 22px, 100% 100%;
   background-position: 0 0, 7px 11px, 0 0;
 }
@@ -1209,11 +1274,25 @@ body, #root, .bhalyam-paper {
   100%    { opacity: 0; transform: translateY(-8px) scale(0.96); }
 }
 
-/* Soft, thin scrollbar for Rummy lists/scorecards (parchment-friendly). */
-.rummy-scroll-soft { scrollbar-width: thin; scrollbar-color: rgba(120,95,60,0.45) transparent; }
-.rummy-scroll-soft::-webkit-scrollbar { width: 7px; height: 7px; }
-.rummy-scroll-soft::-webkit-scrollbar-thumb { background: rgba(120,95,60,0.40); border-radius: 999px; }
-.rummy-scroll-soft::-webkit-scrollbar-track { background: transparent; }
+/* Universal theme-aware scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(120, 95, 60, 0.35); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(120, 95, 60, 0.6); }
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); }
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.5); }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 95, 60, 0.35) transparent;
+}
+:root[data-theme="dark"] * {
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+
+.rummy-scroll-soft { scrollbar-width: thin; }
+:root[data-theme="dark"] .rummy-scroll-soft { scrollbar-color: rgba(148, 163, 184, 0.25) transparent; }
 
 /* Rummy — closed deck glow when it's your turn to draw */
 @keyframes rummy-glow {
@@ -1995,23 +2074,6 @@ body, #root, .bhalyam-paper {
   .auth-spin { animation-duration: 2.4s; }
 }
 
-/* ── Auth surface tokens ──────────────────────────────────────────────
-   The sign-in screens are one self-contained world, so their palette lives
-   in one place and flips whole rather than per-declaration.
-
-   Two collisions with the global BHALYAM styles are settled here:
-
-   1. `.bhalyam-font h1..h4` (way above) sets Poppins with a higher
-      specificity than `.bhalyam-display`, so a heading tagged for Righteous
-      silently rendered in Poppins — the display face never even downloaded,
-      because nothing on the page ever resolved to it. Scoped to `.auth-shell`
-      rather than fixed globally: the same collision affects the home page's
-      section headings, and changing that surface is not this change's call.
-
-   2. The dark-mode readability tuning assumes dark panels. This card is warm
-      paper in both themes, so the tuning has to be answered explicitly rather
-      than inherited. */
-
 .auth-shell {
   --auth-card: #FFFBF2;
   --auth-card-edge: #E8D8BE;
@@ -2025,15 +2087,15 @@ body, #root, .bhalyam-paper {
 }
 
 :root[data-theme="dark"] .auth-shell {
-  --auth-card: #2A1D11;
-  --auth-card-edge: #4B361F;
-  --auth-ink: #F6EDDC;
-  --auth-ink-soft: #D3BF9F;
-  --auth-ink-mute: #B49B75;
-  --auth-field: #201509;
-  --auth-field-edge: #58411F;
-  --auth-rule: #4B361F;
-  --auth-hairline: rgba(0, 0, 0, 0.5);
+  --auth-card: #131926;
+  --auth-card-edge: rgba(148, 163, 184, 0.16);
+  --auth-ink: #F8FAFC;
+  --auth-ink-soft: #94A3B8;
+  --auth-ink-mute: #64748B;
+  --auth-field: #182234;
+  --auth-field-edge: rgba(148, 163, 184, 0.2);
+  --auth-rule: rgba(148, 163, 184, 0.14);
+  --auth-hairline: rgba(255, 255, 255, 0.08);
 }
 
 /* Righteous, actually applied — see note 1 above. */
@@ -2041,12 +2103,6 @@ body, #root, .bhalyam-paper {
   font-family: 'Righteous', 'Poppins', system-ui, sans-serif;
 }
 
-/* The dark tuning above forces `.bhalyam-home h2` to near-black `!important`,
-   because that strategy keeps BHALYAM's paper panels light in dark mode and
-   darkens their ink to suit. This card goes genuinely dark instead, so that
-   rule would paint the heading the same colour as the surface behind it —
-   invisible, measured at 1.05:1. `!important` is the only thing that outranks
-   `!important`, and it is how the block above states its own intent. */
 :root[data-theme="dark"] .auth-shell h1,
 :root[data-theme="dark"] .auth-shell h2,
 :root[data-theme="dark"] .auth-shell h3 {
@@ -2077,29 +2133,19 @@ body, #root, .bhalyam-paper {
 }
 
 :root[data-theme="dark"] .auth-shell {
-  --auth-accent: #E7BE73;
-  --auth-note-bg: #33240F;
-  --auth-note-edge: #59421C;
-  --auth-note-ink: #EBD3A0;
-  --auth-ok-bg: #1D2E1B;
-  --auth-ok-edge: #3B5C36;
-  --auth-ok-ink: #B7DDAF;
-  --auth-bad-bg: #3A1D18;
-  --auth-bad-edge: #6B342B;
-  --auth-bad-ink: #F0B4AA;
-  --auth-field-error: #F0A79C;
+  --auth-accent: #FBBF24;
+  --auth-note-bg: #1A2333;
+  --auth-note-edge: rgba(245, 158, 11, 0.3);
+  --auth-note-ink: #FDE68A;
+  --auth-ok-bg: #064E3B;
+  --auth-ok-edge: #059669;
+  --auth-ok-ink: #A7F3D0;
+  --auth-bad-bg: #4C0519;
+  --auth-bad-edge: #BE123C;
+  --auth-bad-ink: #FECDD3;
+  --auth-field-error: #FB7185;
 }
 
-/* The dark-mode readability block far above forces `.bhalyam-home` panels to
-   light cream `!important` and `.bhalyam-home` ink to light cream too. That
-   pairing is coherent only where the panel really is light; inside a token
-   surface it produced cream-on-cream at 1.04:1. Tokens win here, and only
-   `!important` outranks `!important`.
- *
- * EVERY light surface in the sheet has to be listed. A first pass flipped the
- * ink and only some of the backgrounds, which left the menu's icon discs pale
- * with pale glyphs on them — the same failure moved one layer in. The rule is
- * all-or-nothing: if the ink flips, every surface under it flips too. */
 :root[data-theme="dark"] .auth-shell,
 :root[data-theme="dark"] .auth-shell .bg-\[\#FCF8EF\],
 :root[data-theme="dark"] .auth-shell .bg-\[\#FBF2E3\],
@@ -2115,8 +2161,6 @@ body, #root, .bhalyam-paper {
   background-color: var(--auth-field) !important;
 }
 
-/* The sheet's own shell stays the card colour; only the insets go one step
-   darker so discs and rows still read as raised. */
 :root[data-theme="dark"] .auth-shell {
   background-color: var(--auth-card) !important;
 }
@@ -2136,20 +2180,11 @@ body, #root, .bhalyam-paper {
   color: var(--auth-ink-soft) !important;
 }
 
-/* The hero card paints itself with a light gradient (`bg-gradient-to-br
-   from-[#FFF7E2]`), which a background-COLOR override cannot touch — a
-   gradient is a background-image. So in dark mode the card stayed cream while
-   the ink above flipped to cream: the player's own name disappeared. Caught by
-   eye, not by the contrast pass, because the measurement walks up looking for
-   a background colour and a gradient has none. */
 :root[data-theme="dark"] .auth-shell .from-\[\#FFF7E2\] {
-  background-image: linear-gradient(to bottom right, #3A2916, #2A1D11) !important;
+  background-image: linear-gradient(to bottom right, #1E293B, #131926) !important;
   border-color: var(--auth-card-edge) !important;
 }
 
-/* Gold is a light surface in BOTH themes, so anything sitting on it keeps dark
-   ink whatever the theme says. Without this the primary menu row inverted the
-   wrong way in dark mode: a dark disc on gold, and a pale subtitle on gold. */
 :root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf,
 :root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf * {
   color: #2A221B !important;
@@ -2158,38 +2193,34 @@ body, #root, .bhalyam-paper {
   background-color: #FFF6DC !important;
 }
 
-/* Hero copy over the dark hero art. The headline's coloured words keep their
-   own hues (they are the brand moment); the neutral lines and the supporting
-   paragraph flip to light so they read against the dark wash. */
+/* Hero copy over the dark hero art. */
 :root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy,
 :root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .text-\[\#1B2A4A\],
 :root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .text-\[\#1D2C4A\] {
-  color: #F6EDDC !important;
+  color: #F8FAFC !important;
 }
 
-/* The hero copy uses several dark inks that the tuning above does not know
-   about; over the dark wash they all need to be light. Scoped to the hero so
-   nothing else inherits it. */
 :root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy * {
-  color: #F6EDDC;
+  color: #F8FAFC;
 }
 :root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bhalyam-gradient-text,
 :root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bhalyam-script {
   color: revert-layer;
 }
 
-/* The WhatsApp pill inside the hero keeps its cream fill in both themes — it
-   is a button, not a text block — so the light-ink rule above must not reach
-   inside it. Without this exclusion the label went cream-on-cream: the same
-   mistake as the sheet, made by a `*` selector cast too wide. */
-:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bg-\[\#FFF8EE\],
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bg-\[\#FFF8EE\] {
+  background-color: #182234 !important;
+  border-color: rgba(148, 163, 184, 0.25) !important;
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.6) !important;
+}
 :root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bg-\[\#FFF8EE\] * {
-  color: #2A221B;
+  color: #F8FAFC !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bg-\[\#FFF8EE\] .text-\[\#5C4A38\] {
+  color: #94A3B8 !important;
 }
 
-/* Config modals and the room lobby, which never had a dark variant at all.
-   They opt in with `auth-shell`; these are the cream fills and dark inks those
-   two surfaces use that the list above did not already cover. */
+/* Config modals and the room lobby */
 :root[data-theme="dark"] .auth-shell .bg-\[\#F1E5D1\],
 :root[data-theme="dark"] .auth-shell .bg-\[\#F6ECDA\],
 :root[data-theme="dark"] .auth-shell .bg-\[\#F6EDDB\],
@@ -2214,10 +2245,6 @@ body, #root, .bhalyam-paper {
   color: var(--auth-ink-soft) !important;
 }
 
-/* The named palette. GameRoomSheet and the lobby use `bhalyam-cream-*` /
-   `bhalyam-wood-*` utilities rather than raw hexes, so the hex selectors above
-   never reached the inputs or the option cards — the fields stayed cream with
-   cream text in them. */
 :root[data-theme="dark"] .auth-shell .bg-bhalyam-cream,
 :root[data-theme="dark"] .auth-shell .bg-bhalyam-cream-soft,
 :root[data-theme="dark"] .auth-shell .bg-bhalyam-cream-warm,
@@ -2237,13 +2264,6 @@ body, #root, .bhalyam-paper {
 :root[data-theme="dark"] .auth-shell input::placeholder {
   color: var(--auth-ink-mute) !important;
 }
-/* Opacity variants. The option cards label themselves with
-   `text-bhalyam-wood-dark` and then set their second line to
-   `text-bhalyam-wood-dark/70`, which Tailwind emits as a *separate* class —
-   `.text-bhalyam-wood-dark` never matched it, so every sub-description stayed
-   near-black on a dark card while the title above it read fine. Substring
-   matching on the attribute catches the whole family; the `/` rule keeps the
-   sub-line one step quieter than its title instead of flattening the two. */
 :root[data-theme="dark"] .auth-shell [class*="text-bhalyam-wood"] {
   color: var(--auth-ink-soft) !important;
 }
@@ -2254,8 +2274,6 @@ body, #root, .bhalyam-paper {
   color: var(--auth-ink-soft) !important;
 }
 
-/* Two more inks tuned for cream that land on a dark card here: the gold-on-
-   cream token (#7A5C0E, ~2.1:1 on #2A1D11) and the error red. */
 :root[data-theme="dark"] .auth-shell .text-bhalyam-gold-ink {
   color: var(--auth-accent) !important;
 }
@@ -2263,131 +2281,122 @@ body, #root, .bhalyam-paper {
   color: var(--auth-field-error) !important;
 }
 
-/* Gold-selected option cards keep dark ink — gold is light in both themes. */
 :root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf,
 :root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf * {
   color: #2A221B !important;
 }
-/* …including their sub-lines, which the opacity rule above would otherwise
-   have pulled to a light ink on light gold. */
 :root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf [class*="text-bhalyam-wood-dark/"] {
   color: rgba(42, 34, 27, 0.76) !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Dark mode, second pass: the half-caught surfaces on the home page.
-
-   The `.bhalyam-home` block near the top of this file runs a two-part
-   strategy — cream PANELS go dark, dark INK goes light. It only works when
-   both halves land on the same element. Every remaining dark-mode bug on
-   this page is one half firing without the other, in one of three shapes:
-
-     (a) the panel flipped, the ink on it did not  → dark on dark
-     (b) the ink flipped, the panel under it did not → light on light
-     (c) neither should have flipped, but one did
-
-   Enumerating hexes is what kept missing these, so each rule below states
-   which shape it is fixing rather than just listing another colour.
-   ═══════════════════════════════════════════════════════════════════════ */
-
-/* (a) Header icon circles and the "View all games" pill are `bg-[#FCF8EF]`,
-       which the panel list flips, carrying `text-[#2A221B]`, which the ink
-       list does not — near-black glyphs on a near-black disc. This is the
-       "icons are not visible" report. Matching on the compound selector
-       flips the ink ONLY where the background under it actually moved, so
-       the same hex stays near-black on the menu's genuinely light rows. */
+/* Home surface fine-tuning */
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#FCF8EF\].text-\[\#2A221B\],
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#FBF2E3\].text-\[\#2A221B\],
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#F8EEDB\].text-\[\#2A221B\] {
-  color: #F6EDDC !important;
+  color: #F8FAFC !important;
 }
 
-/* (b) The stats strip. `bg-[#F8EEDB]` was missing from the panel list, so it
-       stayed cream — while `text-[#677080]` on it was flipped light by the
-       ink list. Light grey on cream. */
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#F8EEDB\] {
-  background-color: #2A1D11 !important;
-  border-color: #4B361F !important;
+  background-color: #131926 !important;
+  border-color: rgba(148, 163, 184, 0.15) !important;
 }
 :root[data-theme="dark"] .bhalyam-home .border-\[\#EBDDC7\],
 :root[data-theme="dark"] .bhalyam-home .border-\[\#E0CFA8\],
 :root[data-theme="dark"] .bhalyam-home .border-\[\#EEDCC2\] {
-  border-color: #4B361F !important;
+  border-color: rgba(148, 163, 184, 0.15) !important;
 }
-/* The stat numbers are a mid green picked against cream; on #2A1D11 it lands
-   near 4:1, which is under the bar for something this size and this loud. */
 :root[data-theme="dark"] .bhalyam-home .text-\[\#2FA25A\] {
-  color: #6FDC97 !important;
+  color: #34D399 !important;
 }
 
-/* (c) The game-tile "Quick Play" pill was already correct and got broken.
-       It sits on a saturated tile gradient that is identical in both themes,
-       so a cream chip with dark-brown ink is right in both. It only failed
-       because the blanket `.text-bhalyam-wood-dark` flip cannot tell that
-       this particular label is not on parchment. Pin it back. */
-:root[data-theme="dark"] .bhalyam-home .bg-bhalyam-cream-soft.text-bhalyam-wood-dark {
-  color: #4A2C16 !important;
-}
-
-/* The footer card. Its cream wash is an inline `style` gradient, which is
-   why it survived every class-based override so far — see the note on
-   `bhalyam-footer-card` in BhalyamHome.tsx. Same three stops, rotated into
-   the dark palette, so the radial shape of the original survives. */
+/* The footer card and Founder section in Dark Mode */
 :root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card {
-  background:
-    radial-gradient(ellipse at 50% 0%, #3A2913 0%, #2A1D11 55%, #1E1409 100%) !important;
-  border-color: #4B361F !important;
+  background: radial-gradient(ellipse at 50% 0%, #161D2B 0%, #101521 65%, #0B0E17 100%) !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+  box-shadow: 0 16px 36px -16px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
-/* Footer ink, all of it tuned against cream: the link/accent brown, the
-   muted note grey-brown, and the two heading browns. */
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .border-\[\#E6D4B5\] {
+  border-color: rgba(245, 158, 11, 0.25) !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .border-l {
+  border-left-color: rgba(245, 158, 11, 0.25) !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card span.rounded-full.bg-\[\#E8D9C0\] {
+  background-color: #0B0F19 !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6) !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .bg-\[\#FFF8E7\] {
+  background-color: #192233 !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .bg-\[\#F2DFA8\]\/90 {
+  background-color: rgba(245, 158, 11, 0.22) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#9C7E63\],
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#E85D04\] {
+  color: #F59E0B !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card h3,
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#4A2508\] {
+  color: #FBBF24 !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card blockquote,
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#6D4323\] {
+  color: #CBD5E1 !important;
+}
 :root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#7B5024\],
 :root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#7B2F0E\] {
-  color: #E7BE73 !important;
+  color: #FBBF24 !important;
 }
 :root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#8A6D4B\],
-:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#5D3819\] {
-  color: #CDB794 !important;
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#5D3819\],
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#7A5B3E\] {
+  color: #94A3B8 !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card h4 {
+  color: #F8FAFC !important;
 }
 :root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card a:hover {
-  color: #F6EDDC !important;
+  color: #FBBF24 !important;
 }
-/* The "made with love" heart — crimson on cream, ~2.9:1 on the dark card. */
 :root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#E11D48\] {
-  color: #FF7A94 !important;
+  color: #FB7185 !important;
 }
 
-/* The WhatsApp / Instagram / Email chips, shape (b) again and the worst of
-   them: `text-[#3C2A1E]` is on the ink list so their labels went cream, while
-   `bg-white` is on no list at all, so the chips stayed white. Cream on white,
-   measured at 1.16:1 — the labels were simply gone.
- *
- * Keyed on the pairing rather than on `bg-white` alone, because the menu
- * sheet also uses `bg-white` and its rows carry `text-[#2A221B]`, which does
- * NOT flip — those are correct as they are, and a blanket rule would invert
- * them into the same failure this one is fixing. The chip surface is a step
- * lighter than the card gradient behind it so it still reads as a raised
- * chip; the brand-coloured icon discs are untouched. */
-:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .bg-white.text-\[\#3C2A1E\] {
-  background-color: #3D2C16 !important;
-  border-color: #5E4726 !important;
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .bg-white {
+  background-color: #192233 !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  color: #F8FAFC !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .bg-white:hover {
+  background-color: #222D42 !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .bg-white span {
+  color: #F8FAFC !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .bg-\[\#F7EBD3\] {
+  background-color: #182234 !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .bg-\[\#F7EBD3\] input {
+  color: #F8FAFC !important;
 }
 
-/* Category-strip scroll arrows. The wash must land on the page colour behind
-   the strip, which is #F7E8C4-ish parchment in light and #23180F in dark, so
-   it cannot be an inline gradient — see the note in CategoryFilter.tsx. The
-   light stop keeps its original value; only the dark half is new. */
+/* Category-strip scroll arrows */
 .bhalyam-strip-fade {
   --strip-fade: #FCF8EF;
   --strip-fade-0: rgba(252, 248, 239, 0);
   color: #7A5C3A;
 }
 :root[data-theme="dark"] .bhalyam-strip-fade {
-  --strip-fade: #23180F;
-  --strip-fade-0: rgba(35, 24, 15, 0);
-  color: #D8C29B;
+  --strip-fade: #0B0F19;
+  --strip-fade-0: rgba(11, 15, 25, 0);
+  color: #94A3B8;
 }
-/* Two stops rather than `transparent`, which resolves to transparent BLACK
-   and greys the middle of the ramp on the light theme. */
 .bhalyam-strip-fade[data-side="right"] {
   background: linear-gradient(to right, var(--strip-fade-0) 0%, var(--strip-fade) 62%);
 }
@@ -2395,19 +2404,7 @@ body, #root, .bhalyam-paper {
   background: linear-gradient(to left, var(--strip-fade-0) 0%, var(--strip-fade) 62%);
 }
 
-/* ── Room side-panel surfaces (players / voice / chat / room code) ───────
-   These shipped as a BHALYAM cream panel in light and a cold Tailwind
-   `slate` panel in dark, so the waiting screen turned half warm-brown and
-   half navy the moment the theme flipped — the "discrepancies in dark mode"
-   on that screen.
-
-   Fixed with tokens rather than by swapping one hard-coded scale for
-   another, so the two themes are declared in one place instead of being
-   spread across `bg-[#F7EEDC] dark:bg-slate-900` pairs in four components.
-   Deliberately NOT done by redefining Tailwind's `slate`: 143 of the 252
-   slate references in this app are un-prefixed game-arena chrome that is
-   meant to stay cold and dark in BOTH themes, and remapping the palette
-   would have dragged all of it along. */
+/* ── Room side-panel surfaces (players / voice / chat / room code) ─────── */
 :root {
   --room-panel: #F7EEDC;
   --room-panel-edge: #E6D4B7;
@@ -2417,31 +2414,25 @@ body, #root, .bhalyam-paper {
   --room-field-edge: #DCC8A6;
   --room-ink: #352C24;
   --room-ink-soft: #5C4A38;
-  /* The three mutes this replaces (#8C7A67, #8A7865, #8A7660) all measured
-     3.5–3.8:1 on their panels — "(you)", the overflow ellipsis and the empty
-     chat line were under AA in LIGHT mode, before any of the dark work. One
-     token, darkened to clear 4.5:1 on both the panel and the inset. */
   --room-ink-mute: #6F5C46;
   --room-chip: #EFE2C7;
   --room-chip-hover: #E5D4B2;
-  /* Raised button on a panel — lighter than the panel in light mode, so it
-     needs its own pair rather than reusing the chip. Light values are the
-     originals, unchanged, so the light theme is untouched by this. */
   --room-btn: #FCF8EF;
   --room-btn-hover: #F6E9CE;
 }
 :root[data-theme="dark"] {
-  --room-panel: #2A1D11;
-  --room-panel-edge: #4B361F;
-  --room-inset: #34240F;
-  --room-inset-edge: #58411F;
-  --room-field: #201509;
-  --room-field-edge: #58411F;
-  --room-ink: #F6EDDC;
-  --room-ink-soft: #D3BF9F;
-  --room-ink-mute: #B49B75;
-  --room-chip: #3D2C16;
-  --room-chip-hover: #4B361F;
-  --room-btn: #3D2C16;
-  --room-btn-hover: #4B361F;
+  --room-panel: #131926;
+  --room-panel-edge: rgba(148, 163, 184, 0.16);
+  --room-inset: #182234;
+  --room-inset-edge: rgba(148, 163, 184, 0.12);
+  --room-field: #0F1420;
+  --room-field-edge: rgba(148, 163, 184, 0.2);
+  --room-ink: #F8FAFC;
+  --room-ink-soft: #94A3B8;
+  --room-ink-mute: #64748B;
+  --room-chip: #1E2738;
+  --room-chip-hover: #26334A;
+  --room-btn: #1E2738;
+  --room-btn-hover: #26334A;
 }
+

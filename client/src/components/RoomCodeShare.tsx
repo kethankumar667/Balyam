@@ -112,33 +112,35 @@ export default function RoomCodeShare({
 
   return (
     <>
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-3.5">
         {name && (
-          <div className="font-script text-2xl text-[#2B3550] -mb-1">{name}</div>
+          <div className="font-script text-2xl text-[#2B3550] dark:text-amber-300 -mb-1">{name}</div>
         )}
-        <div className="text-[11px] uppercase tracking-widest font-bold text-[#A3886E]">
-          Room Code
+        <div className="inline-flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-[#8A6D4B] dark:text-slate-400">
+          <span aria-hidden className="text-sm">👥</span>
+          <span>Room Code</span>
         </div>
         <button
           type="button"
           onClick={copyCode}
           title="Tap to copy"
-          className="font-mono text-[34px] sm:text-[42px] tracking-[0.35em] font-black text-[#2B3550]
-                     bg-white border-2 border-dashed border-[#E6C99F] rounded-lg
-                     px-5 py-2 leading-none
-                     hover:bg-[#FDF7EB] active:translate-y-px transition-all"
+          className="font-mono text-3xl sm:text-4xl tracking-[0.35em] font-black text-[#2B3550] dark:text-slate-100
+                     bg-[#FFF9EE] dark:bg-[#0F1420] border-2 border-dashed border-[#E6C99F] dark:border-amber-500/40 rounded-2xl
+                     px-7 py-3 leading-none
+                     hover:bg-[#FFF4E0] dark:hover:bg-[#141C2B] active:translate-y-px transition-all
+                     shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] dark:shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] cursor-pointer"
         >
           <span id="bhalyam-room-code-text">{code}</span>
         </button>
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2.5 pt-1">
           <button
             type="button"
             onClick={copyCode}
-            className="inline-flex items-center gap-2 rounded-full
-                       bg-[#EA5A1F] hover:bg-[#D84F17] active:translate-y-px
-                       text-white font-bold text-[13px] px-4 py-2
-                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
-                       transition-all duration-150"
+            className="inline-flex items-center gap-1.5 rounded-full
+                       bg-[#EA5A1F] hover:bg-[#D84F17] active:scale-95
+                       text-white font-bold text-xs sm:text-sm px-4 py-2
+                       shadow-[0_4px_12px_rgba(234,90,31,0.35)]
+                       transition-all duration-150 cursor-pointer"
             aria-label="Copy room code"
           >
             <span aria-hidden>📋</span>
@@ -147,11 +149,11 @@ export default function RoomCodeShare({
           <button
             type="button"
             onClick={() => setQrOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full
-                       bg-[#FF8F00] hover:bg-[#E57F00] active:translate-y-px
-                       text-white font-bold text-[13px] px-4 py-2
-                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
-                       transition-all duration-150"
+            className="inline-flex items-center gap-1.5 rounded-full
+                       bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700 active:scale-95
+                       text-[#352C24] dark:text-slate-100 font-semibold text-xs sm:text-sm px-4 py-2
+                       border border-[#EEDBCA] dark:border-slate-700
+                       shadow-sm transition-all duration-150 cursor-pointer"
             aria-label="Show QR Code"
           >
             <span aria-hidden>📷</span>
@@ -160,14 +162,14 @@ export default function RoomCodeShare({
           <button
             type="button"
             onClick={share}
-            className="inline-flex items-center gap-2 rounded-full
-                       bg-[#25D366] hover:bg-[#1FB856] active:translate-y-px
-                       text-white font-bold text-[13px] px-4 py-2
-                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
-                       transition-all duration-150"
+            className="inline-flex items-center gap-1.5 rounded-full
+                       bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700 active:scale-95
+                       text-[#352C24] dark:text-slate-100 font-semibold text-xs sm:text-sm px-4 py-2
+                       border border-[#EEDBCA] dark:border-slate-700
+                       shadow-sm transition-all duration-150 cursor-pointer"
             aria-label="Share room link"
           >
-            <span aria-hidden>📤</span>
+            <span aria-hidden>🔗</span>
             Share Link
           </button>
           <button
@@ -182,14 +184,14 @@ export default function RoomCodeShare({
                 setTimeout(() => toast.remove(), 2500);
               }
             }}
-            className="inline-flex items-center gap-2 rounded-full
-                       bg-[#8B5CF6] hover:bg-[#7C3AED] active:translate-y-px
-                       text-white font-bold text-[13px] px-4 py-2
-                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
-                       transition-all duration-150"
+            className="inline-flex items-center gap-1.5 rounded-full
+                       bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700 active:scale-95
+                       text-[#352C24] dark:text-slate-100 font-semibold text-xs sm:text-sm px-4 py-2
+                       border border-[#EEDBCA] dark:border-slate-700
+                       shadow-sm transition-all duration-150 cursor-pointer"
             aria-label="Share Screenshot Image"
           >
-            <span aria-hidden>📸</span>
+            <span aria-hidden>🖼</span>
             Share Image
           </button>
         </div>

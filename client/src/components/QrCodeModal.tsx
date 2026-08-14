@@ -72,7 +72,7 @@ export default function QrCodeModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4
-                 bg-bhalyam-wood-dark/75 backdrop-blur-sm animate-fade-in"
+                 bg-black/60 dark:bg-black/80 backdrop-blur-sm dark:backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
       <div
@@ -81,17 +81,17 @@ export default function QrCodeModal({
         aria-labelledby="qr-modal-title"
         onClick={(e) => e.stopPropagation()}
         className="bhalyam-font relative w-full max-w-sm
-                   bg-bhalyam-cream-soft text-bhalyam-wood-dark
-                   border-2 border-bhalyam-cream-edge/80
-                   rounded-3xl p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.65)]
+                   bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
+                   border-2 border-[#EEDBCA] dark:border-slate-800
+                   rounded-3xl p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]
                    flex flex-col items-center text-center space-y-4"
         style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
       >
         {/* Header */}
-        <div className="w-full flex items-center justify-between border-b-2 border-bhalyam-cream-edge/50 pb-3">
+        <div className="w-full flex items-center justify-between border-b-2 border-[#EEDBCA]/60 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2.5 text-left">
             <span
-              className="w-10 h-10 rounded-xl inline-flex items-center justify-center text-white flex-shrink-0"
+              className="w-10 h-10 rounded-xl inline-flex items-center justify-center text-white flex-shrink-0 shadow-sm"
               style={{
                 background: "linear-gradient(135deg, #EA5A1F, #B53917)",
                 boxShadow: "0 4px 10px -2px #B5391766",
@@ -103,12 +103,12 @@ export default function QrCodeModal({
             <div>
               <h2
                 id="qr-modal-title"
-                className="font-bold text-bhalyam-wood-dark text-base leading-tight"
+                className="font-bold text-[#2B3550] dark:text-slate-100 text-base leading-tight"
               >
                 Scan to Join
               </h2>
               {gameName && (
-                <div className="text-[10px] font-extrabold uppercase tracking-widest text-bhalyam-wood/80">
+                <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#8A6D4B] dark:text-slate-400">
                   {gameName}
                 </div>
               )}
@@ -119,8 +119,8 @@ export default function QrCodeModal({
             onClick={onClose}
             aria-label="Close QR Modal"
             className="w-9 h-9 rounded-full inline-flex items-center justify-center
-                       bg-bhalyam-cream-warm text-bhalyam-wood-dark cursor-pointer
-                       hover:bg-bhalyam-cream-edge active:scale-95 transition"
+                       bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200 cursor-pointer
+                       hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 transition"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -128,35 +128,35 @@ export default function QrCodeModal({
 
         {/* Host greeting if provided */}
         {hostName && (
-          <p className="font-script text-xl text-bhalyam-wood -mb-1">
+          <p className="font-script text-xl text-[#2B3550] dark:text-amber-300 -mb-1">
             "{hostName}" invites you to play!
           </p>
         )}
 
         {/* Monospace Code Display */}
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-extrabold uppercase tracking-widest text-bhalyam-wood/70">
+          <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#8A6D4B] dark:text-slate-400">
             Room Code:
           </span>
           <button
             type="button"
             onClick={copyCode}
             title="Tap to copy code"
-            className="font-mono font-black text-2xl tracking-[0.3em] text-bhalyam-wood-dark
-                       bg-white px-3 py-1 rounded-xl border border-bhalyam-cream-edge/80
-                       hover:bg-bhalyam-cream-warm active:scale-95 transition"
+            className="font-mono font-black text-2xl tracking-[0.3em] text-[#2B3550] dark:text-slate-100
+                       bg-[#FFF9EE] dark:bg-[#0B0F19] px-3.5 py-1 rounded-2xl border-2 border-dashed border-[#EEDBCA] dark:border-amber-500/40
+                       hover:bg-[#FFF4E0] dark:hover:bg-[#141C2B] active:scale-95 transition cursor-pointer"
           >
-            {code}
+            {copiedCode ? "COPIED" : code}
           </button>
         </div>
 
         {/* QR Code Container */}
-        <div className="p-4 bg-white rounded-2xl border-2 border-bhalyam-gold/50 shadow-inner flex flex-col items-center">
+        <div className="p-4 bg-white rounded-3xl border-2 border-[#EEDBCA] dark:border-amber-400/50 shadow-inner flex flex-col items-center">
           <QRCodeSVG
             value={roomUrl}
-            size={200}
+            size={190}
             bgColor="#FFFFFF"
-            fgColor="#2B1810"
+            fgColor="#0F172A"
             level="M"
             marginSize={1}
             title={`BHALYAM Room ${code} QR Code`}
@@ -164,7 +164,7 @@ export default function QrCodeModal({
         </div>
 
         {/* Instruction */}
-        <p className="text-xs font-semibold text-bhalyam-wood-dark/80 max-w-[260px] leading-relaxed">
+        <p className="text-xs font-semibold text-[#8A6D4B] dark:text-slate-400 max-w-[260px] leading-relaxed">
           Nearby friends can scan this QR code with their mobile camera app or
           BHALYAM Scanner to hop in!
         </p>
@@ -175,8 +175,8 @@ export default function QrCodeModal({
             type="button"
             onClick={copyLink}
             className="flex-1 inline-flex items-center justify-center gap-2 min-h-[44px]
-                       rounded-xl bg-bhalyam-wood-dark text-bhalyam-cream-soft font-bold text-xs
-                       hover:bg-bhalyam-wood active:scale-[0.98] transition shadow-md"
+                       rounded-xl bg-[#EA5A1F] hover:bg-[#D84F17] text-white font-bold text-xs
+                       shadow-[0_4px_12px_rgba(234,90,31,0.35)] active:scale-[0.98] transition cursor-pointer"
           >
             <CopyIcon className="w-4 h-4" />
             {copiedLink ? "Link Copied!" : "Copy Link"}
@@ -195,8 +195,9 @@ export default function QrCodeModal({
               }
             }}
             className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px]
-                       rounded-xl bg-[#8B5CF6] text-white font-bold text-xs
-                       hover:bg-[#7C3AED] active:scale-[0.98] transition shadow-md"
+                       rounded-xl bg-[#2B3550] hover:bg-[#1E2738] dark:bg-slate-800 hover:dark:bg-slate-700
+                       text-white font-bold text-xs border border-transparent dark:border-slate-700
+                       shadow-md active:scale-[0.98] transition cursor-pointer"
           >
             <span>📸</span>
             Share Image

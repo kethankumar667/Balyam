@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import AuthShell from "../../components/auth/AuthShell";
 import { usePreviewSubmit } from "../../components/auth/usePreviewSubmit";
@@ -6,16 +6,15 @@ import { validateEmail, validateName, validatePassword, type FieldError } from "
 import { useRoomStore } from "../../store/roomStore";
 import { AVATARS } from "../../lib/avatars";
 
-const AVATAR_OPTIONS = AVATARS.slice(0, 6);
-
 export default function SignUpPage() {
-  const { playerName, setPlayerName } = useRoomStore();
+  const { playerName, setPlayerName, avatarId, setAvatarId } = useRoomStore();
 
   const [name, setName] = useState(playerName || "monica");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_OPTIONS[0]?.id || "");
+  const [selectedAvatar, setSelectedAvatar] = useState(avatarId || AVATARS[0]?.id || "");
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
 
   const [nameError, setNameError] = useState<FieldError>(null);
@@ -28,8 +27,24 @@ export default function SignUpPage() {
   const hasNumOrSymbol = /[0-9!@#$%^&*()]/.test(password);
   const hasLetters = /[a-zA-Z]/.test(password);
 
+  // If the selected avatar is not in top 6 defaults, place it first so it's directly visible
+  const visibleAvatars = useMemo(() => {
+    const topDefaults = AVATARS.slice(0, 6);
+    if (!selectedAvatar || topDefaults.some((a) => a.id === selectedAvatar)) {
+      return topDefaults;
+    }
+    const custom = AVATARS.find((a) => a.id === selectedAvatar);
+    return custom ? [custom, ...AVATARS.slice(0, 5)] : topDefaults;
+  }, [selectedAvatar]);
+
+  function handleSelectAvatar(id: string) {
+    setSelectedAvatar(id);
+    setAvatarId(id);
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!agreeTerms) return;
     const nextName = validateName(name);
     const nextEmail = validateEmail(email);
     const nextPassword = validatePassword(password);
@@ -40,6 +55,9 @@ export default function SignUpPage() {
       return;
     }
     setPlayerName(name.trim());
+    if (selectedAvatar) {
+      setAvatarId(selectedAvatar);
+    }
     submit();
   }
 
@@ -65,7 +83,7 @@ export default function SignUpPage() {
             <button
               type="button"
               onClick={submit}
-              className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs"
+              className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -91,7 +109,7 @@ export default function SignUpPage() {
             <button
               type="button"
               onClick={submit}
-              className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs"
+              className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer"
             >
               <span className="text-base text-black">🍏</span>
               <span>Continue with Apple</span>
@@ -200,7 +218,7 @@ export default function SignUpPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#9C7E63] hover:text-[#4A2508] text-sm"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#9C7E63] hover:text-[#4A2508] text-sm cursor-pointer"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? "🙈" : "👁️"}
@@ -236,25 +254,28 @@ export default function SignUpPage() {
                 Choose your avatar
               </label>
               <div className="flex items-center gap-2 flex-wrap">
-                {AVATAR_OPTIONS.map((av) => (
+                {visibleAvatars.map((av) => (
                   <button
                     key={av.id}
                     type="button"
-                    onClick={() => setSelectedAvatar(av.id)}
-                    className={`w-8 h-8 rounded-full border-2 overflow-hidden transition-all shadow-2xs ${
+                    onClick={() => handleSelectAvatar(av.id)}
+                    className={`w-8 h-8 rounded-full border-2 overflow-hidden transition-all shadow-2xs cursor-pointer ${
                       selectedAvatar === av.id
-                        ? "border-[#F4C430] scale-110 ring-2 ring-[#F4C430]/40"
-                        : "border-[#E6D4B5] hover:border-[#D4A574]"
+                        ? "border-[#E85D04] scale-110 ring-2 ring-[#F4C430] shadow-sm"
+                        : "border-[#E6D4B5] hover:border-[#D4A574] hover:scale-105"
                     }`}
+                    title={av.label}
                   >
                     <img src={av.src} alt={av.label} className="w-full h-full object-cover" />
                   </button>
                 ))}
                 <button
                   type="button"
-                  className="px-2.5 py-1 rounded-full border border-[#E6D4B5] bg-[#FFF8E7] text-[10.5px] font-bold text-[#5C3717] hover:bg-white transition-all"
+                  onClick={() => setShowAvatarModal(true)}
+                  className="px-2.5 py-1 rounded-full border border-[#E6D4B5] bg-[#FFF8E7] text-[10.5px] font-bold text-[#5C3717] hover:bg-white hover:border-[#D4A574] active:scale-95 transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
                 >
-                  View more ⚙️
+                  <span>View more</span>
+                  <span>⚙️</span>
                 </button>
               </div>
             </div>
@@ -266,7 +287,7 @@ export default function SignUpPage() {
                 id="agreeTerms"
                 checked={agreeTerms}
                 onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border-[#D9C4A3] text-[#E85D04] focus:ring-[#F4C430] accent-[#E85D04]"
+                className="w-4 h-4 mt-0.5 rounded border-[#D9C4A3] text-[#E85D04] focus:ring-[#F4C430] accent-[#E85D04] cursor-pointer"
                 required
               />
               <label htmlFor="agreeTerms" className="text-[11.5px] font-bold text-[#5C3717] select-none cursor-pointer leading-tight">
@@ -284,14 +305,106 @@ export default function SignUpPage() {
             {/* Primary CTA Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-[#FFB703] via-[#F4C430] to-[#E85D04] hover:from-[#F4C430] hover:to-[#D45000] text-[#4A2508] font-extrabold py-2.5 rounded-full text-[14.5px] shadow-md hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2 mt-1"
+              disabled={loading || !agreeTerms}
+              className={`w-full font-extrabold py-2.5 rounded-full text-[14.5px] shadow-md transition-all flex items-center justify-center gap-2 mt-1 ${
+                !agreeTerms || loading
+                  ? "bg-[#E5D7C7] text-[#9A8775] cursor-not-allowed border border-[#D8C7B4] shadow-none opacity-75"
+                  : "bg-gradient-to-r from-[#FFB703] via-[#F4C430] to-[#E85D04] hover:from-[#F4C430] hover:to-[#D45000] text-[#4A2508] shadow-amber-900/20 hover:scale-[1.01] active:scale-95 cursor-pointer"
+              }`}
             >
               <span>{loading ? "Creating account..." : "Create account"}</span>
               <span>→</span>
             </button>
 
           </form>
+
+          {/* Avatar Selection Modal */}
+          {showAvatarModal && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-fade-in"
+              onClick={() => setShowAvatarModal(false)}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="avatar-modal-title"
+                onClick={(e) => e.stopPropagation()}
+                className="bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100 border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] space-y-4 text-left max-h-[85vh] flex flex-col"
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-[#EEDBCA]/70 dark:border-slate-800">
+                  <div>
+                    <h2
+                      id="avatar-modal-title"
+                      className="text-base sm:text-lg font-bold text-[#4A2508] dark:text-slate-100 flex items-center gap-2"
+                    >
+                      <span>Choose Your Avatar</span>
+                      <span className="text-sm">✨</span>
+                    </h2>
+                    <p className="text-xs text-[#7A5B3E] dark:text-slate-400 mt-0.5">
+                      Pick from 40+ playful avatars to represent you in the lounge.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAvatarModal(false)}
+                    aria-label="Close modal"
+                    className="w-8 h-8 rounded-full inline-flex items-center justify-center bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200 hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 transition cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Avatars Grid */}
+                <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="grid grid-cols-5 sm:grid-cols-6 gap-2.5 sm:gap-3 p-1">
+                    {AVATARS.map((av) => {
+                      const isSelected = selectedAvatar === av.id;
+                      return (
+                        <button
+                          key={av.id}
+                          type="button"
+                          onClick={() => {
+                            handleSelectAvatar(av.id);
+                            setShowAvatarModal(false);
+                          }}
+                          className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all p-0.5 group cursor-pointer ${
+                            isSelected
+                              ? "border-[#E85D04] ring-3 ring-[#F4C430] scale-105 shadow-md bg-amber-500/10"
+                              : "border-[#EEDBCA] dark:border-slate-700/80 hover:border-[#F4C430] hover:scale-105 bg-white dark:bg-[#182234]"
+                          }`}
+                          title={av.label}
+                        >
+                          <img
+                            src={av.src}
+                            alt={av.label}
+                            loading="lazy"
+                            className="w-full h-full object-cover rounded-xl"
+                          />
+                          {isSelected && (
+                            <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#E85D04] text-white flex items-center justify-center text-[10px] font-black shadow-sm">
+                              ✓
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="pt-2 border-t border-[#EEDBCA]/70 dark:border-slate-800 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowAvatarModal(false)}
+                    className="px-6 py-2 rounded-full bg-gradient-to-r from-[#FFB703] via-[#F4C430] to-[#E85D04] text-[#4A2508] font-extrabold text-xs shadow-sm hover:scale-105 active:scale-95 transition cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Footer Text */}
           <div className="text-center pt-2 border-t border-[#F2E3C6]">

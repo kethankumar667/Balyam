@@ -110,6 +110,29 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   );
 }
 
+const GAME_DISPLAY_NAMES: Record<GameKind, string> = {
+  chess: "CHESS ♟",
+  rummy: "RUMMY 🃏",
+  ludo: "LUDO 🎲",
+  snl: "SNAKES & LADDERS 🐍",
+  handcricket: "HAND CRICKET 🏏",
+  rps: "ROCK PAPER SCISSORS ✂️",
+  uno: "UNO 🎴",
+  wordbuilding: "WORD BUILDING 🔤",
+  dotsboxes: "DOTS & BOXES ⚄",
+  stargame: "STAR GAME ⭐",
+  bingo: "BINGO 🎱",
+  namesplaceanimal: "NAME PLACE ANIMAL 🐾",
+  tambola: "TAMBOLA 🎟️",
+  samethalu: "SAMETHALU 📜",
+  telugucinemalu: "TELUGU CINEMA 🎬",
+  snake: "SNAKE 🐍",
+  roadrash: "ROAD RASH 🏍️",
+  carrom: "CARROM 🎯",
+  blockblast: "BLOCK BLAST 🧱",
+  spacewar: "SPACE WAR 🚀",
+};
+
 function BotControls({
   players,
   maxPlayers,
@@ -119,13 +142,13 @@ function BotControls({
   maxPlayers: number;
   game: GameKind;
 }) {
-  // Games with no bot AI — bots would be dead/frozen seats. Hide the panel entirely.
   const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-    "samethalu", "telugucinemalu", "snake", "spacewar",
+    "samethalu", "telugucinemalu", "spacewar"
   ]);
   if (NO_BOT_GAMES.has(game)) {
     return null;
   }
+
   const [botName, setBotName] = useState("");
   const [bingoDifficulty, setBingoDifficulty] = useState<BotDifficulty>("medium");
   function addBot() {
@@ -143,11 +166,17 @@ function BotControls({
   const seatsLeft = Math.max(0, maxPlayers - players.length);
   const atCapacity = seatsLeft <= 0;
   return (
-    <div className="bg-[#F6ECDA] border border-[#E7D6BC] rounded-xl p-3 space-y-2">
+    <div className="bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 rounded-2xl p-2.5 sm:p-3 text-left space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs uppercase tracking-wider text-[#796651]">
-          Bots {atCapacity ? "· table full" : `· ${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`}
+        <h3 className="text-xs uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-extrabold flex items-center gap-1.5">
+          <span aria-hidden>🤖</span>
+          <span>BOTS • {atCapacity ? `TABLE FULL (${bots.length})` : `${seatsLeft} SEAT${seatsLeft === 1 ? "" : "S"} LEFT`}</span>
         </h3>
+        {atCapacity && (
+          <span className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+            All seats filled
+          </span>
+        )}
       </div>
       {game === "bingo" && (
         <div className="flex items-center gap-1.5">
@@ -157,10 +186,10 @@ function BotControls({
               type="button"
               onClick={() => setBingoDifficulty(d)}
               disabled={atCapacity}
-              className={`text-[11px] px-2 py-1 rounded-full font-semibold capitalize border transition ${
+              className={`text-[11px] px-2.5 py-1 rounded-full font-semibold capitalize border transition ${
                 bingoDifficulty === d
-                  ? "bg-[#31A157] border-[#2A8B4B] text-white"
-                  : "bg-white border-[#D9C9B0] text-[#796651]"
+                  ? "bg-[#EA5A1F] border-[#EA5A1F] text-white"
+                  : "bg-white dark:bg-slate-800 border-[#EEDBCA] dark:border-slate-700 text-[#796651] dark:text-slate-300"
               } disabled:opacity-50`}
             >
               {d}
@@ -168,32 +197,33 @@ function BotControls({
           ))}
         </div>
       )}
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={botName}
-          onChange={(e) => setBotName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !atCapacity) addBot(); }}
-          placeholder="Bot name (optional)"
-          maxLength={20}
-          disabled={atCapacity}
-          className="flex-1 text-xs px-2 py-1 rounded border border-[#D9C9B0] bg-white text-[#3F2412] caret-[#3F2412] placeholder-[#B0A090] focus:outline-none focus:border-[#31A157] disabled:opacity-50"
-        />
-        <button
-          onClick={addBot}
-          disabled={atCapacity}
-          className={`text-xs px-3 py-1 rounded font-bold transition ${
-            atCapacity
-              ? "bg-[#D9CDB8] text-[#8D7B66] cursor-not-allowed"
-              : "bg-[#31A157] hover:bg-[#2A8B4B] text-white"
-          }`}
-          title={atCapacity ? "Table is full — remove a bot first" : "Add a bot"}
-        >
-          + Add bot
-        </button>
-      </div>
+      {!atCapacity && (
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-[#EEDBCA]/60 dark:bg-slate-700/60 flex items-center justify-center text-xs flex-shrink-0">
+            🤖
+          </div>
+          <input
+            type="text"
+            value={botName}
+            onChange={(e) => setBotName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !atCapacity) addBot(); }}
+            placeholder="Bot name (optional)"
+            maxLength={20}
+            className="flex-1 text-xs px-3 py-1.5 rounded-xl border border-[#EEDBCA] dark:border-slate-700 bg-white dark:bg-[#0F1420] text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-400"
+          />
+          <button
+            type="button"
+            onClick={addBot}
+            className="inline-flex items-center gap-1 text-xs px-3.5 py-1.5 rounded-xl font-bold bg-[#31A157] hover:bg-[#288447] text-white shadow-sm active:scale-95 transition cursor-pointer"
+            title="Add a bot"
+          >
+            <span>+</span>
+            <span>Add bot</span>
+          </button>
+        </div>
+      )}
       {bots.length === 0 ? (
-        <div className="text-xs text-[#8D7B66] italic">
+        <div className="text-xs text-[#8A6D4B] dark:text-slate-400 text-center py-0.5 font-medium italic">
           No bots yet. Add one to practice against AI.
         </div>
       ) : (
@@ -201,13 +231,14 @@ function BotControls({
           {bots.map((b) => (
             <div
               key={b.id}
-              className="flex items-center gap-1.5 bg-[#F1E5D1] border border-[#E1CFB1] rounded-full px-2.5 py-1 text-xs"
+              className="flex items-center gap-1.5 bg-white dark:bg-[#1E2738] border border-[#EEDBCA] dark:border-slate-700 rounded-full px-2.5 py-0.5 text-xs text-[#2B3550] dark:text-slate-200 shadow-sm"
             >
-              <span>🤖</span>
-              <span className="text-[#3B2F26] font-semibold">{b.name}</span>
+              <span className="text-[11px]">🤖</span>
+              <span className="font-semibold">{b.name}</span>
               <button
+                type="button"
                 onClick={() => removeBot(b.id)}
-                className="text-rose-700 hover:text-rose-600 ml-1"
+                className="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 ml-1 font-bold cursor-pointer text-xs"
                 title="Remove bot"
               >
                 ✕
@@ -817,7 +848,7 @@ export default function Room() {
                  and chat have all moved into that game's own inline room
                  rail. */}
         {roomState.phase === "lobby" && (
-          <header className="flex items-center justify-between flex-wrap gap-3">
+          <header className="flex items-center justify-between flex-wrap gap-3 pb-1">
             <div className="flex items-center gap-3 flex-wrap">
               <RoomCode code={roomState.code} />
               <RoomNameEditor name={roomState.name} isHost={selfIsHost} />
@@ -831,30 +862,24 @@ export default function Room() {
                 />
               )}
             </div>
-            {/* This row sits on the page, not inside the lobby card, so the
-                card's `auth-shell` tokens never reached it — the navy values
-                measured 1.53:1 on dark parchment, i.e. invisible. Tailwind's
-                `dark:` variant is wired to [data-theme="dark"] in this project,
-                which is the cheapest correct fix: no override, no !important. */}
-            <div className="text-sm text-[#786350] dark:text-[#B49B75]">
-              Game: <span className="text-[#2F3A54] dark:text-[#F6EDDC] font-semibold">{roomState.game.toUpperCase()}</span> ·
-              Phase: <span className="text-[#2F3A54] dark:text-[#F6EDDC]">{roomState.phase}</span>
+
+            <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+              <div className="text-xs sm:text-sm text-[#786350] dark:text-slate-400 font-medium">
+                Game: <span className="text-[#2F3A54] dark:text-[#F6EDDC] font-bold uppercase">{GAME_DISPLAY_NAMES[roomState.game] || roomState.game.toUpperCase()}</span> ·
+                Phase: <span className="text-[#EA5A1F] font-bold capitalize">{roomState.phase}</span>
+              </div>
+              <button
+                type="button"
+                onClick={leaveRoom}
+                className="inline-flex items-center gap-1.5 text-xs sm:text-sm bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/40 border border-[#EEDBCA] dark:border-slate-700 text-[#352C24] dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400 px-3.5 py-1.5 rounded-full font-semibold transition shadow-sm active:scale-95 cursor-pointer"
+              >
+                <span aria-hidden>🚪</span>
+                <span>Leave Room</span>
+              </button>
             </div>
-            <button
-              onClick={leaveRoom}
-              className="text-sm bg-[#4A3F35] hover:bg-[#3F352C] text-[#FFF3E3] px-3 py-1.5 rounded"
-            >
-              Leave
-            </button>
           </header>
         )}
         {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && (
-          // Star Game runs full-bleed on its own desk surface, so this header
-          // must FLOAT over the board. In normal flow it consumed a strip of
-          // the cream page above the desk, which read as a stray band across
-          // the top of the table. Every other game here still lays it out
-          // inline. The board is the only way out of the room, so the button
-          // itself stays put — it is just no longer taking layout space.
           <header
             className={
               roomState.game === "stargame"
@@ -864,7 +889,7 @@ export default function Room() {
           >
             <button
               onClick={leaveRoom}
-              className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] text-[#FFF3E3] px-3 py-1.5 rounded shadow-lg"
+              className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-slate-200 px-3.5 py-1.5 rounded-lg shadow-lg transition font-medium"
             >
               Leave
             </button>
@@ -877,7 +902,7 @@ export default function Room() {
             they never budgeted for and scrolls the board off-screen. The fixed
             toast sits above the board (z-40) but below modal overlays (z-50). */}
         {lastError && !(roomState.game === "rummy" && roomState.phase !== "lobby") && !ludoInPlay && (
-          <div className="bg-[#FEE2E2] border border-[#FCA5A5] text-[#9F1239] rounded p-3 text-sm">
+          <div className="bg-[#FEE2E2] dark:bg-red-950/40 border border-[#FCA5A5] dark:border-red-800/60 text-[#9F1239] dark:text-red-300 rounded-xl p-3 text-sm">
             {lastError}
             <button onClick={() => setError(null)} className="float-right">
               ✕
@@ -893,10 +918,8 @@ export default function Room() {
             const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame" || roomState.game === "spacewar") && roomState.phase !== "lobby";
             const compactPlay = !fullPlay && roomState.phase !== "lobby";
             if (fullPlay) return "h-full";
-            // Compact gameplay: the side rail collapses into the floating
-            // right rail, so the board owns the full inner width.
             if (compactPlay) return "block";
-            return "grid md:grid-cols-3 gap-4";
+            return "grid md:grid-cols-3 gap-5";
           })()}
         >
           <div
@@ -909,44 +932,121 @@ export default function Room() {
             })()}
           >
             {roomState.phase === "lobby" && (
-              <div className="auth-shell bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-6 text-center space-y-4">
-                <RoomCodeShare code={roomState.code} game={roomState.game} name={roomState.name} />
-                <div className="text-[#6E5E4D]">
-                  Waiting for players to ready up.
-                </div>
-                {roomState.game === "ludo" && (
-                  <LudoColorPicker players={roomState.players} selfId={playerId} />
-                )}
-                {roomState.game === "snl" && (
-                  <CoinColorPicker players={roomState.players} selfId={playerId} />
-                )}
-                {selfIsHost && (
-                  <BotControls
-                    players={roomState.players}
-                    maxPlayers={MAX_PLAYERS_BY_GAME[roomState.game] ?? 4}
-                    game={roomState.game}
-                  />
-                )}
-                <div className="flex justify-center gap-3">
-                  <button
-                    onClick={toggleReady}
-                    className={`px-6 py-2 rounded font-semibold ${
-                      selfPlayer?.isReady
-                        ? "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118]"
-                        : "bg-[#31A157] hover:bg-[#2A8B4B] text-white"
-                    }`}
-                  >
-                    {selfPlayer?.isReady ? "Not ready" : "I'm ready"}
-                  </button>
-                  {selfIsHost && (
-                    <button
-                      onClick={startGame}
-                      disabled={!canStart}
-                      className="bg-[#EA5A1F] hover:bg-[#D74F18] text-white disabled:opacity-40 px-6 py-2 rounded font-semibold"
-                    >
-                      Start Game
-                    </button>
+              <div className="space-y-3">
+                <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 text-center space-y-3.5 shadow-[0_10px_30px_-10px_rgba(74,44,22,0.12)] dark:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.7)] relative overflow-hidden">
+                  <RoomCodeShare code={roomState.code} game={roomState.game} name={roomState.name} />
+
+                  <div className="flex items-center justify-center gap-2 py-0.5 text-xs sm:text-sm font-semibold text-[#6E5E4D] dark:text-slate-300">
+                    <span className="text-amber-500 font-bold text-sm animate-pulse" aria-hidden>✨</span>
+                    <span className="text-xs" aria-hidden>👥</span>
+                    <span>Waiting for players to ready up...</span>
+                    <span className="text-amber-500 font-bold text-sm animate-pulse" aria-hidden>✨</span>
+                  </div>
+
+                  {roomState.game === "ludo" && (
+                    <LudoColorPicker players={roomState.players} selfId={playerId} />
                   )}
+                  {roomState.game === "snl" && (
+                    <CoinColorPicker players={roomState.players} selfId={playerId} />
+                  )}
+                  {selfIsHost && (
+                    <BotControls
+                      players={roomState.players}
+                      maxPlayers={MAX_PLAYERS_BY_GAME[roomState.game] ?? 4}
+                      game={roomState.game}
+                    />
+                  )}
+
+                  <div className="flex flex-col items-center gap-2 pt-1">
+                    <div className="flex flex-wrap justify-center items-center gap-3">
+                      {/* Ready Button */}
+                      <div className="relative group">
+                        <span className="absolute -top-2.5 -left-2.5 text-emerald-500/80 font-bold text-xs pointer-events-none select-none">
+                          彡
+                        </span>
+                        <span className="absolute -top-2.5 -right-2.5 text-emerald-500/80 font-bold text-xs pointer-events-none select-none">
+                          ミ
+                        </span>
+                        <button
+                          type="button"
+                          onClick={toggleReady}
+                          className={`px-6 py-2.5 sm:px-7 sm:py-3 rounded-full font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer ${
+                            selfPlayer?.isReady
+                              ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-amber-900/30 ring-4 ring-amber-400/20"
+                              : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-[0_6px_16px_rgba(16,185,129,0.4)] ring-4 ring-emerald-500/20"
+                          }`}
+                        >
+                          <span className="text-base">✓</span>
+                          <span>{selfPlayer?.isReady ? "Ready (Cancel)" : "I'm Ready"}</span>
+                        </button>
+                      </div>
+
+                      {/* Start Game Button */}
+                      {selfIsHost && (
+                        <button
+                          type="button"
+                          onClick={startGame}
+                          disabled={!canStart}
+                          className={`px-6 py-2.5 sm:px-7 sm:py-3 rounded-full font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-95 flex items-center gap-2 ${
+                            canStart
+                              ? "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white shadow-[0_6px_16px_rgba(249,115,22,0.45)] cursor-pointer ring-4 ring-orange-500/20"
+                              : "bg-[#EFE4D2] dark:bg-slate-800 text-[#8C7A67] dark:text-slate-500 cursor-not-allowed border border-[#E1CFB1] dark:border-slate-700/60"
+                          }`}
+                        >
+                          <span className="text-xs">▶</span>
+                          <span>Start Game</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {selfIsHost && !canStart && (
+                      <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium">
+                        Start Game will be enabled when all players are ready
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Trust & Feature Highlights Strip */}
+                <div className="bg-[#FFFDF8]/90 dark:bg-[#131926]/90 border border-[#EEDBCA] dark:border-slate-800 rounded-2xl py-3.5 px-4 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl" aria-hidden>🛡️</span>
+                    <div>
+                      <div className="text-xs font-bold text-[#2B3550] dark:text-slate-100 leading-tight">Fair Play</div>
+                      <div className="text-[10px] text-[#8A6D4B] dark:text-slate-400 leading-tight">100% Secure</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl text-amber-500" aria-hidden>⚡</span>
+                    <div>
+                      <div className="text-xs font-bold text-[#2B3550] dark:text-slate-100 leading-tight">Real-time</div>
+                      <div className="text-[10px] text-[#8A6D4B] dark:text-slate-400 leading-tight">Low Latency</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl" aria-hidden>👥</span>
+                    <div>
+                      <div className="text-xs font-bold text-[#2B3550] dark:text-slate-100 leading-tight">Fun with Friends</div>
+                      <div className="text-[10px] text-[#8A6D4B] dark:text-slate-400 leading-tight">Anytime, Anywhere</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl" aria-hidden>🏆</span>
+                    <div>
+                      <div className="text-xs font-bold text-[#2B3550] dark:text-slate-100 leading-tight">Make Memories</div>
+                      <div className="text-[10px] text-[#8A6D4B] dark:text-slate-400 leading-tight">That Last Forever</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Slogan */}
+                <div className="flex items-center justify-center gap-3 pt-2 text-sm text-[#8A6D4B] dark:text-slate-400 font-script">
+                  <span className="text-base" aria-hidden>♡</span>
+                  <span className="text-base sm:text-lg font-bold text-[#2B3550] dark:text-amber-300 relative inline-block">
+                    Play together. Remember forever.
+                    <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-[#EA5A1F]/70 rounded-full" />
+                  </span>
+                  <span className="text-base" aria-hidden>⭐</span>
                 </div>
               </div>
             )}

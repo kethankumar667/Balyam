@@ -176,7 +176,36 @@ function CornerGlyph({ card, x, y }: { card: UnoCard; x: number; y: number }) {
   return null;
 }
 
-/** A complete UNO card face. */
+/** Universal geometric symbol for each UnoColor for color-blind accessibility. */
+export const UNO_COLOR_SYMBOLS: Record<UnoColor, string> = {
+  R: "●", // Circle
+  B: "◆", // Diamond
+  G: "▲", // Triangle
+  Y: "★", // Star
+};
+
+function ColorBlindGlyph({ color, x, y }: { color?: UnoColor | null; x: number; y: number }) {
+  if (!color || !UNO_COLOR_SYMBOLS[color]) return null;
+  return (
+    <text
+      x={x}
+      y={y}
+      fontSize={8.5}
+      fontWeight={900}
+      fill="rgba(255,255,255,0.85)"
+      stroke="rgba(0,0,0,0.4)"
+      strokeWidth={0.5}
+      paintOrder="stroke"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontFamily="sans-serif"
+    >
+      {UNO_COLOR_SYMBOLS[color]}
+    </text>
+  );
+}
+
+/** A complete UNO card face with color-blind accessible symbol badges. */
 export function UnoCardFace({ card, className }: { card: UnoCard; className?: string }) {
   const isWild = card.rank === "Wild" || card.rank === "Wild+4";
   const body = isWild || !card.color ? WILD_BODY : UNO_BODY[card.color];
@@ -194,8 +223,10 @@ export function UnoCardFace({ card, className }: { card: UnoCard; className?: st
       <ellipse cx={50} cy={75} rx={46} ry={29} fill="#fff" transform="rotate(-20 50 75)" />
       <CentreGlyph card={card} ink={ink} />
       <CornerGlyph card={card} x={20} y={26} />
+      <ColorBlindGlyph color={card.color} x={20} y={40} />
       <g transform="rotate(180 50 75)">
         <CornerGlyph card={card} x={20} y={26} />
+        <ColorBlindGlyph color={card.color} x={20} y={40} />
       </g>
     </svg>
   );

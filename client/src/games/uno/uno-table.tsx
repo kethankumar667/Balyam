@@ -507,9 +507,9 @@ export interface UnoTableCenterProps {
  *  angles/colours, not the real discard history, which isn't on the wire),
  *  so it's aria-hidden and sits behind the live top card. */
 const DISCARD_SCATTER: ReadonlyArray<{ c: string; rot: number; x: number; y: number }> = [
-  { c: "#3AA03A", rot: -24, x: -18, y: 4 },
-  { c: "#1C6DD0", rot: 18, x: 16, y: 7 },
-  { c: "#E8B100", rot: -6, x: -4, y: -9 },
+  { c: "#2FA043", rot: -14, x: -10, y: 2 },
+  { c: "#2E7CD0", rot: 12, x: 10, y: 3 },
+  { c: "#EAB308", rot: -4, x: -3, y: -4 },
 ];
 
 function UnoDiscardScatter() {
@@ -520,10 +520,10 @@ function UnoDiscardScatter() {
           key={i}
           className="absolute left-1/2 top-1/2 rounded-lg"
           style={{
-            width: "86%",
-            height: "90%",
+            width: "90%",
+            height: "92%",
             background: cd.c,
-            border: "3px solid #fff",
+            border: "2.5px solid #fff",
             transform: `translate(-50%,-50%) translate(${cd.x}px,${cd.y}px) rotate(${cd.rot}deg)`,
             boxShadow: "0 3px 8px rgba(0,0,0,0.3)",
           }}
@@ -533,17 +533,14 @@ function UnoDiscardScatter() {
   );
 }
 
-/** Pile caption. Absolutely positioned by its caller so it can sit on its own
- *  pile without pushing the two columns out of vertical alignment. */
-function UnoPileCaption({ children, tone = "muted" }: { children: React.ReactNode; tone?: "muted" | "action" }) {
+function UnoPileCaption({ children }: { children: React.ReactNode; tone?: "muted" | "action" }) {
   return (
     <span
-      className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-[0.16em] whitespace-nowrap ${
-        tone === "action" ? "text-[#FFF0C2]" : "text-white/85"
-      }`}
+      className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.16em] whitespace-nowrap text-white/90 shadow-lg select-none"
       style={{
-        background: tone === "action" ? "rgba(160,60,6,0.9)" : "rgba(60,8,8,0.72)",
-        border: `1px solid ${tone === "action" ? "rgba(255,209,122,0.8)" : "rgba(255,255,255,0.14)"}`,
+        background: "rgba(20,5,5,0.85)",
+        border: "1.5px solid rgba(255,255,255,0.18)",
+        backdropFilter: "blur(6px)",
       }}
     >
       {children}
@@ -593,38 +590,25 @@ export function UnoTableCenter({
               {deckCount}
             </span>
           </button>
-          {/* One caption slot, two mutually-exclusive states. Previously
-              "Tap to draw" rendered in flow AND the shell stacked a separate
-              "DRAW PILE" pill underneath, so the two sat on top of each
-              other. Absolute so neither shifts the pile columns. */}
-          {(canDraw || showCaptions) && (
+          {showCaptions && (
             <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
-              <UnoPileCaption tone={canDraw ? "action" : "muted"}>
-                {canDraw ? "Tap to draw" : "Draw Pile"}
-              </UnoPileCaption>
+              <UnoPileCaption>Draw Pile</UnoPileCaption>
             </div>
           )}
         </div>
       </div>
       <div className="flex flex-col items-center gap-1.5">
-        {/* data-uno-drop tags this as the discard drop zone, resolved via
-            elementFromPoint from UnoHandFan's pointer-drag handlers — same
-            pattern as Rummy's data-rummy-drop. Always present (unlike
-            Rummy's conditional attribute) since there's only ever this one
-            drop target — no risk of a stray resolveUnoDropTarget hit
-            elsewhere, and it gives tooling/tests a stable selector at rest. */}
         <div
-          className="relative w-16 h-24 sm:w-20 sm:h-28 rounded-lg transition-shadow"
+          className={`relative w-16 h-24 sm:w-20 sm:h-28 rounded-xl transition-all duration-300 ${
+            isDragging ? "scale-110" : ""
+          }`}
           data-uno-drop="discard"
           style={{
             boxShadow: isDragging
-              ? "0 0 0 3px #E6A11E, 0 0 16px 4px rgba(230,161,30,0.5)"
-              : undefined,
+              ? "0 0 0 4px #FFD700, 0 0 35px 10px rgba(255,215,0,0.9), 0 16px 36px rgba(0,0,0,0.8)"
+              : "0 10px 25px rgba(0,0,0,0.55)",
           }}
         >
-          {/* Sits over the DISCARD stack specifically — the shell used to
-              centre it over the whole draw+discard cluster, where it read as
-              a label for the draw pile. */}
           {showCaptions && (
             <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-10">
               <UnoPileCaption>{isDragging ? "Drop to play" : "Discard Pile"}</UnoPileCaption>
@@ -1011,47 +995,60 @@ function useUnoCardDrag(opts: {
   const stRef = useRef<{ pointerId: number; x0: number; y0: number; dragging: boolean } | null>(
     null
   );
+  const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
   return {
-    onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-      if (!opts.enabled) return;
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      stRef.current = { pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, dragging: false };
-      e.currentTarget.setPointerCapture(e.pointerId);
-    },
-    onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-      const st = stRef.current;
-      if (!st || st.pointerId !== e.pointerId || st.dragging) return;
-      const dist = Math.hypot(e.clientX - st.x0, e.clientY - st.y0);
-      if (dist < 6) return;
-      st.dragging = true;
-      opts.onDragStateChange(true);
-    },
-    onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
-      const st = stRef.current;
-      stRef.current = null;
-      if (!st || st.pointerId !== e.pointerId) return;
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {
-        /* element may already have lost capture */
-      }
-      if (st.dragging) {
-        opts.onDragStateChange(false);
-        opts.onDrop(opts.cardId, resolveUnoDropTarget(e.clientX, e.clientY));
-      } else {
-        opts.onTap(opts.cardId);
-      }
-    },
-    onPointerCancel(e: React.PointerEvent<HTMLDivElement>) {
-      const st = stRef.current;
-      stRef.current = null;
-      if (!st || st.pointerId !== e.pointerId) return;
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-      if (st.dragging) opts.onDragStateChange(false);
+    offset,
+    handlers: {
+      onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+        if (!opts.enabled) return;
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        stRef.current = { pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, dragging: false };
+        setOffset({ x: 0, y: 0 });
+        e.currentTarget.setPointerCapture(e.pointerId);
+      },
+      onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+        const st = stRef.current;
+        if (!st || st.pointerId !== e.pointerId) return;
+        const dx = e.clientX - st.x0;
+        const dy = e.clientY - st.y0;
+        if (!st.dragging) {
+          const dist = Math.hypot(dx, dy);
+          if (dist < 6) return;
+          st.dragging = true;
+          opts.onDragStateChange(true);
+        }
+        setOffset({ x: dx, y: dy });
+      },
+      onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+        const st = stRef.current;
+        stRef.current = null;
+        setOffset({ x: 0, y: 0 });
+        if (!st || st.pointerId !== e.pointerId) return;
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+          /* element may already have lost capture */
+        }
+        if (st.dragging) {
+          opts.onDragStateChange(false);
+          opts.onDrop(opts.cardId, resolveUnoDropTarget(e.clientX, e.clientY));
+        } else {
+          opts.onTap(opts.cardId);
+        }
+      },
+      onPointerCancel(e: React.PointerEvent<HTMLDivElement>) {
+        const st = stRef.current;
+        stRef.current = null;
+        setOffset({ x: 0, y: 0 });
+        if (!st || st.pointerId !== e.pointerId) return;
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        if (st.dragging) opts.onDragStateChange(false);
+      },
     },
   };
 }
@@ -1133,7 +1130,7 @@ function UnoDraggableHandCard({
   onDragStop: () => void;
   onDrop: (target: string | null) => void;
 }) {
-  const dragHandlers = useUnoCardDrag({
+  const { offset, handlers: dragHandlers } = useUnoCardDrag({
     cardId: card.id,
     enabled: canDrag,
     onDragStateChange: (dragging) => (dragging ? onDragStart() : onDragStop()),
@@ -1179,7 +1176,7 @@ function UnoDraggableHandCard({
       {...dragHandlers}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      layout
+      layout={!isDragged}
       role="button"
       tabIndex={isDisabled ? -1 : 0}
       aria-label={getCardLabel(card)}
@@ -1191,30 +1188,33 @@ function UnoDraggableHandCard({
         }
       }}
       initial={{ opacity: 0, scale: 0.7, y: 24 }}
-      animate={{ opacity: isDragged ? 0.35 : 1, scale: 1, rotate, y: lift }}
-      // Hover/focus raises the card clear of its neighbours. With a fanned
-      // hand the neighbour overlaps this card's right edge, so "which card am
-      // I about to play" was ambiguous on a pointer device — the lift plus the
-      // z-raise below makes the whole face readable before committing.
-      whileHover={isDisabled || prefersReducedMotion ? undefined : { y: lift - HOVER_LIFT, scale: 1.04 }}
-      // Keyboard users get the same "which card is this" lift as the mouse.
-      whileFocus={isDisabled || prefersReducedMotion ? undefined : { y: lift - HOVER_LIFT, scale: 1.04 }}
+      animate={{
+        opacity: isDisabled ? 0.4 : 1,
+        scale: 1,
+        rotate: isDragged ? 0 : rotate,
+        y: isDragged ? 0 : isValid && !isDisabled ? lift - 16 : lift,
+      }}
+      whileHover={isDisabled || prefersReducedMotion || isDragged ? undefined : { y: lift - HOVER_LIFT - 16, scale: 1.06 }}
+      whileFocus={isDisabled || prefersReducedMotion || isDragged ? undefined : { y: lift - HOVER_LIFT - 16, scale: 1.06 }}
       exit={{ opacity: 0, scale: 0.6, y: -36, transition: { duration: 0.16 } }}
       transition={springTransition}
-      className={`relative rounded-lg ${
+      className={`relative rounded-lg transition-all duration-300 ${
         isDisabled
-          ? "opacity-45 cursor-not-allowed"
+          ? "opacity-40 grayscale-[0.4] cursor-not-allowed"
           : canDrag
-            ? "cursor-grab hover:z-30 focus-visible:z-30"
+            ? "cursor-grab active:cursor-grabbing hover:z-30 focus-visible:z-30"
             : "cursor-pointer hover:z-30 focus-visible:z-30"
       }`}
       style={{
         width: cardW,
         height: cardH,
         marginLeft,
-        zIndex: isDragged ? 60 : zIndex,
+        zIndex: isDragged ? 120 : isValid ? zIndex + 10 : zIndex,
         touchAction: canDrag ? "none" : undefined,
         perspective: 600,
+        transform: isDragged
+          ? `translate3d(${offset.x}px, ${offset.y}px, 0) scale(1.16) rotate(${rotate + Math.max(-20, Math.min(20, offset.x * 0.12))}deg)`
+          : undefined,
       }}
     >
       <motion.div
@@ -1223,19 +1223,13 @@ function UnoDraggableHandCard({
           rotateX: tiltEnabled ? rotateX : 0,
           rotateY: tiltEnabled ? rotateY : 0,
           transformStyle: "preserve-3d",
-          boxShadow: isSelected
-            ? "0 0 0 3.5px #F7DA8B, 0 0 24px 6px rgba(247,218,139,0.95), 0 10px 24px rgba(0,0,0,0.4)"
-            : isValid && !isDisabled
-              ? card.color === "R"
-                ? "0 0 0 2.5px #ef4444, 0 0 18px 4px rgba(239,68,68,0.8), 0 4px 12px rgba(0,0,0,0.3)"
-                : card.color === "B"
-                ? "0 0 0 2.5px #3b82f6, 0 0 18px 4px rgba(59,130,246,0.8), 0 4px 12px rgba(0,0,0,0.3)"
-                : card.color === "G"
-                ? "0 0 0 2.5px #10b981, 0 0 18px 4px rgba(16,185,129,0.8), 0 4px 12px rgba(0,0,0,0.3)"
-                : card.color === "Y"
-                ? "0 0 0 2.5px #f59e0b, 0 0 18px 4px rgba(245,158,11,0.8), 0 4px 12px rgba(0,0,0,0.3)"
-                : "0 0 0 2.5px #f43f5e, 0 0 20px 5px rgba(244,63,94,0.9), 0 4px 12px rgba(0,0,0,0.3)"
-              : "0 3px 8px rgba(0,0,0,0.25)",
+          boxShadow: isDragged
+            ? "0 32px 64px rgba(0,0,0,0.9), 0 0 40px 10px rgba(255,215,0,1)"
+            : isSelected
+              ? "0 0 0 3.5px #F7DA8B, 0 0 26px 8px rgba(247,218,139,0.95), 0 12px 28px rgba(0,0,0,0.5)"
+              : isValid && !isDisabled
+                ? "0 0 0 2.5px #FFD700, 0 0 22px 8px rgba(255,215,0,0.9), 0 8px 20px rgba(0,0,0,0.4)"
+                : "0 3px 8px rgba(0,0,0,0.25)",
         }}
       >
         <UnoCardFace card={card} className="w-full h-full" />
@@ -1283,15 +1277,15 @@ export interface UnoHandFanProps {
 /** Card slot sizes, in px. These used to live in Tailwind classes
  *  (`w-16 h-24 sm:w-[4.5rem] sm:h-[6.5rem]`) while the overlap was computed in
  *  rem, so the two could silently drift apart. One source of truth now. */
-const FAN_CARD = { w: 72, h: 104 };
-const FAN_CARD_COMPACT = { w: 64, h: 96 };
+const FAN_CARD = { w: 64, h: 92 };
+const FAN_CARD_COMPACT = { w: 48, h: 72 };
 /** How much of a card must stay uncovered. An UNO face carries its rank in
- *  the top-left corner; below ~26px that corner is buried and the hand is
+ *  the top-left corner; below ~20px that corner is buried and the hand is
  *  unreadable — which is exactly the failure mode this replaces. */
-const MIN_SLICE = 26;
+const MIN_SLICE = 20;
 /** Lift applied to the selected card, and the extra headroom hover needs. */
-const SELECT_LIFT = 20;
-const HOVER_LIFT = 18;
+const SELECT_LIFT = 16;
+const HOVER_LIFT = 14;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -1399,14 +1393,14 @@ export function UnoHandFan({
           {sortedHand.map((card, i) => {
             const isSelected = card.id === selectedCardId;
             const isValid = validMoveIds.has(card.id);
-            const isDisabled = !isValid && phase === "playing";
+            const isDisabled = myTurn && !isValid && phase === "playing";
             const offset = i - (n - 1) / 2;
             const half = Math.max(1, (n - 1) / 2);
             const rotate = offset * L.spreadDeg;
             const lift = isSelected
-              ? -SELECT_LIFT - 12
-              : isValid && !isDisabled
-                ? -14 + (offset / half) ** 2 * L.arc
+              ? -SELECT_LIFT - 14
+              : isValid && myTurn
+                ? -18 + (offset / half) ** 2 * L.arc
                 : (offset / half) ** 2 * L.arc;
             return (
               <UnoDraggableHandCard

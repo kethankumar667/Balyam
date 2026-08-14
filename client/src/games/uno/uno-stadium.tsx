@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { UnoCardBack } from "./uno-shared";
 import { UnoTableCenter, type UnoTableCenterProps } from "./uno-table";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
@@ -105,43 +106,79 @@ export function computeStadiumPositions(
   seating: StadiumSeating,
   selfId: string | null,
   layout: StadiumLayout = "edge",
+  isMobile: boolean = false,
 ): Record<string, StadiumSeatPos> {
   const pos: Record<string, StadiumSeatPos> = {};
 
-  // Spotlight seat (top center — positioned at 14% to sit under top banner)
+  if (isMobile) {
+    // Mobile Portrait Seat Positioning (calibrated for portrait phone screens)
+    if (seating.spotlight) {
+      pos[seating.spotlight] = { left: "50%", top: "8%" };
+    }
+    const rightCount = seating.right.length;
+    if (rightCount === 1) {
+      pos[seating.right[0]] = { left: "78%", top: "40%" };
+    } else if (rightCount === 2) {
+      pos[seating.right[0]] = { left: "78%", top: "24%" };
+      pos[seating.right[1]] = { left: "78%", top: "54%" };
+    } else if (rightCount >= 3) {
+      pos[seating.right[0]] = { left: "76%", top: "20%" };
+      pos[seating.right[1]] = { left: "80%", top: "38%" };
+      pos[seating.right[2]] = { left: "76%", top: "56%" };
+    }
+
+    const leftCount = seating.left.length;
+    if (leftCount === 1) {
+      pos[seating.left[0]] = { left: "22%", top: "40%" };
+    } else if (leftCount === 2) {
+      pos[seating.left[0]] = { left: "22%", top: "54%" };
+      pos[seating.left[1]] = { left: "22%", top: "24%" };
+    } else if (leftCount >= 3) {
+      pos[seating.left[0]] = { left: "24%", top: "56%" };
+      pos[seating.left[1]] = { left: "20%", top: "38%" };
+      pos[seating.left[2]] = { left: "24%", top: "20%" };
+    }
+
+    if (selfId) {
+      pos[selfId] = { left: "26%", top: "70%" };
+    }
+    return pos;
+  }
+
+  // Spotlight seat (top center — positioned at 9% to sit cleanly under top header)
   if (seating.spotlight) {
-    pos[seating.spotlight] = { left: "50%", top: "14%" };
+    pos[seating.spotlight] = { left: "50%", top: "9%" };
   }
 
   // Right column seats
   const rightCount = seating.right.length;
   if (rightCount === 1) {
-    pos[seating.right[0]] = { left: "82%", top: "46%" };
+    pos[seating.right[0]] = { left: "88%", top: "42%" };
   } else if (rightCount === 2) {
-    pos[seating.right[0]] = { left: "78%", top: "28%" }; // Top-Right
-    pos[seating.right[1]] = { left: "78%", top: "64%" }; // Bottom-Right
+    pos[seating.right[0]] = { left: "78%", top: "15%" };
+    pos[seating.right[1]] = { left: "88%", top: "54%" };
   } else if (rightCount >= 3) {
-    pos[seating.right[0]] = { left: "76%", top: "22%" }; // Top-Right
-    pos[seating.right[1]] = { left: "84%", top: "46%" }; // Mid-Right
-    pos[seating.right[2]] = { left: "76%", top: "68%" }; // Bottom-Right
+    pos[seating.right[0]] = { left: "75%", top: "15%" }; // Top-Right Shoulder (Khatarnak)
+    pos[seating.right[1]] = { left: "91%", top: "37%" }; // Mid-Right Flank (Raftaar)
+    pos[seating.right[2]] = { left: "84%", top: "62%" }; // Bottom-Right Hip (Bijli)
   }
 
   // Left column seats (seating.left is closest-to-self-first: bottom-to-top)
   const leftCount = seating.left.length;
   if (leftCount === 1) {
-    pos[seating.left[0]] = { left: "18%", top: "46%" };
+    pos[seating.left[0]] = { left: "12%", top: "42%" };
   } else if (leftCount === 2) {
-    pos[seating.left[0]] = { left: "22%", top: "64%" }; // Bottom-Left
-    pos[seating.left[1]] = { left: "22%", top: "28%" }; // Top-Left
+    pos[seating.left[0]] = { left: "14%", top: "56%" };
+    pos[seating.left[1]] = { left: "22%", top: "15%" };
   } else if (leftCount >= 3) {
-    pos[seating.left[0]] = { left: "24%", top: "68%" }; // Bottom-Left
-    pos[seating.left[1]] = { left: "16%", top: "46%" }; // Mid-Left
-    pos[seating.left[2]] = { left: "24%", top: "22%" }; // Top-Left
+    pos[seating.left[0]] = { left: "16%", top: "62%" }; // Bottom-Left Hip (Jugadu)
+    pos[seating.left[1]] = { left: "9%", top: "37%" }; // Mid-Left Flank (Baazi)
+    pos[seating.left[2]] = { left: "25%", top: "15%" }; // Top-Left Shoulder (Chikki)
   }
 
-  // Self seat (YOU)
+  // Self seat (YOU) — on desktop centered at bottom; on mobile positioned at bottom-left
   if (selfId) {
-    pos[selfId] = { left: "18%", top: "84%" };
+    pos[selfId] = isMobile ? { left: "8%", top: "78%" } : { left: "50%", top: "75%" };
   }
 
   return pos;
@@ -208,49 +245,76 @@ export function StadiumMat({
   const isBlue = activeColor === "B" || activeColor === "blue";
   const isGreen = activeColor === "G" || activeColor === "green";
 
+  // Rich, vibrant, 5-stop saturated felt gradients
   const colorGlow = isBlue
-    ? "radial-gradient(ellipse 65% 65% at 50% 48%, rgba(37,99,235,0.85), rgba(30,58,138,0.45) 50%, rgba(20,5,5,0.95) 85%)"
+    ? "radial-gradient(ellipse 75% 70% at 50% 45%, #3B82F6 0%, #2563EB 26%, #1D4ED8 54%, #1E3A8A 80%, #0B132B 100%)"
     : isGreen
-    ? "radial-gradient(ellipse 65% 65% at 50% 48%, rgba(22,163,74,0.85), rgba(20,83,45,0.45) 50%, rgba(20,5,5,0.95) 85%)"
+    ? "radial-gradient(ellipse 75% 70% at 50% 45%, #22C55E 0%, #16A34A 26%, #15803D 54%, #14532D 80%, #032010 100%)"
     : isYellow
-    ? "radial-gradient(ellipse 65% 65% at 50% 48%, rgba(234,179,8,0.85), rgba(161,98,7,0.45) 50%, rgba(20,5,5,0.95) 85%)"
-    : "radial-gradient(ellipse 65% 65% at 50% 48%, rgba(220,38,38,0.85), rgba(127,29,29,0.45) 50%, rgba(20,5,5,0.95) 85%)";
+    ? "radial-gradient(ellipse 75% 70% at 50% 45%, #FBBF24 0%, #F59E0B 26%, #D97706 54%, #92400E 80%, #301303 100%)"
+    : "radial-gradient(ellipse 75% 70% at 50% 45%, #E62222 0%, #B81414 28%, #780E0E 58%, #3A0606 82%, #140202 100%)";
+
+  const bloomGlow = isBlue
+    ? "radial-gradient(ellipse at center, rgba(96,165,250,0.65) 0%, rgba(37,99,235,0.3) 50%, transparent 72%)"
+    : isGreen
+    ? "radial-gradient(ellipse at center, rgba(134,239,172,0.65) 0%, rgba(34,197,94,0.3) 50%, transparent 72%)"
+    : isYellow
+    ? "radial-gradient(ellipse at center, rgba(254,240,138,0.75) 0%, rgba(245,158,11,0.35) 50%, transparent 72%)"
+    : "radial-gradient(ellipse at center, rgba(255,120,30,0.45) 0%, rgba(230,60,10,0.2) 50%, transparent 72%)";
+
+  const ringStroke = isBlue
+    ? "#60A5FA"
+    : isGreen
+    ? "#4ADE80"
+    : isYellow
+    ? "#FDE047"
+    : "#FF7A4A";
+
+  const vignetteColor = isBlue
+    ? "inset 0 0 120px 40px rgba(5,10,35,0.7)"
+    : isGreen
+    ? "inset 0 0 120px 40px rgba(3,25,12,0.7)"
+    : isYellow
+    ? "inset 0 0 120px 40px rgba(35,14,3,0.7)"
+    : "inset 0 0 120px 40px rgba(25,2,2,0.7)";
 
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden" style={{ containerType: "inline-size" }}>
-      {/* Warm active-color centre bloom — dynamically shifts when active color changes. */}
+    <div className="relative w-full h-full flex flex-col overflow-hidden select-none" style={{ containerType: "inline-size" }}>
+      {/* Background radial felt */}
       <div
         className="absolute inset-0 pointer-events-none transition-all duration-700"
         aria-hidden
-        style={{
-          background: colorGlow,
-        }}
+        style={{ background: colorGlow }}
       />
-      {/* Faint tiled UNO-card watermark. */}
+      {/* Faint tiled UNO-card watermark */}
       <StadiumWatermark />
-      {/* Top-down stage light over the spotlight seat. */}
+      {/* Center glowing circle */}
       <div
-        className="absolute pointer-events-none"
+        className="absolute pointer-events-none transition-all duration-700"
         aria-hidden
         style={{
-          width: "38%",
-          height: "22%",
+          width: "48%",
+          height: "44%",
           left: "50%",
-          top: "1%",
-          transform: "translateX(-50%)",
-          background: "radial-gradient(ellipse at center, rgba(255,236,180,0.35), transparent 72%)",
-          filter: "blur(8px)",
-          animation: "uno-flourish-pulse 3.6s ease-in-out infinite",
+          top: "47%",
+          transform: "translate(-50%, -50%)",
+          background: bloomGlow,
+          filter: "blur(16px)",
         }}
       />
-      <StadiumRings />
-      {children}
-      {/* Red-tinted vignette — darkens the corners without dimming the
-          bright centre. */}
+      {/* Concentric rings */}
+      <StadiumRings stroke={ringStroke} />
+      
+      {/* Content */}
+      <div className="relative z-10 w-full h-full flex flex-col">
+        {children}
+      </div>
+
+      {/* Soft color-matched vignette */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-none z-20 transition-all duration-700"
         aria-hidden
-        style={{ boxShadow: "inset 0 0 16cqw 3cqw rgba(70,8,8,0.55)" }}
+        style={{ boxShadow: vignetteColor }}
       />
     </div>
   );
@@ -266,7 +330,7 @@ function StadiumWatermark() {
           <g opacity="0.05">
             <rect x="46" y="34" width="40" height="60" rx="7" fill="none" stroke="#fff" strokeWidth="2.5" />
             <ellipse cx="66" cy="64" rx="19" ry="11" fill="#fff" opacity="0.55" />
-            <text x="66" y="67" fontSize="9" fontWeight="900" fontStyle="italic" fill="#7a0f0f" textAnchor="middle" fontFamily="'Nunito','Poppins',sans-serif">UNO</text>
+            <text x="66" y="67" fontSize="9" fontWeight="900" fontStyle="italic" fill="#ffffff" textAnchor="middle" fontFamily="'Nunito','Poppins',sans-serif">UNO</text>
           </g>
         </pattern>
       </defs>
@@ -277,7 +341,7 @@ function StadiumWatermark() {
 
 /** Concentric ripple rings radiating from the pile — brighter and more
  *  numerous than the earlier dark cut, matching the reference's arena. */
-function StadiumRings() {
+function StadiumRings({ stroke = "#FF7A4A" }: { stroke?: string }) {
   return (
     <svg
       viewBox="0 0 100 100"
@@ -293,9 +357,10 @@ function StadiumRings() {
           rx={r}
           ry={r * 0.92}
           fill="none"
-          stroke="#FF7A4A"
+          stroke={stroke}
           strokeWidth="0.35"
           opacity={0.34 - i * 0.04}
+          strokeDasharray={i % 2 === 1 ? "1.5 2" : undefined}
           vectorEffect="non-scaling-stroke"
         />
       ))}
@@ -318,14 +383,6 @@ const ARC_TO = 326;
 
 /**
  * Turn-direction ring — two tapered arcs chasing each other around the pile.
- *
- * The SVG works in PIXEL user units (`viewBox="0 0 w h"`), which is the whole
- * point. The previous version stretched a 100×100 viewBox across the board
- * with `preserveAspectRatio="none"`: on a 1920×950 desktop that scaled 19.2×
- * horizontally against 9.5× vertically, smearing the arcs into a flat oval and
- * the arrowheads into big clip-art triangles. Working in px means the ring can
- * be a wide ELLIPSE (which is what suits a wide table, and what the reference
- * shows) while the arrowheads stay exactly the shape they were drawn.
  */
 export function StadiumDirectionArc({
   direction,
@@ -338,9 +395,8 @@ export function StadiumDirectionArc({
 }) {
   const cx = width / 2;
   const cy = height / 2;
-  const r = Math.min(width, height) * 0.44;
-  const rx = r;
-  const ry = r;
+  const rx = width * 0.45;
+  const ry = height * 0.44;
   return (
     <div
       className="absolute pointer-events-none"
@@ -363,6 +419,29 @@ export function StadiumDirectionArc({
             <stop offset="100%" stopColor="#FF6A15" />
           </linearGradient>
         </defs>
+        <style>{`
+          @keyframes unoDashFlow {
+            from { stroke-dashoffset: 0; }
+            to { stroke-dashoffset: -120; }
+          }
+          .uno-orbit-stream {
+            animation: unoDashFlow 3.2s linear infinite;
+          }
+        `}</style>
+        {/* Animated Racetrack Particle Stream */}
+        <ellipse
+          cx={cx}
+          cy={cy}
+          rx={rx}
+          ry={ry}
+          stroke="url(#uno-arrow-grad)"
+          strokeWidth={3}
+          strokeDasharray="10 18"
+          fill="none"
+          className="uno-orbit-stream"
+          opacity={0.75}
+          style={{ filter: "drop-shadow(0 0 8px rgba(255,180,50,0.8))" }}
+        />
         <g opacity="0.4" style={{ filter: "blur(2px)" }}>
           <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} />
           <g transform={`rotate(180 ${cx} ${cy})`}>
@@ -448,52 +527,164 @@ function StadiumArrowArc({
 // cluster. `variant="spotlight"` renders the larger top-centre seat.
 // ---------------------------------------------------------------------
 
+import { findAvatar } from "../../lib/avatars";
+import { AVATAR_FILES } from "@shared/avatars";
+
+const PALETTES: Array<[string, string]> = [
+  ["#f59e0b", "#b45309"], // amber
+  ["#10b981", "#047857"], // emerald
+  ["#3b82f6", "#1d4ed8"], // blue
+  ["#a855f7", "#6d28d9"], // purple
+  ["#ec4899", "#9d174d"], // pink
+  ["#06b6d4", "#0e7490"], // cyan
+  ["#ef4444", "#991b1b"], // red
+  ["#84cc16", "#3f6212"], // lime
+];
+
+function paletteFor(seed: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return PALETTES[Math.abs(h) % PALETTES.length];
+}
+
+function deterministicAvatar(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_FILES[Math.abs(h) % AVATAR_FILES.length];
+}
+
+function initialsOf(name: string): string {
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) return "?";
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+export function UnoSeatAvatar({
+  avatar,
+  name,
+  size = 48,
+}: {
+  avatar?: string;
+  name: string;
+  size?: number;
+}) {
+  const chosenAvatar = avatar || deterministicAvatar(name);
+  const option = findAvatar(chosenAvatar);
+  const [imgFailed, setImgFailed] = useState(false);
+  const initials = initialsOf(name);
+  const [start, end] = paletteFor(name);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [chosenAvatar, option?.src]);
+
+  if (option && !imgFailed) {
+    return (
+      <div className="w-full h-full overflow-hidden flex items-center justify-center relative">
+        <img
+          src={option.src}
+          alt={name}
+          onError={() => setImgFailed(true)}
+          className="w-full h-full object-cover select-none scale-[1.32] transform"
+          style={{ objectPosition: "50% 20%" }}
+          draggable={false}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-full h-full flex items-center justify-center font-black select-none text-white drop-shadow-md"
+      style={{
+        background: `linear-gradient(135deg, ${start} 0%, ${end} 100%)`,
+        fontSize: size * 0.4,
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
+
 export interface StadiumOpponentSeatProps {
   name: string;
+  avatar?: string;
   handSize: number;
   seatNumber: number;
   isHost: boolean;
   isTurn: boolean;
+  isNextTurn?: boolean;
   isConnected?: boolean;
   variant: "spotlight" | "side";
-  /** Tiny-board mode (short landscape phones): hides the decorative mini
-   *  card-back fan so three stacked side seats never collide vertically.
-   *  The numeric hand count stays — it is the load-bearing information. */
   dense?: boolean;
   canCatch?: boolean;
   onCatch?: () => void;
+  onReact?: (emoji: string) => void;
 }
 
 export function StadiumOpponentSeat({
   name,
+  avatar,
   handSize,
   seatNumber,
   isHost,
   isTurn,
+  isNextTurn = false,
   isConnected,
   variant,
   dense = false,
   canCatch = false,
   onCatch,
+  onReact,
 }: StadiumOpponentSeatProps) {
   const isSpotlight = variant === "spotlight";
-  const tile = isSpotlight ? 64 : 52;
+  const tile = isSpotlight ? 68 : 58;
   const accent = stadiumAccentFor(name);
   const offline = isConnected === false;
+  const [showWheel, setShowWheel] = useState(false);
+  const wheelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showWheel) return;
+    function onDown(e: MouseEvent) {
+      if (wheelRef.current && !wheelRef.current.contains(e.target as Node)) {
+        setShowWheel(false);
+      }
+    }
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [showWheel]);
+
+  const THROW_ITEMS = ["🍅", "🩴", "🧨", "🎉", "⏰", "😂"];
+
   return (
-    <div
-      className="relative flex flex-col items-center gap-1"
-      style={{
-        // A disconnected player still gets a full seat — you need to see who
-        // the table is waiting on — but recedes so live players read first.
-        // A 12px corner dot alone was doing all this work.
-        opacity: offline ? 0.55 : 1,
-        filter: offline ? "grayscale(0.6)" : undefined,
-        transition: "opacity 300ms, filter 300ms",
-      }}
-    >
-      {/* One badge slot. "Reconnecting" outranks "Playing": if the table is
-          stalled waiting on a dropped player, that is the thing to say. */}
+    <div className="relative select-none">
+      {/* Throw Reaction Popover Wheel */}
+      {showWheel && onReact && (
+        <div
+          className="absolute -top-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 p-1.5 rounded-full shadow-2xl animate-bounce"
+          style={{ background: "rgba(25,8,8,0.95)", border: "2px solid rgba(247,218,139,0.8)", backdropFilter: "blur(12px)" }}
+        >
+          {THROW_ITEMS.map((item) => (
+            <button
+              key={item}
+              onClick={(e) => {
+                e.stopPropagation();
+                onReact(item);
+                setShowWheel(false);
+              }}
+              className="w-8 h-8 text-lg flex items-center justify-center hover:scale-125 active:scale-95 transition cursor-pointer"
+              title={`Throw ${item} at ${name}`}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Reconnecting / Playing / Next badge */}
       {offline ? (
         <span
           className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 text-[8px] font-black uppercase tracking-[0.14em] px-2 py-0.5 rounded-full text-white whitespace-nowrap"
@@ -503,14 +694,27 @@ export function StadiumOpponentSeat({
         </span>
       ) : isTurn ? (
         <span
-          className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 text-[8px] font-black uppercase tracking-[0.14em] px-2 py-0.5 rounded-full text-[#3a2410] whitespace-nowrap"
-          style={{ background: "linear-gradient(135deg,#F7DA8B,#E6A11E)", boxShadow: "0 2px 5px rgba(0,0,0,0.35)" }}
+          className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10 text-[8px] font-black uppercase tracking-[0.14em] px-2.5 py-0.5 rounded-full text-[#3a2410] whitespace-nowrap shadow-md animate-pulse"
+          style={{ background: "linear-gradient(135deg,#F7DA8B,#E6A11E)" }}
         >
           Playing
         </span>
+      ) : isNextTurn ? (
+        <span
+          className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 text-[8px] font-black uppercase tracking-[0.14em] px-2 py-0.5 rounded-full text-amber-200 whitespace-nowrap shadow-md border border-amber-400/50"
+          style={{ background: "rgba(35,15,5,0.92)" }}
+        >
+          Next
+        </span>
       ) : null}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-shrink-0">
+
+      <div className="flex flex-col items-center">
+        <div
+          className="relative flex-shrink-0 flex flex-col items-center cursor-pointer group"
+          onClick={() => onReact && setShowWheel((v) => !v)}
+          title={`Click to throw an item at ${name}`}
+        >
+          {/* Spotlight aura */}
           {isSpotlight && (
             <span
               className="absolute -inset-2 rounded-2xl animate-pulse pointer-events-none"
@@ -518,34 +722,65 @@ export function StadiumOpponentSeat({
               aria-hidden
             />
           )}
-          {/* Turn glow — independent of the spotlight ring above (that one
-              marks a fixed SEAT position, not whose turn it is). Offset a
-              touch further out so the two can layer without fighting when
-              the spotlight seat's occupant is also the active player. */}
+          {/* Turn glow */}
           {isTurn && (
             <span
-              className="uno-seat-claim absolute -inset-2.5 rounded-2xl pointer-events-none"
-              style={{ boxShadow: "0 0 0 3px #F7DA8B, 0 0 22px 6px rgba(247,218,139,0.55)" }}
+              className="uno-seat-claim absolute -inset-2 rounded-2xl pointer-events-none"
+              style={{ boxShadow: "0 0 0 3.5px #F7DA8B, 0 0 22px 6px rgba(247,218,139,0.65)" }}
               aria-hidden
             />
           )}
-          {(isHost || isSpotlight) && (
-            <span className="absolute -top-4 left-1/2 -translate-x-1/2 z-10 leading-none text-[#F7DA8B] drop-shadow-md" aria-hidden title="Crown">
-              <CrownIcon size={22} />
-            </span>
+          {/* Next Turn subtle glow */}
+          {isNextTurn && !isTurn && (
+            <span
+              className="absolute -inset-1.5 rounded-2xl pointer-events-none animate-pulse"
+              style={{ boxShadow: "0 0 0 2px rgba(245,158,11,0.5), 0 0 12px 2px rgba(245,158,11,0.3)" }}
+              aria-hidden
+            />
           )}
+
+          {/* Squircle Avatar Frame with Character Picture */}
           <div
-            className="rounded-2xl overflow-hidden flex items-center justify-center"
+            className={`rounded-2xl overflow-hidden flex items-center justify-center relative shadow-xl transition group-hover:scale-105 ${
+              handSize <= 2 ? "ring-2 ring-yellow-400 ring-offset-2 ring-offset-black/60 shadow-[0_0_20px_rgba(250,204,21,0.7)]" : ""
+            }`}
             style={{
               width: tile,
               height: tile,
               background: `linear-gradient(168deg, ${accent.light}, ${accent.dark})`,
               border: `3px solid ${isSpotlight ? "#F7DA8B" : accent.border}`,
-              boxShadow: `0 4px 12px rgba(0,0,0,0.5), 0 0 12px ${accent.border}60`,
+              boxShadow: `0 4px 14px rgba(0,0,0,0.6), 0 0 12px ${accent.border}70`,
             }}
           >
-            <Avatar name={name} size={tile - 12} />
+            <UnoSeatAvatar avatar={avatar} name={name} size={tile} />
+
+            {/* Dynamic Emotion Badge Overlays */}
+            {handSize <= 2 && (
+              <span
+                className="absolute -top-1.5 -right-1.5 z-20 text-xs filter drop-shadow animate-bounce"
+                title="Confident / Winning"
+              >
+                👑
+              </span>
+            )}
+            {handSize >= 8 && (
+              <span
+                className="absolute -top-1.5 -right-1.5 z-20 text-xs filter drop-shadow animate-pulse"
+                title="Heavy Hand Burden"
+              >
+                😰
+              </span>
+            )}
+
+            {/* Seat Number Badge on Avatar Top-Left */}
+            <span
+              className="absolute -top-1 -left-1 z-20 flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black text-white shadow-md"
+              style={{ background: accent.base, border: "1.5px solid rgba(255,255,255,0.9)" }}
+            >
+              {seatNumber}
+            </span>
           </div>
+
           {offline && (
             <span
               className="uno-reconnect-dot absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-black/40"
@@ -554,41 +789,55 @@ export function StadiumOpponentSeat({
               aria-label="Reconnecting"
             />
           )}
+
+          {/* Mini Fan fanning out from the base of the avatar */}
+          {!dense && (
+            <div className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 pointer-events-none z-10">
+              <StadiumMiniFan count={handSize} compact={!isSpotlight} />
+            </div>
+          )}
         </div>
-        {/* Name pill (with seat-number badge) stacked over the card-count
-            chip — the reference's dark-pill cluster beside each avatar. */}
-        <div className="flex flex-col items-start gap-1 min-w-0">
+
+        {/* Dedicated Card Count Pill / Catch Button */}
+        {canCatch ? (
+          <button
+            onClick={onCatch}
+            className="mt-1 px-3 py-0.5 rounded-full text-[9px] font-black text-white uppercase tracking-wider bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 border border-white/80 shadow-[0_0_15px_rgba(239,68,68,0.95)] animate-bounce hover:scale-105 active:scale-95 cursor-pointer z-10 whitespace-nowrap"
+          >
+            CATCH! +2
+          </button>
+        ) : (
           <div
-            className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full min-w-0"
-            style={{ background: "rgba(40,6,6,0.78)", border: "1px solid rgba(255,255,255,0.16)" }}
+            className={`mt-1 flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wider text-amber-100 shadow-md border ${
+              handSize === 1 ? "animate-pulse" : ""
+            }`}
+            style={{
+              background:
+                handSize === 1
+                  ? "linear-gradient(135deg, #DC2626, #991B1B)"
+                  : handSize <= 2
+                  ? "linear-gradient(135deg, #D97706, #78350F)"
+                  : "rgba(20, 8, 8, 0.9)",
+              borderColor:
+                handSize === 1
+                  ? "#FCA5A5"
+                  : handSize <= 2
+                  ? "#FCD34D"
+                  : "rgba(247, 218, 139, 0.4)",
+              backdropFilter: "blur(6px)",
+              boxShadow:
+                handSize === 1
+                  ? "0 0 12px rgba(239, 68, 68, 0.85)"
+                  : "0 2px 6px rgba(0,0,0,0.5)",
+            }}
           >
-            <span
-              className="flex-shrink-0 flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-black text-white"
-              style={{ background: accent.base, border: "1.5px solid rgba(255,255,255,0.9)" }}
-            >
-              {seatNumber}
+            <span className="text-[8px]" aria-hidden>🎴</span>
+            <span className="tabular-nums font-black text-white text-[10px]">
+              {handSize} {handSize === 1 ? "CARD" : "CARDS"}
             </span>
-            <span className="text-[13px] font-bold text-white truncate max-w-[5.5rem]">{name}</span>
           </div>
-          <span
-            className="px-2.5 py-0.5 rounded-md text-[13px] font-black text-white leading-none tabular-nums"
-            style={{ background: "rgba(40,6,6,0.78)", border: "1px solid rgba(255,255,255,0.14)" }}
-          >
-            {handSize}
-          </span>
-        </div>
+        )}
       </div>
-      {!dense && <StadiumMiniFan count={handSize} compact={!isSpotlight} />}
-      {canCatch && (
-        <button
-          onClick={onCatch}
-          className="mt-0.5 min-h-[28px] rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white animate-pulse whitespace-nowrap"
-          style={{ background: "#DC2626", boxShadow: "0 3px 8px rgba(220,38,38,0.5)" }}
-          aria-label={`Catch ${name} without UNO — they draw 2`}
-        >
-          Catch! +2
-        </button>
-      )}
     </div>
   );
 }
@@ -596,9 +845,9 @@ export function StadiumOpponentSeat({
 function StadiumMiniFan({ count, compact }: { count: number; compact: boolean }) {
   if (count <= 0) return null;
   const shown = Math.min(count, 4);
-  const w = compact ? 17 : 21;
-  const h = compact ? 25 : 31;
-  const overlap = compact ? -9 : -11;
+  const w = compact ? 18 : 22;
+  const h = compact ? 26 : 32;
+  const overlap = compact ? -10 : -12;
   return (
     <div className="flex items-end" aria-hidden>
       {Array.from({ length: shown }).map((_, i) => (
@@ -608,80 +857,72 @@ function StadiumMiniFan({ count, compact }: { count: number; compact: boolean })
             width: w,
             height: h,
             marginLeft: i === 0 ? 0 : overlap,
-            transform: `rotate(${(i - (shown - 1) / 2) * 8}deg)`,
+            transform: `rotate(${(i - (shown - 1) / 2) * 9}deg)`,
           }}
         >
-          <UnoCardBack className="w-full h-full drop-shadow-sm" />
+          <UnoCardBack className="w-full h-full drop-shadow-md" />
         </div>
       ))}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------
-// Self plate — bottom-centre avatar + "YOU" + seat number + card count,
-// the stadium equivalent of uno-table.tsx's self UnoNamePlate slot.
-// ---------------------------------------------------------------------
-
 export function StadiumSelfPlate({
   name,
+  avatar,
   seatNumber,
   handSize,
   isTurn,
 }: {
   name: string;
+  avatar?: string;
   seatNumber: number;
   handSize: number;
   isTurn: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="relative flex-shrink-0">
-        {/* Self avatar is always highlighted (gold glow), brighter on turn. */}
-        <span
-          key={isTurn ? "turn" : "idle"}
-          className={`absolute -inset-1.5 rounded-2xl pointer-events-none ${isTurn ? "uno-seat-claim" : ""}`}
-          style={{ boxShadow: isTurn ? "0 0 0 3px #F7DA8B, 0 0 20px 5px rgba(247,218,139,0.6)" : "0 0 0 2.5px rgba(247,218,139,0.75)" }}
-          aria-hidden
-        />
+    <div className="flex flex-col items-center select-none">
+      <div className="relative flex-shrink-0 flex flex-col items-center">
+        {/* Turn glow */}
+        {isTurn && (
+          <span
+            className="uno-seat-claim absolute -inset-2 rounded-2xl pointer-events-none"
+            style={{ boxShadow: "0 0 0 3.5px #F7DA8B, 0 0 24px 6px rgba(247,218,139,0.7)" }}
+            aria-hidden
+          />
+        )}
         <div
-          className="rounded-2xl overflow-hidden flex items-center justify-center"
+          className="rounded-2xl overflow-hidden flex items-center justify-center relative shadow-xl"
           style={{
-            width: 58,
-            height: 58,
+            width: 54,
+            height: 54,
             background: `linear-gradient(168deg, ${SELF_STADIUM_ACCENT.light}, ${SELF_STADIUM_ACCENT.dark})`,
-            border: "3px solid #38bdf8",
-            boxShadow: "0 4px 14px rgba(0,0,0,0.5), 0 0 16px rgba(56,189,248,0.75)",
+            border: `3px solid ${isTurn ? "#F7DA8B" : "#38bdf8"}`,
+            boxShadow: "0 6px 16px rgba(0,0,0,0.6), 0 0 16px rgba(56,189,248,0.8)",
           }}
         >
-          <Avatar name={name} size={44} />
+          <UnoSeatAvatar avatar={avatar} name={name} size={54} />
         </div>
-        {/* YOU badge — gold pill overlapping the avatar's base. */}
+        {/* YOU badge — gold pill overlapping the avatar's base */}
         <span
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-[0.14em] text-[#3a2410] whitespace-nowrap"
-          style={{ background: "linear-gradient(135deg,#F7DA8B,#E6A11E)", boxShadow: "0 2px 5px rgba(0,0,0,0.4)" }}
+          className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-[0.14em] text-[#3a2410] whitespace-nowrap shadow-md z-20"
+          style={{ background: "linear-gradient(135deg,#F7DA8B,#E6A11E)", border: "1px solid rgba(255,255,255,0.7)" }}
         >
-          You
+          YOU
         </span>
       </div>
-      <div className="flex flex-col items-start gap-1 min-w-0">
-        <div
-          className="flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full min-w-0"
-          style={{ background: "rgba(40,6,6,0.78)", border: "1px solid rgba(255,255,255,0.16)" }}
-        >
-          <span
-            className="flex-shrink-0 flex items-center justify-center w-[19px] h-[19px] rounded-full text-[10px] font-black text-white"
-            style={{ background: SELF_STADIUM_ACCENT.base, border: "1.5px solid rgba(255,255,255,0.9)" }}
-          >
-            {seatNumber}
-          </span>
-          <span className="text-[15px] font-black text-white uppercase truncate max-w-[7rem]">{name}</span>
-        </div>
-        <span
-          className="px-2.5 py-0.5 rounded-md text-[13px] font-black text-white leading-none tabular-nums"
-          style={{ background: "rgba(40,6,6,0.78)", border: "1px solid rgba(255,255,255,0.14)" }}
-        >
-          {handSize}
+      {/* Self Card Count Pill */}
+      <div
+        className="mt-3 flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wider text-amber-100 shadow-md border"
+        style={{
+          background: "rgba(20, 8, 8, 0.9)",
+          borderColor: "rgba(247, 218, 139, 0.4)",
+          backdropFilter: "blur(6px)",
+        }}
+      >
+        <span className="text-[8px]" aria-hidden>🎴</span>
+        <span className="tabular-nums font-black text-white text-[10px]">
+          {handSize} {handSize === 1 ? "CARD" : "CARDS"}
         </span>
       </div>
     </div>
@@ -704,7 +945,7 @@ export function StadiumSelfPlate({
 export function StadiumPileCenter(props: UnoTableCenterProps) {
   return (
     <div className="relative flex flex-col items-center">
-      <UnoTableCenter {...props} showCaptions={true} />
+      <UnoTableCenter {...props} showCaptions={props.showCaptions ?? false} />
     </div>
   );
 }
@@ -720,8 +961,7 @@ export function StadiumRoomCodePlate({ code }: { code: string }) {
     try {
       void navigator.clipboard?.writeText(code);
     } catch {
-      /* clipboard may be unavailable (insecure context) — code stays
-         visible on the plate either way, so this is a nice-to-have. */
+      /* clipboard fallback */
     }
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1200);
@@ -729,24 +969,24 @@ export function StadiumRoomCodePlate({ code }: { code: string }) {
   return (
     <>
       <div
-        className="flex items-center gap-2 rounded-xl px-2.5 py-1.5"
-        style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.18)" }}
+        className="flex items-center gap-2 rounded-2xl px-3.5 py-1.5 shadow-lg select-none"
+        style={{ background: "rgba(15,3,3,0.78)", border: "1.5px solid rgba(255,255,255,0.18)", backdropFilter: "blur(8px)" }}
       >
         <div className="flex flex-col leading-none">
-          <span className="font-bold uppercase text-[7px] tracking-[0.18em] text-white/60">Room Code</span>
-          <span className="font-mono font-black text-sm text-white tracking-wider">{code}</span>
+          <span className="font-extrabold uppercase text-[8px] tracking-[0.16em] text-white/60">Room Code</span>
+          <span className="font-mono font-black text-sm text-white tracking-widest">{code}</span>
         </div>
         <button
           onClick={copy}
           aria-label={copied ? "Room code copied" : "Copy room code"}
           title="Copy room code"
-          className="flex items-center justify-center w-6 h-6 rounded-md text-white flex-shrink-0 cursor-pointer"
-          style={{ background: copied ? "#2F9E44" : "rgba(255,255,255,0.15)" }}
+          className="flex items-center justify-center w-7 h-7 rounded-lg text-white flex-shrink-0 transition active:scale-95 cursor-pointer ml-1"
+          style={{ background: copied ? "#2F9E44" : "rgba(255,255,255,0.14)" }}
         >
           {copied ? (
-            <CheckIcon size={12} />
+            <CheckIcon size={13} />
           ) : (
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden>
               <rect x="9" y="9" width="11" height="11" rx="2.5" fill="currentColor" opacity="0.95" />
               <rect x="4" y="4" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.8" />
             </svg>
@@ -757,7 +997,7 @@ export function StadiumRoomCodePlate({ code }: { code: string }) {
           onClick={() => setShowQr(true)}
           aria-label="Show QR Code"
           title="Show QR Code to join room"
-          className="flex items-center justify-center w-6 h-6 rounded-md text-amber-300 hover:text-amber-200 flex-shrink-0 bg-white/15 transition cursor-pointer"
+          className="flex items-center justify-center w-7 h-7 rounded-lg text-amber-300 hover:text-amber-200 flex-shrink-0 bg-white/14 transition active:scale-95 cursor-pointer"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="7" height="7" />
@@ -772,44 +1012,170 @@ export function StadiumRoomCodePlate({ code }: { code: string }) {
   );
 }
 
-export function StadiumClassicModeBadge() {
+export function StadiumClassicModeBadge({ onClick }: { onClick?: () => void }) {
   return (
-    <div
-      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-white whitespace-nowrap"
-      style={{ background: "rgba(0,0,0,0.32)", border: "1px solid rgba(255,255,255,0.2)" }}
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white whitespace-nowrap shadow-md select-none hover:brightness-125 transition cursor-pointer"
+      style={{ background: "rgba(15,3,3,0.72)", border: "1.5px solid rgba(255,255,255,0.18)", backdropFilter: "blur(6px)" }}
+      title="View Classic Mode rules"
     >
-      <StarIcon size={11} />
+      <StarIcon size={12} className="text-amber-300" />
       Classic Mode
+    </button>
+  );
+}
+
+const HOUSE_RULE_LABELS: Record<string, { label: string; desc: string }> = {
+  stackDrawCards: {
+    label: "Stack Draw Cards",
+    desc: "Respond to a +2 with another +2, or +4 with +4 to pass the penalty to the next player.",
+  },
+  jumpIn: {
+    label: "Jump-In",
+    desc: "Play an identical card (same color and rank) at any time out of turn.",
+  },
+  sevenSwap: {
+    label: "Seven Swap",
+    desc: "Playing a 7 allows you to swap your entire hand with any opponent.",
+  },
+  zeroRotate: {
+    label: "Zero Rotate",
+    desc: "Playing a 0 forces every player to pass their hand in the active turn direction.",
+  },
+  keepDrawing: {
+    label: "Keep Drawing",
+    desc: "Keep drawing cards from the pile until you find a playable match.",
+  },
+  forcePlay: {
+    label: "Force Play",
+    desc: "If you draw a playable card, you must play it immediately.",
+  },
+};
+
+export function StadiumHouseRulesBadge({
+  rules,
+  onClick,
+}: {
+  rules: Record<string, boolean>;
+  onClick?: () => void;
+}) {
+  const active = Object.keys(HOUSE_RULE_LABELS).filter((k) => rules[k]);
+  if (active.length === 0) return null;
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white whitespace-nowrap shadow-md select-none hover:brightness-125 transition cursor-pointer"
+      style={{ background: "rgba(15,3,3,0.72)", border: "1.5px solid rgba(255,255,255,0.18)", backdropFilter: "blur(6px)" }}
+      title="View active house rules"
+    >
+      <DiceIcon size={12} className="text-amber-300" />
+      {active.length} house rule{active.length === 1 ? "" : "s"}
+    </button>
+  );
+}
+
+export function StadiumHouseRulesModal({
+  open,
+  rules,
+  onClose,
+}: {
+  open: boolean;
+  rules: Record<string, boolean>;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
+      <div
+        className="w-full max-w-md rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-white"
+        style={{ background: "rgba(20,6,6,0.96)", border: "2px solid rgba(247,218,139,0.7)", backdropFilter: "blur(16px)" }}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex items-center gap-2">
+            <DiceIcon size={20} className="text-amber-400" />
+            <h2 className="font-display text-lg tracking-wide text-amber-300">Room Rules & Modifiers</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition cursor-pointer text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
+          {Object.entries(HOUSE_RULE_LABELS).map(([key, info]) => {
+            const isEnabled = !!rules[key];
+            return (
+              <div
+                key={key}
+                className="flex items-start gap-3 p-3 rounded-2xl border transition"
+                style={{
+                  background: isEnabled ? "rgba(230,161,30,0.12)" : "rgba(255,255,255,0.03)",
+                  borderColor: isEnabled ? "rgba(247,218,139,0.5)" : "rgba(255,255,255,0.08)",
+                }}
+              >
+                <span
+                  className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
+                  style={{
+                    background: isEnabled ? "#16A34A" : "#4B5563",
+                    color: "#fff",
+                  }}
+                >
+                  {isEnabled ? "✓" : "✕"}
+                </span>
+                <div className="flex flex-col">
+                  <span className="font-extrabold text-sm text-white">{info.label}</span>
+                  <span className="text-xs text-white/70 leading-relaxed">{info.desc}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full py-2.5 rounded-full font-black uppercase text-xs tracking-wider text-black bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 hover:brightness-110 active:scale-95 transition shadow-lg cursor-pointer"
+        >
+          Got It
+        </button>
+      </div>
     </div>
   );
 }
 
-/** Dark-theme sibling of the classic-mode badge above — same "off =
- *  classic, on = named chips" logic as uno-scene.tsx's UnoHouseRulesBadge,
- *  duplicated locally rather than imported since that one is styled with
- *  the wood-table `uno-wood-plate` class this shell no longer uses. */
-const HOUSE_RULE_LABELS: Record<string, string> = {
-  stackDrawCards: "Stack Draw Cards",
-  jumpIn: "Jump-In",
-  sevenSwap: "Seven Swap",
-  zeroRotate: "Zero Rotate",
-  keepDrawing: "Keep Drawing",
-  forcePlay: "Force Play",
-};
+export interface FlyingReactionItem {
+  id: string;
+  emoji: string;
+  startX: number;
+  startY: number;
+  targetX: number;
+  targetY: number;
+}
 
-export function StadiumHouseRulesBadge({ rules }: { rules: Record<string, boolean> }) {
-  const active = Object.keys(HOUSE_RULE_LABELS).filter((k) => rules[k]);
-  if (active.length === 0) return null;
-  const names = active.map((k) => HOUSE_RULE_LABELS[k]).join(", ");
+export function StadiumReactionProjectiles({
+  projectiles,
+}: {
+  projectiles: FlyingReactionItem[];
+}) {
+  if (projectiles.length === 0) return null;
   return (
-    <div
-      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-white whitespace-nowrap"
-      style={{ background: "rgba(0,0,0,0.32)", border: "1px solid rgba(255,255,255,0.2)" }}
-      title={`House rules active: ${names}`}
-      aria-label={`House rules active: ${names}`}
-    >
-      <DiceIcon size={11} />
-      {active.length} house rule{active.length === 1 ? "" : "s"}
+    <div className="fixed inset-0 pointer-events-none z-40 overflow-hidden" aria-hidden>
+      {projectiles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute animate-throw-arc text-4xl select-none filter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]"
+          style={{
+            ["--throw-start-x" as string]: `${p.startX}px`,
+            ["--throw-start-y" as string]: `${p.startY}px`,
+            ["--throw-target-x" as string]: `${p.targetX}px`,
+            ["--throw-target-y" as string]: `${p.targetY}px`,
+          }}
+        >
+          {p.emoji}
+        </div>
+      ))}
     </div>
   );
 }
@@ -830,27 +1196,24 @@ export function StadiumIconButton({
       onClick={onClick}
       aria-label={ariaLabel}
       title={title}
-      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-base transition active:scale-95 flex-shrink-0"
-      style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.18)" }}
+      className="w-10 h-10 rounded-full flex items-center justify-center text-white text-base transition-all duration-150 hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow-md"
+      style={{ background: "rgba(15,3,3,0.75)", border: "1.5px solid rgba(255,255,255,0.18)", backdropFilter: "blur(8px)" }}
     >
       {children}
     </button>
   );
 }
 
-/** Gear icon → a tiny popover consolidating the two header controls the
- *  reference's 3-icon top-right (sound / settings / emoji) has no room
- *  for individually: fullscreen (needed — the board locks landscape) and
- *  the tutorial deck. Neither is a fabricated feature; both existed in
- *  the pre-redesign header and would otherwise have nowhere to live. */
 export function StadiumSettingsMenu({
   isFullscreen,
   onToggleFullscreen,
   onOpenTutorial,
+  onLeave,
 }: {
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   onOpenTutorial: () => void;
+  onLeave?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -870,8 +1233,8 @@ export function StadiumSettingsMenu({
       {open && (
         <div
           role="menu"
-          className="absolute top-full right-0 mt-2 z-30 rounded-xl overflow-hidden shadow-xl min-w-[9.5rem]"
-          style={{ background: "#241009", border: "1px solid rgba(255,255,255,0.18)" }}
+          className="absolute top-full right-0 mt-2 z-50 rounded-2xl overflow-hidden shadow-2xl min-w-[10.5rem]"
+          style={{ background: "rgba(25,8,8,0.95)", border: "1.5px solid rgba(255,255,255,0.18)", backdropFilter: "blur(12px)" }}
         >
           <button
             role="menuitem"
@@ -879,7 +1242,7 @@ export function StadiumSettingsMenu({
               onToggleFullscreen();
               setOpen(false);
             }}
-            className="w-full text-left px-3 py-2.5 text-xs font-bold text-white hover:bg-white/10"
+            className="w-full text-left px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 transition cursor-pointer"
           >
             {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
           </button>
@@ -889,10 +1252,22 @@ export function StadiumSettingsMenu({
               onOpenTutorial();
               setOpen(false);
             }}
-            className="w-full text-left px-3 py-2.5 text-xs font-bold text-white hover:bg-white/10 border-t border-white/10"
+            className="w-full text-left px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 border-t border-white/10 transition cursor-pointer"
           >
             How to Play
           </button>
+          {onLeave && (
+            <button
+              role="menuitem"
+              onClick={() => {
+                onLeave();
+                setOpen(false);
+              }}
+              className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/20 border-t border-white/10 transition cursor-pointer"
+            >
+              Leave Room
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -900,23 +1275,22 @@ export function StadiumSettingsMenu({
 }
 
 // ---------------------------------------------------------------------
-// Bottom-left HUD — Chat trigger (Emoji's square ReactionButton variant
-// is rendered by the caller directly, uno-rail.tsx's exported component).
+// Bottom-left HUD — Chat trigger
 // ---------------------------------------------------------------------
 
 export function StadiumChatButton({ onClick, unread }: { onClick: () => void; unread: number }) {
   return (
     <button
       onClick={onClick}
-      className="relative w-12 h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 text-white"
-      style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.2)" }}
+      className="relative w-12 h-12 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
+      style={{ background: "rgba(15,3,3,0.75)", border: "1.5px solid rgba(255,255,255,0.18)", backdropFilter: "blur(8px)" }}
       aria-label="Open chat and room panel"
     >
       <ChatIcon size={18} />
-      <span className="text-[8px] font-black uppercase tracking-wide">Chat</span>
+      <span className="text-[8px] font-black uppercase tracking-wider text-white/90">Chat</span>
       {unread > 0 && (
         <span
-          className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center"
+          className="absolute -top-1.5 -right-1.5 min-w-[18px] h-4.5 px-1 rounded-full text-[9px] font-black flex items-center justify-center shadow-md animate-bounce"
           style={{ background: "#DC2626", color: "#fff" }}
         >
           {unread > 9 ? "9+" : unread}
@@ -927,82 +1301,70 @@ export function StadiumChatButton({ onClick, unread }: { onClick: () => void; un
 }
 
 // ---------------------------------------------------------------------
-// Bottom-right HUD — persistent UNO declare button + turn timer pill.
+// Bottom-right HUD — persistent 3D UNO button + turn timer pill.
 // ---------------------------------------------------------------------
 
-/**
- * The signature UNO call. Sized and weighted like the reference's, and — the
- * bug this replaces — still legible when disabled: `opacity-45` over a dark
- * red arena rendered it as a barely-visible ghost outline, so nobody could
- * tell whether the game's most important button even existed. Now it keeps a
- * solid (if unlit) body and states WHY it's off via tooltip + aria-label.
- */
 export function StadiumUnoButton({
   enabled,
+  isPrimed = false,
   onDeclare,
-  handSize,
 }: {
   enabled: boolean;
+  isPrimed?: boolean;
   onDeclare: () => void;
-  /** Cards left in the local hand. Drives PROMINENCE, not availability. */
   handSize?: number;
 }) {
   const label = enabled
-    ? "Declare UNO — you have one card left"
-    : "Declare UNO — lights up when you are down to one card";
+    ? "Declare UNO — you have one card left!"
+    : isPrimed
+    ? "UNO button primed — tap before playing down to 1 card!"
+    : "Declare UNO";
 
-  /*
-   * The button earns its size instead of always taking it.
-   *
-   * At full weight it is 7.4rem of the arena's most valuable corner from the
-   * first deal, when it cannot be pressed for another dozen turns — the same
-   * dead slab whether you hold seven cards or one. It now stays small and
-   * quiet while it is irrelevant, grows as you approach the call, and only
-   * reaches full weight when it is actually live. Never hidden: a control
-   * that appears from nowhere is worse than one that is merely quiet, and
-   * a player has to be able to find it before they need it.
-   */
-  const armed = handSize == null || handSize <= 2;
   return (
-    <button
-      onClick={enabled ? onDeclare : undefined}
-      disabled={!enabled}
-      aria-label={label}
-      title={label}
-      className={`relative flex items-center justify-center rounded-full font-black italic tracking-tight transition-all duration-500 ${
-        enabled ? "uno-call-ready active:scale-95 cursor-pointer" : "cursor-not-allowed"
-      }`}
-      style={{
-        width: armed ? "7.2rem" : "5.4rem",
-        height: armed ? "3.2rem" : "2.5rem",
-        fontSize: armed ? "1.5rem" : "1.1rem",
-        opacity: enabled ? 1 : 0.8,
-        color: "#FFD700",
-        background: "radial-gradient(circle at 35% 28%, #ff4d4d, #dc2626 55%, #991b1b 100%)",
-        border: "3.5px solid #FFD700",
-        boxShadow: enabled
-          ? "0 4px 0 2px #500000, 0 8px 24px rgba(220,38,38,0.8), 0 0 28px rgba(255,215,0,0.9), inset 0 2px 4px rgba(255,255,255,0.5)"
-          : "0 4px 0 2px #500000, 0 4px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.3)",
-        textShadow: "0 2px 4px rgba(0,0,0,0.7), 0 0 8px rgba(255,215,0,0.5)",
-      }}
-    >
-      UNO
-    </button>
+    <div className="relative flex flex-col items-center">
+      {isPrimed && !enabled && (
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-amber-400 text-[8px] font-black text-black uppercase tracking-wider whitespace-nowrap shadow-md pointer-events-none z-20">
+          PRIMED FOR UNO
+        </div>
+      )}
+      <button
+        onClick={enabled ? onDeclare : undefined}
+        disabled={!enabled}
+        aria-label={label}
+        title={label}
+        className={`relative flex items-center justify-center rounded-[32px] font-black tracking-tight transition-all duration-300 ${
+          enabled
+            ? "uno-call-ready active:scale-95 cursor-pointer hover:brightness-110 animate-pulse"
+            : isPrimed
+            ? "cursor-pointer hover:scale-105 opacity-95"
+            : "opacity-80 cursor-not-allowed"
+        }`}
+        style={{
+          width: "8.5rem",
+          height: "3.6rem",
+          fontSize: "1.85rem",
+          fontFamily: "'Righteous', 'Nunito', sans-serif",
+          color: "#FFE600",
+          background: isPrimed || enabled
+            ? "radial-gradient(ellipse at 50% 25%, #FF3B30 0%, #D31010 60%, #8A0000 100%)"
+            : "radial-gradient(ellipse at 50% 25%, #A81B1B 0%, #6E0505 60%, #3B0000 100%)",
+          border: isPrimed || enabled ? "3.5px solid #FFD700" : "3.5px solid #6E4020",
+          boxShadow: enabled
+            ? "0 6px 0 2px #4A0000, 0 10px 25px rgba(220,38,38,0.85), 0 0 30px rgba(255,215,0,0.95), inset 0 2px 5px rgba(255,255,255,0.6)"
+            : isPrimed
+            ? "0 6px 0 2px #4A0000, 0 8px 18px rgba(220,38,38,0.6), 0 0 16px rgba(255,215,0,0.6), inset 0 2px 4px rgba(255,255,255,0.4)"
+            : "0 6px 0 2px #4A0000, 0 6px 14px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.2)",
+          textShadow: "0 3px 0 #9E0000, 0 4px 8px rgba(0,0,0,0.8), 0 0 10px rgba(255,230,0,0.6)",
+        }}
+      >
+        UNO
+      </button>
+    </div>
   );
 }
 
-/**
- * Turn timer. Reference-weight: clock glyph beside a stacked label + a big
- * tabular countdown, with a draining ring so the remaining time reads
- * pre-attentively instead of requiring you to parse digits.
- *
- * Urgency is carried by colour AND the ring AND the number — never colour
- * alone, so it survives colour-blindness and greyscale.
- */
 export function StadiumTurnTimerPill({ deadline, myTurn }: { deadline: number | null; myTurn: boolean }) {
   const secondsLeft = useTurnSecondsLeft(deadline);
-  // The server publishes a deadline, not the turn length, so the ring
-  // self-calibrates: the first tick of a new deadline becomes its "full".
   const [track, setTrack] = useState<{ key: number | null; total: number }>({ key: null, total: 1 });
   if (deadline !== track.key) setTrack({ key: deadline, total: Math.max(1, secondsLeft) });
   if (deadline == null) return null;
@@ -1010,26 +1372,27 @@ export function StadiumTurnTimerPill({ deadline, myTurn }: { deadline: number | 
   const critical = secondsLeft <= 5;
   const pct = Math.max(0, Math.min(1, secondsLeft / Math.max(1, track.total)));
   const ring = critical ? "#FF4D4D" : urgent ? "#FFB020" : "#F7DA8B";
-  const R = 16;
+  const R = 15;
   const C = 2 * Math.PI * R;
   return (
     <div
-      className={`flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-2xl whitespace-nowrap ${
-        critical ? "uno-timer-critical" : ""
+      className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl whitespace-nowrap shadow-lg ${
+        critical ? "uno-timer-critical animate-pulse" : ""
       }`}
       style={{
-        background: urgent ? "rgba(140,16,16,0.92)" : "rgba(0,0,0,0.48)",
-        border: `1.5px solid ${urgent ? "rgba(255,140,120,0.7)" : "rgba(255,255,255,0.22)"}`,
+        background: urgent ? "rgba(140,16,16,0.92)" : "rgba(15,3,3,0.85)",
+        border: `1.5px solid ${urgent ? "rgba(255,140,120,0.8)" : "rgba(255,255,255,0.2)"}`,
+        backdropFilter: "blur(8px)",
       }}
       role="timer"
       aria-label={`${myTurn ? "Your turn" : "Their turn"}, ${secondsLeft} seconds left`}
     >
-      <div className="relative flex-shrink-0" style={{ width: 38, height: 38 }}>
-        <svg width="38" height="38" className="absolute inset-0 -rotate-90" aria-hidden>
-          <circle cx="19" cy="19" r={R} fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="3" />
+      <div className="relative flex-shrink-0" style={{ width: 36, height: 36 }}>
+        <svg width="36" height="36" className="absolute inset-0 -rotate-90" aria-hidden>
+          <circle cx="18" cy="18" r={R} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="3" />
           <circle
-            cx="19"
-            cy="19"
+            cx="18"
+            cy="18"
             r={R}
             fill="none"
             stroke={ring}
@@ -1040,18 +1403,142 @@ export function StadiumTurnTimerPill({ deadline, myTurn }: { deadline: number | 
             style={{ transition: "stroke-dashoffset 950ms linear, stroke 250ms" }}
           />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-white/85" aria-hidden>
-          <ClockIcon size={15} />
+        <span className="absolute inset-0 flex items-center justify-center text-white/90 text-sm" aria-hidden>
+          ⏱
         </span>
       </div>
       <div className="flex flex-col leading-none gap-0.5">
         <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white/70">
           {myTurn ? "Your Turn" : "Their Turn"}
         </span>
-        <span className="text-[19px] font-black tabular-nums" style={{ color: ring }}>
+        <span className="text-[18px] font-black tabular-nums" style={{ color: ring }}>
           {secondsLeft}s
         </span>
       </div>
+    </div>
+  );
+}
+
+export function StadiumPassButton({
+  canPass,
+  onPass,
+}: {
+  canPass: boolean;
+  onPass: () => void;
+}) {
+  return (
+    <button
+      onClick={onPass}
+      disabled={!canPass}
+      className={`group relative flex items-center gap-2.5 px-6 py-2.5 rounded-full font-black text-sm uppercase tracking-wider transition-all duration-200 shadow-2xl select-none ${
+        canPass
+          ? "cursor-pointer hover:scale-105 active:scale-95 text-white hover:brightness-110"
+          : "cursor-not-allowed opacity-50 text-white/60"
+      }`}
+      style={{
+        background: "linear-gradient(135deg, #fb923c 0%, #ea580c 55%, #9a3412 100%)",
+        border: "2px solid #fed7aa",
+        boxShadow: "0 6px 20px rgba(234,88,12,0.65), 0 0 12px rgba(251,146,60,0.4), inset 0 1.5px 0 rgba(255,255,255,0.6)",
+        textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+      }}
+      aria-label="Pass Turn"
+      title="Pass your turn (P)"
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden className="drop-shadow-sm">
+        <path d="M5 4l10 8-10 8V4zM19 4v16h-2V4h2z" />
+      </svg>
+      <span className="font-extrabold tracking-wide">Pass Turn</span>
+      <span className="font-mono text-[11px] font-bold bg-black/40 border border-white/40 rounded-md px-1.5 py-0.5 ml-1 text-white/95 shadow-inner">
+        P
+      </span>
+    </button>
+  );
+}
+
+export function StadiumSpeechBubble({ text }: { text: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.3, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.6, y: -16 }}
+      transition={{ type: "spring", stiffness: 450, damping: 24 }}
+      className="absolute -top-12 left-1/2 -translate-x-1/2 z-50 pointer-events-none whitespace-nowrap select-none"
+    >
+      <div className="relative px-3.5 py-1.5 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100 text-stone-900 font-extrabold text-xs shadow-[0_6px_20px_rgba(0,0,0,0.7)] border-2 border-amber-300 flex items-center gap-1.5">
+        <span>{text}</span>
+        {/* Comic speech bubble tail */}
+        <div
+          className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[8px] border-t-amber-100 filter drop-shadow-sm"
+        />
+      </div>
+    </motion.div>
+  );
+}
+
+export const QUICK_TAUNTS = [
+  "Good luck! 🍀",
+  "Don't you dare! 🛑",
+  "UNO is mine! 🏆",
+  "Oops! 😅",
+  "Nice try! 😉",
+  "Hurry up! ⏰",
+  "GG! 👏",
+];
+
+export function QuickTauntTray({
+  isOpen,
+  onClose,
+  onSendTaunt,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSendTaunt: (text: string) => void;
+}) {
+  if (!isOpen) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="w-[90%] max-w-sm rounded-3xl p-5 shadow-2xl flex flex-col gap-3"
+        style={{
+          background: "linear-gradient(145deg, #220808 0%, #110303 100%)",
+          border: "2px solid rgba(247,218,139,0.7)",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.15)",
+        }}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">💬</span>
+            <h3 className="font-display text-base font-bold text-[#F7DA8B]">Quick Taunts</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 text-sm font-black cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          {QUICK_TAUNTS.map((taunt) => (
+            <button
+              key={taunt}
+              onClick={() => {
+                onSendTaunt(taunt);
+                onClose();
+              }}
+              className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-black text-amber-100 bg-white/5 hover:bg-amber-500/20 border border-amber-400/20 hover:border-amber-400/60 transition-all hover:scale-[1.02] active:scale-98 cursor-pointer text-left"
+            >
+              <span>{taunt}</span>
+            </button>
+          ))}
+        </div>
+      </motion.div>
     </div>
   );
 }

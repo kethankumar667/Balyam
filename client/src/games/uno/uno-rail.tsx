@@ -259,21 +259,21 @@ export function ReactionButton({
           onClick={() => setOpen((v) => !v)}
           aria-label="React"
           title="React"
-          className="w-12 h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 text-white"
-          style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.2)" }}
+          className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
+          style={{ background: "rgba(15,3,3,0.75)", border: "1.5px solid rgba(255,255,255,0.18)", backdropFilter: "blur(8px)" }}
         >
           <SmileyIcon size={18} />
-          <span className="text-[8px] font-black uppercase tracking-wide">Emoji</span>
+          <span className="text-[8px] font-black uppercase tracking-wider text-white/90">Emoji</span>
         </button>
       ) : (
         <button
           onClick={() => setOpen((v) => !v)}
           aria-label="React"
           title="React"
-          className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
           style={
             dark
-              ? { background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.18)", color: "#fff" }
+              ? { background: "rgba(15,3,3,0.75)", border: "1.5px solid rgba(255,255,255,0.18)", color: "#fff", backdropFilter: "blur(8px)" }
               : { background: "#F0E1D0", border: "1px solid #E8D8BE", color: "#6D4323" }
           }
         >
@@ -282,11 +282,8 @@ export function ReactionButton({
       )}
       {open && (
         <div
-          // `w-56` (not `max-w-[14rem]`) — an absolutely-positioned flex-wrap
-          // container needs a definite width or it shrinks to fit a single
-          // column instead of wrapping into a grid.
-          className="absolute bottom-full mb-2 right-0 rounded-2xl px-2.5 py-2 flex flex-wrap items-center gap-1 shadow-xl w-56 z-10"
-          style={{ background: "#2B2118", border: "1px solid rgba(230,161,30,0.3)" }}
+          className="absolute bottom-full mb-2 left-0 rounded-2xl p-2 flex flex-wrap items-center gap-1.5 shadow-2xl w-56 z-50"
+          style={{ background: "rgba(25,8,8,0.95)", border: "1.5px solid rgba(255,255,255,0.18)", backdropFilter: "blur(12px)" }}
         >
           {QUICK_EMOJIS.map((e) => (
             <button

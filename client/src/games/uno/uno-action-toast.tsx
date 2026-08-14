@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 export interface UnoActionToastProps {
   lastAction: string | null;
+  className?: string;
 }
 
 /**
@@ -13,7 +14,7 @@ export interface UnoActionToastProps {
  * as the room-level ChatMessageToast, scoped to UNO's own cream/gold table
  * instead of floating over the whole viewport.
  */
-export function UnoActionToast({ lastAction }: UnoActionToastProps) {
+export function UnoActionToast({ lastAction, className }: UnoActionToastProps) {
   const lastSeenRef = useRef<string | null>(null);
   const initializedRef = useRef(false);
   const [visible, setVisible] = useState<string | null>(null);
@@ -35,14 +36,6 @@ export function UnoActionToast({ lastAction }: UnoActionToastProps) {
 
   useEffect(() => {
     if (!visible) return;
-    // Two message classes get extra emphasis over the standard 2.6s fade:
-    // a round transition (Volume 2/6 multi-round matches silently refill
-    // every hand) and a Wild/Wild+4 colour choice ("... chose Green!" /
-    // "... chose Green. Waiting for...") — per live user feedback, the
-    // colour pill needed to "hold for 5 secs" since a quick glance away
-    // could miss which colour is now live. Both keyed off the engine's
-    // own stable message text (UnoEngine.startNewRound /
-    // finalizePlayedCard/handleActionCard) rather than a new state field.
     const isRoundBanner = visible.startsWith("Round ");
     const isColorChoice = visible.includes("chose ");
     const holdMs = isColorChoice ? 5000 : isRoundBanner ? 4200 : 2600;
@@ -54,7 +47,7 @@ export function UnoActionToast({ lastAction }: UnoActionToastProps) {
   const isEmphasized = visible.startsWith("Round ") || visible.includes("chose ");
 
   return (
-    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[25] pointer-events-none flex justify-center px-2 max-w-[90vw]" aria-live="polite">
+    <div className={`absolute left-1/2 -translate-x-1/2 z-[25] pointer-events-none flex justify-center px-2 max-w-[90vw] ${className ?? "top-10"}`} aria-live="polite">
       <span
         className={`pointer-events-auto max-w-full truncate rounded-full shadow-md animate-[fadeIn_150ms_ease-out] ${
           isEmphasized

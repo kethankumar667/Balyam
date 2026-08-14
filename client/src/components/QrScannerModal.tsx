@@ -143,7 +143,7 @@ export default function QrScannerModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4
-                 bg-bhalyam-wood-dark/80 backdrop-blur-sm animate-fade-in"
+                 bg-black/60 dark:bg-black/80 backdrop-blur-sm dark:backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
       <div
@@ -152,17 +152,17 @@ export default function QrScannerModal({
         aria-labelledby="qr-scanner-title"
         onClick={(e) => e.stopPropagation()}
         className="bhalyam-font relative w-full max-w-sm
-                   bg-bhalyam-cream-soft text-bhalyam-wood-dark
-                   border-2 border-bhalyam-cream-edge/80
-                   rounded-3xl p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)]
+                   bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
+                   border-2 border-[#EEDBCA] dark:border-slate-800
+                   rounded-3xl p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]
                    flex flex-col items-center space-y-4"
         style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
       >
         {/* Header */}
-        <div className="w-full flex items-center justify-between border-b-2 border-bhalyam-cream-edge/50 pb-3">
+        <div className="w-full flex items-center justify-between border-b-2 border-[#EEDBCA]/60 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2.5">
             <span
-              className="w-10 h-10 rounded-xl inline-flex items-center justify-center text-white flex-shrink-0"
+              className="w-10 h-10 rounded-xl inline-flex items-center justify-center text-white flex-shrink-0 shadow-sm"
               style={{
                 background: "linear-gradient(135deg, #FF8F00, #EA5A1F)",
                 boxShadow: "0 4px 10px -2px #FF8F0066",
@@ -173,7 +173,7 @@ export default function QrScannerModal({
             </span>
             <h2
               id="qr-scanner-title"
-              className="font-bold text-bhalyam-wood-dark text-base leading-tight"
+              className="font-bold text-[#2B3550] dark:text-slate-100 text-base leading-tight"
             >
               Scan QR Code
             </h2>
@@ -185,8 +185,8 @@ export default function QrScannerModal({
               title="Switch camera"
               aria-label="Switch camera"
               className="w-9 h-9 rounded-full inline-flex items-center justify-center
-                         bg-bhalyam-cream-warm text-bhalyam-wood-dark cursor-pointer
-                         hover:bg-bhalyam-cream-edge active:scale-95 transition"
+                         bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200 cursor-pointer
+                         hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 transition"
             >
               <FlipCameraIcon className="w-4 h-4" />
             </button>
@@ -195,8 +195,8 @@ export default function QrScannerModal({
               onClick={onClose}
               aria-label="Close Scanner"
               className="w-9 h-9 rounded-full inline-flex items-center justify-center
-                         bg-bhalyam-cream-warm text-bhalyam-wood-dark cursor-pointer
-                         hover:bg-bhalyam-cream-edge active:scale-95 transition"
+                         bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200 cursor-pointer
+                         hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 transition"
             >
               <CloseIcon className="w-4 h-4" />
             </button>
@@ -204,20 +204,20 @@ export default function QrScannerModal({
         </div>
 
         {/* Viewfinder Container */}
-        <div className="relative w-full max-w-[260px] aspect-square rounded-2xl overflow-hidden bg-black border-2 border-bhalyam-gold shadow-md flex items-center justify-center">
+        <div className="relative w-full max-w-[260px] aspect-square rounded-2xl overflow-hidden bg-black border-2 border-amber-500/80 shadow-md flex items-center justify-center">
           <div id="bhalyam-qr-reader" className="w-full h-full object-cover" />
 
           {/* Animated Target Reticle overlay */}
           {scanning && !cameraError && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="w-[180px] h-[180px] border-2 border-bhalyam-gold/80 rounded-xl relative shadow-[0_0_20px_rgba(228,177,40,0.4)]">
+              <div className="w-[180px] h-[180px] border-2 border-amber-400/80 rounded-xl relative shadow-[0_0_20px_rgba(245,158,11,0.4)]">
                 {/* Corner accents */}
-                <span className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-bhalyam-gold" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-bhalyam-gold" />
-                <span className="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-bhalyam-gold" />
-                <span className="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-bhalyam-gold" />
+                <span className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-amber-400" />
+                <span className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-amber-400" />
+                <span className="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-amber-400" />
+                <span className="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-amber-400" />
                 {/* Scanning laser animation line */}
-                <span className="absolute left-2 right-2 h-0.5 bg-bhalyam-gold shadow-[0_0_8px_#E4B128] animate-bounce" />
+                <span className="absolute left-2 right-2 h-0.5 bg-amber-400 shadow-[0_0_8px_#F59E0B] animate-bounce" />
               </div>
             </div>
           )}
@@ -227,16 +227,16 @@ export default function QrScannerModal({
         {cameraError && (
           <div
             role="alert"
-            className="w-full text-xs text-bhalyam-ludo-red font-bold text-center
-                       bg-bhalyam-ludo-red/10 border border-bhalyam-ludo-red/30
-                       rounded-xl p-2.5 leading-snug"
+            className="w-full text-xs text-rose-600 dark:text-rose-400 font-bold text-center
+                       bg-rose-500/10 border border-rose-500/30
+                       rounded-2xl p-2.5 leading-snug"
           >
             {cameraError}
           </div>
         )}
 
         {/* Subtitle instructions */}
-        <p className="text-xs font-semibold text-bhalyam-wood-dark/70 text-center">
+        <p className="text-xs font-semibold text-[#8A6D4B] dark:text-slate-400 text-center">
           Point camera at the host's room QR code to join automatically.
         </p>
 
@@ -252,10 +252,10 @@ export default function QrScannerModal({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="w-full min-h-[44px] rounded-xl border border-bhalyam-cream-edge/80
-                       bg-white hover:bg-bhalyam-cream-warm text-bhalyam-wood-dark
+            className="w-full min-h-[44px] rounded-xl border border-[#EEDBCA] dark:border-slate-700/80
+                       bg-white dark:bg-[#182234] hover:bg-[#FFF9EE] dark:hover:bg-[#1E2738] text-[#2B3550] dark:text-slate-100
                        font-bold text-xs inline-flex items-center justify-center gap-2
-                       active:scale-[0.98] transition shadow-sm"
+                       active:scale-[0.98] transition shadow-sm cursor-pointer"
           >
             <ImageIcon className="w-4 h-4" />
             Upload QR Code Image

@@ -29,6 +29,9 @@ import {
 } from "../components/bhalyam/data";
 import {
   ArrowRightIcon,
+  UsersIcon,
+  ClockIcon,
+  HeartIcon,
   HandCricketGlyph,
   LudoGlyph,
   RpsGlyph,
@@ -93,8 +96,7 @@ export default function BhalyamHome() {
   const [joinOpen, setJoinOpen] = useState(false);
 
   // Warm the socket connection on landing so the first room create/join
-  // doesn't pay the cold WebSocket handshake at click time (the emit was
-  // previously buffered until the very first connect).
+  // doesn't pay the cold WebSocket handshake at click time
   useEffect(() => {
     getSocket();
   }, []);
@@ -102,18 +104,307 @@ export default function BhalyamHome() {
   return (
     <div className="bhalyam-home bhalyam-font min-h-screen bhalyam-paper flex flex-col overflow-x-hidden">
       <Header onOpenJoin={() => setJoinOpen(true)} />
-      <main className="mx-auto w-full max-w-[1080px] px-4 sm:px-6 pb-10 flex-1">
-        <Hero />
-        <HeroJoinRoomRow onOpenJoin={() => setJoinOpen(true)} />
+      <main className="mx-auto w-full max-w-[1100px] px-4 sm:px-6 pb-8 flex-1">
+        <Hero
+          onPlayFeatured={() => setSheetGame("uno")}
+          onOpenJoin={() => setJoinOpen(true)}
+        />
+        <WelcomePlayerStrip onSelect={setSheetGame} />
         <GamesSection onSelect={setSheetGame} />
-        <StatsStrip />
-        <MiddlePanels />
-        <UtilityStrip />
+        <PlayerJourneyDashboard onSelect={setSheetGame} onOpenJoin={() => setJoinOpen(true)} />
+        <LiveLoungePulse onSelect={setSheetGame} />
         <Footer />
       </main>
       <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
       <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
     </div>
+  );
+}
+
+function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
+  const { playerName, avatarId } = useRoomStore();
+  const displayName = playerName.trim() || "Champion";
+
+  return (
+    <div className="mb-5 p-3 sm:p-4 rounded-2xl bg-[#FCF8EF] border border-[#E8D8BE] shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      {/* Left: Player Profile & Greeting */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-2xl overflow-hidden bg-amber-100 border-2 border-amber-400 flex items-center justify-center shadow-inner flex-shrink-0">
+          <SelfAvatar className="w-full h-full" fallback={<UserGlyph className="w-5 h-5 text-amber-900" />} />
+        </div>
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[14px] font-black text-[#1D2C4A]">Welcome back, {displayName}! 👋</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+              Lvl 12
+            </span>
+          </div>
+          <p className="text-[11.5px] font-semibold text-[#6B5E52] flex items-center gap-2 mt-0.5">
+            <span>🔥 3-Day Streak</span>
+            <span>•</span>
+            <span className="text-emerald-700 font-bold">1,450 / 2,000 XP</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Right: Quick Continue Playing & Daily Reward */}
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        <button
+          type="button"
+          onClick={() => onSelect("uno")}
+          className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <span>▶ Continue UNO</span>
+        </button>
+        <span className="px-2.5 py-1.5 rounded-xl bg-purple-100 text-purple-900 border border-purple-300 text-[10.5px] font-black whitespace-nowrap">
+          🎁 Day 3 Claimed (+100 XP)
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function TrophyProgressionStrip() {
+  const trophies = [
+    { title: "🏏 Backbench Champion", desc: "10 Hand Cricket Matches", unlocked: true },
+    { title: "🎴 Uno Wildcard King", desc: "Declared UNO 5 Times", unlocked: true },
+    { title: "🎲 Sixer Legend", desc: "Rolled 6 in Ludo Under Pressure", unlocked: true },
+    { title: "✏️ Box Master", desc: "Claimed 25 Dots & Boxes Squares", unlocked: false },
+  ];
+
+  return (
+    <section className="my-8 p-4 sm:p-6 rounded-3xl bg-[#101726] text-white border border-white/15 shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+        <div>
+          <h3 className="bhalyam-display text-[18px] sm:text-[22px] text-amber-300">
+            🏆 Nostalgia Trophy Cabinet
+          </h3>
+          <p className="text-[12.5px] text-zinc-300">Unlock childhood badges as you play with friends</p>
+        </div>
+        <span className="px-3 py-1 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 w-fit">
+          Level 12 • Gold Tier
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        {trophies.map((t) => (
+          <div
+            key={t.title}
+            className={`p-3 rounded-2xl border ${
+              t.unlocked
+                ? "bg-[#18233A] border-amber-400/40 shadow-[0_4px_12px_rgba(245,158,11,0.15)]"
+                : "bg-white/5 border-white/10 opacity-60"
+            }`}
+          >
+            <div className="text-[12.5px] font-black text-amber-200 truncate">{t.title}</div>
+            <div className="text-[10.5px] text-zinc-300 mt-0.5 line-clamp-1">{t.desc}</div>
+            <div className="mt-2 text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-400">
+              {t.unlocked ? "✓ Unlocked (+50 XP)" : "🔒 In Progress"}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Hero({
+  onPlayFeatured,
+  onOpenJoin,
+}: {
+  onPlayFeatured?: () => void;
+  onOpenJoin: () => void;
+}) {
+  const [theme] = useTheme();
+  const [failed, setFailed] = useState(false);
+  const heroImage = failed
+    ? "/bhalyam-hero.png"
+    : theme === "dark"
+    ? "/bhalyam-dark-hero.png"
+    : "/bhalyam-hero-clean.png";
+
+  const handleShareWhatsApp = () => {
+    const text = encodeURIComponent(
+      "Hey! Let's play nostalgic 90's Indian multiplayer games together on BHALYAM (UNO, Ludo, Hand Cricket & more)! Join me here: " + window.location.origin
+    );
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  return (
+    <RevealOnScroll as="section" amount={0.05} className="pt-2 pb-6 sm:pt-4 sm:pb-8">
+      {/* ── Main Hero Card ── */}
+      <div
+        className="relative overflow-hidden rounded-[26px] sm:rounded-[36px] border border-[#E2D3BA] shadow-[0_14px_30px_-15px_rgba(74,44,22,0.35)]"
+        style={{ background: "#FAF2DF" }}
+      >
+        <img
+          src={heroImage}
+          alt="Childhood games lounge"
+          className="bhalyam-hero-drift absolute inset-0 w-full h-full object-cover object-right opacity-95"
+          loading="eager"
+          onError={() => setFailed(true)}
+        />
+        {/* Soft linear fade on left half to keep text readable */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(254,249,235,0.98) 0%, rgba(254,249,235,0.94) 42%, rgba(254,249,235,0.55) 65%, rgba(254,249,235,0.05) 95%)",
+          }}
+        />
+
+        <div className="relative z-10 px-5 sm:px-10 py-7 sm:py-9 max-w-xl">
+          {/* Top Label */}
+          <span className="text-[11.5px] sm:text-[13px] font-black uppercase tracking-[0.22em] text-[#7B2F0E] block mb-2 sm:mb-2.5">
+            ✦ WELCOME TO THE ADDA ✦
+          </span>
+
+          {/* Headline with 4 lines & color coding */}
+          <h1 className="bhalyam-display text-[34px] sm:text-[48px] lg:text-[54px] leading-[1.02] tracking-tight text-[#15294E] flex flex-col">
+            <span>Ready to</span>
+            <span className="bg-gradient-to-r from-[#E11D48] via-[#9333EA] to-[#7C3AED] bg-clip-text text-transparent w-fit">
+              relive
+            </span>
+            <span>your</span>
+            <span className="text-[#15803D]">childhood?</span>
+          </h1>
+
+          {/* Description */}
+          <p className="text-[#3B332A] text-[14px] sm:text-[16px] font-semibold max-w-sm sm:max-w-md mt-3.5 leading-snug">
+            Pick a game, send the room code to your school WhatsApp group, and play instantly.
+          </p>
+          <p className="font-script italic text-[17px] sm:text-[21px] text-[#7B2F0E] mt-1.5">
+            ~ Bring your school gang back together!
+          </p>
+
+          {/* WhatsApp Share Card */}
+          <div
+            onClick={handleShareWhatsApp}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") handleShareWhatsApp();
+            }}
+            className="mt-5 sm:mt-6 w-full max-w-[280px] sm:max-w-[320px] rounded-full bg-white/95 backdrop-blur-md py-2 px-4 sm:px-5 border border-[#E5D5BC] shadow-[0_4px_16px_rgba(0,0,0,0.06)] flex items-center justify-between gap-3 cursor-pointer hover:bg-white hover:shadow-md active:scale-98 transition"
+          >
+            <div className="flex flex-col text-left">
+              <span className="text-[13.5px] sm:text-[15px] font-black text-[#15294E] leading-tight">
+                Share on WhatsApp
+              </span>
+              <span className="text-[11px] sm:text-[12px] font-medium text-[#7A6F62] leading-tight mt-0.5">
+                Send the code in seconds
+              </span>
+            </div>
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-sm flex-shrink-0">
+              <WhatsappGlyph className="w-5 h-5 text-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Join Room with a code Button (Centered below hero card) ── */}
+      <div className="mt-4 sm:mt-5 flex justify-center w-full">
+        <button
+          type="button"
+          onClick={onOpenJoin}
+          className="w-full max-w-lg py-3.5 px-8 rounded-full flex items-center justify-center gap-2.5 text-[15px] sm:text-[16px] font-black text-[#3D2506] bg-[#F0BA28] hover:bg-[#E5A817] active:scale-98 transition shadow-[0_6px_18px_rgba(229,168,23,0.38)] border border-[#D99A10] cursor-pointer"
+        >
+          <DoorPlusIcon className="w-5 h-5 text-[#3D2506]" />
+          <span>Join Room with a code</span>
+        </button>
+      </div>
+    </RevealOnScroll>
+  );
+}
+
+/** Tiles the home grid shows before deferring to /games. */
+const HOME_TILE_CAP = 6;
+
+function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
+  const [filter, setFilter] = useState<GameFilter>({ category: "all" });
+  const matches = filterGames(filter, false);
+  const shown = matches.slice(0, HOME_TILE_CAP);
+  const filtered = filter.category !== "all";
+
+  return (
+    <section className="pb-12 sm:pb-14">
+      <RevealOnScroll
+        as="header"
+        className="mb-3 sm:mb-4 flex items-end justify-between gap-2 sm:gap-3 flex-wrap"
+      >
+        <div className="min-w-0">
+          <h2 className="bhalyam-display text-[#1D2C4A] leading-tight"
+              style={{ fontSize: "clamp(24px, 6.5vw, 44px)" }}>
+            <span className="bhalyam-underline">Pick a game</span>
+          </h2>
+        </div>
+        {!filtered && (
+          <motion.span
+            initial={{ opacity: 0, scale: 0.85 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ ...bhalyamSpring, delay: 0.15 }}
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#EA5A1F] border border-[#F2D5A9] shadow-[0_4px_10px_-3px_rgba(234,90,31,0.45)] flex-shrink-0"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#EA5A1F] animate-pulse" aria-hidden />
+            Most Played Today
+          </motion.span>
+        )}
+      </RevealOnScroll>
+
+      <CategoryFilter
+        value={filter}
+        onChange={setFilter}
+        className="mb-3 sm:mb-4"
+      />
+
+      <p
+        className="mb-3 sm:mb-4 text-[13px] font-semibold text-[#5D4B3F]"
+        aria-live="polite"
+      >
+        {matches.length === 0
+          ? "Nothing here yet. Try another filter."
+          : shown.length < matches.length
+          ? `Showing ${shown.length} of ${matches.length} games.`
+          : `${matches.length} game${matches.length === 1 ? "" : "s"}.`}
+      </p>
+
+      <RevealOnScroll
+        key={filter.category}
+        as="ul"
+        staggerChildren
+        amount={0.08}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
+      >
+        {shown.map((game) => (
+          <RevealItem key={game.slug}>
+            <li>
+              <GameTile
+                game={game}
+                onSelect={() => onSelect(game.slug)}
+                compact
+              />
+            </li>
+          </RevealItem>
+        ))}
+      </RevealOnScroll>
+
+      {/* "View all games" overflow link */}
+      <div className="mt-4 sm:mt-5 flex justify-center">
+        <Link
+          to={filtered ? `/games?c=${filter.category}` : "/games"}
+          className="inline-flex items-center gap-2 rounded-full px-5 py-2.5
+                     bg-[#FCF8EF] border border-[#EEDCC2] text-[#2A221B] font-extrabold text-[14px]
+                     hover:bg-[#F8EEDB] active:translate-y-px
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                     shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
+                     transition-colors duration-200"
+        >
+          {filtered ? "View all in this filter" : "View all games"}
+          <ArrowRightIcon className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -855,299 +1146,6 @@ function DoorPlusIcon({ className }: { className?: string }) {
   );
 }
 
-/* MobileThemeToggle was removed — the mobile theme switch now lives
-   inside MobileMenuSheet as a SheetAction so the header stays clean. */
-
-/* ───────────────────────────── Hero ───────────────────────────── */
-
-function Hero() {
-  /**
-   * The hero has a dark counterpart, so it follows the theme rather than
-   * sitting bright against a dark page. `useTheme` is the same source the
-   * toggle writes to, so switching swaps the art immediately.
-   *
-   * `failed` tracks the fallback separately from the choice — keying it to the
-   * src alone meant a theme switch could not retry an image that had failed
-   * once under the other theme.
-   */
-  const [theme] = useTheme();
-  const [failed, setFailed] = useState(false);
-  const heroImage = failed
-    ? "/bhalyam-hero.png"
-    : theme === "dark"
-      ? "/bhalyam-dark-hero.png"
-      : "/bhalyam-hero-clean.png";
-
-  return (
-    <RevealOnScroll
-      as="section"
-      amount={0.05}
-      className="pt-2 pb-6 sm:pt-3 sm:pb-8"
-    >
-      <div
-        className="relative overflow-hidden rounded-[24px] sm:rounded-[30px] border border-[#E2D3BA]
-                   shadow-[0_14px_26px_-18px_rgba(74,44,22,0.4)]"
-      >
-        <img
-          src={heroImage}
-          alt="A wooden desk full of 90s Indian childhood memorabilia"
-          className="bhalyam-hero-drift absolute inset-0 w-full h-full object-cover object-right"
-          loading="eager"
-          decoding="async"
-          key={heroImage}
-          onError={() => setFailed(true)}
-        />
-
-        {/* Left-anchored cream-to-transparent gradient so the headline +
-            paragraph stay readable on top of the busy 90s-memorabilia
-            artwork without dimming the artwork itself. Stronger on mobile
-            (narrower viewport) than on desktop. */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          aria-hidden
-          style={{
-            /* The scrim has to follow the art. A cream wash exists to let dark
-               copy sit on a bright photograph; over the dark hero it turned the
-               left edge into a pale smear with navy text struggling on it. The
-               dark hero gets a dark wash instead, and the copy below flips with
-               it. */
-            background:
-              theme === "dark"
-                ? "linear-gradient(100deg, rgba(26,17,9,0.94) 0%, rgba(26,17,9,0.82) 28%, rgba(26,17,9,0.45) 52%, rgba(26,17,9,0) 78%)"
-                : "linear-gradient(100deg, rgba(255,248,224,0.92) 0%, rgba(255,248,224,0.78) 28%, rgba(255,248,224,0.42) 52%, rgba(255,248,224,0) 78%)",
-          }}
-        />
-
-        {/* Text overlay — shown at EVERY breakpoint. Mobile font sizes are
-            tuned proportionally so the same hierarchy reads cleanly on a
-            320 px viewport. `min-w-0` on the inner container is critical:
-            without it, flex children refuse to shrink and the headline
-            spills past the rounded edge. */}
-        <div
-          className="bhalyam-hero-copy relative z-10 px-4 sm:px-7 lg:px-8 py-4 sm:py-6 flex items-start"
-          style={{ minHeight: "clamp(280px, 56vw, 470px)" }}
-        >
-          <div className="min-w-0 w-full sm:max-w-[390px] md:max-w-[420px]">
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.2, 0.7, 0.3, 1] }}
-              className="text-[10px] sm:text-[13px] uppercase tracking-[0.22em] font-extrabold text-[#7B2F0E]"
-            >
-              ✦ Welcome to the adda ✦
-            </motion.div>
-
-            {/* GSAP character-by-character headline reveal — Righteous
-                display font, tri-tone brand colors. Headline scales with
-                viewport via clamp so it never overruns the container even
-                on 320 px phones (lowest expected width). */}
-            <GsapSplitHeadline
-              className="mt-1.5 sm:mt-2 bhalyam-display tracking-tight drop-shadow-[0_1px_0_rgba(255,255,255,0.45)]"
-              lineClassName="leading-[0.95]"
-              charStagger={0.022}
-              lineDelay={0.16}
-              style={{ fontSize: "clamp(22px, 7.5vw, 60px)" }}
-              lines={[
-                { text: "Ready to",  className: "text-[#0E2D66]" },
-                { text: "relive",    className: "bhalyam-gradient-text" },
-                { text: "your",      className: "text-[#0E2D66]" },
-                { text: "childhood?", className: "text-[#2E8E4C]" },
-              ]}
-            />
-
-            {/* Paragraph is desktop/tablet-only — mobile keeps the eyebrow,
-                headline, handwritten accent, and CTA so the hero stays
-                readable without scrolling. */}
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.85, ease: [0.2, 0.7, 0.3, 1] }}
-              className="hidden sm:block mt-4 max-w-[340px] text-[17px] leading-[1.4] text-[#2E231B] font-medium"
-            >
-              Pick a game, send the room code to your school WhatsApp group,
-              and play instantly.
-            </motion.p>
-
-            {/* Handwritten Caveat accent — the "school slate" feel asked for
-                by the ui-ux-pro-max Handwritten Charm pairing. Sized via
-                clamp so it never spills past the gradient on narrow
-                phones, but still feels big on tablet/desktop. */}
-            <motion.p
-              initial={{ opacity: 0, rotate: -2 }}
-              animate={{ opacity: 1, rotate: -1.5 }}
-              transition={{ duration: 0.6, delay: 1.05, ease: [0.34, 1.56, 0.64, 1] }}
-              className="bhalyam-script text-[#7B2F0E] mt-1.5 sm:mt-2 break-words"
-              style={{ fontSize: "clamp(16px, 4.6vw, 28px)" }}
-            >
-              ~ Bring your school gang back together!
-            </motion.p>
-
-            <motion.button
-              type="button"
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 1.15, ease: [0.2, 0.7, 0.3, 1] }}
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              className="mt-3 sm:mt-6 min-h-[44px] sm:min-h-[56px] pl-3 sm:pl-5 pr-2 sm:pr-3 rounded-full border border-[#E7D9C1] bg-[#FFF8EE]
-                         shadow-[0_8px_16px_-12px_rgba(0,0,0,0.35)] cursor-pointer
-                         inline-flex items-center justify-between gap-2.5 sm:gap-4 w-full sm:max-w-[380px]
-                         focus:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/70
-                         bhalyam-cta-shine min-w-0"
-            >
-              <span className="text-left leading-[1.1] font-extrabold text-[#2A221B] min-w-0 flex-1"
-                    style={{ fontSize: "clamp(11px, 3.4vw, 19px)" }}>
-                <span className="block truncate">Share on WhatsApp</span>
-                <span className="block text-[#5C4A38] font-semibold mt-0.5 truncate"
-                      style={{ fontSize: "clamp(9px, 2.8vw, 13px)" }}>
-                  Send the code in seconds
-                </span>
-              </span>
-              <span
-                className="rounded-full bg-[#25D366] border-2 border-white/65 inline-flex items-center justify-center flex-shrink-0"
-                style={{ width: "clamp(28px, 8.6vw, 40px)", height: "clamp(28px, 8.6vw, 40px)" }}
-                aria-hidden
-              >
-                <WhatsappGlyph className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-              </span>
-            </motion.button>
-          </div>
-        </div>
-      </div>
-    </RevealOnScroll>
-  );
-}
-
-/* ───────────────────────────── Games grid ───────────────────────────── */
-
-/** Tiles the home grid shows before deferring to /games. */
-const HOME_TILE_CAP = 6;
-
-function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
-  /**
-   * The home grid filters in place rather than sending people to /games.
-   * Tapping "Board & Cards" and being thrown onto another page to see five
-   * tiles is a worse answer than showing them here, and it makes the control
-   * behave identically on both pages instead of looking the same but acting
-   * differently.
-   */
-  const [filter, setFilter] = useState<GameFilter>({ category: "all" });
-  // Coming-soon tiles are excluded here: home is the "start playing" surface,
-  // and /games keeps its own section for what is on deck.
-  const matches = filterGames(filter, false);
-  const shown = matches.slice(0, HOME_TILE_CAP);
-  const filtered = filter.category !== "all";
-
-  return (
-    <section className="pb-12 sm:pb-14">
-      <RevealOnScroll
-        as="header"
-        className="mb-3 sm:mb-4 flex items-end justify-between gap-2 sm:gap-3 flex-wrap"
-      >
-        <div className="min-w-0">
-          <h2 className="bhalyam-display text-[#1D2C4A] leading-tight"
-              style={{ fontSize: "clamp(24px, 6.5vw, 44px)" }}>
-            <span className="bhalyam-underline">Pick a game</span>
-          </h2>
-        </div>
-        {/* Hidden while a filter is on: sitting above a narrowed grid, this
-            badge would be claiming those six tiles are the most played, which
-            is not what it means. */}
-        {!filtered && (
-          <motion.span
-            initial={{ opacity: 0, scale: 0.85 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ ...bhalyamSpring, delay: 0.15 }}
-            className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#EA5A1F] border border-[#F2D5A9] shadow-[0_4px_10px_-3px_rgba(234,90,31,0.45)] flex-shrink-0"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#EA5A1F] animate-pulse" aria-hidden />
-            Most Played Today
-          </motion.span>
-        )}
-      </RevealOnScroll>
-
-      <CategoryFilter
-        value={filter}
-        onChange={setFilter}
-        className="mb-3 sm:mb-4"
-      />
-
-      {/* aria-live so the new total is announced; filtering is otherwise a
-          silent change for anyone not looking at the grid. */}
-      <p
-        className="mb-3 sm:mb-4 text-[13px] font-semibold text-[#5D4B3F]"
-        aria-live="polite"
-      >
-        {matches.length === 0
-          ? "Nothing here yet. Try another filter."
-          : shown.length < matches.length
-          ? `Showing ${shown.length} of ${matches.length} games.`
-          : `${matches.length} game${matches.length === 1 ? "" : "s"}.`}
-      </p>
-
-      <RevealOnScroll
-        /*
-          Remount the grid whenever the filter changes.
-
-          RevealOnScroll animates with `whileInView` + `viewport={{ once: true }}`
-          and children that start at the `hidden` variant. Once it has fired,
-          the observer is done — so tiles introduced by a later filter change
-          mounted at `hidden` (opacity 0) and had nothing left to move them to
-          `visible`. The grid looked empty. Keying on the filter gives the new
-          list a fresh reveal instead, which doubles as the transition between
-          filters.
-        */
-        key={filter.category}
-        as="ul"
-        staggerChildren
-        amount={0.08}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
-      >
-        {/* Home shows a capped slice; the rest live at /games under the same
-            filter, which the link below carries across. */}
-        {shown.map((game) => (
-          <RevealItem key={game.slug}>
-            <li>
-              <GameTile
-                game={game}
-                onSelect={() => onSelect(game.slug)}
-                compact
-              />
-            </li>
-          </RevealItem>
-        ))}
-      </RevealOnScroll>
-
-      {/* "View all games" overflow link — sends curious players to the
-          dedicated /games page where every tile (including coming-soon
-          maintenance ones) is laid out without the 6-tile cap.
-
-          Text color note: text-[#1D2C4A] gets force-mapped to cream by
-          the dark-mode override (so "Pick a game" titles stay readable
-          on dark parchment) — but THIS element has a cream background
-          even in dark mode, which made the label cream-on-cream and
-          invisible. text-[#2A221B] is only remapped when paired with
-          .bhalyam-display, so it stays warm-near-black here in both
-          themes — readable on cream in either mode. */}
-      <div className="mt-4 sm:mt-5 flex justify-center">
-        <Link
-          to={filtered ? `/games?c=${filter.category}` : "/games"}
-          className="inline-flex items-center gap-2 rounded-full px-5 py-2.5
-                     bg-[#FCF8EF] border border-[#EEDCC2] text-[#2A221B] font-extrabold text-[14px]
-                     hover:bg-[#F8EEDB] active:translate-y-px
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                     shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
-                     transition-colors duration-200"
-        >
-          {filtered ? "View all in this filter" : "View all games"}
-          <ArrowRightIcon className="w-3.5 h-3.5" />
-        </Link>
-      </div>
-    </section>
-  );
-}
-
 // Exported so the dedicated /games page can render the same tile design.
 export function GameTile({
   game,
@@ -1161,19 +1159,6 @@ export function GameTile({
   compact?: boolean;
 }) {
   const Glyph = GAME_GLYPHS[game.slug];
-
-  // const livePlayersByGame: Record<BhalyamGameSlug, string> = {
-  //   handcricket: "4.8K playing",
-  //   snl: "3.2K playing",
-  //   ludo: "5.6K playing",
-  //   rummy: "2.1K playing",
-  //   rps: "1.6K playing",
-  //   uno: "3.9K playing",
-  // };
-
-  const titleClassName = game.title.length > 12
-    ? "font-black text-[22px] sm:text-[30px] leading-[0.95] tracking-tight break-words"
-    : "font-black text-[28px] sm:text-[34px] leading-[0.9] tracking-tight break-words";
 
   const tileArtByGame: Record<BhalyamGameSlug, string> = {
     handcricket: "/HandCricketTile.png",
@@ -1195,125 +1180,111 @@ export function GameTile({
     roadrash: "/Roadrash Game Tile.png",
     carrom: "/Carrom Game Tile.png",
     chess: "/Chess Game Tile.png",
-    // No painted tile yet. Empty string is the supported "use the glyph
-    // layer" path (see GameTileArt) — a made-up filename would render a
-    // broken image and then silently fall back anyway, one retry later.
     blockblast: "",
     spacewar: "/SpacewarTile.png",
   };
 
+  const [theme] = useTheme();
+  const isDark = theme === "dark";
   const underMaintenance = isLocked(game);
-  const showMaintenance = game.maintenance === true;
-
   const accent = getGameAccent(game);
+  const btnFrom = game.btnGradient?.from ?? accent.from;
+  const btnTo = game.btnGradient?.to ?? accent.to;
+  const btnShadow = game.btnGradient?.shadow ?? accent.to;
 
-  // Accent-tinted glow color for the hover shadow — pulled from the tile's
-  // gradient end-stop so each tile glows in its own brand color.
-  const tileGlowVar = { ["--tile-glow" as string]: `${accent.to}aa` } as React.CSSProperties;
+  const bgStyle = isDark
+    ? game.paperBg ?? `linear-gradient(155deg, ${btnFrom}2e 0%, ${btnTo}14 45%, #080B12 100%)`
+    : `linear-gradient(155deg, #FFFFFF 0%, ${btnFrom}38 36%, ${btnTo}58 100%)`;
+
+  const borderStyle = isDark
+    ? game.paperBorder ?? `${btnFrom}55`
+    : `${btnFrom}75`;
+
+  const shadowStyle = isDark
+    ? `0 20px 42px -12px rgba(0,0,0,0.85), 0 0 32px -4px ${btnFrom}40, inset 0 1.5px 1.5px rgba(255,255,255,0.22), inset 0 -1px 1px ${btnTo}44`
+    : `0 18px 38px -8px ${btnShadow}45, 0 0 28px -4px ${btnFrom}35, inset 0 2px 2px rgba(255,255,255,0.95), inset 0 -2px 4px ${btnTo}35`;
 
   return (
-    <motion.button
-      type="button"
-      onClick={underMaintenance ? undefined : onSelect}
-      disabled={underMaintenance}
+    <motion.div
       variants={underMaintenance ? undefined : tileHover}
       initial="rest"
       whileHover={underMaintenance ? undefined : "hover"}
-      whileTap={underMaintenance ? undefined : "tap"}
       transition={bhalyamSpring}
-      className={`group relative w-full ${compact ? "h-[210px] sm:h-[228px]" : "min-h-[165px]"}
-                 rounded-[22px] overflow-hidden text-left p-4 sm:p-5
-             flex flex-col gap-2.5
-                 border border-[#F4D6B7]
-                 cursor-pointer
-                 focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bhalyam-cream-soft
-                 ${underMaintenance ? "cursor-not-allowed opacity-90" : "hover:shadow-[0_18px_32px_-14px_var(--tile-glow),_0_8px_18px_-8px_rgba(0,0,0,0.45)]"}
-                 shadow-[0_13px_24px_-14px_rgba(74,44,22,0.45)]
-                 transition-shadow duration-200
-                 bhalyam-cta-shine
-                 ${className ?? ""}`}
+      className={`group relative w-full rounded-[26px] overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border transition-all duration-300 ${
+        className ?? ""
+      }`}
       style={{
-        background: underMaintenance
-          ? `linear-gradient(145deg, ${accent.from}99, ${accent.to}99)`
-          : `linear-gradient(145deg, ${accent.from}, ${accent.to})`,
-        color: "#FFF7E7",
-        ...tileGlowVar,
+        background: bgStyle,
+        borderColor: borderStyle,
+        boxShadow: shadowStyle,
       }}
-      aria-label={underMaintenance ? `${game.title} — under maintenance` : `Play ${game.title}`}
-      aria-disabled={underMaintenance || undefined}
     >
-      <span
-        className={`absolute right-3 top-3 rounded-full px-2.5 py-[3px] text-[10.5px] font-bold tracking-tight shadow-[0_2px_6px_-2px_rgba(0,0,0,0.4)] ${
-          showMaintenance
-            ? "bg-amber-200/95 text-amber-900 border border-amber-400/60"
-            : " text-white border border-white/15"
-        }`}
-      >
-        {showMaintenance ? "Maintenance" : "Trending"}
-      </span>
-
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -top-10 -right-10 w-36 h-36 rounded-full
-                   bg-bhalyam-cream-soft/15 blur-3xl"
-      />
-
-      <GameTileArt src={tileArtByGame[game.slug]} title={game.title} compact={compact}>
-        <span
-          className="relative inline-flex w-14 h-14 rounded-2xl items-center justify-center
-                     bg-bhalyam-cream-soft/22 backdrop-blur-sm flex-shrink-0 mt-3"
-        >
-          <Glyph className="w-8 h-8" />
-        </span>
-      </GameTileArt>
-
-      <div className="relative mt-auto flex flex-col gap-1.5 min-w-0">
-        <span className={titleClassName}>
-          {game.title}
-        </span>
-        {/* Nostalgic edition label — italicised + small caps so it reads as
-            a book inscription, not a tagline. Phase 2 board treatments
-            derive their aesthetic from this label. */}
-        {game.theme && (
-          <span
-            className="text-[10.5px] tracking-[0.18em] uppercase font-bold leading-tight italic"
-            style={{ color: "rgba(255,247,231,0.85)", textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}
-          >
-            {game.theme}
+      {/* Hero Illustration / Art Area with ambient flare */}
+      <div className="relative my-2 sm:my-3 h-28 sm:h-36 flex items-center justify-center">
+        <div
+          className={`absolute w-32 h-32 rounded-full blur-3xl pointer-events-none transition-transform duration-500 group-hover:scale-125 ${
+            isDark ? "opacity-50" : "opacity-45"
+          }`}
+          style={{ background: btnFrom }}
+          aria-hidden
+        />
+        <GameTileArt src={tileArtByGame[game.slug]} title={game.title} compact={compact}>
+          <span className={`relative inline-flex w-16 h-16 rounded-2xl items-center justify-center flex-shrink-0 ${
+            isDark ? "bg-white/10 text-white" : "bg-black/5 text-[#1D2C4A]"
+          } backdrop-blur-md`}>
+            <Glyph className="w-10 h-10" />
           </span>
-        )}
-        {game.teluguTitle && (
-          <span className="text-[11px] tracking-widest uppercase font-bold opacity-90 leading-tight">
-            {game.teluguTitle}
-          </span>
-        )}
-
-        {/* <span className="text-[13px] font-semibold opacity-95">
-          {underMaintenance ? "Cooking it up" : livePlayersByGame[game.slug]}
-        </span> */}
-
-        {underMaintenance ? (
-          <span
-            className="inline-flex items-center gap-1 w-fit
-                       rounded-full bg-amber-200/95 text-zinc-900
-                       px-4 py-1.5 text-[13px] font-bold
-                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]"
-          >
-            Coming Soon
-          </span>
-        ) : (
-          <span
-            className="inline-flex items-center gap-1 w-fit
-                       rounded-full bg-bhalyam-cream-soft text-bhalyam-wood-dark
-                       px-4 py-1.5 text-[13px] font-bold
-                       shadow-[0_3px_6px_-1px_rgba(0,0,0,0.25)]
-                       group-active:translate-y-px transition-transform duration-150"
-          >
-            Quick Play <ArrowRightIcon className="w-3 h-3" />
-          </span>
-        )}
+        </GameTileArt>
       </div>
-    </motion.button>
+
+      {/* Title & Nostalgia Classroom Quote */}
+      <div className="relative flex flex-col items-center text-center px-1">
+        <h3 className={`font-display font-black text-[22px] sm:text-[26px] leading-tight tracking-tight drop-shadow-sm ${
+          isDark ? "text-white" : "text-[#0F172A]"
+        }`}>
+          {game.title}
+        </h3>
+        <p className={`font-script italic text-[14px] sm:text-[16px] mt-0.5 leading-snug line-clamp-1 ${
+          isDark ? "text-amber-200/90" : "text-[#5A250B]"
+        }`}>
+          {game.nostalgiaQuote ?? game.blurb}
+        </p>
+      </div>
+
+      {/* Metadata Telemetry Row */}
+      <div className={`flex items-center justify-center gap-3 text-[12px] font-bold my-2.5 ${
+        isDark ? "text-zinc-300" : "text-[#473B30]"
+      }`}>
+        <div className="flex items-center gap-1.5">
+          <UsersIcon className={`w-3.5 h-3.5 ${isDark ? "text-zinc-400" : "text-[#6E5A4B]"}`} />
+          <span>{game.playerRange ?? "2–8 Players"}</span>
+        </div>
+        <span className={isDark ? "text-zinc-600" : "text-zinc-400"}>•</span>
+        <div className="flex items-center gap-1.5">
+          <ClockIcon className={`w-3.5 h-3.5 ${isDark ? "text-zinc-400" : "text-[#6E5A4B]"}`} />
+          <span>{game.duration ?? "10–20 min"}</span>
+        </div>
+      </div>
+
+      {/* Glossy 3D Play Now Action Button */}
+      <button
+        type="button"
+        onClick={underMaintenance ? undefined : onSelect}
+        disabled={underMaintenance}
+        className={`w-full py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-[14px] font-black uppercase tracking-wider text-white active:scale-98 transition-all duration-200 cursor-pointer shadow-md ${
+          underMaintenance
+            ? "bg-zinc-600 opacity-60 cursor-not-allowed"
+            : "hover:brightness-115 hover:shadow-lg"
+        }`}
+        style={{
+          background: `linear-gradient(135deg, ${btnFrom}, ${btnTo})`,
+          boxShadow: `0 6px 16px -3px ${btnShadow}90, 0 3px 0 0 ${btnShadow}`,
+        }}
+      >
+        <span>{underMaintenance ? "Coming Soon" : "Play Now"}</span>
+        <ArrowRightIcon className="w-4 h-4" />
+      </button>
+    </motion.div>
   );
 }
 
@@ -1331,17 +1302,11 @@ function GameTileArt({
   const [imageFailed, setImageFailed] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
 
-  // Clear stale "failed" state when src changes (e.g. hot reload swapping
-  // which game a tile points at) — otherwise a one-time load failure keeps
-  // showing the glyph placeholder forever, even after the real file is
-  // confirmed present. Mirrors AssetImg's fix below.
   useEffect(() => {
     setImageFailed(false);
     setRetryNonce(0);
   }, [src]);
 
-  // Retry once after a brief delay so a transient dev-server / cache hiccup
-  // on first load doesn't leave the tile permanently stuck on fallback.
   useEffect(() => {
     if (!imageFailed || retryNonce > 0) return;
     const timer = window.setTimeout(() => {
@@ -1351,15 +1316,9 @@ function GameTileArt({
     return () => window.clearTimeout(timer);
   }, [imageFailed, retryNonce]);
 
-  // No bespoke tile art (e.g. Word Building) — fall through to the glyph
-  // layer directly instead of rendering a broken <img>.
   if (!src || imageFailed) {
     return <>{children}</>;
   }
-
-  const imageClass = compact
-    ? "mt-1 h-[86px] sm:h-[92px] w-auto max-w-[62%]"
-    : "mt-0.5 h-[88px] sm:h-[96px] w-auto max-w-[52%]";
 
   const resolvedSrc = retryNonce === 0 ? src : `${src}?retry=${retryNonce}`;
 
@@ -1367,8 +1326,7 @@ function GameTileArt({
     <img
       src={resolvedSrc}
       alt={`${title} icon`}
-      className={`relative ${imageClass} object-contain object-left-top`}
-      style={{ filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.28))" }}
+      className="relative h-24 sm:h-28 w-auto max-w-[85%] object-contain drop-shadow-[0_10px_16px_rgba(0,0,0,0.18)] transition-transform duration-300 group-hover:scale-105"
       loading="lazy"
       decoding="async"
       onError={() => setImageFailed(true)}
@@ -1376,619 +1334,321 @@ function GameTileArt({
   );
 }
 
-function StatsStrip() {
-  const items: {
-    icon: string;
-    metric: string;
-    label: string;
-    tone: string;
-    countTo?: number;
-    suffix?: string;
-  }[] = [
-    { icon: "O",  metric: "12543",        label: "Kids Reliving Childhood Today", tone: "#F6A23A", countTo: 12543 },
-    { icon: "T",  metric: "98765",        label: "Games Played This Week",        tone: "#F2C14E", countTo: 98765 },
-    { icon: "*",  metric: "250",          label: "School Groups Connected",       tone: "#9277E8", countTo: 250, suffix: "+" },
-    { icon: "<3", metric: "Made with love", label: "for 90s kids",                tone: "#F27373" },
-  ];
+/* ───────────────────────────── Player Journey & Daily Quests Dashboard ───────────────────────────── */
 
-  return (
-    <RevealOnScroll
-      as="section"
-      amount={0.2}
-      className="mt-4 rounded-3xl border border-[#E8D8BE] bg-[#F8EEDB] px-3 sm:px-5 py-3 sm:py-4"
-    >
-      <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {items.map((item, index) => (
-          <motion.li
-            key={item.metric}
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.45, delay: index * 0.08, ease: [0.2, 0.7, 0.3, 1] }}
-            className={`flex items-center gap-2 sm:gap-2.5 ${index > 0 ? "lg:border-l lg:border-[#EBDDC7] lg:pl-4" : ""}`}
-          >
-            <motion.span
-              whileHover={{ scale: 1.12, rotate: -6 }}
-              transition={bhalyamSpring}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full inline-flex items-center justify-center text-white font-bold text-[11px] sm:text-[12px] cursor-default"
-              style={{
-                backgroundColor: item.tone,
-                boxShadow: `0 4px 12px -3px ${item.tone}99`,
-              }}
-              aria-hidden
-            >
-              {item.icon}
-            </motion.span>
-            <span className="leading-tight">
-              <span className="block text-[#2FA25A] font-black text-[18px] sm:text-[30px] tabular-nums">
-                {item.countTo != null ? (
-                  <CountUp to={item.countTo} suffix={item.suffix ?? ""} />
-                ) : (
-                  item.metric
-                )}
-              </span>
-              <span className="block text-[#677080] text-[10px] sm:text-[14px]">{item.label}</span>
-            </span>
-          </motion.li>
-        ))}
-      </ul>
-    </RevealOnScroll>
-  );
-}
-
-function MiddlePanels() {
-  const lastGangs = useRoomStore((s) => s.lastGangs);
-
-  // "Last gang" memory (docs/rummy/roadmap.md A.5) — re-invite a
-  // previously-named Rummy table straight to WhatsApp. No room exists yet
-  // at this point (home screen, pre-creation), so the message invites the
-  // gang back to start a fresh one rather than carrying a stale code.
-  function shareGang(roomName: string): void {
-    const text = `🎴 "${roomName}" — same gang, one more round? Let's play on BHALYAM!\n${window.location.origin}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
-  }
-
-  function shareGeneric(): void {
-    const text = `🎮 Come play with me on BHALYAM — pick a game and I'll send you the room code!\n${window.location.origin}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
-  }
-
-  return (
-    <RevealOnScroll
-      as="section"
-      staggerChildren
-      amount={0.1}
-      className="middle-panels mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch"
-    >
-      <article className="rounded-2xl border border-[#E8D9C1] bg-[#F5ECE0] p-4 sm:p-5">
-        <div className="flex items-center gap-2.5">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#D8C4A3] bg-[#FBF4E8] text-[15px]" aria-hidden>
-            🎮
-          </span>
-          <h3 className="font-extrabold text-[22px] sm:text-[27px] text-[#2A354D] leading-tight">Continue Playing</h3>
-        </div>
-        <div className="mt-3 rounded-xl bg-[#EFE2CF] border border-[#E6D4B8] p-3">
-          <AssetImg
-            src="/HandCricketTile.png"
-            alt="Hand Cricket"
-            className="h-36 w-full rounded-lg border border-[#E3D2B5] bg-[#F7EFE0]"
-            imgClassName="h-full w-full rounded-lg object-contain object-center p-1.5"
-            placeholderClassName="h-36 w-full rounded-lg"
-          />
-          <div className="mt-2 flex items-end justify-between">
-            <div>
-              <p className="font-extrabold text-[25px] text-[#273248]">Hand Cricket</p>
-              <p className="text-[15px] text-[#6D7584]">Last played 2 days ago</p>
-            </div>
-            <motion.button
-              type="button"
-              variants={ctaPress}
-              initial="rest"
-              whileHover="hover"
-              whileTap="tap"
-              transition={bhalyamSpring}
-              className="rounded-full px-4 py-2 bg-[#32B34F] text-white text-[14px] font-bold inline-flex items-center gap-1.5 bhalyam-cta-shine"
-            >
-              <span className="inline-flex items-center gap-1.5">
-                Continue <ArrowRightIcon className="w-3.5 h-3.5" />
-              </span>
-            </motion.button>
-          </div>
-        </div>
-      </article>
-
-      <article className="rounded-2xl border border-[#E8D9C1] bg-[#F5ECE0] p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-extrabold text-[22px] sm:text-[27px] leading-tight text-[#2A354D]">Top Achievements</h3>
-          <motion.button
-            type="button"
-            variants={ctaPress}
-            initial="rest"
-            whileHover="hover"
-            whileTap="tap"
-            transition={bhalyamSpring}
-            className="rounded-full px-3 py-1.5 bg-[#FAF2E6] border border-[#E8D8BE] text-[12px] sm:text-[13px] font-bold bhalyam-cta-shine"
-          >
-            View All
-          </motion.button>
-        </div>
-        <ul className="mt-3 space-y-2.5">
-          {[
-            ["Gully Cricket Champion", "Play 100 Cricket Matches"],
-            ["Ludo King", "Win 50 Ludo Games"],
-            ["Paramapada Pandit", "Climb 100 Ladders"],
-            ["Rummy Master", "Win 25 Rummy Games"],
-          ].map(([title, desc]) => (
-            <li key={title} className="rounded-lg bg-[#EFE2CF] border border-[#E6D4B8] px-3 py-2.5 flex items-center justify-between gap-3">
-              <span>
-                <span className="block font-bold text-[#2E3C57] text-[13px] sm:text-[14px] leading-tight">{title}</span>
-                <span className="block text-[#6E7482] text-[10px] sm:text-[11px] leading-tight mt-0.5">{desc}</span>
-              </span>
-              <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#F0C15F] flex-shrink-0" aria-hidden />
-            </li>
-          ))}
-        </ul>
-      </article>
-
-      <article className="rounded-2xl border border-[#E8D9C1] bg-[#F5ECE0] p-4 sm:p-5 relative overflow-hidden">
-        <h3 className="font-extrabold text-[22px] sm:text-[27px] text-[#2A354D] inline-flex items-center gap-2.5 leading-tight">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#D8C4A3] bg-[#FBF4E8] text-[15px]" aria-hidden>
-            👥
-          </span>
-          Invite Your Friends
-        </h3>
-        <p className="mt-1 text-[14px] sm:text-[16px] text-[#5F6A79]">Relive old memories with your school gang</p>
-        {lastGangs.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {lastGangs.map((g) => (
-              <button
-                key={g.roomName}
-                type="button"
-                onClick={() => shareGang(g.roomName)}
-                title={`Re-invite ${g.roomName} (last played with ${g.playerNames.join(", ")})`}
-                className="rounded-full px-3 py-1.5 bg-[#FAF2E6] border border-[#E8D8BE] text-[12px] sm:text-[13px]
-                           font-bold text-[#2A354D] hover:bg-[#F0E6D2] active:translate-y-px transition-colors
-                           inline-flex items-center gap-1.5"
-              >
-                <span aria-hidden>🔁</span>
-                Re-invite {g.roomName}
-              </button>
-            ))}
-          </div>
-        )}
-        <AssetImg
-          src="/gangoffriends.png"
-          alt="Group of school friends"
-          className="mt-3 w-full aspect-[16/9] rounded-xl border border-[#E6D4B8] bg-[#F7EFE0]"
-          imgClassName="h-full w-full rounded-xl object-contain object-center p-1.5"
-          placeholderClassName="w-full aspect-[16/9] rounded-xl"
-        />
-        <motion.button
-          type="button"
-          onClick={shareGeneric}
-          variants={ctaPress}
-          initial="rest"
-          whileHover="hover"
-          whileTap="tap"
-          transition={bhalyamSpring}
-          className="mt-3 w-full rounded-full px-4 py-3 bg-[#25D366] text-white font-bold text-[16px] inline-flex items-center justify-center gap-2 bhalyam-cta-shine"
-        >
-          <span className="inline-flex h-7 w-7 rounded-full bg-white/20 items-center justify-center" aria-hidden>
-            <WhatsappGlyph className="w-4 h-4 text-white" />
-          </span>
-          <span>Invite on WhatsApp</span>
-        </motion.button>
-      </article>
-    </RevealOnScroll>
-  );
-}
-
-/**
- * Drop-in <img> that falls back to a labelled dashed-box placeholder when
- * the file isn't in /public yet. That way a missing asset shows a visible
- * "this is what's missing: foo.png" marker instead of a broken image, and
- * the rest of the layout doesn't collapse around it.
- *
- * `src` is URL-encoded automatically (browsers do this, but we set the
- * key from the encoded form so React sees a stable URL).
- */
-function AssetImg({
-  src,
-  alt,
-  className,
-  imgClassName,
-  placeholderClassName,
-  placeholderLabel,
-  loading = "lazy",
+function PlayerJourneyDashboard({
+  onSelect,
+  onOpenJoin,
 }: {
-  src: string;
-  alt: string;
-  className?: string;
-  imgClassName?: string;
-  placeholderClassName?: string;
-  placeholderLabel?: string;
-  loading?: "eager" | "lazy";
+  onSelect: (slug: BhalyamGameSlug) => void;
+  onOpenJoin: () => void;
 }) {
-  const [failed, setFailed] = useState(false);
-  const [retryNonce, setRetryNonce] = useState(0);
-
-  const resolvedSrc =
-    retryNonce === 0
-      ? src
-      : `${src}${src.includes("?") ? "&" : "?"}retry=${retryNonce}`;
-
-  // Clear stale "failed" state when src changes during hot reload/live edits.
-  useEffect(() => {
-    setFailed(false);
-    setRetryNonce(0);
-  }, [src]);
-
-  // Retry once after a brief delay so temporary dev-server / cache hiccups
-  // do not leave the UI permanently stuck on fallback placeholders.
-  useEffect(() => {
-    if (!failed || retryNonce > 0) return;
-    const timer = window.setTimeout(() => {
-      setFailed(false);
-      setRetryNonce(1);
-    }, 900);
-    return () => window.clearTimeout(timer);
-  }, [failed, retryNonce]);
-
-  // Filename portion of the URL — what to show the developer in the
-  // placeholder so they know which asset to drop in.
-  const label =
-    placeholderLabel ??
-    decodeURIComponent(src.split("/").filter(Boolean).pop() ?? "missing.png");
-
-  if (failed) {
-    return (
-      <span
-        role="img"
-        aria-label={alt}
-        className={`inline-flex items-center justify-center
-                    border-2 border-dashed border-[#C5A576]
-                    bg-[#FBF1DC] text-[#7A5B36]
-                    text-[10px] font-mono text-center px-1.5 py-1 leading-tight
-                    ${placeholderClassName ?? ""}
-                    ${className ?? ""}`}
-      >
-        {label}
-      </span>
+  const handleShareWhatsAppReferral = () => {
+    const text = encodeURIComponent(
+      "🎮 Hey gang! Come join my room on BHALYAM to unlock our nostalgic 90s childhood games together: " + window.location.origin
     );
-  }
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
 
-  // `className` sizes the slot (e.g. w-[96px] h-[96px]); `imgClassName`
-  // styles the artwork inside that slot (object-contain, scale, etc.).
-  // We must NOT slap both on the <img> element or the inner `w-full`
-  // collides with the outer `w-[96px]` on small screens — Tailwind has
-  // no ordering guarantee for two width utilities on the same element,
-  // and on mobile `w-full` was winning, blowing the icon out to the row
-  // width and squeezing neighbouring text. Wrap so each className lands
-  // on its own element.
   return (
-    <span
-      className={`inline-flex items-center justify-center overflow-hidden ${className ?? ""}`}
-    >
-      <img
-        src={resolvedSrc}
-        alt={alt}
-        loading={loading}
-        decoding="async"
-        onLoad={() => setFailed(false)}
-        onError={() => setFailed(true)}
-        className={imgClassName ?? "w-full h-full object-contain"}
-      />
-    </span>
+    <RevealOnScroll as="section" amount={0.1} className="mt-6 mb-8">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 className="bhalyam-display text-[22px] sm:text-[28px] text-[#1D2C4A] leading-tight">
+            Continue Your Journey &amp; Daily Quests
+          </h2>
+          <p className="text-[13px] sm:text-[14px] text-[#6D5C4D] font-medium">
+            Earn XP, unlock nostalgic avatars, and climb the school leaderboard
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch">
+        
+        {/* Card 1: Continue Your Journey */}
+        <article className="rounded-3xl border border-[#E8D9C1] bg-[#FCF8EF] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                ▶ Jump Back In
+              </span>
+              <span className="text-[12px] font-semibold text-[#8C7A6B]">
+                Last played 2 hours ago
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3.5 my-3 p-3 rounded-2xl bg-[#F5ECE0] border border-[#E6D4B8]">
+              <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-200 border-2 border-amber-400 p-1 flex-shrink-0 flex items-center justify-center">
+                <img
+                  src="/HandCricketTile.png"
+                  alt="Hand Cricket"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-display font-black text-[20px] text-[#1D2C4A] leading-tight truncate">
+                  Hand Cricket
+                </h4>
+                <div className="flex items-center gap-2 text-[12px] font-bold text-[#6D5C4D] mt-0.5">
+                  <span className="text-emerald-700">🏆 45 Wins</span>
+                  <span>•</span>
+                  <span>Lvl 8</span>
+                  <span>•</span>
+                  <span className="text-orange-600 font-extrabold">🔥 3x Streak</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="my-3 p-2.5 rounded-xl bg-[#FFF8EE] border border-amber-200/80 text-[12px] text-[#6D4323] font-semibold flex items-center gap-2">
+              <span className="text-base">🎁</span>
+              <span><strong>Next Milestone:</strong> Golden Willow Bat Avatar in 2 wins</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onSelect("handcricket")}
+            className="w-full mt-3 py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white font-black text-[14px] uppercase tracking-wider shadow-md active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>Resume Hand Cricket</span>
+            <ArrowRightIcon className="w-4 h-4" />
+          </button>
+        </article>
+
+        {/* Card 2: Achievement Progress & Daily Quests */}
+        <article className="rounded-3xl border border-[#E8D9C1] bg-[#FCF8EF] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="font-display font-black text-[18px] text-[#1D2C4A]">
+                🏆 Level 12 Progress
+              </span>
+              <span className="text-[12px] font-extrabold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                60% Complete
+              </span>
+            </div>
+
+            {/* XP Bar */}
+            <div className="w-full h-2.5 rounded-full bg-[#EADCC8] overflow-hidden mb-3">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
+                style={{ width: "60%" }}
+              />
+            </div>
+
+            {/* Next Targeted Milestone */}
+            <div className="p-2.5 rounded-xl bg-[#FFF8EE] border border-[#EEDCC2] mb-3">
+              <div className="text-[11.5px] font-black uppercase tracking-wider text-[#EA5A1F]">
+                🎯 Next Achievement
+              </div>
+              <div className="text-[13px] font-bold text-[#1D2C4A] mt-0.5">
+                Win 1 More Rummy Match
+              </div>
+              <div className="text-[11px] text-[#7A6B5C] font-semibold">
+                Reward: <strong>+100 XP</strong> &amp; Exclusive "Rummy Master" Badge
+              </div>
+            </div>
+
+            {/* Daily Quests List */}
+            <div className="space-y-1.5">
+              <div className="text-[11.5px] font-black uppercase tracking-wider text-[#6D5C4D]">
+                Daily Quests (Refreshes in 4h)
+              </div>
+              <div className="p-2 rounded-lg bg-[#F5ECE0] flex items-center justify-between text-[12px] font-bold text-[#2A221B]">
+                <span className="flex items-center gap-1.5 text-emerald-800">
+                  <span>✅</span> Play 1 UNO Match
+                </span>
+                <span className="text-emerald-700 font-extrabold">+50 XP</span>
+              </div>
+              <div className="p-2 rounded-lg bg-[#F5ECE0] flex items-center justify-between text-[12px] font-bold text-[#2A221B]">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-zinc-400">⬜</span> Win 1 Hand Cricket Match
+                </span>
+                <span className="text-amber-800 font-extrabold">+75 XP</span>
+              </div>
+              <div className="p-2 rounded-lg bg-[#F5ECE0] flex items-center justify-between text-[12px] font-bold text-[#2A221B]">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-zinc-400">⬜</span> Invite 1 Friend to Room
+                </span>
+                <span className="text-purple-800 font-extrabold">+100 XP</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        {/* Card 3: Incentivized Friend Referral */}
+        <article className="rounded-3xl border border-amber-300/80 bg-gradient-to-br from-[#FFFDF7] to-[#FDF4E3] p-5 sm:p-6 shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">👥</span>
+              <h4 className="font-display font-black text-[18px] text-[#1D2C4A]">
+                Invite Friends, Unlock Perks
+              </h4>
+            </div>
+            <p className="text-[12.5px] text-[#6D5C4D] font-medium mb-3">
+              Bring 3 friends to BHALYAM and instantly unlock exclusive nostalgia rewards:
+            </p>
+
+            <ul className="space-y-2 mb-4 text-[12.5px] font-bold text-[#2A221B]">
+              <li className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                  ✓
+                </span>
+                <span>Exclusive Gold Avatar Frame</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                  ✓
+                </span>
+                <span>Nostalgia "Gang Leader" Chat Badge</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                  ✓
+                </span>
+                <span>Retro 90s School Slate Board Theme</span>
+              </li>
+            </ul>
+
+            {/* Step count */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 border border-amber-200 mb-3 text-[12px] font-bold text-amber-900">
+              <span>Referral Progress:</span>
+              <span className="font-black text-amber-800">2 / 3 Friends Joined</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleShareWhatsAppReferral}
+            className="w-full mt-3 py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-black text-[14px] uppercase tracking-wider shadow-[0_4px_14px_rgba(37,211,102,0.35)] active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <WhatsappGlyph className="w-4 h-4 text-white" />
+            <span>Invite on WhatsApp (+100 XP)</span>
+          </button>
+        </article>
+
+      </div>
+    </RevealOnScroll>
   );
 }
 
-/* ───────────────────────────── Utility strip ───────────────────────────── */
+/* ───────────────────────────── Live Lounge Pulse & Community Feed ───────────────────────────── */
 
-function UtilityStrip() {
-  const entries = [
-    {
-      src: "/retroradio.png",
-      title: "Retro Sounds",
-      blurb: "Relive the 90s with classic game sounds 🎵",
-      imgClassName: "w-full h-full object-contain scale-[1.35]",
-    },
-    {
-      // The file in /public has an ampersand; URL-encode it so it's
-      // unambiguously requested.
-      src: "/dark&Light.png",
-      title: "Day / Night Theme",
-      blurb: "Play in your favorite 90s vibes",
-      imgClassName: "w-full h-full object-contain scale-[1.5]",
-    },
-    {
-      // Space in the filename → URL-encode.
-      src: "/safety%20shield.png",
-      title: "Safe & Ad-free",
-      blurb: "100% safe for nostalgic fun",
-      imgClassName: "w-full h-full object-contain scale-[1.4]",
-    },
-    {
-      src: "/mobile.png",
-      title: "Works on Mobile",
-      blurb: "Play with friends anytime, anywhere",
-      imgClassName: "w-full h-full object-contain scale-[1.45]",
-    },
+function LiveLoungePulse({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
+  const liveStats = [
+    { label: "Players Online", value: 548, icon: "🟢", tone: "text-emerald-700" },
+    { label: "Active Live Rooms", value: 68, icon: "🔥", tone: "text-orange-700" },
+    { label: "School Gangs Active", value: 23, icon: "👥", tone: "text-blue-700" },
+    { label: "Matches Won Today", value: 145, icon: "🎉", tone: "text-purple-700" },
   ];
 
-  return (
-    <UtilityStripBody entries={entries} />
-  );
-}
+  const communityTicker = [
+    "🟢 Ravi won a 4-Player UNO match with a +4 counter!",
+    "🔥 Ajay achieved a 5-match win streak in Hand Cricket!",
+    "🎉 Pooja unlocked the 'Wildcard Queen' trophy in UNO",
+    "⚡ 16 new rooms were created across Bangalore, Hyderabad, & Chennai",
+    "👑 Suman invited 3 friends and unlocked the Retro Slate Theme!",
+  ];
+  const [tickerIndex, setTickerIndex] = useState(0);
 
-function UtilityStripBody({
-  entries,
-}: {
-  entries: {
-    src: string;
-    title: string;
-    blurb: string;
-    imgClassName: string;
-  }[];
-}) {
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTickerIndex((i) => (i + 1) % communityTicker.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [communityTicker.length]);
+
   return (
-    <RevealOnScroll
-      as="section"
-      staggerChildren
-      amount={0.15}
-      className="mt-4 rounded-3xl border border-[#E6D4B7] bg-[#F8EFDE]
-                 px-4 sm:px-6 py-5 sm:py-6
-                 shadow-[0_10px_18px_-16px_rgba(63,38,19,0.35)]"
-    >
-      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
-        {entries.map((entry, index) => (
-          <RevealItem key={entry.title}>
-            <li
-              className={`flex flex-col items-center text-center gap-4`}
-            >
-              <AssetImg
-                src={entry.src}
-                alt={entry.title}
-                className="w-[96px] h-[96px] sm:w-[112px] sm:h-[112px] flex-shrink-0"
-                imgClassName={entry.imgClassName}
-              />
-              <span className="min-w-0">
-                <p className="font-bold text-[#3F2F24] text-[18px] sm:text-[19px] lg:text-[20px] leading-tight">
-                  {entry.title}
-                </p>
-                <p className="text-[#5B534A] text-[14px] sm:text-[15px] lg:text-[16px] mt-2 leading-snug">
-                  {entry.blurb}
-                </p>
-              </span>
-            </li>
-          </RevealItem>
+    <RevealOnScroll as="section" amount={0.1} className="my-6">
+      {/* 4 Live Metric Pills */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+        {liveStats.map((st) => (
+          <div
+            key={st.label}
+            className="p-3.5 sm:p-4 rounded-2xl bg-[#FCF8EF] border border-[#E8D8BE] shadow-xs flex items-center gap-3"
+          >
+            <span className="text-2xl" aria-hidden>{st.icon}</span>
+            <div>
+              <div className={`text-[20px] sm:text-[24px] font-black ${st.tone} leading-tight`}>
+                <CountUp to={st.value} />
+              </div>
+              <div className="text-[11.5px] sm:text-[12px] font-bold text-[#6D5C4D]">
+                {st.label}
+              </div>
+            </div>
+          </div>
         ))}
-      </ul>
+      </div>
+
+      {/* Community Feed & Leaderboard Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+        {/* Left 2 cols: Live Adda Feed */}
+        <div className="lg:col-span-2 p-4 sm:p-5 rounded-3xl bg-[#111927] text-white border border-white/15 shadow-md flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white animate-pulse">
+                LIVE FEED
+              </span>
+              <h4 className="bhalyam-display text-[17px] text-amber-300">
+                School Adda Activity
+              </h4>
+            </div>
+            <span className="text-[11.5px] font-semibold text-zinc-400">
+              Live updates • Zero lag
+            </span>
+          </div>
+
+          <div className="my-2 p-3 rounded-2xl bg-white/5 border border-white/10 text-[13px] font-bold text-amber-100 min-h-[46px] flex items-center">
+            {communityTicker[tickerIndex]}
+          </div>
+
+          <div className="flex items-center justify-between text-[11.5px] text-zinc-400 font-semibold mt-2 pt-2 border-t border-white/10">
+            <span>🌟 Join a room to appear in the live feed</span>
+            <button
+              type="button"
+              onClick={() => onSelect("uno")}
+              className="text-amber-300 hover:text-amber-200 font-bold hover:underline cursor-pointer"
+            >
+              Play UNO Now →
+            </button>
+          </div>
+        </div>
+
+        {/* Right col: Weekly School Gang Leaderboard */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-[#FCF8EF] border border-[#E8D8BE] shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-display font-black text-[16px] text-[#1D2C4A]">
+              Weekly Leaderboard 🏆
+            </h4>
+            <span className="text-[10.5px] font-extrabold uppercase bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
+              Gold League
+            </span>
+          </div>
+
+          <div className="space-y-1.5 text-[12px] font-bold">
+            <div className="p-2 rounded-xl bg-amber-100/70 border border-amber-300 flex items-center justify-between text-amber-950">
+              <span>🥇 1. Ajay Kumar</span>
+              <span className="font-black">2,450 XP</span>
+            </div>
+            <div className="p-2 rounded-xl bg-[#F5ECE0] flex items-center justify-between text-[#2A221B]">
+              <span>🥈 2. Ravi Teja</span>
+              <span className="font-black">2,100 XP</span>
+            </div>
+            <div className="p-2 rounded-xl bg-[#F5ECE0] flex items-center justify-between text-[#2A221B]">
+              <span>🥉 3. Pooja Reddy</span>
+              <span className="font-black">1,890 XP</span>
+            </div>
+            <div className="p-2 rounded-xl bg-emerald-100/80 border border-emerald-300 flex items-center justify-between text-emerald-950">
+              <span>🏅 4. You (Champion)</span>
+              <span className="font-black">1,450 XP</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </RevealOnScroll>
   );
 }
 
 /* ───────────────────────────── Footer ───────────────────────────── */
-
-/**
- * Footer — designed as a single-flow "closing chapter" rather than a
- * cluttered three-column gallery. Centred composition reads as a polished
- * publication colophon: wordmark → handwritten quote → social row → fine
- * print, with subtle SVG decorations in the corners replacing the
- * placeholder-showing PNGs.
- *
- * Animations:
- *   - Whole block scroll-reveals (RevealOnScroll)
- *   - Quote rotates in slightly tilted via Caveat
- *   - Social pills get spring hover via Framer Motion
- */
-function KidsHoldingHandsSVG({ className = "w-28 h-12" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <circle cx="35" cy="22" r="10" stroke="#5C3717" strokeWidth="2.5" fill="#FFF8E7" />
-      <path d="M26 20 C 28 12, 42 12, 44 20" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      <circle cx="31" cy="22" r="1.2" fill="#5C3717" />
-      <circle cx="38" cy="22" r="1.2" fill="#5C3717" />
-      <path d="M32 26 Q 35 29 38 26" stroke="#5C3717" strokeWidth="2" fill="none" strokeLinecap="round" />
-      <path d="M35 32 L35 52 M24 38 L46 38 M35 52 L26 70 M35 52 L44 70" stroke="#5C3717" strokeWidth="2.5" strokeLinecap="round" />
-
-      <circle cx="80" cy="18" r="10" stroke="#5C3717" strokeWidth="2.5" fill="#FFF8E7" />
-      <path d="M68 18 C 65 10, 72 10, 75 16" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      <path d="M92 18 C 95 10, 88 10, 85 16" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      <circle cx="76" cy="18" r="1.2" fill="#5C3717" />
-      <circle cx="84" cy="18" r="1.2" fill="#5C3717" />
-      <path d="M77 22 Q 80 25 83 22" stroke="#5C3717" strokeWidth="2" fill="none" strokeLinecap="round" />
-      <path d="M80 28 L70 50 L90 50 Z M80 50 L72 68 M80 50 L88 68" stroke="#5C3717" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="#FFF8E7" />
-
-      <circle cx="125" cy="22" r="10" stroke="#5C3717" strokeWidth="2.5" fill="#FFF8E7" />
-      <path d="M116 20 C 118 12, 132 12, 134 20" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      <circle cx="121" cy="22" r="1.2" fill="#5C3717" />
-      <circle cx="129" cy="22" r="1.2" fill="#5C3717" />
-      <path d="M122 26 Q 125 29 128 26" stroke="#5C3717" strokeWidth="2" fill="none" strokeLinecap="round" />
-      <path d="M125 32 L125 52 M114 38 L136 38 M125 52 L116 70 M125 52 L134 70" stroke="#5C3717" strokeWidth="2.5" strokeLinecap="round" />
-
-      <path d="M44 38 Q 57 44 70 38" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      <path d="M90 38 Q 103 44 114 38" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function SunRaysIcon({ className = "w-4 h-4 text-[#FFB703]" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-      <line x1="12" y1="2" x2="12" y2="5" />
-      <line x1="12" y1="19" x2="12" y2="22" />
-      <line x1="4.93" y1="4.93" x2="7.05" y2="7.05" />
-      <line x1="16.95" y1="16.95" x2="19.07" y2="19.07" />
-      <line x1="2" y1="12" x2="5" y2="12" />
-      <line x1="19" y1="12" x2="22" y2="12" />
-      <line x1="4.93" y1="19.07" x2="7.05" y2="16.95" />
-      <line x1="16.95" y1="7.05" x2="19.07" y2="4.93" />
-    </svg>
-  );
-}
-
-function PaperPlaneDoodleSVG({ className = "w-20 h-16" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 80" fill="none" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M10 65 Q 25 75 35 60 T 45 45" strokeDasharray="3 3" opacity="0.6" />
-      <path d="M45 45 L90 15 L60 70 L48 52 L78 28 L45 45 Z" fill="#FFFDF5" />
-      <path d="M48 52 L48 64 L56 57" fill="#5C3717" opacity="0.2" />
-    </svg>
-  );
-}
-
-function RetroCarDoodleSVG({ className = "w-32 h-16" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 140 70" fill="none" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <line x1="5" y1="62" x2="135" y2="62" strokeDasharray="4 3" opacity="0.5" />
-      <circle cx="15" cy="50" r="3" fill="#E85D04" opacity="0.7" />
-      <line x1="15" y1="53" x2="15" y2="62" />
-      <circle cx="26" cy="46" r="4" fill="#FFB703" opacity="0.7" />
-      <line x1="26" y1="50" x2="26" y2="62" />
-      <path d="M45 62 L45 52 C 45 45, 52 40, 62 38 L72 26 C 76 21, 95 21, 102 26 L112 38 C 122 40, 128 45, 128 52 L128 62 Z" fill="#FFFDF5" />
-      <path d="M72 38 L74 29 C 76 26, 85 26, 86 38 Z" fill="#EAD9BC" opacity="0.4" />
-      <path d="M90 38 L90 29 C 91 26, 98 26, 100 38 Z" fill="#EAD9BC" opacity="0.4" />
-      <circle cx="62" cy="62" r="8" fill="#FFFDF5" strokeWidth="2.5" />
-      <circle cx="62" cy="62" r="3" fill="#5C3717" />
-      <circle cx="110" cy="62" r="8" fill="#FFFDF5" strokeWidth="2.5" />
-      <circle cx="110" cy="62" r="3" fill="#5C3717" />
-    </svg>
-  );
-}
-
-function ShieldIcon({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  );
-}
-
-function MusicNoteIcon({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M9 18V5l12-2v13" />
-      <circle cx="6" cy="18" r="3" />
-      <circle cx="18" cy="16" r="3" />
-    </svg>
-  );
-}
-
-function GooglePlayBadgeSVG() {
-  return (
-    <a
-      href="#download-playstore"
-      aria-label="Get it on Google Play"
-      className="inline-flex items-center gap-2 bg-black text-white px-3 py-1.5 rounded-lg border border-gray-800 hover:bg-gray-900 transition-all shadow-sm active:scale-95"
-    >
-      <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M3.6 2.25C3.38 2.48 3.25 2.85 3.25 3.35V20.65C3.25 21.15 3.38 21.52 3.6 21.75L3.68 21.82L13.29 12.21V11.79L3.68 2.18L3.6 2.25Z" fill="#00E676"/>
-        <path d="M16.49 15.41L13.29 12.21V11.79L16.49 8.59L16.57 8.64L20.37 10.8C21.45 11.41 21.45 12.59 20.37 13.2L16.57 15.36L16.49 15.41Z" fill="#FFC107"/>
-        <path d="M16.57 15.36L13.29 12L3.6 21.69C3.96 22.07 4.56 22.12 5.25 21.73L16.57 15.36Z" fill="#FF3D00"/>
-        <path d="M16.57 8.64L5.25 2.27C4.56 1.88 3.96 1.93 3.6 2.31L13.29 12L16.57 8.64Z" fill="#40C4FF"/>
-      </svg>
-      <div className="text-left leading-none">
-        <div className="text-[8px] uppercase tracking-wider text-gray-300 font-medium">GET IT ON</div>
-        <div className="text-[12px] font-bold text-white tracking-wide mt-0.5">Google Play</div>
-      </div>
-    </a>
-  );
-}
-
-function AppStoreBadgeSVG() {
-  return (
-    <a
-      href="#download-appstore"
-      aria-label="Download on the App Store"
-      className="inline-flex items-center gap-2 bg-black text-white px-3 py-1.5 rounded-lg border border-gray-800 hover:bg-gray-900 transition-all shadow-sm active:scale-95"
-    >
-      <svg className="w-5 h-5 fill-current flex-shrink-0" viewBox="0 0 24 24">
-        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.82c.57-.69.96-1.66.85-2.62-.83.03-1.84.55-2.43 1.25-.53.61-.99 1.6-.87 2.54.93.07 1.88-.47 2.45-1.17z"/>
-      </svg>
-      <div className="text-left leading-none">
-        <div className="text-[8px] text-gray-300 font-medium">Download on the</div>
-        <div className="text-[12px] font-bold text-white tracking-wide mt-0.5">App Store</div>
-      </div>
-    </a>
-  );
-}
-
-function PencilJarSVG({ className = "w-20 h-24" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      {/* Pencils in jar */}
-      <g transform="rotate(-15 45 40)">
-        <rect x="40" y="5" width="8" height="50" fill="#E85D04" stroke="#5C3717" strokeWidth="1.2" />
-        <polygon points="40,5 44,0 48,5" fill="#FCE7D0" stroke="#5C3717" strokeWidth="1" />
-        <polygon points="42,2 44,0 46,2" fill="#4A2508" />
-      </g>
-      <g transform="rotate(5 55 40)">
-        <rect x="50" y="0" width="8" height="55" fill="#FFB703" stroke="#5C3717" strokeWidth="1.2" />
-        <polygon points="50,0 54,-5 58,0" fill="#FCE7D0" stroke="#5C3717" strokeWidth="1" />
-        <polygon points="52,-3 54,-5 56,-3" fill="#4A2508" />
-      </g>
-      <g transform="rotate(18 65 40)">
-        <rect x="60" y="8" width="8" height="48" fill="#10B981" stroke="#5C3717" strokeWidth="1.2" />
-        <polygon points="60,8 64,3 68,8" fill="#FCE7D0" stroke="#5C3717" strokeWidth="1" />
-        <polygon points="62,5 64,3 66,5" fill="#4A2508" />
-      </g>
-
-      {/* Ceramic Jar */}
-      <rect x="30" y="45" width="45" height="55" rx="6" fill="#FFFDF5" stroke="#5C3717" strokeWidth="2.5" />
-      <rect x="33" y="65" width="39" height="20" rx="3" fill="#F7EBD3" stroke="#D4A574" strokeWidth="1.2" />
-      <text x="52.5" y="79" fill="#5C3717" fontSize="8" fontWeight="bold" textAnchor="middle" letterSpacing="0.5">
-        BHALYAM
-      </text>
-    </svg>
-  );
-}
-
-function PawnsAndDiceSVG({ className = "w-24 h-16" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 70" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      {/* Dice */}
-      <rect x="15" y="40" width="20" height="20" rx="4" fill="#FFFDF5" stroke="#5C3717" strokeWidth="2" />
-      <circle cx="21" cy="46" r="1.8" fill="#5C3717" />
-      <circle cx="29" cy="46" r="1.8" fill="#5C3717" />
-      <circle cx="25" cy="50" r="1.8" fill="#E85D04" />
-      <circle cx="21" cy="54" r="1.8" fill="#5C3717" />
-      <circle cx="29" cy="54" r="1.8" fill="#5C3717" />
-
-      {/* Pawns */}
-      {/* Green Pawn */}
-      <path d="M48 58 C 45 58, 44 48, 48 42 C 46 40, 46 36, 50 36 C 54 36, 54 40, 52 42 C 56 48, 55 58, 52 58 Z" fill="#10B981" stroke="#5C3717" strokeWidth="1.8" />
-      <circle cx="50" cy="33" r="5" fill="#10B981" stroke="#5C3717" strokeWidth="1.8" />
-
-      {/* Red Pawn */}
-      <path d="M68 58 C 65 58, 64 48, 68 42 C 66 40, 66 36, 70 36 C 74 36, 74 40, 72 42 C 76 48, 75 58, 72 58 Z" fill="#EF4444" stroke="#5C3717" strokeWidth="1.8" />
-      <circle cx="70" cy="33" r="5" fill="#EF4444" stroke="#5C3717" strokeWidth="1.8" />
-
-      {/* Blue Pawn */}
-      <path d="M88 58 C 85 58, 84 48, 88 42 C 86 40, 86 36, 90 36 C 94 36, 94 40, 92 42 C 96 48, 95 58, 92 58 Z" fill="#2563EB" stroke="#5C3717" strokeWidth="1.8" />
-      <circle cx="90" cy="33" r="5" fill="#2563EB" stroke="#5C3717" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
-function FourKidsHoldingHandsSVG({ className = "w-36 h-12" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 200 70" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      {[25, 75, 125, 175].map((x, i) => (
-        <g key={i}>
-          <circle cx={x} cy="20" r="9" stroke="#5C3717" strokeWidth="2.2" fill="#FFF8E7" />
-          <path d={`M${x-6} 18 Q ${x} 14 ${x+6} 18`} stroke="#5C3717" strokeWidth="2" fill="none" />
-          <circle cx={x-3} cy="20" r="1" fill="#5C3717" />
-          <circle cx={x+3} cy="20" r="1" fill="#5C3717" />
-          <path d={`M${x-3} 24 Q ${x} 26 ${x+3} 24`} stroke="#5C3717" strokeWidth="1.8" fill="none" />
-          <path d={`M${x} 29 L${x} 48 M${x-8} 35 L${x+8} 35 M${x} 48 L${x-7} 64 M${x} 48 L${x+7} 64`} stroke="#5C3717" strokeWidth="2.2" strokeLinecap="round" />
-        </g>
-      ))}
-      <path d="M33 35 Q 54 42 67 35" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M83 35 Q 104 42 117 35" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M133 35 Q 154 42 167 35" stroke="#5C3717" strokeWidth="2" fill="none" />
-    </svg>
-  );
-}
 
 function Footer() {
   const [email, setEmail] = useState("");
@@ -2264,204 +1924,29 @@ function Footer() {
 
           </div>
 
-          {/* Copyright & Attribution Bar */}
-          <div className="relative pt-4 border-t border-[#E8D8BE]/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] font-semibold text-[#8C6D4F]">
+          {/* Bottom Bar: Copyright & Terms Links */}
+          <div className="pt-4 border-t border-[#E8D9C0] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-semibold text-[#8C7053]">
+            <div className="flex items-center gap-1.5">
+              <span>© {new Date().getFullYear()} BHALYAM. Made with</span>
+              <HeartGlyph className="w-3 h-3 text-[#E85D04] inline fill-current" />
+              <span>for 90s Kids.</span>
+            </div>
             
-            {/* Left Paper Plane Doodle */}
-            <div className="flex items-center gap-2">
-              <PaperPlaneDoodleSVG className="w-12 h-8 text-[#5C3717]" />
-              <span>© {new Date().getFullYear()} BHALYAM · All rights reserved.</span>
+            <div className="flex items-center gap-4 flex-wrap justify-center">
+              <Link to="/privacy" className="hover:text-[#E85D04] transition-colors">Privacy Notice</Link>
+              <span>•</span>
+              <a href="#terms" className="hover:text-[#E85D04] transition-colors">Terms of Service</a>
+              <span>•</span>
+              <Link to="/profile" className="hover:text-[#E85D04] transition-colors">Your Data Choices</Link>
+              <span>•</span>
+              <a href="#cookies" className="hover:text-[#E85D04] transition-colors">Cookie Settings</a>
             </div>
-
-            {/* Right Kids Running Illustration & Attribution */}
-            <div className="flex items-center gap-3">
-              <span>Built solo with <HeartGlyph className="w-3.5 h-3.5 inline text-[#E11D48]" /> for every school-gang reunion</span>
-              <img
-                src="/FooterBootom.png"
-                alt="Happy school gang"
-                className="w-28 sm:w-36 h-auto object-contain flex-shrink-0"
-              />
-            </div>
-
           </div>
 
         </div>
 
       </RevealOnScroll>
     </footer>
-  );
-}
-
-/**
- * Signature block for the builder. Sized to feel like a personally
- * signed colophon — the "Built by" overline reads like a credit, the
- * name itself lands in the same handwritten Caveat script the quote
- * uses (so the human voice continues from the quote into the name),
- * and the line underneath frames it as a labour of love rather than
- * a corporate signoff.
- *
- *   • Whole block scroll-reveals.
- *   • Name pops in with a small bounce + underline draw.
- *   • The small sparkle row underneath connects the eye downward
- *     into the social pills.
- */
-function GameOwnerSignature() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.4 }}
-      transition={{ duration: 0.6, ease: [0.2, 0.7, 0.3, 1] }}
-      className="mt-7 relative"
-    >
-      <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.32em] font-bold text-[#A5743A]">
-        — Built &nbsp;·&nbsp; Designed &nbsp;·&nbsp; Loved by —
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, rotate: -2, scale: 0.94 }}
-        whileInView={{ opacity: 1, rotate: -1.5, scale: 1 }}
-        viewport={{ once: true, amount: 0.4 }}
-        transition={{ duration: 0.7, delay: 0.18, ease: [0.34, 1.56, 0.64, 1] }}
-        className="relative inline-block mt-3"
-      >
-        <span
-          className="bhalyam-script block text-[40px] sm:text-[56px] leading-[1.05]"
-          style={{
-            background:
-              "linear-gradient(120deg, #B45309 0%, #E0AE3B 40%, #B45309 60%, #7B2F0E 100%)",
-            backgroundClip: "text",
-            WebkitBackgroundClip: "text",
-            color: "transparent",
-            textShadow: "0 2px 0 rgba(255,246,226,0.4)",
-            filter: "drop-shadow(0 4px 6px rgba(122,77,28,0.25))",
-          }}
-        >
-          Kethan Kumar Gontla
-        </span>
-        {/* Hand-drawn underline */}
-        <motion.svg
-          aria-hidden
-          viewBox="0 0 320 14"
-          initial={{ pathLength: 0, opacity: 0 }}
-          whileInView={{ pathLength: 1, opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.9, delay: 0.55, ease: [0.2, 0.7, 0.3, 1] }}
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[80%] h-[14px]"
-        >
-          <motion.path
-            d="M4 8 C 60 1, 120 12, 180 5 S 290 11, 316 6"
-            stroke="#E0AE3B"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            fill="none"
-            initial={{ pathLength: 0 }}
-            whileInView={{ pathLength: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9, delay: 0.55, ease: "easeOut" }}
-          />
-        </motion.svg>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5, delay: 0.95 }}
-        className="mt-5 flex flex-col items-center gap-1.5"
-      >
-        <div className="inline-flex items-center gap-2 text-[12px] sm:text-[13px] font-bold text-[#5D3819]">
-          <SparkleGlyph className="w-3.5 h-3.5 text-[#E0AE3B]" />
-          <span>Game Owner · Architect · Solo Maker</span>
-          <SparkleGlyph className="w-3.5 h-3.5 text-[#E0AE3B]" />
-        </div>
-        <div
-          className="bhalyam-script text-[#7B5024] text-[18px] sm:text-[20px] leading-tight max-w-[480px] text-center px-3"
-          style={{ transform: "rotate(-1deg)" }}
-        >
-          “Every tile, every sound, every late-night fix —
-          <span className="block">handcrafted so a 90s kid could play again.”</span>
-        </div>
-        <div className="text-[10.5px] sm:text-[11px] uppercase tracking-[0.28em] font-bold text-[#A5743A] mt-1">
-          SPSR.Nellore · India
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function SparkleGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6L12 2z" />
-      <circle cx="19" cy="18" r="1.2" />
-      <circle cx="5" cy="18" r="1" />
-    </svg>
-  );
-}
-
-function CornerSprig({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 120" fill="none" className={className} aria-hidden>
-      <path
-        d="M10 60 Q30 30 60 30 Q90 30 110 60"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <circle cx="22" cy="48" r="2.2" fill="currentColor" />
-      <circle cx="36" cy="38" r="2.5" fill="currentColor" />
-      <circle cx="60" cy="32" r="2.8" fill="currentColor" />
-      <circle cx="84" cy="38" r="2.5" fill="currentColor" />
-      <circle cx="98" cy="48" r="2.2" fill="currentColor" />
-      <path
-        d="M60 32 L60 52"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M52 78 Q60 70 68 78"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function SocialPill({
-  href,
-  label,
-  tone,
-  icon,
-}: {
-  href: string;
-  label: string;
-  tone: string;
-  icon: React.ReactNode;
-}) {
-  const usesGradient = tone.startsWith("linear-gradient");
-  return (
-    <motion.a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={label}
-      whileHover={{ y: -3, scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      className="inline-flex items-center gap-2 rounded-full pl-1.5 pr-4 py-1.5 bg-white border border-[#E7D9C1] text-[#3C2A1E] font-bold text-[13px] sm:text-[14px] shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E0AE3B]/70"
-    >
-      <span
-        className="inline-flex items-center justify-center w-8 h-8 rounded-full"
-        style={usesGradient ? { backgroundImage: tone } : { backgroundColor: tone }}
-        aria-hidden
-      >
-        {icon}
-      </span>
-      <span>{label}</span>
-    </motion.a>
   );
 }
 
@@ -2494,29 +1979,22 @@ function HeartGlyph({ className }: { className?: string }) {
   );
 }
 
-function SocialIcon({
-  src,
-  alt,
-  href,
-}: {
-  src: string;
-  alt: string;
-  href: string;
-}) {
+function PaperPlaneDoodleSVG({ className = "w-20 h-16" }: { className?: string }) {
   return (
-    <a
-      href={href}
-      aria-label={alt}
-      className="inline-flex w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden
-                 shadow-[0_5px_10px_-6px_rgba(0,0,0,0.45)]
-                 hover:scale-105 active:scale-95 transition-transform duration-150"
-    >
-      <AssetImg
-        src={src}
-        alt={alt}
-        className="w-full h-full"
-        imgClassName="w-full h-full object-cover"
-      />
-    </a>
+    <svg viewBox="0 0 100 80" fill="none" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M10 65 Q 25 75 35 60 T 45 45" strokeDasharray="3 3" opacity="0.6" />
+      <path d="M45 45 L90 15 L60 70 L48 52 L78 28 L45 45 Z" fill="#FFFDF5" />
+      <path d="M48 52 L48 64 L56 57" fill="#5C3717" opacity="0.2" />
+    </svg>
+  );
+}
+
+function SparkleGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6L12 2z" />
+      <circle cx="19" cy="18" r="1.2" />
+      <circle cx="5" cy="18" r="1" />
+    </svg>
   );
 }
