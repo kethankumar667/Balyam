@@ -9,6 +9,7 @@ import GamesPage from "./pages/GamesPage";
 import NotFound from "./pages/NotFound";
 import ProfilePage from "./pages/ProfilePage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import AboutPage from "./pages/AboutPage";
 import ConsentModal from "./components/privacy/ConsentModal";
 import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import LoginPage from "./pages/auth/LoginPage";
@@ -97,6 +98,7 @@ export default function App() {
             joining a room with a code needs no account. */}
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />

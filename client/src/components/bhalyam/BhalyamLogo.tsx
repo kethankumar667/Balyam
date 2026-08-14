@@ -41,6 +41,8 @@ export default function BhalyamLogo({
   const [srcIdx, setSrcIdx] = useState(0);
   const failed = srcIdx >= LOGO_SRC_CHAIN.length;
 
+  const radius = Math.round(size * 0.22);
+
   if (failed) {
     return (
       <span
@@ -51,7 +53,7 @@ export default function BhalyamLogo({
         style={{
           width: size,
           height: size,
-          borderRadius: Math.round(size * 0.22),
+          borderRadius: radius,
           boxShadow: shadow
             ? "0 4px 10px -3px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,247,231,0.4)"
             : undefined,
@@ -63,28 +65,31 @@ export default function BhalyamLogo({
   }
 
   return (
-    <img
-      // `key` forces a fresh request when we step through the chain on error.
-      key={srcIdx}
-      src={LOGO_SRC_CHAIN[srcIdx]}
-      alt={decorative ? "" : "BHALYAM"}
-      width={size}
-      height={size}
-      decoding="async"
-      // Preload the icon eagerly when used in headers so it doesn't pop
-      // in after first paint; on hero usage the cache will already be hot.
-      loading="eager"
-      onError={() => setSrcIdx((i) => i + 1)}
-      className={className}
+    <span
+      className={`inline-block overflow-hidden flex-shrink-0 ${className ?? ""}`}
       style={{
-        display: "inline-block",
-        flexShrink: 0,
+        width: size,
+        height: size,
+        borderRadius: radius,
         boxShadow: shadow
           ? "0 4px 10px -3px rgba(0,0,0,0.45)"
           : undefined,
-        // No border-radius here — the art asset already includes the
-        // iOS-style rounded-square corners.
       }}
-    />
+    >
+      <img
+        // `key` forces a fresh request when we step through the chain on error.
+        key={srcIdx}
+        src={LOGO_SRC_CHAIN[srcIdx]}
+        alt={decorative ? "" : "BHALYAM"}
+        width={size}
+        height={size}
+        decoding="async"
+        // Preload the icon eagerly when used in headers so it doesn't pop
+        // in after first paint; on hero usage the cache will already be hot.
+        loading="eager"
+        onError={() => setSrcIdx((i) => i + 1)}
+        className="w-full h-full object-cover scale-[1.06] origin-center"
+      />
+    </span>
   );
 }

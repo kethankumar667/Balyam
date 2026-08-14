@@ -199,3 +199,19 @@ export const FaceIcon = strokeIcon(
     <path d="M8.8 14.6a4.2 4.2 0 0 0 6.4 0" />
   </>,
 );
+
+/**
+ * Apple's brand mark, as a filled silhouette.
+ *
+ * Not `🍏`: that is a green apple, a different shape in a different colour,
+ * and on a row of sign-in providers the wrong glyph reads as the wrong
+ * service. Filled rather than stroked because this one is a logo, not a
+ * member of the icon set above — Apple's guidelines require the solid form.
+ */
+export function AppleMark({ className }: AuthIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden focusable="false">
+      <path d="M16.36 12.78c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.62-1.7-3.19-1.73-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.87-.76-1.48.02-2.84.86-3.6 2.18-1.53 2.66-.39 6.6 1.1 8.76.73 1.06 1.6 2.25 2.74 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.7.71 2.87.69 1.18-.02 1.93-1.08 2.65-2.14.83-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.32-3.5ZM14.2 6.3c.6-.74 1.01-1.75.9-2.77-.87.04-1.93.58-2.56 1.31-.56.65-1.06 1.7-.93 2.7.97.07 1.97-.5 2.59-1.24Z" />
+    </svg>
+  );
+}

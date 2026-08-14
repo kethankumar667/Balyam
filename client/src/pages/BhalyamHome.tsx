@@ -1781,183 +1781,512 @@ function UtilityStripBody({
  *   - Quote rotates in slightly tilted via Caveat
  *   - Social pills get spring hover via Framer Motion
  */
-function Footer() {
+function KidsHoldingHandsSVG({ className = "w-28 h-12" }: { className?: string }) {
   return (
-    <footer className="mt-6 pb-10 pt-6">
-      <RevealOnScroll
-        as="div"
-        /* `bhalyam-footer-card` exists so the dark theme has something to aim
-           at. The cream wash below is an inline gradient, and every previous
-           class-based dark override sailed past it — a stylesheet can only
-           outrank an inline style with `!important`, and it needs a selector
-           to carry it. Hence a named hook rather than one more hex guess. */
-        className="bhalyam-footer-card relative rounded-[32px] border border-[#E8D8BE]
-                   overflow-hidden px-5 sm:px-10 py-10 sm:py-14"
-        style={{
-          background:
-            "radial-gradient(ellipse at 50% 0%, #FFF6E2 0%, #FBF2E3 55%, #F2DFA8 100%)",
-          boxShadow: "0 18px 36px -22px rgba(74,44,22,0.45)",
-        }}
-      >
-        {/* Decorative corner sprigs — pure SVG so nothing depends on a
-            missing asset file. Hidden on small screens to keep the centre
-            readable. */}
-        <CornerSprig className="hidden sm:block absolute -top-4 -left-4 w-32 text-[#D4A574]/55 rotate-[-12deg]" />
-        <CornerSprig className="hidden sm:block absolute -bottom-6 -right-6 w-36 text-[#D4A574]/55 rotate-[160deg]" />
+    <svg viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <circle cx="35" cy="22" r="10" stroke="#5C3717" strokeWidth="2.5" fill="#FFF8E7" />
+      <path d="M26 20 C 28 12, 42 12, 44 20" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <circle cx="31" cy="22" r="1.2" fill="#5C3717" />
+      <circle cx="38" cy="22" r="1.2" fill="#5C3717" />
+      <path d="M32 26 Q 35 29 38 26" stroke="#5C3717" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M35 32 L35 52 M24 38 L46 38 M35 52 L26 70 M35 52 L44 70" stroke="#5C3717" strokeWidth="2.5" strokeLinecap="round" />
 
-        <div className="relative max-w-[680px] mx-auto text-center">
-          {/* Wordmark — Righteous display + animated gradient on the
-              "Relive Childhood" tagline. */}
-          <motion.h4
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.55, ease: [0.2, 0.7, 0.3, 1] }}
-            className="bhalyam-display text-[32px] sm:text-[44px] text-[#3C2A1E] leading-[1.05]"
-          >
-            <span>BHALYAM</span>
-            <span className="bhalyam-gradient-text px-3">-</span>
-            <span className="bhalyam-gradient-text">Relive Childhood</span>
-          </motion.h4>
+      <circle cx="80" cy="18" r="10" stroke="#5C3717" strokeWidth="2.5" fill="#FFF8E7" />
+      <path d="M68 18 C 65 10, 72 10, 75 16" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <path d="M92 18 C 95 10, 88 10, 85 16" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <circle cx="76" cy="18" r="1.2" fill="#5C3717" />
+      <circle cx="84" cy="18" r="1.2" fill="#5C3717" />
+      <path d="M77 22 Q 80 25 83 22" stroke="#5C3717" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M80 28 L70 50 L90 50 Z M80 50 L72 68 M80 50 L88 68" stroke="#5C3717" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="#FFF8E7" />
 
-          <motion.p
-            initial={{ opacity: 0, y: 8 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.15, ease: [0.2, 0.7, 0.3, 1] }}
-            className="text-[13px] sm:text-[15px] uppercase tracking-[0.22em] font-bold text-[#7B2F0E] mt-3"
-          >
-            Crafted for 90's kids
-          </motion.p>
+      <circle cx="125" cy="22" r="10" stroke="#5C3717" strokeWidth="2.5" fill="#FFF8E7" />
+      <path d="M116 20 C 118 12, 132 12, 134 20" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <circle cx="121" cy="22" r="1.2" fill="#5C3717" />
+      <circle cx="129" cy="22" r="1.2" fill="#5C3717" />
+      <path d="M122 26 Q 125 29 128 26" stroke="#5C3717" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M125 32 L125 52 M114 38 L136 38 M125 52 L116 70 M125 52 L134 70" stroke="#5C3717" strokeWidth="2.5" strokeLinecap="round" />
 
-          {/* Handwritten Caveat quote, slightly tilted */}
-          <motion.blockquote
-            initial={{ opacity: 0, rotate: -2.5, y: 12 }}
-            whileInView={{ opacity: 1, rotate: -1.5, y: 0 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.65, delay: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
-            className="bhalyam-script text-[#5D3819] text-[26px] sm:text-[34px] leading-[1.18] mt-7 max-w-[560px] mx-auto px-4"
-          >
-            “You don't stop playing because you grow old.
-            <span className="block">
-              You grow old because you stop playing.”
-            </span>
-          </motion.blockquote>
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4, delay: 0.6 }}
-            className="text-[#7B5024] text-[12px] sm:text-[13px] uppercase tracking-widest font-bold mt-3"
-          >
-            — dedicated to every 90s kid, every weekend
-          </motion.div>
+      <path d="M44 38 Q 57 44 70 38" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <path d="M90 38 Q 103 44 114 38" stroke="#5C3717" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
 
-          {/* Decorative gold divider with center dot */}
-          <div className="mt-8 flex items-center justify-center gap-3" aria-hidden>
-            <span className="h-px w-12 sm:w-20 bg-gradient-to-r from-transparent to-[#C9A04C]" />
-            <span className="w-2 h-2 rounded-full bg-[#E0AE3B] shadow-[0_0_8px_rgba(228,177,40,0.7)]" />
-            <span className="h-px w-12 sm:w-20 bg-gradient-to-l from-transparent to-[#C9A04C]" />
+function SunRaysIcon({ className = "w-4 h-4 text-[#FFB703]" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <line x1="12" y1="2" x2="12" y2="5" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+      <line x1="4.93" y1="4.93" x2="7.05" y2="7.05" />
+      <line x1="16.95" y1="16.95" x2="19.07" y2="19.07" />
+      <line x1="2" y1="12" x2="5" y2="12" />
+      <line x1="19" y1="12" x2="22" y2="12" />
+      <line x1="4.93" y1="19.07" x2="7.05" y2="16.95" />
+      <line x1="16.95" y1="7.05" x2="19.07" y2="4.93" />
+    </svg>
+  );
+}
+
+function PaperPlaneDoodleSVG({ className = "w-20 h-16" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 80" fill="none" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M10 65 Q 25 75 35 60 T 45 45" strokeDasharray="3 3" opacity="0.6" />
+      <path d="M45 45 L90 15 L60 70 L48 52 L78 28 L45 45 Z" fill="#FFFDF5" />
+      <path d="M48 52 L48 64 L56 57" fill="#5C3717" opacity="0.2" />
+    </svg>
+  );
+}
+
+function RetroCarDoodleSVG({ className = "w-32 h-16" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 140 70" fill="none" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <line x1="5" y1="62" x2="135" y2="62" strokeDasharray="4 3" opacity="0.5" />
+      <circle cx="15" cy="50" r="3" fill="#E85D04" opacity="0.7" />
+      <line x1="15" y1="53" x2="15" y2="62" />
+      <circle cx="26" cy="46" r="4" fill="#FFB703" opacity="0.7" />
+      <line x1="26" y1="50" x2="26" y2="62" />
+      <path d="M45 62 L45 52 C 45 45, 52 40, 62 38 L72 26 C 76 21, 95 21, 102 26 L112 38 C 122 40, 128 45, 128 52 L128 62 Z" fill="#FFFDF5" />
+      <path d="M72 38 L74 29 C 76 26, 85 26, 86 38 Z" fill="#EAD9BC" opacity="0.4" />
+      <path d="M90 38 L90 29 C 91 26, 98 26, 100 38 Z" fill="#EAD9BC" opacity="0.4" />
+      <circle cx="62" cy="62" r="8" fill="#FFFDF5" strokeWidth="2.5" />
+      <circle cx="62" cy="62" r="3" fill="#5C3717" />
+      <circle cx="110" cy="62" r="8" fill="#FFFDF5" strokeWidth="2.5" />
+      <circle cx="110" cy="62" r="3" fill="#5C3717" />
+    </svg>
+  );
+}
+
+function ShieldIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function MusicNoteIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+}
+
+function GooglePlayBadgeSVG() {
+  return (
+    <a
+      href="#download-playstore"
+      aria-label="Get it on Google Play"
+      className="inline-flex items-center gap-2 bg-black text-white px-3 py-1.5 rounded-lg border border-gray-800 hover:bg-gray-900 transition-all shadow-sm active:scale-95"
+    >
+      <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3.6 2.25C3.38 2.48 3.25 2.85 3.25 3.35V20.65C3.25 21.15 3.38 21.52 3.6 21.75L3.68 21.82L13.29 12.21V11.79L3.68 2.18L3.6 2.25Z" fill="#00E676"/>
+        <path d="M16.49 15.41L13.29 12.21V11.79L16.49 8.59L16.57 8.64L20.37 10.8C21.45 11.41 21.45 12.59 20.37 13.2L16.57 15.36L16.49 15.41Z" fill="#FFC107"/>
+        <path d="M16.57 15.36L13.29 12L3.6 21.69C3.96 22.07 4.56 22.12 5.25 21.73L16.57 15.36Z" fill="#FF3D00"/>
+        <path d="M16.57 8.64L5.25 2.27C4.56 1.88 3.96 1.93 3.6 2.31L13.29 12L16.57 8.64Z" fill="#40C4FF"/>
+      </svg>
+      <div className="text-left leading-none">
+        <div className="text-[8px] uppercase tracking-wider text-gray-300 font-medium">GET IT ON</div>
+        <div className="text-[12px] font-bold text-white tracking-wide mt-0.5">Google Play</div>
+      </div>
+    </a>
+  );
+}
+
+function AppStoreBadgeSVG() {
+  return (
+    <a
+      href="#download-appstore"
+      aria-label="Download on the App Store"
+      className="inline-flex items-center gap-2 bg-black text-white px-3 py-1.5 rounded-lg border border-gray-800 hover:bg-gray-900 transition-all shadow-sm active:scale-95"
+    >
+      <svg className="w-5 h-5 fill-current flex-shrink-0" viewBox="0 0 24 24">
+        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.82c.57-.69.96-1.66.85-2.62-.83.03-1.84.55-2.43 1.25-.53.61-.99 1.6-.87 2.54.93.07 1.88-.47 2.45-1.17z"/>
+      </svg>
+      <div className="text-left leading-none">
+        <div className="text-[8px] text-gray-300 font-medium">Download on the</div>
+        <div className="text-[12px] font-bold text-white tracking-wide mt-0.5">App Store</div>
+      </div>
+    </a>
+  );
+}
+
+function PencilJarSVG({ className = "w-20 h-24" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      {/* Pencils in jar */}
+      <g transform="rotate(-15 45 40)">
+        <rect x="40" y="5" width="8" height="50" fill="#E85D04" stroke="#5C3717" strokeWidth="1.2" />
+        <polygon points="40,5 44,0 48,5" fill="#FCE7D0" stroke="#5C3717" strokeWidth="1" />
+        <polygon points="42,2 44,0 46,2" fill="#4A2508" />
+      </g>
+      <g transform="rotate(5 55 40)">
+        <rect x="50" y="0" width="8" height="55" fill="#FFB703" stroke="#5C3717" strokeWidth="1.2" />
+        <polygon points="50,0 54,-5 58,0" fill="#FCE7D0" stroke="#5C3717" strokeWidth="1" />
+        <polygon points="52,-3 54,-5 56,-3" fill="#4A2508" />
+      </g>
+      <g transform="rotate(18 65 40)">
+        <rect x="60" y="8" width="8" height="48" fill="#10B981" stroke="#5C3717" strokeWidth="1.2" />
+        <polygon points="60,8 64,3 68,8" fill="#FCE7D0" stroke="#5C3717" strokeWidth="1" />
+        <polygon points="62,5 64,3 66,5" fill="#4A2508" />
+      </g>
+
+      {/* Ceramic Jar */}
+      <rect x="30" y="45" width="45" height="55" rx="6" fill="#FFFDF5" stroke="#5C3717" strokeWidth="2.5" />
+      <rect x="33" y="65" width="39" height="20" rx="3" fill="#F7EBD3" stroke="#D4A574" strokeWidth="1.2" />
+      <text x="52.5" y="79" fill="#5C3717" fontSize="8" fontWeight="bold" textAnchor="middle" letterSpacing="0.5">
+        BHALYAM
+      </text>
+    </svg>
+  );
+}
+
+function PawnsAndDiceSVG({ className = "w-24 h-16" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 120 70" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      {/* Dice */}
+      <rect x="15" y="40" width="20" height="20" rx="4" fill="#FFFDF5" stroke="#5C3717" strokeWidth="2" />
+      <circle cx="21" cy="46" r="1.8" fill="#5C3717" />
+      <circle cx="29" cy="46" r="1.8" fill="#5C3717" />
+      <circle cx="25" cy="50" r="1.8" fill="#E85D04" />
+      <circle cx="21" cy="54" r="1.8" fill="#5C3717" />
+      <circle cx="29" cy="54" r="1.8" fill="#5C3717" />
+
+      {/* Pawns */}
+      {/* Green Pawn */}
+      <path d="M48 58 C 45 58, 44 48, 48 42 C 46 40, 46 36, 50 36 C 54 36, 54 40, 52 42 C 56 48, 55 58, 52 58 Z" fill="#10B981" stroke="#5C3717" strokeWidth="1.8" />
+      <circle cx="50" cy="33" r="5" fill="#10B981" stroke="#5C3717" strokeWidth="1.8" />
+
+      {/* Red Pawn */}
+      <path d="M68 58 C 65 58, 64 48, 68 42 C 66 40, 66 36, 70 36 C 74 36, 74 40, 72 42 C 76 48, 75 58, 72 58 Z" fill="#EF4444" stroke="#5C3717" strokeWidth="1.8" />
+      <circle cx="70" cy="33" r="5" fill="#EF4444" stroke="#5C3717" strokeWidth="1.8" />
+
+      {/* Blue Pawn */}
+      <path d="M88 58 C 85 58, 84 48, 88 42 C 86 40, 86 36, 90 36 C 94 36, 94 40, 92 42 C 96 48, 95 58, 92 58 Z" fill="#2563EB" stroke="#5C3717" strokeWidth="1.8" />
+      <circle cx="90" cy="33" r="5" fill="#2563EB" stroke="#5C3717" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+function FourKidsHoldingHandsSVG({ className = "w-36 h-12" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 200 70" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      {[25, 75, 125, 175].map((x, i) => (
+        <g key={i}>
+          <circle cx={x} cy="20" r="9" stroke="#5C3717" strokeWidth="2.2" fill="#FFF8E7" />
+          <path d={`M${x-6} 18 Q ${x} 14 ${x+6} 18`} stroke="#5C3717" strokeWidth="2" fill="none" />
+          <circle cx={x-3} cy="20" r="1" fill="#5C3717" />
+          <circle cx={x+3} cy="20" r="1" fill="#5C3717" />
+          <path d={`M${x-3} 24 Q ${x} 26 ${x+3} 24`} stroke="#5C3717" strokeWidth="1.8" fill="none" />
+          <path d={`M${x} 29 L${x} 48 M${x-8} 35 L${x+8} 35 M${x} 48 L${x-7} 64 M${x} 48 L${x+7} 64`} stroke="#5C3717" strokeWidth="2.2" strokeLinecap="round" />
+        </g>
+      ))}
+      <path d="M33 35 Q 54 42 67 35" stroke="#5C3717" strokeWidth="2" fill="none" />
+      <path d="M83 35 Q 104 42 117 35" stroke="#5C3717" strokeWidth="2" fill="none" />
+      <path d="M133 35 Q 154 42 167 35" stroke="#5C3717" strokeWidth="2" fill="none" />
+    </svg>
+  );
+}
+
+function Footer() {
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim()) {
+      setSubscribed(true);
+      setEmail("");
+      setTimeout(() => setSubscribed(false), 4000);
+    }
+  };
+
+  return (
+    <footer className="mt-8 pb-10 pt-4 max-w-[1240px] mx-auto space-y-5 text-[#5C3717]">
+      <RevealOnScroll as="div" className="space-y-5">
+        
+        {/* Section 2: Middle Notebook Creator Card ("MADE BY") */}
+        <div
+          className="bhalyam-footer-card relative rounded-[32px] border border-[#E6D4B5]
+                     overflow-hidden px-6 sm:px-12 py-8 sm:py-10 text-center shadow-md"
+          style={{
+            background: "linear-gradient(180deg, #FFFDF6 0%, #FAF2DF 100%)",
+          }}
+        >
+          {/* Notebook Lined Paper Effect: Binder Margin Line & Hole Punches */}
+          <div className="hidden sm:block absolute left-8 top-0 bottom-0 border-l border-[#F0A8A8]/60" />
+          <div className="hidden sm:flex flex-col justify-around absolute left-2.5 top-8 bottom-8 pointer-events-none">
+            <span className="w-3.5 h-3.5 rounded-full bg-[#E8D9C0] border border-[#D0BF9F] shadow-inner" />
+            <span className="w-3.5 h-3.5 rounded-full bg-[#E8D9C0] border border-[#D0BF9F] shadow-inner" />
+            <span className="w-3.5 h-3.5 rounded-full bg-[#E8D9C0] border border-[#D0BF9F] shadow-inner" />
           </div>
 
-          {/* Game owner — the single human behind every pixel. Visually
-              treated as the colophon's centrepiece: gold-lettered "Built
-              by" overline, a script-styled name that swings in on scroll,
-              a small attribution line. Lifted off the rest of the
-              footer's flow so the eye lands here and lingers. */}
-          <GameOwnerSignature />
+          {/* Paper Plane Doodle at top right */}
+          <PaperPlaneDoodleSVG className="hidden sm:block absolute right-6 top-4 w-20 h-16 pointer-events-none" />
 
-          {/* Slim decorative pair to close the signature block before the
-              social row picks up below. */}
-          <div className="mt-7 flex items-center justify-center gap-2" aria-hidden>
-            <span className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent to-[#C9A04C]/70" />
-            <span className="w-1.5 h-1.5 rounded-full bg-[#E0AE3B]/85" />
-            <span className="h-px w-8 sm:w-12 bg-gradient-to-l from-transparent to-[#C9A04C]/70" />
-          </div>
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8 sm:pl-8">
+            
+            {/* Left: Taped Photo Frame */}
+            <div className="flex-shrink-0 relative group">
+              <div className="relative rotate-[-2deg] bg-[#FFF8E7] p-2.5 border border-[#D4A574] rounded-xl shadow-md max-w-[210px] sm:max-w-[230px] transition-transform duration-300 hover:rotate-0">
+                
+                {/* Corner Tapes */}
+                <span className="absolute -top-3 -left-3 w-10 h-4 bg-[#F2DFA8]/90 border border-[#D9BE7A] rotate-[-25deg] shadow-2xs pointer-events-none" />
+                <span className="absolute -bottom-3 -right-3 w-10 h-4 bg-[#F2DFA8]/90 border border-[#D9BE7A] rotate-[20deg] shadow-2xs pointer-events-none" />
 
-          {/* Social pill row — three premium chips with spring hover. */}
-          <div className="mt-6 flex justify-center items-center gap-3 sm:gap-4 flex-wrap">
-            <SocialPill
-              href="https://wa.me/?text=Join%20me%20on%20BHALYAM%20-%20https%3A%2F%2Fbhalyam.onrender.com"
-              label="WhatsApp"
-              tone="#25D366"
-              icon={<WhatsappGlyph className="w-5 h-5 text-white" />}
-            />
-            <SocialPill
-              href="https://www.instagram.com/"
-              label="Instagram"
-              tone="linear-gradient(135deg, #E11D48 0%, #F97316 50%, #7C3AED 100%)"
-              icon={<InstagramGlyph className="w-5 h-5 text-white" />}
-            />
-            <SocialPill
-              href="mailto:hello@bhalyam.app"
-              label="Email us"
-              tone="#1E40AF"
-              icon={<MailGlyph className="w-5 h-5 text-white" />}
-            />
-          </div>
+                <img
+                  src="/Founder.png"
+                  alt="Kethan Kumar Gontla"
+                  className="w-full h-auto rounded-lg border border-[#E8D8BE] object-cover shadow-2xs"
+                />
+              </div>
+            </div>
 
-          {/*
-            Privacy row — DPDP Sections 11, 12 and 13.
+            {/* Middle: Signature & Quote */}
+            <div className="flex-1 max-w-[500px]">
+              <div className="text-[12px] font-extrabold tracking-widest text-[#9C7E63] uppercase flex items-center justify-center gap-1.5">
+                <span>=</span> <span>MADE BY</span> <span>=</span>
+              </div>
 
-            A footer is where people look for this, and it is the one place on
-            the site every page can reach. It lived inside the profile modal
-            before, which made a sheet about who you are also a sheet about
-            data rights: two jobs, neither done cleanly.
+              <h3 className="bhalyam-script text-[36px] sm:text-[44px] font-extrabold text-[#4A2508] leading-none mt-1">
+                Kethan Kumar Gontla
+              </h3>
 
-            The controls themselves stay on /profile. This row is the notice
-            and the way in, not a second copy of the buttons.
-          */}
-          <div className="mt-9 pt-6 border-t border-[#E0CFA8]/70">
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12.5px] font-semibold">
-              <Link
-                to="/privacy"
-                className="inline-flex items-center min-h-[44px] text-[#7B5024] underline
-                           decoration-[#D9BE7A] underline-offset-4 rounded-sm
-                           hover:text-[#4A2C16]
-                           focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
-              >
-                Privacy notice
-              </Link>
-              <Link
-                to="/profile"
-                className="inline-flex items-center min-h-[44px] text-[#7B5024] underline
-                           decoration-[#D9BE7A] underline-offset-4 rounded-sm
-                           hover:text-[#4A2C16]
-                           focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
-              >
-                Your data &amp; choices
-              </Link>
-              {PRIVACY_CONTACT_EMAIL ? (
+              <div className="text-[12px] font-bold text-[#E85D04] uppercase tracking-wider mt-1">
+                Founder &amp; Creator of BHALYAM
+              </div>
+
+              <blockquote className="bhalyam-script text-[20px] sm:text-[23px] font-bold text-[#6D4323] leading-snug mt-3 px-2">
+                “I wanted to build the place I wished existed when our school gang grew up.”
+              </blockquote>
+
+              {/* Social Buttons Row */}
+              <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
                 <a
-                  href={`mailto:${PRIVACY_CONTACT_EMAIL}?subject=BHALYAM%20privacy%20request`}
-                  className="inline-flex items-center min-h-[44px] text-[#7B5024] underline
-                             decoration-[#D9BE7A] underline-offset-4 rounded-sm
-                             hover:text-[#4A2C16]
-                             focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
+                  href="https://www.instagram.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
                 >
-                  Privacy grievances
+                  <InstagramGlyph className="w-4 h-4 text-[#E11D48]" />
+                  <span>Instagram</span>
                 </a>
-              ) : null}
-            </div>
-            <p className="mt-1 text-center text-[11.5px] leading-relaxed text-[#8A6D4B] max-w-[62ch] mx-auto">
-              No accounts, no tracking, no ads. Everything BHALYAM remembers about you stays on
-              this device, and you can see or erase all of it at any time.
-            </p>
-          </div>
 
-          {/* Fine print */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] sm:text-[13px] text-[#7B5024]">
-            <div className="font-semibold">
-              © {new Date().getFullYear()} BHALYAM · A Kethan Kumar Gontla project
+                <a
+                  href="https://wa.me/?text=Join%20me%20on%20BHALYAM%20-%20https%3A%2F%2Fbhalyam.onrender.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
+                >
+                  <WhatsappGlyph className="w-4 h-4 text-[#25D366]" />
+                  <span>WhatsApp</span>
+                </a>
+
+                <a
+                  href="mailto:hello@bhalyam.app"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
+                >
+                  <MailGlyph className="w-4 h-4 text-[#2563EB]" />
+                  <span>Email</span>
+                </a>
+              </div>
             </div>
-            <div className="inline-flex items-center gap-1.5 font-semibold sm:text-[12px] text-[#7B5024]">
-              Built solo with
-              <HeartGlyph className="w-3.5 h-3.5 text-[#E11D48]" />
-              for every school-gang reunion
+
+            {/* Right: Pencil Jar, Dice & Pawns Asset */}
+            <div className="hidden lg:flex flex-col items-center justify-center flex-shrink-0">
+              <img
+                src="/Foundersectionasset.png"
+                alt="BHALYAM Pencil Jar, Dice &amp; Pawns"
+                className="w-40 sm:w-48 h-auto object-contain drop-shadow-xs"
+              />
             </div>
+
           </div>
         </div>
+
+        {/* Section 3: Bottom Navigation Columns */}
+        <div
+          className="bhalyam-footer-card relative rounded-[32px] border border-[#E6D4B5]
+                     overflow-hidden px-6 sm:px-10 py-8 sm:py-10 shadow-sm"
+          style={{
+            background: "linear-gradient(180deg, #FFF8E7 0%, #FAF0D9 100%)",
+          }}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-6 text-left">
+            
+            {/* Brand Logo Column */}
+            <div className="md:col-span-3">
+              <img
+                src="/FooterBhalyamlogo.png"
+                alt="BHALYAM - Play Together. Remember Forever."
+                className="w-48 sm:w-56 h-auto object-contain mb-1"
+              />
+            </div>
+
+            {/* Links Columns: EXPLORE, SUPPORT, COMPANY, LEGAL */}
+            <div className="md:col-span-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              
+              {/* EXPLORE */}
+              <div>
+                <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
+                  EXPLORE
+                </h4>
+                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
+                  <li><Link to="/games" className="hover:text-[#E85D04] transition-colors">All Games</Link></li>
+                  <li><a href="#rooms" className="hover:text-[#E85D04] transition-colors">Rooms</a></li>
+                  <li><a href="#how-it-works" className="hover:text-[#E85D04] transition-colors">How It Works</a></li>
+                  <li><a href="#leaderboard" className="hover:text-[#E85D04] transition-colors">Leaderboard</a></li>
+                </ul>
+              </div>
+
+              {/* SUPPORT */}
+              <div>
+                <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
+                  SUPPORT
+                </h4>
+                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
+                  <li><a href="#help" className="hover:text-[#E85D04] transition-colors">Help Center</a></li>
+                  <li><a href="#safety" className="hover:text-[#E85D04] transition-colors">Safety Guide</a></li>
+                  <li><a href="#rules" className="hover:text-[#E85D04] transition-colors">Community Rules</a></li>
+                  <li><a href="#report" className="hover:text-[#E85D04] transition-colors">Report an Issue</a></li>
+                </ul>
+              </div>
+
+              {/* COMPANY */}
+              <div>
+                <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
+                  COMPANY
+                </h4>
+                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
+                  <li><a href="#about" className="hover:text-[#E85D04] transition-colors">About BHALYAM</a></li>
+                  <li><a href="#story" className="hover:text-[#E85D04] transition-colors">Our Story</a></li>
+                  <li><a href="#careers" className="hover:text-[#E85D04] transition-colors">Careers</a></li>
+                  <li><a href="#press" className="hover:text-[#E85D04] transition-colors">Press Kit</a></li>
+                </ul>
+              </div>
+
+              {/* LEGAL */}
+              <div>
+                <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
+                  LEGAL
+                </h4>
+                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
+                  <li><Link to="/privacy" className="hover:text-[#E85D04] transition-colors">Privacy Notice</Link></li>
+                  <li><a href="#terms" className="hover:text-[#E85D04] transition-colors">Terms of Service</a></li>
+                  <li><Link to="/profile" className="hover:text-[#E85D04] transition-colors">Your Data &amp; Choices</Link></li>
+                </ul>
+              </div>
+
+            </div>
+
+            {/* STAY IN THE LOOP */}
+            <div className="md:col-span-3">
+              <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-1.5">
+                STAY IN THE LOOP
+              </h4>
+              <p className="text-[12px] leading-snug text-[#7A5B3E] mb-3">
+                Get updates about new games, events and awesome 90s vibes.
+              </p>
+
+              <form onSubmit={handleSubscribe} className="relative mb-3">
+                <div className="flex items-center bg-[#F7EBD3] rounded-xl p-1 border border-[#E4D1AC]">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="bg-transparent text-[11.5px] text-[#4A2508] placeholder-[#9C7E63] px-2.5 focus:outline-none flex-1 min-w-0 font-medium"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="bg-[#E85D04] hover:bg-[#D45000] text-white text-[11.5px] font-bold rounded-lg px-3.5 py-1.5 transition-all shadow-xs active:scale-95 flex-shrink-0"
+                  >
+                    Subscribe
+                  </button>
+                </div>
+                {subscribed && (
+                  <span className="text-[11px] text-[#25D366] font-bold mt-1 block">
+                    ✓ Thanks for subscribing!
+                  </span>
+                )}
+              </form>
+
+              {/* Social Icon Buttons */}
+              <div className="flex items-center gap-2 mt-3">
+                <a
+                  href="https://www.instagram.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Instagram"
+                  className="w-7 h-7 rounded-full border border-[#D9C4A3] bg-white text-[#5C3717] hover:bg-[#FBE7C6] flex items-center justify-center transition-all shadow-2xs"
+                >
+                  <InstagramGlyph className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href="https://www.youtube.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="YouTube"
+                  className="w-7 h-7 rounded-full border border-[#D9C4A3] bg-white text-[#5C3717] hover:bg-[#FBE7C6] flex items-center justify-center transition-all shadow-2xs"
+                >
+                  <WhatsappGlyph className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href="https://www.facebook.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Facebook"
+                  className="w-7 h-7 rounded-full border border-[#D9C4A3] bg-white text-[#5C3717] hover:bg-[#FBE7C6] flex items-center justify-center transition-all shadow-2xs"
+                >
+                  <MailGlyph className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href="https://x.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="X / Twitter"
+                  className="w-7 h-7 rounded-full border border-[#D9C4A3] bg-white text-[#5C3717] hover:bg-[#FBE7C6] flex items-center justify-center transition-all shadow-2xs"
+                >
+                  <SparkleGlyph className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href="#games"
+                  aria-label="Games"
+                  className="w-7 h-7 rounded-full border border-[#D9C4A3] bg-white text-[#5C3717] hover:bg-[#FBE7C6] flex items-center justify-center transition-all shadow-2xs"
+                >
+                  <GamepadGlyph className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Copyright & Attribution Bar */}
+          <div className="relative pt-4 border-t border-[#E8D8BE]/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] font-semibold text-[#8C6D4F]">
+            
+            {/* Left Paper Plane Doodle */}
+            <div className="flex items-center gap-2">
+              <PaperPlaneDoodleSVG className="w-12 h-8 text-[#5C3717]" />
+              <span>© {new Date().getFullYear()} BHALYAM · All rights reserved.</span>
+            </div>
+
+            {/* Right Kids Running Illustration & Attribution */}
+            <div className="flex items-center gap-3">
+              <span>Built solo with <HeartGlyph className="w-3.5 h-3.5 inline text-[#E11D48]" /> for every school-gang reunion</span>
+              <img
+                src="/FooterBootom.png"
+                alt="Happy school gang"
+                className="w-28 sm:w-36 h-auto object-contain flex-shrink-0"
+              />
+            </div>
+
+          </div>
+
+        </div>
+
       </RevealOnScroll>
     </footer>
   );

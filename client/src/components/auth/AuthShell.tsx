@@ -1,168 +1,237 @@
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeftIcon, DiceIcon, KeyholeIcon } from "./authIcons";
-
-/**
- * The frame every auth screen sits in.
- *
- * Two panels on desktop, one on a phone. The left panel is not decoration —
- * it answers the question the form provokes. BHALYAM is guest-first: you can
- * join any room with a code and never make an account, so a sign-in screen
- * that just says "Sign in" invites the reasonable reply "why?". The panel
- * says what the account is actually for, and keeps the guest route visible
- * next to it rather than buried under the form.
- *
- * On a phone that panel would push the form below the fold, which is the one
- * thing a task surface cannot afford, so it collapses to a single line under
- * the crest.
- */
+import { ArrowLeftIcon } from "./authIcons";
 
 export interface AuthShellProps {
-  /** Screen title. The page's real heading, not a label above one. */
-  title: string;
-  /** One sentence under the title. */
-  subtitle: string;
   children: React.ReactNode;
-  /** Rendered under the form panel — the "no account yet?" style switch. */
+  title?: string;
+  subtitle?: string;
   footer?: React.ReactNode;
-  /** Where the back arrow goes. Home unless a flow has a real previous step. */
+  heroType?: "login" | "signup";
   backTo?: string;
   backLabel?: string;
 }
 
 export default function AuthShell({
+  children,
   title,
   subtitle,
-  children,
   footer,
+  heroType = "login",
   backTo = "/",
   backLabel = "Back to games",
 }: AuthShellProps) {
-  const reduced = useReducedMotion();
+  const isLogin = heroType === "login";
 
   return (
-    <div className="auth-shell bhalyam-home bhalyam-font bhalyam-paper min-h-screen flex flex-col">
-      <header className="w-full px-4 sm:px-6 pt-4 sm:pt-6">
-        <Link
-          to={backTo}
-          className="inline-flex items-center gap-2 min-h-[44px] px-3 -ml-3 rounded-full
-                     text-[14px] font-bold text-[var(--auth-ink-soft)]
-                     hover:text-[var(--auth-ink)] hover:bg-[var(--auth-rule)]/45
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                     transition-colors duration-200"
-        >
-          <ArrowLeftIcon className="w-[18px] h-[18px]" />
-          {backLabel}
+    <div
+      className={`min-h-screen lg:h-screen w-full font-sans text-[#5C3717] flex flex-col justify-between overflow-y-auto lg:overflow-hidden relative bg-[#FAF3E0] ${
+        isLogin
+          ? "bg-[url('/LoginBG.png')] bg-cover bg-center bg-no-repeat"
+          : "bg-[url('/SignupBG.png')] bg-cover bg-center bg-no-repeat"
+      }`}
+    >
+      {/* Decorative SVG Doodles Layer */}
+      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-40">
+        {/* Paper Airplane top left */}
+        <svg className="absolute top-16 left-[22%] w-10 h-10 text-[#E85D04] -rotate-12 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+        </svg>
+        {/* Tic-tac-toe top center */}
+        <svg className="absolute top-8 left-[48%] w-9 h-9 text-[#7A5B3E] opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 9h16M4 15h16M9 4v16M15 4v16" />
+        </svg>
+        {/* Star Sparkle near hero heading */}
+        <svg className="absolute top-36 left-[8%] w-7 h-7 text-[#F4C430] rotate-12" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
+        </svg>
+        {/* Cloud top right */}
+        <svg className="absolute top-12 right-[12%] w-14 h-10 text-[#A7F3D0] opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 15a4 4 0 004 4h10a5 5 0 001-9.9M7 15a4.5 4.5 0 018.5-2M7 15H6a3 3 0 010-6h.5" />
+        </svg>
+      </div>
+
+      {/* Header Bar */}
+      <header className="max-w-[1380px] w-full mx-auto px-4 sm:px-8 pt-3 sm:pt-5 flex items-center justify-between flex-shrink-0 z-30 relative">
+        <Link to="/" className="flex items-center gap-3 group">
+          <img
+            src="/FooterBhalyamlogo.png"
+            alt="BHALYAM - Play Together. Remember Forever."
+            className="w-40 sm:w-48 h-auto object-contain transition-transform group-hover:scale-105"
+          />
         </Link>
+
+        <div className="flex items-center gap-3">
+          <Link
+            to={backTo}
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-extrabold text-[#5C3717] hover:text-[#E85D04] transition-colors bg-white/80 backdrop-blur-xs px-3.5 py-1.5 rounded-full border border-[#E6D4B5] shadow-2xs -mt-[60px]"
+          >
+            <ArrowLeftIcon className="w-4 h-4" />
+            {backLabel}
+          </Link>
+        </div>
       </header>
 
-      <main className="flex-1 w-full px-4 sm:px-6 pb-10 sm:pb-16">
-        <div
-          className="mx-auto w-full max-w-[1040px] grid gap-8 lg:gap-16
-                     lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:items-center
-                     min-h-[calc(100vh-140px)]"
-        >
-          {/* ── Why an account exists here ── */}
-          <section className="hidden lg:block">
-            <span
-              className="inline-flex w-14 h-14 rounded-2xl items-center justify-center
-                         bhalyam-gold-leaf text-bhalyam-wood-dark
-                         shadow-[0_10px_22px_-8px_rgba(228,177,40,0.7)]"
-              aria-hidden
-            >
-              <KeyholeIcon className="w-7 h-7" />
-            </span>
+      {/* Main Content Area */}
+      <main className="max-w-[1380px] w-full mx-auto px-4 sm:px-8 py-1 sm:py-2 flex-1 flex items-center justify-center min-h-0 z-10">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center">
+          
+          {/* Left Hero Column */}
+          <div className="lg:col-span-7 flex flex-col justify-center h-full text-left">
+            {isLogin ? (
+              <div className="space-y-3 max-w-[460px] lg:-mt-40 xl:-mt-48">
+                <div>
+                  <h1 className="bhalyam-display text-[28px] sm:text-[34px] lg:text-[38px] font-extrabold text-[#4A2508] leading-[1.1] tracking-tight">
+                    Your 90&apos;s Games, <br />
+                    <span className="text-[#E85D04]">Now in One Place!</span>
+                  </h1>
+                  <p className="text-[13px] sm:text-[14.5px] font-medium text-[#7A5B3E] mt-1.5 leading-snug">
+                    Old-school fun. Modern multiplayer. <br />
+                    All your childhood games, together.
+                  </p>
+                  <div className="mt-2.5">
+                    <p className="bhalyam-script text-[18px] sm:text-[21px] font-bold text-[#2563EB] leading-[1.25]">
+                      “Some friendships
+                    </p>
+                    <div className="relative inline-block pl-5">
+                      <p className="bhalyam-script text-[18px] sm:text-[21px] font-bold text-[#2563EB] leading-[1.25]">
+                        just need a room code.
+                        <span className="text-[#E85D04] ml-1">♡”</span>
+                      </p>
+                      {/* Orange Doodle Underline for line 2 */}
+                      <svg className="absolute left-5 -bottom-1 w-[90%] h-2 text-[#E85D04] opacity-85" viewBox="0 0 200 8" fill="none">
+                        <path d="M2 6C50 2 150 2 198 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
 
-            <h1
-              className="bhalyam-display mt-6 text-[var(--auth-ink)] leading-[1.05] text-balance"
-              style={{ fontSize: "clamp(2.25rem, 3.4vw, 3.25rem)", letterSpacing: "-0.01em" }}
-            >
-              The chest opens
-              <br />
-              for the host.
-            </h1>
+                {/* 4 Feature Badges List (2x2 Grid) */}
+                <div className="grid grid-cols-2 gap-2.5 max-w-[460px] pt-1">
+                  <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs border border-[#E6D4B5] rounded-2xl p-2 shadow-2xs hover:shadow-xs transition-shadow">
+                    <div className="w-7 h-7 rounded-xl bg-[#EEF2FF] border border-[#C7D2FE] flex items-center justify-center text-xs font-bold flex-shrink-0 text-[#4338CA]">
+                      👥
+                    </div>
+                    <div>
+                      <p className="text-[11.5px] font-extrabold text-[#4A2508] leading-tight">Your school gang</p>
+                      <p className="text-[10px] font-medium text-[#7A5B3E]">Play together again</p>
+                    </div>
+                  </div>
 
-            <p className="bhalyam-script text-[var(--auth-accent)] text-[26px] leading-[1.15] mt-4">
-              Everyone else just needs the code.
-            </p>
+                  <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs border border-[#E6D4B5] rounded-2xl p-2 shadow-2xs hover:shadow-xs transition-shadow">
+                    <div className="w-7 h-7 rounded-xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-xs font-bold flex-shrink-0 text-[#D97706]">
+                      🏠
+                    </div>
+                    <div>
+                      <p className="text-[11.5px] font-extrabold text-[#4A2508] leading-tight">Your own adda</p>
+                      <p className="text-[10px] font-medium text-[#7A5B3E]">Create a private room</p>
+                    </div>
+                  </div>
 
-            <p className="mt-6 max-w-[46ch] text-[15px] leading-relaxed text-[var(--auth-ink-soft)]">
-              An account is what lets you open a room, name your table and keep the gang
-              together across sessions. Joining one never needs anything but the six
-              characters a friend sends you.
-            </p>
+                  <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs border border-[#E6D4B5] rounded-2xl p-2 shadow-2xs hover:shadow-xs transition-shadow">
+                    <div className="w-7 h-7 rounded-xl bg-[#D1FAE5] border border-[#A7F3D0] flex items-center justify-center text-xs font-bold flex-shrink-0 text-[#059669]">
+                      🤖
+                    </div>
+                    <div>
+                      <p className="text-[11.5px] font-extrabold text-[#4A2508] leading-tight">Play when away</p>
+                      <p className="text-[10px] font-medium text-[#7A5B3E]">Smart bots included</p>
+                    </div>
+                  </div>
 
-            <Link
-              to="/"
-              className="mt-8 inline-flex items-center gap-2.5 min-h-[44px] px-4 rounded-full
-                         bg-[var(--auth-card)] border border-[var(--auth-card-edge)] text-[var(--auth-ink)] font-bold text-[14px]
-                         hover:bg-[var(--auth-field)] active:scale-[0.98]
-                         focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                         transition-[background-color,transform] duration-200"
-            >
-              <DiceIcon className="w-[18px] h-[18px] text-[#B53917]" />
-              <span>Just here to play? Join with a code</span>
-            </Link>
-          </section>
+                  <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs border border-[#E6D4B5] rounded-2xl p-2 shadow-2xs hover:shadow-xs transition-shadow">
+                    <div className="w-7 h-7 rounded-xl bg-[#F3E8FF] border border-[#DDD6FE] flex items-center justify-center text-xs font-bold flex-shrink-0 text-[#7C3AED]">
+                      💜
+                    </div>
+                    <div>
+                      <p className="text-[11.5px] font-extrabold text-[#4A2508] leading-tight">No distractions</p>
+                      <p className="text-[10px] font-medium text-[#7A5B3E]">Just games &amp; memories</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 max-w-[460px] lg:-mt-52 xl:-mt-64 ml-20">
+                <div>
+                  <div className="inline-block bg-[#FFE8B3] border-2 border-[#F4C430] rounded-2xl px-3 py-0.5 mb-1.5 shadow-xs">
+                    <h1 className="bhalyam-display text-[25px] sm:text-[30px] lg:text-[34px] font-extrabold text-[#4A2508] leading-tight flex items-center gap-2">
+                      <span>Join the Gang!</span>
+                      <span className="text-[#E85D04]">⚡</span>
+                    </h1>
+                  </div>
+                  <p className="text-[13px] sm:text-[14px] font-medium text-[#7A5B3E] mt-1 leading-snug">
+                    Create your account and get <span className="text-[#E85D04] font-extrabold">your own table</span> in the lounge.
+                  </p>
+                </div>
 
-          {/* ── The task ── */}
-          <motion.section
-            initial={reduced ? false : { opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full lg:max-w-[420px] mx-auto"
-          >
-            {/* Crest — the phone's only brand moment, so it carries the title. */}
-            <div className="lg:hidden flex items-center gap-3 mb-5">
-              <span
-                className="inline-flex w-11 h-11 rounded-2xl items-center justify-center
-                           bhalyam-gold-leaf text-bhalyam-wood-dark flex-shrink-0
-                           shadow-[0_8px_18px_-8px_rgba(228,177,40,0.7)]"
-                aria-hidden
-              >
-                <KeyholeIcon className="w-6 h-6" />
-              </span>
-              <p className="bhalyam-script text-[var(--auth-accent)] text-[21px] leading-[1.1]">
-                Hosting needs a key.
-                <br />
-                Joining never does.
-              </p>
-            </div>
+                {/* 4 Feature Badges List (Vertical Stack matching mockup) */}
+                <div className="space-y-2 max-w-[400px] pt-0.5">
+                  <div className="flex items-center gap-2.5 bg-white/90 backdrop-blur-xs border border-[#E6D4B5] rounded-2xl px-3 py-2 shadow-2xs hover:shadow-xs transition-shadow">
+                    <div className="w-7 h-7 rounded-full bg-[#FFF0D6] border border-[#FCDDB5] text-[#E85D04] flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      👤
+                    </div>
+                    <div>
+                      <p className="text-[11.5px] font-extrabold text-[#4A2508] leading-tight">Save your name &amp; avatar</p>
+                      <p className="text-[10px] font-medium text-[#7A5B3E]">Be known to your friends</p>
+                    </div>
+                  </div>
 
-            <div
-              className="rounded-[22px] border border-[var(--auth-card-edge)] bg-[var(--auth-card)]
-                         p-5 sm:p-7
-                         shadow-[0_18px_40px_-24px_rgba(74,44,18,0.45),0_2px_6px_-2px_rgba(74,44,18,0.12)]"
-            >
-              <h2
-                className="bhalyam-display text-[var(--auth-ink)] text-[26px] sm:text-[28px] leading-tight"
-                style={{ letterSpacing: "-0.005em" }}
-              >
-                {title}
-              </h2>
-              <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--auth-ink-soft)] max-w-[42ch]">
-                {subtitle}
-              </p>
+                  <div className="flex items-center gap-2.5 bg-white/90 backdrop-blur-xs border border-[#E6D4B5] rounded-2xl px-3 py-2 shadow-2xs hover:shadow-xs transition-shadow">
+                    <div className="w-7 h-7 rounded-full bg-[#E6F4EA] border border-[#A7F3D0] text-[#137333] flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      🟢
+                    </div>
+                    <div>
+                      <p className="text-[11.5px] font-extrabold text-[#4A2508] leading-tight">Track your favourite rooms</p>
+                      <p className="text-[10px] font-medium text-[#7A5B3E]">Never lose your adda</p>
+                    </div>
+                  </div>
 
-              <div className="mt-6">{children}</div>
-            </div>
+                  <div className="flex items-center gap-2.5 bg-white/90 backdrop-blur-xs border border-[#E6D4B5] rounded-2xl px-3 py-2 shadow-2xs hover:shadow-xs transition-shadow">
+                    <div className="w-7 h-7 rounded-full bg-[#FFF5E6] border border-[#FCDDB5] text-[#D97706] flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      🏆
+                    </div>
+                    <div>
+                      <p className="text-[11.5px] font-extrabold text-[#4A2508] leading-tight">Earn badges &amp; milestones</p>
+                      <p className="text-[10px] font-medium text-[#7A5B3E]">Play more, unlock more</p>
+                    </div>
+                  </div>
 
-            {footer ? <div className="mt-5 text-center">{footer}</div> : null}
+                  <div className="flex items-center gap-2.5 bg-white/90 backdrop-blur-xs border border-[#E6D4B5] rounded-2xl px-3 py-2 shadow-2xs hover:shadow-xs transition-shadow">
+                    <div className="w-7 h-7 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      📱
+                    </div>
+                    <div>
+                      <p className="text-[11.5px] font-extrabold text-[#4A2508] leading-tight">Play across all devices</p>
+                      <p className="text-[10px] font-medium text-[#7A5B3E]">Your games, anytime anywhere</p>
+                    </div>
+                  </div>
+                </div>
 
-            {/*
-              Says out loud what is true: these screens are the design, and
-              nothing behind them signs anyone in yet. Without it the pages
-              look finished, and the first person to try one would reasonably
-              conclude sign-in is broken rather than unbuilt.
-            */}
-            <p className="mt-6 text-center text-[11.5px] leading-relaxed text-[var(--auth-ink-soft)]">
-              <span
-                className="inline-block align-middle w-1.5 h-1.5 rounded-full bg-[#C9A227] mr-1.5"
-                aria-hidden
-              />
-              Design preview — accounts aren&apos;t connected yet, so nothing here signs you in.
-            </p>
-          </motion.section>
+              </div>
+            )}
+          </div>
+
+          {/* Right Form Card Column */}
+          <div className="lg:col-span-5 w-full max-w-[480px] ml-auto mr-0 lg:-mr-2 xl:-mr-8 lg:-mt-[40px] xl:-mt-[32px]">
+            {title ? (
+              <div className="bg-white/95 backdrop-blur-md border-2 border-[#F2E3C6] rounded-[24px] p-4 sm:p-5.5 shadow-2xl text-left space-y-3 relative">
+                <div className="text-center">
+                  <h2 className="bhalyam-display text-[21px] sm:text-[24px] font-extrabold text-[#4A2508] tracking-tight flex items-center justify-center gap-2">
+                    <span>{title}</span>
+                    <span className="text-[#E85D04]">✨</span>
+                  </h2>
+                  {subtitle && (
+                    <p className="text-[12px] text-[#7A5B3E] font-medium mt-0.5">
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
+                {children}
+                {footer && <div className="mt-2.5 text-center">{footer}</div>}
+              </div>
+            ) : (
+              children
+            )}
+          </div>
+
         </div>
       </main>
     </div>
