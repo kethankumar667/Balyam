@@ -37,8 +37,8 @@ function LanguageSettingsImpl({
   );
 
   const chrome = embedded
-    ? "pt-2 border-t border-[#E6D4B7] dark:border-slate-700"
-    : "bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4 dark:bg-slate-900 dark:border-slate-700";
+    ? "pt-2 border-t border-[var(--room-panel-edge)]"
+    : "bg-[var(--room-panel)] border border-[var(--room-panel-edge)] rounded-xl p-4";
 
   return (
     <section
@@ -46,17 +46,17 @@ function LanguageSettingsImpl({
       aria-label={t("language.settingsLabel")}
     >
       <header className="flex items-center justify-between gap-2">
-        <h3 className="text-sm uppercase tracking-wider text-[#7A6652] font-bold dark:text-slate-400">
+        <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
           {t("language.title")}
         </h3>
         {!ready && (
-          <span className="text-[11px] text-[#9B8770] dark:text-slate-500">
+          <span className="text-[11px] text-[var(--room-ink-mute)]">
             {t("language.switching")}
           </span>
         )}
       </header>
 
-      <p className="text-[11px] text-[#7A6652] dark:text-slate-500">
+      <p className="text-[11px] text-[var(--room-ink-mute)]">
         {t("language.subtitle")}
       </p>
 
@@ -73,13 +73,13 @@ function LanguageSettingsImpl({
               className={`text-left rounded-lg border px-3 py-2 transition-colors ${
                 active
                   ? "bg-[#EA5A1F] border-[#D84F17] text-white"
-                  : "bg-[#FFF9EE] border-[#DCC8A6] text-[#352C24] hover:border-[#EA5A1F] dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100"
+                  : "bg-[var(--room-field)] border-[var(--room-field-edge)] text-[var(--room-ink)] hover:border-[#EA5A1F]"
               }`}
             >
               <div className="text-sm font-bold leading-tight">{l.nativeName}</div>
               <div
                 className={`text-[11px] leading-snug mt-0.5 ${
-                  active ? "text-white/90" : "text-[#7A6652] dark:text-slate-400"
+                  active ? "text-white/90" : "text-[var(--room-ink-soft)]"
                 }`}
               >
                 {l.englishName}

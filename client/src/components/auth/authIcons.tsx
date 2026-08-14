@@ -164,3 +164,15 @@ export const PencilIcon = strokeIcon(
     <path d="M14.5 6.5 17.5 9.5" />
   </>,
 );
+
+/** Preferences. Same 1.8 stroke as the rest of the set. */
+export const SlidersIcon = strokeIcon(
+  <>
+    <path d="M4 7h10M18 7h2" />
+    <path d="M4 12h4M12 12h8" />
+    <path d="M4 17h12M20 17h0" />
+    <circle cx="16" cy="7" r="2" />
+    <circle cx="10" cy="12" r="2" />
+    <circle cx="18" cy="17" r="2" />
+  </>,
+);

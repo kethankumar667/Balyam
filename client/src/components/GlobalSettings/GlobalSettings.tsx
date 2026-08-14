@@ -5,7 +5,6 @@ import { useTranslation } from "../../hooks/useTranslation";
 import { AUDIO, type AudioThemeId } from "../../constants/audio";
 import { THEMES } from "../../assets/audio/themes/manifests";
 import LanguageSettings from "../LanguageSettings/LanguageSettings";
-import YourDataPanel from "../privacy/YourDataPanel";
 
 /**
  * Application-wide preferences panel. Holds independent toggles for
@@ -21,7 +20,14 @@ import YourDataPanel from "../privacy/YourDataPanel";
  * The panel is memoized so the embedding sheet's other state changes
  * don't thrash it.
  */
-function GlobalSettingsImpl({ className }: { className?: string }) {
+function GlobalSettingsImpl({
+  className,
+  /** Drop this panel's own card chrome — the host page supplies it. */
+  bare = false,
+}: {
+  className?: string;
+  bare?: boolean;
+}) {
   const a = useAudio();
   const h = useHaptics();
   const { t } = useTranslation();
@@ -48,13 +54,17 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
 
   return (
     <section
-      className={`bg-[#F7EEDC] dark:bg-slate-900 border border-[#E6D4B7] dark:border-slate-700 rounded-xl p-4 space-y-5 ${className ?? ""}`}
+      className={`space-y-5 ${
+        bare
+          ? ""
+          : "bg-[var(--room-panel)] border border-[var(--room-panel-edge)] rounded-xl p-4"
+      } ${className ?? ""}`}
       aria-label={t("settings.label")}
     >
       {/* ── Sound ───────────────────────────────────────────────── */}
       <div className="space-y-3">
         <header className="flex items-center justify-between gap-2">
-          <h3 className="text-sm uppercase tracking-wider text-[#6B573F] dark:text-slate-300 font-bold">
+          <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
             {t("sound.title")}
           </h3>
           <ToggleSwitch
@@ -67,7 +77,7 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
         </header>
 
         {!isAudioUnlocked && (
-          <p className="text-[11px] text-[#6B573F] dark:text-slate-300 italic">
+          <p className="text-[11px] text-[var(--room-ink-soft)] italic">
             {t("audio.unlockHint")}
           </p>
         )}
@@ -93,9 +103,9 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
       </div>
 
       {/* ── Vibration ───────────────────────────────────────────── */}
-      <div className="space-y-2 pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
+      <div className="space-y-2 pt-2 border-t border-[var(--room-panel-edge)]">
         <header className="flex items-center justify-between gap-2">
-          <h3 className="text-sm uppercase tracking-wider text-[#6B573F] dark:text-slate-300 font-bold">
+          <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
             {t("vibration.title")}
           </h3>
           <ToggleSwitch
@@ -107,18 +117,18 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
             ariaLabel={h.enabled ? t("vibration.disable") : t("vibration.enable")}
           />
         </header>
-        <p className="text-[11px] text-[#6B573F] dark:text-slate-300 leading-snug">
+        <p className="text-[11px] text-[var(--room-ink-soft)] leading-snug">
           {h.supported ? t("vibration.hint") : t("vibration.unsupported")}
         </p>
       </div>
 
       {/* ── Audio theme ─────────────────────────────────────────── */}
-      <div className="space-y-2 pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
+      <div className="space-y-2 pt-2 border-t border-[var(--room-panel-edge)]">
         <div className="flex items-center justify-between">
-          <span className="text-xs uppercase tracking-wider text-[#6B573F] dark:text-slate-300 font-bold">
+          <span className="text-xs uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
             {t("audio.theme")}
           </span>
-          <span className="text-[11px] text-[#6B573F] dark:text-slate-300">
+          <span className="text-[11px] text-[var(--room-ink-soft)]">
             {THEMES.find((t) => t.id === settings.selectedAudioTheme)?.name}
           </span>
         </div>
@@ -134,13 +144,13 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
                 className={`text-left rounded-lg border px-3 py-2 transition-colors ${
                   active
                     ? "bg-[#EA5A1F] border-[#D84F17] text-white"
-                    : "bg-[#FFF9EE] dark:bg-slate-800 border-[#DCC8A6] dark:border-slate-600 text-[#352C24] dark:text-slate-100 hover:border-[#EA5A1F]"
+                    : "bg-[var(--room-field)] border-[var(--room-field-edge)] text-[var(--room-ink)] hover:border-[#EA5A1F]"
                 }`}
               >
                 <div className="text-sm font-bold leading-tight">{t.name}</div>
                 <div
                   className={`text-[11px] leading-snug mt-0.5 ${
-                    active ? "text-white/90" : "text-[#6B573F] dark:text-slate-300"
+                    active ? "text-white/90" : "text-[var(--room-ink-soft)]"
                   }`}
                 >
                   {t.description}
@@ -154,10 +164,6 @@ function GlobalSettingsImpl({ className }: { className?: string }) {
       {/* ── Language ────────────────────────────────────────────── */}
       <LanguageSettings embedded />
 
-      {/* ── Your data (DPDP Sections 11, 12, 13) ────────────────── */}
-      <div className="pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
-        <YourDataPanel />
-      </div>
     </section>
   );
 }
@@ -179,7 +185,7 @@ function VolumeSlider({
   const pct = Math.round(value * 100);
   return (
     <label className="block">
-      <div className="flex items-center justify-between text-xs text-[#5C4A38] dark:text-slate-300 mb-1">
+      <div className="flex items-center justify-between text-xs text-[var(--room-ink-soft)] mb-1">
         <span className="font-bold uppercase tracking-wider">{label}</span>
         <span className={disabled ? "opacity-50" : ""}>{pct}%</span>
       </div>
@@ -224,10 +230,10 @@ function ToggleSwitch({
       disabled={disabled}
       className={`inline-flex items-center gap-2 text-xs font-bold px-3 min-h-[44px] rounded-full transition-colors ${
         disabled
-          ? "bg-[#E5D6BD] dark:bg-slate-700 text-[#6B573F] dark:text-slate-300 cursor-not-allowed"
+          ? "bg-[var(--room-chip)] text-[var(--room-ink-soft)] cursor-not-allowed"
           : checked
             ? "bg-[#31A157] hover:bg-[#2A8B4B] text-white"
-            : "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118] dark:text-slate-300"
+            : "bg-[#E6A11E] hover:bg-[#D89215] text-[var(--room-ink)]"
       }`}
     >
       <span

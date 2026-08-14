@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import YourDataPanel from "../components/privacy/YourDataPanel";
 import { PencilIcon } from "../components/auth/authIcons";
 import { findAvatar } from "../lib/avatars";
+import { PRIVACY_CONTACT_EMAIL } from "../lib/privacy/contact";
 import SelfAvatar from "../components/profile/SelfAvatar";
 import { motion, AnimatePresence } from "framer-motion";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
@@ -540,7 +540,13 @@ function ProfileSheet({
       </div>
       ) : null}
 
-      {/* Account. Replaces a disabled "Notify me" button: the screens now
+      {/* Account actions only. "Edit profile" used to sit here too and went to
+          exactly where the pencil on the avatar goes — one destination, two
+          controls, and it pushed a profile action into a stack of account
+          ones. The pencil kept the job: it is on the thing it edits, and the
+          empty state's copy already points at it.
+
+          Replaces a disabled "Notify me" button: the screens now
           exist, so sending people to them beats promising to tell them later.
           The pages themselves say plainly that nothing signs you in yet, so
           the honesty lives at the destination rather than in a dead control. */}
@@ -569,28 +575,13 @@ function ProfileSheet({
         >
           Create an account
         </Link>
-        <Link
-          to="/profile"
-          onClick={onClose}
-          className="w-full h-12 rounded-full bg-transparent border border-[#EEDCC2] text-[#7B5024]
-                     font-extrabold text-[14px] inline-flex items-center justify-center gap-2
-                     hover:bg-[#F8EEDB] active:scale-[0.99]
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                     transition-[background-color,transform] duration-200"
-        >
-          Edit profile
-        </Link>
         <p className="text-center text-[11.5px] leading-relaxed text-[var(--auth-ink-soft)]">
           You never need an account to join a friend&apos;s room.
         </p>
       </div>
 
-      {/* Your data — DPDP Sections 11, 12 and 13. It belongs beside the
-          account controls, not buried in sound settings: the person asking
-          what is held about them is the same person looking at their profile. */}
-      <div className="rounded-2xl p-4 border border-[#E8D8BE] bg-white">
-        <YourDataPanel />
-      </div>
+      {/* Data rights live in the footer and on /profile now. A sheet about who
+          you are was doing two jobs and neither cleanly. */}
     </SheetShell>
   );
 }
@@ -876,7 +867,22 @@ function DoorPlusIcon({ className }: { className?: string }) {
 /* ───────────────────────────── Hero ───────────────────────────── */
 
 function Hero() {
-  const [heroImage, setHeroImage] = useState("/bhalyam-hero-clean.png");
+  /**
+   * The hero has a dark counterpart, so it follows the theme rather than
+   * sitting bright against a dark page. `useTheme` is the same source the
+   * toggle writes to, so switching swaps the art immediately.
+   *
+   * `failed` tracks the fallback separately from the choice — keying it to the
+   * src alone meant a theme switch could not retry an image that had failed
+   * once under the other theme.
+   */
+  const [theme] = useTheme();
+  const [failed, setFailed] = useState(false);
+  const heroImage = failed
+    ? "/bhalyam-hero.png"
+    : theme === "dark"
+      ? "/bhalyam-dark-hero.png"
+      : "/bhalyam-hero-clean.png";
 
   return (
     <RevealOnScroll
@@ -894,11 +900,8 @@ function Hero() {
           className="bhalyam-hero-drift absolute inset-0 w-full h-full object-cover object-right"
           loading="eager"
           decoding="async"
-          onError={() => {
-            if (heroImage !== "/bhalyam-hero.png") {
-              setHeroImage("/bhalyam-hero.png");
-            }
-          }}
+          key={heroImage}
+          onError={() => setFailed(true)}
         />
 
         {/* Left-anchored cream-to-transparent gradient so the headline +
@@ -909,8 +912,15 @@ function Hero() {
           className="absolute inset-0 pointer-events-none"
           aria-hidden
           style={{
+            /* The scrim has to follow the art. A cream wash exists to let dark
+               copy sit on a bright photograph; over the dark hero it turned the
+               left edge into a pale smear with navy text struggling on it. The
+               dark hero gets a dark wash instead, and the copy below flips with
+               it. */
             background:
-              "linear-gradient(100deg, rgba(255,248,224,0.92) 0%, rgba(255,248,224,0.78) 28%, rgba(255,248,224,0.42) 52%, rgba(255,248,224,0) 78%)",
+              theme === "dark"
+                ? "linear-gradient(100deg, rgba(26,17,9,0.94) 0%, rgba(26,17,9,0.82) 28%, rgba(26,17,9,0.45) 52%, rgba(26,17,9,0) 78%)"
+                : "linear-gradient(100deg, rgba(255,248,224,0.92) 0%, rgba(255,248,224,0.78) 28%, rgba(255,248,224,0.42) 52%, rgba(255,248,224,0) 78%)",
           }}
         />
 
@@ -920,7 +930,7 @@ function Hero() {
             without it, flex children refuse to shrink and the headline
             spills past the rounded edge. */}
         <div
-          className="relative z-10 px-4 sm:px-7 lg:px-8 py-4 sm:py-6 flex items-start"
+          className="bhalyam-hero-copy relative z-10 px-4 sm:px-7 lg:px-8 py-4 sm:py-6 flex items-start"
           style={{ minHeight: "clamp(280px, 56vw, 470px)" }}
         >
           <div className="min-w-0 w-full sm:max-w-[390px] md:max-w-[420px]">
@@ -1782,7 +1792,12 @@ function Footer() {
     <footer className="mt-6 pb-10 pt-6">
       <RevealOnScroll
         as="div"
-        className="relative rounded-[32px] border border-[#E8D8BE]
+        /* `bhalyam-footer-card` exists so the dark theme has something to aim
+           at. The cream wash below is an inline gradient, and every previous
+           class-based dark override sailed past it — a stylesheet can only
+           outrank an inline style with `!important`, and it needs a selector
+           to carry it. Hence a named hook rather than one more hex guess. */
+        className="bhalyam-footer-card relative rounded-[32px] border border-[#E8D8BE]
                    overflow-hidden px-5 sm:px-10 py-10 sm:py-14"
         style={{
           background:
@@ -1888,8 +1903,57 @@ function Footer() {
             />
           </div>
 
+          {/*
+            Privacy row — DPDP Sections 11, 12 and 13.
+
+            A footer is where people look for this, and it is the one place on
+            the site every page can reach. It lived inside the profile modal
+            before, which made a sheet about who you are also a sheet about
+            data rights: two jobs, neither done cleanly.
+
+            The controls themselves stay on /profile. This row is the notice
+            and the way in, not a second copy of the buttons.
+          */}
+          <div className="mt-9 pt-6 border-t border-[#E0CFA8]/70">
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12.5px] font-semibold">
+              <Link
+                to="/privacy"
+                className="inline-flex items-center min-h-[44px] text-[#7B5024] underline
+                           decoration-[#D9BE7A] underline-offset-4 rounded-sm
+                           hover:text-[#4A2C16]
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
+              >
+                Privacy notice
+              </Link>
+              <Link
+                to="/profile"
+                className="inline-flex items-center min-h-[44px] text-[#7B5024] underline
+                           decoration-[#D9BE7A] underline-offset-4 rounded-sm
+                           hover:text-[#4A2C16]
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
+              >
+                Your data &amp; choices
+              </Link>
+              {PRIVACY_CONTACT_EMAIL ? (
+                <a
+                  href={`mailto:${PRIVACY_CONTACT_EMAIL}?subject=BHALYAM%20privacy%20request`}
+                  className="inline-flex items-center min-h-[44px] text-[#7B5024] underline
+                             decoration-[#D9BE7A] underline-offset-4 rounded-sm
+                             hover:text-[#4A2C16]
+                             focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
+                >
+                  Privacy grievances
+                </a>
+              ) : null}
+            </div>
+            <p className="mt-1 text-center text-[11.5px] leading-relaxed text-[#8A6D4B] max-w-[62ch] mx-auto">
+              No accounts, no tracking, no ads. Everything BHALYAM remembers about you stays on
+              this device, and you can see or erase all of it at any time.
+            </p>
+          </div>
+
           {/* Fine print */}
-          <div className="mt-9 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] sm:text-[13px] text-[#7B5024]">
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] sm:text-[13px] text-[#7B5024]">
             <div className="font-semibold">
               © {new Date().getFullYear()} BHALYAM · A Kethan Kumar Gontla project
             </div>

@@ -26,7 +26,17 @@ import {
  * Everything here operates on this device. Account data is a later phase —
  * the panel says so rather than implying a completeness it does not have.
  */
-export default function YourDataPanel() {
+export default function YourDataPanel({
+  /**
+   * The panel is a top-level section on /profile and a sub-block inside the
+   * profile sheet, so the heading level is the caller's to state. Hard-coding
+   * h3 made it read as a child of Preferences on a page where it is a sibling.
+   */
+  headingLevel = "h3",
+}: {
+  headingLevel?: "h2" | "h3";
+} = {}) {
+  const Heading = headingLevel;
   const [confirming, setConfirming] = useState(false);
   const [erased, setErased] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -59,10 +69,10 @@ export default function YourDataPanel() {
   return (
     <div className="space-y-3">
       <header>
-        <h3 className="text-sm uppercase tracking-wider text-[#7A6652] dark:text-slate-400 font-bold">
+        <Heading className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
           Your data
-        </h3>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-[#6D5540] dark:text-slate-300">
+        </Heading>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--room-ink-soft)]">
           {/* "can keep", not "keeps": this is the notice, describing what the
               app is capable of storing. What is actually on the device right
               now is what the export below returns, and the two are different
@@ -86,30 +96,30 @@ export default function YourDataPanel() {
       </button>
 
       {expanded ? (
-        <div className="space-y-3 rounded-lg border border-[#E6D4B7] dark:border-slate-700 p-3">
+        <div className="space-y-3 rounded-lg border border-[var(--room-panel-edge)] p-3">
           <ul className="space-y-2">
             {DATA_INVENTORY.map((e) => (
               <li key={e.key} className="text-[12px] leading-relaxed">
-                <span className="font-bold text-[#3F2A1D] dark:text-slate-100">{e.label}</span>
+                <span className="font-bold text-[var(--room-ink)]">{e.label}</span>
                 {e.holdsOthersData ? (
                   <span className="ml-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#FBE9E6] text-[#8E2B22] dark:bg-[#3A1D18] dark:text-[#F0B4AA]">
                     includes others&apos; names
                   </span>
                 ) : null}
-                <span className="block text-[#6D5540] dark:text-slate-400">{e.description}</span>
+                <span className="block text-[var(--room-ink-soft)]">{e.description}</span>
               </li>
             ))}
           </ul>
 
-          <div className="pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
-            <p className="text-[11px] uppercase tracking-widest font-bold text-[#7A6652] dark:text-slate-400">
+          <div className="pt-2 border-t border-[var(--room-panel-edge)]">
+            <p className="text-[11px] uppercase tracking-widest font-bold text-[var(--room-ink-soft)]">
               Who else receives it
             </p>
             <ul className="mt-1.5 space-y-1.5">
               {THIRD_PARTIES.map((p) => (
                 <li key={p.name} className="text-[12px] leading-relaxed">
-                  <span className="font-bold text-[#3F2A1D] dark:text-slate-100">{p.name}</span>
-                  <span className="block text-[#6D5540] dark:text-slate-400">
+                  <span className="font-bold text-[var(--room-ink)]">{p.name}</span>
+                  <span className="block text-[var(--room-ink-soft)]">
                     {p.receives} {p.when}
                   </span>
                 </li>
@@ -124,8 +134,8 @@ export default function YourDataPanel() {
           type="button"
           onClick={handleExport}
           className="min-h-[44px] px-4 rounded-lg text-[13px] font-bold cursor-pointer
-                     bg-[#FCF8EF] dark:bg-slate-800 border border-[#E6D4B7] dark:border-slate-600
-                     text-[#3F2A1D] dark:text-slate-100 hover:bg-[#F6E9CE] dark:hover:bg-slate-700
+                     bg-[var(--room-btn)] border border-[var(--room-panel-edge)]
+                     text-[var(--room-ink)] hover:bg-[var(--room-btn-hover)]
                      focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
                      transition-colors duration-200"
         >
@@ -148,7 +158,7 @@ export default function YourDataPanel() {
               type="button"
               onClick={() => setConfirming(false)}
               className="min-h-[44px] px-4 rounded-lg text-[13px] font-bold cursor-pointer
-                         text-[#6D5540] dark:text-slate-300 hover:underline
+                         text-[var(--room-ink-soft)] hover:underline
                          focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
             >
               Cancel
@@ -190,16 +200,16 @@ export default function YourDataPanel() {
       {/* Withdrawal, sitting with the other rights. Section 6(4): taking it
           back must cost no more than giving it did. */}
       {consent?.choice === "granted" ? (
-        <div className="pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
-          <p className="text-[12px] leading-relaxed text-[#6D5540] dark:text-slate-300">
+        <div className="pt-2 border-t border-[var(--room-panel-edge)]">
+          <p className="text-[12px] leading-relaxed text-[var(--room-ink-soft)]">
             You allowed BHALYAM to remember settings and scores on this device.
           </p>
           <button
             type="button"
             onClick={() => setConsent(withdrawConsent())}
             className="mt-2 min-h-[44px] px-4 rounded-lg text-[13px] font-bold cursor-pointer
-                       bg-[#FCF8EF] dark:bg-slate-800 border border-[#E6D4B7] dark:border-slate-600
-                       text-[#3F2A1D] dark:text-slate-100 hover:bg-[#F6E9CE] dark:hover:bg-slate-700
+                       bg-[var(--room-btn)] border border-[var(--room-panel-edge)]
+                       text-[var(--room-ink)] hover:bg-[var(--room-btn-hover)]
                        focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
                        transition-colors duration-200"
           >
@@ -207,13 +217,13 @@ export default function YourDataPanel() {
           </button>
         </div>
       ) : consent ? (
-        <p className="pt-2 border-t border-[#E6D4B7] dark:border-slate-700 text-[12px] leading-relaxed text-[#6D5540] dark:text-slate-300">
+        <p className="pt-2 border-t border-[var(--room-panel-edge)] text-[12px] leading-relaxed text-[var(--room-ink-soft)]">
           You chose essential-only, so settings and scores are not kept between visits.
         </p>
       ) : null}
 
-      <div className="pt-2 border-t border-[#E6D4B7] dark:border-slate-700">
-        <p className="text-[12px] leading-relaxed text-[#6D5540] dark:text-slate-300">
+      <div className="pt-2 border-t border-[var(--room-panel-edge)]">
+        <p className="text-[12px] leading-relaxed text-[var(--room-ink-soft)]">
           <Link
             to="/privacy"
             className="inline-flex items-center min-h-[44px] font-bold
@@ -224,7 +234,7 @@ export default function YourDataPanel() {
             Read the full privacy notice
           </Link>
         </p>
-        <p className="mt-2 text-[12px] leading-relaxed text-[#6D5540] dark:text-slate-300">
+        <p className="mt-2 text-[12px] leading-relaxed text-[var(--room-ink-soft)]">
           {PRIVACY_CONTACT_EMAIL ? (
             <>
               Questions or a complaint about your data?{" "}

@@ -4,7 +4,8 @@ import { useRoomStore } from "../store/roomStore";
 import { validateName, type FieldError } from "../lib/authValidation";
 import { GlobalSettings } from "../components/GlobalSettings";
 import AvatarPicker from "../components/profile/AvatarPicker";
-import { ArrowLeftIcon, LockIcon, MailIcon, UserIcon } from "../components/auth/authIcons";
+import YourDataPanel from "../components/privacy/YourDataPanel";
+import { ArrowLeftIcon, LockIcon, MailIcon, SlidersIcon, UserIcon } from "../components/auth/authIcons";
 
 /**
  * Edit profile.
@@ -201,15 +202,27 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          {/* ── Preferences + your data, from the one panel that owns them ── */}
-          <section className="space-y-2">
-            <h2 className="bhalyam-display text-[var(--auth-ink)] text-[20px] leading-tight px-1">
-              Preferences
-            </h2>
-            {/* Embedded rather than reimplemented: sound, vibration, audio
-                theme, language and the DPDP data controls already live here,
-                and a second copy would be a second thing to keep in step. */}
-            <GlobalSettings />
+          {/* ── Preferences ──
+              Embedded rather than reimplemented, but `bare`: the panel used to
+              bring its own slate-themed card, which nested a second card inside
+              this page's and made the page read as two designs stapled
+              together. */}
+          <section className="rounded-[20px] border border-[var(--auth-card-edge)] bg-[var(--auth-card)] p-5 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <SlidersIcon className="w-5 h-5 text-[var(--auth-accent)]" />
+              <h2 className="bhalyam-display text-[var(--auth-ink)] text-[20px] leading-tight">
+                Preferences
+              </h2>
+            </div>
+            <GlobalSettings bare />
+          </section>
+
+          {/* ── Your data ──
+              A sibling of the sections above, not a child of Preferences. The
+              right to see and erase what is held is not a setting, and burying
+              it under sound options is exactly the friction the DPDP is about. */}
+          <section className="rounded-[20px] border border-[var(--auth-card-edge)] bg-[var(--auth-card)] p-5">
+            <YourDataPanel headingLevel="h2" />
           </section>
         </div>
       </main>

@@ -8,10 +8,10 @@ import { useRoomStore } from "../../store/roomStore";
  * hard-code a silhouette now asks this instead, which means adding a second
  * avatar source later (an account photo, say) is one edit rather than a hunt.
  *
- * Scope is deliberately "you". Opponent seats are drawn from server state,
- * and the server carries no avatar field yet — rendering your photo beside
- * their initials would read as everyone else's avatar having failed to load.
- * Those stay initials until the room broadcast learns to send one.
+ * Scope is "you", on surfaces that show your identity rather than a seat:
+ * the header button, the profile sheet, the profile page. Seats at a table
+ * are drawn by `SeatAvatar`, which takes the avatar off server state so it
+ * can render everyone. Use that one anywhere the subject is a `Player`.
  */
 export interface SelfAvatarProps {
   /** Rendered when no avatar is chosen — usually the surface's own icon. */

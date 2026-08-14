@@ -68,7 +68,8 @@ export function registerSocketHandlers(
         payload.carromOptions,
         payload.chessOptions,
         payload.blockBlastOptions,
-        payload.spaceWarOptions
+        payload.spaceWarOptions,
+        payload.avatar
       );
       // `seatToken` goes to this socket's ack only — never into a broadcast.
       ack({ ok: true, code, playerId, seatToken });
@@ -85,7 +86,8 @@ export function registerSocketHandlers(
         payload.name,
         payload.code,
         payload.playerId,
-        payload.seatToken
+        payload.seatToken,
+        payload.avatar
       );
       if (!result.ok) {
         ack({ ok: false, error: result.error });

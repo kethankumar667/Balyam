@@ -33,7 +33,8 @@ export interface JoinRoomModalProps {
 
 export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
   const navigate = useNavigate();
-  const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor } = useRoomStore();
+  const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor, avatarId } =
+    useRoomStore();
 
   const [name, setName] = useState(playerName);
   const [code, setCode] = useState("");
@@ -125,7 +126,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
     const socket = getSocket();
     socket.emit(
       "room:join",
-      { name: n, code: c, ...(seatFor(c) ?? {}) },
+      { name: n, code: c, avatar: avatarId ?? undefined, ...(seatFor(c) ?? {}) },
       (res) => {
         setBusy(false);
         if (!res.ok) {
@@ -351,7 +352,12 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               const socket = getSocket();
               socket.emit(
                 "room:join",
-                { name: n, code: scannedCode, ...(seatFor(scannedCode) ?? {}) },
+                {
+                  name: n,
+                  code: scannedCode,
+                  avatar: avatarId ?? undefined,
+                  ...(seatFor(scannedCode) ?? {}),
+                },
                 (res) => {
                   setBusy(false);
                   if (!res.ok) {

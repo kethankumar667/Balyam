@@ -1,4 +1,5 @@
 import type { Player } from "@shared/types";
+import SeatAvatar from "./profile/SeatAvatar";
 
 export default function PlayerList({
   players,
@@ -10,8 +11,8 @@ export default function PlayerList({
   onTapPlayer?: (id: string) => void;
 }) {
   return (
-    <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4 dark:bg-slate-900 dark:border-slate-700">
-      <h3 className="text-sm uppercase text-[#796651] mb-3 dark:text-slate-400">Players ({players.length})</h3>
+    <div className="bg-[var(--room-panel)] border border-[var(--room-panel-edge)] rounded-xl p-4">
+      <h3 className="text-sm uppercase text-[var(--room-ink-soft)] mb-3">Players ({players.length})</h3>
       {/* Cap the visible list to ~3 rows; the rest scroll. Keeps the lobby
           card compact instead of growing tall with a 6-player table. */}
       <ul
@@ -24,19 +25,27 @@ export default function PlayerList({
             onClick={p.id !== selfId && onTapPlayer ? () => onTapPlayer(p.id) : undefined}
             role={p.id !== selfId && onTapPlayer ? "button" : undefined}
             tabIndex={p.id !== selfId && onTapPlayer ? 0 : undefined}
-            className={`flex items-center gap-2 bg-[#F1E6D3] border border-[#E1CFB1] rounded-lg px-3 py-2 dark:bg-slate-800 dark:border-slate-700 ${
+            className={`flex items-center gap-2 bg-[var(--room-inset)] border border-[var(--room-inset-edge)] rounded-lg px-3 py-2 ${
               p.id !== selfId && onTapPlayer ? "cursor-pointer hover:bg-[#EAD9BC] active:scale-[0.99] transition" : ""
             }`}
           >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                p.isConnected ? "bg-emerald-400" : "bg-amber-400"
-              }`}
-              title={p.isConnected ? "Online" : "Reconnecting..."}
-            />
-            <span className="flex-1 truncate text-[#332A22] dark:text-slate-100">
+            {/* Face, then presence dot, then name. The dot moves onto the
+                avatar's corner so the row gains a portrait without gaining a
+                column — these rows are capped at ~3 visible and every pixel of
+                width is already spoken for. */}
+            <span className="relative flex-shrink-0">
+              <SeatAvatar avatar={p.avatar} name={p.name} className="w-8 h-8" />
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full
+                            ring-2 ring-[var(--room-inset)] ${
+                              p.isConnected ? "bg-emerald-400" : "bg-amber-400"
+                            }`}
+                title={p.isConnected ? "Online" : "Reconnecting..."}
+              />
+            </span>
+            <span className="flex-1 truncate text-[var(--room-ink)]">
               {p.name}
-              {p.id === selfId && <span className="text-[#8C7A67] text-xs ml-1 dark:text-slate-500">(you)</span>}
+              {p.id === selfId && <span className="text-[var(--room-ink-mute)] text-xs ml-1">(you)</span>}
             </span>
             {/* The server is holding this seat. Said explicitly because the
                 amber dot alone reads as "flaky", not as "their turns are
@@ -61,7 +70,7 @@ export default function PlayerList({
             {p.isReady ? (
               <span className="text-xs text-emerald-400">READY</span>
             ) : (
-              <span className="text-xs text-[#8C7A67] dark:text-slate-500">…</span>
+              <span className="text-xs text-[var(--room-ink-mute)]">…</span>
             )}
             {p.id !== selfId && onTapPlayer && (
               <span className="text-sm" title={`React at ${p.name}`}>🎯</span>

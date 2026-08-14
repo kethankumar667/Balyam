@@ -255,14 +255,20 @@ body, #root, .bhalyam-paper {
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#FAF2E6\],
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#F7EFE0\],
 :root[data-theme="dark"] .bhalyam-home .bg-\[\#EFE2CF\] {
-  background-color: #f7efdf !important;
+  /* Was `#f7efdf` — a light cream panel deliberately kept light in dark mode,
+     with its ink darkened to suit. That is why the feature strip and the whole
+     footer card still glowed white on a dark page, and why every surface built
+     on tokens had to fight it. Panels now go dark and the ink below goes
+     light, which is what "dark mode" means. */
+  background-color: #2A1D11 !important;
+  border-color: #4B361F !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .border-\[\#E8D9C1\],
 :root[data-theme="dark"] .bhalyam-home .border-\[\#E8D8BE\],
 :root[data-theme="dark"] .bhalyam-home .border-\[\#E6D4B8\],
 :root[data-theme="dark"] .bhalyam-home .border-\[\#E6D4B7\] {
-  border-color: #caa777 !important;
+  border-color: #4B361F !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home h2,
@@ -273,7 +279,7 @@ body, #root, .bhalyam-paper {
 :root[data-theme="dark"] .bhalyam-home .text-\[\#3F2F24\],
 :root[data-theme="dark"] .bhalyam-home .text-\[\#3C2A1E\],
 :root[data-theme="dark"] .bhalyam-home .text-bhalyam-wood-dark {
-  color: #1f1b16 !important;
+  color: #F6EDDC !important;
 }
 
 :root[data-theme="dark"] .bhalyam-home .text-\[\#5B534A\],
@@ -282,7 +288,7 @@ body, #root, .bhalyam-paper {
 :root[data-theme="dark"] .bhalyam-home .text-\[\#6E7482\],
 :root[data-theme="dark"] .bhalyam-home .text-\[\#5D4B3F\],
 :root[data-theme="dark"] .bhalyam-home .text-\[\#677080\] {
-  color: #534131 !important;
+  color: #D3BF9F !important;
 }
 
 /* Keep section title visible on dark parchment (e.g. "Pick a game"). */
@@ -2150,4 +2156,292 @@ body, #root, .bhalyam-paper {
 }
 :root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf .bg-\[\#FFF6DC\] {
   background-color: #FFF6DC !important;
+}
+
+/* Hero copy over the dark hero art. The headline's coloured words keep their
+   own hues (they are the brand moment); the neutral lines and the supporting
+   paragraph flip to light so they read against the dark wash. */
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy,
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .text-\[\#1B2A4A\],
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .text-\[\#1D2C4A\] {
+  color: #F6EDDC !important;
+}
+
+/* The hero copy uses several dark inks that the tuning above does not know
+   about; over the dark wash they all need to be light. Scoped to the hero so
+   nothing else inherits it. */
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy * {
+  color: #F6EDDC;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bhalyam-gradient-text,
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bhalyam-script {
+  color: revert-layer;
+}
+
+/* The WhatsApp pill inside the hero keeps its cream fill in both themes — it
+   is a button, not a text block — so the light-ink rule above must not reach
+   inside it. Without this exclusion the label went cream-on-cream: the same
+   mistake as the sheet, made by a `*` selector cast too wide. */
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bg-\[\#FFF8EE\],
+:root[data-theme="dark"] .bhalyam-home .bhalyam-hero-copy .bg-\[\#FFF8EE\] * {
+  color: #2A221B;
+}
+
+/* Config modals and the room lobby, which never had a dark variant at all.
+   They opt in with `auth-shell`; these are the cream fills and dark inks those
+   two surfaces use that the list above did not already cover. */
+:root[data-theme="dark"] .auth-shell .bg-\[\#F1E5D1\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#F6ECDA\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#F6EDDB\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#FFF3E3\],
+:root[data-theme="dark"] .auth-shell .bg-\[\#D9CDB8\] {
+  background-color: var(--auth-field) !important;
+}
+:root[data-theme="dark"] .auth-shell .text-\[\#2B2118\],
+:root[data-theme="dark"] .auth-shell .text-\[\#2B3550\],
+:root[data-theme="dark"] .auth-shell .text-\[\#2F3A54\],
+:root[data-theme="dark"] .auth-shell .text-\[\#3B2F26\],
+:root[data-theme="dark"] .auth-shell .text-\[\#3F2412\] {
+  color: var(--auth-ink) !important;
+}
+:root[data-theme="dark"] .auth-shell .text-\[\#6C5A48\],
+:root[data-theme="dark"] .auth-shell .text-\[\#6E5E4D\],
+:root[data-theme="dark"] .auth-shell .text-\[\#786350\],
+:root[data-theme="dark"] .auth-shell .text-\[\#796651\],
+:root[data-theme="dark"] .auth-shell .text-\[\#8D7B66\],
+:root[data-theme="dark"] .auth-shell .text-\[\#A3886E\],
+:root[data-theme="dark"] .auth-shell .text-\[\#8A5A2B\] {
+  color: var(--auth-ink-soft) !important;
+}
+
+/* The named palette. GameRoomSheet and the lobby use `bhalyam-cream-*` /
+   `bhalyam-wood-*` utilities rather than raw hexes, so the hex selectors above
+   never reached the inputs or the option cards — the fields stayed cream with
+   cream text in them. */
+:root[data-theme="dark"] .auth-shell .bg-bhalyam-cream,
+:root[data-theme="dark"] .auth-shell .bg-bhalyam-cream-soft,
+:root[data-theme="dark"] .auth-shell .bg-bhalyam-cream-warm,
+:root[data-theme="dark"] .auth-shell .bg-bhalyam-cream-edge {
+  background-color: var(--auth-field) !important;
+}
+:root[data-theme="dark"] .auth-shell .border-bhalyam-cream-edge,
+:root[data-theme="dark"] .auth-shell [class*="border-bhalyam-cream"] {
+  border-color: var(--auth-field-edge) !important;
+}
+:root[data-theme="dark"] .auth-shell .text-bhalyam-wood-dark {
+  color: var(--auth-ink) !important;
+}
+:root[data-theme="dark"] .auth-shell .text-bhalyam-wood {
+  color: var(--auth-ink-soft) !important;
+}
+:root[data-theme="dark"] .auth-shell input::placeholder {
+  color: var(--auth-ink-mute) !important;
+}
+/* Opacity variants. The option cards label themselves with
+   `text-bhalyam-wood-dark` and then set their second line to
+   `text-bhalyam-wood-dark/70`, which Tailwind emits as a *separate* class —
+   `.text-bhalyam-wood-dark` never matched it, so every sub-description stayed
+   near-black on a dark card while the title above it read fine. Substring
+   matching on the attribute catches the whole family; the `/` rule keeps the
+   sub-line one step quieter than its title instead of flattening the two. */
+:root[data-theme="dark"] .auth-shell [class*="text-bhalyam-wood"] {
+  color: var(--auth-ink-soft) !important;
+}
+:root[data-theme="dark"] .auth-shell [class*="text-bhalyam-wood-dark"] {
+  color: var(--auth-ink) !important;
+}
+:root[data-theme="dark"] .auth-shell [class*="text-bhalyam-wood-dark/"] {
+  color: var(--auth-ink-soft) !important;
+}
+
+/* Two more inks tuned for cream that land on a dark card here: the gold-on-
+   cream token (#7A5C0E, ~2.1:1 on #2A1D11) and the error red. */
+:root[data-theme="dark"] .auth-shell .text-bhalyam-gold-ink {
+  color: var(--auth-accent) !important;
+}
+:root[data-theme="dark"] .auth-shell .text-bhalyam-ludo-red {
+  color: var(--auth-field-error) !important;
+}
+
+/* Gold-selected option cards keep dark ink — gold is light in both themes. */
+:root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf,
+:root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf * {
+  color: #2A221B !important;
+}
+/* …including their sub-lines, which the opacity rule above would otherwise
+   have pulled to a light ink on light gold. */
+:root[data-theme="dark"] .auth-shell .bhalyam-gold-leaf [class*="text-bhalyam-wood-dark/"] {
+  color: rgba(42, 34, 27, 0.76) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Dark mode, second pass: the half-caught surfaces on the home page.
+
+   The `.bhalyam-home` block near the top of this file runs a two-part
+   strategy — cream PANELS go dark, dark INK goes light. It only works when
+   both halves land on the same element. Every remaining dark-mode bug on
+   this page is one half firing without the other, in one of three shapes:
+
+     (a) the panel flipped, the ink on it did not  → dark on dark
+     (b) the ink flipped, the panel under it did not → light on light
+     (c) neither should have flipped, but one did
+
+   Enumerating hexes is what kept missing these, so each rule below states
+   which shape it is fixing rather than just listing another colour.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* (a) Header icon circles and the "View all games" pill are `bg-[#FCF8EF]`,
+       which the panel list flips, carrying `text-[#2A221B]`, which the ink
+       list does not — near-black glyphs on a near-black disc. This is the
+       "icons are not visible" report. Matching on the compound selector
+       flips the ink ONLY where the background under it actually moved, so
+       the same hex stays near-black on the menu's genuinely light rows. */
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#FCF8EF\].text-\[\#2A221B\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#FBF2E3\].text-\[\#2A221B\],
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#F8EEDB\].text-\[\#2A221B\] {
+  color: #F6EDDC !important;
+}
+
+/* (b) The stats strip. `bg-[#F8EEDB]` was missing from the panel list, so it
+       stayed cream — while `text-[#677080]` on it was flipped light by the
+       ink list. Light grey on cream. */
+:root[data-theme="dark"] .bhalyam-home .bg-\[\#F8EEDB\] {
+  background-color: #2A1D11 !important;
+  border-color: #4B361F !important;
+}
+:root[data-theme="dark"] .bhalyam-home .border-\[\#EBDDC7\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#E0CFA8\],
+:root[data-theme="dark"] .bhalyam-home .border-\[\#EEDCC2\] {
+  border-color: #4B361F !important;
+}
+/* The stat numbers are a mid green picked against cream; on #2A1D11 it lands
+   near 4:1, which is under the bar for something this size and this loud. */
+:root[data-theme="dark"] .bhalyam-home .text-\[\#2FA25A\] {
+  color: #6FDC97 !important;
+}
+
+/* (c) The game-tile "Quick Play" pill was already correct and got broken.
+       It sits on a saturated tile gradient that is identical in both themes,
+       so a cream chip with dark-brown ink is right in both. It only failed
+       because the blanket `.text-bhalyam-wood-dark` flip cannot tell that
+       this particular label is not on parchment. Pin it back. */
+:root[data-theme="dark"] .bhalyam-home .bg-bhalyam-cream-soft.text-bhalyam-wood-dark {
+  color: #4A2C16 !important;
+}
+
+/* The footer card. Its cream wash is an inline `style` gradient, which is
+   why it survived every class-based override so far — see the note on
+   `bhalyam-footer-card` in BhalyamHome.tsx. Same three stops, rotated into
+   the dark palette, so the radial shape of the original survives. */
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card {
+  background:
+    radial-gradient(ellipse at 50% 0%, #3A2913 0%, #2A1D11 55%, #1E1409 100%) !important;
+  border-color: #4B361F !important;
+}
+/* Footer ink, all of it tuned against cream: the link/accent brown, the
+   muted note grey-brown, and the two heading browns. */
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#7B5024\],
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#7B2F0E\] {
+  color: #E7BE73 !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#8A6D4B\],
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#5D3819\] {
+  color: #CDB794 !important;
+}
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card a:hover {
+  color: #F6EDDC !important;
+}
+/* The "made with love" heart — crimson on cream, ~2.9:1 on the dark card. */
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .text-\[\#E11D48\] {
+  color: #FF7A94 !important;
+}
+
+/* The WhatsApp / Instagram / Email chips, shape (b) again and the worst of
+   them: `text-[#3C2A1E]` is on the ink list so their labels went cream, while
+   `bg-white` is on no list at all, so the chips stayed white. Cream on white,
+   measured at 1.16:1 — the labels were simply gone.
+ *
+ * Keyed on the pairing rather than on `bg-white` alone, because the menu
+ * sheet also uses `bg-white` and its rows carry `text-[#2A221B]`, which does
+ * NOT flip — those are correct as they are, and a blanket rule would invert
+ * them into the same failure this one is fixing. The chip surface is a step
+ * lighter than the card gradient behind it so it still reads as a raised
+ * chip; the brand-coloured icon discs are untouched. */
+:root[data-theme="dark"] .bhalyam-home .bhalyam-footer-card .bg-white.text-\[\#3C2A1E\] {
+  background-color: #3D2C16 !important;
+  border-color: #5E4726 !important;
+}
+
+/* Category-strip scroll arrows. The wash must land on the page colour behind
+   the strip, which is #F7E8C4-ish parchment in light and #23180F in dark, so
+   it cannot be an inline gradient — see the note in CategoryFilter.tsx. The
+   light stop keeps its original value; only the dark half is new. */
+.bhalyam-strip-fade {
+  --strip-fade: #FCF8EF;
+  --strip-fade-0: rgba(252, 248, 239, 0);
+  color: #7A5C3A;
+}
+:root[data-theme="dark"] .bhalyam-strip-fade {
+  --strip-fade: #23180F;
+  --strip-fade-0: rgba(35, 24, 15, 0);
+  color: #D8C29B;
+}
+/* Two stops rather than `transparent`, which resolves to transparent BLACK
+   and greys the middle of the ramp on the light theme. */
+.bhalyam-strip-fade[data-side="right"] {
+  background: linear-gradient(to right, var(--strip-fade-0) 0%, var(--strip-fade) 62%);
+}
+.bhalyam-strip-fade[data-side="left"] {
+  background: linear-gradient(to left, var(--strip-fade-0) 0%, var(--strip-fade) 62%);
+}
+
+/* ── Room side-panel surfaces (players / voice / chat / room code) ───────
+   These shipped as a BHALYAM cream panel in light and a cold Tailwind
+   `slate` panel in dark, so the waiting screen turned half warm-brown and
+   half navy the moment the theme flipped — the "discrepancies in dark mode"
+   on that screen.
+
+   Fixed with tokens rather than by swapping one hard-coded scale for
+   another, so the two themes are declared in one place instead of being
+   spread across `bg-[#F7EEDC] dark:bg-slate-900` pairs in four components.
+   Deliberately NOT done by redefining Tailwind's `slate`: 143 of the 252
+   slate references in this app are un-prefixed game-arena chrome that is
+   meant to stay cold and dark in BOTH themes, and remapping the palette
+   would have dragged all of it along. */
+:root {
+  --room-panel: #F7EEDC;
+  --room-panel-edge: #E6D4B7;
+  --room-inset: #F1E6D3;
+  --room-inset-edge: #E1CFB1;
+  --room-field: #FFF9EE;
+  --room-field-edge: #DCC8A6;
+  --room-ink: #352C24;
+  --room-ink-soft: #5C4A38;
+  /* The three mutes this replaces (#8C7A67, #8A7865, #8A7660) all measured
+     3.5–3.8:1 on their panels — "(you)", the overflow ellipsis and the empty
+     chat line were under AA in LIGHT mode, before any of the dark work. One
+     token, darkened to clear 4.5:1 on both the panel and the inset. */
+  --room-ink-mute: #6F5C46;
+  --room-chip: #EFE2C7;
+  --room-chip-hover: #E5D4B2;
+  /* Raised button on a panel — lighter than the panel in light mode, so it
+     needs its own pair rather than reusing the chip. Light values are the
+     originals, unchanged, so the light theme is untouched by this. */
+  --room-btn: #FCF8EF;
+  --room-btn-hover: #F6E9CE;
+}
+:root[data-theme="dark"] {
+  --room-panel: #2A1D11;
+  --room-panel-edge: #4B361F;
+  --room-inset: #34240F;
+  --room-inset-edge: #58411F;
+  --room-field: #201509;
+  --room-field-edge: #58411F;
+  --room-ink: #F6EDDC;
+  --room-ink-soft: #D3BF9F;
+  --room-ink-mute: #B49B75;
+  --room-chip: #3D2C16;
+  --room-chip-hover: #4B361F;
+  --room-btn: #3D2C16;
+  --room-btn-hover: #4B361F;
 }

@@ -334,20 +334,25 @@ function EdgeCue({
       tabIndex={-1}
       disabled={!show}
       onClick={() => onNudge(side)}
-      className={`absolute inset-y-1 z-10 flex w-12 items-center
+      /* The fade has to end in whatever colour the page actually is, so it
+         reads as the strip running out rather than as a bar sitting on top of
+         it. That colour differs by theme, which an inline gradient cannot
+         express — it shipped as a cream smear across the dark page. Both the
+         wash and the chevron now come from `bhalyam-strip-fade` in index.css,
+         and `data-side` picks the direction. */
+      data-side={side}
+      className={`bhalyam-strip-fade absolute inset-y-1 z-10 flex w-12 items-center
                   transition-opacity duration-200 sm:hidden
                   ${isRight ? "right-1 justify-end rounded-r-full" : "left-1 justify-start rounded-l-full"}
                   ${show ? "opacity-100" : "pointer-events-none opacity-0"}`}
-      style={{
-        background: `linear-gradient(to ${isRight ? "right" : "left"}, rgba(252,248,239,0) 0%, #FCF8EF 62%)`,
-      }}
     >
       <svg
         viewBox="0 0 24 24"
         width={16}
         height={16}
         fill="none"
-        stroke="#7A5C3A"
+        /* Inherits from the button so one token drives both themes. */
+        stroke="currentColor"
         strokeWidth={3}
         strokeLinecap="round"
         strokeLinejoin="round"

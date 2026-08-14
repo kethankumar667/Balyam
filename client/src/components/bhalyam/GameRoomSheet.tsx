@@ -287,7 +287,8 @@ const HC_CATEGORIES: { id: HcCategory; label: string; blurb: string }[] = [
 
 export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const navigate = useNavigate();
-  const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor } = useRoomStore();
+  const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor, avatarId } =
+    useRoomStore();
 
   const [name, setName] = useState(playerName);
   const [difficulty, setDifficulty] = useState<SnlDifficulty>("medium");
@@ -408,6 +409,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         {
           name: n,
           game: asGameKind(game),
+          avatar: avatarId ?? undefined,
           snlOptions: game === "snl" ? { difficulty } : undefined,
           rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
           hcOptions:
@@ -520,6 +522,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       {
         name: n,
         game: asGameKind(game),
+        avatar: avatarId ?? undefined,
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
           game === "wordbuilding"
@@ -599,7 +602,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     const socket = getSocket();
     socket.emit(
       "room:join",
-      { name: n, code, ...(seatFor(code) ?? {}) },
+      { name: n, code, avatar: avatarId ?? undefined, ...(seatFor(code) ?? {}) },
       (res) => {
         setBusy(false);
         if (!res.ok) {
@@ -631,7 +634,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         aria-modal="true"
         aria-labelledby="game-room-sheet-title"
         onClick={(e) => e.stopPropagation()}
-        className="bhalyam-font relative w-full md:max-w-md
+        className="auth-shell bhalyam-font relative w-full md:max-w-md
                    max-h-[92dvh] overflow-y-auto
                    bg-bhalyam-cream-soft text-bhalyam-wood-dark
                    border-2 border-bhalyam-cream-edge/70

@@ -348,7 +348,15 @@ export default function Room() {
       logConn("rejoin_send", `${reason} code=${joinCode} hadSeat=${!!seat}`);
       socket.emit(
         "room:join",
-        { name: joinName, code: joinCode, playerId: seat?.playerId, seatToken: seat?.seatToken },
+        {
+          name: joinName,
+          code: joinCode,
+          playerId: seat?.playerId,
+          seatToken: seat?.seatToken,
+          // Carried on the rejoin too: someone may have changed their avatar
+          // on another tab while this one was reconnecting.
+          avatar: useRoomStore.getState().avatarId ?? undefined,
+        },
         (res) => {
           joinInFlightRef.current = false;
           // The decisive line: did the socket come back but the ROOM was
@@ -823,9 +831,14 @@ export default function Room() {
                 />
               )}
             </div>
-            <div className="text-sm text-[#786350]">
-              Game: <span className="text-[#2F3A54] font-semibold">{roomState.game.toUpperCase()}</span> ·
-              Phase: <span className="text-[#2F3A54]">{roomState.phase}</span>
+            {/* This row sits on the page, not inside the lobby card, so the
+                card's `auth-shell` tokens never reached it — the navy values
+                measured 1.53:1 on dark parchment, i.e. invisible. Tailwind's
+                `dark:` variant is wired to [data-theme="dark"] in this project,
+                which is the cheapest correct fix: no override, no !important. */}
+            <div className="text-sm text-[#786350] dark:text-[#B49B75]">
+              Game: <span className="text-[#2F3A54] dark:text-[#F6EDDC] font-semibold">{roomState.game.toUpperCase()}</span> ·
+              Phase: <span className="text-[#2F3A54] dark:text-[#F6EDDC]">{roomState.phase}</span>
             </div>
             <button
               onClick={leaveRoom}
@@ -896,7 +909,7 @@ export default function Room() {
             })()}
           >
             {roomState.phase === "lobby" && (
-              <div className="bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-6 text-center space-y-4">
+              <div className="auth-shell bg-[#F6EDDB] border border-[#E8D8BE] rounded-xl p-6 text-center space-y-4">
                 <RoomCodeShare code={roomState.code} game={roomState.game} name={roomState.name} />
                 <div className="text-[#6E5E4D]">
                   Waiting for players to ready up.
@@ -1477,9 +1490,9 @@ function NameEntryForRoom({
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Your name"
           maxLength={20}
-          className="w-full rounded-xl border border-[#D5BFA1] dark:border-slate-600 bg-white dark:bg-slate-800 text-[#2A221B] dark:text-slate-100
+          className="w-full rounded-xl border border-[var(--room-field-edge)] bg-[var(--room-field)] text-[var(--room-ink)]
                      text-lg px-4 py-3 outline-none focus:border-[#EA5A1F]
-                     focus:ring-2 focus:ring-[#EA5A1F]/30 dark:placeholder:text-slate-500"
+                     focus:ring-2 focus:ring-[#EA5A1F]/30 placeholder:text-[var(--room-ink-mute)]"
         />
         <button
           type="submit"

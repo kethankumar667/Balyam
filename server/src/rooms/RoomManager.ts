@@ -61,6 +61,7 @@ import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
 import type { RematchState, CoachableEngine, CoachHintResponse } from "@shared/types.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
+import { sanitizeAvatar } from "@shared/avatars.js";
 import { ALLOWED_SOUND_CLIPS, SOUND_RATE_LIMIT } from "@shared/soundboard.js";
 import { logger } from "../lib/logger.js";
 import type { GameEngine, RealtimeEngine } from "../games/GameEngine.js";
@@ -381,7 +382,16 @@ export class RoomManager {
     carromOptions?: Partial<CarromOptions>,
     chessOptions?: Partial<ChessOptions>,
     blockBlastOptions?: Partial<BlockBlastOptions>,
-    spaceWarOptions?: Partial<SpaceWarOptions>
+    spaceWarOptions?: Partial<SpaceWarOptions>,
+    /**
+     * Appended here, rather than sitting next to `name` where it belongs,
+     * on purpose. Every option parameter above is a `Partial<…>`, and two
+     * all-optional types are mutually assignable — so inserting an argument
+     * in the middle would shift nineteen of them by one and still compile
+     * clean, silently handing each game the next game's options. Adding at
+     * the end shifts nothing.
+     */
+    avatar?: string
   ): { code: string; playerId: string; seatToken: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
@@ -393,6 +403,8 @@ export class RoomManager {
       isHost: true,
       isReady: false,
       isConnected: true,
+      // Dropped unless it names a file we actually ship — see shared/avatars.ts.
+      avatar: sanitizeAvatar(avatar),
     };
 
     const room: Room = {
@@ -466,7 +478,8 @@ export class RoomManager {
     name: string,
     code: string,
     existingPlayerId?: string,
-    seatToken?: string
+    seatToken?: string,
+    avatar?: string
   ): { ok: true; playerId: string; seatToken: string } | { ok: false; error: string } {
     const room = this.rooms.get(code.toUpperCase());
     if (!room) return { ok: false, error: "Room not found" };
@@ -487,6 +500,12 @@ export class RoomManager {
         });
       }
       player.isConnected = true;
+      // A reclaim can carry a new avatar — they may have changed it on the
+      // profile page between leaving and coming back. Only overwrite when the
+      // incoming value survives validation, so a client that simply omits the
+      // field does not blank the face the table has been looking at.
+      const reclaimedAvatar = sanitizeAvatar(avatar);
+      if (reclaimedAvatar) player.avatar = reclaimedAvatar;
       delete player.awayUntil;
       delete player.awaySince;
       const timer = room.cleanupTimers.get(existingPlayerId);
@@ -548,6 +567,8 @@ export class RoomManager {
       isHost: false,
       isReady: false,
       isConnected: true,
+      // Dropped unless it names a file we actually ship — see shared/avatars.ts.
+      avatar: sanitizeAvatar(avatar),
     };
     room.players.set(playerId, player);
     room.socketToPlayer.set(socketId, playerId);

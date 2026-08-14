@@ -1,4 +1,5 @@
 import type { Player } from "@shared/types";
+import SeatAvatar from "./profile/SeatAvatar";
 import { useVoiceSession } from "../lib/voice-session";
 import {
   enterFullscreen,
@@ -56,14 +57,18 @@ export default function VoicePanel({
     }
   }
 
+  function avatarOf(id: string): string | undefined {
+    return players.find((p) => p.id === id)?.avatar;
+  }
+
   function nameOf(id: string): string {
     return players.find((p) => p.id === id)?.name ?? "?";
   }
 
   return (
-    <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-4 dark:bg-slate-900 dark:border-slate-700">
+    <div className="bg-[var(--room-panel)] border border-[var(--room-panel-edge)] rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm uppercase text-[#7A6652] dark:text-slate-400">Voice</h3>
+        <h3 className="text-sm uppercase text-[var(--room-ink-soft)]">Voice</h3>
         {connected && <span className="text-xs text-emerald-400">● Live</span>}
       </div>
 
@@ -80,7 +85,7 @@ export default function VoicePanel({
           {/* The call keeps running when this panel closes, so say so once —
               players were re-clicking "Connect mic" because the old panel
               really did drop the call every time it was dismissed. */}
-          <p className="text-[11px] text-[#8A7865] dark:text-slate-500">
+          <p className="text-[11px] text-[var(--room-ink-mute)]">
             Voice stays on while you play. Use Leave to hang up.
           </p>
 
@@ -98,8 +103,8 @@ export default function VoicePanel({
               onClick={voice.toggleMute}
               className={`flex-1 rounded py-2 text-sm font-semibold ${
                 voice.muted
-                  ? "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118] dark:text-slate-300"
-                  : "bg-[#E5D6BD] hover:bg-[#DBC8AA] text-[#3A3027] dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100"
+                  ? "bg-[#E6A11E] hover:bg-[#D89215] text-[#2B2118]"
+                  : "bg-[var(--room-chip)] hover:bg-[var(--room-chip-hover)] text-[var(--room-ink)]"
               }`}
             >
               {voice.muted ? "🔇 Muted" : "🎙 Mic on"}
@@ -115,7 +120,7 @@ export default function VoicePanel({
 
           <ul className="space-y-1 text-xs">
             {voice.peers.length === 0 && (
-              <li className="text-[#8A7865] dark:text-slate-500">
+              <li className="text-[var(--room-ink-mute)]">
                 {others.length === 0
                   ? "No one else in the room yet."
                   : "Waiting for others to connect mic…"}
@@ -124,21 +129,32 @@ export default function VoicePanel({
             {voice.peers.map((p) => (
               <li
                 key={p.playerId}
-                className="flex items-center gap-2 bg-[#F1E6D3] border border-[#E1CFB1] rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-700"
+                className="flex items-center gap-2 bg-[var(--room-inset)] border border-[var(--room-inset-edge)] rounded px-2 py-1"
               >
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    p.connectionState === "connected"
-                      ? "bg-emerald-400"
-                      : p.connectionState === "failed"
-                      ? "bg-red-400"
-                      : "bg-amber-400"
-                  }`}
-                />
-                <span className="flex-1 truncate text-[#3A3027] dark:text-slate-200">
+                {/* Same face as the players list, so a voice row and a seat
+                    row are recognisably the same person. */}
+                <span className="relative flex-shrink-0">
+                  <SeatAvatar
+                    avatar={avatarOf(p.playerId)}
+                    name={nameOf(p.playerId)}
+                    className="w-6 h-6"
+                    textClassName="text-[10px]"
+                  />
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full
+                                ring-2 ring-[var(--room-inset)] ${
+                                  p.connectionState === "connected"
+                                    ? "bg-emerald-400"
+                                    : p.connectionState === "failed"
+                                    ? "bg-red-400"
+                                    : "bg-amber-400"
+                                }`}
+                  />
+                </span>
+                <span className="flex-1 truncate text-[var(--room-ink)]">
                   {nameOf(p.playerId)}
                 </span>
-                <span className="text-[#8A7865] dark:text-slate-500">
+                <span className="text-[var(--room-ink-mute)]">
                   {p.connectionState === "connected" && !p.stream
                     ? "no audio"
                     : p.connectionState}

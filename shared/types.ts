@@ -33,6 +33,19 @@ export interface Player {
    *                    out. Ends the moment they make any move.
    */
   autoPlayReason?: "disconnected" | "idle";
+  /**
+   * The avatar this player picked, as a filename from `shared/avatars.ts`.
+   *
+   * Chosen on their own device but broadcast to the whole table, because an
+   * avatar nobody else can see is just a private setting — the point of
+   * picking a face is that the people you are playing with see it.
+   *
+   * Absent for anyone who has not chosen one, and for any value the server
+   * did not recognise: it is rendered as an `<img src>` on every other
+   * player's machine, so it is validated against the shared list on the way
+   * in rather than trusted. Seats fall back to their initial.
+   */
+  avatar?: string;
   /** True if this is a server-controlled AI player (no real socket). */
   isBot?: boolean;
   /**
@@ -2462,6 +2475,8 @@ export interface CreateRoomPayload {
    * themselves anything, including `"system"` — the id reserved for table
    * announcements. The server mints it now and returns it in the ack.
    */
+  /** Chosen avatar filename. Ignored unless it is on the shared list. */
+  avatar?: string;
   ludoOptions?: Partial<LudoGameOptions>;
   snlOptions?: Partial<SnlGameOptions>;
   rummyOptions?: Partial<RummyGameOptions>;
@@ -2496,6 +2511,8 @@ export interface JoinRoomPayload {
    * Without a matching one the server seats you as a new player instead.
    */
   seatToken?: string;
+  /** Chosen avatar filename. Ignored unless it is on the shared list. */
+  avatar?: string;
 }
 
 export interface ChatSendPayload {
