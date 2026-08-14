@@ -3,14 +3,9 @@ import { SPACEWAR_TICK_HZ, SPACEWAR_WORLD } from "@shared/types";
 /**
  * Local prediction for the ship you are flying.
  *
- * Rather than adding a lagging decay offset to a delayed historical server position,
- * we simulate the ship's movement directly at the display refresh rate (60/120fps),
+ * Rather than waiting for a round trip to paint your own moves, advance the
+ * local ship position smoothly so the ship reacts on the next frame (60fps/120fps),
  * while softly reconciling with authoritative server updates.
- *
- * This delivers:
- * 1. Instantaneous response to steering keys / D-pad.
- * 2. Silky-smooth 60-120fps continuous motion.
- * 3. Zero rubber-banding or jerky oscillations.
  */
 
 export interface Vec2 {
@@ -23,6 +18,8 @@ const TICK_MS = 1000 / SPACEWAR_TICK_HZ;
 const MAX_X = SPACEWAR_WORLD.width - SPACEWAR_WORLD.shipWidth;
 const MIN_Y = SPACEWAR_WORLD.shipMarginY;
 const MAX_Y = SPACEWAR_WORLD.height - SPACEWAR_WORLD.shipHeight - SPACEWAR_WORLD.shipMarginY;
+
+const DECAY_HALF_LIFE_MS = 80;
 
 /** World-axis intent from the keys currently held. Mirrors the engine's reads. */
 export function steerAxis(held: ReadonlySet<string>): Vec2 {
@@ -79,14 +76,30 @@ export function advancePredictedShip(
   return { x: nextX, y: nextY };
 }
 
-/** Legacy helper compatibility */
+/**
+ * Computes the visual lead vector of the ship ahead of the authoritative server position.
+ */
 export function advanceShipLead(
   lead: Vec2,
   held: ReadonlySet<string>,
   server: Vec2,
   dtMs: number,
 ): Vec2 {
-  return { x: 0, y: 0 };
+  if (dtMs > 1000) return { x: 0, y: 0 };
+  const axis = steerAxis(held);
+  const decay = Math.pow(0.5, dtMs / DECAY_HALF_LIFE_MS);
+  const step = (SPACEWAR_WORLD.shipSpeed * dtMs) / TICK_MS;
+
+  const x = lead.x * decay + axis.x * step;
+  const y = lead.y * decay + axis.y * step;
+
+  const finalX = clamp(server.x + x, 0, MAX_X) - server.x;
+  const finalY = clamp(server.y + y, MIN_Y, MAX_Y) - server.y;
+
+  return {
+    x: Math.abs(finalX) < 0.05 ? 0 : finalX,
+    y: Math.abs(finalY) < 0.05 ? 0 : finalY,
+  };
 }
 
 function clamp(v: number, lo: number, hi: number): number {

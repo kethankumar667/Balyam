@@ -3,7 +3,7 @@ import type { SpaceWarPublicState } from "@shared/types";
 /**
  * Smoothing Space War between server frames.
  *
- * Buffer broadcasts, match entities by id, and interpolate/extrapolate smoothly between them.
+ * Buffer broadcasts, match entities by id, and interpolate smoothly between them.
  */
 
 export interface Snapshot {
@@ -35,8 +35,7 @@ export function interpolateSpaceWar(
   cur: SpaceWarPublicState,
   alpha: number,
 ): SpaceWarPublicState {
-  // Allow graceful micro-extrapolation up to 1.2 to avoid sudden freezes on network jitter
-  const t = Math.max(0, Math.min(1.2, alpha));
+  const t = Math.max(0, Math.min(1, alpha));
 
   return {
     ...cur,
