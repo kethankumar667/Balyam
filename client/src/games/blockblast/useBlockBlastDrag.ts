@@ -4,23 +4,7 @@ import { BLOCK_GRID } from "@shared/types";
 import type { GridPreview } from "./blockblast-shared";
 
 /**
- * Dragging a piece onto the board.
- *
- * This is the product. Everything else — scoring, race, bots — is
- * scaffolding around one gesture, and if the gesture is not right nothing
- * else can rescue it. Four things make it right, and all four are load-bearing:
- *
- *  1. **Pointer events, not click.** Same reason Snake's D-pad had to move
- *     off `onClick`: a click fires on release, which is far too late for
- *     anything you steer.
- *  2. **The piece rides ABOVE the finger.** A piece under the thumb is a
- *     piece you cannot see, and a placement you cannot see is a guess. This
- *     is the single biggest difference between a block game that feels
- *     precise and one that feels slippery.
- *  3. **Snapped preview, with a distinct refusal.** The player must know
- *     where it lands and whether it lands BEFORE letting go.
- *  4. **`touch-none` on the surfaces.** Otherwise the browser reads the drag
- *     as a scroll and takes the finger away mid-gesture.
+ * Dragging a piece onto the board with silky 60/120fps hardware-accelerated tracking.
  */
 
 /** How far above the pointer the piece floats, in cells. */
@@ -62,8 +46,7 @@ export function useBlockBlastDrag({
   const [drag, setDrag] = useState<DragState | null>(null);
   const [cellSize, setCellSize] = useState(0);
 
-  // Measured, not assumed: the board is fluid and the drag maths is all in
-  // px. A stale cell size puts every piece in the wrong square.
+  // Measured, not assumed: fluid board sizing.
   useEffect(() => {
     const el = gridRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -74,26 +57,16 @@ export function useBlockBlastDrag({
     return () => ro.disconnect();
   }, []);
 
-  /**
-   * Latest handlers, read from a ref inside the window listeners.
-   *
-   * Without this the listener effect would have to depend on `onPlace` and
-   * `grid`, so it would tear down and re-add mid-drag every time a broadcast
-   * arrived — and a pointer-up landing in that gap is a piece that vanishes.
-   */
   const latest = useRef({ grid, onPlace, onRefuse, cellSize });
   latest.current = { grid, onPlace, onRefuse, cellSize };
 
   const beginDrag = useCallback(
     (slot: number, piece: BlockBlastPieceView, e: React.PointerEvent) => {
       if (disabled) return;
-      // Claim the pointer so the gesture survives the finger leaving the
-      // tray slot — which it does immediately, by design.
       try {
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       } catch {
-        /* Safari occasionally refuses on an already-captured pointer. The
-           window listeners below still see the whole gesture. */
+        /* ignore */
       }
       setDrag({ slot, piece, pointerId: e.pointerId, x: e.clientX, y: e.clientY });
       onPickUp?.();
@@ -104,16 +77,30 @@ export function useBlockBlastDrag({
   useEffect(() => {
     if (!drag) return;
 
+    let rafId = 0;
+    let latestPos = { x: drag.x, y: drag.y };
+    let hasNewPos = false;
+
+    // Throttle React state updates to screen refresh rate (60/120fps)
+    const scheduleUpdate = () => {
+      if (hasNewPos) {
+        hasNewPos = false;
+        setDrag((d) => (d ? { ...d, x: latestPos.x, y: latestPos.y } : null));
+      }
+      rafId = requestAnimationFrame(scheduleUpdate);
+    };
+    rafId = requestAnimationFrame(scheduleUpdate);
+
     const move = (e: PointerEvent) => {
       if (e.pointerId !== drag.pointerId) return;
-      // Stops the page rubber-banding under the gesture on iOS, which
-      // `touch-none` alone does not always prevent once a drag is in flight.
       e.preventDefault();
-      setDrag((d) => (d ? { ...d, x: e.clientX, y: e.clientY } : d));
+      latestPos = { x: e.clientX, y: e.clientY };
+      hasNewPos = true;
     };
 
     const finish = (e: PointerEvent) => {
       if (e.pointerId !== drag.pointerId) return;
+      cancelAnimationFrame(rafId);
       const target = resolveTarget(
         gridRef.current,
         { ...drag, x: e.clientX, y: e.clientY },
@@ -127,23 +114,22 @@ export function useBlockBlastDrag({
       setDrag(null);
     };
 
-    const cancel = () => setDrag(null);
+    const cancel = () => {
+      cancelAnimationFrame(rafId);
+      setDrag(null);
+    };
 
-    // Window-level, not element-level: the tray slot under the finger
-    // unmounts the moment the tray refills, and an element listener would go
-    // with it — leaving a piece stuck to the cursor.
     window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", finish);
     window.addEventListener("pointercancel", cancel);
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", cancel);
     };
-  }, [drag]);
+  }, [drag?.slot, drag?.pointerId]);
 
-  // A board update that makes the held piece illegal (or ends the game)
-  // should not leave a ghost attached to the finger.
   useEffect(() => {
     if (disabled && drag) setDrag(null);
   }, [disabled, drag]);
@@ -174,7 +160,6 @@ export interface ResolvedTarget {
   clearing: number[];
 }
 
-/** The board's on-screen box. Split out from the element so this is testable. */
 export interface GridRect {
   left: number;
   top: number;
@@ -192,17 +177,6 @@ function resolveTarget(
   return resolveDrop(el.getBoundingClientRect(), drag, grid);
 }
 
-/**
- * Where the held piece would land, given the pointer.
- *
- * Clamped rather than refused at the edges: dragging past the left of the
- * board should mean column 0, not "nothing", because the alternative is a
- * preview that blinks out exactly when the player is being most careful.
- *
- * Exported for tests. The geometry here has one failure mode that is
- * invisible until a board is nearly full — see the bottom margin below —
- * and it is not the kind of thing to find out about from a player.
- */
 export function resolveDrop(
   rect: GridRect,
   drag: Pick<DragState, "piece" | "x" | "y">,
@@ -213,15 +187,6 @@ export function resolveDrop(
 
   const lift = cell * LIFT_CELLS;
 
-  /**
-   * Is the gesture anywhere near the board?
-   *
-   * The bottom margin is deliberately generous: because the piece rides a
-   * cell and a half above the finger, placing on the bottom row puts the
-   * finger BELOW the board entirely. A symmetric margin here would make the
-   * last row unreachable — a bug that only shows up on a nearly-full board,
-   * which is when it hurts most.
-   */
   const near =
     drag.x >= rect.left - cell * 2 &&
     drag.x <= rect.right + cell * 2 &&
@@ -247,14 +212,6 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
-/**
- * Which cells a placement would take down.
- *
- * A deliberate duplicate of the server's clear rule, used ONLY to draw the
- * preview. The server still decides what actually happens; if these ever
- * disagree the worst case is a preview that promised a line and did not
- * deliver, not a score anybody can forge.
- */
 function clearingCells(grid: number[], placing: number[]): number[] {
   const next = grid.slice();
   for (const i of placing) next[i] = 1;

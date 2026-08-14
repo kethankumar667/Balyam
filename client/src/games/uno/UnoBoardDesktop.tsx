@@ -445,7 +445,12 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
         <div ref={cameraRef} className="flex-1 min-h-0 relative">
           <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
             <div ref={boardRef} className="relative w-full h-full">
-              <StadiumDirectionArc direction={state.direction} width={arcW} height={arcH} />
+              <StadiumDirectionArc
+                direction={state.direction}
+                width={arcW}
+                height={arcH}
+                activeColor={state.currentColor ?? state.topCard?.color ?? "red"}
+              />
 
               {seatList.map(({ id, variant }) => {
                 const pos = stadiumPositions[id];

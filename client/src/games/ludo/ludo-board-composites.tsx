@@ -279,6 +279,7 @@ function LudoPlayerCard({
   dense = false,
   ultra = false,
   isSelf = false,
+  isManyPlayers = false,
   registerCard,
   onTarget,
 }: {
@@ -291,6 +292,8 @@ function LudoPlayerCard({
   ultra?: boolean;
   /** The local player — marked so you can find yourself at a glance. */
   isSelf?: boolean;
+  /** True for 5-8 player boards — renders numeric notation (0/4) and larger pill. */
+  isManyPlayers?: boolean;
   /** Registers this card as the anchor a reaction flies TO/FROM. */
   registerCard?: (playerId: string, el: Element | null) => void;
   /** Tapping an opponent's card aims a reaction at them. */
@@ -299,7 +302,7 @@ function LudoPlayerCard({
   const rim = COLOR_HEX_DARK[seat.color];
   const tint = COLOR_HEX[seat.color];
   const offline = !seat.online;
-  const avatarPx = dense ? 26 : 28;
+  const avatarPx = dense ? 26 : isManyPlayers ? 28 : 32;
 
   // Turn timer.
   const timedKey = seat.active && !offline ? (deadline ?? null) : null;
@@ -327,19 +330,21 @@ function LudoPlayerCard({
           : undefined
       }
       title={onTarget && !isSelf ? `React at ${seat.name}` : undefined}
-      className={`ludo-card-in relative flex-1 min-w-0 rounded-2xl overflow-hidden flex items-center gap-2 px-2.5 py-1.5 ${
+      className={`ludo-card-in relative flex-1 min-w-0 rounded-2xl overflow-hidden flex items-center gap-2 sm:gap-2.5 ${
+        isManyPlayers ? "px-2.5 py-2 min-h-[48px] sm:min-h-[52px]" : "px-3.5 py-2.5 min-h-[52px]"
+      } ${
         onTarget && !isSelf ? "cursor-pointer" : ""
       }`}
       style={{
-        background: seat.isWinner ? "rgba(255,247,214,0.98)" : "rgba(255,251,240,0.94)",
-        border: `2.5px solid ${seat.isWinner ? "#E0AE3B" : rim}`,
+        background: seat.isWinner ? "rgba(255,247,214,0.98)" : "rgba(255,251,240,0.96)",
+        border: `2px solid ${seat.isWinner ? "#E0AE3B" : tint}`,
         boxShadow: seat.isWinner
-          ? "0 0 0 3px rgba(224,174,59,0.45), 0 8px 18px rgba(0,0,0,0.2)"
+          ? "0 0 0 2.5px #E0AE3B, 0 4px 14px rgba(0,0,0,0.16)"
           : isSelf
-            ? "0 0 0 2px rgba(224,174,59,0.85), 0 5px 12px rgba(0,0,0,0.16)"
+            ? "0 0 0 2.5px #E0AE3B, 0 4px 12px rgba(0,0,0,0.12)"
             : seat.active
-              ? "0 6px 14px rgba(0,0,0,0.18)"
-              : "0 3px 8px rgba(0,0,0,0.10)",
+              ? `0 0 0 2.5px ${tint}, 0 4px 14px ${tint}40`
+              : "0 2px 8px rgba(0,0,0,0.08)",
         opacity: offline ? 0.62 : 1,
         filter: offline ? "grayscale(0.45)" : undefined,
         animationDelay: `${Math.min(index, 8) * 45}ms`,
@@ -350,7 +355,7 @@ function LudoPlayerCard({
         <span
           aria-hidden
           className="ludo-seat-glow absolute -inset-0.5 rounded-2xl pointer-events-none"
-          style={{ boxShadow: `0 0 0 3px ${tint}, 0 0 16px 2px ${tint}99` }}
+          style={{ boxShadow: `0 0 0 2.5px ${tint}, 0 0 16px 2px ${tint}80` }}
         />
       )}
       {/* Light sweep crossing the active card. */}
@@ -362,79 +367,99 @@ function LudoPlayerCard({
         />
       )}
       <div className="relative flex-shrink-0">
-        <div className="ludo-chip rounded-full" style={{ padding: 3, ...chipVars(tint, rim) }}>
+        <div className="ludo-chip rounded-full" style={{ padding: 2.5, ...chipVars(tint, rim) }}>
           <Avatar name={seat.name} color={seat.color} size={avatarPx} />
         </div>
-        {showTimer && <TurnCountdownRing pct={pct} color={timerColor} box={avatarPx + 14} />}
+        {showTimer && <TurnCountdownRing pct={pct} color={timerColor} box={avatarPx + 12} />}
         <span
           className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full z-10 ${offline ? "ludo-reconnect" : ""}`}
-          style={{ background: seat.online ? "#37B24D" : "#F59E0B", border: "2px solid #FFFBF0" }}
+          style={{ background: seat.online ? "#37B24D" : "#F59E0B", border: "1.5px solid #FFFBF0" }}
           title={seat.online ? "Online" : "Reconnecting…"}
         />
         {isSelf && (
           <span
-            className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-10 px-1 rounded-full text-[7px] font-black uppercase tracking-[0.1em] leading-[1.4] whitespace-nowrap"
+            className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-10 px-1 rounded-full text-[7.5px] font-black uppercase tracking-[0.05em] leading-[1.3] whitespace-nowrap shadow-xs"
             style={{ background: "linear-gradient(135deg,#F7DA8B,#E0AE3B)", color: "#4A3300", border: "1px solid #FFFBF0" }}
           >
             You
           </span>
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1 min-w-0">
+
+      <div className="min-w-0 flex-1 flex flex-col justify-center">
+        {/* Row 1: Player Name */}
+        <div className="flex items-center gap-1 min-w-0 leading-tight">
           {seat.isWinner && <span className="flex-shrink-0 text-[11px] leading-none" aria-hidden>👑</span>}
           {!seat.isWinner && seat.rank != null && (
             <span
-              className="flex-shrink-0 rounded px-1 text-[9px] font-black leading-none"
-              style={{ background: "#6D4323", color: "#FFF7E0", paddingBlock: 2 }}
+              className="flex-shrink-0 rounded px-1 text-[8.5px] font-black leading-none"
+              style={{ background: "#6D4323", color: "#FFF7E0", paddingBlock: 1.5 }}
               title={`Finished ${ordinal(seat.rank)}`}
             >
               {ordinal(seat.rank)}
             </span>
           )}
           <span
-            className="truncate font-black uppercase tracking-wide text-[11px] sm:text-[12px]"
+            className="truncate font-black uppercase tracking-tight text-[11px] sm:text-[12.5px]"
             style={{ color: rim }}
             title={`${seat.name}${seat.isBot ? " (bot)" : ""}`}
           >
             {seat.name}
           </span>
-          {!dense && seat.isBot && <span className="flex-shrink-0 text-[8px] opacity-60">BOT</span>}
+          {seat.isBot && <span className="flex-shrink-0 text-[9px] opacity-50" title="Bot">🤖</span>}
         </div>
+
+        {/* Row 2: Tokens / Turn / Status */}
         {offline || seat.autoPlaying ? (
           <div
-            className="text-[9px] font-bold mt-0.5 truncate"
+            className="text-[9px] font-bold mt-0.5 truncate leading-none"
             style={{ color: "#B45309" }}
             title={
               seat.autoReason === "idle"
-                ? `${seat.name} isn't responding — the table is playing their turns. Any move takes the seat back.`
+                ? `${seat.name} isn't responding — the table is playing their turns.`
                 : seat.autoPlaying
-                  ? `${seat.name} lost connection — the table is playing their turns until they return`
+                  ? `${seat.name} lost connection — auto playing.`
                   : `${seat.name} is reconnecting`
             }
           >
             {seat.autoReason === "idle"
               ? "Away · auto"
               : seat.autoPlaying
-                ? "Reconnecting · auto"
+                ? "Reconnecting"
                 : "Reconnecting…"}
           </div>
         ) : (
           <div
-            className="flex items-center gap-1 mt-0.5 min-w-0"
+            className="flex items-center gap-1 mt-0.5 min-w-0 leading-none"
             title={`${seat.tokensHome}/4 tokens home`}
           >
-            {[0, 1, 2, 3].map((i) =>
-              i < seat.tokensHome ? (
-                <span key={i} className="ludo-chip w-3 h-3 rounded-full flex-shrink-0" style={chipVars(tint, rim)} />
-              ) : (
-                <span
-                  key={i}
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ background: "rgba(109,67,35,0.14)", border: "1px solid rgba(109,67,35,0.22)" }}
-                />
-              ),
+            {isManyPlayers ? (
+              /* Numeric 0/4 notation for 5-8 player boards */
+              <span
+                className="inline-flex items-center font-mono font-black text-[10px] sm:text-[11px] tabular-nums tracking-tight px-1.5 py-0.5 rounded leading-none"
+                style={{
+                  background: seat.tokensHome > 0 ? `${tint}25` : "rgba(109,67,35,0.08)",
+                  color: seat.tokensHome > 0 ? rim : "#6D4C3D",
+                  border: `1px solid ${seat.tokensHome > 0 ? `${tint}50` : "rgba(109,67,35,0.18)"}`,
+                }}
+              >
+                {seat.tokensHome}/4
+              </span>
+            ) : (
+              /* Dot pips notation for 2-4 player boards */
+              [0, 1, 2, 3].map((i) =>
+                i < seat.tokensHome ? (
+                  <span key={i} className="ludo-chip w-3 h-3 rounded-full flex-shrink-0" style={chipVars(tint, rim)} />
+                ) : (
+                  <span
+                    key={i}
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ background: "rgba(109,67,35,0.14)", border: "1px solid rgba(109,67,35,0.22)" }}
+                  />
+                ),
+              )
             )}
+
             {seat.isWinner ? (
               <span
                 className="ludo-chip flex-shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"
@@ -480,6 +505,7 @@ export function LudoPlayerCards({
 }) {
   const seats = orderedSeats(state, players, selfId);
   if (seats.length === 0) return null;
+  const isManyPlayers = seats.length >= 5;
 
   if (orientation === "col") {
     return (
@@ -490,6 +516,7 @@ export function LudoPlayerCards({
             seat={s}
             deadline={state.turnDeadline}
             index={i}
+            isManyPlayers={isManyPlayers}
             registerCard={registerCard}
             onTarget={onTarget}
             isSelf={s.pid === selfId}
@@ -504,34 +531,34 @@ export function LudoPlayerCards({
     const row1 = seats.slice(0, mid);
     const row2 = seats.slice(mid);
     return (
-      <div className="flex flex-col gap-1.5 w-full max-w-[28rem] px-1">
-        <div className="flex justify-center gap-2">
+      <div className="flex flex-col gap-2 w-full max-w-[36rem] px-1">
+        <div className="grid grid-flow-col auto-cols-fr gap-2 sm:gap-2.5">
           {row1.map((s, i) => (
-            <div key={s.pid} className="min-w-0 flex-1" style={{ display: "flex" }}>
+            <LudoPlayerCard
+              key={s.pid}
+              seat={s}
+              deadline={state.turnDeadline}
+              index={i}
+              isManyPlayers={isManyPlayers}
+              registerCard={registerCard}
+              onTarget={onTarget}
+              isSelf={s.pid === selfId}
+            />
+          ))}
+        </div>
+        {row2.length > 0 && (
+          <div className="grid grid-flow-col auto-cols-fr gap-2 sm:gap-2.5">
+            {row2.map((s, i) => (
               <LudoPlayerCard
+                key={s.pid}
                 seat={s}
                 deadline={state.turnDeadline}
-                index={i}
+                index={mid + i}
+                isManyPlayers={isManyPlayers}
                 registerCard={registerCard}
                 onTarget={onTarget}
                 isSelf={s.pid === selfId}
               />
-            </div>
-          ))}
-        </div>
-        {row2.length > 0 && (
-          <div className="flex justify-center gap-2">
-            {row2.map((s, i) => (
-              <div key={s.pid} className="min-w-0 flex-1" style={{ display: "flex" }}>
-                <LudoPlayerCard
-                  seat={s}
-                  deadline={state.turnDeadline}
-                  index={mid + i}
-                  registerCard={registerCard}
-                  onTarget={onTarget}
-                  isSelf={s.pid === selfId}
-                />
-              </div>
             ))}
           </div>
         )}
@@ -550,6 +577,7 @@ export function LudoPlayerCards({
             seat={s}
             deadline={state.turnDeadline}
             index={i}
+            isManyPlayers={isManyPlayers}
             registerCard={registerCard}
             onTarget={onTarget}
             isSelf={s.pid === selfId}

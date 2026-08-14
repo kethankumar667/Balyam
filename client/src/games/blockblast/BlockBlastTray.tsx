@@ -59,20 +59,16 @@ export default function BlockBlastTray({
                 aria-label={`Piece ${slot + 1}${dead ? ", no room on the board" : ""}`}
                 aria-disabled={disabled || dead}
                 onPointerDown={(e) => {
-                  // Pointer down, not click: a click fires on release, which
-                  // is a whole gesture too late for something you drag.
                   if (disabled || dead) return;
                   if (e.button !== 0 && e.pointerType === "mouse") return;
                   e.preventDefault();
                   onGrab(slot, piece, e);
                 }}
-                className={`touch-none ${
+                className={`bb-tray-spawn touch-none transition-transform duration-150 hover:scale-105 active:scale-95 ${
                   disabled || dead ? "cursor-default" : "cursor-grab active:cursor-grabbing"
                 }`}
                 style={{
-                  // Nudges up on press so the piece looks lifted before it
-                  // has moved anywhere.
-                  transition: "transform 120ms ease",
+                  animationDelay: `${slot * 60}ms`,
                   touchAction: "none",
                 }}
               >

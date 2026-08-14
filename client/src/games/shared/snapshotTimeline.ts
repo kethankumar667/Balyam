@@ -74,8 +74,8 @@ export class SnapshotTimeline<T> {
   constructor(opts: TimelineOptions) {
     this.stepMs = Math.max(1, opts.stepMs);
     this.interval = this.stepMs;
-    this.minDelaySteps = opts.minDelaySteps ?? 1;
-    this.maxDelaySteps = opts.maxDelaySteps ?? 3;
+    this.minDelaySteps = opts.minDelaySteps ?? 0.75;
+    this.maxDelaySteps = opts.maxDelaySteps ?? 2.2;
     this.capacity = opts.capacity ?? 24;
   }
 
@@ -116,7 +116,7 @@ export class SnapshotTimeline<T> {
   /** How far behind live the timeline is currently rendering, in ms. */
   delayMs(): number {
     const base = Math.max(this.stepMs, this.interval);
-    return clamp(base + this.jitter * 2, this.stepMs * this.minDelaySteps, this.stepMs * this.maxDelaySteps);
+    return clamp(base * 0.85 + this.jitter * 1.5, this.stepMs * this.minDelaySteps, this.stepMs * this.maxDelaySteps);
   }
 
   /** The pair of snapshots straddling the render clock, and where between them. */
@@ -137,9 +137,11 @@ export class SnapshotTimeline<T> {
 
     const last = this.buf[n - 1];
     if (target >= last.at) {
-      // Buffer ran dry — the next packet has not landed. Hold the newest known
-      // state. Extrapolating here is what causes rubber-banding.
-      return { prev: this.buf[n - 2].state, cur: last.state, t: 1, starved: true };
+      // Buffer ran dry — allow subtle continuous motion up to 1.15 to avoid hard freezing
+      const a = this.buf[n - 2];
+      const span = last.at - a.at;
+      const t = span <= 0 ? 1 : Math.min(1.15, (target - a.at) / span);
+      return { prev: a.state, cur: last.state, t, starved: true };
     }
 
     let i = 0;

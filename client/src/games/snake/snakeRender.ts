@@ -271,8 +271,29 @@ export function drawSnake({ ctx, pal, body, dir, cell, isSelf, alpha }: DrawSnak
     ctx.shadowBlur = cell * 0.4;
   }
 
-  // Draw 3D glossy body segments (tail to head so head overlays cleanly)
   const r = cell * 0.42;
+
+  // 1. Draw smooth connecting body spine tube for seamless fluid motion
+  if (pts.length > 1) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      if (Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y) < cell * 1.8) {
+        ctx.lineTo(pts[i].x, pts[i].y);
+      } else {
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x, pts[i].y);
+      }
+    }
+    ctx.lineWidth = r * 1.8;
+    ctx.strokeStyle = stops[1];
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 2. Draw 3D glossy body segments (tail to head so head overlays cleanly)
   for (let i = pts.length - 1; i >= 0; i--) {
     const pt = pts[i];
     const isHead = i === 0;

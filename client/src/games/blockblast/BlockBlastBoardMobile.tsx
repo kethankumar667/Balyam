@@ -164,12 +164,13 @@ export default function BlockBlastBoardMobile({ state, selfId, onMove }: BlockBl
       */}
       {drag && cellSize > 0 && (
         <div
-          className="pointer-events-none fixed z-[65]"
+          className="pointer-events-none fixed z-[65] will-change-transform"
           style={{
-            left: drag.x,
-            top: drag.y - cellSize * 1.5,
-            transform: "translate(-50%, -50%)",
-            filter: "drop-shadow(0 10px 16px rgba(0,0,0,0.55))",
+            left: 0,
+            top: 0,
+            transform: `translate3d(${drag.x}px, ${drag.y - cellSize * 1.5}px, 0) translate(-50%, -50%) scale(1.06)`,
+            filter: "drop-shadow(0 14px 28px rgba(0,0,0,0.65)) drop-shadow(0 2px 8px rgba(0,0,0,0.4))",
+            transition: "transform 50ms cubic-bezier(0.2, 0.9, 0.3, 1.2), filter 100ms ease",
           }}
         >
           <PieceGlyph piece={drag.piece} cell={cellSize} />

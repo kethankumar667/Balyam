@@ -147,6 +147,26 @@ export function BlockGrid({
   const previewCells = new Set(preview?.cells ?? []);
   const clearingCells = new Set(preview?.clearing ?? []);
 
+  const prevGridRef = useRef<number[]>(grid);
+  const [newlyPlaced, setNewlyPlaced] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    const prev = prevGridRef.current;
+    prevGridRef.current = grid;
+    if (!prev || !grid) return;
+    const placed = new Set<number>();
+    for (let i = 0; i < grid.length; i++) {
+      if (prev[i] === 0 && grid[i] !== 0) {
+        placed.add(i);
+      }
+    }
+    if (placed.size > 0) {
+      setNewlyPlaced(placed);
+      const t = setTimeout(() => setNewlyPlaced(new Set()), 280);
+      return () => clearTimeout(t);
+    }
+  }, [grid]);
+
   return (
     <div
       ref={gridRef}
@@ -164,10 +184,11 @@ export function BlockGrid({
         const isPreview = previewCells.has(i);
         const isClearing = clearingCells.has(i) && !isPreview;
         const flashing = justCleared?.has(i) ?? false;
+        const isPlaced = newlyPlaced.has(i);
         return (
           <div key={i} className="relative" style={{ padding: "5.5%" }}>
             <div
-              className="h-full w-full"
+              className={`h-full w-full ${isPlaced ? "bb-pop-in" : ""}`}
               style={
                 value !== 0
                   ? blockFace(value)
@@ -180,47 +201,44 @@ export function BlockGrid({
             />
 
             {/* Ghost of the held piece. Filled and bright when it fits; an
-                empty rose outline when it does not, so "no" is legible at a
-                glance without the player having to read anything. */}
+                empty rose outline when it does not. */}
             {isPreview && (
               <div
-                className="pointer-events-none absolute inset-0"
+                className="pointer-events-none absolute inset-0 transition-opacity duration-100"
                 style={{ padding: "5.5%" }}
               >
                 <div
-                  className="h-full w-full"
+                  className={`h-full w-full ${preview!.valid ? "bb-ghost-valid" : ""}`}
                   style={
                     preview!.valid
                       ? {
                           ...blockFace(preview!.color),
-                          opacity: 0.62,
-                          transform: "scale(0.92)",
+                          opacity: 0.68,
+                          transform: "scale(0.94)",
                         }
                       : {
                           borderRadius: "22%",
                           border: "2px solid #fb7185",
-                          background: "rgba(244,63,94,0.16)",
+                          background: "rgba(244,63,94,0.18)",
                         }
                   }
                 />
               </div>
             )}
 
-            {/* The line this placement would take down, lit end to end.
-                This is the game teaching itself: nobody has to be told what
-                a clear is after seeing a row light up under their thumb. */}
+            {/* The line this placement would take down, shimmering with light */}
             {isClearing && (
               <div
                 className="pointer-events-none absolute inset-0"
                 style={{ padding: "5.5%" }}
               >
                 <div
-                  className="h-full w-full animate-pulse"
+                  className="bb-clearing-shimmer h-full w-full"
                   style={{
                     borderRadius: "22%",
                     background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,236,179,0.6))",
-                    boxShadow: "0 0 12px rgba(255,236,179,0.85)",
+                      "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,236,179,0.7))",
+                    boxShadow: "0 0 16px rgba(255,236,179,0.9)",
                   }}
                 />
               </div>

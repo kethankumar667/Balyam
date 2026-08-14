@@ -388,7 +388,12 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           <animated.div ref={recoilRef} className="relative w-full h-full" style={recoilStyle}>
             <div ref={boardRef} className="relative w-full h-full">
               {/* Direction Ring */}
-              <StadiumDirectionArc direction={state.direction} width={arcW} height={arcH} />
+              <StadiumDirectionArc
+                direction={state.direction}
+                width={arcW}
+                height={arcH}
+                activeColor={state.currentColor ?? state.topCard?.color ?? "red"}
+              />
 
               {/* 8 Opponent Seats */}
               {seatList.map(({ id, variant }) => {

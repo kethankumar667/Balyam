@@ -381,18 +381,75 @@ function StadiumRings({ stroke = "#FF7A4A" }: { stroke?: string }) {
 const ARC_FROM = 214;
 const ARC_TO = 326;
 
+export interface StadiumDirectionPalette {
+  id: string;
+  gradStops: [string, string, string];
+  comet: string;
+  glow: string;
+  solid: string;
+  streamGlow: string;
+}
+
+export const STADIUM_DIRECTION_PALETTES: Record<string, StadiumDirectionPalette> = {
+  yellow: {
+    // Ultra-high contrast Electric Sky Cyan to Royal Blue on bright yellow felt (complementary color)
+    id: "yellow",
+    gradStops: ["#E0F2FE", "#38BDF8", "#2563EB"],
+    comet: "#FFFFFF",
+    glow: "rgba(37, 99, 235, 0.95)",
+    solid: "#2563EB",
+    streamGlow: "rgba(56, 189, 248, 0.9)",
+  },
+  blue: {
+    // Glowing Ice Cyan and Radiant Sky Blue on deep blue felt
+    id: "blue",
+    gradStops: ["#E0F2FE", "#67E8F9", "#38BDF8"],
+    comet: "#FFFFFF",
+    glow: "rgba(56, 189, 248, 0.9)",
+    solid: "#38BDF8",
+    streamGlow: "rgba(103, 232, 249, 0.85)",
+  },
+  green: {
+    // Vivid Lemon-Lime to Emerald on green felt
+    id: "green",
+    gradStops: ["#FEF08A", "#86EFAC", "#22C55E"],
+    comet: "#FFFFFF",
+    glow: "rgba(74, 222, 128, 0.9)",
+    solid: "#4ADE80",
+    streamGlow: "rgba(134, 239, 172, 0.85)",
+  },
+  red: {
+    // Brilliant Gold and Warm Amber on red felt
+    id: "red",
+    gradStops: ["#FFF066", "#FFAE19", "#FF5500"],
+    comet: "#FFFBEB",
+    glow: "rgba(255, 180, 50, 0.9)",
+    solid: "#FF9A2E",
+    streamGlow: "rgba(255, 180, 50, 0.85)",
+  },
+};
+
 /**
- * Turn-direction ring — two tapered arcs chasing each other around the pile.
+ * Turn-direction ring — two tapered arcs chasing each other around the pile,
+ * dynamically styled to contrast with the table's active card felt color.
  */
 export function StadiumDirectionArc({
   direction,
   width,
   height,
+  activeColor = "red",
 }: {
   direction: 1 | -1;
   width: number;
   height: number;
+  activeColor?: string;
 }) {
+  const isYellow = activeColor === "Y" || activeColor === "yellow";
+  const isBlue = activeColor === "B" || activeColor === "blue";
+  const isGreen = activeColor === "G" || activeColor === "green";
+  const palKey = isYellow ? "yellow" : isBlue ? "blue" : isGreen ? "green" : "red";
+  const pal = STADIUM_DIRECTION_PALETTES[palKey];
+
   const cx = width / 2;
   const cy = height / 2;
   const rx = width * 0.45;
@@ -413,10 +470,10 @@ export function StadiumDirectionArc({
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 w-full h-full overflow-visible">
         <defs>
-          <linearGradient id="uno-arrow-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#FFD46B" />
-            <stop offset="55%" stopColor="#FF9A2E" />
-            <stop offset="100%" stopColor="#FF6A15" />
+          <linearGradient id={`uno-arrow-grad-${pal.id}`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={pal.gradStops[0]} />
+            <stop offset="55%" stopColor={pal.gradStops[1]} />
+            <stop offset="100%" stopColor={pal.gradStops[2]} />
           </linearGradient>
         </defs>
         <style>{`
@@ -434,23 +491,25 @@ export function StadiumDirectionArc({
           cy={cy}
           rx={rx}
           ry={ry}
-          stroke="url(#uno-arrow-grad)"
-          strokeWidth={3}
+          stroke={`url(#uno-arrow-grad-${pal.id})`}
+          strokeWidth={3.5}
           strokeDasharray="10 18"
           fill="none"
           className="uno-orbit-stream"
-          opacity={0.75}
-          style={{ filter: "drop-shadow(0 0 8px rgba(255,180,50,0.8))" }}
+          opacity={0.85}
+          style={{ filter: `drop-shadow(0 0 10px ${pal.streamGlow})` }}
         />
-        <g opacity="0.4" style={{ filter: "blur(2px)" }}>
-          <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} />
+        <g opacity="0.45" style={{ filter: "blur(3px)" }}>
+          <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} pal={pal} />
           <g transform={`rotate(180 ${cx} ${cy})`}>
-            <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} />
+            <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} pal={pal} />
           </g>
         </g>
-        <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} glow />
-        <g transform={`rotate(180 ${cx} ${cy})`}>
-          <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} glow />
+        <g style={{ filter: `drop-shadow(0 2px 8px ${pal.glow})` }}>
+          <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} pal={pal} glow />
+          <g transform={`rotate(180 ${cx} ${cy})`}>
+            <StadiumArrowArc cx={cx} cy={cy} rx={rx} ry={ry} pal={pal} glow />
+          </g>
         </g>
       </svg>
     </div>
@@ -459,19 +518,20 @@ export function StadiumDirectionArc({
 
 /** One arc sweeping clockwise from ~8 o'clock over the top to ~2 o'clock,
  *  with a filled arrowhead sitting ON the path, rotated to the ELLIPSE's
- *  tangent there (not a circle's — they differ once rx ≠ ry, and using the
- *  wrong one makes the head visibly skew off the path). */
+ *  tangent there. */
 function StadiumArrowArc({
   cx,
   cy,
   rx,
   ry,
+  pal,
   glow = false,
 }: {
   cx: number;
   cy: number;
   rx: number;
   ry: number;
+  pal: StadiumDirectionPalette;
   glow?: boolean;
 }) {
   const at = (deg: number) => {
@@ -485,36 +545,31 @@ function StadiumArrowArc({
   const w = Math.min(22, Math.max(5, short * 0.058));
   const start = at(ARC_FROM);
   // Stop the stroke short of the tip so the arrowhead reads as the arc coming
-  // to a point rather than a triangle stuck onto a blunt end. The gap is an
-  // arc LENGTH, so convert it to degrees against this ellipse.
+  // to a point rather than a triangle stuck onto a blunt end.
   const tailDeg = (a * 0.62 * 180) / (Math.PI * short);
   const end = at(ARC_TO - tailDeg);
   const tip = at(ARC_TO);
   const t = (ARC_TO * Math.PI) / 180;
   const tangentDeg = (Math.atan2(ry * Math.cos(t), -rx * Math.sin(t)) * 180) / Math.PI;
   const d = `M ${start.x} ${start.y} A ${rx} ${ry} 0 0 1 ${end.x} ${end.y}`;
-  const paint = glow ? "url(#uno-arrow-grad)" : "#FF7A1A";
+  const paint = glow ? `url(#uno-arrow-grad-${pal.id})` : pal.solid;
   return (
     <g fill={paint} stroke={paint}>
       <path d={d} fill="none" strokeWidth={w} strokeLinecap="round" />
-      {/* Motion WITHOUT breaking the arc: a short lit segment travels along
-          the solid stroke. Dashing the stroke itself (the first attempt)
-          turned the ring into a dotted circle and killed the arrow read. */}
       {glow && (
         <path
           d={d}
           fill="none"
-          stroke="#FFE9A8"
-          strokeWidth={Math.max(1.4, w * 0.42)}
+          stroke={pal.comet}
+          strokeWidth={Math.max(1.6, w * 0.45)}
           strokeLinecap="round"
-          opacity="0.9"
+          opacity="0.95"
           className="uno-arc-comet"
           style={{ strokeDasharray: `${a * 1.6} ${rx * 4}`, ["--uno-arc-len" as string]: `${rx * 4}` }}
         />
       )}
       <g transform={`translate(${tip.x} ${tip.y}) rotate(${tangentDeg})`}>
-        {/* Swept-back head — the notched tail is what makes it read as a
-            game arrow rather than a plain triangle. */}
+        {/* Swept-back head — the notched tail makes it read as a game arrow */}
         <path d={`M ${a * 0.72} 0 L ${-a * 0.5} ${-a * 0.72} L ${-a * 0.24} 0 L ${-a * 0.5} ${a * 0.72} Z`} stroke="none" />
       </g>
     </g>
