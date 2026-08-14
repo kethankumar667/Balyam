@@ -57,7 +57,6 @@ type Layout = { groups: Group[]; ungrouped: string[] };
 type DropTarget =
   | "openpile"
   | "finishslot"
-  | "ungrouped"
   | "new"
   | `group:${string}`;
 
@@ -186,24 +185,9 @@ export default function RummyBoardDesktop({
 }: BoardProps) {
   const hand = state.myHand ?? [];
   const byId = useMemo(() => new Map(hand.map((c) => [c.id, c])), [hand]);
-  // AI Coach — server-computed, on demand. The provider below lets any card
-  // in the tree light itself up without the layers between knowing about it.
   const coach = useCoach();
   const wildRank = state.wildJoker.rank;
 
-  // Desktop never needs to rotate itself in practice (the picker only
-  // mounts this shell on real desktop — large hover/fine-pointer
-  // viewports), but it still calls the SAME report hook mobile does so
-  // the server hears an explicit "false" from this client. Without an
-  // explicit report, this player's `needsRotation` field would sit at
-  // `undefined` forever, which the gate on every OTHER client would
-  // have to guess the meaning of (never-reported vs. confirmed ready) —
-  // reporting for real removes that ambiguity. It also tracks the same
-  // start-of-game gate so a non-blocking toast can tell a desktop player
-  // why mobile friends haven't appeared yet, and let them nudge whoever's
-  // still rotating. See `./rotation-sync` for the full synchronized-deal
-  // contract (mobile shells block on this; desktop stays fully
-  // interactive throughout).
   const selfNeedsRotation = useOrientationReport();
   const gate = useRummyRotationGate({
     roomCode,
@@ -223,37 +207,55 @@ export default function RummyBoardDesktop({
   const [soundOn, setSoundOn] = useState<boolean>(() => isRummySoundEnabled());
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
-  /* controlsOpen drives the collapsible action rail (Fix 3) */
   const [controlsOpen, setControlsOpen] = useState(false);
-  /* The right rail collapses to a hairline strip so the table can own the
-     full width when a player wants to concentrate on their hand. */
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const initialized = useRef(false);
 
-  /* ─── Reconcile hand → layout on every server update ─── */
+  /* ─── Reconcile hand → layout: ALL cards sit inside meld groups ─── */
   useEffect(() => {
     setLayout((prev) => {
-      const known = new Set<string>([
-        ...prev.groups.flatMap((g) => g.cardIds),
-        ...prev.ungrouped,
-      ]);
+      const known = new Set<string>(prev.groups.flatMap((g) => g.cardIds));
       const handIds = new Set(hand.map((c) => c.id));
-      // Drop cards no longer in hand
       const filteredGroups = prev.groups
         .map((g) => ({ ...g, cardIds: g.cardIds.filter((id) => handIds.has(id)) }))
         .filter((g) => g.cardIds.length > 0);
-      const filteredUngrouped = prev.ungrouped.filter((id) => handIds.has(id));
-      // Append new ones (suit-sorted) to ungrouped
+
       const incoming = hand.map((c) => c.id).filter((id) => !known.has(id));
       if (incoming.length === 0 && initialized.current) {
-        return { groups: filteredGroups, ungrouped: filteredUngrouped };
+        return { groups: filteredGroups, ungrouped: [] };
       }
       initialized.current = true;
-      const fresh = sortIds(incoming, byId, wildRank);
-      return {
-        groups: filteredGroups,
-        ungrouped: [...filteredUngrouped, ...fresh],
-      };
+
+      // If no groups exist yet (e.g. initial deal), split hand by suit into meld groups
+      if (filteredGroups.length === 0) {
+        const suitLanes = splitBySuit(hand);
+        return {
+          groups: suitLanes.slice(0, MAX_GROUPS).map((cards) => ({
+            id: newGroupId(),
+            cardIds: cards.map((c) => c.id),
+          })),
+          ungrouped: [],
+        };
+      }
+
+      // Add incoming cards to matching suit group or first available group
+      const newGroups = filteredGroups.map((g) => ({ ...g, cardIds: [...g.cardIds] }));
+      for (const id of incoming) {
+        const card = byId.get(id);
+        if (!card) continue;
+        const matchingGroup = newGroups.find((g) => {
+          const firstCard = byId.get(g.cardIds[0]);
+          return firstCard && firstCard.suit === card.suit;
+        });
+        if (matchingGroup) {
+          matchingGroup.cardIds.push(id);
+        } else if (newGroups.length < MAX_GROUPS) {
+          newGroups.push({ id: newGroupId(), cardIds: [id] });
+        } else if (newGroups.length > 0) {
+          newGroups[0].cardIds.push(id);
+        }
+      }
+      return { groups: newGroups, ungrouped: [] };
     });
   }, [hand, byId, wildRank]);
 
@@ -279,8 +281,6 @@ export default function RummyBoardDesktop({
       const cards = g.cardIds.map((id) => byId.get(id)!).filter(Boolean);
       base[g.id] = classifyMeld(cards, wildRank as Rank);
     }
-    // Life-aware re-stamp: a set / impure run only counts once the two-life
-    // rule is met, so lanes read amber (not green) until they're credited.
     const ctx = handMeldContext(Object.values(base).map((c) => c.kind));
     const m: Record<string, MeldClassification> = {};
     for (const g of layout.groups) {
@@ -294,21 +294,28 @@ export default function RummyBoardDesktop({
       cards: g.cardIds.map((id) => byId.get(id)!).filter(Boolean),
       classification: meldByGroupId[g.id],
     }));
-    const ungroupedCards = layout.ungrouped.map((id) => byId.get(id)!).filter(Boolean);
-    return computeLivePoints(groups, ungroupedCards, wildRank as Rank);
-  }, [layout, byId, meldByGroupId, wildRank]);
+    return computeLivePoints(groups, [], wildRank as Rank);
+  }, [layout.groups, byId, meldByGroupId, wildRank]);
 
   const finishReadiness = useMemo(() => {
-    const groups = layout.groups.map((g) => ({
-      cards: g.cardIds.map((id) => byId.get(id)!).filter(Boolean),
-    }));
+    const selCardId = selected.size === 1 ? Array.from(selected)[0] : null;
+    const groups = layout.groups
+      .map((g) => ({
+        cards: g.cardIds
+          .filter((id) => id !== selCardId)
+          .map((id) => byId.get(id)!)
+          .filter(Boolean),
+      }))
+      .filter((g) => g.cards.length > 0);
+
+    const totalGrouped = groups.reduce((s, g) => s + g.cards.length, 0);
     return evaluateFinishReadiness(
       groups,
       wildRank as Rank,
-      layout.groups.reduce((s, g) => s + g.cardIds.length, 0),
-      layout.ungrouped.length,
+      totalGrouped,
+      selCardId ? 1 : 0,
     );
-  }, [layout, wildRank]);
+  }, [layout.groups, byId, selected, wildRank]);
 
   /* ─── Turn / phase helpers ─── */
   const isArranging = state.phase === "arranging";
@@ -316,17 +323,12 @@ export default function RummyBoardDesktop({
   const canDraw = myTurn && state.turnAction === "draw" && state.phase === "playing";
   const canDiscardOrDeclare =
     myTurn && state.turnAction === "discardOrDeclare" && state.phase === "playing";
-  // During the post-show window the declarer is a pure spectator; everyone
-  // else may still rearrange (drag/drop, group, sort, auto) to cut points.
   const iAmDeclarer = isArranging && state.winnerId === selfId;
-  /** True once selfId has dropped out of this round. */
   const iDropped = !!selfId && state.droppedPlayers.includes(selfId);
 
   /* ─── End-of-round scorecard dismissed flag ─── */
   const [scorecardDismissed, setScorecardDismissed] = useState(false);
   useEffect(() => {
-    // Re-arm the scorecard the next time the room flips back to playing
-    // (e.g. on a rematch). Otherwise it stays dismissed for the session.
     if (state.phase === "playing") setScorecardDismissed(false);
   }, [state.phase]);
 
@@ -334,9 +336,6 @@ export default function RummyBoardDesktop({
   const [winnerBurstKey, setWinnerBurstKey] = useState<number | null>(null);
   const prevPhaseForBurst = useRef(state.phase);
   useEffect(() => {
-    // The round now goes playing → arranging → finished, so "just finished"
-    // means the previous phase was arranging (or playing, for instant wins
-    // like a drop-out). Fire whenever we land on finished from either.
     const wasInRound = prevPhaseForBurst.current !== "finished";
     const justFinished = state.phase === "finished";
     prevPhaseForBurst.current = state.phase;
@@ -379,7 +378,7 @@ export default function RummyBoardDesktop({
   function discardSelected() {
     if (!canDiscardOrDeclare) return;
     if (selected.size !== 1) {
-      setError("Pick exactly one card to discard");
+      setError("Pick exactly one card in a meld group to discard");
       return;
     }
     const id = Array.from(selected)[0];
@@ -399,7 +398,7 @@ export default function RummyBoardDesktop({
       groups: l.groups
         .map((g) => ({ ...g, cardIds: g.cardIds.filter((id) => id !== cardId) }))
         .filter((g) => g.cardIds.length > 0),
-      ungrouped: l.ungrouped.filter((id) => id !== cardId),
+      ungrouped: [],
     }));
     setSelected(new Set());
     setError(null);
@@ -409,40 +408,49 @@ export default function RummyBoardDesktop({
       setError("Draw a card first before declaring");
       return;
     }
-    // Move cardId to a temporary "ungrouped" slot, then declare.
-    setLayout((l) => {
-      const groupsCleaned = l.groups
-        .map((g) => ({ ...g, cardIds: g.cardIds.filter((id) => id !== cardId) }))
-        .filter((g) => g.cardIds.length > 0);
-      const ungrouped = [...l.ungrouped.filter((id) => id !== cardId), cardId];
-      return { groups: groupsCleaned, ungrouped };
-    });
-    // Defer the declare so the layout state is fresh.
-    setTimeout(() => declareWith(cardId), 0);
+    declareWith(cardId);
   }
   function declareWith(discardCardId: string) {
-    const totalGrouped = layout.groups.reduce((s, g) => s + g.cardIds.length, 0);
-    if (totalGrouped < 13) {
-      setError("Move all 13 hand cards into groups before declaring");
+    const declareGroups = layout.groups
+      .map((g) => g.cardIds.filter((id) => id !== discardCardId))
+      .filter((g) => g.length > 0);
+
+    const totalGrouped = declareGroups.reduce((s, g) => s + g.length, 0);
+    if (totalGrouped !== 13) {
+      setError(`Need exactly 13 cards in melds to declare (have ${totalGrouped})`);
       return;
     }
-    const melds = layout.groups.map((g) => g.cardIds);
     getSocket().emit("game:move", {
       type: "declare",
-      data: { discardCardId, melds },
+      data: { discardCardId, melds: declareGroups },
     });
     rummySfx.declare();
     setError(null);
   }
   function declareViaButton() {
     if (!canDiscardOrDeclare) return;
-    if (layout.ungrouped.length !== 1) {
-      setError(
-        `Move exactly 1 card to ungrouped as your final discard (have ${layout.ungrouped.length}).`,
-      );
+    let finishCardId: string | null = null;
+    if (selected.size === 1) {
+      finishCardId = Array.from(selected)[0];
+    } else {
+      for (const g of layout.groups) {
+        const cls = meldByGroupId[g.id];
+        if (!cls?.valid && g.cardIds.length > 0) {
+          finishCardId = g.cardIds[g.cardIds.length - 1];
+          break;
+        }
+      }
+      if (!finishCardId && layout.groups.length > 0) {
+        const lastGroup = layout.groups[layout.groups.length - 1];
+        finishCardId = lastGroup.cardIds[lastGroup.cardIds.length - 1];
+      }
+    }
+
+    if (!finishCardId) {
+      setError("Select 1 card in a meld group to finish and declare.");
       return;
     }
-    declareWith(layout.ungrouped[0]);
+    declareWith(finishCardId);
   }
   function dropFromHand() {
     setConfirmDrop(false);
@@ -452,7 +460,7 @@ export default function RummyBoardDesktop({
 
   /* ─── Layout edits ─── */
   function moveCardsTo(
-    targetKind: "group" | "ungrouped" | "new",
+    targetKind: "group" | "new",
     targetLaneId: string | null,
     ids: string[],
   ) {
@@ -462,25 +470,20 @@ export default function RummyBoardDesktop({
         ...g,
         cardIds: g.cardIds.filter((id) => !idSet.has(id)),
       }));
-      const ungroupedFiltered = l.ungrouped.filter((id) => !idSet.has(id));
 
       if (targetKind === "new") {
         const cleaned = groupsFiltered.filter((g) => g.cardIds.length > 0);
         return {
           groups: [...cleaned, { id: newGroupId(), cardIds: ids.slice() }],
-          ungrouped: ungroupedFiltered,
+          ungrouped: [],
         };
-      }
-      if (targetKind === "ungrouped") {
-        const cleaned = groupsFiltered.filter((g) => g.cardIds.length > 0);
-        return { groups: cleaned, ungrouped: [...ungroupedFiltered, ...ids] };
       }
       // group
       const newGroups = groupsFiltered.map((g) =>
         g.id === targetLaneId ? { ...g, cardIds: [...g.cardIds, ...ids] } : g,
       );
       const cleaned = newGroups.filter((g) => g.cardIds.length > 0);
-      return { groups: cleaned, ungrouped: ungroupedFiltered };
+      return { groups: cleaned, ungrouped: [] };
     });
   }
   function groupSelected() {
@@ -502,10 +505,9 @@ export default function RummyBoardDesktop({
       const groups = l.groups
         .map((g) => ({ ...g, cardIds: g.cardIds.filter((id) => !selected.has(id)) }))
         .filter((g) => g.cardIds.length > 0);
-      const ungrouped = l.ungrouped.filter((id) => !selected.has(id));
       return {
         groups: [...groups, { id: newGroupId(), cardIds: ordered }],
-        ungrouped,
+        ungrouped: [],
       };
     });
     setSelected(new Set());
@@ -515,24 +517,41 @@ export default function RummyBoardDesktop({
   function ungroupGroup(groupId: string) {
     setLayout((l) => {
       const g = l.groups.find((gg) => gg.id === groupId);
-      if (!g) return l;
+      if (!g || l.groups.length <= 1) return l;
+      const remainingGroups = l.groups.filter((gg) => gg.id !== groupId);
+      const cardsToDistribute = g.cardIds;
+      const updatedGroups = remainingGroups.map((gg) => ({ ...gg, cardIds: [...gg.cardIds] }));
+      for (const id of cardsToDistribute) {
+        const card = byId.get(id);
+        const match = updatedGroups.find((gg) => {
+          const firstCard = byId.get(gg.cardIds[0]);
+          return firstCard && firstCard.suit === card?.suit;
+        });
+        if (match) {
+          match.cardIds.push(id);
+        } else if (updatedGroups.length > 0) {
+          updatedGroups[0].cardIds.push(id);
+        }
+      }
       return {
-        groups: l.groups.filter((gg) => gg.id !== groupId),
-        ungrouped: [...l.ungrouped, ...g.cardIds],
+        groups: updatedGroups,
+        ungrouped: [],
       };
     });
     setError(null);
   }
-  function sortUngrouped() {
-    setLayout((l) => ({ ...l, ungrouped: sortIds(l.ungrouped, byId, wildRank) }));
+  function sortMeldGroups() {
+    setLayout((l) => ({
+      groups: l.groups.map((g) => ({
+        ...g,
+        cardIds: sortIds(g.cardIds, byId, wildRank),
+      })),
+      ungrouped: [],
+    }));
   }
-  // AUTO only tidies the hand into suit lanes (♠♥♦♣ + jokers) — it never forms
-  // melds for the player. They must build their own sequences/sets, which is
-  // what makes the post-show rearrange window meaningful.
   function autoArrange() {
     const all: CardType[] = [
       ...layout.groups.flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is CardType => !!c)),
-      ...layout.ungrouped.map((id) => byId.get(id)).filter((c): c is CardType => !!c),
     ];
     if (all.length === 0) return;
     const lanes = splitBySuit(all);
@@ -541,7 +560,7 @@ export default function RummyBoardDesktop({
         id: newGroupId(),
         cardIds: cards.map((c) => c.id),
       })),
-      ungrouped: lanes.slice(MAX_GROUPS).flat().map((c) => c.id),
+      ungrouped: [],
     });
     setSelected(new Set());
     rummySfx.meldFormed();
@@ -553,14 +572,9 @@ export default function RummyBoardDesktop({
     bestDiscardCard: CardType | null;
   } | null>(null);
 
-  /**
-   * Request Smart Hint: computes proposed melds & discard card, then shows
-   * an approval preview banner so the user must click "APPROVE" to apply.
-   */
   function requestSmartHint() {
     const allCards: CardType[] = [
       ...layout.groups.flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is CardType => !!c)),
-      ...layout.ungrouped.map((id) => byId.get(id)).filter((c): c is CardType => !!c),
     ];
     if (allCards.length === 0) return;
 
@@ -581,11 +595,17 @@ export default function RummyBoardDesktop({
       id: newGroupId(),
       cardIds: cards.map((c) => c.id),
     }));
-    const newUngroupedIds = pendingHint.ungrouped.map((c) => c.id);
+
+    if (pendingHint.ungrouped.length > 0) {
+      newGroups.push({
+        id: newGroupId(),
+        cardIds: pendingHint.ungrouped.map((c) => c.id),
+      });
+    }
 
     setLayout({
       groups: newGroups,
-      ungrouped: newUngroupedIds,
+      ungrouped: [],
     });
 
     if (pendingHint.bestDiscardCard) {
@@ -628,8 +648,6 @@ export default function RummyBoardDesktop({
       } else if (target === "finishslot") {
         const id = ids[0];
         if (id) dropOnFinishSlot(id);
-      } else if (target === "ungrouped") {
-        moveCardsTo("ungrouped", null, ids);
       } else if (target === "new") {
         const idSet = new Set(ids);
         const remaining = layout.groups.filter(
@@ -647,6 +665,7 @@ export default function RummyBoardDesktop({
     }
     onDragEnd();
   }
+
 
   /* ─── Card tap / selection ─── */
   function onCardTap(cardId: string) {
@@ -692,7 +711,7 @@ export default function RummyBoardDesktop({
           e.preventDefault(); groupSelected();
           break;
         case "s":
-          e.preventDefault(); sortUngrouped();
+          e.preventDefault(); sortMeldGroups();
           break;
         case "a":
           e.preventDefault(); autoArrange();
@@ -958,88 +977,63 @@ export default function RummyBoardDesktop({
             )}
           </div>
 
-          {/* ── 3 · the melds ──
-              Locked for the declarer (they are spectating); losers keep them
-              live so they can rearrange and cut their points. */}
-          <div className={`rm-melds${iAmDeclarer ? " rm-melds--locked" : ""}`}>
-            {layout.groups.length === 0 && (
-              <span className="rm-melds__empty">
-                No melds yet — select cards and press G, or drag them here.
-              </span>
-            )}
-            {layout.groups.map((g) => (
-              <GroupLane
-                key={g.id}
-                groupId={g.id}
-                cardIds={g.cardIds}
-                byId={byId}
-                wildRank={wildRank}
-                selected={selected}
-                draggingIds={draggingIds}
-                classification={meldByGroupId[g.id]}
-                dragOver={dragOverTarget === `group:${g.id}`}
-                onTap={onCardTap}
-                onDragBegin={onDragBegin}
-                onDragHover={onDragHover}
-                onDragRelease={onDragRelease}
-                onUngroup={() => ungroupGroup(g.id)}
-              />
-            ))}
-            {/* Always mounted, not drag-only: a target that appears only once
-                you are already dragging cannot teach you that dragging is
-                possible. */}
-            <AddMeldZone
-              active={dragOverTarget === "new"}
-              atCap={layout.groups.length >= MAX_GROUPS}
-            />
-          </div>
-
-          {/* ── 4 · the hand — the subject of the screen ── */}
+          {/* ── 3 · the melded hand board ──
+              All cards in Rummy are organized in meld groups. Players can drag and move
+              cards between melds, create new meld groups, or declare directly from any meld. */}
           <div
             className={
-              "rm-hand" + (iDropped || iAmDeclarer ? " is-idle" : myTurn ? " is-turn" : "")
+              `rm-melds${iAmDeclarer ? " rm-melds--locked" : ""}` +
+              (iDropped || iAmDeclarer ? " is-idle" : myTurn ? " is-turn" : "")
             }
+            style={{ flexDirection: "column", alignItems: "stretch", gap: "var(--rm-space-xs)" }}
           >
             <div className="rm-hand__head">
               <span className="rm-hand__title">
-                Your hand{" "}
+                Your Melded Hand{" "}
                 <span className="rm-hand__count">
-                  ({layout.ungrouped.length}{" "}
-                  {layout.ungrouped.length === 1 ? "card" : "cards"})
+                  ({layout.groups.reduce((s, g) => s + g.cardIds.length, 0)} cards in {layout.groups.length} groups)
                 </span>
               </span>
               <span className="rm-hand__tip">
                 {selected.size > 0
-                  ? `${selected.size} selected · G to group`
-                  : "Tap a card to select"}
+                  ? `${selected.size} selected · G to group into new meld`
+                  : "Tap cards to select, or drag to move cards between melds"}
               </span>
               <span />
             </div>
 
-            {iDropped ? (
-              <div className="rm-hint" style={{ padding: "var(--rm-space-lg) 0" }}>
-                You dropped — spectating
-              </div>
-            ) : (
-              <UngroupedLane
-                cardIds={layout.ungrouped}
-                byId={byId}
-                wildRank={wildRank}
-                selected={selected}
-                draggingIds={draggingIds}
-                dragOver={dragOverTarget === "ungrouped"}
-                onTap={onCardTap}
-                onDragBegin={onDragBegin}
-                onDragHover={onDragHover}
-                onDragRelease={onDragRelease}
+            <div className="flex items-center gap-2 overflow-x-auto w-full py-1">
+              {layout.groups.length === 0 && (
+                <span className="rm-melds__empty">
+                  No melds yet — select cards and press G, or drag them here.
+                </span>
+              )}
+              {layout.groups.map((g) => (
+                <GroupLane
+                  key={g.id}
+                  groupId={g.id}
+                  cardIds={g.cardIds}
+                  byId={byId}
+                  wildRank={wildRank}
+                  selected={selected}
+                  draggingIds={draggingIds}
+                  classification={meldByGroupId[g.id]}
+                  dragOver={dragOverTarget === `group:${g.id}`}
+                  onTap={onCardTap}
+                  onDragBegin={onDragBegin}
+                  onDragHover={onDragHover}
+                  onDragRelease={onDragRelease}
+                  onUngroup={() => ungroupGroup(g.id)}
+                />
+              ))}
+              <AddMeldZone
+                active={dragOverTarget === "new"}
+                atCap={layout.groups.length >= MAX_GROUPS}
               />
-            )}
+            </div>
           </div>
 
-          {/* ── 5 · the action bar ──
-              Two tidy-up tools, the two numbers that decide the turn, then the
-              two committed actions. Everything rarer lives behind the tools
-              button at the end, so the bar itself never grows. */}
+          {/* ── 4 · the action bar ── */}
           <div
             className="rm-bar"
             style={iAmDeclarer ? { opacity: 0.4, pointerEvents: "none" } : undefined}
@@ -1048,8 +1042,8 @@ export default function RummyBoardDesktop({
               icon={<SortIcon />}
               label="Sort"
               note="Group (Suit)"
-              onClick={sortUngrouped}
-              title="Sort your ungrouped cards by suit and rank (S)"
+              onClick={sortMeldGroups}
+              title="Sort cards within all meld groups by suit and rank (S)"
             />
             <ToolButton
               icon={<AutoGroupIcon />}

@@ -84,9 +84,9 @@
    * thirteen items, so a purely vh-driven size wraps it onto two lines on a
    * tall-but-narrow window. `min()` takes whichever limit binds first.
    */
-  --rm-card-w-pile: clamp(5.75rem, 14vh, 11rem);
-  --rm-card-w-hand: clamp(4.25rem, min(10.5vh, 6.5vw), 8rem);
-  --rm-card-w-lg:   clamp(3.5rem, 7.5vh, 6rem);
+  --rm-card-w-pile: clamp(5.25rem, 12vh, 9.5rem);
+  --rm-card-w-hand: clamp(3.75rem, min(8.5vh, 5.5vw), 6.5rem);
+  --rm-card-w-lg:   clamp(3.5rem, min(8vh, 5vw), 5.75rem);
 
   --rm-rule-color:  oklch(from var(--rm-brass) l c h / 0.28);
   --rm-lift-hand:   0 -12px 40px -12px oklch(from var(--rm-brass) l c h / 0.22);
@@ -196,7 +196,6 @@
 .rm-turnpill__timer {
   display: flex;
   align-items: center;
-  gap: var(--rm-space-2xs);
   padding: var(--rm-space-2xs) var(--rm-space-sm);
   background: var(--rm-room-bg);
   border-left: var(--rm-rule) solid var(--rm-edge);
@@ -244,6 +243,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 /* seats · felt · melds · hand · bar.
  *
@@ -653,15 +654,16 @@
 /* ── 3 · the melds ────────────────────────────────────────────────────── */
 .rm-melds {
   display: flex;
-  align-items: stretch;
-  gap: 0;
-  padding: var(--rm-space-xs);
+  align-items: center;
+  gap: var(--rm-space-xs);
+  padding: var(--rm-space-xs) var(--rm-space-sm);
   border: var(--rm-rule) solid var(--rm-edge);
   border-radius: var(--rm-radius-zone);
   background: var(--rm-panel);
   overflow-x: auto;
   scrollbar-width: thin;
-  min-height: calc(var(--rm-card-w-lg) * var(--rm-card-ratio) + 2.5rem);
+  flex: 1;
+  min-height: 0;
 }
 .rm-melds::-webkit-scrollbar { height: 5px; }
 .rm-melds::-webkit-scrollbar-thumb { background: var(--rm-edge); border-radius: 999px; }
