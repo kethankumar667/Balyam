@@ -176,3 +176,26 @@ export const SlidersIcon = strokeIcon(
     <circle cx="18" cy="17" r="2" />
   </>,
 );
+
+/** Data & privacy. A shield, because that section is about what is held. */
+export const ShieldIcon = strokeIcon(
+  <path d="M12 3.5 5 6.2v5c0 4.2 2.8 7.6 7 9.3 4.2-1.7 7-5.1 7-9.3v-5L12 3.5Z" />,
+);
+
+/** Language. A globe with a meridian, not a flag — languages are not countries. */
+export const GlobeIcon = strokeIcon(
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M3.5 12h17" />
+    <path d="M12 3.5c2.2 2.3 3.4 5.3 3.4 8.5s-1.2 6.2-3.4 8.5c-2.2-2.3-3.4-5.3-3.4-8.5S9.8 5.8 12 3.5Z" />
+  </>,
+);
+
+/** Avatar. A face, to distinguish the picker from the display-name section. */
+export const FaceIcon = strokeIcon(
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M9 10.5h.01M15 10.5h.01" />
+    <path d="M8.8 14.6a4.2 4.2 0 0 0 6.4 0" />
+  </>,
+);

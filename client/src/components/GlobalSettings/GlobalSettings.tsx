@@ -24,10 +24,28 @@ function GlobalSettingsImpl({
   className,
   /** Drop this panel's own card chrome — the host page supplies it. */
   bare = false,
+  /**
+   * "split" puts the sliders and the audio theme side by side.
+   *
+   * In a sheet these belong in one column, because a sheet is narrow and the
+   * eye reads straight down. On the profile page the same content sits in a
+   * card twice that wide, where a single column leaves the right half empty
+   * and pushes the theme picker below the fold for no reason.
+   */
+  layout = "stack",
+  /**
+   * Language ships inside this panel because the settings sheet wants one
+   * scroll of everything. A page laying its own cards out wants it as a
+   * sibling card instead, not buried at the bottom of Preferences.
+   */
+  includeLanguage = true,
 }: {
   className?: string;
   bare?: boolean;
+  layout?: "stack" | "split";
+  includeLanguage?: boolean;
 }) {
+  const split = layout === "split";
   const a = useAudio();
   const h = useHaptics();
   const { t } = useTranslation();
@@ -61,109 +79,227 @@ function GlobalSettingsImpl({
       } ${className ?? ""}`}
       aria-label={t("settings.label")}
     >
-      {/* ── Sound ───────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <header className="flex items-center justify-between gap-2">
-          <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
-            {t("sound.title")}
-          </h3>
-          <ToggleSwitch
-            checked={!settings.isMuted}
-            onChange={onMuteSound}
-            onLabel={t("common.on")}
-            offLabel={t("audio.muted")}
-            ariaLabel={settings.isMuted ? t("sound.unmute") : t("sound.mute")}
-          />
-        </header>
+      {/* Two columns on the profile page, one in a sheet. Written as a
+          branch rather than a `display: contents` wrapper that switches off:
+          a boxless element generates no margin box, so `space-y` on the
+          section would have silently stopped spacing the stacked layout. */}
+      {split ? (
+        <div className="grid lg:grid-cols-2 gap-x-8 gap-y-5 items-start">
+          <div className="space-y-5">
+          {/* ── Sound ───────────────────────────────────────────────── */}
+          <div className="space-y-3">
+            <header className="flex items-center justify-between gap-2">
+              <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
+                {t("sound.title")}
+              </h3>
+              <ToggleSwitch
+                checked={!settings.isMuted}
+                onChange={onMuteSound}
+                onLabel={t("common.on")}
+                offLabel={t("audio.muted")}
+                ariaLabel={settings.isMuted ? t("sound.unmute") : t("sound.mute")}
+              />
+            </header>
 
-        {!isAudioUnlocked && (
-          <p className="text-[11px] text-[var(--room-ink-soft)] italic">
-            {t("audio.unlockHint")}
-          </p>
-        )}
+            {!isAudioUnlocked && (
+              <p className="text-[11px] text-[var(--room-ink-soft)] italic">
+                {t("audio.unlockHint")}
+              </p>
+            )}
 
-        <VolumeSlider
-          label={t("audio.master")}
-          value={settings.masterVolume}
-          onChange={a.setMasterVolume}
-          disabled={settings.isMuted}
-        />
-        <VolumeSlider
-          label={t("audio.music")}
-          value={settings.musicVolume}
-          onChange={a.setMusicVolume}
-          disabled={settings.isMuted}
-        />
-        <VolumeSlider
-          label={t("audio.effects")}
-          value={settings.effectsVolume}
-          onChange={a.setEffectsVolume}
-          disabled={settings.isMuted}
-        />
-      </div>
+            <VolumeSlider
+              label={t("audio.master")}
+              value={settings.masterVolume}
+              onChange={a.setMasterVolume}
+              disabled={settings.isMuted}
+            />
+            <VolumeSlider
+              label={t("audio.music")}
+              value={settings.musicVolume}
+              onChange={a.setMusicVolume}
+              disabled={settings.isMuted}
+            />
+            <VolumeSlider
+              label={t("audio.effects")}
+              value={settings.effectsVolume}
+              onChange={a.setEffectsVolume}
+              disabled={settings.isMuted}
+            />
+          </div>
 
-      {/* ── Vibration ───────────────────────────────────────────── */}
-      <div className="space-y-2 pt-2 border-t border-[var(--room-panel-edge)]">
-        <header className="flex items-center justify-between gap-2">
-          <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
-            {t("vibration.title")}
-          </h3>
-          <ToggleSwitch
-            checked={h.enabled}
-            disabled={!h.supported}
-            onChange={onToggleHaptics}
-            onLabel={t("common.on")}
-            offLabel={t("common.off")}
-            ariaLabel={h.enabled ? t("vibration.disable") : t("vibration.enable")}
-          />
-        </header>
-        <p className="text-[11px] text-[var(--room-ink-soft)] leading-snug">
-          {h.supported ? t("vibration.hint") : t("vibration.unsupported")}
-        </p>
-      </div>
-
-      {/* ── Audio theme ─────────────────────────────────────────── */}
-      <div className="space-y-2 pt-2 border-t border-[var(--room-panel-edge)]">
-        <div className="flex items-center justify-between">
-          <span className="text-xs uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
-            {t("audio.theme")}
-          </span>
-          <span className="text-[11px] text-[var(--room-ink-soft)]">
-            {THEMES.find((t) => t.id === settings.selectedAudioTheme)?.name}
-          </span>
+          {/* ── Vibration ───────────────────────────────────────────── */}
+          <div className="space-y-2 pt-2 border-t border-[var(--room-panel-edge)]">
+            <header className="flex items-center justify-between gap-2">
+              <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
+                {t("vibration.title")}
+              </h3>
+              <ToggleSwitch
+                checked={h.enabled}
+                disabled={!h.supported}
+                onChange={onToggleHaptics}
+                onLabel={t("common.on")}
+                offLabel={t("common.off")}
+                ariaLabel={h.enabled ? t("vibration.disable") : t("vibration.enable")}
+              />
+            </header>
+            <p className="text-[11px] text-[var(--room-ink-soft)] leading-snug">
+              {h.supported ? t("vibration.hint") : t("vibration.unsupported")}
+            </p>
+          </div>
+          </div>
+          {/* ── Audio theme ─────────────────────────────────────────── */}
+          <div
+            className={`space-y-2 ${
+              split ? "" : "pt-2 border-t border-[var(--room-panel-edge)]"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
+                {t("audio.theme")}
+              </span>
+              <span className="text-[11px] text-[var(--room-ink-soft)]">
+                {THEMES.find((t) => t.id === settings.selectedAudioTheme)?.name}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-1.5">
+              {THEMES.map((t) => {
+                const active = t.id === settings.selectedAudioTheme;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => onTheme(t.id)}
+                    aria-pressed={active}
+                    className={`text-left rounded-lg border px-3 py-2 transition-colors ${
+                      active
+                        ? "bg-[#EA5A1F] border-[#D84F17] text-white"
+                        : "bg-[var(--room-field)] border-[var(--room-field-edge)] text-[var(--room-ink)] hover:border-[#EA5A1F]"
+                    }`}
+                  >
+                    <div className="text-sm font-bold leading-tight">{t.name}</div>
+                    <div
+                      className={`text-[11px] leading-snug mt-0.5 ${
+                        active ? "text-white/90" : "text-[var(--room-ink-soft)]"
+                      }`}
+                    >
+                      {t.description}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-1.5">
-          {THEMES.map((t) => {
-            const active = t.id === settings.selectedAudioTheme;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onTheme(t.id)}
-                aria-pressed={active}
-                className={`text-left rounded-lg border px-3 py-2 transition-colors ${
-                  active
-                    ? "bg-[#EA5A1F] border-[#D84F17] text-white"
-                    : "bg-[var(--room-field)] border-[var(--room-field-edge)] text-[var(--room-ink)] hover:border-[#EA5A1F]"
-                }`}
-              >
-                <div className="text-sm font-bold leading-tight">{t.name}</div>
-                <div
-                  className={`text-[11px] leading-snug mt-0.5 ${
-                    active ? "text-white/90" : "text-[var(--room-ink-soft)]"
+      ) : (
+        <>
+        {/* ── Sound ───────────────────────────────────────────────── */}
+        <div className="space-y-3">
+          <header className="flex items-center justify-between gap-2">
+            <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
+              {t("sound.title")}
+            </h3>
+            <ToggleSwitch
+              checked={!settings.isMuted}
+              onChange={onMuteSound}
+              onLabel={t("common.on")}
+              offLabel={t("audio.muted")}
+              ariaLabel={settings.isMuted ? t("sound.unmute") : t("sound.mute")}
+            />
+          </header>
+
+          {!isAudioUnlocked && (
+            <p className="text-[11px] text-[var(--room-ink-soft)] italic">
+              {t("audio.unlockHint")}
+            </p>
+          )}
+
+          <VolumeSlider
+            label={t("audio.master")}
+            value={settings.masterVolume}
+            onChange={a.setMasterVolume}
+            disabled={settings.isMuted}
+          />
+          <VolumeSlider
+            label={t("audio.music")}
+            value={settings.musicVolume}
+            onChange={a.setMusicVolume}
+            disabled={settings.isMuted}
+          />
+          <VolumeSlider
+            label={t("audio.effects")}
+            value={settings.effectsVolume}
+            onChange={a.setEffectsVolume}
+            disabled={settings.isMuted}
+          />
+        </div>
+
+        {/* ── Vibration ───────────────────────────────────────────── */}
+        <div className="space-y-2 pt-2 border-t border-[var(--room-panel-edge)]">
+          <header className="flex items-center justify-between gap-2">
+            <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
+              {t("vibration.title")}
+            </h3>
+            <ToggleSwitch
+              checked={h.enabled}
+              disabled={!h.supported}
+              onChange={onToggleHaptics}
+              onLabel={t("common.on")}
+              offLabel={t("common.off")}
+              ariaLabel={h.enabled ? t("vibration.disable") : t("vibration.enable")}
+            />
+          </header>
+          <p className="text-[11px] text-[var(--room-ink-soft)] leading-snug">
+            {h.supported ? t("vibration.hint") : t("vibration.unsupported")}
+          </p>
+        </div>
+
+        {/* ── Audio theme ─────────────────────────────────────────── */}
+        <div
+          className={`space-y-2 ${
+            split ? "" : "pt-2 border-t border-[var(--room-panel-edge)]"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
+              {t("audio.theme")}
+            </span>
+            <span className="text-[11px] text-[var(--room-ink-soft)]">
+              {THEMES.find((t) => t.id === settings.selectedAudioTheme)?.name}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-1.5">
+            {THEMES.map((t) => {
+              const active = t.id === settings.selectedAudioTheme;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => onTheme(t.id)}
+                  aria-pressed={active}
+                  className={`text-left rounded-lg border px-3 py-2 transition-colors ${
+                    active
+                      ? "bg-[#EA5A1F] border-[#D84F17] text-white"
+                      : "bg-[var(--room-field)] border-[var(--room-field-edge)] text-[var(--room-ink)] hover:border-[#EA5A1F]"
                   }`}
                 >
-                  {t.description}
-                </div>
-              </button>
-            );
-          })}
+                  <div className="text-sm font-bold leading-tight">{t.name}</div>
+                  <div
+                    className={`text-[11px] leading-snug mt-0.5 ${
+                      active ? "text-white/90" : "text-[var(--room-ink-soft)]"
+                    }`}
+                  >
+                    {t.description}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+        </>
+      )}
 
       {/* ── Language ────────────────────────────────────────────── */}
-      <LanguageSettings embedded />
-
+      {includeLanguage ? <LanguageSettings embedded /> : null}
     </section>
   );
 }

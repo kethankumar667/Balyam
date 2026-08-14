@@ -95,17 +95,19 @@ export default function SeatAvatar({
   }
 
   return (
-    <img
-      src={option.src}
-      /* Decorative: the player's name is rendered immediately beside this in
-         every caller, so announcing "Avatar 12" would add a number the player
-         never chose and cannot act on. */
-      alt=""
-      aria-hidden
-      className={`rounded-full object-cover flex-shrink-0 ${className}`}
-      style={{ objectPosition }}
-      onError={() => setFailed(true)}
-      draggable={false}
-    />
+    <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
+      <img
+        src={option.src}
+        /* Decorative: the player's name is rendered immediately beside this in
+           every caller, so announcing "Avatar 12" would add a number the player
+           never chose and cannot act on. */
+        alt=""
+        aria-hidden
+        className="w-full h-full object-cover scale-[1.25] origin-center"
+        style={{ objectPosition }}
+        onError={() => setFailed(true)}
+        draggable={false}
+      />
+    </span>
   );
 }

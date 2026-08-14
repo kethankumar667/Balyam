@@ -452,43 +452,37 @@ function ProfileSheet({
       >
         <div className="relative mx-auto w-20 h-20 mb-3">
           <span
-            className="block w-20 h-20 rounded-full overflow-hidden bhalyam-gold-leaf
-                       shadow-[0_8px_18px_-6px_rgba(228,177,40,0.55)]
-                       flex items-center justify-center text-bhalyam-wood-dark"
+            className="block w-20 h-20 rounded-full overflow-hidden
+                       ring-4 ring-[#FBE7BD] border-2 border-[#D49E24]
+                       shadow-[0_6px_20px_rgba(212,158,36,0.45),inset_0_2px_4px_rgba(0,0,0,0.15)]
+                       flex items-center justify-center text-bhalyam-wood-dark bg-[#FFF8E7]"
           >
             {avatar ? (
-              <img src={avatar.src} alt="" className="w-full h-full object-cover object-[50%_22%]" />
+              <img
+                src={avatar.src}
+                alt=""
+                className="w-full h-full object-cover scale-[1.25] origin-center"
+                style={{ objectPosition: "50% 22%" }}
+              />
             ) : (
               <UserGlyph className="w-9 h-9" />
             )}
           </span>
-          {/*
-            Straddles the rim at 45°, rather than sitting inside it.
-
-            The avatar is an 80px circle, so its bottom-right rim point is
-            0.707r from the centre — about 68px along each axis. A 36px badge
-            pinned at `-0.5` centred at 64px, six pixels INSIDE the edge, which
-            is why the pencil landed on the avatar's shoulder instead of its
-            border. A 32px badge offset 4px out centres at 68px: tangent to the
-            circle, half on and half off, clear of the face.
-
-            Tap target stays 44px via the padded ::after below the visual.
-          */}
           <Link
             to="/profile"
             onClick={onClose}
             aria-label={avatar ? "Change your avatar and name" : "Choose an avatar and set your name"}
             className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full inline-flex items-center
-                       justify-center bg-[#FFFDF8] text-[#7B5024]
-                       ring-2 ring-[#FBE7BD] border border-[#E0AE3B]
-                       shadow-[0_2px_6px_-1px_rgba(74,44,18,0.4)]
+                       justify-center bg-[#FFFDF8] text-[#5C3717]
+                       ring-2 ring-[#FFF7E2] border-2 border-[#D49E24]
+                       shadow-[0_3px_8px_rgba(92,55,23,0.35)]
                        after:absolute after:-inset-1.5 after:content-['']
-                       hover:bg-[#FFF4DE] active:scale-95
+                       hover:bg-[#FFF4DE] hover:scale-105 active:scale-95
                        focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark
                        focus-visible:ring-offset-2 focus-visible:ring-offset-[#FBE7BD]
-                       transition-[background-color,transform] duration-150"
+                       transition-[background-color,transform,box-shadow] duration-150"
           >
-            <PencilIcon className="w-[15px] h-[15px]" />
+            <PencilIcon className="w-4 h-4 text-[#5C3717]" />
           </Link>
         </div>
 

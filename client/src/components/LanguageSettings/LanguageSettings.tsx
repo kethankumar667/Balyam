@@ -21,9 +21,15 @@ import { LOCALES, type LocaleId } from "../../i18n/types";
 function LanguageSettingsImpl({
   className,
   embedded = false,
+  /**
+   * Drop the inner "LANGUAGE" title when the host card already shows one.
+   * Otherwise the profile page prints the word twice, a line apart.
+   */
+  hideHeading = false,
 }: {
   className?: string;
   embedded?: boolean;
+  hideHeading?: boolean;
 }) {
   const { t, locale, ready, setLocale } = useTranslation();
   const audio = useAudio();
@@ -45,16 +51,23 @@ function LanguageSettingsImpl({
       className={`space-y-3 ${chrome} ${className ?? ""}`}
       aria-label={t("language.settingsLabel")}
     >
-      <header className="flex items-center justify-between gap-2">
-        <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
-          {t("language.title")}
-        </h3>
-        {!ready && (
-          <span className="text-[11px] text-[var(--room-ink-mute)]">
-            {t("language.switching")}
-          </span>
-        )}
-      </header>
+      {hideHeading && ready ? null : (
+        <header className="flex items-center justify-between gap-2">
+          {hideHeading ? null : (
+            <h3 className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
+              {t("language.title")}
+            </h3>
+          )}
+          {/* The "switching…" note survives a hidden heading: it is status,
+              not decoration, and it is the only feedback a slow locale swap
+              gives. */}
+          {!ready && (
+            <span className="text-[11px] text-[var(--room-ink-mute)] ml-auto">
+              {t("language.switching")}
+            </span>
+          )}
+        </header>
+      )}
 
       <p className="text-[11px] text-[var(--room-ink-mute)]">
         {t("language.subtitle")}

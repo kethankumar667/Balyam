@@ -36,14 +36,16 @@ export default function SelfAvatar({
   if (!avatar) return <>{fallback}</>;
 
   return (
-    <img
-      src={avatar.src}
-      // Decorative here: every caller already labels the control it sits in
-      // ("Your profile"), and a second announcement is noise, not information.
-      alt=""
-      className={`rounded-full object-cover ${className}`}
-      style={{ objectPosition }}
-      draggable={false}
-    />
+    <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
+      <img
+        src={avatar.src}
+        // Decorative here: every caller already labels the control it sits in
+        // ("Your profile"), and a second announcement is noise, not information.
+        alt=""
+        className="w-full h-full object-cover scale-[1.25] origin-center"
+        style={{ objectPosition }}
+        draggable={false}
+      />
+    </span>
   );
 }

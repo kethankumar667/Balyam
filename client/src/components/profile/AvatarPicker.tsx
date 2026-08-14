@@ -17,20 +17,28 @@ import { UserIcon } from "../auth/authIcons";
 export interface AvatarPickerProps {
   value: string | null;
   onChange: (id: string | null) => void;
+  /**
+   * Hide the chosen-avatar summary strip and its Remove button.
+   *
+   * The profile card puts Remove in its own header, next to the title, which
+   * is where the comp puts it. Leaving this strip on as well shipped two
+   * Remove buttons and two copies of "shown next to your name" in one card.
+   */
+  hideSummary?: boolean;
 }
 
-export default function AvatarPicker({ value, onChange }: AvatarPickerProps) {
+export default function AvatarPicker({ value, onChange, hideSummary = false }: AvatarPickerProps) {
   const chosen = findAvatar(value);
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-3">
+      <div className={`items-center gap-3 ${hideSummary ? "hidden" : "flex"}`}>
         <span
           className="w-14 h-14 rounded-full overflow-hidden border-2 border-[var(--auth-field-edge)]
                      bg-[var(--auth-field)] flex items-center justify-center flex-shrink-0"
         >
           {chosen ? (
-            <img src={chosen.src} alt="" className="w-full h-full object-cover" />
+            <img src={chosen.src} alt="" className="w-full h-full object-cover scale-[1.25] origin-center" />
           ) : (
             <UserIcon className="w-7 h-7 text-[var(--auth-ink-mute)]" />
           )}
@@ -60,6 +68,13 @@ export default function AvatarPicker({ value, onChange }: AvatarPickerProps) {
         ) : null}
       </div>
 
+      {/* The scroll box holds fifty faces and its height is a round number, so
+          it almost always cuts a row through the middle. Left bare that reads
+          as a clipping bug; under a short fade it reads as "keep going", which
+          is what it actually means. The fade is a sibling overlay rather than a
+          mask on the scroller, so it stays put while the grid moves and does
+          not wash out the container's border. */}
+      <div className="relative">
       <div
         role="radiogroup"
         aria-label="Choose an avatar"
@@ -78,14 +93,14 @@ export default function AvatarPicker({ value, onChange }: AvatarPickerProps) {
               // Roving tabindex: the group is one stop, arrows move within it.
               tabIndex={selected || (!value && a === AVATARS[0]) ? 0 : -1}
               onClick={() => onChange(a.id)}
-              className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer
+              className={`relative aspect-square rounded-full overflow-hidden cursor-pointer
                           focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark
                           focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--auth-field)]
                           transition-[transform,box-shadow] duration-150
                           ${
                             selected
-                              ? "ring-2 ring-bhalyam-gold-dark shadow-[0_4px_10px_-4px_rgba(228,177,40,0.8)] scale-[1.03]"
-                              : "ring-1 ring-[var(--auth-field-edge)] hover:scale-[1.03]"
+                              ? "ring-2 ring-bhalyam-gold-dark shadow-[0_4px_12px_rgba(228,177,40,0.6)] scale-[1.05]"
+                              : "ring-1 ring-[var(--auth-field-edge)] hover:scale-[1.05]"
                           }`}
             >
               <img
@@ -93,17 +108,23 @@ export default function AvatarPicker({ value, onChange }: AvatarPickerProps) {
                 alt=""
                 loading="lazy"
                 decoding="async"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover scale-[1.25] origin-center"
               />
               {selected ? (
                 <span
-                  className="absolute inset-0 ring-2 ring-inset ring-white/70 rounded-lg"
+                  className="absolute inset-0 ring-2 ring-inset ring-white/70 rounded-full"
                   aria-hidden
                 />
               ) : null}
             </button>
           );
         })}
+      </div>
+        <div
+          className="pointer-events-none absolute inset-x-px bottom-px h-9 rounded-b-xl
+                     bg-gradient-to-t from-[var(--auth-field)] to-transparent"
+          aria-hidden
+        />
       </div>
     </div>
   );

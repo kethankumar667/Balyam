@@ -33,8 +33,15 @@ export default function YourDataPanel({
    * h3 made it read as a child of Preferences on a page where it is a sibling.
    */
   headingLevel = "h3",
+  /**
+   * Drop the "Your data" title when the host card already shows one. Without
+   * this the profile page reads "Your Data" twice, one line apart, which looks
+   * like a rendering bug rather than a heading.
+   */
+  hideHeading = false,
 }: {
   headingLevel?: "h2" | "h3";
+  hideHeading?: boolean;
 } = {}) {
   const Heading = headingLevel;
   const [confirming, setConfirming] = useState(false);
@@ -69,9 +76,11 @@ export default function YourDataPanel({
   return (
     <div className="space-y-3">
       <header>
-        <Heading className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
-          Your data
-        </Heading>
+        {hideHeading ? null : (
+          <Heading className="text-sm uppercase tracking-wider text-[var(--room-ink-soft)] font-bold">
+            Your data
+          </Heading>
+        )}
         <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--room-ink-soft)]">
           {/* "can keep", not "keeps": this is the notice, describing what the
               app is capable of storing. What is actually on the device right
