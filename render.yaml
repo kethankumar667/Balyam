@@ -31,7 +31,67 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     routes:
-      # Single Page Application (SPA) catch-all rewrite for deep links & refreshes
+      # ── Prerendered routes must be listed BEFORE the SPA catch-all ────────
+      #
+      # `npm run build` writes one static file per public route
+      # (dist/about/index.html, dist/games/index.html, …). Render serves a
+      # real file in preference to a rewrite — /about/index.html and /about/
+      # both return the right page — but it does NOT resolve a directory
+      # index for an extensionless path. So plain `/about` matches no file,
+      # falls through to the catch-all below, and every crawler is served the
+      # HOMEPAGE with the homepage's title and canonical.
+      #
+      # That failure is invisible in a browser, because React Router corrects
+      # the view the moment JavaScript boots. Only the raw response is wrong,
+      # which is exactly the audience prerendering exists for. Rules are
+      # evaluated in order and the first match wins, so these must stay above
+      # the catch-all. Add a line here whenever PUBLIC_ROUTES gains one.
+      - type: rewrite
+        source: /games
+        destination: /games/index.html
+      - type: rewrite
+        source: /about
+        destination: /about/index.html
+      - type: rewrite
+        source: /privacy
+        destination: /privacy/index.html
+      - type: rewrite
+        source: /login
+        destination: /login/index.html
+      - type: rewrite
+        source: /signup
+        destination: /signup/index.html
+      - type: rewrite
+        source: /forgot-password
+        destination: /forgot-password/index.html
+      - type: rewrite
+        source: /reset-password
+        destination: /reset-password/index.html
+      - type: rewrite
+        source: /verify-email
+        destination: /verify-email/index.html
+      - type: rewrite
+        source: /nokiacricket
+        destination: /nokiacricket/index.html
+      - type: rewrite
+        source: /snake
+        destination: /snake/index.html
+      - type: rewrite
+        source: /brickracer
+        destination: /brickracer/index.html
+      - type: rewrite
+        source: /tetris
+        destination: /tetris/index.html
+      - type: rewrite
+        source: /breakout
+        destination: /breakout/index.html
+      - type: rewrite
+        source: /spacealien
+        destination: /spacealien/index.html
+
+      # Single Page Application (SPA) catch-all rewrite for deep links &
+      # refreshes. Everything dynamic lands here — /room/:code, /tv/:code,
+      # /profile — and is rendered by React Router after boot.
       - type: rewrite
         source: /*
         destination: /index.html
