@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+import { useEffect, useState } from "react";
 import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types";
 import { logConn } from "./connectionLog";
 
@@ -6,37 +7,82 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:4000";
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+export type ConnectionState =
+  | "CONNECTED"
+  | "CONNECTING"
+  | "DISCONNECTED"
+  | "RECONNECTING"
+  | "RECOVERED"
+  | "FAILED";
+
 let socket: AppSocket | null = null;
 let recoveryInstalled = false;
+let currentState: ConnectionState = "DISCONNECTED";
+const stateListeners = new Set<(state: ConnectionState) => void>();
+
+function setConnectionState(newState: ConnectionState): void {
+  if (currentState === newState) return;
+  currentState = newState;
+  for (const listener of stateListeners) {
+    try {
+      listener(newState);
+    } catch {
+      // Ignore listener errors
+    }
+  }
+}
+
+export function getConnectionState(): ConnectionState {
+  return currentState;
+}
+
+export function subscribeConnectionState(
+  listener: (state: ConnectionState) => void,
+): () => void {
+  stateListeners.add(listener);
+  listener(currentState);
+  return () => {
+    stateListeners.delete(listener);
+  };
+}
+
+/**
+ * React hook to observe socket connection lifecycle across any component/game.
+ */
+export function useConnectionState(): ConnectionState {
+  const [state, setState] = useState<ConnectionState>(() => getConnectionState());
+
+  useEffect(() => {
+    return subscribeConnectionState(setState);
+  }, []);
+
+  return state;
+}
+
+/**
+ * Mint a unique idempotency key / UUID per game move to prevent duplicate submissions.
+ */
+export function generateActionId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `act_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
 
 export function getSocket(): AppSocket {
   if (!socket) {
+    setConnectionState("CONNECTING");
     socket = io(SERVER_URL, {
       autoConnect: true,
       transports: ["websocket", "polling"],
       reconnection: true,
       /**
        * Never stop trying.
-       *
-       * This was `reconnectionAttempts: 10`. With socket.io's default
-       * `reconnectionDelayMax` of 5s the backoff runs roughly
-       * 0.5s, 1s, 2s, 4s, then 5s a further six times — about 37 seconds of
-       * effort, after which the client emits `reconnect_failed` and NEVER
-       * TRIES AGAIN for the life of the page.
-       *
-       * Any outage longer than that was unrecoverable without a manual
-       * reload: switching from wifi to mobile data, walking out of range, a
-       * phone locking for a minute. Restoring the network did nothing,
-       * because nothing was still asking. That is the reported bug.
-       *
-       * There is no reason to give up. A disconnected socket that keeps
-       * retrying every 5 seconds costs nothing when the tab is idle, and it
-       * is the only thing that can put the player back in their game.
+       * Keeps retrying with jittered exponential backoff (0.5s - 5s).
        */
       reconnectionAttempts: Infinity,
       reconnectionDelay: 500,
       reconnectionDelayMax: 5000,
-      /** Spread retries so a server restart is not hit by every client at once. */
       randomizationFactor: 0.5,
       timeout: 10_000,
     });
@@ -44,26 +90,30 @@ export function getSocket(): AppSocket {
     installNetworkRecovery(socket);
   }
   if (!socket.connected) {
+    setConnectionState("CONNECTING");
     socket.connect();
   }
   return socket;
 }
 
 /**
- * Record what the socket does, so a failure on someone's phone leaves
- * evidence instead of an anecdote. See lib/connectionLog.ts.
+ * Record socket telemetry and lifecycle transitions.
  */
 function installTelemetry(s: AppSocket): void {
   logConn("init", SERVER_URL);
+
   s.on("connect", () => {
-    // The transport matters: a session stuck on long-polling behaves very
-    // differently from one on websocket, and carriers do block upgrades.
     const transport = s.io.engine?.transport?.name ?? "?";
     logConn("connect", `id=${s.id} transport=${transport}`);
+    setConnectionState(currentState === "RECONNECTING" ? "RECOVERED" : "CONNECTED");
+    if (currentState === "RECOVERED") {
+      // Settle to CONNECTED after 1s
+      setTimeout(() => {
+        if (s.connected) setConnectionState("CONNECTED");
+      }, 1000);
+    }
   });
-  // socket.io's reason string is the single most diagnostic value here:
-  // "transport close" (network died) and "io server disconnect" (the server
-  // hung up, and auto-reconnect is DISABLED) demand opposite fixes.
+
   let lastBootId: string | null = null;
   s.on("server:hello", (info) => {
     const restarted = lastBootId !== null && lastBootId !== info.bootId;
@@ -75,64 +125,64 @@ function installTelemetry(s: AppSocket): void {
     );
     lastBootId = info.bootId;
   });
-  s.on("disconnect", (reason) => logConn("disconnect", reason));
-  s.on("connect_error", (err) => logConn("connect_error", err?.message));
-  s.io.on("reconnect_attempt", (n) => logConn("reconnect_attempt", `#${n}`));
-  s.io.on("reconnect_error", (err) => logConn("reconnect_error", err?.message));
-  s.io.on("reconnect_failed", () => logConn("reconnect_failed"));
-  s.io.on("reconnect", (n) => logConn("reconnect_ok", `after #${n}`));
+
+  s.on("disconnect", (reason) => {
+    logConn("disconnect", reason);
+    setConnectionState("DISCONNECTED");
+  });
+
+  s.on("connect_error", (err) => {
+    logConn("connect_error", err?.message);
+    setConnectionState("RECONNECTING");
+  });
+
+  s.io.on("reconnect_attempt", (n) => {
+    logConn("reconnect_attempt", `#${n}`);
+    setConnectionState("RECONNECTING");
+  });
+
+  s.io.on("reconnect_error", (err) => {
+    logConn("reconnect_error", err?.message);
+    setConnectionState("RECONNECTING");
+  });
+
+  s.io.on("reconnect_failed", () => {
+    logConn("reconnect_failed");
+    setConnectionState("FAILED");
+  });
+
+  s.io.on("reconnect", (n) => {
+    logConn("reconnect_ok", `after #${n}`);
+    setConnectionState("RECOVERED");
+    setTimeout(() => {
+      if (s.connected) setConnectionState("CONNECTED");
+    }, 1000);
+  });
 }
 
 /**
- * Reconnect the moment the device says it can, rather than waiting out a
- * backoff timer that started while it was still offline.
- *
- * Two triggers, because phones produce both:
- *
- *  - `online` fires on a wifi-to-mobile-data handoff. Without this the socket
- *    sits in a backoff wait of up to five seconds after connectivity is
- *    already back, and on the old config it might have exhausted its attempts
- *    entirely while the radio was switching.
- *
- *  - `visibilitychange` covers the case `online` cannot: mobile browsers
- *    freeze background tabs, including their timers. A phone locked for ten
- *    minutes wakes with no pending retry and no `online` event, because the
- *    network never actually changed from the browser's point of view.
- *
- * Both are cheap no-ops when the socket is already connected.
+ * Robust network lifecycle recovery covering Wi-Fi <-> 5G, app freeze, backgrounding, tab sleep.
  */
 function installNetworkRecovery(s: AppSocket): void {
   if (recoveryInstalled || typeof window === "undefined") return;
   recoveryInstalled = true;
 
-  /**
-   * Get back on the network, whatever state the socket thinks it is in.
-   *
-   * The naive version was `if (!s.connected) s.connect()`, and it did nothing
-   * in the case that matters most. When a phone moves from wifi to mobile
-   * data the old TCP connection dies silently: no close frame, no error. The
-   * `online` event fires while `s.connected` is still `true`, so the check
-   * skipped, and the socket sat on a dead transport until the heartbeat
-   * eventually timed out tens of seconds later.
-   *
-   * So when the socket claims to be connected we do not believe it — we ask.
-   * A `net:ping` with a short ack timeout is the only reliable way to tell a
-   * live connection from a corpse. No answer means the transport is gone, and
-   * a full disconnect/connect cycle is what rebuilds it; `connect()` alone is
-   * a no-op on a socket that thinks it is already up.
-   */
   const kick = () => {
     if (!s.connected) {
       logConn("kick", "not connected, dialling");
+      setConnectionState("CONNECTING");
       s.connect();
       return;
     }
+    // Probe with net:ping to verify half-open TCP connections
     s.timeout(3_000).emit("net:ping", (err: unknown) => {
       if (!err) {
         logConn("kick", "probe ok, socket healthy");
+        setConnectionState("CONNECTED");
         return;
       }
       logConn("kick", "probe TIMED OUT, rebuilding transport");
+      setConnectionState("RECONNECTING");
       s.disconnect();
       s.connect();
     });
@@ -142,15 +192,23 @@ function installNetworkRecovery(s: AppSocket): void {
     logConn("browser_online");
     kick();
   });
-  window.addEventListener("offline", () => logConn("browser_offline"));
-  document.addEventListener("visibilitychange", () => {
-    logConn("visibility", document.visibilityState);
-    if (document.visibilityState === "visible") kick();
+
+  window.addEventListener("offline", () => {
+    logConn("browser_offline");
+    setConnectionState("DISCONNECTED");
   });
 
-  // Belt and braces: `reconnectionAttempts: Infinity` means this should never
-  // fire, but if a future change caps attempts again, the socket must not be
-  // left permanently dead with no way back.
+  document.addEventListener("visibilitychange", () => {
+    logConn("visibility", document.visibilityState);
+    if (document.visibilityState === "visible") {
+      kick();
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    if (!s.connected) kick();
+  });
+
   s.io.on("reconnect_failed", () => {
     window.setTimeout(kick, 3_000);
   });
@@ -160,5 +218,6 @@ export function disconnectSocket(): void {
   if (socket) {
     socket.disconnect();
     socket = null;
+    setConnectionState("DISCONNECTED");
   }
 }
