@@ -71,6 +71,7 @@ export function optionalKeys(): string[] {
 }
 
 export function readConsent(): ConsentRecord | null {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(CONSENT_KEY);
     if (!raw) return null;
@@ -89,6 +90,7 @@ export function readConsent(): ConsentRecord | null {
 
 /** True when we must ask — never asked, or the notice has changed since. */
 export function needsConsent(): boolean {
+  if (typeof window === "undefined") return false;
   const rec = readConsent();
   return rec === null || rec.noticeVersion < NOTICE_VERSION;
 }
@@ -99,12 +101,14 @@ export function recordConsent(choice: ConsentChoice, now: Date = new Date()): Co
     at: now.toISOString(),
     noticeVersion: NOTICE_VERSION,
   };
-  try {
-    window.localStorage.setItem(CONSENT_KEY, JSON.stringify(rec));
-  } catch {
-    /* private browsing — the choice holds for this session only */
+  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    try {
+      window.localStorage.setItem(CONSENT_KEY, JSON.stringify(rec));
+    } catch {
+      /* private browsing — the choice holds for this session only */
+    }
+    if (choice === "essential-only") purgeOptional();
   }
-  if (choice === "essential-only") purgeOptional();
   return rec;
 }
 
@@ -125,6 +129,7 @@ export function withdrawConsent(now: Date = new Date()): ConsentRecord {
  * silently comes back the next time some component writes it.
  */
 export function purgeOptional(): string[] {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return [];
   const removed: string[] = [];
   for (const key of optionalKeys()) {
     try {
@@ -141,6 +146,7 @@ export function purgeOptional(): string[] {
 
 /** Run at startup: honour a standing "essential only" before anything writes. */
 export function enforceConsentOnLoad(): void {
+  if (typeof window === "undefined") return;
   const rec = readConsent();
   if (rec?.choice === "essential-only") purgeOptional();
 }

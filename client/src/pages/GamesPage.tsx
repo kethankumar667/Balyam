@@ -204,7 +204,7 @@ export default function GamesPage() {
 
       {/* ── LEFT SIDEBAR NAVIGATION (DESKTOP ONLY) ── */}
       <aside
-        className={`hidden lg:flex lg:w-64 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto p-4 flex-col justify-between shrink-0 shadow-lg transition-colors ${
+        className={`hidden lg:flex lg:w-64 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto p-4 flex-col justify-start shrink-0 shadow-lg transition-colors ${
           isLight
             ? "bg-[#FAF2E1] border-r border-[#ECD9BA]"
             : "bg-[#0A0F1D] border-r border-[#1B2338]"
@@ -279,43 +279,16 @@ export default function GamesPage() {
             })}
           </div>
         </div>
-
-        {/* Bottom Sidebar Card: Create Table */}
-        <div
-          className={`mt-6 p-4 rounded-2xl text-center shadow-md relative overflow-hidden transition-colors ${
-            isLight
-              ? "bg-[#FFF5DC] border border-[#ECD9BA] text-[#3D2005]"
-              : "bg-gradient-to-b from-[#13192B] to-[#0D1220] border border-[#232D48] text-white"
-          }`}
-        >
-          <h4 className="font-extrabold text-[13px]">Create your own table</h4>
-          <p className={`text-[11px] mt-1 leading-snug ${isLight ? "text-[#7A5B3E]" : "text-zinc-400"}`}>
-            Invite friends and start playing together!
-          </p>
-
-          <div className="my-3 flex items-center justify-center">
-            <UsersIcon className="w-8 h-8 text-amber-500" />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setJoinOpen(true)}
-            className="w-full py-2 px-4 rounded-xl bg-gradient-to-r from-[#FF8F00] to-[#E95D21] hover:brightness-110 active:scale-98 text-white font-extrabold text-[12px] shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            <span>Create Table</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
       </aside>
 
       {/* ── MAIN CONTENT AREA ── */}
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
-        {/* Top Header */}
+        {/* Top Header (Sticky in Viewport) */}
         <header
-          className={`w-full px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b transition-colors ${
+          className={`sticky top-0 z-30 w-full px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b transition-colors ${
             isLight
-              ? "bg-[#FFFDF7] border-[#ECD9BA]"
-              : "bg-[#0A0F1D] border-[#1B2338]"
+              ? "bg-[#FFFDF7]/95 border-[#ECD9BA] backdrop-blur-md shadow-xs"
+              : "bg-[#0A0F1D]/95 border-[#1B2338] backdrop-blur-md shadow-xs"
           }`}
         >
           {/* Mobile-only brand logo */}

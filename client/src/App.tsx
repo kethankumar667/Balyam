@@ -17,18 +17,19 @@ import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import { getSocket } from "./lib/socket";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 
-// ── Lazy-loaded secondary & retro game routes to keep initial bundle ultra-fast ──
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import AboutPage from "./pages/AboutPage";
+import NokiaCricketPage from "./pages/NokiaCricketPage";
+import NokiaSnakePage from "./pages/NokiaSnakePage";
+import BrickRacerPage from "./pages/BrickRacerPage";
+import BrickTetrisPage from "./pages/BrickTetrisPage";
+import BrickBreakoutPage from "./pages/BrickBreakoutPage";
+import BrickSpaceAlienPage from "./pages/BrickSpaceAlienPage";
+
+// ── Lazy-loaded internal & party routes ──
 const PartyScreen = lazy(() => import("./pages/PartyScreen"));
 const Diagnostics = lazy(() => import("./pages/Diagnostics"));
 const PreviewLudo = lazy(() => import("./pages/PreviewLudo"));
-const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
-const AboutPage = lazy(() => import("./pages/AboutPage"));
-const NokiaCricketPage = lazy(() => import("./pages/NokiaCricketPage"));
-const NokiaSnakePage = lazy(() => import("./pages/NokiaSnakePage"));
-const BrickRacerPage = lazy(() => import("./pages/BrickRacerPage"));
-const BrickTetrisPage = lazy(() => import("./pages/BrickTetrisPage"));
-const BrickBreakoutPage = lazy(() => import("./pages/BrickBreakoutPage"));
-const BrickSpaceAlienPage = lazy(() => import("./pages/BrickSpaceAlienPage"));
 
 function RouteLoadingFallback() {
   return (
