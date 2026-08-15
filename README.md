@@ -4,19 +4,39 @@
 
 A web-based multiplayer game lounge where friends and family join a room via code and play together with text + voice chat.
 
-## Planned Games
-- Rock Paper Scissors (Phase 1 — implemented)
-- Rummy (Phase 3)
-- Ludo (Phase 4)
-- Snakes & Ladders (Phase 5)
-- Hand Cricket (Phase 5)
+You can start playing without an account — a guest gets every game against bots
+and can join any room they're invited to. An account is what lets you open a
+room of your own and hand out the code. See
+[Accounts & guest permissions](#accounts--guest-permissions).
+
+## Games
+
+Twenty games ship in `GameKind` (`shared/types.ts`); the home catalog
+(`client/src/components/bhalyam/data.ts`) additionally carries three
+"coming soon" tiles that route nowhere.
+
+| Category | Games |
+|---|---|
+| **Board & cards** | Ludo, Snakes & Ladders, Rummy, UNO, Carrom, Chess, Dots & Boxes |
+| **Party & quiz** | Bingo, Tambola, Star Game, Name-Place-Animal, Samethalu, Telugu Cinemalu |
+| **Arcade & quick** | Rock Paper Scissors, Hand Cricket, Snake, Block Blast, Space War, Road Rash |
+| **Classroom** | Word Building |
+
+Two allow-lists worth knowing, both enforced server-side:
+
+- **No bots:** Samethalu, Telugu Cinemalu, Snake, Road Rash, Space War — these
+  are solo/arcade, so there is no AI opponent to add.
+- **Pass & Play** (several humans, one device): Ludo, Snakes & Ladders, Word
+  Building, Dots & Boxes only. Restricted to open-information games on
+  purpose — Rummy or UNO would show one player's hand to whoever is holding
+  the phone.
 
 ## Tech Stack
 - **Frontend:** React + Vite + TypeScript + TailwindCSS + Zustand
 - **Backend:** Node.js + Express + Socket.IO + TypeScript
 - **Database:** none yet. Postgres + Prisma is the chosen stack for durable accounts and profiles; the layer no-ops while `DATABASE_URL` is unset, so local dev needs no database. (An earlier note here said MongoDB; that was never built.)
-- **Auth:** anonymous players, but seats are authenticated — a server-signed seat token owns the seat (`server/src/lib/seatToken.ts`). Accounts are the next phase.
-- **Voice:** WebRTC peer-to-peer via `simple-peer` (Phase 2)
+- **Auth:** seats are authenticated — a server-signed seat token owns the seat (`server/src/lib/seatToken.ts`). On top of that sits a guest/member distinction that is **device-local and unverified**; read [Accounts & guest permissions](#accounts--guest-permissions) before relying on it for anything.
+- **Voice:** WebRTC peer-to-peer using the browser's native `RTCPeerConnection` (`client/src/lib/webrtc.ts`), mesh topology, server-relayed signalling. (`simple-peer` was the original plan and is not a dependency.)
 - **Hosting:** both the client and the server run on Render's free tier. Note the asymmetry: a static site never sleeps, a free web service spins down after ~15 minutes idle, so the page can load instantly while the first socket connection waits on a cold boot.
 
 ## Project Structure
@@ -64,24 +84,98 @@ npm run dev
 Client runs on http://localhost:5173
 
 ### 3. Try it
-1. Open http://localhost:5173 in two browser windows (or share via local IP / ngrok).
-2. In window 1: enter a name → click **Create Room** → copy the room code.
-3. In window 2: enter a name → paste the code → click **Join Room**.
-4. Both click **Ready** → play Rock Paper Scissors best-of-3.
-5. Use the chat panel to message each other.
 
-## Current Status — Phases 1–4 Complete
+**As a guest** (the default — no account, nothing to set up):
+1. Open http://localhost:5173, pick a game tile.
+2. The primary button reads **Play vs Bots**. Click it.
+3. Add a bot or two, click **I'm Ready**, then **Start Game**.
+
+There is no room code on that table, because nobody else can join it. To play
+with another window you need an account.
+
+**With an account** (still no database required — see the honesty note below):
+1. Go to **/signup**, fill in name / email / password, submit. You are now a
+   "member" on this device.
+2. Pick a game tile → the button now reads **Create Room** → copy the code.
+3. In a second window, clear `localStorage` (so it is a guest) and open
+   `/room/<CODE>`. It asks the guest to declare a name, then seats them.
+4. Both click **Ready** → play. Use the chat panel to message each other.
+
+## Accounts & guest permissions
+
+The product rule is **a guest can play, a guest cannot gather.**
+
+| Can they… | Guest | Member |
+|---|---|---|
+| Every game vs bots · Pass & Play · solo arcade | ✅ | ✅ |
+| Edit display name and avatar | ✅ | ✅ |
+| Join a room they were invited to (link or QR) | ✅ | ✅ |
+| Text chat · voice chat · reactions | ✅ | ✅ |
+| Open a room others can join, and share its code | 🔒 | ✅ |
+| Type a room code to go find a table | 🔒 | ✅ |
+| Party Mode — put a room on a TV (`/tv/:code`) | 🔒 | ✅ |
+
+`shared/permissions.ts` is the single source of truth; `capabilitiesFor(kind)`
+returns the capability set and every gate in the app reads it rather than
+testing "is this a guest?" inline.
+
+**How it is enforced.** A room opened by a guest is **sealed** on the server:
+`joinRoom` and `spectateRoom` both refuse it. So "a guest can't invite anyone"
+is a property of the room rather than a rule re-implemented behind each
+button. Sealing is one-way, and it deliberately runs *after* the seat-reclaim
+check — a sealed room still lets its own host back in after a refresh, and
+still accepts bots and Pass & Play seats, which share the host's socket rather
+than arriving through the door.
+
+**A guest joins by invitation, not by search.** Following an invite link or
+scanning the host's QR both work; typing a code into a box does not. The two
+are mechanically identical, so this buys no security — it keeps the
+living-room party working for the friend who has not signed up, while the
+"go find a table" affordance stays behind the account. On arriving in someone
+else's room a guest declares a name before being seated (once per room; a
+refresh mid-match does not re-prompt).
+
+### Honesty note: sign-in is not verified
+
+There is no account backend. Signing in writes a flag to `localStorage`
+(`bhalyam.account`) and **nothing checks it** — no password is verified,
+because there is nothing to verify one against. Anyone can set that key in
+devtools and become a "member".
+
+This is a known, deliberate state, not an oversight. It exists so the
+permission model above is wired end to end and can be exercised; it protects
+nothing. Seat ownership is still proved by the server-signed seat token, which
+is real and entirely independent — so forging membership gets you a shareable
+room, not somebody else's hand of cards.
+
+The seam is built so that when sessions become server-issued, `AccountKind`
+stops being read from `localStorage` and no call site changes. Until then:
+
+- Google and Apple buttons are **honestly inert** — they need OAuth client
+  credentials this build does not have, and say so rather than pretending.
+- Password reset and email verification still use `usePreviewSubmit`, which
+  refuses to fake success for the same reason.
+- Durable accounts need `DATABASE_URL` (Postgres + Prisma is the chosen stack).
+
+## Current Status
 - [x] Express + Socket.IO server with TypeScript
 - [x] React client with Vite + TypeScript + Tailwind
 - [x] Room create / join via 6-char codes
-- [x] Real-time text chat
+- [x] Real-time text chat, reactions, soundboard
 - [x] Player list with ready state
-- [x] Rock Paper Scissors (best-of-3, server-authoritative)
+- [x] Twenty games, all server-authoritative (see [Games](#games))
+- [x] Bots as first-class players; Pass & Play on four open-information games
 - [x] Disconnect/reconnect grace period (90 seconds) + game state re-emit on rejoin
+- [x] Server takeover of idle/disconnected seats, handed back on return
 - [x] WebRTC peer-to-peer voice chat (native API, Google STUN, mesh topology)
-- [x] Rummy (13-card Indian, points variant, 2–6 players)
-- [x] **Ludo** (2–4 players, dice, captures, safe squares, home stretch)
-- [x] 31 server engine unit tests (vitest)
+- [x] Authenticated seats via server-signed seat tokens
+- [x] Guest / member permission model with server-sealed guest rooms
+- [x] DPDP surfaces: consent record, data inventory, export and erase
+- [x] **621 server tests + 243 client tests** (vitest)
+
+Not done: a verified account backend (see the honesty note above), persistence
+of any kind (rooms live in server memory and die with the process), and a TURN
+server for players behind symmetric NATs.
 
 ### Voice chat notes
 - Click **🎙 Connect mic** in the room to join the voice mesh. Browser will prompt for mic permission.
@@ -98,12 +192,6 @@ Client runs on http://localhost:5173
 - Scoring: winner = 0; losers pay the points of their unmatched cards (capped at 80). Invalid declare = 80-point penalty.
 - Engine logic lives in `server/src/games/rummy/` with 25 unit tests in `__tests__/`.
 
-## Server tests
-```bash
-cd server
-npm test
-```
-
 ### Ludo rules implemented
 - 2–4 players, colors assigned in join order (red → green → yellow → blue).
 - 4 tokens per player. Roll a 6 to bring a token onto the track.
@@ -114,13 +202,26 @@ npm test
 - Each player has a 6-square home stretch; exact roll required to enter home.
 - Win: get all 4 tokens home.
 
+## Tests
+```bash
+cd server && npm test    # 621 tests
+cd client && npm test    # 243 tests
+```
+Type-check either side with `npm run typecheck`.
+
+Guest permissions are pinned by `server/src/rooms/__tests__/guestSealedRoom.test.ts`
+— sealed rooms, the host's own reclaim, bots and Pass & Play still being
+admitted, and host migration sealing a room that lands on a guest.
+
 ## Roadmap
 This project is planned as a long-running effort. See [ROADMAP.md](./ROADMAP.md)
 for the full 10-year vision, architecture principles, decision records, risks
 and cost projections. Short version of what's next:
 
-- **Phase A (now):** finish Snakes & Ladders + Hand Cricket; public deploy
-- **Phase B:** persistent rooms, optional accounts, CI, monitoring
+- **Phase A (now):** public deploy
+- **Phase B:** persistent rooms, CI, monitoring, and **real accounts** — the
+  guest/member permission model is built, but sign-in still needs a verified
+  backend (`DATABASE_URL` + Google OAuth credentials)
 - **Phase C:** mobile-responsive + PWA + i18n + AI bots
 - **Phase D:** friends, achievements, ratings, replays, spectator
 - **Phase E:** scale-out (Redis, multi-region, SFU)
