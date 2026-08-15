@@ -33,7 +33,7 @@ export interface ConsentRecord {
  * recipient. Consent given against an older notice stops counting and the
  * modal returns. Cosmetic edits do not earn a bump.
  */
-export const NOTICE_VERSION = 1;
+export const NOTICE_VERSION = 2;
 
 const CONSENT_KEY = "bhalyam.consent";
 

@@ -1,5 +1,12 @@
 export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "samethalu" | "telugucinemalu" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar";
 
+/**
+ * What a player is: somebody with an account, or somebody who just started
+ * playing. Lives here with the other wire types because it travels on
+ * `room:create` and `room:join`; what it PERMITS lives in shared/permissions.
+ */
+export type AccountKind = "guest" | "member";
+
 export interface Player {
   id: string;
   name: string;
@@ -73,6 +80,20 @@ export interface Player {
   /** For Bingo: bot difficulty tier, chosen when the host adds the bot in
    *  the lobby. Only meaningful for isBot=true seats; humans never set it. */
   bingoDifficulty?: BotDifficulty;
+  /**
+   * True when this seat is played by someone without an account.
+   *
+   * Broadcast rather than kept server-side because two things at the table
+   * need it. The host needs it to read the room — a guest cannot be handed a
+   * shareable table, so "who could take over if I leave" is a real question
+   * with a visible answer. And the seat itself is labelled, which is what
+   * makes the sign-up offer land at the table instead of only on the home
+   * screen.
+   *
+   * Client-asserted, like everything in shared/permissions.ts. It says what
+   * the browser claims, and nothing here is load-bearing for privacy.
+   */
+  isGuest?: boolean;
 }
 
 export interface ChatMessage {
@@ -116,6 +137,20 @@ export interface RoomPublicState {
    *  per-player counters) shares no shape with melds, card scores or called
    *  numbers. Oldest first, Ludo only — empty elsewhere. */
   ludoHistory: LudoMatchRecap[];
+  /**
+   * True when nobody new may enter this room — no joins, no spectators.
+   *
+   * Set when a guest opens a table (they may play, but not gather — see
+   * shared/permissions.ts), and set again if host migration ever lands the
+   * room on a guest. It is on the ROOM rather than derived from the host's
+   * `isGuest` at read time so it cannot flicker: a room that spent its life
+   * sealed does not quietly open because the seat order changed mid-match.
+   *
+   * The client reads this to hide the code, the share card and the QR — a
+   * code you cannot use is worse than no code, because it looks like an
+   * invitation that silently fails for whoever you send it to.
+   */
+  sealed: boolean;
 }
 
 /**
@@ -2495,6 +2530,13 @@ export interface CreateRoomPayload {
   chessOptions?: Partial<ChessOptions>;
   blockBlastOptions?: Partial<BlockBlastOptions>;
   spaceWarOptions?: Partial<SpaceWarOptions>;
+  /**
+   * What the creator claims to be. Only an explicit `"guest"` seals the room;
+   * absent leaves it open, so a caller that has not been taught this field
+   * keeps working. See `createRoom` in RoomManager for why the compatible
+   * default beats the closed one here specifically.
+   */
+  hostKind?: AccountKind;
 }
 
 export interface SetTokenNicknamesPayload {
@@ -2513,6 +2555,13 @@ export interface JoinRoomPayload {
   seatToken?: string;
   /** Chosen avatar filename. Ignored unless it is on the shared list. */
   avatar?: string;
+  /**
+   * What the joiner claims to be, so the table can label the seat and so host
+   * migration knows whether this seat could inherit a shareable room. Only an
+   * explicit `"guest"` marks the seat as one, matching
+   * `CreateRoomPayload.hostKind`.
+   */
+  accountKind?: AccountKind;
 }
 
 export interface ChatSendPayload {

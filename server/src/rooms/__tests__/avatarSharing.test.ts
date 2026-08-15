@@ -70,9 +70,19 @@ const ALSO_REAL = AVATAR_FILES[1];
  * padding by hand got it wrong the first time this file was written — which is
  * precisely the hazard the comment on that signature describes — so the count
  * is derived from the function's own arity instead of typed out.
+ *
+ * The derivation used to assume `avatar` was the LAST parameter, and appending
+ * `hostKind` after it silently slid the avatar one slot to the right — passing
+ * a filename as the account kind and leaving the avatar unset. The arity is
+ * still the source of truth; what had to become explicit is how many
+ * parameters sit BEYOND the one being targeted.
  */
+/** Parameters declared after `avatar`. Bump when another is appended. */
+const PARAMS_AFTER_AVATAR = 1; // hostKind
+
 function hostWithAvatar(rooms: RoomManager, socket: string, name: string, avatar: unknown) {
-  const gap = rooms.createRoom.length - 4; // socketId, name, game, …gap…, avatar
+  // socketId, name, game, …gap…, avatar, then whatever follows avatar.
+  const gap = rooms.createRoom.length - 4 - PARAMS_AFTER_AVATAR;
   const args: unknown[] = [socket, name, "rummy"];
   for (let i = 0; i < gap; i++) args.push(undefined);
   args.push(avatar);

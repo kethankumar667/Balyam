@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRoomStore } from "../store/roomStore";
+import { useAuthStore } from "../store/authStore";
 import { validateName, type FieldError } from "../lib/authValidation";
 import { GlobalSettings } from "../components/GlobalSettings";
 import LanguageSettings from "../components/LanguageSettings/LanguageSettings";
@@ -72,6 +73,9 @@ function CardHead({
 
 export default function ProfilePage() {
   const { playerName, setPlayerName, avatarId, setAvatarId } = useRoomStore();
+  const isMember = useAuthStore((s) => s.isMember);
+  const email = useAuthStore((s) => s.email);
+  const signOut = useAuthStore((s) => s.signOut);
   const [name, setName] = useState(playerName);
   const [error, setError] = useState<FieldError>(null);
   const [saved, setSaved] = useState(false);
@@ -286,23 +290,61 @@ export default function ProfilePage() {
                       icon={<LockIcon className="w-[18px] h-[18px]" />}
                       title="Account & Security"
                     />
-                    <p className="text-[13.5px] leading-relaxed text-[var(--auth-ink-soft)]">
-                      There is no account store behind BHALYAM yet. Signing in on another device
-                      will use accounts in the future — until then an empty email box that
-                      silently discarded what you typed would be worse than none.
-                    </p>
-                    <Link
-                      to="/login"
-                      className="mt-3 inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full
-                                 bg-[var(--auth-field)] border border-[var(--auth-field-edge)]
-                                 text-[var(--auth-ink)] font-bold text-[14px]
-                                 hover:bg-[var(--auth-rule)] active:scale-[0.99]
-                                 focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                                 transition-[background-color,transform] duration-200"
-                    >
-                      <MailIcon className="w-[18px] h-[18px]" />
-                      See the sign-in screens
-                    </Link>
+
+                    {/* Two states, and the honesty of each is different. A
+                        guest is told what an account buys. A member is told
+                        what their account is NOT — because signing in here
+                        checks no password and reaches no server, and the one
+                        place someone will look for that fact is this card. */}
+                    {isMember ? (
+                      <>
+                        <p className="text-[13.5px] leading-relaxed text-[var(--auth-ink-soft)]">
+                          Signed in{email ? " as " : ""}
+                          {email ? (
+                            <span className="font-bold text-[var(--auth-ink)]">{email}</span>
+                          ) : null}
+                          . This sign-in is recorded on this device only — there is no account
+                          server yet, so no password was checked and nothing was sent anywhere.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={signOut}
+                          className="mt-3 inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full
+                                     bg-[var(--auth-field)] border border-[var(--auth-field-edge)]
+                                     text-[var(--auth-ink)] font-bold text-[14px]
+                                     hover:bg-[var(--auth-rule)] active:scale-[0.99]
+                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                                     transition-[background-color,transform] duration-200"
+                        >
+                          <LockIcon className="w-[18px] h-[18px]" />
+                          Sign out
+                        </button>
+                        <p className="mt-2 text-[12.5px] leading-snug text-[var(--auth-ink-mute)]">
+                          Your name and avatar stay on this device when you sign out.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[13.5px] leading-relaxed text-[var(--auth-ink-soft)]">
+                          You&apos;re playing as a guest. You can play every game against bots,
+                          pass one phone around a group, and join any room a friend invites you
+                          to. An account is what lets you open a room of your own and hand out
+                          the code.
+                        </p>
+                        <Link
+                          to="/signup?from=profile"
+                          className="mt-3 inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full
+                                     bg-[var(--auth-field)] border border-[var(--auth-field-edge)]
+                                     text-[var(--auth-ink)] font-bold text-[14px]
+                                     hover:bg-[var(--auth-rule)] active:scale-[0.99]
+                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                                     transition-[background-color,transform] duration-200"
+                        >
+                          <MailIcon className="w-[18px] h-[18px]" />
+                          Create a free account
+                        </Link>
+                      </>
+                    )}
                   </section>
 
                   <section id="sec-language" className={`${CARD} p-5 scroll-mt-6`}>

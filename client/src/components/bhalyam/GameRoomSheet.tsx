@@ -15,6 +15,8 @@ import {
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
+import { currentAccountKind, useCapabilities } from "../../store/authStore";
+import SignInWall from "../auth/SignInWall";
 import {
   BHALYAM_GAMES,
   getGameAccent,
@@ -340,6 +342,15 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
   const isSolo = game ? ["samethalu", "telugucinemalu", "snake", "roadrash", "spacewar"].includes(game) : false;
 
+  const caps = useCapabilities();
+  /**
+   * A guest's primary button opens a SEALED table — bots and Pass & Play
+   * seats only. It is still the primary button and it still says something
+   * confident, because this is a real game and not a trial: the only thing
+   * missing is other devices, and the wall below the fold says so.
+   */
+  const sealedTable = !caps.hostSharedRoom;
+
   // Reset transient state every time a new game opens.
   useEffect(() => {
     if (game) {
@@ -410,6 +421,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           name: n,
           game: asGameKind(game),
           avatar: avatarId ?? undefined,
+          // Decides whether the server opens a shareable table or seals it.
+          hostKind: currentAccountKind(),
           snlOptions: game === "snl" ? { difficulty } : undefined,
           rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
           hcOptions:
@@ -523,6 +536,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         name: n,
         game: asGameKind(game),
         avatar: avatarId ?? undefined,
+        // Pass & Play is open to guests: every seat is on THIS device, so a
+        // sealed room is exactly right — nothing is being shared anyway.
+        hostKind: currentAccountKind(),
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
           game === "wordbuilding"
@@ -587,6 +603,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   }
 
   function joinRoom() {
+    // Belt to the UI's braces. The code field is not rendered for a guest, so
+    // reaching here means the capability changed under an open sheet (signed
+    // out in another tab) — refuse rather than fire a join the room would
+    // bounce with a stranger error.
+    if (!caps.joinByCode) return;
     const n = trimmedName();
     const code = joinCode.trim().toUpperCase();
     // Validate both fields together so the user sees every problem at once
@@ -602,7 +623,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     const socket = getSocket();
     socket.emit(
       "room:join",
-      { name: n, code, avatar: avatarId ?? undefined, ...(seatFor(code) ?? {}) },
+      {
+        name: n,
+        code,
+        avatar: avatarId ?? undefined,
+        accountKind: currentAccountKind(),
+        ...(seatFor(code) ?? {}),
+      },
       (res) => {
         setBusy(false);
         if (!res.ok) {
@@ -1050,11 +1077,15 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   <div className="font-bold text-xs text-[#2B3550] dark:text-slate-100 flex items-center gap-1.5">
                     <span>{meta.title}</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-extrabold uppercase">
-                      {isSolo ? "Solo" : "Live Room"}
+                      {isSolo ? "Solo" : sealedTable ? "Private" : "Live Room"}
                     </span>
                   </div>
                   <div className="text-[11px] text-[#8A6D4B] dark:text-slate-400 truncate mt-0.5 font-medium">
-                    {!isSolo ? "⚡ Real-time match · 🤖 AI practice bots" : "✨ Solo arcade challenge"}
+                    {isSolo
+                      ? "✨ Solo arcade challenge"
+                      : sealedTable
+                      ? "🤖 AI opponents · 📵 Just this device"
+                      : "⚡ Real-time match · 🤖 AI practice bots"}
                   </div>
                 </div>
               </div>
@@ -1088,6 +1119,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     <SparkIcon className="w-5 h-5" />
                     Start Game
                   </>
+                ) : sealedTable ? (
+                  <>
+                    <SparkIcon className="w-5 h-5" />
+                    Play vs Bots
+                  </>
                 ) : (
                   <>
                     <SparkIcon className="w-5 h-5" />
@@ -1100,13 +1136,24 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               {!passPlay && !isSolo && (
                 <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest font-extrabold text-[#8A6D4B] dark:text-slate-400 py-0.5">
                   <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
-                  <span>Or join room</span>
+                  <span>{caps.joinByCode ? "Or join room" : "Playing with friends"}</span>
                   <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
                 </div>
               )}
 
+              {/* The wall stands exactly where the code box would be, so the
+                  answer to "where do I type a code?" is in the place the eye
+                  already went looking for it. */}
+              {!passPlay && !isSolo && !caps.joinByCode && (
+                <SignInWall
+                  compact
+                  from={`game:${game}`}
+                  reason="Room codes are for playing with friends"
+                />
+              )}
+
               {/* Join by code — hidden in Pass & Play or Solo mode */}
-              {!passPlay && !isSolo && (
+              {!passPlay && !isSolo && caps.joinByCode && (
                 <div className="space-y-2.5">
                   <Field label="Room code" htmlFor="grs-code" error={codeError}>
                     <input

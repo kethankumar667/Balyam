@@ -59,7 +59,8 @@ import {
 import { generateRoomCode } from "./codeGenerator.js";
 import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits } from "../games/registry.js";
-import type { RematchState, CoachableEngine, CoachHintResponse } from "@shared/types.js";
+import type { RematchState, CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
+import { SEALED_ROOM_ERROR } from "@shared/permissions.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
 import { sanitizeAvatar } from "@shared/avatars.js";
 import { ALLOWED_SOUND_CLIPS, SOUND_RATE_LIMIT } from "@shared/soundboard.js";
@@ -250,6 +251,15 @@ interface Room {
   simTimer: NodeJS.Timeout | null;
   /** Socket ids watching without a seat (Smart TV / Party Mode). */
   spectators: Set<string>;
+  /**
+   * Nobody new may enter — no joins, no spectators. See RoomPublicState.sealed
+   * for why it is stored rather than recomputed from the host's account kind.
+   *
+   * One-way on purpose: `sealRoom` sets it and nothing clears it. A table that
+   * opened sealed stays sealed for its whole life, so a code someone screenshot
+   * from a sealed room can never start working later.
+   */
+  sealed: boolean;
   ludoOptions: LudoGameOptions;
   snlOptions: SnlGameOptions;
   rummyOptions: RummyGameOptions;
@@ -362,7 +372,30 @@ export class RoomManager {
       unoChampion: room.name ? this.unoChampions.get(room.name) ?? null : null,
       bingoHistory: room.bingoHistory,
       ludoHistory: room.ludoHistory,
+      sealed: room.sealed,
     };
+  }
+
+  /**
+   * Close a room to anyone not already in it.
+   *
+   * Idempotent and one-way — there is no `unsealRoom`, because the guarantee
+   * worth having is that a code which was ever refused stays refused. Kicking
+   * the state out immediately matters: the client hides the share card off
+   * this flag, and a host who can still see a code they can no longer give
+   * away will hand it to somebody.
+   */
+  private sealRoom(room: Room): void {
+    if (room.sealed) return;
+    room.sealed = true;
+    // Screens attached before the seal are not players and were never
+    // invited by anyone still here; drop them with the door.
+    for (const socketId of [...room.spectators]) this.stopSpectating(socketId);
+    logger.info({
+      message: "Room sealed — no further joins",
+      module: "ROOM",
+      roomCode: room.code,
+    });
   }
 
   /**
@@ -404,10 +437,29 @@ export class RoomManager {
      * clean, silently handing each game the next game's options. Adding at
      * the end shifts nothing.
      */
-    avatar?: string
+    avatar?: string,
+    /** Appended for the same reason as `avatar` above. */
+    hostKind?: AccountKind
   ): { code: string; playerId: string; seatToken: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
+
+    /**
+     * Only an explicit "guest" seals a room; absent means open.
+     *
+     * The instinct is to default the other way — a missing field should not
+     * be the way to get a shareable table — and that instinct is right when
+     * a flag is a security boundary. This one is not (shared/permissions.ts
+     * is explicit about why), so the question becomes purely which failure is
+     * worse for a real person. Defaulting closed means any caller that has
+     * not been taught the field yet silently loses the ability to play with
+     * anyone; defaulting open means such a caller keeps today's behaviour.
+     * The first breaks the product, the second preserves it, and neither
+     * protects anything — so the compatible reading wins.
+     *
+     * The live client always sends the field, in both create paths.
+     */
+    const hostIsGuest = hostKind === "guest";
 
     const playerId = newPlayerId();
     const player: Player = {
@@ -418,6 +470,7 @@ export class RoomManager {
       isConnected: true,
       // Dropped unless it names a file we actually ship — see shared/avatars.ts.
       avatar: sanitizeAvatar(avatar),
+      ...(hostIsGuest ? { isGuest: true } : {}),
     };
 
     const room: Room = {
@@ -440,6 +493,9 @@ export class RoomManager {
       turnTimer: null,
       simTimer: null,
       spectators: new Set<string>(),
+      // A guest may play but not gather — shared/permissions.ts. Their table
+      // is real in every other way: bots, Pass & Play seats, the full game.
+      sealed: hostIsGuest,
       ludoOptions: { ...DEFAULT_LUDO_OPTIONS, ...(ludoOptions ?? {}) },
       snlOptions: { ...DEFAULT_SNL_OPTIONS, ...(snlOptions ?? {}) },
       rummyOptions: { ...DEFAULT_RUMMY_OPTIONS, ...(rummyOptions ?? {}) },
@@ -492,7 +548,8 @@ export class RoomManager {
     code: string,
     existingPlayerId?: string,
     seatToken?: string,
-    avatar?: string
+    avatar?: string,
+    accountKind?: AccountKind
   ): { ok: true; playerId: string; seatToken: string } | { ok: false; error: string } {
     const room = this.rooms.get(code.toUpperCase());
     if (!room) return { ok: false, error: "Room not found" };
@@ -569,6 +626,12 @@ export class RoomManager {
       return { ok: true, playerId: seatedId, seatToken: mintSeatToken(room.code, seatedId) };
     }
 
+    // Only NEW seats are refused. Both paths above have already returned, so a
+    // sealed room still lets its own host back in after a refresh and still
+    // honours a seat token — sealing closes the door to strangers, it does not
+    // lock the people already inside out of their own game.
+    if (room.sealed) return { ok: false, error: SEALED_ROOM_ERROR };
+
     const { max } = getGameLimits(room.game);
     if (room.players.size >= max) return { ok: false, error: "Room is full" };
     if (room.phase !== "lobby") return { ok: false, error: "Game already in progress" };
@@ -582,6 +645,8 @@ export class RoomManager {
       isConnected: true,
       // Dropped unless it names a file we actually ship — see shared/avatars.ts.
       avatar: sanitizeAvatar(avatar),
+      // Explicit "guest" only, matching `hostKind` in createRoom above.
+      ...(accountKind === "guest" ? { isGuest: true } : {}),
     };
     room.players.set(playerId, player);
     room.socketToPlayer.set(socketId, playerId);
@@ -618,10 +683,16 @@ export class RoomManager {
     }
 
     if (room.hostId === playerId) {
-      const next = room.players.values().next().value;
+      // Prefer a member: a guest cannot be handed a table other people can
+      // still walk into. Falling back to whoever is first keeps the room
+      // playable when only guests are left — it just seals on the way.
+      const seats = [...room.players.values()];
+      const next =
+        seats.find((p) => !p.isBot && !p.isGuest) ?? seats.find((p) => !p.isBot) ?? seats[0];
       if (next) {
         room.hostId = next.id;
         next.isHost = true;
+        if (next.isGuest) this.sealRoom(room);
       }
     }
     if (room.engine) room.engine.removePlayer(playerId);
@@ -2125,6 +2196,10 @@ export class RoomManager {
     if (!room) return { ok: false, error: "Room not found" };
     // A socket cannot be both a player and a screen.
     if (this.socketToRoom.has(socketId)) return { ok: false, error: "Already seated in a room" };
+    // A screen is still a second device arriving with a code. Sealing that
+    // leaves no way to turn a solo practice table into a shared one by
+    // pointing a TV at it.
+    if (room.sealed) return { ok: false, error: SEALED_ROOM_ERROR };
 
     this.stopSpectating(socketId);
     room.spectators.add(socketId);

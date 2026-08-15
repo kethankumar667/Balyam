@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthShell from "../../components/auth/AuthShell";
-import { usePreviewSubmit } from "../../components/auth/usePreviewSubmit";
+import { useLocalSignIn } from "../../components/auth/useLocalSignIn";
+import { FormNotice } from "../../components/auth/AuthControls";
 import { validateEmail, validatePasswordPresent, type FieldError } from "../../lib/authValidation";
 import { AppleMark, EyeIcon, EyeOffIcon, LockIcon, MailIcon } from "../../components/auth/authIcons";
 
@@ -14,7 +15,7 @@ export default function LoginPage() {
 
   const [emailError, setEmailError] = useState<FieldError>(null);
   const [passwordError, setPasswordError] = useState<FieldError>(null);
-  const { loading, done, submit, reset } = usePreviewSubmit();
+  const { loading, unavailable, submit, markUnavailable, reset } = useLocalSignIn();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +26,7 @@ export default function LoginPage() {
     if (nextEmail || nextPassword) {
       return;
     }
-    submit();
+    submit(email);
   }
 
   return (
@@ -62,11 +63,14 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Social Sign In Buttons */}
+          {/* Social Sign In Buttons. These stay honestly dead: a provider
+              sign-in needs OAuth client credentials that are not configured,
+              and quietly signing someone in "with Google" without ever
+              contacting Google would be the one lie on this page. */}
           <div className="space-y-2 pt-0.5">
             <button
               type="button"
-              onClick={submit}
+              onClick={markUnavailable}
               className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -92,13 +96,20 @@ export default function LoginPage() {
 
             <button
               type="button"
-              onClick={submit}
+              onClick={markUnavailable}
               className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs"
             >
               <AppleMark className="w-[17px] h-[17px]" />
               <span>Continue with Apple</span>
             </button>
           </div>
+
+          {unavailable ? (
+            <FormNotice tone="info" title="Provider sign-in isn't connected yet">
+              Google and Apple need OAuth credentials this build doesn&apos;t have. Use your
+              email below — it works today.
+            </FormNotice>
+          ) : null}
 
           {/* Divider. The label is `shrink-0` and the rules `flex-1`: the
               previous version let a full-width rule squeeze the label, which
@@ -128,7 +139,7 @@ export default function LoginPage() {
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (emailError) setEmailError(null);
-                    if (done) reset();
+                    if (unavailable) reset();
                   }}
                   placeholder="you@example.com"
                   className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-4 py-2.5 text-[13.5px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
@@ -166,7 +177,7 @@ export default function LoginPage() {
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (passwordError) setPasswordError(null);
-                    if (done) reset();
+                    if (unavailable) reset();
                   }}
                   placeholder="Enter your password"
                   className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-10 py-2.5 text-[13.5px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${

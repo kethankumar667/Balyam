@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
+import { currentAccountKind, useAuthStore } from "../store/authStore";
 import {
   enterFullscreen,
   exitFullscreen,
@@ -24,6 +25,7 @@ import PassPhoneGate from "../components/PassPhoneGate";
 import VoicePanel from "../components/VoicePanel";
 import { destroyVoiceSession, useVoiceRoster } from "../lib/voice-session";
 import SoundboardLayer from "../components/SoundboardLayer";
+import SignInWall from "../components/auth/SignInWall";
 import LudoColorPicker from "../components/LudoColorPicker";
 import CoinColorPicker from "../components/CoinColorPicker";
 import RpsBoard from "../games/rps/RpsBoard";
@@ -303,6 +305,30 @@ export default function Room() {
     reset,
   } = useRoomStore();
 
+  const isMember = useAuthStore((s) => s.isMember);
+
+  /**
+   * Has this player announced themselves at THIS table?
+   *
+   * A guest walking into someone else's room says who they are before they
+   * are in it — the room is not theirs, and "Player" turning up unannounced
+   * in a friend's game is the thing this prevents. A stored name is a
+   * starting point, not a substitute: it is prefilled and one tap confirms
+   * it.
+   *
+   * Seeded from whether a seat credential for this code already exists,
+   * which is the honest signal for "I have been here before". It covers the
+   * two cases that must NOT re-prompt: a refresh mid-match, and the guest's
+   * own solo table, whose seat was stored at creation. Computed once in the
+   * initialiser rather than watched, so the `rememberSeat` that lands
+   * moments later cannot retroactively dismiss the gate the player is
+   * currently typing into.
+   */
+  const [declaredHere, setDeclaredHere] = useState(() =>
+    code ? useRoomStore.getState().seatFor(code) !== null : true,
+  );
+  const mustDeclare = !isMember && !declaredHere;
+
   // "Last gang" memory (docs/rummy/roadmap.md A.5) — once the host names a
   // Rummy table, remember who was at it so the home screen can offer a
   // one-tap WhatsApp re-invite next time. Keyed on the name itself so
@@ -362,6 +388,9 @@ export default function Room() {
     // came here on purpose. Render a name-entry block instead (see early
     // return below). They'll come back through this effect once they submit.
     if (!playerName) return;
+    // A guest who has not yet announced themselves at this table must not be
+    // seated by the effect behind the gate they are still looking at.
+    if (mustDeclare) return;
     const socket = getSocket();
     const joinName = playerName;
     const joinCode = code;
@@ -387,6 +416,9 @@ export default function Room() {
           // Carried on the rejoin too: someone may have changed their avatar
           // on another tab while this one was reconnecting.
           avatar: useRoomStore.getState().avatarId ?? undefined,
+          // Read live for the same reason as the avatar above — a rejoin that
+          // lands after signing in should arrive as a member.
+          accountKind: currentAccountKind(),
         },
         (res) => {
           joinInFlightRef.current = false;
@@ -732,11 +764,25 @@ export default function Room() {
     navigate("/");
   }
 
-  // Shared-link / fresh-browser path: caller has a room code but we don't
-  // know who they are yet. Ask for their name; persist it; the useEffect
-  // above will then auto-attempt the join.
-  if (!playerName) {
-    return <NameEntryForRoom code={code ?? ""} onSubmit={setPlayerName} />;
+  // Two ways to land here without being seated yet:
+  //   1. No name at all — a shared link opened in a fresh browser, or storage
+  //      that was cleared. Nobody can join a table anonymously.
+  //   2. A guest arriving at a table that is not theirs, who declares
+  //      themselves once per room even if a name is already stored.
+  // Either way, submitting persists the name and the join effect above picks
+  // it up on the next render.
+  if (!playerName || mustDeclare) {
+    return (
+      <NameEntryForRoom
+        code={code ?? ""}
+        initialName={playerName}
+        guest={mustDeclare}
+        onSubmit={(n) => {
+          setPlayerName(n);
+          setDeclaredHere(true);
+        }}
+      />
+    );
   }
 
   if (!roomState) {
@@ -850,7 +896,9 @@ export default function Room() {
         {roomState.phase === "lobby" && (
           <header className="flex items-center justify-between flex-wrap gap-3 pb-1">
             <div className="flex items-center gap-3 flex-wrap">
-              <RoomCode code={roomState.code} />
+              {/* No code on a sealed table. Nobody can use it, and a visible
+                  one only gets sent to someone whose join will be refused. */}
+              {!roomState.sealed && <RoomCode code={roomState.code} />}
               <RoomNameEditor name={roomState.name} isHost={selfIsHost} />
               {roomState.game === "rummy" && (
                 <RummyRoomHistory
@@ -934,12 +982,26 @@ export default function Room() {
             {roomState.phase === "lobby" && (
               <div className="space-y-3">
                 <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 text-center space-y-3.5 shadow-[0_10px_30px_-10px_rgba(74,44,22,0.12)] dark:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.7)] relative overflow-hidden">
-                  <RoomCodeShare code={roomState.code} game={roomState.game} name={roomState.name} />
+                  {roomState.sealed ? (
+                    /* Same wall as the home screen, in the place the share
+                       card would have been — so the answer to "how do I get
+                       my friends in here?" is exactly where they looked. */
+                    <SignInWall
+                      from="room"
+                      reason="This table is just you and the bots"
+                    />
+                  ) : (
+                    <RoomCodeShare code={roomState.code} game={roomState.game} name={roomState.name} />
+                  )}
 
                   <div className="flex items-center justify-center gap-2 py-0.5 text-xs sm:text-sm font-semibold text-[#6E5E4D] dark:text-slate-300">
                     <span className="text-amber-500 font-bold text-sm animate-pulse" aria-hidden>✨</span>
                     <span className="text-xs" aria-hidden>👥</span>
-                    <span>Waiting for players to ready up...</span>
+                    <span>
+                      {roomState.sealed
+                        ? "Add bots below, then start when you're ready"
+                        : "Waiting for players to ready up..."}
+                    </span>
                     <span className="text-amber-500 font-bold text-sm animate-pulse" aria-hidden>✨</span>
                   </div>
 
@@ -1556,11 +1618,19 @@ function ConnectingDot({ delay }: { delay: string }) {
 function NameEntryForRoom({
   code,
   onSubmit,
+  initialName = "",
+  guest = false,
 }: {
   code: string;
   onSubmit: (name: string) => void;
+  /** Prefill, so a guest with a stored name confirms rather than retypes. */
+  initialName?: string;
+  /** True when this is a guest announcing themselves at someone else's table
+   *  — the copy changes, because they are not missing a name, they are being
+   *  asked to introduce themselves. */
+  guest?: boolean;
 }) {
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialName);
   const trimmed = draft.trim().slice(0, 20);
   const canSubmit = trimmed.length >= 1;
   return (
@@ -1574,13 +1644,15 @@ function NameEntryForRoom({
       >
         <div className="text-center">
           <div className="text-[11px] uppercase tracking-widest font-bold text-[#A3886E]">
-            Joining room
+            {guest ? "Joining as a guest" : "Joining room"}
           </div>
           <div className="font-mono text-[28px] sm:text-[32px] tracking-[0.35em] font-black text-[#2B3550] mt-1">
             {code.toUpperCase()}
           </div>
           <p className="text-[#6E5E4D] text-sm mt-3">
-            Enter your name so your friends know who just walked in.
+            {guest
+              ? "This is someone else's table. Tell them who's sitting down."
+              : "Enter your name so your friends know who just walked in."}
           </p>
         </div>
         <input
@@ -1601,7 +1673,7 @@ function NameEntryForRoom({
                      text-white font-bold text-base py-3 disabled:opacity-40
                      disabled:cursor-not-allowed transition-colors"
         >
-          Join Room
+          {guest ? "Enter the game" : "Join Room"}
         </button>
       </form>
     </div>

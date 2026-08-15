@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import type { Player, RoomPublicState } from "@shared/types";
 import { getSocket } from "../lib/socket";
+import { useCapabilities } from "../store/authStore";
 
 /**
  * Smart TV / Party Mode — the big-screen view of a room.
@@ -24,9 +25,15 @@ export default function PartyScreen() {
   const [room, setRoom] = useState<RoomPublicState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const canSpectate = useCapabilities().spectate;
 
   useEffect(() => {
     if (!code) return;
+    // Attaching a screen is a code-led way into a room, which is the thing a
+    // guest does not get — shared/permissions.ts. Bailing before the emit
+    // keeps a guest from burning a socket round-trip on a refusal, and the
+    // server rejects a sealed room anyway if this check is ever bypassed.
+    if (!canSpectate) return;
     const socket = getSocket();
 
     const attach = () => {
@@ -52,7 +59,7 @@ export default function PartyScreen() {
       socket.off("connect", attach);
       socket.emit("room:stopSpectate");
     };
-  }, [code]);
+  }, [code, canSpectate]);
 
   // A TV is left on for hours; a sleeping display defeats the point.
   useEffect(() => {
@@ -78,6 +85,29 @@ export default function PartyScreen() {
   }, []);
 
   const players: Player[] = useMemo(() => room?.players ?? [], [room]);
+
+  // Checked before `error` and `!room`, both of which would otherwise render
+  // "Connecting…" forever for a guest whose effect never fired.
+  if (!canSpectate) {
+    return (
+      <Shell>
+        <p className="text-[4vh] font-bold text-[#F6EDDB]">Party Mode needs an account</p>
+        <p className="text-[2.4vh] text-[#C8A66B] max-w-[60vw] text-center">
+          Putting a room on the big screen is part of hosting. Sign in on this device, or
+          ask whoever opened the table to cast it from theirs.
+        </p>
+        <Link
+          to="/signup?from=tv"
+          className="mt-[2vh] rounded-full bg-[#E4B128] px-[3vw] py-[1.4vh]
+                     text-[2.4vh] font-extrabold text-[#3A2A12]
+                     hover:brightness-105 focus:outline-none focus-visible:ring-4
+                     focus-visible:ring-[#E4B128]/60 transition-[filter] duration-200"
+        >
+          Create a free account
+        </Link>
+      </Shell>
+    );
+  }
 
   if (error) {
     return (

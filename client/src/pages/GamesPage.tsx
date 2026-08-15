@@ -1,6 +1,26 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Home as HomeIcon,
+  LayoutGrid,
+  User as UserIcon,
+  Users as UsersIcon,
+  Shield,
+  Sparkles,
+  GraduationCap,
+  Flame,
+  TrendingUp,
+  Clock,
+  Trophy,
+  BookOpen,
+  Bell,
+  Zap,
+  Target,
+  Play,
+  CheckCircle2,
+  ArrowRight,
+} from "lucide-react";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
@@ -18,7 +38,6 @@ import {
   type CategorySelection,
   type GameFilter,
 } from "../components/bhalyam/CategoryFilter";
-import { ArrowRightIcon, UsersIcon, ClockIcon } from "../components/bhalyam/icons";
 import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
 import { useTheme } from "../lib/useTheme";
@@ -28,23 +47,23 @@ import { GameTile } from "./BhalyamHome";
 /**
  * Game catalog sidebar categories matching the design.
  */
-const SIDEBAR_CATEGORIES: Array<{ id: CategorySelection; label: string; icon: string }> = [
-  { id: "all", label: "All Games", icon: "🏠" },
-  { id: "solo", label: "Solo Play", icon: "👤" },
-  { id: "multiplayer", label: "Multiplayer", icon: "👥" },
-  { id: "board", label: "Board & Cards", icon: "🎲" },
-  { id: "party", label: "Party & Quiz", icon: "🎉" },
-  { id: "classroom", label: "Classroom", icon: "🏫" },
+const SIDEBAR_CATEGORIES: Array<{ id: CategorySelection; label: string; icon: React.ReactNode }> = [
+  { id: "all", label: "All Games", icon: <LayoutGrid className="w-4.5 h-4.5" /> },
+  { id: "solo", label: "Solo Play", icon: <UserIcon className="w-4.5 h-4.5" /> },
+  { id: "multiplayer", label: "Multiplayer", icon: <UsersIcon className="w-4.5 h-4.5" /> },
+  { id: "board", label: "Board & Cards", icon: <Shield className="w-4.5 h-4.5" /> },
+  { id: "party", label: "Party & Quiz", icon: <Sparkles className="w-4.5 h-4.5" /> },
+  { id: "classroom", label: "Classroom", icon: <GraduationCap className="w-4.5 h-4.5" /> },
 ];
 
 type QuickFilter = "popular" | "trending" | "quick" | "competitive" | "classroom";
 
-const QUICK_FILTERS: Array<{ id: QuickFilter; label: string; icon: string }> = [
-  { id: "popular", label: "Most Popular", icon: "🔥" },
-  { id: "trending", label: "Trending Now", icon: "⭐" },
-  { id: "quick", label: "Quick Match (<10m)", icon: "⏱" },
-  { id: "competitive", label: "Competitive", icon: "🏆" },
-  { id: "classroom", label: "Classroom Classics", icon: "🎒" },
+const QUICK_FILTERS: Array<{ id: QuickFilter; label: string; icon: React.ReactNode }> = [
+  { id: "popular", label: "Most Popular", icon: <Flame className="w-4 h-4 text-amber-500" /> },
+  { id: "trending", label: "Trending Now", icon: <TrendingUp className="w-4 h-4 text-orange-500" /> },
+  { id: "quick", label: "Quick Match (<10m)", icon: <Clock className="w-4 h-4 text-blue-500" /> },
+  { id: "competitive", label: "Competitive", icon: <Trophy className="w-4 h-4 text-amber-400" /> },
+  { id: "classroom", label: "Classroom Classics", icon: <BookOpen className="w-4 h-4 text-emerald-500" /> },
 ];
 
 /** Live mock telemetry data for social proof & engagement */
@@ -244,8 +263,8 @@ export default function GamesPage() {
             Invite friends and start playing together!
           </p>
 
-          <div className="my-3 flex items-center justify-center text-3xl">
-            👨‍👩‍👧‍👦
+          <div className="my-3 flex items-center justify-center">
+            <UsersIcon className="w-8 h-8 text-amber-500" />
           </div>
 
           <button
@@ -254,7 +273,7 @@ export default function GamesPage() {
             className="w-full py-2 px-4 rounded-xl bg-gradient-to-r from-[#FF8F00] to-[#E95D21] hover:brightness-110 active:scale-98 text-white font-extrabold text-[12px] shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
           >
             <span>Create Table</span>
-            <ArrowRightIcon className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </aside>
@@ -302,20 +321,21 @@ export default function GamesPage() {
                   : "bg-[#141B2D] border-[#232D48] text-zinc-300 hover:text-white hover:bg-[#1A233A]"
               }`}
             >
-              <span>🏠 Home</span>
+              <HomeIcon className="w-4 h-4" />
+              <span>Home</span>
             </Link>
 
             {/* Notification Icon */}
             <button
               type="button"
-              onClick={() => showToast("🔔 No new notifications")}
-              className={`relative w-8 h-8 rounded-full border flex items-center justify-center transition ${
+              onClick={() => showToast("No new notifications")}
+              className={`relative w-8 h-8 rounded-full border flex items-center justify-center transition cursor-pointer ${
                 isLight
                   ? "bg-[#FAF2E1] border-[#ECD9BA] text-[#5C3B1E] hover:bg-[#F3E5CD]"
                   : "bg-[#141B2D] border-[#232D48] text-zinc-300 hover:text-white"
               }`}
             >
-              <span>🔔</span>
+              <Bell className="w-4 h-4" />
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
                 3
               </span>
@@ -323,7 +343,7 @@ export default function GamesPage() {
 
             {/* Profile Avatar */}
             <div className="flex items-center gap-2 pl-1">
-              <SelfAvatar className="w-8 h-8 border border-[#232D48]" fallback={<span className="w-8 h-8 rounded-full bg-[#141B2D] border border-[#232D48] flex items-center justify-center text-sm">👤</span>} />
+              <SelfAvatar className="w-8 h-8 border border-[#232D48]" fallback={<span className="w-8 h-8 rounded-full bg-[#141B2D] border border-[#232D48] flex items-center justify-center text-sm"><UserIcon className="w-4 h-4 text-amber-500" /></span>} />
             </div>
           </div>
         </header>
@@ -354,7 +374,7 @@ export default function GamesPage() {
                     Hand Cricket <span className="text-amber-500">• Level 8</span>
                   </h3>
                   <p className={`text-[12.5px] font-medium mt-0.5 ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
-                    🏆 45 Matches Won · 🔥 3x Win Streak · Next Milestone: <strong className={isLight ? "text-amber-800" : "text-amber-300"}>Golden Bat in 2 wins</strong>
+                    45 Matches Won · 3x Win Streak · Next Milestone: <strong className={isLight ? "text-amber-800" : "text-amber-300"}>Golden Bat in 2 wins</strong>
                   </p>
                 </div>
 
@@ -368,7 +388,7 @@ export default function GamesPage() {
 
               <div className={`mt-5 pt-3 border-t flex items-center justify-between gap-3 relative z-10 flex-wrap ${isLight ? "border-zinc-300" : "border-white/10"}`}>
                 <div className={`flex items-center gap-2 text-[12px] font-semibold ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
-                  <span>⚡ 48 Active Rooms Waiting</span>
+                  <span className="inline-flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-amber-500" /> 48 Active Rooms Waiting</span>
                   <span>•</span>
                   <span className="text-emerald-600 dark:text-emerald-400 font-bold">+50 XP per win</span>
                 </div>
@@ -377,7 +397,8 @@ export default function GamesPage() {
                   onClick={() => setSheetGame("handcricket")}
                   className="py-2.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 active:scale-95 text-white font-black text-[13.5px] shadow-md transition cursor-pointer flex items-center gap-2"
                 >
-                  <span>▶ Resume Hand Cricket</span>
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>Resume Hand Cricket</span>
                 </button>
               </div>
             </div>
@@ -392,7 +413,8 @@ export default function GamesPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <h4 className={`bhalyam-display text-[17px] flex items-center gap-1.5 ${isLight ? "text-[#3D2005]" : "text-white"}`}>
-                  <span>🎯 Today's Quests</span>
+                  <Target className="w-4.5 h-4.5 text-amber-500" />
+                  <span>Today's Quests</span>
                 </h4>
                 <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-amber-400/20 text-amber-600 dark:text-amber-300 border border-amber-400/40">
                   Day 3
@@ -400,40 +422,34 @@ export default function GamesPage() {
               </div>
 
               <div className="space-y-2 my-2">
-                <div className={`p-2 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
-                  <span>🏏 Win 1 Hand Cricket Match</span>
+                <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
+                  <span>Win 1 Hand Cricket Match</span>
                   <span className="text-emerald-600 dark:text-emerald-400 font-black">+100 XP</span>
                 </div>
-                <div className={`p-2 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
-                  <span>🎴 Play UNO with 2+ Friends</span>
+                <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
+                  <span>Play UNO with 2+ Friends</span>
                   <span className="text-emerald-600 dark:text-emerald-400 font-black">+150 XP</span>
                 </div>
-                <div className={`p-2 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
-                  <span>🎲 Roll a 6 in Ludo</span>
+                <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
+                  <span>Roll a 6 in Ludo</span>
                   <span className="text-amber-600 dark:text-amber-400 font-black">+50 XP</span>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() => showToast("🎉 Quest claimed! +100 XP added to your profile.")}
-                className="w-full py-2.5 rounded-xl bg-[#FFB800] hover:bg-amber-300 text-amber-950 font-black text-[12px] shadow-sm transition active:scale-95 cursor-pointer text-center"
+                onClick={() => showToast("Quest claimed! +100 XP added to your profile.")}
+                className="w-full py-2.5 rounded-xl bg-[#FFB800] hover:bg-amber-300 text-amber-950 font-black text-[12px] shadow-sm transition active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1.5"
               >
-                Claim Daily +100 XP
+                <Sparkles className="w-4 h-4" />
+                <span>Claim Daily +100 XP</span>
               </button>
             </div>
           </section>
 
           {/* ── 2. Mobile-Only Compact Category Scroll Strip ── */}
           <div className="flex lg:hidden items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {[
-              { id: "all", label: "All Games", icon: "🏠" },
-              { id: "solo", label: "Solo Play", icon: "👤" },
-              { id: "multiplayer", label: "Multiplayer", icon: "👥" },
-              { id: "board", label: "Board & Cards", icon: "🎲" },
-              { id: "party", label: "Party & Quiz", icon: "🎉" },
-              { id: "classroom", label: "Classroom", icon: "🏫" },
-            ].map((cat) => {
+            {SIDEBAR_CATEGORIES.map((cat) => {
               const active = filter.category === cat.id;
               return (
                 <button
@@ -448,7 +464,7 @@ export default function GamesPage() {
                       : "bg-[#141B2D] text-zinc-300 border border-[#232D48] hover:text-white"
                   }`}
                 >
-                  <span>{cat.icon}</span>
+                  <span className="flex-shrink-0">{cat.icon}</span>
                   <span>{cat.label}</span>
                 </button>
               );

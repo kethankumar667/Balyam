@@ -20,6 +20,7 @@ import CategoryFilter, {
   type GameFilter,
 } from "../components/bhalyam/CategoryFilter";
 import { useRoomStore } from "../store/roomStore";
+import { useAuthStore } from "../store/authStore";
 import {
   BHALYAM_GAMES,
   isLocked,
@@ -28,10 +29,39 @@ import {
   type BhalyamGameSlug,
 } from "../components/bhalyam/data";
 import {
-  ArrowRightIcon,
-  UsersIcon,
-  ClockIcon,
-  HeartIcon,
+  Bell,
+  Menu as MenuIcon,
+  User as UserIcon,
+  ChevronDown,
+  Home as HomeIcon,
+  LayoutGrid,
+  Users as UsersLucideIcon,
+  Shield,
+  Sparkles,
+  GraduationCap,
+  Flame,
+  Zap,
+  Play,
+  Check,
+  X,
+  Mail,
+  Trophy,
+  Gift,
+  DoorOpen,
+  HelpCircle,
+  Moon,
+  Sun,
+  Sliders,
+  Info,
+  TrendingUp,
+  Clock,
+  Heart,
+  Pencil,
+  ArrowRight,
+  Lock,
+  Gamepad2,
+} from "lucide-react";
+import {
   HandCricketGlyph,
   LudoGlyph,
   RpsGlyph,
@@ -122,27 +152,35 @@ export default function BhalyamHome() {
 }
 
 function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
-  const { playerName, avatarId } = useRoomStore();
+  const { playerName } = useRoomStore();
   const displayName = playerName.trim() || "Champion";
+  const [theme] = useTheme();
+  const isDark = theme === "dark";
 
   return (
-    <div className="mb-5 p-3 sm:p-4 rounded-2xl bg-[#FCF8EF] border border-[#E8D8BE] shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div className={`mb-5 p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+      isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D8BE]"
+    }`}>
       {/* Left: Player Profile & Greeting */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl overflow-hidden bg-amber-100 border-2 border-amber-400 flex items-center justify-center shadow-inner flex-shrink-0">
-          <SelfAvatar className="w-full h-full" fallback={<UserGlyph className="w-5 h-5 text-amber-900" />} />
+          <SelfAvatar className="w-full h-full" fallback={<UserIcon className="w-5 h-5 text-amber-900" />} />
         </div>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[14px] font-black text-[#1D2C4A]">Welcome back, {displayName}! 👋</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+            <span className={`text-[14px] font-black ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
+              Welcome back, {displayName}!
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/50">
               Lvl 12
             </span>
           </div>
-          <p className="text-[11.5px] font-semibold text-[#6B5E52] flex items-center gap-2 mt-0.5">
-            <span>🔥 3-Day Streak</span>
+          <p className="text-[11.5px] font-semibold text-[#6B5E52] dark:text-zinc-400 flex items-center gap-2 mt-0.5">
+            <span className="inline-flex items-center gap-1"><Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> 3-Day Streak</span>
             <span>•</span>
-            <span className="text-emerald-700 font-bold">1,450 / 2,000 XP</span>
+            <span className="text-emerald-700 dark:text-emerald-400 font-bold inline-flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> 1,450 / 2,000 XP
+            </span>
           </p>
         </div>
       </div>
@@ -152,12 +190,14 @@ function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =>
         <button
           type="button"
           onClick={() => onSelect("uno")}
-          className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+          className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
         >
-          <span>▶ Continue UNO</span>
+          <Play className="w-3.5 h-3.5 fill-current" />
+          <span>Continue UNO</span>
         </button>
-        <span className="px-2.5 py-1.5 rounded-xl bg-purple-100 text-purple-900 border border-purple-300 text-[10.5px] font-black whitespace-nowrap">
-          🎁 Day 3 Claimed (+100 XP)
+        <span className="px-3 py-2 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-[11px] font-black whitespace-nowrap inline-flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+          <span>Day 3 Bonus (+100 XP)</span>
         </span>
       </div>
     </div>
@@ -166,18 +206,18 @@ function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =>
 
 function TrophyProgressionStrip() {
   const trophies = [
-    { title: "🏏 Backbench Champion", desc: "10 Hand Cricket Matches", unlocked: true },
-    { title: "🎴 Uno Wildcard King", desc: "Declared UNO 5 Times", unlocked: true },
-    { title: "🎲 Sixer Legend", desc: "Rolled 6 in Ludo Under Pressure", unlocked: true },
-    { title: "✏️ Box Master", desc: "Claimed 25 Dots & Boxes Squares", unlocked: false },
+    { title: "Backbench Champion", desc: "10 Hand Cricket Matches", unlocked: true },
+    { title: "Uno Wildcard King", desc: "Declared UNO 5 Times", unlocked: true },
+    { title: "Sixer Legend", desc: "Rolled 6 in Ludo Under Pressure", unlocked: true },
+    { title: "Box Master", desc: "Claimed 25 Dots & Boxes Squares", unlocked: false },
   ];
 
   return (
     <section className="my-8 p-4 sm:p-6 rounded-3xl bg-[#101726] text-white border border-white/15 shadow-xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <div>
-          <h3 className="bhalyam-display text-[18px] sm:text-[22px] text-amber-300">
-            🏆 Nostalgia Trophy Cabinet
+          <h3 className="bhalyam-display text-[18px] sm:text-[22px] text-amber-300 flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-amber-400" /> Nostalgia Trophy Cabinet
           </h3>
           <p className="text-[12.5px] text-zinc-300">Unlock childhood badges as you play with friends</p>
         </div>
@@ -311,7 +351,7 @@ function Hero({
               onClick={onOpenJoin}
               className="py-3 px-6 rounded-full flex items-center justify-center gap-2 font-black text-[14px] sm:text-[15px] bg-[#F59E0B] hover:bg-[#D97706] text-black shadow-lg active:scale-95 transition cursor-pointer flex-shrink-0"
             >
-              <DoorPlusIcon className="w-5 h-5 text-black" />
+              <DoorOpen className="w-5 h-5 text-black" />
               <span>Join Room with a code</span>
             </button>
 
@@ -440,7 +480,7 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
                      transition-colors duration-200"
         >
           {filtered ? "View all in this filter" : "View all games"}
-          <ArrowRightIcon className="w-3.5 h-3.5" />
+          <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
     </section>
@@ -556,17 +596,17 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
         )}
       </AnimatePresence>
 
-      <header className="mx-auto w-full max-w-[1100px] px-4 sm:px-6 pt-4 pb-2">
+      <header className="mx-auto w-full max-w-[1100px] px-3 sm:px-6 pt-3 sm:pt-4 pb-2">
         {/* Top Header Row */}
-        <div className="flex items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center justify-between gap-2 sm:gap-4">
           {/* Left: Brand Logo & Title */}
-          <Link to="/" className="flex items-center gap-2.5 min-w-0 group flex-shrink-0">
-            <BhalyamLogo size={42} decorative />
+          <Link to="/" className="flex items-center gap-2 sm:gap-2.5 min-w-0 group flex-shrink-0">
+            <BhalyamLogo size={36} decorative />
             <span className="flex flex-col leading-none min-w-0">
-              <span className={`bhalyam-display text-[22px] sm:text-[26px] tracking-tight truncate ${isDark ? "text-white" : "text-[#2A221B]"}`}>
+              <span className={`bhalyam-display text-[19px] sm:text-[24px] lg:text-[26px] tracking-tight truncate ${isDark ? "text-white" : "text-[#2A221B]"}`}>
                 BHALYAM
               </span>
-              <span className="text-[10px] sm:text-[10.5px] uppercase tracking-[0.18em] font-extrabold text-[#FF8F00] -mt-0.5">
+              <span className="text-[8.5px] sm:text-[10px] uppercase tracking-[0.16em] font-extrabold text-[#FF8F00] -mt-0.5">
                 Relive Childhood
               </span>
             </span>
@@ -574,33 +614,18 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
 
           {/* Right Action Stack */}
           <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
-
-            {/* 2. Gift Icon Button */}
-            <button
-              type="button"
-              onClick={() => showToast("🎁 Daily bonus ready to claim! (+100 XP)")}
-              title="Claim daily reward"
-              className={`w-9 h-9 rounded-full border flex items-center justify-center text-sm transition hover:scale-105 cursor-pointer ${
-                isDark
-                  ? "bg-[#0D1426] border-[#1E2945] text-amber-400 hover:bg-[#141E38]"
-                  : "bg-[#FAF2DF] border-[#ECD9BA] text-amber-700 hover:bg-[#F2E4CB]"
-              }`}
-            >
-              <span>🎁</span>
-            </button>
-
-            {/* 3. Notification Bell Icon with dynamic unread badge -> opens Notifications side modal */}
+            {/* 1. Notification Bell Icon with dynamic unread badge -> opens Notifications side modal */}
             <button
               type="button"
               onClick={() => setNotificationsOpen(true)}
               title="Notifications"
-              className={`relative w-9 h-9 rounded-full border flex items-center justify-center text-sm transition hover:scale-105 cursor-pointer ${
+              className={`relative w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border flex items-center justify-center text-sm transition hover:scale-105 cursor-pointer flex-shrink-0 ${
                 isDark
                   ? "bg-[#0D1426] border-[#1E2945] text-zinc-300 hover:bg-[#141E38]"
                   : "bg-[#FAF2DF] border-[#ECD9BA] text-[#5C3B1E] hover:bg-[#F2E4CB]"
               }`}
             >
-              <span>🔔</span>
+              <Bell className="w-4.5 h-4.5" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
                   {unreadCount}
@@ -608,64 +633,64 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
               )}
             </button>
 
-            {/* 4. Profile Button (Avatar + Name + Caret) -> Opens Profile functionality */}
+            {/* 2. Profile Button (Avatar + Name on desktop / Avatar on mobile + Caret) -> Opens Profile functionality */}
             <button
               type="button"
               onClick={() => setProfileOpen(true)}
-              className={`flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full border transition hover:scale-102 cursor-pointer ${
+              className={`h-9 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 rounded-full border transition hover:scale-102 cursor-pointer flex-shrink-0 ${
                 isDark
                   ? "bg-[#0D1426] border-[#1E2945] text-white hover:bg-[#141E38]"
                   : "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:bg-[#F2E4CB]"
               }`}
             >
-              <div className="w-7 h-7 rounded-full overflow-hidden border border-amber-400 flex items-center justify-center flex-shrink-0">
+              <div className="w-6 h-6 min-w-[24px] min-h-[24px] rounded-full overflow-hidden border border-amber-400 flex items-center justify-center flex-shrink-0">
                 <SelfAvatar
                   className="w-full h-full"
-                  fallback={<UserGlyph className="w-4 h-4 text-amber-500" />}
+                  fallback={<UserIcon className="w-4 h-4 text-amber-500" />}
                 />
               </div>
-              <span className="text-[13px] font-bold tracking-tight max-w-[90px] truncate">
+              <span className="hidden sm:inline text-[13px] font-bold tracking-tight max-w-[90px] truncate">
                 {displayName}!
               </span>
-              <span className="text-[10px] text-zinc-400">▼</span>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
             </button>
 
-            {/* 5. Menu Button -> right after player name, opens MenuSheet */}
+            {/* 3. Menu Button -> right after player name, opens MenuSheet */}
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
               aria-label="Open menu"
               title="Open menu"
-              className={`w-9 h-9 rounded-full border flex items-center justify-center transition hover:scale-105 cursor-pointer ${
+              className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border flex items-center justify-center transition hover:scale-105 cursor-pointer flex-shrink-0 ${
                 isDark
                   ? "bg-[#0D1426] border-[#1E2945] text-zinc-200 hover:text-amber-400 hover:bg-[#141E38]"
                   : "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:text-amber-700 hover:bg-[#F2E4CB]"
               }`}
             >
-              <HamburgerGlyph className="w-5 h-5" />
+              <MenuIcon className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* SubHeader Navigation Bar */}
-        <div className={`mt-3.5 pt-2.5 border-t flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none transition-colors ${
+        {/* SubHeader Navigation Bar (Hidden on Mobile screens) */}
+        <div className={`hidden md:flex mt-3.5 pt-2.5 border-t items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none transition-colors ${
           isDark ? "border-white/5" : "border-zinc-200"
         }`}>
           {[
-            { id: "home", label: "Home", icon: "🏠", path: "/" },
-            { id: "all", label: "All Games", icon: "⊞", path: "/games" },
-            { id: "solo", label: "Solo Play", icon: "👤", path: "/games?c=solo" },
-            { id: "multiplayer", label: "Multiplayer", icon: "👥", path: "/games?c=multiplayer" },
-            { id: "board", label: "Board & Cards", icon: "🛡️", path: "/games?c=board" },
-            { id: "party", label: "Party & Quiz", icon: "🎉", path: "/games?c=party" },
-            { id: "classroom", label: "Classroom", icon: "🏫", path: "/games?c=classroom" },
+            { id: "home", label: "Home", icon: <HomeIcon className="w-4 h-4" />, path: "/" },
+            { id: "all", label: "All Games", icon: <LayoutGrid className="w-4 h-4" />, path: "/games" },
+            { id: "solo", label: "Solo Play", icon: <UserIcon className="w-4 h-4" />, path: "/games?c=solo" },
+            { id: "multiplayer", label: "Multiplayer", icon: <UsersLucideIcon className="w-4 h-4" />, path: "/games?c=multiplayer" },
+            { id: "board", label: "Board & Cards", icon: <Shield className="w-4 h-4" />, path: "/games?c=board" },
+            { id: "party", label: "Party & Quiz", icon: <Sparkles className="w-4 h-4" />, path: "/games?c=party" },
+            { id: "classroom", label: "Classroom", icon: <GraduationCap className="w-4 h-4" />, path: "/games?c=classroom" },
           ].map((item) => {
             const isActive = item.id === "home";
             return (
               <Link
                 key={item.id}
                 to={item.path}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-[12.5px] whitespace-nowrap transition cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full font-bold text-[12.5px] whitespace-nowrap transition cursor-pointer ${
                   isActive
                     ? isDark
                       ? "bg-amber-500/15 border border-amber-500/80 text-amber-400 font-black shadow-xs"
@@ -675,7 +700,7 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
                     : "text-[#7A5B3E] hover:text-[#3D2005] hover:bg-black/5"
                 }`}
               >
-                <span className="text-sm">{item.icon}</span>
+                <span className="flex-shrink-0">{item.icon}</span>
                 <span>{item.label}</span>
               </Link>
             );
@@ -883,12 +908,12 @@ function SheetShell({
                 onClick={onClose}
                 whileTap={{ scale: 0.92 }}
                 aria-label="Close"
-                className="w-11 h-11 rounded-full inline-flex items-center justify-center
+                className="w-10 h-10 rounded-full inline-flex items-center justify-center
                            bg-[var(--auth-field)] border border-[var(--auth-card-edge)]
-                           text-[var(--auth-ink)] flex-shrink-0
+                           text-[var(--auth-ink)] flex-shrink-0 cursor-pointer
                            focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
               >
-                <CloseGlyph className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </motion.button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -907,9 +932,7 @@ function SheetShell({
 
 /**
  * Profile sheet — entirely dedicated to the upcoming personal-profile
- * feature. No navigation actions here; those live in MenuSheet. Showing
- * an empty placeholder is intentional so users know the real thing is
- * coming and to set expectations for the v1.1 release.
+ * feature. No navigation actions here; those live in MenuSheet.
  */
 function ProfileSheet({
   open,
@@ -921,13 +944,7 @@ function ProfileSheet({
   const { playerName, avatarId } = useRoomStore();
   const avatar = findAvatar(avatarId);
   const named = playerName.trim().length > 0;
-
-  /**
-   * There is no signed-in state yet — accounts are unbuilt, so everyone here
-   * is a guest. Kept as one named value rather than sprinkled `false`s so the
-   * day accounts land, this is the single line that changes.
-   */
-  const signedIn = false;
+  const signedIn = useAuthStore((s) => s.isMember);
 
   return (
     <SheetShell
@@ -936,20 +953,13 @@ function ProfileSheet({
       ariaLabel="Your profile"
       titleLeft={
         <>
-          <UserGlyph className="w-5 h-5 text-[var(--auth-ink)]" />
+          <UserIcon className="w-5 h-5 text-[var(--auth-ink)]" />
           <span className="bhalyam-display text-[20px] text-[var(--auth-ink)] tracking-tight">
             Profile
           </span>
         </>
       }
     >
-      {/*
-        Hero — who you are, not a locked teaser. The avatar and name are real
-        and set on this device, so showing "Your profile / Coming soon" over a
-        blank silhouette was describing the feature instead of the person.
-        The pencil is the one affordance here: everything editable lives on
-        /profile, so the card points there rather than growing its own form.
-      */}
       <div
         className="rounded-2xl p-5 border border-[#E0AE3B] bg-gradient-to-br from-[#FFF7E2] to-[#FBE7BD]
                    shadow-[0_4px_14px_-6px_rgba(228,177,40,0.55)] text-center"
@@ -969,7 +979,7 @@ function ProfileSheet({
                 style={{ objectPosition: "50% 22%" }}
               />
             ) : (
-              <UserGlyph className="w-9 h-9" />
+              <UserIcon className="w-9 h-9" />
             )}
           </span>
           <Link
@@ -980,13 +990,11 @@ function ProfileSheet({
                        justify-center bg-[#FFFDF8] text-[#5C3717]
                        ring-2 ring-[#FFF7E2] border-2 border-[#D49E24]
                        shadow-[0_3px_8px_rgba(92,55,23,0.35)]
-                       after:absolute after:-inset-1.5 after:content-['']
                        hover:bg-[#FFF4DE] hover:scale-105 active:scale-95
                        focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark
-                       focus-visible:ring-offset-2 focus-visible:ring-offset-[#FBE7BD]
                        transition-[background-color,transform,box-shadow] duration-150"
           >
-            <PencilIcon className="w-4 h-4 text-[#5C3717]" />
+            <Pencil className="w-4 h-4 text-[#5C3717]" />
           </Link>
         </div>
 
@@ -1005,114 +1013,63 @@ function ProfileSheet({
         ) : null}
       </div>
 
-      {/* What's coming — for signed-in players only. A guest is here to set a
-          name and get back to a game; a roadmap for account features they have
-          not opted into is someone else's agenda taking up their screen. */}
       {signedIn ? (
-      <div className="rounded-2xl p-4 border border-[#E8D8BE] bg-white">
-        <div className="text-[11px] uppercase tracking-[0.22em] font-extrabold text-[#7B5024] mb-3">
-          What's coming
+        <div className="rounded-2xl p-4 border border-[#E8D8BE] bg-white">
+          <div className="text-[11px] uppercase tracking-[0.22em] font-extrabold text-[#7B5024] mb-3">
+            Your Membership
+          </div>
+          <Link
+            to="/profile"
+            onClick={onClose}
+            className="w-full h-12 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] text-[#7B5024]
+                       font-extrabold text-[14px] inline-flex items-center justify-center gap-2
+                       hover:bg-[#F8EEDB] active:scale-[0.99]
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                       transition-[background-color,transform] duration-200"
+          >
+            <UserIcon className="w-4 h-4" />
+            Account &amp; settings
+          </Link>
         </div>
-        <ul className="space-y-3">
-          <ProfilePerk
-            icon={<TrophyGlyph className="w-5 h-5" />}
-            title="Wins, streaks, and ranks"
-            blurb="Track your hand-cricket centuries and Ludo championships."
-          />
-          <ProfilePerk
-            icon={<FriendsGlyph className="w-5 h-5" />}
-            title="Your school gang"
-            blurb="Save friends so you can re-invite them in one tap."
-          />
-          <ProfilePerk
-            icon={<UserGlyph className="w-5 h-5" />}
-            title="One name, every room"
-            blurb="No more typing your name into every join screen."
-          />
-          <ProfilePerk
-            icon={<StarGlyph className="w-5 h-5" />}
-            title="Custom avatars and badges"
-            blurb="Earn the Slam-Book Champion badge by Week 4."
-          />
-        </ul>
-      </div>
-      ) : null}
-
-      {/* Account actions only. "Edit profile" used to sit here too and went to
-          exactly where the pencil on the avatar goes — one destination, two
-          controls, and it pushed a profile action into a stack of account
-          ones. The pencil kept the job: it is on the thing it edits, and the
-          empty state's copy already points at it.
-
-          Replaces a disabled "Notify me" button: the screens now
-          exist, so sending people to them beats promising to tell them later.
-          The pages themselves say plainly that nothing signs you in yet, so
-          the honesty lives at the destination rather than in a dead control. */}
-      <div className="space-y-2">
-        <Link
-          to="/login"
-          onClick={onClose}
-          className="w-full h-12 rounded-full bhalyam-gold-leaf bhalyam-cta-shine
-                     border border-bhalyam-gold-dark text-bhalyam-wood-dark
-                     font-extrabold text-[14px] inline-flex items-center justify-center gap-2
-                     hover:brightness-[1.04] shadow-[0_8px_18px_-6px_rgba(228,177,40,0.6)]
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                     transition-[filter,box-shadow] duration-200"
-        >
-          <UserGlyph className="w-4 h-4" />
-          Sign in
-        </Link>
-        <Link
-          to="/signup"
-          onClick={onClose}
-          className="w-full h-12 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] text-[#7B5024]
-                     font-extrabold text-[14px] inline-flex items-center justify-center gap-2
-                     hover:bg-[#F8EEDB] active:scale-[0.99]
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                     transition-[background-color,transform] duration-200"
-        >
-          Create an account
-        </Link>
-        <p className="text-center text-[11.5px] leading-relaxed text-[var(--auth-ink-soft)]">
-          You never need an account to join a friend&apos;s room.
-        </p>
-      </div>
-
-      {/* Data rights live in the footer and on /profile now. A sheet about who
-          you are was doing two jobs and neither cleanly. */}
+      ) : (
+        <div className="space-y-2">
+          <Link
+            to="/signup?from=profile"
+            onClick={onClose}
+            className="w-full h-12 rounded-full bhalyam-gold-leaf bhalyam-cta-shine
+                       border border-bhalyam-gold-dark text-bhalyam-wood-dark
+                       font-extrabold text-[14px] inline-flex items-center justify-center gap-2
+                       hover:brightness-[1.04] shadow-[0_8px_18px_-6px_rgba(228,177,40,0.6)]
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                       transition-[filter,box-shadow] duration-200"
+          >
+            <UserIcon className="w-4 h-4" />
+            Create a free account
+          </Link>
+          <Link
+            to="/login"
+            onClick={onClose}
+            className="w-full h-12 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] text-[#7B5024]
+                       font-extrabold text-[14px] inline-flex items-center justify-center gap-2
+                       hover:bg-[#F8EEDB] active:scale-[0.99]
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                       transition-[background-color,transform] duration-200"
+          >
+            Sign in
+          </Link>
+          <p className="text-center text-[11.5px] leading-relaxed text-[var(--auth-ink-soft)]">
+            Guests play every game against bots and join any room they&apos;re invited to.
+            An account is for opening your own.
+          </p>
+        </div>
+      )}
     </SheetShell>
-  );
-}
-
-function ProfilePerk({
-  icon,
-  title,
-  blurb,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  blurb: string;
-}) {
-  return (
-    <li className="flex items-start gap-3">
-      <span className="w-9 h-9 rounded-full bg-[#FFF8EE] border border-[#E8D8BE] inline-flex items-center justify-center text-[#7B5024] flex-shrink-0">
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block font-extrabold text-[#2A221B] text-[13px] leading-tight">
-          {title}
-        </span>
-        <span className="block text-[#5C4A38] text-[12px] mt-0.5 leading-snug">
-          {blurb}
-        </span>
-      </span>
-    </li>
   );
 }
 
 /**
  * Menu sheet — navigation only. Join Room, How to Play, theme toggle,
- * About. No profile content (that's the ProfileSheet's job).
+ * About.
  */
 function MenuSheet({
   open,
@@ -1139,7 +1096,6 @@ function MenuSheet({
         </>
       }
     >
-      {/* Live status */}
       <div className="rounded-2xl p-4 border border-[#E8D8BE] bg-white">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#2BB44A] animate-pulse" aria-hidden />
@@ -1157,35 +1113,33 @@ function MenuSheet({
           label="Join a room"
           hint="Have a 6-letter code? Tap here."
           onClick={onOpenJoin}
-          icon={<DoorPlusIcon className="w-5 h-5" />}
+          icon={<DoorOpen className="w-5 h-5" />}
           primary
         />
         <SheetAction
           label="How to play"
           hint="Quick rules for every game"
           onClick={onClose}
-          icon={
-            <span className="w-5 h-5 rounded-full border border-current text-current text-[11px] leading-none inline-flex items-center justify-center">?</span>
-          }
+          icon={<HelpCircle className="w-5 h-5" />}
         />
         <SheetAction
           label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
           hint={theme === "light" ? "Easier on the eyes at night" : "Bright like a verandah"}
           onClick={toggleTheme}
-          icon={theme === "light" ? <MoonGlyph className="w-5 h-5" /> : <SunGlyph className="w-5 h-5" />}
+          icon={theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
         />
         <SheetAction
           label={showSettings ? "Hide settings" : "Sound & vibration"}
           hint="Mute / theme / vibration toggle"
           onClick={() => setShowSettings((v) => !v)}
-          icon={<GearGlyph className="w-5 h-5" />}
+          icon={<Sliders className="w-5 h-5" />}
         />
         {showSettings && <GlobalSettings />}
         <SheetAction
           label="About BHALYAM"
           hint="Crafted for 90s Telugu kids"
           onClick={onClose}
-          icon={<InfoGlyph className="w-5 h-5" />}
+          icon={<Info className="w-5 h-5" />}
         />
       </nav>
     </SheetShell>
@@ -1229,7 +1183,7 @@ function NotificationsSheet({
       ariaLabel="Notifications"
       titleLeft={
         <div className="flex items-center gap-2">
-          <span className="text-xl">🔔</span>
+          <Bell className="w-5 h-5 text-amber-500" />
           <span className={`bhalyam-display text-[20px] tracking-tight ${isDark ? "text-white" : "text-[#2A221B]"}`}>
             Notifications
           </span>
@@ -1241,7 +1195,6 @@ function NotificationsSheet({
         </div>
       }
     >
-      {/* Top Controls: Filter Pills & Mark All Read */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           {(["all", "invites", "rewards"] as const).map((tab) => (
@@ -1265,18 +1218,18 @@ function NotificationsSheet({
           <button
             type="button"
             onClick={markAllRead}
-            className="text-[11.5px] font-bold text-amber-500 hover:underline cursor-pointer"
+            className="text-[11.5px] font-bold text-amber-500 hover:underline cursor-pointer inline-flex items-center gap-1"
           >
-            Mark all read
+            <Check className="w-3.5 h-3.5" />
+            <span>Mark all read</span>
           </button>
         )}
       </div>
 
-      {/* Notifications List */}
       <div className="space-y-2.5 my-2">
         {filteredNotifs.length === 0 ? (
           <div className="py-12 text-center">
-            <div className="text-3xl mb-2">🎉</div>
+            <Sparkles className="w-9 h-9 text-amber-400 mx-auto mb-2" />
             <p className={`text-[13px] font-bold ${isDark ? "text-zinc-300" : "text-[#5C3B1E]"}`}>
               You're all caught up!
             </p>
@@ -1305,9 +1258,25 @@ function NotificationsSheet({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2.5">
-                  <span className="text-xl flex-shrink-0 mt-0.5">
-                    {item.type === "invite" ? "🎴" : item.type === "reward" ? "🎁" : item.type === "gang" ? "🏏" : "🏆"}
-                  </span>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    item.type === "invite"
+                      ? "bg-amber-500/15 text-amber-500 border border-amber-500/30"
+                      : item.type === "reward"
+                      ? "bg-purple-500/15 text-purple-500 border border-purple-500/30"
+                      : item.type === "gang"
+                      ? "bg-blue-500/15 text-blue-500 border border-blue-500/30"
+                      : "bg-emerald-500/15 text-emerald-500 border border-emerald-500/30"
+                  }`}>
+                    {item.type === "invite" ? (
+                      <Mail className="w-4.5 h-4.5" />
+                    ) : item.type === "reward" ? (
+                      <Sparkles className="w-4.5 h-4.5" />
+                    ) : item.type === "gang" ? (
+                      <UsersLucideIcon className="w-4.5 h-4.5" />
+                    ) : (
+                      <Trophy className="w-4.5 h-4.5" />
+                    )}
+                  </div>
                   <div>
                     <h4 className={`text-[13px] font-bold leading-tight ${isDark ? "text-white" : "text-[#2A221B]"}`}>
                       {item.title}
@@ -1325,7 +1294,6 @@ function NotificationsSheet({
                 )}
               </div>
 
-              {/* Action Buttons for Invites */}
               {item.type === "invite" && (
                 <div className="mt-3 pt-2.5 border-t border-white/10 dark:border-white/10 flex items-center gap-2">
                   <button
@@ -1450,7 +1418,7 @@ function SheetAction({
           </span>
         )}
       </span>
-      <ArrowRightIcon className="w-4 h-4 text-current opacity-60 group-hover:opacity-100 transition-opacity" />
+      <ArrowRight className="w-4 h-4 text-current opacity-60 group-hover:opacity-100 transition-opacity" />
     </motion.button>
   );
 }
@@ -1640,12 +1608,12 @@ export function GameTile({
         isDark ? "text-zinc-300" : "text-[#473B30]"
       }`}>
         <div className="flex items-center gap-1.5">
-          <UsersIcon className={`w-3.5 h-3.5 ${isDark ? "text-zinc-400" : "text-[#6E5A4B]"}`} />
+          <UsersLucideIcon className={`w-3.5 h-3.5 ${isDark ? "text-zinc-400" : "text-[#6E5A4B]"}`} />
           <span>{game.playerRange ?? "2–8 Players"}</span>
         </div>
         <span className={isDark ? "text-zinc-600" : "text-zinc-400"}>•</span>
         <div className="flex items-center gap-1.5">
-          <ClockIcon className={`w-3.5 h-3.5 ${isDark ? "text-zinc-400" : "text-[#6E5A4B]"}`} />
+          <Clock className={`w-3.5 h-3.5 ${isDark ? "text-zinc-400" : "text-[#6E5A4B]"}`} />
           <span>{game.duration ?? "10–20 min"}</span>
         </div>
       </div>
@@ -1666,7 +1634,7 @@ export function GameTile({
         }}
       >
         <span>{underMaintenance ? "Coming Soon" : "Play Now"}</span>
-        <ArrowRightIcon className="w-4 h-4" />
+        <ArrowRight className="w-4 h-4" />
       </button>
     </motion.div>
   );
@@ -1795,7 +1763,7 @@ function PlayerJourneyDashboard({
             className="w-full mt-3 py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white font-black text-[14px] uppercase tracking-wider shadow-md active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Resume Hand Cricket</span>
-            <ArrowRightIcon className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4" />
           </button>
         </article>
 
@@ -2294,14 +2262,14 @@ function Footer() {
                   aria-label="X / Twitter"
                   className="w-7 h-7 rounded-full border border-[#D9C4A3] bg-white text-[#5C3717] hover:bg-[#FBE7C6] flex items-center justify-center transition-all shadow-2xs"
                 >
-                  <SparkleGlyph className="w-3.5 h-3.5" />
+                  <Sparkles className="w-3.5 h-3.5" />
                 </a>
                 <a
                   href="#games"
                   aria-label="Games"
                   className="w-7 h-7 rounded-full border border-[#D9C4A3] bg-white text-[#5C3717] hover:bg-[#FBE7C6] flex items-center justify-center transition-all shadow-2xs"
                 >
-                  <GamepadGlyph className="w-3.5 h-3.5" />
+                  <Gamepad2 className="w-3.5 h-3.5" />
                 </a>
               </div>
             </div>
@@ -2312,7 +2280,7 @@ function Footer() {
           <div className="pt-4 border-t border-[#E8D9C0] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-semibold text-[#8C7053]">
             <div className="flex items-center gap-1.5">
               <span>© {new Date().getFullYear()} BHALYAM. Made with</span>
-              <HeartGlyph className="w-3 h-3 text-[#E85D04] inline fill-current" />
+              <Heart className="w-3 h-3 text-[#E85D04] inline fill-current" />
               <span>for 90s Kids.</span>
             </div>
             
