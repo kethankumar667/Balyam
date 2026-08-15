@@ -274,6 +274,8 @@ interface Room {
   rematchTimer: NodeJS.Timeout | null;
   /** Timer that auto-starts the new game once everyone accepts. */
   rematchStartTimer: NodeJS.Timeout | null;
+  /** Idempotency action registry: actionKey -> timestamp */
+  processedActionIds: Map<string, number>;
 }
 
 /**
@@ -503,6 +505,7 @@ export class RoomManager {
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
+      processedActionIds: new Map(),
     };
     this.rooms.set(code, room);
     this.socketToRoom.set(socketId, code);
@@ -669,17 +672,7 @@ export class RoomManager {
     }
 
     if (room.hostId === playerId) {
-      // Prefer a member: a guest cannot be handed a table other people can
-      // still walk into. Falling back to whoever is first keeps the room
-      // playable when only guests are left — it just seals on the way.
-      const seats = [...room.players.values()];
-      const next =
-        seats.find((p) => !p.isBot && !p.isGuest) ?? seats.find((p) => !p.isBot) ?? seats[0];
-      if (next) {
-        room.hostId = next.id;
-        next.isHost = true;
-        if (next.isGuest) this.sealRoom(room);
-      }
+      this.reassignHost(room, playerId);
     }
     if (room.engine) room.engine.removePlayer(playerId);
     // If the leaver was part of a pending rematch vote, cancel it —
@@ -1022,9 +1015,33 @@ export class RoomManager {
     }
   }
 
-  applyMove(socketId: string, type: string, data: unknown, onBehalfOf?: string): void {
+  applyMove(socketId: string, type: string, data: unknown, onBehalfOf?: string, actionId?: string): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player || !room.engine) return;
+
+    // Platform-level idempotency protection against slow mobile connections & rapid taps
+    if (actionId && typeof actionId === "string") {
+      const actionKey = `${player.id}:${actionId}`;
+      const now = Date.now();
+      const previousTs = room.processedActionIds.get(actionKey);
+      if (previousTs && now - previousTs < 15_000) {
+        logger.info({
+          message: `Idempotency filter: ignoring duplicate action ${actionId} for player ${player.id} in room ${room.code}`,
+          module: "IDEMPOTENCY",
+          roomCode: room.code,
+          playerId: player.id,
+        });
+        // Immediately push authoritative state back to caller to confirm resolution
+        this.broadcastGameState(room);
+        return;
+      }
+      room.processedActionIds.set(actionKey, now);
+      if (room.processedActionIds.size > 200) {
+        for (const [k, ts] of room.processedActionIds.entries()) {
+          if (now - ts > 30_000) room.processedActionIds.delete(k);
+        }
+      }
+    }
 
     // Pass & Play: the host's socket can play moves for any local seat in
     // the room. Every other proxy attempt falls back to the caller's own id.
@@ -1076,6 +1093,59 @@ export class RoomManager {
     } else {
       this.scheduleTurnTimer(room);
       this.scheduleBotMoveIfNeeded(room);
+    }
+  }
+
+  /**
+   * Failover / host election when a host departs or is reaped.
+   * Prioritizes:
+   * 1. Active, connected member player (not a bot, not a guest, not away)
+   * 2. Active, connected guest player (seals the room as guests cannot gather)
+   * 3. Any remaining human player
+   * If no human players remain, transitions room towards abandonment.
+   */
+  private reassignHost(room: Room, departingPlayerId: string): void {
+    if (room.hostId !== departingPlayerId) return;
+
+    const remainingSeats = [...room.players.values()].filter(
+      (p) => p.id !== departingPlayerId && !p.isLocal && !p.isBot
+    );
+
+    if (remainingSeats.length === 0) {
+      if (!this.hasHumanPlayer(room)) {
+        this.abandonRoom(room);
+      }
+      return;
+    }
+
+    const nextHost =
+      remainingSeats.find((p) => !p.isGuest && !p.awayUntil) ??
+      remainingSeats.find((p) => !p.awayUntil) ??
+      remainingSeats.find((p) => !p.isGuest) ??
+      remainingSeats[0];
+
+    if (nextHost) {
+      room.hostId = nextHost.id;
+      for (const p of room.players.values()) {
+        p.isHost = p.id === nextHost.id;
+      }
+      if (nextHost.isGuest) {
+        this.sealRoom(room);
+      }
+      logger.info({
+        message: `Host failover: reallocated room ${room.code} host from ${departingPlayerId} to ${nextHost.name} (${nextHost.id})`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+        playerId: nextHost.id,
+      });
+      const msg: ChatMessage = {
+        id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        playerId: "system",
+        playerName: "BHALYAM Lounge",
+        text: `👑 ${nextHost.name} is now the room host.`,
+        ts: Date.now(),
+      };
+      this.io.to(room.code).emit("chat:message", msg);
     }
   }
 
@@ -2314,11 +2384,7 @@ export class RoomManager {
         });
         if (stillRoom.engine) stillRoom.engine.removePlayer(playerId);
         if (stillRoom.hostId === playerId) {
-          const next = stillRoom.players.values().next().value;
-          if (next) {
-            stillRoom.hostId = next.id;
-            next.isHost = true;
-          }
+          this.reassignHost(stillRoom, playerId);
         }
         this.broadcastRoomState(stillRoom);
         this.resumeTable(stillRoom);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState , useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getSocket } from "../lib/socket";
+import { generateActionId, getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
 import { currentAccessToken, currentAccountKind, useAuthStore } from "../store/authStore";
@@ -47,6 +47,7 @@ import SnakeBoard from "../games/snake/SnakeBoard";
 import CarromBoard from "../games/carrom/CarromBoard";
 import ChessBoard from "../games/chess/ChessBoard";
 import SpaceWarBoard from "../games/spacewar/SpaceWarBoard";
+import GameErrorBoundary from "../components/GameErrorBoundary";
 import type { SnakePublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState } from "@shared/types";
 
 /**
@@ -513,7 +514,7 @@ export default function Room() {
    * board would re-render on every broadcast anyway.
    */
   const sendMove = useCallback((type: string, data?: unknown) => {
-    getSocket().emit("game:move", { type, data });
+    getSocket().emit("game:move", { type, data, actionId: generateActionId() });
   }, []);
 
   // Snap to top once roomState lands — the page renders a slim "Connecting…"
@@ -1098,275 +1099,261 @@ export default function Room() {
               </div>
             )}
 
-            {roomState.phase !== "lobby" && roomState.game === "rps" && gameState != null && !showGameOver && (
-              <RpsBoard
-                state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
-                players={roomState.players}
-                selfId={playerId}
-                messages={messages}
-                roomCode={roomState.code}
-                roomPhase={roomState.phase}
-                onLeave={leaveRoom}
-                onScorecardClose={triggerGameOver}
-              />
-            )}
-
-            {roomState.phase !== "lobby" && roomState.game === "rummy" && gameState != null && !showGameOver && (
-              <RummyBoard
-                state={gameState as RummyPlayerState}
-                players={roomState.players}
-                selfId={playerId}
-                messages={messages}
-                roomCode={roomState.code}
-                onLeave={leaveRoom}
-                history={roomState.history}
-                champion={roomState.champion}
-                onScorecardClose={triggerGameOver}
-              />
-            )}
-
-            {roomState.phase !== "lobby" && roomState.game === "ludo" && gameState != null && (
-              (() => {
-                // Pass & Play proxy: when the active turn belongs to a local
-                // seat and we're the host, present that seat's id to the
-                // board as `selfId` so the existing canRoll / can-move
-                // checks light up. The board's emit calls include the same
-                // id; the server validates and routes it to the right player.
-                const ls = gameState as LudoState;
-                const isHost = roomState.hostId === playerId;
-                const activePid = ls.turnPlayerId;
-                const activeP = roomState.players.find((p) => p.id === activePid);
-                const effectiveSelfId =
-                  isHost && activeP?.isLocal ? activePid : playerId;
-                return (
-                  <PassPhoneGate
-                    activePlayerId={activePid}
+            {roomState.phase !== "lobby" && (
+              <GameErrorBoundary
+                gameName={roomState.game}
+                onReset={() => window.location.reload()}
+              >
+                {roomState.game === "rps" && gameState != null && !showGameOver && (
+                  <RpsBoard
+                    state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
                     players={roomState.players}
-                    isHost={isHost}
-                  >
-                    <LudoBoard
-                      state={ls}
-                      players={roomState.players}
-                      selfId={effectiveSelfId}
-                      messages={messages}
-                      roomCode={roomState.code}
-                      roomPhase={roomState.phase}
-                      onLeave={leaveRoom}
-                      onScorecardClose={triggerGameOver}
-                    />
-                  </PassPhoneGate>
-                );
-              })()
-            )}
+                    selfId={playerId}
+                    messages={messages}
+                    roomCode={roomState.code}
+                    roomPhase={roomState.phase}
+                    onLeave={leaveRoom}
+                    onScorecardClose={triggerGameOver}
+                  />
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "snl" && gameState != null && (
-              (() => {
-                const ss = gameState as SnlState;
-                const isHost = roomState.hostId === playerId;
-                const activePid = ss.turnPlayerId;
-                const activeP = roomState.players.find((p) => p.id === activePid);
-                const effectiveSelfId =
-                  isHost && activeP?.isLocal ? activePid : playerId;
-                return (
-                  <PassPhoneGate
-                    activePlayerId={activePid}
+                {roomState.game === "rummy" && gameState != null && !showGameOver && (
+                  <RummyBoard
+                    state={gameState as RummyPlayerState}
                     players={roomState.players}
-                    isHost={isHost}
-                  >
-                    <SnlBoard
-                      state={ss}
-                      players={roomState.players}
-                      selfId={effectiveSelfId}
-                      messages={messages}
-                      roomCode={roomState.code}
-                      roomPhase={roomState.phase}
-                    />
-                  </PassPhoneGate>
-                );
-              })()
-            )}
+                    selfId={playerId}
+                    messages={messages}
+                    roomCode={roomState.code}
+                    onLeave={leaveRoom}
+                    history={roomState.history}
+                    champion={roomState.champion}
+                    onScorecardClose={triggerGameOver}
+                  />
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "handcricket" && gameState != null && !showGameOver && (
-              <HandCricketBoard
-                state={gameState as HcState}
-                players={roomState.players}
-                selfId={playerId}
-                messages={messages}
-                roomCode={roomState.code}
-                roomPhase={roomState.phase}
-                onLeave={leaveRoom}
-                onScorecardClose={triggerGameOver}
-              />
-            )}
+                {roomState.game === "ludo" && gameState != null && (
+                  (() => {
+                    const ls = gameState as LudoState;
+                    const isHost = roomState.hostId === playerId;
+                    const activePid = ls.turnPlayerId;
+                    const activeP = roomState.players.find((p) => p.id === activePid);
+                    const effectiveSelfId =
+                      isHost && activeP?.isLocal ? activePid : playerId;
+                    return (
+                      <PassPhoneGate
+                        activePlayerId={activePid}
+                        players={roomState.players}
+                        isHost={isHost}
+                      >
+                        <LudoBoard
+                          state={ls}
+                          players={roomState.players}
+                          selfId={effectiveSelfId}
+                          messages={messages}
+                          roomCode={roomState.code}
+                          roomPhase={roomState.phase}
+                          onLeave={leaveRoom}
+                          onScorecardClose={triggerGameOver}
+                        />
+                      </PassPhoneGate>
+                    );
+                  })()
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "uno" && gameState != null && (
-              <UnoBoard
-                state={gameState as UnoPlayerState}
-                players={roomState.players}
-                selfId={playerId}
-                messages={messages}
-                roomCode={roomState.code}
-                roomPhase={roomState.phase}
-                onLeave={leaveRoom}
-                history={roomState.unoHistory}
-                champion={roomState.unoChampion}
-                onScorecardClose={triggerGameOver}
-              />
-            )}
+                {roomState.game === "snl" && gameState != null && (
+                  (() => {
+                    const ss = gameState as SnlState;
+                    const isHost = roomState.hostId === playerId;
+                    const activePid = ss.turnPlayerId;
+                    const activeP = roomState.players.find((p) => p.id === activePid);
+                    const effectiveSelfId =
+                      isHost && activeP?.isLocal ? activePid : playerId;
+                    return (
+                      <PassPhoneGate
+                        activePlayerId={activePid}
+                        players={roomState.players}
+                        isHost={isHost}
+                      >
+                        <SnlBoard
+                          state={ss}
+                          players={roomState.players}
+                          selfId={effectiveSelfId}
+                          messages={messages}
+                          roomCode={roomState.code}
+                          roomPhase={roomState.phase}
+                        />
+                      </PassPhoneGate>
+                    );
+                  })()
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "dotsboxes" && gameState != null && (
-              (() => {
-                const dbs = gameState as DotsBoxesPublicState;
-                const isHost = roomState.hostId === playerId;
-                const activePid = dbs.turnPlayerId;
-                const activeP = roomState.players.find((p) => p.id === activePid);
-                const effectiveSelfId =
-                  isHost && activeP?.isLocal ? activePid : playerId;
-                return (
-                  <PassPhoneGate
-                    activePlayerId={activePid}
+                {roomState.game === "handcricket" && gameState != null && !showGameOver && (
+                  <HandCricketBoard
+                    state={gameState as HcState}
                     players={roomState.players}
-                    isHost={isHost}
-                  >
-                    <DotsBoxesBoard
-                      state={dbs}
-                      players={roomState.players}
-                      selfId={effectiveSelfId}
-                      messages={messages}
-                      roomCode={roomState.code}
-                      roomPhase={roomState.phase}
-                      onLeave={leaveRoom}
-                      onScorecardClose={triggerGameOver}
-                    />
-                  </PassPhoneGate>
-                );
-              })()
-            )}
+                    selfId={playerId}
+                    messages={messages}
+                    roomCode={roomState.code}
+                    roomPhase={roomState.phase}
+                    onLeave={leaveRoom}
+                    onScorecardClose={triggerGameOver}
+                  />
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "wordbuilding" && gameState != null && (
-              (() => {
-                const wbs = gameState as WordBuildingPublicState;
-                const isHost = roomState.hostId === playerId;
-                const activePid = wbs.turnPlayerId;
-                const activeP = roomState.players.find((p) => p.id === activePid);
-                // Pass-and-play: when the host's socket is the only one in
-                // the room and the active seat is marked `isLocal`, override
-                // selfId to that seat so the board's "myTurn" gate works.
-                const effectiveSelfId =
-                  isHost && activeP?.isLocal ? activePid : playerId;
-                return (
-                  <PassPhoneGate
-                    activePlayerId={activePid}
+                {roomState.game === "uno" && gameState != null && (
+                  <UnoBoard
+                    state={gameState as UnoPlayerState}
                     players={roomState.players}
-                    isHost={isHost}
-                  >
-                    <WordBuildingBoard
-                      state={wbs}
-                      players={roomState.players}
-                      selfId={effectiveSelfId}
-                      messages={messages}
-                      roomCode={roomState.code}
-                      roomPhase={roomState.phase}
-                      onLeave={leaveRoom}
-                    />
-                  </PassPhoneGate>
-                );
-              })()
-            )}
+                    selfId={playerId}
+                    messages={messages}
+                    roomCode={roomState.code}
+                    roomPhase={roomState.phase}
+                    onLeave={leaveRoom}
+                    history={roomState.unoHistory}
+                    champion={roomState.unoChampion}
+                    onScorecardClose={triggerGameOver}
+                  />
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "stargame" && gameState != null && (
-              <StarBoard
-                state={gameState as StarPlayerView}
-                players={roomState.players}
-                selfId={playerId}
-                roomCode={roomState.code}
-                messages={messages}
-                roomPhase={roomState.phase}
-              />
-            )}
+                {roomState.game === "dotsboxes" && gameState != null && (
+                  (() => {
+                    const dbs = gameState as DotsBoxesPublicState;
+                    const isHost = roomState.hostId === playerId;
+                    const activePid = dbs.turnPlayerId;
+                    const activeP = roomState.players.find((p) => p.id === activePid);
+                    const effectiveSelfId =
+                      isHost && activeP?.isLocal ? activePid : playerId;
+                    return (
+                      <PassPhoneGate
+                        activePlayerId={activePid}
+                        players={roomState.players}
+                        isHost={isHost}
+                      >
+                        <DotsBoxesBoard
+                          state={dbs}
+                          players={roomState.players}
+                          selfId={effectiveSelfId}
+                          messages={messages}
+                          roomCode={roomState.code}
+                          roomPhase={roomState.phase}
+                          onLeave={leaveRoom}
+                          onScorecardClose={triggerGameOver}
+                        />
+                      </PassPhoneGate>
+                    );
+                  })()
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "bingo" && gameState != null && !showGameOver && (
-              <BingoBoard
-                state={gameState as BingoPlayerState}
-                players={roomState.players}
-                selfId={playerId}
-                messages={messages}
-                roomCode={roomState.code}
-                roomPhase={roomState.phase}
-                onLeave={leaveRoom}
-                onScorecardClose={triggerGameOver}
-              />
-            )}
+                {roomState.game === "wordbuilding" && gameState != null && (
+                  (() => {
+                    const wbs = gameState as WordBuildingPublicState;
+                    const isHost = roomState.hostId === playerId;
+                    const activePid = wbs.turnPlayerId;
+                    const activeP = roomState.players.find((p) => p.id === activePid);
+                    const effectiveSelfId =
+                      isHost && activeP?.isLocal ? activePid : playerId;
+                    return (
+                      <PassPhoneGate
+                        activePlayerId={activePid}
+                        players={roomState.players}
+                        isHost={isHost}
+                      >
+                        <WordBuildingBoard
+                          state={wbs}
+                          players={roomState.players}
+                          selfId={effectiveSelfId}
+                          messages={messages}
+                          roomCode={roomState.code}
+                          roomPhase={roomState.phase}
+                          onLeave={leaveRoom}
+                        />
+                      </PassPhoneGate>
+                    );
+                  })()
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "namesplaceanimal" && gameState != null && (
-              <NamePlaceAnimalBoard
-                state={gameState as NamePlaceAnimalPlayerState}
-                myAnswers={(gameState as NamePlaceAnimalPlayerState).myAnswers}
-                myPlayerId={playerId || ""}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
-              />
-            )}
+                {roomState.game === "stargame" && gameState != null && (
+                  <StarBoard
+                    state={gameState as StarPlayerView}
+                    players={roomState.players}
+                    selfId={playerId}
+                    roomCode={roomState.code}
+                    messages={messages}
+                    roomPhase={roomState.phase}
+                  />
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "tambola" && gameState != null && (
-              <TambolaBoard
-                state={gameState as TambolaPlayerState}
-                selfId={playerId || ""}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
-              />
-            )}
+                {roomState.game === "bingo" && gameState != null && !showGameOver && (
+                  <BingoBoard
+                    state={gameState as BingoPlayerState}
+                    players={roomState.players}
+                    selfId={playerId}
+                    messages={messages}
+                    roomCode={roomState.code}
+                    roomPhase={roomState.phase}
+                    onLeave={leaveRoom}
+                    onScorecardClose={triggerGameOver}
+                  />
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "snake" && gameState != null && (
-              <SnakeBoard
-                onMove={sendMove}
-                state={gameState as SnakePublicState}
-                selfId={playerId || ""}
-              />
-            )}
+                {roomState.game === "namesplaceanimal" && gameState != null && (
+                  <NamePlaceAnimalBoard
+                    state={gameState as NamePlaceAnimalPlayerState}
+                    myAnswers={(gameState as NamePlaceAnimalPlayerState).myAnswers}
+                    myPlayerId={playerId || ""}
+                    onMove={sendMove}
+                  />
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "carrom" && gameState != null && (
-              <CarromBoard
-                state={gameState as CarromPublicState}
-                players={roomState.players}
-                selfId={playerId || ""}
-                messages={messages}
-                roomCode={roomState.code}
-                roomPhase={roomState.phase}
-                onLeave={leaveRoom}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
-              />
-            )}
+                {roomState.game === "tambola" && gameState != null && (
+                  <TambolaBoard
+                    state={gameState as TambolaPlayerState}
+                    selfId={playerId || ""}
+                    onMove={sendMove}
+                  />
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "chess" && gameState != null && (
-              <ChessBoard
-                state={gameState as ChessPublicState}
-                players={roomState.players}
-                selfId={playerId || ""}
-                messages={messages}
-                roomCode={roomState.code}
-                roomPhase={roomState.phase}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
-              />
-            )}
+                {roomState.game === "snake" && gameState != null && (
+                  <SnakeBoard
+                    onMove={sendMove}
+                    state={gameState as SnakePublicState}
+                    selfId={playerId || ""}
+                  />
+                )}
 
+                {roomState.game === "carrom" && gameState != null && (
+                  <CarromBoard
+                    state={gameState as CarromPublicState}
+                    players={roomState.players}
+                    selfId={playerId || ""}
+                    messages={messages}
+                    roomCode={roomState.code}
+                    roomPhase={roomState.phase}
+                    onLeave={leaveRoom}
+                    onMove={sendMove}
+                  />
+                )}
 
-            {roomState.phase !== "lobby" && roomState.game === "spacewar" && gameState != null && (
-              <SpaceWarBoard
-                onMove={sendMove}
-                state={gameState as SpaceWarPublicState}
-                selfId={playerId || ""}
-              />
+                {roomState.game === "chess" && gameState != null && (
+                  <ChessBoard
+                    state={gameState as ChessPublicState}
+                    players={roomState.players}
+                    selfId={playerId || ""}
+                    messages={messages}
+                    roomCode={roomState.code}
+                    roomPhase={roomState.phase}
+                    onMove={sendMove}
+                  />
+                )}
+
+                {roomState.game === "spacewar" && gameState != null && (
+                  <SpaceWarBoard
+                    onMove={sendMove}
+                    state={gameState as SpaceWarPublicState}
+                    selfId={playerId || ""}
+                  />
+                )}
+              </GameErrorBoundary>
             )}
 
 

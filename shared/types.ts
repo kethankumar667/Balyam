@@ -2371,6 +2371,9 @@ export interface GameMovePayload {
    * multiple seats in Pass & Play mode for Ludo / Snakes & Ladders.
    */
   playerId?: string;
+  /** Unique idempotency key / UUID per user action to prevent double-execution from retries or rapid double-taps. */
+  actionId?: string;
+  requestId?: string;
 }
 
 // ---- Ephemeral overlay events (reactions, cursors) ----

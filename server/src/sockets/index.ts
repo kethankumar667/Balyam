@@ -168,8 +168,8 @@ export function registerSocketHandlers(
     rooms.sendChat(socket.id, text);
   });
 
-  socket.on("game:move", ({ type, data, playerId }) => {
-    rooms.applyMove(socket.id, type, data, playerId);
+  socket.on("game:move", ({ type, data, playerId, actionId, requestId }) => {
+    rooms.applyMove(socket.id, type, data, playerId, actionId || requestId);
   });
 
   socket.on("room:addLocalPlayer", (name) => {
