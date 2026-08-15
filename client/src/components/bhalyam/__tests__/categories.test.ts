@@ -65,18 +65,19 @@ describe("catalogue tagging", () => {
   });
 });
 
-describe("player-count tags partition the catalogue", () => {
-  it("marks every game solo, multiplayer, or both", () => {
+describe("player-count tags partition the active catalogue", () => {
+  it("marks every active game solo, multiplayer, or both", () => {
     // These two answer "who is around?", so between them they must cover the
-    // whole lineup. A game in neither is unreachable from either filter.
+    // active lineup. Upcoming games are segregated under upcoming only.
     for (const game of BHALYAM_GAMES) {
+      if (game.tags.includes("upcoming")) continue;
       const hasCount = game.tags.includes("solo") || game.tags.includes("multiplayer");
       expect(hasCount, `${game.slug} is neither solo nor multiplayer`).toBe(true);
     }
   });
 
   it("lets a game be both, because some genuinely are", () => {
-    // Snake, Bounce and Road Rash seat 1 to 4. Forcing them into one bucket
+    // Snake and Block Blast seat 1 to 4. Forcing them into one bucket
     // would hide them from a filter players would expect them in.
     const both = BHALYAM_GAMES.filter(
       (g) => g.tags.includes("solo") && g.tags.includes("multiplayer"),
@@ -84,12 +85,13 @@ describe("player-count tags partition the catalogue", () => {
     expect(both.length).toBeGreaterThan(0);
   });
 
-  it("adds up to the whole catalogue across solo and multiplayer", () => {
+  it("adds up to the active catalogue across solo and multiplayer", () => {
+    const activeGames = BHALYAM_GAMES.filter((g) => !g.tags.includes("upcoming"));
     const covered = new Set([
       ...gamesWithTag("solo").map((g) => g.slug),
       ...gamesWithTag("multiplayer").map((g) => g.slug),
     ]);
-    expect(covered.size).toBe(BHALYAM_GAMES.length);
+    expect(covered.size).toBe(activeGames.length);
   });
 });
 
@@ -102,8 +104,9 @@ describe("filtering", () => {
     }
   });
 
-  it("returns everything under All", () => {
-    expect(filterGames({ category: "all" })).toHaveLength(BHALYAM_GAMES.length);
+  it("returns everything except upcoming under All", () => {
+    const expected = BHALYAM_GAMES.filter((g) => !g.tags.includes("upcoming"));
+    expect(filterGames({ category: "all" })).toHaveLength(expected.length);
   });
 
   it("keeps chip counts and revealed tiles in agreement", () => {

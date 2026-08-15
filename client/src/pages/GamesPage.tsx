@@ -20,7 +20,7 @@ import {
   Play,
   CheckCircle2,
   ArrowRight,
-  Menu as MenuIcon,
+  Settings as SettingsIcon,
   ChevronDown,
 } from "lucide-react";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
@@ -58,6 +58,8 @@ import {
  */
 const SIDEBAR_CATEGORIES: Array<{ id: CategorySelection; label: string; icon: React.ReactNode }> = [
   { id: "all", label: "All Games", icon: <LayoutGrid className="w-4.5 h-4.5" /> },
+  { id: "retro", label: "Retro Games", icon: <Sparkles className="w-4.5 h-4.5 text-emerald-500" /> },
+  { id: "upcoming", label: "Upcoming", icon: <Clock className="w-4.5 h-4.5 text-amber-500" /> },
   { id: "solo", label: "Solo Play", icon: <UserIcon className="w-4.5 h-4.5" /> },
   { id: "multiplayer", label: "Multiplayer", icon: <UsersIcon className="w-4.5 h-4.5" /> },
   { id: "board", label: "Board & Cards", icon: <Shield className="w-4.5 h-4.5" /> },
@@ -84,7 +86,6 @@ const GAME_TELEMETRY: Record<string, { livePlayers: number; activeRooms: number;
   snl: { livePlayers: 215, activeRooms: 28, difficulty: "Casual", rating: 4.8, tag: "Snake 99" },
   snake: { livePlayers: 210, activeRooms: 29, difficulty: "Casual", rating: 4.8, tag: "Nokia 3310" },
   telugucinemalu: { livePlayers: 185, activeRooms: 26, difficulty: "Casual", rating: 4.9, tag: "Tollywood Adda" },
-  blockblast: { livePlayers: 170, activeRooms: 23, difficulty: "Medium", rating: 4.7, tag: "Puzzle Match" },
   carrom: { livePlayers: 195, activeRooms: 27, difficulty: "Medium", rating: 4.8, tag: "Striker King" },
   chess: { livePlayers: 190, activeRooms: 25, difficulty: "Expert", rating: 4.9, tag: "Grandmaster" },
   dotsboxes: { livePlayers: 145, activeRooms: 22, difficulty: "Casual", rating: 4.7, tag: "Maths Period" },
@@ -98,6 +99,8 @@ const GAME_TELEMETRY: Record<string, { livePlayers: number; activeRooms: number;
   samethalu: { livePlayers: 95, activeRooms: 12, difficulty: "Casual", rating: 4.8, tag: "Ammamma Lore" },
   bounce: { livePlayers: 1250, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Red Ball Classic" },
   roadrash: { livePlayers: 980, activeRooms: 0, difficulty: "Casual", rating: 4.9, tag: "90s Racer" },
+  tetris: { livePlayers: 1120, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Classic & Pentix" },
+  breakout: { livePlayers: 1350, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Brick Breaker" },
 };
 
 export default function GamesPage() {
@@ -143,7 +146,18 @@ export default function GamesPage() {
 
   // Base list of games filtered by active category / quick filter
   const displayedGames = useMemo(() => {
-    let list = filterGames(filter, false);
+    /**
+     * Locked games are LISTED here, not hidden.
+     *
+     * This used to pass `includeLocked: false`, which silently dropped every
+     * `maintenance: true` tile from the catalog — so the flag that is
+     * documented as "players see them but can't open a room" (data.ts) in
+     * fact meant "players never see them", and the only page that exists to
+     * show the whole catalog was the one page that couldn't. `GameTile`
+     * already renders a locked tile correctly: artwork intact, hover
+     * disabled, and a greyed-out "Coming Soon" in place of "Play Now".
+     */
+    let list = filterGames(filter, true);
 
     // Apply quick filters if active
     if (activeQuickFilter === "popular") {
@@ -189,7 +203,7 @@ export default function GamesPage() {
 
       {/* ── LEFT SIDEBAR NAVIGATION (DESKTOP ONLY) ── */}
       <aside
-        className={`hidden lg:flex lg:w-64 lg:min-h-screen p-4 flex-col justify-between shrink-0 shadow-lg transition-colors ${
+        className={`hidden lg:flex lg:w-64 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto p-4 flex-col justify-between shrink-0 shadow-lg transition-colors ${
           isLight
             ? "bg-[#FAF2E1] border-r border-[#ECD9BA]"
             : "bg-[#0A0F1D] border-r border-[#1B2338]"
@@ -297,10 +311,10 @@ export default function GamesPage() {
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* Top Header */}
         <header
-          className={`w-full px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b backdrop-blur-md transition-colors ${
+          className={`sticky top-0 z-30 w-full px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b backdrop-blur-md transition-colors ${
             isLight
               ? "bg-[#FFFDF7]/95 border-[#ECD9BA]"
-              : "bg-[#0A0F1D]/50 border-[#1B2338]/60"
+              : "bg-[#0A0F1D]/90 border-[#1B2338]"
           }`}
         >
           {/* Mobile-only brand logo */}
@@ -382,19 +396,19 @@ export default function GamesPage() {
               <ChevronDown className="w-3 h-3 text-zinc-400" />
             </button>
 
-            {/* Menu Button -> opens Menu slide-in drawer */}
+            {/* 3. Settings / Menu Button -> opens MenuSheet */}
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
-              aria-label="Open menu"
-              title="Open menu"
+              aria-label="Open settings"
+              title="Settings"
               className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border flex items-center justify-center transition hover:scale-105 cursor-pointer flex-shrink-0 ${
                 isLight
                   ? "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:text-amber-700 hover:bg-[#F2E4CB]"
                   : "bg-[#0D1426] border-[#1E2945] text-zinc-200 hover:text-amber-400 hover:bg-[#141E38]"
               }`}
             >
-              <MenuIcon className="w-5 h-5" />
+              <SettingsIcon className="w-5 h-5" />
             </button>
           </div>
         </header>

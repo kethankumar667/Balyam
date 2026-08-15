@@ -39,7 +39,6 @@ import {
   SamethaluGlyph,
   StarGameGlyph,
   BingoGlyph,
-  BlockBlastGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -82,9 +81,10 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   snake: StarGameGlyph,
   bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
+  tetris: StarGameGlyph,
+  breakout: StarGameGlyph,
   carrom: StarGameGlyph,
   chess: StarGameGlyph,
-  blockblast: BlockBlastGlyph,
   spacewar: StarGameGlyph,
   nokiacricket: HandCricketGlyph,
 };
@@ -99,7 +99,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
   "namesplaceanimal", "tambola", "snake", "carrom", "roadrash", "chess",
-  "blockblast", "spacewar",
+  "spacewar",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
@@ -243,16 +243,6 @@ const NPA_THEME_PACKS: { id: "classic" | "popculture" | "foodie" | "school" | "r
   { id: "random",     label: "Random Mix",  blurb: "Changes categories every round!" },
 ];
 
-/**
- * Race length. Only meaningful with two or more seats — one player gets the
- * endless game and no clock at all, which the engine decides from the seat
- * count rather than from anything chosen here.
- */
-const BLOCKBLAST_RACE_LENGTHS: { id: "120" | "180" | "300"; label: string; blurb: string }[] = [
-  { id: "120", label: "Standard", blurb: "2 min — most boards survive to the whistle" },
-  { id: "180", label: "Long",     blurb: "3 min — expect to be knocked out early" },
-  { id: "300", label: "Marathon", blurb: "5 min — last board standing usually wins" },
-];
 
 const SNAKE_SPEEDS: { id: "140" | "100" | "70"; label: string; blurb: string }[] = [
   { id: "140", label: "Slug",   blurb: "140ms tick — relaxed pace" },
@@ -319,7 +309,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [npaDifficulty, setNpaDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [npaRounds, setNpaRounds] = useState<number>(5);
   const [npaThemePack, setNpaThemePack] = useState<"classic" | "popculture" | "foodie" | "school" | "random">("classic");
-  const [blockBlastRaceLength, setBlockBlastRaceLength] = useState<"120" | "180" | "300">("120");
   const [snakeSpeed, setSnakeSpeed] = useState<"140" | "100" | "70">("100");
   const [snakeGridSize, setSnakeGridSize] = useState<"15" | "20" | "25">("20");
   const [snakeWallMode, setSnakeWallMode] = useState<"solid" | "wrap">("wrap");
@@ -361,6 +350,21 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     }
     if (game === "snake") {
       navigate("/snake");
+      onClose();
+      return;
+    }
+    if (game === "roadrash") {
+      navigate("/roadrash");
+      onClose();
+      return;
+    }
+    if (game === "tetris") {
+      navigate("/tetris");
+      onClose();
+      return;
+    }
+    if (game === "breakout") {
+      navigate("/breakout");
       onClose();
       return;
     }
@@ -503,10 +507,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   theme: snakeTheme,
                 }
               : undefined,
-          blockBlastOptions:
-            game === "blockblast"
-              ? { raceSeconds: Number(blockBlastRaceLength) }
-              : undefined,
         },
         (res) => {
           setBusy(false);
@@ -594,8 +594,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 theme: snakeTheme,
               }
             : undefined,
-        blockBlastOptions:
-          game === "blockblast" ? { raceSeconds: Number(blockBlastRaceLength) } : undefined,
+
       },
       (res) => {
         if (!res.ok || !res.code) {
@@ -971,16 +970,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               </>
             )}
 
-            {game === "blockblast" && (
-              <Field label="Race Length">
-                <OptionGrid
-                  items={BLOCKBLAST_RACE_LENGTHS}
-                  value={blockBlastRaceLength}
-                  onChange={(v) => setBlockBlastRaceLength(v as "120" | "180" | "300")}
-                  cols={3}
-                />
-              </Field>
-            )}
 
             {game === "snake" && (
               <>

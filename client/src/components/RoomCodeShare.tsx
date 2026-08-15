@@ -33,7 +33,7 @@ export default function RoomCodeShare({
   const [qrOpen, setQrOpen] = useState(false);
 
   const roomUrl = `${window.location.origin}/room/${code}`;
-  const friendlyGameName: Record<GameKind, string> = {
+  const friendlyGameName: Partial<Record<GameKind, string>> = {
     handcricket: "Hand Cricket",
     snl: "Snakes & Ladders",
     ludo: "Ludo",
@@ -50,7 +50,6 @@ export default function RoomCodeShare({
     roadrash: "Road Rash 90s",
     carrom: "Carrom",
     chess: "Chess Grandmaster",
-    blockblast: "Block Blast",
     spacewar: "Space War",
   };
   /**

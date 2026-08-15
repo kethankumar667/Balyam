@@ -30,7 +30,7 @@ import {
 } from "../components/bhalyam/data";
 import {
   Bell,
-  Menu as MenuIcon,
+  Settings as SettingsIcon,
   User as UserIcon,
   ChevronDown,
   Home as HomeIcon,
@@ -117,8 +117,9 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   carrom: StarGameGlyph,
   bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
+  tetris: BlockBlastGlyph,
+  breakout: StarGameGlyph,
   chess: StarGameGlyph,
-  blockblast: BlockBlastGlyph,
   spacewar: StarGameGlyph,
   nokiacricket: HandCricketGlyph,
 };
@@ -598,9 +599,12 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
         )}
       </AnimatePresence>
 
-      <header className="mx-auto w-full max-w-[1100px] px-3 sm:px-6 pt-3 sm:pt-4 pb-2">
-        {/* Top Header Row */}
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
+      <header className={`sticky top-0 z-40 w-full backdrop-blur-md border-b transition-colors shadow-xs ${
+        isDark
+          ? "bg-[#070B14]/90 border-white/10"
+          : "bg-[#FAF3E0]/90 border-[#ECD9BA]/70"
+      }`}>
+        <div className="mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-4">
           {/* Left: Brand Logo & Title */}
           <Link to="/" className="flex items-center gap-2 sm:gap-2.5 min-w-0 group flex-shrink-0">
             <BhalyamLogo size={36} decorative />
@@ -657,56 +661,21 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
               <ChevronDown className="w-3 h-3 text-zinc-400" />
             </button>
 
-            {/* 3. Menu Button -> right after player name, opens MenuSheet */}
+            {/* 3. Settings / Menu Button -> right after player name, opens MenuSheet */}
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
-              aria-label="Open menu"
-              title="Open menu"
+              aria-label="Open settings"
+              title="Settings"
               className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border flex items-center justify-center transition hover:scale-105 cursor-pointer flex-shrink-0 ${
                 isDark
                   ? "bg-[#0D1426] border-[#1E2945] text-zinc-200 hover:text-amber-400 hover:bg-[#141E38]"
                   : "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:text-amber-700 hover:bg-[#F2E4CB]"
               }`}
             >
-              <MenuIcon className="w-5 h-5" />
+              <SettingsIcon className="w-5 h-5" />
             </button>
           </div>
-        </div>
-
-        {/* SubHeader Navigation Bar (Hidden on Mobile screens) */}
-        <div className={`hidden md:flex mt-3.5 pt-2.5 border-t items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none transition-colors ${
-          isDark ? "border-white/5" : "border-zinc-200"
-        }`}>
-          {[
-            { id: "home", label: "Home", icon: <HomeIcon className="w-4 h-4" />, path: "/" },
-            { id: "all", label: "All Games", icon: <LayoutGrid className="w-4 h-4" />, path: "/games" },
-            { id: "solo", label: "Solo Play", icon: <UserIcon className="w-4 h-4" />, path: "/games?c=solo" },
-            { id: "multiplayer", label: "Multiplayer", icon: <UsersLucideIcon className="w-4 h-4" />, path: "/games?c=multiplayer" },
-            { id: "board", label: "Board & Cards", icon: <Shield className="w-4 h-4" />, path: "/games?c=board" },
-            { id: "party", label: "Party & Quiz", icon: <Sparkles className="w-4 h-4" />, path: "/games?c=party" },
-            { id: "classroom", label: "Classroom", icon: <GraduationCap className="w-4 h-4" />, path: "/games?c=classroom" },
-          ].map((item) => {
-            const isActive = item.id === "home";
-            return (
-              <Link
-                key={item.id}
-                to={item.path}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full font-bold text-[12.5px] whitespace-nowrap transition cursor-pointer ${
-                  isActive
-                    ? isDark
-                      ? "bg-amber-500/15 border border-amber-500/80 text-amber-400 font-black shadow-xs"
-                      : "bg-[#FFF5DC] text-[#B45309] border border-[#F59E0B] font-black shadow-xs"
-                    : isDark
-                    ? "text-zinc-400 hover:text-white hover:bg-white/5"
-                    : "text-[#7A5B3E] hover:text-[#3D2005] hover:bg-black/5"
-                }`}
-              >
-                <span className="flex-shrink-0">{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
         </div>
       </header>
 
@@ -1579,10 +1548,11 @@ export function GameTile({
     bingo: "/Bingo Tile.png",
     snake: "/Snake Game Tile.png",
     bounce: "/Bounce Game Tile.png",
-    roadrash: "/Roadrash Game Tile.png",
+    roadrash: "/BrickRacer Game Tile.png",
+    tetris: "/BlockBlast Game Tile.png",
+    breakout: "/BrickBreakout Game Tile.png",
     carrom: "/Carrom Game Tile.png",
     chess: "/Chess Game Tile.png",
-    blockblast: "/BlockBlast Game Tile.png",
     spacewar: "/SpacewarTile.png",
     nokiacricket: "/RetroCricket Game Tile.png",
   };

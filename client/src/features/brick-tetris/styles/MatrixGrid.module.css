@@ -1,0 +1,74 @@
+.matrixContainer {
+  position: relative;
+  background-color: #8bac0f;
+  border: 4px solid #306230;
+  border-radius: 6px;
+  box-shadow: inset 0 3px 8px rgba(15, 56, 15, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+  padding: 6px;
+  overflow: hidden;
+  user-select: none;
+  aspect-ratio: 10 / 20;
+}
+
+.matrixGrid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-rows: repeat(20, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+
+.cell {
+  position: relative;
+  border-radius: 2px;
+  aspect-ratio: 1 / 1;
+  transition: background-color 60ms ease;
+  box-sizing: border-box;
+}
+
+.cellInactive {
+  background-color: rgba(120, 155, 15, 0.22);
+  border: 1px solid rgba(48, 98, 48, 0.12);
+}
+
+.cellActive {
+  background-color: #0f380f;
+  border: 1.5px solid #082208;
+  box-shadow: inset 1px 1px 0px rgba(155, 188, 15, 0.5), inset -1px -1px 0px rgba(0, 0, 0, 0.6);
+}
+
+.cellGhost {
+  background-color: rgba(15, 56, 15, 0.28);
+  border: 1px dashed rgba(15, 56, 15, 0.7);
+  box-shadow: inset 0 0 2px rgba(15, 56, 15, 0.3);
+}
+
+.cellClearing {
+  background-color: #9bbc0f !important;
+  box-shadow: 0 0 8px rgba(155, 188, 15, 0.9);
+  animation: flashLine 120ms ease infinite alternate;
+}
+
+@keyframes flashLine {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.scanlineOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    rgba(15, 56, 15, 0.04) 50%,
+    transparent 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 10;
+}

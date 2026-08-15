@@ -19,6 +19,9 @@ import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import NokiaCricketPage from "./pages/NokiaCricketPage";
 import NokiaSnakePage from "./pages/NokiaSnakePage";
+import BrickRacerPage from "./pages/BrickRacerPage";
+import BrickTetrisPage from "./pages/BrickTetrisPage";
+import BrickBreakoutPage from "./pages/BrickBreakoutPage";
 
 /**
  * On every route change, snap the window scroll back to the top so the
@@ -117,6 +120,16 @@ export default function App() {
         <Route path="/snake" element={<NokiaSnakePage />} />
         <Route path="/nokiasnake" element={<NokiaSnakePage />} />
         <Route path="/snake2d" element={<NokiaSnakePage />} />
+        <Route path="/roadrash" element={<BrickRacerPage />} />
+        <Route path="/brickracer" element={<BrickRacerPage />} />
+        <Route path="/racer" element={<BrickRacerPage />} />
+        <Route path="/tetris" element={<BrickTetrisPage />} />
+        <Route path="/bricktetris" element={<BrickTetrisPage />} />
+        <Route path="/pentix" element={<BrickTetrisPage />} />
+        <Route path="/breakout" element={<BrickBreakoutPage />} />
+        <Route path="/brickbreakout" element={<BrickBreakoutPage />} />
+        <Route path="/brick-breakout" element={<BrickBreakoutPage />} />
+        <Route path="/blockbreakout" element={<BrickBreakoutPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

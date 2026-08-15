@@ -58,22 +58,32 @@ export interface GameFilter {
 /** Games carrying a tag, in catalogue order. */
 export function gamesWithTag(tag: GameTag, includeLocked = true): BhalyamGameCard[] {
   return BHALYAM_GAMES.filter(
-    (g) => g.tags.includes(tag) && (includeLocked || !isLocked(g)),
+    (g) => g.tags.includes(tag) && (tag === "upcoming" ? true : includeLocked || !isLocked(g)),
   );
 }
 
 /** Games matching the current selection. */
 export function filterGames(filter: GameFilter, includeLocked = true): BhalyamGameCard[] {
-  return BHALYAM_GAMES.filter(
-    (g) =>
-      (filter.category === "all" || g.tags.includes(filter.category)) &&
-      (includeLocked || !isLocked(g)),
-  );
+  return BHALYAM_GAMES.filter((g) => {
+    if (filter.category === "upcoming") {
+      return g.tags.includes("upcoming");
+    }
+    if (g.tags.includes("upcoming")) {
+      return false;
+    }
+    if (filter.category === "all") {
+      return includeLocked || !isLocked(g);
+    }
+    return g.tags.includes(filter.category) && (includeLocked || !isLocked(g));
+  });
 }
 
 /** How many games carry a tag. */
 export function countIn(id: CategorySelection): number {
-  return id === "all" ? BHALYAM_GAMES.length : gamesWithTag(id).length;
+  if (id === "all") {
+    return BHALYAM_GAMES.filter((g) => !g.tags.includes("upcoming")).length;
+  }
+  return gamesWithTag(id).length;
 }
 
 interface Segment {

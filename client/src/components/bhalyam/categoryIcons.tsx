@@ -8,6 +8,7 @@ import {
   JoystickGlyph,
   TambolaGlyph,
   RpsGlyph,
+  StarGameGlyph,
 } from "./icons";
 
 /**
@@ -35,6 +36,8 @@ import {
  * the joystick.
  */
 export const CATEGORY_ICON: Record<GameTag, ComponentType<BhalyamIconProps>> = {
+  retro: StarGameGlyph,
+  upcoming: KiteIcon,
   solo: JoystickGlyph,
   multiplayer: RpsGlyph,
   board: LudoGlyph,

@@ -25,7 +25,6 @@ export type BhalyamGameSlug =
   | "stargame"
   | "bingo"
   | "chess"
-  | "blockblast"
   | "spacewar"
   | "nokiacricket"
   // Coming soon — NOT in GameKind. Maintenance tiles only.
@@ -36,6 +35,8 @@ export type BhalyamGameSlug =
   | "snake"
   | "bounce"
   | "roadrash"
+  | "tetris"
+  | "breakout"
   | "carrom";
 
 /**
@@ -54,6 +55,8 @@ export type BhalyamGameSlug =
  *   "what do I feel like?" -> Board & Cards / Party & Quiz / Classroom
  */
 export type GameTag =
+  | "retro"
+  | "upcoming"
   | "solo"
   | "multiplayer"
   | "board"
@@ -76,6 +79,18 @@ export interface GameCategory {
 
 /** Display order everywhere in the app. Player-count first, then genre. */
 export const GAME_CATEGORIES: readonly GameCategory[] = [
+  {
+    id: "retro",
+    label: "Retro Games",
+    blurb: "Nokia monochrome & 9999-in-1 Brick Game handheld arcade legends.",
+    accent: { from: "#8BAC0F", to: "#306230" },
+  },
+  {
+    id: "upcoming",
+    label: "Upcoming",
+    blurb: "New retro & multiplayer titles currently in development and maintenance.",
+    accent: { from: "#F59E0B", to: "#B45309" },
+  },
   {
     id: "solo",
     label: "Solo Play",
@@ -370,7 +385,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   },
   {
     slug: "samethalu",
-    tags: ["solo", "party"],
+    tags: ["upcoming"],
     title: "Samethalu Quiz",
     badge: "📜 Telugu Lore",
     nostalgiaQuote: "Ammamma's verandah wisdom.",
@@ -382,18 +397,11 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Telugu proverbs from Ammamma's verandah. Complete the saying, learn the lesson, win the round.",
     accent: { from: "#D97706", to: "#B45309" },
-    // The quiz itself is gone — engine, board and question bank all removed —
-    // but the tile and its icon stay, so this entry is deliberately NOT
-    // marked `maintenance`. That flag reads as "coming soon" but in practice
-    // means hidden: `filterGames(filter, false)` on /games drops locked
-    // tiles, and the home grid only shows the first six, so a maintenance
-    // tile appears nowhere at all. The slug is absent from `PLAYABLE_SLUGS`
-    // instead, which is what makes the tile open an "unavailable" panel
-    // rather than a room form.
+    maintenance: true,
   },
   {
     slug: "telugucinemalu",
-    tags: ["solo", "party"],
+    tags: ["upcoming"],
     title: "Telugu Cinema Quiz",
     badge: "🎬 Tollywood Adda",
     nostalgiaQuote: "Guess the blockbuster dialogue.",
@@ -405,12 +413,11 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Guess the film. Hint by hint, dialogue by dialogue. Friday-release adda energy.",
     accent: { from: "#E11D48", to: "#BE123C" },
-    // Removed alongside Samethalu, and left unmarked for the same reason —
-    // see the note on that tile.
+    maintenance: true,
   },
   {
     slug: "snake",
-    tags: ["solo", "multiplayer"],
+    tags: ["retro", "solo", "multiplayer"],
     theme: "Retro Snake 🐍",
     badge: "🐍 Retro Snake",
     nostalgiaQuote: "2 for up, 8 for down, 4 for left, 6 for right!",
@@ -425,24 +432,8 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     accent: { from: "#87A96B", to: "#4E7333" },
   },
   {
-    slug: "blockblast",
-    tags: ["solo", "multiplayer"],
-    theme: "Same Deal ⬛",
-    badge: "🧩 Line Clear",
-    nostalgiaQuote: "Clear rows, beat the high score.",
-    title: "Block Blast",
-    playerRange: "1–4 Players",
-    duration: "3–8 min",
-    paperBg: "linear-gradient(155deg, #220C47 0%, #120627 45%, #090314 100%)",
-    paperBorder: "rgba(124, 58, 237, 0.55)",
-    btnGradient: { from: "#7C3AED", to: "#6D28D9", shadow: "#4C1D95" },
-    blurb:
-      "Drop blocks, clear lines. Alone it never ends — together everyone gets the exact same pieces and the highest score in three minutes wins.",
-    accent: { from: "#7C3AED", to: "#6D28D9" },
-  },
-  {
     slug: "nokiacricket",
-    tags: ["solo", "classroom"],
+    tags: ["retro", "solo"],
     theme: "Retro Cricket 🏏",
     badge: "🏏 Retro Cricket",
     nostalgiaQuote: "4 for pull, 5 for drive, 6 for cut!",
@@ -458,7 +449,7 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   },
   {
     slug: "bounce",
-    tags: ["solo", "multiplayer"],
+    tags: ["upcoming"],
     theme: "Red Ball 🔴",
     badge: "🔴 Red Ball 3310",
     nostalgiaQuote: "Pass rings, avoid spikes!",
@@ -475,20 +466,51 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
   },
   {
     slug: "roadrash",
-    tags: ["solo", "multiplayer"],
-    theme: "90s Racer 🏍️",
-    badge: "🏍️ Nitro Speed",
-    nostalgiaQuote: "Kick the rivals, win the cup!",
-    title: "Road Rash",
-    playerRange: "1–2 Players",
-    duration: "5–15 min",
-    paperBg: "linear-gradient(155deg, #2E1104 0%, #190902 45%, #0C0401 100%)",
-    paperBorder: "rgba(234, 88, 12, 0.55)",
-    btnGradient: { from: "#EA580C", to: "#C2410C", shadow: "#7C2D12" },
+    tags: ["retro", "solo"],
+    theme: "9999-in-1 🏎️",
+    badge: "🏎️ Brick Racer",
+    nostalgiaQuote: "4 for left, 6 for right, 8 for boost!",
+    title: "Brick Racer",
+    playerRange: "1 Player",
+    duration: "3–10 min",
+    paperBg: "linear-gradient(155deg, #2E1B04 0%, #190F02 45%, #0C0701 100%)",
+    paperBorder: "rgba(228, 177, 40, 0.55)",
+    btnGradient: { from: "#E4B128", to: "#C69512", shadow: "#8C6805" },
     blurb:
-      "Retro 90s highway motorcycle racer. Steer, accelerate, punch rival bikers to win!",
-    accent: { from: "#EA580C", to: "#C2410C" },
-    maintenance: true,
+      "Authentic 9999-in-1 Brick Game Formula 1 racing. 10x20 LCD block matrix, 3-lane car dodging, nitro speed boost, and retro buzzer nostalgia.",
+    accent: { from: "#E4B128", to: "#C69512" },
+  },
+  {
+    slug: "tetris",
+    tags: ["retro", "solo"],
+    theme: "Classic & Pentix 🧱",
+    badge: "🧱 Brick Blocks",
+    nostalgiaQuote: "4/6 to move, 2 to rotate, Space to hard drop!",
+    title: "Brick Blocks",
+    playerRange: "1 Player",
+    duration: "3–15 min",
+    paperBg: "linear-gradient(155deg, #182C18 0%, #0F1E0F 45%, #081108 100%)",
+    paperBorder: "rgba(139, 172, 15, 0.55)",
+    btnGradient: { from: "#8BAC0F", to: "#4B6B38", shadow: "#2A3E1E" },
+    blurb:
+      "Authentic 9999-in-1 Brick Game falling blocks puzzle. 10x20 LCD matrix, Classic 7-tetrominoes & 12-pentomino Pentix modes, SRS wall kicks, ghost piece, and retro buzzer nostalgia.",
+    accent: { from: "#8BAC0F", to: "#4B6B38" },
+  },
+  {
+    slug: "breakout",
+    tags: ["retro", "solo"],
+    theme: "9999-in-1 🧱",
+    badge: "🧱 Block Breakout",
+    nostalgiaQuote: "Angle the paddle, smash the bricks, clear the wall!",
+    title: "Brick Breakout",
+    playerRange: "1 Player",
+    duration: "3–15 min",
+    paperBg: "linear-gradient(155deg, #182C18 0%, #0F1E0F 45%, #081108 100%)",
+    paperBorder: "rgba(139, 172, 15, 0.55)",
+    btnGradient: { from: "#8BAC0F", to: "#4B6B38", shadow: "#2A3E1E" },
+    blurb:
+      "Authentic 9999-in-1 Brick Game Block Breaker. 10x20 LCD matrix, 3-cell paddle deflection, normal & reinforced steel blocks, combo multiplier scoring, and retro chiptune audio.",
+    accent: { from: "#8BAC0F", to: "#4B6B38" },
   },
   {
     slug: "carrom",
