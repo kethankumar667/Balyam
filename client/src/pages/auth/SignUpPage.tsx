@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import AuthShell from "../../components/auth/AuthShell";
-import { useLocalSignIn } from "../../components/auth/useLocalSignIn";
+import { useSignUp } from "../../components/auth/useAccountAuth";
 import { FormNotice } from "../../components/auth/AuthControls";
 import {
   validateEmail,
@@ -45,7 +45,15 @@ export default function SignUpPage() {
   const [nameError, setNameError] = useState<FieldError>(null);
   const [emailError, setEmailError] = useState<FieldError>(null);
   const [passwordError, setPasswordError] = useState<FieldError>(null);
-  const { loading, unavailable, submit, markUnavailable, reset } = useLocalSignIn();
+  const { loading, error, configured, submit, withGoogle, clearError } = useSignUp();
+
+  /** Apple needs a paid developer account this project does not have. */
+  const [appleUnavailable, setAppleUnavailable] = useState(false);
+
+  function clearNotices() {
+    if (error) clearError();
+    if (appleUnavailable) setAppleUnavailable(false);
+  }
 
   // Live password strength criteria
   const hasMinLength = password.length >= 8;
@@ -75,12 +83,13 @@ export default function SignUpPage() {
     e.preventDefault();
     if (!agreeTerms) return;
 
-    // Save profile state to room store
+    // Save profile state to room store. It is also carried up to the account
+    // itself, so the name survives signing in on a different device.
     setPlayerName(name.trim());
     if (selectedAvatar) {
       setAvatarId(selectedAvatar);
     }
-    submit(email);
+    submit(email, password, name);
   }
 
   return (
@@ -120,8 +129,9 @@ export default function SignUpPage() {
                 <div className="space-y-2 pt-0.5">
                   <button
                     type="button"
-                    onClick={markUnavailable}
-                    className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] active:scale-98 rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer"
+                    onClick={withGoogle}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] active:scale-98 rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <GoogleMark className="w-4 h-4" />
                     <span>Continue with Google</span>
@@ -129,7 +139,7 @@ export default function SignUpPage() {
 
                   <button
                     type="button"
-                    onClick={markUnavailable}
+                    onClick={() => setAppleUnavailable(true)}
                     className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] active:scale-98 rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer"
                   >
                     <AppleMark className="w-[17px] h-[17px]" />
@@ -137,10 +147,19 @@ export default function SignUpPage() {
                   </button>
                 </div>
 
-                {unavailable ? (
-                  <FormNotice tone="info" title="Provider sign-up isn't connected yet">
-                    Google and Apple need OAuth credentials this build doesn&apos;t have. Use your
-                    email below — it works today.
+                {error ? (
+                  <FormNotice tone="error" title="Couldn't create your account">
+                    {error}
+                  </FormNotice>
+                ) : appleUnavailable ? (
+                  <FormNotice tone="info" title="Apple sign-up isn't available">
+                    It needs a paid Apple developer account, which this app doesn&apos;t
+                    have. Google and email both work.
+                  </FormNotice>
+                ) : !configured ? (
+                  <FormNotice tone="info" title="This build has no account service">
+                    Creating an account here only unlocks hosting on this device — nothing
+                    is stored on a server and no email is sent.
                   </FormNotice>
                 ) : null}
 
@@ -169,7 +188,7 @@ export default function SignUpPage() {
                         onChange={(e) => {
                           setName(e.target.value);
                           if (nameError) setNameError(null);
-                          if (unavailable) reset();
+                          clearNotices();
                         }}
                         placeholder="e.g. Kethan Kumar"
                         className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-10 py-2.5 text-[13.5px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
@@ -206,7 +225,7 @@ export default function SignUpPage() {
                         onChange={(e) => {
                           setEmail(e.target.value);
                           if (emailError) setEmailError(null);
-                          if (unavailable) reset();
+                          clearNotices();
                         }}
                         placeholder="you@example.com"
                         className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-4 py-2.5 text-[13.5px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
@@ -235,7 +254,7 @@ export default function SignUpPage() {
                         onChange={(e) => {
                           setPassword(e.target.value);
                           if (passwordError) setPasswordError(null);
-                          if (unavailable) reset();
+                          clearNotices();
                         }}
                         placeholder="Create a strong password"
                         className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-10 py-2.5 text-[13.5px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
@@ -423,6 +442,15 @@ export default function SignUpPage() {
                       </a>
                     </label>
                   </div>
+
+                  {/* The submit happens on this step, so the failure has to be
+                      readable from this step — the notice on step 1 is behind
+                      a back button the player has no reason to press. */}
+                  {error ? (
+                    <FormNotice tone="error" title="Couldn't create your account">
+                      {error}
+                    </FormNotice>
+                  ) : null}
 
                   {/* Create Account Primary CTA */}
                   <button

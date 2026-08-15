@@ -1,29 +1,34 @@
 import { create } from "zustand";
+import type { Session } from "@supabase/supabase-js";
 import type { AccountKind } from "@shared/types";
 import { capabilitiesFor, type Capabilities } from "@shared/permissions";
 import { useRoomStore } from "./roomStore";
+import { getSupabase, isSupabaseConfigured, SESSION_STORAGE_KEY } from "../lib/supabase/client";
+import { fetchProfile, saveProfile } from "../lib/supabase/profile";
 
 /**
  * Whether this browser is a guest or a member.
  *
- * ── Read this before trusting it ──────────────────────────────────────
- * There is no account backend. Signing in writes a flag to localStorage and
- * nothing verifies it — no password is checked, because there is nothing to
- * check one against. Anyone can set `bhalyam.account` in devtools and become a
- * "member". That is a known, accepted state of this branch, not an oversight.
+ * ── Two backings, one shape ───────────────────────────────────────────
+ * With Supabase keys configured, `kind` is read off a real session issued by
+ * a real auth service: a password was checked, and the same session yields an
+ * access token the game server verifies before it will open a shareable room.
+ * Membership is a fact.
  *
- * So what is this actually for? It makes the PRODUCT rule real end to end —
- * which screens a guest sees, which controls lock, what the server does with a
- * guest-hosted room — and it puts every one of those decisions behind one
- * resolver. When sign-in becomes server-verified, `kind` stops being read from
- * localStorage and starts being read from a session the server issued, and not
- * one call site in the app changes.
+ * With no keys — the default, and what `npm run dev` still gets — nothing has
+ * changed from before: signing in writes a flag to `bhalyam.account` and
+ * nothing verifies it. Anyone can set that key in devtools and become a
+ * "member". Those builds say so on the sign-in screen rather than pretending.
  *
- * What it is NOT for: protecting anything. No private data hangs off this
- * flag. Seat ownership is still proved by the server-signed seat token
- * (server/src/lib/seatToken.ts), which is real cryptography and is entirely
- * independent of everything here — so forging membership gets you a shareable
- * room, not somebody else's hand of cards.
+ * The seam this store was built around is the whole point, and it held: not
+ * one gate, page or call site changes between the two. `capabilities` is
+ * still the only thing anything reads.
+ *
+ * ── What is still not protected by this ───────────────────────────────
+ * Seat ownership. That is proved by the server-signed seat token
+ * (server/src/lib/seatToken.ts), which is independent of everything here and
+ * remains the only thing standing between a room code and somebody else's
+ * hand of cards.
  *
  * Kept in its OWN store rather than folded into `useRoomStore` because it
  * outlives every room: it is who you are between tables, not what you are
@@ -35,7 +40,7 @@ const ACCOUNT_KEY = "bhalyam.account";
 interface StoredAccount {
   kind: AccountKind;
   email: string | null;
-  /** When this browser signed in, for the profile screen. */
+  /** Epoch ms. Sign-in time locally; account creation time with Supabase. */
   since: number | null;
 }
 
@@ -44,14 +49,26 @@ interface AuthStore extends StoredAccount {
   capabilities: Capabilities;
   /** True for a real account. Read this instead of comparing `kind` by hand. */
   isMember: boolean;
-  signIn: (email: string) => void;
-  signOut: () => void;
+  /** Supabase user id. `null` on the local-flag path — there is no user. */
+  userId: string | null;
+  /**
+   * True once the real session state is known.
+   *
+   * Only ever false for the first moments of a configured build, while the
+   * stored session is re-checked. A screen that would flash a sign-in wall at
+   * a signed-in player can wait on this; most do not need to, because the
+   * optimistic read below usually gets the first paint right.
+   */
+  ready: boolean;
+  /** Sign in on the local-flag path. Does nothing when Supabase is configured. */
+  signInLocal: (email: string) => void;
+  signOut: () => Promise<void>;
 }
 
 /** A guest is the floor, not a failure state — an unreadable store lands here. */
 const GUEST: StoredAccount = { kind: "guest", email: null, since: null };
 
-function loadAccount(): StoredAccount {
+function loadLocalAccount(): StoredAccount {
   try {
     const raw = localStorage.getItem(ACCOUNT_KEY);
     if (!raw) return GUEST;
@@ -69,7 +86,7 @@ function loadAccount(): StoredAccount {
   }
 }
 
-function saveAccount(account: StoredAccount): void {
+function saveLocalAccount(account: StoredAccount): void {
   try {
     if (account.kind === "member") localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account));
     else localStorage.removeItem(ACCOUNT_KEY);
@@ -78,34 +95,243 @@ function saveAccount(account: StoredAccount): void {
   }
 }
 
-const initial = loadAccount();
+/**
+ * Guess the session from storage, before the auth client has confirmed it.
+ *
+ * supabase-js resolves the stored session asynchronously — it may refresh an
+ * expired token over the network first — so a hard refresh would otherwise
+ * paint one frame as a guest and lock a signed-in player out of their own
+ * controls before correcting itself. Reading the same record synchronously
+ * removes the flash.
+ *
+ * Being wrong here is cheap and self-correcting: `onAuthStateChange` fires
+ * within a tick either way, and nothing downstream trusts this value — the
+ * server checks the token before it opens a shareable room, so an optimistic
+ * "member" that turns out to be stale buys a moment of enabled buttons and
+ * nothing else.
+ */
+function peekStoredSession(): { email: string | null; userId: string | null } | null {
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      expires_at?: number;
+      refresh_token?: string;
+      user?: { id?: string; email?: string };
+    } | null;
+    if (!parsed?.user?.id) return null;
+    // An expired access token is fine as long as a refresh token can renew
+    // it; only a session with neither is genuinely dead.
+    const stillValid =
+      (typeof parsed.expires_at === "number" && parsed.expires_at * 1000 > Date.now()) ||
+      typeof parsed.refresh_token === "string";
+    if (!stillValid) return null;
+    return { email: parsed.user.email ?? null, userId: parsed.user.id };
+  } catch {
+    return null;
+  }
+}
+
+function initialState(): StoredAccount & { userId: string | null; ready: boolean } {
+  if (!isSupabaseConfigured) {
+    return { ...loadLocalAccount(), userId: null, ready: true };
+  }
+  // A stale local flag from before this build had keys must not outrank the
+  // session, which is now the only thing that decides membership.
+  try {
+    localStorage.removeItem(ACCOUNT_KEY);
+  } catch {
+    /* nothing to clean up */
+  }
+  const peeked = peekStoredSession();
+  return peeked
+    ? { kind: "member", email: peeked.email, since: null, userId: peeked.userId, ready: false }
+    : { ...GUEST, userId: null, ready: false };
+}
+
+const initial = initialState();
 
 export const useAuthStore = create<AuthStore>((set) => ({
   ...initial,
   capabilities: capabilitiesFor(initial.kind),
   isMember: initial.kind === "member",
 
-  signIn: (email) => {
+  signInLocal: (email) => {
+    // Configured builds get their membership from the session; letting this
+    // write a flag too would give them a second, unverified source of truth.
+    if (isSupabaseConfigured) return;
     const next: StoredAccount = {
       kind: "member",
       email: email.trim().toLowerCase() || null,
       since: Date.now(),
     };
-    saveAccount(next);
-    set({ ...next, capabilities: capabilitiesFor("member"), isMember: true });
+    saveLocalAccount(next);
+    set({ ...next, capabilities: capabilitiesFor("member"), isMember: true, ready: true });
   },
 
-  signOut: () => {
-    saveAccount(GUEST);
+  signOut: async () => {
+    const supabase = getSupabase();
+    if (supabase) {
+      // `local` scope, not `global`: signing out on a phone should not end
+      // the session on the laptop that is mid-game.
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    }
+    saveLocalAccount(GUEST);
     try {
       useRoomStore.getState().setPlayerName("");
       useRoomStore.getState().setAvatarId(null);
       localStorage.removeItem("mpg.playerName");
       localStorage.removeItem("mpg.avatar");
     } catch {}
-    set({ ...GUEST, capabilities: capabilitiesFor("guest"), isMember: false });
+    set({
+      ...GUEST,
+      userId: null,
+      capabilities: capabilitiesFor("guest"),
+      isMember: false,
+      ready: true,
+    });
   },
 }));
+
+/* ──────────────────── Session → store, and profile sync ──────────────────── */
+
+/** Latest access token, kept outside React for the socket payloads below. */
+let accessToken: string | null = null;
+
+/** Undoes the roomStore subscription when the player signs out. */
+let stopProfileSync: (() => void) | null = null;
+
+function applySession(session: Session | null): void {
+  accessToken = session?.access_token ?? null;
+
+  if (!session?.user) {
+    applyGuest();
+    return;
+  }
+  const createdAt = Date.parse(session.user.created_at ?? "");
+  useAuthStore.setState({
+    kind: "member",
+    email: session.user.email ?? null,
+    since: Number.isNaN(createdAt) ? null : createdAt,
+    userId: session.user.id,
+    capabilities: capabilitiesFor("member"),
+    isMember: true,
+    ready: true,
+  });
+}
+
+function applyGuest(): void {
+  useAuthStore.setState({
+    ...GUEST,
+    userId: null,
+    capabilities: capabilitiesFor("guest"),
+    isMember: false,
+    ready: true,
+  });
+}
+
+/**
+ * Keep the profile row and this device's name/avatar in step.
+ *
+ * ── Which side wins ───────────────────────────────────────────────────
+ * On sign-in, the server does, when it has anything to say. That is the
+ * reason the row exists: sign in on a phone after setting your name on a
+ * laptop and you should still be you, not "Player 3". Where the row is empty
+ * — a brand-new account, or one made before this table did — the device's
+ * values go up instead, so nothing is lost in the trade.
+ *
+ * ── Why the loop does not run away ────────────────────────────────────
+ * Pulling the profile writes to `useRoomStore`, and writes to `useRoomStore`
+ * are what trigger a push. `lastSynced` breaks the cycle: a change that
+ * matches what we just read is not a change worth sending back.
+ */
+async function startProfileSync(userId: string): Promise<void> {
+  stopProfileSync?.();
+
+  const room = useRoomStore.getState();
+  const local = { displayName: room.playerName.trim() || null, avatarId: room.avatarId };
+  const remote = await fetchProfile(userId);
+
+  let lastSynced = { displayName: remote?.displayName ?? null, avatarId: remote?.avatarId ?? null };
+
+  if (remote?.displayName || remote?.avatarId) {
+    if (remote.displayName) useRoomStore.getState().setPlayerName(remote.displayName);
+    if (remote.avatarId) useRoomStore.getState().setAvatarId(remote.avatarId);
+    // A field the row left empty is still worth carrying up from here.
+    const merged = {
+      displayName: remote.displayName ?? local.displayName,
+      avatarId: remote.avatarId ?? local.avatarId,
+    };
+    if (merged.displayName !== lastSynced.displayName || merged.avatarId !== lastSynced.avatarId) {
+      lastSynced = merged;
+      void saveProfile(userId, merged);
+    }
+  } else if (local.displayName || local.avatarId) {
+    lastSynced = local;
+    void saveProfile(userId, local);
+  }
+
+  // Debounced, because the profile screen writes on every keystroke and each
+  // one would otherwise be its own round trip.
+  let timer: number | null = null;
+  const unsubscribe = useRoomStore.subscribe((state) => {
+    const next = { displayName: state.playerName.trim() || null, avatarId: state.avatarId };
+    if (next.displayName === lastSynced.displayName && next.avatarId === lastSynced.avatarId) {
+      return;
+    }
+    if (timer !== null) window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      timer = null;
+      // Signed out while the timer was pending — the row is not ours to write.
+      if (useAuthStore.getState().userId !== userId) return;
+      lastSynced = next;
+      void saveProfile(userId, next);
+    }, 800);
+  });
+
+  stopProfileSync = () => {
+    if (timer !== null) window.clearTimeout(timer);
+    unsubscribe();
+    stopProfileSync = null;
+  };
+}
+
+/**
+ * Wire the store to the auth service. Runs once, at import.
+ *
+ * `onAuthStateChange` covers every way a session can begin or end that this
+ * app does not initiate itself: the OAuth redirect landing back on a route,
+ * a recovery link opening, a refresh token expiring overnight, or another tab
+ * signing out. Polling for those, or setting state at each call site, is how
+ * two screens end up disagreeing about who is signed in.
+ */
+if (isSupabaseConfigured) {
+  const supabase = getSupabase();
+  if (supabase) {
+    let syncedUserId: string | null = null;
+
+    const onSession = (session: Session | null): void => {
+      applySession(session);
+      const userId = session?.user?.id ?? null;
+      if (userId && userId !== syncedUserId) {
+        syncedUserId = userId;
+        void startProfileSync(userId);
+      } else if (!userId && syncedUserId) {
+        syncedUserId = null;
+        stopProfileSync?.();
+      }
+    };
+
+    // Resolves the stored session, exchanging an OAuth or recovery `?code=`
+    // for one first if the page was reached from an emailed link.
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => onSession(data.session))
+      .catch(() => applyGuest());
+
+    supabase.auth.onAuthStateChange((_event, session) => onSession(session));
+  }
+}
 
 /** What you may do. The one hook every gate in the app should call. */
 export function useCapabilities(): Capabilities {
@@ -122,4 +348,17 @@ export function useCapabilities(): Capabilities {
  */
 export function currentAccountKind(): AccountKind {
   return useAuthStore.getState().kind;
+}
+
+/**
+ * The access token that PROVES that kind, or `undefined` when there is none.
+ *
+ * Sent alongside `accountKind` on create and join. The server treats the kind
+ * as a claim and this as the evidence: with verification configured, a claim
+ * without evidence is downgraded to guest. On the local-flag path there is no
+ * token to send and the server has nothing to check it with, so both sides
+ * fall back to trusting the claim, exactly as before.
+ */
+export function currentAccessToken(): string | undefined {
+  return accessToken ?? undefined;
 }

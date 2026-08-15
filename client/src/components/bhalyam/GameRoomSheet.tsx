@@ -15,7 +15,7 @@ import {
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
-import { currentAccountKind, useCapabilities } from "../../store/authStore";
+import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
 import SignInWall from "../auth/SignInWall";
 import {
   BHALYAM_GAMES,
@@ -459,6 +459,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           avatar: avatarId ?? undefined,
           // Decides whether the server opens a shareable table or seals it.
           hostKind: currentAccountKind(),
+          accessToken: currentAccessToken(),
           snlOptions: game === "snl" ? { difficulty } : undefined,
           rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
           hcOptions:
@@ -571,6 +572,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         // Pass & Play is open to guests: every seat is on THIS device, so a
         // sealed room is exactly right — nothing is being shared anyway.
         hostKind: currentAccountKind(),
+        accessToken: currentAccessToken(),
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
           game === "wordbuilding"
@@ -659,6 +661,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         code,
         avatar: avatarId ?? undefined,
         accountKind: currentAccountKind(),
+        accessToken: currentAccessToken(),
         ...(seatFor(code) ?? {}),
       },
       (res) => {

@@ -2313,6 +2313,21 @@ export interface CreateRoomPayload {
    * default beats the closed one here specifically.
    */
   hostKind?: AccountKind;
+  /**
+   * The session that PROVES `hostKind`, when there is one.
+   *
+   * A Supabase access token, sent from the signed-in browser. With server-side
+   * verification configured the claim above stops being taken at face value:
+   * a token that verifies makes you a member, and anything else — a forged
+   * claim, an expired session, no token at all — is treated as a guest. See
+   * server/src/lib/supabaseAuth.ts, including why an unconfigured server
+   * still trusts the claim.
+   *
+   * Optional, and must stay optional: builds with no account service have no
+   * token to send, and refusing them would break the zero-infrastructure dev
+   * setup this project depends on.
+   */
+  accessToken?: string;
 }
 
 export interface SetTokenNicknamesPayload {
@@ -2338,6 +2353,8 @@ export interface JoinRoomPayload {
    * `CreateRoomPayload.hostKind`.
    */
   accountKind?: AccountKind;
+  /** The session that proves it. Same rules as `CreateRoomPayload.accessToken`. */
+  accessToken?: string;
 }
 
 export interface ChatSendPayload {

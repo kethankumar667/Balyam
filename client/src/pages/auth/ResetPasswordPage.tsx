@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import AuthShell from "../../components/auth/AuthShell";
 import {
   AuthField,
@@ -9,7 +9,8 @@ import {
   SubmitButton,
   useFieldIds,
 } from "../../components/auth/AuthControls";
-import { usePreviewSubmit } from "../../components/auth/usePreviewSubmit";
+import { usePasswordUpdate } from "../../components/auth/useAccountAuth";
+import { SpinnerIcon } from "../../components/auth/authIcons";
 import {
   validatePassword,
   validatePasswordConfirm,
@@ -28,18 +29,12 @@ import {
  * forward, not a red banner over a dead form.
  */
 export default function ResetPasswordPage() {
-  const [params] = useSearchParams();
-  // Real tokens arrive as ?token=… . Absent means the link was hand-typed,
-  // truncated by a mail client, or already used.
-  const hasToken = !!params.get("token");
-  const expired = params.get("state") === "expired";
-
   const ids = useFieldIds(["password", "confirm"] as const);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [passwordError, setPasswordError] = useState<FieldError>(null);
   const [confirmError, setConfirmError] = useState<FieldError>(null);
-  const { loading, done, submit } = usePreviewSubmit();
+  const { status, loading, done, error, configured, submit } = usePasswordUpdate();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,10 +46,34 @@ export default function ResetPasswordPage() {
       document.getElementById(nextPassword ? ids.password : ids.confirm)?.focus();
       return;
     }
-    submit();
+    submit(password);
   }
 
-  if (expired || !hasToken) {
+  // The link is exchanged for a session as the page loads, so for a moment
+  // we genuinely do not know yet. Showing the expired screen during that
+  // moment would tell a player with a perfectly good link to go away.
+  if (status === "checking") {
+    return (
+      <AuthShell
+        title="Checking your link"
+        subtitle="One moment — making sure it's still good."
+        backTo="/login"
+        backLabel="Back to sign in"
+      >
+        <div
+          className="flex items-center gap-3 rounded-xl border border-[var(--auth-note-edge)]
+                     bg-[var(--auth-note-bg)] p-3.5 text-[var(--auth-note-ink)]"
+          role="status"
+          aria-live="polite"
+        >
+          <SpinnerIcon className="w-5 h-5 flex-shrink-0 auth-spin" />
+          <p className="text-[13.5px] font-bold">Opening your reset link…</p>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  if (status === "invalid") {
     return (
       <AuthShell
         title="That link has expired"
@@ -132,10 +151,22 @@ export default function ResetPasswordPage() {
           )}
         </AuthField>
 
-        {done ? (
+        {error ? (
+          <FormNotice tone="error" title="Couldn't save it">
+            {error}
+          </FormNotice>
+        ) : done && configured ? (
+          <FormNotice tone="success" title="Password changed">
+            You&apos;re signed in already — or use the new one next time.{" "}
+            <Link to="/" className="font-extrabold underline underline-offset-4">
+              Pick a game
+            </Link>
+            .
+          </FormNotice>
+        ) : done ? (
           <FormNotice tone="info" title="Nothing was changed">
-            There&apos;s no account store yet, so this form has nothing to update. The
-            flow and its states are what&apos;s being reviewed here.
+            This build has no account service configured, so there is no password to
+            update. The flow and its states are what you are seeing here.
           </FormNotice>
         ) : null}
 

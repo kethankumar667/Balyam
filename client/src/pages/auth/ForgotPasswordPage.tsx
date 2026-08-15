@@ -8,7 +8,7 @@ import {
   inputClass,
   useFieldIds,
 } from "../../components/auth/AuthControls";
-import { usePreviewSubmit } from "../../components/auth/usePreviewSubmit";
+import { usePasswordRecovery } from "../../components/auth/useAccountAuth";
 import { validateEmail, type FieldError } from "../../lib/authValidation";
 import { MailIcon } from "../../components/auth/authIcons";
 
@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
   const ids = useFieldIds(["email"] as const);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<FieldError>(null);
-  const { loading, done, submit } = usePreviewSubmit();
+  const { loading, done, error, configured, submit } = usePasswordRecovery();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,7 +35,7 @@ export default function ForgotPasswordPage() {
       document.getElementById(ids.email)?.focus();
       return;
     }
-    submit();
+    submit(email);
   }
 
   if (done) {
@@ -58,10 +58,12 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
 
-          <FormNotice tone="info" title="No email actually went out">
-            Password reset needs the accounts backend, which isn&apos;t built yet. This is
-            the screen you&apos;ll see when it is.
-          </FormNotice>
+          {configured ? null : (
+            <FormNotice tone="info" title="No email actually went out">
+              This build has no account service configured, so there was nothing to send
+              a link from. Set the Supabase keys and this screen becomes real.
+            </FormNotice>
+          )}
 
           <Link
             to="/login"
@@ -109,6 +111,12 @@ export default function ForgotPasswordPage() {
             />
           )}
         </AuthField>
+
+        {error ? (
+          <FormNotice tone="error" title="Couldn't send the link">
+            {error}
+          </FormNotice>
+        ) : null}
 
         <SubmitButton loading={loading} loadingLabel="Sending…">
           Send reset link

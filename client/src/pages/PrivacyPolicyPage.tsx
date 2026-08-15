@@ -7,8 +7,9 @@ import {
   PRIVACY_CONTACT_EMAIL,
 } from "../lib/privacy/contact";
 import { ArrowLeftIcon } from "../components/auth/authIcons";
+import { isSupabaseConfigured } from "../lib/supabase/client";
 
-const LAST_UPDATED = "14 August 2026";
+const LAST_UPDATED = "15 August 2026";
 
 /* ────────────── Inline SVG Illustrations ────────────── */
 
@@ -268,9 +269,13 @@ export default function PrivacyPolicyPage() {
               Privacy at BHALYAM
             </h1>
             <p className="text-[14.5px] sm:text-[15.5px] leading-relaxed text-[#7A5B3E] mt-3">
-              The short version: everything stays on your device, there are no accounts yet, we
-              sell nothing and track nothing. The long version is below, written to India&apos;s
-              Digital Personal Data Protection Act, 2023.
+              The short version: you can play every game without an account, we sell nothing and
+              track nothing.{" "}
+              {isSupabaseConfigured
+                ? "If you do create one, your email and profile are held by our account service and you can delete both from your profile page at any moment."
+                : "Everything stays on your device — this build has no account service at all."}{" "}
+              The long version is below, written to India&apos;s Digital Personal Data Protection
+              Act, 2023.
             </p>
             <div className="inline-flex items-center gap-2 mt-4 px-3.5 py-1.5 rounded-full bg-[#FFF8E7] border border-[#E6D4B5] text-[12.5px] font-semibold text-[#8C4A15]">
               <svg className="w-4 h-4 text-[#E85D04]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -380,9 +385,12 @@ export default function PrivacyPolicyPage() {
                   <h3 className="text-[19px] font-extrabold text-[#4A2508]">What we store, and why</h3>
                 </div>
                 <p className="text-[13.5px] leading-relaxed text-[#7A5B3E]">
-                  BHALYAM has no user accounts and no database. Everything listed here lives in
-                  your browser&apos;s local storage on the device you are reading this on, and
-                  never leaves it except where the next section says otherwise.
+                  Everything listed here lives in your browser&apos;s local storage on the device
+                  you are reading this on, and never leaves it except where the next section says
+                  otherwise.{" "}
+                  {isSupabaseConfigured
+                    ? "The one exception is an account, which is optional: creating one stores your email address, a scrambled form of your password, and your display name and avatar with our account service, so they follow you to a second device."
+                    : "This build has no user accounts and no database behind it."}
                 </p>
               </div>
 
@@ -646,10 +654,12 @@ export default function PrivacyPolicyPage() {
                 <h3 className="text-[18px] font-extrabold text-[#4A2508]">Children and guardianship</h3>
               </div>
               <p className="text-[13px] leading-relaxed text-[#7A5B3E]">
-                BHALYAM is a family game lounge, so children will play it. Today the app collects
-                no contact details, has no accounts, shows no advertising and sends nothing to a
-                server that outlives the room — which is the safest arrangement we can offer while
-                verifiable guardian consent is not yet built.
+                BHALYAM is a family game lounge, so children will play it. Nothing here shows
+                advertising or profiles anyone, and every game can be played as a guest with no
+                contact details of any kind.{" "}
+                {isSupabaseConfigured
+                  ? "Creating an account does collect an email address, and verifiable guardian consent is not built yet — so an account should be made by a parent, and a child can play without one."
+                  : "This build collects no contact details at all and has no accounts, which is the safest arrangement we can offer while verifiable guardian consent is not yet built."}
               </p>
             </div>
             <Link

@@ -13,6 +13,9 @@ import {
   GRIEVANCE_RESOLVE_DAYS,
   PRIVACY_CONTACT_EMAIL,
 } from "../../lib/privacy/contact";
+import { useAuthStore } from "../../store/authStore";
+import { isSupabaseConfigured } from "../../lib/supabase/client";
+import { deleteAccount } from "../../lib/supabase/profile";
 
 /**
  * The player's own data controls — DPDP Sections 11, 12 and 13 in one place.
@@ -23,8 +26,14 @@ import {
  * exists to remove. Section 6(4) says withdrawing must be as easy as giving;
  * the same principle applies to the rest.
  *
- * Everything here operates on this device. Account data is a later phase —
- * the panel says so rather than implying a completeness it does not have.
+ * ── Erasure reaches further than it used to ──────────────────────────
+ * When there is an account, clearing localStorage is not erasure: a row with
+ * an email address on it survives on Supabase, and the player has no way to
+ * reach it. So "Erase everything" deletes the account itself first and only
+ * then wipes the device — and if that delete fails, it says so instead of
+ * reporting a success that did not happen. A panel that overstates what it
+ * erased is worse than one that does less, because it is the one the player
+ * will believe.
  */
 export default function YourDataPanel({
   /**
@@ -46,10 +55,14 @@ export default function YourDataPanel({
   const Heading = headingLevel;
   const [confirming, setConfirming] = useState(false);
   const [erased, setErased] = useState<number | null>(null);
+  const [eraseError, setEraseError] = useState<string | null>(null);
+  const [erasing, setErasing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [consent, setConsent] = useState(() => readConsent());
 
   const personal = DATA_INVENTORY.filter((e) => e.isPersonalData);
+  /** True only when there is a real account to delete, not a local flag. */
+  const hasAccount = useAuthStore((s) => s.isMember) && isSupabaseConfigured;
 
   function handleExport() {
     const payload = buildDataExport();
@@ -67,8 +80,28 @@ export default function YourDataPanel({
     window.setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
 
-  function handleErase() {
+  async function handleErase() {
+    setEraseError(null);
+    setErasing(true);
+
+    // Account first, device second. The other order would clear the session
+    // this device needs in order to prove which account to delete — leaving
+    // the row stranded with nobody able to reach it.
+    if (hasAccount) {
+      const res = await deleteAccount();
+      if (!res.ok) {
+        setErasing(false);
+        setConfirming(false);
+        setEraseError(
+          res.error ??
+            "Your account could not be deleted just now, so nothing was erased. Try again, or write to us using the address below.",
+        );
+        return;
+      }
+    }
+
     const res = eraseLocalData();
+    setErasing(false);
     setErased(res.removed.length + res.removedUndeclared.length);
     setConfirming(false);
   }
@@ -88,7 +121,10 @@ export default function YourDataPanel({
               numbers for anyone who has not played every game. */}
           BHALYAM can keep up to {personal.length} pieces of personal data on this device, and no
           account is required to play. Rooms live in the server&apos;s memory only while they are
-          open.
+          open.{" "}
+          {hasAccount
+            ? "You also have an account, so your email and profile are stored with Supabase — the controls below reach both."
+            : null}
         </p>
       </header>
 
@@ -155,13 +191,16 @@ export default function YourDataPanel({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={handleErase}
+              onClick={() => void handleErase()}
+              disabled={erasing}
+              aria-busy={erasing || undefined}
               className="min-h-[44px] px-4 rounded-lg text-[13px] font-bold cursor-pointer
                          bg-[#C6342B] text-white border border-[#A3231B]
                          hover:bg-[#A3231B] focus:outline-none focus-visible:ring-2
-                         focus-visible:ring-[#C6342B]/70 transition-colors duration-200"
+                         focus-visible:ring-[#C6342B]/70 transition-colors duration-200
+                         disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Yes, erase everything
+              {erasing ? "Erasing…" : "Yes, erase everything"}
             </button>
             <button
               type="button"
@@ -194,15 +233,25 @@ export default function YourDataPanel({
       {confirming ? (
         <p role="alert" className="text-[12px] leading-relaxed text-[#8E2B22] dark:text-[#F0B4AA]">
           This clears your name, scores, settings and saved seats from this device, and cannot be
-          undone. If you are in a room right now, leave it first — the server holds your seat until
-          you do.
+          undone.{" "}
+          {hasAccount
+            ? "Your account is deleted too — the email, the password and your saved profile all go, and the address is free to sign up with again. "
+            : ""}
+          If you are in a room right now, leave it first — the server holds your seat until you do.
+        </p>
+      ) : null}
+
+      {eraseError ? (
+        <p role="alert" className="text-[12px] leading-relaxed text-[#8E2B22] dark:text-[#F0B4AA]">
+          {eraseError}
         </p>
       ) : null}
 
       {erased !== null ? (
         <p role="status" className="text-[12px] leading-relaxed text-[#2E5B2B] dark:text-[#B7DDAF]">
-          Erased {erased} {erased === 1 ? "item" : "items"} from this device. Anything you do next
-          starts a fresh profile.
+          Erased {erased} {erased === 1 ? "item" : "items"} from this device
+          {hasAccount ? ", and deleted your account" : ""}. Anything you do next starts a fresh
+          profile.
         </p>
       ) : null}
 
@@ -264,8 +313,9 @@ export default function YourDataPanel({
                request that nobody will ever read. */
             <>
               A privacy contact address has not been set up yet. Until it is, the controls above
-              are the way to see and erase your data, and nothing is stored anywhere but this
-              device.
+              are the way to see and erase your data
+              {hasAccount ? ", including the account itself" : ", and nothing is stored anywhere but this device"}
+              .
             </>
           )}
         </p>

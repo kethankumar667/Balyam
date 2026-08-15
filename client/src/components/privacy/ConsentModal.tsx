@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { needsConsent, recordConsent } from "../../lib/privacy/consent";
+import { isSupabaseConfigured } from "../../lib/supabase/client";
 import { KeyholeIcon } from "../auth/authIcons";
 
 /**
@@ -109,8 +110,13 @@ export default function ConsentModal() {
           <p>
             Beyond that we&apos;d like to remember your sound and language settings, board
             skins, best scores, which tutorials you have already seen, and a short connection log
-            for debugging dropped games. All of it stays on this device. There are no accounts,
-            no tracking and no advertising.
+            for debugging dropped games. All of it stays on this device. There is no tracking and
+            no advertising.
+          </p>
+          <p>
+            {isSupabaseConfigured
+              ? "An account is optional and separate from this choice: you can play everything as a guest, and creating one later asks for an email address then."
+              : "There are no accounts in this build at all."}
           </p>
           <p>
             <Link
