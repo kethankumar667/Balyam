@@ -21,7 +21,9 @@ import {
 import { ArrowRightIcon, UsersIcon, ClockIcon } from "../components/bhalyam/icons";
 import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
+import { useTheme } from "../lib/useTheme";
 import SelfAvatar from "../components/profile/SelfAvatar";
+import { GameTile } from "./BhalyamHome";
 
 /**
  * Game catalog sidebar categories matching the design.
@@ -76,8 +78,11 @@ export default function GamesPage() {
   const [activeQuickFilter, setActiveQuickFilter] = useState<QuickFilter>("popular");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const [theme] = useTheme();
+  const isLight = theme === "light";
+
   const { playerName } = useRoomStore();
-  const displayName = playerName.trim() || "monica";
+  const displayName = playerName.trim() || "GONTLA";
 
   const [params, setParams] = useSearchParams();
   const filter: GameFilter = useMemo(() => {
@@ -123,7 +128,13 @@ export default function GamesPage() {
   }, [filter, activeQuickFilter]);
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-white flex flex-col lg:flex-row select-none">
+    <div
+      className={`min-h-screen flex flex-col lg:flex-row select-none transition-colors duration-300 ${
+        isLight
+          ? "bg-[#FFFDF7] text-[#3D2005] selection:bg-amber-300 selection:text-amber-900"
+          : "bg-[#070B14] text-white selection:bg-amber-500/30 selection:text-amber-200"
+      }`}
+    >
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
@@ -131,7 +142,11 @@ export default function GamesPage() {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-[#1D2C4A] text-white font-bold text-[13.5px] shadow-2xl border border-amber-400/40 flex items-center gap-2"
+            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl font-bold text-[13.5px] shadow-2xl border flex items-center gap-2 ${
+              isLight
+                ? "bg-[#FFF5DC] border-[#E8D1A7] text-[#854D0E] shadow-amber-900/10"
+                : "bg-[#1D2C4A] text-white border-amber-400/40"
+            }`}
           >
             <span>{toastMessage}</span>
           </motion.div>
@@ -139,13 +154,19 @@ export default function GamesPage() {
       </AnimatePresence>
 
       {/* ── LEFT SIDEBAR NAVIGATION (DESKTOP ONLY) ── */}
-      <aside className="hidden lg:flex lg:w-64 lg:min-h-screen bg-[#0A0F1D] border-r border-[#1B2338] p-4 flex-col justify-between shrink-0 shadow-2xl">
+      <aside
+        className={`hidden lg:flex lg:w-64 lg:min-h-screen p-4 flex-col justify-between shrink-0 shadow-lg transition-colors ${
+          isLight
+            ? "bg-[#FAF2E1] border-r border-[#ECD9BA]"
+            : "bg-[#0A0F1D] border-r border-[#1B2338]"
+        }`}
+      >
         <div className="space-y-6">
           {/* Logo Brand */}
           <Link to="/" className="flex items-center gap-2.5 px-2 py-1 group">
             <BhalyamLogo size={42} decorative />
             <div className="flex flex-col leading-tight">
-              <span className="bhalyam-display text-[22px] tracking-wide text-white group-hover:text-amber-400 transition-colors">
+              <span className={`bhalyam-display text-[22px] tracking-wide transition-colors ${isLight ? "text-[#3D2005] group-hover:text-amber-600" : "text-white group-hover:text-amber-400"}`}>
                 BHALYAM
               </span>
               <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-[#FF8F00] -mt-0.5">
@@ -165,7 +186,11 @@ export default function GamesPage() {
                   onClick={() => setFilter({ category: cat.id })}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-[13px] transition-all cursor-pointer ${
                     active
-                      ? "bg-[#182035] text-[#FFB800] border-l-4 border-[#FFB800] shadow-sm font-black"
+                      ? isLight
+                        ? "bg-[#FFF5DC] text-[#B45309] border-l-4 border-[#F59E0B] shadow-xs font-black"
+                        : "bg-[#182035] text-[#FFB800] border-l-4 border-[#FFB800] shadow-sm font-black"
+                      : isLight
+                      ? "text-[#7A5B3E] hover:text-[#3D2005] hover:bg-black/5"
                       : "text-zinc-400 hover:text-white hover:bg-white/5"
                   }`}
                 >
@@ -177,8 +202,8 @@ export default function GamesPage() {
           </nav>
 
           {/* Quick Filters */}
-          <div className="space-y-1.5 pt-2 border-t border-white/5">
-            <div className="px-3 text-[10.5px] font-extrabold uppercase tracking-wider text-zinc-500">
+          <div className={`space-y-1.5 pt-2 border-t ${isLight ? "border-zinc-200" : "border-white/5"}`}>
+            <div className={`px-3 text-[10.5px] font-extrabold uppercase tracking-wider ${isLight ? "text-[#9C7E63]" : "text-zinc-500"}`}>
               QUICK FILTERS
             </div>
             {QUICK_FILTERS.map((qf) => {
@@ -190,7 +215,11 @@ export default function GamesPage() {
                   onClick={() => setActiveQuickFilter(qf.id)}
                   className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl font-bold text-[12.5px] transition-all cursor-pointer ${
                     isSelected
-                      ? "text-[#FF8F00] bg-[#FF8F00]/10 font-black"
+                      ? isLight
+                        ? "text-[#B45309] bg-[#F59E0B]/15 font-black"
+                        : "text-[#FF8F00] bg-[#FF8F00]/10 font-black"
+                      : isLight
+                      ? "text-[#7A5B3E] hover:text-[#3D2005] hover:bg-black/5"
                       : "text-zinc-400 hover:text-white hover:bg-white/5"
                   }`}
                 >
@@ -203,9 +232,15 @@ export default function GamesPage() {
         </div>
 
         {/* Bottom Sidebar Card: Create Table */}
-        <div className="mt-6 p-4 rounded-2xl bg-gradient-to-b from-[#13192B] to-[#0D1220] border border-[#232D48] text-center shadow-lg relative overflow-hidden">
-          <h4 className="font-extrabold text-[13px] text-white">Create your own table</h4>
-          <p className="text-[11px] text-zinc-400 mt-1 leading-snug">
+        <div
+          className={`mt-6 p-4 rounded-2xl text-center shadow-md relative overflow-hidden transition-colors ${
+            isLight
+              ? "bg-[#FFF5DC] border border-[#ECD9BA] text-[#3D2005]"
+              : "bg-gradient-to-b from-[#13192B] to-[#0D1220] border border-[#232D48] text-white"
+          }`}
+        >
+          <h4 className="font-extrabold text-[13px]">Create your own table</h4>
+          <p className={`text-[11px] mt-1 leading-snug ${isLight ? "text-[#7A5B3E]" : "text-zinc-400"}`}>
             Invite friends and start playing together!
           </p>
 
@@ -225,13 +260,19 @@ export default function GamesPage() {
       </aside>
 
       {/* ── MAIN CONTENT AREA ── */}
-      <div className="flex-1 flex flex-col min-h-screen bg-[#070B14] overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* Top Header */}
-        <header className="w-full px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b border-[#1B2338]/60 bg-[#0A0F1D]/50 backdrop-blur-md">
+        <header
+          className={`w-full px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b backdrop-blur-md transition-colors ${
+            isLight
+              ? "bg-[#FFFDF7]/95 border-[#ECD9BA]"
+              : "bg-[#0A0F1D]/50 border-[#1B2338]/60"
+          }`}
+        >
           {/* Mobile-only brand logo */}
           <Link to="/" className="flex lg:hidden items-center gap-2 group">
             <BhalyamLogo size={34} decorative />
-            <span className="bhalyam-display text-[18px] tracking-tight text-white font-black">
+            <span className={`bhalyam-display text-[18px] tracking-tight font-black ${isLight ? "text-[#3D2005]" : "text-white"}`}>
               BHALYAM
             </span>
           </Link>
@@ -241,15 +282,25 @@ export default function GamesPage() {
           {/* Right Action Stack */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Online count */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D] border border-[#232D48] text-amber-400 text-[11.5px] font-extrabold shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11.5px] font-extrabold shadow-xs ${
+                isLight
+                  ? "bg-[#FAF2E1] border-[#ECD9BA] text-emerald-800"
+                  : "bg-[#141B2D] border-[#232D48] text-amber-400"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>1,284 Online</span>
             </div>
 
             {/* Home Button */}
             <Link
               to="/"
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 bg-[#141B2D] border border-[#232D48] text-zinc-300 font-bold text-[12px] hover:text-white hover:bg-[#1A233A] transition shadow-sm"
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 border font-bold text-[12px] transition shadow-xs ${
+                isLight
+                  ? "bg-[#FAF2E1] border-[#ECD9BA] text-[#7A5B3E] hover:text-[#3D2005] hover:bg-[#F3E5CD]"
+                  : "bg-[#141B2D] border-[#232D48] text-zinc-300 hover:text-white hover:bg-[#1A233A]"
+              }`}
             >
               <span>🏠 Home</span>
             </Link>
@@ -258,7 +309,11 @@ export default function GamesPage() {
             <button
               type="button"
               onClick={() => showToast("🔔 No new notifications")}
-              className="relative w-8 h-8 rounded-full bg-[#141B2D] border border-[#232D48] flex items-center justify-center text-zinc-300 hover:text-white transition"
+              className={`relative w-8 h-8 rounded-full border flex items-center justify-center transition ${
+                isLight
+                  ? "bg-[#FAF2E1] border-[#ECD9BA] text-[#5C3B1E] hover:bg-[#F3E5CD]"
+                  : "bg-[#141B2D] border-[#232D48] text-zinc-300 hover:text-white"
+              }`}
             >
               <span>🔔</span>
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
@@ -278,41 +333,49 @@ export default function GamesPage() {
           {/* ── 1. Hero Cards (Resume Playing + Daily Quests) ── */}
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Continue Playing Hero Card */}
-            <div className="lg:col-span-2 p-5 sm:p-6 rounded-3xl bg-[#0D1322] text-white border border-[#1F2B48] shadow-xl relative overflow-hidden flex flex-col justify-between">
+            <div
+              className={`lg:col-span-2 p-5 sm:p-6 rounded-3xl shadow-md relative overflow-hidden flex flex-col justify-between transition-colors ${
+                isLight
+                  ? "bg-[#FFF5DC] border-2 border-[#ECD9BA] text-[#3D2005]"
+                  : "bg-[#0D1322] border border-[#1F2B48] text-white shadow-xl"
+              }`}
+            >
               <div className="flex items-start justify-between gap-3 relative z-10">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-amber-950">
                       CONTINUE PLAYING
                     </span>
-                    <span className="text-zinc-300 text-[12px] font-bold">Welcome back, {displayName}!</span>
+                    <span className={`text-[12px] font-bold ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
+                      Welcome back, {displayName}!
+                    </span>
                   </div>
-                  <h3 className="bhalyam-display text-[24px] sm:text-[28px] text-white mt-1.5 leading-tight">
-                    Hand Cricket <span className="text-amber-400">• Level 8</span>
+                  <h3 className={`bhalyam-display text-[24px] sm:text-[28px] mt-1.5 leading-tight ${isLight ? "text-[#3D2005]" : "text-white"}`}>
+                    Hand Cricket <span className="text-amber-500">• Level 8</span>
                   </h3>
-                  <p className="text-[12.5px] text-zinc-300 font-medium mt-0.5">
-                    🏆 45 Matches Won · 🔥 3x Win Streak · Next Milestone: <strong className="text-amber-300">Golden Bat in 2 wins</strong>
+                  <p className={`text-[12.5px] font-medium mt-0.5 ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
+                    🏆 45 Matches Won · 🔥 3x Win Streak · Next Milestone: <strong className={isLight ? "text-amber-800" : "text-amber-300"}>Golden Bat in 2 wins</strong>
                   </p>
                 </div>
 
                 <div className="hidden sm:block text-right flex-shrink-0">
-                  <div className="text-[11px] font-black text-amber-300">60% to Level 9</div>
-                  <div className="w-24 h-2 rounded-full bg-white/10 mt-1 overflow-hidden border border-white/10">
+                  <div className={`text-[11px] font-black ${isLight ? "text-amber-700" : "text-amber-300"}`}>60% to Level 9</div>
+                  <div className={`w-24 h-2 rounded-full mt-1 overflow-hidden border ${isLight ? "bg-[#E6D4B5] border-[#D4C3A3]" : "bg-white/10 border-white/10"}`}>
                     <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 w-[60%]" />
                   </div>
                 </div>
               </div>
 
-              <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between gap-3 relative z-10 flex-wrap">
-                <div className="flex items-center gap-2 text-[12px] font-semibold text-zinc-300">
+              <div className={`mt-5 pt-3 border-t flex items-center justify-between gap-3 relative z-10 flex-wrap ${isLight ? "border-zinc-300" : "border-white/10"}`}>
+                <div className={`flex items-center gap-2 text-[12px] font-semibold ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
                   <span>⚡ 48 Active Rooms Waiting</span>
                   <span>•</span>
-                  <span className="text-emerald-400 font-bold">+50 XP per win</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">+50 XP per win</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSheetGame("handcricket")}
-                  className="py-2.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 active:scale-95 text-white font-black text-[13.5px] shadow-[0_4px_14px_rgba(245,158,11,0.4)] transition cursor-pointer flex items-center gap-2"
+                  className="py-2.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 active:scale-95 text-white font-black text-[13.5px] shadow-md transition cursor-pointer flex items-center gap-2"
                 >
                   <span>▶ Resume Hand Cricket</span>
                 </button>
@@ -320,28 +383,34 @@ export default function GamesPage() {
             </div>
 
             {/* Today's Daily Challenges Card */}
-            <div className="p-5 rounded-3xl bg-[#0D1322] border border-[#1F2B48] shadow-xl flex flex-col justify-between">
+            <div
+              className={`p-5 rounded-3xl shadow-md flex flex-col justify-between transition-colors ${
+                isLight
+                  ? "bg-[#FAF2E1] border-2 border-[#ECD9BA] text-[#3D2005]"
+                  : "bg-[#0D1322] border border-[#1F2B48] text-white shadow-xl"
+              }`}
+            >
               <div className="flex items-center justify-between mb-2">
-                <h4 className="bhalyam-display text-[17px] text-white flex items-center gap-1.5">
+                <h4 className={`bhalyam-display text-[17px] flex items-center gap-1.5 ${isLight ? "text-[#3D2005]" : "text-white"}`}>
                   <span>🎯 Today's Quests</span>
                 </h4>
-                <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-amber-400/20 text-amber-600 dark:text-amber-300 border border-amber-400/40">
                   Day 3
                 </span>
               </div>
 
               <div className="space-y-2 my-2">
-                <div className="p-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-[11.5px] font-bold text-zinc-200">
+                <div className={`p-2 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
                   <span>🏏 Win 1 Hand Cricket Match</span>
-                  <span className="text-emerald-400 font-black">+100 XP</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black">+100 XP</span>
                 </div>
-                <div className="p-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-[11.5px] font-bold text-zinc-200">
+                <div className={`p-2 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
                   <span>🎴 Play UNO with 2+ Friends</span>
-                  <span className="text-emerald-400 font-black">+150 XP</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black">+150 XP</span>
                 </div>
-                <div className="p-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-[11.5px] font-bold text-zinc-200">
+                <div className={`p-2 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
                   <span>🎲 Roll a 6 in Ludo</span>
-                  <span className="text-amber-400 font-black">+50 XP</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-black">+50 XP</span>
                 </div>
               </div>
 
@@ -374,6 +443,8 @@ export default function GamesPage() {
                   className={`px-3.5 py-1.5 rounded-full font-extrabold text-[12px] whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                     active
                       ? "bg-[#FF8F00] text-black shadow-md font-black"
+                      : isLight
+                      ? "bg-[#FAF2E1] text-[#7A5B3E] border border-[#ECD9BA] hover:text-[#3D2005]"
                       : "bg-[#141B2D] text-zinc-300 border border-[#232D48] hover:text-white"
                   }`}
                 >
@@ -384,14 +455,15 @@ export default function GamesPage() {
             })}
           </div>
 
-          {/* ── 3. 4-Column Games Grid (Directly without search/sort) ── */}
+          {/* ── 3. 4-Column Games Grid (Matching Home Page Tiles) ── */}
           <section>
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
               {displayedGames.map((game) => (
                 <li key={game.slug}>
-                  <GameDiscoveryCard
+                  <GameTile
                     game={game}
                     onSelect={() => setSheetGame(game.slug)}
+                    compact
                   />
                 </li>
               ))}
@@ -402,142 +474,6 @@ export default function GamesPage() {
 
       <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
       <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
-    </div>
-  );
-}
-
-/**
- * Rich Game Card with Live Telemetry, Social Proof, and Color-Matched Glacier Tone
- */
-function GameDiscoveryCard({
-  game,
-  onSelect,
-}: {
-  game: BhalyamGameCard;
-  onSelect: () => void;
-}) {
-  const accent = getGameAccent(game);
-  const btnFrom = game.btnGradient?.from ?? accent.from;
-  const btnTo = game.btnGradient?.to ?? accent.to;
-  const telemetry = GAME_TELEMETRY[game.slug] ?? { livePlayers: 120, activeRooms: 15, difficulty: "Casual", rating: 4.8, tag: "Classic" };
-
-  const tileArtByGame: Record<BhalyamGameSlug, string> = {
-    handcricket: "/HandCricketTile.png",
-    snl: "/S&LTile.png",
-    ludo: "/LudoTile.png",
-    rummy: "/RummyTile.png",
-    rps: "/RPSTile.png",
-    uno: "/UNOTile.png",
-    wordbuilding: "/words_building.png",
-    dotsboxes: "/Dots&boxes.png",
-    namesplaceanimal: "/Name-place-thing-animal.png",
-    tambola: "/Tambola.png",
-    samethalu: "/SamethaluTile.png",
-    telugucinemalu: "/telugu cinemalu.png",
-    stargame: "/StarTile.png",
-    bingo: "/Bingo Tile.png",
-    snake: "/Snake Game Tile.png",
-    bounce: "/Bounce Game Tile.png",
-    roadrash: "/Roadrash Game Tile.png",
-    carrom: "/Carrom Game Tile.png",
-    chess: "/Chess Game Tile.png",
-    blockblast: "/BlockBlast Game Tile.png",
-    spacewar: "/SpacewarTile.png",
-  };
-
-  const imageSrc = tileArtByGame[game.slug];
-  const [imageFailed, setImageFailed] = useState(false);
-
-  // Background gradient per card matching screenshot
-  const bgStyle = `linear-gradient(155deg, ${btnFrom}22 0%, ${btnTo}10 40%, #090E1A 100%)`;
-  const borderStyle = `${btnFrom}44`;
-  const shadowStyle = `0 12px 28px -8px rgba(0,0,0,0.85), 0 0 20px -6px ${btnFrom}30`;
-
-  return (
-    <div
-      className="group relative w-full rounded-[22px] overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border transition-all duration-300 hover:scale-101 hover:border-opacity-100 bg-[#0A0F1E]"
-      style={{
-        background: bgStyle,
-        borderColor: borderStyle,
-        boxShadow: shadowStyle,
-      }}
-    >
-      {/* Live Social Proof Badge Row */}
-      <div className="flex items-center justify-between gap-2 text-[11px] font-black w-full mb-1">
-        <span
-          className="px-2.5 py-0.5 rounded-full border shadow-sm flex items-center gap-1.5"
-          style={{
-            backgroundColor: `${btnFrom}25`,
-            color: "#FFFFFF",
-            borderColor: `${btnFrom}55`,
-          }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span>{telemetry.livePlayers} Live</span>
-        </span>
-        <div className="flex items-center gap-1.5 text-zinc-300">
-          <span className="text-amber-400 font-bold">★ {telemetry.rating}</span>
-          <span>•</span>
-          <span>{telemetry.difficulty}</span>
-        </div>
-      </div>
-
-      {/* Hero Illustration Artwork with ambient core glow */}
-      <div className="relative my-2 sm:my-3 h-28 sm:h-34 flex items-center justify-center">
-        <div
-          className="absolute w-28 h-28 rounded-full blur-2xl pointer-events-none transition-transform duration-500 group-hover:scale-125 opacity-40"
-          style={{ background: btnFrom }}
-          aria-hidden
-        />
-        {imageSrc && !imageFailed ? (
-          <img
-            src={imageSrc}
-            alt={game.title}
-            onError={() => setImageFailed(true)}
-            className="relative z-10 max-h-full max-w-full object-contain drop-shadow-md transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="relative z-10 w-16 h-16 rounded-2xl flex items-center justify-center text-[24px] bg-white/10 text-white">
-            🎮
-          </div>
-        )}
-      </div>
-
-      {/* Title & Nostalgic Quote */}
-      <div className="relative flex flex-col items-center text-center px-1">
-        <h3 className="font-display font-black text-[21px] sm:text-[23px] leading-tight tracking-tight drop-shadow-sm text-white">
-          {game.title}
-        </h3>
-        <p className="font-script italic text-[14px] sm:text-[15px] mt-0.5 leading-snug line-clamp-1 text-amber-200/90">
-          {game.nostalgiaQuote ?? game.blurb}
-        </p>
-      </div>
-
-      {/* Telemetry Row (Player Count & Duration) */}
-      <div className="flex items-center justify-center gap-3 text-[12px] font-bold my-2.5 text-zinc-300">
-        <div className="flex items-center gap-1.5">
-          <UsersIcon className="w-3.5 h-3.5 text-zinc-400" />
-          <span>{game.playerRange ?? "2–8 Players"}</span>
-        </div>
-        <span className="text-zinc-600">•</span>
-        <div className="flex items-center gap-1.5">
-          <ClockIcon className="w-3.5 h-3.5 text-zinc-400" />
-          <span>{game.duration ?? "10–20 min"}</span>
-        </div>
-      </div>
-
-      {/* Play Now Action Button */}
-      <button
-        type="button"
-        onClick={onSelect}
-        className="w-full py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-[13px] font-black uppercase tracking-wider text-white hover:brightness-115 active:scale-98 transition-all duration-200 cursor-pointer shadow-md"
-        style={{
-          background: `linear-gradient(135deg, ${btnFrom}, ${btnTo})`,
-        }}
-      >
-        <span>PLAY NOW</span>
-        <ArrowRightIcon className="w-3.5 h-3.5" />
-      </button>
     </div>
   );
 }

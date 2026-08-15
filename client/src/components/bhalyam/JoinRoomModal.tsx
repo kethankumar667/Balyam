@@ -158,8 +158,8 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
         onClick={(e) => e.stopPropagation()}
         className="bhalyam-font relative w-full md:max-w-md
                    max-h-[92dvh] overflow-y-auto
-                   bg-bhalyam-cream-soft text-bhalyam-wood-dark
-                   border-2 border-bhalyam-cream-edge/70
+                   bg-bhalyam-cream-soft dark:bg-[#111622] text-bhalyam-wood-dark dark:text-slate-100
+                   border-2 border-bhalyam-cream-edge/70 dark:border-slate-800
                    rounded-t-3xl md:rounded-3xl
                    shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
                    md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)]"
@@ -167,11 +167,11 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
       >
         {/* Pull handle (mobile bottom-sheet only) */}
         <div className="md:hidden flex justify-center pt-2.5">
-          <span aria-hidden className="w-10 h-1.5 rounded-full bg-bhalyam-wood/30" />
+          <span aria-hidden className="w-10 h-1.5 rounded-full bg-bhalyam-wood/30 dark:bg-slate-700" />
         </div>
 
         {/* Header */}
-        <header className="flex items-center gap-3 p-4 pb-3 border-b-2 border-bhalyam-cream-edge/50">
+        <header className="flex items-center gap-3 p-4 pb-3 border-b-2 border-bhalyam-cream-edge/50 dark:border-slate-800">
           <span
             className="inline-flex w-12 h-12 rounded-2xl items-center justify-center text-bhalyam-cream-soft flex-shrink-0"
             style={{
@@ -185,11 +185,11 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
           <div className="min-w-0 flex-1">
             <h2
               id="join-room-modal-title"
-              className="font-bold text-bhalyam-wood-dark text-lg leading-tight truncate"
+              className="font-bold text-bhalyam-wood-dark dark:text-slate-100 text-lg leading-tight truncate"
             >
               Join a room
             </h2>
-            <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood">
+            <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood dark:text-slate-400">
               Got a code? Hop in.
             </div>
           </div>
@@ -198,8 +198,8 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             onClick={onClose}
             aria-label="Close"
             className="w-11 h-11 rounded-full inline-flex items-center justify-center
-                       bg-bhalyam-cream-warm text-bhalyam-wood-dark cursor-pointer
-                       hover:bg-bhalyam-cream-edge active:scale-95
+                       bg-bhalyam-cream-warm dark:bg-[#1E2738] text-bhalyam-wood-dark dark:text-slate-200 cursor-pointer
+                       hover:bg-bhalyam-cream-edge dark:hover:bg-[#2A374F] active:scale-95
                        focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
                        transition-all duration-200"
           >
@@ -226,14 +226,14 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               aria-invalid={nameError ? true : undefined}
               aria-describedby={nameError ? "join-name-error" : undefined}
               className={`w-full min-h-[44px] px-3 rounded-xl
-                         bg-bhalyam-cream-soft border-2
-                         text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/40
+                         bg-bhalyam-cream-soft dark:bg-[#0B0F19] border-2
+                         text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/40 dark:placeholder:text-slate-500
                          font-semibold
                          focus:outline-none focus:ring-2
                          transition-all duration-200
                          ${nameError
                            ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
-                           : "border-bhalyam-cream-edge/80 focus:border-bhalyam-gold-dark focus:ring-bhalyam-gold/40"}`}
+                           : "border-bhalyam-cream-edge/80 dark:border-slate-700/80 focus:border-bhalyam-gold-dark dark:focus:border-amber-400 focus:ring-bhalyam-gold/40"}`}
             />
           </Field>
 
@@ -242,8 +242,8 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             <button
               type="button"
               onClick={() => setScannerOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-bhalyam-wood
-                         hover:text-bhalyam-wood-dark active:scale-95 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-bhalyam-wood dark:text-amber-400
+                         hover:text-bhalyam-wood-dark dark:hover:text-amber-300 active:scale-95 transition cursor-pointer"
             >
               <ScanIcon className="w-4 h-4 text-[#EA5A1F]" />
               Scan QR Code
@@ -279,22 +279,22 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                   codeError ? "join-code-error" : "join-code-help"
                 }
                 className={`w-full min-h-[52px] px-3 rounded-xl
-                           bg-bhalyam-cream-soft border-2
-                           text-bhalyam-wood-dark placeholder:text-bhalyam-wood-dark/30
+                           bg-bhalyam-cream-soft dark:bg-[#0B0F19] border-2
+                           text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/30 dark:placeholder:text-slate-600
                            font-mono font-black text-2xl tracking-[0.45em] text-center
                            focus:outline-none focus:ring-2
                            transition-all duration-200
                            ${codeError
                              ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
-                             : "border-bhalyam-cream-edge/80 focus:border-bhalyam-gold-dark focus:ring-bhalyam-gold/40"}`}
+                             : "border-bhalyam-cream-edge/80 dark:border-slate-700/80 focus:border-bhalyam-gold-dark dark:focus:border-amber-400 focus:ring-bhalyam-gold/40"}`}
               />
               <button
                 type="button"
                 onClick={() => setScannerOpen(true)}
                 title="Scan QR Code"
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg
-                           bg-bhalyam-cream-warm hover:bg-bhalyam-cream-edge active:scale-95
-                           inline-flex items-center justify-center text-bhalyam-wood-dark transition"
+                           bg-bhalyam-cream-warm dark:bg-[#1E2738] hover:bg-bhalyam-cream-edge dark:hover:bg-[#2A374F] active:scale-95
+                           inline-flex items-center justify-center text-bhalyam-wood-dark dark:text-slate-200 transition"
               >
                 <ScanIcon className="w-5 h-5 text-[#EA5A1F]" />
               </button>
