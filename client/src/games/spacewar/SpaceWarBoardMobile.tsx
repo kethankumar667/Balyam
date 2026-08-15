@@ -99,6 +99,34 @@ export default function SpaceWarBoardMobile({
     if (state.isOver || state.isPaused) stopFire();
   }, [state.isOver, state.isPaused, stopFire]);
 
+  // Level Completion Banner state
+  const [levelClearBanner, setLevelClearBanner] = useState<{ cleared: number; next: number } | null>(null);
+  const prevLevelRef = useRef(state.level);
+
+  useEffect(() => {
+    if (state.level > prevLevelRef.current) {
+      setLevelClearBanner({ cleared: prevLevelRef.current, next: state.level });
+      win();
+      const timer = window.setTimeout(() => setLevelClearBanner(null), 3500);
+      prevLevelRef.current = state.level;
+      return () => window.clearTimeout(timer);
+    }
+    prevLevelRef.current = state.level;
+  }, [state.level, win]);
+
+  const boss = state.enemies.find((e) => e.type === "boss");
+  const bossHp = state.bossHp ?? (boss ? boss.hp : null);
+  const bossMaxHp = state.bossMaxHp ?? (boss ? boss.maxHp : null);
+  const isBossFighting = bossHp !== null && bossMaxHp !== null && bossHp > 0;
+  const bossPct = isBossFighting ? Math.max(0, Math.min(100, (bossHp / bossMaxHp) * 100)) : 0;
+  const bossName = state.level <= 2
+    ? "CYBER GOLIATH DREADNOUGHT"
+    : state.level <= 4
+    ? "VOID LEVIATHAN SERPENT"
+    : state.level <= 6
+    ? "NEO-KRAKEN BIO-TITAN"
+    : "APOCALYPSE HARBINGER TITAN";
+
   return (
     <div className="w-full h-full min-h-[calc(100vh-64px)] flex flex-col items-center justify-between bg-[#060810] text-[#00f0ff] p-1.5 sm:p-2.5 select-none touch-none overflow-hidden">
       
@@ -120,6 +148,45 @@ export default function SpaceWarBoardMobile({
 
         {/* 1. TOP CARD: GAME SCREEN DISPLAY (EXACT 50% EQUAL FLEX SHARE) */}
         <div className="w-full flex-1 h-[48%] bg-black border-2 border-[#00f0ff]/20 rounded-2xl overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.9)] flex items-center justify-center relative min-h-0">
+          {/* Dynamic Boss Health Bar Mobile Overlay */}
+          {isBossFighting && (
+            <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-[92%] bg-[#0c0517]/95 border border-red-500 rounded-lg px-2.5 py-1.5 shadow-[0_0_16px_rgba(255,0,85,0.6)] z-20 flex flex-col gap-0.5 backdrop-blur-md animate-pulse">
+              <div className="flex items-center justify-between text-[10px] font-mono leading-tight">
+                <span className="font-extrabold text-amber-400 truncate max-w-[70%] flex items-center gap-1">
+                  <span className="text-red-500">⚠️</span>
+                  <span>{bossName}</span>
+                </span>
+                <span className="font-bold text-rose-400">
+                  {Math.round(bossPct)}%
+                </span>
+              </div>
+              <div className="w-full h-2 bg-red-950/80 rounded-full overflow-hidden border border-red-500/50">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 transition-all duration-150"
+                  style={{ width: `${bossPct}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Level Complete Celebration Overlay */}
+          {levelClearBanner && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-30 animate-in fade-in zoom-in duration-300 p-3">
+              <div className="bg-gradient-to-b from-[#111936] to-[#0a0f24] border-2 border-amber-400 rounded-2xl p-4 text-center shadow-[0_0_28px_rgba(251,191,36,0.6)] w-full max-w-[280px]">
+                <div className="text-2xl mb-0.5">⭐ 🏆 ⭐</div>
+                <h2 className="text-lg font-black text-amber-300 tracking-wide font-display">
+                  LEVEL {levelClearBanner.cleared} CLEARED!
+                </h2>
+                <p className="text-xs font-mono text-[#00f0ff] mt-1 font-bold">
+                  WARPING TO LEVEL {levelClearBanner.next}...
+                </p>
+                <div className="mt-2 inline-block px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-mono font-bold text-[10px]">
+                  BONUS: +{levelClearBanner.cleared * 500} PTS
+                </div>
+              </div>
+            </div>
+          )}
+
           <canvas
             ref={canvasRef}
             width={480}

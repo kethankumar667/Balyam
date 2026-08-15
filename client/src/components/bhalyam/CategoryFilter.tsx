@@ -137,7 +137,7 @@ export default function CategoryFilter({
   }, [measure]);
 
   const segments: Segment[] = [
-    { id: "all", label: "All" },
+    { id: "all", label: "Trending" },
     ...GAME_CATEGORIES.map((c) => ({ id: c.id as CategorySelection, label: c.label })),
   ];
   const activeIndex = Math.max(

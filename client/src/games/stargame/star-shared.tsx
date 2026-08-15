@@ -66,18 +66,35 @@ export const PAPER = {
 
 /** Per-seat neon, assigned by seat index — the glowing rings in the reference.
  *  Distinct at a glance and colour-blind-separable by lightness as well as hue. */
-export const SEAT_NEON: readonly { ring: string; glow: string; slip: string }[] = [
-  { ring: "#8B7BFF", glow: "rgba(139,123,255,0.55)", slip: "#4A3FA8" },
-  { ring: "#3ED598", glow: "rgba(62,213,152,0.55)", slip: "#1F7A56" },
-  { ring: "#38BDF8", glow: "rgba(56,189,248,0.55)", slip: "#1B6FA8" },
-  { ring: "#FF8A4C", glow: "rgba(255,138,76,0.55)", slip: "#A8501F" },
-  { ring: "#F471B5", glow: "rgba(244,113,181,0.55)", slip: "#A32E6B" },
-  { ring: "#FBBF24", glow: "rgba(251,191,36,0.55)", slip: "#9A6B0E" },
-  { ring: "#5EEAD4", glow: "rgba(94,234,212,0.55)", slip: "#177F72" },
-  { ring: "#C084FC", glow: "rgba(192,132,252,0.55)", slip: "#6B2FA8" },
+export const SEAT_NEON: readonly { ring: string; glow: string; slip: string; from: string; to: string }[] = [
+  { ring: "#FF782D", glow: "rgba(255,120,45,0.6)",  slip: "#E05A12", from: "#FF8A3D", to: "#C2410C" },
+  { ring: "#EC4899", glow: "rgba(236,72,153,0.6)",  slip: "#BE185D", from: "#F472B6", to: "#BE185D" },
+  { ring: "#FBBF24", glow: "rgba(251,191,36,0.6)",  slip: "#D97706", from: "#FDE047", to: "#D97706" },
+  { ring: "#06B6D4", glow: "rgba(6,182,212,0.6)",   slip: "#0E7490", from: "#22D3EE", to: "#0F766E" },
+  { ring: "#F59E0B", glow: "rgba(245,158,11,0.6)",  slip: "#B45309", from: "#FCD34D", to: "#B45309" },
+  { ring: "#10B981", glow: "rgba(16,185,129,0.6)",  slip: "#047857", from: "#34D399", to: "#047857" },
+  { ring: "#3B82F6", glow: "rgba(59,130,246,0.6)",  slip: "#1D4ED8", from: "#60A5FA", to: "#1D4ED8" },
+  { ring: "#A855F7", glow: "rgba(168,85,247,0.6)",  slip: "#7E22CE", from: "#C084FC", to: "#7E22CE" },
 ];
 
 export const seatNeon = (i: number) => SEAT_NEON[((i % SEAT_NEON.length) + SEAT_NEON.length) % SEAT_NEON.length];
+
+/** Stable matching dot color for any chit value (colors theme + other themes). */
+export function getChitDotColor(value: string): string {
+  const v = value.toLowerCase().trim();
+  if (v === "red") return "#EF4444";
+  if (v === "blue") return "#3B82F6";
+  if (v === "green") return "#10B981";
+  if (v === "yellow") return "#EAB308";
+  if (v === "orange") return "#F97316";
+  if (v === "pink") return "#EC4899";
+  if (v === "purple") return "#A855F7";
+  if (v === "white") return "#F8FAFC";
+  const palette = ["#10B981", "#EF4444", "#3B82F6", "#EAB308", "#F97316", "#EC4899", "#A855F7", "#06B6D4"];
+  let h = 0;
+  for (let i = 0; i < value.length; i++) h = (h * 31 + value.charCodeAt(i)) & 0xffff;
+  return palette[h % palette.length];
+}
 
 /**
  * The room the table sits in. A supplied photograph, deliberately pushed back
@@ -344,7 +361,6 @@ const SIZE = {
   lg: "h-32 w-24 text-base",
 } as const;
 
-/** A single folded paper slip carrying one theme value (or face-down kraft). */
 export function Chit({
   value,
   faceDown = false,
@@ -360,10 +376,7 @@ export function Chit({
   armed?: boolean;
   dimmed?: boolean;
   size?: keyof typeof SIZE;
-  /** Explicit width, overriding the `size` class. The hand rail uses this to
-   *  fit however many chits you are holding into the width it actually has —
-   *  during a relay you briefly hold FIVE, and five fixed-width cards do not
-   *  fit a phone. Height follows the 4:3 ratio of the size classes. */
+  /** Explicit width, overriding the `size` class. */
   fluid?: boolean;
   onClick?: () => void;
   ariaLabel?: string;
@@ -371,6 +384,7 @@ export function Chit({
   const reduce = useReducedMotion();
   const interactive = !!onClick;
   const rot = tilt(value + (faceDown ? "b" : ""));
+  const dotColor = getChitDotColor(value);
   return (
     <motion.button
       type="button"
@@ -385,48 +399,51 @@ export function Chit({
       transition={{ type: "spring", stiffness: 340, damping: 24 }}
       className={[
         fluid ? "" : SIZE[size],
-        "relative shrink-0 rounded-[7px] px-1 font-script font-bold leading-tight",
-        "flex items-center justify-center text-center",
+        "relative shrink-0 rounded-2xl px-1 font-script font-bold leading-tight",
+        "flex flex-col items-center justify-between py-2 text-center",
         interactive ? "cursor-pointer" : "cursor-default",
       ].join(" ")}
-      // The slip face stays LIGHT on the dark theme — a paper chit lit by the
-      // lamp over the table. These are deliberate literals, not PAPER tokens:
-      // those inverted to dark surfaces, and feeding them here produced a
-      // half-dark gradient with light text on a light lower half, i.e. an
-      // unreadable smudge. Colour identity lives on the RIM and the glow.
       style={{
-        // `fluid` lets the PARENT decide the width (flex-basis 0 + max-width),
-        // so N chits always share the row. An earlier attempt measured the
-        // rail with a ResizeObserver and computed pixel widths; it silently
-        // never applied, and 5-chit hands still ran off a 390px phone. CSS
-        // cannot fail to measure.
         ...(fluid ? { width: "100%", height: "auto", aspectRatio: "3 / 4" } : null),
         background: faceDown
           ? `repeating-linear-gradient(48deg, #24305A, #24305A 7px, #1B2547 7px, #1B2547 14px)`
-          : `linear-gradient(168deg, #FFFDF6 0%, #F6EAD2 100%)`,
-        border: `2px solid ${armed ? PAPER.gold : faceDown ? PAPER.rim : "#D9C7A2"}`,
-        color: faceDown ? PAPER.pencil : "#2A2115",
+          : `linear-gradient(168deg, #FFFDF6 0%, #F9F2E2 100%)`,
+        border: `2px solid ${armed ? PAPER.gold : faceDown ? PAPER.rim : "#E8D8B8"}`,
+        color: faceDown ? PAPER.pencil : "#1C1917",
         boxShadow: armed
-          ? `0 16px 26px -8px rgba(0,0,0,0.7), 0 0 0 3px ${PAPER.gold}66, 0 0 22px ${PAPER.gold}55`
-          : `0 8px 16px -6px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.85)`,
+          ? `0 16px 28px -6px rgba(0,0,0,0.7), 0 0 0 3px ${PAPER.gold}88, 0 0 24px ${PAPER.gold}66`
+          : `0 8px 16px -6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.85)`,
       }}
     >
-      {/* fold crease */}
+      {/* Top Value Dot */}
+      {!faceDown && (
+        <span
+          className="h-3.5 w-3.5 rounded-full shrink-0 shadow-sm"
+          style={{ background: dotColor, boxShadow: `0 1px 4px ${dotColor}88` }}
+          aria-hidden
+        />
+      )}
+
+      {/* Center fold crease */}
       <span
         aria-hidden
-        className="absolute left-1.5 right-1.5 top-1/2"
-        style={{ borderTop: faceDown ? "none" : "1px dashed rgba(138,115,85,0.5)" }}
+        className="absolute left-2 right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+        style={{ borderTop: faceDown ? "none" : "1px dashed rgba(180,150,110,0.45)" }}
       />
+
       {faceDown ? (
         <span
           aria-hidden
-          className="flex h-7 w-7 items-center justify-center rounded-full text-base"
+          className="m-auto flex h-7 w-7 items-center justify-center rounded-full text-base"
           style={{ background: PAPER.clay, color: "#F7ECD2", boxShadow: "0 2px 4px rgba(0,0,0,0.25)" }}
         >
           ★
         </span>
       ) : (
-        <span className="relative z-10 break-words px-0.5" style={{ textShadow: "0 1px 0 rgba(255,255,255,0.5)" }}>
+        <span
+          className="relative z-10 break-words px-1 font-script font-bold text-base sm:text-lg mb-1 leading-none"
+          style={{ color: "#1C1917", textShadow: "0 1px 0 rgba(255,255,255,0.7)" }}
+        >
           {value}
         </span>
       )}
@@ -1070,14 +1087,12 @@ export function RoundInfoPanel({
   );
 }
 
-/** Card-count badge, color-coded by the temporary sender(3)/normal(4)/
- *  receiver(5) hand size the sequential relay produces. */
+/** Card-count badge with gold chip design matching screenshot. */
 function CountBadge({ count }: { count: number }) {
-  const color = count === 3 ? PAPER.terracotta : count === 5 ? PAPER.olive : PAPER.brown;
   return (
     <span
-      className="absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-display text-[11px] font-black text-white"
-      style={{ background: color, boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+      className="absolute -bottom-0.5 -right-0.5 flex h-4.5 min-w-4.5 px-1 items-center justify-center rounded-full font-display text-[10px] font-black text-[#2A1800] border border-black/20"
+      style={{ background: "#FBBF24", boxShadow: "0 2px 5px rgba(0,0,0,0.5)" }}
       aria-label={`${count} cards`}
     >
       {count}
@@ -1171,49 +1186,30 @@ export function StarTable({
 
   return (
     <div className="relative mx-auto" style={{ width, height }}>
-      {/* ── The table itself ──────────────────────────────────────────────
-          Everything used to float in empty space: seats, arrows and the value
-          legend with nothing underneath them. A surface is what turns a
-          scatter of avatars into people sitting around a game. Warm wood, so
-          it is the one warm mass in a cool room, lit from above-left. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 rounded-[50%]"
-        style={{
-          width: tableW,
-          height: tableH,
-          transform: "translate(-50%, -50%)",
-          background: [
-            `radial-gradient(58% 58% at 38% 26%, rgba(255,214,150,0.22), transparent 62%)`,
-            `radial-gradient(120% 120% at 50% 50%, ${PAPER.desk} 0%, ${PAPER.deskDeep} 62%, ${PAPER.deskEdge} 100%)`,
-          ].join(", "),
-          border: `2px solid rgba(255,197,61,0.22)`,
-          boxShadow: [
-            "0 40px 70px -24px rgba(0,0,0,0.85)",
-            "inset 0 2px 0 rgba(255,220,160,0.16)",
-            "inset 0 -30px 60px rgba(0,0,0,0.45)",
-          ].join(", "),
-        }}
-      />
+      {/* ── The subtle dark circular orbit track ────────────────────────── */}
+      <svg className="pointer-events-none absolute inset-0" width={width} height={height} aria-hidden>
+        <ellipse
+          cx={cx}
+          cy={cy}
+          rx={rx}
+          ry={ry}
+          fill="none"
+          stroke="rgba(251,191,36,0.15)"
+          strokeWidth="1.5"
+          strokeDasharray="4 6"
+        />
+      </svg>
 
-      {/* ── The STAR — the thing you slap, and what the game is named after.
-          Three states, driven by the engine's own rules:
-            · dormant  — nobody holds four yet. Dim, inert, no caption.
-            · ARMED    — YOU hold four. Lit, pulsing, tappable, captioned.
-            · claimed  — somebody slapped it; everyone else now races to get
-                         their hand down, and rank decides points.
-          Deliberately NOT lit for players who are merely watching someone
-          else be eligible: a target you cannot hit should not look live. */}
+      {/* ── Center Gold Star Silhouette ─────────────────────────────────── */}
       {(() => {
         const armed = phase === "star" && iAmEligible;
         const racing = phase === "handstack" && iCanStack;
-        const size = Math.min(tableW, tableH) * 0.34;
+        const size = Math.min(tableW, tableH) * 0.38;
         const hot = armed || racing;
         const onTap = armed ? onPressStar : racing ? onPlaceHand : undefined;
         return (
           <div
-            className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1"
-            style={{ transform: "translate(-50%, -50%)" }}
+            className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2"
           >
             <button
               type="button"
@@ -1236,16 +1232,16 @@ export function StarTable({
                 className={hot && !reduce ? "star-pulse" : undefined}
                 style={{
                   filter: hot
-                    ? `drop-shadow(0 0 12px ${PAPER.gold}) drop-shadow(0 0 34px ${PAPER.gold}CC)`
-                    : "drop-shadow(0 0 6px rgba(255,197,61,0.22))",
-                  opacity: hot ? 1 : 0.32,
+                    ? `drop-shadow(0 0 16px ${PAPER.gold}) drop-shadow(0 0 36px ${PAPER.gold}EE)`
+                    : "drop-shadow(0 0 10px rgba(251,191,36,0.2))",
+                  opacity: hot ? 1 : 0.45,
                 }}
               >
                 <path
                   d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.7 5.6 21.2 7 14.1l-5.3-5 7.2-.9z"
-                  fill={hot ? PAPER.gold : "#6B7399"}
-                  stroke={hot ? PAPER.goldDeep : "#4A5378"}
-                  strokeWidth="0.9"
+                  fill={hot ? PAPER.gold : "rgba(251,191,36,0.06)"}
+                  stroke={hot ? "#FFFFFF" : "#F59E0B"}
+                  strokeWidth="1.2"
                   strokeLinejoin="round"
                 />
               </svg>
@@ -1267,11 +1263,15 @@ export function StarTable({
         );
       })()}
 
+      {/* Clockwise flow connector arrows */}
       {phase === "pass" && n >= 2 && (
         <svg className="pointer-events-none absolute inset-0" width={width} height={height} aria-hidden>
           <defs>
             <marker id="star-flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill={PAPER.gold} />
+              <path d="M0,0 L10,5 L0,10 z" fill="#FBBF24" />
+            </marker>
+            <marker id="star-flow-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="rgba(251,191,36,0.3)" />
             </marker>
           </defs>
           {passOrder.map((pid) => {
@@ -1287,18 +1287,18 @@ export function StarTable({
               <line
                 key={pid}
                 x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y}
-                stroke={activeLeg ? PAPER.gold : PAPER.rim}
-                strokeWidth={activeLeg ? 3 : 1.5}
-                strokeDasharray={activeLeg ? undefined : "4 5"}
-                opacity={activeLeg ? 0.9 : 0.35}
-                markerEnd="url(#star-flow-arrow)"
+                stroke={activeLeg ? "#FBBF24" : "rgba(251,191,36,0.25)"}
+                strokeWidth={activeLeg ? 3 : 1.2}
+                strokeDasharray={activeLeg ? undefined : "3 4"}
+                opacity={activeLeg ? 1 : 0.45}
+                markerEnd={activeLeg ? "url(#star-flow-arrow)" : "url(#star-flow-dim)"}
               />
             );
           })}
         </svg>
       )}
 
-      {/* Flying chit — one-shot travel animation on every relay handoff. */}
+      {/* Flying chit travel animation */}
       <AnimatePresence>
         {!reduce && lastPass && lastPassKey && (
           <FlyingChit
@@ -1335,8 +1335,7 @@ export function StarTable({
   );
 }
 
-/** One seat on the StarTable ring: avatar + ring, name, card-count badge,
- *  status line, and the bot "thinking…" bouncing-dots indicator. */
+/** One seat on the StarTable ring: avatar with neon glow, name, count badge, indicator */
 function TableSeat({
   seat,
   active,
@@ -1348,13 +1347,12 @@ function TableSeat({
   active: boolean;
   receiving: boolean;
   thinking: boolean;
-  /** Position in the ring — picks this seat's neon from SEAT_NEON. */
   seatIndex?: number;
 }) {
   const neon = seatNeon(seatIndex);
   const { pub, name, isSelf, isBot, isConnected } = seat;
   const statusText = thinking
-    ? null // BotThinkingDots renders instead of text
+    ? null
     : pub.starEligible
       ? "★ four!"
       : receiving
@@ -1365,29 +1363,21 @@ function TableSeat({
             ? "stacked"
             : null;
   return (
-    <div className="flex w-24 flex-col items-center gap-1 text-center" style={{ opacity: isConnected ? 1 : 0.5 }}>
+    <div className="flex w-24 flex-col items-center gap-0.5 text-center select-none" style={{ opacity: isConnected ? 1 : 0.5 }}>
       <motion.div
         className="relative"
-        animate={active ? { scale: [1, 1.06, 1] } : receiving ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+        animate={active ? { scale: [1, 1.08, 1] } : receiving ? { scale: [1, 1.12, 1] } : { scale: 1 }}
         transition={active || receiving ? { repeat: Infinity, duration: receiving ? 0.6 : 1.1 } : { duration: 0.2 }}
       >
         <div
-          className="flex h-12 w-12 items-center justify-center rounded-full font-display text-base font-black text-white"
-          // Every seat used to be the same terracotta, so a five-player table
-          // was five identical orange discs. Each seat now owns a colour from
-          // SEAT_NEON and wears it as a glowing ring — the reference's main
-          // device for telling players apart at a glance. Gold still overrides
-          // it while a seat is ACTIVE, because whose turn it is has to beat
-          // identity.
+          className="flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-full font-display text-lg font-black text-white"
           style={{
-            background: active
-              ? `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})`
-              : `linear-gradient(160deg, ${neon.ring}, ${neon.slip})`,
+            background: `linear-gradient(145deg, ${neon.from}, ${neon.to})`,
             boxShadow: active
-              ? `0 0 0 4px ${PAPER.gold}55, 0 0 22px ${PAPER.gold}88, inset 0 2px 4px rgba(255,255,255,0.3)`
+              ? `0 0 0 3px ${PAPER.gold}, 0 0 24px ${PAPER.gold}AA, inset 0 2px 4px rgba(255,255,255,0.4)`
               : receiving
-                ? `0 0 0 4px ${PAPER.green}55, 0 0 20px ${PAPER.green}88, inset 0 2px 4px rgba(255,255,255,0.3)`
-                : `0 0 0 3px ${neon.glow}, 0 0 16px ${neon.glow}, inset 0 2px 4px rgba(255,255,255,0.28)`,
+                ? `0 0 0 3px ${PAPER.green}, 0 0 20px ${PAPER.green}AA, inset 0 2px 4px rgba(255,255,255,0.4)`
+                : `0 0 0 2.5px ${neon.ring}AA, 0 0 16px ${neon.glow}, inset 0 2px 4px rgba(255,255,255,0.3)`,
           }}
           aria-hidden
         >
@@ -1395,12 +1385,17 @@ function TableSeat({
         </div>
         <CountBadge count={pub.cardCount} />
       </motion.div>
-      <div className="max-w-full truncate text-xs font-bold" style={{ color: PAPER.ink }}>
-        {name}
-        {isSelf && " (you)"}
-        {isBot && <span className="ml-0.5 text-[9px] opacity-60">bot</span>}
+      <div className="max-w-full truncate text-[12px] font-bold mt-1 text-slate-100 flex items-center justify-center gap-1">
+        <span>{name}</span>
+        {isSelf && <span className="text-[10px] text-zinc-400 font-normal">(you)</span>}
+        {isBot && <span className="text-[9px] text-zinc-400 font-normal">bot</span>}
       </div>
-      <div className="h-3.5 text-[10px]" style={{ color: receiving ? PAPER.olive : active ? PAPER.gold : PAPER.pencil }}>
+      {active && (
+        <span aria-hidden className="text-[10px] leading-none text-amber-400 animate-bounce">
+          ▲
+        </span>
+      )}
+      <div className="h-3 text-[10px]" style={{ color: receiving ? PAPER.green : active ? PAPER.gold : PAPER.pencil }}>
         {thinking ? <BotThinkingDots color={PAPER.pencil} /> : statusText}
       </div>
     </div>
@@ -1604,20 +1599,85 @@ export function DeadlinePill({ deadline }: { deadline: number | null }) {
   );
 }
 
-/** The legend of distinct values in play — taped target chips. */
-export function ValuesLegend({ values, glyph }: { values: string[]; glyph: string }) {
+/** The legend of distinct values in play — chip pills with matching colored dots. */
+export function ValuesLegend({ values, glyph }: { values: string[]; glyph?: string }) {
   if (values.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      {values.map((v) => (
-        <span
-          key={v}
-          className="rounded-full px-2.5 py-1 text-[12px] font-bold"
-          style={{ border: `1.5px solid ${PAPER.rim}`, background: PAPER.paper, color: PAPER.ink, boxShadow: "0 2px 5px -2px rgba(70,41,21,0.25)" }}
-        >
-          {glyph} {v}
-        </span>
-      ))}
+    <div className="flex flex-wrap items-center gap-1.5">
+      {values.map((v) => {
+        const dotColor = getChitDotColor(v);
+        return (
+          <span
+            key={v}
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+            style={{
+              background: "#141C36",
+              border: "1px solid #232F54",
+              color: "#E2E8F0",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+            }}
+          >
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: dotColor, boxShadow: `0 0 6px ${dotColor}AA` }}
+            />
+            <span className="truncate max-w-[120px]">{v}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Nostalgic cartoon illustration of three friends passing paper slips at a table. */
+export function KidsPassingChitsIllustration({ className = "" }: { className?: string }) {
+  return (
+    <div className={`relative w-full flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-t from-[#060917] to-[#101732] pt-2 pb-1 ${className}`}>
+      <svg viewBox="0 0 280 100" className="w-full h-auto max-h-24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Warm wooden table surface */}
+        <ellipse cx="140" cy="92" rx="130" ry="16" fill="#452712" />
+        <ellipse cx="140" cy="89" rx="125" ry="13" fill="#6B4123" stroke="#8F5831" strokeWidth="1.2" />
+        
+        {/* Left Kid (Boy in blue shirt holding paper chit) */}
+        <g>
+          <path d="M52 92 C52 74 62 70 74 70 C86 70 96 74 96 92 Z" fill="#2563EB" />
+          <path d="M68 70 L74 78 L80 70 Z" fill="#1D4ED8" />
+          <ellipse cx="74" cy="52" rx="13" ry="14" fill="#D97706" />
+          <ellipse cx="74" cy="51" rx="12" ry="13" fill="#FBBF24" />
+          <path d="M62 48 C62 35 86 35 86 48 C86 42 80 38 74 38 C68 38 62 42 62 48 Z" fill="#0F172A" />
+          <circle cx="70" cy="50" r="1.5" fill="#0F172A" />
+          <circle cx="78" cy="50" r="1.5" fill="#0F172A" />
+          <path d="M71 57 Q74 61 77 57" stroke="#B45309" strokeWidth="1.2" strokeLinecap="round" />
+          <circle cx="84" cy="80" r="4" fill="#FBBF24" />
+          <rect x="80" y="72" width="10" height="13" rx="1.5" fill="#FFFDF6" stroke="#D97706" strokeWidth="0.8" transform="rotate(-12 85 78)" />
+        </g>
+
+        {/* Center Kid (Girl/Boy in orange shirt smiling and passing chit) */}
+        <g>
+          <path d="M118 92 C118 72 128 68 140 68 C152 68 162 72 162 92 Z" fill="#EA580C" />
+          <ellipse cx="140" cy="50" rx="13" ry="14" fill="#D97706" />
+          <ellipse cx="140" cy="49" rx="12" ry="13" fill="#FBBF24" />
+          <path d="M128 46 C128 33 152 33 152 46 C152 39 146 35 140 35 C134 35 128 39 128 46 Z" fill="#381D0B" />
+          <circle cx="136" cy="48" r="1.5" fill="#0F172A" />
+          <circle cx="144" cy="48" r="1.5" fill="#0F172A" />
+          <path d="M137 55 Q140 59 143 55" stroke="#B45309" strokeWidth="1.2" strokeLinecap="round" />
+          <circle cx="140" cy="78" r="4" fill="#FBBF24" />
+          <rect x="135" y="70" width="10" height="13" rx="1.5" fill="#FFFDF6" stroke="#EA580C" strokeWidth="0.8" />
+        </g>
+
+        {/* Right Kid (Boy in green shirt holding paper chit) */}
+        <g>
+          <path d="M184 92 C184 74 194 70 206 70 C218 70 228 74 228 92 Z" fill="#16A34A" />
+          <ellipse cx="206" cy="52" rx="13" ry="14" fill="#D97706" />
+          <ellipse cx="206" cy="51" rx="12" ry="13" fill="#FBBF24" />
+          <path d="M194 48 C194 35 218 35 218 48 C218 42 212 38 206 38 C200 38 194 42 194 48 Z" fill="#0F172A" />
+          <circle cx="202" cy="50" r="1.5" fill="#0F172A" />
+          <circle cx="210" cy="50" r="1.5" fill="#0F172A" />
+          <path d="M203 57 Q206 61 209 57" stroke="#B45309" strokeWidth="1.2" strokeLinecap="round" />
+          <circle cx="196" cy="80" r="4" fill="#FBBF24" />
+          <rect x="190" y="72" width="10" height="13" rx="1.5" fill="#FFFDF6" stroke="#16A34A" strokeWidth="0.8" transform="rotate(12 195 78)" />
+        </g>
+      </svg>
     </div>
   );
 }

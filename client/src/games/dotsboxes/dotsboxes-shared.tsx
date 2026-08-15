@@ -24,6 +24,8 @@ export const PENS: Pen[] = [
   { name: "Reynolds Blue",  color: "#1e3a8a", softColor: "rgba(30,58,138,0.16)",  shadow: "0 0.5px 1px rgba(30,58,138,0.40)" },
   { name: "Red Marker",     color: "#7f1d1d", softColor: "rgba(127,29,29,0.16)",  shadow: "0 0.5px 1px rgba(127,29,29,0.38)" },
   { name: "Camlin Green",   color: "#14532d", softColor: "rgba(20,83,45,0.16)",   shadow: "0 0.5px 1px rgba(20,83,45,0.38)" },
+  { name: "Royal Purple",   color: "#6b21a8", softColor: "rgba(107,33,168,0.16)", shadow: "0 0.5px 1px rgba(107,33,168,0.38)" },
+  { name: "Amber Orange",   color: "#c2410c", softColor: "rgba(194,65,12,0.16)",  shadow: "0 0.5px 1px rgba(194,65,12,0.38)" },
 ];
 
 export function penFor(idx: number): Pen {

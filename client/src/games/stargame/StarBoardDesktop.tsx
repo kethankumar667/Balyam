@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useStarBoard } from "./useStarBoard";
 import type { StarBoardModel, StarBoardProps } from "./useStarBoard";
 import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/GameTutorial";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { STARGAME_TUTORIAL } from "../tutorials";
+import { getSocket } from "../../lib/socket";
 import {
   Chit,
   DeadlinePill,
@@ -31,38 +33,33 @@ import {
   StarIconButton,
   StarRoomBackdrop,
   GameFlowPanel,
+  KidsPassingChitsIllustration,
+  getChitDotColor,
 } from "./star-shared";
 
 /**
- * StarBoardDesktop — the DEDICATED desktop shell for Star Game (≥1280px, mouse +
- * keyboard). A full-height three-column workspace (left standings/roster/round
- * info · center felt with the circular StarTable · right theme/status) over a
- * persistent bottom hand rail. Native desktop arrangement, not the mobile
- * shell stretched: the StarTable is the shared visual language across both
- * shells, the side rails are reference panels, and the round is fully
- * keyboard-playable.
- *
- * Pure presentation over the frozen `useStarBoard` model — every socket emit,
- * derivation and sound cue lives in the hook. Honours prefers-reduced-motion via
- * the shared kit (which collapses its own motion) and gating our own flourishes.
+ * StarBoardDesktop — Dedicated desktop shell matching the new design screenshot.
+ * Full-height three-column workspace:
+ * - Left column: Game Info (with Copy code), Values in Play chips, Round Details, Tip Card with Kids Illustration
+ * - Center column: Festive Stage heading, Dark Orbit Table with Glowing Avatars, Center Star, Directional pass arrows
+ * - Right column: Theme with secret pick, Now action status with timer, Score Board ranking, Game Flow checklist
+ * - Bottom bar: Hand chits with matching value dots, Pass Action Button with slip count preview, Keyboard hints
  */
 export default function StarBoardDesktop(props: StarBoardProps) {
   const m = useStarBoard(props);
   const reduce = useReducedMotion();
   const tut = useTutorialGate(STARGAME_TUTORIAL.key);
+  const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
 
-  // Self-tick once per second so the live DeadlinePill (which reads Date.now()
-  // at render) actually counts down without any prop change.
+  // Self-tick once per second so the live DeadlinePill counts down
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => (t + 1) % 1_000_000), 1000);
     return () => window.clearInterval(id);
   }, []);
 
-  // Keyboard shortcuts: 1-4 arm the Nth chit (in the player's own on-screen
-  // order — reordering changes what each number means, as expected) while
-  // passing, Enter passes, S slaps the STAR, Space places the hand. We
-  // ignore keystrokes typed into chat / form fields so desktop chat works.
+  // Keyboard shortcuts: 1-4 arm the Nth chit, Enter passes, S slaps star, Space stacks
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
@@ -111,49 +108,59 @@ export default function StarBoardDesktop(props: StarBoardProps) {
     m.placeHand,
   ]);
 
-  // Same ordering the retired Scoreboard used, so merging the two panels
-  // loses no information.
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(props.roomCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleLeaveRoom = () => {
+    const s = getSocket();
+    s.emit("room:leave");
+    navigate("/");
+  };
+
   const rankedSeats = [...m.seats].sort(
     (a, b) => b.pub.score - a.pub.score || b.pub.roundWins - a.pub.roundWins,
   );
   const selectedCount = m.seats.filter((s) => s.pub.hasSelected).length;
   const shuffledCount = m.seats.filter((s) => s.pub.hasShuffled).length;
 
-  /** A seat is "active" in the left roster when it's their shuffle turn, or
-   *  they currently hold four during STAR. StarTable derives its own,
-   *  richer version (incl. the sequential pass turn) internally. */
-  const isActiveSeat = (s: { id: string; pub: { starEligible: boolean } }): boolean => {
-    if (m.phase === "shuffle") return m.state.shuffleTurnId === s.id;
-    if (m.phase === "star") return s.pub.starEligible;
-    return false;
-  };
-
   const showTable = m.phase !== "themeSelect" && m.phase !== "finished";
+  const secretPickDot = m.state.mySelectedValue ? getChitDotColor(m.state.mySelectedValue) : null;
 
   return (
     <div
-      className="relative flex h-full min-h-0 w-full flex-col font-sans"
-      // Text colour flips to paper: the page is now a DESK, so anything not
-      // inside a cream panel would otherwise be dark-brown ink on dark wood.
-      style={{ background: PAGE_BG, color: PAPER.ink }}
+      className="relative flex h-full min-h-0 w-full flex-col font-sans select-none"
+      style={{ background: "#060814", color: "#F8FAFC" }}
     >
       <StarRoomBackdrop />
       <GrainOverlay />
       {(m.iAmWinner || m.phase === "finished") && <Confetti count={34} />}
 
-      {/* ── Title bar: wordmark · round progress · controls ─────────────── */}
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 px-4 pb-1 pt-3">
+      {/* ── Top Header Bar ─────────────────────────────────────────────── */}
+      <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 px-6 py-2.5 border-b border-[#1E294B]/60 bg-[#060814]/80 backdrop-blur-md">
+        {/* Left Wordmark Logo */}
         <StarLogo />
-        <RoundProgress round={m.round} total={m.totalRounds} />
-        {/* `pr-24` keeps this cluster clear of Room's floating Leave button,
-            which is positioned over the board rather than laid out in flow. */}
-        <div className="flex items-center gap-2 pr-24">
+
+        {/* Center: Round Progress + Close Button */}
+        <div className="flex items-center gap-4">
+          <RoundProgress round={m.round} total={m.totalRounds} />
+          <button
+            type="button"
+            onClick={handleLeaveRoom}
+            aria-label="Exit room"
+            className="h-8 w-8 rounded-full bg-[#0D1428] border border-[#1E294B] text-zinc-300 hover:text-white hover:bg-[#1A2342] flex items-center justify-center text-xs font-bold transition shadow-sm"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Right Controls & Leave Button */}
+        <div className="flex items-center gap-2.5">
           <StarIconButton onClick={() => tut.setOpen(true)} label="How to play Star Game">
             ?
           </StarIconButton>
-          {/* Chat / voice / players / invite / reactions. Star Game was the
-              ONLY game in the app without this — no way to talk to the table,
-              and no way to even see the room code to invite anyone. */}
           <InlineRoomRail
             code={props.roomCode}
             game="stargame"
@@ -163,64 +170,80 @@ export default function StarBoardDesktop(props: StarBoardProps) {
             messages={props.messages}
             variant="dark"
           />
+          <button
+            type="button"
+            onClick={handleLeaveRoom}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/40 text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 text-xs font-bold transition shadow-sm"
+          >
+            <span aria-hidden>🚪</span>
+            <span>Leave Room</span>
+          </button>
         </div>
       </header>
 
-      {/* ── Workspace: three columns ───────────────────────────────────── */}
+      {/* ── Workspace: Three Columns ────────────────────────────────────── */}
       <div
-        className="relative z-10 grid min-h-0 flex-1 gap-3 p-3 pt-1"
-        style={{ gridTemplateColumns: "260px 1fr 300px" }}
+        className="relative z-10 grid min-h-0 flex-1 gap-3.5 p-3.5 pt-2"
+        style={{ gridTemplateColumns: "260px 1fr 280px" }}
       >
-        {/* LEFT — standings, roster, round info */}
+        {/* LEFT COLUMN — Game Info, Values in Play, Round Details, Tip Card */}
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
-          {/* GAME INFO, per the reference — and it also removes a duplication
-              I had reintroduced: a left roster listing every player and score
-              sat opposite a SCORE BOARD listing every player and score. The
-              players belong around the TABLE (where their seat colour, slip
-              count and turn state live) and in the score board. Naming them a
-              third time in the rail said nothing new. */}
+          {/* Card 1: GAME INFO */}
           <Panel title="Game info" bodyClass="space-y-2">
-            <InfoRow label="Room code" value={props.roomCode} mono />
-            <InfoRow label="Players" value={`${m.seats.length}`} />
-            <InfoRow label="Rounds" value={`${m.totalRounds}`} />
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">ROOM CODE</span>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="flex items-center gap-1.5 font-display text-sm font-black text-amber-400 hover:text-amber-300 transition"
+              >
+                <span>{props.roomCode}</span>
+                <span className="text-xs opacity-75">{copied ? "✓" : "⧉"}</span>
+              </button>
+            </div>
+            <InfoRow label="PLAYERS" value={`${m.seats.length} / ${m.seats.length}`} />
+            <InfoRow label="ROUNDS" value={`${m.totalRounds}`} />
           </Panel>
 
-          {/* The values in play. This used to render in the middle of the
-              table, where five long theme values (Sridevi / Savitri /
-              Jayaprada …) stacked into a column that completely buried the
-              star. It is reference material, not a live control — the rail is
-              where it belongs. */}
+          {/* Card 2: VALUES IN PLAY */}
           {m.state.valuesInPlay.length > 0 && (
             <Panel title="Values in play">
               <ValuesLegend values={m.state.valuesInPlay} glyph={m.theme.glyph} />
             </Panel>
           )}
 
-          <Panel title="Round">
-            <RoundInfoPanel round={m.round} totalRounds={m.totalRounds} starterId={m.starterId} nameOf={m.nameOf} />
+          {/* Card 3: ROUND DETAILS */}
+          <Panel title="Round details" bodyClass="space-y-2">
+            <InfoRow label="Round" value={`${m.round} / ${m.totalRounds}`} />
+            <InfoRow
+              label="Starter"
+              value={`${m.nameOf(m.starterId ?? "") || "—"}${m.starterId && m.starterId === m.selfId ? " (you)" : ""}`}
+            />
+            <InfoRow label="Direction" value="clockwise ↻" />
           </Panel>
+
+          {/* Card 4: TIP CARD with Vector Kids Illustration */}
+          <div className="rounded-2xl border border-[#1E294B]/90 bg-[#0D1326]/90 p-3.5 space-y-2 shadow-lg">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+              <span aria-hidden>💡</span>
+              <span>Pass smart, win more!</span>
+            </div>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              Quick passes and remembering values can help you score big.
+            </p>
+            <KidsPassingChitsIllustration />
+          </div>
         </aside>
 
-        {/* CENTER — the felt, with the circular table as its centerpiece */}
+        {/* CENTER COLUMN — Main Felt Arena with Circular Orbit Table */}
         <main
-          // `self-center` + `max-h-full` makes the sheet SHRINK-WRAP its
-          // content instead of stretching to fill the grid row. A real sheet of
-          // paper is the size of the sheet; stretching it left the chits
-          // marooned in the middle of a vast empty page.
-          className="relative flex min-h-0 max-h-full self-center flex-col overflow-y-auto rounded-3xl border-2 p-6"
-          // The big sheet in the middle of the desk — where the round happens.
-          // Lifted hardest of all the surfaces so the eye lands here first.
+          className="relative flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-3xl border border-[#1E294B]/90 p-6 shadow-2xl"
           style={{
-            borderColor: PAPER.rim,
-            background: `radial-gradient(circle at 50% 0%, ${PAPER.paper}, ${PAPER.cream} 70%, ${PAPER.page})`,
-            color: PAPER.ink,
-            boxShadow:
-              "0 24px 48px -16px rgba(0,0,0,0.6), inset 0 2px 16px rgba(109,67,35,0.08), 0 2px 0 rgba(255,255,255,0.55) inset",
+            background: "radial-gradient(ellipse at 50% 30%, #101633 0%, #090E22 65%, #050814 100%)",
           }}
           aria-live="polite"
         >
-          <GrainOverlay vignette={false} />
-          <div className="m-auto flex w-full max-w-3xl flex-col items-center gap-5">
+          <div className="w-full flex flex-col items-center gap-4">
             <StageHeading phase={m.phase} />
             {showTable && (
               <StarTable
@@ -237,8 +260,8 @@ export default function StarBoardDesktop(props: StarBoardProps) {
                 iCanStack={m.iCanStack}
                 onPressStar={m.pressStar}
                 onPlaceHand={m.placeHand}
-                width={480}
-                height={360}
+                width={520}
+                height={370}
               >
                 <CenterContent m={m} reduce={!!reduce} selectedCount={selectedCount} shuffledCount={shuffledCount} />
               </StarTable>
@@ -249,115 +272,112 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           </div>
         </main>
 
-        {/* RIGHT — theme + live status. Activity ledger removed (UI only —
-            server still tracks it in state.activity for any future use). */}
+        {/* RIGHT COLUMN — Theme, Now status, Scoreboard, Game Flow */}
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto pl-0.5">
+          {/* Card 1: THEME */}
           <Panel title="Theme">
             <div className="flex items-center gap-3">
               <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 text-2xl"
-                style={{ borderColor: PAPER.rim, background: PAPER.page }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#2A3764] text-2xl bg-[#090E22] shadow-inner"
                 aria-hidden
               >
                 {m.theme.glyph}
               </div>
-              <div className="min-w-0">
-                <div className="font-display text-lg font-black leading-tight" style={{ color: PAPER.brown }}>
+              <div className="min-w-0 flex-1">
+                <div className="font-display text-base font-black text-amber-400 leading-tight">
                   {m.theme.label}
                 </div>
-                <div className="text-xs" style={{ color: PAPER.pencil }}>
-                  Your secret pick:{" "}
-                  <span className="font-script text-base font-bold" style={{ color: PAPER.ink }}>
-                    {m.state.mySelectedValue ?? "hidden"}
+                <div className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1.5">
+                  <span>Your secret pick:</span>
+                  {secretPickDot && (
+                    <span
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{ background: secretPickDot, boxShadow: `0 0 5px ${secretPickDot}` }}
+                    />
+                  )}
+                  <span className="font-script text-sm font-bold text-slate-100 italic truncate">
+                    {m.state.mySelectedValue ?? "None"}
                   </span>
                 </div>
               </div>
             </div>
           </Panel>
 
+          {/* Card 2: NOW */}
           <Panel title="Now">
             <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 text-sm font-bold" style={{ color: PAPER.ink }}>
+              <span className="flex items-center gap-2 text-xs font-bold text-slate-100">
                 {statusLine(m)}
                 {m.isBotThinking && <BotThinkingDots />}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <TutorialButton onClick={() => tut.setOpen(true)} label="How to play Star Game" />
                 <DeadlinePill deadline={m.deadline} />
               </div>
             </div>
           </Panel>
 
-          {/* SCORE BOARD — running totals, ranked. Distinct from the left
-              rail's roster, which is about who is at the table and what they
-              are doing right now; this is purely who is winning. */}
+          {/* Card 3: SCORE BOARD */}
           <Panel title="Score board" bodyClass="space-y-1">
             {rankedSeats.map((s, i) => (
               <div
                 key={s.id}
-                className="flex items-center gap-2 rounded-lg px-1.5 py-1"
-                style={{ background: i === 0 ? `${PAPER.gold}14` : undefined }}
+                className="flex items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 transition"
+                style={{ background: i === 0 ? "rgba(251,191,36,0.12)" : "transparent" }}
               >
-                <span
-                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-black tabular-nums"
-                  style={{
-                    background: i === 0 ? PAPER.gold : "#2A3358",
-                    color: i === 0 ? "#2A2115" : PAPER.pencil,
-                  }}
-                >
-                  {i + 1}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[12px] font-bold" style={{ color: PAPER.ink }}>
-                  {s.name}
-                  {s.isSelf && <span className="ml-1 text-[10px]" style={{ color: PAPER.pencil }}>you</span>}
-                </span>
-                <span className="shrink-0 font-display text-[13px] font-black tabular-nums" style={{ color: PAPER.gold }}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-black tabular-nums"
+                    style={{
+                      background: i === 0 ? "#FBBF24" : "#1E294B",
+                      color: i === 0 ? "#1C1917" : "#94A3B8",
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="truncate text-xs font-bold text-zinc-200">
+                    {s.name}
+                    {s.isSelf && <span className="ml-1 text-[10px] font-normal text-zinc-400">(you)</span>}
+                  </span>
+                </div>
+                <span className="shrink-0 font-display text-sm font-black tabular-nums text-amber-400">
                   {s.pub.score}
                 </span>
               </div>
             ))}
           </Panel>
 
-          {/* ROUND RESULT — only once there IS one. An empty "last round"
-              panel in round 1 is a hole, not information. */}
+          {/* Card 4: ROUND RESULT (if completed) */}
           {m.state.lastResult && (
             <Panel title={`Round ${m.state.lastResult.round} result`}>
               <RoundSummaryTable result={m.state.lastResult} seats={m.seats} nameOf={m.nameOf} />
             </Panel>
           )}
 
+          {/* Card 5: GAME FLOW */}
           <Panel title="Game flow">
             <GameFlowPanel phase={m.phase} />
           </Panel>
         </aside>
       </div>
 
-      {/* ── Persistent bottom hand rail ────────────────────────────────── */}
-      <div
-        className="relative z-10 flex shrink-0 items-center gap-4 border-t-2 px-4 py-3"
-        // Your own hand — the strip of paper nearest you on the desk.
-        style={{
-          borderColor: PAPER.rim,
-          background: PAPER.cream,
-          color: PAPER.ink,
-          boxShadow: "0 -12px 26px -14px rgba(0,0,0,0.6)",
-        }}
+      {/* ── Persistent Bottom Hand Area ─────────────────────────────────── */}
+      <footer
+        className="relative z-20 flex shrink-0 items-center justify-between gap-6 border-t border-[#1E294B]/90 px-6 py-3.5 bg-[#0A0F24]/95 shadow-[0_-12px_28px_rgba(0,0,0,0.6)]"
       >
-        {/* "SELECT A SLIP TO PASS" — the rail is only an instruction while it
-            is actually your turn; the rest of the time it is just your hand. */}
-        {m.phase === "pass" && m.iNeedToPass && m.myHand.length > 0 && (
-          <div className="flex shrink-0 items-center gap-2 pr-1">
-            <span
-              className="max-w-[6.5rem] font-display text-[11px] font-black uppercase leading-tight tracking-[0.14em]"
-              style={{ color: PAPER.pencil }}
-            >
-              Select a slip to pass
-            </span>
-            <span aria-hidden style={{ color: PAPER.gold }}>→</span>
+        {/* Left: YOUR HAND title + Curved Arrow */}
+        <div className="flex shrink-0 flex-col items-start gap-0.5">
+          <span className="font-display text-xs font-black uppercase tracking-wider text-amber-400">
+            YOUR HAND
+          </span>
+          <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+            <span>Select a chit to pass</span>
+            <span aria-hidden className="text-amber-400 text-sm">⤷</span>
           </div>
-        )}
+        </div>
 
-        <div className="min-w-0 flex-1">
+        {/* Center: Hand Chits Rail */}
+        <div className="min-w-0 flex-1 flex justify-center">
           {m.myHand.length > 0 ? (
             <DraggableChitRail
               hand={m.myHand}
@@ -369,13 +389,14 @@ export default function StarBoardDesktop(props: StarBoardProps) {
               size="lg"
             />
           ) : (
-            <p className="px-2 text-sm italic" style={{ color: PAPER.pencil }}>
+            <p className="px-2 text-sm italic text-zinc-500">
               No chits in hand yet.
             </p>
           )}
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        {/* Right: Pass Button + Shortcuts Hint */}
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
           {m.phase === "pass" && (
             <PassToButton
               onPass={m.pass}
@@ -395,7 +416,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           )}
           <ShortcutsHint />
         </div>
-      </div>
+      </footer>
 
       {tut.open && (
         <GameTutorial
@@ -412,27 +433,33 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 /* ─────────────────────────── Center stage ─────────────────────────── */
 
 function StageHeading({ phase }: { phase: StarBoardModel["phase"] }) {
-  const TEXT: Record<StarBoardModel["phase"], string> = {
-    themeSelect: "Pick your secret value",
-    shuffle: "Shuffle time",
-    deal: "Dealing four chits each…",
-    pass: "Pass it on!",
-    star: "Someone got four — slap the STAR!",
-    handstack: "Stack your hand — fast!",
-    roundSummary: "Round over",
-    finished: "Game over",
+  const HEADINGS: Record<StarBoardModel["phase"], { title: string; subtitle: string }> = {
+    themeSelect: { title: "Pick a secret value!", subtitle: "Select one value to lock it secretly. Nobody sees your choice." },
+    shuffle: { title: "Shuffle time!", subtitle: "The starter mixes the chits for this round." },
+    deal: { title: "Four chits each!", subtitle: "Dealing folded paper slips to all players…" },
+    pass: { title: "Pass it on!", subtitle: "Arm & pass a chit to the next player in clockwise order." },
+    star: { title: "★ Four same → tap STAR! ★", subtitle: "Slap the STAR the instant you hold four of a kind!" },
+    handstack: { title: "Hands on the line!", subtitle: "Stack your hand down fast — arrival order decides points." },
+    roundSummary: { title: "Round complete!", subtitle: "Review scores and prepare for the next lap." },
+    finished: { title: "Game Over!", subtitle: "Final standings and house champions." },
   };
+  const { title, subtitle } = HEADINGS[phase] ?? { title: "Star Game", subtitle: "" };
   return (
-    <h2 className="text-center font-display text-2xl font-black" style={{ color: PAPER.brown }}>
-      {TEXT[phase]}
-    </h2>
+    <div className="text-center space-y-1 select-none">
+      <div className="flex items-center justify-center gap-2">
+        <span className="text-xl" aria-hidden>🎉</span>
+        <h2 className="font-display text-2xl lg:text-3xl font-black text-amber-400 drop-shadow-[0_2px_12px_rgba(251,191,36,0.35)]">
+          {title}
+        </h2>
+        <span className="text-xl" aria-hidden>🎊</span>
+      </div>
+      <p className="text-xs text-zinc-400 max-w-md mx-auto">
+        {subtitle}
+      </p>
+    </div>
   );
 }
 
-/** Phase-specific content — rendered either inside the StarTable's center
- *  slot (shuffle/pass/star/handstack, so it sits amid the seat ring) or
- *  standalone above it (themeSelect/deal have no table yet; roundSummary/
- *  finished don't need one). */
 function CenterContent({
   m,
   reduce,
@@ -450,7 +477,7 @@ function CenterContent({
         <div className="space-y-5 text-center">
           {m.iNeedToSelect ? (
             <>
-              <p className="text-sm" style={{ color: PAPER.pencil }}>
+              <p className="text-sm text-zinc-400">
                 {m.state.themeId === "custom"
                   ? "Write your own chit name. Nobody sees your choice."
                   : "Tap one chit to lock it. Nobody sees your choice."}
@@ -474,15 +501,14 @@ function CenterContent({
           ) : (
             <div className="space-y-3">
               <div
-                className="mx-auto flex w-fit items-center gap-2 rounded-xl border-2 px-4 py-3"
-                style={{ borderColor: PAPER.gold, background: PAPER.page }}
+                className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-amber-400/60 px-5 py-3 bg-[#0D1428] shadow-lg"
               >
                 <span aria-hidden className="text-xl">🔒</span>
-                <span className="font-script text-2xl font-bold" style={{ color: PAPER.ink }}>
+                <span className="font-script text-2xl font-bold text-amber-300">
                   Locked: {m.state.mySelectedValue}
                 </span>
               </div>
-              <p className="text-sm" style={{ color: PAPER.pencil }}>
+              <p className="text-sm text-zinc-400">
                 Waiting for others… {selectedCount}/{m.seats.length} locked in
               </p>
             </div>
@@ -499,23 +525,22 @@ function CenterContent({
               type="button"
               onClick={m.shuffle}
               aria-label="Give the chits a shuffle"
-              className="mx-auto flex flex-col items-center gap-2 rounded-3xl border-4 px-10 py-6 font-display text-xl font-black uppercase tracking-wide transition active:scale-95"
-              style={{ borderColor: PAPER.brown, background: PAPER.gold, color: PAPER.ink }}
+              className="mx-auto flex flex-col items-center gap-2 rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-yellow-500 px-10 py-5 font-display text-xl font-black uppercase tracking-wide text-zinc-900 shadow-[0_0_24px_rgba(251,191,36,0.6)] transition active:scale-95 hover:brightness-110"
             >
-              <span aria-hidden className="text-4xl">🔀</span>
+              <span aria-hidden className="text-3xl">🔀</span>
               Give them a shuffle!
             </button>
           ) : m.isBotThinking ? (
-            <p className="flex items-center justify-center gap-2 font-script text-2xl font-bold" style={{ color: PAPER.brown }}>
+            <p className="flex items-center justify-center gap-2 font-script text-2xl font-bold text-amber-300">
               {m.nameOf(m.state.shuffleTurnId ?? "")} is thinking
               <BotThinkingDots />
             </p>
           ) : (
-            <p className="font-script text-2xl font-bold" style={{ color: PAPER.brown }}>
+            <p className="font-script text-2xl font-bold text-amber-300">
               {m.nameOf(m.state.shuffleTurnId ?? "")} is shuffling…
             </p>
           )}
-          <p className="text-sm" style={{ color: PAPER.pencil }}>
+          <p className="text-xs text-zinc-400">
             One shuffle locks the deck for round {m.round} — then dealing starts.
           </p>
         </div>
@@ -539,21 +564,14 @@ function CenterContent({
 
     case "pass":
       return (
-        // NOTHING sits in the middle of the table on your own turn any more.
-        // The action moved to the bottom rail (hand + "Pass to <name>"), and
-        // leaving the old big PASS button here put a slab over the star and
-        // over your own seat — two copies of one action, the louder of which
-        // covered the thing the game is named after. The table shows the
-        // TABLE; the rail shows what you do.
-        <div className="flex w-44 flex-col items-center gap-3 text-center">
-          {/* Legend lives in the left rail now — nothing sits on the star. */}
+        <div className="flex w-44 flex-col items-center gap-2 text-center">
           {m.iNeedToPass ? null : m.isBotThinking ? (
-            <p className="flex items-center justify-center gap-2 font-script text-xl font-bold" style={{ color: PAPER.pencil }}>
+            <p className="flex items-center justify-center gap-2 font-script text-lg font-bold text-zinc-400">
               {m.nameOf(m.currentPasserId ?? "")} is thinking
               <BotThinkingDots />
             </p>
           ) : (
-            <p className="font-script text-xl font-bold" style={{ color: PAPER.pencil }}>
+            <p className="font-script text-lg font-bold text-zinc-400">
               Waiting for {m.nameOf(m.currentPasserId ?? "")}
             </p>
           )}
@@ -571,11 +589,11 @@ function CenterContent({
           transition={{ type: "spring", stiffness: 260, damping: 16 }}
           className="space-y-2 text-center"
         >
-          <div className="text-7xl" aria-hidden>★</div>
-          <h3 className="font-display text-2xl font-black" style={{ color: PAPER.brown }}>
+          <div className="text-7xl text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.8)]" aria-hidden>★</div>
+          <h3 className="font-display text-2xl font-black text-amber-300">
             You slapped the STAR!
           </h3>
-          <p className="text-sm" style={{ color: PAPER.pencil }}>
+          <p className="text-xs text-zinc-400">
             Everyone else is racing to stack their hand…
           </p>
         </motion.div>
@@ -602,8 +620,7 @@ function CenterContent({
               type="button"
               onClick={m.nextRound}
               aria-label="Start the next round"
-              className="rounded-2xl border-4 px-8 py-3 font-display text-lg font-black uppercase tracking-wide transition active:scale-95"
-              style={{ borderColor: PAPER.brown, background: PAPER.gold, color: PAPER.ink }}
+              className="rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-yellow-500 px-8 py-3 font-display text-lg font-black uppercase tracking-wide text-zinc-900 shadow-lg transition active:scale-95 hover:brightness-110"
             >
               Next round →
             </button>
@@ -638,37 +655,21 @@ function Panel({
 }) {
   return (
     <section
-      className={`rounded-2xl border-2 ${className}`}
-      // Sheets of paper resting ON the desk: ink text, and a cast shadow so
-      // they lift off the wood instead of being flush with it.
-      style={{
-        borderColor: PAPER.rim,
-        background: PAPER.cream,
-        color: PAPER.ink,
-        boxShadow: "0 10px 22px -8px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.5) inset",
-      }}
+      className={`rounded-2xl border border-[#1E294B]/90 bg-[#0D1326]/90 shadow-lg ${className}`}
     >
       {title && (
         <h2
-          className="border-b-2 px-3 py-2 font-display text-xs font-black uppercase tracking-wider"
-          style={{ borderColor: PAPER.rim, color: PAPER.brown }}
+          className="border-b border-[#1E294B]/80 px-3.5 py-2 font-display text-[11px] font-black uppercase tracking-wider text-amber-400"
         >
           {title}
         </h2>
       )}
-      <div className={`p-3 ${bodyClass}`}>{children}</div>
+      <div className={`p-3.5 ${bodyClass}`}>{children}</div>
     </section>
   );
 }
 
-/**
- * The pass action, named and consequential.
- *
- * "Pass ⟳" told you nothing: not who receives it, and not what it costs you.
- * Both facts are already in the model, and stating them turns a blind button
- * into a decision — you can see you are about to drop to 3 while handing the
- * next player a 5th slip, which is exactly the tension the game runs on.
- */
+/** The prominent Pass button matching the screenshot with purple/indigo aura. */
 function PassToButton({
   onPass,
   disabled,
@@ -682,6 +683,7 @@ function PassToButton({
   myCount: number;
   theirCount: number;
 }) {
+  const target = toName?.toUpperCase() ?? "PASS";
   return (
     <div className="flex flex-col items-end gap-1">
       <button
@@ -689,73 +691,29 @@ function PassToButton({
         onClick={onPass}
         disabled={disabled}
         aria-label={toName ? `Pass your selected slip to ${toName}` : "Pass your selected slip"}
-        className="flex items-center gap-2 rounded-2xl border-2 px-6 py-3 font-display text-base font-black uppercase tracking-wide transition active:scale-95 disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
+        className="flex items-center justify-center gap-2.5 rounded-2xl px-7 py-3 font-display text-base font-black uppercase tracking-wider text-white transition active:scale-95 disabled:active:scale-100 disabled:opacity-50"
         style={{
           background: disabled
-            ? PAPER.kraft
-            : `linear-gradient(160deg, #4C7DF0, #2B4FB8)`,
-          borderColor: disabled ? PAPER.rim : "#7BA3FF",
-          color: disabled ? PAPER.pencil : "#FFFFFF",
-          boxShadow: disabled ? undefined : "0 10px 24px -10px rgba(76,125,240,0.9), 0 0 18px rgba(76,125,240,0.35)",
-          opacity: disabled ? 0.65 : 1,
+            ? "#2A3358"
+            : "linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #4338CA 100%)",
+          border: disabled ? "1px solid #1E294B" : "1px solid rgba(165,180,252,0.5)",
+          boxShadow: disabled
+            ? undefined
+            : "0 0 24px rgba(99,102,241,0.6), inset 0 1px 0 rgba(255,255,255,0.3)",
         }}
       >
-        <span className="leading-tight">
-          {toName ? (
-            <>
-              Pass to
-              <br />
-              {toName}
-            </>
-          ) : (
-            "Pass"
-          )}
-        </span>
-        <span aria-hidden>→</span>
+        <span>{toName ? `PASS TO ${target}` : "PASS"}</span>
+        <span aria-hidden className="text-lg">→</span>
       </button>
       {!disabled && toName && (
-        <p className="text-right text-[10px] leading-snug" style={{ color: PAPER.pencil }}>
+        <p className="text-right text-[11px] text-zinc-400 font-medium">
           You will have {Math.max(0, myCount - 1)} slips
-          <br />
-          {toName} will have {theirCount + 1} slips
         </p>
       )}
     </div>
   );
 }
 
-function PassButton({
-  onPass,
-  disabled,
-  big = false,
-}: {
-  onPass: () => void;
-  disabled: boolean;
-  big?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPass}
-      disabled={disabled}
-      aria-label="Pass your armed chit"
-      className={[
-        "rounded-2xl border-4 font-display font-black uppercase tracking-wide transition active:scale-95 disabled:active:scale-100",
-        big ? "px-10 py-5 text-2xl" : "px-6 py-3 text-base",
-      ].join(" ")}
-      style={{
-        background: disabled ? "#DCCDB0" : PAPER.gold,
-        borderColor: PAPER.brown,
-        color: PAPER.ink,
-        opacity: disabled ? 0.5 : 1,
-      }}
-    >
-      Pass <span aria-hidden>⟳</span>
-    </button>
-  );
-}
-
-/** Compact stack affordance for the bottom rail (the felt holds the big one). */
 function HandStackButtonCompact({
   onPlace,
   disabled,
@@ -773,15 +731,14 @@ function HandStackButtonCompact({
       onClick={onPlace}
       disabled={disabled || placed}
       aria-label="Place your hand"
-      className="rounded-2xl border-4 px-6 py-3 font-display text-base font-black uppercase tracking-wide transition active:scale-95 disabled:active:scale-100"
+      className="rounded-2xl border border-amber-400 px-6 py-3 font-display text-base font-black uppercase tracking-wide transition active:scale-95 disabled:active:scale-100 shadow-md"
       style={{
-        background: placed ? PAPER.green : PAPER.gold,
-        borderColor: PAPER.brown,
-        color: placed ? "#fff" : PAPER.ink,
+        background: placed ? "#10B981" : "#F59E0B",
+        color: placed ? "#FFFFFF" : "#1C1917",
         opacity: disabled && !placed ? 0.5 : 1,
       }}
     >
-      <span aria-hidden className="mr-1">✋</span>
+      <span aria-hidden className="mr-1.5">✋</span>
       {placed ? `Placed${rank != null ? ` · #${rank + 1}` : ""}` : "Place hand"}
     </button>
   );
@@ -789,25 +746,12 @@ function HandStackButtonCompact({
 
 function ShortcutsHint() {
   return (
-    <p className="text-[10px]" style={{ color: PAPER.pencil }}>
-      <Kbd>1</Kbd>–<Kbd>4</Kbd> arm · <Kbd>↵</Kbd> pass · <Kbd>S</Kbd> star ·{" "}
-      <Kbd>Space</Kbd> stack
+    <p className="text-[11px] text-zinc-400 flex items-center gap-1.5">
+      <span className="font-semibold text-slate-200">1 - 4</span> arm  •  <span className="font-semibold text-slate-200">↵</span> pass  •  <span className="text-amber-400 font-bold">★</span> STAR  •  <span className="font-semibold text-slate-200">␣</span> score
     </p>
   );
 }
 
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd
-      className="rounded border px-1 font-mono text-[10px]"
-      style={{ borderColor: PAPER.rim, background: PAPER.page, color: PAPER.ink }}
-    >
-      {children}
-    </kbd>
-  );
-}
-
-/** Right-rail "Now" line — short human status for the current phase / turn. */
 function statusLine(m: StarBoardModel): string {
   switch (m.phase) {
     case "themeSelect":
@@ -833,17 +777,13 @@ function statusLine(m: StarBoardModel): string {
   }
 }
 
-/** One label/value line in the GAME INFO panel. */
-function InfoRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[11px] uppercase tracking-wider" style={{ color: PAPER.pencil }}>
+    <div className="flex items-baseline justify-between gap-2 text-xs">
+      <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
         {label}
       </span>
-      <span
-        className={`font-display text-sm font-black ${mono ? "tracking-[0.18em]" : "tabular-nums"}`}
-        style={{ color: mono ? PAPER.gold : PAPER.ink }}
-      >
+      <span className="font-display text-sm font-black text-slate-200 tabular-nums">
         {value}
       </span>
     </div>

@@ -77,6 +77,35 @@ export default function SpaceWarBoardDesktop({
    */
   const canvasRef = useSpaceWarCanvas(state, "horizontal", input.held);
 
+  // Level Completion Banner state
+  const [levelClearBanner, setLevelClearBanner] = React.useState<{ cleared: number; next: number } | null>(null);
+  const prevLevelRef = useRef(state.level);
+
+  useEffect(() => {
+    if (state.level > prevLevelRef.current) {
+      setLevelClearBanner({ cleared: prevLevelRef.current, next: state.level });
+      win();
+      const timer = window.setTimeout(() => setLevelClearBanner(null), 3500);
+      prevLevelRef.current = state.level;
+      return () => window.clearTimeout(timer);
+    }
+    prevLevelRef.current = state.level;
+  }, [state.level, win]);
+
+  const boss = state.enemies.find((e) => e.type === "boss");
+  const bossHp = state.bossHp ?? (boss ? boss.hp : null);
+  const bossMaxHp = state.bossMaxHp ?? (boss ? boss.maxHp : null);
+  const isBossFighting = bossHp !== null && bossMaxHp !== null && bossHp > 0;
+
+  const bossPct = isBossFighting ? Math.max(0, Math.min(100, (bossHp / bossMaxHp) * 100)) : 0;
+  const bossName = state.level <= 2
+    ? "CYBER GOLIATH DREADNOUGHT"
+    : state.level <= 4
+    ? "VOID LEVIATHAN SERPENT"
+    : state.level <= 6
+    ? "NEO-KRAKEN BIO-TITAN"
+    : "APOCALYPSE HARBINGER TITAN";
+
   return (
     <div className="flex flex-col lg:flex-row items-start justify-center gap-6 w-full max-w-[1280px] mx-auto p-4 select-none">
       {/* Left Main Play Area */}
@@ -123,6 +152,45 @@ export default function SpaceWarBoardDesktop({
 
         {/* 840x480 Game Canvas Viewport */}
         <div className="relative w-full aspect-[840/480] bg-black border-x-2 border-b-2 border-[#1f2952] rounded-b-2xl overflow-hidden shadow-2xl">
+          {/* Dynamic Boss Monster Health Bar Top Overlay */}
+          {isBossFighting && (
+            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-[90%] max-w-[560px] bg-[#0c0517]/95 border-2 border-red-500 rounded-xl px-4 py-2 shadow-[0_0_24px_rgba(255,0,85,0.6)] z-20 flex flex-col gap-1 backdrop-blur-md animate-pulse">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-extrabold text-amber-400 flex items-center gap-1.5">
+                  <span className="text-red-500 animate-bounce">⚠️</span>
+                  <span>BOSS: {bossName}</span>
+                </span>
+                <span className="font-black text-rose-400">
+                  {bossHp} / {bossMaxHp} ({Math.round(bossPct)}%)
+                </span>
+              </div>
+              <div className="w-full h-3 bg-red-950/80 rounded-full overflow-hidden border border-red-500/50 p-0.5">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 transition-all duration-150 shadow-[0_0_12px_#ff0055]"
+                  style={{ width: `${bossPct}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Level Complete Celebration Overlay */}
+          {levelClearBanner && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/75 backdrop-blur-sm z-30 animate-in fade-in zoom-in duration-300">
+              <div className="bg-gradient-to-b from-[#111936] to-[#0a0f24] border-2 border-amber-400 rounded-3xl p-6 text-center shadow-[0_0_36px_rgba(251,191,36,0.5)] max-w-md mx-4">
+                <div className="text-3xl mb-1">⭐ 🏆 ⭐</div>
+                <h2 className="text-2xl sm:text-3xl font-black text-amber-300 tracking-wide font-display">
+                  LEVEL {levelClearBanner.cleared} CLEARED!
+                </h2>
+                <p className="text-sm font-mono text-[#00f0ff] mt-2 font-bold">
+                  WARPING TO LEVEL {levelClearBanner.next}...
+                </p>
+                <div className="mt-3.5 inline-block px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-mono font-bold text-xs">
+                  BONUS: +{levelClearBanner.cleared * 500} POINTS
+                </div>
+              </div>
+            </div>
+          )}
+
           <canvas
             ref={canvasRef}
             width={840}

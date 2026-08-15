@@ -56,7 +56,7 @@ interface InternalState {
 export class DotsBoxesEngine implements GameEngine {
   readonly kind = "dotsboxes" as const;
   readonly minPlayers = 2;
-  readonly maxPlayers = 4;
+  readonly maxPlayers = 6;
 
   private s!: InternalState;
   private pendingOptions: DotsBoxesOptions = { ...DEFAULT_DOTSBOXES_OPTIONS };

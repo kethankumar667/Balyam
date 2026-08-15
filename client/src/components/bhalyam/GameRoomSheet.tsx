@@ -730,7 +730,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 maxExtraSeats={
                   game === "ludo"
                     ? 3
-                    : game === "wordbuilding" || game === "dotsboxes"
+                    : game === "dotsboxes"
+                    ? 5
+                    : game === "wordbuilding"
                     ? 3
                     : 9
                 }

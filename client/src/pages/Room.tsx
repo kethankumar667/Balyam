@@ -63,7 +63,7 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   handcricket: 2,
   uno: 8,
   wordbuilding: 4,
-  dotsboxes: 4,
+  dotsboxes: 6,
   stargame: 8,
   bingo: 8,
   namesplaceanimal: 8,

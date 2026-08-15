@@ -70,7 +70,7 @@ interface React {
  */
 export class StarGameEngine implements GameEngine {
   readonly kind = "stargame" as const;
-  readonly minPlayers = 3;
+  readonly minPlayers = 2;
   readonly maxPlayers = 8;
 
   private opts: StarGameOptions = { ...DEFAULT_STARGAME_OPTIONS };
