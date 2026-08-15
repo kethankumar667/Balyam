@@ -331,16 +331,16 @@ function Hero({
             <span className={isDark ? "text-[#10B981]" : "text-[#15803D]"}>childhood?</span>
           </h1>
 
-          {/* Description */}
+          {/* Description (Hidden on mobile screens only) */}
           <p
-            className={`text-[14px] sm:text-[15.5px] font-semibold max-w-sm sm:max-w-md mt-3 leading-snug ${
+            className={`hidden sm:block text-[14px] sm:text-[15.5px] font-semibold max-w-sm sm:max-w-md mt-3 leading-snug ${
               isDark ? "text-slate-300" : "text-[#3B332A]"
             }`}
           >
             Pick a game, send the room code to your school WhatsApp group, and play instantly.
           </p>
           <p
-            className={`font-script italic text-[17px] sm:text-[20px] mt-1 ${
+            className={`hidden sm:block font-script italic text-[17px] sm:text-[20px] mt-1 ${
               isDark ? "text-amber-300" : "text-[#7B2F0E]"
             }`}
           >
@@ -600,10 +600,10 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
         )}
       </AnimatePresence>
 
-      <header className={`sticky top-0 z-40 w-full backdrop-blur-md border-b transition-colors shadow-xs ${
+      <header className={`w-full border-b transition-colors ${
         isDark
-          ? "bg-[#070B14]/90 border-white/10"
-          : "bg-[#FAF3E0]/90 border-[#ECD9BA]/70"
+          ? "bg-[#070B14] border-white/10"
+          : "bg-[#FAF3E0] border-[#ECD9BA]/70"
       }`}>
         <div className="mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-4">
           {/* Left: Brand Logo & Title */}
@@ -1718,6 +1718,9 @@ function PlayerJourneyDashboard({
   onSelect: (slug: BhalyamGameSlug) => void;
   onOpenJoin: () => void;
 }) {
+  const [theme] = useTheme();
+  const isDark = theme === "dark";
+
   const handleShareWhatsAppReferral = () => {
     const text = encodeURIComponent(
       "🎮 Hey gang! Come join my room on BHALYAM to unlock our nostalgic 90s childhood games together: " + window.location.origin
@@ -1729,10 +1732,14 @@ function PlayerJourneyDashboard({
     <RevealOnScroll as="section" amount={0.1} className="mt-6 mb-8">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
-          <h2 className="bhalyam-display text-[22px] sm:text-[28px] text-[#1D2C4A] leading-tight">
+          <h2 className={`bhalyam-display text-[22px] sm:text-[28px] leading-tight ${
+            isDark ? "text-white" : "text-[#1D2C4A]"
+          }`}>
             Continue Your Journey &amp; Daily Quests
           </h2>
-          <p className="text-[13px] sm:text-[14px] text-[#6D5C4D] font-medium">
+          <p className={`text-[13px] sm:text-[14px] font-medium ${
+            isDark ? "text-slate-400" : "text-[#6D5C4D]"
+          }`}>
             Earn XP, unlock nostalgic avatars, and climb the school leaderboard
           </p>
         </div>
@@ -1741,19 +1748,29 @@ function PlayerJourneyDashboard({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch">
         
         {/* Card 1: Continue Your Journey */}
-        <article className="rounded-3xl border border-[#E8D9C1] bg-[#FCF8EF] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+        <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
+          isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D9C1]"
+        }`}>
           <div>
             <div className="flex items-center justify-between gap-2 mb-3">
-              <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+              <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border ${
+                isDark
+                  ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
+                  : "bg-amber-100 text-amber-900 border-amber-300"
+              }`}>
                 ▶ Jump Back In
               </span>
-              <span className="text-[12px] font-semibold text-[#8C7A6B]">
+              <span className={`text-[12px] font-semibold ${
+                isDark ? "text-slate-400" : "text-[#8C7A6B]"
+              }`}>
                 Last played 2 hours ago
               </span>
             </div>
 
-            <div className="flex items-center gap-3.5 my-3 p-3 rounded-2xl bg-[#F5ECE0] border border-[#E6D4B8]">
-              <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-200 border-2 border-amber-400 p-1 flex-shrink-0 flex items-center justify-center">
+            <div className={`flex items-center gap-3.5 my-3 p-3 rounded-2xl border ${
+              isDark ? "bg-white/5 border-white/10" : "bg-[#F5ECE0] border-[#E6D4B8]"
+            }`}>
+              <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-200 border-2 border-amber-400 p-1 flex-shrink-0 flex items-center justify-center shadow-inner">
                 <img
                   src="/HandCricketTile.png"
                   alt="Hand Cricket"
@@ -1761,20 +1778,28 @@ function PlayerJourneyDashboard({
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="font-display font-black text-[20px] text-[#1D2C4A] leading-tight truncate">
+                <h4 className={`font-display font-black text-[20px] leading-tight truncate ${
+                  isDark ? "text-white" : "text-[#1D2C4A]"
+                }`}>
                   Hand Cricket
                 </h4>
-                <div className="flex items-center gap-2 text-[12px] font-bold text-[#6D5C4D] mt-0.5">
-                  <span className="text-emerald-700">🏆 45 Wins</span>
+                <div className={`flex items-center gap-2 text-[12px] font-bold mt-0.5 ${
+                  isDark ? "text-slate-300" : "text-[#6D5C4D]"
+                }`}>
+                  <span className={isDark ? "text-emerald-400 font-bold" : "text-emerald-700 font-bold"}>🏆 45 Wins</span>
                   <span>•</span>
                   <span>Lvl 8</span>
                   <span>•</span>
-                  <span className="text-orange-600 font-extrabold">🔥 3x Streak</span>
+                  <span className={isDark ? "text-orange-400 font-extrabold" : "text-orange-600 font-extrabold"}>🔥 3x Streak</span>
                 </div>
               </div>
             </div>
 
-            <div className="my-3 p-2.5 rounded-xl bg-[#FFF8EE] border border-amber-200/80 text-[12px] text-[#6D4323] font-semibold flex items-center gap-2">
+            <div className={`my-3 p-2.5 rounded-xl border text-[12px] font-semibold flex items-center gap-2 ${
+              isDark
+                ? "bg-amber-950/30 border-amber-700/40 text-amber-200"
+                : "bg-[#FFF8EE] border-amber-200/80 text-[#6D4323]"
+            }`}>
               <span className="text-base">🎁</span>
               <span><strong>Next Milestone:</strong> Golden Willow Bat Avatar in 2 wins</span>
             </div>
@@ -1791,19 +1816,29 @@ function PlayerJourneyDashboard({
         </article>
 
         {/* Card 2: Achievement Progress & Daily Quests */}
-        <article className="rounded-3xl border border-[#E8D9C1] bg-[#FCF8EF] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+        <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
+          isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D9C1]"
+        }`}>
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="font-display font-black text-[18px] text-[#1D2C4A]">
+              <span className={`font-display font-black text-[18px] ${
+                isDark ? "text-white" : "text-[#1D2C4A]"
+              }`}>
                 🏆 Level 12 Progress
               </span>
-              <span className="text-[12px] font-extrabold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+              <span className={`text-[12px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                isDark
+                  ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
+                  : "bg-amber-100 text-amber-900 border-amber-300"
+              }`}>
                 60% Complete
               </span>
             </div>
 
             {/* XP Bar */}
-            <div className="w-full h-2.5 rounded-full bg-[#EADCC8] overflow-hidden mb-3">
+            <div className={`w-full h-2.5 rounded-full overflow-hidden mb-3 ${
+              isDark ? "bg-slate-800" : "bg-[#EADCC8]"
+            }`}>
               <div
                 className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
                 style={{ width: "60%" }}
@@ -1811,73 +1846,108 @@ function PlayerJourneyDashboard({
             </div>
 
             {/* Next Targeted Milestone */}
-            <div className="p-2.5 rounded-xl bg-[#FFF8EE] border border-[#EEDCC2] mb-3">
-              <div className="text-[11.5px] font-black uppercase tracking-wider text-[#EA5A1F]">
+            <div className={`p-2.5 rounded-xl border mb-3 ${
+              isDark ? "bg-white/5 border-white/10" : "bg-[#FFF8EE] border-[#EEDCC2]"
+            }`}>
+              <div className={`text-[11.5px] font-black uppercase tracking-wider ${
+                isDark ? "text-orange-400" : "text-[#EA5A1F]"
+              }`}>
                 🎯 Next Achievement
               </div>
-              <div className="text-[13px] font-bold text-[#1D2C4A] mt-0.5">
+              <div className={`text-[13px] font-bold mt-0.5 ${
+                isDark ? "text-white" : "text-[#1D2C4A]"
+              }`}>
                 Win 1 More Rummy Match
               </div>
-              <div className="text-[11px] text-[#7A6B5C] font-semibold">
-                Reward: <strong>+100 XP</strong> &amp; Exclusive "Rummy Master" Badge
+              <div className={`text-[11px] font-semibold ${
+                isDark ? "text-slate-300" : "text-[#7A6B5C]"
+              }`}>
+                Reward: <strong className={isDark ? "text-amber-300" : "text-amber-800"}>+100 XP</strong> &amp; Exclusive "Rummy Master" Badge
               </div>
             </div>
 
             {/* Daily Quests List */}
             <div className="space-y-1.5">
-              <div className="text-[11.5px] font-black uppercase tracking-wider text-[#6D5C4D]">
+              <div className={`text-[11.5px] font-black uppercase tracking-wider ${
+                isDark ? "text-slate-400" : "text-[#6D5C4D]"
+              }`}>
                 Daily Quests (Refreshes in 4h)
               </div>
-              <div className="p-2 rounded-lg bg-[#F5ECE0] flex items-center justify-between text-[12px] font-bold text-[#2A221B]">
-                <span className="flex items-center gap-1.5 text-emerald-800">
+              
+              <div className={`p-2 rounded-lg flex items-center justify-between text-[12px] font-bold ${
+                isDark ? "bg-emerald-950/40 border border-emerald-500/30 text-emerald-300" : "bg-[#F5ECE0] text-[#2A221B]"
+              }`}>
+                <span className="flex items-center gap-1.5">
                   <span>✅</span> Play 1 UNO Match
                 </span>
-                <span className="text-emerald-700 font-extrabold">+50 XP</span>
+                <span className={isDark ? "text-emerald-400 font-extrabold" : "text-emerald-700 font-extrabold"}>+50 XP</span>
               </div>
-              <div className="p-2 rounded-lg bg-[#F5ECE0] flex items-center justify-between text-[12px] font-bold text-[#2A221B]">
+
+              <div className={`p-2 rounded-lg flex items-center justify-between text-[12px] font-bold ${
+                isDark ? "bg-white/5 border border-white/5 text-slate-200" : "bg-[#F5ECE0] text-[#2A221B]"
+              }`}>
                 <span className="flex items-center gap-1.5">
-                  <span className="text-zinc-400">⬜</span> Win 1 Hand Cricket Match
+                  <span className={isDark ? "text-slate-500" : "text-zinc-400"}>⬜</span> Win 1 Hand Cricket Match
                 </span>
-                <span className="text-amber-800 font-extrabold">+75 XP</span>
+                <span className={isDark ? "text-amber-400 font-extrabold" : "text-amber-800 font-extrabold"}>+75 XP</span>
               </div>
-              <div className="p-2 rounded-lg bg-[#F5ECE0] flex items-center justify-between text-[12px] font-bold text-[#2A221B]">
+
+              <div className={`p-2 rounded-lg flex items-center justify-between text-[12px] font-bold ${
+                isDark ? "bg-white/5 border border-white/5 text-slate-200" : "bg-[#F5ECE0] text-[#2A221B]"
+              }`}>
                 <span className="flex items-center gap-1.5">
-                  <span className="text-zinc-400">⬜</span> Invite 1 Friend to Room
+                  <span className={isDark ? "text-slate-500" : "text-zinc-400"}>⬜</span> Invite 1 Friend to Room
                 </span>
-                <span className="text-purple-800 font-extrabold">+100 XP</span>
+                <span className={isDark ? "text-purple-400 font-extrabold" : "text-purple-800 font-extrabold"}>+100 XP</span>
               </div>
             </div>
           </div>
         </article>
 
         {/* Card 3: Incentivized Friend Referral */}
-        <article className="rounded-3xl border border-amber-300/80 bg-gradient-to-br from-[#FFFDF7] to-[#FDF4E3] p-5 sm:p-6 shadow-sm flex flex-col justify-between relative overflow-hidden">
+        <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between relative overflow-hidden transition-colors ${
+          isDark
+            ? "bg-[#0E1526] border-amber-500/30"
+            : "bg-gradient-to-br from-[#FFFDF7] to-[#FDF4E3] border-amber-300/80"
+        }`}>
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xl">👥</span>
-              <h4 className="font-display font-black text-[18px] text-[#1D2C4A]">
+              <h4 className={`font-display font-black text-[18px] ${
+                isDark ? "text-white" : "text-[#1D2C4A]"
+              }`}>
                 Invite Friends, Unlock Perks
               </h4>
             </div>
-            <p className="text-[12.5px] text-[#6D5C4D] font-medium mb-3">
+            <p className={`text-[12.5px] font-medium mb-3 ${
+              isDark ? "text-slate-300" : "text-[#6D5C4D]"
+            }`}>
               Bring 3 friends to BHALYAM and instantly unlock exclusive nostalgia rewards:
             </p>
 
-            <ul className="space-y-2 mb-4 text-[12.5px] font-bold text-[#2A221B]">
+            <ul className={`space-y-2 mb-4 text-[12.5px] font-bold ${
+              isDark ? "text-slate-200" : "text-[#2A221B]"
+            }`}>
               <li className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${
+                  isDark ? "bg-emerald-950/60 text-emerald-400 border border-emerald-500/30" : "bg-emerald-100 text-emerald-800"
+                }`}>
                   ✓
                 </span>
                 <span>Exclusive Gold Avatar Frame</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${
+                  isDark ? "bg-emerald-950/60 text-emerald-400 border border-emerald-500/30" : "bg-emerald-100 text-emerald-800"
+                }`}>
                   ✓
                 </span>
                 <span>Nostalgia "Gang Leader" Chat Badge</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${
+                  isDark ? "bg-emerald-950/60 text-emerald-400 border border-emerald-500/30" : "bg-emerald-100 text-emerald-800"
+                }`}>
                   ✓
                 </span>
                 <span>Retro 90s School Slate Board Theme</span>
@@ -1885,9 +1955,15 @@ function PlayerJourneyDashboard({
             </ul>
 
             {/* Step count */}
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 border border-amber-200 mb-3 text-[12px] font-bold text-amber-900">
+            <div className={`flex items-center justify-between p-2.5 rounded-xl border mb-3 text-[12px] font-bold ${
+              isDark
+                ? "bg-amber-950/40 border-amber-700/40 text-amber-200"
+                : "bg-amber-50 border-amber-200 text-amber-900"
+            }`}>
               <span>Referral Progress:</span>
-              <span className="font-black text-amber-800">2 / 3 Friends Joined</span>
+              <span className={`font-black ${isDark ? "text-amber-300" : "text-amber-800"}`}>
+                2 / 3 Friends Joined
+              </span>
             </div>
           </div>
 
@@ -1909,11 +1985,14 @@ function PlayerJourneyDashboard({
 /* ───────────────────────────── Live Lounge Pulse & Community Feed ───────────────────────────── */
 
 function LiveLoungePulse({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
+  const [theme] = useTheme();
+  const isDark = theme === "dark";
+
   const liveStats = [
-    { label: "Players Online", value: 548, icon: "🟢", tone: "text-emerald-700" },
-    { label: "Active Live Rooms", value: 68, icon: "🔥", tone: "text-orange-700" },
-    { label: "School Gangs Active", value: 23, icon: "👥", tone: "text-blue-700" },
-    { label: "Matches Won Today", value: 145, icon: "🎉", tone: "text-purple-700" },
+    { label: "Players Online", value: 548, icon: "🟢", toneLight: "text-emerald-700", toneDark: "text-emerald-400", bgLight: "bg-emerald-50 border-emerald-200", bgDark: "bg-emerald-950/40 border-emerald-700/40" },
+    { label: "Active Live Rooms", value: 68, icon: "🔥", toneLight: "text-orange-700", toneDark: "text-orange-400", bgLight: "bg-orange-50 border-orange-200", bgDark: "bg-orange-950/40 border-orange-700/40" },
+    { label: "School Gangs Active", value: 23, icon: "👥", toneLight: "text-blue-700", toneDark: "text-blue-400", bgLight: "bg-blue-50 border-blue-200", bgDark: "bg-blue-950/40 border-blue-700/40" },
+    { label: "Matches Won Today", value: 145, icon: "🎉", toneLight: "text-purple-700", toneDark: "text-purple-400", bgLight: "bg-purple-50 border-purple-200", bgDark: "bg-purple-950/40 border-purple-700/40" },
   ];
 
   const communityTicker = [
@@ -1939,14 +2018,24 @@ function LiveLoungePulse({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => vo
         {liveStats.map((st) => (
           <div
             key={st.label}
-            className="p-3.5 sm:p-4 rounded-2xl bg-[#FCF8EF] border border-[#E8D8BE] shadow-xs flex items-center gap-3"
+            className={`p-3.5 sm:p-4 rounded-2xl border shadow-xs flex items-center gap-3 transition-colors ${
+              isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D8BE]"
+            }`}
           >
-            <span className="text-2xl" aria-hidden>{st.icon}</span>
-            <div>
-              <div className={`text-[20px] sm:text-[24px] font-black ${st.tone} leading-tight`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 border ${
+              isDark ? st.bgDark : st.bgLight
+            }`} aria-hidden>
+              {st.icon}
+            </div>
+            <div className="min-w-0">
+              <div className={`text-[20px] sm:text-[24px] font-black leading-tight ${
+                isDark ? st.toneDark : st.toneLight
+              }`}>
                 <CountUp to={st.value} />
               </div>
-              <div className="text-[11.5px] sm:text-[12px] font-bold text-[#6D5C4D]">
+              <div className={`text-[11.5px] sm:text-[12px] font-bold truncate ${
+                isDark ? "text-slate-400" : "text-[#6D5C4D]"
+              }`}>
                 {st.label}
               </div>
             </div>
@@ -1957,31 +2046,47 @@ function LiveLoungePulse({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => vo
       {/* Community Feed & Leaderboard Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         {/* Left 2 cols: Live Adda Feed */}
-        <div className="lg:col-span-2 p-4 sm:p-5 rounded-3xl bg-[#111927] text-white border border-white/15 shadow-md flex flex-col justify-between">
+        <div className={`lg:col-span-2 p-4 sm:p-5 rounded-3xl border shadow-sm flex flex-col justify-between transition-colors ${
+          isDark
+            ? "bg-[#0E1526] border-white/10 text-white"
+            : "bg-[#FCF8EF] border-[#E8D8BE] text-[#1D2C4A]"
+        }`}>
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white animate-pulse">
                 LIVE FEED
               </span>
-              <h4 className="bhalyam-display text-[17px] text-amber-300">
+              <h4 className={`bhalyam-display text-[17px] ${
+                isDark ? "text-amber-400" : "text-[#1D2C4A]"
+              }`}>
                 School Adda Activity
               </h4>
             </div>
-            <span className="text-[11.5px] font-semibold text-zinc-400">
+            <span className={`text-[11.5px] font-semibold ${
+              isDark ? "text-slate-400" : "text-[#6D5C4D]"
+            }`}>
               Live updates • Zero lag
             </span>
           </div>
 
-          <div className="my-2 p-3 rounded-2xl bg-white/5 border border-white/10 text-[13px] font-bold text-amber-100 min-h-[46px] flex items-center">
+          <div className={`my-2 p-3.5 rounded-2xl border text-[13px] font-bold min-h-[48px] flex items-center transition-colors ${
+            isDark
+              ? "bg-white/5 border-white/10 text-amber-200"
+              : "bg-[#FFF8EE] border-amber-200/90 text-[#3B2918]"
+          }`}>
             {communityTicker[tickerIndex]}
           </div>
 
-          <div className="flex items-center justify-between text-[11.5px] text-zinc-400 font-semibold mt-2 pt-2 border-t border-white/10">
+          <div className={`flex items-center justify-between text-[11.5px] font-semibold mt-2 pt-2 border-t ${
+            isDark ? "border-white/10 text-slate-400" : "border-[#E8D8BE] text-[#6D5C4D]"
+          }`}>
             <span>🌟 Join a room to appear in the live feed</span>
             <button
               type="button"
               onClick={() => onSelect("uno")}
-              className="text-amber-300 hover:text-amber-200 font-bold hover:underline cursor-pointer"
+              className={`font-bold hover:underline cursor-pointer ${
+                isDark ? "text-amber-400 hover:text-amber-300" : "text-amber-700 hover:text-amber-900"
+              }`}
             >
               Play UNO Now →
             </button>
@@ -1989,30 +2094,56 @@ function LiveLoungePulse({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => vo
         </div>
 
         {/* Right col: Weekly School Gang Leaderboard */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-[#FCF8EF] border border-[#E8D8BE] shadow-xs">
+        <div className={`p-4 sm:p-5 rounded-3xl border shadow-sm transition-colors ${
+          isDark
+            ? "bg-[#0E1526] border-white/10 text-white"
+            : "bg-[#FCF8EF] border-[#E8D8BE] text-[#1D2C4A]"
+        }`}>
           <div className="flex items-center justify-between mb-3">
-            <h4 className="font-display font-black text-[16px] text-[#1D2C4A]">
+            <h4 className={`font-display font-black text-[16px] ${
+              isDark ? "text-white" : "text-[#1D2C4A]"
+            }`}>
               Weekly Leaderboard 🏆
             </h4>
-            <span className="text-[10.5px] font-extrabold uppercase bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
+            <span className={`text-[10.5px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+              isDark
+                ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
+                : "bg-amber-100 text-amber-900 border-amber-300"
+            }`}>
               Gold League
             </span>
           </div>
 
           <div className="space-y-1.5 text-[12px] font-bold">
-            <div className="p-2 rounded-xl bg-amber-100/70 border border-amber-300 flex items-center justify-between text-amber-950">
+            <div className={`p-2 rounded-xl border flex items-center justify-between ${
+              isDark
+                ? "bg-amber-950/40 border-amber-500/40 text-amber-200"
+                : "bg-amber-100/80 border-amber-300/80 text-amber-950"
+            }`}>
               <span>🥇 1. Ajay Kumar</span>
               <span className="font-black">2,450 XP</span>
             </div>
-            <div className="p-2 rounded-xl bg-[#F5ECE0] flex items-center justify-between text-[#2A221B]">
+            <div className={`p-2 rounded-xl border flex items-center justify-between ${
+              isDark
+                ? "bg-white/5 border-white/5 text-slate-200"
+                : "bg-[#F5ECE0] border-[#E6D4B8]/60 text-[#2A221B]"
+            }`}>
               <span>🥈 2. Ravi Teja</span>
               <span className="font-black">2,100 XP</span>
             </div>
-            <div className="p-2 rounded-xl bg-[#F5ECE0] flex items-center justify-between text-[#2A221B]">
+            <div className={`p-2 rounded-xl border flex items-center justify-between ${
+              isDark
+                ? "bg-white/5 border-white/5 text-slate-200"
+                : "bg-[#F5ECE0] border-[#E6D4B8]/60 text-[#2A221B]"
+            }`}>
               <span>🥉 3. Pooja Reddy</span>
               <span className="font-black">1,890 XP</span>
             </div>
-            <div className="p-2 rounded-xl bg-emerald-100/80 border border-emerald-300 flex items-center justify-between text-emerald-950">
+            <div className={`p-2 rounded-xl border flex items-center justify-between ${
+              isDark
+                ? "bg-emerald-950/50 border-emerald-500/40 text-emerald-300"
+                : "bg-emerald-100/80 border-emerald-300/80 text-emerald-950"
+            }`}>
               <span>🏅 4. You (Champion)</span>
               <span className="font-black">1,450 XP</span>
             </div>

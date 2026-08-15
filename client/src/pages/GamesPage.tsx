@@ -312,10 +312,10 @@ export default function GamesPage() {
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* Top Header */}
         <header
-          className={`sticky top-0 z-30 w-full px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b backdrop-blur-md transition-colors ${
+          className={`w-full px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b transition-colors ${
             isLight
-              ? "bg-[#FFFDF7]/95 border-[#ECD9BA]"
-              : "bg-[#0A0F1D]/90 border-[#1B2338]"
+              ? "bg-[#FFFDF7] border-[#ECD9BA]"
+              : "bg-[#0A0F1D] border-[#1B2338]"
           }`}
         >
           {/* Mobile-only brand logo */}

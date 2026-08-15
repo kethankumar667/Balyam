@@ -32,8 +32,13 @@ export interface ConsentRecord {
  * Bump when the notice changes materially — new data, new purpose, new
  * recipient. Consent given against an older notice stops counting and the
  * modal returns. Cosmetic edits do not earn a bump.
+ *
+ * 3 — accounts moved to Supabase. A new recipient who receives an email
+ *     address and a password, and two new stored keys for the session. Every
+ *     one of the three triggers above, so anyone who consented to version 2
+ *     is asked again rather than assumed to have agreed to this.
  */
-export const NOTICE_VERSION = 2;
+export const NOTICE_VERSION = 3;
 
 const CONSENT_KEY = "bhalyam.consent";
 

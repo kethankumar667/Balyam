@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
+import { isSupabaseConfigured } from "../lib/supabase/client";
 import { validateName, type FieldError } from "../lib/authValidation";
 import { GlobalSettings } from "../components/GlobalSettings";
 import LanguageSettings from "../components/LanguageSettings/LanguageSettings";
@@ -308,9 +309,9 @@ export default function ProfilePage() {
 
                     {/* Two states, and the honesty of each is different. A
                         guest is told what an account buys. A member is told
-                        what their account is NOT — because signing in here
-                        checks no password and reaches no server, and the one
-                        place someone will look for that fact is this card. */}
+                        where their account actually lives — which differs by
+                        build, and this card is the one place someone will
+                        look for that fact. */}
                     {isMember ? (
                       <>
                         <p className="text-[13.5px] leading-relaxed text-[var(--auth-ink-soft)]">
@@ -318,8 +319,10 @@ export default function ProfilePage() {
                           {email ? (
                             <span className="font-bold text-[var(--auth-ink)]">{email}</span>
                           ) : null}
-                          . This sign-in is recorded on this device only — there is no account
-                          server yet, so no password was checked and nothing was sent anywhere.
+                          .{" "}
+                          {isSupabaseConfigured
+                            ? "Your name and avatar are saved to your account, so they follow you to any device you sign in on."
+                            : "This build has no account service, so the sign-in is recorded on this device only — no password was checked and nothing was sent anywhere."}
                         </p>
                         <button
                           type="button"
@@ -335,7 +338,9 @@ export default function ProfilePage() {
                           Sign out
                         </button>
                         <p className="mt-2 text-[12.5px] leading-snug text-[var(--auth-ink-mute)]">
-                          Your name and avatar stay on this device when you sign out.
+                          {isSupabaseConfigured
+                            ? "Signing out clears your name and avatar from this device. They're safe on your account — signing back in brings them with you."
+                            : "Signing out clears your name and avatar from this device."}
                         </p>
                       </>
                     ) : (

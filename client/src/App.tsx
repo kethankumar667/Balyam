@@ -99,9 +99,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<BhalyamHome />} />
         <Route path="/games" element={<GamesPage />} />
-        {/* Accounts. Design-stage: the screens are real, nothing behind them
-            signs anyone in yet. Guests never have to come through here —
-            joining a room with a code needs no account. */}
+        {/* Accounts, backed by Supabase when its keys are set and by a local
+            flag when they are not — see lib/supabase/client.ts. Guests never
+            have to come through here: a friend's invite needs no account. */}
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/about" element={<AboutPage />} />

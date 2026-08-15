@@ -9,6 +9,7 @@ import { RoomManager } from "./rooms/RoomManager.js";
 import { logger } from "./lib/logger.js";
 import { globalRateLimiter } from "./lib/rateLimiter.js";
 import { turnStatus } from "./lib/iceServers.js";
+import { verificationMode } from "./lib/supabaseAuth.js";
 
 const PORT = Number(process.env.PORT) || 4000;
 /**
@@ -66,6 +67,10 @@ app.get("/health", (_req, res) => {
     // Lets you confirm a TURN provisioning change took effect without
     // reading logs or starting a call. See docs/runbooks/turn-server.md.
     turn: turnStatus(),
+    // Same idea for accounts: "off" here and a client that thinks it is
+    // signed in is the one misconfiguration whose only other symptom is
+    // everybody quietly hosting sealed rooms.
+    auth: verificationMode(),
     memory: {
       heapUsedMb: Math.round((memoryUsage.heapUsed / 1024 / 1024) * 100) / 100,
       heapTotalMb: Math.round((memoryUsage.heapTotal / 1024 / 1024) * 100) / 100,
@@ -124,6 +129,27 @@ server.listen(PORT, "0.0.0.0", () => {
     message: `Server listening on http://0.0.0.0:${PORT} (allowed origins: ${CLIENT_ORIGINS.join(", ")})`,
     module: "SERVER",
   });
+
+  // Which of the three account modes is live. Worth saying at every boot for
+  // the same reason as TURN below: "off" is a perfectly normal state for a
+  // dev machine and a serious one in production, and nothing else in the
+  // running app distinguishes them.
+  const auth = verificationMode();
+  if (auth === "off") {
+    logger.warn({
+      message:
+        "Sign-ins are NOT verified. `hostKind` is taken at face value, so any " +
+        "client can claim to be a member and open a shareable room. Set " +
+        "SUPABASE_JWT_SECRET (preferred) or SUPABASE_URL + SUPABASE_ANON_KEY. " +
+        "See docs/runbooks/supabase.md.",
+      module: "AUTH",
+    });
+  } else {
+    logger.info({
+      message: `Sign-ins verified via ${auth === "jwt-secret" ? "the project JWT secret" : "the Supabase auth API"}`,
+      module: "AUTH",
+    });
+  }
 
   // Say this at every boot. A missing relay is invisible in normal use —
   // voice works on wifi and fails only for players behind a symmetric NAT,

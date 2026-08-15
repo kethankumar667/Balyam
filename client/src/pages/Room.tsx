@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
-import { currentAccountKind, useAuthStore } from "../store/authStore";
+import { currentAccessToken, currentAccountKind, useAuthStore } from "../store/authStore";
 import {
   enterFullscreen,
   exitFullscreen,
@@ -412,6 +412,7 @@ export default function Room() {
           // Read live for the same reason as the avatar above — a rejoin that
           // lands after signing in should arrive as a member.
           accountKind: currentAccountKind(),
+          accessToken: currentAccessToken(),
         },
         (res) => {
           joinInFlightRef.current = false;

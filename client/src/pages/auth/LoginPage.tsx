@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, Zap, Heart, ArrowRight } from "lucide-react";
 import AuthShell from "../../components/auth/AuthShell";
-import { useLocalSignIn } from "../../components/auth/useLocalSignIn";
+import { useSignIn } from "../../components/auth/useAccountAuth";
 import { FormNotice } from "../../components/auth/AuthControls";
 import { validateEmail, validatePasswordPresent, type FieldError } from "../../lib/authValidation";
 import { AppleMark, GoogleMark } from "../../components/auth/authIcons";
@@ -18,7 +18,20 @@ export default function LoginPage() {
 
   const [emailError, setEmailError] = useState<FieldError>(null);
   const [passwordError, setPasswordError] = useState<FieldError>(null);
-  const { loading, unavailable, submit, markUnavailable, reset } = useLocalSignIn();
+  const { loading, error, configured, submit, withGoogle, clearError } = useSignIn();
+
+  /**
+   * Apple is the one provider that is genuinely out of reach: it needs a paid
+   * developer account, which this project does not have. Kept as its own
+   * state rather than folded into `error`, because "we can't offer this" is a
+   * different thing from "your sign-in failed".
+   */
+  const [appleUnavailable, setAppleUnavailable] = useState(false);
+
+  function clearNotices() {
+    if (error) clearError();
+    if (appleUnavailable) setAppleUnavailable(false);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +42,7 @@ export default function LoginPage() {
     if (nextEmail || nextPassword) {
       return;
     }
-    submit(email);
+    submit(email, password);
   }
 
   return (
@@ -71,8 +84,9 @@ export default function LoginPage() {
           <div className="space-y-2 pt-0.5">
             <button
               type="button"
-              onClick={markUnavailable}
-              className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] active:scale-98 rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer"
+              onClick={withGoogle}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] active:scale-98 rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <GoogleMark className="w-4 h-4" />
               <span>Continue with Google</span>
@@ -80,7 +94,7 @@ export default function LoginPage() {
 
             <button
               type="button"
-              onClick={markUnavailable}
+              onClick={() => setAppleUnavailable(true)}
               className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] active:scale-98 rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer"
             >
               <AppleMark className="w-[17px] h-[17px]" />
@@ -88,10 +102,20 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {unavailable ? (
-            <FormNotice tone="info" title="Provider sign-in isn't connected yet">
-              Google and Apple need OAuth credentials this build doesn&apos;t have. Use your
-              email below — it works today.
+          {error ? (
+            <FormNotice tone="error" title="Couldn't sign you in">
+              {error}
+            </FormNotice>
+          ) : appleUnavailable ? (
+            <FormNotice tone="info" title="Apple sign-in isn't available">
+              It needs a paid Apple developer account, which this app doesn&apos;t have.
+              Google and email both work.
+            </FormNotice>
+          ) : !configured ? (
+            <FormNotice tone="info" title="This build has no account service">
+              Signing in here only unlocks hosting on this device — no password is
+              checked and nothing is sent anywhere. Set the Supabase keys to make it
+              real.
             </FormNotice>
           ) : null}
 
@@ -120,7 +144,7 @@ export default function LoginPage() {
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (emailError) setEmailError(null);
-                    if (unavailable) reset();
+                    clearNotices();
                   }}
                   placeholder="you@example.com"
                   className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-4 py-2.5 text-[13.5px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
@@ -158,7 +182,7 @@ export default function LoginPage() {
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (passwordError) setPasswordError(null);
-                    if (unavailable) reset();
+                    clearNotices();
                   }}
                   placeholder="Enter your password"
                   className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-10 py-2.5 text-[13.5px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${

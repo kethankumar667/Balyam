@@ -4,6 +4,7 @@ import type { RoomManager } from "../rooms/RoomManager.js";
 import { globalRateLimiter } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
 import { buildIceConfig } from "../lib/iceServers.js";
+import { resolveAccountKind } from "../lib/supabaseAuth.js";
 
 /**
  * Events that arrive WITHOUT a person doing anything — negotiation traffic and
@@ -45,8 +46,19 @@ export function registerSocketHandlers(
     rooms.noteSocketActivity(socket.id);
   });
 
-  socket.on("room:create", (payload, ack) => {
+  /**
+   * Both room entry points resolve the account kind before touching the
+   * RoomManager, which is why they are async where nothing else here is.
+   *
+   * The await is a signature check against the session — free in `jwt-secret`
+   * mode, one cached HTTP call in `auth-api` mode, and skipped entirely when
+   * verification is off. It sits ahead of `createRoom` rather than inside it
+   * so the RoomManager keeps taking a settled `AccountKind` and its own tests
+   * keep working without a token in sight.
+   */
+  socket.on("room:create", async (payload, ack) => {
     try {
+      const hostKind = await resolveAccountKind(payload.hostKind, payload.accessToken);
       const { code, playerId, seatToken } = rooms.createRoom(
         socket.id,
         payload.name,
@@ -68,7 +80,7 @@ export function registerSocketHandlers(
         payload.blockBlastOptions,
         payload.spaceWarOptions,
         payload.avatar,
-        payload.hostKind
+        hostKind
       );
       // `seatToken` goes to this socket's ack only — never into a broadcast.
       ack({ ok: true, code, playerId, seatToken });
@@ -78,8 +90,9 @@ export function registerSocketHandlers(
     }
   });
 
-  socket.on("room:join", (payload, ack) => {
+  socket.on("room:join", async (payload, ack) => {
     try {
+      const accountKind = await resolveAccountKind(payload.accountKind, payload.accessToken);
       const result = rooms.joinRoom(
         socket.id,
         payload.name,
@@ -87,7 +100,7 @@ export function registerSocketHandlers(
         payload.playerId,
         payload.seatToken,
         payload.avatar,
-        payload.accountKind
+        accountKind
       );
       if (!result.ok) {
         ack({ ok: false, error: result.error });

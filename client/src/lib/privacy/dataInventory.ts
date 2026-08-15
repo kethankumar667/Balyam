@@ -17,7 +17,9 @@
  * The working assumption going in was "only a playerId UUID and a display
  * name". Three corrections came out of reading the code:
  *
- *   1. There are seventeen keys, not two.
+ *   1. There were seventeen keys, not two. (Accounts have since added the
+ *      two sign-in keys below, and the count is `DATA_INVENTORY.length` —
+ *      never a number typed into prose that nobody re-counts.)
  *   2. `mpg.rummy.lastGangs` stores OTHER players' display names — personal
  *      data about people who never used this device and cannot reach these
  *      controls. It is flagged `holdsOthersData` and is erased with the rest.
@@ -96,8 +98,24 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     key: "bhalyam.account",
     label: "Account status",
     description:
-      "Whether you are signed in, the email you signed in with, and when. Written only if you sign in — a guest has no such record at all. There is no account server behind this yet, so nothing here has been sent anywhere or checked against anything.",
+      "Whether you are signed in, on builds that have no account service. Written only if you sign in, and only when there is nothing to check the sign-in against — where an account service is configured this is not used at all and the sign-in below replaces it.",
     purpose: "identity",
+    isPersonalData: true,
+  },
+  {
+    key: "bhalyam.session",
+    label: "Sign-in",
+    description:
+      "Proof that you are signed in, issued by the account service. It carries your email, your account id and the keys that keep you signed in between visits. Signing out deletes it.",
+    purpose: "credential",
+    isPersonalData: true,
+  },
+  {
+    key: "bhalyam.session-code-verifier",
+    label: "Sign-in handshake",
+    description:
+      "A one-time secret written while you are away at Google's sign-in page, so the answer that comes back can be proved to be a reply to this browser. Deleted the moment you return.",
+    purpose: "credential",
     isPersonalData: true,
   },
   {
@@ -218,6 +236,13 @@ export interface ThirdParty {
 }
 
 export const THIRD_PARTIES: readonly ThirdParty[] = [
+  {
+    name: "Supabase (the account service)",
+    receives:
+      "Your email address, a scrambled form of your password, your display name and avatar, and the IP address you signed in from. Google sign-in also passes them the name and email on your Google account.",
+    when:
+      "Only if you create an account. Guests never reach them. Configured by the VITE_SUPABASE_* keys — a build without those has no account service at all.",
+  },
   {
     name: "The BHALYAM game server",
     receives:

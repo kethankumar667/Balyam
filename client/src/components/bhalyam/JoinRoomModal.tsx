@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
-import { currentAccountKind, useCapabilities } from "../../store/authStore";
+import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
 import SignInWall from "../auth/SignInWall";
 import { ArrowRightIcon } from "./icons";
 import QrScannerModal from "../QrScannerModal";
@@ -149,6 +149,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
         code: c,
         avatar: avatarId ?? undefined,
         accountKind: currentAccountKind(),
+        accessToken: currentAccessToken(),
         ...(seatFor(c) ?? {}),
       },
       (res) => {
@@ -446,6 +447,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                   code: scannedCode,
                   avatar: avatarId ?? undefined,
                   accountKind: currentAccountKind(),
+                  accessToken: currentAccessToken(),
                   ...(seatFor(scannedCode) ?? {}),
                 },
                 (res) => {

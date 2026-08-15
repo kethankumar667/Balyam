@@ -140,27 +140,55 @@ living-room party working for the friend who has not signed up, while the
 else's room a guest declares a name before being seated (once per room; a
 refresh mid-match does not re-prompt).
 
-### Honesty note: sign-in is not verified
+### Accounts
 
-There is no account backend. Signing in writes a flag to `localStorage`
-(`bhalyam.account`) and **nothing checks it** — no password is verified,
-because there is nothing to verify one against. Anyone can set that key in
-devtools and become a "member".
+Accounts run on [Supabase](https://supabase.com) — its free tier is a Postgres
+database, an auth service and a mailer, which is all an account needs and costs
+nothing to run. The client talks to it directly; **the game server never sees a
+password and holds no database**.
 
-This is a known, deliberate state, not an oversight. It exists so the
-permission model above is wired end to end and can be exercised; it protects
-nothing. Seat ownership is still proved by the server-signed seat token, which
-is real and entirely independent — so forging membership gets you a shareable
-room, not somebody else's hand of cards.
+Set two variables in `client/.env` and sign-in is real:
 
-The seam is built so that when sessions become server-issued, `AccountKind`
-stops being read from `localStorage` and no call site changes. Until then:
+```
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon key>
+```
 
-- Google and Apple buttons are **honestly inert** — they need OAuth client
-  credentials this build does not have, and say so rather than pretending.
-- Password reset and email verification still use `usePreviewSubmit`, which
-  refuses to fake success for the same reason.
-- Durable accounts need `DATABASE_URL` (Postgres + Prisma is the chosen stack).
+Then one of these in `server/.env`, so the server can check that a player
+claiming to be signed in actually is:
+
+```
+SUPABASE_JWT_SECRET=<project JWT secret>     # preferred: verified in-process
+# or, for projects on asymmetric signing keys:
+SUPABASE_URL=…
+SUPABASE_ANON_KEY=…
+```
+
+Full setup — migration, redirect URLs, Google sign-in, and the email rate
+limit that will catch you out — is in
+[`docs/runbooks/supabase.md`](docs/runbooks/supabase.md).
+
+What this buys, beyond a login:
+
+- **`hostKind` is no longer a claim the server takes on faith.** A browser can
+  still send `hostKind: "member"`, but with verification configured it is
+  checked against the session token and an unverifiable claim is treated as a
+  guest. The permission model above becomes enforceable rather than
+  cooperative.
+- **Your name and avatar follow the account**, not the browser, via a
+  `profiles` row.
+- **"Erase my data" deletes the account too**, through a `security definer`
+  function that removes exactly the calling user — so the app never needs a
+  service-role key to honour a DPDP erasure request.
+
+**With the variables unset, nothing above happens and that is a supported
+state.** `npm run dev` still needs zero infrastructure: signing in flips a
+device-local flag (`bhalyam.account`) that checks no password, every affected
+screen says so on the page rather than faking success, and the seat tokens —
+which are real cryptography and independent of all of this — keep doing the
+only job that ever protected anything.
+
+Apple sign-in remains honestly inert: it needs a paid Apple developer account.
 
 ## Current Status
 - [x] Express + Socket.IO server with TypeScript
