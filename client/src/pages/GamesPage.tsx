@@ -584,7 +584,7 @@ function GameDiscoveryCard({
     roadrash: "/Roadrash Game Tile.png",
     carrom: "/Carrom Game Tile.png",
     chess: "/Chess Game Tile.png",
-    blockblast: "",
+    blockblast: "/BlockBlast Game Tile.png",
     spacewar: "/SpacewarTile.png",
   };
 

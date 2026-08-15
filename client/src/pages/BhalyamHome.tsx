@@ -216,12 +216,16 @@ function Hero({
   onOpenJoin: () => void;
 }) {
   const [theme] = useTheme();
+  const isDark = theme === "dark";
   const [failed, setFailed] = useState(false);
-  const heroImage = failed
-    ? "/bhalyam-hero.png"
-    : theme === "dark"
-    ? "/bhalyam-dark-hero.png"
-    : "/bhalyam-hero-clean.png";
+
+  useEffect(() => {
+    setFailed(false);
+  }, [theme]);
+
+  const heroImage = isDark
+    ? (failed ? "/bhalyam-hero.png" : "/bhalyam-dark-hero.png")
+    : (failed ? "/bhalyam-hero.png" : "/bhalyam-hero-clean.png");
 
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(
@@ -234,10 +238,15 @@ function Hero({
     <RevealOnScroll as="section" amount={0.05} className="pt-2 pb-6 sm:pt-4 sm:pb-8">
       {/* ── Main Hero Card ── */}
       <div
-        className="relative overflow-hidden rounded-[26px] sm:rounded-[36px] border border-[#E2D3BA] shadow-[0_14px_30px_-15px_rgba(74,44,22,0.35)]"
-        style={{ background: "#FAF2DF" }}
+        className={`relative overflow-hidden rounded-[26px] sm:rounded-[36px] border ${
+          isDark
+            ? "border-slate-800 shadow-[0_14px_30px_-15px_rgba(0,0,0,0.7)]"
+            : "border-[#E2D3BA] shadow-[0_14px_30px_-15px_rgba(74,44,22,0.35)]"
+        }`}
+        style={{ background: isDark ? "#0A0F1D" : "#FAF2DF" }}
       >
         <img
+          key={heroImage}
           src={heroImage}
           alt="Childhood games lounge"
           className="bhalyam-hero-drift absolute inset-0 w-full h-full object-cover object-right opacity-95"
@@ -248,32 +257,49 @@ function Hero({
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background:
-              "linear-gradient(90deg, rgba(254,249,235,0.98) 0%, rgba(254,249,235,0.94) 42%, rgba(254,249,235,0.55) 65%, rgba(254,249,235,0.05) 95%)",
+            background: isDark
+              ? "linear-gradient(90deg, rgba(10,15,29,0.98) 0%, rgba(10,15,29,0.92) 42%, rgba(10,15,29,0.55) 65%, rgba(10,15,29,0.05) 95%)"
+              : "linear-gradient(90deg, rgba(254,249,235,0.98) 0%, rgba(254,249,235,0.94) 42%, rgba(254,249,235,0.55) 65%, rgba(254,249,235,0.05) 95%)",
           }}
         />
 
         <div className="relative z-10 px-5 sm:px-10 py-7 sm:py-9 max-w-xl">
           {/* Top Label */}
-          <span className="text-[11.5px] sm:text-[13px] font-black uppercase tracking-[0.22em] text-[#7B2F0E] block mb-2 sm:mb-2.5">
+          <span
+            className={`text-[11.5px] sm:text-[13px] font-black uppercase tracking-[0.22em] block mb-2 sm:mb-2.5 ${
+              isDark ? "text-amber-400" : "text-[#7B2F0E]"
+            }`}
+          >
             ✦ WELCOME TO THE ADDA ✦
           </span>
 
           {/* Headline with 4 lines & color coding */}
-          <h1 className="bhalyam-display text-[34px] sm:text-[48px] lg:text-[54px] leading-[1.02] tracking-tight text-[#15294E] flex flex-col">
+          <h1
+            className={`bhalyam-display text-[34px] sm:text-[48px] lg:text-[54px] leading-[1.02] tracking-tight flex flex-col ${
+              isDark ? "text-white" : "text-[#15294E]"
+            }`}
+          >
             <span>Ready to</span>
             <span className="bg-gradient-to-r from-[#E11D48] via-[#9333EA] to-[#7C3AED] bg-clip-text text-transparent w-fit">
               relive
             </span>
             <span>your</span>
-            <span className="text-[#15803D]">childhood?</span>
+            <span className={isDark ? "text-emerald-400" : "text-[#15803D]"}>childhood?</span>
           </h1>
 
           {/* Description */}
-          <p className="text-[#3B332A] text-[14px] sm:text-[16px] font-semibold max-w-sm sm:max-w-md mt-3.5 leading-snug">
+          <p
+            className={`text-[14px] sm:text-[16px] font-semibold max-w-sm sm:max-w-md mt-3.5 leading-snug ${
+              isDark ? "text-slate-200" : "text-[#3B332A]"
+            }`}
+          >
             Pick a game, send the room code to your school WhatsApp group, and play instantly.
           </p>
-          <p className="font-script italic text-[17px] sm:text-[21px] text-[#7B2F0E] mt-1.5">
+          <p
+            className={`font-script italic text-[17px] sm:text-[21px] mt-1.5 ${
+              isDark ? "text-amber-300" : "text-[#7B2F0E]"
+            }`}
+          >
             ~ Bring your school gang back together!
           </p>
 
@@ -285,13 +311,25 @@ function Hero({
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") handleShareWhatsApp();
             }}
-            className="mt-5 sm:mt-6 w-full max-w-[280px] sm:max-w-[320px] rounded-full bg-white/95 backdrop-blur-md py-2 px-4 sm:px-5 border border-[#E5D5BC] shadow-[0_4px_16px_rgba(0,0,0,0.06)] flex items-center justify-between gap-3 cursor-pointer hover:bg-white hover:shadow-md active:scale-98 transition"
+            className={`mt-5 sm:mt-6 w-full max-w-[280px] sm:max-w-[320px] rounded-full py-2 px-4 sm:px-5 border flex items-center justify-between gap-3 cursor-pointer active:scale-98 transition shadow-[0_4px_16px_rgba(0,0,0,0.06)] ${
+              isDark
+                ? "bg-slate-900/90 backdrop-blur-md border-slate-700/80 hover:bg-slate-900 text-white"
+                : "bg-white/95 backdrop-blur-md border-[#E5D5BC] hover:bg-white text-[#15294E]"
+            }`}
           >
             <div className="flex flex-col text-left">
-              <span className="text-[13.5px] sm:text-[15px] font-black text-[#15294E] leading-tight">
+              <span
+                className={`text-[13.5px] sm:text-[15px] font-black leading-tight ${
+                  isDark ? "text-white" : "text-[#15294E]"
+                }`}
+              >
                 Share on WhatsApp
               </span>
-              <span className="text-[11px] sm:text-[12px] font-medium text-[#7A6F62] leading-tight mt-0.5">
+              <span
+                className={`text-[11px] sm:text-[12px] font-medium leading-tight mt-0.5 ${
+                  isDark ? "text-slate-400" : "text-[#7A6F62]"
+                }`}
+              >
                 Send the code in seconds
               </span>
             </div>
@@ -1180,7 +1218,7 @@ export function GameTile({
     roadrash: "/Roadrash Game Tile.png",
     carrom: "/Carrom Game Tile.png",
     chess: "/Chess Game Tile.png",
-    blockblast: "",
+    blockblast: "/BlockBlast Game Tile.png",
     spacewar: "/SpacewarTile.png",
   };
 

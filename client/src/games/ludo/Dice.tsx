@@ -1,23 +1,36 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
-const DOTS: Record<number, [number, number][]> = {
+// Pacing lives in shared/ludo-pacing.ts so the whole feel budget is tunable
+// in one place; re-exported here because callers already import it from Dice.
+export { DICE_ROLL_MS } from "@shared/ludo-pacing";
+
+/** Grid position map for standard dice pip patterns (3x3 grid) */
+const FACE_DOTS: Record<number, [number, number][]> = {
   1: [[1, 1]],
-  2: [[0, 0], [2, 2]],
-  3: [[0, 0], [1, 1], [2, 2]],
+  2: [[0, 2], [2, 0]],
+  3: [[0, 2], [1, 1], [2, 0]],
   4: [[0, 0], [0, 2], [2, 0], [2, 2]],
   5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
   6: [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]],
 };
 
 /**
- * Single source of truth for the throw's wall-clock length. useLudoBoard's
- * `rolling` window (the optimistic-click timer AND the server-roundtrip
- * timer) must match this exactly, or the CSS tumble below gets its class
- * yanked mid-animation and snaps instead of settling.
+ * Standard Euler rotations (in degrees) to bring each face (1-6) to the front view.
+ * Face 1: Front (0, 0)
+ * Face 2: Right (0, -90)
+ * Face 3: Top (-90, 0)
+ * Face 4: Bottom (90, 0)
+ * Face 5: Left (0, 90)
+ * Face 6: Back (0, 180)
  */
-// Pacing lives in shared/ludo-pacing.ts so the whole feel budget is tunable
-// in one place; re-exported here because callers already import it from Dice.
-export { DICE_ROLL_MS } from "@shared/ludo-pacing";
+const FACE_ROTATIONS: Record<number, { rx: number; ry: number }> = {
+  1: { rx: 0, ry: 0 },
+  2: { rx: 0, ry: -90 },
+  3: { rx: -90, ry: 0 },
+  4: { rx: 90, ry: 0 },
+  5: { rx: 0, ry: 90 },
+  6: { rx: 0, ry: 180 },
+};
 
 export function Dice({
   value,
@@ -31,51 +44,63 @@ export function Dice({
   rolling: boolean;
   highlight: boolean;
   wooden?: boolean;
-  /** CSS size (both axes) - defaults to the original fixed 64px tray size. */
+  /** CSS size (both axes) - defaults to 4rem (64px). */
   size?: string;
-  /** When set, the dice itself is the roll control - tap/click/Enter/Space fires it. Omitted -> non-interactive (e.g. opponents' view, SnL's separate button flow). */
+  /** When set, the dice itself is the roll control. */
   onClick?: () => void;
 }) {
-  // display = 0 means "no current roll" (blank face)
-  const [display, setDisplay] = useState<number>(value ?? 0);
   const [throwId, setThrowId] = useState(0);
-  const tumble = useRef({ rx: 380, ry: 340, rz: 6, arc: -12 });
+  const [currentVal, setCurrentVal] = useState<number>(value && value >= 1 && value <= 6 ? value : 1);
+  const prevRolling = useRef(rolling);
+
+  // Extra multi-revolution spin added during throw for physics variety
+  const spinExtra = useRef({
+    extraX: 720,
+    extraY: 1080,
+    extraZ: 360,
+    arcY: -22,
+  });
 
   useEffect(() => {
-    if (!rolling) {
-      setDisplay(value ?? 0);
-      return;
+    if (rolling && !prevRolling.current) {
+      // New throw started — seed randomized multi-revolution 3D trajectory
+      const multiX = (2 + Math.floor(Math.random() * 2)) * 360;
+      const multiY = (3 + Math.floor(Math.random() * 2)) * 360;
+      const multiZ = (Math.random() > 0.5 ? 1 : -1) * (180 + Math.floor(Math.random() * 180));
+      spinExtra.current = {
+        extraX: multiX,
+        extraY: multiY,
+        extraZ: multiZ,
+        arcY: -18 - Math.random() * 10,
+      };
+      setThrowId((id) => id + 1);
     }
-    // A real throw never tumbles the same way twice - fresh axis spin, wobble,
-    // and arc height per roll so consecutive throws feel like separate events
-    // rather than the same canned animation replaying.
-    tumble.current = {
-      rx: 320 + Math.random() * 160,
-      ry: 280 + Math.random() * 180,
-      rz: (Math.random() - 0.5) * 26,
-      arc: -8 - Math.random() * 12,
-    };
-    setThrowId((id) => id + 1);
-    // Decelerating flicker: fast cycling at first, slowing as the die "loses
-    // energy" and settles - mirrors how a thrown die actually comes to rest
-    // instead of flickering at one flat rate until it's abruptly cut off.
-    const delays = [0, 55, 65, 80, 100, 125, 160, 210, 270];
-    const timers = delays.map((d) =>
-      setTimeout(() => setDisplay(1 + Math.floor(Math.random() * 6)), d),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [rolling, value]);
+    prevRolling.current = rolling;
+  }, [rolling]);
 
-  const blank = display === 0;
-  const t = tumble.current;
+  useEffect(() => {
+    if (value && value >= 1 && value <= 6) {
+      setCurrentVal(value);
+    }
+  }, [value]);
+
+  const targetFace = currentVal in FACE_ROTATIONS ? currentVal : 1;
+  const baseRot = FACE_ROTATIONS[targetFace];
+  const blank = value == null || value === 0;
+
+  // Resting 3D isometric angle so cube depth/faces are visible
+  const idleIsoTilt = blank
+    ? { rx: -16, ry: 24, rz: 0 }
+    : { rx: baseRot.rx - 10, ry: baseRot.ry + 14, rz: 0 };
+
+  const finalRotX = rolling ? baseRot.rx + spinExtra.current.extraX : idleIsoTilt.rx;
+  const finalRotY = rolling ? baseRot.ry + spinExtra.current.extraY : idleIsoTilt.ry;
+  const finalRotZ = rolling ? spinExtra.current.extraZ : idleIsoTilt.rz;
 
   return (
     <div
-      key={throwId}
-      className={`relative z-0 rounded-2xl border-2 ${
-        highlight ? "border-amber-300" : "border-slate-300"
-      } ${rolling ? "dice-physics-roll" : ""} ${blank ? "bg-slate-200" : "bg-white"} ${
-        onClick ? "cursor-pointer active:scale-95" : ""
+      className={`dice-3d-scene relative select-none flex items-center justify-center ${
+        onClick ? "cursor-pointer active:scale-95 transition-transform" : ""
       }`}
       onClick={onClick}
       onKeyDown={
@@ -92,55 +117,123 @@ export function Dice({
       tabIndex={onClick ? 0 : undefined}
       aria-label={onClick ? "Roll dice" : undefined}
       title={onClick ? "Tap to roll" : undefined}
-      style={
-        {
-          width: size,
-          height: size,
-          transition: "transform 0.3s, box-shadow 0.3s",
-          background: wooden
-            ? "linear-gradient(145deg, #C8915B 0%, #8B5A2B 62%, #5C3A1E 100%)"
-            : blank
-            ? "linear-gradient(145deg, #e2e8f0 0%, #cbd5e1 100%)"
-            : "linear-gradient(145deg, #ffffff 0%, #f1f5f9 62%, #cbd5e1 100%)",
-          boxShadow: highlight
-            ? "0 0 28px rgba(251,191,36,0.55), inset -7px -8px 0 rgba(15,23,42,0.14), inset 5px 5px 0 rgba(255,255,255,0.8)"
-            : "0 10px 18px rgba(0,0,0,0.38), inset -7px -8px 0 rgba(15,23,42,0.14), inset 5px 5px 0 rgba(255,255,255,0.8)",
-          "--dice-rx": `${t.rx}deg`,
-          "--dice-ry": `${t.ry}deg`,
-          "--dice-rz": `${t.rz}deg`,
-          "--dice-arc": `${t.arc}px`,
-        } as CSSProperties
-      }
+      style={{
+        width: size,
+        height: size,
+        perspective: "520px",
+      }}
     >
+      {/* Turn glow halo */}
       {highlight && (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -inset-2 z-[-1] rounded-3xl bg-amber-400/70 blur-md animate-pulse"
+          className="pointer-events-none absolute -inset-2.5 z-0 rounded-full bg-amber-400/50 blur-lg animate-pulse"
         />
       )}
-      {blank ? (
-        <div className="absolute inset-0 flex items-center justify-center text-3xl text-slate-400 font-bold">
-          —
-        </div>
-      ) : (
-        <div className="absolute inset-1 grid grid-cols-3 grid-rows-3 gap-0.5 p-1">
-          {Array.from({ length: 9 }).map((_, i) => {
-            const r = Math.floor(i / 3);
-            const c = i % 3;
-            const dot = DOTS[display]?.some(([dr, dc]) => dr === r && dc === c);
-            return (
-              <div key={i} className="flex items-center justify-center">
-                {dot && (
-                  <div
-                    className={`h-2.5 w-2.5 rounded-full ${wooden ? "bg-[#FFF3DC]" : "bg-slate-950"}`}
-                    style={{ boxShadow: "inset 0 1px 1px rgba(255,255,255,0.5), 0 1px 1px rgba(0,0,0,0.35)" }}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+
+      {/* Dynamic ground contact shadow underneath 3D cube */}
+      <div
+        className={`pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full bg-black/40 blur-[5px] transition-all duration-300 ${
+          rolling ? "scale-75 opacity-20 translate-y-3" : "scale-100 opacity-60 translate-y-1.5"
+        }`}
+        style={{
+          width: "72%",
+          height: "22%",
+        }}
+      />
+
+      {/* The 3D Cube Object */}
+      <div
+        key={throwId}
+        className={`dice-3d-cube relative w-full h-full ${
+          rolling ? "dice-3d-rolling" : "dice-3d-idle"
+        }`}
+        style={
+          {
+            transformStyle: "preserve-3d",
+            willChange: "transform",
+            "--dice-rx": `${finalRotX}deg`,
+            "--dice-ry": `${finalRotY}deg`,
+            "--dice-rz": `${finalRotZ}deg`,
+            "--dice-arc": `${spinExtra.current.arcY}px`,
+            transform: rolling
+              ? undefined
+              : `rotateX(${idleIsoTilt.rx}deg) rotateY(${idleIsoTilt.ry}deg) rotateZ(${idleIsoTilt.rz}deg)`,
+            transition: rolling ? undefined : "transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.15)",
+          } as CSSProperties
+        }
+      >
+        {/* Six faces of the cube */}
+        <DiceFace faceNum={1} wooden={wooden} transform="rotateY(0deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={6} wooden={wooden} transform="rotateY(180deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={2} wooden={wooden} transform="rotateY(90deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={5} wooden={wooden} transform="rotateY(-90deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={3} wooden={wooden} transform="rotateX(90deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={4} wooden={wooden} transform="rotateX(-90deg) translateZ(calc(var(--face-depth, 28px)))" />
+      </div>
+    </div>
+  );
+}
+
+/** Individual 3D face of the dice */
+function DiceFace({
+  faceNum,
+  wooden,
+  transform,
+}: {
+  faceNum: number;
+  wooden: boolean;
+  transform: string;
+}) {
+  const isOne = faceNum === 1;
+
+  return (
+    <div
+      className="dice-face absolute inset-0 rounded-[22%] flex items-center justify-center overflow-hidden border"
+      style={{
+        transform,
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
+        background: wooden
+          ? "linear-gradient(135deg, #D49862 0%, #A46934 60%, #6E411B 100%)"
+          : "linear-gradient(135deg, #FFFFFF 0%, #FAF5EE 55%, #EBE1D0 100%)",
+        borderColor: wooden ? "#502F13" : "#DCD0BD",
+        boxShadow: wooden
+          ? "inset 2px 2px 3px rgba(255,225,185,0.45), inset -2px -2px 3px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.3)"
+          : "inset 2px 2px 3px rgba(255,255,255,0.95), inset -2px -2px 3px rgba(100,75,50,0.22), 0 0 2px rgba(0,0,0,0.15)",
+      }}
+    >
+      {/* 3x3 Grid for pips */}
+      <div className="grid grid-cols-3 grid-rows-3 w-full h-full p-[14%] gap-[6%]">
+        {Array.from({ length: 9 }).map((_, i) => {
+          const r = Math.floor(i / 3);
+          const c = i % 3;
+          const hasDot = FACE_DOTS[faceNum]?.some(([dr, dc]) => dr === r && dc === c);
+
+          return (
+            <div key={i} className="flex items-center justify-center">
+              {hasDot && (
+                <div
+                  className={`rounded-full ${
+                    isOne && !wooden
+                      ? "w-[88%] h-[88%] bg-gradient-to-br from-[#EF4444] to-[#B91C1C]"
+                      : wooden
+                      ? "w-[75%] h-[75%] bg-gradient-to-br from-[#FFF5DE] to-[#DEC698]"
+                      : "w-[75%] h-[75%] bg-gradient-to-br from-[#334155] to-[#0F172A]"
+                  }`}
+                  style={{
+                    boxShadow: isOne && !wooden
+                      ? "inset 0 1.5px 2px rgba(255,255,255,0.6), inset 0 -1.5px 2px rgba(120,0,0,0.7), 0 1px 1px rgba(0,0,0,0.3)"
+                      : wooden
+                      ? "inset 0 1px 2px rgba(0,0,0,0.4), 0 1px 1px rgba(255,255,255,0.4)"
+                      : "inset 0 1.5px 2px rgba(0,0,0,0.9), inset 0 -1px 1px rgba(255,255,255,0.25), 0 1px 1px rgba(255,255,255,0.75)",
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

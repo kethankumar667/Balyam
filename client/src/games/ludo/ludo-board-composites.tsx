@@ -928,25 +928,28 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
         // would beat the global `*:focus-visible` box-shadow ring.
         className="relative rounded-full flex items-center justify-center active:scale-95 transition disabled:cursor-default focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-amber-400"
         style={{
-          width: 92,
-          height: 92,
-          background: `radial-gradient(circle at 50% 35%, ${cupTint}, ${cupDark})`,
-          border: `5px solid ${cupDark}`,
+          width: 96,
+          height: 96,
+          background: `radial-gradient(circle at 50% 35%, ${cupTint}ee 0%, ${cupDark} 75%, #051408 100%)`,
+          border: `4.5px solid ${cupDark}`,
           boxShadow: canRoll
-            ? `0 0 0 4px ${cupTint}66, 0 8px 18px rgba(0,0,0,0.3)`
-            : "0 6px 14px rgba(0,0,0,0.22)",
+            ? `0 0 0 4px ${cupTint}66, inset 0 6px 14px rgba(0,0,0,0.55), inset 0 -3px 6px rgba(255,255,255,0.2), 0 10px 22px rgba(0,0,0,0.35)`
+            : "inset 0 6px 14px rgba(0,0,0,0.5), inset 0 -3px 6px rgba(255,255,255,0.15), 0 6px 16px rgba(0,0,0,0.24)",
         }}
       >
+        {/* Felt textured arena inner rim */}
         <div
           key={settleKey}
-          style={{ width: 58, height: 58 }}
-          className={canRoll ? "ludo-cup-breathe" : settleKey > 0 ? "ludo-dice-impact" : undefined}
+          style={{ width: 62, height: 62 }}
+          className={`flex items-center justify-center ${
+            canRoll ? "ludo-cup-breathe" : settleKey > 0 ? "ludo-dice-impact" : ""
+          }`}
         >
-          <Dice value={state.diceValue} rolling={m.rolling} highlight={canRoll} wooden={m.settings.woodenDice} size="100%" />
+          <Dice value={state.diceValue} rolling={m.rolling} highlight={canRoll} wooden={m.settings.woodenDice} size="56px" />
         </div>
         {streak && (
           <span
-            className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 rounded-full text-[11px] font-black flex items-center justify-center"
+            className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 rounded-full text-[11px] font-black flex items-center justify-center z-20 shadow-md"
             style={{ background: "#DC2626", color: "#fff", border: "2px solid #FFFBF0" }}
             title={`${state.consecutiveSixes} sixes in a row — a third forfeits the turn`}
           >

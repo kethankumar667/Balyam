@@ -1234,6 +1234,45 @@ body, #root, .bhalyam-paper {
   will-change: transform;
 }
 
+.dice-3d-scene {
+  --face-depth: 26px;
+}
+@media (min-width: 640px) {
+  .dice-3d-scene {
+    --face-depth: 28px;
+  }
+}
+
+@keyframes dice-3d-rolling {
+  0% {
+    transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(0.94);
+  }
+  18% {
+    transform: translateY(var(--dice-arc, -22px)) rotateX(calc(var(--dice-rx) * 0.32)) rotateY(calc(var(--dice-ry) * 0.3)) rotateZ(calc(var(--dice-rz) * 0.4)) scale(1.15);
+  }
+  46% {
+    transform: translateY(calc(var(--dice-arc, -22px) * 0.55)) rotateX(calc(var(--dice-rx) * 0.68)) rotateY(calc(var(--dice-ry) * 0.65)) rotateZ(calc(var(--dice-rz) * 0.75)) scale(1.06);
+  }
+  72% {
+    transform: translateY(calc(var(--dice-arc, -22px) * -0.18)) rotateX(calc(var(--dice-rx) * 0.9)) rotateY(calc(var(--dice-ry) * 0.88)) rotateZ(calc(var(--dice-rz) * 0.95)) scale(0.98);
+  }
+  88% {
+    transform: translateY(2.5px) rotateX(var(--dice-rx)) rotateY(var(--dice-ry)) rotateZ(0deg) scale(0.96);
+  }
+  95% {
+    transform: translateY(-1.5px) rotateX(var(--dice-rx)) rotateY(var(--dice-ry)) rotateZ(0deg) scale(1.02);
+  }
+  100% {
+    transform: translateY(0) rotateX(var(--dice-rx)) rotateY(var(--dice-ry)) rotateZ(0deg) scale(1);
+  }
+}
+
+.dice-3d-rolling {
+  animation: dice-3d-rolling 640ms cubic-bezier(0.22, 0.86, 0.32, 1.22) both;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
 @keyframes active-player-pulse {
   0%, 100% { box-shadow: 0 0 0 0 var(--active-player-glow, rgba(251,191,36,0.4)); }
   50% { box-shadow: 0 0 0 6px rgba(251,191,36,0); }
