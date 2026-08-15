@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
+import { currentAccountKind, useCapabilities } from "../../store/authStore";
+import SignInWall from "../auth/SignInWall";
 import { ArrowRightIcon } from "./icons";
 import QrScannerModal from "../QrScannerModal";
 
@@ -49,6 +51,17 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
+
+  const caps = useCapabilities();
+  /**
+   * A guest reaches a room by being invited, never by typing into a box —
+   * shared/permissions.ts explains where that line falls and why the QR
+   * scanner stays open to them. So for a guest this modal is not a form: it
+   * is a scanner with a name on it, and the code only ever arrives from a
+   * camera. `code` state is shared by both paths, which is why the scan
+   * handler below is the sole writer of it when `joinByCode` is off.
+   */
+  const canType = caps.joinByCode;
 
   // Reset transient state every time the modal opens; rehydrate the
   // name from the store so a returning player doesn't retype it.
@@ -109,7 +122,12 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
     // at once, not a one-at-a-time game of whack-a-mole. The first
     // offending field gets focus.
     const nextNameError = !n ? "Enter your name first" : null;
-    const nextCodeError = c.length !== 6 ? "Room code must be 6 characters" : null;
+    const nextCodeError =
+      c.length !== 6
+        ? canType
+          ? "Room code must be 6 characters"
+          : "Scan your friend's QR code to join their room"
+        : null;
     setNameError(nextNameError);
     setCodeError(nextCodeError);
     setFormError(null);
@@ -126,7 +144,13 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
     const socket = getSocket();
     socket.emit(
       "room:join",
-      { name: n, code: c, avatar: avatarId ?? undefined, ...(seatFor(c) ?? {}) },
+      {
+        name: n,
+        code: c,
+        avatar: avatarId ?? undefined,
+        accountKind: currentAccountKind(),
+        ...(seatFor(c) ?? {}),
+      },
       (res) => {
         setBusy(false);
         if (!res.ok) {
@@ -190,7 +214,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               Join a room
             </h2>
             <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood dark:text-slate-400">
-              Got a code? Hop in.
+              {canType ? "Got a code? Hop in." : "Scan your friend's QR."}
             </div>
           </div>
           <button
@@ -237,20 +261,68 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             />
           </Field>
 
-          {/* Scan QR Code button */}
-          <div className="flex justify-end -mb-1">
+          {/* Scan QR Code — a quiet link beside the code box for a member, the
+              main event for a guest, who has no other way in from here. */}
+          {canType ? (
+            <div className="flex justify-end -mb-1">
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-bhalyam-wood dark:text-amber-400
+                           hover:text-bhalyam-wood-dark dark:hover:text-amber-300 active:scale-95 transition cursor-pointer"
+              >
+                <ScanIcon className="w-4 h-4 text-[#EA5A1F]" />
+                Scan QR Code
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
               onClick={() => setScannerOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-bhalyam-wood dark:text-amber-400
-                         hover:text-bhalyam-wood-dark dark:hover:text-amber-300 active:scale-95 transition cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2.5
+                         min-h-[56px] rounded-2xl cursor-pointer
+                         bhalyam-gold-leaf text-bhalyam-wood-dark font-bold text-[15px]
+                         border border-bhalyam-gold-dark
+                         active:scale-[0.98] bhalyam-press-feedback
+                         focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/70
+                         focus:ring-offset-2 focus:ring-offset-bhalyam-cream-soft
+                         transition-all duration-200
+                         shadow-[0_6px_14px_-4px_rgba(228,177,40,0.6)]"
             >
-              <ScanIcon className="w-4 h-4 text-[#EA5A1F]" />
-              Scan QR Code
+              <ScanIcon className="w-5 h-5" />
+              Scan your friend&apos;s QR
             </button>
-          </div>
+          )}
+
+          {/* What a guest has scanned, shown read-only. They could not have
+              typed it, so an editable box would invite them to change it into
+              a code they were never given. */}
+          {!canType && code ? (
+            <div
+              className="rounded-xl border-2 border-bhalyam-cream-edge/80 dark:border-slate-700/80
+                         bg-bhalyam-cream-soft dark:bg-[#0B0F19] px-3 py-2.5 text-center"
+            >
+              <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood dark:text-slate-400">
+                Scanned code
+              </div>
+              <div className="font-mono font-black text-xl tracking-[0.4em] text-bhalyam-wood-dark dark:text-slate-100">
+                {code}
+              </div>
+            </div>
+          ) : null}
+
+          {!canType && codeError ? (
+            <p
+              role="alert"
+              aria-live="polite"
+              className="text-[12px] font-semibold text-bhalyam-ludo-red leading-tight text-center"
+            >
+              {codeError}
+            </p>
+          ) : null}
 
           {/* Room code */}
+          {canType && (
           <Field
             htmlFor="join-code"
             label="Room code"
@@ -300,8 +372,12 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               </button>
             </div>
           </Field>
+          )}
 
-          {/* Submit */}
+          {/* Submit. A guest sees it only once a scan has produced a code —
+              before that there is nothing to submit and a live button would
+              just be a way to generate an error. */}
+          {(canType || code) && (
           <button
             type="submit"
             disabled={busy}
@@ -321,6 +397,11 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               </>
             )}
           </button>
+          )}
+
+          {!canType && (
+            <SignInWall compact from="join" reason="Room codes are for playing with friends" />
+          )}
 
           {/* Form-level error fallback */}
           {formError && (
@@ -343,6 +424,14 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
         onScanSuccess={(scannedCode: string) => {
           setCode(scannedCode);
           setCodeError(null);
+          // A scan with no name yet used to leave the modal looking untouched.
+          // Now the code is held above and the missing half is named, which
+          // matters most for a guest: the scanner is their only way in, so
+          // silence here reads as the camera having failed.
+          if (!name.trim()) {
+            setNameError("Enter your name first");
+            window.setTimeout(() => nameInputRef.current?.focus(), 0);
+          }
           // If name is already provided, attempt auto submit
           if (name.trim()) {
             window.setTimeout(() => {
@@ -356,6 +445,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                   name: n,
                   code: scannedCode,
                   avatar: avatarId ?? undefined,
+                  accountKind: currentAccountKind(),
                   ...(seatFor(scannedCode) ?? {}),
                 },
                 (res) => {

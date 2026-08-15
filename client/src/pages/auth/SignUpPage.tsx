@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import AuthShell from "../../components/auth/AuthShell";
-import { usePreviewSubmit } from "../../components/auth/usePreviewSubmit";
+import { useLocalSignIn } from "../../components/auth/useLocalSignIn";
+import { FormNotice } from "../../components/auth/AuthControls";
 import { validateEmail, validateName, validatePassword, type FieldError } from "../../lib/authValidation";
 import { useRoomStore } from "../../store/roomStore";
 import { AVATARS } from "../../lib/avatars";
@@ -20,7 +21,7 @@ export default function SignUpPage() {
   const [nameError, setNameError] = useState<FieldError>(null);
   const [emailError, setEmailError] = useState<FieldError>(null);
   const [passwordError, setPasswordError] = useState<FieldError>(null);
-  const { loading, done, submit, reset } = usePreviewSubmit();
+  const { loading, unavailable, submit, markUnavailable, reset } = useLocalSignIn();
 
   // Password rules helper
   const hasMinLength = password.length >= 8;
@@ -54,11 +55,13 @@ export default function SignUpPage() {
     if (nextName || nextEmail || nextPassword) {
       return;
     }
+    // Written before signing in, so the name and face a guest already chose
+    // survive the transition rather than being reset by becoming a member.
     setPlayerName(name.trim());
     if (selectedAvatar) {
       setAvatarId(selectedAvatar);
     }
-    submit();
+    submit(email);
   }
 
   return (
@@ -82,7 +85,7 @@ export default function SignUpPage() {
           <div className="space-y-2 pt-0.5">
             <button
               type="button"
-              onClick={submit}
+              onClick={markUnavailable}
               className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -108,13 +111,20 @@ export default function SignUpPage() {
 
             <button
               type="button"
-              onClick={submit}
+              onClick={markUnavailable}
               className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer"
             >
               <span className="text-base text-black">🍏</span>
               <span>Continue with Apple</span>
             </button>
           </div>
+
+          {unavailable ? (
+            <FormNotice tone="info" title="Provider sign-up isn't connected yet">
+              Google and Apple need OAuth credentials this build doesn&apos;t have. Use your
+              email below — it works today.
+            </FormNotice>
+          ) : null}
 
           {/* Divider */}
           <div className="relative flex items-center justify-center py-0.5">
@@ -142,7 +152,7 @@ export default function SignUpPage() {
                   onChange={(e) => {
                     setName(e.target.value);
                     if (nameError) setNameError(null);
-                    if (done) reset();
+                    if (unavailable) reset();
                   }}
                   placeholder="monica"
                   className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-10 py-2 text-[13px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
@@ -176,7 +186,7 @@ export default function SignUpPage() {
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (emailError) setEmailError(null);
-                    if (done) reset();
+                    if (unavailable) reset();
                   }}
                   placeholder="you@example.com"
                   className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-4 py-2 text-[13px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
@@ -207,7 +217,7 @@ export default function SignUpPage() {
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (passwordError) setPasswordError(null);
-                    if (done) reset();
+                    if (unavailable) reset();
                   }}
                   placeholder="Create a strong password"
                   className={`w-full bg-[#FFFDF8] border rounded-full pl-10 pr-10 py-2 text-[13px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${

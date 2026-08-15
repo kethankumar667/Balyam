@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   BHALYAM_GAMES,
   GAME_CATEGORIES,
@@ -337,43 +338,37 @@ function EdgeCue({
   onNudge: (side: "left" | "right") => void;
 }) {
   const isRight = side === "right";
+  const [theme] = useTheme();
+  const isDark = theme === "dark";
+
   return (
     <button
       type="button"
-      /* Pointer-only convenience: keyboard users already move through the
-         group with arrow keys, so announcing a second control would just be
-         noise. Hidden from AT, unreachable by Tab, fully tappable. */
+      aria-label={isRight ? "Scroll next categories" : "Scroll previous categories"}
       aria-hidden
       tabIndex={-1}
       disabled={!show}
       onClick={() => onNudge(side)}
-      /* The fade has to end in whatever colour the page actually is, so it
-         reads as the strip running out rather than as a bar sitting on top of
-         it. That colour differs by theme, which an inline gradient cannot
-         express — it shipped as a cream smear across the dark page. Both the
-         wash and the chevron now come from `bhalyam-strip-fade` in index.css,
-         and `data-side` picks the direction. */
       data-side={side}
-      className={`bhalyam-strip-fade absolute inset-y-1 z-10 flex w-12 items-center
-                  transition-opacity duration-200 sm:hidden
-                  ${isRight ? "right-1 justify-end rounded-r-full" : "left-1 justify-start rounded-l-full"}
-                  ${show ? "opacity-100" : "pointer-events-none opacity-0"}`}
+      className={`absolute inset-y-0 z-20 flex items-center justify-center transition-all duration-200 cursor-pointer sm:hidden ${
+        isRight ? "right-1" : "left-1"
+      } ${
+        show ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-75"
+      }`}
     >
-      <svg
-        viewBox="0 0 24 24"
-        width={16}
-        height={16}
-        fill="none"
-        /* Inherits from the button so one token drives both themes. */
-        stroke="currentColor"
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={isRight ? "mr-0.5" : "ml-0.5"}
-        style={{ transform: isRight ? undefined : "rotate(180deg)" }}
+      <div
+        className={`w-7 h-7 rounded-full flex items-center justify-center shadow-lg border transition-transform active:scale-90 ${
+          isDark
+            ? "bg-[#1E294B] border-amber-400 text-amber-300 shadow-black/80"
+            : "bg-[#FFF2D6] border-[#EA9A32] text-[#B45309] shadow-amber-900/30"
+        }`}
       >
-        <path d="M9 6l6 6-6 6" />
-      </svg>
+        {isRight ? (
+          <ChevronRight className="w-4 h-4 text-current" strokeWidth={3} />
+        ) : (
+          <ChevronLeft className="w-4 h-4 text-current" strokeWidth={3} />
+        )}
+      </div>
     </button>
   );
 }

@@ -93,6 +93,14 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam.account",
+    label: "Account status",
+    description:
+      "Whether you are signed in, the email you signed in with, and when. Written only if you sign in — a guest has no such record at all. There is no account server behind this yet, so nothing here has been sent anywhere or checked against anything.",
+    purpose: "identity",
+    isPersonalData: true,
+  },
+  {
     key: "mpg.avatar",
     label: "Avatar",
     description:
