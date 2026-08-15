@@ -220,12 +220,26 @@ export default function SpaceWarBoardDesktop({
             <span className="text-[#8e9bb4]">LIVES REMAINING:</span>
             <span className="font-bold text-[#ff3366]">{state.player.lives} / {state.player.maxLives}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-[#8e9bb4]">SPECIAL WEAPON:</span>
-            <span className="font-bold uppercase text-[#cc99ff]">
-              {state.player.specialAttack} (x{state.player.specialCount})
+            <span
+              className="font-bold uppercase px-2 py-0.5 rounded border text-xs flex items-center gap-1 shadow"
+              style={{
+                borderColor: state.player.specialAttack === "missile" ? "#ff8800" : state.player.specialAttack === "laser" ? "#00f0ff" : "#00ff88",
+                color: state.player.specialAttack === "missile" ? "#ffaa33" : state.player.specialAttack === "laser" ? "#00f0ff" : "#00ff88",
+                backgroundColor: "rgba(10, 15, 35, 0.8)",
+              }}
+            >
+              <span>{state.player.specialAttack === "missile" ? "🚀 MISSILES" : state.player.specialAttack === "laser" ? "⚡ HYPER LASER" : "🛡️ PLASMA WALL"}</span>
+              <span className="text-white font-black bg-red-600 px-1 rounded text-[10px]">x{state.player.specialCount}</span>
             </span>
           </div>
+          {state.player.shieldOn && (
+            <div className="flex justify-between items-center bg-cyan-950/50 p-1.5 rounded border border-cyan-400 text-cyan-300">
+              <span className="font-bold flex items-center gap-1"><span>🛡️</span> FORCEFIELD SHIELD:</span>
+              <span className="font-black animate-pulse">{Math.ceil((state.player.shieldTimeLeft || 0) / 1000)}s</span>
+            </div>
+          )}
         </div>
 
         {/* Controls Guide */}
@@ -257,14 +271,19 @@ export default function SpaceWarBoardDesktop({
         <div className="grid grid-cols-2 gap-3 mt-1">
           <button
             onClick={() => onMove("special")}
-            className="py-3 bg-[#8000ff] hover:bg-[#9933ff] text-white font-bold rounded-xl border border-[#cc99ff] flex items-center justify-center gap-1.5 shadow"
+            className={`py-3 text-white font-bold rounded-xl border flex items-center justify-center gap-1.5 shadow transition-all active:scale-95 ${
+              state.player.specialCount > 0
+                ? "bg-gradient-to-r from-[#8000ff] to-[#cc00ff] hover:from-[#9933ff] hover:to-[#e600ff] border-[#cc99ff] shadow-[0_0_12px_rgba(204,0,255,0.4)] cursor-pointer"
+                : "bg-[#1d2238] border-[#374066] text-zinc-500 opacity-60 cursor-not-allowed"
+            }`}
           >
-            <span>🚀</span> SPECIAL
+            <span>{state.player.specialAttack === "missile" ? "🚀" : state.player.specialAttack === "laser" ? "⚡" : "🛡️"}</span>
+            <span>SPECIAL (x{state.player.specialCount})</span>
           </button>
 
           <button
             onClick={() => onMove("fire")}
-            className="py-3 bg-[#ff0055] hover:bg-[#ff3377] text-white font-bold rounded-xl border border-[#ff99bb] flex items-center justify-center gap-1.5 shadow"
+            className="py-3 bg-[#ff0055] hover:bg-[#ff3377] text-white font-bold rounded-xl border border-[#ff99bb] flex items-center justify-center gap-1.5 shadow cursor-pointer active:scale-95 transition-all"
           >
             <span>🔥</span> FIRE
           </button>
