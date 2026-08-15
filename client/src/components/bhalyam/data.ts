@@ -382,6 +382,14 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Telugu proverbs from Ammamma's verandah. Complete the saying, learn the lesson, win the round.",
     accent: { from: "#D97706", to: "#B45309" },
+    // The quiz itself is gone — engine, board and question bank all removed —
+    // but the tile and its icon stay, so this entry is deliberately NOT
+    // marked `maintenance`. That flag reads as "coming soon" but in practice
+    // means hidden: `filterGames(filter, false)` on /games drops locked
+    // tiles, and the home grid only shows the first six, so a maintenance
+    // tile appears nowhere at all. The slug is absent from `PLAYABLE_SLUGS`
+    // instead, which is what makes the tile open an "unavailable" panel
+    // rather than a room form.
   },
   {
     slug: "telugucinemalu",
@@ -397,22 +405,24 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Guess the film. Hint by hint, dialogue by dialogue. Friday-release adda energy.",
     accent: { from: "#E11D48", to: "#BE123C" },
+    // Removed alongside Samethalu, and left unmarked for the same reason —
+    // see the note on that tile.
   },
   {
     slug: "snake",
     tags: ["solo", "multiplayer"],
-    theme: "90s Nostalgia 🐍",
-    badge: "📱 3310 Classic",
-    nostalgiaQuote: "Eat pellets, don't bite your tail!",
-    title: "Snake",
-    playerRange: "1–2 Players",
+    theme: "Retro Snake 🐍",
+    badge: "🐍 Retro Snake",
+    nostalgiaQuote: "2 for up, 8 for down, 4 for left, 6 for right!",
+    title: "Retro Snake",
+    playerRange: "1 Player",
     duration: "3–10 min",
-    paperBg: "linear-gradient(155deg, #1C2E03 0%, #0F1901 45%, #070D00 100%)",
-    paperBorder: "rgba(101, 163, 13, 0.55)",
-    btnGradient: { from: "#65A30D", to: "#4D7C0F", shadow: "#365314" },
+    paperBg: "linear-gradient(155deg, #182C18 0%, #0F1E0F 45%, #081108 100%)",
+    paperBorder: "rgba(135, 169, 107, 0.55)",
+    btnGradient: { from: "#87A96B", to: "#4E7333", shadow: "#2A4518" },
     blurb:
-      "Classic green LCD matrix. Eat food pellets, grow longer, avoid walls and self-collision.",
-    accent: { from: "#65A30D", to: "#4D7C0F" },
+      "Authentic Nokia 1100 monochrome 2D snake. 1-bit LCD graphics, classic & wrap-around modes, timed bonus insects, and pure square-wave buzzer nostalgia.",
+    accent: { from: "#87A96B", to: "#4E7333" },
   },
   {
     slug: "blockblast",

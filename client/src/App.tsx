@@ -18,6 +18,7 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import NokiaCricketPage from "./pages/NokiaCricketPage";
+import NokiaSnakePage from "./pages/NokiaSnakePage";
 
 /**
  * On every route change, snap the window scroll back to the top so the
@@ -113,6 +114,9 @@ export default function App() {
         <Route path="/preview/ludo" element={<PreviewLudo />} />
         <Route path="/nokiacricket" element={<NokiaCricketPage />} />
         <Route path="/cricket2d" element={<NokiaCricketPage />} />
+        <Route path="/snake" element={<NokiaSnakePage />} />
+        <Route path="/nokiasnake" element={<NokiaSnakePage />} />
+        <Route path="/snake2d" element={<NokiaSnakePage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

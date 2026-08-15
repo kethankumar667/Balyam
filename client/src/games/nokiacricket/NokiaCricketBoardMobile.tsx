@@ -76,21 +76,12 @@ export default function NokiaCricketBoardMobile({ onExit }: NokiaCricketBoardPro
       } else if (key === "6" || key === "d" || key === "arrowright") {
         engine.handleInput("RIGHT");
         subtle();
-      } else if (key === "2" || key === "arrowup") {
-        engine.handleInput("UP");
-        subtle();
-      } else if (key === "8" || key === "arrowdown") {
-        engine.handleInput("DOWN");
-        subtle();
-      } else if (key === "5" || key === "w" || key === "s" || key === " " || key === "enter" || key === "z") {
+      } else if (key === "5" || key === "w" || key === "s" || key === " " || key === "enter" || key === "arrowup") {
         engine.handleInput("SELECT");
         subtle();
-      } else if (key === "p") {
+      } else if (key === "0" || key === "p" || key === "escape") {
         engine.togglePause();
         subtle();
-      } else if (key === "escape" || key === "x") {
-        if (onExit) onExit();
-        else engine.handleInput("BACK");
       }
     };
 
@@ -110,12 +101,7 @@ export default function NokiaCricketBoardMobile({ onExit }: NokiaCricketBoardPro
     if (key === "4") engineRef.current.handleInput("LEFT");
     else if (key === "5") engineRef.current.handleInput("SELECT");
     else if (key === "6") engineRef.current.handleInput("RIGHT");
-    else if (key === "2") engineRef.current.handleInput("UP");
-    else if (key === "8") engineRef.current.handleInput("DOWN");
-    else if (key === "SOFT_L") engineRef.current.handleInput("SELECT");
-    else if (key === "SOFT_R") {
-      engineRef.current.handleInput("BACK");
-    }
+    else if (key === "0") engineRef.current.togglePause();
   };
 
   return (

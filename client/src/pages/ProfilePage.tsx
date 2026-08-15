@@ -142,17 +142,32 @@ export default function ProfilePage() {
 
           {/* ── Content ──────────────────────────────────────────── */}
           <main className="min-w-0 pt-4 lg:pt-0 pb-12">
-            <header className="mb-5">
-              <h1
-                className="bhalyam-display text-[var(--auth-ink)] leading-tight"
-                style={{ fontSize: "clamp(1.75rem, 4vw, 2.25rem)" }}
-              >
-                My Profile
-              </h1>
-              <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--auth-ink-soft)] max-w-[62ch]">
-                Everything here lives on this device. It travels to a table with you, not to a
-                server.
-              </p>
+            <header className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1
+                  className="bhalyam-display text-[var(--auth-ink)] leading-tight"
+                  style={{ fontSize: "clamp(1.75rem, 4vw, 2.25rem)" }}
+                >
+                  My Profile
+                </h1>
+                <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--auth-ink-soft)] max-w-[62ch]">
+                  Everything here lives on this device. It travels to a table with you, not to a
+                  server.
+                </p>
+              </div>
+              {isMember && (
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="inline-flex items-center gap-2 min-h-[42px] px-4 rounded-full
+                             bg-red-50 hover:bg-red-100 border border-red-200
+                             text-red-700 font-extrabold text-[13.5px] self-start sm:self-auto
+                             active:scale-[0.99] transition cursor-pointer shadow-xs"
+                >
+                  <LockIcon className="w-4 h-4 text-red-600" />
+                  <span>Sign out</span>
+                </button>
+              )}
             </header>
 
             <div className="space-y-5">

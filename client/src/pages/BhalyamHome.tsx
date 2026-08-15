@@ -60,6 +60,7 @@ import {
   ArrowRight,
   Lock,
   Gamepad2,
+  LogOut,
 } from "lucide-react";
 import {
   HandCricketGlyph,
@@ -1015,22 +1016,42 @@ export function ProfileSheet({
       </div>
 
       {signedIn ? (
-        <div className="rounded-2xl p-4 border border-[#E8D8BE] bg-white">
-          <div className="text-[11px] uppercase tracking-[0.22em] font-extrabold text-[#7B5024] mb-3">
-            Your Membership
+        <div className="space-y-3">
+          <div className="rounded-2xl p-4 border border-[#E8D8BE] bg-white space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] uppercase tracking-[0.22em] font-extrabold text-[#7B5024]">
+                Your Membership
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[10.5px] font-black">
+                Active Member
+              </span>
+            </div>
+            <Link
+              to="/profile"
+              onClick={onClose}
+              className="w-full h-11 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] text-[#7B5024]
+                         font-extrabold text-[13.5px] inline-flex items-center justify-center gap-2
+                         hover:bg-[#F8EEDB] active:scale-[0.99]
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                         transition-[background-color,transform] duration-200"
+            >
+              <UserIcon className="w-4 h-4" />
+              Account &amp; settings
+            </Link>
           </div>
-          <Link
-            to="/profile"
-            onClick={onClose}
-            className="w-full h-12 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] text-[#7B5024]
-                       font-extrabold text-[14px] inline-flex items-center justify-center gap-2
-                       hover:bg-[#F8EEDB] active:scale-[0.99]
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                       transition-[background-color,transform] duration-200"
+
+          <button
+            type="button"
+            onClick={() => {
+              useAuthStore.getState().signOut();
+            }}
+            className="w-full h-11 rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-700
+                       font-extrabold text-[13.5px] inline-flex items-center justify-center gap-2
+                       active:scale-[0.99] transition cursor-pointer shadow-xs"
           >
-            <UserIcon className="w-4 h-4" />
-            Account &amp; settings
-          </Link>
+            <LogOut className="w-4 h-4 text-red-600" />
+            <span>Sign out / Log out</span>
+          </button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -1070,7 +1091,7 @@ export function ProfileSheet({
 
 /**
  * Menu sheet — navigation only. Join Room, How to Play, theme toggle,
- * About.
+ * About, Sign out.
  */
 export function MenuSheet({
   open,
@@ -1081,8 +1102,13 @@ export function MenuSheet({
   onClose: () => void;
   onOpenJoin: () => void;
 }) {
+  const navigate = useNavigate();
   const [theme, toggleTheme] = useTheme();
   const [showSettings, setShowSettings] = useState(false);
+  const isMember = useAuthStore((s) => s.isMember);
+  const email = useAuthStore((s) => s.email);
+  const signOut = useAuthStore((s) => s.signOut);
+
   return (
     <SheetShell
       open={open}
@@ -1142,10 +1168,33 @@ export function MenuSheet({
           onClick={onClose}
           icon={<Info className="w-5 h-5" />}
         />
+
+        {isMember ? (
+          <SheetAction
+            label="Sign out / Log out"
+            hint={email ? `Signed in as ${email}` : "Log out from this device"}
+            onClick={() => {
+              signOut();
+              onClose();
+            }}
+            icon={<LogOut className="w-5 h-5 text-red-500" />}
+          />
+        ) : (
+          <SheetAction
+            label="Sign in"
+            hint="Access your host privileges"
+            onClick={() => {
+              onClose();
+              navigate("/login");
+            }}
+            icon={<UserIcon className="w-5 h-5 text-amber-600" />}
+          />
+        )}
       </nav>
     </SheetShell>
   );
 }
+
 
 export function NotificationsSheet({
   open,

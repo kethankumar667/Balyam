@@ -11,21 +11,26 @@ room of your own and hand out the code. See
 
 ## Games
 
-Twenty games ship in `GameKind` (`shared/types.ts`); the home catalog
-(`client/src/components/bhalyam/data.ts`) additionally carries three
+Eighteen games ship in `GameKind` (`shared/types.ts`); the home catalog
+(`client/src/components/bhalyam/data.ts`) additionally carries five
 "coming soon" tiles that route nowhere.
 
 | Category | Games |
 |---|---|
 | **Board & cards** | Ludo, Snakes & Ladders, Rummy, UNO, Carrom, Chess, Dots & Boxes |
-| **Party & quiz** | Bingo, Tambola, Star Game, Name-Place-Animal, Samethalu, Telugu Cinemalu |
+| **Party & quiz** | Bingo, Tambola, Star Game, Name-Place-Animal |
 | **Arcade & quick** | Rock Paper Scissors, Hand Cricket, Snake, Block Blast, Space War, Road Rash |
 | **Classroom** | Word Building |
 
+The Samethalu and Telugu Cinema quizzes were removed — engines, boards,
+question banks and wiring are all gone. Their tiles and icons deliberately
+remain in the catalog as "coming soon" entries, so the artwork survives and
+the slugs stay available if either is rebuilt.
+
 Two allow-lists worth knowing, both enforced server-side:
 
-- **No bots:** Samethalu, Telugu Cinemalu, Snake, Road Rash, Space War — these
-  are solo/arcade, so there is no AI opponent to add.
+- **No bots:** Snake, Road Rash, Space War — these are solo/arcade, so there
+  is no AI opponent to add.
 - **Pass & Play** (several humans, one device): Ludo, Snakes & Ladders, Word
   Building, Dots & Boxes only. Restricted to open-information games on
   purpose — Rummy or UNO would show one player's hand to whoever is holding
@@ -163,7 +168,7 @@ stops being read from `localStorage` and no call site changes. Until then:
 - [x] Room create / join via 6-char codes
 - [x] Real-time text chat, reactions, soundboard
 - [x] Player list with ready state
-- [x] Twenty games, all server-authoritative (see [Games](#games))
+- [x] Eighteen games, all server-authoritative (see [Games](#games))
 - [x] Bots as first-class players; Pass & Play on four open-information games
 - [x] Disconnect/reconnect grace period (90 seconds) + game state re-emit on rejoin
 - [x] Server takeover of idle/disconnected seats, handed back on return
@@ -171,7 +176,7 @@ stops being read from `localStorage` and no call site changes. Until then:
 - [x] Authenticated seats via server-signed seat tokens
 - [x] Guest / member permission model with server-sealed guest rooms
 - [x] DPDP surfaces: consent record, data inventory, export and erase
-- [x] **621 server tests + 243 client tests** (vitest)
+- [x] **581 server tests + 264 client tests** (vitest)
 
 Not done: a verified account backend (see the honesty note above), persistence
 of any kind (rooms live in server memory and die with the process), and a TURN
@@ -204,8 +209,8 @@ server for players behind symmetric NATs.
 
 ## Tests
 ```bash
-cd server && npm test    # 621 tests
-cd client && npm test    # 243 tests
+cd server && npm test    # 581 tests
+cd client && npm test    # 264 tests
 ```
 Type-check either side with `npm run typecheck`.
 

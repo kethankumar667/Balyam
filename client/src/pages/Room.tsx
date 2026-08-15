@@ -38,13 +38,11 @@ import type { GameKind, Player, RpsState, RummyPlayerState, LudoState, SnlState,
 import WordBuildingBoard from "../games/wordbuilding/WordBuildingBoard";
 import DotsBoxesBoard from "../games/dotsboxes/DotsBoxesBoard";
 import StarBoard from "../games/stargame/StarBoard";
-import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState, SamethaluPlayerState, TeluguCinemaluPlayerState } from "@shared/types";
+import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
 import BingoBoard from "../games/bingo/BingoBoard";
 import type { BingoPlayerState } from "@shared/types";
 import NamePlaceAnimalBoard from "../games/namesplaceanimal/NamePlaceAnimalBoard";
 import TambolaBoard from "../games/tambola/TambolaBoard";
-import SamethaluBoard from "../games/samethalu/SamethaluBoard";
-import TeluguCinemaluBoard from "../games/telugucinemalu/TeluguCinemaluBoard";
 import SnakeBoard from "../games/snake/SnakeBoard";
 import BlockBlastBoard from "../games/blockblast/BlockBlastBoard";
 import CarromBoard from "../games/carrom/CarromBoard";
@@ -70,8 +68,6 @@ const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
   bingo: 8,
   namesplaceanimal: 8,
   tambola: 8,
-  samethalu: 8,
-  telugucinemalu: 8,
   snake: 4,
   carrom: 2,
   roadrash: 4,
@@ -126,8 +122,6 @@ const GAME_DISPLAY_NAMES: Record<GameKind, string> = {
   bingo: "BINGO 🎱",
   namesplaceanimal: "NAME PLACE ANIMAL 🐾",
   tambola: "TAMBOLA 🎟️",
-  samethalu: "SAMETHALU 📜",
-  telugucinemalu: "TELUGU CINEMA 🎬",
   snake: "SNAKE 🐍",
   roadrash: "ROAD RASH 🏍️",
   carrom: "CARROM 🎯",
@@ -145,7 +139,7 @@ function BotControls({
   game: GameKind;
 }) {
   const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-    "samethalu", "telugucinemalu", "spacewar"
+    "spacewar"
   ]);
   if (NO_BOT_GAMES.has(game)) {
     return null;
@@ -586,7 +580,7 @@ export default function Room() {
   // Solo games bypass lobby — if the host lands in lobby for a solo game, auto-start immediately.
   useEffect(() => {
     if (!roomState || roomState.phase !== "lobby" || !selfIsHost) return;
-    const isSolo = ["samethalu", "telugucinemalu", "snake", "spacewar"].includes(roomState.game);
+    const isSolo = ["snake", "spacewar"].includes(roomState.game);
     if (isSolo) {
       getSocket().emit("room:setReady", true);
       getSocket().emit("room:startGame");
@@ -790,8 +784,6 @@ export default function Room() {
   }
 
   const minPlayersNeeded =
-    roomState.game === "telugucinemalu" ||
-    roomState.game === "samethalu" ||
     roomState.game === "snake" ||
     roomState.game === "carrom" ||
     roomState.game === "spacewar" ||
@@ -827,8 +819,6 @@ export default function Room() {
     bingo:        "Bingo",
     namesplaceanimal: "Name Place Animal Thing",
     tambola: "Tambola (Housie)",
-    samethalu: "Samethalu Quiz",
-    telugucinemalu: "Telugu Cinema Quiz",
   };
   const gameOverGameName = roomState
     ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)
@@ -1328,28 +1318,6 @@ export default function Room() {
             {roomState.phase !== "lobby" && roomState.game === "tambola" && gameState != null && (
               <TambolaBoard
                 state={gameState as TambolaPlayerState}
-                selfId={playerId || ""}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
-              />
-            )}
-
-            {roomState.phase !== "lobby" && roomState.game === "samethalu" && gameState != null && (
-              <SamethaluBoard
-                state={gameState as SamethaluPlayerState}
-                selfId={playerId || ""}
-                onMove={(type, data) => {
-                  const socket = getSocket();
-                  socket.emit("game:move", { type, data });
-                }}
-              />
-            )}
-
-            {roomState.phase !== "lobby" && roomState.game === "telugucinemalu" && gameState != null && (
-              <TeluguCinemaluBoard
-                state={gameState as TeluguCinemaluPlayerState}
                 selfId={playerId || ""}
                 onMove={(type, data) => {
                   const socket = getSocket();

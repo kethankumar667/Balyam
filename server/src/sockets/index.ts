@@ -62,8 +62,6 @@ export function registerSocketHandlers(
         payload.bingoOptions,
         payload.namesplaceanimalOptions,
         payload.tambolaOptions,
-        payload.samethaluOptions,
-        payload.teluguCinemaluOptions,
         payload.snakeOptions,
         payload.carromOptions,
         payload.chessOptions,

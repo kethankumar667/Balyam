@@ -12,8 +12,6 @@ import { StarGameEngine } from "./stargame/StarGameEngine.js";
 import { BingoEngine } from "./bingo/BingoEngine.js";
 import { NamePlaceAnimalEngine } from "./namesplaceanimal/NamePlaceAnimalEngine.js";
 import { TambolaEngine } from "./tambola/TambolaEngine.js";
-import { SamethaluEngine } from "./samethalu/SamethaluEngine.js";
-import { TeluguCinemaluEngine } from "./telugucinemalu/TeluguCinemaluEngine.js";
 import { SnakeEngine } from "./snake/SnakeEngine.js";
 import { CarromEngine } from "./carrom/CarromEngine.js";
 import { ChessEngine } from "./chess/ChessEngine.js";
@@ -46,10 +44,6 @@ export function createEngine(kind: GameKind): GameEngine {
       return new NamePlaceAnimalEngine();
     case "tambola":
       return new TambolaEngine();
-    case "samethalu":
-      return new SamethaluEngine();
-    case "telugucinemalu":
-      return new TeluguCinemaluEngine();
     case "snake":
       return new SnakeEngine();
     case "carrom":
@@ -79,8 +73,6 @@ export function getGameLimits(kind: GameKind): { min: number; max: number } {
     bingo: { min: 1, max: 8 },
     namesplaceanimal: { min: 2, max: 8 },
     tambola: { min: 1, max: 12 },
-    samethalu: { min: 1, max: 1 },
-    telugucinemalu: { min: 1, max: 1 },
     snake: { min: 1, max: 4 },
     carrom: { min: 2, max: 2 },
     chess: { min: 2, max: 2 },

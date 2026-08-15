@@ -46,8 +46,6 @@ export default function RoomCodeShare({
     bingo: "Bingo",
     namesplaceanimal: "Name Place Animal Thing",
     tambola: "Tambola (Housie)",
-    samethalu: "Samethalu Quiz",
-    telugucinemalu: "Telugu Cinema Quiz",
     snake: "Snake",
     roadrash: "Road Rash 90s",
     carrom: "Carrom",

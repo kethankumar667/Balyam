@@ -180,13 +180,6 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
-    key: "bhalyam.unlockedProverbs",
-    label: "Unlocked proverbs",
-    description: "Which Samethalu proverbs you have discovered.",
-    purpose: "progress",
-    isPersonalData: false,
-  },
-  {
     key: "ludo.tutorial.completed.v1",
     label: "Ludo tutorial seen",
     description: "Whether you have seen the Ludo tutorial, so it stops reappearing.",

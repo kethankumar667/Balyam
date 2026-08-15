@@ -621,16 +621,6 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Unlocked proverbs</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
-                    Which Samethalu proverbs you have discovered.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
                   <h5 className="font-bold text-[13.5px] text-[#4A2508]">Tutorial seen</h5>
                   <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
                     Whether you have seen the tutorial so they stop reappearing.

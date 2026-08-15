@@ -156,7 +156,7 @@ export class StateMachine {
     } else if (this.state === "PAUSED") {
       if (action === "SELECT" || action === "STRAIGHT" || action === "UP") {
         this.state = this.previousState || "READY";
-      } else if (action === "BACK") {
+      } else if (action === "BACK" || action === "LEFT" || action === "RIGHT") {
         this.state = "MENU";
       }
     }
@@ -468,7 +468,7 @@ export class StateMachine {
 
     // 8. Bottom Keypad Help
     r.drawLine(0, 87, 128, 87, r.PIXEL_COLOR);
-    r.drawText("4:PULL  5:DRV  6:CUT", 8, 89, r.PIXEL_COLOR);
+    r.drawText("4:PULL 5:DRV 6:CUT 0:||", 2, 89, r.PIXEL_COLOR);
   }
 
   private renderGameOver(r: RenderPipeline): void {
@@ -508,11 +508,11 @@ export class StateMachine {
     r.drawText("HOW TO PLAY", 32, 8);
     r.drawLine(4, 18, 124, 18);
 
-    r.drawText("KEY 4: PULL (LEFT)", 10, 24);
-    r.drawText("KEY 5: STRAIGHT DRIVE", 10, 36);
-    r.drawText("KEY 6: CUT (RIGHT)", 10, 48);
-    r.drawText("HIT ON PITCH BOUNCE!", 8, 60);
-    r.drawText("SCORE MAX IN OVERS", 10, 72);
+    r.drawText("4:PULL 5:DRIVE 6:CUT", 8, 24);
+    r.drawText("0:PAUSE MATCH", 22, 36);
+    r.drawText("TIMING: PITCH BOUNCE", 6, 48);
+    r.drawText("SCORE MAX IN OVERS", 10, 60);
+    r.drawText("ONLY 4,5,6,0 KEYS", 14, 72);
 
     r.drawLine(4, 82, 124, 82);
     r.drawText("5:BACK TO MENU", 20, 86);
@@ -520,9 +520,9 @@ export class StateMachine {
 
   private renderPaused(r: RenderPipeline): void {
     this.renderMatch(r);
-    r.fillRect(16, 26, 96, 40, r.PIXEL_COLOR);
+    r.fillRect(14, 26, 100, 42, r.PIXEL_COLOR);
     r.drawText("★ GAME PAUSED ★", 18, 30, r.BG_COLOR);
-    r.drawText("5: RESUME", 36, 44, r.BG_COLOR);
-    r.drawText("BACK: QUIT", 32, 54, r.BG_COLOR);
+    r.drawText("5/0: RESUME", 30, 44, r.BG_COLOR);
+    r.drawText("4/6: QUIT MENU", 22, 54, r.BG_COLOR);
   }
 }

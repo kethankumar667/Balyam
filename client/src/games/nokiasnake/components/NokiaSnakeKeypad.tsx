@@ -1,32 +1,46 @@
-interface NokiaKeypadProps {
+interface NokiaSnakeKeypadProps {
   onKeyPress: (key: string) => void;
 }
 
-export function NokiaKeypad({ onKeyPress }: NokiaKeypadProps) {
+export function NokiaSnakeKeypad({ onKeyPress }: NokiaSnakeKeypadProps) {
   const keys = [
-    ["1", "2", "3"],
-    ["4\n◄ PULL", "5\n▲ DRIVE", "6\n► CUT"],
-    ["7", "8", "9"],
+    ["1", "2\n▲ UP", "3"],
+    ["4\n◄ LEFT", "5\n● OK", "6\n► RIGHT"],
+    ["7", "8\n▼ DOWN", "9"],
     ["*", "0\n⏸ PAUSE", "#"],
   ];
 
   return (
     <div className="w-full max-w-[280px] mt-4 flex flex-col items-center gap-2 select-none">
-      {/* Soft Decorative Bar */}
-      <div className="w-full flex justify-between px-1 gap-3 opacity-40">
-        <div className="flex-1 py-1.5 rounded-t-xl bg-[#2C3B4A] border-b-2 border-[#1E2B38] text-[#7A8E9F] font-bold text-[9px] uppercase tracking-wider text-center select-none">
+      {/* Soft Action Navigation Bar */}
+      <div className="w-full flex justify-between px-1 gap-3">
+        <button
+          type="button"
+          onClick={() => onKeyPress("5")}
+          className="flex-1 py-1.5 rounded-t-xl bg-[#36495C] border-b-2 border-[#1E2B38] text-[#DCE4EC] font-bold text-[9px] uppercase tracking-wider text-center cursor-pointer hover:brightness-110 active:translate-y-0.5"
+        >
           Options
-        </div>
-        <div className="flex-1 py-1.5 rounded-t-xl bg-[#2C3B4A] border-b-2 border-[#1E2B38] text-[#7A8E9F] font-bold text-[9px] uppercase tracking-wider text-center select-none">
-          Back
-        </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => onKeyPress("0")}
+          className="flex-1 py-1.5 rounded-t-xl bg-[#36495C] border-b-2 border-[#1E2B38] text-[#DCE4EC] font-bold text-[9px] uppercase tracking-wider text-center cursor-pointer hover:brightness-110 active:translate-y-0.5"
+        >
+          Pause
+        </button>
       </div>
 
       {/* 3x4 Rubber Tactile Keypad */}
       <div className="grid grid-cols-3 gap-2 w-full">
         {keys.flat().map((k) => {
           const [primary, secondary] = k.split("\n");
-          const isActive = primary === "4" || primary === "5" || primary === "6" || primary === "0";
+          const isActive =
+            primary === "2" ||
+            primary === "4" ||
+            primary === "5" ||
+            primary === "6" ||
+            primary === "8" ||
+            primary === "0";
 
           if (!isActive) {
             return (

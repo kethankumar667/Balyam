@@ -27,8 +27,6 @@ import type {
   LudoMatchRecap,
   NamePlaceAnimalOptions,
   TambolaOptions,
-  SamethaluOptions,
-  TeluguCinemaluOptions,
   SnakeOptions,
   CarromOptions,
   ChessOptions,
@@ -48,8 +46,6 @@ import {
   DEFAULT_BINGO_OPTIONS,
   DEFAULT_NAMESPLACEANIMAL_OPTIONS,
   DEFAULT_TAMBOLA_OPTIONS,
-  DEFAULT_SAMETHALU_OPTIONS,
-  DEFAULT_TELUGUCINEMALU_OPTIONS,
   DEFAULT_CARROM_OPTIONS,
   DEFAULT_CHESS_OPTIONS,
   DEFAULT_SNAKE_OPTIONS,
@@ -80,8 +76,6 @@ import { UnoEngine } from "../games/uno/UnoEngine.js";
 import { BingoEngine } from "../games/bingo/BingoEngine.js";
 import { NamePlaceAnimalEngine } from "../games/namesplaceanimal/NamePlaceAnimalEngine.js";
 import { TambolaEngine } from "../games/tambola/TambolaEngine.js";
-import { SamethaluEngine } from "../games/samethalu/SamethaluEngine.js";
-import { TeluguCinemaluEngine } from "../games/telugucinemalu/TeluguCinemaluEngine.js";
 import { CarromEngine } from "../games/carrom/CarromEngine.js";
 import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
@@ -181,8 +175,6 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   bingo: ["Kanakam", "Padma", "Rajyam", "Saroja", "Venkat", "Nagesh", "Prasad", "Vani"],
   namesplaceanimal: ["Abhi", "Balu", "Chandu", "Divya", "Esha", "Farhan", "Gita", "Hari"],
   tambola: ["Annapurna", "Bhaskar", "Chintamani", "Devi", "Eluru", "Ganga", "Hema", "Indra"],
-  samethalu: ["Peddaiah", "Patti", "Raja", "Saraswathi", "Subbu", "Tammudu"],
-  telugucinemalu: ["Chiranjeevi", "Balayya", "Nag", "Venky", "Prabhas", "Mahesh", "NTR", "Ram Charan"],
   snake: ["Python", "Viper", "Cobra", "Mamba"],
   blockblast: ["Tetra", "Chotu", "Gattu", "Rubik", "Pixel", "Mosaic", "Bittu", "Domino"],
   // "Striker" was dropped: it is the name of a piece on the board, so the
@@ -271,8 +263,6 @@ interface Room {
   bingoOptions: BingoGameOptions;
   namesplaceanimalOptions: NamePlaceAnimalOptions;
   tambolaOptions: TambolaOptions;
-  samethaluOptions: SamethaluOptions;
-  teluguCinemaluOptions: TeluguCinemaluOptions;
   carromOptions: CarromOptions;
   chessOptions: ChessOptions;
   snakeOptions: SnakeOptions;
@@ -422,8 +412,6 @@ export class RoomManager {
     bingoOptions?: Partial<BingoGameOptions>,
     namesplaceanimalOptions?: Partial<NamePlaceAnimalOptions>,
     tambolaOptions?: Partial<TambolaOptions>,
-    samethaluOptions?: Partial<SamethaluOptions>,
-    teluguCinemaluOptions?: Partial<TeluguCinemaluOptions>,
     snakeOptions?: Partial<SnakeOptions>,
     carromOptions?: Partial<CarromOptions>,
     chessOptions?: Partial<ChessOptions>,
@@ -507,8 +495,6 @@ export class RoomManager {
       bingoOptions: { ...DEFAULT_BINGO_OPTIONS, ...(bingoOptions ?? {}) },
       namesplaceanimalOptions: { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS, ...(namesplaceanimalOptions ?? {}) },
       tambolaOptions: { ...DEFAULT_TAMBOLA_OPTIONS, ...(tambolaOptions ?? {}) },
-      samethaluOptions: { ...DEFAULT_SAMETHALU_OPTIONS, ...(samethaluOptions ?? {}) },
-      teluguCinemaluOptions: { ...DEFAULT_TELUGUCINEMALU_OPTIONS, ...(teluguCinemaluOptions ?? {}) },
       carromOptions: { ...DEFAULT_CARROM_OPTIONS, ...(carromOptions ?? {}) },
       chessOptions: { ...DEFAULT_CHESS_OPTIONS, ...(chessOptions ?? {}) },
       snakeOptions: { ...DEFAULT_SNAKE_OPTIONS, ...(snakeOptions ?? {}) },
@@ -719,7 +705,7 @@ export class RoomManager {
     if (!room || !player) return;
     // Games with no bot AI — bots would be dead/frozen seats.
     const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-      "samethalu", "telugucinemalu", "snake", "roadrash", "spacewar",
+      "snake", "roadrash", "spacewar",
     ]);
     if (NO_BOT_GAMES.has(room.game)) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Bots are not available for this game");
@@ -1004,12 +990,6 @@ export class RoomManager {
       }
       if (engine instanceof NamePlaceAnimalEngine) {
         engine.setOptions(room.namesplaceanimalOptions);
-      }
-      if (engine instanceof SamethaluEngine) {
-        engine.setOptions(room.samethaluOptions);
-      }
-      if (engine instanceof TeluguCinemaluEngine) {
-        engine.setOptions(room.teluguCinemaluOptions);
       }
       if (engine instanceof CarromEngine) {
         engine.setOptions(room.carromOptions);
@@ -1846,13 +1826,11 @@ export class RoomManager {
       return;
     }
     // ── Phase-timer engines (quiz / countdown style) ─────────────────────
-    // Telugu Cinema Quiz, Samethalu, and Name-Place-Animal all use the same
-    // armDeadline / resolveDeadline / getPhaseTimerSeconds / clearDeadline
-    // contract as StarGameEngine. Without these branches, no timer fires
-    // during roundSummary and the game freezes after question 1.
+    // Name-Place-Animal and Tambola use the same armDeadline /
+    // resolveDeadline / getPhaseTimerSeconds / clearDeadline contract as
+    // StarGameEngine. Without these branches, no timer fires during
+    // roundSummary and the game freezes after question 1.
     if (
-      room.engine instanceof TeluguCinemaluEngine ||
-      room.engine instanceof SamethaluEngine ||
       room.engine instanceof NamePlaceAnimalEngine ||
       room.engine instanceof TambolaEngine
     ) {
@@ -1987,8 +1965,6 @@ export class RoomManager {
     }
     // ── Phase-timer engines (quiz / countdown style) ─────────────────────
     if (
-      room.engine instanceof TeluguCinemaluEngine ||
-      room.engine instanceof SamethaluEngine ||
       room.engine instanceof NamePlaceAnimalEngine ||
       room.engine instanceof TambolaEngine
     ) {
@@ -2706,8 +2682,6 @@ export class RoomManager {
       if (engine instanceof BingoEngine) engine.setOptions(room.bingoOptions);
       if (engine instanceof TambolaEngine) engine.setOptions(room.tambolaOptions);
       if (engine instanceof NamePlaceAnimalEngine) engine.setOptions(room.namesplaceanimalOptions);
-      if (engine instanceof SamethaluEngine) engine.setOptions(room.samethaluOptions);
-      if (engine instanceof TeluguCinemaluEngine) engine.setOptions(room.teluguCinemaluOptions);
       if (engine instanceof CarromEngine) engine.setOptions(room.carromOptions);
       if (engine instanceof ChessEngine) engine.setOptions(room.chessOptions);
       if (engine instanceof SnakeEngine) engine.setOptions(room.snakeOptions);

@@ -98,7 +98,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
-  "namesplaceanimal", "tambola", "samethalu", "telugucinemalu", "snake", "carrom", "roadrash", "chess",
+  "namesplaceanimal", "tambola", "snake", "carrom", "roadrash", "chess",
   "blockblast", "spacewar",
  ]);
 function asGameKind(slug: BhalyamGameSlug): GameKind {
@@ -341,7 +341,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const isSolo = game ? ["samethalu", "telugucinemalu", "snake", "roadrash", "spacewar"].includes(game) : false;
+  const isSolo = game ? ["snake", "roadrash", "spacewar"].includes(game) : false;
 
   const caps = useCapabilities();
   /**
@@ -356,6 +356,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   useEffect(() => {
     if (game === "nokiacricket") {
       navigate("/nokiacricket");
+      onClose();
+      return;
+    }
+    if (game === "snake") {
+      navigate("/snake");
       onClose();
       return;
     }
@@ -402,6 +407,21 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   }, [game]);
 
   if (!game) return null;
+
+  /**
+   * A tile whose game no longer exists.
+   *
+   * `PLAYABLE_SLUGS` is the runtime allow-list, and `asGameKind` THROWS for
+   * anything outside it — which is right for catching a wiring mistake, but
+   * it is the wrong thing to happen when a player taps a tile we chose to
+   * keep on screen. The Samethalu and Telugu Cinema quizzes were removed
+   * while their tiles and icons stayed, so this is now a real, reachable
+   * state rather than a defensive branch: show the tile's own artwork and say
+   * plainly that the game is gone.
+   */
+  if (!PLAYABLE_SLUGS.has(game)) {
+    return <UnavailableGameSheet game={game} onClose={onClose} />;
+  }
 
   function trimmedName(): string {
     return name.trim().slice(0, 20);
@@ -498,7 +518,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           if (res.code && res.playerId && res.seatToken) {
             rememberSeat(res.code, res.playerId, res.seatToken);
           }
-          if (game && ["samethalu", "telugucinemalu", "snake", "roadrash", "spacewar"].includes(game)) {
+          if (game && ["snake", "roadrash", "spacewar"].includes(game)) {
             const socket = getSocket();
             socket.emit("room:setReady", true);
             socket.emit("room:startGame");
@@ -1227,6 +1247,90 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 }
 
 /* ───────────────────────────── Helpers ───────────────────────────── */
+
+/**
+ * What a kept tile opens once its game has been removed.
+ *
+ * Reuses the sheet's own shell — same backdrop, same bottom-sheet-on-mobile
+ * geometry, same header treatment — so it reads as the tile opening normally
+ * and telling you something, rather than as an error page. The tile's own
+ * glyph and gradient come along, because the point of keeping the tile was
+ * the artwork.
+ */
+function UnavailableGameSheet({
+  game,
+  onClose,
+}: {
+  game: BhalyamGameSlug;
+  onClose: () => void;
+}) {
+  const meta = BHALYAM_GAMES.find((g) => g.slug === game);
+  const Glyph = GAME_GLYPHS[game];
+  const accent = meta ? getGameAccent(meta) : { from: "#8A6D4B", to: "#5C4632" };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center
+                 bg-black/60 dark:bg-black/80 backdrop-blur-sm dark:backdrop-blur-md animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="game-unavailable-title"
+        onClick={(e) => e.stopPropagation()}
+        className="bhalyam-font relative w-full max-w-lg
+                   bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
+                   border-2 border-[#EEDBCA] dark:border-slate-800
+                   rounded-t-3xl md:rounded-3xl
+                   shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
+                   md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        <div className="md:hidden flex justify-center pt-2.5">
+          <span aria-hidden className="w-10 h-1.5 rounded-full bg-[#EEDBCA] dark:bg-slate-700" />
+        </div>
+
+        <div className="p-6 text-center space-y-4">
+          <div
+            className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-sm"
+            style={{ background: `linear-gradient(135deg, ${accent.from}, ${accent.to})` }}
+          >
+            <Glyph className="w-8 h-8" />
+          </div>
+
+          <div>
+            <h2
+              id="game-unavailable-title"
+              className="bhalyam-display text-[22px] leading-tight text-[#2B3550] dark:text-slate-100"
+            >
+              {meta?.title ?? "This game"} isn&apos;t available
+            </h2>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-[#8A6D4B] dark:text-slate-400">
+              This one has been taken out of BHALYAM for now. The tile is still
+              here because we&apos;d like to bring it back — there&apos;s just
+              nothing to play behind it today.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full min-h-[50px] rounded-2xl
+                       bg-[#2B3550] hover:bg-[#1E2738]
+                       dark:bg-slate-800 dark:hover:bg-slate-700
+                       text-white font-bold text-[14px]
+                       border border-transparent dark:border-slate-700/80
+                       active:scale-[0.98] transition-all duration-150 cursor-pointer
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+          >
+            Pick another game
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Field({
   label,
