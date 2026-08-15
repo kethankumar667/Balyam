@@ -28,18 +28,30 @@ const DEFAULT_THEME: AppTheme = "light";
  * a default drifts in one place and not the other.
  */
 export function resolveTheme(): AppTheme {
+  if (typeof document === "undefined" || typeof window === "undefined") {
+    return DEFAULT_THEME;
+  }
   const attr = document.documentElement.getAttribute("data-theme");
   if (attr === "light" || attr === "dark") return attr;
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === "light" || stored === "dark") return stored;
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored === "light" || stored === "dark") return stored;
+  } catch {
+    // Ignore localStorage access errors
+  }
   return DEFAULT_THEME;
 }
 
 const readTheme = resolveTheme;
 
 export function setTheme(next: AppTheme): void {
+  if (typeof document === "undefined" || typeof window === "undefined") return;
   document.documentElement.setAttribute("data-theme", next);
-  window.localStorage.setItem(STORAGE_KEY, next);
+  try {
+    window.localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    // Ignore localStorage access errors
+  }
   window.dispatchEvent(new CustomEvent(EVENT_NAME));
 }
 

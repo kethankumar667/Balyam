@@ -67,6 +67,7 @@ let cached: SupabaseClient | null = null;
  * same storage key, and would race each other into signing the player out.
  */
 export function getSupabase(): SupabaseClient | null {
+  if (typeof window === "undefined") return null;
   if (!isSupabaseConfigured) return null;
   if (cached) return cached;
 
@@ -89,7 +90,8 @@ export function getSupabase(): SupabaseClient | null {
 
 /** Absolute URL for a route Supabase should send the player back to. */
 export function redirectTo(path: string): string {
-  return new window.URL(path, window.location.origin).toString();
+  if (typeof window === "undefined") return path;
+  return new globalThis.URL(path, window.location.origin).toString();
 }
 
 /**

@@ -1,0 +1,26 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /games
+Allow: /about
+Allow: /privacy
+Allow: /login
+Allow: /signup
+Allow: /forgot-password
+Allow: /reset-password
+Allow: /verify-email
+Allow: /nokiacricket
+Allow: /snake
+Allow: /brickracer
+Allow: /tetris
+Allow: /breakout
+Allow: /spacealien
+
+# Disallow private realtime rooms, dynamic sessions, and user profiles
+Disallow: /profile
+Disallow: /room/
+Disallow: /tv/
+Disallow: /diagnostics
+Disallow: /preview/
+
+Sitemap: https://bhalyam.onrender.com/sitemap.xml

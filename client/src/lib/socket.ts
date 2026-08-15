@@ -70,6 +70,18 @@ export function generateActionId(): string {
 }
 
 export function getSocket(): AppSocket {
+  if (typeof window === "undefined") {
+    return {
+      connected: false,
+      emit: () => {},
+      on: () => {},
+      off: () => {},
+      connect: () => {},
+      disconnect: () => {},
+      timeout: () => ({ emit: () => {} }),
+      io: { on: () => {}, off: () => {} },
+    } as unknown as AppSocket;
+  }
   if (!socket) {
     setConnectionState("CONNECTING");
     socket = io(SERVER_URL, {

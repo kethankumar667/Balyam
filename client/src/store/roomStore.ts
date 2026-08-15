@@ -76,6 +76,7 @@ const AVATAR_KEY = "mpg.avatar";
 const MAX_REMEMBERED_SEATS = 12;
 
 function loadSeats(): Record<string, SeatCredential> {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return {};
   try {
     const raw = localStorage.getItem(SEATS_KEY);
     if (!raw) return {};
@@ -95,6 +96,7 @@ function loadSeats(): Record<string, SeatCredential> {
 }
 
 function saveSeats(seats: Record<string, SeatCredential>): void {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return;
   try {
     localStorage.setItem(SEATS_KEY, JSON.stringify(seats));
   } catch {
@@ -103,6 +105,7 @@ function saveSeats(seats: Record<string, SeatCredential>): void {
 }
 
 function loadLastGangs(): LastGangEntry[] {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return [];
   try {
     const raw = localStorage.getItem(LAST_GANGS_KEY);
     if (!raw) return [];
@@ -114,6 +117,7 @@ function loadLastGangs(): LastGangEntry[] {
 }
 
 function saveLastGangs(list: LastGangEntry[]): void {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return;
   try {
     localStorage.setItem(LAST_GANGS_KEY, JSON.stringify(list));
   } catch {
@@ -121,10 +125,19 @@ function saveLastGangs(list: LastGangEntry[]): void {
   }
 }
 
+function safeGetStorage(key: string): string | null {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 export const useRoomStore = create<RoomStore>((set, get) => ({
-  playerId: localStorage.getItem(STORED_ID_KEY),
-  playerName: localStorage.getItem(STORED_NAME_KEY) ?? "",
-  avatarId: localStorage.getItem(AVATAR_KEY),
+  playerId: safeGetStorage(STORED_ID_KEY),
+  playerName: safeGetStorage(STORED_NAME_KEY) ?? "",
+  avatarId: safeGetStorage(AVATAR_KEY),
   seats: loadSeats(),
   roomState: null,
   gameState: null,
@@ -134,20 +147,30 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   lastGangs: loadLastGangs(),
 
   setPlayerId: (id) => {
-    if (id) localStorage.setItem(STORED_ID_KEY, id);
-    else localStorage.removeItem(STORED_ID_KEY);
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      try {
+        if (id) localStorage.setItem(STORED_ID_KEY, id);
+        else localStorage.removeItem(STORED_ID_KEY);
+      } catch {}
+    }
     set({ playerId: id });
   },
   setPlayerName: (name) => {
-    localStorage.setItem(STORED_NAME_KEY, name);
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      try {
+        localStorage.setItem(STORED_NAME_KEY, name);
+      } catch {}
+    }
     set({ playerName: name });
   },
   setAvatarId: (id) => {
-    try {
-      if (id) localStorage.setItem(AVATAR_KEY, id);
-      else localStorage.removeItem(AVATAR_KEY);
-    } catch {
-      /* private browsing — the choice still applies for this session */
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      try {
+        if (id) localStorage.setItem(AVATAR_KEY, id);
+        else localStorage.removeItem(AVATAR_KEY);
+      } catch {
+        /* private browsing — the choice still applies for this session */
+      }
     }
     set({ avatarId: id });
   },

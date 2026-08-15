@@ -69,6 +69,7 @@ interface AuthStore extends StoredAccount {
 const GUEST: StoredAccount = { kind: "guest", email: null, since: null };
 
 function loadLocalAccount(): StoredAccount {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return GUEST;
   try {
     const raw = localStorage.getItem(ACCOUNT_KEY);
     if (!raw) return GUEST;
@@ -87,6 +88,7 @@ function loadLocalAccount(): StoredAccount {
 }
 
 function saveLocalAccount(account: StoredAccount): void {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return;
   try {
     if (account.kind === "member") localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account));
     else localStorage.removeItem(ACCOUNT_KEY);
@@ -111,6 +113,7 @@ function saveLocalAccount(account: StoredAccount): void {
  * nothing else.
  */
 function peekStoredSession(): { email: string | null; userId: string | null } | null {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return null;
   try {
     const raw = localStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return null;
@@ -133,6 +136,9 @@ function peekStoredSession(): { email: string | null; userId: string | null } | 
 }
 
 function initialState(): StoredAccount & { userId: string | null; ready: boolean } {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") {
+    return { ...GUEST, userId: null, ready: true };
+  }
   if (!isSupabaseConfigured) {
     return { ...loadLocalAccount(), userId: null, ready: true };
   }
