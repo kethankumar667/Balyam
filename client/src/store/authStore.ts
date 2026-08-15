@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { AccountKind } from "@shared/types";
 import { capabilitiesFor, type Capabilities } from "@shared/permissions";
+import { useRoomStore } from "./roomStore";
 
 /**
  * Whether this browser is a guest or a member.
@@ -94,15 +95,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ ...next, capabilities: capabilitiesFor("member"), isMember: true });
   },
 
-  /**
-   * Signing out drops the account and nothing else. Display name and avatar
-   * live in `useRoomStore` and stay put on purpose: they are this device's
-   * profile, not the account's, and a guest is allowed to have both. Wiping
-   * them would mean signing out costs you your face and your name — a
-   * punishment for leaving, and it would strand you mid-room as "Player".
-   */
   signOut: () => {
     saveAccount(GUEST);
+    try {
+      useRoomStore.getState().setPlayerName("");
+      useRoomStore.getState().setAvatarId(null);
+      localStorage.removeItem("mpg.playerName");
+      localStorage.removeItem("mpg.avatar");
+    } catch {}
     set({ ...GUEST, capabilities: capabilitiesFor("guest"), isMember: false });
   },
 }));

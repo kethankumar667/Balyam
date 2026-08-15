@@ -5,61 +5,68 @@ interface BrickKeypadProps {
 
 export function BrickKeypad({ onKeyPress, isBoosting }: BrickKeypadProps) {
   return (
-    <div className="w-full max-w-[280px] mt-4 flex flex-col items-center gap-3 select-none">
+    <div className="w-full max-w-[320px] mt-3 flex flex-col items-center gap-3 select-none font-mono">
       {/* Top Small Action Buttons */}
-      <div className="w-full flex justify-between px-2 gap-4">
+      <div className="w-full flex justify-between px-1 gap-2.5">
         <button
           type="button"
           onClick={() => onKeyPress("5")}
-          className="flex-1 py-1.5 rounded-full bg-[#D43827] border-b-2 border-[#8A1A0D] text-white font-black text-[10px] uppercase tracking-wider text-center cursor-pointer active:translate-y-0.5 shadow-sm"
+          className="flex-1 min-h-[42px] rounded-xl bg-gradient-to-b from-[#E53935] to-[#B71C1C] border-b-2 border-[#7F0000] text-white font-black text-xs uppercase tracking-wider text-center cursor-pointer active:translate-y-0.5 shadow-md hover:brightness-110 flex items-center justify-center gap-1"
         >
-          START / OK (5)
+          <span>START / OK (5)</span>
         </button>
         <button
           type="button"
           onClick={() => onKeyPress("0")}
-          className="flex-1 py-1.5 rounded-full bg-[#3B5998] border-b-2 border-[#1E305C] text-white font-black text-[10px] uppercase tracking-wider text-center cursor-pointer active:translate-y-0.5 shadow-sm"
+          className="flex-1 min-h-[42px] rounded-xl bg-gradient-to-b from-[#3949AB] to-[#1A237E] border-b-2 border-[#0D47A1] text-white font-black text-xs uppercase tracking-wider text-center cursor-pointer active:translate-y-0.5 shadow-md hover:brightness-110 flex items-center justify-center gap-1"
         >
-          PAUSE (0)
+          <span>PAUSE (0)</span>
         </button>
       </div>
 
-      {/* Main Steering & Boost Keypad */}
-      <div className="w-full flex items-center justify-between px-2 pt-1 gap-3">
-        {/* Left Turn Button */}
+      {/* Main Extra-Large Steering & Boost Controls */}
+      <div className="w-full grid grid-cols-3 gap-2.5 px-1 pt-1">
+        {/* Left Steering Button */}
         <button
           type="button"
           onClick={() => onKeyPress("4")}
-          className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-b from-[#2E333D] to-[#1B1E24] border-b-4 border-[#0F1114] text-white font-black text-[13px] flex flex-col items-center justify-center active:scale-95 shadow-md cursor-pointer hover:brightness-110"
+          aria-label="Steer Left"
+          className="min-h-[72px] sm:min-h-[80px] rounded-2xl bg-gradient-to-b from-[#374151] via-[#1F2937] to-[#111827] border-b-4 border-[#030712] text-white font-black flex flex-col items-center justify-center active:scale-95 shadow-xl cursor-pointer hover:brightness-125 ring-2 ring-zinc-500/40"
         >
-          <span className="text-xl leading-none">◄</span>
-          <span className="text-[9px] text-zinc-300 font-bold mt-1">LEFT (4)</span>
-        </button>
-
-        {/* Center Boost Button */}
-        <button
-          type="button"
-          onClick={() => onKeyPress("8")}
-          className={`flex-1 h-16 sm:h-18 rounded-2xl flex flex-col items-center justify-center border-b-4 transition-all active:scale-95 shadow-md cursor-pointer ${
-            isBoosting
-              ? "bg-gradient-to-b from-[#FF5722] to-[#D84315] border-[#BF360C] text-white ring-2 ring-orange-400"
-              : "bg-gradient-to-b from-[#E68A2E] to-[#C96B12] border-[#8C4605] text-white hover:brightness-110"
-          }`}
-        >
-          <span className="text-lg leading-none">🔥</span>
-          <span className="text-[9px] font-black uppercase tracking-tighter mt-1">
-            {isBoosting ? "BOOST ON" : "BOOST (8)"}
+          <span className="text-3xl leading-none font-black text-amber-400">◄</span>
+          <span className="text-[10px] text-zinc-300 font-black tracking-wider uppercase mt-1">
+            LEFT (4)
           </span>
         </button>
 
-        {/* Right Turn Button */}
+        {/* Center Nitro Boost Button */}
+        <button
+          type="button"
+          onClick={() => onKeyPress("8")}
+          aria-label="Nitro Speed Boost"
+          className={`min-h-[72px] sm:min-h-[80px] rounded-2xl flex flex-col items-center justify-center border-b-4 transition-all active:scale-95 shadow-xl cursor-pointer ${
+            isBoosting
+              ? "bg-gradient-to-b from-[#FF5722] via-[#E64A19] to-[#BF360C] border-[#870000] text-white ring-4 ring-orange-400 animate-pulse scale-[1.02]"
+              : "bg-gradient-to-b from-[#F59E0B] via-[#D97706] to-[#B45309] border-[#78350F] text-white ring-2 ring-amber-400/80 hover:brightness-110"
+          }`}
+        >
+          <span className="text-2xl leading-none font-black">🔥</span>
+          <span className="text-[10px] font-black uppercase tracking-tight mt-1">
+            {isBoosting ? "BOOST ON" : "NITRO (8)"}
+          </span>
+        </button>
+
+        {/* Right Steering Button */}
         <button
           type="button"
           onClick={() => onKeyPress("6")}
-          className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-b from-[#2E333D] to-[#1B1E24] border-b-4 border-[#0F1114] text-white font-black text-[13px] flex flex-col items-center justify-center active:scale-95 shadow-md cursor-pointer hover:brightness-110"
+          aria-label="Steer Right"
+          className="min-h-[72px] sm:min-h-[80px] rounded-2xl bg-gradient-to-b from-[#374151] via-[#1F2937] to-[#111827] border-b-4 border-[#030712] text-white font-black flex flex-col items-center justify-center active:scale-95 shadow-xl cursor-pointer hover:brightness-125 ring-2 ring-zinc-500/40"
         >
-          <span className="text-xl leading-none">►</span>
-          <span className="text-[9px] text-zinc-300 font-bold mt-1">RIGHT (6)</span>
+          <span className="text-3xl leading-none font-black text-amber-400">►</span>
+          <span className="text-[10px] text-zinc-300 font-black tracking-wider uppercase mt-1">
+            RIGHT (6)
+          </span>
         </button>
       </div>
     </div>

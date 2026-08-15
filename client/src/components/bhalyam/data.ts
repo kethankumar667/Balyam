@@ -37,6 +37,7 @@ export type BhalyamGameSlug =
   | "roadrash"
   | "tetris"
   | "breakout"
+  | "spacealien"
   | "carrom";
 
 /**
@@ -510,6 +511,22 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     btnGradient: { from: "#8BAC0F", to: "#4B6B38", shadow: "#2A3E1E" },
     blurb:
       "Authentic 9999-in-1 Brick Game Block Breaker. 10x20 LCD matrix, 3-cell paddle deflection, normal & reinforced steel blocks, combo multiplier scoring, and retro chiptune audio.",
+    accent: { from: "#8BAC0F", to: "#4B6B38" },
+  },
+  {
+    slug: "spacealien",
+    tags: ["retro", "solo"],
+    theme: "9999-in-1 👾",
+    badge: "👾 Space Alien",
+    nostalgiaQuote: "A/D to move, Space to fire lasers, destroy the swarm!",
+    title: "Space Alien",
+    playerRange: "1 Player",
+    duration: "3–15 min",
+    paperBg: "linear-gradient(155deg, #182C18 0%, #0F1E0F 45%, #081108 100%)",
+    paperBorder: "rgba(139, 172, 15, 0.55)",
+    btnGradient: { from: "#8BAC0F", to: "#4B6B38", shadow: "#2A3E1E" },
+    blurb:
+      "Authentic 9999-in-1 Brick Game Space Invaders. 10x20 LCD matrix, descending alien swarms, armored commanders, laser dogfights, wave progression, and retro buzzer sound effects.",
     accent: { from: "#8BAC0F", to: "#4B6B38" },
   },
   {

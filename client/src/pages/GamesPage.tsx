@@ -101,6 +101,7 @@ const GAME_TELEMETRY: Record<string, { livePlayers: number; activeRooms: number;
   roadrash: { livePlayers: 980, activeRooms: 0, difficulty: "Casual", rating: 4.9, tag: "90s Racer" },
   tetris: { livePlayers: 1120, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Classic & Pentix" },
   breakout: { livePlayers: 1350, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Brick Breaker" },
+  spacealien: { livePlayers: 1420, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Space Invaders" },
 };
 
 export default function GamesPage() {

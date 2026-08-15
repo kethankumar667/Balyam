@@ -3,58 +3,91 @@ interface NokiaKeypadProps {
 }
 
 export function NokiaKeypad({ onKeyPress }: NokiaKeypadProps) {
-  const keys = [
-    ["1", "2", "3"],
-    ["4\n◄ PULL", "5\n▲ DRIVE", "6\n► CUT"],
-    ["7", "8", "9"],
-    ["*", "0\n⏸ PAUSE", "#"],
-  ];
-
   return (
-    <div className="w-full max-w-[280px] mt-4 flex flex-col items-center gap-2 select-none">
-      {/* Soft Decorative Bar */}
-      <div className="w-full flex justify-between px-1 gap-3 opacity-40">
-        <div className="flex-1 py-1.5 rounded-t-xl bg-[#2C3B4A] border-b-2 border-[#1E2B38] text-[#7A8E9F] font-bold text-[9px] uppercase tracking-wider text-center select-none">
-          Options
-        </div>
-        <div className="flex-1 py-1.5 rounded-t-xl bg-[#2C3B4A] border-b-2 border-[#1E2B38] text-[#7A8E9F] font-bold text-[9px] uppercase tracking-wider text-center select-none">
-          Back
-        </div>
+    <div className="w-full max-w-[320px] mt-3 flex flex-col items-center gap-2.5 select-none font-mono">
+      {/* Soft Action Navigation Bar */}
+      <div className="w-full flex justify-between px-1 gap-2.5">
+        <button
+          type="button"
+          onClick={() => onKeyPress("5")}
+          className="flex-1 min-h-[38px] rounded-xl bg-[#36495C] hover:bg-[#455c74] border-b-2 border-[#1E2B38] text-[#DCE4EC] font-black text-[10px] uppercase tracking-wider text-center cursor-pointer active:translate-y-0.5 shadow-sm transition"
+        >
+          SELECT / OK (5)
+        </button>
+        <button
+          type="button"
+          onClick={() => onKeyPress("0")}
+          className="flex-1 min-h-[38px] rounded-xl bg-[#36495C] hover:bg-[#455c74] border-b-2 border-[#1E2B38] text-[#DCE4EC] font-black text-[10px] uppercase tracking-wider text-center cursor-pointer active:translate-y-0.5 shadow-sm transition"
+        >
+          PAUSE (0)
+        </button>
       </div>
 
-      {/* 3x4 Rubber Tactile Keypad */}
-      <div className="grid grid-cols-3 gap-2 w-full">
-        {keys.flat().map((k) => {
-          const [primary, secondary] = k.split("\n");
-          const isActive = primary === "4" || primary === "5" || primary === "6" || primary === "0";
+      {/* Primary Batting Movement Shot Cluster (Extra Large Touch Targets) */}
+      <div className="grid grid-cols-3 gap-2.5 w-full">
+        {/* Pull Shot (Left - 4) */}
+        <button
+          type="button"
+          onClick={() => onKeyPress("4")}
+          aria-label="Pull Shot Left"
+          className="min-h-[64px] sm:min-h-[72px] rounded-2xl flex flex-col items-center justify-center border-b-4 transition-all active:scale-95 shadow-lg cursor-pointer bg-gradient-to-b from-[#F59E0B] via-[#D97706] to-[#B45309] border-[#78350F] text-white ring-2 ring-amber-400/80 hover:brightness-110"
+        >
+          <span className="text-2xl leading-none font-black">◄</span>
+          <span className="text-[10px] font-black tracking-tight uppercase mt-1 text-amber-100">
+            PULL (4)
+          </span>
+        </button>
 
-          if (!isActive) {
-            return (
-              <div
-                key={primary}
-                className="h-12 sm:h-13 rounded-2xl flex flex-col items-center justify-center border-b-2 bg-[#253240] border-[#18222C] text-[#556778] opacity-35 select-none"
-              >
-                <span className="text-[14px] font-bold leading-none">{primary}</span>
-              </div>
-            );
-          }
+        {/* Straight Drive (Center - 5) */}
+        <button
+          type="button"
+          onClick={() => onKeyPress("5")}
+          aria-label="Straight Drive Up"
+          className="min-h-[64px] sm:min-h-[72px] rounded-2xl flex flex-col items-center justify-center border-b-4 transition-all active:scale-95 shadow-lg cursor-pointer bg-gradient-to-b from-[#EA580C] via-[#C2410C] to-[#9A3412] border-[#7C2D12] text-white ring-2 ring-orange-400/80 hover:brightness-110"
+        >
+          <span className="text-2xl leading-none font-black">▲</span>
+          <span className="text-[10px] font-black tracking-tight uppercase mt-1 text-orange-100">
+            DRIVE (5)
+          </span>
+        </button>
 
-          return (
-            <button
-              key={primary}
-              type="button"
-              onClick={() => onKeyPress(primary)}
-              className="h-12 sm:h-13 rounded-2xl flex flex-col items-center justify-center border-b-2 transition-all active:scale-95 shadow-md cursor-pointer bg-gradient-to-b from-[#E68A2E] to-[#C96B12] border-[#8C4605] text-white ring-2 ring-amber-400/60 shadow-amber-900/30 hover:brightness-110"
-            >
-              <span className="text-[15px] font-black leading-none">{primary}</span>
-              {secondary && (
-                <span className="text-[8px] font-black tracking-tighter text-amber-100 uppercase mt-0.5">
-                  {secondary}
-                </span>
-              )}
-            </button>
-          );
-        })}
+        {/* Cut Shot (Right - 6) */}
+        <button
+          type="button"
+          onClick={() => onKeyPress("6")}
+          aria-label="Cut Shot Right"
+          className="min-h-[64px] sm:min-h-[72px] rounded-2xl flex flex-col items-center justify-center border-b-4 transition-all active:scale-95 shadow-lg cursor-pointer bg-gradient-to-b from-[#F59E0B] via-[#D97706] to-[#B45309] border-[#78350F] text-white ring-2 ring-amber-400/80 hover:brightness-110"
+        >
+          <span className="text-2xl leading-none font-black">►</span>
+          <span className="text-[10px] font-black tracking-tight uppercase mt-1 text-amber-100">
+            CUT (6)
+          </span>
+        </button>
+      </div>
+
+      {/* Auxiliary Keypad Row for Complete Nokia Aesthetic */}
+      <div className="grid grid-cols-3 gap-2 w-full pt-0.5">
+        <button
+          type="button"
+          onClick={() => onKeyPress("4")}
+          className="min-h-[38px] rounded-xl flex items-center justify-center bg-[#253240] hover:bg-[#2e3e50] border-b-2 border-[#18222C] text-[#8EA1B4] text-xs font-bold active:translate-y-0.5 cursor-pointer"
+        >
+          ◄ 4
+        </button>
+        <button
+          type="button"
+          onClick={() => onKeyPress("0")}
+          className="min-h-[38px] rounded-xl flex items-center justify-center bg-[#253240] hover:bg-[#2e3e50] border-b-2 border-[#18222C] text-amber-300 text-xs font-bold active:translate-y-0.5 cursor-pointer"
+        >
+          ⏸ 0
+        </button>
+        <button
+          type="button"
+          onClick={() => onKeyPress("6")}
+          className="min-h-[38px] rounded-xl flex items-center justify-center bg-[#253240] hover:bg-[#2e3e50] border-b-2 border-[#18222C] text-[#8EA1B4] text-xs font-bold active:translate-y-0.5 cursor-pointer"
+        >
+          6 ►
+        </button>
       </div>
     </div>
   );

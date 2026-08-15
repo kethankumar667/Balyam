@@ -22,6 +22,7 @@ import NokiaSnakePage from "./pages/NokiaSnakePage";
 import BrickRacerPage from "./pages/BrickRacerPage";
 import BrickTetrisPage from "./pages/BrickTetrisPage";
 import BrickBreakoutPage from "./pages/BrickBreakoutPage";
+import BrickSpaceAlienPage from "./pages/BrickSpaceAlienPage";
 
 /**
  * On every route change, snap the window scroll back to the top so the
@@ -130,6 +131,10 @@ export default function App() {
         <Route path="/brickbreakout" element={<BrickBreakoutPage />} />
         <Route path="/brick-breakout" element={<BrickBreakoutPage />} />
         <Route path="/blockbreakout" element={<BrickBreakoutPage />} />
+        <Route path="/spacealien" element={<BrickSpaceAlienPage />} />
+        <Route path="/space-alien" element={<BrickSpaceAlienPage />} />
+        <Route path="/spaceinvaders" element={<BrickSpaceAlienPage />} />
+        <Route path="/brickalien" element={<BrickSpaceAlienPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
