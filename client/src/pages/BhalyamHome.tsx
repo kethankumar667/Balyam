@@ -119,6 +119,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   chess: StarGameGlyph,
   blockblast: BlockBlastGlyph,
   spacewar: StarGameGlyph,
+  nokiacricket: HandCricketGlyph,
 };
 
 export default function BhalyamHome() {
@@ -507,7 +508,7 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
  * widgets. Online stats / How to Play / theme toggle / About all live in
  * the MenuSheet so the chrome stays calm at every screen size. */
 
-interface NotificationItem {
+export interface NotificationItem {
   id: string;
   type: "invite" | "reward" | "gang" | "trophy";
   title: string;
@@ -518,7 +519,7 @@ interface NotificationItem {
   roomCode?: string;
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: "notif-1",
     type: "invite",
@@ -934,7 +935,7 @@ function SheetShell({
  * Profile sheet — entirely dedicated to the upcoming personal-profile
  * feature. No navigation actions here; those live in MenuSheet.
  */
-function ProfileSheet({
+export function ProfileSheet({
   open,
   onClose,
 }: {
@@ -1071,7 +1072,7 @@ function ProfileSheet({
  * Menu sheet — navigation only. Join Room, How to Play, theme toggle,
  * About.
  */
-function MenuSheet({
+export function MenuSheet({
   open,
   onClose,
   onOpenJoin,
@@ -1146,7 +1147,7 @@ function MenuSheet({
   );
 }
 
-function NotificationsSheet({
+export function NotificationsSheet({
   open,
   notifications,
   onUpdateNotifications,
@@ -1534,6 +1535,7 @@ export function GameTile({
     chess: "/Chess Game Tile.png",
     blockblast: "/BlockBlast Game Tile.png",
     spacewar: "/SpacewarTile.png",
+    nokiacricket: "/RetroCricket Game Tile.png",
   };
 
   const [theme] = useTheme();

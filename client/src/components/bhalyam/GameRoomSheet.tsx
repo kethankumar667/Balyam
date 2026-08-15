@@ -86,6 +86,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   chess: StarGameGlyph,
   blockblast: BlockBlastGlyph,
   spacewar: StarGameGlyph,
+  nokiacricket: HandCricketGlyph,
 };
 
 /**
@@ -353,6 +354,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
   // Reset transient state every time a new game opens.
   useEffect(() => {
+    if (game === "nokiacricket") {
+      navigate("/nokiacricket");
+      onClose();
+      return;
+    }
     if (game) {
       setNameError(null);
       setCodeError(null);
@@ -373,7 +379,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setNpaRounds(5);
       setNpaThemePack("classic");
     }
-  }, [game, playerName]);
+  }, [game, playerName, navigate, onClose]);
 
   // ESC closes the sheet.
   useEffect(() => {

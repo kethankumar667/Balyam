@@ -20,6 +20,8 @@ import {
   Play,
   CheckCircle2,
   ArrowRight,
+  Menu as MenuIcon,
+  ChevronDown,
 } from "lucide-react";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
@@ -42,7 +44,14 @@ import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
 import { useTheme } from "../lib/useTheme";
 import SelfAvatar from "../components/profile/SelfAvatar";
-import { GameTile } from "./BhalyamHome";
+import {
+  GameTile,
+  ProfileSheet,
+  MenuSheet,
+  NotificationsSheet,
+  type NotificationItem,
+  INITIAL_NOTIFICATIONS,
+} from "./BhalyamHome";
 
 /**
  * Game catalog sidebar categories matching the design.
@@ -94,6 +103,10 @@ const GAME_TELEMETRY: Record<string, { livePlayers: number; activeRooms: number;
 export default function GamesPage() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [activeQuickFilter, setActiveQuickFilter] = useState<QuickFilter>("popular");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -101,7 +114,9 @@ export default function GamesPage() {
   const isLight = theme === "light";
 
   const { playerName } = useRoomStore();
-  const displayName = playerName.trim() || "GONTLA";
+  const displayName = playerName.trim() || "Champion";
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   const [params, setParams] = useSearchParams();
   const filter: GameFilter = useMemo(() => {
@@ -325,26 +340,62 @@ export default function GamesPage() {
               <span>Home</span>
             </Link>
 
-            {/* Notification Icon */}
+            {/* Notification Icon -> opens Notifications slide-in drawer */}
             <button
               type="button"
-              onClick={() => showToast("No new notifications")}
-              className={`relative w-8 h-8 rounded-full border flex items-center justify-center transition cursor-pointer ${
+              onClick={() => setNotificationsOpen(true)}
+              title="Notifications"
+              className={`relative w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border flex items-center justify-center text-sm transition hover:scale-105 cursor-pointer flex-shrink-0 ${
                 isLight
-                  ? "bg-[#FAF2E1] border-[#ECD9BA] text-[#5C3B1E] hover:bg-[#F3E5CD]"
-                  : "bg-[#141B2D] border-[#232D48] text-zinc-300 hover:text-white"
+                  ? "bg-[#FAF2DF] border-[#ECD9BA] text-[#5C3B1E] hover:bg-[#F2E4CB]"
+                  : "bg-[#0D1426] border-[#1E2945] text-zinc-300 hover:bg-[#141E38]"
               }`}
             >
-              <Bell className="w-4 h-4" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                3
-              </span>
+              <Bell className="w-4.5 h-4.5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                  {unreadCount}
+                </span>
+              )}
             </button>
 
-            {/* Profile Avatar */}
-            <div className="flex items-center gap-2 pl-1">
-              <SelfAvatar className="w-8 h-8 border border-[#232D48]" fallback={<span className="w-8 h-8 rounded-full bg-[#141B2D] border border-[#232D48] flex items-center justify-center text-sm"><UserIcon className="w-4 h-4 text-amber-500" /></span>} />
-            </div>
+            {/* Profile Button -> opens Profile slide-in drawer */}
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              title="Your Profile"
+              className={`h-9 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 rounded-full border transition hover:scale-102 cursor-pointer flex-shrink-0 ${
+                isLight
+                  ? "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:bg-[#F2E4CB]"
+                  : "bg-[#0D1426] border-[#1E2945] text-white hover:bg-[#141E38]"
+              }`}
+            >
+              <div className="w-6 h-6 min-w-[24px] min-h-[24px] rounded-full overflow-hidden border border-amber-400 flex items-center justify-center flex-shrink-0">
+                <SelfAvatar
+                  className="w-full h-full"
+                  fallback={<UserIcon className="w-4 h-4 text-amber-500" />}
+                />
+              </div>
+              <span className="hidden sm:inline text-[13px] font-bold tracking-tight max-w-[90px] truncate">
+                {displayName}!
+              </span>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
+            </button>
+
+            {/* Menu Button -> opens Menu slide-in drawer */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
+              title="Open menu"
+              className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border flex items-center justify-center transition hover:scale-105 cursor-pointer flex-shrink-0 ${
+                isLight
+                  ? "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:text-amber-700 hover:bg-[#F2E4CB]"
+                  : "bg-[#0D1426] border-[#1E2945] text-zinc-200 hover:text-amber-400 hover:bg-[#141E38]"
+              }`}
+            >
+              <MenuIcon className="w-5 h-5" />
+            </button>
           </div>
         </header>
 
@@ -488,6 +539,25 @@ export default function GamesPage() {
         </main>
       </div>
 
+      <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <NotificationsSheet
+        open={notificationsOpen}
+        notifications={notifications}
+        onUpdateNotifications={setNotifications}
+        onClose={() => setNotificationsOpen(false)}
+        onOpenJoin={() => {
+          setNotificationsOpen(false);
+          setJoinOpen(true);
+        }}
+      />
+      <MenuSheet
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onOpenJoin={() => {
+          setMenuOpen(false);
+          setJoinOpen(true);
+        }}
+      />
       <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
       <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
     </div>

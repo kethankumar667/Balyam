@@ -17,6 +17,7 @@ import SignUpPage from "./pages/auth/SignUpPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
+import NokiaCricketPage from "./pages/NokiaCricketPage";
 
 /**
  * On every route change, snap the window scroll back to the top so the
@@ -110,6 +111,8 @@ export default function App() {
         {/* Connection log for debugging reconnect failures on real devices. */}
         <Route path="/diagnostics" element={<Diagnostics />} />
         <Route path="/preview/ludo" element={<PreviewLudo />} />
+        <Route path="/nokiacricket" element={<NokiaCricketPage />} />
+        <Route path="/cricket2d" element={<NokiaCricketPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

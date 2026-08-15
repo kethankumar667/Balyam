@@ -27,6 +27,7 @@ export type BhalyamGameSlug =
   | "chess"
   | "blockblast"
   | "spacewar"
+  | "nokiacricket"
   // Coming soon — NOT in GameKind. Maintenance tiles only.
   | "namesplaceanimal"
   | "tambola"
@@ -428,6 +429,22 @@ export const BHALYAM_GAMES: ReadonlyArray<BhalyamGameCard> = [
     blurb:
       "Drop blocks, clear lines. Alone it never ends — together everyone gets the exact same pieces and the highest score in three minutes wins.",
     accent: { from: "#7C3AED", to: "#6D28D9" },
+  },
+  {
+    slug: "nokiacricket",
+    tags: ["solo", "classroom"],
+    theme: "Retro Cricket 🏏",
+    badge: "🏏 Retro Cricket",
+    nostalgiaQuote: "4 for pull, 5 for drive, 6 for cut!",
+    title: "Retro Cricket",
+    playerRange: "1 Player",
+    duration: "3–10 min",
+    paperBg: "linear-gradient(155deg, #182C18 0%, #0F1E0F 45%, #081108 100%)",
+    paperBorder: "rgba(135, 169, 107, 0.55)",
+    btnGradient: { from: "#87A96B", to: "#4E7333", shadow: "#2A4518" },
+    blurb:
+      "Authentic retro 90s monochrome 2D cricket. 1-bit LCD graphics, pitch bounce timing, and pure square-wave buzzer nostalgia.",
+    accent: { from: "#87A96B", to: "#4E7333" },
   },
   {
     slug: "bounce",
