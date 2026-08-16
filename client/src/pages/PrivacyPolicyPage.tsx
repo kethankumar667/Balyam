@@ -8,6 +8,7 @@ import {
 } from "../lib/privacy/contact";
 import { ArrowLeftIcon } from "../components/auth/authIcons";
 import { isSupabaseConfigured } from "../lib/supabase/client";
+import AppLayout from "../components/layout/AppLayout";
 
 const LAST_UPDATED = "15 August 2026";
 
@@ -233,34 +234,14 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: "action-contact", label: "Contact & Complaints", icon: "✉️", href: "#questions-complaints" },
 ];
 
-/* ────────────── Main Component ────────────── */
-
 export default function PrivacyPolicyPage() {
   const [activeTab, setActiveTab] = useState("sec-overview");
 
   return (
-    <div className="min-h-screen bg-[#FAF3E0] font-sans text-[#5C3717] pb-16">
-      
-      {/* Top Header Bar */}
-      <header className="max-w-[1240px] mx-auto px-6 pt-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <KidsLogoHeaderSVG className="w-16 h-8" />
-          <h2 className="bhalyam-display text-[26px] font-extrabold text-[#4A2508] tracking-tight">
-            BHALYAM
-          </h2>
-        </div>
-
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-[13.5px] font-bold text-[#7A5B3E] hover:text-[#E85D04] transition-colors"
-        >
-          <ArrowLeftIcon className="w-4 h-4" />
-          Back to games
-        </Link>
-      </header>
-
-      {/* Main Container */}
-      <main className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-6 space-y-6">
+    <AppLayout>
+      <div className="min-h-full bg-[#FAF3E0] font-sans text-[#5C3717] pb-16">
+        {/* Main Container */}
+        <main className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-6 space-y-6">
 
         {/* Hero Section */}
         <section id="overview" className="bg-[#FFFDF8] border border-[#E6D4B5] rounded-[32px] p-6 sm:p-10 shadow-xs relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
@@ -736,6 +717,7 @@ export default function PrivacyPolicyPage() {
         </div>
       </footer>
 
-    </div>
+      </div>
+    </AppLayout>
   );
 }

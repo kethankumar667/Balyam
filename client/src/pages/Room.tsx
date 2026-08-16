@@ -17,6 +17,7 @@ import ChatMessageToast from "../components/ChatMessageToast";
 import RoomCode from "../components/RoomCode";
 import RoomCodeShare from "../components/RoomCodeShare";
 import RoomNameEditor from "../components/RoomNameEditor";
+import AppLayout from "../components/layout/AppLayout";
 import RummyRoomHistory from "../components/nostalgia/RummyRoomHistory";
 import RematchPanel from "../components/RematchPanel";
 import BoardPreviewPill from "../components/BoardPreviewPill";
@@ -768,20 +769,26 @@ export default function Room() {
   // it up on the next render.
   if (!playerName || mustDeclare) {
     return (
-      <NameEntryForRoom
-        code={code ?? ""}
-        initialName={playerName}
-        guest={mustDeclare}
-        onSubmit={(n) => {
-          setPlayerName(n);
-          setDeclaredHere(true);
-        }}
-      />
+      <AppLayout onSelectGame={() => navigate("/")}>
+        <NameEntryForRoom
+          code={code ?? ""}
+          initialName={playerName}
+          guest={mustDeclare}
+          onSubmit={(n) => {
+            setPlayerName(n);
+            setDeclaredHere(true);
+          }}
+        />
+      </AppLayout>
     );
   }
 
   if (!roomState) {
-    return <ConnectingScreen code={code} />;
+    return (
+      <AppLayout onSelectGame={() => navigate("/")}>
+        <ConnectingScreen code={code} />
+      </AppLayout>
+    );
   }
 
   const minPlayersNeeded =
@@ -837,24 +844,16 @@ export default function Room() {
   const ludoInPlay = roomState.game === "ludo" && roomState.phase !== "lobby";
 
   return (
-    <div
-      className={
-        FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
-          ? "bhalyam-font bhalyam-paper h-dvh-safe overflow-hidden p-0"
-          : ludoInPlay
-            ? // Ludo's shells are viewport-locked and reserve EXACTLY this much
-              // (`h-[calc(100svh-0.5rem)]`), so the two must always agree — a
-              // mismatch here is what scrolled the page by 16px on every
-              // desktop size once before. Trimmed 0.5rem → 0.25rem per side to
-              // hand the width back to the board, which is width-bound on a
-              // portrait phone (it had 86px of spare HEIGHT it could not use,
-              // so width is the only lever that makes it bigger).
-              // `min-h-dvh-safe` (not `min-h-screen`) keeps the guarantee on
-              // mobile, where `100vh` overshoots the visible viewport.
-              "bhalyam-font bhalyam-paper min-h-dvh-safe p-1"
-            : "bhalyam-font bhalyam-paper min-h-screen p-2 sm:p-4"
-      }
-    >
+    <AppLayout onSelectGame={() => navigate("/")}>
+      <div
+        className={
+          FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
+            ? "bhalyam-font bhalyam-paper h-full overflow-hidden p-0"
+            : ludoInPlay
+              ? "bhalyam-font bhalyam-paper min-h-full p-1"
+              : "bhalyam-font bhalyam-paper min-h-full p-2 sm:p-4 pb-12"
+        }
+      >
       <div
         className={
           FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
@@ -1489,7 +1488,8 @@ export default function Room() {
           onLeave={leaveRoom}
         />
       )}
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 
