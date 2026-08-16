@@ -389,6 +389,23 @@ export default function GamesPage() {
 
         {/* Main Body */}
         <main className="p-4 sm:p-6 lg:p-7 space-y-6 sm:space-y-7 flex-1">
+          {/*
+            The page's heading, for the two audiences that need one and the
+            one that does not.
+
+            This grid opens on "Continue playing" rather than a title, which
+            is the right call for someone who came to play — but it left the
+            document with no h1 at all, only the h3 on each tile. A crawler
+            therefore saw a catalogue with no subject, and a screen reader
+            landed in a list of games with nothing naming the list.
+
+            `sr-only` rather than a visible heading because the layout is
+            deliberate and a banner above the hero cards would push the games
+            below the fold on a phone. The words are the product's own, from
+            the sidebar — not copy written for a search engine.
+          */}
+          <h1 className="sr-only">All Games Hub</h1>
+
           {/* ── 1. Hero Cards (Resume Playing + Daily Quests) ── */}
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Continue Playing Hero Card */}
