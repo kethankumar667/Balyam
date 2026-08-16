@@ -686,22 +686,20 @@ export default function RummyBoardDesktop({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       switch (e.key.toLowerCase()) {
         /**
-         * D is DRAW or DISCARD depending on where the turn is.
-         *
-         * The two never overlap — `turnAction` is either "draw" or
-         * "discardOrDeclare" and never both — so one key can carry the whole
-         * turn: press D to take a card, press D to put one down. That is also
-         * what lets the Discard button honestly print "D" on its face; the
-         * discard action previously answered to Space alone, which no label
-         * on screen mentioned.
+         * Keyboard controls:
+         *   D -> Draw from closed deck
+         *   O -> Draw from open discard pile
+         *   Space -> Discard the selected card
+         *   G -> Group selected cards
+         *   S -> Sort meld groups
+         *   A -> Auto-arrange hand
+         *   Enter -> Declare hand
+         *   Escape -> Clear card selection
          */
         case "d":
           if (canDraw) {
             e.preventDefault();
             drawFromClosed();
-          } else if (canDiscardOrDeclare && selected.size === 1) {
-            e.preventDefault();
-            discardSelected();
           }
           break;
         case "o":
@@ -718,7 +716,8 @@ export default function RummyBoardDesktop({
           break;
         case " ":
           if (canDiscardOrDeclare && selected.size === 1) {
-            e.preventDefault(); discardSelected();
+            e.preventDefault();
+            discardSelected();
           }
           break;
         case "enter":
@@ -1062,13 +1061,13 @@ export default function RummyBoardDesktop({
               disabled={!canDiscardOrDeclare || selected.size !== 1}
               title={
                 selected.size === 1
-                  ? "Discard the selected card"
-                  : "Select exactly one card to discard"
+                  ? "Discard the selected card (Space)"
+                  : "Select exactly one card to discard (Space)"
               }
             >
               <DiscardIcon />
               Discard
-              <span className="rm-kbd">D</span>
+              <span className="rm-kbd">Space</span>
             </button>
             <button
               type="button"
@@ -2770,7 +2769,7 @@ function ToolsPopover({
           lineHeight: 1.5,
         }}
       >
-        D draw · O open pile · S sort · A auto · G group · D discard · Enter declare · Esc clear
+        D draw · O open pile · S sort · A auto · G group · Space discard · Enter declare · Esc clear
       </span>
     </div>
   );

@@ -98,6 +98,10 @@ import {
  * content the split was overhead with no payoff.
  */
 
+import AppLayout from "../components/layout/AppLayout";
+import SchoolGangWaitingBanner from "../components/bhalyam/SchoolGangWaitingBanner";
+import WhatAreWePlayingSection from "../components/bhalyam/WhatAreWePlayingSection";
+
 const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
   handcricket: HandCricketGlyph,
   snl: SnakeLadderGlyph,
@@ -136,22 +140,28 @@ export default function BhalyamHome() {
   }, []);
 
   return (
-    <div className="bhalyam-home bhalyam-font min-h-screen bhalyam-paper flex flex-col overflow-x-hidden">
-      <Header onOpenJoin={() => setJoinOpen(true)} />
-      <main className="mx-auto w-full max-w-[1100px] px-4 sm:px-6 pb-8 flex-1">
-        <Hero
-          onPlayFeatured={() => setSheetGame("uno")}
-          onOpenJoin={() => setJoinOpen(true)}
-        />
-        <WelcomePlayerStrip onSelect={setSheetGame} />
-        <GamesSection onSelect={setSheetGame} />
-        <PlayerJourneyDashboard onSelect={setSheetGame} onOpenJoin={() => setJoinOpen(true)} />
-        <LiveLoungePulse onSelect={setSheetGame} />
-        <Footer />
-      </main>
-      <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
-      <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
-    </div>
+    <AppLayout onSelectGame={setSheetGame}>
+      <div className="bhalyam-home bhalyam-font min-h-full bhalyam-paper flex flex-col">
+        <div className="mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-4 pb-12 flex-1">
+          <Hero
+            onPlayFeatured={() => setSheetGame("uno")}
+            onOpenJoin={() => setJoinOpen(true)}
+          />
+          <SchoolGangWaitingBanner onOpenJoinModal={() => setJoinOpen(true)} />
+          <WelcomePlayerStrip onSelect={setSheetGame} />
+          <GamesSection onSelect={setSheetGame} />
+          <WhatAreWePlayingSection
+            onSelectGame={setSheetGame}
+            onOpenCreateRoom={() => setJoinOpen(true)}
+          />
+          <PlayerJourneyDashboard onSelect={setSheetGame} onOpenJoin={() => setJoinOpen(true)} />
+          <LiveLoungePulse onSelect={setSheetGame} />
+          <Footer />
+        </div>
+        <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
+        <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
+      </div>
+    </AppLayout>
   );
 }
 

@@ -24,6 +24,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
+import AppLayout from "../components/layout/AppLayout";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
 import {
@@ -107,10 +108,6 @@ const GAME_TELEMETRY: Record<string, { livePlayers: number; activeRooms: number;
 export default function GamesPage() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [activeQuickFilter, setActiveQuickFilter] = useState<QuickFilter>("popular");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -119,8 +116,6 @@ export default function GamesPage() {
 
   const { playerName } = useRoomStore();
   const displayName = playerName.trim() || "Champion";
-
-  const unreadCount = notifications.filter((n) => n.unread).length;
 
   const [params, setParams] = useSearchParams();
   const filter: GameFilter = useMemo(() => {
@@ -147,17 +142,6 @@ export default function GamesPage() {
 
   // Base list of games filtered by active category / quick filter
   const displayedGames = useMemo(() => {
-    /**
-     * Locked games are LISTED here, not hidden.
-     *
-     * This used to pass `includeLocked: false`, which silently dropped every
-     * `maintenance: true` tile from the catalog — so the flag that is
-     * documented as "players see them but can't open a room" (data.ts) in
-     * fact meant "players never see them", and the only page that exists to
-     * show the whole catalog was the one page that couldn't. `GameTile`
-     * already renders a locked tile correctly: artwork intact, hover
-     * disabled, and a greyed-out "Coming Soon" in place of "Play Now".
-     */
     let list = filterGames(filter, true);
 
     // Apply quick filters if active
@@ -177,13 +161,7 @@ export default function GamesPage() {
   }, [filter, activeQuickFilter]);
 
   return (
-    <div
-      className={`min-h-screen flex flex-col lg:flex-row select-none transition-colors duration-300 ${
-        isLight
-          ? "bg-[#FFFDF7] text-[#3D2005] selection:bg-amber-300 selection:text-amber-900"
-          : "bg-[#070B14] text-white selection:bg-amber-500/30 selection:text-amber-200"
-      }`}
-    >
+    <AppLayout onSelectGame={setSheetGame}>
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
@@ -202,292 +180,110 @@ export default function GamesPage() {
         )}
       </AnimatePresence>
 
-      {/* ── LEFT SIDEBAR NAVIGATION (DESKTOP ONLY) ── */}
-      <aside
-        className={`hidden lg:flex lg:w-64 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto p-4 flex-col justify-start shrink-0 shadow-lg transition-colors ${
-          isLight
-            ? "bg-[#FAF2E1] border-r border-[#ECD9BA]"
-            : "bg-[#0A0F1D] border-r border-[#1B2338]"
-        }`}
-      >
-        <div className="space-y-6">
-          {/* Logo Brand */}
-          <Link to="/" className="flex items-center gap-2.5 px-2 py-1 group">
-            <BhalyamLogo size={42} decorative />
-            <div className="flex flex-col leading-tight">
-              <span className={`bhalyam-display text-[22px] tracking-wide transition-colors ${isLight ? "text-[#3D2005] group-hover:text-amber-600" : "text-white group-hover:text-amber-400"}`}>
-                BHALYAM
-              </span>
-              <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-[#FF8F00] -mt-0.5">
-                All Games Hub
-              </span>
-            </div>
-          </Link>
+      <div className="p-4 sm:p-6 lg:p-7 space-y-6 sm:space-y-7 max-w-[1400px] mx-auto pb-16">
+        <h1 className="sr-only">All Games Hub</h1>
 
-          {/* Main Navigation Categories */}
-          <nav className="space-y-1">
-            {SIDEBAR_CATEGORIES.map((cat, idx) => {
-              const active = filter.category === cat.id && idx === SIDEBAR_CATEGORIES.findIndex(c => c.label === cat.label);
-              return (
-                <button
-                  key={`${cat.id}-${idx}`}
-                  type="button"
-                  onClick={() => setFilter({ category: cat.id })}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-[13px] transition-all cursor-pointer ${
-                    active
-                      ? isLight
-                        ? "bg-[#FFF5DC] text-[#B45309] border-l-4 border-[#F59E0B] shadow-xs font-black"
-                        : "bg-[#182035] text-[#FFB800] border-l-4 border-[#FFB800] shadow-sm font-black"
-                      : isLight
-                      ? "text-[#7A5B3E] hover:text-[#3D2005] hover:bg-black/5"
-                      : "text-zinc-400 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <span className="text-base">{cat.icon}</span>
-                  <span>{cat.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Quick Filters */}
-          <div className={`space-y-1.5 pt-2 border-t ${isLight ? "border-zinc-200" : "border-white/5"}`}>
-            <div className={`px-3 text-[10.5px] font-extrabold uppercase tracking-wider ${isLight ? "text-[#9C7E63]" : "text-zinc-500"}`}>
-              QUICK FILTERS
-            </div>
-            {QUICK_FILTERS.map((qf) => {
-              const isSelected = activeQuickFilter === qf.id;
-              return (
-                <button
-                  key={qf.id}
-                  type="button"
-                  onClick={() => setActiveQuickFilter(qf.id)}
-                  className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl font-bold text-[12.5px] transition-all cursor-pointer ${
-                    isSelected
-                      ? isLight
-                        ? "text-[#B45309] bg-[#F59E0B]/15 font-black"
-                        : "text-[#FF8F00] bg-[#FF8F00]/10 font-black"
-                      : isLight
-                      ? "text-[#7A5B3E] hover:text-[#3D2005] hover:bg-black/5"
-                      : "text-zinc-400 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <span>{qf.icon}</span>
-                  <span>{qf.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </aside>
-
-      {/* ── MAIN CONTENT AREA ── */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
-        {/* Top Header (Sticky in Viewport) */}
-        <header
-          className={`sticky top-0 z-30 w-full px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 border-b transition-colors ${
-            isLight
-              ? "bg-[#FFFDF7]/95 border-[#ECD9BA] backdrop-blur-md shadow-xs"
-              : "bg-[#0A0F1D]/95 border-[#1B2338] backdrop-blur-md shadow-xs"
-          }`}
-        >
-          {/* Mobile-only brand logo */}
-          <Link to="/" className="flex lg:hidden items-center gap-2 group">
-            <BhalyamLogo size={34} decorative />
-            <span className={`bhalyam-display text-[18px] tracking-tight font-black ${isLight ? "text-[#3D2005]" : "text-white"}`}>
-              BHALYAM
-            </span>
-          </Link>
-
-          <div className="hidden lg:block" />
-
-          {/* Right Action Stack */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Online count */}
-            <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11.5px] font-extrabold shadow-xs ${
-                isLight
-                  ? "bg-[#FAF2E1] border-[#ECD9BA] text-emerald-800"
-                  : "bg-[#141B2D] border-[#232D48] text-amber-400"
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>1,284 Online</span>
-            </div>
-
-            {/* Home Button */}
-            <Link
-              to="/"
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 border font-bold text-[12px] transition shadow-xs ${
-                isLight
-                  ? "bg-[#FAF2E1] border-[#ECD9BA] text-[#7A5B3E] hover:text-[#3D2005] hover:bg-[#F3E5CD]"
-                  : "bg-[#141B2D] border-[#232D48] text-zinc-300 hover:text-white hover:bg-[#1A233A]"
-              }`}
-            >
-              <HomeIcon className="w-4 h-4" />
-              <span>Home</span>
-            </Link>
-
-            {/* Notification Icon -> opens Notifications slide-in drawer */}
-            <button
-              type="button"
-              onClick={() => setNotificationsOpen(true)}
-              title="Notifications"
-              className={`relative w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border flex items-center justify-center text-sm transition hover:scale-105 cursor-pointer flex-shrink-0 ${
-                isLight
-                  ? "bg-[#FAF2DF] border-[#ECD9BA] text-[#5C3B1E] hover:bg-[#F2E4CB]"
-                  : "bg-[#0D1426] border-[#1E2945] text-zinc-300 hover:bg-[#141E38]"
-              }`}
-            >
-              <Bell className="w-4.5 h-4.5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {/* Profile Button -> opens Profile slide-in drawer */}
-            <button
-              type="button"
-              onClick={() => setProfileOpen(true)}
-              title="Your Profile"
-              className={`h-9 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 rounded-full border transition hover:scale-102 cursor-pointer flex-shrink-0 ${
-                isLight
-                  ? "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:bg-[#F2E4CB]"
-                  : "bg-[#0D1426] border-[#1E2945] text-white hover:bg-[#141E38]"
-              }`}
-            >
-              <div className="w-6 h-6 min-w-[24px] min-h-[24px] rounded-full overflow-hidden border border-amber-400 flex items-center justify-center flex-shrink-0">
-                <SelfAvatar
-                  className="w-full h-full"
-                  fallback={<UserIcon className="w-4 h-4 text-amber-500" />}
-                />
-              </div>
-              <span className="hidden sm:inline text-[13px] font-bold tracking-tight max-w-[90px] truncate">
-                {displayName}!
-              </span>
-              <ChevronDown className="w-3 h-3 text-zinc-400" />
-            </button>
-
-            {/* 3. Settings / Menu Button -> opens MenuSheet */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label="Open settings"
-              title="Settings"
-              className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border flex items-center justify-center transition hover:scale-105 cursor-pointer flex-shrink-0 ${
-                isLight
-                  ? "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:text-amber-700 hover:bg-[#F2E4CB]"
-                  : "bg-[#0D1426] border-[#1E2945] text-zinc-200 hover:text-amber-400 hover:bg-[#141E38]"
-              }`}
-            >
-              <SettingsIcon className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
-
-        {/* Main Body */}
-        <main className="p-4 sm:p-6 lg:p-7 space-y-6 sm:space-y-7 flex-1">
-          {/* ── 1. Hero Cards (Resume Playing + Daily Quests) ── */}
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Continue Playing Hero Card */}
-            <div
-              className={`lg:col-span-2 p-5 sm:p-6 rounded-3xl shadow-md relative overflow-hidden flex flex-col justify-between transition-colors ${
-                isLight
-                  ? "bg-[#FFF5DC] border-2 border-[#ECD9BA] text-[#3D2005]"
-                  : "bg-[#0D1322] border border-[#1F2B48] text-white shadow-xl"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3 relative z-10">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-amber-950">
-                      CONTINUE PLAYING
-                    </span>
-                    <span className={`text-[12px] font-bold ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
-                      Welcome back, {displayName}!
-                    </span>
-                  </div>
-                  <h3 className={`bhalyam-display text-[24px] sm:text-[28px] mt-1.5 leading-tight ${isLight ? "text-[#3D2005]" : "text-white"}`}>
-                    Hand Cricket <span className="text-amber-500">• Level 8</span>
-                  </h3>
-                  <p className={`text-[12.5px] font-medium mt-0.5 ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
-                    45 Matches Won · 3x Win Streak · Next Milestone: <strong className={isLight ? "text-amber-800" : "text-amber-300"}>Golden Bat in 2 wins</strong>
-                  </p>
+        {/* ── 1. Hero Cards (Resume Playing + Daily Quests) ── */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Continue Playing Hero Card */}
+          <div
+            className={`lg:col-span-2 p-5 sm:p-6 rounded-3xl shadow-md relative overflow-hidden flex flex-col justify-between transition-colors ${
+              isLight
+                ? "bg-[#FFF5DC] border-2 border-[#ECD9BA] text-[#3D2005]"
+                : "bg-[#0D1322] border border-[#1F2B48] text-white shadow-xl"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3 relative z-10">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-amber-950">
+                    CONTINUE PLAYING
+                  </span>
+                  <span className={`text-[12px] font-bold ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
+                    Welcome back, {displayName}!
+                  </span>
                 </div>
-
-                <div className="hidden sm:block text-right flex-shrink-0">
-                  <div className={`text-[11px] font-black ${isLight ? "text-amber-700" : "text-amber-300"}`}>60% to Level 9</div>
-                  <div className={`w-24 h-2 rounded-full mt-1 overflow-hidden border ${isLight ? "bg-[#E6D4B5] border-[#D4C3A3]" : "bg-white/10 border-white/10"}`}>
-                    <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 w-[60%]" />
-                  </div>
-                </div>
+                <h3 className={`bhalyam-display text-[24px] sm:text-[28px] mt-1.5 leading-tight ${isLight ? "text-[#3D2005]" : "text-white"}`}>
+                  Hand Cricket <span className="text-amber-500">• Level 8</span>
+                </h3>
+                <p className={`text-[12.5px] font-medium mt-0.5 ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
+                  45 Matches Won · 3x Win Streak · Next Milestone: <strong className={isLight ? "text-amber-800" : "text-amber-300"}>Golden Bat in 2 wins</strong>
+                </p>
               </div>
 
-              <div className={`mt-5 pt-3 border-t flex items-center justify-between gap-3 relative z-10 flex-wrap ${isLight ? "border-zinc-300" : "border-white/10"}`}>
-                <div className={`flex items-center gap-2 text-[12px] font-semibold ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
-                  <span className="inline-flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-amber-500" /> 48 Active Rooms Waiting</span>
-                  <span>•</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">+50 XP per win</span>
+              <div className="hidden sm:block text-right flex-shrink-0">
+                <div className={`text-[11px] font-black ${isLight ? "text-amber-700" : "text-amber-300"}`}>60% to Level 9</div>
+                <div className={`w-24 h-2 rounded-full mt-1 overflow-hidden border ${isLight ? "bg-[#E6D4B5] border-[#D4C3A3]" : "bg-white/10 border-white/10"}`}>
+                  <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 w-[60%]" />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSheetGame("handcricket")}
-                  className="py-2.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 active:scale-95 text-white font-black text-[13.5px] shadow-md transition cursor-pointer flex items-center gap-2"
-                >
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>Resume Hand Cricket</span>
-                </button>
               </div>
             </div>
 
-            {/* Today's Daily Challenges Card */}
-            <div
-              className={`p-5 rounded-3xl shadow-md flex flex-col justify-between transition-colors ${
-                isLight
-                  ? "bg-[#FAF2E1] border-2 border-[#ECD9BA] text-[#3D2005]"
-                  : "bg-[#0D1322] border border-[#1F2B48] text-white shadow-xl"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h4 className={`bhalyam-display text-[17px] flex items-center gap-1.5 ${isLight ? "text-[#3D2005]" : "text-white"}`}>
-                  <Target className="w-4.5 h-4.5 text-amber-500" />
-                  <span>Today's Quests</span>
-                </h4>
-                <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-amber-400/20 text-amber-600 dark:text-amber-300 border border-amber-400/40">
-                  Day 3
-                </span>
+            <div className={`mt-5 pt-3 border-t flex items-center justify-between gap-3 relative z-10 flex-wrap ${isLight ? "border-zinc-300" : "border-white/10"}`}>
+              <div className={`flex items-center gap-2 text-[12px] font-semibold ${isLight ? "text-[#7A5B3E]" : "text-zinc-300"}`}>
+                <span className="inline-flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-amber-500" /> 48 Active Rooms Waiting</span>
+                <span>•</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">+50 XP per win</span>
               </div>
-
-              <div className="space-y-2 my-2">
-                <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
-                  <span>Win 1 Hand Cricket Match</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-black">+100 XP</span>
-                </div>
-                <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
-                  <span>Play UNO with 2+ Friends</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-black">+150 XP</span>
-                </div>
-                <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
-                  <span>Roll a 6 in Ludo</span>
-                  <span className="text-amber-600 dark:text-amber-400 font-black">+50 XP</span>
-                </div>
-              </div>
-
               <button
                 type="button"
-                onClick={() => showToast("Quest claimed! +100 XP added to your profile.")}
-                className="w-full py-2.5 rounded-xl bg-[#FFB800] hover:bg-amber-300 text-amber-950 font-black text-[12px] shadow-sm transition active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1.5"
+                onClick={() => setSheetGame("handcricket")}
+                className="py-2.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 active:scale-95 text-white font-black text-[13.5px] shadow-md transition cursor-pointer flex items-center gap-2"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>Claim Daily +100 XP</span>
+                <Play className="w-4 h-4 fill-current" />
+                <span>Resume Hand Cricket</span>
               </button>
             </div>
-          </section>
+          </div>
 
-          {/* ── 2. Mobile-Only Compact Category Scroll Strip ── */}
-          <div className="flex lg:hidden items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {/* Today's Daily Challenges Card */}
+          <div
+            className={`p-5 rounded-3xl shadow-md flex flex-col justify-between transition-colors ${
+              isLight
+                ? "bg-[#FAF2E1] border-2 border-[#ECD9BA] text-[#3D2005]"
+                : "bg-[#0D1322] border border-[#1F2B48] text-white shadow-xl"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h4 className={`bhalyam-display text-[17px] flex items-center gap-1.5 ${isLight ? "text-[#3D2005]" : "text-white"}`}>
+                <Target className="w-4.5 h-4.5 text-amber-500" />
+                <span>Today's Quests</span>
+              </h4>
+              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-amber-400/20 text-amber-600 dark:text-amber-300 border border-amber-400/40">
+                Day 3
+              </span>
+            </div>
+
+            <div className="space-y-2 my-2">
+              <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
+                <span>Win 1 Hand Cricket Match</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-black">+100 XP</span>
+              </div>
+              <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
+                <span>Play UNO with 2+ Friends</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-black">+150 XP</span>
+              </div>
+              <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11.5px] font-bold ${isLight ? "bg-white/80 border-[#ECD9BA] text-[#3D2005]" : "bg-white/5 border border-white/10 text-zinc-200"}`}>
+                <span>Roll a 6 in Ludo</span>
+                <span className="text-amber-600 dark:text-amber-400 font-black">+50 XP</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => showToast("Quest claimed! +100 XP added to your profile.")}
+              className="w-full py-2.5 rounded-xl bg-[#FFB800] hover:bg-amber-300 text-amber-950 font-black text-[12px] shadow-sm transition active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Claim Daily +100 XP</span>
+            </button>
+          </div>
+        </section>
+
+        {/* ── 2. Category & Quick Filter Chips ── */}
+        <div className="space-y-3">
+          {/* Main Categories Row */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             {SIDEBAR_CATEGORIES.map((cat) => {
               const active = filter.category === cat.id;
               return (
@@ -495,7 +291,7 @@ export default function GamesPage() {
                   key={cat.id}
                   type="button"
                   onClick={() => setFilter({ category: cat.id as CategorySelection })}
-                  className={`px-3.5 py-1.5 rounded-full font-extrabold text-[12px] whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-4 py-2 rounded-2xl font-extrabold text-[12.5px] whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                     active
                       ? "bg-[#FF8F00] text-black shadow-md font-black"
                       : isLight
@@ -510,44 +306,54 @@ export default function GamesPage() {
             })}
           </div>
 
-          {/* ── 3. 4-Column Games Grid (Matching Home Page Tiles) ── */}
-          <section>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-              {displayedGames.map((game) => (
-                <li key={game.slug}>
-                  <GameTile
-                    game={game}
-                    onSelect={() => setSheetGame(game.slug)}
-                    compact
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        </main>
+          {/* Quick Filters Row */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <span className={`text-[11px] font-black uppercase tracking-wider mr-1 ${isLight ? "text-[#8A6D4B]" : "text-zinc-400"}`}>
+              Filters:
+            </span>
+            {QUICK_FILTERS.map((qf) => {
+              const isSelected = activeQuickFilter === qf.id;
+              return (
+                <button
+                  key={qf.id}
+                  type="button"
+                  onClick={() => setActiveQuickFilter(qf.id)}
+                  className={`px-3 py-1 rounded-full font-bold text-[11.5px] transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? isLight
+                        ? "bg-amber-500 text-white font-black shadow-xs"
+                        : "bg-amber-400 text-black font-black shadow-xs"
+                      : isLight
+                      ? "bg-white/80 text-[#7A5B3E] border border-[#ECD9BA] hover:bg-[#FAF2E1]"
+                      : "bg-white/5 text-zinc-300 border border-white/10 hover:bg-white/10"
+                  }`}
+                >
+                  <span>{qf.icon}</span>
+                  <span>{qf.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── 3. Games Grid ── */}
+        <section>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+            {displayedGames.map((game) => (
+              <li key={game.slug}>
+                <GameTile
+                  game={game}
+                  onSelect={() => setSheetGame(game.slug)}
+                  compact
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
 
-      <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
-      <NotificationsSheet
-        open={notificationsOpen}
-        notifications={notifications}
-        onUpdateNotifications={setNotifications}
-        onClose={() => setNotificationsOpen(false)}
-        onOpenJoin={() => {
-          setNotificationsOpen(false);
-          setJoinOpen(true);
-        }}
-      />
-      <MenuSheet
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        onOpenJoin={() => {
-          setMenuOpen(false);
-          setJoinOpen(true);
-        }}
-      />
       <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
       <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
-    </div>
+    </AppLayout>
   );
 }

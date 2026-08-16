@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeftIcon } from "../components/auth/authIcons";
+import AppLayout from "../components/layout/AppLayout";
 
 /* ────────────── Inline SVG Illustrations ────────────── */
 
@@ -131,29 +132,10 @@ export default function AboutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF3E0] font-sans text-[#5C3717] pb-16">
-      
-      {/* Header Bar */}
-      <header className="max-w-[1240px] mx-auto px-6 pt-6 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3">
-          <img
-            src="/FooterBhalyamlogo.png"
-            alt="BHALYAM - Play Together. Remember Forever."
-            className="w-44 sm:w-52 h-auto object-contain"
-          />
-        </Link>
-
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-[13.5px] font-bold text-[#7A5B3E] hover:text-[#E85D04] transition-colors"
-        >
-          <ArrowLeftIcon className="w-4 h-4" />
-          Back to games
-        </Link>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-6 space-y-10">
+    <AppLayout>
+      <div className="min-h-full bg-[#FAF3E0] font-sans text-[#5C3717] pb-16">
+        {/* Main Content Area */}
+        <main className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-6 space-y-10">
 
         {/* Hero Section */}
         <section className="bg-[#FFFDF8] border border-[#E6D4B5] rounded-[32px] p-6 sm:p-10 shadow-xs relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-8 text-left">
@@ -592,6 +574,7 @@ export default function AboutPage() {
 
       </footer>
 
-    </div>
+      </div>
+    </AppLayout>
   );
 }
