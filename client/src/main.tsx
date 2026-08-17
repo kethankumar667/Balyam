@@ -4,10 +4,12 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AudioProvider } from "./context/AudioContext";
 import { resolveTheme } from "./lib/useTheme";
+import { initLayoutGuard } from "./lib/layoutGuard";
 import "./index.css";
 
 if (typeof document !== "undefined") {
   document.documentElement.setAttribute("data-theme", resolveTheme());
+  initLayoutGuard();
 }
 
 const rootElement = document.getElementById("root")!;

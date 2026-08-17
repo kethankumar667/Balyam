@@ -3,6 +3,35 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@layer base {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  /* Prevent text inputs from expanding flex parents beyond screen width */
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Ensure media stays contained inside parent containers */
+  img, svg, canvas, video, audio {
+    max-width: 100%;
+  }
+}
 
 /*
  * `100vh` on many Android WebViews (notably ColorOS/Oppo, but not limited
