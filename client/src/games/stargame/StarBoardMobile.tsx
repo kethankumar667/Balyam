@@ -121,7 +121,7 @@ export default function StarBoardMobile(props: StarBoardProps) {
       window.removeEventListener("orientationchange", onResize);
     };
   }, []);
-  const tableW = Math.max(280, Math.min(vw - 24, 460));
+  const tableW = Math.max(290, Math.min(vw - 16, 540));
 
   /** The middle stage — one branch per phase (all eight handled). */
   function renderStage() {

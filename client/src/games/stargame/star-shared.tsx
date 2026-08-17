@@ -1183,9 +1183,10 @@ export function StarTable({
   // sit ON its rim the way people sit around a real table.
   const tableW = rx * 2 + 40;
   const tableH = ry * 2 + 36;
+  const scale = Math.min(1.45, Math.max(0.9, width / 520));
 
   return (
-    <div className="relative mx-auto" style={{ width, height }}>
+    <div className="relative mx-auto flex items-center justify-center" style={{ width, height }}>
       {/* ── The subtle dark circular orbit track ────────────────────────── */}
       <svg className="pointer-events-none absolute inset-0" width={width} height={height} aria-hidden>
         <ellipse
@@ -1194,9 +1195,9 @@ export function StarTable({
           rx={rx}
           ry={ry}
           fill="none"
-          stroke="rgba(251,191,36,0.15)"
-          strokeWidth="1.5"
-          strokeDasharray="4 6"
+          stroke="rgba(251,191,36,0.18)"
+          strokeWidth={scale >= 1.2 ? "2" : "1.5"}
+          strokeDasharray="5 7"
         />
       </svg>
 
@@ -1204,12 +1205,12 @@ export function StarTable({
       {(() => {
         const armed = phase === "star" && iAmEligible;
         const racing = phase === "handstack" && iCanStack;
-        const size = Math.min(tableW, tableH) * 0.38;
+        const size = Math.max(120, Math.min(240, Math.min(tableW, tableH) * 0.44));
         const hot = armed || racing;
         const onTap = armed ? onPressStar : racing ? onPlaceHand : undefined;
         return (
           <div
-            className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2"
+            className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 z-10"
           >
             <button
               type="button"
@@ -1232,14 +1233,14 @@ export function StarTable({
                 className={hot && !reduce ? "star-pulse" : undefined}
                 style={{
                   filter: hot
-                    ? `drop-shadow(0 0 16px ${PAPER.gold}) drop-shadow(0 0 36px ${PAPER.gold}EE)`
-                    : "drop-shadow(0 0 10px rgba(251,191,36,0.2))",
-                  opacity: hot ? 1 : 0.45,
+                    ? `drop-shadow(0 0 20px ${PAPER.gold}) drop-shadow(0 0 45px ${PAPER.gold}EE)`
+                    : "drop-shadow(0 0 16px rgba(251,191,36,0.3))",
+                  opacity: hot ? 1 : 0.55,
                 }}
               >
                 <path
                   d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.7 5.6 21.2 7 14.1l-5.3-5 7.2-.9z"
-                  fill={hot ? PAPER.gold : "rgba(251,191,36,0.06)"}
+                  fill={hot ? PAPER.gold : "rgba(251,191,36,0.08)"}
                   stroke={hot ? "#FFFFFF" : "#F59E0B"}
                   strokeWidth="1.2"
                   strokeLinejoin="round"
@@ -1249,12 +1250,12 @@ export function StarTable({
             {(armed || racing) && (
               <div className="text-center">
                 <div
-                  className="font-display text-sm font-black uppercase tracking-[0.16em]"
+                  className="font-display text-sm sm:text-base font-black uppercase tracking-[0.16em]"
                   style={{ color: PAPER.gold, textShadow: `0 0 12px ${PAPER.gold}88` }}
                 >
                   {armed ? "Tap the star" : "Hands on the line!"}
                 </div>
-                <div className="text-[10px] font-semibold" style={{ color: PAPER.pencil }}>
+                <div className="text-[10px] sm:text-xs font-semibold" style={{ color: PAPER.pencil }}>
                   {armed ? "You have four of a kind" : "Fastest hand scores higher"}
                 </div>
               </div>
@@ -1288,8 +1289,8 @@ export function StarTable({
                 key={pid}
                 x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y}
                 stroke={activeLeg ? "#FBBF24" : "rgba(251,191,36,0.25)"}
-                strokeWidth={activeLeg ? 3 : 1.2}
-                strokeDasharray={activeLeg ? undefined : "3 4"}
+                strokeWidth={activeLeg ? 3.5 : 1.5}
+                strokeDasharray={activeLeg ? undefined : "4 5"}
                 opacity={activeLeg ? 1 : 0.45}
                 markerEnd={activeLeg ? "url(#star-flow-arrow)" : "url(#star-flow-dim)"}
               />
@@ -1314,7 +1315,7 @@ export function StarTable({
         return (
           <div
             key={s.id}
-            className="absolute -translate-x-1/2 -translate-y-1/2"
+            className="absolute -translate-x-1/2 -translate-y-1/2 z-20"
             style={{ left: pos.x, top: pos.y }}
           >
             <TableSeat
@@ -1323,13 +1324,14 @@ export function StarTable({
               receiving={isReceiving(s)}
               thinking={thinkingBotId === s.id}
               seatIndex={i}
+              scale={scale}
             />
           </div>
         );
       })}
 
       {children && (
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">{children}</div>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30">{children}</div>
       )}
     </div>
   );
@@ -1342,12 +1344,14 @@ function TableSeat({
   receiving,
   thinking,
   seatIndex = 0,
+  scale = 1,
 }: {
   seat: StarSeat;
   active: boolean;
   receiving: boolean;
   thinking: boolean;
   seatIndex?: number;
+  scale?: number;
 }) {
   const neon = seatNeon(seatIndex);
   const { pub, name, isSelf, isBot, isConnected } = seat;
@@ -1362,22 +1366,37 @@ function TableSeat({
           : pub.hasStacked
             ? "stacked"
             : null;
+
+  const isLarge = scale >= 1.2;
+  const isMed = scale >= 1.05;
+
   return (
-    <div className="flex w-24 flex-col items-center gap-0.5 text-center select-none" style={{ opacity: isConnected ? 1 : 0.5 }}>
+    <div
+      className={`flex flex-col items-center gap-0.5 text-center select-none ${
+        isLarge ? "w-28" : isMed ? "w-26" : "w-24"
+      }`}
+      style={{ opacity: isConnected ? 1 : 0.5 }}
+    >
       <motion.div
         className="relative"
         animate={active ? { scale: [1, 1.08, 1] } : receiving ? { scale: [1, 1.12, 1] } : { scale: 1 }}
         transition={active || receiving ? { repeat: Infinity, duration: receiving ? 0.6 : 1.1 } : { duration: 0.2 }}
       >
         <div
-          className="flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-full font-display text-lg font-black text-white"
+          className={`flex items-center justify-center rounded-full font-display font-black text-white ${
+            isLarge
+              ? "h-16 w-16 text-xl"
+              : isMed
+              ? "h-14 w-14 text-lg"
+              : "h-13 w-13 text-base"
+          }`}
           style={{
             background: `linear-gradient(145deg, ${neon.from}, ${neon.to})`,
             boxShadow: active
-              ? `0 0 0 3px ${PAPER.gold}, 0 0 24px ${PAPER.gold}AA, inset 0 2px 4px rgba(255,255,255,0.4)`
+              ? `0 0 0 3.5px ${PAPER.gold}, 0 0 28px ${PAPER.gold}AA, inset 0 2px 4px rgba(255,255,255,0.4)`
               : receiving
-                ? `0 0 0 3px ${PAPER.green}, 0 0 20px ${PAPER.green}AA, inset 0 2px 4px rgba(255,255,255,0.4)`
-                : `0 0 0 2.5px ${neon.ring}AA, 0 0 16px ${neon.glow}, inset 0 2px 4px rgba(255,255,255,0.3)`,
+                ? `0 0 0 3.5px ${PAPER.green}, 0 0 24px ${PAPER.green}AA, inset 0 2px 4px rgba(255,255,255,0.4)`
+                : `0 0 0 2.5px ${neon.ring}AA, 0 0 18px ${neon.glow}, inset 0 2px 4px rgba(255,255,255,0.3)`,
           }}
           aria-hidden
         >
@@ -1385,13 +1404,17 @@ function TableSeat({
         </div>
         <CountBadge count={pub.cardCount} />
       </motion.div>
-      <div className="max-w-full truncate text-[12px] font-bold mt-1 text-slate-100 flex items-center justify-center gap-1">
-        <span>{name}</span>
+      <div
+        className={`max-w-full truncate font-bold mt-1 text-slate-100 flex items-center justify-center gap-1 ${
+          isLarge ? "text-sm" : "text-xs"
+        }`}
+      >
+        <span className="truncate">{name}</span>
         {isSelf && <span className="text-[10px] text-zinc-400 font-normal">(you)</span>}
         {isBot && <span className="text-[9px] text-zinc-400 font-normal">bot</span>}
       </div>
       {active && (
-        <span aria-hidden className="text-[10px] leading-none text-amber-400 animate-bounce">
+        <span aria-hidden className="text-xs leading-none text-amber-400 animate-bounce">
           ▲
         </span>
       )}

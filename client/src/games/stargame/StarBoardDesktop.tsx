@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useStarBoard } from "./useStarBoard";
@@ -128,6 +128,46 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
   const showTable = m.phase !== "themeSelect" && m.phase !== "finished";
   const secretPickDot = m.state.mySelectedValue ? getChitDotColor(m.state.mySelectedValue) : null;
+  const mainRef = useRef<HTMLElement>(null);
+  const [arenaDim, setArenaDim] = useState<{ width: number; height: number }>({
+    width: 780,
+    height: 520,
+  });
+
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        setArenaDim({
+          width: Math.floor(rect.width),
+          height: Math.floor(rect.height),
+        });
+      }
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  // Compute responsive table size filling ~85-92% of the main felt arena
+  const availW = Math.max(480, arenaDim.width - 40);
+  const availH = Math.max(340, arenaDim.height - 92);
+  const targetAspect = 1.34;
+  let dynamicTableW = availW;
+  let dynamicTableH = dynamicTableW / targetAspect;
+  if (dynamicTableH > availH) {
+    dynamicTableH = availH;
+    dynamicTableW = dynamicTableH * targetAspect;
+  }
+  const tableWidth = Math.max(480, Math.min(1080, Math.floor(dynamicTableW)));
+  const tableHeight = Math.max(340, Math.min(760, Math.floor(dynamicTableH)));
 
   return (
     <div
@@ -138,13 +178,13 @@ export default function StarBoardDesktop(props: StarBoardProps) {
       <GrainOverlay />
       {(m.iAmWinner || m.phase === "finished") && <Confetti count={34} />}
 
-      {/* ── Top Header Bar ─────────────────────────────────────────────── */}
-      <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 px-6 py-2.5 border-b border-[#1E294B]/60 bg-[#060814]/80 backdrop-blur-md">
-        {/* Left Wordmark Logo */}
+      {/* ── Top Navigation Bar ───────────────────────────────────────────── */}
+      <header
+        className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-[#1E294B]/90 px-5 bg-[#090E22]/95 backdrop-blur-md shadow-md"
+      >
         <StarLogo />
 
-        {/* Center: Round Progress + Close Button */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <RoundProgress round={m.round} total={m.totalRounds} />
           <button
             type="button"
@@ -173,7 +213,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           <button
             type="button"
             onClick={handleLeaveRoom}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/40 text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 text-xs font-bold transition shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/40 text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 text-xs font-bold transition shadow-sm cursor-pointer"
           >
             <span aria-hidden>🚪</span>
             <span>Leave Room</span>
@@ -184,7 +224,10 @@ export default function StarBoardDesktop(props: StarBoardProps) {
       {/* ── Workspace: Three Columns ────────────────────────────────────── */}
       <div
         className="relative z-10 grid min-h-0 flex-1 gap-3.5 p-3.5 pt-2"
-        style={{ gridTemplateColumns: "260px 1fr 280px" }}
+        style={{
+          gridTemplateColumns:
+            arenaDim.width < 640 ? "210px 1fr 230px" : "240px 1fr 265px",
+        }}
       >
         {/* LEFT COLUMN — Game Info, Values in Play, Round Details, Tip Card */}
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
@@ -237,13 +280,14 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
         {/* CENTER COLUMN — Main Felt Arena with Circular Orbit Table */}
         <main
-          className="relative flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-3xl border border-[#1E294B]/90 p-6 shadow-2xl"
+          ref={mainRef}
+          className="relative flex min-h-0 flex-1 flex-col justify-between items-center overflow-hidden rounded-3xl border border-[#1E294B]/90 p-4 sm:p-5 shadow-2xl"
           style={{
             background: "radial-gradient(ellipse at 50% 30%, #101633 0%, #090E22 65%, #050814 100%)",
           }}
           aria-live="polite"
         >
-          <div className="w-full flex flex-col items-center gap-4">
+          <div className="w-full flex-1 flex flex-col items-center justify-center gap-2 sm:gap-3">
             <StageHeading phase={m.phase} />
             {showTable && (
               <StarTable
@@ -260,8 +304,8 @@ export default function StarBoardDesktop(props: StarBoardProps) {
                 iCanStack={m.iCanStack}
                 onPressStar={m.pressStar}
                 onPlaceHand={m.placeHand}
-                width={520}
-                height={370}
+                width={tableWidth}
+                height={tableHeight}
               >
                 <CenterContent m={m} reduce={!!reduce} selectedCount={selectedCount} shuffledCount={shuffledCount} />
               </StarTable>

@@ -97,7 +97,64 @@ export class TambolaEngine implements GameEngine {
     this.calledNumbers.push(num);
     this.currentCall = num;
     this.deadline = Date.now() + this.opts.callIntervalMs;
+
+    // Auto-mark and evaluate claims for any bot players in this match
+    this.processBotTurns();
+
     return true;
+  }
+
+  private processBotTurns(): void {
+    if (this.phase !== "playing") return;
+    for (const botId of this.isBot) {
+      const ticket = this.tickets.get(botId);
+      const grid = this.markedCells.get(botId);
+      if (!ticket || !grid) continue;
+
+      // 1. Mark all called numbers on the bot's ticket
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 9; c++) {
+          const val = ticket[r][c];
+          if (val > 0 && !grid[r][c] && this.calledNumbers.includes(val)) {
+            grid[r][c] = true;
+          }
+        }
+      }
+
+      // 2. Check each claim type in standard order
+      const claimTypes: TambolaClaimType[] = [
+        "early5",
+        "topLine",
+        "middleLine",
+        "bottomLine",
+        "fullHouse",
+      ];
+      for (const cType of claimTypes) {
+        if (
+          !this.winners.some((w) => w.type === cType) &&
+          this.verifyClaim(botId, cType)
+        ) {
+          const win: TambolaClaimWin = {
+            type: cType,
+            winnerId: botId,
+            winnerName: this.nameOf.get(botId) || "Bot",
+            ts: Date.now(),
+          };
+          this.winners.push(win);
+          this.claimsWon.get(botId)?.add(cType);
+
+          if (cType === "fullHouse") {
+            this.winnerId = botId;
+            this.finalizeGame();
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  getBotThinkDelayMs(): number {
+    return 600 + Math.floor(this.rng() * 400);
   }
 
   applyMove(move: MoveContext): MoveResult {

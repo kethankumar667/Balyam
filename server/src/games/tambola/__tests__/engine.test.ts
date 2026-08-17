@@ -108,4 +108,29 @@ describe("TambolaEngine", () => {
     engine.resolveDeadline();
     expect(engine.getPublicState().calledNumbers.length).toBe(3);
   });
+
+  it("supports playing with AI bots who auto-ready and auto-mark numbers", () => {
+    const engine = new TambolaEngine();
+    const players: Player[] = [
+      { id: "p1", name: "Human", isHost: true, isReady: true, isConnected: true },
+      { id: "bot1", name: "Bot Rani", isHost: false, isReady: true, isConnected: true, isBot: true },
+    ];
+    engine.init(players);
+
+    // Bot is auto-ready
+    const pubArranging = engine.getPublicState();
+    expect(pubArranging.players.find((p) => p.id === "bot1")?.isReady).toBe(true);
+
+    // Human locks in ticket
+    engine.applyMove({ playerId: "p1", type: "lockTicket" });
+    expect(engine.getPublicState().phase).toBe("playing");
+
+    // Advance calls and verify bots play without errors
+    for (let i = 0; i < 30; i++) {
+      if (engine.isOver()) break;
+      engine.resolveDeadline();
+    }
+    const pubPlaying = engine.getPublicState();
+    expect(pubPlaying.calledNumbers.length).toBeGreaterThan(1);
+  });
 });

@@ -95,8 +95,18 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
   "namesplaceanimal", "tambola", "snake", "carrom", "roadrash", "chess",
-  "spacewar",
+  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout",
  ]);
+
+const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
+  nokiacricket: "/nokiacricket",
+  snake: "/snake",
+  roadrash: "/roadrash",
+  brickblocks: "/brickblocks",
+  tetris: "/brickblocks",
+  breakout: "/breakout",
+};
+
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
     throw new Error(`Cannot create room for non-playable slug: ${slug}`);
@@ -239,6 +249,12 @@ const NPA_THEME_PACKS: { id: "classic" | "popculture" | "foodie" | "school" | "r
   { id: "random",     label: "Random Mix",  blurb: "Changes categories every round!" },
 ];
 
+const TAMBOLA_CALL_SPEEDS: { id: "2500" | "4000" | "6000"; label: string; blurb: string }[] = [
+  { id: "2500", label: "Fast (2.5s)", blurb: "Rapid number calls" },
+  { id: "4000", label: "Standard (4s)", blurb: "Balanced pace for ticket checking" },
+  { id: "6000", label: "Relaxed (6s)", blurb: "Easy pace for beginners" },
+];
+
 
 const SNAKE_SPEEDS: { id: "140" | "100" | "70"; label: string; blurb: string }[] = [
   { id: "140", label: "Slug",   blurb: "140ms tick — relaxed pace" },
@@ -302,6 +318,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [unoHouseRules, setUnoHouseRules] = useState<Record<UnoHouseRuleKey, boolean>>(UNO_DEFAULT_HOUSE_RULES);
   const [bingoCallSpeed, setBingoCallSpeed] = useState<"2500" | "4000" | "6000">("4000");
   const [bingoWinMode, setBingoWinMode] = useState<"first" | "all">("first");
+  const [tambolaCallSpeed, setTambolaCallSpeed] = useState<"2500" | "4000" | "6000">("4000");
   const [npaDifficulty, setNpaDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [npaRounds, setNpaRounds] = useState<number>(5);
   const [npaThemePack, setNpaThemePack] = useState<"classic" | "popculture" | "foodie" | "school" | "random">("classic");
@@ -339,31 +356,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
   // Reset transient state every time a new game opens.
   useEffect(() => {
-    if (game === "nokiacricket") {
-      navigate("/nokiacricket");
-      onClose();
-      return;
-    }
-    if (game === "snake") {
-      navigate("/snake");
-      onClose();
-      return;
-    }
-    if (game === "roadrash") {
-      navigate("/roadrash");
-      onClose();
-      return;
-    }
-    if (game === "brickblocks" || game === "tetris") {
-      navigate("/brickblocks");
-      onClose();
-      return;
-    }
-    if (game === "breakout") {
-      navigate("/breakout");
-      onClose();
-      return;
-    }
     if (game) {
       setNameError(null);
       setCodeError(null);
@@ -380,11 +372,12 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setUnoHouseRules(UNO_DEFAULT_HOUSE_RULES);
       setBingoCallSpeed("4000");
       setBingoWinMode("first");
+      setTambolaCallSpeed("4000");
       setNpaDifficulty("medium");
       setNpaRounds(5);
       setNpaThemePack("classic");
     }
-  }, [game, playerName, navigate, onClose]);
+  }, [game, playerName]);
 
   // ESC closes the sheet.
   useEffect(() => {
@@ -439,6 +432,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       return;
     }
     if (!game) return;
+    if (RETRO_ROUTES[game]) {
+      navigate(RETRO_ROUTES[game]!);
+      onClose();
+      return;
+    }
     setBusy(true);
     setPlayerName(n);
     try {
@@ -486,6 +484,12 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               ? {
                   callIntervalMs: Number(bingoCallSpeed),
                   stopOnFirstWin: bingoWinMode === "first",
+                }
+              : undefined,
+          tambolaOptions:
+            game === "tambola"
+              ? {
+                  callIntervalMs: Number(tambolaCallSpeed),
                 }
               : undefined,
           namesplaceanimalOptions:
@@ -952,6 +956,17 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               </Field>
             )}
 
+            {game === "tambola" && (
+              <Field label="Call speed">
+                <OptionGrid
+                  items={TAMBOLA_CALL_SPEEDS}
+                  value={tambolaCallSpeed}
+                  onChange={(v) => setTambolaCallSpeed(v as "2500" | "4000" | "6000")}
+                  cols={3}
+                />
+              </Field>
+            )}
+
             {game === "namesplaceanimal" && (
               <>
                 <Field label="Category Theme Pack">
@@ -1131,6 +1146,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   <>
                     <SparkIcon className="w-5 h-5" />
                     Start Pass &amp; Play
+                  </>
+                ) : RETRO_ROUTES[game] ? (
+                  <>
+                    <SparkIcon className="w-5 h-5" />
+                    Launch Arcade Game
                   </>
                 ) : isSolo ? (
                   <>
