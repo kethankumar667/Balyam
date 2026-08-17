@@ -430,7 +430,7 @@ export class RoomManager {
     avatar?: string,
     /** Appended for the same reason as `avatar` above. */
     hostKind?: AccountKind
-  ): { code: string; playerId: string; seatToken: string } {
+  ): { code: string; playerId: string; seatToken: string; state: RoomPublicState } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
 
@@ -514,7 +514,7 @@ export class RoomManager {
     socket?.join(code);
 
     this.broadcastRoomState(room);
-    return { code, playerId, seatToken: mintSeatToken(code, playerId) };
+    return { code, playerId, seatToken: mintSeatToken(code, playerId), state: this.toPublicState(room) };
   }
 
   /**
@@ -539,7 +539,7 @@ export class RoomManager {
     seatToken?: string,
     avatar?: string,
     accountKind?: AccountKind
-  ): { ok: true; playerId: string; seatToken: string } | { ok: false; error: string } {
+  ): { ok: true; playerId: string; seatToken: string; state: RoomPublicState } | { ok: false; error: string } {
     const room = this.rooms.get(code.toUpperCase());
     if (!room) return { ok: false, error: "Room not found" };
 
@@ -596,6 +596,7 @@ export class RoomManager {
         ok: true,
         playerId: existingPlayerId,
         seatToken: mintSeatToken(room.code, existingPlayerId),
+        state: this.toPublicState(room),
       };
     }
 
@@ -612,7 +613,12 @@ export class RoomManager {
       // Re-issuing here is safe and necessary: this socket already holds the
       // seat, and a duplicate join must not leave the client without the
       // credential its first join was still waiting on.
-      return { ok: true, playerId: seatedId, seatToken: mintSeatToken(room.code, seatedId) };
+      return {
+        ok: true,
+        playerId: seatedId,
+        seatToken: mintSeatToken(room.code, seatedId),
+        state: this.toPublicState(room),
+      };
     }
 
     // Only NEW seats are refused. Both paths above have already returned, so a
@@ -643,7 +649,12 @@ export class RoomManager {
     this.io.sockets.sockets.get(socketId)?.join(room.code);
 
     this.broadcastRoomState(room);
-    return { ok: true, playerId, seatToken: mintSeatToken(room.code, playerId) };
+    return {
+      ok: true,
+      playerId,
+      seatToken: mintSeatToken(room.code, playerId),
+      state: this.toPublicState(room),
+    };
   }
 
   leaveRoom(socketId: string): void {

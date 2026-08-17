@@ -29,7 +29,7 @@ export default function AuthShell({
 
   return (
     <div
-      className={`min-h-screen w-full font-sans text-[#5C3717] flex flex-col justify-between overflow-x-hidden relative bg-[#FAF3E0] ${
+      className={`min-h-screen min-h-[100dvh] w-full font-sans text-[#5C3717] flex flex-col justify-between overflow-x-hidden relative bg-[#FAF3E0] ${
         isLogin
           ? "bg-[url('/LoginBG.png')] bg-cover bg-center bg-no-repeat"
           : "bg-[url('/SignupBG.png')] bg-cover bg-center bg-no-repeat"

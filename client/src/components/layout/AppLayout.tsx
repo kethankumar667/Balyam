@@ -97,7 +97,7 @@ export default function AppLayout({ children, onSelectGame, chrome = true }: App
   return (
     <AppLayoutContext.Provider value={contextValue}>
       <div
-        className={`h-screen w-screen overflow-hidden flex flex-col select-none transition-colors ${
+        className={`h-screen min-h-[100dvh] w-full max-w-full overflow-hidden flex flex-col select-none transition-colors ${
           isDark
             ? "bg-[#070B14] text-white selection:bg-amber-500/30 selection:text-amber-200"
             : "bg-[#FAF3E0] text-[#3D2005] selection:bg-amber-300 selection:text-amber-900"
@@ -144,7 +144,7 @@ export default function AppLayout({ children, onSelectGame, chrome = true }: App
                   animate={{ x: 0 }}
                   exit={{ x: -280 }}
                   transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                  className="fixed top-0 bottom-0 left-0 z-50 w-72 h-full shadow-2xl lg:hidden"
+                  className="fixed top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] h-full shadow-2xl lg:hidden"
                 >
                   <AppSidebar
                     onOpenJoin={() => {

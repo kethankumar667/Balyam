@@ -59,7 +59,7 @@ export function registerSocketHandlers(
   socket.on("room:create", async (payload, ack) => {
     try {
       const hostKind = await resolveAccountKind(payload.hostKind, payload.accessToken);
-      const { code, playerId, seatToken } = rooms.createRoom(
+      const { code, playerId, seatToken, state } = rooms.createRoom(
         socket.id,
         payload.name,
         payload.game,
@@ -83,7 +83,7 @@ export function registerSocketHandlers(
         hostKind
       );
       // `seatToken` goes to this socket's ack only — never into a broadcast.
-      ack({ ok: true, code, playerId, seatToken });
+      ack({ ok: true, code, playerId, seatToken, state });
     } catch (err) {
       const error = err instanceof Error ? err.message : "Failed to create room";
       ack({ ok: false, error });
@@ -106,7 +106,7 @@ export function registerSocketHandlers(
         ack({ ok: false, error: result.error });
         return;
       }
-      ack({ ok: true, playerId: result.playerId, seatToken: result.seatToken });
+      ack({ ok: true, playerId: result.playerId, seatToken: result.seatToken, state: result.state });
     } catch (err) {
       // Without this, a thrown error here (e.g. a stale engine reference on
       // a room left mid-rematch-failure) never calls `ack` — the client has

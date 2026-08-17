@@ -195,16 +195,16 @@ function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =>
       </div>
 
       {/* Right: Quick Continue Playing & Daily Reward */}
-      <div className="flex items-center gap-2 w-full sm:w-auto">
+      <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
         <button
           type="button"
           onClick={() => onSelect("uno")}
-          className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+          className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Play className="w-3.5 h-3.5 fill-current" />
           <span>Continue UNO</span>
         </button>
-        <span className="px-3 py-2 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-[11px] font-black whitespace-nowrap inline-flex items-center gap-1.5">
+        <span className="flex-1 sm:flex-initial min-h-[44px] px-3 py-2 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-[11px] font-black whitespace-nowrap inline-flex items-center justify-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
           <span>Day 3 Bonus (+100 XP)</span>
         </span>
@@ -358,7 +358,7 @@ function Hero({
             <button
               type="button"
               onClick={onOpenJoin}
-              className="py-3 px-6 rounded-full flex items-center justify-center gap-2 font-black text-[14px] sm:text-[15px] bg-[#F59E0B] hover:bg-[#D97706] text-black shadow-lg active:scale-95 transition cursor-pointer flex-shrink-0"
+              className="w-full sm:w-auto py-3 px-5 sm:px-6 rounded-full flex items-center justify-center gap-2 font-black text-[14px] sm:text-[15px] bg-[#F59E0B] hover:bg-[#D97706] text-black shadow-lg active:scale-95 transition cursor-pointer flex-shrink-0 min-h-[44px]"
             >
               <DoorOpen className="w-5 h-5 text-black" />
               <span>Join Room with a code</span>
@@ -372,7 +372,7 @@ function Hero({
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") handleShareWhatsApp();
               }}
-              className={`rounded-full py-1.5 px-4 border flex items-center gap-3 cursor-pointer active:scale-95 transition shadow-sm ${
+              className={`w-full sm:w-auto rounded-full py-2 sm:py-1.5 px-4 border flex items-center justify-center sm:justify-start gap-3 cursor-pointer active:scale-95 transition shadow-sm min-h-[44px] ${
                 isDark
                   ? "bg-[#0B101E]/90 border-slate-700/80 hover:border-emerald-500/60 text-white"
                   : "bg-white/95 border-[#E5D5BC] hover:border-emerald-500/60 text-[#15294E]"

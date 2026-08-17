@@ -607,6 +607,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           setFormError(res.error ?? "Failed to create room");
           return;
         }
+        if (res.state) useRoomStore.getState().setRoomState(res.state);
         if (res.playerId) setPlayerId(res.playerId);
         if (res.code && res.playerId && res.seatToken) {
           rememberSeat(res.code, res.playerId, res.seatToken);
@@ -670,6 +671,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           setCodeError(res.error ?? "Failed to join");
           return;
         }
+        if (res.state) useRoomStore.getState().setRoomState(res.state);
         if (res.playerId) setPlayerId(res.playerId);
         if (res.playerId && res.seatToken) rememberSeat(code, res.playerId, res.seatToken);
         navigate(`/room/${code}`);

@@ -7,9 +7,10 @@ import SignInWall from "../auth/SignInWall";
 import { ArrowRightIcon } from "./icons";
 import QrScannerModal from "../QrScannerModal";
 import { isCompleteRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from "../../lib/roomCode";
+import type { RoomPublicState } from "@shared/types";
 
 /** Shape of the `room:join` acknowledgement (see shared/types.ts). */
-type JoinAck = { ok: boolean; playerId?: string; seatToken?: string; error?: string };
+type JoinAck = { ok: boolean; playerId?: string; seatToken?: string; state?: RoomPublicState; error?: string };
 
 /**
  * How long to wait for the server to acknowledge a join.
@@ -93,6 +94,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
   // name from the store so a returning player doesn't retype it.
   useEffect(() => {
     if (open) {
+      getSocket();
       setNameError(null);
       setCodeError(null);
       setFormError(null);
@@ -197,6 +199,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             codeInputRef.current?.focus();
             return;
           }
+          if (res.state) useRoomStore.getState().setRoomState(res.state);
           if (res.playerId) setPlayerId(res.playerId);
           if (res.playerId && res.seatToken) rememberSeat(c, res.playerId, res.seatToken);
           onClose();
@@ -447,9 +450,9 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                 type="button"
                 onClick={() => setScannerOpen(true)}
                 title="Scan QR Code"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] rounded-xl
                            bg-bhalyam-cream-warm dark:bg-[#1E2738] hover:bg-bhalyam-cream-edge dark:hover:bg-[#2A374F] active:scale-95
-                           inline-flex items-center justify-center text-bhalyam-wood-dark dark:text-slate-200 transition"
+                           inline-flex items-center justify-center text-bhalyam-wood-dark dark:text-slate-200 transition cursor-pointer"
               >
                 <ScanIcon className="w-5 h-5 text-[#EA5A1F]" />
               </button>

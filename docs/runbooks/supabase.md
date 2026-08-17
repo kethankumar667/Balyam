@@ -21,7 +21,8 @@ The free tier's real limits, stated plainly because two of them will matter:
 | --- | --- | --- |
 | Monthly active users | 50,000 | Nothing, at this project's scale |
 | Database | 500 MB | Profiles are two short columns; not a concern |
-| **Emails per hour** | Whatever **Authentication → Rate Limits** shows (30/h on this project) — but the built-in sender is throttled *below* that figure regardless of what the box says | Confirmation and reset emails silently fail to arrive. **Fix before any real launch** — see [Email](#7-email--the-one-that-will-bite-you-and-already-has) |
+| **Email delivery** | Only as good as what **SMTP Settings** points at — a personal mailbox will not do it | Confirmation and reset emails silently fail to arrive, with nothing in the logs. **The single most likely thing to be broken** — see [Email](#7-email--the-one-that-will-bite-you-and-already-has) |
+| **Emails per hour** | Whatever **Authentication → Rate Limits** shows (30/h here) | Sends refused with `over_email_send_rate_limit`. Loud and named, unlike delivery failures |
 | Project pausing | after 7 days idle | Sign-in fails until you unpause from the dashboard |
 
 The game server is unaffected by all of it. A paused Supabase project means
@@ -204,39 +205,58 @@ created before the mail is dispatched — so the table fills with accounts that
 were never usable, and sign-up refuses those addresses ever after ("that email
 already has an account").
 
-### Diagnose before you assume it is the rate limit
+### What it was on this project, August 2026
 
-There are two different failures here and they need different fixes. **Check
-which one you have — do not guess.**
+**Gmail SMTP.** Custom SMTP was enabled and pointed at `smtp.gmail.com` with a
+personal `@gmail.com` account as both sender and username. Supabase warns
+about this on the SMTP settings page itself:
 
-**a. Read the actual send errors.** Dashboard → **Logs → Auth Logs**, filter
-around a timestamp where a player reported nothing arriving. A refused send
-names itself: `over_email_send_rate_limit` is the cap, anything mentioning
-SMTP or a 5xx from the mail host is delivery.
+> Check your SMTP provider — It looks like the SMTP provider you entered is
+> designed for sending **personal** rather than **transactional** email
+> messages. Email deliverability may be impacted.
 
-**b. Check whether custom SMTP is even on.** Project Settings →
-**Authentication → SMTP Settings**. This is the fact everything else hinges
-on, and it is *not* the same page as the rate limits.
+That warning is the whole diagnosis. Take it seriously; it is easy to save
+past.
 
-Then read the two against the evidence:
+### Why the logs look innocent
 
-- **The cap** (`Authentication → Rate Limits` → *Rate limit for sending
-  emails*) is project-wide and hourly. It fits a **burst** — several people
-  signing up within the same hour, the later ones refused. It does **not**
-  fit failures spread across different hours or different days: each hour
-  starts with a fresh budget. Note that this box shows what you have
-  *configured*; while the built-in sender is in use, Supabase throttles well
-  under it no matter what number is in the field, which is why the figure
-  there can look generous and still not be what you are getting.
-- **Deliverability** fits everything else. The built-in sender is a shared
-  address with no domain of yours behind it — no SPF, no DKIM, no DMARC — so
-  Gmail and Outlook spam-folder or drop it. Supabase state plainly that it is
-  for development and offer no delivery guarantee. This is what a scatter of
-  failures across days looks like, and it is the more common cause of "most
-  players never got the mail".
+This failure is invisible in **Logs → Auth Logs**. Every call succeeds:
 
-For this project the reported timestamps sat hours and a day apart, which
-points at delivery rather than the cap.
+```
+POST /signup  200   User confirmation requested: request completed
+POST /resend  200   Request completed
+```
+
+GoTrue's job ends when the mail server accepts the message. Gmail accepts it,
+GoTrue logs a 200, and everything that happens afterwards — a spam
+classification, a silent drop, an asynchronous bounce — happens somewhere
+Supabase never sees. **A clean auth log is not evidence that mail arrived.**
+
+So the check that matters is not in Supabase at all: **open the sending Gmail
+account's own inbox.** Google's "Critical security alert" notices and SMTP
+bounce reports are delivered there and nowhere else.
+
+### Why Gmail specifically breaks this way
+
+- **Google blocks the SMTP sign-in.** Supabase connects from a datacenter IP,
+  which to Google looks like a compromised account. It blocks the attempt,
+  intermittently, and mails the owner about it. Intermittent is the tell: it
+  produces failures scattered across days, which no hourly cap can explain.
+- **Gmail rewrites the From header** to the authenticated account, so mail
+  branded "Bhalyam" arrives from a personal address with no SPF or DKIM
+  alignment behind it. Straight to spam for most recipients.
+- **Daily send caps** (~500 recipients on a free account, lower in practice
+  for unusual traffic) produce deferrals and bounces *after* acceptance.
+
+### Ruling the rate limit in or out
+
+Only if the above does not fit. The cap (`Authentication → Rate Limits` →
+*Rate limit for sending emails*) is project-wide and hourly, so it fits a
+**burst** — several signups inside one hour, the later ones refused — and
+never fits failures spread across different hours or days, because each hour
+starts fresh. When it does fire it is loud and named:
+`over_email_send_rate_limit`, with a 429, in the auth log. If you cannot find
+that string, this is not your problem.
 
 ### The fix — pick one, today
 
@@ -251,19 +271,25 @@ login handle rather than a channel you intend to use. What you give up is any
 proof the address is real, and password reset becomes only as good as whatever
 was typed.
 
-**Option B — custom SMTP. Twenty minutes, and the one to actually keep.**
+**Option B — a real transactional provider. Twenty minutes, and the fix.**
 
-Project Settings → Authentication → **SMTP Settings** → enable, then fill in a
-provider. Resend, Brevo and Amazon SES all have free tiers well above what
-this project needs.
+Project Settings → Authentication → **SMTP Settings**. Custom SMTP being *on*
+is not the same as it being *right* — this project had it on, pointed at
+Gmail, the entire time it was failing. What matters is what it points at:
 
-This is the fix for *both* failures, and for delivery it is the only one:
-sending through your own verified domain is what gives the mail SPF, DKIM and
-DMARC, which is what stops Gmail treating it as junk. Nothing you can set on
-the Rate Limits page affects that.
+| You have | Use | Free tier | Why |
+| --- | --- | --- | --- |
+| Your own domain | **Resend** or **Amazon SES** | 3,000/mo | Verify the domain and you get SPF + DKIM aligned to it. Best deliverability available. |
+| No domain yet | **Brevo** | 300/day | Sends from a verified sender address over its own warmed IPs and authentication. Far better than Gmail without needing to own anything. |
+| — | ~~Gmail / Outlook / any personal mailbox~~ | — | Not a transactional sender. This is the failure being fixed. |
+
+A transactional provider also gives you the thing Gmail never did: a
+**delivery dashboard**. Sent, delivered, bounced, marked spam — per message.
+The next time someone says the code never arrived you can look it up instead
+of guessing.
 
 Afterwards, check **Authentication → Rate Limits → Rate limit for sending
-emails** is high enough for a launch evening. It is a separate page and it is
+emails** is high enough for a launch evening. It is a separate page, and it is
 easy to configure SMTP correctly and still sit behind a low cap.
 
 Doing both is reasonable: B is the real fix, A unblocks the evening.
@@ -361,14 +387,16 @@ Free projects pause after 7 days of no requests. Resume from the dashboard.
 Guests are unaffected; only sign-in breaks.
 
 **Players report they never received the OTP / confirmation email.**
-Either the hourly send cap is spent or the built-in sender's mail is not being
-delivered — **Logs → Auth Logs** tells you which, and
-[§7](#7-email--the-one-that-will-bite-you-and-already-has) has both fixes.
-Failures clustered inside one hour point at the cap; failures scattered across
-days point at delivery. Either way it is a dashboard problem, not a code one,
-and the accounts of everyone affected already exist in `auth.users`
-unconfirmed. Tell them to **sign in**, not sign up: that now routes to
-`/verify-email` with a working Resend button.
+Check what **SMTP Settings** points at before anything else — a personal
+mailbox (Gmail, Outlook) is not a transactional sender and is the cause you
+are most likely looking at. Do not be reassured by a clean **Auth Log**: mail
+that Gmail accepted and then dropped logs as `200 request completed`. See
+[§7](#7-email--the-one-that-will-bite-you-and-already-has).
+
+Whatever the cause, it is a dashboard problem rather than a code one, and the
+accounts of everyone affected already exist in `auth.users` unconfirmed. Tell
+them to **sign in**, not sign up: that routes to `/verify-email` with a
+working Resend button.
 
 **A player signed in on a second device and is called "Player 3".**
 Their `profiles` row has no `display_name`. Accounts created before the

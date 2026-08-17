@@ -224,7 +224,7 @@ export default function GamesPage() {
               <button
                 type="button"
                 onClick={() => setSheetGame("handcricket")}
-                className="py-2.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 active:scale-95 text-white font-black text-[13.5px] shadow-md transition cursor-pointer flex items-center gap-2"
+                className="w-full sm:w-auto py-2.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 active:scale-95 text-white font-black text-[13.5px] shadow-md transition cursor-pointer flex items-center justify-center gap-2 min-h-[44px]"
               >
                 <Play className="w-4 h-4 fill-current" />
                 <span>Resume Hand Cricket</span>
@@ -268,7 +268,7 @@ export default function GamesPage() {
             <button
               type="button"
               onClick={() => showToast("Quest claimed! +100 XP added to your profile.")}
-              className="w-full py-2.5 rounded-xl bg-[#FFB800] hover:bg-amber-300 text-amber-950 font-black text-[12px] shadow-sm transition active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 rounded-xl bg-[#FFB800] hover:bg-amber-300 text-amber-950 font-black text-[12px] shadow-sm transition active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1.5 min-h-[44px]"
             >
               <Sparkles className="w-4 h-4" />
               <span>Claim Daily +100 XP</span>

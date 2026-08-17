@@ -184,21 +184,21 @@ export default function QrScannerModal({
               onClick={toggleCamera}
               title="Switch camera"
               aria-label="Switch camera"
-              className="w-9 h-9 rounded-full inline-flex items-center justify-center
+              className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full inline-flex items-center justify-center
                          bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200 cursor-pointer
                          hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 transition"
             >
-              <FlipCameraIcon className="w-4 h-4" />
+              <FlipCameraIcon className="w-4.5 h-4.5" />
             </button>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close Scanner"
-              className="w-9 h-9 rounded-full inline-flex items-center justify-center
+              className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full inline-flex items-center justify-center
                          bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200 cursor-pointer
                          hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 transition"
             >
-              <CloseIcon className="w-4 h-4" />
+              <CloseIcon className="w-4.5 h-4.5" />
             </button>
           </div>
         </div>

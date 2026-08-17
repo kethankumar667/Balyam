@@ -112,6 +112,34 @@ export default function AppSidebar({
           })}
         </nav>
       </div>
+
+      {/* 90s Kids Nostalgia Taped Card (Bottom of Sidebar) */}
+      <div className="mt-4 pt-2">
+        <Link
+          to="/about"
+          onClick={onCloseMobile}
+          className={`relative block p-3 rounded-2xl border transition-all duration-300 group hover:scale-102 hover:shadow-md ${
+            isDark
+              ? "bg-[#121A2D] border-white/10 text-white"
+              : "bg-[#FFFDF4] border-[#E8D8BE] text-[#3D2005] shadow-xs"
+          }`}
+        >
+          {/* Top Tape Sticker */}
+          <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-12 h-4 bg-[#F2E0B2]/85 dark:bg-[#D4B67A]/60 border-y border-[#DFC28B]/80 shadow-2xs rotate-[-2deg]" />
+
+          <p className="font-script text-[14px] font-extrabold text-[#C85A17] dark:text-amber-400 text-center leading-tight">
+            90s kids, this one&apos;s for you! ♡
+          </p>
+
+          <div className="mt-2 rounded-xl overflow-hidden border border-[#E8D8BE]/80 dark:border-white/10 bg-[#FAF3E0] dark:bg-[#18233C]">
+            <img
+              src="/about_carrom_kids.jpg"
+              alt="90s Kids playing together"
+              className="w-full h-20 object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+        </Link>
+      </div>
     </aside>
   );
 }

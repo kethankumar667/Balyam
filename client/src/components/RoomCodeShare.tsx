@@ -133,7 +133,7 @@ export default function RoomCodeShare({
           <button
             type="button"
             onClick={copyCode}
-            className="inline-flex items-center gap-1.5 rounded-full
+            className="inline-flex items-center justify-center gap-1.5 rounded-full min-h-[44px]
                        bg-[#EA5A1F] hover:bg-[#D84F17] active:scale-95
                        text-white font-bold text-xs sm:text-sm px-4 py-2
                        shadow-[0_4px_12px_rgba(234,90,31,0.35)]
@@ -146,7 +146,7 @@ export default function RoomCodeShare({
           <button
             type="button"
             onClick={() => setQrOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full
+            className="inline-flex items-center justify-center gap-1.5 rounded-full min-h-[44px]
                        bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700 active:scale-95
                        text-[#352C24] dark:text-slate-100 font-semibold text-xs sm:text-sm px-4 py-2
                        border border-[#EEDBCA] dark:border-slate-700
@@ -159,7 +159,7 @@ export default function RoomCodeShare({
           <button
             type="button"
             onClick={share}
-            className="inline-flex items-center gap-1.5 rounded-full
+            className="inline-flex items-center justify-center gap-1.5 rounded-full min-h-[44px]
                        bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700 active:scale-95
                        text-[#352C24] dark:text-slate-100 font-semibold text-xs sm:text-sm px-4 py-2
                        border border-[#EEDBCA] dark:border-slate-700
@@ -181,7 +181,7 @@ export default function RoomCodeShare({
                 setTimeout(() => toast.remove(), 2500);
               }
             }}
-            className="inline-flex items-center gap-1.5 rounded-full
+            className="inline-flex items-center justify-center gap-1.5 rounded-full min-h-[44px]
                        bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700 active:scale-95
                        text-[#352C24] dark:text-slate-100 font-semibold text-xs sm:text-sm px-4 py-2
                        border border-[#EEDBCA] dark:border-slate-700

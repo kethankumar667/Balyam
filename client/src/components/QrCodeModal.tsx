@@ -118,7 +118,7 @@ export default function QrCodeModal({
             type="button"
             onClick={onClose}
             aria-label="Close QR Modal"
-            className="w-9 h-9 rounded-full inline-flex items-center justify-center
+            className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full inline-flex items-center justify-center
                        bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200 cursor-pointer
                        hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 transition"
           >
@@ -151,10 +151,11 @@ export default function QrCodeModal({
         </div>
 
         {/* QR Code Container */}
-        <div className="p-4 bg-white rounded-3xl border-2 border-[#EEDBCA] dark:border-amber-400/50 shadow-inner flex flex-col items-center">
+        <div className="p-3 sm:p-4 bg-white rounded-3xl border-2 border-[#EEDBCA] dark:border-amber-400/50 shadow-inner flex flex-col items-center max-w-full overflow-hidden">
           <QRCodeSVG
             value={roomUrl}
-            size={190}
+            size={180}
+            className="w-full max-w-[180px] h-auto aspect-square"
             bgColor="#FFFFFF"
             fgColor="#0F172A"
             level="M"

@@ -1,579 +1,743 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeftIcon } from "../components/auth/authIcons";
 import AppLayout from "../components/layout/AppLayout";
+import { useTheme } from "../lib/useTheme";
 
-/* ────────────── Inline SVG Illustrations ────────────── */
+/* ─────────────────────────────────────────────────────────────
+   Nostalgic Doodle & Illustration SVGs
+   ───────────────────────────────────────────────────────────── */
 
-function KidsLogoHeaderSVG({ className = "" }: { className?: string }) {
+/** Translucent washi tape with ragged torn edges */
+function WashiTape({ className = "", rotate = 0 }: { className?: string; rotate?: number }) {
   return (
-    <svg viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-16 h-8 ${className}`}>
-      <circle cx="25" cy="18" r="8" stroke="#5C3717" strokeWidth="2" fill="#FFF8E7" />
-      <path d="M18 16 Q 25 10 32 16" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <circle cx="22" cy="18" r="1" fill="#5C3717" />
-      <circle cx="28" cy="18" r="1" fill="#5C3717" />
-      <path d="M23 22 Q 25 24 27 22" stroke="#5C3717" strokeWidth="1.5" fill="none" />
-      <path d="M25 26 L25 42 M16 31 L34 31 M25 42 L18 56 M25 42 L32 56" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" />
+    <div
+      style={{ transform: `rotate(${rotate}deg)` }}
+      className={`absolute w-14 h-5.5 bg-[#F2E0B2]/85 dark:bg-[#D4B67A]/60 border-y border-[#DFC28B]/80 dark:border-[#B5965A]/80 shadow-[0_1px_3px_rgba(0,0,0,0.12)] backdrop-blur-2xs pointer-events-none z-20 ${className}`}
+    />
+  );
+}
 
-      <circle cx="60" cy="14" r="8" stroke="#5C3717" strokeWidth="2" fill="#FFF8E7" />
-      <path d="M50 14 C 48 8, 54 8, 56 12" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M70 14 C 72 8, 66 8, 64 12" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <circle cx="57" cy="14" r="1" fill="#5C3717" />
-      <circle cx="63" cy="14" r="1" fill="#5C3717" />
-      <path d="M58 18 Q 60 20 62 18" stroke="#5C3717" strokeWidth="1.5" fill="none" />
-      <path d="M60 22 L52 40 L68 40 Z M60 40 L54 54 M60 40 L66 54" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="#FFF8E7" />
-
-      <circle cx="95" cy="18" r="8" stroke="#5C3717" strokeWidth="2" fill="#FFF8E7" />
-      <path d="M88 16 Q 95 10 102 16" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <circle cx="92" cy="18" r="1" fill="#5C3717" />
-      <circle cx="98" cy="18" r="1" fill="#5C3717" />
-      <path d="M93 22 Q 95 24 97 22" stroke="#5C3717" strokeWidth="1.5" fill="none" />
-      <path d="M95 26 L95 42 M86 31 L104 31 M95 42 L88 56 M95 42 L102 56" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" />
-
-      <path d="M32 31 Q 42 36 52 31" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M68 31 Q 78 36 86 31" stroke="#5C3717" strokeWidth="2" fill="none" />
+/** 3D Red Pushpin with cast shadow */
+function PushPin({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-7 h-7 drop-shadow-md ${className}`}>
+      {/* Pin Shadow */}
+      <ellipse cx="14" cy="24" rx="5" ry="2" fill="rgba(0,0,0,0.25)" />
+      {/* Pin Needle */}
+      <path d="M14 16 L14 23" stroke="#8E9AA8" strokeWidth="1.8" strokeLinecap="round" />
+      {/* Red Plastic Cap */}
+      <circle cx="14" cy="11" r="7.5" fill="url(#pinGrad)" stroke="#B91C1C" strokeWidth="1" />
+      <circle cx="12" cy="9" r="2.5" fill="#FCA5A5" opacity="0.8" />
+      <circle cx="14" cy="5" r="3" fill="#DC2626" />
+      <defs>
+        <radialGradient id="pinGrad" cx="35%" cy="35%" r="70%">
+          <stop offset="0%" stopColor="#EF4444" />
+          <stop offset="70%" stopColor="#DC2626" />
+          <stop offset="100%" stopColor="#991B1B" />
+        </radialGradient>
+      </defs>
     </svg>
   );
 }
 
-function SunRaysIcon({ className = "" }: { className?: string }) {
+/** Yellow Smiley Face Sticker */
+function SmileyBadge({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={`w-4 h-4 text-[#FFB703] ${className}`} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-      <line x1="12" y1="2" x2="12" y2="5" />
-      <line x1="12" y1="19" x2="12" y2="22" />
-      <line x1="4.93" y1="4.93" x2="7.05" y2="7.05" />
-      <line x1="16.95" y1="16.95" x2="19.07" y2="19.07" />
-      <line x1="2" y1="12" x2="5" y2="12" />
-      <line x1="19" y1="12" x2="22" y2="12" />
-      <line x1="4.93" y1="19.07" x2="7.05" y2="16.95" />
-      <line x1="16.95" y1="7.05" x2="19.07" y2="4.93" />
+    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-9 h-9 drop-shadow-md ${className}`}>
+      <circle cx="20" cy="20" r="18" fill="url(#smileyGrad)" stroke="#D97706" strokeWidth="2" />
+      {/* Eyes */}
+      <ellipse cx="14" cy="16" rx="2" ry="3" fill="#78350F" />
+      <ellipse cx="26" cy="16" rx="2" ry="3" fill="#78350F" />
+      {/* Smile with cheek dimples */}
+      <path d="M12 22 C 14 29, 26 29, 28 22" stroke="#78350F" strokeWidth="2.4" strokeLinecap="round" fill="none" />
+      <path d="M10.5 21.5 L12.5 23" stroke="#78350F" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M29.5 21.5 L27.5 23" stroke="#78350F" strokeWidth="1.8" strokeLinecap="round" />
+      <defs>
+        <linearGradient id="smileyGrad" x1="0" y1="0" x2="40" y2="40">
+          <stop offset="0%" stopColor="#FDE047" />
+          <stop offset="100%" stopColor="#F59E0B" />
+        </linearGradient>
+      </defs>
     </svg>
   );
 }
 
-function PaperPlaneDoodleSVG({ className = "" }: { className?: string }) {
+/** Dotted loop trail paper airplane */
+function AirplaneWithLoopSVG({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 100 80" fill="none" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-20 h-16 ${className}`}>
-      <path d="M10 65 Q 25 75 35 60 T 45 45" strokeDasharray="3 3" opacity="0.6" />
-      <path d="M45 45 L90 15 L60 70 L48 52 L78 28 L45 45 Z" fill="#FFFDF5" />
-      <path d="M48 52 L48 64 L56 57" fill="#5C3717" opacity="0.2" />
+    <svg viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-32 h-20 ${className}`}>
+      {/* Dotted Swooping Loop */}
+      <path
+        d="M 15 85 C 40 95, 75 75, 70 45 C 65 15, 30 25, 45 60 C 60 90, 110 85, 135 40"
+        stroke="#8A684C"
+        strokeWidth="1.6"
+        strokeDasharray="4 4"
+        strokeLinecap="round"
+        opacity="0.65"
+      />
+      {/* Paper Plane */}
+      <g transform="translate(125, 20) rotate(15)">
+        <polygon points="0,15 26,0 16,28 11,18" fill="#FFFDF8" stroke="#5C3717" strokeWidth="1.4" strokeLinejoin="round" />
+        <polygon points="11,18 26,0 16,28" fill="#F4E6CF" stroke="#5C3717" strokeWidth="1.4" strokeLinejoin="round" />
+      </g>
     </svg>
   );
 }
 
-function SchoolDoodleSVG({ className = "" }: { className?: string }) {
+/** Open Spiral Sketchbook Background Artwork */
+function SketchbookArtSVG({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 120 120" fill="none" stroke="#D4A574" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`w-32 h-32 ${className}`}>
-      {/* School building doodle */}
-      <rect x="30" y="50" width="60" height="50" fill="none" />
-      <polygon points="60,25 20,50 100,50" fill="none" />
-      <rect x="52" y="70" width="16" height="30" fill="none" />
-      <circle cx="60" cy="40" r="5" fill="none" />
-      <line x1="60" y1="15" x2="60" y2="25" />
-      <path d="M60 15 L72 18 L60 21 Z" fill="#D4A574" opacity="0.6" />
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-full h-full opacity-60 dark:opacity-40 ${className}`}>
+      {/* School / Playground Tree Doodle */}
+      <path d="M 50 180 Q 50 120 70 90 Q 90 60 110 90 Q 130 120 120 180" stroke="#7A5B3E" strokeWidth="1.5" strokeDasharray="3 3" fill="none" />
+      <path d="M 60 110 Q 35 100 45 75 Q 55 50 85 60 Q 110 40 135 65 Q 155 90 135 115" stroke="#7A5B3E" strokeWidth="1.4" strokeLinecap="round" fill="none" />
+      
+      {/* Kids Playing in Field Doodle */}
+      {/* Kid 1 - Running */}
+      <circle cx="95" cy="140" r="6" stroke="#7A5B3E" strokeWidth="1.4" />
+      <path d="M 95 146 L 95 162 M 90 152 L 105 150 M 95 162 L 88 175 M 95 162 L 104 174" stroke="#7A5B3E" strokeWidth="1.4" strokeLinecap="round" />
+      
+      {/* Kid 2 - Throwing Ball */}
+      <circle cx="145" cy="135" r="6" stroke="#7A5B3E" strokeWidth="1.4" />
+      <path d="M 145 141 L 145 158 M 138 145 L 155 142 M 145 158 L 139 172 M 145 158 L 152 172" stroke="#7A5B3E" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="162" cy="136" r="2.5" fill="#7A5B3E" />
+
+      {/* Sun in Sky */}
+      <circle cx="210" cy="50" r="14" stroke="#D97706" strokeWidth="1.4" strokeDasharray="3 2" fill="none" />
+      <line x1="210" y1="30" x2="210" y2="24" stroke="#D97706" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="230" y1="50" x2="236" y2="50" stroke="#D97706" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="190" y1="50" x2="184" y2="50" stroke="#D97706" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="224" y1="36" x2="228" y2="32" stroke="#D97706" strokeWidth="1.4" strokeLinecap="round" />
+
+      {/* Classic Car / Scooter doodle in background */}
+      <path d="M 190 175 L 230 175 Q 235 170 230 162 L 218 162 L 210 152 L 195 152 L 188 162 L 182 162 Q 180 170 190 175 Z" stroke="#7A5B3E" strokeWidth="1.3" fill="none" />
+      <circle cx="195" cy="175" r="4" stroke="#7A5B3E" strokeWidth="1.3" />
+      <circle cx="222" cy="175" r="4" stroke="#7A5B3E" strokeWidth="1.3" />
     </svg>
   );
 }
 
-function FourKidsWithBackpacksSVG({ className = "" }: { className?: string }) {
+/** Two Kids Riding a Bicycle Pencil Doodle */
+function BicycleDoodleSVG({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 220 80" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-44 h-16 ${className}`}>
-      {[30, 80, 130, 180].map((x, i) => (
-        <g key={i}>
-          {/* Backpack */}
-          <rect x={x-14} y="32" width="8" height="16" rx="2" fill="#5C3717" opacity="0.7" />
-          {/* Kid Body */}
-          <circle cx={x} cy="22" r="9" stroke="#5C3717" strokeWidth="2.2" fill="#FFF8E7" />
-          <path d={`M${x-6} 20 Q ${x} 16 ${x+6} 20`} stroke="#5C3717" strokeWidth="2" fill="none" />
-          <path d={`M${x} 31 L${x} 52 M${x-7} 38 L${x+7} 38 M${x} 52 L${x-6} 70 M${x} 52 L${x+6} 70`} stroke="#5C3717" strokeWidth="2.2" strokeLinecap="round" />
-        </g>
-      ))}
-      {/* Arms holding shoulders/hands */}
-      <path d="M37 38 L73 38" stroke="#5C3717" strokeWidth="2" />
-      <path d="M87 38 L123 38" stroke="#5C3717" strokeWidth="2" />
-      <path d="M137 38 L173 38" stroke="#5C3717" strokeWidth="2" />
+    <svg viewBox="0 0 110 80" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-24 h-18 ${className}`}>
+      {/* Wheels */}
+      <circle cx="28" cy="56" r="16" stroke="#5C4532" strokeWidth="1.8" />
+      <circle cx="28" cy="56" r="2.5" fill="#5C4532" />
+      <circle cx="82" cy="56" r="16" stroke="#5C4532" strokeWidth="1.8" />
+      <circle cx="82" cy="56" r="2.5" fill="#5C4532" />
+      
+      {/* Frame */}
+      <path d="M 28 56 L 48 38 L 74 38 L 82 56 M 48 38 L 56 56 L 82 56 M 48 38 L 52 28 M 74 38 L 72 26" stroke="#5C4532" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Handlebar & Seat */}
+      <path d="M 68 24 L 78 24 M 46 28 L 56 28" stroke="#5C4532" strokeWidth="2" strokeLinecap="round" />
+
+      {/* Driver Kid */}
+      <circle cx="68" cy="14" r="5.5" stroke="#5C4532" strokeWidth="1.6" fill="#FFFDF8" />
+      <path d="M 68 19.5 L 64 36 M 68 25 L 74 24" stroke="#5C4532" strokeWidth="1.6" strokeLinecap="round" />
+
+      {/* Passenger Kid on back carrier */}
+      <circle cx="44" cy="18" r="5" stroke="#5C4532" strokeWidth="1.6" fill="#FFFDF8" />
+      <path d="M 44 23 L 42 38 M 44 27 L 56 26" stroke="#5C4532" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
 
-function FourKidsHoldingHandsSVG({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 200 70" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-36 h-12 ${className}`}>
-      {[25, 75, 125, 175].map((x, i) => (
-        <g key={i}>
-          <circle cx={x} cy="20" r="9" stroke="#5C3717" strokeWidth="2.2" fill="#FFF8E7" />
-          <path d={`M${x-6} 18 Q ${x} 14 ${x+6} 18`} stroke="#5C3717" strokeWidth="2" fill="none" />
-          <circle cx={x-3} cy="20" r="1" fill="#5C3717" />
-          <circle cx={x+3} cy="20" r="1" fill="#5C3717" />
-          <path d={`M${x-3} 24 Q ${x} 26 ${x+3} 24`} stroke="#5C3717" strokeWidth="1.8" fill="none" />
-          <path d={`M${x} 29 L${x} 48 M${x-8} 35 L${x+8} 35 M${x} 48 L${x-7} 64 M${x} 48 L${x+7} 64`} stroke="#5C3717" strokeWidth="2.2" strokeLinecap="round" />
-        </g>
-      ))}
-      <path d="M33 35 Q 54 42 67 35" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M83 35 Q 104 42 117 35" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M133 35 Q 154 42 167 35" stroke="#5C3717" strokeWidth="2" fill="none" />
-    </svg>
-  );
-}
-
-/* ────────────── Main AboutPage Component ────────────── */
+/* ─────────────────────────────────────────────────────────────
+   Main About Page Component
+   ───────────────────────────────────────────────────────────── */
 
 export default function AboutPage() {
-  const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email.trim()) {
-      setSubscribed(true);
-      setEmail("");
-      setTimeout(() => setSubscribed(false), 4000);
-    }
-  };
+  const [theme] = useTheme();
+  const isDark = theme === "dark";
 
   return (
     <AppLayout>
-      <div className="min-h-full bg-[#FAF3E0] font-sans text-[#5C3717] pb-16">
-        {/* Main Content Area */}
-        <main className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-6 space-y-10">
+      <div className={`min-h-full font-sans pb-16 transition-colors duration-200 ${
+        isDark ? "bg-[#0A0F1D] text-slate-100" : "bg-[#F7EFE1] text-[#3D2612]"
+      }`}>
+        <main className="max-w-[1240px] mx-auto px-3.5 sm:px-6 pt-5 sm:pt-7 space-y-6 sm:space-y-7">
 
-        {/* Hero Section */}
-        <section className="bg-[#FFFDF8] border border-[#E6D4B5] rounded-[32px] p-6 sm:p-10 shadow-xs relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-8 text-left">
-          
-          <div className="max-w-[620px]">
-            <span className="text-[12px] font-extrabold uppercase tracking-widest text-[#E85D04] block mb-1">
-              ABOUT US
-            </span>
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 1: HERO & FOUNDER MEMORIES CARD
+              ══════════════════════════════════════════════════════════ */}
+          <section className={`relative rounded-3xl sm:rounded-[36px] border p-5 sm:p-8 lg:p-10 shadow-[0_8px_30px_rgba(74,44,18,0.06)] overflow-hidden transition-colors ${
+            isDark
+              ? "bg-[#101728]/95 border-white/10"
+              : "bg-[#FFFDF8] border-[#ECD9BA]"
+          }`}>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
 
-            <h1 className="bhalyam-display text-[36px] sm:text-[48px] font-extrabold text-[#4A2508] leading-tight">
-              A place where 90&apos;s kids come back to play.
-            </h1>
+              {/* ── 1. Left: Founder Polaroid Card ───────────────── */}
+              <div className="lg:col-span-4 flex justify-center lg:justify-start">
+                <div className={`relative rotate-[-2.5deg] p-3 sm:p-4 rounded-2xl border shadow-xl max-w-[280px] sm:max-w-[300px] w-full transition-transform hover:rotate-0 hover:scale-102 duration-300 ${
+                  isDark
+                    ? "bg-[#182238] border-white/15 text-slate-100 shadow-black/60"
+                    : "bg-[#FFFBF0] border-[#E2CEAB] text-[#2C1D11] shadow-[0_12px_32px_rgba(74,44,18,0.14)]"
+                }`}>
+                  
+                  {/* Top-Left Corner Tape */}
+                  <WashiTape className="-top-3 -left-3" rotate={-24} />
+                  {/* Bottom-Right Corner Tape */}
+                  <WashiTape className="-bottom-3 -right-3" rotate={16} />
 
-            <p className="text-[14.5px] sm:text-[15.5px] leading-relaxed text-[#7A5B3E] mt-4">
-              BHALYAM is more than just games. It&apos;s a memory machine. We bring back the joy of school days, evening laughter, handwritten scores and those unforgettable weekends. No ads. No noise. Just pure nostalgia.
-            </p>
+                  {/* Founder Photo */}
+                  <div className="relative aspect-[4/4.3] w-full rounded-xl overflow-hidden border border-[#D9C29D] shadow-inner bg-[#F5E6CC]">
+                    <img
+                      src="/Founder.png"
+                      alt="Kethan Kumar Gontla — Founder & Creator of Bhalyam"
+                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
 
-            {/* 4 Feature Badges Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-              <div className="flex items-center gap-2 bg-[#FFF8E7] border border-[#E6D4B5] rounded-xl p-2.5">
-                <span className="text-base">👥</span>
-                <span className="text-[11.5px] font-bold text-[#5C3717] leading-tight">Play together anytime</span>
+                  {/* Caption */}
+                  <div className="mt-3.5 px-1 text-left select-none">
+                    <h3 className="font-sans font-black text-[18px] sm:text-[20px] leading-tight tracking-tight">
+                      Kethan Kumar Gontla
+                    </h3>
+                    <p className="font-script text-[17px] sm:text-[18px] font-bold text-[#E85D04] dark:text-amber-400 mt-0.5 flex items-center gap-1.5">
+                      <span>Founder &amp; Creator of Bhalyam</span>
+                      <span className="text-[16px]">♡</span>
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 bg-[#FFF8E7] border border-[#E6D4B5] rounded-xl p-2.5">
-                <span className="text-base">🛡️</span>
-                <span className="text-[11.5px] font-bold text-[#5C3717] leading-tight">Safe &amp; ad-free experience</span>
+              {/* ── 2. Center: Hero Story & Headline ─────────────── */}
+              <div className="lg:col-span-4 text-left space-y-3.5">
+                
+                {/* Badge Header */}
+                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase">
+                  <span>★</span>
+                  <span>ABOUT BHALYAM</span>
+                  <span>★</span>
+                </div>
+
+                {/* Main Headline */}
+                <div className="space-y-0.5">
+                  <h1 className="font-display text-[30px] sm:text-[38px] font-black leading-tight text-[#16223B] dark:text-white">
+                    Built from memories.
+                  </h1>
+                  <span className="font-script text-[36px] sm:text-[46px] font-extrabold text-[#E85D04] dark:text-amber-400 leading-none block">
+                    Made for you.
+                  </span>
+                </div>
+
+                {/* Founder Quote */}
+                <blockquote className="font-serif italic text-[14.5px] sm:text-[16px] text-[#4A3320] dark:text-amber-100/90 leading-snug pl-3 border-l-2 border-[#E85D04]">
+                  “I wanted to build the place I wished existed when our school gang grew up.”
+                </blockquote>
+
+                {/* Prose */}
+                <p className="text-[13.5px] sm:text-[14.5px] leading-relaxed text-[#6E543D] dark:text-zinc-300">
+                  Bhalyam is our love letter to the 90s — to the friendships, the chalk-dust, the lunch breaks, the game nights, and the unforgettable memories that made us who we are.
+                </p>
+
+                {/* 4 Feature Badges Strip */}
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11.5px] font-extrabold border transition-all ${
+                    isDark
+                      ? "bg-white/5 border-white/10 text-amber-300"
+                      : "bg-[#FFF9EC] border-[#E6D4B7] text-[#5C3D24]"
+                  }`}>
+                    <span className="text-rose-500">♡</span> Made with Love
+                  </span>
+
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11.5px] font-extrabold border transition-all ${
+                    isDark
+                      ? "bg-white/5 border-white/10 text-amber-300"
+                      : "bg-[#FFF9EC] border-[#E6D4B7] text-[#5C3D24]"
+                  }`}>
+                    <span>👥</span> For 90s Kids
+                  </span>
+
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11.5px] font-extrabold border transition-all ${
+                    isDark
+                      ? "bg-white/5 border-white/10 text-amber-300"
+                      : "bg-[#FFF9EC] border-[#E6D4B7] text-[#5C3D24]"
+                  }`}>
+                    <span className="text-emerald-500">🛡️</span> Safe &amp; Friendly
+                  </span>
+
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11.5px] font-extrabold border transition-all ${
+                    isDark
+                      ? "bg-white/5 border-white/10 text-amber-300"
+                      : "bg-[#FFF9EC] border-[#E6D4B7] text-[#5C3D24]"
+                  }`}>
+                    <span>🏆</span> Play. Share. Remember.
+                  </span>
+                </div>
+
               </div>
 
-              <div className="flex items-center gap-2 bg-[#FFF8E7] border border-[#E6D4B5] rounded-xl p-2.5">
-                <span className="text-base">🎵</span>
-                <span className="text-[11.5px] font-bold text-[#5C3717] leading-tight">Classic 90s sounds</span>
+              {/* ── 3. Right: Scrapbook & Memories Polaroid ───────── */}
+              <div className="lg:col-span-4 relative flex justify-center items-center min-h-[290px] sm:min-h-[320px]">
+                
+                {/* Spiral Sketchbook Backing */}
+                <div className={`relative w-full max-w-[320px] aspect-[4/3.3] rounded-2xl border shadow-md p-3 overflow-hidden select-none ${
+                  isDark
+                    ? "bg-[#141C30] border-white/10"
+                    : "bg-[#FFFDF4] border-[#E6D5B8]"
+                }`}>
+                  {/* Sketchbook spiral binder rings on left edge */}
+                  <div className="absolute left-1.5 top-0 bottom-0 flex flex-col justify-around py-2 z-10">
+                    {[...Array(6)].map((_, i) => (
+                      <span key={i} className="w-4 h-2 rounded-full bg-[#8C7359] dark:bg-zinc-600 border border-[#5C4532] shadow-2xs" />
+                    ))}
+                  </div>
+
+                  {/* Hand-drawn Schoolyard Art SVG */}
+                  <SketchbookArtSVG className="absolute inset-0 pl-5" />
+
+                  {/* Yellow Taped Sticky Note with PushPin */}
+                  <div className="absolute top-2.5 right-2 rotate-[4deg] bg-[#FEF08A] dark:bg-[#EAB308]/90 text-[#713F12] border border-[#CA8A04] rounded-lg p-2.5 shadow-md max-w-[155px] z-20">
+                    <PushPin className="absolute -top-3.5 left-1/2 -translate-x-1/2" />
+                    <p className="font-script text-[15px] font-extrabold leading-tight text-center pt-1">
+                      “Not just games, It&apos;s our childhood again. ♡”
+                    </p>
+                  </div>
+
+                  {/* Overlapping Kids Polaroid Photo */}
+                  <div className={`absolute bottom-2.5 left-6 rotate-[-4deg] p-2 rounded-xl border shadow-xl max-w-[190px] sm:max-w-[210px] z-20 ${
+                    isDark
+                      ? "bg-[#1F2B44] border-white/20"
+                      : "bg-[#FFFFFF] border-[#E0D0B6]"
+                  }`}>
+                    <img
+                      src="/about_carrom_kids.jpg"
+                      alt="Gang of friends playing games together"
+                      className="w-full h-24 sm:h-28 object-cover rounded-lg border border-[#ECD9BA]"
+                    />
+                    
+                    {/* Smiley Badge on Polaroid bottom right */}
+                    <SmileyBadge className="absolute -bottom-3 -right-3" />
+                  </div>
+
+                  {/* Swooping Paper Plane Trail */}
+                  <AirplaneWithLoopSVG className="absolute bottom-0 right-0 pointer-events-none z-30" />
+
+                </div>
+
               </div>
 
-              <div className="flex items-center gap-2 bg-[#FFF8E7] border border-[#E6D4B5] rounded-xl p-2.5">
-                <span className="text-base">❤️</span>
-                <span className="text-[11.5px] font-bold text-[#5C3717] leading-tight">Made for real friends</span>
-              </div>
             </div>
-          </div>
 
-          {/* Right: Taped Photo Frame notebook drawing */}
-          <div className="flex-shrink-0 relative group">
-            <div className="relative rotate-[2deg] bg-[#FFF8E7] p-3 border border-[#D4A574] rounded-2xl shadow-md max-w-[280px] sm:max-w-[320px]">
+          </section>
+
+
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 2: OUR STORY & 5-STEP MILESTONES TIMELINE
+              ══════════════════════════════════════════════════════════ */}
+          <section className={`rounded-3xl sm:rounded-[36px] border p-5 sm:p-8 shadow-[0_6px_24px_rgba(74,44,18,0.05)] overflow-hidden transition-colors ${
+            isDark
+              ? "bg-[#101728]/95 border-white/10"
+              : "bg-[#FFFDF8] border-[#ECD9BA]"
+          }`}>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
               
-              {/* Corner Tapes */}
-              <span className="absolute -top-3 -left-3 w-12 h-5 bg-[#F2DFA8]/90 border border-[#D9BE7A] rotate-[-20deg] shadow-2xs" />
-              <span className="absolute -bottom-3 -right-3 w-12 h-5 bg-[#F2DFA8]/90 border border-[#D9BE7A] rotate-[15deg] shadow-2xs" />
+              {/* Left: Our Story Narrative */}
+              <div className="lg:col-span-4 text-left space-y-2.5">
+                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase">
+                  <span>★</span>
+                  <span>OUR STORY</span>
+                </div>
 
-              <img
-                src="/about_carrom_kids.jpg"
-                alt="Kids playing Carrom"
-                className="w-full h-auto rounded-xl border border-[#E8D8BE] object-cover shadow-2xs"
-              />
+                <p className="text-[13.5px] sm:text-[14.5px] leading-relaxed text-[#4A3220] dark:text-zinc-200">
+                  Bhalyam started as a simple thought: What if all the games we loved as kids could bring us together again?
+                </p>
 
-              <div className="mt-3 text-right">
-                <span className="bhalyam-script text-[20px] font-bold text-[#6D4323] leading-none block">
-                  Good times never fade
-                </span>
+                <p className="text-[13.5px] sm:text-[14.5px] leading-relaxed text-[#6E543D] dark:text-zinc-400">
+                  From cricket in the corridor to carrom championships, from paper games to board game battles — every memory is now a room you can join.
+                </p>
+
+                <p className="font-script text-[19px] sm:text-[22px] font-bold text-[#E85D04] dark:text-amber-400 pt-1">
+                  Same 90s feels, new age magic.
+                </p>
               </div>
+
+              {/* Right: 5-Step Timeline */}
+              <div className="lg:col-span-8">
+                <div className="relative">
+                  
+                  {/* Connecting Dashed Line behind nodes */}
+                  <div className="hidden sm:block absolute top-7 left-8 right-8 h-0.5 border-t-2 border-dashed border-[#D9BE9B] dark:border-white/20 z-0" />
+
+                  {/* 5 Milestone Nodes */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 sm:gap-2 relative z-10">
+                    
+                    {/* Node 1: The Idea */}
+                    <div className="flex flex-col items-center text-center group">
+                      <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center shadow-md mb-2.5 transition-transform group-hover:scale-110 ${
+                        isDark ? "bg-[#182238] border-amber-400/40 text-amber-300" : "bg-[#FFF9EA] border-[#E8D4B0] text-amber-600"
+                      }`}>
+                        <span className="text-2xl">💡</span>
+                      </div>
+                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                        The Idea
+                      </h4>
+                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                        A dream to recreate our childhood playground.
+                      </p>
+                    </div>
+
+                    {/* Node 2: Built with Passion */}
+                    <div className="flex flex-col items-center text-center group">
+                      <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center shadow-md mb-2.5 transition-transform group-hover:scale-110 ${
+                        isDark ? "bg-[#182238] border-orange-400/40 text-orange-300" : "bg-[#FFF9EA] border-[#E8D4B0] text-orange-600"
+                      }`}>
+                        <span className="text-2xl">✏️</span>
+                      </div>
+                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                        Built with Passion
+                      </h4>
+                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                        Countless sketches, cups of chai and late night coding.
+                      </p>
+                    </div>
+
+                    {/* Node 3: Testing with Friends */}
+                    <div className="flex flex-col items-center text-center group">
+                      <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center shadow-md mb-2.5 transition-transform group-hover:scale-110 ${
+                        isDark ? "bg-[#182238] border-sky-400/40 text-sky-300" : "bg-[#FFF9EA] border-[#E8D4B0] text-sky-600"
+                      }`}>
+                        <span className="text-2xl">👦👧</span>
+                      </div>
+                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                        Testing with Friends
+                      </h4>
+                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                        Friends, school gangs and endless game nights.
+                      </p>
+                    </div>
+
+                    {/* Node 4: Bhalyam is Born */}
+                    <div className="flex flex-col items-center text-center group">
+                      <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center shadow-md mb-2.5 transition-transform group-hover:scale-110 ${
+                        isDark ? "bg-[#182238] border-amber-400/40 text-amber-300" : "bg-[#FFF9EA] border-[#E8D4B0] text-amber-600"
+                      }`}>
+                        <span className="text-2xl">🏆</span>
+                      </div>
+                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                        Bhalyam is Born
+                      </h4>
+                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                        A platform to relive, reconnect and recreate memories.
+                      </p>
+                    </div>
+
+                    {/* Node 5: The Journey Continues */}
+                    <div className="col-span-2 sm:col-span-1 flex flex-col items-center text-center group">
+                      <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center shadow-md mb-2.5 transition-transform group-hover:scale-110 ${
+                        isDark ? "bg-[#182238] border-rose-400/40 text-rose-300" : "bg-[#FFF9EA] border-[#E8D4B0] text-rose-600"
+                      }`}>
+                        <span className="text-2xl">💌</span>
+                      </div>
+                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                        The Journey Continues
+                      </h4>
+                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                        This is just the beginning...
+                      </p>
+                    </div>
+
+                  </div>
+
+                </div>
+              </div>
+
             </div>
-          </div>
-        </section>
 
-        {/* Founder Story Card */}
-        <section className="bg-[#FFFDF6] border border-[#E8D8BE] rounded-[32px] p-6 sm:p-10 shadow-md relative overflow-hidden text-left">
-          
-          {/* Founder Section Illustration Asset */}
-          <img
-            src="/Foundersectionasset.png"
-            alt="BHALYAM Pencil Jar, Dice &amp; Pawns"
-            className="hidden sm:block absolute right-4 bottom-4 w-36 sm:w-44 h-auto opacity-80 pointer-events-none object-contain"
-          />
+          </section>
 
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-8 relative z-10">
+
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 3: TWO SPLIT CARDS (CORE VALUES + DIFFERENTIATORS)
+              ══════════════════════════════════════════════════════════ */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-7">
             
-            {/* Left: Taped photo of Founder Kethan + Handwritten Note */}
-            <div className="flex-shrink-0 flex flex-col items-center">
-              <div className="relative rotate-[-3deg] bg-[#FFF8E7] p-3 border border-[#D4A574] rounded-2xl shadow-md max-w-[220px] sm:max-w-[240px]">
-                
-                {/* Paperclip */}
-                <span className="absolute -top-4 left-4 w-5 h-10 border-2 border-[#64748B] rounded-full rotate-[-15deg] pointer-events-none" />
-
-                <img
-                  src="/Founder.png"
-                  alt="Kethan Kumar Gontla"
-                  className="w-full h-auto rounded-xl border border-[#E8D8BE] object-cover shadow-2xs"
-                />
-              </div>
-
-              {/* Taped handwritten note */}
-              <div className="bg-[#FFF8E7] border border-[#E4D1AC] rounded-xl p-3.5 mt-4 max-w-[230px] rotate-[2deg] shadow-xs text-center">
-                <p className="bhalyam-script text-[18px] font-bold text-[#6D4323] leading-snug">
-                  “Some games never end, they just wait for the right people.”
-                </p>
-                <span className="bhalyam-script text-[16px] font-bold text-[#E85D04] block mt-1">
-                  — Kethan
-                </span>
-              </div>
-            </div>
-
-            {/* Right: Founder Story Prose */}
-            <div className="flex-1 max-w-[620px]">
-              <span className="text-[12px] font-extrabold uppercase tracking-widest text-[#E85D04] block mb-1">
-                FOUNDER STORY
-              </span>
-
-              <h2 className="bhalyam-display text-[32px] sm:text-[40px] font-extrabold text-[#4A2508] leading-tight">
-                The kid who never stopped playing
-              </h2>
-
-              <div className="space-y-3 mt-4 text-[14.5px] leading-relaxed text-[#7A5B3E]">
-                <p>
-                  BHALYAM was built by Kethan Kumar Gontla, a 90&apos;s kid who grew up with carrom boards, pen fights, lunchbox trades and endless weekend games.
-                </p>
-                <p>
-                  As life got busy, the gang got scattered. But the memories stayed.
-                </p>
-                <p>
-                  One day, the idea was simple — why not build a place where we can all come back, play our favorite games and feel like those carefree kids again?
-                </p>
-                <p className="font-bold text-[#4A2508]">
-                  That&apos;s how BHALYAM was born.
-                </p>
-              </div>
-
-              {/* Social Buttons Row */}
-              <div className="flex items-center gap-3 mt-6 flex-wrap">
-                <a
-                  href="https://www.instagram.com/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
-                >
-                  <span className="text-base text-[#E11D48]">📷</span>
-                  <span>Instagram</span>
-                </a>
-
-                <a
-                  href="https://wa.me/?text=Join%20me%20on%20BHALYAM%20-%20https%3A%2F%2Fbhalyam.onrender.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
-                >
-                  <span className="text-base text-[#25D366]">💬</span>
-                  <span>WhatsApp</span>
-                </a>
-
-                <a
-                  href="mailto:hello@bhalyam.app"
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
-                >
-                  <span className="text-base text-[#2563EB]">✉️</span>
-                  <span>Email</span>
-                </a>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        {/* Our Purpose Cards (Mission, Vision, Values) */}
-        <section className="space-y-6">
-          <div className="text-center">
-            <span className="text-[12px] font-extrabold uppercase tracking-widest text-[#9C7E63] flex items-center justify-center gap-1.5">
-              <span>=</span> <span>OUR PURPOSE</span> <span>=</span>
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-            
-            {/* Card 1: Our Mission */}
-            <div className="bg-[#FFFDF6] border border-[#E2F0D9] rounded-2xl p-6 shadow-xs flex flex-col items-center justify-between">
+            {/* ── Left Card: ★ OUR CORE VALUES (5 Cols) ─────────── */}
+            <section className={`lg:col-span-6 rounded-3xl sm:rounded-[36px] border p-5 sm:p-7 shadow-[0_6px_24px_rgba(74,44,18,0.05)] flex flex-col justify-between transition-colors ${
+              isDark
+                ? "bg-[#101728]/95 border-white/10"
+                : "bg-[#FFFDF8] border-[#ECD9BA]"
+            }`}>
               <div>
-                <div className="w-12 h-12 rounded-full bg-[#E6F4EA] text-[#137333] border border-[#A7F3D0] flex items-center justify-center text-xl mb-3 shadow-xs">
-                  🎯
+                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase mb-4">
+                  <span>★</span>
+                  <span>OUR CORE VALUES</span>
                 </div>
-                <h3 className="text-[20px] font-extrabold text-[#4A2508] mb-2">Our Mission</h3>
-                <p className="text-[13.5px] text-[#7A5B3E] leading-relaxed">
-                  To bring 90&apos;s kids together through classic games, real friendships and meaningful memories.
-                </p>
-              </div>
 
-              {/* Doodle Illustration */}
-              <div className="mt-4 pt-4 border-t border-[#E2F0D9]/70 w-full flex justify-center">
-                <svg viewBox="0 0 100 40" fill="none" stroke="#137333" strokeWidth="1.5" className="w-24 h-10 opacity-70">
-                  <circle cx="30" cy="15" r="5" />
-                  <path d="M30 20 L30 35 M22 25 L38 25 M30 35 L24 45 M30 35 L36 45" />
-                  <circle cx="70" cy="15" r="5" />
-                  <path d="M70 20 L70 35 M62 25 L78 25 M70 35 L64 45 M70 35 L76 45" />
-                  <rect x="42" y="28" width="16" height="12" fill="none" />
-                </svg>
-              </div>
-            </div>
+                {/* 5 Core Values Pill Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  
+                  {/* 1. Safe First */}
+                  <div className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-between transition-all hover:-translate-y-1 ${
+                    isDark ? "bg-[#182238]/80 border-white/10" : "bg-[#FFFBF2] border-[#ECE0C8]"
+                  }`}>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg mb-2">
+                      🛡️
+                    </div>
+                    <div>
+                      <h5 className="font-sans font-bold text-[12px] text-[#2C1D11] dark:text-white">
+                        Safe First
+                      </h5>
+                      <p className="text-[10px] text-[#7A5E45] dark:text-zinc-400 leading-tight mt-1">
+                        A secure, respectful space for everyone.
+                      </p>
+                    </div>
+                  </div>
 
-            {/* Card 2: Our Vision */}
-            <div className="bg-[#FFFDF6] border border-[#FDE8D0] rounded-2xl p-6 shadow-xs flex flex-col items-center justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-full bg-[#FFF5E6] text-[#E85D04] border border-[#FCDDB5] flex items-center justify-center text-xl mb-3 shadow-xs">
-                  👁️
+                  {/* 2. Togetherness */}
+                  <div className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-between transition-all hover:-translate-y-1 ${
+                    isDark ? "bg-[#182238]/80 border-white/10" : "bg-[#FFFBF2] border-[#ECE0C8]"
+                  }`}>
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-lg mb-2">
+                      👥
+                    </div>
+                    <div>
+                      <h5 className="font-sans font-bold text-[12px] text-[#2C1D11] dark:text-white">
+                        Togetherness
+                      </h5>
+                      <p className="text-[10px] text-[#7A5E45] dark:text-zinc-400 leading-tight mt-1">
+                        Because the best memories are shared.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 3. Nostalgia */}
+                  <div className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-between transition-all hover:-translate-y-1 ${
+                    isDark ? "bg-[#182238]/80 border-white/10" : "bg-[#FFFBF2] border-[#ECE0C8]"
+                  }`}>
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg mb-2">
+                      ⭐
+                    </div>
+                    <div>
+                      <h5 className="font-sans font-bold text-[12px] text-[#2C1D11] dark:text-white">
+                        Nostalgia
+                      </h5>
+                      <p className="text-[10px] text-[#7A5E45] dark:text-zinc-400 leading-tight mt-1">
+                        We bring back the 90s, the right way.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 4. Fun & Fair */}
+                  <div className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-between transition-all hover:-translate-y-1 ${
+                    isDark ? "bg-[#182238]/80 border-white/10" : "bg-[#FFFBF2] border-[#ECE0C8]"
+                  }`}>
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-lg mb-2">
+                      🎮
+                    </div>
+                    <div>
+                      <h5 className="font-sans font-bold text-[12px] text-[#2C1D11] dark:text-white">
+                        Fun &amp; Fair
+                      </h5>
+                      <p className="text-[10px] text-[#7A5E45] dark:text-zinc-400 leading-tight mt-1">
+                        Pure fun. No gambling. No pay-to-win.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 5. Built to Last */}
+                  <div className={`col-span-2 sm:col-span-1 p-3 rounded-2xl border text-center flex flex-col items-center justify-between transition-all hover:-translate-y-1 ${
+                    isDark ? "bg-[#182238]/80 border-white/10" : "bg-[#FFFBF2] border-[#ECE0C8]"
+                  }`}>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg mb-2">
+                      🌱
+                    </div>
+                    <div>
+                      <h5 className="font-sans font-bold text-[12px] text-[#2C1D11] dark:text-white">
+                        Built to Last
+                      </h5>
+                      <p className="text-[10px] text-[#7A5E45] dark:text-zinc-400 leading-tight mt-1">
+                        For today, tomorrow and the next 20 years.
+                      </p>
+                    </div>
+                  </div>
+
                 </div>
-                <h3 className="text-[20px] font-extrabold text-[#4A2508] mb-2">Our Vision</h3>
-                <p className="text-[13.5px] text-[#7A5B3E] leading-relaxed">
-                  To become the world&apos;s most loved nostalgia gaming lounge where everyone belongs.
-                </p>
+              </div>
+            </section>
+
+
+            {/* ── Right Card: ★ WHAT MAKES BHALYAM DIFFERENT? ─── */}
+            <section className={`lg:col-span-6 rounded-3xl sm:rounded-[36px] border p-5 sm:p-7 shadow-[0_6px_24px_rgba(74,44,18,0.05)] transition-colors ${
+              isDark
+                ? "bg-[#101728]/95 border-white/10"
+                : "bg-[#FFFDF8] border-[#ECD9BA]"
+            }`}>
+              
+              <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase mb-4">
+                <span>★</span>
+                <span>WHAT MAKES BHALYAM DIFFERENT?</span>
               </div>
 
-              {/* Doodle Illustration */}
-              <div className="mt-4 pt-4 border-t border-[#FDE8D0]/70 w-full flex justify-center">
-                <FourKidsHoldingHandsSVG className="w-28 h-10 opacity-70" />
-              </div>
-            </div>
-
-            {/* Card 3: Our Values */}
-            <div className="bg-[#FFFDF6] border border-[#F3E8FF] rounded-2xl p-6 shadow-xs flex flex-col items-center justify-between">
-              <div className="w-full">
-                <div className="w-12 h-12 rounded-full bg-[#F3E8FF] text-[#7C3AED] border border-[#DDD6FE] flex items-center justify-center text-xl mb-3 shadow-xs mx-auto">
-                  💜
-                </div>
-                <h3 className="text-[20px] font-extrabold text-[#4A2508] mb-3">Our Values</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
                 
-                <ul className="space-y-2 text-[13.5px] font-bold text-[#5C3717] text-left max-w-[200px] mx-auto">
-                  <li className="flex items-center gap-2">
-                    <span className="text-[#7C3AED]">⭐</span> Nostalgia First
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-[#7C3AED]">⭐</span> Real Connections
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-[#7C3AED]">⭐</span> Safe &amp; Respectful
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-[#7C3AED]">⭐</span> Pure &amp; Honest Fun
-                  </li>
-                </ul>
+                {/* 1. Pencil Mug Illustration */}
+                <div className="sm:col-span-3 flex justify-center">
+                  <div className="relative group">
+                    <img
+                      src="/Foundersectionasset.png"
+                      alt="BHALYAM Mug with Pencils, Brushes and Dice"
+                      className="w-24 sm:w-28 h-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. 5 Green Checkmark Features */}
+                <div className="sm:col-span-5 space-y-2 text-left">
+                  {[
+                    "Real 90s games, reimagined for today",
+                    "Create rooms, share codes, play instantly",
+                    "Play with friends or bots",
+                    "No spam. No toxicity. Just good vibes",
+                    "Designed for friends who grew up together",
+                  ].map((text, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="w-4.5 h-4.5 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs">
+                        ✓
+                      </span>
+                      <span className="text-[12px] sm:text-[12.5px] font-bold text-[#3D2816] dark:text-zinc-200 leading-snug">
+                        {text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 3. Taped Bicycle Doodle Note */}
+                <div className="sm:col-span-4 flex justify-center">
+                  <div className={`relative rotate-[3deg] p-3 rounded-2xl border shadow-md max-w-[170px] w-full text-center transition-transform hover:rotate-0 ${
+                    isDark
+                      ? "bg-[#182238] border-white/15 text-slate-100"
+                      : "bg-[#FFFBF0] border-[#E2CEAB] text-[#2C1D11]"
+                  }`}>
+                    {/* Corner Tape */}
+                    <WashiTape className="-top-2.5 -left-2" rotate={-20} />
+
+                    <p className="font-script text-[13.5px] font-extrabold text-[#5C3D24] dark:text-amber-200 leading-tight">
+                      “We didn&apos;t lose friends. <br />
+                      We just grew up. <br />
+                      Bhalyam brings us back. ♡”
+                    </p>
+
+                    <div className="flex justify-center mt-1">
+                      <BicycleDoodleSVG className="opacity-90 dark:opacity-80" />
+                    </div>
+                  </div>
+                </div>
+
               </div>
-            </div>
+
+            </section>
 
           </div>
-        </section>
 
-        {/* Built For Your Gang Section */}
-        <section className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-6 sm:p-10 shadow-xs relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-8 text-left">
-          
-          <div className="max-w-[560px]">
-            <span className="text-[12px] font-extrabold uppercase tracking-widest text-[#E85D04] block mb-1">
-              BUILT FOR YOUR GANG
-            </span>
 
-            <h2 className="bhalyam-display text-[32px] sm:text-[42px] font-extrabold text-[#4A2508] leading-tight">
-              Relive. Reconnect. Remember.
-            </h2>
-
-            <p className="text-[14.5px] leading-relaxed text-[#7A5B3E] mt-3">
-              Whether it&apos;s a quick game or a long night of laughter, BHALYAM is your table, your rules, your memories.
-            </p>
-
-            {/* Game Chips Row */}
-            <div className="flex items-center gap-2.5 mt-5 flex-wrap">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF8E7] border border-[#E6D4B5] text-[12.5px] font-bold text-[#4A2508]">
-                <span>🎲</span> <span>Ludo</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF8E7] border border-[#E6D4B5] text-[12.5px] font-bold text-[#4A2508]">
-                <span>🟫</span> <span>Carrom</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF8E7] border border-[#E6D4B5] text-[12.5px] font-bold text-[#4A2508]">
-                <span>🐍</span> <span>Snakes &amp; Ladders</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF8E7] border border-[#E6D4B5] text-[12.5px] font-bold text-[#4A2508]">
-                <span>🎴</span> <span>Rummy</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAF0D9] border border-[#D4A574] text-[12.5px] font-bold text-[#E85D04]">
-                <span>➕</span> <span>And more coming...</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Stack of Polaroid Photos */}
-          <div className="flex-shrink-0 flex items-center gap-3">
-            <div className="relative rotate-[-4deg] bg-white p-2 border border-[#E8D8BE] rounded-lg shadow-md max-w-[150px]">
-              <img src="/about_carrom_kids.jpg" alt="Ludo board" className="w-full h-auto rounded border border-[#E8D8BE]" />
-              <span className="bhalyam-script text-[14px] font-bold text-[#5C3717] block mt-1 text-center">Ludo Night</span>
-            </div>
-
-            <div className="relative rotate-[3deg] bg-[#FFFDF5] p-3 border border-[#E8D8BE] rounded-lg shadow-md max-w-[140px]">
-              <div className="text-left font-mono text-[11px] text-[#5C3717] space-y-1">
-                <span className="font-bold border-b border-[#E8D8BE] block pb-0.5">Best Score</span>
-                <div>Rani: 100</div>
-                <div>Ketan: 95</div>
-                <div>Venu: 90</div>
-                <div>Arun: 85</div>
-              </div>
-            </div>
-          </div>
-
-        </section>
-
-        {/* Quote Banner */}
-        <section className="bg-[#FFF8E7] border border-[#E6D4B5] rounded-2xl p-6 shadow-xs relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
-          <div className="flex items-center gap-4">
-            <FourKidsWithBackpacksSVG className="w-40 h-14 flex-shrink-0" />
-            <p className="bhalyam-script text-[22px] sm:text-[26px] font-extrabold text-[#6D4323] leading-snug">
-              We didn&apos;t lose touch, we just grew up. <br />
-              <span className="text-[#E85D04]">Now, let&apos;s play again.</span>
-            </p>
-          </div>
-
-          <PaperPlaneDoodleSVG className="w-16 h-12 flex-shrink-0" />
-        </section>
-
-      </main>
-
-      {/* Footer */}
-      <footer className="max-w-[1240px] mx-auto px-6 pt-10 border-t border-[#E6D4B5]/60 mt-12 text-[#5C3717]">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-6 text-left">
-          
-          {/* Brand Logo Column */}
-          <div className="md:col-span-3">
-            <img
-              src="/FooterBhalyamlogo.png"
-              alt="BHALYAM - Play Together. Remember Forever."
-              className="w-48 sm:w-56 h-auto object-contain mb-1"
-            />
-          </div>
-
-          {/* Links Columns: EXPLORE, SUPPORT, COMPANY, LEGAL */}
-          <div className="md:col-span-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {/* ══════════════════════════════════════════════════════════
+              BOTTOM FOOTER BAR: SLOGAN + SOCIALS + COPYRIGHT
+              ══════════════════════════════════════════════════════════ */}
+          <footer className={`rounded-2xl sm:rounded-3xl border p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left transition-colors ${
+            isDark
+              ? "bg-[#101728]/80 border-white/10 text-zinc-400"
+              : "bg-[#FFFDF8] border-[#ECD9BA] text-[#6E543D]"
+          }`}>
             
-            {/* EXPLORE */}
-            <div>
-              <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
-                EXPLORE
-              </h4>
-              <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                <li><Link to="/games" className="hover:text-[#E85D04] transition-colors">All Games</Link></li>
-                <li><a href="#rooms" className="hover:text-[#E85D04] transition-colors">Rooms</a></li>
-                <li><a href="#how-it-works" className="hover:text-[#E85D04] transition-colors">How It Works</a></li>
-                <li><a href="#leaderboard" className="hover:text-[#E85D04] transition-colors">Leaderboard</a></li>
-              </ul>
+            {/* Left: Paper Plane Slogan */}
+            <div className="flex items-center gap-2 font-script text-[20px] sm:text-[22px] font-extrabold text-[#5C3D24] dark:text-amber-300">
+              <span className="text-xl">✈️</span>
+              <span>Play Together. Remember Forever.</span>
+              <span className="text-rose-500">♡</span>
             </div>
 
-            {/* SUPPORT */}
-            <div>
-              <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
-                SUPPORT
-              </h4>
-              <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                <li><a href="#help" className="hover:text-[#E85D04] transition-colors">Help Center</a></li>
-                <li><a href="#safety" className="hover:text-[#E85D04] transition-colors">Safety Guide</a></li>
-                <li><a href="#rules" className="hover:text-[#E85D04] transition-colors">Community Rules</a></li>
-                <li><a href="#report" className="hover:text-[#E85D04] transition-colors">Report an Issue</a></li>
-              </ul>
+            {/* Center: Social / Action Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Instagram */}
+              <a
+                href="https://www.instagram.com/"
+                target="_blank"
+                rel="noreferrer"
+                title="Instagram"
+                aria-label="Instagram"
+                className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl border flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-xs ${
+                  isDark
+                    ? "bg-white/5 border-white/10 text-rose-400 hover:bg-white/10"
+                    : "bg-[#FFF9EC] border-[#E6D4B7] text-rose-600 hover:bg-[#FBE7C6]"
+                }`}
+              >
+                <span className="text-base">📷</span>
+              </a>
+
+              {/* WhatsApp */}
+              <a
+                href="https://wa.me/?text=Join%20me%20on%20BHALYAM%20-%20https%3A%2F%2Fbhalyam.onrender.com"
+                target="_blank"
+                rel="noreferrer"
+                title="WhatsApp"
+                aria-label="WhatsApp"
+                className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl border flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-xs ${
+                  isDark
+                    ? "bg-white/5 border-white/10 text-emerald-400 hover:bg-white/10"
+                    : "bg-[#FFF9EC] border-[#E6D4B7] text-emerald-600 hover:bg-[#FBE7C6]"
+                }`}
+              >
+                <span className="text-base">💬</span>
+              </a>
+
+              {/* Forum / Community */}
+              <Link
+                to="/games"
+                title="Games Lounge"
+                aria-label="Games Lounge"
+                className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl border flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-xs ${
+                  isDark
+                    ? "bg-white/5 border-white/10 text-amber-300 hover:bg-white/10"
+                    : "bg-[#FFF9EC] border-[#E6D4B7] text-amber-600 hover:bg-[#FBE7C6]"
+                }`}
+              >
+                <span className="text-base">🛋️</span>
+              </Link>
+
+              {/* Email */}
+              <a
+                href="mailto:hello@bhalyam.app"
+                title="Email Us"
+                aria-label="Email"
+                className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl border flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-xs ${
+                  isDark
+                    ? "bg-white/5 border-white/10 text-sky-400 hover:bg-white/10"
+                    : "bg-[#FFF9EC] border-[#E6D4B7] text-sky-600 hover:bg-[#FBE7C6]"
+                }`}
+              >
+                <span className="text-base">✉️</span>
+              </a>
+
+              {/* Games Play */}
+              <Link
+                to="/games"
+                title="Play Games"
+                aria-label="Play Games"
+                className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl border flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-xs ${
+                  isDark
+                    ? "bg-white/5 border-white/10 text-purple-400 hover:bg-white/10"
+                    : "bg-[#FFF9EC] border-[#E6D4B7] text-purple-600 hover:bg-[#FBE7C6]"
+                }`}
+              >
+                <span className="text-base">🎮</span>
+              </Link>
             </div>
 
-            {/* COMPANY */}
-            <div>
-              <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
-                COMPANY
-              </h4>
-              <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                <li><Link to="/about" className="hover:text-[#E85D04] transition-colors">About BHALYAM</Link></li>
-                <li><a href="#story" className="hover:text-[#E85D04] transition-colors">Our Story</a></li>
-                <li><a href="#careers" className="hover:text-[#E85D04] transition-colors">Careers</a></li>
-                <li><a href="#press" className="hover:text-[#E85D04] transition-colors">Press Kit</a></li>
-              </ul>
+            {/* Right: Copyright */}
+            <div className="text-[12px] font-semibold text-[#8C6D4F] dark:text-zinc-400">
+              <span>© 2026 BHALYAM. Made with </span>
+              <span className="text-rose-500">❤️</span>
+              <span> for 90s Kids.</span>
             </div>
 
-            {/* LEGAL */}
-            <div>
-              <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
-                LEGAL
-              </h4>
-              <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                <li><Link to="/privacy" className="hover:text-[#E85D04] transition-colors">Privacy Notice</Link></li>
-                <li><a href="#terms" className="hover:text-[#E85D04] transition-colors">Terms of Service</a></li>
-                <li><Link to="/profile" className="hover:text-[#E85D04] transition-colors">Your Data &amp; Choices</Link></li>
-              </ul>
-            </div>
+          </footer>
 
-          </div>
-
-          {/* STAY IN THE LOOP */}
-          <div className="md:col-span-3">
-            <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-1.5">
-              STAY IN THE LOOP
-            </h4>
-            <p className="text-[12px] leading-snug text-[#7A5B3E] mb-3">
-              Get updates about new games, events and awesome 90s vibes.
-            </p>
-
-            <form onSubmit={handleSubscribe} className="relative mb-3">
-              <div className="flex items-center bg-[#F7EBD3] rounded-xl p-1 border border-[#E4D1AC]">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="bg-transparent text-[11.5px] text-[#4A2508] placeholder-[#9C7E63] px-2.5 focus:outline-none flex-1 min-w-0 font-medium"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="bg-[#E85D04] hover:bg-[#D45000] text-white text-[11.5px] font-bold rounded-lg px-3.5 py-1.5 transition-all shadow-xs active:scale-95 flex-shrink-0"
-                >
-                  Subscribe
-                </button>
-              </div>
-              {subscribed && (
-                <span className="text-[11px] text-[#25D366] font-bold mt-1 block">
-                  ✓ Thanks for subscribing!
-                </span>
-              )}
-            </form>
-          </div>
-
-        </div>
-
-        {/* Copyright & Attribution Bar */}
-        <div className="relative pt-4 border-t border-[#E8D8BE]/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] font-semibold text-[#8C6D4F]">
-          
-          <div className="flex items-center gap-2">
-            <PaperPlaneDoodleSVG className="w-12 h-8 text-[#5C3717]" />
-            <span>© {new Date().getFullYear()} BHALYAM · All rights reserved.</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span>Built solo with <span className="text-[#E11D48]">❤️</span> for every school-gang reunion</span>
-            <img
-              src="/FooterBootom.png"
-              alt="Happy school gang"
-              className="w-28 sm:w-36 h-auto object-contain flex-shrink-0"
-            />
-          </div>
-
-        </div>
-
-      </footer>
-
+        </main>
       </div>
     </AppLayout>
   );

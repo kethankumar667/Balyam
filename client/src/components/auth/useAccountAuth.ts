@@ -33,8 +33,8 @@ import {
  * keeps each one's finished state impossible to confuse for another's.
  */
 
-/** How long the busy state is held on the local path. Visible, not sluggish. */
-const PRETEND_LATENCY_MS = 650;
+/** How long the busy state is held on the local path. Snappy and instant. */
+const PRETEND_LATENCY_MS = 120;
 
 /**
  * Where to land after signing in.

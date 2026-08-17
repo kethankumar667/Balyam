@@ -46,11 +46,10 @@ export default function AppHeader({
           and untappable, with no horizontal scroll to reach it. */}
       <div className="h-full w-full flex items-center overflow-hidden">
         {/* Left: Sidebar-Aligned Brand Area */}
-        <div className="w-auto lg:w-64 min-w-0 lg:flex-shrink-0 px-3 sm:px-6 flex items-center gap-2.5 sm:gap-3">
-          <button
+        <div className="w-auto lg:w-64 min-w-0 lg:flex-shrink-0 px-3 sm:px-6 flex items-center gap-2.5 sm:gap-3">          <button
             type="button"
             onClick={onToggleMobileMenu}
-            className={`lg:hidden w-10 h-10 rounded-2xl border flex items-center justify-center transition cursor-pointer flex-shrink-0 ${
+            className={`lg:hidden w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl border flex items-center justify-center transition cursor-pointer flex-shrink-0 ${
               isDark
                 ? "bg-[#101728] border-white/10 text-zinc-300 hover:bg-white/10"
                 : "bg-[#FAF2DF] border-[#ECD9BA] text-[#5C3B1E] hover:bg-[#F2E4CB]"
@@ -65,16 +64,7 @@ export default function AppHeader({
             <span className="flex-shrink-0">
               <BhalyamLogo size={44} decorative />
             </span>
-            {/* Phones get the logo mark alone.
-
-                Measured, not guessed: the fixed chrome (menu + logo + three
-                40px controls + padding) costs 278px, and this block costs
-                ~117px — driven by "Relive Childhood", which at 9px with 0.2em
-                tracking is WIDER than "BHALYAM" above it. That totals 405px,
-                which overflows every common phone up to 412px. Showing it and
-                letting it truncate just moves the damage from the controls to
-                the brand. The logo still identifies the app; a clipped
-                settings gear identifies nothing. */}
+            {/* Phones get the logo mark alone. */}
             <span className="hidden sm:flex flex-col leading-none min-w-0">
               <span
                 className={`bhalyam-display text-[22px] sm:text-[26px] tracking-tight truncate ${
@@ -99,14 +89,14 @@ export default function AppHeader({
               onClick={onOpenNotifications}
               title="Notifications (3 unread)"
               aria-label="Notifications"
-              className={`relative w-10 h-10 rounded-full border flex items-center justify-center transition hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 ${
+              className={`relative w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border flex items-center justify-center transition hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 ${
                 isDark
                   ? "bg-[#0E1527] border-white/10 text-zinc-300 hover:bg-white/10"
                   : "bg-[#FAF2DF] border-[#ECD9BA] text-[#5C3B1E] hover:bg-[#F2E4CB]"
               }`}
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
                 3
               </span>
             </button>
@@ -116,22 +106,8 @@ export default function AppHeader({
               type="button"
               onClick={onOpenProfile}
               title="User Profile & XP"
-              /* Carries the name for screen readers because the visible label
-                 is gone below sm — the icon-only chip must still announce
-                 whose profile it opens. */
               aria-label={`Profile — ${displayName}`}
-              /* Below md the chip is the avatar alone — a 40px circle that
-                 matches the bell and gear beside it. The name, level and
-                 chevron are what made this the widest thing in the header
-                 (~217px, which is what pushed the settings gear off-screen),
-                 and all three are repeated inside the profile sheet the chip
-                 opens, so nothing is lost by dropping them.
-
-                 md rather than sm because sm is exactly where the wordmark
-                 comes back: expanding both at 640px puts the header at ~642px
-                 of content in a 640px window, which is the same overflow one
-                 breakpoint higher. They take turns instead. */
-              className={`h-10 flex items-center gap-0 md:gap-2.5 px-0 md:px-3 justify-center rounded-full border transition hover:scale-102 active:scale-98 cursor-pointer flex-shrink-0 w-10 md:w-auto ${
+              className={`min-h-[44px] min-w-[44px] w-11 md:w-auto flex items-center gap-0 md:gap-2.5 px-0 md:px-3 justify-center rounded-full border transition hover:scale-102 active:scale-98 cursor-pointer flex-shrink-0 ${
                 isDark
                   ? "bg-[#0E1527] border-white/10 text-white hover:bg-white/10"
                   : "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:bg-[#F2E4CB]"
@@ -157,7 +133,7 @@ export default function AppHeader({
               onClick={onOpenSettings}
               title="Settings"
               aria-label="Settings"
-              className={`w-10 h-10 rounded-full border flex items-center justify-center transition hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 ${
+              className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border flex items-center justify-center transition hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 ${
                 isDark
                   ? "bg-[#0E1527] border-white/10 text-zinc-200 hover:text-amber-400 hover:bg-white/10"
                 : "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:text-amber-700 hover:bg-[#F2E4CB]"

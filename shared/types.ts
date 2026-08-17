@@ -2573,6 +2573,7 @@ export interface ClientToServerEvents {
       code?: string;
       playerId?: string;
       seatToken?: string;
+      state?: RoomPublicState;
       error?: string;
     }) => void
   ) => void;
@@ -2582,6 +2583,7 @@ export interface ClientToServerEvents {
       ok: boolean;
       playerId?: string;
       seatToken?: string;
+      state?: RoomPublicState;
       error?: string;
     }) => void
   ) => void;

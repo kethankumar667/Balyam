@@ -262,7 +262,7 @@ export default function CategoryFilter({
                    not get the same width as "Board & Cards". */
                 className={`relative flex-shrink-0 sm:flex-auto sm:flex-shrink
                             cursor-pointer rounded-full
-                            px-4 min-h-[40px] flex items-center justify-center
+                            px-4 min-h-[44px] flex items-center justify-center
                             text-[13px] whitespace-nowrap
                             transition-all duration-200 ease-out
                             focus:outline-none focus-visible:ring-2
