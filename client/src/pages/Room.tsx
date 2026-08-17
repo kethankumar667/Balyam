@@ -164,11 +164,11 @@ function BotControls({
   const seatsLeft = Math.max(0, maxPlayers - players.length);
   const atCapacity = seatsLeft <= 0;
   return (
-    <div className="bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 rounded-2xl p-2.5 sm:p-3 text-left space-y-2">
+    <div className="bg-gradient-to-b from-[#FFF9EE] to-[#FFF4E0] dark:from-[#182234] dark:to-[#121927] border border-[#EEDBCA] dark:border-slate-700/70 rounded-2xl p-3 text-left space-y-2.5 shadow-xs">
       <div className="flex items-center justify-between">
         <h3 className="text-xs uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-extrabold flex items-center gap-1.5">
           <span aria-hidden>🤖</span>
-          <span>BOTS • {atCapacity ? `TABLE FULL (${bots.length})` : `${seatsLeft} SEAT${seatsLeft === 1 ? "" : "S"} LEFT`}</span>
+          <span>BOT PLAYERS • {atCapacity ? `TABLE FULL (${bots.length})` : `${seatsLeft} SEAT${seatsLeft === 1 ? "" : "S"} LEFT`}</span>
         </h3>
         {atCapacity && (
           <span className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
@@ -202,33 +202,33 @@ function BotControls({
             value={botName}
             onChange={(e) => setBotName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !atCapacity) addBot(); }}
-            placeholder="Bot name (optional)"
+            placeholder="Bot nickname (optional)"
             maxLength={20}
-            className="flex-1 min-w-0 text-xs px-3 py-2 rounded-xl border border-[#EEDBCA] dark:border-slate-700 bg-white dark:bg-[#0F1420] text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-400"
+            className="flex-1 min-w-0 text-xs px-3.5 py-2.5 rounded-xl border border-[#EEDBCA] dark:border-slate-700 bg-white dark:bg-[#0F1420] text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 transition"
           />
           <button
             type="button"
             onClick={addBot}
-            className="inline-flex shrink-0 whitespace-nowrap items-center justify-center gap-1 text-xs px-3.5 py-2 rounded-xl font-bold bg-[#31A157] hover:bg-[#288447] text-white shadow-sm active:scale-95 transition cursor-pointer min-h-[38px]"
-            title="Add a bot"
+            className="inline-flex shrink-0 whitespace-nowrap items-center justify-center gap-1.5 text-xs px-4 py-2.5 rounded-xl font-extrabold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-[0_3px_10px_rgba(16,185,129,0.3)] active:scale-95 transition-all cursor-pointer min-h-[40px]"
+            title="Add a bot to the table"
           >
             <span>+</span>
-            <span>Add bot</span>
+            <span>Add Bot</span>
           </button>
         </div>
       )}
       {bots.length === 0 ? (
-        <div className="text-xs text-[#8A6D4B] dark:text-slate-400 text-center py-0.5 font-medium italic">
-          No bots yet. Add one to practice against AI.
+        <div className="text-[11px] text-[#8A6D4B] dark:text-slate-400 text-center py-1 font-medium italic">
+          No bots added. Play with friends or add bots to practice.
         </div>
       ) : (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
           {bots.map((b) => (
             <div
               key={b.id}
-              className="flex items-center gap-1.5 bg-white dark:bg-[#1E2738] border border-[#EEDBCA] dark:border-slate-700 rounded-full px-2.5 py-0.5 text-xs text-[#2B3550] dark:text-slate-200 shadow-sm"
+              className="flex items-center gap-1.5 bg-white dark:bg-[#1E2738] border border-[#EEDBCA] dark:border-slate-700 rounded-full px-2.5 py-1 text-xs text-[#2B3550] dark:text-slate-200 shadow-xs"
             >
-              <span className="text-[11px]">🤖</span>
+              <span className="text-xs">🤖</span>
               <span className="font-semibold">{b.name}</span>
               <button
                 type="button"
@@ -973,7 +973,7 @@ export default function Room() {
           >
             {roomState.phase === "lobby" && (
               <div className="space-y-4">
-                <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-6 text-center space-y-4 shadow-[0_10px_30px_-10px_rgba(74,44,22,0.12)] dark:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.7)] relative overflow-hidden">
+                <div className="bg-gradient-to-b from-[#FFFDF8] to-[#FFF8EC] dark:from-[#131926] dark:to-[#0C101A] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-6 text-center space-y-4 shadow-[0_12px_36px_-12px_rgba(74,44,22,0.14)] dark:shadow-[0_24px_60px_-16px_rgba(0,0,0,0.85)] relative overflow-hidden">
                   {roomState.sealed ? (
                     /* Same wall as the home screen, in the place the share
                        card would have been — so the answer to "how do I get
@@ -987,16 +987,16 @@ export default function Room() {
                   )}
 
                   {/* Live Table Seating / Player Roster */}
-                  <div className="bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 rounded-2xl p-3 sm:p-3.5 text-left space-y-2.5">
+                  <div className="bg-white/80 dark:bg-[#101624]/90 backdrop-blur-xs border border-[#E6D4B5] dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 text-left space-y-2.5 shadow-xs">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-extrabold flex items-center gap-1.5">
-                        <span aria-hidden>👥</span>
+                        <span aria-hidden className="text-sm">👥</span>
                         <span>
-                          PLAYERS AT TABLE ({roomState.players.length} / {MAX_PLAYERS_BY_GAME[roomState.game] ?? 4})
+                          SEATED PLAYERS ({roomState.players.length} / {MAX_PLAYERS_BY_GAME[roomState.game] ?? 4})
                         </span>
                       </h3>
-                      <span className="text-[11px] font-semibold text-[#8A6D4B] dark:text-slate-400">
-                        {roomState.players.filter((p) => p.isReady).length}/{roomState.players.length} ready
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EEDBCA]/40 dark:bg-slate-800 text-[#8A6D4B] dark:text-slate-300">
+                        {roomState.players.filter((p) => p.isReady).length}/{roomState.players.length} Ready
                       </span>
                     </div>
 
@@ -1004,26 +1004,26 @@ export default function Room() {
                       {roomState.players.map((p) => (
                         <div
                           key={p.id}
-                          className="flex items-center justify-between gap-2 bg-white dark:bg-[#0F1420] border border-[#EEDBCA] dark:border-slate-700/60 rounded-xl px-3 py-2 shadow-sm min-w-0"
+                          className="flex items-center justify-between gap-2 bg-[#FFFDF8] dark:bg-[#161E2E] border border-[#EEDBCA] dark:border-slate-700/70 hover:border-amber-400/50 dark:hover:border-amber-500/40 rounded-xl px-3 py-2.5 shadow-xs transition-all min-w-0"
                         >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <div className="relative shrink-0">
-                              <SeatAvatar avatar={p.avatar} name={p.name} className="w-8 h-8" />
+                              <SeatAvatar avatar={p.avatar} name={p.name} className="w-8 h-8 rounded-lg shadow-xs" />
                               <span
-                                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 ${
-                                  p.isConnected ? "bg-emerald-500" : "bg-amber-500"
+                                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-[#161E2E] ${
+                                  p.isConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
                                 }`}
-                                title={p.isConnected ? "Online" : "Away / Reconnecting"}
+                                title={p.isConnected ? "Connected & Online" : "Away / Reconnecting"}
                               />
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1 text-xs font-bold text-[#2B3550] dark:text-slate-100">
                                 <span className="truncate max-w-[100px] sm:max-w-[150px]">{p.name}</span>
                                 {p.id === playerId && (
-                                  <span className="text-[10px] text-[#8A6D4B] dark:text-slate-400 font-normal shrink-0">(you)</span>
+                                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 rounded px-1 shrink-0">(you)</span>
                                 )}
                                 {p.isHost && (
-                                  <span className="text-amber-500 text-xs shrink-0" title="Host">👑</span>
+                                  <span className="text-amber-500 text-xs shrink-0" title="Table Host">👑</span>
                                 )}
                                 {p.isBot && (
                                   <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded px-1 shrink-0 font-normal">bot</span>
@@ -1034,13 +1034,13 @@ export default function Room() {
 
                           <div className="shrink-0 flex items-center gap-1">
                             {p.isReady ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 rounded-full px-2 py-0.5 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700/60 rounded-full px-2.5 py-0.5 whitespace-nowrap shadow-xs">
                                 <span>✓</span>
                                 <span>Ready</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-full px-2 py-0.5 whitespace-nowrap">
-                                <span>•••</span>
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+                                <span className="animate-pulse">•••</span>
                                 <span>Waiting</span>
                               </span>
                             )}
@@ -1048,7 +1048,7 @@ export default function Room() {
                               <button
                                 type="button"
                                 onClick={() => getSocket().emit("room:removeBot", p.id)}
-                                className="text-rose-500 hover:text-rose-700 text-xs px-1 font-bold cursor-pointer shrink-0"
+                                className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-full text-xs p-1 font-bold cursor-pointer shrink-0 transition"
                                 title="Remove bot"
                               >
                                 ✕
@@ -1074,13 +1074,14 @@ export default function Room() {
                     />
                   )}
 
-                  <div className="flex flex-col items-center gap-2 pt-2 border-t border-[#EEDBCA]/60 dark:border-slate-800">
+                  {/* Primary Action Controls Bar */}
+                  <div className="flex flex-col items-center gap-2 pt-3 border-t border-[#EEDBCA]/80 dark:border-slate-800">
                     <div className="flex flex-wrap justify-center items-center gap-3 w-full sm:w-auto">
                       {/* Ready Button */}
                       <button
                         type="button"
                         onClick={toggleReady}
-                        className={`flex-1 sm:flex-initial min-h-[44px] px-6 py-2.5 sm:px-8 sm:py-3 rounded-full font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`flex-1 sm:flex-initial min-h-[46px] px-6 py-2.5 sm:px-8 sm:py-3 rounded-2xl font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
                           selfPlayer?.isReady
                             ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-amber-900/30 ring-4 ring-amber-400/20"
                             : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-[0_6px_16px_rgba(16,185,129,0.4)] ring-4 ring-emerald-500/20"
@@ -1096,9 +1097,9 @@ export default function Room() {
                           type="button"
                           onClick={startGame}
                           disabled={!canStart}
-                          className={`flex-1 sm:flex-initial min-h-[44px] px-6 py-2.5 sm:px-8 sm:py-3 rounded-full font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                          className={`flex-1 sm:flex-initial min-h-[46px] px-6 py-2.5 sm:px-8 sm:py-3 rounded-2xl font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
                             canStart
-                              ? "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white shadow-[0_6px_16px_rgba(249,115,22,0.45)] cursor-pointer ring-4 ring-orange-500/20"
+                              ? "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white shadow-[0_6px_16px_rgba(249,115,22,0.45)] cursor-pointer ring-4 ring-orange-500/20 animate-pulse"
                               : "bg-[#EFE4D2] dark:bg-slate-800 text-[#8C7A67] dark:text-slate-500 cursor-not-allowed border border-[#E1CFB1] dark:border-slate-700/60"
                           }`}
                         >
@@ -1110,7 +1111,7 @@ export default function Room() {
 
                     {selfIsHost && !canStart && (
                       <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium text-center">
-                        Start Game will be enabled when all players are ready
+                        Start Game will unlock once all players are marked Ready
                       </p>
                     )}
                   </div>
