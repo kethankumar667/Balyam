@@ -2315,7 +2315,7 @@ function Footer() {
                   SUPPORT
                 </h4>
                 <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                  <li><a href="#help" className="hover:text-[#E85D04] transition-colors">Help Center</a></li>
+                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors">Help Center</Link></li>
                   <li><a href="#safety" className="hover:text-[#E85D04] transition-colors">Safety Guide</a></li>
                   <li><a href="#rules" className="hover:text-[#E85D04] transition-colors">Community Rules</a></li>
                   <li><a href="#report" className="hover:text-[#E85D04] transition-colors">Report an Issue</a></li>
@@ -2328,8 +2328,8 @@ function Footer() {
                   COMPANY
                 </h4>
                 <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                  <li><a href="#about" className="hover:text-[#E85D04] transition-colors">About BHALYAM</a></li>
-                  <li><a href="#story" className="hover:text-[#E85D04] transition-colors">Our Story</a></li>
+                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors">About BHALYAM</Link></li>
+                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors">Our Story</Link></li>
                   <li><a href="#careers" className="hover:text-[#E85D04] transition-colors">Careers</a></li>
                   <li><a href="#press" className="hover:text-[#E85D04] transition-colors">Press Kit</a></li>
                 </ul>

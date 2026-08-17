@@ -19,6 +19,7 @@ import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import AboutPage from "./pages/AboutPage";
+import SettingsPage from "./pages/SettingsPage";
 import NokiaCricketPage from "./pages/NokiaCricketPage";
 import NokiaSnakePage from "./pages/NokiaSnakePage";
 import BrickRacerPage from "./pages/BrickRacerPage";
@@ -107,6 +108,7 @@ export default function App() {
 
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

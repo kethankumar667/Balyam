@@ -80,9 +80,27 @@ export default function AppHeader({
           </Link>
         </div>
 
-        {/* Right: Area aligned with the scrollable body content (max-w-[1100px]) */}
-        <div className="flex-1 min-w-0 h-full px-3 sm:px-6 flex items-center">
-          <div className="w-full max-w-[1100px] mx-auto flex items-center justify-end gap-2 sm:gap-3">
+        {/* Right: Area aligned with the scrollable body content */}
+        <div className="flex-1 min-w-0 h-full px-3 sm:px-6 flex items-center justify-between gap-3">
+          {/* Middle: Search Bar (Desktop/Tablet) */}
+          <div className="hidden md:flex flex-1 max-w-md mx-auto items-center">
+            <Link
+              to="/games"
+              className={`w-full flex items-center justify-between px-3.5 py-2 rounded-2xl border text-xs transition-all ${
+                isDark
+                  ? "bg-[#101728] border-white/10 text-zinc-400 hover:border-amber-400/40"
+                  : "bg-[#FAF2DF] border-[#ECD9BA] text-[#7A5E45] hover:border-[#D4A574]"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🔍</span>
+                <span className="font-medium">Search games, rooms, friends...</span>
+              </div>
+              <span className="text-xs opacity-60">⚙️</span>
+            </Link>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 sm:gap-3 ml-auto">
             {/* 1. Notification Bell with Badge */}
             <button
               type="button"
@@ -127,20 +145,33 @@ export default function AppHeader({
               <ChevronDown className="hidden md:block w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
             </button>
 
-            {/* 3. Settings Gear Icon */}
-            <button
-              type="button"
-              onClick={onOpenSettings}
+            {/* 3. Crown VIP Button */}
+            <Link
+              to="/games"
+              title="VIP Pass"
+              aria-label="VIP Pass"
+              className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border flex items-center justify-center transition hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 ${
+                isDark
+                  ? "bg-[#0E1527] border-amber-400/30 text-amber-400 hover:bg-white/10"
+                  : "bg-[#FAF2DF] border-[#ECD9BA] text-amber-600 hover:bg-[#F2E4CB]"
+              }`}
+            >
+              <span className="text-base">👑</span>
+            </Link>
+
+            {/* 4. Settings Gear Icon */}
+            <Link
+              to="/settings"
               title="Settings"
               aria-label="Settings"
               className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border flex items-center justify-center transition hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 ${
                 isDark
                   ? "bg-[#0E1527] border-white/10 text-zinc-200 hover:text-amber-400 hover:bg-white/10"
-                : "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:text-amber-700 hover:bg-[#F2E4CB]"
+                  : "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:text-amber-700 hover:bg-[#F2E4CB]"
               }`}
             >
               <SettingsIcon className="w-5 h-5" />
-            </button>
+            </Link>
           </div>
         </div>
       </div>
