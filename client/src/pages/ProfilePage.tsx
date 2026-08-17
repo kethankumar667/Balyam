@@ -8,6 +8,7 @@ import { GlobalSettings } from "../components/GlobalSettings";
 import LanguageSettings from "../components/LanguageSettings/LanguageSettings";
 import AvatarPicker from "../components/profile/AvatarPicker";
 import ProfileNav, { type ProfileSection } from "../components/profile/ProfileNav";
+import AppLayout from "../components/layout/AppLayout";
 import YourDataPanel from "../components/privacy/YourDataPanel";
 import {
   ArrowLeftIcon,
@@ -109,7 +110,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="auth-shell bhalyam-home bhalyam-font bhalyam-paper min-h-screen">
+    /* An ordinary destination, so it wears the global chrome like every other
+       non-gameplay screen. `min-h-full` rather than `min-h-screen`: inside
+       AppLayout the scroll container is already the viewport minus the
+       header, and a full-viewport child would add the header's height back
+       as dead scroll at the bottom. */
+    <AppLayout>
+      <div className="auth-shell bhalyam-home bhalyam-font bhalyam-paper min-h-full">
       <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 py-4 sm:py-6">
         <div className="lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-8">
           {/* ── Rail ─────────────────────────────────────────────── */}
@@ -396,7 +403,8 @@ export default function ProfilePage() {
           </main>
         </div>
       </div>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 

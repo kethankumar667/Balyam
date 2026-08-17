@@ -103,11 +103,31 @@ export function redirectTo(path: string): string {
  * the rest pass through, because an unhelpful real message still beats a
  * generic one that hides which thing went wrong.
  */
+/** The raw text of whatever the auth service threw, for matching against. */
+function errorText(err: unknown): string {
+  return typeof err === "object" && err !== null && "message" in err
+    ? String((err as { message: unknown }).message)
+    : String(err ?? "");
+}
+
+/**
+ * "You have an account, but you never finished confirming it."
+ *
+ * Worth singling out because it is the one auth failure with an exact,
+ * one-click remedy — the confirmation screen has a Resend button — and
+ * because it is the state every player left stranded by a missing OTP email
+ * ends up in. Treated as a message, it is a dead end: sign-up says the email
+ * is taken, sign-in says to check an inbox that never received anything, and
+ * the only escape is an admin deleting the row by hand.
+ *
+ * Callers use it to route to `/verify-email` instead of printing a sentence.
+ */
+export function isEmailNotConfirmed(err: unknown): boolean {
+  return /email not confirmed|email_not_confirmed/i.test(errorText(err));
+}
+
 export function authErrorMessage(err: unknown): string {
-  const raw =
-    typeof err === "object" && err !== null && "message" in err
-      ? String((err as { message: unknown }).message)
-      : String(err ?? "");
+  const raw = errorText(err);
 
   const text = raw.trim();
   if (!text) return "Something went wrong. Try again in a moment.";
@@ -129,6 +149,40 @@ export function authErrorMessage(err: unknown): string {
     // mistyping a code they read correctly or send them chasing a new
     // email when the digits were simply wrong. The fix covers both.
     return "That code didn't work — it may have expired. Resend to get a fresh one.";
+  }
+  /**
+   * The mail cap, and why it does not say "try again".
+   *
+   * Supabase returns 429 for two completely different things, and collapsing
+   * them into one "too many tries" message is what turned a configuration
+   * problem into eighty abandoned accounts.
+   *
+   *   "For security purposes, you can only request this after N seconds"
+   *      — a per-address throttle. Waiting genuinely fixes it.
+   *   "email rate limit exceeded"
+   *      — the PROJECT's hourly mail allowance is spent. It is not this
+   *        player's doing, they are simply the third person to sign up this
+   *        hour, and no amount of retrying will help until the hour rolls
+   *        over or custom SMTP is configured (docs/runbooks/supabase.md §7).
+   *
+   * Telling the second group to "wait a minute and try again" sent them into
+   * a retry loop against a wall, and because the account row is created
+   * before the mail is sent, they were left with an unconfirmed account they
+   * could neither use nor sign up again with.
+   *
+   * The specific match must come first — the general one below would swallow
+   * it, since both contain "rate limit".
+   */
+  if (/email rate limit exceeded|over_email_send_rate_limit/i.test(text)) {
+    return "We couldn't send the email — this app has hit its hourly limit for sign-up emails. This is our problem, not yours. Try again later, or sign in with Google.";
+  }
+  /**
+   * SMTP is misconfigured or the mail provider rejected the message. The raw
+   * string is a developer's sentence ("Error sending confirmation email") and
+   * says nothing a player can act on, so it does not pass through.
+   */
+  if (/error sending (confirmation|recovery|magic|invite)?\s*(e?mail)/i.test(text)) {
+    return "We couldn't send the email just now. This is our problem, not yours — try again shortly, or sign in with Google.";
   }
   if (/for security purposes|rate limit|too many requests/i.test(text)) {
     return "Too many tries. Wait a minute and try again.";

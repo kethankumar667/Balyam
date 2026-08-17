@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext, ReactNode } from "react";
+import React, { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
@@ -35,9 +35,27 @@ export const useAppLayout = () => useContext(AppLayoutContext);
 interface AppLayoutProps {
   children: ReactNode;
   onSelectGame?: (slug: BhalyamGameSlug) => void;
+  /**
+   * Whether to draw the global header and side nav around `children`.
+   *
+   * Every screen in the app gets them except one: a live game. A board is
+   * sized against the viewport it is given — Ludo's shell is built on
+   * `100svh`, Rummy's felt fills what it is handed — so an 80px header and a
+   * 256px rail are not decoration there, they are board area taken away, and
+   * on a phone that is the difference between a playable board and a cramped
+   * one. The room screen also carries its own in-board chrome (room code,
+   * Leave, the inline room rail), so the global set is duplicate navigation
+   * competing with it for the same taps.
+   *
+   * Off does NOT mean stranded: `false` is only ever passed by a screen that
+   * has its own way out. The room's pre-game states (name entry, connecting)
+   * deliberately keep the chrome, because someone who has not joined anything
+   * yet needs an ordinary way back.
+   */
+  chrome?: boolean;
 }
 
-export default function AppLayout({ children, onSelectGame }: AppLayoutProps) {
+export default function AppLayout({ children, onSelectGame, chrome = true }: AppLayoutProps) {
   const [theme] = useTheme();
   const isDark = theme === "dark";
 
@@ -48,6 +66,17 @@ export default function AppLayout({ children, onSelectGame }: AppLayoutProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+
+  /**
+   * Drop the drawer when the chrome goes away.
+   *
+   * Without this the flag survives the transition into a game, and the drawer
+   * would slide back over the board the moment the chrome returned — a menu
+   * nobody opened, restored from a tap several screens ago.
+   */
+  useEffect(() => {
+    if (!chrome) setMobileMenuOpen(false);
+  }, [chrome]);
 
   const handleSelectGame = (slug: BhalyamGameSlug) => {
     if (onSelectGame) {
@@ -75,29 +104,33 @@ export default function AppLayout({ children, onSelectGame }: AppLayoutProps) {
         }`}
       >
         {/* Fixed Top Header */}
-        <AppHeader
-          onOpenJoin={() => setJoinOpen(true)}
-          onOpenProfile={() => setProfileOpen(true)}
-          onOpenNotifications={() => setNotificationsOpen(true)}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
-          onSelectGame={handleSelectGame}
-        />
+        {chrome && (
+          <AppHeader
+            onOpenJoin={() => setJoinOpen(true)}
+            onOpenProfile={() => setProfileOpen(true)}
+            onOpenNotifications={() => setNotificationsOpen(true)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+            onSelectGame={handleSelectGame}
+          />
+        )}
 
         {/* Layout Body Container */}
         <div className="flex-1 flex overflow-hidden relative">
           {/* Desktop Left Sidebar (Permanently fixed, never scrolls with page) */}
-          <div className="hidden lg:block h-full flex-shrink-0">
-            <AppSidebar
-              onOpenJoin={() => setJoinOpen(true)}
-              onOpenProfile={() => setProfileOpen(true)}
-              onOpenSettings={() => setSettingsOpen(true)}
-            />
-          </div>
+          {chrome && (
+            <div className="hidden lg:block h-full flex-shrink-0">
+              <AppSidebar
+                onOpenJoin={() => setJoinOpen(true)}
+                onOpenProfile={() => setProfileOpen(true)}
+                onOpenSettings={() => setSettingsOpen(true)}
+              />
+            </div>
+          )}
 
           {/* Mobile Drawer Sidebar */}
           <AnimatePresence>
-            {mobileMenuOpen && (
+            {chrome && mobileMenuOpen && (
               <>
                 <motion.div
                   initial={{ opacity: 0 }}

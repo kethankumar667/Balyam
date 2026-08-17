@@ -4,6 +4,7 @@ import { useAuthStore } from "../../store/authStore";
 import {
   authErrorMessage,
   getSupabase,
+  isEmailNotConfirmed,
   isSupabaseConfigured,
   redirectTo,
 } from "../../lib/supabase/client";
@@ -109,6 +110,28 @@ export function useSignIn(): SignInState {
         .then(({ error: err }) => {
           setLoading(false);
           if (err) {
+            /**
+             * The stranded-account escape hatch.
+             *
+             * Someone whose confirmation email never arrived — the ordinary
+             * outcome once the project's hourly mail allowance is spent — has
+             * a real account they cannot reach. Sign-up refuses them ("that
+             * email already has an account"), and sign-in used to refuse them
+             * too, with a sentence pointing at an inbox that never received
+             * anything. Nothing on either screen led to the one page that can
+             * help, so the only fix was deleting the row by hand.
+             *
+             * The password they just typed was correct enough to get this
+             * specific error rather than "invalid credentials", so sending
+             * them to the confirmation screen is not a guess. Its Resend
+             * button and code box are exactly what they needed.
+             */
+            if (isEmailNotConfirmed(err)) {
+              navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`, {
+                replace: true,
+              });
+              return;
+            }
             setError(authErrorMessage(err));
             return;
           }

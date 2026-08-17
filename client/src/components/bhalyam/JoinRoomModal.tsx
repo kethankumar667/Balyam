@@ -6,6 +6,21 @@ import { currentAccessToken, currentAccountKind, useCapabilities } from "../../s
 import SignInWall from "../auth/SignInWall";
 import { ArrowRightIcon } from "./icons";
 import QrScannerModal from "../QrScannerModal";
+import { isCompleteRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from "../../lib/roomCode";
+
+/** Shape of the `room:join` acknowledgement (see shared/types.ts). */
+type JoinAck = { ok: boolean; playerId?: string; seatToken?: string; error?: string };
+
+/**
+ * How long to wait for the server to acknowledge a join.
+ *
+ * Generous rather than snappy: the target is a sleeping free-tier server
+ * waking up, which takes tens of seconds, not a fast server being slow. Too
+ * short and we would tell someone the join failed while it was still on its
+ * way, which is the one wrong answer here — they would rejoin and take a
+ * second seat.
+ */
+const JOIN_TIMEOUT_MS = 20_000;
 
 /* ──────────────────────────────────────────────────────────────────────────
  * BHALYAM Join Room Modal
@@ -51,6 +66,17 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
+  /**
+   * The in-flight guard, held in a ref rather than reading `busy`.
+   *
+   * Auto-join fires from a change handler, so the check and the send happen
+   * inside one render's closure — `busy` there is the value from the render
+   * that installed the handler, which is still `false` for the keystroke that
+   * started the join. A ref is the state both the handler and the ack agree
+   * on, and it is what stops a pasted code and its trailing keystroke from
+   * taking two seats.
+   */
+  const busyRef = useRef(false);
 
   const caps = useCapabilities();
   /**
@@ -71,6 +97,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
       setCodeError(null);
       setFormError(null);
       setBusy(false);
+      busyRef.current = false;
       setScannerOpen(false);
       setCode("");
       setName(playerName);
@@ -114,20 +141,83 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
     return name.trim().slice(0, 20);
   }
 
+  /**
+   * The one join path.
+   *
+   * Typing, pasting and scanning all end here. They used to each carry their
+   * own copy of this emit, which is how the typed path came to be the slow
+   * one: the scanner had already learned to submit by itself, and the
+   * keyboard never did, so the same six characters cost an extra deliberate
+   * tap depending only on how they arrived.
+   */
+  function joinWithCode(rawCode: string, n: string) {
+    const c = normalizeRoomCode(rawCode);
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setFormError(null);
+    setPlayerName(n);
+
+    /**
+     * A join that never answers.
+     *
+     * `socket.emit` with an ack buffers silently while the socket is down —
+     * and the server sleeps on its host after idle, so the first join of the
+     * evening routinely lands during a cold start. The callback then fires
+     * whenever the server wakes, or never, and the button sat on "Joining…"
+     * the whole time with nothing to read. `.timeout()` turns that into an
+     * answer we can put on screen.
+     */
+    getSocket()
+      .timeout(JOIN_TIMEOUT_MS)
+      .emit(
+        "room:join",
+        {
+          name: n,
+          code: c,
+          avatar: avatarId ?? undefined,
+          accountKind: currentAccountKind(),
+          accessToken: currentAccessToken(),
+          ...(seatFor(c) ?? {}),
+        },
+        (timeoutErr: unknown, res: JoinAck) => {
+          busyRef.current = false;
+          setBusy(false);
+          if (timeoutErr) {
+            setFormError(
+              "The server is taking a while to answer — it may be waking up. Try again in a moment.",
+            );
+            return;
+          }
+          if (!res?.ok) {
+            // Server-side errors ("Room not found", "Game already in progress")
+            // map most naturally to the code field — they reject the specific
+            // room the user tried to join. Show inline under the code box.
+            setCodeError(res?.error ?? "Couldn't join that room");
+            codeInputRef.current?.focus();
+            return;
+          }
+          if (res.playerId) setPlayerId(res.playerId);
+          if (res.playerId && res.seatToken) rememberSeat(c, res.playerId, res.seatToken);
+          onClose();
+          navigate(`/room/${c}`);
+        },
+      );
+  }
+
   function handleSubmit(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const n = trimmedName();
-    const c = code.trim().toUpperCase();
+    const c = normalizeRoomCode(code);
     // Validate both fields independently so the user sees every problem
     // at once, not a one-at-a-time game of whack-a-mole. The first
     // offending field gets focus.
     const nextNameError = !n ? "Enter your name first" : null;
-    const nextCodeError =
-      c.length !== 6
-        ? canType
-          ? "Room code must be 6 characters"
-          : "Scan your friend's QR code to join their room"
-        : null;
+    const nextCodeError = !isCompleteRoomCode(c)
+      ? canType
+        ? `Room code must be ${ROOM_CODE_LENGTH} characters`
+        : "Scan your friend's QR code to join their room"
+      : null;
     setNameError(nextNameError);
     setCodeError(nextCodeError);
     setFormError(null);
@@ -139,35 +229,30 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
       codeInputRef.current?.focus();
       return;
     }
-    setBusy(true);
-    setPlayerName(n);
-    const socket = getSocket();
-    socket.emit(
-      "room:join",
-      {
-        name: n,
-        code: c,
-        avatar: avatarId ?? undefined,
-        accountKind: currentAccountKind(),
-        accessToken: currentAccessToken(),
-        ...(seatFor(c) ?? {}),
-      },
-      (res) => {
-        setBusy(false);
-        if (!res.ok) {
-          // Server-side errors ("Room not found", "Game already in progress")
-          // map most naturally to the code field — they reject the specific
-          // room the user tried to join. Show inline under the code box.
-          setCodeError(res.error ?? "Couldn't join that room");
-          codeInputRef.current?.focus();
-          return;
-        }
-        if (res.playerId) setPlayerId(res.playerId);
-        if (res.playerId && res.seatToken) rememberSeat(c, res.playerId, res.seatToken);
-        onClose();
-        navigate(`/room/${c}`);
-      },
-    );
+    joinWithCode(c, n);
+  }
+
+  /**
+   * Typing the last character is the submit.
+   *
+   * A six-character code has exactly one moment where it becomes joinable,
+   * and asking for a button press after it is asking the player to confirm
+   * something they already finished. This is what the QR path has always
+   * done; the difference in "speed" between the two was mostly this.
+   *
+   * Only fires when the name is already filled, so it can never race a
+   * half-finished form, and `busyRef` keeps a fast typist from firing twice.
+   */
+  function handleCodeChange(raw: string) {
+    const next = normalizeRoomCode(raw);
+    setCode(next);
+    if (codeError) setCodeError(null);
+    if (formError) setFormError(null);
+
+    const n = trimmedName();
+    if (n && isCompleteRoomCode(next) && !busyRef.current) {
+      joinWithCode(next, n);
+    }
   }
 
   return (
@@ -329,7 +414,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             label="Room code"
             error={codeError}
             helpId="join-code-help"
-            help="The 6-character code your friend shared with you or scan QR."
+            help={`${ROOM_CODE_LENGTH} characters — paste your friend's link here too. It joins on the last character.`}
           >
             <div className="relative">
               <input
@@ -337,12 +422,9 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                 id="join-code"
                 type="text"
                 value={code}
-                onChange={(e) => {
-                  setCode(e.target.value.toUpperCase().replace(/\s/g, ""));
-                  if (codeError) setCodeError(null);
-                }}
+                onChange={(e) => handleCodeChange(e.target.value)}
                 placeholder="ABC123"
-                maxLength={6}
+                maxLength={ROOM_CODE_LENGTH}
                 autoComplete="off"
                 autoCapitalize="characters"
                 spellCheck={false}
@@ -423,49 +505,27 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScanSuccess={(scannedCode: string) => {
-          setCode(scannedCode);
+          // The QR payload is the room URL, so it goes through the same
+          // normalizer as anything pasted — one definition of "what counts as
+          // a code" for every way one can arrive.
+          const scanned = normalizeRoomCode(scannedCode);
+          setCode(scanned);
           setCodeError(null);
+          const n = trimmedName();
           // A scan with no name yet used to leave the modal looking untouched.
           // Now the code is held above and the missing half is named, which
           // matters most for a guest: the scanner is their only way in, so
           // silence here reads as the camera having failed.
-          if (!name.trim()) {
+          if (!n) {
             setNameError("Enter your name first");
             window.setTimeout(() => nameInputRef.current?.focus(), 0);
+            return;
           }
-          // If name is already provided, attempt auto submit
-          if (name.trim()) {
-            window.setTimeout(() => {
-              const n = name.trim().slice(0, 20);
-              setBusy(true);
-              setPlayerName(n);
-              const socket = getSocket();
-              socket.emit(
-                "room:join",
-                {
-                  name: n,
-                  code: scannedCode,
-                  avatar: avatarId ?? undefined,
-                  accountKind: currentAccountKind(),
-                  accessToken: currentAccessToken(),
-                  ...(seatFor(scannedCode) ?? {}),
-                },
-                (res) => {
-                  setBusy(false);
-                  if (!res.ok) {
-                    setCodeError(res.error ?? "Couldn't join that room");
-                    return;
-                  }
-                  if (res.playerId) setPlayerId(res.playerId);
-                  if (res.playerId && res.seatToken) {
-                    rememberSeat(scannedCode, res.playerId, res.seatToken);
-                  }
-                  onClose();
-                  navigate(`/room/${scannedCode}`);
-                }
-              );
-            }, 100);
+          if (!isCompleteRoomCode(scanned)) {
+            setCodeError("That QR code isn't a BHALYAM room.");
+            return;
           }
+          joinWithCode(scanned, n);
         }}
       />
     </div>

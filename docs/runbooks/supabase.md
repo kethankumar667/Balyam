@@ -21,7 +21,7 @@ The free tier's real limits, stated plainly because two of them will matter:
 | --- | --- | --- |
 | Monthly active users | 50,000 | Nothing, at this project's scale |
 | Database | 500 MB | Profiles are two short columns; not a concern |
-| **Emails per hour** | **~2 (built-in SMTP)** | Confirmation and reset emails queue or fail. **Fix this before any real launch** — see [Email](#email-the-one-that-will-bite-you) |
+| **Emails per hour** | Whatever **Authentication → Rate Limits** shows (30/h on this project) — but the built-in sender is throttled *below* that figure regardless of what the box says | Confirmation and reset emails silently fail to arrive. **Fix before any real launch** — see [Email](#7-email--the-one-that-will-bite-you-and-already-has) |
 | Project pausing | after 7 days idle | Sign-in fails until you unpause from the dashboard |
 
 The game server is unaffected by all of it. A paused Supabase project means
@@ -189,29 +189,122 @@ done.
 Apple is deliberately not wired: it needs a paid Apple developer account. The
 button says so rather than failing silently.
 
-## 7. Email, the one that will bite you
+## 7. Email — the one that WILL bite you, and already has
 
-Supabase's built-in mailer is rate-limited to roughly **two messages an
-hour**, project-wide. It is meant for development. With it:
+> **If players are reporting "I never got the OTP", this section is the
+> answer, and nothing in the client can fix it.** The code changes shipped
+> alongside this note stop those players being *stranded*; they do not make
+> the email send. Only the dashboard can do that.
 
-- The third person to sign up that hour never receives a confirmation.
-- Password resets fail during exactly the moment they are needed.
+### The symptom
 
-Two ways out, and you must pick one before real users arrive:
+Some people sign up and receive their code. Most get nothing. The `auth.users`
+and `profiles` rows for those players **still exist**, because the account is
+created before the mail is dispatched — so the table fills with accounts that
+were never usable, and sign-up refuses those addresses ever after ("that email
+already has an account").
 
-- **Turn off email confirmation** (Authentication → Providers → Email →
-  "Confirm email" off). Sign-up then produces a session immediately, and the
-  app already handles that path — it skips the check-your-inbox screen and
-  signs the player straight in. Simplest, and acceptable for a party game where
-  the email is a login handle rather than a channel. You lose any proof the
-  address is real, and password reset is only as good as the address typed.
-- **Configure custom SMTP** (Project Settings → Authentication → SMTP).
-  Resend, Brevo and Amazon SES all have usable free tiers. Keeps confirmation
-  and reset working properly.
+### Diagnose before you assume it is the rate limit
 
-Also worth doing while you are there: **Authentication → Email Templates** →
-replace the default Supabase wording, which names Supabase rather than BHALYAM
-and reads like a developer tool to anyone who receives it.
+There are two different failures here and they need different fixes. **Check
+which one you have — do not guess.**
+
+**a. Read the actual send errors.** Dashboard → **Logs → Auth Logs**, filter
+around a timestamp where a player reported nothing arriving. A refused send
+names itself: `over_email_send_rate_limit` is the cap, anything mentioning
+SMTP or a 5xx from the mail host is delivery.
+
+**b. Check whether custom SMTP is even on.** Project Settings →
+**Authentication → SMTP Settings**. This is the fact everything else hinges
+on, and it is *not* the same page as the rate limits.
+
+Then read the two against the evidence:
+
+- **The cap** (`Authentication → Rate Limits` → *Rate limit for sending
+  emails*) is project-wide and hourly. It fits a **burst** — several people
+  signing up within the same hour, the later ones refused. It does **not**
+  fit failures spread across different hours or different days: each hour
+  starts with a fresh budget. Note that this box shows what you have
+  *configured*; while the built-in sender is in use, Supabase throttles well
+  under it no matter what number is in the field, which is why the figure
+  there can look generous and still not be what you are getting.
+- **Deliverability** fits everything else. The built-in sender is a shared
+  address with no domain of yours behind it — no SPF, no DKIM, no DMARC — so
+  Gmail and Outlook spam-folder or drop it. Supabase state plainly that it is
+  for development and offer no delivery guarantee. This is what a scatter of
+  failures across days looks like, and it is the more common cause of "most
+  players never got the mail".
+
+For this project the reported timestamps sat hours and a day apart, which
+points at delivery rather than the cap.
+
+### The fix — pick one, today
+
+**Option A — turn off email confirmation. Two minutes, no accounts needed.**
+
+Authentication → Providers → Email → **Confirm email: off**.
+
+Sign-up then returns a session immediately, and the app already handles that
+path: `useSignUp` checks `data.session` and skips the check-your-inbox screen
+entirely. No code change. Acceptable for a party game where the email is a
+login handle rather than a channel you intend to use. What you give up is any
+proof the address is real, and password reset becomes only as good as whatever
+was typed.
+
+**Option B — custom SMTP. Twenty minutes, and the one to actually keep.**
+
+Project Settings → Authentication → **SMTP Settings** → enable, then fill in a
+provider. Resend, Brevo and Amazon SES all have free tiers well above what
+this project needs.
+
+This is the fix for *both* failures, and for delivery it is the only one:
+sending through your own verified domain is what gives the mail SPF, DKIM and
+DMARC, which is what stops Gmail treating it as junk. Nothing you can set on
+the Rate Limits page affects that.
+
+Afterwards, check **Authentication → Rate Limits → Rate limit for sending
+emails** is high enough for a launch evening. It is a separate page and it is
+easy to configure SMTP correctly and still sit behind a low cap.
+
+Doing both is reasonable: B is the real fix, A unblocks the evening.
+
+### Cleaning up the accounts already stranded
+
+Players who signed up during an outage have an unconfirmed row and no way
+through. Since the sign-in fix shipped, they no longer need deleting: signing
+in with the right password now lands them on `/verify-email`, where **Resend**
+issues a fresh code — which will work as soon as mail is flowing again. Tell
+them to sign in rather than sign up.
+
+To confirm them in bulk instead, in the SQL editor:
+
+```sql
+-- Inspect first. These are the accounts that never finished.
+select id, email, created_at
+from auth.users
+where email_confirmed_at is null
+order by created_at desc;
+```
+
+Only after reading that list, and only if you accept the addresses unverified:
+
+```sql
+update auth.users
+set email_confirmed_at = now()
+where email_confirmed_at is null;
+```
+
+That marks every pending address as confirmed without proving any of them are
+real — the same trade Option A makes, applied retroactively.
+
+### While you are in there
+
+**Authentication → Email Templates** — replace the default wording, which
+names Supabase rather than BHALYAM and reads like a developer tool to whoever
+receives it. Check the template still emits `{{ .Token }}`: the app asks for
+an 8-digit code (`OTP_LENGTH` in `useAccountAuth.ts`, matching **Email OTP
+Length** in the dashboard), and a template carrying only `{{ .ConfirmationURL }}`
+leaves the code box on `/verify-email` with nothing to type into it.
 
 ---
 
@@ -266,6 +359,16 @@ Redirect URLs.
 **Nothing works and the dashboard says the project is paused.**
 Free projects pause after 7 days of no requests. Resume from the dashboard.
 Guests are unaffected; only sign-in breaks.
+
+**Players report they never received the OTP / confirmation email.**
+Either the hourly send cap is spent or the built-in sender's mail is not being
+delivered — **Logs → Auth Logs** tells you which, and
+[§7](#7-email--the-one-that-will-bite-you-and-already-has) has both fixes.
+Failures clustered inside one hour point at the cap; failures scattered across
+days point at delivery. Either way it is a dashboard problem, not a code one,
+and the accounts of everyone affected already exist in `auth.users`
+unconfirmed. Tell them to **sign in**, not sign up: that now routes to
+`/verify-email` with a working Resend button.
 
 **A player signed in on a second device and is called "Player 3".**
 Their `profiles` row has no `display_name`. Accounts created before the

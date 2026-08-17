@@ -844,7 +844,16 @@ export default function Room() {
   const ludoInPlay = roomState.game === "ludo" && roomState.phase !== "lobby";
 
   return (
-    <AppLayout onSelectGame={() => navigate("/")}>
+    /**
+     * The one screen in the app with no global header or side nav.
+     *
+     * Chrome is off for the whole room session rather than only once play
+     * starts, deliberately. Toggling it on Start would relayout the page
+     * under everyone at the exact moment the board appears, and the lobby
+     * already carries its own header — room code, room name, Leave Room — so
+     * the global set was a second navigation competing with it.
+     */
+    <AppLayout chrome={false} onSelectGame={() => navigate("/")}>
       <div
         className={
           FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
