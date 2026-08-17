@@ -61,17 +61,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://bhalyam.onrender.com/brickblocks</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://bhalyam.onrender.com/tetris</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://bhalyam.onrender.com/breakout</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://bhalyam.onrender.com/spacealien</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

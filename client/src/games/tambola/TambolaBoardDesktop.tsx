@@ -1,14 +1,25 @@
-import type { TambolaClaimType, TambolaPlayerState } from "@shared/types";
+import type { TambolaClaimType } from "@shared/types";
 import { motion } from "framer-motion";
 import type { TambolaBoardProps } from "./TambolaBoardMobile";
 
 export default function TambolaBoardDesktop({ state, selfId, onMove }: TambolaBoardProps) {
+  const isArranging = state.phase === "arranging";
+  const myPlayer = state.players.find((p) => p.id === selfId);
+
   const handleMark = (row: number, col: number) => {
     onMove("markCell", { row, col });
   };
 
   const handleClaim = (claimType: TambolaClaimType) => {
     onMove("claim", { claimType });
+  };
+
+  const handleShuffle = () => {
+    onMove("shuffleTicket");
+  };
+
+  const handleLock = () => {
+    onMove("ready");
   };
 
   const claimsList: { type: TambolaClaimType; label: string }[] = [
@@ -19,6 +30,97 @@ export default function TambolaBoardDesktop({ state, selfId, onMove }: TambolaBo
     { type: "fullHouse", label: "Full House" },
   ];
 
+  /* ── 1. Arranging / Shuffle Phase ── */
+  if (isArranging) {
+    return (
+      <div className="min-h-[calc(100vh-6rem)] max-w-4xl mx-auto p-6 flex flex-col items-center justify-center text-ink-hi font-sans">
+        <div className="w-full bg-surface-0 border-2 border-surface-rim rounded-3xl p-8 shadow-2xl space-y-6 text-center">
+          <div>
+            <div className="text-xs font-black uppercase tracking-widest text-pink-600 dark:text-pink-400">
+              Tambola / Housie Lounge
+            </div>
+            <h1 className="text-3xl font-display font-black text-ink-hi mt-1">
+              Arrange Your Lucky Ticket
+            </h1>
+            <p className="text-sm text-ink-mid mt-2 max-w-lg mx-auto">
+              Click <strong className="text-pink-600 font-black">Shuffle Ticket</strong> to generate a fresh ticket (1-90) until you get your favorite numbers, then click <strong className="text-emerald-600 font-black">Ready / Start</strong>!
+            </p>
+          </div>
+
+          {/* 3x9 Ticket Preview */}
+          <div className="bg-surface-1/90 p-5 rounded-2xl border border-surface-rim shadow-inner max-w-2xl mx-auto">
+            <div className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-3">
+              Your 15-Number Ticket
+            </div>
+            <div className="grid grid-rows-3 gap-2.5">
+              {state.myTicket.map((row, rIdx) => (
+                <div key={rIdx} className="grid grid-cols-9 gap-2">
+                  {row.map((val, cIdx) => {
+                    if (val === 0) {
+                      return <div key={cIdx} className="bg-surface-0/50 rounded-xl h-12" />;
+                    }
+                    return (
+                      <div
+                        key={cIdx}
+                        className="h-12 rounded-xl font-black text-base flex items-center justify-center bg-white/90 dark:bg-surface-0 border border-surface-rim text-ink-hi shadow-xs"
+                      >
+                        {val}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-4 justify-center max-w-md mx-auto pt-2">
+            <button
+              type="button"
+              disabled={myPlayer?.isReady}
+              onClick={handleShuffle}
+              className="flex-1 py-3.5 px-6 rounded-2xl font-black text-sm bg-pink-600 hover:bg-pink-700 active:scale-95 text-white shadow-lg disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>🔄</span>
+              <span>Shuffle Ticket</span>
+            </button>
+            <button
+              type="button"
+              disabled={myPlayer?.isReady}
+              onClick={handleLock}
+              className={`flex-1 py-3.5 px-6 rounded-2xl font-black text-sm shadow-lg transition-all flex items-center justify-center gap-2 ${
+                myPlayer?.isReady
+                  ? "bg-emerald-700 text-white cursor-default"
+                  : "bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white cursor-pointer"
+              }`}
+            >
+              <span>{myPlayer?.isReady ? "✓" : "🚀"}</span>
+              <span>{myPlayer?.isReady ? "Ready (Waiting…)" : "Start Game"}</span>
+            </button>
+          </div>
+
+          {/* Player status pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-surface-rim">
+            {state.players.map((p) => (
+              <span
+                key={p.id}
+                className={`text-xs px-3 py-1 rounded-full font-bold border flex items-center gap-1.5 ${
+                  p.isReady
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                    : "bg-surface-1 border-surface-rim text-ink-mid"
+                }`}
+              >
+                <span>{p.isReady ? "✓" : "⏳"}</span>
+                <span>{p.id === selfId ? "You" : p.name ?? p.id}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── 2. Playing / Finished Phase ── */
   return (
     <div className="min-h-[calc(100vh-6rem)] max-w-6xl mx-auto p-6 text-ink-hi font-sans grid grid-cols-12 gap-6">
       {/* Left Column (Interactive Ticket & Claim Panel) */}

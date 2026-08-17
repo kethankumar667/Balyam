@@ -10,6 +10,8 @@ export function useTouchControls(
   const startXRef = useRef<number | null>(null);
   const startYRef = useRef<number | null>(null);
   const lastXRef = useRef<number | null>(null);
+  const didMoveXRef = useRef<boolean>(false);
+  const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -17,10 +19,22 @@ export function useTouchControls(
 
     const handleTouchStart = (e: TouchEvent) => {
       if (state.status !== "playing") return;
+      const target = e.target as HTMLElement | null;
+      // Do not process touch gesture if touching a button or interactive element
+      if (target?.closest("button, input, [role='button'], a")) {
+        startXRef.current = null;
+        startYRef.current = null;
+        lastXRef.current = null;
+        didMoveXRef.current = false;
+        return;
+      }
+
       const touch = e.touches[0];
       startXRef.current = touch.clientX;
       startYRef.current = touch.clientY;
       lastXRef.current = touch.clientX;
+      didMoveXRef.current = false;
+      startTimeRef.current = performance.now();
     };
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -31,6 +45,7 @@ export function useTouchControls(
 
       const thresholdX = 24;
       if (Math.abs(deltaX) >= thresholdX) {
+        didMoveXRef.current = true;
         if (deltaX < 0) {
           dispatch({ type: "MOVE_LEFT" });
           tetrisAudio.playMove();
@@ -51,11 +66,12 @@ export function useTouchControls(
       const touch = e.changedTouches[0];
       const totalDeltaX = touch.clientX - startXRef.current;
       const totalDeltaY = touch.clientY - startYRef.current;
+      const elapsed = performance.now() - startTimeRef.current;
 
       dispatch({ type: "SOFT_DROP_END" });
 
-      // Tap detection (minimal movement -> rotate)
-      if (Math.abs(totalDeltaX) < 15 && Math.abs(totalDeltaY) < 15) {
+      // Tap-to-rotate: Only if NO horizontal movement happened, minimal displacement, and quick tap (< 300ms)
+      if (!didMoveXRef.current && Math.abs(totalDeltaX) < 12 && Math.abs(totalDeltaY) < 12 && elapsed < 300) {
         dispatch({ type: "ROTATE_CW" });
         tetrisAudio.playRotate();
       } else if (totalDeltaY < -50 && Math.abs(totalDeltaX) < 40) {
@@ -67,6 +83,7 @@ export function useTouchControls(
       startXRef.current = null;
       startYRef.current = null;
       lastXRef.current = null;
+      didMoveXRef.current = false;
     };
 
     el.addEventListener("touchstart", handleTouchStart, { passive: true });

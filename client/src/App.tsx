@@ -25,7 +25,6 @@ import NokiaSnakePage from "./pages/NokiaSnakePage";
 import BrickRacerPage from "./pages/BrickRacerPage";
 import BrickTetrisPage from "./pages/BrickTetrisPage";
 import BrickBreakoutPage from "./pages/BrickBreakoutPage";
-import BrickSpaceAlienPage from "./pages/BrickSpaceAlienPage";
 
 // ── Lazy-loaded internal & party routes ──
 const PartyScreen = lazy(() => import("./pages/PartyScreen"));
@@ -131,6 +130,7 @@ export default function App() {
           <Route path="/roadrash" element={<BrickRacerPage />} />
           <Route path="/brickracer" element={<BrickRacerPage />} />
           <Route path="/racer" element={<BrickRacerPage />} />
+          <Route path="/brickblocks" element={<BrickTetrisPage />} />
           <Route path="/tetris" element={<BrickTetrisPage />} />
           <Route path="/bricktetris" element={<BrickTetrisPage />} />
           <Route path="/pentix" element={<BrickTetrisPage />} />
@@ -138,10 +138,6 @@ export default function App() {
           <Route path="/brickbreakout" element={<BrickBreakoutPage />} />
           <Route path="/brick-breakout" element={<BrickBreakoutPage />} />
           <Route path="/blockbreakout" element={<BrickBreakoutPage />} />
-          <Route path="/spacealien" element={<BrickSpaceAlienPage />} />
-          <Route path="/space-alien" element={<BrickSpaceAlienPage />} />
-          <Route path="/spaceinvaders" element={<BrickSpaceAlienPage />} />
-          <Route path="/brickalien" element={<BrickSpaceAlienPage />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

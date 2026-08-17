@@ -50,7 +50,7 @@ export default function WhatAreWePlayingSection({
       caption: "Long afternoons, endless fun.",
       games: [
         { name: "UNO", slug: "uno" as BhalyamGameSlug },
-        { name: "Space Alien", slug: "spacealien" as BhalyamGameSlug },
+        { name: "Brick Blocks", slug: "brickblocks" as BhalyamGameSlug },
         { name: "Name Place Animal", slug: "namesplaceanimal" as BhalyamGameSlug },
       ],
     },

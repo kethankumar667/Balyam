@@ -73,3 +73,10 @@ export function loadAccountDetails(): UserAccountDetails | null {
     return null;
   }
 }
+
+export function clearAccountDetails(): void {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(ACCOUNT_DETAILS_KEY);
+  } catch {}
+}

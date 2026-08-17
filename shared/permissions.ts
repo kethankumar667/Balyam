@@ -77,15 +77,15 @@ export interface Capabilities {
 }
 
 const GUEST: Capabilities = {
-  hostSharedRoom: false,
-  joinByCode: false,
+  hostSharedRoom: true,
+  joinByCode: true,
   scanInvite: true,
   acceptInvite: true,
   soloVsBots: true,
   passAndPlay: true,
   editProfile: true,
   voiceChat: true,
-  spectate: false,
+  spectate: true,
 };
 
 const MEMBER: Capabilities = {

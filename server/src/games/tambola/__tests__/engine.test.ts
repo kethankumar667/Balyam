@@ -13,27 +13,45 @@ function mockPlayers(count = 2): Player[] {
 }
 
 describe("TambolaEngine", () => {
-  it("initializes game with tickets and draws first number", () => {
+  it("initializes game in arranging phase and allows shuffling ticket", () => {
     const engine = new TambolaEngine();
     const players = mockPlayers(2);
     engine.init(players);
 
     const pub = engine.getPublicState();
     expect(pub.kind).toBe("tambola");
-    expect(pub.phase).toBe("playing");
-    expect(pub.calledNumbers.length).toBe(1);
-    expect(pub.currentCall).toBeGreaterThanOrEqual(1);
-    expect(pub.currentCall).toBeLessThanOrEqual(90);
+    expect(pub.phase).toBe("arranging");
+    expect(pub.calledNumbers.length).toBe(0);
 
     const playerState = engine.getStateFor("p1");
     expect(playerState.myTicket).toHaveLength(3);
     expect(playerState.myTicket[0]).toHaveLength(9);
+
+    const res = engine.applyMove({ playerId: "p1", type: "shuffleTicket" });
+    expect(res.ok).toBe(true);
+  });
+
+  it("switches to playing phase when all players lock ticket", () => {
+    const engine = new TambolaEngine();
+    const players = mockPlayers(2);
+    engine.init(players);
+
+    engine.applyMove({ playerId: "p1", type: "lockTicket" });
+    expect(engine.getPublicState().phase).toBe("arranging");
+
+    engine.applyMove({ playerId: "p2", type: "ready" });
+    expect(engine.getPublicState().phase).toBe("playing");
+    expect(engine.getPublicState().calledNumbers.length).toBe(1);
+    expect(engine.getPublicState().currentCall).toBeGreaterThanOrEqual(1);
+    expect(engine.getPublicState().currentCall).toBeLessThanOrEqual(90);
   });
 
   it("marks cell when number has been called", () => {
     const engine = new TambolaEngine();
     const players = mockPlayers(2);
     engine.init(players);
+    engine.applyMove({ playerId: "p1", type: "lockTicket" });
+    engine.applyMove({ playerId: "p2", type: "lockTicket" });
 
     const p1State = engine.getStateFor("p1");
     const currentCall = p1State.currentCall!;
@@ -66,6 +84,8 @@ describe("TambolaEngine", () => {
     const engine = new TambolaEngine();
     const players = mockPlayers(2);
     engine.init(players);
+    engine.applyMove({ playerId: "p1", type: "lockTicket" });
+    engine.applyMove({ playerId: "p2", type: "lockTicket" });
 
     const res = engine.applyMove({
       playerId: "p1",
@@ -79,6 +99,7 @@ describe("TambolaEngine", () => {
   it("draws next numbers on resolveDeadline", () => {
     const engine = new TambolaEngine();
     engine.init(mockPlayers(1));
+    engine.applyMove({ playerId: "p1", type: "lockTicket" });
     expect(engine.getPublicState().calledNumbers.length).toBe(1);
 
     engine.resolveDeadline();

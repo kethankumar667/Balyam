@@ -73,9 +73,9 @@ const ROUTES = [
   "/nokiacricket",
   "/snake",
   "/brickracer",
+  "/brickblocks",
   "/tetris",
   "/breakout",
-  "/spacealien",
   "/this-route-does-not-exist",
 ];
 

@@ -63,9 +63,9 @@ async function prerender() {
     "/nokiacricket",
     "/snake",
     "/brickracer",
+    "/brickblocks",
     "/tetris",
     "/breakout",
-    "/spacealien",
   ];
 
   console.log(`✨ [Prerender] Generating static HTML for ${routesToPrerender.length} public routes...`);

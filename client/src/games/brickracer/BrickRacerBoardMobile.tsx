@@ -265,36 +265,17 @@ export default function BrickRacerBoardMobile({ onExit }: BrickRacerBoardProps) 
 
       {/* Handheld Handset Frame */}
       <BrickConsoleFrame>
-        {/* LCD Screen Container */}
-        <div className="relative w-[200px] h-[320px] bg-[#9BBC0F] rounded-xl border-4 border-[#0F380F] shadow-inner overflow-hidden flex flex-col items-center justify-between p-1">
-          {/* LCD Phosphor Pixel Grid Texture */}
+        {/* 10x20 Physical Beveled LCD Matrix Screen */}
+        <div className="relative w-[210px] h-[340px] bg-[#9BBC0F] rounded-xl border-4 border-[#0F380F] shadow-inner overflow-hidden flex items-center justify-center p-1">
+          {/* LCD Phosphor Pixel Texture Overlay */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(15,56,15,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,56,15,0.06)_1px,transparent_1px)] bg-[size:4px_4px] pointer-events-none z-10" />
 
-          {/* Authentic In-Frame LCD Status Mini-HUD */}
-          <div className="w-full bg-[#8BAC0F] border-b-2 border-[#0F380F] px-1.5 py-0.5 flex items-center justify-between text-[9px] font-mono font-black text-[#0F380F] z-20">
-            <div className="flex items-center gap-0.5">
-              <span className="text-[8px] opacity-75">SC:</span>
-              <span className="tracking-wider">{String(stats.score).padStart(5, "0")}</span>
-            </div>
-            <div className="flex items-center gap-0.5">
-              <span className="px-1 py-0.2 bg-[#0F380F] text-[#9BBC0F] rounded text-[8px] font-black">
-                LV{stats.level}
-              </span>
-            </div>
-            <div className="flex items-center gap-0.5">
-              <span className="text-[8px] opacity-75">HI:</span>
-              <span className="tracking-wider">{String(stats.highScore).padStart(5, "0")}</span>
-            </div>
-          </div>
-
-          <div className="flex-1 w-full flex items-center justify-center relative">
-            <canvas
-              ref={canvasRef}
-              width={142}
-              height={272}
-              className="w-full h-full block image-rendering-pixelated"
-            />
-          </div>
+          <canvas
+            ref={canvasRef}
+            width={142}
+            height={272}
+            className="w-full h-full block image-rendering-pixelated"
+          />
         </div>
 
         {/* Tactile Rubber Keypad */}

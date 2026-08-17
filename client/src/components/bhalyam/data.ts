@@ -34,9 +34,9 @@ export type BhalyamGameSlug =
   | "tambola"
   | "snake"
   | "roadrash"
+  | "brickblocks"
   | "tetris"
   | "breakout"
-  | "spacealien"
   | "carrom";
 
 /**
@@ -426,7 +426,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     accent: { from: "#EAB308", to: "#CA8A04" },
   },
   {
-    slug: "tetris",
+    slug: "brickblocks",
     tags: ["retro", "solo"],
     theme: "Classic & Pentix 🧱",
     badge: "🧱 Brick Blocks",
@@ -456,22 +456,6 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     blurb:
       "Authentic 9999-in-1 Brick Game Block Breaker. 10x20 LCD matrix, 3-cell paddle deflection, normal & reinforced steel blocks, combo multiplier scoring, and retro chiptune audio.",
     accent: { from: "#FB923C", to: "#EA580C" },
-  },
-  {
-    slug: "spacealien",
-    tags: ["retro", "solo"],
-    theme: "9999-in-1 👾",
-    badge: "👾 Space Alien",
-    nostalgiaQuote: "A/D to move, Space to fire lasers, destroy the swarm!",
-    title: "Space Alien",
-    playerRange: "1 Player",
-    duration: "3–15 min",
-    paperBg: "linear-gradient(155deg, #180B38 0%, #0D0520 45%, #060210 100%)",
-    paperBorder: "rgba(139, 92, 246, 0.55)",
-    btnGradient: { from: "#8B5CF6", to: "#6D28D9", shadow: "#4C1D95" },
-    blurb:
-      "Authentic 9999-in-1 Brick Game Space Invaders. 10x20 LCD matrix, descending alien swarms, armored commanders, laser dogfights, wave progression, and retro buzzer sound effects.",
-    accent: { from: "#8B5CF6", to: "#6D28D9" },
   },
   {
     slug: "carrom",

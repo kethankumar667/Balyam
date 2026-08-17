@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
@@ -81,6 +81,10 @@ export default function ProfilePage() {
   const [name, setName] = useState(playerName);
   const [error, setError] = useState<FieldError>(null);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setName(playerName);
+  }, [playerName]);
 
   const dirty = name.trim() !== playerName.trim();
 

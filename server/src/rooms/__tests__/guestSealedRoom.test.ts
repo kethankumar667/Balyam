@@ -67,26 +67,25 @@ function hostAs(rooms: RoomManager, socket: string, name: string, kind: AccountK
   return rooms.createRoom(...(args as Parameters<RoomManager["createRoom"]>));
 }
 
-describe("a guest's table is sealed", () => {
-  it("refuses a second player", () => {
+describe("a guest's table is open", () => {
+  it("accepts a second player via room code", () => {
     const { rooms } = makeHarness();
     const host = hostAs(rooms, "sock_guest", "Guest", "guest");
 
-    const other = rooms.joinRoom("sock_other", "Stranger", host.code);
+    const other = rooms.joinRoom("sock_other", "Friend", host.code);
 
-    expect(other.ok).toBe(false);
-    if (!other.ok) expect(other.error).toBe(SEALED_ROOM_ERROR);
-    expect(peek(rooms, host.code).players.size).toBe(1);
+    expect(other.ok).toBe(true);
+    expect(peek(rooms, host.code).players.size).toBe(2);
+    expect(peek(rooms, host.code).sealed).toBe(false);
   });
 
-  it("refuses a screen, so a TV cannot reopen it", () => {
+  it("accepts a spectator screen", () => {
     const { rooms } = makeHarness();
     const host = hostAs(rooms, "sock_guest", "Guest", "guest");
 
     const tv = rooms.spectateRoom("sock_tv", host.code);
 
-    expect(tv.ok).toBe(false);
-    expect(tv.error).toBe(SEALED_ROOM_ERROR);
+    expect(tv.ok).toBe(true);
   });
 
   it("still lets the host reclaim their own seat after a refresh", () => {
@@ -125,11 +124,11 @@ describe("a guest's table is sealed", () => {
     expect(peek(rooms, host.code).players.size).toBe(2);
   });
 
-  it("tells the client, so the share card can be hidden", () => {
+  it("broadcasts open room state so share card is displayed", () => {
     const { rooms, broadcasts } = makeHarness();
     hostAs(rooms, "sock_guest", "Guest", "guest");
 
-    expect(broadcasts.at(-1)?.sealed).toBe(true);
+    expect(broadcasts.at(-1)?.sealed).toBe(false);
   });
 });
 
@@ -155,7 +154,7 @@ describe("a member's table is open", () => {
 });
 
 describe("host migration", () => {
-  it("hands the room to a member rather than a guest when it can", () => {
+  it("hands the room to another player without sealing", () => {
     const { rooms } = makeHarness();
     const host = hostAs(rooms, "sock_member", "Member", "member");
     rooms.joinRoom("sock_guest", "Guest", host.code, undefined, undefined, undefined, "guest");
@@ -174,11 +173,10 @@ describe("host migration", () => {
 
     const room = peek(rooms, host.code);
     expect(room.hostId).toBe(second.playerId);
-    // Nobody guest-owned it, so it never had to close.
     expect(room.sealed).toBe(false);
   });
 
-  it("seals the room when only a guest is left to inherit it", () => {
+  it("keeps room open when a guest inherits host", () => {
     const { rooms } = makeHarness();
     const host = hostAs(rooms, "sock_member", "Member", "member");
     const guest = rooms.joinRoom(
@@ -196,8 +194,7 @@ describe("host migration", () => {
 
     const room = peek(rooms, host.code);
     expect(room.hostId).toBe(guest.playerId);
-    // The game they are in the middle of continues; the door just shuts.
-    expect(room.sealed).toBe(true);
-    expect(rooms.joinRoom("sock_late", "Latecomer", host.code).ok).toBe(false);
+    expect(room.sealed).toBe(false);
+    expect(rooms.joinRoom("sock_late", "Latecomer", host.code).ok).toBe(true);
   });
 });

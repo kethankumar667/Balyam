@@ -76,9 +76,9 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   bingo: BingoGlyph,
   snake: StarGameGlyph,
   roadrash: StarGameGlyph,
+  brickblocks: StarGameGlyph,
   tetris: StarGameGlyph,
   breakout: StarGameGlyph,
-  spacealien: StarGameGlyph,
   carrom: StarGameGlyph,
   chess: StarGameGlyph,
   spacewar: StarGameGlyph,
@@ -354,18 +354,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       onClose();
       return;
     }
-    if (game === "tetris") {
-      navigate("/tetris");
+    if (game === "brickblocks" || game === "tetris") {
+      navigate("/brickblocks");
       onClose();
       return;
     }
     if (game === "breakout") {
       navigate("/breakout");
-      onClose();
-      return;
-    }
-    if (game === "spacealien") {
-      navigate("/spacealien");
       onClose();
       return;
     }

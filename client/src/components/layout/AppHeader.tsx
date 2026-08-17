@@ -70,7 +70,7 @@ export default function AppHeader({
   const isDark = theme === "dark";
   const { playerName } = useRoomStore();
   const { isMember } = useAuthStore();
-  const displayName = playerName.trim() || "Jetpacker";
+  const displayName = isMember ? (playerName.trim() || "Member") : "Guest";
 
   return (
     <header className="h-20 w-full flex-shrink-0 z-30 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)] transition-colors">
@@ -152,14 +152,9 @@ export default function AppHeader({
                 <SelfAvatar
                   className="w-full h-full"
                   fallback={
-                    <img
-                      src="/Avatars/file_0000000084c48208b1f893419d784cf2_1.jpg"
-                      alt={displayName}
-                      className="w-full h-full object-cover scale-[1.25] origin-center"
-                      onError={(e) => {
-                        e.currentTarget.src = "/Founder.png";
-                      }}
-                    />
+                    <span className="w-full h-full flex items-center justify-center text-[var(--chrome-ink-soft)] bg-[var(--chrome-control)]">
+                      <UserIcon className="w-3.5 h-3.5" />
+                    </span>
                   }
                 />
               </div>
@@ -167,6 +162,11 @@ export default function AppHeader({
                 <span className="text-[13px] font-black tracking-tight max-w-[95px] truncate">
                   {displayName}
                 </span>
+                {!isMember && (
+                  <span className="text-[9.5px] uppercase font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                    Guest
+                  </span>
+                )}
               </div>
               <ChevronDown className="hidden md:block w-3.5 h-3.5 text-[var(--chrome-ink-soft)] flex-shrink-0" />
             </button>

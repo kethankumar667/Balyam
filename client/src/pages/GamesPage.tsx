@@ -96,9 +96,9 @@ const GAME_TELEMETRY: Record<string, { livePlayers: number; activeRooms: number;
   namesplaceanimal: { livePlayers: 165, activeRooms: 21, difficulty: "Casual", rating: 4.7, tag: "Speed Recall" },
   tambola: { livePlayers: 140, activeRooms: 19, difficulty: "Casual", rating: 4.6, tag: "Wedding Sangeet" },
   roadrash: { livePlayers: 980, activeRooms: 0, difficulty: "Casual", rating: 4.9, tag: "90s Racer" },
+  brickblocks: { livePlayers: 1120, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Classic & Pentix" },
   tetris: { livePlayers: 1120, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Classic & Pentix" },
   breakout: { livePlayers: 1350, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Brick Breaker" },
-  spacealien: { livePlayers: 1420, activeRooms: 0, difficulty: "Medium", rating: 4.9, tag: "Space Invaders" },
 };
 
 export default function GamesPage() {

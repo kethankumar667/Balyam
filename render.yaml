@@ -80,14 +80,14 @@ services:
         source: /brickracer
         destination: /brickracer/index.html
       - type: rewrite
+        source: /brickblocks
+        destination: /brickblocks/index.html
+      - type: rewrite
         source: /tetris
         destination: /tetris/index.html
       - type: rewrite
         source: /breakout
         destination: /breakout/index.html
-      - type: rewrite
-        source: /spacealien
-        destination: /spacealien/index.html
 
       # Single Page Application (SPA) catch-all rewrite for deep links &
       # refreshes. Everything dynamic lands here — /room/:code, /tv/:code,

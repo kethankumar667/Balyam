@@ -152,14 +152,26 @@ export const PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = {
     ogType: "website",
     canonical: `${BASE_URL}/brickracer`,
   },
+  "/brickblocks": {
+    path: "/brickblocks",
+    title: "Brick Blocks | Classic 9999-in-1 Falling Blocks — Bhalyam",
+    description:
+      "Stack blocks, clear lines, and test your reflexes in authentic 90s handheld brick console Brick Blocks.",
+    ogTitle: "Brick Blocks | Classic 9999-in-1 Falling Blocks — Bhalyam",
+    ogDescription:
+      "Play classic 90s handheld brick console Brick Blocks. Stack blocks and clear rows.",
+    ogImage: DEFAULT_OG_IMAGE,
+    ogType: "website",
+    canonical: `${BASE_URL}/brickblocks`,
+  },
   "/tetris": {
     path: "/tetris",
-    title: "Brick Tetris | Classic 9999-in-1 Block Puzzle — Bhalyam",
+    title: "Brick Blocks | Classic 9999-in-1 Falling Blocks — Bhalyam",
     description:
-      "Stack blocks, clear lines, and test your reflexes in authentic 90s handheld brick console Tetris.",
-    ogTitle: "Brick Tetris | Classic 9999-in-1 Block Puzzle — Bhalyam",
+      "Stack blocks, clear lines, and test your reflexes in authentic 90s handheld brick console Brick Blocks.",
+    ogTitle: "Brick Blocks | Classic 9999-in-1 Falling Blocks — Bhalyam",
     ogDescription:
-      "Play classic 90s handheld brick console Tetris. Stack blocks and clear rows.",
+      "Play classic 90s handheld brick console Brick Blocks. Stack blocks and clear rows.",
     ogImage: DEFAULT_OG_IMAGE,
     ogType: "website",
     canonical: `${BASE_URL}/tetris`,
@@ -175,18 +187,6 @@ export const PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = {
     ogImage: DEFAULT_OG_IMAGE,
     ogType: "website",
     canonical: `${BASE_URL}/breakout`,
-  },
-  "/spacealien": {
-    path: "/spacealien",
-    title: "Space Alien Invaders | Handheld Brick Shooter — Bhalyam",
-    description:
-      "Defend against descending waves of 8-bit space invaders in retro brick handheld LCD glory.",
-    ogTitle: "Space Alien Invaders | Handheld Brick Shooter — Bhalyam",
-    ogDescription:
-      "Classic 90s brick console space invaders shooter. Defend earth against descending alien rows.",
-    ogImage: DEFAULT_OG_IMAGE,
-    ogType: "website",
-    canonical: `${BASE_URL}/spacealien`,
   },
 };
 

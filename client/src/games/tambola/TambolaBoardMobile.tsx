@@ -10,6 +10,7 @@ export interface TambolaBoardProps {
 
 export default function TambolaBoardMobile({ state, selfId, onMove }: TambolaBoardProps) {
   const [showCalledList, setShowCalledList] = useState(false);
+  const isArranging = state.phase === "arranging";
   const myPlayer = state.players.find((p) => p.id === selfId);
 
   const handleMark = (row: number, col: number) => {
@@ -20,6 +21,14 @@ export default function TambolaBoardMobile({ state, selfId, onMove }: TambolaBoa
     onMove("claim", { claimType });
   };
 
+  const handleShuffle = () => {
+    onMove("shuffleTicket");
+  };
+
+  const handleLock = () => {
+    onMove("ready");
+  };
+
   const claimsList: { type: TambolaClaimType; label: string }[] = [
     { type: "early5", label: "Early 5" },
     { type: "topLine", label: "Top Line" },
@@ -28,6 +37,94 @@ export default function TambolaBoardMobile({ state, selfId, onMove }: TambolaBoa
     { type: "fullHouse", label: "Full House" },
   ];
 
+  /* ── 1. Arranging / Shuffle Phase (Mobile) ── */
+  if (isArranging) {
+    return (
+      <div className="flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 text-ink-hi font-sans space-y-4 justify-center">
+        <div className="bg-surface-0 border-2 border-surface-rim rounded-2xl p-5 shadow-xl space-y-4 text-center">
+          <div>
+            <div className="text-[11px] font-black uppercase tracking-widest text-pink-600 dark:text-pink-400">
+              Tambola / Housie Lounge
+            </div>
+            <h1 className="text-2xl font-display font-black text-ink-hi mt-1">
+              Your Lucky Ticket
+            </h1>
+            <p className="text-xs text-ink-mid mt-1.5">
+              Tap <strong className="text-pink-600 font-bold">Shuffle</strong> until you like your numbers, then tap <strong className="text-emerald-600 font-bold">Start Game</strong>!
+            </p>
+          </div>
+
+          {/* 3x9 Ticket Preview */}
+          <div className="bg-surface-1/90 p-3 rounded-xl border border-surface-rim shadow-inner">
+            <div className="grid grid-rows-3 gap-1.5">
+              {state.myTicket.map((row, rIdx) => (
+                <div key={rIdx} className="grid grid-cols-9 gap-1">
+                  {row.map((val, cIdx) => {
+                    if (val === 0) {
+                      return <div key={cIdx} className="bg-surface-0/50 rounded-lg h-9" />;
+                    }
+                    return (
+                      <div
+                        key={cIdx}
+                        className="h-9 rounded-lg font-black text-xs sm:text-sm flex items-center justify-center bg-white/90 dark:bg-surface-0 border border-surface-rim text-ink-hi shadow-xs"
+                      >
+                        {val}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2.5 pt-1">
+            <button
+              type="button"
+              disabled={myPlayer?.isReady}
+              onClick={handleShuffle}
+              className="flex-1 py-3 px-3 rounded-xl font-black text-xs sm:text-sm bg-pink-600 hover:bg-pink-700 active:scale-95 text-white shadow-md disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>🔄</span>
+              <span>Shuffle</span>
+            </button>
+            <button
+              type="button"
+              disabled={myPlayer?.isReady}
+              onClick={handleLock}
+              className={`flex-1 py-3 px-3 rounded-xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5 ${
+                myPlayer?.isReady
+                  ? "bg-emerald-700 text-white cursor-default"
+                  : "bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white cursor-pointer"
+              }`}
+            >
+              <span>{myPlayer?.isReady ? "✓" : "🚀"}</span>
+              <span>{myPlayer?.isReady ? "Ready!" : "Start Game"}</span>
+            </button>
+          </div>
+
+          {/* Player status pills */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-2 border-t border-surface-rim">
+            {state.players.map((p) => (
+              <span
+                key={p.id}
+                className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
+                  p.isReady
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                    : "bg-surface-1 border-surface-rim text-ink-mid"
+                }`}
+              >
+                <span>{p.isReady ? "✓" : "⏳"}</span>
+                <span>{p.id === selfId ? "You" : p.name ?? p.id}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── 2. Playing / Finished Phase (Mobile) ── */
   return (
     <div className="flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 text-ink-hi font-sans space-y-4">
       {/* Current Call Display */}

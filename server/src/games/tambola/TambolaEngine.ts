@@ -11,6 +11,8 @@ import type {
 import { DEFAULT_TAMBOLA_OPTIONS } from "@shared/types.js";
 import { generateTambolaTicket } from "./ticketGenerator.js";
 
+const ARRANGE_TIMER_SECONDS = 30;
+
 export class TambolaEngine implements GameEngine {
   readonly kind = "tambola" as const;
   readonly minPlayers = 1;
@@ -26,13 +28,14 @@ export class TambolaEngine implements GameEngine {
   private tickets = new Map<string, number[][]>();
   private markedCells = new Map<string, boolean[][]>();
   private claimsWon = new Map<string, Set<TambolaClaimType>>();
+  private readyPlayers = new Set<string>();
 
   private numberPool: number[] = [];
   private calledNumbers: number[] = [];
   private currentCall: number | null = null;
 
   private winners: TambolaClaimWin[] = [];
-  private phase: "playing" | "finished" = "playing";
+  private phase: "arranging" | "playing" | "finished" = "arranging";
   private isOverFlag = false;
   private winnerId: string | null = null;
 
@@ -61,9 +64,10 @@ export class TambolaEngine implements GameEngine {
     this.calledNumbers = [];
     this.currentCall = null;
     this.winners = [];
-    this.phase = "playing";
+    this.phase = "arranging";
     this.isOverFlag = false;
     this.winnerId = null;
+    this.readyPlayers.clear();
 
     for (const pid of this.seatOrder) {
       this.tickets.set(pid, generateTambolaTicket(this.rng));
@@ -72,10 +76,16 @@ export class TambolaEngine implements GameEngine {
         Array.from({ length: 3 }, () => Array(9).fill(false))
       );
       this.claimsWon.set(pid, new Set());
+      if (this.isBot.has(pid)) {
+        this.readyPlayers.add(pid);
+      }
     }
 
-    // Call first number
-    this.drawNextNumber();
+    // If all players are already ready (e.g. all bots)
+    if (this.readyPlayers.size >= this.seatOrder.length) {
+      this.phase = "playing";
+      this.drawNextNumber();
+    }
   }
 
   private drawNextNumber(): boolean {
@@ -100,6 +110,13 @@ export class TambolaEngine implements GameEngine {
     }
 
     switch (move.type) {
+      case "shuffleTicket":
+      case "shuffleBoard":
+        return this.handleShuffleTicket(pid);
+      case "lockTicket":
+      case "lockBoard":
+      case "ready":
+        return this.handleLockTicket(pid);
       case "markCell":
         return this.handleMarkCell(pid, move.data as { row?: number; col?: number });
       case "claim":
@@ -109,7 +126,35 @@ export class TambolaEngine implements GameEngine {
     }
   }
 
+  private handleShuffleTicket(pid: string): MoveResult {
+    if (this.phase !== "arranging") {
+      return { ok: false, error: "Cannot shuffle ticket after match has started" };
+    }
+    if (this.readyPlayers.has(pid)) {
+      return { ok: false, error: "Ticket already locked / ready" };
+    }
+    this.tickets.set(pid, generateTambolaTicket(this.rng));
+    return this.result();
+  }
+
+  private handleLockTicket(pid: string): MoveResult {
+    if (this.phase !== "arranging") {
+      return { ok: false, error: "Match has already started" };
+    }
+    this.readyPlayers.add(pid);
+
+    // If all players are ready, start playing
+    if (this.seatOrder.every((id) => this.readyPlayers.has(id))) {
+      this.phase = "playing";
+      this.drawNextNumber();
+    }
+    return this.result();
+  }
+
   private handleMarkCell(pid: string, data?: { row?: number; col?: number }): MoveResult {
+    if (this.phase !== "playing") {
+      return { ok: false, error: "Match not in playing phase" };
+    }
     const row = data?.row;
     const col = data?.col;
     if (row == null || col == null || row < 0 || row > 2 || col < 0 || col > 8) {
@@ -130,6 +175,9 @@ export class TambolaEngine implements GameEngine {
   }
 
   private handleClaim(pid: string, claimType?: TambolaClaimType): MoveResult {
+    if (this.phase !== "playing") {
+      return { ok: false, error: "Match not in playing phase" };
+    }
     if (!claimType) return { ok: false, error: "Claim type required" };
 
     // Check if this claim type was already claimed by anyone
@@ -222,8 +270,10 @@ export class TambolaEngine implements GameEngine {
   getPublicState(): TambolaPublicState {
     const playersPub: TambolaPlayerPublic[] = this.seatOrder.map((pid) => ({
       id: pid,
+      name: this.nameOf.get(pid) || "Player",
       markedCount: this.countMarked(pid),
       claimsWon: Array.from(this.claimsWon.get(pid) || []),
+      isReady: this.readyPlayers.has(pid),
     }));
 
     return {
@@ -261,6 +311,14 @@ export class TambolaEngine implements GameEngine {
     this.tickets.delete(playerId);
     this.markedCells.delete(playerId);
     this.claimsWon.delete(playerId);
+    this.readyPlayers.delete(playerId);
+
+    if (this.phase === "arranging" && this.seatOrder.length > 0) {
+      if (this.seatOrder.every((id) => this.readyPlayers.has(id))) {
+        this.phase = "playing";
+        this.drawNextNumber();
+      }
+    }
 
     if (this.seatOrder.length < this.minPlayers) {
       if (!this.isOverFlag && this.seatOrder.length > 0) {
@@ -270,6 +328,9 @@ export class TambolaEngine implements GameEngine {
   }
 
   getPhaseTimerSeconds(): number {
+    if (this.phase === "arranging") {
+      return ARRANGE_TIMER_SECONDS;
+    }
     return Math.floor(this.opts.callIntervalMs / 1000);
   }
 
@@ -283,16 +344,28 @@ export class TambolaEngine implements GameEngine {
   }
 
   resolveDeadline(): void {
-    if (this.phase === "playing") {
+    if (this.phase === "arranging") {
+      for (const pid of this.seatOrder) {
+        this.readyPlayers.add(pid);
+      }
+      this.phase = "playing";
+      this.drawNextNumber();
+    } else if (this.phase === "playing") {
       this.drawNextNumber();
     }
   }
 
   pendingActors(): string[] {
+    if (this.phase === "arranging") {
+      return this.seatOrder.filter((id) => !this.readyPlayers.has(id) && this.isBot.has(id));
+    }
     return [];
   }
 
   applyAutoMove(playerId: string): MoveResult {
+    if (this.phase === "arranging") {
+      return this.handleLockTicket(playerId);
+    }
     if (this.phase !== "playing") return { ok: false, error: "Not playing" };
 
     const ticket = this.tickets.get(playerId);

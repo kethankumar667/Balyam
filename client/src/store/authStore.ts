@@ -5,7 +5,7 @@ import { capabilitiesFor, type Capabilities } from "@shared/permissions";
 import { useRoomStore } from "./roomStore";
 import { getSupabase, isSupabaseConfigured, SESSION_STORAGE_KEY } from "../lib/supabase/client";
 import { fetchProfile, saveProfile } from "../lib/supabase/profile";
-import { saveAccountDetails } from "../lib/accountGenerator";
+import { saveAccountDetails, clearAccountDetails } from "../lib/accountGenerator";
 
 /**
  * Whether this browser is a guest or a member.
@@ -178,6 +178,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     }
     saveLocalAccount(GUEST);
+    clearAccountDetails();
     try {
       useRoomStore.getState().setPlayerName("");
       useRoomStore.getState().setAvatarId(null);
@@ -210,16 +211,18 @@ function applySession(session: Session | null): void {
   accessToken = session?.access_token ?? null;
 
   if (!session?.user) {
-    const local = loadLocalAccount();
-    if (local.kind === "member") {
-      useAuthStore.setState({
-        ...local,
-        userId: null,
-        capabilities: capabilitiesFor("member"),
-        isMember: true,
-        ready: true,
-      });
-      return;
+    if (!isSupabaseConfigured) {
+      const local = loadLocalAccount();
+      if (local.kind === "member") {
+        useAuthStore.setState({
+          ...local,
+          userId: null,
+          capabilities: capabilitiesFor("member"),
+          isMember: true,
+          ready: true,
+        });
+        return;
+      }
     }
     applyGuest();
     return;
@@ -254,6 +257,14 @@ function applySession(session: Session | null): void {
 }
 
 function applyGuest(): void {
+  saveLocalAccount(GUEST);
+  clearAccountDetails();
+  try {
+    useRoomStore.getState().setPlayerName("");
+    useRoomStore.getState().setAvatarId(null);
+    localStorage.removeItem("mpg.playerName");
+    localStorage.removeItem("mpg.avatar");
+  } catch {}
   useAuthStore.setState({
     ...GUEST,
     userId: null,

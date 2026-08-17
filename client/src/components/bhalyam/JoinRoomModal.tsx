@@ -345,73 +345,25 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                          focus:outline-none focus:ring-2
                          transition-all duration-200
                          ${nameError
-                           ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
-                           : "border-bhalyam-cream-edge/80 dark:border-slate-700/80 focus:border-bhalyam-gold-dark dark:focus:border-amber-400 focus:ring-bhalyam-gold/40"}`}
+                            ? "border-bhalyam-ludo-red/70 focus:border-bhalyam-ludo-red focus:ring-bhalyam-ludo-red/30"
+                            : "border-bhalyam-cream-edge/80 dark:border-slate-700/80 focus:border-bhalyam-gold-dark dark:focus:border-amber-400 focus:ring-bhalyam-gold/40"}`}
             />
           </Field>
 
-          {/* Scan QR Code — a quiet link beside the code box for a member, the
-              main event for a guest, who has no other way in from here. */}
-          {canType ? (
-            <div className="flex justify-end -mb-1">
-              <button
-                type="button"
-                onClick={() => setScannerOpen(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-bhalyam-wood dark:text-amber-400
-                           hover:text-bhalyam-wood-dark dark:hover:text-amber-300 active:scale-95 transition cursor-pointer"
-              >
-                <ScanIcon className="w-4 h-4 text-[#EA5A1F]" />
-                Scan QR Code
-              </button>
-            </div>
-          ) : (
+          {/* Quick QR link for convenience */}
+          <div className="flex justify-end -mb-1">
             <button
               type="button"
               onClick={() => setScannerOpen(true)}
-              className="w-full inline-flex items-center justify-center gap-2.5
-                         min-h-[56px] rounded-2xl cursor-pointer
-                         bhalyam-gold-leaf text-bhalyam-wood-dark font-bold text-[15px]
-                         border border-bhalyam-gold-dark
-                         active:scale-[0.98] bhalyam-press-feedback
-                         focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/70
-                         focus:ring-offset-2 focus:ring-offset-bhalyam-cream-soft
-                         transition-all duration-200
-                         shadow-[0_6px_14px_-4px_rgba(228,177,40,0.6)]"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-bhalyam-wood dark:text-amber-400
+                         hover:text-bhalyam-wood-dark dark:hover:text-amber-300 active:scale-95 transition cursor-pointer"
             >
-              <ScanIcon className="w-5 h-5" />
-              Scan your friend&apos;s QR
+              <ScanIcon className="w-4 h-4 text-[#EA5A1F]" />
+              Scan QR Code
             </button>
-          )}
-
-          {/* What a guest has scanned, shown read-only. They could not have
-              typed it, so an editable box would invite them to change it into
-              a code they were never given. */}
-          {!canType && code ? (
-            <div
-              className="rounded-xl border-2 border-bhalyam-cream-edge/80 dark:border-slate-700/80
-                         bg-bhalyam-cream-soft dark:bg-[#0B0F19] px-3 py-2.5 text-center"
-            >
-              <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood dark:text-slate-400">
-                Scanned code
-              </div>
-              <div className="font-mono font-black text-xl tracking-[0.4em] text-bhalyam-wood-dark dark:text-slate-100">
-                {code}
-              </div>
-            </div>
-          ) : null}
-
-          {!canType && codeError ? (
-            <p
-              role="alert"
-              aria-live="polite"
-              className="text-[12px] font-semibold text-bhalyam-ludo-red leading-tight text-center"
-            >
-              {codeError}
-            </p>
-          ) : null}
+          </div>
 
           {/* Room code */}
-          {canType && (
           <Field
             htmlFor="join-code"
             label="Room code"
@@ -458,12 +410,8 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               </button>
             </div>
           </Field>
-          )}
 
-          {/* Submit. A guest sees it only once a scan has produced a code —
-              before that there is nothing to submit and a live button would
-              just be a way to generate an error. */}
-          {(canType || code) && (
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={busy}
@@ -483,11 +431,6 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               </>
             )}
           </button>
-          )}
-
-          {!canType && (
-            <SignInWall compact from="join" reason="Room codes are for playing with friends" />
-          )}
 
           {/* Form-level error fallback */}
           {formError && (

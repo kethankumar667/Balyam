@@ -483,9 +483,8 @@ export class RoomManager {
       turnTimer: null,
       simTimer: null,
       spectators: new Set<string>(),
-      // A guest may play but not gather — shared/permissions.ts. Their table
-      // is real in every other way: bots, Pass & Play seats, the full game.
-      sealed: hostIsGuest,
+      // All multiplayer tables are open for joining via room code
+      sealed: false,
       ludoOptions: { ...DEFAULT_LUDO_OPTIONS, ...(ludoOptions ?? {}) },
       snlOptions: { ...DEFAULT_SNL_OPTIONS, ...(snlOptions ?? {}) },
       rummyOptions: { ...DEFAULT_RUMMY_OPTIONS, ...(rummyOptions ?? {}) },
@@ -1139,9 +1138,6 @@ export class RoomManager {
       room.hostId = nextHost.id;
       for (const p of room.players.values()) {
         p.isHost = p.id === nextHost.id;
-      }
-      if (nextHost.isGuest) {
-        this.sealRoom(room);
       }
       logger.info({
         message: `Host failover: reallocated room ${room.code} host from ${departingPlayerId} to ${nextHost.name} (${nextHost.id})`,

@@ -97,7 +97,6 @@ import {
  */
 
 import AppLayout from "../components/layout/AppLayout";
-import SchoolGangWaitingBanner from "../components/bhalyam/SchoolGangWaitingBanner";
 import WhatAreWePlayingSection from "../components/bhalyam/WhatAreWePlayingSection";
 
 const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
@@ -116,9 +115,9 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   snake: StarGameGlyph,
   carrom: StarGameGlyph,
   roadrash: StarGameGlyph,
+  brickblocks: BlockBlastGlyph,
   tetris: BlockBlastGlyph,
   breakout: StarGameGlyph,
-  spacealien: StarGameGlyph,
   chess: StarGameGlyph,
   spacewar: StarGameGlyph,
   nokiacricket: HandCricketGlyph,
@@ -142,7 +141,6 @@ export default function BhalyamHome() {
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}
           />
-          <SchoolGangWaitingBanner onOpenJoinModal={() => setJoinOpen(true)} />
           <WelcomePlayerStrip onSelect={setSheetGame} />
           <GamesSection onSelect={setSheetGame} />
           <WhatAreWePlayingSection
@@ -162,9 +160,49 @@ export default function BhalyamHome() {
 
 function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
   const { playerName } = useRoomStore();
-  const displayName = playerName.trim() || "Champion";
+  const { isMember } = useAuthStore();
   const [theme] = useTheme();
   const isDark = theme === "dark";
+
+  if (!isMember) {
+    return (
+      <div className={`mb-5 p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+        isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D8BE]"
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl overflow-hidden bg-amber-100 dark:bg-slate-800 border border-amber-300 dark:border-slate-700 flex items-center justify-center shadow-inner flex-shrink-0">
+            <UserIcon className="w-5 h-5 text-amber-800 dark:text-amber-300" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[14px] font-black ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
+                Welcome to BHALYAM Lounge!
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/50">
+                Guest Mode
+              </span>
+            </div>
+            <p className="text-[11.5px] font-semibold text-[#6B5E52] dark:text-zinc-400 mt-0.5">
+              Jump into any game instantly vs bots or join friends with a room code.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => onSelect("uno")}
+            className="flex-1 sm:flex-initial min-h-[42px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Play UNO Now</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = playerName.trim() || "Champion";
 
   return (
     <div className={`mb-5 p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
@@ -181,7 +219,7 @@ function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =>
               Welcome back, {displayName}!
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/50">
-              Lvl 12
+              Member
             </span>
           </div>
           <p className="text-[11.5px] font-semibold text-[#6B5E52] dark:text-zinc-400 flex items-center gap-2 mt-0.5">
@@ -206,7 +244,7 @@ function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =>
         </button>
         <span className="flex-1 sm:flex-initial min-h-[44px] px-3 py-2 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-[11px] font-black whitespace-nowrap inline-flex items-center justify-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-          <span>Day 3 Bonus (+100 XP)</span>
+          <span>Daily Bonus (+100 XP)</span>
         </span>
       </div>
     </div>
@@ -1552,9 +1590,9 @@ export function GameTile({
     bingo: "/Bingo Tile.png",
     snake: "/Snake Game Tile.png",
     roadrash: "/BrickRacer Game Tile.png",
+    brickblocks: "/BlockBlast Game Tile.png",
     tetris: "/BlockBlast Game Tile.png",
     breakout: "/BrickBreakout Game Tile.png",
-    spacealien: "/SpacewarTile.png",
     carrom: "/Carrom Game Tile.png",
     chess: "/Chess Game Tile.png",
     spacewar: "/SpacewarTile.png",

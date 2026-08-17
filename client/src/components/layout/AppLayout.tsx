@@ -127,8 +127,11 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
             <div className="hidden lg:block h-full flex-shrink-0">
               <AppSidebar
                 onOpenJoin={() => setJoinOpen(true)}
+                onOpenCreateRoom={() => setJoinOpen(true)}
                 onOpenProfile={() => setProfileOpen(true)}
                 onOpenSettings={() => setSettingsOpen(true)}
+                onOpenNotifications={() => setNotificationsOpen(true)}
+                onOpenGameSheet={(slug) => handleSelectGame(slug as BhalyamGameSlug)}
               />
             </div>
           )}
@@ -156,6 +159,10 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
                       setMobileMenuOpen(false);
                       setJoinOpen(true);
                     }}
+                    onOpenCreateRoom={() => {
+                      setMobileMenuOpen(false);
+                      setJoinOpen(true);
+                    }}
                     onOpenProfile={() => {
                       setMobileMenuOpen(false);
                       setProfileOpen(true);
@@ -163,6 +170,14 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
                     onOpenSettings={() => {
                       setMobileMenuOpen(false);
                       setSettingsOpen(true);
+                    }}
+                    onOpenNotifications={() => {
+                      setMobileMenuOpen(false);
+                      setNotificationsOpen(true);
+                    }}
+                    onOpenGameSheet={(slug) => {
+                      setMobileMenuOpen(false);
+                      handleSelectGame(slug as BhalyamGameSlug);
                     }}
                     onCloseMobile={() => setMobileMenuOpen(false)}
                   />

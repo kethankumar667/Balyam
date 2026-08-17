@@ -12,7 +12,7 @@ export const GRID_CONFIG = {
 export const LANE_CENTERS: Record<LaneIndex, number> = {
   0: 2, // Left Lane (x in [1, 3])
   1: 5, // Center Lane (x in [4, 6])
-  2: 8, // Right Lane (x in [7, 9])
+  2: 7, // Right Lane (x in [6, 8])
 };
 
 export const LCD_THEME = {

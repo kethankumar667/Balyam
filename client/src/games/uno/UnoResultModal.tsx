@@ -60,7 +60,7 @@ export default function UnoResultModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs select-none overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-label="Match results"
@@ -69,7 +69,7 @@ export default function UnoResultModal({
       {isSelfWinner && <VictoryDance anchor={VICTORY_DANCE_ANCHOR} config={animConfig} />}
 
       <motion.div
-        className="relative w-full max-w-xl md:max-w-2xl rounded-[32px] bg-[#FFFDF6] border-2 border-[#EADFC7] shadow-[0_25px_60px_rgba(0,0,0,0.5)] overflow-hidden p-5 sm:p-7 md:p-8"
+        className="relative w-full max-w-xl md:max-w-2xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-[32px] bg-[#FFFDF6] border-2 border-[#EADFC7] shadow-[0_25px_60px_rgba(0,0,0,0.5)] overflow-hidden p-4 sm:p-6 md:p-8 my-auto"
         initial={animConfig.reducedMotion ? false : { scale: 0.88, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 360, damping: 26 }}
@@ -82,15 +82,17 @@ export default function UnoResultModal({
           onClick={onClose}
           type="button"
           aria-label="Close"
-          className="absolute top-4 right-4 sm:top-5 sm:right-5 w-8 h-8 rounded-full bg-[#EFE5D2] hover:bg-[#E2D5BE] active:scale-95 flex items-center justify-center text-[#735F4C] text-sm font-black transition z-20 shadow-xs cursor-pointer"
+          className="absolute top-3 right-3 sm:top-5 sm:right-5 w-8 h-8 rounded-full bg-[#EFE5D2] hover:bg-[#E2D5BE] active:scale-95 flex items-center justify-center text-[#735F4C] text-sm font-black transition z-20 shadow-xs cursor-pointer"
         >
           ✕
         </button>
 
-        {/* Top Trophy Header */}
-        <div className="relative z-10 flex flex-col items-center text-center pt-1 pb-2">
-          {/* 3D Golden Trophy Cup with Celebration Sprinkles */}
-          <div className="relative mb-2 flex items-center justify-center">
+        {/* Scrollable Modal Content */}
+        <div className="overflow-y-auto flex-1 pr-1 overscroll-contain space-y-3 sm:space-y-4">
+          {/* Top Trophy Header */}
+          <div className="relative z-10 flex flex-col items-center text-center pt-1 pb-1 sm:pb-2">
+            {/* 3D Golden Trophy Cup with Celebration Sprinkles */}
+            <div className="relative mb-1.5 sm:mb-2 flex items-center justify-center">
             {/* Confetti particles around trophy */}
             <svg
               className="absolute -top-3 w-40 h-20 pointer-events-none overflow-visible"
@@ -211,32 +213,32 @@ export default function UnoResultModal({
         </div>
 
         {/* 2-Column Main Content Body */}
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-5 items-center my-4 sm:my-5">
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 md:gap-5 items-center my-2 sm:my-4">
           {/* LEFT: Polaroid Memory Card */}
           <div className="md:col-span-5 flex justify-center">
-            <div className="relative w-full max-w-[210px] sm:max-w-[230px] bg-white p-3 pb-4 rounded-xl shadow-[0_6px_20px_rgba(0,0,0,0.12)] border border-[#E9DFCB] flex flex-col items-center transform -rotate-1 hover:rotate-0 transition-transform duration-300">
+            <div className="relative w-full max-w-[150px] sm:max-w-[180px] md:max-w-[220px] bg-white p-2.5 sm:p-3 pb-3 sm:pb-4 rounded-xl shadow-[0_6px_20px_rgba(0,0,0,0.12)] border border-[#E9DFCB] flex flex-col items-center transform -rotate-1 hover:rotate-0 transition-transform duration-300">
               {/* Masking tape on top-left */}
               <div
-                className="absolute -top-2.5 left-2.5 w-9 h-4 bg-[#F2E8D3]/90 border border-[#DECDB2]/70 -rotate-12 rounded-[2px] shadow-xs pointer-events-none"
+                className="absolute -top-2.5 left-2.5 w-7 sm:w-9 h-3.5 sm:h-4 bg-[#F2E8D3]/90 border border-[#DECDB2]/70 -rotate-12 rounded-[2px] shadow-xs pointer-events-none"
                 aria-hidden
               />
               {/* Masking tape on top-right */}
               <div
-                className="absolute -top-2.5 right-2.5 w-9 h-4 bg-[#F2E8D3]/90 border border-[#DECDB2]/70 rotate-12 rounded-[2px] shadow-xs pointer-events-none"
+                className="absolute -top-2.5 right-2.5 w-7 sm:w-9 h-3.5 sm:h-4 bg-[#F2E8D3]/90 border border-[#DECDB2]/70 rotate-12 rounded-[2px] shadow-xs pointer-events-none"
                 aria-hidden
               />
 
               {/* Cheerful Group Celebration Illustration */}
-              <div className="w-full aspect-[4/3.2] rounded-lg overflow-hidden bg-gradient-to-b from-[#FFF5D6] via-[#FFF9E6] to-[#FFEEC2] border border-[#F5E8C8] flex items-center justify-center relative p-1.5">
+              <div className="w-full aspect-[4/3.2] rounded-lg overflow-hidden bg-gradient-to-b from-[#FFF5D6] via-[#FFF9E6] to-[#FFEEC2] border border-[#F5E8C8] flex items-center justify-center relative p-1">
                 <CelebrationIllustration winnerName={winnerPlayer?.name ?? "Winner"} />
               </div>
 
               {/* Handwritten style caption */}
-              <div className="text-center mt-2.5 space-y-0.5">
-                <p className="text-xs sm:text-[13px] font-black text-[#3A2819] leading-tight font-body">
+              <div className="text-center mt-2 space-y-0.5">
+                <p className="text-[11px] sm:text-xs md:text-[13px] font-black text-[#3A2819] leading-tight font-body">
                   Great game!
                 </p>
-                <p className="text-[11px] sm:text-xs font-bold text-[#6D533C] leading-tight">
+                <p className="text-[10px] sm:text-[11px] md:text-xs font-bold text-[#6D533C] leading-tight">
                   Well played everyone! 👏
                 </p>
               </div>
@@ -244,14 +246,14 @@ export default function UnoResultModal({
           </div>
 
           {/* RIGHT: Scores Leaderboard */}
-          <div className="md:col-span-7 bg-[#FCF8EE] border border-[#EDE2CC] rounded-2xl p-3.5 sm:p-4 space-y-2">
-            <div className="flex items-center justify-between px-1 pb-1">
-              <span className="text-[11px] font-black uppercase tracking-wider text-[#8A7564]">
+          <div className="md:col-span-7 bg-[#FCF8EE] border border-[#EDE2CC] rounded-2xl p-2.5 sm:p-3.5 md:p-4 space-y-1.5 sm:space-y-2">
+            <div className="flex items-center justify-between px-1 pb-0.5">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-[#8A7564]">
                 SCORES
               </span>
             </div>
 
-            <div className="space-y-1.5 max-h-[190px] overflow-y-auto pr-1">
+            <div className="space-y-1 sm:space-y-1.5 max-h-[140px] sm:max-h-[180px] overflow-y-auto pr-1">
               {ranked.map((id, index) => {
                 const isWinnerRow = id === winnerId;
                 const p = players.find((pl) => pl.id === id);
@@ -261,7 +263,7 @@ export default function UnoResultModal({
                 return (
                   <div
                     key={id}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-colors ${
+                    className={`flex items-center gap-2 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-colors ${
                       isWinnerRow
                         ? "bg-[#FFECC7] border border-[#FCD68A] text-[#2B1B0E] shadow-xs"
                         : "bg-white/60 hover:bg-white border border-[#EDE2CC]/60 text-[#4A3828]"
@@ -269,7 +271,7 @@ export default function UnoResultModal({
                   >
                     {/* Rank Badge */}
                     <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center font-black text-[11px] shrink-0 ${
+                      className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center font-black text-[10px] sm:text-[11px] shrink-0 ${
                         rankNum === 1
                           ? "bg-[#F59E0B] text-white"
                           : rankNum === 2
@@ -283,7 +285,7 @@ export default function UnoResultModal({
                     </div>
 
                     {/* Avatar */}
-                    <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-amber-300/40 bg-amber-100/50 flex items-center justify-center text-[10px]">
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 border border-amber-300/40 bg-amber-100/50 flex items-center justify-center text-[10px]">
                       {avatarOpt?.src ? (
                         <img
                           src={avatarOpt.src}
@@ -305,7 +307,7 @@ export default function UnoResultModal({
                     {/* Score */}
                     <span
                       className={`tabular-nums shrink-0 font-black ${
-                        isWinnerRow ? "text-amber-800 text-sm" : "text-[#7C6652]"
+                        isWinnerRow ? "text-amber-800 text-xs sm:text-sm" : "text-[#7C6652]"
                       }`}
                     >
                       {state.scores[id] ?? 0}
@@ -318,7 +320,7 @@ export default function UnoResultModal({
         </div>
 
         {/* BOTTOM ACTION BUTTONS */}
-        <div className="relative z-10 mt-5 pt-1 space-y-2.5">
+        <div className="relative z-10 mt-3 sm:mt-5 pt-1 space-y-2 sm:space-y-2.5">
           {/* Rematch Status / Primary Action Button */}
           {rematch.status === "accepted" && rematch.startsAt ? (
             <CountdownBox startsAt={rematch.startsAt} />
@@ -352,14 +354,14 @@ export default function UnoResultModal({
                   <button
                     type="button"
                     onClick={acceptRematch}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm cursor-pointer shadow"
+                    className="flex-1 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm cursor-pointer shadow"
                   >
                     Accept
                   </button>
                   <button
                     type="button"
                     onClick={declineRematch}
-                    className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm cursor-pointer shadow"
+                    className="flex-1 py-2 sm:py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm cursor-pointer shadow"
                   >
                     Decline
                   </button>
@@ -371,32 +373,33 @@ export default function UnoResultModal({
             <button
               type="button"
               onClick={requestRematch}
-              className="w-full py-3.5 px-6 rounded-2xl font-black text-base text-white bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] hover:from-[#EA580C] hover:to-[#9A3412] active:scale-[0.98] shadow-[0_4px_16px_rgba(234,88,12,0.4)] flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full py-3 sm:py-3.5 px-4 sm:px-6 rounded-2xl font-black text-sm sm:text-base text-white bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] hover:from-[#EA580C] hover:to-[#9A3412] active:scale-[0.98] shadow-[0_4px_16px_rgba(234,88,12,0.4)] flex items-center justify-center gap-2 transition cursor-pointer"
             >
-              <span className="text-lg animate-spin-slow">🔄</span>
+              <span className="text-base sm:text-lg animate-spin-slow">🔄</span>
               <span>Play Again</span>
             </button>
           )}
 
           {/* Secondary Action Row: Continue & Leave Table */}
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-0.5 sm:pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="py-3 px-4 rounded-2xl font-black text-sm text-[#3E2C1E] bg-[#EFE5D3] hover:bg-[#E5D7C0] active:scale-[0.98] border border-[#DFCDB5] transition cursor-pointer text-center"
+              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-2xl font-black text-xs sm:text-sm text-[#3E2C1E] bg-[#EFE5D3] hover:bg-[#E5D7C0] active:scale-[0.98] border border-[#DFCDB5] transition cursor-pointer text-center"
             >
               Continue
             </button>
             <button
               type="button"
               onClick={onLeave ?? onClose}
-              className="py-3 px-4 rounded-2xl font-black text-sm text-white bg-[#4A2D1B] hover:bg-[#382012] active:scale-[0.98] transition cursor-pointer text-center"
+              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-2xl font-black text-xs sm:text-sm text-white bg-[#4A2D1B] hover:bg-[#382012] active:scale-[0.98] transition cursor-pointer text-center"
             >
               Leave Table
             </button>
           </div>
         </div>
-      </motion.div>
+      </div>
+    </motion.div>
     </div>
   );
 }

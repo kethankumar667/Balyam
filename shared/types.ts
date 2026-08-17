@@ -1785,13 +1785,15 @@ export interface TambolaClaimWin {
 
 export interface TambolaPlayerPublic {
   id: string;
+  name?: string;
   markedCount: number;
   claimsWon: TambolaClaimType[];
+  isReady?: boolean;
 }
 
 export interface TambolaPublicState {
   kind: "tambola";
-  phase: "playing" | "finished";
+  phase: "arranging" | "playing" | "finished";
   calledNumbers: number[];
   currentCall: number | null;
   callDeadline: number | null;

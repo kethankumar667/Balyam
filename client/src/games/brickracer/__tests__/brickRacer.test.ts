@@ -26,7 +26,7 @@ describe("Brick Game Formula 1 Core Engine", () => {
 
     expect(player.moveRight()).toBe(true);
     expect(player.lane).toBe(2);
-    expect(player.centerCol).toBe(8);
+    expect(player.centerCol).toBe(7);
 
     // Cannot move beyond right lane
     expect(player.moveRight()).toBe(false);

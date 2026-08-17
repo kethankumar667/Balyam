@@ -12,9 +12,9 @@ Allow: /verify-email
 Allow: /nokiacricket
 Allow: /snake
 Allow: /brickracer
+Allow: /brickblocks
 Allow: /tetris
 Allow: /breakout
-Allow: /spacealien
 
 # Disallow private realtime rooms, dynamic sessions, and user profiles
 Disallow: /profile
