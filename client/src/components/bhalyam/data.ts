@@ -1,11 +1,14 @@
 /**
  * BHALYAM game catalog.
  *
- * The slug union is intentionally wider than the server's `GameKind`:
- * "coming soon" games live here in the lobby with `maintenance: true`
- * so players see them but can't open a room until the engine ships.
- * The maintenance tile is a soft-disabled click — see `BhalyamHome`'s
- * `underMaintenance` gate.
+ * The slug union is wider than the server's `GameKind` because several
+ * titles are client-only (the retro handheld games run entirely in the
+ * browser and never open a server room).
+ *
+ * A tile can still be soft-disabled with `maintenance: true` — see
+ * `BhalyamHome`'s `underMaintenance` gate — but nothing in the catalogue
+ * uses it right now: the "coming soon" quizzes and Bounce were deleted
+ * rather than left on screen as tiles that go nowhere.
  *
  * Top-of-array order is also the order of the home page tile grid. The
  * home grid is sliced to 6; everything else surfaces only on the
@@ -27,13 +30,9 @@ export type BhalyamGameSlug =
   | "chess"
   | "spacewar"
   | "nokiacricket"
-  // Coming soon — NOT in GameKind. Maintenance tiles only.
   | "namesplaceanimal"
   | "tambola"
-  | "samethalu"
-  | "telugucinemalu"
   | "snake"
-  | "bounce"
   | "roadrash"
   | "tetris"
   | "breakout"
@@ -57,7 +56,6 @@ export type BhalyamGameSlug =
  */
 export type GameTag =
   | "retro"
-  | "upcoming"
   | "solo"
   | "multiplayer"
   | "board"
@@ -85,12 +83,6 @@ export const GAME_CATEGORIES: readonly GameCategory[] = [
     label: "Retro Games",
     blurb: "Nokia monochrome & 9999-in-1 Brick Game handheld arcade legends.",
     accent: { from: "#8BAC0F", to: "#306230" },
-  },
-  {
-    id: "upcoming",
-    label: "Upcoming",
-    blurb: "New retro & multiplayer titles currently in development and maintenance.",
-    accent: { from: "#F59E0B", to: "#B45309" },
   },
   {
     id: "solo",
@@ -148,9 +140,10 @@ export interface BhalyamGameCard {
 }
 
 /**
- * A tile is "locked" — click-disabled and shown in the coming-soon section —
- * only when it's under maintenance AND not explicitly kept accessible. Star
- * Game sets `accessible: true` so it shows the badge yet still plays.
+ * A tile is "locked" — click-disabled — only when it's under maintenance AND
+ * not explicitly kept accessible, so a game can wear the badge and still be
+ * playable. No game sets either flag today; this is the switch for taking one
+ * offline without deleting it from the catalogue.
  */
 export function isLocked(g: BhalyamGameCard): boolean {
   return g.maintenance === true && g.accessible !== true;
@@ -385,38 +378,6 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     accent: { from: "#D946EF", to: "#C026D3" },
   },
   {
-    slug: "samethalu",
-    tags: ["upcoming"],
-    title: "Samethalu Quiz",
-    badge: "📜 Telugu Lore",
-    nostalgiaQuote: "Ammamma's verandah wisdom.",
-    playerRange: "1–4 Players",
-    duration: "5–10 min",
-    paperBg: "linear-gradient(155deg, #2D1A0E 0%, #1A0E07 45%, #0D0703 100%)",
-    paperBorder: "rgba(180, 83, 9, 0.55)",
-    btnGradient: { from: "#B45309", to: "#78350F", shadow: "#451A03" },
-    blurb:
-      "Telugu proverbs from Ammamma's verandah. Complete the saying, learn the lesson, win the round.",
-    accent: { from: "#B45309", to: "#78350F" },
-    maintenance: true,
-  },
-  {
-    slug: "telugucinemalu",
-    tags: ["upcoming"],
-    title: "Telugu Cinema Quiz",
-    badge: "🎬 Tollywood Adda",
-    nostalgiaQuote: "Guess the blockbuster dialogue.",
-    playerRange: "1–4 Players",
-    duration: "5–10 min",
-    paperBg: "linear-gradient(155deg, #350612 0%, #1D030A 45%, #0E0105 100%)",
-    paperBorder: "rgba(244, 63, 94, 0.55)",
-    btnGradient: { from: "#F43F5E", to: "#BE123C", shadow: "#881337" },
-    blurb:
-      "Guess the film. Hint by hint, dialogue by dialogue. Friday-release adda energy.",
-    accent: { from: "#F43F5E", to: "#BE123C" },
-    maintenance: true,
-  },
-  {
     slug: "snake",
     tags: ["retro", "solo", "multiplayer"],
     theme: "Retro Snake 🐍",
@@ -447,23 +408,6 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     blurb:
       "Authentic retro 90s monochrome 2D cricket. 1-bit LCD graphics, pitch bounce timing, and pure square-wave buzzer nostalgia.",
     accent: { from: "#10B981", to: "#059669" },
-  },
-  {
-    slug: "bounce",
-    tags: ["upcoming"],
-    theme: "Red Ball 🔴",
-    badge: "🔴 Red Ball 3310",
-    nostalgiaQuote: "Pass rings, avoid spikes!",
-    title: "Bounce",
-    playerRange: "1 Player",
-    duration: "5–15 min",
-    paperBg: "linear-gradient(155deg, #38081E 0%, #200411 45%, #100208 100%)",
-    paperBorder: "rgba(236, 72, 153, 0.55)",
-    btnGradient: { from: "#EC4899", to: "#BE185D", shadow: "#831843" },
-    blurb:
-      "Classic red ball platformer. Pass through gold rings, avoid spikes, and finish the level.",
-    accent: { from: "#EC4899", to: "#DB2777" },
-    maintenance: true,
   },
   {
     slug: "roadrash",

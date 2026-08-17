@@ -22,10 +22,11 @@ Eighteen games ship in `GameKind` (`shared/types.ts`); the home catalog
 | **Arcade & quick** | Rock Paper Scissors, Hand Cricket, Snake, Block Blast, Space War, Road Rash |
 | **Classroom** | Word Building |
 
-The Samethalu and Telugu Cinema quizzes were removed — engines, boards,
-question banks and wiring are all gone. Their tiles and icons deliberately
-remain in the catalog as "coming soon" entries, so the artwork survives and
-the slugs stay available if either is rebuilt.
+The Samethalu and Telugu Cinema quizzes and Bounce are gone — engines,
+boards, question banks, catalog entries, slugs, icons and wiring have all
+been deleted, along with the "Upcoming" filter that only ever held them.
+Their tile artwork is still in `client/public/` (`SamethaluTile.png`,
+`telugu cinemalu.png`, `Bounce Game Tile.png`) if any of them is rebuilt.
 
 Two allow-lists worth knowing, both enforced server-side:
 

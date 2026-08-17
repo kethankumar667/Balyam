@@ -64,7 +64,7 @@ export default function WhatAreWePlayingSection({
       games: [
         { name: "Tambola", slug: "tambola" as BhalyamGameSlug },
         { name: "Rock Paper Scissors", slug: "rps" as BhalyamGameSlug },
-        { name: "Telugu Cinemalu", slug: "telugucinemalu" as BhalyamGameSlug },
+        { name: "Star Game", slug: "stargame" as BhalyamGameSlug },
       ],
     },
   ];

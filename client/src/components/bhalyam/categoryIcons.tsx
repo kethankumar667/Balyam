@@ -37,7 +37,6 @@ import {
  */
 export const CATEGORY_ICON: Record<GameTag, ComponentType<BhalyamIconProps>> = {
   retro: StarGameGlyph,
-  upcoming: KiteIcon,
   solo: JoystickGlyph,
   multiplayer: RpsGlyph,
   board: LudoGlyph,

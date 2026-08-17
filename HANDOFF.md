@@ -88,8 +88,8 @@ Now:
   stand-ins; real `.mp3` files dropped at the manifest paths win automatically.
 - **i18n exists but is barely applied.** `LanguageManager` + 7 locale catalogues
   are built and tested; only 2 of 192 `.tsx` files are migrated. Game *content*
-  (Samethalu proverbs, Telugu Cinemalu, English word dictionaries) is not
-  translatable — those need per-language corpora, not translation.
+  (English word dictionaries, Name-Place-Animal prompts) is not translatable —
+  those need per-language corpora, not translation.
 - **`client/public/illustrations/` is 33 MB**, five files still named
   `ChatGPT Image ....png` at 2–3 MB each. A WebP pass would likely cut ~90% with
   no visible difference. On the mobile connections these players are on, that is

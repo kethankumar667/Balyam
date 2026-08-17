@@ -165,27 +165,6 @@ export const TambolaGlyph = makeIcon(
   </>,
 );
 
-export const TeluguCinemaluGlyph = makeIcon(
-  <>
-    {/* Film clapboard with diagonal stripes */}
-    <path d="M3 9h18v12H3z" />
-    <path d="M3 5l4-2 3 4M9 4l4-2 3 4M15 3l4-2 3 4" />
-    <path d="M3 9l18-4" />
-  </>,
-);
-
-export const SamethaluGlyph = makeIcon(
-  <>
-    {/* Palm-leaf manuscript — long horizontal leaves with a binding cord
-        and a faint script line. Reads as "grandma's wisdom book". */}
-    <rect x="3" y="6" width="18" height="4" rx="1" />
-    <rect x="3" y="13.5" width="18" height="4" rx="1" />
-    <path d="M5 8h14M5 15.5h14" strokeWidth="1.2" opacity="0.55" />
-    <circle cx="6.5" cy="11.8" r="0.7" fill="currentColor" stroke="none" />
-    <path d="M6.5 4.5v15" strokeWidth="1.2" />
-  </>,
-);
-
 /**
  * Gamepad — read as "games catalog" at every small size.
  *

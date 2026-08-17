@@ -35,8 +35,6 @@ import {
   DotsBoxesGlyph,
   NamePlaceAnimalGlyph,
   TambolaGlyph,
-  TeluguCinemaluGlyph,
-  SamethaluGlyph,
   StarGameGlyph,
   BingoGlyph,
 } from "./icons";
@@ -74,12 +72,9 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   dotsboxes: DotsBoxesGlyph,
   namesplaceanimal: NamePlaceAnimalGlyph,
   tambola: TambolaGlyph,
-  samethalu: SamethaluGlyph,
-  telugucinemalu: TeluguCinemaluGlyph,
   stargame: StarGameGlyph,
   bingo: BingoGlyph,
   snake: StarGameGlyph,
-  bounce: StarGameGlyph,
   roadrash: StarGameGlyph,
   tetris: StarGameGlyph,
   breakout: StarGameGlyph,
@@ -91,11 +86,11 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
 };
 
 /**
- * The home tile gate (`maintenance: true`) prevents the sheet from
- * opening with one of the "coming soon" slugs, so when we reach the
- * room-creation path below, `game` is guaranteed to be a real
- * GameKind at runtime. TypeScript can't see that proof; this helper
- * makes the narrowing explicit so callers don't need a wide cast.
+ * The catalogue slug union is wider than the server's `GameKind` — the
+ * browser-only retro titles never open a room — so by the time we reach the
+ * room-creation path below, `game` has already been filtered down to a real
+ * GameKind at runtime. TypeScript can't see that proof; this helper makes the
+ * narrowing explicit so callers don't need a wide cast.
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
@@ -423,11 +418,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
    *
    * `PLAYABLE_SLUGS` is the runtime allow-list, and `asGameKind` THROWS for
    * anything outside it — which is right for catching a wiring mistake, but
-   * it is the wrong thing to happen when a player taps a tile we chose to
-   * keep on screen. The Samethalu and Telugu Cinema quizzes were removed
-   * while their tiles and icons stayed, so this is now a real, reachable
-   * state rather than a defensive branch: show the tile's own artwork and say
-   * plainly that the game is gone.
+   * it is the wrong thing to happen when a player taps a tile that is on
+   * screen. Rather than throw, show the tile's own artwork and say plainly
+   * that the game is gone.
+   *
+   * Every catalogue slug is either in the allow-list or redirected by the
+   * effect above (the browser-only retro titles), so this is a guard rather
+   * than a state players should reach.
    */
   if (!PLAYABLE_SLUGS.has(game)) {
     return <UnavailableGameSheet game={game} onClose={onClose} />;
