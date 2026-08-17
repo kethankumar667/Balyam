@@ -857,10 +857,10 @@ export default function Room() {
       <div
         className={
           FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
-            ? "bhalyam-font bhalyam-paper h-full overflow-hidden p-0"
+            ? "bhalyam-font bhalyam-paper h-full min-h-[100dvh] overflow-hidden p-0"
             : ludoInPlay
-              ? "bhalyam-font bhalyam-paper min-h-full p-1"
-              : "bhalyam-font bhalyam-paper min-h-full p-2 sm:p-4 pb-12"
+              ? "bhalyam-font bhalyam-paper min-h-full min-h-[100dvh] p-1 pb-[max(1rem,env(safe-area-inset-bottom))]"
+              : "bhalyam-font bhalyam-paper min-h-full min-h-[100dvh] p-2 sm:p-4 pb-[max(3rem,calc(env(safe-area-inset-bottom)+1.5rem))]"
         }
       >
       <div
@@ -1525,7 +1525,7 @@ export default function Room() {
  */
 function ConnectingScreen({ code }: { code?: string }) {
   return (
-    <div className="bhalyam-font bhalyam-paper min-h-screen flex flex-col items-center justify-center gap-7 p-6 text-center">
+    <div className="bhalyam-font bhalyam-paper min-h-[100dvh] flex flex-col items-center justify-center gap-7 p-6 text-center pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="relative h-20 w-20" aria-hidden>
         <span className="absolute inset-0 rounded-full border-4 border-[#E4B128]/25" />
         <span className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#E4B128] animate-spin" />
@@ -1583,7 +1583,7 @@ function NameEntryForRoom({
   const trimmed = draft.trim().slice(0, 20);
   const canSubmit = trimmed.length >= 1;
   return (
-    <div className="bhalyam-font bhalyam-paper min-h-screen flex items-center justify-center p-4">
+    <div className="bhalyam-font bhalyam-paper min-h-[100dvh] flex items-center justify-center p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <form
         onSubmit={(e) => {
           e.preventDefault();

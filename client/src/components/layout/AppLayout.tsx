@@ -53,9 +53,10 @@ interface AppLayoutProps {
    * yet needs an ordinary way back.
    */
   chrome?: boolean;
+  sidebar?: boolean;
 }
 
-export default function AppLayout({ children, onSelectGame, chrome = true }: AppLayoutProps) {
+export default function AppLayout({ children, onSelectGame, chrome = true, sidebar = true }: AppLayoutProps) {
   const [theme] = useTheme();
   const isDark = theme === "dark";
 
@@ -112,13 +113,17 @@ export default function AppLayout({ children, onSelectGame, chrome = true }: App
             onOpenSettings={() => setSettingsOpen(true)}
             onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
             onSelectGame={handleSelectGame}
+            /* The header used to hardcode `3` while this component held the
+               real list — a badge that could never be cleared by reading
+               anything. Now it counts, and renders nothing at zero. */
+            unreadCount={notifications.filter((n) => n.unread).length}
           />
         )}
 
         {/* Layout Body Container */}
         <div className="flex-1 flex overflow-hidden relative">
           {/* Desktop Left Sidebar (Permanently fixed, never scrolls with page) */}
-          {chrome && (
+          {chrome && sidebar && (
             <div className="hidden lg:block h-full flex-shrink-0">
               <AppSidebar
                 onOpenJoin={() => setJoinOpen(true)}

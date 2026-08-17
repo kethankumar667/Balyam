@@ -184,14 +184,23 @@ export function useSignIn(): SignInState {
   };
 }
 
-/* ──────────────────────── Sign up ──────────────────────── */
+import { saveAccountDetails, type UserAccountDetails } from "../../lib/accountGenerator";
+
+export interface SignUpExtraData {
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  gender?: string;
+  accountId?: string;
+  avatarId?: string;
+}
 
 export interface SignUpState {
   loading: boolean;
   error: string | null;
   configured: boolean;
-  /** `displayName` is stored on the user so the profile row starts named. */
-  submit: (email: string, password: string, displayName: string) => void;
+  /** `displayName` and extra metadata are stored on the profile */
+  submit: (email: string, password: string, displayName: string, extra?: SignUpExtraData) => void;
   withGoogle: () => void;
   clearError: () => void;
 }
@@ -204,9 +213,23 @@ export function useSignUp(): SignUpState {
   const { run } = useTimer();
 
   const submit = useCallback(
-    (email: string, password: string, displayName: string) => {
+    (email: string, password: string, displayName: string, extra?: SignUpExtraData) => {
       setError(null);
       setLoading(true);
+
+      // Persist local account details
+      if (extra) {
+        saveAccountDetails({
+          firstName: extra.firstName || "",
+          lastName: extra.lastName || "",
+          displayName: displayName.trim(),
+          email: email.trim(),
+          dob: extra.dob || "",
+          gender: extra.gender || "",
+          accountId: extra.accountId || "",
+          createdAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+        });
+      }
 
       const supabase = getSupabase();
       if (!supabase) {
@@ -224,7 +247,15 @@ export function useSignUp(): SignUpState {
           options: {
             // Read by the signup trigger, so the profile row is created with
             // a name instead of being filled in by a later round trip.
-            data: { display_name: displayName.trim() || null },
+            data: {
+              display_name: displayName.trim() || null,
+              first_name: extra?.firstName || null,
+              last_name: extra?.lastName || null,
+              dob: extra?.dob || null,
+              gender: extra?.gender || null,
+              account_id: extra?.accountId || null,
+              avatar_id: extra?.avatarId || null,
+            },
             emailRedirectTo: redirectTo("/verify-email?state=verified"),
           },
         })

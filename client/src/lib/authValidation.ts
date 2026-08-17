@@ -39,6 +39,37 @@ export function validateName(raw: string): FieldError {
   return null;
 }
 
+export function validateFirstName(raw: string): FieldError {
+  const name = raw.trim();
+  if (!name) return "Enter your first name.";
+  if (name.length < 2) return "First name must be at least 2 characters.";
+  if (name.length > 30) return "First name is too long.";
+  return null;
+}
+
+export function validateLastName(raw: string): FieldError {
+  const name = raw.trim();
+  if (!name) return "Enter your last name.";
+  if (name.length < 1) return "Enter your last name.";
+  if (name.length > 30) return "Last name is too long.";
+  return null;
+}
+
+export function validateDob(raw: string): FieldError {
+  if (!raw) return "Select your date of birth.";
+  const date = new Date(raw);
+  if (isNaN(date.getTime())) return "Enter a valid date of birth.";
+  const year = date.getFullYear();
+  const currentYear = new Date().getFullYear();
+  if (year < 1920 || year > currentYear) return "Enter a valid year of birth.";
+  return null;
+}
+
+export function validateGender(raw: string): FieldError {
+  if (!raw) return "Please select your gender.";
+  return null;
+}
+
 /** Minimum length, stated up front rather than after a failed submit. */
 export const PASSWORD_MIN = 8;
 

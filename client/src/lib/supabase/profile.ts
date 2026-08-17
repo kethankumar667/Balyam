@@ -23,12 +23,24 @@ import { getSupabase } from "./client";
 export interface Profile {
   displayName: string | null;
   avatarId: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  accountId?: string | null;
 }
 
 /** Row shape, snake_case as Postgres has it. Kept private to this module. */
 interface ProfileRow {
   display_name: string | null;
   avatar_id: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  account_id?: string | null;
 }
 
 /**
@@ -44,16 +56,20 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("display_name, avatar_id")
+    .select("display_name, avatar_id, first_name, last_name, email, dob, gender, account_id")
     .eq("id", userId)
     .maybeSingle<ProfileRow>();
-  console.log("BHALYAM PROFILE TEST", {
-    userId,
-    data,
-    error,
-  });
   if (error || !data) return null;
-  return { displayName: data.display_name, avatarId: data.avatar_id };
+  return {
+    displayName: data.display_name,
+    avatarId: data.avatar_id,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    email: data.email,
+    dob: data.dob,
+    gender: data.gender,
+    accountId: data.account_id,
+  };
 }
 
 /**
@@ -63,10 +79,6 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
  * signup trigger creates one, but a project restored from a backup, or an
  * account made before that trigger existed, would otherwise have nothing to
  * update and fail silently forever.
- *
- * Resolves `false` on failure instead of throwing. A profile that did not
- * save is a mild annoyance the player can fix by typing their name again;
- * an exception thrown from a name-change handler is a crash.
  */
 export async function saveProfile(
   userId: string,
@@ -80,6 +92,12 @@ export async function saveProfile(
       id: userId,
       display_name: profile.displayName?.trim() || null,
       avatar_id: profile.avatarId,
+      first_name: profile.firstName?.trim() || null,
+      last_name: profile.lastName?.trim() || null,
+      email: profile.email?.trim() || null,
+      dob: profile.dob || null,
+      gender: profile.gender || null,
+      account_id: profile.accountId || null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "id" },

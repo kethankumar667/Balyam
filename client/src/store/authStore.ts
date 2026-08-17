@@ -5,6 +5,7 @@ import { capabilitiesFor, type Capabilities } from "@shared/permissions";
 import { useRoomStore } from "./roomStore";
 import { getSupabase, isSupabaseConfigured, SESSION_STORAGE_KEY } from "../lib/supabase/client";
 import { fetchProfile, saveProfile } from "../lib/supabase/profile";
+import { saveAccountDetails } from "../lib/accountGenerator";
 
 /**
  * Whether this browser is a guest or a member.
@@ -139,15 +140,12 @@ function initialState(): StoredAccount & { userId: string | null; ready: boolean
   if (typeof window === "undefined" || typeof localStorage === "undefined") {
     return { ...GUEST, userId: null, ready: true };
   }
-  if (!isSupabaseConfigured) {
-    return { ...loadLocalAccount(), userId: null, ready: true };
+  const local = loadLocalAccount();
+  if (local.kind === "member") {
+    return { ...local, userId: null, ready: true };
   }
-  // A stale local flag from before this build had keys must not outrank the
-  // session, which is now the only thing that decides membership.
-  try {
-    localStorage.removeItem(ACCOUNT_KEY);
-  } catch {
-    /* nothing to clean up */
+  if (!isSupabaseConfigured) {
+    return { ...local, userId: null, ready: true };
   }
   const peeked = peekStoredSession();
   return peeked
@@ -163,9 +161,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
   isMember: initial.kind === "member",
 
   signInLocal: (email) => {
-    // Configured builds get their membership from the session; letting this
-    // write a flag too would give them a second, unverified source of truth.
-    if (isSupabaseConfigured) return;
     const next: StoredAccount = {
       kind: "member",
       email: email.trim().toLowerCase() || null,
@@ -199,6 +194,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 }));
 
+if (typeof window !== "undefined") {
+  (window as any).__authStore = useAuthStore;
+}
+
 /* ──────────────────── Session → store, and profile sync ──────────────────── */
 
 /** Latest access token, kept outside React for the socket payloads below. */
@@ -211,10 +210,38 @@ function applySession(session: Session | null): void {
   accessToken = session?.access_token ?? null;
 
   if (!session?.user) {
+    const local = loadLocalAccount();
+    if (local.kind === "member") {
+      useAuthStore.setState({
+        ...local,
+        userId: null,
+        capabilities: capabilitiesFor("member"),
+        isMember: true,
+        ready: true,
+      });
+      return;
+    }
     applyGuest();
     return;
   }
   const createdAt = Date.parse(session.user.created_at ?? "");
+  const meta = session.user.user_metadata;
+  if (meta) {
+    saveAccountDetails({
+      firstName: meta.first_name || "",
+      lastName: meta.last_name || "",
+      displayName: meta.display_name || session.user.email?.split("@")[0] || "Player",
+      email: session.user.email || "",
+      dob: meta.dob || "",
+      gender: meta.gender || "",
+      accountId: meta.account_id || "",
+      createdAt: new Date(session.user.created_at || Date.now()).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+    });
+  }
   useAuthStore.setState({
     kind: "member",
     email: session.user.email ?? null,
@@ -260,11 +287,22 @@ async function startProfileSync(userId: string): Promise<void> {
 
   let lastSynced = { displayName: remote?.displayName ?? null, avatarId: remote?.avatarId ?? null };
 
-  if (remote?.displayName || remote?.avatarId) {
+  if (remote?.displayName || remote?.avatarId || remote?.accountId) {
     if (remote.displayName) useRoomStore.getState().setPlayerName(remote.displayName);
     if (remote.avatarId) useRoomStore.getState().setAvatarId(remote.avatarId);
+    saveAccountDetails({
+      firstName: remote.firstName || "",
+      lastName: remote.lastName || "",
+      displayName: remote.displayName || "Player",
+      email: remote.email || "",
+      dob: remote.dob || "",
+      gender: remote.gender || "",
+      accountId: remote.accountId || "",
+      createdAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+    });
     // A field the row left empty is still worth carrying up from here.
     const merged = {
+      ...remote,
       displayName: remote.displayName ?? local.displayName,
       avatarId: remote.avatarId ?? local.avatarId,
     };

@@ -13,7 +13,11 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:matrix:tier1": "node scripts/responsive-matrix/runner.mjs --tier=1 --game=all",
+    "test:matrix:tier2": "node scripts/responsive-matrix/runner.mjs --tier=2 --game=all",
+    "test:matrix:landscape": "node scripts/responsive-matrix/runner.mjs --landscape=only --game=all",
+    "test:matrix:full": "node scripts/responsive-matrix/runner.mjs --tier=3 --game=all"
   },
   "dependencies": {
     "@react-spring/web": "^10.1.2",

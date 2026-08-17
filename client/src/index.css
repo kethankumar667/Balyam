@@ -32,6 +32,43 @@
   min-height: 100dvh;
 }
 
+/**
+ * The avatar grid's scrollbar.
+ *
+ * A scrollbar is a surface the design still owns even though nobody drew it.
+ * The default is a grey system bar sitting against parchment or slate — the
+ * one element in the picker that belongs to no palette in this project, and
+ * the tell that a panel was assembled rather than built.
+ *
+ * `scrollbar-color` covers Firefox; the `::-webkit-` rules cover Chrome,
+ * Edge and Safari. Both are stated because neither alone is enough.
+ */
+.avatar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #C7AC7D transparent;
+}
+.avatar-scroll::-webkit-scrollbar { width: 8px; }
+.avatar-scroll::-webkit-scrollbar-track { background: transparent; }
+.avatar-scroll::-webkit-scrollbar-thumb {
+  background-color: #C7AC7D;
+  border-radius: 999px;
+  /* Transparent border + background-clip is what insets a webkit thumb;
+     there is no padding property that reaches it. */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.avatar-scroll::-webkit-scrollbar-thumb:hover { background-color: #A17C4E; }
+
+:root[data-theme="dark"] .avatar-scroll {
+  scrollbar-color: #3F4C66 transparent;
+}
+:root[data-theme="dark"] .avatar-scroll::-webkit-scrollbar-thumb {
+  background-color: #3F4C66;
+}
+:root[data-theme="dark"] .avatar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #66799A;
+}
+
 /* ===== Design tokens — MultiplayerGames v1.0 ===== */
 :root {
   /* Brand (felt-emerald) */
@@ -83,8 +120,45 @@
   --rim-gold: #d4a574;
   --rim-soft: rgba(15,23,42,0.08);
 
-  /* Focus ring */
-  --ring: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--color-brand-400);
+  /* Focus ring.
+   *
+   * The outer stop is brand orange, not the felt-emerald it used to be:
+   * `--color-brand-400` (#34d399) measured 1.88:1 on cream, and the inner
+   * separator was `--surface-1` (#ffffff), which is 1.02:1 against the same
+   * cream — a "ring" whose two halves were both invisible on the default
+   * theme. WCAG 2.4.11 wants 3:1 for the indicator; #7B2F0E gives 9.15:1 and
+   * is a colour the parchment world already owns. The separator is now the
+   * chrome ground it actually sits on rather than a surface token borrowed
+   * from the in-game palette. */
+  --ring: 0 0 0 2px var(--chrome-panel), 0 0 0 4px #7B2F0E;
+
+  /* ── App chrome ───────────────────────────────────────────────────────
+   * The header and side nav had every colour written as a raw hex, which is
+   * how they drifted one digit off the home page (#0E1527 vs #0E1526) and
+   * how dark mode ended up on a bespoke five-step blue-black ramp matching
+   * neither these tokens nor the rest of the app.
+   *
+   * Named separately from `--surface-*` on purpose: those are the in-game
+   * slate palette, and chrome is parchment. Trying to serve both from one
+   * ladder is what pushed every parchment surface into hardcoding hex.
+   *
+   * Every value below is measured, not picked by eye:
+   *   border  #A17C4E  3.75:1 vs panel, 3.44:1 vs page  (WCAG 1.4.11)
+   *   ink     #2A221B  15.32:1 on panel
+   *   soft    #7A5E45  5.36:1 on control
+   *   accent  #C2410C  4.67:1 on the active fill
+   * `hairline` is deliberately below 3:1 — it separates regions, it never
+   * draws the boundary of a control, so 1.4.11 does not apply to it. */
+  --chrome-panel:      #FFFDF7;
+  --chrome-control:    #FAF2DF;
+  --chrome-control-hi: #F2E4CB;
+  --chrome-border:     #A17C4E;
+  --chrome-hairline:   #ECD9BA;
+  --chrome-ink:        #2A221B;
+  --chrome-ink-soft:   #7A5E45;
+  --chrome-accent:     #C2410C;
+  --chrome-active-bg:  #FFF2D6;
+  --chrome-active-ink: #B45309;
 }
 
 :root[data-theme="dark"] {
@@ -98,7 +172,39 @@
   --text-mute: #64748B;
   --rim-gold:  rgba(245, 158, 11, 0.4);
   --rim-soft:  rgba(255, 255, 255, 0.08);
-  --ring: 0 0 0 2px var(--surface-0), 0 0 0 4px #F59E0B;
+  --ring: 0 0 0 2px var(--chrome-panel), 0 0 0 4px #F59E0B;
+
+  /* Dark chrome — slate, chosen over a warm brown-black alternative.
+   *
+   * A warm "aged paper under a lamp" ramp was built and rendered alongside
+   * this one. It held the parchment metaphor through the theme flip, which
+   * is the better story, and it lost on one fact: `AppLayout`'s page ground
+   * is #070B14 and every card behind this chrome is slate, so warm chrome
+   * drew a visible temperature seam down the edge of the sidebar. Chrome
+   * that disagrees with the content it frames is worse than chrome with a
+   * weaker metaphor.
+   *
+   * If the app's dark surfaces are ever warmed as a set, that ramp is worth
+   * reviving — it is recorded in the critique snapshot for this target. The
+   * amber accent is what carries brand here in the meantime.
+   *
+   * `--chrome-panel` is exactly `--surface-1`; the rest sit in that family
+   * without being literal token matches, because the ladder needed steps
+   * the surface tokens do not provide. Measured on the rendered page:
+   *   border  #66799A  3.99:1 vs panel, 3.39:1 vs control  (WCAG 1.4.11)
+   *   ink     #F1F5F9  17.58:1 on panel
+   *   soft    #9FB0C6  7.95:1 on panel, 6.76:1 on control
+   *   accent  #FBBF24  10.53:1 vs panel, 8.79:1 on the active fill */
+  --chrome-panel:      #131926;
+  --chrome-control:    #1E2739;
+  --chrome-control-hi: #27324A;
+  --chrome-border:     #66799A;
+  --chrome-hairline:   #2A3346;
+  --chrome-ink:        #F1F5F9;
+  --chrome-ink-soft:   #9FB0C6;
+  --chrome-accent:     #FBBF24;
+  --chrome-active-bg:  #1F2937;
+  --chrome-active-ink: #FBBF24;
 }
 
 html, body, #root {
@@ -174,11 +280,20 @@ body, #root, .bhalyam-paper {
   font-variant-numeric: tabular-nums;
 }
 
-/* Universal focus-visible ring */
+/**
+ * Universal focus-visible ring.
+ *
+ * `border-radius: inherit` used to be the third declaration here and it was
+ * doing the opposite of what it looks like. A box-shadow already follows the
+ * element's OWN radius, so the ring was round on a round control for free;
+ * `inherit` threw that away and adopted the PARENT's radius instead. A
+ * circular avatar tile inside a square grid got a square ring, and a
+ * `rounded-2xl` nav pill inside an unstyled `.block` link got a square one
+ * too — the shape was decided by whatever container happened to wrap it.
+ */
 *:focus-visible {
   outline: none;
   box-shadow: var(--ring);
-  border-radius: inherit;
 }
 
 /* Respect motion preferences globally */
