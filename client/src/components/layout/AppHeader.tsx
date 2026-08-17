@@ -29,7 +29,7 @@ export default function AppHeader({
   const [theme] = useTheme();
   const isDark = theme === "dark";
   const { playerName } = useRoomStore();
-  const displayName = playerName.trim() || "Kethan";
+  const displayName = playerName.trim() || "Jetpacker";
 
   return (
     <header
@@ -39,14 +39,10 @@ export default function AppHeader({
           : "bg-[#FFFDF8]/95 border-[#ECD9BA] backdrop-blur-md"
       }`}
     >
-      {/* `min-w-0` on both halves is what stops the right-hand controls being
-          pushed off a 375px screen. The brand block used to be
-          `flex-shrink-0`, so on a phone it claimed its full natural width and
-          the settings gear simply rendered past the viewport edge — invisible
-          and untappable, with no horizontal scroll to reach it. */}
       <div className="h-full w-full flex items-center overflow-hidden">
         {/* Left: Sidebar-Aligned Brand Area */}
-        <div className="w-auto lg:w-64 min-w-0 lg:flex-shrink-0 px-3 sm:px-6 flex items-center gap-2.5 sm:gap-3">          <button
+        <div className="w-auto lg:w-64 min-w-0 lg:flex-shrink-0 px-3 sm:px-6 flex items-center gap-2.5 sm:gap-3">
+          <button
             type="button"
             onClick={onToggleMobileMenu}
             className={`lg:hidden w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl border flex items-center justify-center transition cursor-pointer flex-shrink-0 ${
@@ -64,7 +60,6 @@ export default function AppHeader({
             <span className="flex-shrink-0">
               <BhalyamLogo size={44} decorative />
             </span>
-            {/* Phones get the logo mark alone. */}
             <span className="hidden sm:flex flex-col leading-none min-w-0">
               <span
                 className={`bhalyam-display text-[22px] sm:text-[26px] tracking-tight truncate ${
@@ -86,7 +81,7 @@ export default function AppHeader({
           <div className="hidden md:flex flex-1 max-w-md mx-auto items-center">
             <Link
               to="/games"
-              className={`w-full flex items-center justify-between px-3.5 py-2 rounded-2xl border text-xs transition-all ${
+              className={`w-full flex items-center justify-between px-4 py-2 rounded-2xl border text-xs transition-all ${
                 isDark
                   ? "bg-[#101728] border-white/10 text-zinc-400 hover:border-amber-400/40"
                   : "bg-[#FAF2DF] border-[#ECD9BA] text-[#7A5E45] hover:border-[#D4A574]"
@@ -96,7 +91,6 @@ export default function AppHeader({
                 <span className="text-sm">🔍</span>
                 <span className="font-medium">Search games, rooms, friends...</span>
               </div>
-              <span className="text-xs opacity-60">⚙️</span>
             </Link>
           </div>
 
@@ -132,7 +126,19 @@ export default function AppHeader({
               }`}
             >
               <div className="w-7 h-7 rounded-full overflow-hidden border border-amber-400 flex items-center justify-center flex-shrink-0 bg-amber-100 dark:bg-amber-900/40">
-                <SelfAvatar className="w-full h-full" fallback={<UserIcon className="w-4 h-4 text-amber-500" />} />
+                <SelfAvatar
+                  className="w-full h-full"
+                  fallback={
+                    <img
+                      src="/Avatars/file_0000000084c48208b1f893419d784cf2_1.jpg"
+                      alt={displayName}
+                      className="w-full h-full object-cover scale-[1.25] origin-center"
+                      onError={(e) => {
+                        e.currentTarget.src = "/Founder.png";
+                      }}
+                    />
+                  }
+                />
               </div>
               <div className="hidden md:flex items-center gap-1.5 min-w-0">
                 <span className="text-[13px] font-black tracking-tight max-w-[95px] truncate">
@@ -145,21 +151,7 @@ export default function AppHeader({
               <ChevronDown className="hidden md:block w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
             </button>
 
-            {/* 3. Crown VIP Button */}
-            <Link
-              to="/games"
-              title="VIP Pass"
-              aria-label="VIP Pass"
-              className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border flex items-center justify-center transition hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0 ${
-                isDark
-                  ? "bg-[#0E1527] border-amber-400/30 text-amber-400 hover:bg-white/10"
-                  : "bg-[#FAF2DF] border-[#ECD9BA] text-amber-600 hover:bg-[#F2E4CB]"
-              }`}
-            >
-              <span className="text-base">👑</span>
-            </Link>
-
-            {/* 4. Settings Gear Icon */}
+            {/* 3. Settings Gear Icon */}
             <Link
               to="/settings"
               title="Settings"
