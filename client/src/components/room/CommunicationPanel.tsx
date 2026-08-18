@@ -1,17 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import type { ChatMessage, Player } from "@shared/types";
-import { getSocket } from "../../lib/socket";
 import VoicePanel from "../VoicePanel";
+import Chat from "../Chat";
 import { useVoiceSession } from "../../lib/voice-session";
-
-const QUICK_PHRASES = [
-  "Nice move! 👏",
-  "All the best 🍀",
-  "Well played! 🎉",
-  "So close! 😲",
-  "Haar gaya 😅",
-  "Mast! 🔥",
-];
+import { useVisualViewport } from "../../lib/useVisualViewport";
 
 export default function CommunicationPanel({
   messages,
@@ -25,37 +17,30 @@ export default function CommunicationPanel({
   isMobile?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<"chat" | "voice">("chat");
-  const [text, setText] = useState("");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const visualViewport = useVisualViewport();
 
   // Monitor voice status for badge
   const voice = useVoiceSession(selfId);
   const voiceConnected = voice.status === "live";
 
+  // Close mobile drawer on Escape key
   useEffect(() => {
-    if (activeTab === "chat") {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, activeTab]);
+    if (!mobileDrawerOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileDrawerOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileDrawerOpen]);
 
-  function sendText(raw: string) {
-    const trimmed = raw.trim();
-    if (!trimmed) return;
-    getSocket().emit("chat:send", { text: trimmed });
-  }
-
-  function send() {
-    sendText(text);
-    setText("");
-  }
-
-  // Render tabbed content body
-  const renderContent = () => (
-    <div className="flex flex-col h-full space-y-2">
-      {/* Tab Navigation */}
+  // Tabbed content renderer
+  const renderTabContent = () => (
+    <div className="flex flex-col h-full min-h-0 w-full max-w-full space-y-2 overflow-hidden">
+      {/* Tab Navigation Strip */}
       <div
         role="tablist"
+        aria-label="Communication options"
         className="flex items-center gap-1 bg-[#FFF4E0] dark:bg-slate-800/80 p-1 rounded-2xl border border-[#EEDBCA] dark:border-slate-700/60 shrink-0"
       >
         <button
@@ -64,7 +49,7 @@ export default function CommunicationPanel({
           aria-selected={activeTab === "chat"}
           aria-controls="comm-tab-chat"
           onClick={() => setActiveTab("chat")}
-          className={`flex-1 min-h-[38px] py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 min-h-[40px] py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === "chat"
               ? "bg-white dark:bg-slate-900 text-[#2B3550] dark:text-slate-100 shadow-xs border border-[#EEDBCA] dark:border-slate-800"
               : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
@@ -73,7 +58,7 @@ export default function CommunicationPanel({
           <span aria-hidden>💬</span>
           <span>Chat</span>
           {messages.length > 0 && (
-            <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.2 ml-0.5">
+            <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.2 ml-0.5 font-extrabold">
               {messages.length}
             </span>
           )}
@@ -85,7 +70,7 @@ export default function CommunicationPanel({
           aria-selected={activeTab === "voice"}
           aria-controls="comm-tab-voice"
           onClick={() => setActiveTab("voice")}
-          className={`flex-1 min-h-[38px] py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 min-h-[40px] py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === "voice"
               ? "bg-white dark:bg-slate-900 text-[#2B3550] dark:text-slate-100 shadow-xs border border-[#EEDBCA] dark:border-slate-800"
               : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
@@ -99,84 +84,35 @@ export default function CommunicationPanel({
         </button>
       </div>
 
-      {/* Tab Panels */}
-      {activeTab === "chat" ? (
-        <div
-          id="comm-tab-chat"
-          role="tabpanel"
-          className="flex flex-col flex-1 min-h-0 space-y-2"
-        >
-          {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar min-h-[140px] max-h-[220px]">
-            {messages.length === 0 && (
-              <div className="text-[#8A6D4B] dark:text-slate-400 text-xs py-2 text-center font-medium">
-                No messages yet. Say hi to the table! 👋
-              </div>
-            )}
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`text-xs p-1.5 rounded-lg ${
-                  m.playerId === selfId
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-medium"
-                    : "bg-white dark:bg-[#0F1420] text-[#2B3550] dark:text-slate-100 border border-[#EEDBCA]/60 dark:border-slate-800"
-                }`}
-              >
-                <span className="font-extrabold">{m.playerName}:</span>{" "}
-                <span>{m.text}</span>
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Quick phrases chips */}
-          <div className="flex flex-wrap gap-1 pt-1 border-t border-[#EEDBCA]/60 dark:border-slate-800">
-            {QUICK_PHRASES.slice(0, 3).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => sendText(p)}
-                className="rounded-full bg-[#FFF9EE] dark:bg-[#182234] hover:bg-[#FFF4E0] dark:hover:bg-[#1E2738] active:scale-95 text-[#6E5E4D] dark:text-slate-300 border border-[#EEDBCA] dark:border-slate-700/60 text-[10px] font-semibold px-2 py-0.5 transition cursor-pointer"
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-
-          {/* Chat input */}
-          <div className="flex gap-1.5 pt-0.5">
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="Type message..."
-              maxLength={500}
-              className="flex-1 bg-white dark:bg-[#0F1420] border border-[#EEDBCA] dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500 focus:outline-none focus:border-[#EA5A1F] transition"
+      {/* Active Tab Panel */}
+      <div className="flex-1 min-h-0 w-full max-w-full flex flex-col overflow-hidden">
+        {activeTab === "chat" ? (
+          <div
+            id="comm-tab-chat"
+            role="tabpanel"
+            className="flex-1 min-h-0 w-full max-w-full flex flex-col overflow-hidden"
+          >
+            <Chat
+              messages={messages}
+              selfId={selfId}
+              showHeader={false}
+              className="border-0 shadow-none rounded-2xl bg-transparent dark:bg-transparent"
             />
-            <button
-              type="button"
-              onClick={send}
-              aria-label="Send message"
-              className="px-3 py-1.5 rounded-xl bg-[#EA5A1F] hover:bg-[#D84F17] text-white font-bold text-xs transition active:scale-95 cursor-pointer"
-            >
-              Send
-            </button>
           </div>
-        </div>
-      ) : (
-        <div
-          id="comm-tab-voice"
-          role="tabpanel"
-          className="flex-1 min-h-0 overflow-y-auto"
-        >
-          <VoicePanel players={players} selfId={selfId} />
-        </div>
-      )}
+        ) : (
+          <div
+            id="comm-tab-voice"
+            role="tabpanel"
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-1"
+          >
+            <VoicePanel players={players} selfId={selfId} />
+          </div>
+        )}
+      </div>
     </div>
   );
 
-  // On Mobile, render a compact expandable trigger / drawer or inline card
+  // Mobile Trigger & Bottom Drawer
   if (isMobile) {
     return (
       <>
@@ -185,12 +121,13 @@ export default function CommunicationPanel({
           <button
             type="button"
             onClick={() => setMobileDrawerOpen(true)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-2xl bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 hover:border-amber-400 transition cursor-pointer"
+            className="w-full min-h-[44px] flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 hover:border-amber-400 transition active:scale-98 cursor-pointer"
           >
-            <div className="flex items-center gap-2 text-xs font-bold text-[#2B3550] dark:text-slate-200">
-              <span>💬 Chat & 🎙 Voice</span>
+            <div className="flex items-center gap-2 text-xs font-extrabold text-[#2B3550] dark:text-slate-200">
+              <span className="text-sm">💬</span>
+              <span>Chat & 🎙 Voice</span>
               {messages.length > 0 && (
-                <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.2">
+                <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.2 font-black">
                   {messages.length}
                 </span>
               )}
@@ -198,7 +135,7 @@ export default function CommunicationPanel({
 
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#EA5A1F] dark:text-amber-400">
               {voiceConnected && (
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-extrabold">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   Live
                 </span>
@@ -214,24 +151,46 @@ export default function CommunicationPanel({
             role="dialog"
             aria-modal="true"
             aria-label="Chat and Voice Drawer"
-            className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-in fade-in"
+            className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs touch-none animate-in fade-in"
           >
-            <div className="bg-[#FFFDF8] dark:bg-[#151D2A] border-t-2 border-[#EEDBCA] dark:border-slate-800 rounded-t-3xl p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl max-h-[80vh] flex flex-col space-y-3">
-              <div className="flex items-center justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400">
-                  Communication
-                </h3>
+            <button
+              type="button"
+              aria-label="Close drawer"
+              onClick={() => setMobileDrawerOpen(false)}
+              className="flex-1 w-full"
+            />
+            <div
+              className="w-full max-w-full bg-[#FFFDF8] dark:bg-[#151D2A] border-t-2 border-[#EEDBCA] dark:border-slate-800 rounded-t-3xl p-3.5 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] shadow-2xl flex flex-col space-y-2.5 overflow-hidden animate-[slideInUp_220ms_ease-out]"
+              style={{
+                height: visualViewport.isKeyboardOpen
+                  ? `${visualViewport.height}px`
+                  : "min(85dvh, 600px)",
+                maxHeight: visualViewport.isKeyboardOpen
+                  ? `${visualViewport.height}px`
+                  : "85dvh",
+              }}
+            >
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-1.5 border-b border-[#EEDBCA]/60 dark:border-slate-800 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-1 bg-[#EEDBCA] dark:bg-slate-700 rounded-full mx-auto hidden" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1.5">
+                    <span>💬 Table Communication</span>
+                  </h3>
+                </div>
                 <button
                   type="button"
                   onClick={() => setMobileDrawerOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-[#2B3550] dark:text-slate-100 font-bold flex items-center justify-center cursor-pointer text-xs"
+                  aria-label="Close communication drawer"
+                  className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-[#EFE4D2] dark:bg-slate-800 text-[#2B3550] dark:text-slate-100 font-black flex items-center justify-center cursor-pointer active:scale-95 transition text-xs"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                {renderContent()}
+              {/* Drawer Content */}
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                {renderTabContent()}
               </div>
             </div>
           </div>
@@ -242,8 +201,8 @@ export default function CommunicationPanel({
 
   // Desktop Panel
   return (
-    <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col min-h-[320px]">
-      {renderContent()}
+    <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col h-[380px] sm:h-[420px] max-h-[500px] overflow-hidden w-full">
+      {renderTabContent()}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import PlayerList from "./PlayerList";
 import VoicePanel from "./VoicePanel";
 import Chat from "./Chat";
 import QrCodeModal from "./QrCodeModal";
+import { useVisualViewport } from "../lib/useVisualViewport";
 
 /**
  * Horizontal in-board version of the room rail. Used inside a game's own
@@ -66,6 +67,7 @@ export default function InlineRoomRail({
   onUnreadChange?: (n: number) => void;
 }) {
   const paper = variant === "paper";
+  const visualViewport = useVisualViewport();
   const [open, setOpen] = useState<Panel | null>(null);
   const [emojiCooldown, setEmojiCooldown] = useState(false);
   const [reactionTarget, setReactionTarget] = useState<string | null>(null);
@@ -274,54 +276,69 @@ export default function InlineRoomRail({
           <button
             aria-label="Close panel"
             onClick={() => setOpen(null)}
-            className="fixed inset-0 z-40 bg-black/40"
-            style={{ backdropFilter: "blur(2px)" }}
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs touch-none animate-in fade-in"
           />
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed z-50 right-0 top-0 bottom-0 w-[min(92vw,22rem)] overflow-y-auto p-3 shadow-2xl animate-[slideInRight_220ms_ease-out]"
+            className="fixed z-50 right-0 top-0 bottom-0 w-full sm:w-[min(90vw,24rem)] md:w-[22rem] h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden p-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pl-[max(0.75rem,env(safe-area-inset-left,0px))] pr-[max(0.75rem,env(safe-area-inset-right,0px))] shadow-2xl animate-[slideInRight_220ms_ease-out]"
             style={{
               background: "#F6EDDB",
               borderLeft: "1px solid #E8D8BE",
+              height: visualViewport.isKeyboardOpen ? `${visualViewport.height}px` : undefined,
+              maxHeight: visualViewport.isKeyboardOpen ? `${visualViewport.height}px` : undefined,
+              top: visualViewport.isKeyboardOpen ? `${visualViewport.offsetTop}px` : 0,
             }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm uppercase tracking-wider font-bold text-[#5C4A38]">
-                {open === "room" && "Room"}
-                {open === "players" && "Players"}
-                {open === "voice" && "Voice"}
-                {open === "chat" && "Chat"}
+            <div className="flex items-center justify-between pb-2 mb-2 flex-shrink-0 border-b border-[#E8D8BE]">
+              <h2 className="text-sm uppercase tracking-wider font-extrabold text-[#5C4A38] flex items-center gap-1.5">
+                <span>
+                  {open === "room" && "🎟️ Room"}
+                  {open === "players" && "👥 Players"}
+                  {open === "voice" && "🎙️ Voice"}
+                  {open === "chat" && "💬 Chat"}
+                </span>
               </h2>
               <button
                 onClick={() => setOpen(null)}
-                aria-label="Close"
-                className="w-8 h-8 rounded-full bg-[#EFE2C7] hover:bg-[#E5D4B2] text-[#5C4A38] font-bold"
+                aria-label="Close panel"
+                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full bg-[#EFE2C7] hover:bg-[#E5D4B2] text-[#5C4A38] font-black flex items-center justify-center cursor-pointer transition active:scale-95 text-sm"
               >
                 ✕
               </button>
             </div>
-            {open === "room" && (
-              <RoomInfo code={code} game={game} phase={phase} />
-            )}
-            {open === "players" && (
-            <PlayerList
-              players={players}
-              selfId={selfId}
-              onTapPlayer={(id) => {
-                setReactionTarget(id);
-                setOpen("emoji");
-              }}
-            />
-            )}
-            {open === "voice" && (
-              <VoicePanel
-                players={players}
-                selfId={selfId}
-                restoreOrientation="portrait"
-              />
-            )}
-            {open === "chat" && <Chat messages={messages} selfId={selfId} />}
+
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              {open === "room" && (
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  <RoomInfo code={code} game={game} phase={phase} />
+                </div>
+              )}
+              {open === "players" && (
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  <PlayerList
+                    players={players}
+                    selfId={selfId}
+                    onTapPlayer={(id) => {
+                      setReactionTarget(id);
+                      setOpen("emoji");
+                    }}
+                  />
+                </div>
+              )}
+              {open === "voice" && (
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  <VoicePanel
+                    players={players}
+                    selfId={selfId}
+                    restoreOrientation="portrait"
+                  />
+                </div>
+              )}
+              {open === "chat" && (
+                <Chat messages={messages} selfId={selfId} />
+              )}
+            </div>
           </div>
         </>
       )}

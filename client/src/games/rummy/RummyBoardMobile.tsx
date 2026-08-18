@@ -1676,30 +1676,32 @@ function RummyModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3"
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-3 touch-none animate-in fade-in"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto p-3 sm:p-4 space-y-3"
+        className="rounded-2xl shadow-2xl max-w-md w-full max-h-[90dvh] h-auto flex flex-col overflow-hidden p-3 sm:p-4 space-y-2.5"
         style={{
           background: "linear-gradient(180deg, #6D4323 0%, #4A2C16 100%)",
           border: "2px solid #9C7A3C",
         }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pb-1 flex-shrink-0 border-b border-[#9C7A3C]/40">
           <div className="text-sm font-extrabold uppercase tracking-wider text-nostalgia-paper">
             {title}
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/45 text-nostalgia-paper font-bold"
-            aria-label="Close"
+            className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full flex items-center justify-center bg-black/30 hover:bg-black/45 text-nostalgia-paper font-black cursor-pointer active:scale-95 transition"
+            aria-label="Close modal"
           >
             ✕
           </button>
         </div>
-        {children}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {children}
+        </div>
       </div>
     </div>
   );

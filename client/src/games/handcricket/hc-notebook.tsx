@@ -45,6 +45,7 @@ import {
 import PlayerList from "../../components/PlayerList";
 import VoicePanel from "../../components/VoicePanel";
 import Chat from "../../components/Chat";
+import { useVisualViewport } from "../../lib/useVisualViewport";
 
 /* ─── palette ─── */
 const PAPER = "#F5E9C4";
@@ -642,6 +643,7 @@ function HcActionBarStrip({
   messages: ChatMessage[];
 }) {
   const [open, setOpen] = useState<StripPanel>(null);
+  const visualViewport = useVisualViewport();
   const [showQr, setShowQr] = useState(false);
   const [lastReadCount, setLastReadCount] = useState(messages.length);
   useEffect(() => {
@@ -799,26 +801,16 @@ function HcActionBarStrip({
           <button
             aria-label="Close panel"
             onClick={() => setOpen(null)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 56,
-              background: "rgba(20,14,8,0.35)",
-              border: "none",
-            }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs touch-none animate-in fade-in"
           />
           <div
             role="dialog"
             aria-modal="true"
+            className="fixed z-50 right-0 top-0 bottom-0 w-full sm:w-[min(90vw,24rem)] md:w-[22rem] h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden p-3.5 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pl-[max(0.75rem,env(safe-area-inset-left,0px))] pr-[max(0.75rem,env(safe-area-inset-right,0px))] shadow-2xl animate-[slideInRight_220ms_ease-out]"
             style={{
-              position: "fixed",
-              zIndex: 57,
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: "min(92vw,22rem)",
-              overflowY: "auto",
-              padding: 14,
+              height: visualViewport.isKeyboardOpen ? `${visualViewport.height}px` : undefined,
+              maxHeight: visualViewport.isKeyboardOpen ? `${visualViewport.height}px` : undefined,
+              top: visualViewport.isKeyboardOpen ? `${visualViewport.offsetTop}px` : 0,
               background: PAPER_L,
               borderLeft: `2px solid ${BORDER}`,
               boxShadow: "-8px 0 24px rgba(0,0,0,0.25)",
@@ -829,7 +821,10 @@ function HcActionBarStrip({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 12,
+                marginBottom: 10,
+                flexShrink: 0,
+                borderBottom: `1px solid ${BORDER}`,
+                paddingBottom: 6,
               }}
             >
               <span
@@ -851,8 +846,8 @@ function HcActionBarStrip({
                 onClick={() => setOpen(null)}
                 aria-label="Close"
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: 32,
+                  height: 32,
                   borderRadius: "50%",
                   fontWeight: 800,
                   background: PAPER_D,
@@ -864,80 +859,90 @@ function HcActionBarStrip({
                 ✕
               </button>
             </div>
-            {open === "room" && (
-              <div style={{ textAlign: "center" }}>
-                <div
-                  className="font-notebook"
-                  style={{
-                    fontSize: 10,
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
-                    color: INK_LT,
-                    fontWeight: 700,
-                  }}
-                >
-                  Room code
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              {open === "room" && (
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      className="font-notebook"
+                      style={{
+                        fontSize: 10,
+                        letterSpacing: "0.14em",
+                        textTransform: "uppercase",
+                        color: INK_LT,
+                        fontWeight: 700,
+                      }}
+                    >
+                      Room code
+                    </div>
+                    <div
+                      className="font-mono"
+                      style={{
+                        fontSize: 26,
+                        letterSpacing: "0.3em",
+                        fontWeight: 900,
+                        color: INK,
+                        marginTop: 4,
+                      }}
+                    >
+                      {roomCode}
+                    </div>
+                    <div className="flex flex-col gap-2 mt-3">
+                      <button
+                        onClick={copyCode}
+                        className="font-notebook"
+                        style={{
+                          padding: "8px 16px",
+                          borderRadius: 8,
+                          fontWeight: 800,
+                          fontSize: 12,
+                          background: STAMP_G,
+                          color: "#fff",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {copied ? "✓ Copied" : "📋 Copy code"}
+                      </button>
+                      <button
+                        onClick={() => setShowQr(true)}
+                        className="font-notebook"
+                        style={{
+                          padding: "8px 16px",
+                          borderRadius: 8,
+                          fontWeight: 800,
+                          fontSize: 12,
+                          background: "rgba(228,177,40,0.2)",
+                          color: INK,
+                          border: `1.5px solid ${BORDER}`,
+                          cursor: "pointer",
+                        }}
+                      >
+                        📱 Show QR Code
+                      </button>
+                    </div>
+                    {showQr && <QrCodeModal open={true} code={roomCode} onClose={() => setShowQr(false)} />}
+                  </div>
                 </div>
-                <div
-                  className="font-mono"
-                  style={{
-                    fontSize: 26,
-                    letterSpacing: "0.3em",
-                    fontWeight: 900,
-                    color: INK,
-                    marginTop: 4,
-                  }}
-                >
-                  {roomCode}
+              )}
+              {open === "players" && (
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  <PlayerList players={players} selfId={selfId} />
                 </div>
-                <div className="flex flex-col gap-2 mt-3">
-                  <button
-                    onClick={copyCode}
-                    className="font-notebook"
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      fontWeight: 800,
-                      fontSize: 12,
-                      background: STAMP_G,
-                      color: "#fff",
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {copied ? "✓ Copied" : "📋 Copy code"}
-                  </button>
-                  <button
-                    onClick={() => setShowQr(true)}
-                    className="font-notebook"
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      fontWeight: 800,
-                      fontSize: 12,
-                      background: "rgba(228,177,40,0.2)",
-                      color: INK,
-                      border: `1.5px solid ${BORDER}`,
-                      cursor: "pointer",
-                    }}
-                  >
-                    📱 Show QR Code
-                  </button>
+              )}
+              {open === "voice" && (
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  <VoicePanel
+                    players={players}
+                    selfId={selfId}
+                    restoreOrientation="any"
+                  />
                 </div>
-                {showQr && <QrCodeModal open={true} code={roomCode} onClose={() => setShowQr(false)} />}
-              </div>
-            )}
-            {open === "players" && (
-              <PlayerList players={players} selfId={selfId} />
-            )}
-            {open === "voice" && (
-              <VoicePanel
-                players={players}
-                selfId={selfId}
-                restoreOrientation="any"
-              />
-            )}
-            {open === "chat" && <Chat messages={messages} selfId={selfId} />}
+              )}
+              {open === "chat" && (
+                <Chat messages={messages} selfId={selfId} className="border-0 shadow-none bg-transparent dark:bg-transparent" />
+              )}
+            </div>
           </div>
         </>
       )}

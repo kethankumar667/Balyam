@@ -7,6 +7,7 @@ import PlayerList from "../../components/PlayerList";
 import { ScorePanel } from "./uno-shared";
 import UnoRoomHistory from "../../components/nostalgia/UnoRoomHistory";
 import { SmileyIcon } from "./uno-icons";
+import { useVisualViewport } from "../../lib/useVisualViewport";
 
 /**
  * UNO's Chat / Voice / Players / Points tab rail — structurally mirrors
@@ -75,6 +76,7 @@ function SidebarRail(props: UnoRoomRailProps) {
 function SheetRail(props: UnoRoomRailProps) {
   const [open, setOpen] = useState(false);
   const unread = useUnreadCount(props.messages, props.selfId, open);
+  const visualViewport = useVisualViewport();
 
   return (
     <>
@@ -109,20 +111,30 @@ function SheetRail(props: UnoRoomRailProps) {
           <button
             aria-label="Close panel"
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 bg-black/40"
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs touch-none animate-in fade-in"
           />
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed z-50 inset-x-0 bottom-0 max-h-[80vh] rounded-t-2xl overflow-hidden flex flex-col shadow-2xl"
-            style={{ background: "#FFF9F0" }}
+            className="fixed z-50 inset-x-0 bottom-0 max-h-[100dvh] rounded-t-3xl overflow-hidden flex flex-col shadow-2xl pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] animate-[slideInUp_220ms_ease-out]"
+            style={{
+              background: "#FFF9F0",
+              height: visualViewport.isKeyboardOpen
+                ? `${visualViewport.height}px`
+                : "min(88dvh, 640px)",
+              maxHeight: visualViewport.isKeyboardOpen
+                ? `${visualViewport.height}px`
+                : "88dvh",
+            }}
           >
-            <div className="flex items-center justify-between px-4 pt-3 pb-1 flex-shrink-0">
-              <span className="text-sm font-bold uppercase tracking-wide text-[#6E5E4D]">Room</span>
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0 border-b border-[#E8D8BE]">
+              <span className="text-sm font-extrabold uppercase tracking-wider text-[#6E5E4D]">
+                Room Menu
+              </span>
               <button
                 onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="w-8 h-8 rounded-full bg-[#EFE2C7] hover:bg-[#E5D4B2] text-[#5C4A38] font-bold"
+                aria-label="Close panel"
+                className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-[#EFE2C7] hover:bg-[#E5D4B2] text-[#5C4A38] font-black flex items-center justify-center cursor-pointer active:scale-95 transition"
               >
                 ✕
               </button>
@@ -154,13 +166,13 @@ function UnoRailBody({
 }: UnoRoomRailProps) {
   const [activeTab, setActiveTab] = useState<UnoRailTab>("chat");
   return (
-    <>
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full max-w-full">
       <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E8D8BE" }}>
         {TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 text-[12px] uppercase tracking-widest py-2.5 font-bold capitalize transition ${
+            className={`flex-1 text-[12px] uppercase tracking-widest py-2.5 font-bold capitalize transition cursor-pointer ${
               activeTab === tab
                 ? "text-[#2B2118] border-b-2 border-[#E6A11E] bg-[#F6EDDB]"
                 : "text-[#9C8568] hover:text-[#6E5E4D]"
@@ -170,28 +182,42 @@ function UnoRailBody({
           </button>
         ))}
       </div>
-      <div className="flex-1 overflow-y-auto p-3 min-h-0">
-        {activeTab === "chat" && <Chat messages={messages} selfId={selfId} />}
-        {activeTab === "voice" && (
-          <VoicePanel players={players} selfId={selfId} restoreOrientation={variant === "sheet" ? "landscape" : "any"} />
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full max-w-full">
+        {activeTab === "chat" && (
+          <div className="flex-1 min-h-0 flex flex-col p-2 sm:p-3 overflow-hidden w-full">
+            <Chat messages={messages} selfId={selfId} className="border-0 shadow-none bg-transparent dark:bg-transparent" />
+          </div>
         )}
-        {activeTab === "players" && <PlayerList players={players} selfId={selfId} />}
+        {activeTab === "voice" && (
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3">
+            <VoicePanel players={players} selfId={selfId} restoreOrientation={variant === "sheet" ? "landscape" : "any"} />
+          </div>
+        )}
+        {activeTab === "players" && (
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3">
+            <PlayerList players={players} selfId={selfId} />
+          </div>
+        )}
         {activeTab === "points" && (
-          <ScorePanel
-            playerOrder={playerOrder}
-            turnPlayerId={turnPlayerId}
-            selfId={selfId}
-            scores={scores}
-            round={round}
-            targetScore={targetScore}
-            nameOf={nameOf}
-          />
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3">
+            <ScorePanel
+              playerOrder={playerOrder}
+              turnPlayerId={turnPlayerId}
+              selfId={selfId}
+              scores={scores}
+              round={round}
+              targetScore={targetScore}
+              nameOf={nameOf}
+            />
+          </div>
         )}
         {activeTab === "history" && (
-          <UnoRoomHistory variant="panel" density={density} history={history} champion={champion} players={players} showTitle={false} />
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3">
+            <UnoRoomHistory variant="panel" density={density} history={history} champion={champion} players={players} showTitle={false} />
+          </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
 

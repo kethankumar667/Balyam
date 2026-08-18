@@ -990,7 +990,7 @@ export default function Room() {
             </div>
 
             {/* Right Column (approx 38% - lg:col-span-5 xl:col-span-4) - Desktop only */}
-            <div className="hidden lg:flex flex-col gap-4 lg:sticky lg:top-4">
+            <div className="hidden lg:flex flex-col gap-4 lg:sticky lg:top-4 lg:col-span-5 xl:col-span-4 w-full">
               <LobbyActionBar
                 isHost={selfIsHost}
                 isReady={viewModel.selfIsReady}
