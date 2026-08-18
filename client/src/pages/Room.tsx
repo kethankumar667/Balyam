@@ -30,6 +30,13 @@ import SoundboardLayer from "../components/SoundboardLayer";
 import SignInWall from "../components/auth/SignInWall";
 import LudoColorPicker from "../components/LudoColorPicker";
 import CoinColorPicker from "../components/CoinColorPicker";
+import RoomHeader from "../components/room/RoomHeader";
+import RoomShareCard from "../components/room/RoomShareCard";
+import ParticipantPanel from "../components/room/ParticipantPanel";
+import CompactColorSelector from "../components/room/CompactColorSelector";
+import LobbyActionBar from "../components/room/LobbyActionBar";
+import CommunicationPanel from "../components/room/CommunicationPanel";
+import { useRoomViewModel } from "../hooks/useRoomViewModel";
 import RpsBoard from "../games/rps/RpsBoard";
 import RummyBoard from "../games/rummy/RummyBoard";
 import LudoBoard from "../games/ludo/LudoBoard";
@@ -592,6 +599,8 @@ export default function Room() {
     [roomState?.players, playerId]
   );
 
+  const viewModel = useRoomViewModel(roomState, playerId);
+
   /**
    * "I'm back" — reclaim your seat the moment you touch anything.
    *
@@ -874,66 +883,29 @@ export default function Room() {
               : "mx-auto space-y-3 sm:space-y-4 max-w-6xl"
         }
       >
-        {/* Room header. Three shapes:
-              1. Rummy/wordbuilding/dotsboxes/UNO/Ludo/Carrom in play: hidden
-                 entirely — each of these renders its own full in-board header
-                 (room code, Leave, etc.) instead. Carrom joined this list
-                 because the floating Leave button landed on top of its own
-                 lounge header, flush against the viewport corner.
-              2. Any game during the lobby: full header with code + Leave.
-              3. Every other game during play/finished: slim header — just
-                 a right-aligned Leave button. The room code, players, voice
-                 and chat have all moved into that game's own inline room
-                 rail. */}
-        {roomState.phase === "lobby" && (
-          <header className="flex items-center justify-between gap-2 pb-1.5 min-w-0">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="shrink-0 flex items-center gap-1.5 bg-white/90 dark:bg-slate-900/90 border border-[#EEDBCA] dark:border-slate-800 rounded-full px-3 py-1 shadow-sm">
-                <span className="text-xs font-black text-[#2F3A54] dark:text-[#F6EDDC] uppercase tracking-wider">
-                  {GAME_DISPLAY_NAMES[roomState.game] || roomState.game.toUpperCase()}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1 max-w-[200px] sm:max-w-none">
-                <RoomNameEditor name={roomState.name} isHost={selfIsHost} />
-              </div>
-              {roomState.game === "rummy" && (
-                <RummyRoomHistory
-                  variant="teaser"
-                  density="mobile"
-                  history={roomState.history}
-                  champion={roomState.champion}
-                  players={roomState.players}
-                />
-              )}
-            </div>
-
-            <div className="shrink-0 flex items-center">
-              <button
-                type="button"
-                onClick={leaveRoom}
-                className="inline-flex items-center gap-1.5 text-xs sm:text-sm bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/40 border border-[#EEDBCA] dark:border-slate-700 text-[#352C24] dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400 px-3.5 py-1.5 rounded-full font-semibold transition shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
-              >
-                <span aria-hidden>🚪</span>
-                <span>Leave Room</span>
-              </button>
-            </div>
-          </header>
-        )}
-        {roomState.phase !== "lobby" && roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && (
-          <header
-            className={
-              roomState.game === "stargame"
-                ? "pointer-events-none absolute right-3 top-3 z-30 flex items-center justify-end"
-                : "flex items-center justify-end"
-            }
-          >
-            <button
-              onClick={leaveRoom}
-              className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-slate-200 px-3.5 py-1.5 rounded-lg shadow-lg transition font-medium"
+        {roomState.phase === "lobby" ? (
+          <RoomHeader
+            roomState={roomState}
+            isHost={selfIsHost}
+            onLeave={leaveRoom}
+          />
+        ) : (
+          roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && (
+            <header
+              className={
+                roomState.game === "stargame"
+                  ? "pointer-events-none absolute right-3 top-3 z-30 flex items-center justify-end"
+                  : "flex items-center justify-end"
+              }
             >
-              Leave
-            </button>
-          </header>
+              <button
+                onClick={leaveRoom}
+                className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-slate-200 px-3.5 py-1.5 rounded-lg shadow-lg transition font-medium"
+              >
+                Leave
+              </button>
+            </header>
+          )
         )}
 
         {/* Errors render inline for most games and as a fixed toast for the
@@ -953,443 +925,357 @@ export default function Room() {
           <Toast message={lastError} onClose={() => setError(null)} />
         )}
 
-        <div
-          className={(() => {
-            const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame" || roomState.game === "spacewar") && roomState.phase !== "lobby";
-            const compactPlay = !fullPlay && roomState.phase !== "lobby";
-            if (fullPlay) return "h-full";
-            if (compactPlay) return "block";
-            return "grid md:grid-cols-3 gap-5";
-          })()}
-        >
-          <div
-            className={(() => {
-              const fullPlay = (roomState.game === "rummy" || roomState.game === "dotsboxes" || roomState.game === "uno" || roomState.game === "stargame" || roomState.game === "spacewar") && roomState.phase !== "lobby";
-              const compactPlay = !fullPlay && roomState.phase !== "lobby";
-              if (fullPlay) return "h-full";
-              if (compactPlay) return "w-full space-y-4";
-              return "md:col-span-2 space-y-4";
-            })()}
-          >
-            {roomState.phase === "lobby" && (
-              <div className="space-y-4">
-                <div className="bg-gradient-to-b from-[#FFFDF8] to-[#FFF8EC] dark:from-[#131926] dark:to-[#0C101A] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-6 text-center space-y-4 shadow-[0_12px_36px_-12px_rgba(74,44,22,0.14)] dark:shadow-[0_24px_60px_-16px_rgba(0,0,0,0.85)] relative overflow-hidden">
-                  {roomState.sealed ? (
-                    /* Same wall as the home screen, in the place the share
-                       card would have been — so the answer to "how do I get
-                       my friends in here?" is exactly where they looked. */
-                    <SignInWall
-                      from="room"
-                      reason="This table is just you and the bots"
-                    />
-                  ) : (
-                    <RoomCodeShare code={roomState.code} game={roomState.game} name={roomState.name} />
-                  )}
+        {roomState.phase === "lobby" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Left Column (approx 62% - lg:col-span-7 xl:col-span-8) */}
+            <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+              {roomState.sealed ? (
+                <SignInWall
+                  from="room"
+                  reason="This table is just you and the bots"
+                />
+              ) : (
+                <RoomShareCard
+                  code={roomState.code}
+                  game={roomState.game}
+                  name={roomState.name}
+                />
+              )}
 
-                  {/* Live Table Seating / Player Roster */}
-                  <div className="bg-white/80 dark:bg-[#101624]/90 backdrop-blur-xs border border-[#E6D4B5] dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 text-left space-y-2.5 shadow-xs">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-extrabold flex items-center gap-1.5">
-                        <span aria-hidden className="text-sm">👥</span>
-                        <span>
-                          SEATED PLAYERS ({roomState.players.length} / {MAX_PLAYERS_BY_GAME[roomState.game] ?? 4})
-                        </span>
-                      </h3>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EEDBCA]/40 dark:bg-slate-800 text-[#8A6D4B] dark:text-slate-300">
-                        {roomState.players.filter((p) => p.isReady).length}/{roomState.players.length} Ready
-                      </span>
-                    </div>
+              <ParticipantPanel
+                players={roomState.players}
+                maxPlayers={viewModel.maxPlayers}
+                selfId={playerId}
+                isHost={selfIsHost}
+                game={roomState.game}
+                onAddBot={(name, diff) => { getSocket().emit("room:addBot", name, diff); }}
+                onRemoveBot={(id) => { getSocket().emit("room:removeBot", id); }}
+                onRemoveLocalPlayer={(id) => { getSocket().emit("room:removeLocalPlayer", id); }}
+              />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {roomState.players.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center justify-between gap-2 bg-[#FFFDF8] dark:bg-[#161E2E] border border-[#EEDBCA] dark:border-slate-700/70 hover:border-amber-400/50 dark:hover:border-amber-500/40 rounded-xl px-3 py-2.5 shadow-xs transition-all min-w-0"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <div className="relative shrink-0">
-                              <SeatAvatar avatar={p.avatar} name={p.name} className="w-8 h-8 rounded-lg shadow-xs" />
-                              <span
-                                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-[#161E2E] ${
-                                  p.isConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
-                                }`}
-                                title={p.isConnected ? "Connected & Online" : "Away / Reconnecting"}
-                              />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1 text-xs font-bold text-[#2B3550] dark:text-slate-100">
-                                <span className="truncate max-w-[100px] sm:max-w-[150px]">{p.name}</span>
-                                {p.id === playerId && (
-                                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 rounded px-1 shrink-0">(you)</span>
-                                )}
-                                {p.isHost && (
-                                  <span className="text-amber-500 text-xs shrink-0" title="Table Host">👑</span>
-                                )}
-                                {p.isBot && (
-                                  <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded px-1 shrink-0 font-normal">bot</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+              {viewModel.colorPickerKind && (
+                <CompactColorSelector
+                  kind={viewModel.colorPickerKind}
+                  players={roomState.players}
+                  selfId={playerId}
+                  onChooseLudoColor={(c) => getSocket().emit("room:chooseColor", c)}
+                  onChooseCoinColor={(c) => getSocket().emit("room:chooseCoinColor", c)}
+                />
+              )}
 
-                          <div className="shrink-0 flex items-center gap-1">
-                            {p.isReady ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700/60 rounded-full px-2.5 py-0.5 whitespace-nowrap shadow-xs">
-                                <span>✓</span>
-                                <span>Ready</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-                                <span className="animate-pulse">•••</span>
-                                <span>Waiting</span>
-                              </span>
-                            )}
-                            {selfIsHost && p.isBot && (
-                              <button
-                                type="button"
-                                onClick={() => getSocket().emit("room:removeBot", p.id)}
-                                className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-full text-xs p-1 font-bold cursor-pointer shrink-0 transition"
-                                title="Remove bot"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {roomState.game === "ludo" && (
-                    <LudoColorPicker players={roomState.players} selfId={playerId} />
-                  )}
-                  {roomState.game === "snl" && (
-                    <CoinColorPicker players={roomState.players} selfId={playerId} />
-                  )}
-                  {selfIsHost && (
-                    <BotControls
-                      players={roomState.players}
-                      maxPlayers={MAX_PLAYERS_BY_GAME[roomState.game] ?? 4}
-                      game={roomState.game}
-                    />
-                  )}
-
-                  {/* Primary Action Controls Bar */}
-                  <div className="flex flex-col items-center gap-2 pt-3 border-t border-[#EEDBCA]/80 dark:border-slate-800">
-                    <div className="flex flex-wrap justify-center items-center gap-3 w-full sm:w-auto">
-                      {/* Ready Button */}
-                      <button
-                        type="button"
-                        onClick={toggleReady}
-                        className={`flex-1 sm:flex-initial min-h-[46px] px-6 py-2.5 sm:px-8 sm:py-3 rounded-2xl font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
-                          selfPlayer?.isReady
-                            ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-amber-900/30 ring-4 ring-amber-400/20"
-                            : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-[0_6px_16px_rgba(16,185,129,0.4)] ring-4 ring-emerald-500/20"
-                        }`}
-                      >
-                        <span className="text-base">✓</span>
-                        <span>{selfPlayer?.isReady ? "Ready (Cancel)" : "I'm Ready"}</span>
-                      </button>
-
-                      {/* Start Game Button */}
-                      {selfIsHost && (
-                        <button
-                          type="button"
-                          onClick={startGame}
-                          disabled={!canStart}
-                          className={`flex-1 sm:flex-initial min-h-[46px] px-6 py-2.5 sm:px-8 sm:py-3 rounded-2xl font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
-                            canStart
-                              ? "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white shadow-[0_6px_16px_rgba(249,115,22,0.45)] cursor-pointer ring-4 ring-orange-500/20 animate-pulse"
-                              : "bg-[#EFE4D2] dark:bg-slate-800 text-[#8C7A67] dark:text-slate-500 cursor-not-allowed border border-[#E1CFB1] dark:border-slate-700/60"
-                          }`}
-                        >
-                          <span className="text-xs">▶</span>
-                          <span>Start Game</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {selfIsHost && !canStart && (
-                      <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium text-center">
-                        Start Game will unlock once all players are marked Ready
-                      </p>
-                    )}
-                  </div>
-                </div>
+              {/* Mobile / Tablet communication drawer trigger */}
+              <div className="block lg:hidden">
+                <CommunicationPanel
+                  messages={messages}
+                  players={roomState.players}
+                  selfId={playerId}
+                  isMobile={true}
+                />
               </div>
-            )}
 
-            {roomState.phase !== "lobby" && (
-              <GameErrorBoundary
-                gameName={roomState.game}
-                onReset={() => window.location.reload()}
-              >
-                {roomState.game === "rps" && gameState != null && !showGameOver && (
-                  <RpsBoard
-                    state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
-                    players={roomState.players}
-                    selfId={playerId}
-                    messages={messages}
-                    roomCode={roomState.code}
-                    roomPhase={roomState.phase}
-                    onLeave={leaveRoom}
-                    onScorecardClose={triggerGameOver}
-                  />
-                )}
+              {/* Mobile / Tablet sticky bottom action bar */}
+              <div className="block lg:hidden">
+                <LobbyActionBar
+                  isHost={selfIsHost}
+                  isReady={viewModel.selfIsReady}
+                  canStart={viewModel.canStartGame}
+                  startGameDisabledReason={viewModel.startGameDisabledReason}
+                  readyCount={viewModel.readyPlayersCount}
+                  totalCount={viewModel.totalPlayersCount}
+                  onToggleReady={toggleReady}
+                  onStartGame={startGame}
+                  variant="sticky-mobile"
+                />
+              </div>
+            </div>
 
-                {roomState.game === "rummy" && gameState != null && !showGameOver && (
-                  <RummyBoard
-                    state={gameState as RummyPlayerState}
-                    players={roomState.players}
-                    selfId={playerId}
-                    messages={messages}
-                    roomCode={roomState.code}
-                    onLeave={leaveRoom}
-                    history={roomState.history}
-                    champion={roomState.champion}
-                    onScorecardClose={triggerGameOver}
-                  />
-                )}
+            {/* Right Column (approx 38% - lg:col-span-5 xl:col-span-4) - Desktop only */}
+            <div className="hidden lg:flex flex-col gap-4 lg:sticky lg:top-4">
+              <LobbyActionBar
+                isHost={selfIsHost}
+                isReady={viewModel.selfIsReady}
+                canStart={viewModel.canStartGame}
+                startGameDisabledReason={viewModel.startGameDisabledReason}
+                readyCount={viewModel.readyPlayersCount}
+                totalCount={viewModel.totalPlayersCount}
+                onToggleReady={toggleReady}
+                onStartGame={startGame}
+                variant="desktop-panel"
+              />
 
-                {roomState.game === "ludo" && gameState != null && (
-                  (() => {
-                    const ls = gameState as LudoState;
-                    const isHost = roomState.hostId === playerId;
-                    const activePid = ls.turnPlayerId;
-                    const activeP = roomState.players.find((p) => p.id === activePid);
-                    const effectiveSelfId =
-                      isHost && activeP?.isLocal ? activePid : playerId;
-                    return (
-                      <PassPhoneGate
-                        activePlayerId={activePid}
-                        players={roomState.players}
-                        isHost={isHost}
-                      >
-                        <LudoBoard
-                          state={ls}
-                          players={roomState.players}
-                          selfId={effectiveSelfId}
-                          messages={messages}
-                          roomCode={roomState.code}
-                          roomPhase={roomState.phase}
-                          onLeave={leaveRoom}
-                          onScorecardClose={triggerGameOver}
-                        />
-                      </PassPhoneGate>
-                    );
-                  })()
-                )}
-
-                {roomState.game === "snl" && gameState != null && (
-                  (() => {
-                    const ss = gameState as SnlState;
-                    const isHost = roomState.hostId === playerId;
-                    const activePid = ss.turnPlayerId;
-                    const activeP = roomState.players.find((p) => p.id === activePid);
-                    const effectiveSelfId =
-                      isHost && activeP?.isLocal ? activePid : playerId;
-                    return (
-                      <PassPhoneGate
-                        activePlayerId={activePid}
-                        players={roomState.players}
-                        isHost={isHost}
-                      >
-                        <SnlBoard
-                          state={ss}
-                          players={roomState.players}
-                          selfId={effectiveSelfId}
-                          messages={messages}
-                          roomCode={roomState.code}
-                          roomPhase={roomState.phase}
-                        />
-                      </PassPhoneGate>
-                    );
-                  })()
-                )}
-
-                {roomState.game === "handcricket" && gameState != null && !showGameOver && (
-                  <HandCricketBoard
-                    state={gameState as HcState}
-                    players={roomState.players}
-                    selfId={playerId}
-                    messages={messages}
-                    roomCode={roomState.code}
-                    roomPhase={roomState.phase}
-                    onLeave={leaveRoom}
-                    onScorecardClose={triggerGameOver}
-                  />
-                )}
-
-                {roomState.game === "uno" && gameState != null && (
-                  <UnoBoard
-                    state={gameState as UnoPlayerState}
-                    players={roomState.players}
-                    selfId={playerId}
-                    messages={messages}
-                    roomCode={roomState.code}
-                    roomPhase={roomState.phase}
-                    onLeave={leaveRoom}
-                    history={roomState.unoHistory}
-                    champion={roomState.unoChampion}
-                    onScorecardClose={triggerGameOver}
-                  />
-                )}
-
-                {roomState.game === "dotsboxes" && gameState != null && (
-                  (() => {
-                    const dbs = gameState as DotsBoxesPublicState;
-                    const isHost = roomState.hostId === playerId;
-                    const activePid = dbs.turnPlayerId;
-                    const activeP = roomState.players.find((p) => p.id === activePid);
-                    const effectiveSelfId =
-                      isHost && activeP?.isLocal ? activePid : playerId;
-                    return (
-                      <PassPhoneGate
-                        activePlayerId={activePid}
-                        players={roomState.players}
-                        isHost={isHost}
-                      >
-                        <DotsBoxesBoard
-                          state={dbs}
-                          players={roomState.players}
-                          selfId={effectiveSelfId}
-                          messages={messages}
-                          roomCode={roomState.code}
-                          roomPhase={roomState.phase}
-                          onLeave={leaveRoom}
-                          onScorecardClose={triggerGameOver}
-                        />
-                      </PassPhoneGate>
-                    );
-                  })()
-                )}
-
-                {roomState.game === "wordbuilding" && gameState != null && (
-                  (() => {
-                    const wbs = gameState as WordBuildingPublicState;
-                    const isHost = roomState.hostId === playerId;
-                    const activePid = wbs.turnPlayerId;
-                    const activeP = roomState.players.find((p) => p.id === activePid);
-                    const effectiveSelfId =
-                      isHost && activeP?.isLocal ? activePid : playerId;
-                    return (
-                      <PassPhoneGate
-                        activePlayerId={activePid}
-                        players={roomState.players}
-                        isHost={isHost}
-                      >
-                        <WordBuildingBoard
-                          state={wbs}
-                          players={roomState.players}
-                          selfId={effectiveSelfId}
-                          messages={messages}
-                          roomCode={roomState.code}
-                          roomPhase={roomState.phase}
-                          onLeave={leaveRoom}
-                        />
-                      </PassPhoneGate>
-                    );
-                  })()
-                )}
-
-                {roomState.game === "stargame" && gameState != null && (
-                  <StarBoard
-                    state={gameState as StarPlayerView}
-                    players={roomState.players}
-                    selfId={playerId}
-                    roomCode={roomState.code}
-                    messages={messages}
-                    roomPhase={roomState.phase}
-                  />
-                )}
-
-                {roomState.game === "bingo" && gameState != null && !showGameOver && (
-                  <BingoBoard
-                    state={gameState as BingoPlayerState}
-                    players={roomState.players}
-                    selfId={playerId}
-                    messages={messages}
-                    roomCode={roomState.code}
-                    roomPhase={roomState.phase}
-                    onLeave={leaveRoom}
-                    onScorecardClose={triggerGameOver}
-                  />
-                )}
-
-                {roomState.game === "namesplaceanimal" && gameState != null && (
-                  <NamePlaceAnimalBoard
-                    state={gameState as NamePlaceAnimalPlayerState}
-                    myAnswers={(gameState as NamePlaceAnimalPlayerState).myAnswers}
-                    myPlayerId={playerId || ""}
-                    onMove={sendMove}
-                  />
-                )}
-
-                {roomState.game === "tambola" && gameState != null && (
-                  <TambolaBoard
-                    state={gameState as TambolaPlayerState}
-                    selfId={playerId || ""}
-                    onMove={sendMove}
-                  />
-                )}
-
-                {roomState.game === "snake" && gameState != null && (
-                  <SnakeBoard
-                    onMove={sendMove}
-                    state={gameState as SnakePublicState}
-                    selfId={playerId || ""}
-                  />
-                )}
-
-                {roomState.game === "carrom" && gameState != null && (
-                  <CarromBoard
-                    state={gameState as CarromPublicState}
-                    players={roomState.players}
-                    selfId={playerId || ""}
-                    messages={messages}
-                    roomCode={roomState.code}
-                    roomPhase={roomState.phase}
-                    onLeave={leaveRoom}
-                    onMove={sendMove}
-                  />
-                )}
-
-                {roomState.game === "chess" && gameState != null && (
-                  <ChessBoard
-                    state={gameState as ChessPublicState}
-                    players={roomState.players}
-                    selfId={playerId || ""}
-                    messages={messages}
-                    roomCode={roomState.code}
-                    roomPhase={roomState.phase}
-                    onMove={sendMove}
-                  />
-                )}
-
-                {roomState.game === "spacewar" && gameState != null && (
-                  <SpaceWarBoard
-                    onMove={sendMove}
-                    state={gameState as SpaceWarPublicState}
-                    selfId={playerId || ""}
-                  />
-                )}
-              </GameErrorBoundary>
-            )}
-
-
-            {/* Generic rematch panel is removed — it has moved into
-                GameOverScreen, which renders as a fixed full-screen overlay
-                once the game finishes. Keep this slot to avoid a dead gap. */}
+              <CommunicationPanel
+                messages={messages}
+                players={roomState.players}
+                selfId={playerId}
+                isMobile={false}
+              />
+            </div>
           </div>
+        ) : (
+          <div
+            className={
+              FULL_BLEED_GAMES.has(roomState.game)
+                ? "h-full"
+                : "w-full space-y-4"
+            }
+          >
+            <GameErrorBoundary
+              gameName={roomState.game}
+              onReset={() => window.location.reload()}
+            >
+              {roomState.game === "rps" && gameState != null && !showGameOver && (
+                <RpsBoard
+                  state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
+                  players={roomState.players}
+                  selfId={playerId}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  roomPhase={roomState.phase}
+                  onLeave={leaveRoom}
+                  onScorecardClose={triggerGameOver}
+                />
+              )}
 
-          {/* Global incoming-message toast — every game, every phase. The
-              side rail's full Chat panel is hidden during Rummy gameplay and
-              gets pushed off-screen on mobile during other games' play, so
-              this is the only way players reliably see a teammate ping. */}
-          {/* Connection banner. Sits above everything because a frozen board with
-          no explanation is the single most alarming thing this app can do.
-          It is not dismissable: it disappears when the link is actually back,
-          and never before, so it cannot lie about the state of the game. */}
+              {roomState.game === "rummy" && gameState != null && !showGameOver && (
+                <RummyBoard
+                  state={gameState as RummyPlayerState}
+                  players={roomState.players}
+                  selfId={playerId}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  onLeave={leaveRoom}
+                  history={roomState.history}
+                  champion={roomState.champion}
+                  onScorecardClose={triggerGameOver}
+                />
+              )}
+
+              {roomState.game === "ludo" && gameState != null && (
+                (() => {
+                  const ls = gameState as LudoState;
+                  const isHost = roomState.hostId === playerId;
+                  const activePid = ls.turnPlayerId;
+                  const activeP = roomState.players.find((p) => p.id === activePid);
+                  const effectiveSelfId =
+                    isHost && activeP?.isLocal ? activePid : playerId;
+                  return (
+                    <PassPhoneGate
+                      activePlayerId={activePid}
+                      players={roomState.players}
+                      isHost={isHost}
+                    >
+                      <LudoBoard
+                        state={ls}
+                        players={roomState.players}
+                        selfId={effectiveSelfId}
+                        messages={messages}
+                        roomCode={roomState.code}
+                        roomPhase={roomState.phase}
+                        onLeave={leaveRoom}
+                        onScorecardClose={triggerGameOver}
+                      />
+                    </PassPhoneGate>
+                  );
+                })()
+              )}
+
+              {roomState.game === "snl" && gameState != null && (
+                (() => {
+                  const ss = gameState as SnlState;
+                  const isHost = roomState.hostId === playerId;
+                  const activePid = ss.turnPlayerId;
+                  const activeP = roomState.players.find((p) => p.id === activePid);
+                  const effectiveSelfId =
+                    isHost && activeP?.isLocal ? activePid : playerId;
+                  return (
+                    <PassPhoneGate
+                      activePlayerId={activePid}
+                      players={roomState.players}
+                      isHost={isHost}
+                    >
+                      <SnlBoard
+                        state={ss}
+                        players={roomState.players}
+                        selfId={effectiveSelfId}
+                        messages={messages}
+                        roomCode={roomState.code}
+                        roomPhase={roomState.phase}
+                      />
+                    </PassPhoneGate>
+                  );
+                })()
+              )}
+
+              {roomState.game === "handcricket" && gameState != null && !showGameOver && (
+                <HandCricketBoard
+                  state={gameState as HcState}
+                  players={roomState.players}
+                  selfId={playerId}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  roomPhase={roomState.phase}
+                  onLeave={leaveRoom}
+                  onScorecardClose={triggerGameOver}
+                />
+              )}
+
+              {roomState.game === "uno" && gameState != null && (
+                <UnoBoard
+                  state={gameState as UnoPlayerState}
+                  players={roomState.players}
+                  selfId={playerId}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  roomPhase={roomState.phase}
+                  onLeave={leaveRoom}
+                  history={roomState.unoHistory}
+                  champion={roomState.unoChampion}
+                  onScorecardClose={triggerGameOver}
+                />
+              )}
+
+              {roomState.game === "dotsboxes" && gameState != null && (
+                (() => {
+                  const dbs = gameState as DotsBoxesPublicState;
+                  const isHost = roomState.hostId === playerId;
+                  const activePid = dbs.turnPlayerId;
+                  const activeP = roomState.players.find((p) => p.id === activePid);
+                  const effectiveSelfId =
+                    isHost && activeP?.isLocal ? activePid : playerId;
+                  return (
+                    <PassPhoneGate
+                      activePlayerId={activePid}
+                      players={roomState.players}
+                      isHost={isHost}
+                    >
+                      <DotsBoxesBoard
+                        state={dbs}
+                        players={roomState.players}
+                        selfId={effectiveSelfId}
+                        messages={messages}
+                        roomCode={roomState.code}
+                        roomPhase={roomState.phase}
+                        onLeave={leaveRoom}
+                        onScorecardClose={triggerGameOver}
+                      />
+                    </PassPhoneGate>
+                  );
+                })()
+              )}
+
+              {roomState.game === "wordbuilding" && gameState != null && (
+                (() => {
+                  const wbs = gameState as WordBuildingPublicState;
+                  const isHost = roomState.hostId === playerId;
+                  const activePid = wbs.turnPlayerId;
+                  const activeP = roomState.players.find((p) => p.id === activePid);
+                  const effectiveSelfId =
+                    isHost && activeP?.isLocal ? activePid : playerId;
+                  return (
+                    <PassPhoneGate
+                      activePlayerId={activePid}
+                      players={roomState.players}
+                      isHost={isHost}
+                    >
+                      <WordBuildingBoard
+                        state={wbs}
+                        players={roomState.players}
+                        selfId={effectiveSelfId}
+                        messages={messages}
+                        roomCode={roomState.code}
+                        roomPhase={roomState.phase}
+                        onLeave={leaveRoom}
+                      />
+                    </PassPhoneGate>
+                  );
+                })()
+              )}
+
+              {roomState.game === "stargame" && gameState != null && (
+                <StarBoard
+                  state={gameState as StarPlayerView}
+                  players={roomState.players}
+                  selfId={playerId}
+                  roomCode={roomState.code}
+                  messages={messages}
+                  roomPhase={roomState.phase}
+                />
+              )}
+
+              {roomState.game === "bingo" && gameState != null && !showGameOver && (
+                <BingoBoard
+                  state={gameState as BingoPlayerState}
+                  players={roomState.players}
+                  selfId={playerId}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  roomPhase={roomState.phase}
+                  onLeave={leaveRoom}
+                  onScorecardClose={triggerGameOver}
+                />
+              )}
+
+              {roomState.game === "namesplaceanimal" && gameState != null && (
+                <NamePlaceAnimalBoard
+                  state={gameState as NamePlaceAnimalPlayerState}
+                  myAnswers={(gameState as NamePlaceAnimalPlayerState).myAnswers}
+                  myPlayerId={playerId || ""}
+                  onMove={sendMove}
+                />
+              )}
+
+              {roomState.game === "tambola" && gameState != null && (
+                <TambolaBoard
+                  state={gameState as TambolaPlayerState}
+                  selfId={playerId || ""}
+                  onMove={sendMove}
+                />
+              )}
+
+              {roomState.game === "snake" && gameState != null && (
+                <SnakeBoard
+                  onMove={sendMove}
+                  state={gameState as SnakePublicState}
+                  selfId={playerId || ""}
+                />
+              )}
+
+              {roomState.game === "carrom" && gameState != null && (
+                <CarromBoard
+                  state={gameState as CarromPublicState}
+                  players={roomState.players}
+                  selfId={playerId || ""}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  roomPhase={roomState.phase}
+                  onLeave={leaveRoom}
+                  onMove={sendMove}
+                />
+              )}
+
+              {roomState.game === "chess" && gameState != null && (
+                <ChessBoard
+                  state={gameState as ChessPublicState}
+                  players={roomState.players}
+                  selfId={playerId || ""}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  roomPhase={roomState.phase}
+                  onMove={sendMove}
+                />
+              )}
+
+              {roomState.game === "spacewar" && gameState != null && (
+                <SpaceWarBoard
+                  onMove={sendMove}
+                  state={gameState as SpaceWarPublicState}
+                  selfId={playerId || ""}
+                />
+              )}
+            </GameErrorBoundary>
+          </div>
+        )}
+
       {linkDown && (
         <div
           role="status"
@@ -1422,32 +1308,7 @@ export default function Room() {
 
       <ChatMessageToast messages={messages} selfId={playerId} />
 
-      {/* Soundboard playback + attribution. Mounted here, not in the rail,
-          so a clip lands on every player's screen regardless of which panel
-          any of them happens to have open. */}
       <SoundboardLayer players={roomState.players} selfId={playerId} />
-
-          {/* Every non-Rummy game now hosts its own InlineRoomRail inside
-              its board card (the floating right-edge strip overlapped the
-              play area on small viewports). Rummy still owns its header
-              icons; the lobby keeps the full inline side rail below so the
-              room code stays prominent while players join. */}
-
-          {/* Inline side rail — kept only during the lobby (or for Rummy
-              lobby) so the room code and player list are immediately visible
-              while everyone joins. During gameplay this collapses into the
-              FloatingRoomRail above. */}
-          {roomState.phase === "lobby" && (
-            <div className="space-y-4">
-              <div className="hidden md:block">
-                <PlayerList players={roomState.players} selfId={playerId} />
-              </div>
-              <VoicePanel players={roomState.players} selfId={playerId} />
-              <Chat messages={messages} selfId={playerId} />
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* ── GameOverScreen — fixed full-viewport overlay, z-70 ──────────
           Appears when the game session ends. For non-Rummy games it shows
@@ -1511,6 +1372,7 @@ export default function Room() {
           onLeave={leaveRoom}
         />
       )}
+        </div>
       </div>
     </AppLayout>
   );
