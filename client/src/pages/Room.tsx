@@ -204,12 +204,12 @@ function BotControls({
             onKeyDown={(e) => { if (e.key === "Enter" && !atCapacity) addBot(); }}
             placeholder="Bot nickname (optional)"
             maxLength={20}
-            className="flex-1 min-w-0 text-xs px-3.5 py-2.5 rounded-xl border border-[#EEDBCA] dark:border-slate-700 bg-white dark:bg-[#0F1420] text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 transition"
+            className="flex-1 min-w-0 text-xs px-3.5 py-2.5 rounded-xl border border-[#EEDBCA] dark:border-slate-700 bg-white dark:bg-[#0F1420] text-[#2B3550] dark:text-slate-100 placeholder-[#B0B0B0]"
           />
           <button
             type="button"
             onClick={addBot}
-            className="inline-flex shrink-0 whitespace-nowrap items-center justify-center gap-1.5 text-xs px-4 py-2.5 rounded-xl font-extrabold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-[0_3px_10px_rgba(16,185,129,0.3)] active:scale-95 transition-all cursor-pointer min-h-[40px]"
+            className="inline-flex shrink-0 whitespace-nowrap items-center justify-center gap-1.5 text-xs px-4 py-2.5 rounded-xl font-extrabold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white transition"
             title="Add a bot to the table"
           >
             <span>+</span>
