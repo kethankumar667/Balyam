@@ -24,6 +24,7 @@ export default function ParticipantPanel({
   onRemoveLocalPlayer?: (localId: string) => void;
 }) {
   const [showAddBotDialog, setShowAddBotDialog] = useState(false);
+  const [isAddingQuickBot, setIsAddingQuickBot] = useState(false);
   const [isExpandedMobile, setIsExpandedMobile] = useState(false);
 
   const availableSeats = Math.max(0, maxPlayers - players.length);
@@ -31,6 +32,16 @@ export default function ParticipantPanel({
   const readyCount = players.filter((p) => p.isReady).length;
   const supportsBots = !NO_BOT_GAMES.has(game);
   const canAddBot = isHost && !isRoomFull && supportsBots;
+
+  async function handleQuickAddBot() {
+    if (!canAddBot || isAddingQuickBot) return;
+    setIsAddingQuickBot(true);
+    try {
+      await onAddBot();
+    } finally {
+      setTimeout(() => setIsAddingQuickBot(false), 300);
+    }
+  }
 
   // On very small screens, show first 4 players by default if many
   const isLongList = players.length > 4;
@@ -58,18 +69,34 @@ export default function ParticipantPanel({
           {/* Contextual Bot Addition or Table Full indicator */}
           <div className="flex items-center gap-2">
             {canAddBot ? (
-              <button
-                type="button"
-                onClick={() => setShowAddBotDialog(true)}
-                className="inline-flex items-center gap-1 min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 transition active:scale-95 cursor-pointer"
-                title="Add a bot player to this room"
-              >
-                <span>+</span>
-                <span>Add Bot</span>
-                <span className="text-[10px] opacity-75 hidden xs:inline">
-                  ({availableSeats} left)
-                </span>
-              </button>
+              <div className="inline-flex items-center rounded-xl overflow-hidden shadow-xs border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/60">
+                {/* 1-Tap Quick Add Bot */}
+                <button
+                  type="button"
+                  onClick={handleQuickAddBot}
+                  disabled={isAddingQuickBot}
+                  className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="Quick add a bot with auto-generated name"
+                >
+                  <span className="text-sm font-black">+</span>
+                  <span>Add Bot</span>
+                  <span className="text-[10px] opacity-75 hidden xs:inline">
+                    ({availableSeats} left)
+                  </span>
+                </button>
+
+                {/* Optional Customise Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowAddBotDialog(true)}
+                  disabled={isAddingQuickBot}
+                  className="inline-flex items-center justify-center min-h-[34px] px-2.5 py-1 border-l border-emerald-300/70 dark:border-emerald-700/70 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 transition active:scale-95 cursor-pointer"
+                  title="Customise bot nickname or difficulty (optional)"
+                  aria-label="Customise bot nickname or difficulty"
+                >
+                  <span className="text-[11px]" aria-hidden>⚙️</span>
+                </button>
+              </div>
             ) : isRoomFull ? (
               <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-full">
                 Table Full

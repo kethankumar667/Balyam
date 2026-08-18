@@ -108,7 +108,7 @@ export default function BotManagementDialog({
               id="bot-dialog-title"
               className="text-base font-extrabold text-[#2B3550] dark:text-slate-100"
             >
-              Add Bot Player
+              Customise Bot
             </h3>
           </div>
 
@@ -117,6 +117,10 @@ export default function BotManagementDialog({
           </span>
         </div>
 
+        <p className="text-xs text-[#796651] dark:text-slate-400">
+          Optionally give this bot a custom nickname or difficulty. Leaving it blank will automatically pick a random fun name.
+        </p>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Bot Name Input */}
           <div className="space-y-1.5">
@@ -124,7 +128,7 @@ export default function BotManagementDialog({
               htmlFor="bot-name-input"
               className="text-xs font-bold uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 block"
             >
-              Bot Nickname (optional)
+              Bot Nickname (Optional)
             </label>
             <input
               id="bot-name-input"
@@ -132,7 +136,7 @@ export default function BotManagementDialog({
               type="text"
               value={botName}
               onChange={(e) => setBotName(e.target.value)}
-              placeholder="e.g. MasterBot (or leave blank)"
+              placeholder="e.g. TurboBot (or leave blank for random)"
               maxLength={20}
               className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-[#EEDBCA] dark:border-slate-700 bg-white dark:bg-[#0F1420] text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500 focus:outline-none focus:border-[#EA5A1F] focus:ring-2 focus:ring-[#EA5A1F]/20 transition"
             />
