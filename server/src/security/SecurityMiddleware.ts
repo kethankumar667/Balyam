@@ -2,40 +2,21 @@ import type { Request, Response, NextFunction } from "express";
 import { logger } from "../lib/logger.js";
 
 /**
- * Authentication middleware for operational endpoints (/api/operational/*).
- * If OPERATIONAL_SECRET is configured, requests must supply either:
- * - Header: `x-operational-key: <secret>`
- * - Header: `Authorization: Bearer <secret>`
- * - Query param: `?key=<secret>` (for simple browser inspection)
+ * Operational authorization lives in `./operationalAuth.ts`.
+ *
+ * It used to live here, and it used to fail OPEN — `if (!secret) return next()`
+ * let every request through whenever the environment variable was missing, in
+ * production included. It is re-exported rather than moved silently so that
+ * existing imports keep working while the gate itself is one reviewable file.
  */
-export function requireOperationalAuth(req: Request, res: Response, next: NextFunction): void {
-  const secret = process.env.OPERATIONAL_SECRET || process.env.ADMIN_API_KEY || "";
-  // If no secret configured, allow with diagnostic warning in non-production
-  if (!secret) {
-    return next();
-  }
-
-  const authHeader = req.headers["authorization"];
-  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
-  const customHeader = req.headers["x-operational-key"] as string | undefined;
-  const queryKey = req.query.key as string | undefined;
-
-  const provided = bearerToken || customHeader || queryKey;
-
-  if (!provided || provided !== secret) {
-    logger.warn({
-      message: `Unauthorized operational API access attempt to ${req.path}`,
-      module: "SECURITY",
-    });
-    res.status(401).json({
-      error: "Unauthorized",
-      message: "Valid operational credentials required to access this endpoint.",
-    });
-    return;
-  }
-
-  next();
-}
+export {
+  requireOperationalAuth,
+  assertOperationalAuthConfigured,
+  operationalAuthStatus,
+  operationalAuthConfig,
+  operationalConfigProblems,
+  type OperationalPrincipal,
+} from "./operationalAuth.js";
 
 /**
  * Production Security Headers Middleware.

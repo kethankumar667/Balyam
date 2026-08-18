@@ -234,9 +234,19 @@ export default function CategoryFilter({
             stops reading as one control. */}
         <div
           ref={trackRef}
+          /* Scrollable at EVERY width, not just below `sm`.
+             `sm:overflow-visible` assumed the six segments always fit from
+             640px up. They do not: the labels are `whitespace-nowrap`, so
+             their intrinsic width is ~814px, and between roughly 640px and
+             1000px the track overflowed with no way to scroll it — measured at
+             768px, 1024px and 667px landscape, where "Classroom" sat at
+             x=709..814 outside a 768px viewport and could not be reached at
+             all.
+             `overflow-x-auto` shows no scrollbar and changes nothing when the
+             content fits, so keeping it on is free above the breakpoint and
+             restores reachability below it. */
           className="flex w-full items-stretch gap-1 overflow-x-auto
-                     sm:overflow-visible
-                     scroll-smooth overscroll-x-contain scroll-px-12
+                     scroll-smooth overscroll-x-contain scroll-px-12 touch-pan-x
                      [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {segments.map((seg, i) => {

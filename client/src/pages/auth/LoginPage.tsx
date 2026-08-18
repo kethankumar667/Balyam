@@ -74,7 +74,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="py-1.5 text-[12.5px] font-bold text-[#9C7E63] hover:text-[#5C3717] transition-colors cursor-pointer"
+              className="py-1.5 min-h-[24px] inline-flex items-center text-[12.5px] font-bold text-[#866C55] hover:text-[#5C3717] transition-colors cursor-pointer"
             >
               Continue as Guest
             </button>
@@ -168,7 +168,7 @@ export default function LoginPage() {
                 </label>
                 <Link
                   to="/forgot-password"
-                  className="text-[11.5px] font-extrabold text-[#E85D04] hover:underline"
+                  className="text-[11.5px] font-extrabold text-[#E85D04] hover:underline min-h-[24px] inline-flex items-center"
                 >
                   Forgot password?
                 </Link>
@@ -193,7 +193,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#9C7E63] hover:text-[#4A2508] cursor-pointer"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-[#9C7E63] hover:text-[#4A2508] cursor-pointer"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -211,15 +211,15 @@ export default function LoginPage() {
             </div>
 
             {/* Options Row: Checkbox */}
-            <div className="flex items-center gap-2 pt-0.5">
+            <div className="flex items-center gap-2 pt-0.5 min-h-[44px]">
               <input
                 type="checkbox"
                 id="keepSignedIn"
                 checked={keepSignedIn}
                 onChange={(e) => setKeepSignedIn(e.target.checked)}
-                className="w-4 h-4 rounded border-[#D9C4A3] text-[#E85D04] focus:ring-[#F4C430] accent-[#E85D04] cursor-pointer"
+                className="w-4 h-4 shrink-0 rounded border-[#D9C4A3] text-[#E85D04] focus:ring-[#F4C430] accent-[#E85D04] cursor-pointer"
               />
-              <label htmlFor="keepSignedIn" className="text-[11.5px] font-bold text-[#5C3717] select-none cursor-pointer">
+              <label htmlFor="keepSignedIn" className="text-[11.5px] font-bold text-[#5C3717] select-none cursor-pointer min-h-[44px] inline-flex items-center">
                 Keep me signed in on this device
               </label>
             </div>
@@ -241,7 +241,7 @@ export default function LoginPage() {
             <span className="text-[12px] text-[#7A5B3E] font-medium">
               New to BHALYAM?{" "}
             </span>
-            <Link to="/signup" className="text-[12px] font-extrabold text-[#E85D04] hover:underline">
+            <Link to="/signup" className="text-[12px] font-extrabold text-[#E85D04] hover:underline min-h-[24px] inline-flex items-center">
               Create an account
             </Link>
           </div>
@@ -253,7 +253,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowTrustSheet(true)}
-            className="flex items-center gap-1 hover:text-[#E85D04] transition cursor-pointer"
+            className="flex items-center gap-1 min-h-[24px] hover:text-[#E85D04] transition cursor-pointer"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-[#E85D04]" />
             <span>Secure</span>
@@ -262,7 +262,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowTrustSheet(true)}
-            className="flex items-center gap-1 hover:text-[#E85D04] transition cursor-pointer"
+            className="flex items-center gap-1 min-h-[24px] hover:text-[#E85D04] transition cursor-pointer"
           >
             <Zap className="w-3.5 h-3.5 text-amber-500" />
             <span>Lightweight</span>
@@ -271,7 +271,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowTrustSheet(true)}
-            className="flex items-center gap-1 hover:text-[#E85D04] transition cursor-pointer"
+            className="flex items-center gap-1 min-h-[24px] hover:text-[#E85D04] transition cursor-pointer"
           >
             <Heart className="w-3.5 h-3.5 text-red-500 fill-current" />
             <span>Made for You</span>

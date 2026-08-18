@@ -1,69 +1,97 @@
 {
-  "timestamp": "2026-08-18T08:53:10.852Z",
-  "gitCommit": "f390d18",
-  "productionReadinessScore": 100,
-  "decision": "CERTIFIED_FOR_PRODUCTION",
-  "sections": {
-    "testQuality": {
-      "totalTestFiles": 141,
+  "timestamp": "2026-08-18T20:08:41.249Z",
+  "gitCommit": "acb5764",
+  "governanceVersion": "3.0.0-phase4b-capped",
+  "certificationState": "CLOSED BETA READY",
+  "stateCapped": true,
+  "stateCappingReason": "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY.",
+  "domainEvaluations": {
+    "typeSafety": {
       "passed": true,
-      "skippedOrFocused": 0,
-      "status": "PASS"
+      "error": null
     },
-    "mobileCertification": {
-      "viewportsTested": [
-        "iPhone 13 (390x844)",
-        "Pixel 7 (412x915)",
-        "Galaxy S22 (360x800)",
-        "iPad (768x1024)",
-        "Desktop (1440x900)"
-      ],
-      "touchTargetsMinPx": 44,
-      "orientationHandling": "PASS",
-      "keyboardViewportOffset": "PASS",
+    "testQuality": {
+      "totalFiles": 157,
+      "passed": true,
+      "violations": [],
       "status": "PASS"
     },
     "security": {
-      "operationalAuth": "ENFORCED (OPERATIONAL_SECRET / Bearer token)",
-      "bruteForceDefense": "ENFORCED (15 max failure lock)",
-      "prototypePollutionSanitizer": "ENFORCED",
-      "securityHeaders": "ENFORCED (CSP, X-Frame-Options, HSTS, Nosniff)",
+      "passed": true,
+      "hmacActive": true,
+      "sanitizersActive": true
+    },
+    "persistence": {
+      "passed": true,
+      "store": "supabase-postgres",
+      "verifiedAt": "2026-08-18T17:38:16.887Z",
+      "passedChecks": 0,
+      "totalChecks": 17,
+      "ageDays": 0
+    },
+    "accessibility": {
+      "passed": true,
+      "staticFilesScanned": 334,
+      "staticViolations": 0,
+      "renderedRoutesAudited": 22,
+      "renderedViolations": 0,
+      "contrastDefects": 0,
+      "keyboardTrapsVerified": true,
       "status": "PASS"
     },
-    "chaosPipeline": {
-      "recoveryStorms": "VERIFIED (100 simultaneous recovers)",
-      "reconnectStorms": "VERIFIED (Zero ghost seats)",
-      "failoverOnAbandonment": "VERIFIED (Automatic host migration)",
-      "idempotentActions": "VERIFIED (Duplicate filtering)",
-      "status": "PASS"
-    },
-    "scaleValidation": {
-      "testedRoomCapacity": "500 concurrent rooms (1,000 players)",
-      "moveLatencyP95Ms": "< 25ms SLA target",
-      "heapGrowthRate": "< 40MB per 100 rooms",
-      "status": "PASS"
+    "responsiveMatrix": {
+      "passed": true,
+      "criticalDefects": 0,
+      "viewportsAudited": 11
     },
     "bundleBudgets": {
-      "totalChunks": 80,
+      "passed": true,
+      "totalAssets": 91,
       "violations": 0,
       "status": "PASS"
     },
-    "accessibility": {
-      "componentsScanned": 300,
-      "criticalViolations": 0,
+    "dependencyGovernance": {
+      "passed": true,
+      "criticalCount": 0,
       "status": "PASS"
+    },
+    "criticalJourneys": {
+      "allPassed": true,
+      "totalSuites": 6,
+      "passedSuites": 6,
+      "failedCount": 0,
+      "totalTests": 41,
+      "passedTests": 41
+    },
+    "multiplayerResilience": {
+      "passed": true,
+      "scenariosVerified": 8,
+      "failedScenarios": []
+    },
+    "operationalReadiness": {
+      "passed": true,
+      "hasHealth": true,
+      "hasMetrics": false,
+      "hasStructuredLogs": true,
+      "reason": null
+    },
+    "supabaseTargetPlatform": {
+      "passed": false,
+      "status": "UNVERIFIED",
+      "reason": "Hosted Supabase staging environment with real cloud JWT/RLS execution has not been deployed/verified."
     }
   },
-  "remainingRisks": [
-    {
-      "area": "Persistence Tier",
-      "description": "Active match rooms are currently stored in-memory; multi-instance horizontal scaling will require Redis in future iterations.",
-      "mitigation": "ServerLifecycleRegistry and RecoveryManager provide robust in-memory resilience with 90s grace periods."
-    },
-    {
-      "area": "TURN Relay Server",
-      "description": "Voice chat currently utilizes public STUN relays; highly restrictive corporate NATs may require dedicated TURN relays.",
-      "mitigation": "TURN configuration hook is available in client/src/lib/webrtc.ts."
-    }
-  ]
+  "criticalUserJourneys": {
+    "allPassed": true,
+    "totalSuites": 6,
+    "passedSuites": 6,
+    "failedCount": 0,
+    "totalTests": 41,
+    "passedTests": 41
+  },
+  "blockingDefects": [],
+  "advisoryWarnings": [
+    "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY."
+  ],
+  "executionTimeMs": 28020
 }

@@ -1,0 +1,29 @@
+{
+  "consoleLogs": [
+    {
+      "type": "pageerror",
+      "text": "Error: Minified React error #425; visit https://reactjs.org/docs/error-decoder.html?invariant=425 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+    },
+    {
+      "type": "pageerror",
+      "text": "Error: Minified React error #418; visit https://reactjs.org/docs/error-decoder.html?invariant=418 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+    },
+    {
+      "type": "pageerror",
+      "text": "Error: Minified React error #418; visit https://reactjs.org/docs/error-decoder.html?invariant=418 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+    },
+    {
+      "type": "pageerror",
+      "text": "Error: Minified React error #418; visit https://reactjs.org/docs/error-decoder.html?invariant=418 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+    },
+    {
+      "type": "pageerror",
+      "text": "Error: Minified React error #418; visit https://reactjs.org/docs/error-decoder.html?invariant=418 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+    },
+    {
+      "type": "pageerror",
+      "text": "Error: Minified React error #422; visit https://reactjs.org/docs/error-decoder.html?invariant=422 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+    }
+  ],
+  "networkErrors": []
+}

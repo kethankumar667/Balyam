@@ -1,28 +1,58 @@
 {
-  "timestamp": "2026-08-18T08:52:41.848Z",
-  "gitCommit": "f390d18",
-  "overallScore": 100,
-  "decision": "GO",
-  "gates": {
+  "timestamp": "2026-08-18T20:09:29.886Z",
+  "gitCommit": "acb5764",
+  "certificationState": "CLOSED BETA READY",
+  "releaseApproved": true,
+  "stateCapped": true,
+  "stateCappingReason": "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY.",
+  "domains": {
     "typeSafety": {
       "status": "PASS",
-      "message": "0 TypeScript compiler errors"
+      "message": "0 TypeScript errors across server and client"
     },
     "testIntegrity": {
       "status": "PASS",
-      "message": "141 test files clean (0 skipped, 0 focused)"
+      "message": "157 test files clean (0 skipped, 0 focused)"
     },
-    "bundleBudgets": {
+    "persistence": {
       "status": "PASS",
-      "message": "All 80 chunks within budgets"
+      "message": "Verified against supabase-postgres (0d old)"
     },
     "accessibility": {
       "status": "PASS",
-      "message": "300 UI components scanned (0 critical)"
+      "message": "334 UI components & 22 rendered pages clean"
+    },
+    "mobile": {
+      "status": "PASS",
+      "message": "11 viewports certified (0 horizontal overflows, 44px targets)"
+    },
+    "bundleBudgets": {
+      "status": "PASS",
+      "message": "All 91 chunks within budgets"
     },
     "dependencyGovernance": {
       "status": "PASS",
       "message": "Engine alignment & dependencies secure"
+    },
+    "multiplayer": {
+      "status": "PASS",
+      "message": "All 8 Scenarios verified (Sync, Reconnect, Rematch, Viewports)"
+    },
+    "soakTesting": {
+      "status": "PASS",
+      "message": "Extended runtime verified with zero memory/WebSocket leaks"
+    },
+    "browserCompatibility": {
+      "status": "PASS",
+      "message": "Chrome, Edge, and Firefox verified"
+    },
+    "supabaseCloud": {
+      "status": "UNVERIFIED",
+      "message": "Pending hosted cloud staging deployment"
     }
-  }
+  },
+  "blockers": [],
+  "advisories": [
+    "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY."
+  ]
 }

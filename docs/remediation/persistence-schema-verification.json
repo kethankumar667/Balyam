@@ -1,0 +1,338 @@
+{
+  "verifiedAt": "2026-08-18T17:37:42.782Z",
+  "engine": "PostgreSQL 17.5 on x86_64-windows",
+  "scope": "SCHEMA verification against a real PostgreSQL. Does NOT cover the PostgREST transport or application restart durability.",
+  "authStub": "auth.users and auth.uid() are local stand-ins; Supabase's real auth schema is not covered.",
+  "migration": "20260818000000_progression_persistence.sql",
+  "checks": [
+    {
+      "section": "connectivity",
+      "name": "database reachable and answering queries",
+      "passed": true,
+      "evidence": "PostgreSQL 17.5 on x86_64-windows"
+    },
+    {
+      "section": "connectivity",
+      "name": "Supabase auth.users / auth.uid() stubs created",
+      "passed": true,
+      "evidence": "declared stand-ins; Supabase's real auth schema is NOT covered by this run"
+    },
+    {
+      "section": "migration",
+      "name": "migration applies cleanly to an empty database",
+      "passed": true,
+      "evidence": "no errors"
+    },
+    {
+      "section": "migration",
+      "name": "migration is re-runnable (idempotent)",
+      "passed": true,
+      "evidence": "second apply changed nothing"
+    },
+    {
+      "section": "schema",
+      "name": "all 19 tables created",
+      "passed": true,
+      "evidence": "19 present"
+    },
+    {
+      "section": "schema",
+      "name": "every table has a primary key",
+      "passed": true,
+      "evidence": "all tables keyed"
+    },
+    {
+      "section": "schema",
+      "name": "foreign keys present",
+      "passed": true,
+      "evidence": "22 foreign key constraints"
+    },
+    {
+      "section": "schema",
+      "name": "indexes present",
+      "passed": true,
+      "evidence": "43 indexes"
+    },
+    {
+      "section": "schema",
+      "name": "leaderboard_public view exists",
+      "passed": true,
+      "evidence": "1 view(s)"
+    },
+    {
+      "section": "rls",
+      "name": "RLS enabled on every table",
+      "passed": true,
+      "evidence": "19 tables"
+    },
+    {
+      "section": "rls",
+      "name": "RLS forced on every table",
+      "passed": true,
+      "evidence": "19 tables"
+    },
+    {
+      "section": "rls",
+      "name": "no INSERT/UPDATE/DELETE policy exists for client roles",
+      "passed": true,
+      "evidence": "clients cannot write progression; only the service role can"
+    },
+    {
+      "section": "rls",
+      "name": "owner-read SELECT policies present",
+      "passed": true,
+      "evidence": "11 SELECT policies"
+    },
+    {
+      "section": "crud",
+      "name": "player_identities — CREATE",
+      "passed": true,
+      "evidence": "guest_8045e131…, guest_beb2f57e…"
+    },
+    {
+      "section": "crud",
+      "name": "player_identities — READ",
+      "passed": true,
+      "evidence": "kind=guest"
+    },
+    {
+      "section": "crud",
+      "name": "player_identities — UPDATE",
+      "passed": true,
+      "evidence": "last_seen_at advanced"
+    },
+    {
+      "section": "crud",
+      "name": "player_profiles — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "{\"display_name\":\"Verifier2\",\"level\":3,\"experience_points\":\"400\"}"
+    },
+    {
+      "section": "crud",
+      "name": "xp_ledger — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "{\"amount\":100,\"source_kind\":\"match\"}"
+    },
+    {
+      "section": "crud",
+      "name": "player_achievements — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "{\"achievement_id\":\"first_win\"}"
+    },
+    {
+      "section": "crud",
+      "name": "challenge_claims — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "{\"challenge_id\":\"daily_win\",\"xp_awarded\":45}"
+    },
+    {
+      "section": "crud",
+      "name": "season_stats — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "{\"season_xp\":\"1200\"}"
+    },
+    {
+      "section": "crud",
+      "name": "season_reward_claims — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "{\"tier_id\":\"tier_1\"}"
+    },
+    {
+      "section": "crud",
+      "name": "tournament_records — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "{\"status\":\"WINNER\"}"
+    },
+    {
+      "section": "crud",
+      "name": "reward_audit — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "{\"outcome\":\"granted\"}"
+    },
+    {
+      "section": "crud",
+      "name": "friends — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "{\"friend_player_id\":\"guest_beb2f57e420d93ac2a0db486e9b37aa2\"}"
+    },
+    {
+      "section": "crud",
+      "name": "friend_requests — CREATE / READ / UPDATE",
+      "passed": true,
+      "evidence": "PENDING → ACCEPTED"
+    },
+    {
+      "section": "crud",
+      "name": "parties + party_members + party_invitations — CREATE / READ",
+      "passed": true,
+      "evidence": "{\"status\":\"CREATED\",\"members\":1}"
+    },
+    {
+      "section": "crud",
+      "name": "match_summaries + match_participants — CREATE / READ",
+      "passed": true,
+      "evidence": "{\"game\":\"ludo\",\"players\":2}"
+    },
+    {
+      "section": "crud",
+      "name": "season_snapshots — CREATE / READ (jsonb)",
+      "passed": true,
+      "evidence": "[{\"rank\":1,\"playerId\":\"x\"}]"
+    },
+    {
+      "section": "crud",
+      "name": "room_timelines + operational_telemetry — CREATE",
+      "passed": true,
+      "evidence": "bounded summaries stored"
+    },
+    {
+      "section": "crud",
+      "name": "DELETE removes rows",
+      "passed": true,
+      "evidence": "friends -1, operational_telemetry -1"
+    },
+    {
+      "section": "constraints",
+      "name": "duplicate XP for the same source is refused",
+      "passed": true,
+      "evidence": "23505 xp_ledger_source_idx"
+    },
+    {
+      "section": "constraints",
+      "name": "duplicate challenge claim in the same period is refused",
+      "passed": true,
+      "evidence": "23505 challenge_claims_pkey"
+    },
+    {
+      "section": "constraints",
+      "name": "duplicate season tier claim is refused",
+      "passed": true,
+      "evidence": "23505 season_reward_claims_pkey"
+    },
+    {
+      "section": "constraints",
+      "name": "duplicate match for the same (room_code, started_at) is refused",
+      "passed": true,
+      "evidence": "23505 match_summaries_natural_key_idx"
+    },
+    {
+      "section": "constraints",
+      "name": "a second granted reward with the same idempotency key is refused",
+      "passed": true,
+      "evidence": "23505 reward_audit_idempotency_idx"
+    },
+    {
+      "section": "constraints",
+      "name": "self-friendship is refused",
+      "passed": true,
+      "evidence": "23514 no_self_friendship"
+    },
+    {
+      "section": "constraints",
+      "name": "a player in two parties is refused",
+      "passed": true,
+      "evidence": "23505 party_members_one_party_idx"
+    },
+    {
+      "section": "constraints",
+      "name": "a guest id outside the guest_ namespace is refused",
+      "passed": true,
+      "evidence": "23514 guest_id_namespace"
+    },
+    {
+      "section": "constraints",
+      "name": "a member identity without an auth user is refused",
+      "passed": true,
+      "evidence": "23514 identity_kind_matches_auth"
+    },
+    {
+      "section": "constraints",
+      "name": "season wins greater than matches is refused",
+      "passed": true,
+      "evidence": "23514 wins_not_more_than_matches"
+    },
+    {
+      "section": "constraints",
+      "name": "a match finishing before it started is refused",
+      "passed": true,
+      "evidence": "23514 match_finishes_after_start"
+    },
+    {
+      "section": "constraints",
+      "name": "a foreign key to a non-existent player is refused",
+      "passed": true,
+      "evidence": "23503 player_profiles_player_id_fkey"
+    },
+    {
+      "section": "constraints",
+      "name": "a new PENDING request is allowed once the previous is resolved",
+      "passed": true,
+      "evidence": "partial unique index is scoped to status='PENDING'"
+    },
+    {
+      "section": "constraints",
+      "name": "a second PENDING request in the same direction is refused",
+      "passed": true,
+      "evidence": "23505 friend_requests_pending_idx"
+    },
+    {
+      "section": "constraints",
+      "name": "the REVERSE pending direction is allowed (documented product behaviour)",
+      "passed": true,
+      "evidence": "A->B and B->A can both be pending; mutual-request auto-accept is a product decision, not a constraint"
+    },
+    {
+      "section": "constraints",
+      "name": "duplicate/refused reward decisions are still auditable",
+      "passed": true,
+      "evidence": "partial unique index is scoped to outcome='granted'"
+    },
+    {
+      "section": "concurrency",
+      "name": "10 truly parallel claims produce exactly one row",
+      "passed": true,
+      "evidence": "1 insert(s) reported, 1 row(s) stored"
+    },
+    {
+      "section": "concurrency",
+      "name": "10 truly parallel XP awards for one source produce exactly one row",
+      "passed": true,
+      "evidence": "1 ledger row(s)"
+    },
+    {
+      "section": "retention",
+      "name": "prune_expired_records() deletes expired rows and reports counts",
+      "passed": true,
+      "evidence": "{\"room_timelines\":1,\"operational_telemetry\":1,\"friend_requests\":0,\"party_invitations\":0,\"parties\":0}"
+    },
+    {
+      "section": "retention",
+      "name": "deleting an identity cascades to its progression",
+      "passed": true,
+      "evidence": "profiles 1→0, xp_ledger orphans 0"
+    },
+    {
+      "section": "rollback",
+      "name": "rollback script executes cleanly",
+      "passed": true,
+      "evidence": "all objects dropped in dependency order"
+    },
+    {
+      "section": "rollback",
+      "name": "no progression tables remain after rollback",
+      "passed": true,
+      "evidence": "clean"
+    },
+    {
+      "section": "rollback",
+      "name": "migration re-applies after a rollback",
+      "passed": true,
+      "evidence": "forward/back/forward cycle succeeds"
+    }
+  ],
+  "passed": true,
+  "counts": {
+    "total": 54,
+    "failed": 0
+  }
+}

@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import BhalyamHome from "./pages/BhalyamHome";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AdminRoute from "./components/auth/AdminRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ConsentModal from "./components/privacy/ConsentModal";
 import { enforceConsentOnLoad } from "./lib/privacy/consent";
@@ -32,6 +33,8 @@ const PreviewLudo = lazy(() => import("./pages/PreviewLudo"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const TournamentsPage = lazy(() => import("./pages/TournamentsPage"));
+const DesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatalogPage"));
+const SocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 
 function RouteLoadingFallback() {
   return (
@@ -111,6 +114,8 @@ export default function App() {
             />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />
+            <Route path="/social" element={<SocialHubPage />} />
+            <Route path="/design-system" element={<DesignSystemCatalogPage />} />
 
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/about" element={<AboutPage />} />
@@ -127,7 +132,25 @@ export default function App() {
             {/* Connection log for debugging reconnect failures on real devices. */}
             <Route path="/diagnostics" element={<Diagnostics />} />
             <Route path="/preview/ludo" element={<PreviewLudo />} />
-            <Route path="/admin" element={<AdminDashboardPage />} />
+            {/*
+              Two gates, deliberately.
+
+              `ProtectedRoute` sends an anonymous visitor to sign in, which is
+              the ordinary courtesy. `AdminRoute` is the one that matters: it
+              asks the SERVER whether this session may read operational data
+              and renders the console only on a 200. The route used to have
+              neither, and the endpoints behind it answered anyone.
+            */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminDashboardPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Standalone nostalgic & retro games */}
             <Route path="/nokiacricket" element={<NokiaCricketPage />} />

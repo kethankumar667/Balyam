@@ -45,13 +45,21 @@ export default function CoinColorPicker({
           return (
             <button
               key={c}
+              type="button"
               onClick={() => !isOther && pick(c)}
               disabled={isOther}
-              className={`relative rounded-lg p-2 flex flex-col items-center gap-1 transition border-2 ${
+              aria-label={
+                isMe
+                  ? `Your coin color, ${palette.label}`
+                  : isOther
+                  ? `${palette.label} coin, taken by ${owner!.name}`
+                  : `Pick ${palette.label} coin`
+              }
+              className={`relative min-h-[44px] min-w-[44px] rounded-lg p-2 flex flex-col items-center justify-center gap-1 transition border-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                 isMe
                   ? "border-white scale-105"
                   : isOther
-                  ? "border-slate-700 opacity-40 cursor-not-allowed"
+                  ? "border-slate-700 opacity-40 !cursor-not-allowed"
                   : "border-transparent hover:scale-105 hover:border-white"
               }`}
               style={{ background: palette.fill }}

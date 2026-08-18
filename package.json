@@ -18,7 +18,24 @@
     "check:tests": "node scripts/quality-gates/testQualityAudit.mjs",
     "check:deps": "node scripts/quality-gates/dependencyGovernance.mjs",
     "check:perf": "node scripts/quality-gates/performanceBudgetGuard.mjs",
+    "check:multiplayer": "node scripts/quality-gates/multiplayerResilienceSuite.mjs",
+    "check:soak": "node scripts/quality-gates/soakTestRunner.mjs",
+    "check:browser": "node scripts/quality-gates/browserCompatibilityAudit.mjs",
     "release:check": "node scripts/quality-gates/releaseReadinessReport.mjs",
-    "enterprise:check": "node scripts/quality-gates/enterpriseReadinessReport.mjs"
+    "enterprise:check": "node scripts/quality-gates/enterpriseReadinessReport.mjs",
+    "check:persistence": "node scripts/quality-gates/persistenceVerification.mjs",
+    "verify:persistence": "npm run verify:schema && npm run verify:durability",
+    "check:mobile-layout": "node client/scripts/mobile-layout/runner.mjs",
+    "coverage:server": "npm --prefix server test -- --coverage",
+    "coverage:client": "npm --prefix client test -- --coverage",
+    "coverage": "npm run coverage:server && npm run coverage:client",
+    "verify:schema": "node scripts/persistence/verifySchema.mjs",
+    "verify:durability": "node scripts/persistence/verifyDurability.mjs",
+    "check:a11y-rendered": "node client/scripts/accessibility/runner.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "^4.13.0",
+    "embedded-postgres": "^17.5.0-beta.15",
+    "pg": "^8.23.0"
   }
 }

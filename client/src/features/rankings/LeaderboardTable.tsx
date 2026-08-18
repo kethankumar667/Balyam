@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { LeaderboardEntry, LeaderboardMetric } from "@shared/ranking/PlayerRank";
 import { RANK_TIERS } from "@shared/ranking/RankingRules";
 import type { GameKind } from "@shared/types";
+import { RankTierIcon, GameCategoryIcon, SearchNavIcon, AddFriendUserIcon } from "../../design-system/icons";
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -48,16 +49,16 @@ export default function LeaderboardTable({
               { id: "wins", label: "🏆 Wins" },
               { id: "winRate", label: "📊 Win Rate" },
               { id: "matchesPlayed", label: "🎮 Matches" },
-              { id: "level", label: "🎖️ Level" },
+              { id: "level", label: "⚡ Level" },
             ] as const
           ).map((m) => (
             <button
               key={m.id}
               onClick={() => onSelectMetric(m.id)}
-              className={`px-3 py-1.5 rounded-lg transition shrink-0 ${
+              className={`px-3 min-h-[44px] inline-flex items-center justify-center rounded-lg transition shrink-0 ${
                 selectedMetric === m.id
                   ? "bg-amber-500 text-zinc-950 font-bold shadow"
-                  : "text-stone-400 hover:text-stone-200"
+                  : "bg-stone-900/80 text-stone-400 hover:text-stone-200 border border-stone-800"
               }`}
             >
               {m.label}
@@ -66,46 +67,56 @@ export default function LeaderboardTable({
         </div>
 
         {/* Search */}
-        <input
-          type="text"
-          placeholder="Search players..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="bg-stone-950 dark:bg-zinc-950 border border-stone-800 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-stone-200 focus:outline-none focus:border-amber-500 w-full md:w-48 font-mono"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search competitor..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full md:w-56 min-h-[44px] bg-stone-950 border border-stone-800 rounded-lg px-3.5 py-2 pl-9 text-xs text-stone-200 placeholder-stone-500 focus:outline-none focus:border-amber-500 focus-visible:ring-2 focus-visible:ring-amber-500/40"
+          />
+          <span className="absolute left-3 top-3.5 text-stone-500 pointer-events-none">
+            <SearchNavIcon size={14} />
+          </span>
+        </div>
       </div>
 
-      {/* Game Selector Chips */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+      {/* Game Filters */}
+      <div className="flex items-center gap-2 overflow-x-auto text-xs font-medium pb-1.5 custom-scrollbar">
         <button
+          type="button"
           onClick={() => onSelectGame(undefined)}
-          className={`px-3 py-1 rounded-full border transition shrink-0 ${
+          className={`min-h-[44px] px-4 py-2 rounded-full transition shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
             !selectedGame
-              ? "bg-stone-100 text-stone-950 border-stone-100 font-bold"
-              : "border-stone-800 text-stone-400 hover:text-stone-200"
+              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold"
+              : "bg-stone-900/50 text-stone-400 border border-stone-800 hover:text-stone-200"
           }`}
         >
           All Games
         </button>
-        {(["ludo", "uno", "rummy", "handcricket", "chess", "carrom", "snl", "dotsboxes"] as GameKind[]).map((g) => (
-          <button
-            key={g}
-            onClick={() => onSelectGame(g)}
-            className={`px-3 py-1 rounded-full border transition shrink-0 capitalize ${
-              selectedGame === g
-                ? "bg-amber-500 text-zinc-950 border-amber-500 font-bold"
-                : "border-stone-800 text-stone-400 hover:text-stone-200"
-            }`}
-          >
-            {g}
-          </button>
-        ))}
+        {(["ludo", "rummy", "uno", "handcricket", "chess", "carrom", "snake"] as const).map(
+          (g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => onSelectGame(g)}
+              className={`min-h-[44px] px-3.5 py-2 rounded-full transition shrink-0 uppercase text-[11px] font-mono flex items-center gap-1.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                selectedGame === g
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold"
+                  : "bg-stone-900/50 text-stone-400 border border-stone-800 hover:text-stone-200"
+              }`}
+            >
+              <GameCategoryIcon game={g} size={16} />
+              {g}
+            </button>
+          )
+        )}
       </div>
 
-      {/* Leaderboard Content */}
+      {/* Table / Card Views */}
       {filtered.length === 0 ? (
-        <div className="bg-stone-900/40 dark:bg-zinc-900/40 border border-stone-800 dark:border-zinc-800 rounded-xl p-8 text-center text-stone-500 text-xs">
-          No ranking records found matching your filters.
+        <div className="bg-stone-900/40 border border-stone-800 rounded-xl p-8 text-center text-stone-500 text-xs">
+          No competitors found matching your criteria.
         </div>
       ) : (
         <>
@@ -141,14 +152,15 @@ export default function LeaderboardTable({
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
                           style={{
                             borderColor: `${tierCfg.color}66`,
                             backgroundColor: `${tierCfg.color}15`,
                             color: tierCfg.color,
                           }}
                         >
-                          {tierCfg.badge} {item.tier}
+                          <RankTierIcon tier={item.tier} size={14} />
+                          {item.tier}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center font-bold text-amber-400">{item.rating}</td>
@@ -159,9 +171,10 @@ export default function LeaderboardTable({
                         {onAddFriend && (
                           <button
                             onClick={() => onAddFriend(item.playerId)}
-                            className="bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-stone-100 text-[11px] px-2.5 py-1 rounded transition"
+                            className="bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-stone-100 text-[11px] px-2.5 py-1 rounded transition inline-flex items-center gap-1"
                           >
-                            + Friend
+                            <AddFriendUserIcon size={12} />
+                            Friend
                           </button>
                         )}
                       </td>
@@ -179,46 +192,46 @@ export default function LeaderboardTable({
               return (
                 <div
                   key={item.playerId}
-                  className="bg-stone-900/90 dark:bg-zinc-900/90 border border-stone-800 dark:border-zinc-800 rounded-xl p-3.5 space-y-2.5"
+                  className="bg-stone-900/90 border border-stone-800 rounded-xl p-3 space-y-2 font-mono text-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 text-center">{getRankBadge(item.rank)}</div>
-                      <span className="text-2xl">{item.avatar || "👤"}</span>
+                    <div className="flex items-center gap-2 font-sans">
+                      <span className="font-bold text-stone-400">{getRankBadge(item.rank)}</span>
+                      <span className="text-lg">{item.avatar || "👤"}</span>
                       <div>
-                        <span className="font-bold text-sm text-stone-100 block">{item.displayName}</span>
-                        <span className="text-[11px] font-mono text-stone-500">LVL {item.level}</span>
+                        <span className="font-bold text-stone-100 block">{item.displayName}</span>
+                        <span className="text-[10px] text-stone-500 font-mono">Level {item.level}</span>
                       </div>
                     </div>
-
                     <span
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border font-mono"
+                      className="px-2 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1"
                       style={{
                         borderColor: `${tierCfg.color}66`,
                         backgroundColor: `${tierCfg.color}15`,
                         color: tierCfg.color,
                       }}
                     >
-                      {tierCfg.badge} {item.tier}
+                      <RankTierIcon tier={item.tier} size={12} />
+                      {item.tier}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 pt-2 border-t border-stone-800/80 text-center font-mono text-xs">
+                  <div className="grid grid-cols-4 gap-1 pt-1 border-t border-stone-800/80 text-center text-[11px]">
                     <div>
-                      <span className="text-[10px] text-stone-500 block">Rating</span>
+                      <span className="text-[9px] text-stone-500 block">Rating</span>
                       <span className="font-bold text-amber-400">{item.rating}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-stone-500 block">Wins</span>
+                      <span className="text-[9px] text-stone-500 block">Wins</span>
                       <span className="font-bold text-emerald-400">{item.wins}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-stone-500 block">Win Rate</span>
+                      <span className="text-[9px] text-stone-500 block">Win Rate</span>
                       <span className="font-bold text-sky-400">{item.winRate}%</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-stone-500 block">Matches</span>
-                      <span className="font-bold text-stone-300">{item.matchesPlayed}</span>
+                      <span className="text-[9px] text-stone-500 block">Matches</span>
+                      <span className="text-stone-300">{item.matchesPlayed}</span>
                     </div>
                   </div>
                 </div>

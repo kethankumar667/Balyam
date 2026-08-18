@@ -101,7 +101,7 @@ export default function GamesPage() {
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1440px] mx-auto pb-20">
         {/* Page Header */}
         <header className="space-y-1.5 text-left">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Nostalgic Indian Games Lounge</span>
           </div>

@@ -1,0 +1,12 @@
+{
+  "room_dark": {
+    "violationsCount": 0,
+    "contrastViolationsCount": 0,
+    "violations": []
+  },
+  "room_light": {
+    "violationsCount": 0,
+    "contrastViolationsCount": 0,
+    "violations": []
+  }
+}

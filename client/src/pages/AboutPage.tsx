@@ -195,7 +195,7 @@ export default function AboutPage() {
                     <h3 className="font-sans font-black text-[18px] sm:text-[20px] leading-tight tracking-tight">
                       Kethan Kumar Gontla
                     </h3>
-                    <p className="font-script text-[17px] sm:text-[18px] font-bold text-[#E85D04] dark:text-amber-400 mt-0.5 flex items-center gap-1.5">
+                    <p className="font-script text-[17px] sm:text-[18px] font-bold text-[#C54F03] dark:text-amber-400 mt-0.5 flex items-center gap-1.5">
                       <span>Founder &amp; Creator of Bhalyam</span>
                       <span className="text-[16px]">♡</span>
                     </p>
@@ -207,7 +207,7 @@ export default function AboutPage() {
               <div className="lg:col-span-4 text-left space-y-3.5">
                 
                 {/* Badge Header */}
-                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase">
+                <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-400 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase">
                   <span>★</span>
                   <span>ABOUT BHALYAM</span>
                   <span>★</span>

@@ -77,7 +77,7 @@ export default function PassPhoneGate({
             <div className="text-[10px] uppercase tracking-widest font-bold text-bhalyam-wood/70">
               Pass the phone
             </div>
-            <div className="mt-2 font-black text-[28px] sm:text-[34px] leading-tight">
+            <div id="pass-phone-title" className="mt-2 font-black text-[28px] sm:text-[34px] leading-tight">
               {activePlayer.name}'s turn
             </div>
             <div className="mt-3 text-[13px] sm:text-[14px] text-bhalyam-wood-dark/80">

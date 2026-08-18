@@ -60,13 +60,21 @@ export default function LudoColorPicker({
           return (
             <button
               key={c.id}
+              type="button"
               onClick={() => !blocked && pick(c.id)}
               disabled={blocked}
-              className={`relative rounded-lg p-3 flex flex-col items-center gap-1.5 transition border-2 ${
+              aria-label={
+                isMe
+                  ? `Your color, ${c.label}`
+                  : isOther
+                  ? `${c.label} color, taken by ${owner.name}`
+                  : `Pick ${c.label} color`
+              }
+              className={`relative min-h-[44px] min-w-[44px] rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 transition border-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                 isMe
                   ? "border-white scale-105"
                   : isOther
-                    ? "border-slate-700 opacity-40 cursor-not-allowed"
+                    ? "border-slate-700 opacity-40 !cursor-not-allowed"
                     : "border-transparent hover:scale-105 hover:border-white"
               }`}
               style={{ background: c.hex }}

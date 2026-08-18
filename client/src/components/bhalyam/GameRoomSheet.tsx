@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STAR_THEMES } from "@shared/star-themes";
 import { useNavigate } from "react-router-dom";
 import type {
@@ -379,11 +379,32 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     }
   }, [game, playerName]);
 
-  // ESC closes the sheet.
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  // ESC closes the sheet, Tab traps focus within the sheet.
   useEffect(() => {
     if (!game) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === "Tab") {
+        if (!sheetRef.current) return;
+        const focusable = sheetRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -689,6 +710,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       onClick={onClose}
     >
       <div
+        ref={sheetRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="game-room-sheet-title"

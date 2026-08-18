@@ -35,8 +35,15 @@ jobs:
       - name: Strict TypeScript Compilation
         run: npm run typecheck
 
-      - name: Automated Unit & Stress Tests (Vitest)
-        run: npm test
+      - name: Automated Unit & Stress Tests + Coverage (Vitest)
+        run: npm test -- --coverage
+
+      - name: Upload Server Coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-coverage
+          path: server/coverage
 
       - name: Build & Alias Resolution
         run: npm run build
@@ -62,8 +69,15 @@ jobs:
       - name: Strict TypeScript Compilation
         run: npm run typecheck
 
-      - name: Automated Unit Tests (Vitest)
-        run: npm test
+      - name: Automated Unit Tests + Coverage (Vitest)
+        run: npm test -- --coverage
+
+      - name: Upload Client Coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-coverage
+          path: client/coverage
 
       - name: Production Bundle & Prerender
         run: npm run build
@@ -96,13 +110,105 @@ jobs:
       - name: Gate 2 — Bundle Size Budgets
         run: node scripts/quality-gates/bundleBudgetGuard.mjs
 
-      - name: Gate 3 — WCAG Accessibility Standards (A11y)
+      # ── Gate 3 — Source scan, NOT an accessibility verdict ────────────────
+      #
+      # Renamed on purpose. This grep-style pass over JSX finds missing alt
+      # text and unlabelled controls, which is genuinely useful — and it cannot
+      # establish accessibility, because it never renders anything, never
+      # computes a contrast ratio against a real background, and never operates
+      # a control. Its previous name, "WCAG Accessibility Standards", claimed
+      # the thing it does not do.
+      #
+      # Rendered accessibility checks live in Gate 6, which measures real touch
+      # targets in a real browser (WCAG 2.2 AA 2.5.8). That is a start, not a
+      # replacement: contrast, focus order and screen-reader semantics still
+      # need an axe-core pass against the rendered DOM. Recorded as open in
+      # docs/remediation/P0-05-QUALITY-GATES.md.
+      - name: Gate 3 — Accessibility Source Scan (not a verdict)
         run: node scripts/quality-gates/accessibilityAudit.mjs
 
       - name: Gate 4 — Dependency Governance
         run: node scripts/quality-gates/dependencyGovernance.mjs
 
-      - name: Gate 5 — Consolidated Release Readiness Report
+      # ── Gate 5 — Performance budgets ──────────────────────────────────────
+      #
+      # This existed as `npm run check:perf` and was never run by CI. A budget
+      # nothing enforces is a note, so it is a step now like every other gate.
+      - name: Gate 5 — Performance Budgets
+        run: node scripts/quality-gates/performanceBudgetGuard.mjs
+
+      # ── Gate 6 — Real mobile layout, in a real browser ────────────────────
+      #
+      # Replaces mobileCertification.test.ts, which rendered nothing. This
+      # drives Chromium at eight viewports and measures. It CURRENTLY FAILS on
+      # genuine touch-target defects (see docs/remediation/P0-04-MOBILE-LAYOUT.md),
+      # so it is `continue-on-error` with the report published as an artifact —
+      # visible and tracked rather than either hidden or blocking every PR
+      # before the UI work is done. Flip this to blocking once the findings are
+      # fixed; that is the whole point of recording the number.
+      - name: Install Playwright Chromium
+        run: npx --prefix client playwright install --with-deps chromium
+
+      # Blocking now. It was `continue-on-error` while 67 measured touch-target
+      # and overflow defects were outstanding; those are fixed and re-measured
+      # at 0 CRITICAL / 0 HIGH, so the gate can hold the line it was written to
+      # hold. MEDIUM findings (>=24px, <44px) are reported and do not block.
+      - name: Gate 6 — Mobile Layout Measurements
+        run: node client/scripts/mobile-layout/runner.mjs
+
+      # ── Gate 6b — Rendered accessibility & contrast (axe-core) ────────────
+      #
+      # The real replacement for the source-scanning Gate 3: axe-core against
+      # the rendered DOM, both themes, 11 routes, with keyboard traversal and
+      # focus-indicator checks. Contrast ratios here are COMPUTED from resolved
+      # colours, which is why the audit's five "unmeasured" findings could
+      # finally be measured — and fixed.
+      - name: Gate 6b — Rendered Accessibility & Contrast
+        run: node client/scripts/accessibility/runner.mjs
+
+      - name: Upload Accessibility Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: ACCESSIBILITY_REPORT.json
+
+      - name: Upload Mobile Layout Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-layout-report
+          path: MOBILE_LAYOUT_REPORT.json
+
+      # ── Gate 7 — Durability is verified, or it is not claimed ─────────────
+      #
+      # Fails unless an actual create → restart → read against real Postgres
+      # has written a receipt. Blocking on `main` only: a pull request cannot
+      # hold the service-role key, and verification belongs where the
+      # credentials live. See docs/runbooks/persistence.md.
+      # Verification now runs LOCALLY against an embedded PostgreSQL 17 plus a
+      # PostgREST shim, so it no longer needs cloud credentials and no longer
+      # has to be restricted to `main`. This is what moved P0-3 from
+      # "IMPLEMENTED, NOT VERIFIED" to verified.
+      - name: Gate 7a — Persistence Schema Verification (real PostgreSQL)
+        run: node scripts/persistence/verifySchema.mjs
+
+      - name: Gate 7b — Persistence Durability (create, restart, read back)
+        run: node scripts/persistence/verifyDurability.mjs
+
+      - name: Gate 7c — Persistence Verification Receipts
+        run: node scripts/quality-gates/persistenceVerification.mjs
+
+      - name: Upload Persistence Receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: persistence-receipts
+          path: |
+            docs/remediation/persistence-verification.json
+            docs/remediation/persistence-schema-verification.json
+
+      - name: Gate 8 — Consolidated Release Readiness Report
         run: node scripts/quality-gates/releaseReadinessReport.mjs
 
       - name: Upload Release Readiness Report

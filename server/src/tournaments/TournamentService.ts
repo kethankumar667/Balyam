@@ -11,6 +11,7 @@ import {
 import type { TournamentBracket } from "@shared/tournaments/Bracket.js";
 import { TournamentEngine } from "./TournamentEngine.js";
 import { BracketEngine } from "./BracketEngine.js";
+import { progressionSync } from "../persistence/ProgressionSync.js";
 import { seasonService } from "../seasons/SeasonService.js";
 import { XPEngine } from "../ranking/XPEngine.js";
 import { profileService } from "../profile/ProfileService.js";
@@ -117,6 +118,14 @@ export class TournamentService {
     tournament.participants.push(participant);
     logger.info({ message: `Player ${player.displayName} registered for ${tournament.title}`, module: "TOURNAMENT" });
 
+    progressionSync.tournamentRecordSaved({
+      tournamentId,
+      playerId: player.playerId,
+      tournamentName: tournament.title,
+      game: tournament.game,
+      status: participant.status === "CHECKED_IN" ? "CHECKED_IN" : "REGISTERED",
+    });
+
     return { success: true };
   }
 
@@ -132,6 +141,13 @@ export class TournamentService {
 
     participant.checkedIn = true;
     participant.status = "CHECKED_IN";
+    progressionSync.tournamentRecordSaved({
+      tournamentId,
+      playerId,
+      tournamentName: tournament.title,
+      game: tournament.game,
+      status: "CHECKED_IN",
+    });
     return { success: true };
   }
 
@@ -206,6 +222,25 @@ export class TournamentService {
       tournament.endsAt = Date.now();
 
       this.distributeRewards(tournament, advanceResult.championId, advanceResult.runnerUpId);
+
+      // The outcome, durably. `tournament_records` has a composite primary key
+      // of (tournament_id, player_id), so re-reporting a final writes the same
+      // row rather than a second one.
+      for (const p of tournament.participants) {
+        progressionSync.tournamentRecordSaved({
+          tournamentId: tournament.id,
+          playerId: p.playerId,
+          tournamentName: tournament.title,
+          game: tournament.game,
+          placing:
+            p.playerId === advanceResult.championId
+              ? 1
+              : p.playerId === advanceResult.runnerUpId
+                ? 2
+                : undefined,
+          status: p.playerId === advanceResult.championId ? "WINNER" : "ELIMINATED",
+        });
+      }
     }
 
     return {

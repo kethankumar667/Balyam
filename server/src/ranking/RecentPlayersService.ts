@@ -1,6 +1,7 @@
 import type { GameKind } from "@shared/types.js";
 import type { RecentPlayer, FriendSummary } from "@shared/ranking/RecentPlayer.js";
 import { profileService } from "../profile/ProfileService.js";
+import { progressionSync } from "../persistence/ProgressionSync.js";
 
 interface ParticipantInfo {
   playerId: string;
@@ -74,6 +75,16 @@ export class RecentPlayersService {
       this.friends.set(playerId, set);
     }
     set.add(friendId);
+    /*
+     * This store was invisible to persistence until durability was actually
+     * measured. BHALYAM has TWO friend lists — `FriendsService` behind
+     * /api/social, and this one behind /api/ranking — and only the first was
+     * wired, so every friendship added from the leaderboard screen was lost on
+     * restart while the social one survived. The duplication itself is a
+     * genuine design problem and is recorded as debt; the missing write is
+     * fixed here.
+     */
+    progressionSync.friendAdded({ playerId, friendPlayerId: friendId });
     return true;
   }
 
@@ -83,7 +94,9 @@ export class RecentPlayersService {
   public removeFriend(playerId: string, friendId: string): boolean {
     const set = this.friends.get(playerId);
     if (!set) return false;
-    return set.delete(friendId);
+    const removed = set.delete(friendId);
+    if (removed) progressionSync.friendRemoved(playerId, friendId);
+    return removed;
   }
 
   /**
@@ -105,6 +118,18 @@ export class RecentPlayersService {
       });
     }
     return result;
+  }
+
+  /** Restore the ranking-side friend edges at boot. */
+  public hydrate(edges: Array<{ playerId: string; friendPlayerId: string }>): void {
+    for (const edge of edges) {
+      let set = this.friends.get(edge.playerId);
+      if (!set) {
+        set = new Set();
+        this.friends.set(edge.playerId, set);
+      }
+      set.add(edge.friendPlayerId);
+    }
   }
 
   public reset(): void {

@@ -182,7 +182,7 @@ export default function CommunicationPanel({
                   type="button"
                   onClick={() => setMobileDrawerOpen(false)}
                   aria-label="Close communication drawer"
-                  className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-[#EFE4D2] dark:bg-slate-800 text-[#2B3550] dark:text-slate-100 font-black flex items-center justify-center cursor-pointer active:scale-95 transition text-xs"
+                  className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#EFE4D2] dark:bg-slate-800 text-[#2B3550] dark:text-slate-100 font-black flex items-center justify-center cursor-pointer active:scale-95 transition text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F]"
                 >
                   ✕
                 </button>

@@ -135,7 +135,7 @@ export default function AppSidebar({
               <Link
                 to={section.header.parentPath}
                 onClick={onCloseMobile}
-                className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[var(--chrome-accent)] hover:underline group"
+                className="inline-flex items-center gap-1 min-h-[24px] text-[11px] font-extrabold text-[var(--chrome-accent)] hover:underline group"
               >
                 <ChevronLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
                 <span>{section.header.parentLabel || "Back to Home"}</span>

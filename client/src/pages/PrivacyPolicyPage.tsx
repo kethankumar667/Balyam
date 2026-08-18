@@ -262,7 +262,11 @@ export default function PrivacyPolicyPage() {
               <svg className="w-4 h-4 text-[#E85D04]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Last updated <span className="font-bold text-[#E85D04] ml-1">{LAST_UPDATED}</span>
+              Last updated {/* No `dark:` variant on purpose. This page keeps its cream surface in
+                  both themes, so flipping the ink to amber-400 dropped the ratio to
+                  1.57:1 — light ink on a light panel. Dark mode is a TWO-part change
+                  (panel and ink together); doing one half alone is the bug. */}
+              <span className="font-bold text-[#C14D03] ml-1">{LAST_UPDATED}</span>
             </div>
           </div>
 

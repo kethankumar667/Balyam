@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-08-18T18:46:05.348Z",
+  "engine": "axe-core in chromium (playwright)",
+  "standard": "WCAG 2.1 A + AA (wcag2a, wcag2aa, wcag21a, wcag21aa)",
+  "themes": [
+    "dark",
+    "light"
+  ],
+  "routes": [
+    "Home",
+    "Games",
+    "Leaderboard",
+    "Tournaments",
+    "Social hub",
+    "Settings",
+    "Sign in",
+    "Sign up",
+    "About",
+    "Privacy",
+    "Admin (gated)"
+  ],
+  "viewport": "390×844",
+  "pagesAudited": 22,
+  "keyboardStopsExercised": 368,
+  "scope": "axe-core covers a well-defined subset of WCAG. It cannot judge whether a label is MEANINGFUL, whether focus order is logical, or whether a live-region announcement is useful. Those remain manual review items and are NOT counted as passes.",
+  "counts": {
+    "accessibility": {
+      "total": 0,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    },
+    "contrast": {
+      "total": 0,
+      "serious": 0,
+      "moderate": 0
+    },
+    "keyboard": 0
+  },
+  "accessibilityViolations": [],
+  "contrastViolations": [],
+  "keyboardFindings": []
+}

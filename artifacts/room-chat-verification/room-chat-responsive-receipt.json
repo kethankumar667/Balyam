@@ -1,0 +1,76 @@
+{
+  "viewports": [
+    {
+      "viewport": "320×568 (iPhone SE)",
+      "width": 320,
+      "height": 568,
+      "scrollWidth": 320,
+      "clientWidth": 320,
+      "horizontalOverflow": "PASS"
+    },
+    {
+      "viewport": "360×800 (Galaxy S)",
+      "width": 360,
+      "height": 800,
+      "scrollWidth": 360,
+      "clientWidth": 360,
+      "horizontalOverflow": "PASS"
+    },
+    {
+      "viewport": "390×844 (iPhone 14)",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "horizontalOverflow": "PASS"
+    },
+    {
+      "viewport": "412×915 (Pixel 8)",
+      "width": 412,
+      "height": 915,
+      "scrollWidth": 412,
+      "clientWidth": 412,
+      "horizontalOverflow": "PASS"
+    },
+    {
+      "viewport": "768×1024 (iPad Portrait)",
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "horizontalOverflow": "PASS"
+    },
+    {
+      "viewport": "1024×1366 (iPad Pro)",
+      "width": 1024,
+      "height": 1366,
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "horizontalOverflow": "PASS"
+    },
+    {
+      "viewport": "1440×900 (Desktop 1440)",
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "horizontalOverflow": "PASS"
+    },
+    {
+      "viewport": "844×390 (Mobile Landscape)",
+      "width": 844,
+      "height": 390,
+      "scrollWidth": 844,
+      "clientWidth": 844,
+      "horizontalOverflow": "PASS"
+    },
+    {
+      "viewport": "390×540 (Keyboard Open)",
+      "width": 390,
+      "height": 540,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "horizontalOverflow": "PASS"
+    }
+  ]
+}

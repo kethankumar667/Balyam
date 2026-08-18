@@ -30,7 +30,7 @@ export default function ChallengesBoard({ challenges, onClaimReward }: Challenge
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveType("daily")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+            className={`px-3 min-h-[44px] inline-flex items-center justify-center rounded-lg text-xs font-bold transition ${
               activeType === "daily"
                 ? "bg-amber-500 text-zinc-950 shadow"
                 : "text-stone-400 hover:text-stone-200"
@@ -40,7 +40,7 @@ export default function ChallengesBoard({ challenges, onClaimReward }: Challenge
           </button>
           <button
             onClick={() => setActiveType("weekly")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+            className={`px-3 min-h-[44px] inline-flex items-center justify-center rounded-lg text-xs font-bold transition ${
               activeType === "weekly"
                 ? "bg-amber-500 text-zinc-950 shadow"
                 : "text-stone-400 hover:text-stone-200"

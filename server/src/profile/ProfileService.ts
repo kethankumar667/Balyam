@@ -8,6 +8,7 @@ import type { Achievement } from "@shared/profile/Achievements.js";
 import { StatsProjection } from "./StatsProjection.js";
 import { AchievementsEngine } from "./AchievementsEngine.js";
 import { matchHistoryService } from "./MatchHistoryService.js";
+import { progressionSync } from "../persistence/ProgressionSync.js";
 
 export class ProfileService {
   private profiles: Map<string, PlayerProfile> = new Map();
@@ -40,7 +41,20 @@ export class ProfileService {
     this.profiles.set(playerId, profile);
     this.stats.set(playerId, INITIAL_PLAYER_STATS(playerId));
     this.unlockedAchievements.set(playerId, {});
+    progressionSync.profileSaved(profile);
     return profile;
+  }
+
+  /**
+   * Reads a profile WITHOUT creating one.
+   *
+   * Added because `GET /api/profile/:playerId` used `getOrCreateProfile`, so a
+   * read for an unknown id created it. That made an anonymous GET a write: a
+   * loop over invented ids filled the profile table, and nothing about the
+   * caller was ever checked. A read that creates is not a read.
+   */
+  public getProfile(playerId: string): PlayerProfile | undefined {
+    return this.profiles.get(playerId);
   }
 
   /**
@@ -54,6 +68,7 @@ export class ProfileService {
     if (updates.displayName) profile.displayName = updates.displayName.trim().slice(0, 24);
     if (updates.avatar) profile.avatar = updates.avatar;
     profile.lastSeenAt = Date.now();
+    progressionSync.profileSaved(profile);
     return profile;
   }
 
@@ -81,7 +96,11 @@ export class ProfileService {
         : "DRAW";
 
       const matchItem: MatchHistoryItem = {
-        matchId: `m_${params.roomCode}_${Date.now()}_${p.playerId.slice(-4)}`,
+        // Derived from the match, not from the clock. `Date.now()` here meant
+        // a replayed completion produced a NEW id, so a host failover wrote a
+        // second copy of the same match into somebody's history and inflated
+        // the stats projected from it.
+        matchId: `m_${params.roomCode}_${params.startedAt}_${p.playerId.slice(-4)}`,
         roomCode: params.roomCode,
         game: params.game,
         startedAt: params.startedAt,
@@ -105,6 +124,12 @@ export class ProfileService {
       const xpEarned = result === "WIN" ? 50 : result === "DRAW" ? 25 : 15;
       profile.experiencePoints += xpEarned;
       profile.level = calculateLevel(profile.experiencePoints);
+      progressionSync.profileSaved(profile);
+      // The ledger row carries the match id as its source, so replaying the
+      // completion cannot award the XP twice.
+      progressionSync.xpAwarded(
+        p.playerId, xpEarned, "match", matchItem.matchId, `${result} at ${params.game}`,
+      );
 
       // 4. Update achievements
       const unlMap = this.unlockedAchievements.get(p.playerId) || {};
@@ -112,10 +137,16 @@ export class ProfileService {
       for (const ach of achievements) {
         if (ach.unlocked && !unlMap[ach.id]) {
           unlMap[ach.id] = Date.now();
+          progressionSync.achievementUnlocked(p.playerId, ach.id);
         }
       }
       this.unlockedAchievements.set(p.playerId, unlMap);
     }
+
+    // One summary row for the match, after the per-player loop. Keyed on
+    // (roomCode, startedAt) in the store, so a second report of the same match
+    // is refused by a unique index rather than by this code remembering.
+    progressionSync.matchFinished(params);
   }
 
   /**
@@ -159,11 +190,65 @@ export class ProfileService {
   /**
    * Awards XP to a player and updates their level.
    */
+  /**
+   * Add XP and re-derive the level.
+   *
+   * The durable side is only the resulting TOTAL. The ledger entry that
+   * explains it is written by whoever knows the cause — a match, a challenge, a
+   * season tier — because only they can name a source id, and a ledger row
+   * without one cannot be deduplicated. See `ProgressionSync.xpAwarded`.
+   */
   public awardXP(playerId: string, amount: number): PlayerProfile {
     const profile = this.getOrCreateProfile(playerId);
     profile.experiencePoints += amount;
     profile.level = calculateLevel(profile.experiencePoints);
+    progressionSync.profileSaved(profile);
     return profile;
+  }
+
+  /**
+   * Restore profiles and achievement unlocks from the durable store.
+   *
+   * Called once at boot, BEFORE the server accepts traffic. Nothing else in
+   * this class knows the store exists: the service stays a synchronous
+   * in-memory thing, and this is the single seam where memory is refilled.
+   *
+   * Career stats are deliberately NOT restored here. They are a projection of
+   * match history (`StatsProjection`), and re-deriving them from the restored
+   * matches keeps one source of truth instead of two that can disagree after
+   * a rule change.
+   */
+  public hydrate(
+    profiles: Array<{
+      playerId: string;
+      displayName: string;
+      avatar?: string | null;
+      level: number;
+      experiencePoints: number;
+      joinedAt: number;
+      lastSeenAt: number;
+    }>,
+    achievements: Array<{ playerId: string; achievementId: string; unlockedAt: number }>,
+  ): void {
+    for (const p of profiles) {
+      this.profiles.set(p.playerId, {
+        playerId: p.playerId,
+        displayName: p.displayName,
+        avatar: p.avatar ?? undefined,
+        joinedAt: p.joinedAt,
+        lastSeenAt: p.lastSeenAt,
+        level: p.level,
+        experiencePoints: p.experiencePoints,
+      });
+      if (!this.stats.has(p.playerId)) this.stats.set(p.playerId, INITIAL_PLAYER_STATS(p.playerId));
+      if (!this.unlockedAchievements.has(p.playerId)) this.unlockedAchievements.set(p.playerId, {});
+    }
+
+    for (const a of achievements) {
+      const existing = this.unlockedAchievements.get(a.playerId) ?? {};
+      existing[a.achievementId] = a.unlockedAt;
+      this.unlockedAchievements.set(a.playerId, existing);
+    }
   }
 
   public reset(): void {

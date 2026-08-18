@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
-import { getApiBaseUrl } from "../lib/socket";
+import { operationalFetch, OperationalAuthError } from "../lib/operationalApi";
 
 interface HealthData {
   status: "HEALTHY" | "WARNING" | "CRITICAL";
@@ -71,25 +71,40 @@ export default function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
+  /** True once the server stopped accepting this session's credential. */
+  const [authLost, setAuthLost] = useState(false);
 
+  /**
+   * Every call now carries a credential (see lib/operationalApi.ts). These
+   * endpoints used to answer a bare `fetch()` because the server was
+   * fail-open; a 401 was not a state this screen could reach, and so it had no
+   * way to render one.
+   */
   const fetchDashboardData = async () => {
     try {
-      const baseUrl = getApiBaseUrl();
       const [hRes, mRes, pRes, gRes] = await Promise.all([
-        fetch(`${baseUrl}/api/operational/health`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/operational/metrics`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/operational/performance`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/operational/games`).then((r) => r.json()),
+        operationalFetch<HealthData>("/api/operational/health"),
+        operationalFetch<MetricsData>("/api/operational/metrics"),
+        operationalFetch<PerfData>("/api/operational/performance"),
+        operationalFetch<{ games: GameMetric[] }>("/api/operational/games"),
       ]);
 
       setHealth(hRes);
       setMetrics(mRes);
       setPerf(pRes);
       setGames(gRes.games || []);
+      setAuthLost(false);
       setLastRefreshed(new Date());
       setIsLoading(false);
     } catch (err) {
-      console.error("Failed to fetch operational data:", err);
+      // A credential that expires or is revoked mid-session must stop the
+      // polling loop, not spin against a wall every five seconds.
+      if (err instanceof OperationalAuthError) {
+        setAuthLost(true);
+        setAutoRefresh(false);
+      } else {
+        console.error("Failed to fetch operational data:", err);
+      }
       setIsLoading(false);
     }
   };
@@ -105,16 +120,18 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     if (!timelineCode.trim()) return;
     try {
-      const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/operational/timeline/${timelineCode.trim().toUpperCase()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTimelineData(data);
-      } else {
-        setTimelineData({ error: `Room ${timelineCode} timeline not found` });
-      }
+      const data = await operationalFetch<unknown>(
+        `/api/operational/timeline/${timelineCode.trim().toUpperCase()}`,
+      );
+      setTimelineData(data);
     } catch (err) {
-      setTimelineData({ error: "Failed to fetch timeline" });
+      if (err instanceof OperationalAuthError) {
+        setAuthLost(true);
+        setAutoRefresh(false);
+        setTimelineData(null);
+        return;
+      }
+      setTimelineData({ error: `Room ${timelineCode} timeline not found` });
     }
   };
 
@@ -174,6 +191,23 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
       </header>
+
+      {/*
+        The server stopped accepting this session's credential — expired token,
+        rotated key, or an id taken off the admin list. Said plainly, with the
+        polling loop already stopped, rather than letting the panels quietly
+        freeze on their last good values.
+      */}
+      {authLost && (
+        <div
+          role="alert"
+          className="max-w-7xl mx-auto mb-8 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+        >
+          <span className="font-bold">Authorization lost.</span> The server refused this
+          session's operational credential. Reload to sign in again or re-enter the
+          operational key.
+        </div>
+      )}
 
       {isLoading ? (
         <div className="max-w-7xl mx-auto py-20 text-center text-zinc-500">

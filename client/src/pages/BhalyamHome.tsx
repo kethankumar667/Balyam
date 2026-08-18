@@ -21,6 +21,7 @@ import CategoryFilter, {
 } from "../components/bhalyam/CategoryFilter";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
+import { WelcomeModal, GettingStartedCard, journeyTracker } from "../features/onboarding";
 import {
   BHALYAM_GAMES,
   isLocked,
@@ -126,6 +127,10 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
 export default function BhalyamHome() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(() => {
+    return !journeyTracker.getState().hasCompletedWelcome;
+  });
+  const [showGettingStarted, setShowGettingStarted] = useState(true);
 
   // Warm the socket connection on landing so the first room create/join
   // doesn't pay the cold WebSocket handshake at click time
@@ -142,6 +147,12 @@ export default function BhalyamHome() {
             onOpenJoin={() => setJoinOpen(true)}
           />
           <WelcomePlayerStrip onSelect={setSheetGame} />
+          {showGettingStarted && (
+            <GettingStartedCard
+              className="mb-5"
+              onDismiss={() => setShowGettingStarted(false)}
+            />
+          )}
           <GamesSection onSelect={setSheetGame} />
           <WhatAreWePlayingSection
             onSelectGame={setSheetGame}
@@ -153,6 +164,11 @@ export default function BhalyamHome() {
         </div>
         <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
         <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
+        <WelcomeModal
+          open={welcomeOpen}
+          onClose={() => setWelcomeOpen(false)}
+          onStartQuest={() => setSheetGame("uno")}
+        />
       </div>
     </AppLayout>
   );
@@ -470,7 +486,7 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ ...bhalyamSpring, delay: 0.15 }}
-            className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#EA5A1F] border border-[#F2D5A9] shadow-[0_4px_10px_-3px_rgba(234,90,31,0.45)] flex-shrink-0"
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#C04A19] border border-[#F2D5A9] shadow-[0_4px_10px_-3px_rgba(234,90,31,0.45)] flex-shrink-0"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#EA5A1F] animate-pulse" aria-hidden />
             Most Played Today
@@ -500,17 +516,18 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
         as="ul"
         staggerChildren
         amount={0.08}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 list-none"
       >
+        {/* `as="li"` rather than an inner `<li>`: the wrapper carries the
+            stagger variants, so it must BE the list item — an inner `<li>`
+            produced ul > div > li and orphaned every tile. */}
         {shown.map((game) => (
-          <RevealItem key={game.slug}>
-            <li>
-              <GameTile
-                game={game}
-                onSelect={() => onSelect(game.slug)}
-                compact
-              />
-            </li>
+          <RevealItem as="li" key={game.slug}>
+            <GameTile
+              game={game}
+              onSelect={() => onSelect(game.slug)}
+              compact
+            />
           </RevealItem>
         ))}
       </RevealOnScroll>

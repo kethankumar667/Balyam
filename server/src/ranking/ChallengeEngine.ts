@@ -6,6 +6,7 @@ import {
 } from "@shared/ranking/Challenges.js";
 import { profileService } from "../profile/ProfileService.js";
 import { XPEngine } from "./XPEngine.js";
+import { progressionSync } from "../persistence/ProgressionSync.js";
 
 interface StoredClaimState {
   claimedIds: Set<string>;
@@ -153,6 +154,11 @@ export class ChallengeEngine {
     claims.claimedIds.add(challengeId);
 
     XPEngine.awardChallengeXP(playerId, target.xpReward);
+    // Durable, and audited. The in-memory set above decides duplicates within
+    // this process; the store's primary key decides them across a restart —
+    // which is the case that used to hand every player their daily rewards
+    // again after every deploy.
+    progressionSync.challengeClaimed(playerId, challengeId, target.xpReward);
 
     return {
       success: true,
@@ -167,6 +173,18 @@ export class ChallengeEngine {
       this.playerClaims.set(playerId, claims);
     }
     return claims;
+  }
+
+  /**
+   * Restore which challenge rewards have already been taken.
+   *
+   * This is the one that made "already claimed" a lie: the claim set lived in
+   * a Map, so every redeploy handed every player their daily rewards again.
+   */
+  public hydrate(claims: Array<{ playerId: string; challengeId: string }>): void {
+    for (const c of claims) {
+      this.getOrCreateClaims(c.playerId).claimedIds.add(c.challengeId);
+    }
   }
 
   public reset(): void {

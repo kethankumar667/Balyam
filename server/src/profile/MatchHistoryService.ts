@@ -6,15 +6,17 @@ export class MatchHistoryService {
   private playerMatches: Map<string, MatchHistoryItem[]> = new Map();
 
   public recordMatch(playerId: string, match: MatchHistoryItem): void {
-    const list = this.playerMatches.get(playerId) || [];
-    // Prepend to maintain reverse chronological order
+    const list = this.playerMatches.get(playerId) ?? [];
+    // A match id is now derived from (roomCode, startedAt, player), so a
+    // replayed completion — a host failover, a retried ack — produces the SAME
+    // id and is recognised rather than appended a second time. It used to
+    // embed `Date.now()`, which made every replay a new match and every
+    // duplicate an extra line in somebody's history.
+    if (list.some((m) => m.matchId === match.matchId)) return;
     list.unshift(match);
-    // Keep max 500 matches per player in memory
-    if (list.length > 500) {
-      list.length = 500;
-    }
     this.playerMatches.set(playerId, list);
   }
+
 
   public getMatches(
     playerId: string,
@@ -51,6 +53,15 @@ export class MatchHistoryService {
       timelineEventsCount: timeline?.events.length ?? 0,
       timelineExportUrl: timeline ? `/api/operational/timeline/${item.roomCode}` : undefined,
     };
+  }
+
+  /** Refill from the durable store at boot. Newest last; `getMatches` sorts. */
+  public hydrate(entries: Array<{ playerId: string; match: MatchHistoryItem }>): void {
+    for (const { playerId, match } of entries) {
+      const list = this.playerMatches.get(playerId) ?? [];
+      if (!list.some((m) => m.matchId === match.matchId)) list.push(match);
+      this.playerMatches.set(playerId, list);
+    }
   }
 
   public reset(): void {

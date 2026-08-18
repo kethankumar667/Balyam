@@ -329,7 +329,7 @@ export default function SignUpPage() {
                       <label className="block text-[11.5px] font-extrabold text-[#4A2508]">
                         Display Name <span className="text-[#E85D04]">*</span>
                       </label>
-                      <span className="text-[10px] font-semibold text-[#8C6D4F] bg-[#FAF2DF] px-2 py-0.5 rounded-full border border-[#E6D4B5]">
+                      <span className="text-[10px] font-semibold text-[#86694C] bg-[#FAF2DF] px-2 py-0.5 rounded-full border border-[#E6D4B5]">
                         {isCustomDisplayName ? "Customized ✏️" : "Auto-generated 🪄"}
                       </span>
                     </div>
@@ -394,12 +394,18 @@ export default function SignUpPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {/* Date of Birth */}
                     <div>
-                      <label className="block text-[11.5px] font-extrabold text-[#4A2508] mb-1">
+                      {/* `htmlFor`/`id`, not just proximity. The label existed
+                          and was not ASSOCIATED, so axe reported the date input
+                          as unlabelled at critical impact: a screen reader
+                          announced "date, edit" with no indication of which
+                          date. Visual adjacency is not an association. */}
+                      <label htmlFor="signup-dob" className="block text-[11.5px] font-extrabold text-[#4A2508] mb-1">
                         Date of Birth <span className="text-[#E85D04]">*</span>
                       </label>
                       <div className="relative">
                         <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9C7E63] pointer-events-none" />
                         <input
+                          id="signup-dob"
                           type="date"
                           value={dob}
                           max={new Date().toISOString().split("T")[0]}
@@ -409,7 +415,24 @@ export default function SignUpPage() {
                             if (dobError) setDobError(null);
                             clearNotices();
                           }}
-                          className={`w-full bg-[#FFFDF8] border rounded-2xl pl-10 pr-3 py-2 text-[12.5px] font-medium text-[#4A2508] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
+                          /* `focus:outline-*`, not `focus-visible:`, and not a ring.
+                             Measured: keyboard-focusing this date input produced
+                             outline-style:none AND box-shadow:none — no visible focus
+                             indicator at all, on 1 of 20 tab stops in both themes. The
+                             `outline-none` suppressed the global focus ring and the
+                             `ring-2` replacement never painted on this control, which is
+                             exactly the failure accessibility-standards §1.2 warns about:
+                             never remove an outline without an accessible replacement that
+                             actually renders.
+
+                             `:focus-visible` is the usual choice and is wrong HERE: Chromium
+                             puts focus inside a date input's shadow DOM, so the host does not
+                             match `:focus-visible` and the app's global
+                             `*:focus-visible { box-shadow: var(--ring) }` never paints. `:focus`
+                             always matches the host. A date field is only ever focused
+                             deliberately, so the usual reason to prefer `:focus-visible` —
+                             avoiding a ring on mouse clicks — does not apply. */
+                          className={`w-full bg-[#FFFDF8] border rounded-2xl pl-10 pr-3 py-2 text-[12.5px] font-medium text-[#4A2508] focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[#F4C430] transition-all ${
                             dobError ? "border-[#E11D48]" : "border-[#E6D4B5]"
                           }`}
                           required

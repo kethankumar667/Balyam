@@ -111,6 +111,30 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: true,
   },
   {
+    key: "bhalyam.guest.id",
+    label: "Guest identity",
+    description:
+      "The id the server issued you for playing without an account. It is what your profile, challenges and friends list are filed under while you are a guest.",
+    purpose: "identity",
+    isPersonalData: true,
+  },
+  {
+    key: "bhalyam.guest.token",
+    label: "Guest key",
+    description:
+      "Proof that the guest identity above is yours, signed by the server. Without it anybody could ask for your guest profile by name, which is exactly what they used to be able to do.",
+    purpose: "credential",
+    isPersonalData: true,
+  },
+  {
+    key: "bhalyam.guest.expires",
+    label: "Guest key expiry",
+    description:
+      "When the guest key above stops working, so this browser can ask for a fresh one before a request fails rather than after. Counted as personal because it dates the guest identity, the same way the player id does.",
+    purpose: "credential",
+    isPersonalData: true,
+  },
+  {
     key: "bhalyam.session-code-verifier",
     label: "Sign-in handshake",
     description:

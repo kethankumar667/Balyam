@@ -108,9 +108,9 @@ export default function ParticipantRow({
           </div>
 
           {/* Subtext: Connection / Color info */}
-          <div className="flex items-center gap-2 text-[11px] text-[#8A6D4B] dark:text-slate-400 mt-0.5">
+          <div className="flex items-center gap-2 text-[11px] text-[#5C4328] dark:text-slate-300 mt-0.5">
             {!player.isConnected ? (
-              <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+              <span className="text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
                 Reconnecting...
               </span>
@@ -123,7 +123,7 @@ export default function ParticipantRow({
                 <span>{colorBadgeLabel}</span>
               </span>
             ) : (
-              <span className="text-[10px] opacity-75">
+              <span className="text-[10px] font-bold text-[#5C4328] dark:text-slate-300">
                 {player.isBot ? "AI Player" : "Human Player"}
               </span>
             )}

@@ -1,4 +1,5 @@
 import type { Tournament } from "@shared/tournaments/Tournament";
+import { GameCategoryIcon, ChampionCrownIcon, TournamentCupIcon } from "../../design-system/icons";
 
 interface TournamentCardProps {
   tournament: Tournament;
@@ -60,9 +61,12 @@ export default function TournamentCard({
     <div className="bg-stone-900/90 dark:bg-zinc-900/90 border border-stone-800 dark:border-zinc-800 hover:border-stone-700 dark:hover:border-zinc-700 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col justify-between space-y-4 transition">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono uppercase bg-amber-500/10 text-amber-400 px-2.5 py-1 rounded-md border border-amber-500/20 font-bold">
-            {tournament.game}
-          </span>
+          <div className="flex items-center gap-2">
+            <GameCategoryIcon game={tournament.game} size={28} />
+            <span className="text-xs font-mono uppercase bg-amber-500/10 text-amber-400 px-2.5 py-1 rounded-md border border-amber-500/20 font-bold">
+              {tournament.game}
+            </span>
+          </div>
           {getStatusBadge()}
         </div>
 
@@ -85,8 +89,9 @@ export default function TournamentCard({
           </div>
           <div className="bg-stone-950/60 p-2 rounded-lg border border-stone-800/80">
             <span className="text-[10px] text-stone-500 block">1st Place Prize</span>
-            <span className="font-bold text-amber-400">
-              👑 {tournament.rewards[0]?.xp || 500} XP
+            <span className="font-bold text-amber-400 flex items-center gap-1">
+              <ChampionCrownIcon size={14} className="text-amber-400" />
+              {tournament.rewards[0]?.xp || 500} XP
             </span>
           </div>
         </div>
@@ -96,8 +101,9 @@ export default function TournamentCard({
       <div className="flex items-center gap-2 pt-2">
         <button
           onClick={() => onViewBracket(tournament.id)}
-          className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold py-2 rounded-xl text-xs transition"
+          className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5"
         >
+          <TournamentCupIcon size={14} className="text-stone-300" />
           View Bracket
         </button>
 

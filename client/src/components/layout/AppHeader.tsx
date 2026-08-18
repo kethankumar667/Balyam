@@ -87,7 +87,15 @@ export default function AppHeader({
             <Menu className="w-5 h-5" />
           </button>
 
-          <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group min-w-0 select-none">
+          <Link
+            to="/"
+            /* The logo is `decorative` (aria-hidden) and the wordmark beside it
+               is `hidden sm:flex`, so below 640px this link had no accessible
+               name whatsoever — axe reported it on every route in both themes.
+               The label is unconditional so it cannot depend on a breakpoint. */
+            aria-label="BHALYAM — go to the lounge home"
+            className="flex items-center gap-2.5 sm:gap-3 group min-w-0 select-none"
+          >
             <span className="flex-shrink-0">
               <BhalyamLogo size={44} decorative />
             </span>

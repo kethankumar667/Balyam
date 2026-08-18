@@ -89,8 +89,23 @@ export default function AuthShell({
       </header>
 
       {/* Main Content Grid */}
-      <main className="max-w-[1380px] w-full mx-auto px-4 sm:px-8 py-3 sm:py-6 flex-1 flex items-center justify-center min-h-0 z-10">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center">
+      {/*
+        `my-auto` on the child, not `items-center` on the parent.
+
+        Centering a flex child that is TALLER than its line overflows in both
+        directions, and the half that goes above the line cannot be scrolled to
+        — flexbox has no way back to it. At 667x375 landscape that put the
+        "Sign In", "Continue as Guest" and "Continue with Google" buttons at
+        y = -25 with `document.scrollHeight === innerHeight`, so signing in was
+        impossible on a phone held sideways. Measured, then reproduced with a
+        direct click that Playwright reported as intercepted by the header.
+
+        `my-auto` centres while there is room and collapses to zero when there
+        is not, so the content stays inside the scrollable box either way.
+        `overflow-y-auto` then makes the overflow reachable.
+      */}
+      <main className="max-w-[1380px] w-full mx-auto px-4 sm:px-8 py-3 sm:py-6 flex-1 flex justify-center min-h-0 overflow-y-auto z-10">
+        <div className="w-full my-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center">
           
           {/* Left Hero Column (Matches UX Screens 1 & 4) */}
           <div className="hidden lg:flex lg:col-span-7 flex-col justify-center h-full text-left">

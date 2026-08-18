@@ -45,7 +45,12 @@ export default function FilterBar({
             onClick={() => onSelectCategory(cat.id)}
             className={`min-h-[44px] px-4 py-2 rounded-2xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${
               active
-                ? "bg-amber-500 text-white font-extrabold shadow-md scale-102"
+                ? // Measured 2.14:1 as white-on-amber, against a 4.5:1
+                  // requirement — the worst contrast failure in the app. The
+                  // DLS pairs amber-500 with zinc-950 everywhere else
+                  // (Buttons.tsx:48 and 34 other sites); this chip was the
+                  // outlier. zinc-950 on amber-500 measures ~10:1.
+                  "bg-amber-500 text-zinc-950 font-extrabold shadow-md scale-102"
                 : "bg-surface-0 border border-surface-rim text-ink-mid hover:text-ink-hi hover:bg-surface-1"
             }`}
           >

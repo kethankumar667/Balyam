@@ -19,10 +19,13 @@ export default function RoomHeader({
   return (
     <>
       <header className="flex items-center justify-between gap-2 pb-2 min-w-0 border-b border-[#EEDBCA]/60 dark:border-slate-800">
+        <h1 className="sr-only">
+          {GAME_DISPLAY_NAMES[roomState.game] || roomState.game} Lounge Table - Room {roomState.code}
+        </h1>
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Game identification badge */}
           <div className="shrink-0 flex items-center gap-1.5 bg-white/90 dark:bg-slate-900/90 border border-[#EEDBCA] dark:border-slate-800 rounded-full px-3 py-1 shadow-xs">
-            <span className="text-xs font-black text-[#2F3A54] dark:text-[#F6EDDC] uppercase tracking-wider">
+            <span className="text-xs font-black text-[#1E293B] dark:text-[#F6EDDC] uppercase tracking-wider">
               {GAME_DISPLAY_NAMES[roomState.game] || roomState.game.toUpperCase()}
             </span>
           </div>
@@ -52,11 +55,10 @@ export default function RoomHeader({
             type="button"
             onClick={() => setShowLeaveModal(true)}
             aria-label="Leave room"
-            className="inline-flex items-center justify-center gap-1.5 min-h-[44px] text-xs sm:text-sm bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-[#EEDBCA] dark:border-slate-700 text-[#352C24] dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 px-3.5 py-1.5 rounded-full font-semibold transition shadow-xs active:scale-95 cursor-pointer whitespace-nowrap"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[44px] text-xs sm:text-sm bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-[#EEDBCA] dark:border-slate-700 px-3.5 py-1.5 rounded-full transition shadow-xs active:scale-95 cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F]"
           >
             <span aria-hidden>🚪</span>
-            <span className="hidden xs:inline">Leave</span>
-            <span className="xs:hidden">Exit</span>
+            <span className="text-[#0F172A] dark:text-slate-100 font-extrabold">Leave</span>
           </button>
         </div>
       </header>

@@ -26,6 +26,10 @@ const SNL_ORDER: CoinColor[] = [
   "magenta",
 ];
 
+function isBrightColor(colorId: string): boolean {
+  return ["yellow", "cyan", "lime", "pink", "green", "orange"].includes(colorId.toLowerCase());
+}
+
 export default function CompactColorSelector({
   kind,
   players,
@@ -49,11 +53,11 @@ export default function CompactColorSelector({
         <div className="flex items-baseline justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span aria-hidden>🎨</span>
-            <h3 className="text-xs uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-extrabold">
+            <h2 className="text-xs uppercase tracking-wider text-[#5C4328] dark:text-slate-300 font-extrabold">
               Pick Your Color
-            </h3>
+            </h2>
           </div>
-          <span className="text-[11px] text-[#8A6D4B] dark:text-slate-500 font-medium">
+          <span className="text-[11px] text-[#5C4328] dark:text-slate-300 font-bold">
             First come, first served
           </span>
         </div>
@@ -65,6 +69,7 @@ export default function CompactColorSelector({
             const isMe = owner?.id === selfId;
             const isOther = !!owner && !isMe;
             const isAvailable = !owner;
+            const isBright = isBrightColor(c.id);
 
             return (
               <button
@@ -82,19 +87,19 @@ export default function CompactColorSelector({
                 aria-label={`Color ${c.label}${
                   isMe ? " (Selected by you)" : isOther ? ` (Occupied by ${owner.name})` : ""
                 }`}
-                className={`min-h-[44px] relative rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition-all border-2 cursor-pointer ${
+                className={`min-h-[44px] relative rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition-all border-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] ${
                   isMe
                     ? "border-[#EA5A1F] dark:border-amber-400 shadow-md scale-105"
                     : isOther
-                    ? "border-transparent opacity-40 cursor-not-allowed"
+                    ? "border-transparent opacity-40 !cursor-not-allowed"
                     : "border-transparent hover:border-[#EEDBCA] dark:hover:border-slate-700 hover:scale-102"
                 }`}
                 style={{ background: c.hex }}
               >
-                <div className="w-5 h-5 rounded-full bg-white/30 border border-white/60 shadow-inner flex items-center justify-center">
-                  {isMe && <span className="text-[10px] text-white font-black">✓</span>}
+                <div className={`w-5 h-5 rounded-full ${isBright ? "bg-black/20 border-black/30" : "bg-white/30 border-white/60"} border shadow-inner flex items-center justify-center`}>
+                  {isMe && <span className={`text-[10px] ${isBright ? "text-slate-950" : "text-white"} font-black`}>✓</span>}
                 </div>
-                <span className="text-[10px] font-bold text-white drop-shadow-sm truncate max-w-full">
+                <span className={`text-[10px] font-black truncate max-w-full ${isBright ? "text-slate-950" : "text-white drop-shadow-sm"}`}>
                   {c.label}
                 </span>
 
@@ -108,7 +113,7 @@ export default function CompactColorSelector({
           })}
         </div>
 
-        <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium">
+        <p className="text-[11px] text-[#5C4328] dark:text-slate-300 font-bold">
           {selectedColor
             ? `You selected ${capitalize(selectedColor)}. Tap another to change.`
             : "No color selected. An available color will be assigned when the game starts."}
@@ -125,11 +130,11 @@ export default function CompactColorSelector({
       <div className="flex items-baseline justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <span aria-hidden>🪙</span>
-          <h3 className="text-xs uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-extrabold">
+          <h2 className="text-xs uppercase tracking-wider text-[#5C4328] dark:text-slate-300 font-extrabold">
             Pick Your Coin Color
-          </h3>
+          </h2>
         </div>
-        <span className="text-[11px] text-[#8A6D4B] dark:text-slate-500 font-medium">
+        <span className="text-[11px] text-[#5C4328] dark:text-slate-300 font-bold">
           First come, first served
         </span>
       </div>
@@ -141,6 +146,7 @@ export default function CompactColorSelector({
           const isMe = owner?.id === selfId;
           const isOther = !!owner && !isMe;
           const isAvailable = !owner;
+          const isBright = isBrightColor(c);
 
           return (
             <button
@@ -158,11 +164,11 @@ export default function CompactColorSelector({
               aria-label={`Coin ${palette.label}${
                 isMe ? " (Selected by you)" : isOther ? ` (Occupied by ${owner.name})` : ""
               }`}
-              className={`min-h-[44px] relative rounded-xl p-1.5 flex flex-col items-center justify-center gap-1 transition-all border-2 cursor-pointer ${
+              className={`min-h-[44px] relative rounded-xl p-1.5 flex flex-col items-center justify-center gap-1 transition-all border-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] ${
                 isMe
                   ? "border-[#EA5A1F] dark:border-amber-400 shadow-md scale-105"
                   : isOther
-                  ? "border-transparent opacity-40 cursor-not-allowed"
+                  ? "border-transparent opacity-40 !cursor-not-allowed"
                   : "border-transparent hover:border-[#EEDBCA] dark:hover:border-slate-700 hover:scale-102"
               }`}
               style={{ background: palette.fill }}
@@ -170,13 +176,13 @@ export default function CompactColorSelector({
               <div
                 className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold"
                 style={{
-                  background: "rgba(255,255,255,0.85)",
+                  background: "rgba(255,255,255,0.9)",
                   color: palette.dark,
                 }}
               >
                 {isMe ? (self?.name.charAt(0).toUpperCase() ?? "✓") : ""}
               </div>
-              <span className="text-[10px] font-bold text-white drop-shadow-sm truncate max-w-full">
+              <span className={`text-[10px] font-black truncate max-w-full ${isBright ? "text-slate-950" : "text-white drop-shadow-sm"}`}>
                 {palette.label}
               </span>
 
@@ -190,7 +196,7 @@ export default function CompactColorSelector({
         })}
       </div>
 
-      <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium">
+      <p className="text-[11px] text-[#5C4328] dark:text-slate-300 font-bold">
         {selectedCoin
           ? `You picked ${COIN_COLOR_HEX[selectedCoin].label}. Tap another to change.`
           : "No color selected. An available color will be auto-assigned when the game starts."}

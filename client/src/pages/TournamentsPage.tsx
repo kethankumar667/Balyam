@@ -1,15 +1,16 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
-import { useAuthStore } from "../store/authStore";
+import { apiFetch, usePlayerId } from "../lib/playerIdentity";
 import { useRoomStore } from "../store/roomStore";
-import { getApiBaseUrl } from "../lib/socket";
 
 import TournamentCard from "../features/tournaments/TournamentCard";
 import TournamentBracket from "../features/tournaments/TournamentBracket";
+import { TournamentHeroBanner } from "../features/tournaments/TournamentHeroBanner";
 import SeasonDashboard from "../features/tournaments/SeasonDashboard";
 import SeasonLeaderboard from "../features/tournaments/SeasonLeaderboard";
 import TournamentHistory from "../features/tournaments/TournamentHistory";
+import { EmptyStateIllustration, SkeletonLoader } from "../design-system/premium";
 
 import type { Tournament, TournamentHistoryItem } from "@shared/tournaments/Tournament";
 import type { TournamentBracket as TournamentBracketType } from "@shared/tournaments/Bracket";
@@ -19,13 +20,18 @@ import type { SeasonRewardTier } from "@shared/seasons/SeasonRewards";
 import { ArrowLeftIcon } from "../components/auth/authIcons";
 
 export default function TournamentsPage() {
-  const userId = useAuthStore((s) => s.userId);
   const currentName = useRoomStore((s) => s.playerName) || "Player";
   const currentAvatar = useRoomStore((s) => s.avatarId);
 
-  const effectivePlayerId = useMemo(() => {
-    return userId || (typeof window !== "undefined" ? localStorage.getItem("mpg.playerId") || "guest_player_1" : "guest_player_1");
-  }, [userId]);
+  /**
+   * Identity now comes from a credential the server verifies, not from a
+   * string this page picks. The old line read `userId ||
+   * localStorage.getItem("mpg.playerId") || "guest_player_1"` and put the
+   * result in the URL of every request — which is how a stranger could read
+   * and write another player's records, and why every guest who had never
+   * joined a room shared the single profile `guest_player_1`.
+   */
+  const { playerId: effectivePlayerId, ready: identityReady } = usePlayerId();
 
   const [activeTab, setActiveTab] = useState<"tournaments" | "season" | "leaderboard" | "history">("tournaments");
 
@@ -41,14 +47,16 @@ export default function TournamentsPage() {
   const [tournamentHistory, setTournamentHistory] = useState<TournamentHistoryItem[]>([]);
 
   const loadData = async () => {
-    const baseUrl = getApiBaseUrl();
+    // Identity first: a request built on a null id is a request the server
+    // now refuses, and rightly.
+    if (!effectivePlayerId) return;
     try {
       const [tRes, sRes, sPlayerRes, sLbRes, hRes] = await Promise.all([
-        fetch(`${baseUrl}/api/tournaments`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/seasons/current`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/seasons/player/${effectivePlayerId}`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/seasons/leaderboard`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/tournaments/player/${effectivePlayerId}/history`).then((r) => r.json()),
+        apiFetch(`/api/tournaments`).then((r) => r.json()),
+        apiFetch(`/api/seasons/current`).then((r) => r.json()),
+        apiFetch(`/api/seasons/player/${effectivePlayerId}`).then((r) => r.json()),
+        apiFetch(`/api/seasons/leaderboard`).then((r) => r.json()),
+        apiFetch(`/api/tournaments/player/${effectivePlayerId}/history`).then((r) => r.json()),
       ]);
 
       if (tRes.tournaments) setTournaments(tRes.tournaments);
@@ -63,13 +71,13 @@ export default function TournamentsPage() {
   };
 
   useEffect(() => {
+    if (!identityReady) return;
     loadData();
-  }, [effectivePlayerId]);
+  }, [identityReady, effectivePlayerId]);
 
   const handleRegister = async (tournamentId: string) => {
-    const baseUrl = getApiBaseUrl();
     try {
-      const res = await fetch(`${baseUrl}/api/tournaments/${tournamentId}/register`, {
+      const res = await apiFetch(`/api/tournaments/${tournamentId}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -87,9 +95,8 @@ export default function TournamentsPage() {
   };
 
   const handleCheckIn = async (tournamentId: string) => {
-    const baseUrl = getApiBaseUrl();
     try {
-      const res = await fetch(`${baseUrl}/api/tournaments/${tournamentId}/checkin`, {
+      const res = await apiFetch(`/api/tournaments/${tournamentId}/checkin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ playerId: effectivePlayerId }),
@@ -103,17 +110,16 @@ export default function TournamentsPage() {
   };
 
   const handleViewBracket = async (tournamentId: string) => {
-    const baseUrl = getApiBaseUrl();
     try {
       const t = tournaments.find((item) => item.id === tournamentId);
       if (!t) return;
       setSelectedTournament(t);
 
       // If bracket not generated yet and status is not draft, start tournament for simulation
-      let bRes = await fetch(`${baseUrl}/api/tournaments/${tournamentId}/bracket`);
+      let bRes = await apiFetch(`/api/tournaments/${tournamentId}/bracket`);
       if (!bRes.ok && t.status === "REGISTRATION_OPEN") {
-        await fetch(`${baseUrl}/api/tournaments/${tournamentId}/start`, { method: "POST" });
-        bRes = await fetch(`${baseUrl}/api/tournaments/${tournamentId}/bracket`);
+        await apiFetch(`/api/tournaments/${tournamentId}/start`, { method: "POST" });
+        bRes = await apiFetch(`/api/tournaments/${tournamentId}/bracket`);
       }
 
       if (bRes.ok) {
@@ -126,9 +132,8 @@ export default function TournamentsPage() {
   };
 
   const handleClaimSeasonReward = async (tierId: string) => {
-    const baseUrl = getApiBaseUrl();
     try {
-      const res = await fetch(`${baseUrl}/api/seasons/player/${effectivePlayerId}/claim/${tierId}`, {
+      const res = await apiFetch(`/api/seasons/player/${effectivePlayerId}/claim/${tierId}`, {
         method: "POST",
       });
       if (res.ok) {
@@ -147,7 +152,7 @@ export default function TournamentsPage() {
           <div className="flex items-center justify-between">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
+              className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
             >
               <ArrowLeftIcon className="w-4 h-4" />
               Back to Lounge
@@ -155,7 +160,7 @@ export default function TournamentsPage() {
             <div className="flex items-center gap-3 text-xs font-bold">
               <Link
                 to="/leaderboard"
-                className="text-amber-400 hover:text-amber-300 transition underline underline-offset-2"
+                className="text-amber-400 hover:text-amber-300 transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center"
               >
                 🏆 Global Leaderboards
               </Link>
@@ -163,34 +168,16 @@ export default function TournamentsPage() {
           </div>
 
           {/* Page Hero */}
-          <div className="bg-stone-900/90 dark:bg-zinc-900/90 border border-stone-800 dark:border-zinc-800 rounded-2xl p-6 shadow-xl relative overflow-hidden backdrop-blur-md">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold">
-                  BHALYAM Esports & Competitions
-                </span>
-                <h1 className="text-2xl sm:text-3xl font-black text-stone-100 dark:text-zinc-100 tracking-tight">
-                  Tournaments & Championship Seasons
-                </h1>
-                <p className="text-xs text-stone-400 font-mono">
-                  Enter single-elimination brackets, advance through rounds, and earn exclusive trophies.
-                </p>
-              </div>
-
-              {season && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center sm:text-right">
-                  <span className="text-[10px] font-mono text-amber-300 block font-bold">CURRENT SEASON</span>
-                  <span className="text-sm font-black font-mono text-stone-100">{season.name}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <TournamentHeroBanner
+            tournament={tournaments[0]}
+            onEnterArena={(id) => handleViewBracket(id)}
+          />
 
           {/* Navigation Tabs */}
           <div className="flex items-center gap-2 border-b border-stone-800/60 dark:border-zinc-800/60 pb-3 overflow-x-auto text-xs font-bold">
             <button
               onClick={() => setActiveTab("tournaments")}
-              className={`px-4 py-2 rounded-xl transition shrink-0 ${
+              className={`px-4 min-h-[44px] inline-flex items-center justify-center rounded-xl transition shrink-0 ${
                 activeTab === "tournaments"
                   ? "bg-amber-500 text-zinc-950 font-black shadow"
                   : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
@@ -200,7 +187,7 @@ export default function TournamentsPage() {
             </button>
             <button
               onClick={() => setActiveTab("season")}
-              className={`px-4 py-2 rounded-xl transition shrink-0 ${
+              className={`px-4 min-h-[44px] inline-flex items-center justify-center rounded-xl transition shrink-0 ${
                 activeTab === "season"
                   ? "bg-amber-500 text-zinc-950 font-black shadow"
                   : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
@@ -210,7 +197,7 @@ export default function TournamentsPage() {
             </button>
             <button
               onClick={() => setActiveTab("leaderboard")}
-              className={`px-4 py-2 rounded-xl transition shrink-0 ${
+              className={`px-4 min-h-[44px] inline-flex items-center justify-center rounded-xl transition shrink-0 ${
                 activeTab === "leaderboard"
                   ? "bg-amber-500 text-zinc-950 font-black shadow"
                   : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
@@ -220,7 +207,7 @@ export default function TournamentsPage() {
             </button>
             <button
               onClick={() => setActiveTab("history")}
-              className={`px-4 py-2 rounded-xl transition shrink-0 ${
+              className={`px-4 min-h-[44px] inline-flex items-center justify-center rounded-xl transition shrink-0 ${
                 activeTab === "history"
                   ? "bg-amber-500 text-zinc-950 font-black shadow"
                   : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
@@ -232,18 +219,26 @@ export default function TournamentsPage() {
 
           {/* Tab 1: Tournaments List */}
           {activeTab === "tournaments" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {tournaments.map((t) => (
-                <TournamentCard
-                  key={t.id}
-                  tournament={t}
-                  currentPlayerId={effectivePlayerId}
-                  onRegister={handleRegister}
-                  onCheckIn={handleCheckIn}
-                  onViewBracket={handleViewBracket}
-                />
-              ))}
-            </div>
+            tournaments.length === 0 ? (
+              <EmptyStateIllustration
+                type="tournaments"
+                title="No Tournaments Running Right Now"
+                description="Our automated bracket engine schedules regular knockout tournaments. Check back shortly!"
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {tournaments.map((t) => (
+                  <TournamentCard
+                    key={t.id}
+                    tournament={t}
+                    currentPlayerId={effectivePlayerId ?? undefined}
+                    onRegister={handleRegister}
+                    onCheckIn={handleCheckIn}
+                    onViewBracket={handleViewBracket}
+                  />
+                ))}
+              </div>
+            )
           )}
 
           {/* Tab 2: Season Pass & Rewards */}

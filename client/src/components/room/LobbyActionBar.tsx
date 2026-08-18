@@ -83,9 +83,9 @@ export default function LobbyActionBar({
       <div className="flex items-center justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <span aria-hidden className="text-base">🏁</span>
-          <h3 className="text-xs uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-extrabold">
+          <h2 className="text-xs uppercase tracking-wider text-[#5C4328] dark:text-slate-300 font-extrabold">
             Table Status
-          </h3>
+          </h2>
         </div>
 
         <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">

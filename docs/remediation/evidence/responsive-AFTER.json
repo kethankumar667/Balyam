@@ -1,0 +1,1223 @@
+{
+  "generatedAt": "2026-08-18T16:27:04.196Z",
+  "engine": "chromium (playwright)",
+  "scope": "Layout measured in one engine at CSS viewport sizes. NOT device certification: no WebKit, no Gecko, no physical hardware, and nothing about iOS address-bar or Android keyboard insets.",
+  "viewports": [
+    "320×568 (iPhone SE)",
+    "360×800 (Galaxy A/S)",
+    "375×667 (iPhone 8/SE3)",
+    "390×844 (iPhone 13-16)",
+    "412×915 (Pixel 7-9)",
+    "430×932 (iPhone Pro Max)",
+    "768×1024 (iPad portrait)",
+    "1024×1366 (iPad Pro)",
+    "1440×900 (desktop)",
+    "667×375 landscape",
+    "390×540 keyboard open"
+  ],
+  "routes": [
+    "Home",
+    "Games",
+    "Leaderboard",
+    "Tournaments",
+    "Social hub",
+    "Settings",
+    "Sign in",
+    "About"
+  ],
+  "roomScreenChecked": false,
+  "roomScreenNote": "NOT RUN — no game server was reachable. This is not a pass.",
+  "thresholds": {
+    "productTouchTargetPx": 44,
+    "wcagTouchTargetPx": 24
+  },
+  "pagesInspected": 88,
+  "controlsMeasured": 1688,
+  "counts": {
+    "critical": 0,
+    "high": 0,
+    "medium": 40
+  },
+  "findings": [
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Leaderboard",
+      "message": "7 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments & Seasons",
+          "size": "102.2×32"
+        },
+        {
+          "selector": "a.text-[var(--auth-ink-soft)].hover:text-[var(--auth-ink)].transition",
+          "label": "View Profile & History",
+          "size": "82.8×32"
+        },
+        {
+          "selector": "input.w-full.md:w-56.bg-stone-950",
+          "label": "",
+          "size": "262×36"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "All Games",
+          "size": "84.1×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "ludo",
+          "size": "74.4×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "rummy",
+          "size": "81×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "1uno",
+          "size": "67.8×26"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Tournaments",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏆 Global Leaderboards",
+          "size": "136.6×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Social hub",
+      "message": "5 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments",
+          "size": "82.7×32"
+        },
+        {
+          "selector": "a.text-stone-400.hover:text-stone-200.transition",
+          "label": "🏆 Rankings",
+          "size": "63.3×32"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Friends List (0)",
+          "size": "167.2×32"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Party Headquarters",
+          "size": "181.6×32"
+        },
+        {
+          "selector": "input.w-full.bg-stone-950/80.border",
+          "label": "",
+          "size": "288×39"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Sign in",
+      "message": "7 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "",
+          "size": "60×40"
+        },
+        {
+          "selector": "button.inline-flex.items-center.gap-1.5",
+          "label": "English",
+          "size": "112.5×32.8"
+        },
+        {
+          "selector": "button.py-1.5.text-[12.5px].font-extrabold",
+          "label": "Sign In",
+          "size": "118×32.8"
+        },
+        {
+          "selector": "button.py-1.5.min-h-[24px].inline-flex",
+          "label": "Continue as Guest",
+          "size": "118×32.8"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Google",
+          "size": "246×41.5"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Apple",
+          "size": "246×41.5"
+        },
+        {
+          "selector": "a.text-[11.5px].font-extrabold.text-[#E85D04]",
+          "label": "Forgot password?",
+          "size": "106.4×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Home",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "button.flex-1.sm:flex-initial.min-h-[42px]",
+          "label": "Play UNO Now",
+          "size": "310×42"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Leaderboard",
+      "message": "7 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments & Seasons",
+          "size": "118.3×32"
+        },
+        {
+          "selector": "a.text-[var(--auth-ink-soft)].hover:text-[var(--auth-ink)].transition",
+          "label": "View Profile & History",
+          "size": "95.8×32"
+        },
+        {
+          "selector": "input.w-full.md:w-56.bg-stone-950",
+          "label": "",
+          "size": "302×36"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "All Games",
+          "size": "84.1×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "ludo",
+          "size": "74.4×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "rummy",
+          "size": "81×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "1uno",
+          "size": "67.8×26"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Tournaments",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏆 Global Leaderboards",
+          "size": "136.6×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Social hub",
+      "message": "5 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments",
+          "size": "92.9×24"
+        },
+        {
+          "selector": "a.text-stone-400.hover:text-stone-200.transition",
+          "label": "🏆 Rankings",
+          "size": "71.1×24"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Friends List (0)",
+          "size": "167.2×32"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Party Headquarters",
+          "size": "181.6×32"
+        },
+        {
+          "selector": "input.w-full.bg-stone-950/80.border",
+          "label": "",
+          "size": "328×39"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Settings",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "button.flex-1.sm:flex-initial.min-h-[42px]",
+          "label": "Play UNO Now",
+          "size": "310×42"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Sign in",
+      "message": "11 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "",
+          "size": "60×40"
+        },
+        {
+          "selector": "button.inline-flex.items-center.gap-1.5",
+          "label": "English",
+          "size": "112.5×32.8"
+        },
+        {
+          "selector": "button.py-1.5.text-[12.5px].font-extrabold",
+          "label": "Sign In",
+          "size": "138×32.8"
+        },
+        {
+          "selector": "button.py-1.5.min-h-[24px].inline-flex",
+          "label": "Continue as Guest",
+          "size": "138×32.8"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Google",
+          "size": "286×41.5"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Apple",
+          "size": "286×41.5"
+        },
+        {
+          "selector": "a.text-[11.5px].font-extrabold.text-[#E85D04]",
+          "label": "Forgot password?",
+          "size": "106.4×24"
+        },
+        {
+          "selector": "a.text-[12px].font-extrabold.text-[#E85D04]",
+          "label": "Create an account",
+          "size": "115.3×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "375×667 (iPhone 8/SE3)",
+      "route": "Leaderboard",
+      "message": "7 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments & Seasons",
+          "size": "124.3×32"
+        },
+        {
+          "selector": "a.text-[var(--auth-ink-soft)].hover:text-[var(--auth-ink)].transition",
+          "label": "View Profile & History",
+          "size": "100.7×32"
+        },
+        {
+          "selector": "input.w-full.md:w-56.bg-stone-950",
+          "label": "",
+          "size": "317×36"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "All Games",
+          "size": "84.1×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "ludo",
+          "size": "74.4×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "rummy",
+          "size": "81×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "1uno",
+          "size": "67.8×26"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "375×667 (iPhone 8/SE3)",
+      "route": "Tournaments",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏆 Global Leaderboards",
+          "size": "136.6×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "375×667 (iPhone 8/SE3)",
+      "route": "Social hub",
+      "message": "5 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments",
+          "size": "92.9×24"
+        },
+        {
+          "selector": "a.text-stone-400.hover:text-stone-200.transition",
+          "label": "🏆 Rankings",
+          "size": "71.1×24"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Friends List (0)",
+          "size": "167.2×32"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Party Headquarters",
+          "size": "181.6×32"
+        },
+        {
+          "selector": "input.w-full.bg-stone-950/80.border",
+          "label": "",
+          "size": "343×39"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "375×667 (iPhone 8/SE3)",
+      "route": "Sign in",
+      "message": "7 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "",
+          "size": "60×40"
+        },
+        {
+          "selector": "button.inline-flex.items-center.gap-1.5",
+          "label": "English",
+          "size": "112.5×32.8"
+        },
+        {
+          "selector": "button.py-1.5.text-[12.5px].font-extrabold",
+          "label": "Sign In",
+          "size": "145.5×32.8"
+        },
+        {
+          "selector": "button.py-1.5.min-h-[24px].inline-flex",
+          "label": "Continue as Guest",
+          "size": "145.5×32.8"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Google",
+          "size": "301×41.5"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Apple",
+          "size": "301×41.5"
+        },
+        {
+          "selector": "a.text-[11.5px].font-extrabold.text-[#E85D04]",
+          "label": "Forgot password?",
+          "size": "106.4×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×844 (iPhone 13-16)",
+      "route": "Home",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "button.flex-1.sm:flex-initial.min-h-[42px]",
+          "label": "Play UNO Now",
+          "size": "340×42"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×844 (iPhone 13-16)",
+      "route": "Leaderboard",
+      "message": "7 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments & Seasons",
+          "size": "130.4×32"
+        },
+        {
+          "selector": "a.text-[var(--auth-ink-soft)].hover:text-[var(--auth-ink)].transition",
+          "label": "View Profile & History",
+          "size": "105.6×32"
+        },
+        {
+          "selector": "input.w-full.md:w-56.bg-stone-950",
+          "label": "",
+          "size": "332×36"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "All Games",
+          "size": "84.1×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "ludo",
+          "size": "74.4×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "rummy",
+          "size": "81×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "1uno",
+          "size": "67.8×26"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×844 (iPhone 13-16)",
+      "route": "Tournaments",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏆 Global Leaderboards",
+          "size": "136.6×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×844 (iPhone 13-16)",
+      "route": "Social hub",
+      "message": "5 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments",
+          "size": "92.9×24"
+        },
+        {
+          "selector": "a.text-stone-400.hover:text-stone-200.transition",
+          "label": "🏆 Rankings",
+          "size": "71.1×24"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Friends List (0)",
+          "size": "167.2×32"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Party Headquarters",
+          "size": "181.6×32"
+        },
+        {
+          "selector": "input.w-full.bg-stone-950/80.border",
+          "label": "",
+          "size": "358×39"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×844 (iPhone 13-16)",
+      "route": "Settings",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "button.flex-1.sm:flex-initial.min-h-[42px]",
+          "label": "Play UNO Now",
+          "size": "340×42"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×844 (iPhone 13-16)",
+      "route": "Sign in",
+      "message": "11 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "",
+          "size": "60×40"
+        },
+        {
+          "selector": "button.inline-flex.items-center.gap-1.5",
+          "label": "English",
+          "size": "112.5×32.8"
+        },
+        {
+          "selector": "button.py-1.5.text-[12.5px].font-extrabold",
+          "label": "Sign In",
+          "size": "153×32.8"
+        },
+        {
+          "selector": "button.py-1.5.min-h-[24px].inline-flex",
+          "label": "Continue as Guest",
+          "size": "153×32.8"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Google",
+          "size": "316×41.5"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Apple",
+          "size": "316×41.5"
+        },
+        {
+          "selector": "a.text-[11.5px].font-extrabold.text-[#E85D04]",
+          "label": "Forgot password?",
+          "size": "106.4×24"
+        },
+        {
+          "selector": "a.text-[12px].font-extrabold.text-[#E85D04]",
+          "label": "Create an account",
+          "size": "115.3×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "412×915 (Pixel 7-9)",
+      "route": "Home",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "button.flex-1.sm:flex-initial.min-h-[42px]",
+          "label": "Play UNO Now",
+          "size": "362×42"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "412×915 (Pixel 7-9)",
+      "route": "Leaderboard",
+      "message": "7 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments & Seasons",
+          "size": "139.2×32"
+        },
+        {
+          "selector": "a.text-[var(--auth-ink-soft)].hover:text-[var(--auth-ink)].transition",
+          "label": "View Profile & History",
+          "size": "112.8×32"
+        },
+        {
+          "selector": "input.w-full.md:w-56.bg-stone-950",
+          "label": "",
+          "size": "354×36"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "All Games",
+          "size": "84.1×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "ludo",
+          "size": "74.4×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "rummy",
+          "size": "81×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "1uno",
+          "size": "67.8×26"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "412×915 (Pixel 7-9)",
+      "route": "Tournaments",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏆 Global Leaderboards",
+          "size": "136.6×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "412×915 (Pixel 7-9)",
+      "route": "Social hub",
+      "message": "5 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments",
+          "size": "92.9×24"
+        },
+        {
+          "selector": "a.text-stone-400.hover:text-stone-200.transition",
+          "label": "🏆 Rankings",
+          "size": "71.1×24"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Friends List (0)",
+          "size": "167.2×32"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Party Headquarters",
+          "size": "181.6×32"
+        },
+        {
+          "selector": "input.w-full.bg-stone-950/80.border",
+          "label": "",
+          "size": "380×39"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "412×915 (Pixel 7-9)",
+      "route": "Settings",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "button.flex-1.sm:flex-initial.min-h-[42px]",
+          "label": "Play UNO Now",
+          "size": "362×42"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "412×915 (Pixel 7-9)",
+      "route": "Sign in",
+      "message": "11 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "",
+          "size": "60×40"
+        },
+        {
+          "selector": "button.inline-flex.items-center.gap-1.5",
+          "label": "English",
+          "size": "112.5×32.8"
+        },
+        {
+          "selector": "button.py-1.5.text-[12.5px].font-extrabold",
+          "label": "Sign In",
+          "size": "164×32.8"
+        },
+        {
+          "selector": "button.py-1.5.min-h-[24px].inline-flex",
+          "label": "Continue as Guest",
+          "size": "164×32.8"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Google",
+          "size": "338×41.5"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Apple",
+          "size": "338×41.5"
+        },
+        {
+          "selector": "a.text-[11.5px].font-extrabold.text-[#E85D04]",
+          "label": "Forgot password?",
+          "size": "106.4×24"
+        },
+        {
+          "selector": "a.text-[12px].font-extrabold.text-[#E85D04]",
+          "label": "Create an account",
+          "size": "115.3×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "430×932 (iPhone Pro Max)",
+      "route": "Home",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "button.flex-1.sm:flex-initial.min-h-[42px]",
+          "label": "Play UNO Now",
+          "size": "380×42"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "430×932 (iPhone Pro Max)",
+      "route": "Leaderboard",
+      "message": "8 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments & Seasons",
+          "size": "146.5×32"
+        },
+        {
+          "selector": "a.text-[var(--auth-ink-soft)].hover:text-[var(--auth-ink)].transition",
+          "label": "View Profile & History",
+          "size": "118.7×32"
+        },
+        {
+          "selector": "input.w-full.md:w-56.bg-stone-950",
+          "label": "",
+          "size": "372×36"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "All Games",
+          "size": "84.1×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "ludo",
+          "size": "74.4×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "rummy",
+          "size": "81×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "1uno",
+          "size": "67.8×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "handcricket",
+          "size": "120.6×26"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "430×932 (iPhone Pro Max)",
+      "route": "Tournaments",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏆 Global Leaderboards",
+          "size": "136.6×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "430×932 (iPhone Pro Max)",
+      "route": "Social hub",
+      "message": "5 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments",
+          "size": "92.9×24"
+        },
+        {
+          "selector": "a.text-stone-400.hover:text-stone-200.transition",
+          "label": "🏆 Rankings",
+          "size": "71.1×24"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Friends List (0)",
+          "size": "167.2×32"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Party Headquarters",
+          "size": "181.6×32"
+        },
+        {
+          "selector": "input.w-full.bg-stone-950/80.border",
+          "label": "",
+          "size": "398×39"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "430×932 (iPhone Pro Max)",
+      "route": "Settings",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "button.flex-1.sm:flex-initial.min-h-[42px]",
+          "label": "Play UNO Now",
+          "size": "380×42"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "430×932 (iPhone Pro Max)",
+      "route": "Sign in",
+      "message": "11 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "",
+          "size": "60×40"
+        },
+        {
+          "selector": "button.inline-flex.items-center.gap-1.5",
+          "label": "English",
+          "size": "112.5×32.8"
+        },
+        {
+          "selector": "button.py-1.5.text-[12.5px].font-extrabold",
+          "label": "Sign In",
+          "size": "173×32.8"
+        },
+        {
+          "selector": "button.py-1.5.min-h-[24px].inline-flex",
+          "label": "Continue as Guest",
+          "size": "173×32.8"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Google",
+          "size": "356×41.5"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Apple",
+          "size": "356×41.5"
+        },
+        {
+          "selector": "a.text-[11.5px].font-extrabold.text-[#E85D04]",
+          "label": "Forgot password?",
+          "size": "106.4×24"
+        },
+        {
+          "selector": "a.text-[12px].font-extrabold.text-[#E85D04]",
+          "label": "Create an account",
+          "size": "115.3×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "667×375 landscape",
+      "route": "Leaderboard",
+      "message": "3 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments & Seasons",
+          "size": "154.4×24"
+        },
+        {
+          "selector": "a.text-[var(--auth-ink-soft)].hover:text-[var(--auth-ink)].transition",
+          "label": "View Profile & History",
+          "size": "125.1×24"
+        },
+        {
+          "selector": "input.w-full.md:w-56.bg-stone-950",
+          "label": "",
+          "size": "593×36"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "667×375 landscape",
+      "route": "Tournaments",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏆 Global Leaderboards",
+          "size": "136.6×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "667×375 landscape",
+      "route": "Social hub",
+      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments",
+          "size": "92.9×24"
+        },
+        {
+          "selector": "a.text-stone-400.hover:text-stone-200.transition",
+          "label": "🏆 Rankings",
+          "size": "71.1×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "667×375 landscape",
+      "route": "Sign in",
+      "message": "6 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "button.inline-flex.items-center.gap-1.5",
+          "label": "English",
+          "size": "112.5×32.8"
+        },
+        {
+          "selector": "a.hidden.sm:inline-flex.items-center",
+          "label": "Back to games",
+          "size": "141.9×32"
+        },
+        {
+          "selector": "button.py-1.5.text-[12.5px].font-extrabold",
+          "label": "Sign In",
+          "size": "210×32.8"
+        },
+        {
+          "selector": "button.py-1.5.min-h-[24px].inline-flex",
+          "label": "Continue as Guest",
+          "size": "210×32.8"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Google",
+          "size": "430×41.5"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Apple",
+          "size": "430×41.5"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×540 keyboard open",
+      "route": "Leaderboard",
+      "message": "7 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments & Seasons",
+          "size": "130.4×32"
+        },
+        {
+          "selector": "a.text-[var(--auth-ink-soft)].hover:text-[var(--auth-ink)].transition",
+          "label": "View Profile & History",
+          "size": "105.6×32"
+        },
+        {
+          "selector": "input.w-full.md:w-56.bg-stone-950",
+          "label": "",
+          "size": "332×36"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "All Games",
+          "size": "84.1×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "ludo",
+          "size": "74.4×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "rummy",
+          "size": "81×26"
+        },
+        {
+          "selector": "button.px-3.py-1.rounded-full",
+          "label": "1uno",
+          "size": "67.8×26"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×540 keyboard open",
+      "route": "Tournaments",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏆 Global Leaderboards",
+          "size": "136.6×24"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×540 keyboard open",
+      "route": "Social hub",
+      "message": "4 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.text-amber-400.hover:text-amber-300.transition",
+          "label": "🏟️ Tournaments",
+          "size": "92.9×24"
+        },
+        {
+          "selector": "a.text-stone-400.hover:text-stone-200.transition",
+          "label": "🏆 Rankings",
+          "size": "71.1×24"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Friends List (0)",
+          "size": "167.2×32"
+        },
+        {
+          "selector": "button.px-4.py-2.rounded-xl",
+          "label": "Party Headquarters",
+          "size": "181.6×32"
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "390×540 keyboard open",
+      "route": "Sign in",
+      "message": "7 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "",
+          "size": "60×40"
+        },
+        {
+          "selector": "button.inline-flex.items-center.gap-1.5",
+          "label": "English",
+          "size": "112.5×32.8"
+        },
+        {
+          "selector": "button.py-1.5.text-[12.5px].font-extrabold",
+          "label": "Sign In",
+          "size": "153×32.8"
+        },
+        {
+          "selector": "button.py-1.5.min-h-[24px].inline-flex",
+          "label": "Continue as Guest",
+          "size": "153×32.8"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Google",
+          "size": "316×41.5"
+        },
+        {
+          "selector": "button.w-full.flex.items-center",
+          "label": "Continue with Apple",
+          "size": "316×41.5"
+        },
+        {
+          "selector": "a.text-[11.5px].font-extrabold.text-[#E85D04]",
+          "label": "Forgot password?",
+          "size": "106.4×24"
+        }
+      ]
+    }
+  ]
+}

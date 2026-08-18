@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
+import { apiFetch, usePlayerId } from "../lib/playerIdentity";
 import { isSupabaseConfigured } from "../lib/supabase/client";
 import { validateName, type FieldError } from "../lib/authValidation";
 import { GlobalSettings } from "../components/GlobalSettings";
@@ -9,7 +10,6 @@ import LanguageSettings from "../components/LanguageSettings/LanguageSettings";
 import AvatarPicker from "../components/profile/AvatarPicker";
 import AppLayout from "../components/layout/AppLayout";
 import YourDataPanel from "../components/privacy/YourDataPanel";
-import { getApiBaseUrl } from "../lib/socket";
 
 // Profile Features
 import ProfileHeader from "../features/profile/ProfileHeader";
@@ -18,6 +18,7 @@ import FavoriteGames from "../features/profile/FavoriteGames";
 import CareerMetrics from "../features/profile/CareerMetrics";
 import AchievementsPanel from "../features/profile/AchievementsPanel";
 import MatchHistoryList from "../features/profile/MatchHistoryList";
+import { SkeletonLoader } from "../design-system/premium";
 
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
@@ -70,7 +71,6 @@ export default function ProfilePage() {
   const setAvatarId = useRoomStore((s) => s.setAvatarId);
 
   const isMember = useAuthStore((s) => s.isMember);
-  const userId = useAuthStore((s) => s.userId);
 
   const [activeTab, setActiveTab] = useState<"career" | "history" | "achievements" | "settings">("career");
 
@@ -89,18 +89,27 @@ export default function ProfilePage() {
   const [nameError, setNameError] = useState<FieldError | null>(null);
   const [nameSaved, setNameSaved] = useState(false);
 
-  const effectivePlayerId = useMemo(() => {
-    return userId || (typeof window !== "undefined" ? localStorage.getItem("mpg.playerId") || "guest_player_1" : "guest_player_1");
-  }, [userId]);
+  /**
+   * Identity now comes from a credential the server verifies, not from a
+   * string this page picks. The old line read `userId ||
+   * localStorage.getItem("mpg.playerId") || "guest_player_1"` and put the
+   * result in the URL of every request — which is how a stranger could read
+   * and write another player's records, and why every guest who had never
+   * joined a room shared the single profile `guest_player_1`.
+   */
+  const { playerId: effectivePlayerId, ready: identityReady } = usePlayerId();
 
   const loadProfileData = async () => {
+    // Nothing to ask for until we know who is asking. Firing with a null id
+    // would just produce a URL with "null" in it, which the server now
+    // correctly refuses.
+    if (!effectivePlayerId) return;
     try {
-      const baseUrl = getApiBaseUrl();
       const [profRes, statsRes, matchRes, achRes] = await Promise.all([
-        fetch(`${baseUrl}/api/profile/${effectivePlayerId}`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/profile/${effectivePlayerId}/stats`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/profile/${effectivePlayerId}/matches${selectedGame ? `?game=${selectedGame}` : ""}`).then((r) => r.json()),
-        fetch(`${baseUrl}/api/profile/${effectivePlayerId}/achievements`).then((r) => r.json()),
+        apiFetch(`/api/profile/${effectivePlayerId}`).then((r) => r.json()),
+        apiFetch(`/api/profile/${effectivePlayerId}/stats`).then((r) => r.json()),
+        apiFetch(`/api/profile/${effectivePlayerId}/matches${selectedGame ? `?game=${selectedGame}` : ""}`).then((r) => r.json()),
+        apiFetch(`/api/profile/${effectivePlayerId}/achievements`).then((r) => r.json()),
       ]);
 
       if (profRes.profile) setProfile(profRes.profile);
@@ -115,7 +124,7 @@ export default function ProfilePage() {
       console.warn("Could not load backend profile, using local defaults:", err);
       // Fallback local representation
       setProfile({
-        playerId: effectivePlayerId,
+        playerId: effectivePlayerId ?? "",
         displayName: currentName || "Player",
         avatar: currentAvatar || undefined,
         joinedAt: Date.now() - 86400000 * 7,
@@ -128,8 +137,9 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
+    if (!identityReady) return;
     loadProfileData();
-  }, [effectivePlayerId, selectedGame]);
+  }, [identityReady, effectivePlayerId, selectedGame]);
 
   const handleSaveName = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -145,8 +155,7 @@ export default function ProfilePage() {
     setTimeout(() => setNameSaved(false), 2000);
 
     try {
-      const baseUrl = getApiBaseUrl();
-      await fetch(`${baseUrl}/api/profile/${effectivePlayerId}`, {
+      await apiFetch(`/api/profile/${effectivePlayerId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ displayName: clean }),
@@ -160,8 +169,7 @@ export default function ProfilePage() {
   const handleSelectAvatar = async (av: string | null) => {
     setAvatarId(av);
     try {
-      const baseUrl = getApiBaseUrl();
-      await fetch(`${baseUrl}/api/profile/${effectivePlayerId}`, {
+      await apiFetch(`/api/profile/${effectivePlayerId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatar: av || undefined }),
@@ -174,8 +182,7 @@ export default function ProfilePage() {
 
   const handleViewMatchDetail = async (matchId: string) => {
     try {
-      const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/profile/${effectivePlayerId}/matches/${matchId}`);
+      const res = await apiFetch(`/api/profile/${effectivePlayerId}/matches/${matchId}`);
       if (res.ok) {
         const data = await res.json();
         setSelectedMatchDetail(data.match);
@@ -193,15 +200,21 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
+              className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
             >
               <ArrowLeftIcon className="w-4 h-4" />
               Back to Lounge
             </Link>
-            <div className="flex items-center gap-3 text-xs font-bold">
+            <div className="flex items-center gap-4 text-xs font-bold">
+              <Link
+                to="/tournaments"
+                className="text-amber-400 hover:text-amber-300 transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center"
+              >
+                🏟️ Tournaments & Seasons
+              </Link>
               <Link
                 to="/leaderboard"
-                className="text-amber-400 hover:text-amber-300 transition underline underline-offset-2"
+                className="text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center"
               >
                 🏆 Leaderboards & Quests
               </Link>

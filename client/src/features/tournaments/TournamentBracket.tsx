@@ -34,8 +34,14 @@ export default function TournamentBracket({
         </div>
       )}
 
+      {/* Mobile Swipe Hint */}
+      <div className="flex md:hidden items-center justify-between text-[11px] font-mono text-stone-500 px-1">
+        <span>Swipe horizontally to view rounds</span>
+        <span>👉</span>
+      </div>
+
       {/* Bracket Rounds Tree */}
-      <div className="overflow-x-auto pb-4">
+      <div className="overflow-x-auto pb-4 touch-pan-x">
         <div className="flex gap-6 min-w-[700px] items-stretch">
           {bracket.rounds.map((round) => (
             <div key={round.roundNumber} className="flex-1 flex flex-col space-y-4">
