@@ -10,6 +10,16 @@ import { logger } from "./lib/logger.js";
 import { globalRateLimiter } from "./lib/rateLimiter.js";
 import { turnStatus } from "./lib/iceServers.js";
 import { verificationMode } from "./lib/supabaseAuth.js";
+import { serverEventStore } from "./events/ServerEventStore.js";
+import { serverResourceTracker } from "./reliability/ResourceTracker.js";
+import { memoryMonitor } from "./reliability/MemoryMonitor.js";
+import { leakDetector } from "./reliability/LeakDetector.js";
+import { metricsCollector } from "./observability/MetricsCollector.js";
+import { performanceMonitor } from "./observability/PerformanceMonitor.js";
+import { healthMonitor } from "./observability/HealthMonitor.js";
+import { telemetryAggregator } from "./observability/TelemetryAggregator.js";
+
+memoryMonitor.start(30_000);
 
 const PORT = Number(process.env.PORT) || 4000;
 /**
@@ -102,6 +112,56 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
 
 const roomManager = new RoomManager(io);
 
+// Operational Admin & Metrics API
+app.get("/api/operational/health", (_req, res) => {
+  const report = healthMonitor.evaluate(roomManager, startTime);
+  res.status(report.status === "CRITICAL" ? 503 : 200).json(report);
+});
+
+app.get("/api/operational/performance", (_req, res) => {
+  const report = performanceMonitor.getReport();
+  res.json(report);
+});
+
+app.get("/api/operational/metrics", (_req, res) => {
+  const snapshot = telemetryAggregator.getSnapshot(roomManager, startTime);
+  res.json(snapshot);
+});
+
+app.get("/api/operational/recovery", (_req, res) => {
+  const snapshot = telemetryAggregator.getSnapshot(roomManager, startTime);
+  res.json({
+    recovery: snapshot.recovery,
+    recoveringRooms: snapshot.rooms.byLifecycle["RECOVERING"] || 0,
+    timestamp: snapshot.timestamp,
+  });
+});
+
+app.get("/api/operational/games", (_req, res) => {
+  const games = telemetryAggregator.getGamesTelemetry();
+  res.json({ games });
+});
+
+app.get("/api/operational/rooms", (_req, res) => {
+  const rooms = roomManager.getOperationalRoomSummaries();
+  res.json({ rooms });
+});
+
+app.get("/api/operational/timeline/:code", (req, res) => {
+  const code = req.params.code;
+  const exportData = serverEventStore.export(code);
+  if (!exportData) {
+    res.status(404).json({ error: `No timeline found for room ${code}` });
+    return;
+  }
+  res.json(exportData);
+});
+
+app.get("/api/operational/leaks", (_req, res) => {
+  const report = leakDetector.runDiagnostics(roomManager, io);
+  res.json(report);
+});
+
 /**
  * Identifies THIS process. Survives nothing: a redeploy, a crash, or a
  * free-tier idle spin-down all produce a new one. A client that sees the id
@@ -110,6 +170,8 @@ const roomManager = new RoomManager(io);
 const BOOT_ID = Math.random().toString(36).slice(2, 10);
 
 io.on("connection", (socket) => {
+  serverResourceTracker.register("socket", socket.id, "socket_connected");
+  metricsCollector.onSocketConnect();
   socket.emit("server:hello", {
     bootId: BOOT_ID,
     uptimeSec: Math.floor((Date.now() - startTime) / 1000),
@@ -119,6 +181,8 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     logger.info({ message: "Socket client disconnected", socketId: socket.id, module: "SOCKET" });
+    serverResourceTracker.unregister("socket", socket.id);
+    metricsCollector.onSocketDisconnect();
     globalRateLimiter.removeSocket(socket.id);
     roomManager.handleDisconnect(socket.id);
   });

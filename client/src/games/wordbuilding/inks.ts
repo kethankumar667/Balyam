@@ -42,5 +42,5 @@ export const INKS: Ink[] = [
 
 /** Seat-index → ink, negative-safe modulo so reconnect ordering never throws. */
 export function inkFor(idx: number): Ink {
-  return INKS[((idx % INKS.length) + INKS.length) % INKS.length];
+  return INKS[((idx % INKS.length) + INKS.length) % INKS.length] ?? INKS[0]!;
 }

@@ -1,29 +1,9 @@
 import { useState } from "react";
-import type { GameKind, RoomPublicState } from "@shared/types";
+import type { RoomPublicState } from "@shared/types";
+import { GAME_DISPLAY_NAMES } from "@shared/catalog";
 import RoomNameEditor from "../RoomNameEditor";
 import RummyRoomHistory from "../nostalgia/RummyRoomHistory";
 import LeaveRoomModal from "./LeaveRoomModal";
-
-const GAME_DISPLAY_NAMES: Record<GameKind, string> = {
-  chess: "CHESS ♟",
-  rummy: "RUMMY 🃏",
-  ludo: "LUDO 🎲",
-  snl: "SNAKES & LADDERS 🐍",
-  handcricket: "HAND CRICKET 🏏",
-  rps: "ROCK PAPER SCISSORS ✂️",
-  uno: "UNO 🎴",
-  wordbuilding: "WORD BUILDING 🔤",
-  dotsboxes: "DOTS & BOXES ⚄",
-  stargame: "STAR GAME ⭐",
-  bingo: "BINGO 🎱",
-  namesplaceanimal: "NAME PLACE ANIMAL 🐾",
-  tambola: "TAMBOLA 🎟️",
-  snake: "SNAKE 🐍",
-  roadrash: "ROAD RASH 🏍️",
-  carrom: "CARROM 🎯",
-  blockblast: "BLOCK BLAST 🧱",
-  spacewar: "SPACE WAR 🚀",
-};
 
 export default function RoomHeader({
   roomState,

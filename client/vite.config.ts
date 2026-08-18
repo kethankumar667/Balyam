@@ -9,6 +9,22 @@ export default defineConfig({
       "@shared": path.resolve(__dirname, "../shared"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("framer-motion")) return "vendor-framer-motion";
+            if (id.includes("@supabase")) return "vendor-supabase";
+            if (id.includes("socket.io-client")) return "vendor-socketio";
+            if (id.includes("howler") || id.includes("use-sound")) return "vendor-audio";
+            if (id.includes("react") || id.includes("react-dom") || id.includes("react-router-dom")) return "vendor-react";
+          }
+        },
+      },
+    },
+  },
   server: {
     // `host: true` binds Vite to 0.0.0.0 so any device on your LAN (phone,
     // tablet, another laptop) can hit http://<your-pc-ip>:5173/. Without

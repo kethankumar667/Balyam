@@ -59,28 +59,5 @@ export function createEngine(kind: GameKind): GameEngine {
   }
 }
 
-export function getGameLimits(kind: GameKind): { min: number; max: number } {
-  const limits: Record<string, { min: number; max: number }> = {
-    rps: { min: 2, max: 2 },
-    rummy: { min: 2, max: 6 },
-    ludo: { min: 2, max: 8 },
-    snl: { min: 2, max: 6 },
-    handcricket: { min: 2, max: 2 },
-    uno: { min: 2, max: 10 },
-    wordbuilding: { min: 2, max: 8 },
-    dotsboxes: { min: 2, max: 6 },
-    stargame: { min: 2, max: 8 },
-    bingo: { min: 1, max: 8 },
-    namesplaceanimal: { min: 2, max: 8 },
-    tambola: { min: 1, max: 12 },
-    snake: { min: 1, max: 4 },
-    carrom: { min: 2, max: 2 },
-    chess: { min: 2, max: 2 },
-    // One seat is a legitimate game here (endless solo), not a lobby waiting
-    // to fill — the engine switches mode on seat count.
-    blockblast: { min: 1, max: 8 },
-    spacewar: { min: 1, max: 1 },
-  };
-
-  return limits[kind] ?? { min: 2, max: 4 };
-}
+import { getGameLimits } from "@shared/catalog.js";
+export { getGameLimits };

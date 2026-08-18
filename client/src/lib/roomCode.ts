@@ -45,7 +45,7 @@ const DISALLOWED_ONE = new RegExp(`[^${ROOM_CODE_ALPHABET}]`);
  */
 function codeFromUrl(raw: string): string | null {
   const m = /\/room\/([^/?#\s]+)/i.exec(raw);
-  return m ? m[1] : null;
+  return m?.[1] ?? null;
 }
 
 /**

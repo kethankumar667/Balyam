@@ -70,8 +70,9 @@ export function clearConnLog(): void {
  */
 export function formatConnLog(): string {
   const events = safeRead();
-  if (events.length === 0) return "No connection events recorded.";
-  const start = events[0].t;
+  const firstEvent = events[0];
+  if (!firstEvent) return "No connection events recorded.";
+  const start = firstEvent.t;
   const lines = events.map((e) => {
     const secs = ((e.t - start) / 1000).toFixed(1).padStart(7);
     return `+${secs}s  ${e.kind}${e.detail ? `  ${e.detail}` : ""}`;

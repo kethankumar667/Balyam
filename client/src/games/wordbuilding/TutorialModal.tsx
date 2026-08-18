@@ -134,7 +134,7 @@ export default function WordBuildingTutorialModal({
   onClose: () => void;
 }) {
   const [idx, setIdx] = useState(0);
-  const slide = SLIDES[idx];
+  const slide = SLIDES[idx] ?? SLIDES[0]!;
   const isLast = idx === SLIDES.length - 1;
 
   function finish() {

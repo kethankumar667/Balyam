@@ -60,6 +60,14 @@ import { SEALED_ROOM_ERROR } from "@shared/permissions.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
 import { sanitizeAvatar } from "@shared/avatars.js";
 import { ALLOWED_SOUND_CLIPS, SOUND_RATE_LIMIT } from "@shared/soundboard.js";
+import type { RoomLifecycleState } from "@shared/lifecycle.js";
+import { isValidLifecycleTransition } from "@shared/lifecycle.js";
+import { serverTimelineRecorder } from "../events/ServerTimelineRecorder.js";
+import { serverEventStore } from "../events/ServerEventStore.js";
+import { serverLifecycleRegistry } from "../reliability/LifecycleRegistry.js";
+import { serverResourceTracker } from "../reliability/ResourceTracker.js";
+import { metricsCollector } from "../observability/MetricsCollector.js";
+import { performanceMonitor } from "../observability/PerformanceMonitor.js";
 import { logger } from "../lib/logger.js";
 import type { GameEngine, RealtimeEngine } from "../games/GameEngine.js";
 import { isRealtimeEngine } from "../games/GameEngine.js";
@@ -214,6 +222,7 @@ interface Room {
   code: string;
   game: GameKind;
   phase: "lobby" | "playing" | "finished";
+  lifecycleState: RoomLifecycleState;
   hostId: string;
   /** Host-chosen table name ("Friday Rummy Nights") — null until set via room:setName. */
   name: string | null;
@@ -344,6 +353,71 @@ export class RoomManager {
     return this.rooms.size;
   }
 
+  getOperationalStats(): {
+    totalRooms: number;
+    recoveringRooms: number;
+    pausedRooms: number;
+    inProgressRooms: number;
+    lobbyRooms: number;
+    completedRooms: number;
+  } {
+    let recovering = 0;
+    let paused = 0;
+    let inProgress = 0;
+    let lobby = 0;
+    let completed = 0;
+
+    for (const room of this.rooms.values()) {
+      switch (room.lifecycleState) {
+        case "RECOVERING":
+          recovering++;
+          break;
+        case "PAUSED":
+          paused++;
+          break;
+        case "IN_PROGRESS":
+          inProgress++;
+          break;
+        case "WAITING_FOR_PLAYERS":
+        case "READY_CHECK":
+        case "STARTING":
+        case "CREATED":
+          lobby++;
+          break;
+        case "COMPLETED":
+          completed++;
+          break;
+      }
+    }
+
+    return {
+      totalRooms: this.rooms.size,
+      recoveringRooms: recovering,
+      pausedRooms: paused,
+      inProgressRooms: inProgress,
+      lobbyRooms: lobby,
+      completedRooms: completed,
+    };
+  }
+
+  getOperationalRoomSummaries(): Array<{
+    code: string;
+    game: GameKind;
+    lifecycleState: RoomLifecycleState;
+    playerCount: number;
+    humanCount: number;
+    hasTakeover: boolean;
+  }> {
+    return Array.from(this.rooms.values()).map((room) => ({
+      code: room.code,
+      game: room.game,
+      lifecycleState: room.lifecycleState,
+      playerCount: room.players.size,
+      humanCount: Array.from(room.players.values()).filter((p) => !p.isBot).length,
+      hasTakeover: room.takeoverTimers.size > 0,
+    }));
+  }
+
   private toPublicState(room: Room): RoomPublicState {
     const limits = getGameLimits(room.game) ?? { min: 2, max: 4 };
     const { max } = limits;
@@ -351,6 +425,7 @@ export class RoomManager {
       code: room.code,
       game: room.game,
       phase: room.phase,
+      lifecycleState: room.lifecycleState,
       players: Array.from(room.players.values()),
       // Players are told when they are on a screen. Being displayed in a
       // room without knowing it is not something to discover later.
@@ -366,6 +441,19 @@ export class RoomManager {
       ludoHistory: room.ludoHistory,
       sealed: room.sealed,
     };
+  }
+
+  private transitionLifecycle(room: Room, target: RoomLifecycleState, reason?: string): void {
+    if (room.lifecycleState === target) return;
+    const previous = room.lifecycleState;
+    if (isValidLifecycleTransition(previous, target)) {
+      room.lifecycleState = target;
+      logger.info({
+        message: `Lifecycle transition in room ${room.code}: ${previous} -> ${target}${reason ? ` (${reason})` : ""}`,
+        module: "LIFECYCLE",
+        roomCode: room.code,
+      });
+    }
   }
 
   /**
@@ -431,6 +519,7 @@ export class RoomManager {
     /** Appended for the same reason as `avatar` above. */
     hostKind?: AccountKind
   ): { code: string; playerId: string; seatToken: string; state: RoomPublicState } {
+    const createStart = performance.now();
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
 
@@ -467,6 +556,7 @@ export class RoomManager {
       code,
       game,
       phase: "lobby",
+      lifecycleState: (getGameLimits(game)?.min ?? 2) <= 1 ? "READY_CHECK" : "WAITING_FOR_PLAYERS",
       hostId: playerId,
       name: null,
       history: [],
@@ -508,11 +598,17 @@ export class RoomManager {
     };
     this.rooms.set(code, room);
     this.socketToRoom.set(socketId, code);
+    serverLifecycleRegistry.registerRoom(code);
+
+    serverTimelineRecorder.recordRoomCreated(code, game, playerId, false);
+    serverTimelineRecorder.recordPlayerJoined(code, playerId, player.name, false);
 
     const socket = this.io.sockets.sockets.get(socketId);
     socket?.join(code);
 
     this.broadcastRoomState(room);
+    metricsCollector.onRoomCreated(game);
+    performanceMonitor.recordDuration("room_create", performance.now() - createStart);
     return { code, playerId, seatToken: mintSeatToken(code, playerId), state: this.toPublicState(room) };
   }
 
@@ -539,6 +635,7 @@ export class RoomManager {
     avatar?: string,
     accountKind?: AccountKind
   ): { ok: true; playerId: string; seatToken: string; state: RoomPublicState } | { ok: false; error: string } {
+    const joinStart = performance.now();
     const room = this.rooms.get(code.toUpperCase());
     if (!room) return { ok: false, error: "Room not found" };
 
@@ -549,6 +646,8 @@ export class RoomManager {
     ) {
       const player = room.players.get(existingPlayerId)!;
       const awayForMs = player.awaySince ? Date.now() - player.awaySince : 0;
+      metricsCollector.onSeatReclaim(true);
+      metricsCollector.onRecoverySuccess(room.code, awayForMs);
       if (!player.isConnected) {
         logger.info({
           message: `Seat reclaimed by ${player.name} after ${Math.round(awayForMs / 1000)}s away`,
@@ -582,6 +681,8 @@ export class RoomManager {
       // Now that this seat counts as connected again, restart anything that
       // stalled while the room was empty.
       this.resumeTable(room);
+      this.transitionLifecycle(room, room.phase === "playing" ? "IN_PROGRESS" : "WAITING_FOR_PLAYERS", "Seat reclaimed");
+      serverTimelineRecorder.recordRecoverySucceeded(room.code, existingPlayerId);
       this.io.sockets.sockets.get(socketId)?.join(room.code);
       this.broadcastRoomState(room);
       if (room.engine) {
@@ -591,12 +692,17 @@ export class RoomManager {
       // Catch the rejoiner up on any rematch vote in progress so they don't
       // see a stale "Game Over" with no prompt.
       this.io.sockets.sockets.get(socketId)?.emit("rematch:state", room.rematch);
+      performanceMonitor.recordDuration("room_join", performance.now() - joinStart);
       return {
         ok: true,
         playerId: existingPlayerId,
         seatToken: mintSeatToken(room.code, existingPlayerId),
         state: this.toPublicState(room),
       };
+    }
+
+    if (existingPlayerId) {
+      metricsCollector.onSeatReclaim(false);
     }
 
     // Idempotency guard. A single socket maps to exactly one player in one
@@ -647,7 +753,12 @@ export class RoomManager {
     this.socketToRoom.set(socketId, room.code);
     this.io.sockets.sockets.get(socketId)?.join(room.code);
 
+    const allReady = Array.from(room.players.values()).every((p) => p.isReady || p.isHost || p.isBot);
+    this.transitionLifecycle(room, allReady ? "READY_CHECK" : "WAITING_FOR_PLAYERS", "Player joined");
+    serverTimelineRecorder.recordPlayerJoined(room.code, playerId, player.name, false);
+
     this.broadcastRoomState(room);
+    performanceMonitor.recordDuration("room_join", performance.now() - joinStart);
     return {
       ok: true,
       playerId,
@@ -844,6 +955,10 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     player.isReady = ready;
+    if (room.phase === "lobby") {
+      const allReady = Array.from(room.players.values()).every((p) => p.isReady || p.isHost || p.isBot);
+      this.transitionLifecycle(room, allReady ? "READY_CHECK" : "WAITING_FOR_PLAYERS", "Ready state changed");
+    }
     this.broadcastRoomState(room);
   }
 
@@ -1012,6 +1127,9 @@ export class RoomManager {
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
+      this.transitionLifecycle(room, "IN_PROGRESS", "Game started");
+      serverTimelineRecorder.recordGameStarted(room.code, room.game, playersList.length);
+      metricsCollector.onMatchStarted(room.game, playersList.length);
       this.emitRummyBotTells(room);
       this.broadcastRoomState(room);
       this.broadcastGameState(room);
@@ -1026,6 +1144,7 @@ export class RoomManager {
   }
 
   applyMove(socketId: string, type: string, data: unknown, onBehalfOf?: string, actionId?: string): void {
+    const moveStart = performance.now();
     const { room, player } = this.lookup(socketId);
     if (!room || !player || !room.engine) return;
 
@@ -1073,6 +1192,7 @@ export class RoomManager {
     }
 
     const result = room.engine.applyMove({ playerId: effectivePlayerId, type, data });
+    metricsCollector.onMoveProcessed(room.game, type, performance.now() - moveStart);
     if (!result.ok) {
       // Structured-logging gap closed for PLAN_REVIEW_REPORT.md §6.13 (Phase
       // 5) — a rejected move was previously invisible outside the client's
@@ -1088,9 +1208,13 @@ export class RoomManager {
     }
     // Accepted move → somebody is definitely at this seat.
     this.noteActivity(room, effectivePlayerId);
+    serverTimelineRecorder.recordMoveMade(room.code, effectivePlayerId, room.game, type);
     this.broadcastGameState(room);
     if (room.engine.isOver()) {
       room.phase = "finished";
+      this.transitionLifecycle(room, "COMPLETED", "Match finished");
+      serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine as any).getWinner?.() ?? null);
+      metricsCollector.onMatchFinished(room.game, 0);
       for (const p of room.players.values()) p.isReady = false;
       this.clearTurnTimer(room);
       this.broadcastRoomState(room);
@@ -1296,6 +1420,7 @@ export class RoomManager {
   private clearTurnTimer(room: Room): void {
     if (room.turnTimer) {
       clearTimeout(room.turnTimer);
+      serverLifecycleRegistry.unbindTimer(room.code, "turn_timer");
       room.turnTimer = null;
     }
   }
@@ -1417,6 +1542,7 @@ export class RoomManager {
   private stopSimulation(room: Room): void {
     if (room.simTimer) {
       clearInterval(room.simTimer);
+      serverLifecycleRegistry.unbindInterval(room.code, "simulation");
       room.simTimer = null;
     }
   }
@@ -1433,12 +1559,18 @@ export class RoomManager {
    */
   private abandonRoom(room: Room): void {
     room.phase = "finished";
+    this.transitionLifecycle(room, "ABANDONED", "All humans departed");
+    serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_abandoned");
+    metricsCollector.onRoomAbandoned(room.game);
     this.clearTurnTimer(room);
     this.stopSimulation(room);
     for (const t of room.cleanupTimers.values()) clearTimeout(t);
     room.cleanupTimers.clear();
     for (const t of room.takeoverTimers.values()) clearTimeout(t);
     room.takeoverTimers.clear();
+    this.transitionLifecycle(room, "CLOSED", "Room destroyed");
+    serverLifecycleRegistry.cleanupRoom(room.code);
+    metricsCollector.onRoomClosed(room.game);
     this.rooms.delete(room.code);
   }
 
@@ -2234,6 +2366,7 @@ export class RoomManager {
       ts: Date.now(),
     };
     this.io.to(room.code).emit("chat:message", msg);
+    serverTimelineRecorder.recordChatSent(room.code, player.id, trimmed.length);
   }
 
   /**
@@ -2313,10 +2446,14 @@ export class RoomManager {
     // Freezing the table instead means they come back to the exact position
     // they left.
     if (room.phase === "playing" && player && !player.isBot && !soloHuman) {
+      this.transitionLifecycle(room, "RECOVERING", "Player disconnected, awaiting reconnect");
+      serverTimelineRecorder.recordRecoveryStarted(room.code, playerId);
       this.armTakeover(room, playerId);
     } else if (room.phase === "playing" && soloHuman) {
       // Nothing should advance while the table is unattended: no turn
       // deadline expiring, no bots moving, no real-time engine ticking on.
+      this.transitionLifecycle(room, "PAUSED", "Solo human disconnected");
+      serverTimelineRecorder.recordRecoveryStarted(room.code, playerId);
       this.clearTurnTimer(room);
       this.stopSimulation(room);
     }
@@ -2405,6 +2542,11 @@ export class RoomManager {
 
   getRoomState(socketId: string): RoomPublicState | null {
     const { room } = this.lookup(socketId);
+    return room ? this.toPublicState(room) : null;
+  }
+
+  getRoomStateByCode(code: string): RoomPublicState | null {
+    const room = this.rooms.get(code.toUpperCase());
     return room ? this.toPublicState(room) : null;
   }
 

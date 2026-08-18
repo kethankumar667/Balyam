@@ -763,7 +763,7 @@ const SELF_ACCENT: PlateAccent = { light: "#5AA9F0", base: "#2E7CD0", dark: "#1C
 function accentFor(seed: string): PlateAccent {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-  return PLATE_ACCENTS[Math.abs(h) % PLATE_ACCENTS.length];
+  return PLATE_ACCENTS[Math.abs(h) % PLATE_ACCENTS.length] ?? PLATE_ACCENTS[0]!;
 }
 
 /**

@@ -168,7 +168,7 @@ describe("VoiceManager", () => {
 
     const offers = socket.sent.filter((s) => s.signal.kind === "offer");
     expect(offers).toHaveLength(1);
-    expect(offers[0].toPlayerId).toBe("b");
+    expect(offers[0]!.toPlayerId).toBe("b");
 
     // The room broadcasts a new roster array on every state change; the old
     // code re-offered each time, flooding the peer with renegotiations.
@@ -201,14 +201,14 @@ describe("VoiceManager", () => {
     const answers = socket.sent.filter((s) => s.signal.kind === "answer");
     expect(answers).toHaveLength(1);
     // Answered with no audio of our own — we had no mic yet.
-    expect(FakePeerConnection.instances[0].tracks).toHaveLength(0);
+    expect(FakePeerConnection.instances[0]!.tracks).toHaveLength(0);
 
     // Now the player clicks "Connect mic".
     await mgr.start();
     mgr.syncPeers(["a"]);
     await settle();
 
-    expect(FakePeerConnection.instances[0].tracks).toHaveLength(1);
+    expect(FakePeerConnection.instances[0]!.tracks).toHaveLength(1);
     // We do not own the offer, so we must ask the other side to re-offer.
     // Without this the staggered case deadlocked and one side heard silence.
     expect(socket.sent.some((s) => s.signal.kind === "ready" && s.toPlayerId === "a")).toBe(true);
@@ -258,7 +258,7 @@ describe("VoiceManager", () => {
     await settle();
     expect(FakePeerConnection.instances).toHaveLength(1);
 
-    const first = FakePeerConnection.instances[0];
+    const first = FakePeerConnection.instances[0]!;
     first.transitionTo("failed");
     await settle();
 
@@ -280,7 +280,7 @@ describe("VoiceManager", () => {
     for (let i = 0; i < 10; i++) {
       const live = FakePeerConnection.instances.filter((pc) => !pc.closed);
       if (live.length === 0) break;
-      live[live.length - 1].transitionTo("failed");
+      live[live.length - 1]!.transitionTo("failed");
       await settle();
     }
     // 1 original + at most MAX_RETRIES rebuilds.
@@ -295,7 +295,7 @@ describe("VoiceManager", () => {
     mgr.syncPeers(["b"]);
     await settle();
 
-    const pc = FakePeerConnection.instances[0];
+    const pc = FakePeerConnection.instances[0]!;
     pc.iceConnectionState = "failed";
     pc.oniceconnectionstatechange?.();
     expect(pc.restartIceCalls).toBe(1);
@@ -311,7 +311,7 @@ describe("VoiceManager", () => {
     socket.deliver({ fromPlayerId: "b", signal: { kind: "answer", sdp: "answer-1" } });
     await settle();
 
-    const pc = FakePeerConnection.instances[0];
+    const pc = FakePeerConnection.instances[0]!;
     expect(pc.signalingState).toBe("stable");
     // A duplicate answer arrives (retry, or the tail of a rolled-back round).
     socket.deliver({ fromPlayerId: "b", signal: { kind: "answer", sdp: "answer-2" } });
@@ -324,7 +324,7 @@ describe("VoiceManager", () => {
     const socket = makeFakeSocket();
     const mgr = newManager(socket, "z");
     await mgr.start();
-    const pc0 = () => FakePeerConnection.instances[0];
+    const pc0 = () => FakePeerConnection.instances[0]!;
     const addSpy = vi.fn();
 
     socket.deliver({
@@ -370,7 +370,7 @@ describe("VoiceManager", () => {
     expect(mgr.toggleMute()).toBe(true);
     expect(currentStream.__track.enabled).toBe(false);
 
-    FakePeerConnection.instances[0].transitionTo("failed");
+    FakePeerConnection.instances[0]!.transitionTo("failed");
     await settle();
     // The rebuilt connection carries the same, still-muted track.
     expect(mgr.isMuted()).toBe(true);

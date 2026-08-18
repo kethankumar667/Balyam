@@ -173,7 +173,8 @@ export function Grid({
             const filled = cell !== "";
             const isSel = selected?.r === r && selected?.c === c;
             const isHint = hintCells.has(k);
-            const inkOwner = overlays.length > 0 ? inkOf[overlays[overlays.length - 1].scorerId] : null;
+            const lastOverlay = overlays[overlays.length - 1];
+            const inkOwner = lastOverlay?.scorerId ? inkOf[lastOverlay.scorerId] : null;
             return (
               <button
                 key={k}
@@ -201,11 +202,10 @@ export function Grid({
                   fontSize: cellPx * 0.62,
                   lineHeight: 1,
                   color: filled ? overlays.length > 0
-                    ? overlays[overlays.length - 1].scorerId &&
-                      inkOf[overlays[overlays.length - 1].scorerId]?.inkColor
+                    ? (lastOverlay?.scorerId && inkOf[lastOverlay.scorerId]?.inkColor) || "#1e293b"
                     : "#1e293b" : "transparent",
                   textShadow: filled && overlays.length > 0
-                    ? inkOf[overlays[overlays.length - 1].scorerId]?.inkShadow
+                    ? (lastOverlay?.scorerId && inkOf[lastOverlay.scorerId]?.inkShadow) || "0 0 0.4px rgba(0,0,0,0.5)"
                     : "0 0 0.4px rgba(0,0,0,0.5)",
                   transform: filled ? `rotate(${(((r * 7 + c * 13) % 5) - 2) * 0.6}deg)` : "none",
                 }}
@@ -305,9 +305,10 @@ function TeacherTickFor({
   cellPx: number;
   ink?: Ink;
 }) {
-  const tier = word.points >= 6 ? TICK_TIERS[6] : TICK_TIERS[word.points] ?? TICK_TIERS[3];
+  const tier = (word.points >= 6 ? TICK_TIERS[6] : TICK_TIERS[word.points]) ?? TICK_TIERS[3]!;
 
   const last = word.cells[word.cells.length - 1];
+  if (!last) return null;
   const left = (last.c + 1) * (cellPx + 2) + 8; // +2 for grid gap
   const top = last.r * (cellPx + 2) + 2;
   return (

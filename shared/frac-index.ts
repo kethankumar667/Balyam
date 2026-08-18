@@ -32,13 +32,13 @@ function midpoint(a: string, b: string): string {
     while ((a[n] ?? "0") === b[n]) n++;
     if (n > 0) return b.slice(0, n) + midpoint(a.slice(n), b.slice(n));
   }
-  const digitA = a === "" ? 0 : DIGITS.indexOf(a[0]);
-  const digitB = b === "" ? BASE : DIGITS.indexOf(b[0]);
+  const digitA = a === "" ? 0 : DIGITS.indexOf(a[0] ?? "");
+  const digitB = b === "" ? BASE : DIGITS.indexOf(b[0] ?? "");
   if (digitB - digitA > 1) {
-    return DIGITS[Math.round(0.5 * (digitA + digitB))];
+    return DIGITS[Math.round(0.5 * (digitA + digitB))] ?? "V";
   }
   if (b.length > 1) return b.slice(0, 1);
-  return DIGITS[digitA] + midpoint(a.slice(1), "");
+  return (DIGITS[digitA] ?? "0") + midpoint(a.slice(1), "");
 }
 
 /**
@@ -49,7 +49,7 @@ function midpoint(a: string, b: string): string {
 export function keyBetween(a: string | null, b: string | null, jitter = false): string {
   if (a !== null && b !== null && a >= b) throw new Error(`frac-index: ${a} >= ${b}`);
   let key: string;
-  if (a === null && b === null) key = DIGITS[Math.floor(BASE / 2)];
+  if (a === null && b === null) key = DIGITS[Math.floor(BASE / 2)] ?? "V";
   else if (a === null) key = midpoint("", b as string);
   else if (b === null) key = midpoint(a, "");
   else key = midpoint(a, b);

@@ -1,31 +1,21 @@
-# Typecheck, test and build both packages on every push and pull request.
-#
-# This exists because the repo has 550+ tests that nothing ran automatically.
-# A suite only protects you if something runs it without being asked — a
-# failing test nobody sees is worse than no test, because it teaches everyone
-# to ignore red.
-#
-# `client` and `server` are separate jobs rather than sequential steps so they
-# run in parallel and a server failure still tells you whether the client is
-# fine. Both check out the whole repo: `shared/` is imported by each through
-# a tsconfig path alias, so neither package builds from its own folder alone.
-name: CI
+# ==============================================================================
+# BHALYAM Automated Quality Gates & CI Pipeline
+# Multi-stage release verification ensuring zero regressions reach production.
+# ==============================================================================
+name: CI & Quality Gates
 
 on:
   push:
     branches: [main]
   pull_request:
 
-# A new push supersedes an in-flight run on the same branch. Without this,
-# pushing three times in a minute queues three full runs and you wait for
-# answers about code you have already replaced.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   server:
-    name: Server
+    name: Server Verification
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -35,32 +25,24 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Read from .nvmrc so CI, Render and local development cannot
-          # drift onto different majors. Render reads .nvmrc too, so bumping
-          # that one file moves everything together.
           node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      # `npm ci` not `npm install`: it installs exactly the lockfile and fails
-      # if package.json and the lock have drifted, which is a real bug worth
-      # catching rather than silently resolving.
-      - run: npm ci
+      - name: Install Dependencies
+        run: npm ci
 
-      - name: Typecheck
+      - name: Strict TypeScript Compilation
         run: npm run typecheck
 
-      - name: Test
+      - name: Automated Unit & Stress Tests (Vitest)
         run: npm test
 
-      # The build is a separate signal from typecheck: `tsc-alias` rewrites
-      # path aliases into real relative paths for the published output, and it
-      # can fail on code that typechecks perfectly.
-      - name: Build
+      - name: Build & Alias Resolution
         run: npm run build
 
   client:
-    name: Client
+    name: Client Verification
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,15 +56,57 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
 
-      - run: npm ci
+      - name: Install Dependencies
+        run: npm ci
 
-      - name: Typecheck
+      - name: Strict TypeScript Compilation
         run: npm run typecheck
 
-      - name: Test
+      - name: Automated Unit Tests (Vitest)
         run: npm test
 
-      # Catches what typecheck cannot: a bad import path, a missing asset, or
-      # a Vite plugin that only breaks at bundle time.
-      - name: Build
+      - name: Production Bundle & Prerender
         run: npm run build
+
+  quality-gates:
+    name: Release Quality Gates
+    needs: [server, client]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install Server Dependencies
+        run: npm --prefix server ci
+
+      - name: Install Client Dependencies
+        run: npm --prefix client ci
+
+      - name: Build Client & Server
+        run: |
+          npm --prefix server run build
+          npm --prefix client run build
+
+      - name: Gate 1 — Test Quality & Anti-Skip Guard
+        run: node scripts/quality-gates/testQualityAudit.mjs
+
+      - name: Gate 2 — Bundle Size Budgets
+        run: node scripts/quality-gates/bundleBudgetGuard.mjs
+
+      - name: Gate 3 — WCAG Accessibility Standards (A11y)
+        run: node scripts/quality-gates/accessibilityAudit.mjs
+
+      - name: Gate 4 — Dependency Governance
+        run: node scripts/quality-gates/dependencyGovernance.mjs
+
+      - name: Gate 5 — Consolidated Release Readiness Report
+        run: node scripts/quality-gates/releaseReadinessReport.mjs
+
+      - name: Upload Release Readiness Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-readiness-report
+          path: RELEASE_READINESS_REPORT.json

@@ -165,15 +165,18 @@ export function computeStadiumPositions(
 
   // Left column seats (seating.left is closest-to-self-first: bottom-to-top)
   const leftCount = seating.left.length;
-  if (leftCount === 1) {
-    pos[seating.left[0]] = { left: "12%", top: "42%" };
+  const l0 = seating.left[0];
+  const l1 = seating.left[1];
+  const l2 = seating.left[2];
+  if (leftCount === 1 && l0) {
+    pos[l0] = { left: "12%", top: "42%" };
   } else if (leftCount === 2) {
-    pos[seating.left[0]] = { left: "14%", top: "56%" };
-    pos[seating.left[1]] = { left: "22%", top: "15%" };
+    if (l0) pos[l0] = { left: "14%", top: "56%" };
+    if (l1) pos[l1] = { left: "22%", top: "15%" };
   } else if (leftCount >= 3) {
-    pos[seating.left[0]] = { left: "16%", top: "62%" }; // Bottom-Left Hip (Jugadu)
-    pos[seating.left[1]] = { left: "9%", top: "37%" }; // Mid-Left Flank (Baazi)
-    pos[seating.left[2]] = { left: "25%", top: "15%" }; // Top-Left Shoulder (Chikki)
+    if (l0) pos[l0] = { left: "16%", top: "62%" }; // Bottom-Left Hip (Jugadu)
+    if (l1) pos[l1] = { left: "9%", top: "37%" }; // Mid-Left Flank (Baazi)
+    if (l2) pos[l2] = { left: "25%", top: "15%" }; // Top-Left Shoulder (Chikki)
   }
 
   // Self seat (YOU) — on desktop centered at bottom; on mobile positioned at bottom-left
@@ -219,7 +222,7 @@ const SELF_STADIUM_ACCENT: StadiumAccent = { light: "#38bdf8", base: "#0284c7", 
 function stadiumAccentFor(seed: string): StadiumAccent {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-  return STADIUM_ACCENTS[Math.abs(h) % STADIUM_ACCENTS.length];
+  return STADIUM_ACCENTS[Math.abs(h) % STADIUM_ACCENTS.length] ?? STADIUM_ACCENTS[0]!;
 }
 
 // ---------------------------------------------------------------------
@@ -448,7 +451,7 @@ export function StadiumDirectionArc({
   const isBlue = activeColor === "B" || activeColor === "blue";
   const isGreen = activeColor === "G" || activeColor === "green";
   const palKey = isYellow ? "yellow" : isBlue ? "blue" : isGreen ? "green" : "red";
-  const pal = STADIUM_DIRECTION_PALETTES[palKey];
+  const pal = STADIUM_DIRECTION_PALETTES[palKey] ?? STADIUM_DIRECTION_PALETTES.red;
 
   const cx = width / 2;
   const cy = height / 2;
@@ -599,21 +602,23 @@ const PALETTES: Array<[string, string]> = [
 function paletteFor(seed: string): [string, string] {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-  return PALETTES[Math.abs(h) % PALETTES.length];
+  return PALETTES[Math.abs(h) % PALETTES.length] ?? PALETTES[0]!;
 }
 
 function deterministicAvatar(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return AVATAR_FILES[Math.abs(h) % AVATAR_FILES.length];
+  return AVATAR_FILES[Math.abs(h) % AVATAR_FILES.length] ?? AVATAR_FILES[0]!;
 }
 
 function initialsOf(name: string): string {
   const trimmed = (name ?? "").trim();
   if (!trimmed) return "?";
   const parts = trimmed.split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  const p0 = parts[0] ?? "";
+  const pLast = parts[parts.length - 1] ?? "";
+  if (parts.length === 1) return p0.slice(0, 2).toUpperCase();
+  return ((p0[0] ?? "") + (pLast[0] ?? "")).toUpperCase() || "?";
 }
 
 export function UnoSeatAvatar({
