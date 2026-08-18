@@ -68,6 +68,9 @@ import { serverLifecycleRegistry } from "../reliability/LifecycleRegistry.js";
 import { serverResourceTracker } from "../reliability/ResourceTracker.js";
 import { metricsCollector } from "../observability/MetricsCollector.js";
 import { performanceMonitor } from "../observability/PerformanceMonitor.js";
+import { profileService } from "../profile/ProfileService.js";
+import { rankingService } from "../ranking/RankingService.js";
+import { recentPlayersService } from "../ranking/RecentPlayersService.js";
 import { logger } from "../lib/logger.js";
 import type { GameEngine, RealtimeEngine } from "../games/GameEngine.js";
 import { isRealtimeEngine } from "../games/GameEngine.js";
@@ -223,6 +226,7 @@ interface Room {
   game: GameKind;
   phase: "lobby" | "playing" | "finished";
   lifecycleState: RoomLifecycleState;
+  createdAt: number;
   hostId: string;
   /** Host-chosen table name ("Friday Rummy Nights") — null until set via room:setName. */
   name: string | null;
@@ -557,6 +561,7 @@ export class RoomManager {
       game,
       phase: "lobby",
       lifecycleState: (getGameLimits(game)?.min ?? 2) <= 1 ? "READY_CHECK" : "WAITING_FOR_PLAYERS",
+      createdAt: Date.now(),
       hostId: playerId,
       name: null,
       history: [],
@@ -1215,6 +1220,33 @@ export class RoomManager {
       this.transitionLifecycle(room, "COMPLETED", "Match finished");
       serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine as any).getWinner?.() ?? null);
       metricsCollector.onMatchFinished(room.game, 0);
+      try {
+        const winnerId = (room.engine as any).getWinner?.() ?? undefined;
+        const participants = Array.from(room.players.values()).map((p) => ({
+          playerId: p.id,
+          name: p.name,
+          avatar: p.avatar,
+          isWinner: Boolean(winnerId && p.id === winnerId),
+          isBot: p.isBot,
+        }));
+        profileService.recordMatchFinished({
+          roomCode: room.code,
+          game: room.game,
+          startedAt: room.createdAt,
+          finishedAt: Date.now(),
+          durationMs: Math.max(1000, Date.now() - room.createdAt),
+          winnerId: winnerId ?? undefined,
+          participants,
+        });
+        recentPlayersService.recordMatch({
+          roomCode: room.code,
+          game: room.game,
+          participants,
+        });
+        rankingService.invalidateCache();
+      } catch (err) {
+        logger.warn({ message: `Failed to record match in profile/ranking service: ${String(err)}`, module: "PROFILE" });
+      }
       for (const p of room.players.values()) p.isReady = false;
       this.clearTurnTimer(room);
       this.broadcastRoomState(room);

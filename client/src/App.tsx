@@ -29,6 +29,9 @@ const BrickBreakoutPage = lazy(() => import("./pages/BrickBreakoutPage"));
 const PartyScreen = lazy(() => import("./pages/PartyScreen"));
 const Diagnostics = lazy(() => import("./pages/Diagnostics"));
 const PreviewLudo = lazy(() => import("./pages/PreviewLudo"));
+const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const TournamentsPage = lazy(() => import("./pages/TournamentsPage"));
 
 function RouteLoadingFallback() {
   return (
@@ -106,6 +109,8 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/tournaments" element={<TournamentsPage />} />
 
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/about" element={<AboutPage />} />
@@ -122,6 +127,7 @@ export default function App() {
             {/* Connection log for debugging reconnect failures on real devices. */}
             <Route path="/diagnostics" element={<Diagnostics />} />
             <Route path="/preview/ludo" element={<PreviewLudo />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
 
             {/* Standalone nostalgic & retro games */}
             <Route path="/nokiacricket" element={<NokiaCricketPage />} />

@@ -18,6 +18,10 @@ import { metricsCollector } from "./observability/MetricsCollector.js";
 import { performanceMonitor } from "./observability/PerformanceMonitor.js";
 import { healthMonitor } from "./observability/HealthMonitor.js";
 import { telemetryAggregator } from "./observability/TelemetryAggregator.js";
+import { securityHeaders, requireOperationalAuth } from "./security/SecurityMiddleware.js";
+import { profileRouter } from "./profile/ProfileController.js";
+import { rankingRouter } from "./ranking/RankingController.js";
+import { tournamentRouter, seasonRouter } from "./tournaments/TournamentController.js";
 
 memoryMonitor.start(30_000);
 
@@ -59,8 +63,14 @@ function originAllowed(origin: string | undefined, cb: (err: Error | null, ok?: 
 const startTime = Date.now();
 
 const app = express();
+app.use(securityHeaders);
 app.use(cors({ origin: originAllowed }));
 app.use(express.json());
+app.use("/api/profile", profileRouter);
+app.use("/api/ranking", rankingRouter);
+app.use("/api/tournaments", tournamentRouter);
+app.use("/api/seasons", seasonRouter);
+app.use("/api/operational", requireOperationalAuth);
 
 // Telemetry & Health endpoint
 app.get("/health", (_req, res) => {

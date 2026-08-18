@@ -18,6 +18,7 @@
     "check:tests": "node scripts/quality-gates/testQualityAudit.mjs",
     "check:deps": "node scripts/quality-gates/dependencyGovernance.mjs",
     "check:perf": "node scripts/quality-gates/performanceBudgetGuard.mjs",
-    "release:check": "node scripts/quality-gates/releaseReadinessReport.mjs"
+    "release:check": "node scripts/quality-gates/releaseReadinessReport.mjs",
+    "enterprise:check": "node scripts/quality-gates/enterpriseReadinessReport.mjs"
   }
 }
