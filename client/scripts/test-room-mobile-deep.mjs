@@ -206,10 +206,6 @@ async function main() {
         badElements,
       });
 
-      // Save screenshot
-      const imgPath = path.resolve(publicDir, `room-${game}-${vp.name}.png`);
-      await page.screenshot({ path: imgPath, fullPage: true }).catch(() => {});
-
       await context.close();
     }
   }
