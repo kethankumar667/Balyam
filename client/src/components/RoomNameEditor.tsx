@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Pencil } from "lucide-react";
 import { getSocket } from "../lib/socket";
 
 /**
@@ -60,7 +61,7 @@ export default function RoomNameEditor({
         onClick={startEdit}
         className="inline-flex items-center gap-1 text-sm font-semibold text-[#8A6D4B] dark:text-slate-400 hover:text-[#EA5A1F] dark:hover:text-amber-400 transition underline underline-offset-4 decoration-dashed decoration-[#C9A876] cursor-pointer"
       >
-        <span aria-hidden>✏️</span>
+        <Pencil size={14} aria-hidden />
         Name this table
       </button>
     );

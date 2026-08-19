@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState , useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, lazy, Suspense } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { generateActionId, getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
@@ -37,53 +37,41 @@ import CompactColorSelector from "../components/room/CompactColorSelector";
 import LobbyActionBar from "../components/room/LobbyActionBar";
 import CommunicationPanel from "../components/room/CommunicationPanel";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
-import RpsBoard from "../games/rps/RpsBoard";
-import RummyBoard from "../games/rummy/RummyBoard";
-import LudoBoard from "../games/ludo/LudoBoard";
-import SnlBoard from "../games/snl/SnlBoard";
-import HandCricketBoard from "../games/handcricket/HandCricketBoard";
-import UnoBoard from "../games/uno/UnoBoard";
+import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
+import { recoveryManager } from "../core/recovery/RecoveryManager";
+import { GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
 import type { GameKind, Player, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
-import WordBuildingBoard from "../games/wordbuilding/WordBuildingBoard";
-import DotsBoxesBoard from "../games/dotsboxes/DotsBoxesBoard";
-import StarBoard from "../games/stargame/StarBoard";
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
-import BingoBoard from "../games/bingo/BingoBoard";
 import type { BingoPlayerState } from "@shared/types";
-import NamePlaceAnimalBoard from "../games/namesplaceanimal/NamePlaceAnimalBoard";
-import TambolaBoard from "../games/tambola/TambolaBoard";
-import SnakeBoard from "../games/snake/SnakeBoard";
-import CarromBoard from "../games/carrom/CarromBoard";
-import ChessBoard from "../games/chess/ChessBoard";
-import SpaceWarBoard from "../games/spacewar/SpaceWarBoard";
 import GameErrorBoundary from "../components/GameErrorBoundary";
 import type { SnakePublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState } from "@shared/types";
+
+// ── Lazy-loaded game boards (code-split per game) ──
+const RpsBoard = lazy(() => import("../games/rps/RpsBoard"));
+const RummyBoard = lazy(() => import("../games/rummy/RummyBoard"));
+const LudoBoard = lazy(() => import("../games/ludo/LudoBoard"));
+const SnlBoard = lazy(() => import("../games/snl/SnlBoard"));
+const HandCricketBoard = lazy(() => import("../games/handcricket/HandCricketBoard"));
+const UnoBoard = lazy(() => import("../games/uno/UnoBoard"));
+const WordBuildingBoard = lazy(() => import("../games/wordbuilding/WordBuildingBoard"));
+const DotsBoxesBoard = lazy(() => import("../games/dotsboxes/DotsBoxesBoard"));
+const StarBoard = lazy(() => import("../games/stargame/StarBoard"));
+const BingoBoard = lazy(() => import("../games/bingo/BingoBoard"));
+const NamePlaceAnimalBoard = lazy(() => import("../games/namesplaceanimal/NamePlaceAnimalBoard"));
+const TambolaBoard = lazy(() => import("../games/tambola/TambolaBoard"));
+const SnakeBoard = lazy(() => import("../games/snake/SnakeBoard"));
+const CarromBoard = lazy(() => import("../games/carrom/CarromBoard"));
+const ChessBoard = lazy(() => import("../games/chess/ChessBoard"));
+const SpaceWarBoard = lazy(() => import("../games/spacewar/SpaceWarBoard"));
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
  * the "X seats left" pill in BotControls knows when the table is full per
- * game type. Keep in sync with server/src/games/registry.ts.
+ * game type. Keep in sync with server/src/games/registry.ts
  */
-const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = {
-  rps: 2,
-  rummy: 6,
-  ludo: 8,
-  snl: 10,
-  handcricket: 2,
-  uno: 8,
-  wordbuilding: 4,
-  dotsboxes: 6,
-  stargame: 8,
-  bingo: 8,
-  namesplaceanimal: 8,
-  tambola: 8,
-  snake: 4,
-  carrom: 2,
-  roadrash: 4,
-  chess: 2,
-  blockblast: 8,
-  spacewar: 1,
-};
+const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = Object.fromEntries(
+  Object.entries(GAME_LIMITS).map(([k, v]) => [k, v.max])
+) as Record<GameKind, number>;
 
 /**
  * Floating toast for warnings/errors that mustn't reshape the page. Sits at the
@@ -117,27 +105,6 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   );
 }
 
-const GAME_DISPLAY_NAMES: Record<GameKind, string> = {
-  chess: "CHESS ♟",
-  rummy: "RUMMY 🃏",
-  ludo: "LUDO 🎲",
-  snl: "SNAKES & LADDERS 🐍",
-  handcricket: "HAND CRICKET 🏏",
-  rps: "ROCK PAPER SCISSORS ✂️",
-  uno: "UNO 🎴",
-  wordbuilding: "WORD BUILDING 🔤",
-  dotsboxes: "DOTS & BOXES ⚄",
-  stargame: "STAR GAME ⭐",
-  bingo: "BINGO 🎱",
-  namesplaceanimal: "NAME PLACE ANIMAL 🐾",
-  tambola: "TAMBOLA 🎟️",
-  snake: "SNAKE 🐍",
-  roadrash: "ROAD RASH 🏍️",
-  carrom: "CARROM 🎯",
-  blockblast: "BLOCK BLAST 🧱",
-  spacewar: "SPACE WAR 🚀",
-};
-
 function BotControls({
   players,
   maxPlayers,
@@ -147,9 +114,6 @@ function BotControls({
   maxPlayers: number;
   game: GameKind;
 }) {
-  const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
-    "spacewar"
-  ]);
   if (NO_BOT_GAMES.has(game)) {
     return null;
   }
@@ -450,7 +414,10 @@ export default function Room() {
             setTimeout(() => navigate("/"), 4000);
             return;
           }
-          if (res.playerId) setPlayerId(res.playerId);
+          if (res.playerId) {
+            setPlayerId(res.playerId);
+            recoveryManager.attachRoom(joinCode, res.playerId, res.seatToken, joinName, useRoomStore.getState().avatarId ?? undefined);
+          }
           if (res.playerId && res.seatToken) {
             rememberSeat(joinCode, res.playerId, res.seatToken);
           }
@@ -762,6 +729,7 @@ export default function Room() {
   function leaveRoom() {
     if (isFullscreenActive()) void exitFullscreen();
     destroyVoiceSession();
+    recoveryManager.detachRoom();
     getSocket().emit("room:leave");
     reset();
     navigate("/");
@@ -928,7 +896,7 @@ export default function Room() {
         {roomState.phase === "lobby" ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* Left Column (approx 62% - lg:col-span-7 xl:col-span-8) */}
-            <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+            <div className="lg:col-span-7 xl:col-span-8 space-y-4 pb-28 lg:pb-0">
               {roomState.sealed ? (
                 <SignInWall
                   from="room"
@@ -1023,18 +991,19 @@ export default function Room() {
               gameName={roomState.game}
               onReset={() => window.location.reload()}
             >
-              {roomState.game === "rps" && gameState != null && !showGameOver && (
-                <RpsBoard
-                  state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
-                  players={roomState.players}
-                  selfId={playerId}
-                  messages={messages}
-                  roomCode={roomState.code}
-                  roomPhase={roomState.phase}
-                  onLeave={leaveRoom}
-                  onScorecardClose={triggerGameOver}
-                />
-              )}
+              <Suspense fallback={<BoardLoadingFallback gameName={GAME_DISPLAY_NAMES[roomState.game] || roomState.game} />}>
+                {roomState.game === "rps" && gameState != null && !showGameOver && (
+                  <RpsBoard
+                    state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
+                    players={roomState.players}
+                    selfId={playerId}
+                    messages={messages}
+                    roomCode={roomState.code}
+                    roomPhase={roomState.phase}
+                    onLeave={leaveRoom}
+                    onScorecardClose={triggerGameOver}
+                  />
+                )}
 
               {roomState.game === "rummy" && gameState != null && !showGameOver && (
                 <RummyBoard
@@ -1272,6 +1241,7 @@ export default function Room() {
                   selfId={playerId || ""}
                 />
               )}
+              </Suspense>
             </GameErrorBoundary>
           </div>
         )}

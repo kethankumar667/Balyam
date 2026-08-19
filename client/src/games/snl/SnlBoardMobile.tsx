@@ -20,7 +20,11 @@ import { SNL_TUTORIAL } from "../tutorials";
 export default function SnlBoardMobile(props: SnlBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
   const m = useSnlBoard(props);
-  const tut = useTutorialGate(SNL_TUTORIAL.key);
+  // Never over a live turn. SNL's public state has no `turnDeadline` field to
+  // also check (unlike Ludo/DotsBoxes/UNO), so `!myTurn` alone is the guard —
+  // still strictly safe, since a countdown can only cost THIS player a turn
+  // while it is their turn. See GameTutorial.tsx's useTutorialGate doc.
+  const tut = useTutorialGate(SNL_TUTORIAL.key, !m.myTurn);
 
   return (
     <div className="rounded-2xl border border-slate-700/80 bg-[radial-gradient(circle_at_50%_0%,rgba(250,204,21,0.16),transparent_34%),linear-gradient(135deg,#0f172a,#020617)] p-3 sm:p-4 space-y-3 shadow-2xl">

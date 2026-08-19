@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STAR_THEMES } from "@shared/star-themes";
 import { useNavigate } from "react-router-dom";
+import Modal from "../Modal";
 import type {
   GameKind,
   HcCategory,
@@ -379,25 +380,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     }
   }, [game, playerName]);
 
-  // ESC closes the sheet.
-  useEffect(() => {
-    if (!game) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [game, onClose]);
-
-  // Lock body scroll while open.
-  useEffect(() => {
-    if (!game) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [game]);
+  // Focus trap, Escape, focus restoration and body-scroll lock are all
+  // owned by <Modal> at the return site below — this used to reimplement
+  // the first three inline (one of the four places that did) and duplicate
+  // the fourth in a second effect.
 
   if (!game) return null;
 
@@ -682,26 +668,21 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const Glyph = GAME_GLYPHS[game];
 
   return (
-    <div
-      aria-hidden={false}
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center
-                 bg-black/60 dark:bg-black/80 backdrop-blur-sm dark:backdrop-blur-md animate-fade-in"
-      onClick={onClose}
+    <Modal
+      open={!!game}
+      onClose={onClose}
+      mobileSheet
+      ariaLabelledBy="game-room-sheet-title"
+      className="animate-fade-in"
+      panelClassName="bhalyam-font custom-scrollbar relative w-full max-w-lg md:max-w-3xl lg:max-w-4xl
+                 max-h-[92dvh] overflow-y-auto
+                 bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
+                 border-2 border-[#EEDBCA] dark:border-slate-800
+                 rounded-t-3xl md:rounded-3xl
+                 shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
+                 md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]"
+      panelStyle={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="game-room-sheet-title"
-        onClick={(e) => e.stopPropagation()}
-        className="bhalyam-font custom-scrollbar relative w-full max-w-lg md:max-w-3xl lg:max-w-4xl
-                   max-h-[92dvh] overflow-y-auto
-                   bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
-                   border-2 border-[#EEDBCA] dark:border-slate-800
-                   rounded-t-3xl md:rounded-3xl
-                   shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
-                   md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-      >
         {/* Pull handle (mobile bottom-sheet only) */}
         <div className="md:hidden flex justify-center pt-2.5">
           <span aria-hidden className="w-10 h-1.5 rounded-full bg-[#EEDBCA] dark:bg-slate-700" />
@@ -768,7 +749,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 aria-invalid={nameError ? true : undefined}
                 aria-describedby={nameError ? "grs-name-error" : undefined}
                 className={`w-full min-h-[46px] px-3.5 rounded-2xl
-                           bg-[#FFF9EE] dark:bg-[#0B0F19] border-2
+                           bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2
                            text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
                            font-bold text-sm
                            focus:outline-none focus:ring-4
@@ -1207,7 +1188,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                       aria-invalid={codeError ? true : undefined}
                       aria-describedby={codeError ? "grs-code-error" : undefined}
                       className={`w-full min-h-[44px] px-3.5 rounded-2xl
-                                 bg-[#FFF9EE] dark:bg-[#0B0F19] border-2 border-dashed
+                                 bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2 border-dashed
                                  text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
                                  font-mono font-black tracking-[0.35em] text-center text-base
                                  focus:outline-none focus:ring-4
@@ -1253,8 +1234,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -1280,25 +1260,24 @@ function UnavailableGameSheet({
   const Glyph = GAME_GLYPHS[game];
   const accent = meta ? getGameAccent(meta) : { from: "#8A6D4B", to: "#5C4632" };
 
+  // Mounted only while visible (parent renders it conditionally, see the
+  // call site in GameRoomSheet above) — `open` is a constant `true`, not a
+  // toggle, so <Modal>'s trap/Escape/restoration apply for its whole life.
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center
-                 bg-black/60 dark:bg-black/80 backdrop-blur-sm dark:backdrop-blur-md animate-fade-in"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      mobileSheet
+      ariaLabelledBy="game-unavailable-title"
+      className="animate-fade-in"
+      panelClassName="bhalyam-font relative w-full max-w-lg
+                 bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
+                 border-2 border-[#EEDBCA] dark:border-slate-800
+                 rounded-t-3xl md:rounded-3xl
+                 shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
+                 md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]"
+      panelStyle={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="game-unavailable-title"
-        onClick={(e) => e.stopPropagation()}
-        className="bhalyam-font relative w-full max-w-lg
-                   bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
-                   border-2 border-[#EEDBCA] dark:border-slate-800
-                   rounded-t-3xl md:rounded-3xl
-                   shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
-                   md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-      >
         <div className="md:hidden flex justify-center pt-2.5">
           <span aria-hidden className="w-10 h-1.5 rounded-full bg-[#EEDBCA] dark:bg-slate-700" />
         </div>
@@ -1318,7 +1297,7 @@ function UnavailableGameSheet({
             >
               {meta?.title ?? "This game"} isn&apos;t available
             </h2>
-            <p className="mt-2 text-[13.5px] leading-relaxed text-[#8A6D4B] dark:text-slate-400">
+            <p className="mt-2 text-sm leading-relaxed text-[#8A6D4B] dark:text-slate-400">
               This one has been taken out of BHALYAM for now. The tile is still
               here because we&apos;d like to bring it back — there&apos;s just
               nothing to play behind it today.
@@ -1339,8 +1318,7 @@ function UnavailableGameSheet({
             Pick another game
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -1555,7 +1533,7 @@ function PassPlayBlock({
                 placeholder={`Player ${i + 2}`}
                 maxLength={20}
                 className="flex-1 min-h-[42px] px-3.5 rounded-xl
-                           bg-white dark:bg-[#0B0F19] border-2 border-[#EEDBCA] dark:border-slate-700
+                           bg-white dark:bg-[var(--surface-0)] border-2 border-[#EEDBCA] dark:border-slate-700
                            text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
                            font-semibold text-[13px]
                            focus:outline-none focus:border-amber-500 dark:focus:border-amber-400

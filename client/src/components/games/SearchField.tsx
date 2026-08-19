@@ -5,6 +5,9 @@ export interface SearchFieldProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** Accessible name. Separate from `placeholder` so the visible hint can stay
+   *  short enough not to clip while the announced name stays descriptive. */
+  accessibleLabel?: string;
   className?: string;
   id?: string;
 }
@@ -12,7 +15,20 @@ export interface SearchFieldProps {
 export default function SearchField({
   value,
   onChange,
-  placeholder = "Search games by title, category, or nostalgia tag…",
+  /**
+   * Short enough to finish inside the field at 390px.
+   *
+   * The previous string — "Search games by title, category, or nostalgia tag…"
+   * — is 48 characters and the input shows about 36 at the narrowest supported
+   * width, so it rendered as "Search games by title, rules, or nost" with the
+   * last word cut mid-syllable. A placeholder the layout truncates reads as a
+   * broken field rather than a hint.
+   *
+   * The long form survives as the accessible name below, where nothing clips
+   * it, so screen-reader users keep the fuller description.
+   */
+  placeholder = "Search games…",
+  accessibleLabel = "Search games by title, category, or nostalgia tag",
   className = "",
   id = "game-search-field",
 }: SearchFieldProps) {
@@ -49,7 +65,7 @@ export default function SearchField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        aria-label={placeholder}
+        aria-label={accessibleLabel}
         className="w-full min-h-[44px] pl-10 pr-10 rounded-2xl font-semibold text-sm transition-all duration-200
                    bg-surface-0 border border-surface-rim text-ink-hi placeholder:text-ink-mute
                    hover:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500
@@ -68,7 +84,7 @@ export default function SearchField({
           <X className="w-4 h-4" />
         </button>
       ) : (
-        <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none hidden sm:flex">
+        <div className="absolute inset-y-0 right-0 pr-3.5 items-center pointer-events-none hidden sm:flex">
           <kbd className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-surface-1 border border-surface-rim text-ink-mute">
             /
           </kbd>

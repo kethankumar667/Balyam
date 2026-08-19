@@ -106,12 +106,26 @@ export interface ChatMessage {
 
 export type RoomPhase = "lobby" | "playing" | "finished";
 
+export type RoomLifecycleState =
+  | "CREATED"
+  | "WAITING_FOR_PLAYERS"
+  | "READY_CHECK"
+  | "STARTING"
+  | "IN_PROGRESS"
+  | "RECOVERING"
+  | "PAUSED"
+  | "COMPLETED"
+  | "ABANDONED"
+  | "CLOSED";
+
 export interface RoomPublicState {
   /** Screens attached to this room (Smart TV / Party Mode). */
   spectatorCount?: number;
   code: string;
   game: GameKind;
   phase: RoomPhase;
+  /** Explicit deterministic lifecycle state */
+  lifecycleState?: RoomLifecycleState;
   players: Player[];
   hostId: string;
   maxPlayers: number;

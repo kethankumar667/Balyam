@@ -13,7 +13,7 @@ import { LOCALES, LOCALE_BY_ID, LOCALE_IDS, isLocaleId } from "../types";
  * languages. Both survive a casual click-through of the app.
  */
 
-/** Minimal localStorage stand-in — the client tests run in node, not jsdom. */
+/** Minimal localStorage stand-in */
 function stubWindow(initial: Record<string, string> = {}) {
   const store = new Map(Object.entries(initial));
   vi.stubGlobal("window", {
@@ -21,7 +21,12 @@ function stubWindow(initial: Record<string, string> = {}) {
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => void store.set(k, v),
       removeItem: (k: string) => void store.delete(k),
+      clear: () => void store.clear(),
     },
+  });
+  vi.stubGlobal("navigator", {
+    languages: ["en"],
+    language: "en",
   });
   return store;
 }
@@ -42,10 +47,22 @@ async function waitReady(m: LanguageManager, timeoutMs = 5000): Promise<void> {
 }
 
 beforeEach(() => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try { window.localStorage.setItem("bhalyam.language", "en"); } catch {}
+  }
+  if (typeof navigator !== "undefined") {
+    try {
+      Object.defineProperty(navigator, "languages", { value: ["en"], configurable: true });
+      Object.defineProperty(navigator, "language", { value: "en", configurable: true });
+    } catch {}
+  }
   LanguageManager.resetForTests();
 });
 
 afterEach(() => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try { window.localStorage.clear(); } catch {}
+  }
   vi.unstubAllGlobals();
   LanguageManager.resetForTests();
 });

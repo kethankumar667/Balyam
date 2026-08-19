@@ -97,7 +97,7 @@ describe("buildDataExport", () => {
 
   it("carries the plain-language description of each item", () => {
     installStorage({ "mpg.rummy.lastGangs": "[]" });
-    const item = buildDataExport().data[0];
+    const item = buildDataExport().data[0]!;
     expect(item.description).toMatch(/display names of the other players/i);
     expect(item.holdsOthersData).toBe(true);
   });

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { BotDifficulty, GameKind } from "@shared/types";
+import { Bot } from "lucide-react";
+import Modal from "../Modal";
+import { RewardButton, SecondaryButton } from "../../design-system/dls/Buttons";
 
 const BOT_NAME_SUGGESTIONS = [
   "AlphaBot",
@@ -28,46 +31,16 @@ export default function BotManagementDialog({
   const [botName, setBotName] = useState("");
   const [difficulty, setDifficulty] = useState<BotDifficulty>("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Form reset on close — separate from focus-trap/Escape/restoration, which
+  // <Modal> now owns via useFocusTrap.
   useEffect(() => {
     if (!isOpen) {
       setBotName("");
       setIsSubmitting(false);
-      return;
     }
-
-    inputRef.current?.focus();
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      } else if (e.key === "Tab") {
-        if (!modalRef.current) return;
-        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
+  }, [isOpen]);
 
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -90,20 +63,17 @@ export default function BotManagementDialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="bot-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      initialFocusRef={inputRef}
+      ariaLabelledBy="bot-dialog-title"
+      panelClassName="w-full max-w-md rounded-2xl bg-[#FFFDF8] dark:bg-[#151D2A] border border-[#EEDBCA] dark:border-slate-800 p-5 sm:p-6 shadow-2xl space-y-4 text-left"
     >
-      <div
-        ref={modalRef}
-        className="w-full max-w-md rounded-2xl bg-[#FFFDF8] dark:bg-[#151D2A] border border-[#EEDBCA] dark:border-slate-800 p-5 sm:p-6 shadow-2xl space-y-4 text-left"
-      >
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-[#EEDBCA]/60 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <span className="text-xl" aria-hidden>🤖</span>
+            <Bot size={20} aria-hidden />
             <h3
               id="bot-dialog-title"
               className="text-base font-extrabold text-[#2B3550] dark:text-slate-100"
@@ -186,32 +156,15 @@ export default function BotManagementDialog({
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-[#FFF9EE] dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700 text-[#6E5E4D] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer disabled:opacity-50"
-            >
+            <SecondaryButton type="button" size="sm" className="flex-1" onClick={onClose} disabled={isSubmitting}>
               Cancel
-            </button>
+            </SecondaryButton>
 
-            <button
-              type="submit"
-              disabled={isSubmitting || availableSeats <= 0}
-              className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              {isSubmitting ? (
-                <span>Adding...</span>
-              ) : (
-                <>
-                  <span>+</span>
-                  <span>Add Bot</span>
-                </>
-              )}
-            </button>
+            <RewardButton type="submit" size="sm" className="flex-1" disabled={isSubmitting || availableSeats <= 0}>
+              {isSubmitting ? "Adding..." : "+ Add Bot"}
+            </RewardButton>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

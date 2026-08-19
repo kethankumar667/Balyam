@@ -19,6 +19,7 @@ import VoicePanel from "./VoicePanel";
 import Chat from "./Chat";
 import QrCodeModal from "./QrCodeModal";
 import { useVisualViewport } from "../lib/useVisualViewport";
+import { PrimaryButton } from "../design-system/dls/Buttons";
 
 /**
  * Horizontal in-board version of the room rail. Used inside a game's own
@@ -605,18 +606,12 @@ function RoomInfo({
             {code}
           </div>
           <div className="mt-3 flex justify-center gap-2">
-            <button
-              onClick={copy}
-              className="text-xs bg-[#EA5A1F] hover:bg-[#D84F17] text-white rounded-lg px-3 py-2 font-bold transition"
-            >
+            <PrimaryButton size="sm" onClick={copy}>
               {copied ? "✓ Copied" : "Copy code"}
-            </button>
-            <button
-              onClick={() => setQrOpen(true)}
-              className="text-xs bg-[#FF8F00] hover:bg-[#E57F00] text-white rounded-lg px-3 py-2 font-bold transition"
-            >
+            </PrimaryButton>
+            <PrimaryButton size="sm" onClick={() => setQrOpen(true)}>
               📷 QR Code
-            </button>
+            </PrimaryButton>
           </div>
         </div>
         <div className="bg-[#F7EEDC] border border-[#E6D4B7] rounded-xl p-3 text-sm text-[#5C4A38] space-y-1">

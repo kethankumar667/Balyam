@@ -8,14 +8,14 @@ describe("Brick Game Formula 1 Core Engine", () => {
   it("initializes player in center lane (lane 1)", () => {
     const player = new PlayerCar();
     expect(player.lane).toBe(1);
-    expect(player.centerCol).toBe(5);
+    expect(player.centerCol).toBe(6);
   });
 
   it("moves player left and right within boundary bounds", () => {
     const player = new PlayerCar();
     expect(player.moveLeft()).toBe(true);
     expect(player.lane).toBe(0);
-    expect(player.centerCol).toBe(2);
+    expect(player.centerCol).toBe(3);
 
     // Cannot move beyond left lane
     expect(player.moveLeft()).toBe(false);
@@ -26,7 +26,7 @@ describe("Brick Game Formula 1 Core Engine", () => {
 
     expect(player.moveRight()).toBe(true);
     expect(player.lane).toBe(2);
-    expect(player.centerCol).toBe(7);
+    expect(player.centerCol).toBe(9);
 
     // Cannot move beyond right lane
     expect(player.moveRight()).toBe(false);
@@ -37,32 +37,32 @@ describe("Brick Game Formula 1 Core Engine", () => {
     const player = new PlayerCar();
     const pixels = player.getPixels();
     expect(pixels.length).toBe(8);
-    expect(pixels[0]).toEqual({ x: 5, y: 16 }); // Nose
+    expect(pixels[0]).toEqual({ x: 6, y: 8 }); // Nose
   });
 
   it("advances enemy traffic and counts dodged cars", () => {
     const manager = new EnemyCarManager();
     manager.enemies = [
-      { id: "e1", lane: 0, y: 19, speedBonus: false },
-      { id: "e2", lane: 2, y: 5, speedBonus: false },
+      { id: "e1", lane: 0, y: 11, speedBonus: false },
+      { id: "e2", lane: 2, y: 3, speedBonus: false },
     ];
 
     const result = manager.advance();
-    expect(result.dodgedCount).toBe(0); // y becomes 20 & 6
+    expect(result.dodgedCount).toBe(0); // y becomes 12 & 4
 
     const result2 = manager.advance();
-    expect(result2.dodgedCount).toBe(1); // e1 exceeds y=20
+    expect(result2.dodgedCount).toBe(1); // e1 exceeds y=12
     expect(manager.enemies.length).toBe(1);
   });
 
   it("detects car collision on physical block coordinate overlap", () => {
     const player = new PlayerCar();
-    player.lane = 1; // Center lane, y=16
+    player.lane = 1; // Center lane, y=8
 
     const manager = new EnemyCarManager();
     // Place enemy directly intersecting player in center lane
     manager.enemies = [
-      { id: "e1", lane: 1, y: 15, speedBonus: false },
+      { id: "e1", lane: 1, y: 7, speedBonus: false },
     ];
 
     expect(CollisionEngine.checkCollision(player, manager)).toBe(true);
@@ -75,7 +75,7 @@ describe("Brick Game Formula 1 Core Engine", () => {
     const manager = new EnemyCarManager();
     // Enemy in right lane at same Y
     manager.enemies = [
-      { id: "e1", lane: 2, y: 16, speedBonus: false },
+      { id: "e1", lane: 2, y: 8, speedBonus: false },
     ];
 
     expect(CollisionEngine.checkCollision(player, manager)).toBe(false);

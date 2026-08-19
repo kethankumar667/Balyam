@@ -152,7 +152,7 @@ export const STAR_THEMES: ReadonlyArray<StarTheme> = [
 
 /** Lookup a theme by id, falling back to the first (colors) when unknown. */
 export function getStarTheme(themeId: string): StarTheme {
-  return STAR_THEMES.find((t) => t.id === themeId) ?? STAR_THEMES[0];
+  return STAR_THEMES.find((t) => t.id === themeId) ?? STAR_THEMES[0]!;
 }
 
 

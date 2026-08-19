@@ -47,6 +47,8 @@ export class StateMachine {
   private currentShotResult: ShotResult | null = null;
   private previousState: GameState = "READY";
   private saveData: NokiaCricketSaveData;
+  private soundToastTimer: number = 0;
+  private soundToastText: string = "";
 
   constructor(
     private ballPhysics: BallPhysics,
@@ -68,6 +70,17 @@ export class StateMachine {
     return this.stats;
   }
 
+  public toggleSound(): boolean {
+    const isMuted = this.soundEngine.toggleMute();
+    this.menuItems[3] = isMuted ? "SOUND: OFF" : "SOUND: ON";
+    this.soundToastText = isMuted ? "SOUND: OFF" : "SOUND: ON";
+    this.soundToastTimer = 1200;
+    if (!isMuted) {
+      this.soundEngine.playKeyTick();
+    }
+    return isMuted;
+  }
+
   public togglePause(): void {
     if (this.state === "PAUSED") {
       this.state = this.previousState || "READY";
@@ -83,6 +96,12 @@ export class StateMachine {
   }
 
   public update(dt: number): void {
+    if (this.soundToastTimer > 0) {
+      this.soundToastTimer -= dt;
+      if (this.soundToastTimer <= 0) {
+        this.soundToastText = "";
+      }
+    }
     if (this.batsmanPoseTimer > 0) {
       this.batsmanPoseTimer -= dt;
       if (this.batsmanPoseTimer <= 0) {
@@ -353,6 +372,16 @@ export class StateMachine {
         this.renderPaused(r);
         break;
     }
+
+    // Floating Retro Sound Indicator Toast
+    if (this.soundToastTimer > 0 && this.soundToastText) {
+      const text = this.soundToastText;
+      const textW = text.length * 6 - 1;
+      const boxW = textW + 8;
+      const boxX = Math.floor((128 - boxW) / 2);
+      r.fillRect(boxX, 14, boxW, 11, r.PIXEL_COLOR);
+      r.drawText(text, boxX + 4, 16, r.BG_COLOR);
+    }
   }
 
   private renderBoot(r: RenderPipeline): void {
@@ -406,11 +435,19 @@ export class StateMachine {
     // 1. Top HUD Bar (Score / Wickets, Overs / Total Overs, Strike Rate)
     r.fillRect(0, 0, 128, 10, r.PIXEL_COLOR);
     const scoreStr = `${String(this.stats.score).padStart(3, "0")}/${this.stats.wickets}`;
-    const overStr = `OV:${this.stats.overs}/${this.stats.targetOvers}`;
+    const overStr = `O:${this.stats.overs}/${this.stats.targetOvers}`;
     const srStr = `SR:${this.stats.strikeRate}`;
+
+    // Layout on 128px strip with zero collisions:
+    // Left: scoreStr at x = 2 (e.g. "000/1" -> 5 chars = 29px)
+    // Middle: overStr at x = 38 (e.g. "O:0.1/5" -> 7 chars = 41px, ends at 79)
+    // Right: srStr right-aligned from x = 126
+    const srW = srStr.length * 6 - 1;
+    const srX = Math.max(82, 126 - srW);
+
     r.drawText(scoreStr, 2, 2, r.BG_COLOR);
-    r.drawText(overStr, 46, 2, r.BG_COLOR);
-    r.drawText(srStr, 90, 2, r.BG_COLOR);
+    r.drawText(overStr, 38, 2, r.BG_COLOR);
+    r.drawText(srStr, srX, 2, r.BG_COLOR);
 
     // 2. Pitch Geometry
     r.drawLine(52, 14, 76, 14, r.FAINT_COLOR); // Bowling crease top
@@ -460,15 +497,23 @@ export class StateMachine {
       r.drawSprite(SPRITES.BATSMAN_CUT, batX + 2, batY, r.PIXEL_COLOR);
     }
 
-    // 7. Ball Result Overlay Toast
+    // 7. Ball Result Overlay Toast (Auto-centered and dynamically sized)
     if (this.state === "BALL_RESULT" && this.stats.lastFeedback) {
-      r.fillRect(16, 42, 96, 16, r.PIXEL_COLOR);
-      r.drawText(this.stats.lastFeedback, 20, 46, r.BG_COLOR);
+      const text = this.stats.lastFeedback.trim();
+      const textW = text.length * 6 - 1;
+      const boxW = Math.min(124, textW + 8);
+      const boxH = 14;
+      const boxX = Math.floor((128 - boxW) / 2);
+      const textX = Math.floor((128 - textW) / 2);
+      const boxY = 40;
+
+      r.fillRect(boxX, boxY, boxW, boxH, r.PIXEL_COLOR);
+      r.drawText(text, textX, boxY + 3, r.BG_COLOR);
     }
 
     // 8. Bottom Keypad Help
     r.drawLine(0, 87, 128, 87, r.PIXEL_COLOR);
-    r.drawText("4:PULL 5:DRV 6:CUT 0:||", 2, 89, r.PIXEL_COLOR);
+    r.drawText("4:PULL 5:DRIVE 6:CUT", 4, 89, r.PIXEL_COLOR);
   }
 
   private renderGameOver(r: RenderPipeline): void {

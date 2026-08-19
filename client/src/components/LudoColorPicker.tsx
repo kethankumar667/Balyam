@@ -2,11 +2,7 @@ import type { Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
 
 import type { LudoColor } from "@shared/types";
-import { COLOR_HEX, PLAYER_COLORS_ORDER } from "../games/ludo/board-layout";
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
+import { COLOR_HEX, COLOR_LABEL, PLAYER_COLORS_ORDER } from "../games/ludo/board-layout";
 
 // All 8 seats, in the same canonical order the server assigns colors in.
 // The engine's pool is sized to the BOARD's wedge count, not the player
@@ -18,7 +14,7 @@ function capitalize(s: string): string {
 // A pick outside the eventual board's pool is not a dead end: that player
 // simply draws randomly from the free colors like anyone who never picked.
 const COLORS: { id: LudoColor; label: string; hex: string }[] = PLAYER_COLORS_ORDER.map(
-  (id) => ({ id, label: capitalize(id), hex: COLOR_HEX[id] })
+  (id) => ({ id, label: COLOR_LABEL[id], hex: COLOR_HEX[id] })
 );
 
 export default function LudoColorPicker({
@@ -60,13 +56,21 @@ export default function LudoColorPicker({
           return (
             <button
               key={c.id}
+              type="button"
               onClick={() => !blocked && pick(c.id)}
               disabled={blocked}
-              className={`relative rounded-lg p-3 flex flex-col items-center gap-1.5 transition border-2 ${
+              aria-label={
+                isMe
+                  ? `Your color, ${c.label}`
+                  : isOther
+                  ? `${c.label} color, taken by ${owner.name}`
+                  : `Pick ${c.label} color`
+              }
+              className={`relative min-h-[44px] min-w-[44px] rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 transition border-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                 isMe
                   ? "border-white scale-105"
                   : isOther
-                    ? "border-slate-700 opacity-40 cursor-not-allowed"
+                    ? "border-slate-700 opacity-40 !cursor-not-allowed"
                     : "border-transparent hover:scale-105 hover:border-white"
               }`}
               style={{ background: c.hex }}

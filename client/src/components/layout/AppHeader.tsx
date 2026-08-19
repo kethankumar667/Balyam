@@ -10,10 +10,12 @@ import {
 } from "lucide-react";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
 import SelfAvatar from "../profile/SelfAvatar";
+import SeatAvatar from "../profile/SeatAvatar";
 import { useTheme } from "../../lib/useTheme";
 import { useRoomStore } from "../../store/roomStore";
 import { useAuthStore } from "../../store/authStore";
 import { type BhalyamGameSlug } from "../bhalyam/data";
+import { Button } from "../../design-system/dls/Buttons";
 
 /**
  * The global header.
@@ -68,26 +70,35 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const [theme, toggleTheme] = useTheme();
   const isDark = theme === "dark";
-  const { playerName } = useRoomStore();
+  const { playerName, avatarId } = useRoomStore();
   const { isMember } = useAuthStore();
-  const displayName = isMember ? (playerName.trim() || "Member") : "Guest";
+  const displayName = playerName.trim() || (isMember ? "Member" : "Guest");
 
   return (
     <header className="h-20 w-full flex-shrink-0 z-30 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)] transition-colors">
       <div className="h-full w-full flex items-center overflow-hidden">
         {/* Left: Sidebar-Aligned Brand Area */}
         <div className="w-auto lg:w-64 min-w-0 lg:flex-shrink-0 px-3 sm:px-6 flex items-center gap-2.5 sm:gap-3">
-          <button
+          <Button
             type="button"
+            variant="chrome"
+            size="iconOnly"
             onClick={onToggleMobileMenu}
-            className={`lg:hidden rounded-2xl ${CONTROL}`}
+            className="lg:hidden"
             title="Toggle Menu"
             aria-label="Toggle Menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+            leftIcon={<Menu className="w-5 h-5" />}
+          />
 
-          <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group min-w-0 select-none">
+          <Link
+            to="/"
+            /* The logo is `decorative` (aria-hidden) and the wordmark beside it
+               is `hidden sm:flex`, so below 640px this link had no accessible
+               name whatsoever — axe reported it on every route in both themes.
+               The label is unconditional so it cannot depend on a breakpoint. */
+            aria-label="BHALYAM — go to the lounge home"
+            className="flex items-center gap-2.5 sm:gap-3 group min-w-0 select-none"
+          >
             <span className="flex-shrink-0">
               <BhalyamLogo size={44} decorative />
             </span>
@@ -99,45 +110,47 @@ export default function AppHeader({
               <span className="bhalyam-display text-[22px] sm:text-[26px] tracking-tight truncate text-[var(--chrome-ink)] group-hover:text-[var(--chrome-accent)] transition-colors">
                 BHALYAM
               </span>
-              {/* Was #FF8F00 — 2.24:1 on cream, the least legible text in the
-                  header and the one line that tells a first-timer what this
-                  is. The accent token is 5.9:1 light / 11.2:1 dark, and it
-                  also retires the second brand orange: the page below uses
-                  #E85D04 twenty-two times, so the header was running a
-                  competing hue six pixels away. */}
-              <span className="text-[9px] sm:text-[10.5px] uppercase tracking-[0.2em] font-extrabold text-[var(--chrome-accent)] mt-0.5 truncate">
+              <span className="text-[9px] sm:text-[11px] uppercase tracking-[0.2em] font-extrabold text-[var(--chrome-accent)] mt-0.5 truncate">
                 Relive Childhood
               </span>
             </span>
           </Link>
         </div>
 
-        {/* Right: Area aligned with the scrollable body content */}
-        <div className="flex-1 min-w-0 h-full px-3 sm:px-6 flex items-center justify-end gap-3">
-          <div className="flex items-center justify-end gap-2 sm:gap-3 ml-auto">
-            {/* 1. Notifications */}
-            <button
-              type="button"
-              onClick={onOpenNotifications}
-              title={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
-              aria-label={
-                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
-              }
-              className={`relative ${CONTROL}`}
-            >
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                /* rose-600, not rose-500: white on rose-500 is 3.67:1 and
-                   failed AA in all four theme/size combinations. */
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
+        {/* Center: Hero Claim / Tagline */}
+        <div className="hidden lg:flex flex-1 items-center justify-center px-4">
+          <span className="text-center font-black tracking-widest text-[11px] uppercase text-[var(--chrome-ink-soft)] select-none">
+            nostalgic 90s gaming • 100% free forever
+          </span>
+        </div>
 
-            {/* 2. User Profile Chip — avatar-only below md, where the name,
-                   level and chevron would otherwise be the widest thing in
-                   the header and push the controls off a 375px screen. */}
+        {/* Right: Actions */}
+        <div className="flex-1 lg:flex-none flex items-center justify-end px-3 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* 1. Notifications */}
+            <Button
+              type="button"
+              variant="chrome"
+              size="iconOnly"
+              onClick={onOpenNotifications}
+              title="Notifications"
+              aria-label={
+                unreadCount > 0
+                  ? `Notifications (${unreadCount} unread)`
+                  : "Notifications (none unread)"
+              }
+              className="relative"
+              leftIcon={<Bell className="w-5 h-5" />}
+              rightIcon={
+                unreadCount > 0 ? (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                ) : undefined
+              }
+            />
+
+            {/* 2. User Profile Chip */}
             <button
               type="button"
               onClick={onOpenProfile}
@@ -149,21 +162,19 @@ export default function AppHeader({
                          hover:bg-[var(--chrome-control-hi)]"
             >
               <div className="w-7 h-7 rounded-full overflow-hidden border border-[var(--chrome-border)] flex items-center justify-center flex-shrink-0 bg-[var(--chrome-active-bg)]">
-                <SelfAvatar
+                <SeatAvatar
+                  avatar={avatarId ?? undefined}
+                  name={displayName}
                   className="w-full h-full"
-                  fallback={
-                    <span className="w-full h-full flex items-center justify-center text-[var(--chrome-ink-soft)] bg-[var(--chrome-control)]">
-                      <UserIcon className="w-3.5 h-3.5" />
-                    </span>
-                  }
+                  textClassName="text-[11px]"
                 />
               </div>
               <div className="hidden md:flex items-center gap-1.5 min-w-0">
-                <span className="text-[13px] font-black tracking-tight max-w-[95px] truncate">
+                <span className="text-[13px] font-black tracking-tight max-w-[130px] truncate">
                   {displayName}
                 </span>
                 {!isMember && (
-                  <span className="text-[9.5px] uppercase font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                  <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-lamp-800 dark:text-lamp-300">
                     Guest
                   </span>
                 )}
@@ -174,15 +185,15 @@ export default function AppHeader({
             {/* 3. Theme toggle. `isDark` earns its place here — the glyph and
                    the label are genuinely different content, not two colours
                    for one thing. */}
-            <button
+            <Button
               type="button"
+              variant="chrome"
+              size="iconOnly"
               onClick={toggleTheme}
               title={isDark ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className={CONTROL}
-            >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+              leftIcon={isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            />
 
             {/* 4. Settings — members only, matching the sidebar's own gate. */}
             {isMember && (

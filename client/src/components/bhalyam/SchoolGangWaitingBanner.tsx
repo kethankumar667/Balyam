@@ -106,7 +106,7 @@ export default function SchoolGangWaitingBanner({
 
             <button
               type="submit"
-              className="h-11 px-5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] hover:brightness-110 active:scale-98 text-white font-extrabold text-[12.5px] sm:text-[13px] shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 flex-shrink-0"
+              className="h-11 px-5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] hover:brightness-110 active:scale-98 text-white font-extrabold text-[13px] sm:text-[13px] shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 flex-shrink-0"
             >
               <DoorOpen className="w-4 h-4" />
               <span>Join Now</span>
@@ -127,8 +127,8 @@ export default function SchoolGangWaitingBanner({
               <Lightbulb className="w-4 h-4" />
             </div>
             <div className="text-left leading-tight">
-              <div className="text-[11.5px] font-extrabold">How it works?</div>
-              <div className="text-[9.5px] font-medium opacity-80">3 simple steps</div>
+              <div className="text-xs font-extrabold">How it works?</div>
+              <div className="text-[10px] font-medium opacity-80">3 simple steps</div>
             </div>
             <ArrowRight className="w-4 h-4 text-amber-500 ml-0.5" />
           </button>
@@ -179,7 +179,7 @@ export default function SchoolGangWaitingBanner({
                       1
                     </div>
                     <div>
-                      <div className="text-[13.5px] font-black">Pick a 90s Game</div>
+                      <div className="text-sm font-black">Pick a 90s Game</div>
                       <p className="text-[12px] opacity-85 mt-0.5">
                         Choose UNO, Ludo, Hand Cricket, Rummy, or any nostalgic game.
                       </p>
@@ -191,7 +191,7 @@ export default function SchoolGangWaitingBanner({
                       2
                     </div>
                     <div>
-                      <div className="text-[13.5px] font-black">Share the 6-Letter Code</div>
+                      <div className="text-sm font-black">Share the 6-Letter Code</div>
                       <p className="text-[12px] opacity-85 mt-0.5">
                         Send the room code or 1-tap WhatsApp link to your friends.
                       </p>
@@ -203,7 +203,7 @@ export default function SchoolGangWaitingBanner({
                       3
                     </div>
                     <div>
-                      <div className="text-[13.5px] font-black">Play Instantly Anywhere</div>
+                      <div className="text-sm font-black">Play Instantly Anywhere</div>
                       <p className="text-[12px] opacity-85 mt-0.5">
                         Zero login required. Seamless realtime multiplayer on any mobile or laptop!
                       </p>
@@ -214,7 +214,7 @@ export default function SchoolGangWaitingBanner({
                 <button
                   type="button"
                   onClick={() => setHowItWorksOpen(false)}
-                  className="w-full mt-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[13.5px] shadow-md hover:brightness-110 active:scale-98 transition cursor-pointer"
+                  className="w-full mt-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-sm shadow-md hover:brightness-110 active:scale-98 transition cursor-pointer"
                 >
                   Got it, let's play!
                 </button>

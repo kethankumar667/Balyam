@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { ChatMessage, Player } from "@shared/types";
+import { MessageSquare, Mic } from "lucide-react";
 import VoicePanel from "../VoicePanel";
 import Chat from "../Chat";
 import { useVoiceSession } from "../../lib/voice-session";
@@ -55,10 +56,10 @@ export default function CommunicationPanel({
               : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
           }`}
         >
-          <span aria-hidden>💬</span>
+          <MessageSquare size={14} aria-hidden />
           <span>Chat</span>
           {messages.length > 0 && (
-            <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.2 ml-0.5 font-extrabold">
+            <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.5 ml-0.5 font-extrabold">
               {messages.length}
             </span>
           )}
@@ -76,7 +77,7 @@ export default function CommunicationPanel({
               : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
           }`}
         >
-          <span aria-hidden>🎙</span>
+          <Mic size={14} aria-hidden />
           <span>Voice</span>
           {voiceConnected && (
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
@@ -117,17 +118,17 @@ export default function CommunicationPanel({
     return (
       <>
         {/* Compact Mobile Strip */}
-        <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3 shadow-xs">
+        <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3 shadow-xs">
           <button
             type="button"
             onClick={() => setMobileDrawerOpen(true)}
             className="w-full min-h-[44px] flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 hover:border-amber-400 transition active:scale-98 cursor-pointer"
           >
             <div className="flex items-center gap-2 text-xs font-extrabold text-[#2B3550] dark:text-slate-200">
-              <span className="text-sm">💬</span>
+              <MessageSquare size={16} aria-hidden />
               <span>Chat & 🎙 Voice</span>
               {messages.length > 0 && (
-                <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.2 font-black">
+                <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.5 font-black">
                   {messages.length}
                 </span>
               )}
@@ -182,7 +183,7 @@ export default function CommunicationPanel({
                   type="button"
                   onClick={() => setMobileDrawerOpen(false)}
                   aria-label="Close communication drawer"
-                  className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-[#EFE4D2] dark:bg-slate-800 text-[#2B3550] dark:text-slate-100 font-black flex items-center justify-center cursor-pointer active:scale-95 transition text-xs"
+                  className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#EFE4D2] dark:bg-slate-800 text-[#2B3550] dark:text-slate-100 font-black flex items-center justify-center cursor-pointer active:scale-95 transition text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F]"
                 >
                   ✕
                 </button>
@@ -201,7 +202,7 @@ export default function CommunicationPanel({
 
   // Desktop Panel
   return (
-    <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col h-[380px] sm:h-[420px] max-h-[500px] overflow-hidden w-full">
+    <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col h-[380px] sm:h-[420px] max-h-[500px] overflow-hidden w-full">
       {renderTabContent()}
     </div>
   );

@@ -33,11 +33,22 @@
          ONLY face that skin adds: its body text reuses Poppins and its
          numerals reuse JetBrains Mono rather than pulling a second webfont
          onto the critical path. Weights are limited to 600/700 because the
-         table only ever sets it as a headline. -->
+         table only ever sets it as a headline.
+
+         Fredoka, JetBrains Mono, Noto Sans Telugu and Nunito used to be a
+         SECOND font request, via `@import` in index.css — `@import` blocks
+         CSS parsing on its own network round trip, so every page paid for
+         two blocking font fetches where one `<link>` here covers both sets.
+         Fredoka is the Ludo token face; JetBrains Mono is room codes/chat
+         timestamps; Noto Sans Telugu backs the language switcher; Nunito is
+         the second-choice fallback behind Poppins on several game SVGs
+         (Ludo board text, UNO stadium) — still referenced, so still loaded,
+         just no longer the accidental `body` default it was before this
+         font-family override was found and removed (see index.css). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Righteous&family=Caveat:wght@500;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=Architects+Daughter&family=Playfair+Display:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Righteous&family=Caveat:wght@400;500;600;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=Architects+Daughter&family=Playfair+Display:wght@600;700&family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+Telugu:wght@400;500;700&family=Nunito:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
   </head>

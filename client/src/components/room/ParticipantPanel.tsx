@@ -57,11 +57,11 @@ export default function ParticipantPanel({
         <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span aria-hidden className="text-base">👥</span>
-            <h3 className="text-xs uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-extrabold">
+            <h2 className="text-xs uppercase tracking-wider text-[#5C4328] dark:text-slate-300 font-extrabold">
               Participants ({players.length}/{maxPlayers})
-            </h3>
+            </h2>
 
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EEDBCA]/40 dark:bg-slate-800 text-[#8A6D4B] dark:text-slate-300">
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EEDBCA]/70 dark:bg-slate-800 text-[#5C4328] dark:text-slate-200">
               {readyCount}/{players.length} Ready
             </span>
           </div>

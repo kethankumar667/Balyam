@@ -48,7 +48,13 @@ import {
 export default function StarBoardDesktop(props: StarBoardProps) {
   const m = useStarBoard(props);
   const reduce = useReducedMotion();
-  const tut = useTutorialGate(STARGAME_TUTORIAL.key);
+  // Never over a live action window — Star Game has two ("themeSelect" and
+  // "pass"), so both must be clear, or no deadline is running at all.
+  // See GameTutorial.tsx's useTutorialGate doc.
+  const tut = useTutorialGate(
+    STARGAME_TUTORIAL.key,
+    (!m.iNeedToSelect && !m.iNeedToPass) || m.deadline == null,
+  );
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 

@@ -10,6 +10,51 @@ import { logger } from "./lib/logger.js";
 import { globalRateLimiter } from "./lib/rateLimiter.js";
 import { turnStatus } from "./lib/iceServers.js";
 import { verificationMode } from "./lib/supabaseAuth.js";
+import { serverResourceTracker } from "./reliability/ResourceTracker.js";
+import { memoryMonitor } from "./reliability/MemoryMonitor.js";
+import { metricsCollector } from "./observability/MetricsCollector.js";
+import { securityHeaders } from "./security/SecurityMiddleware.js";
+import {
+  assertOperationalAuthConfigured,
+  operationalAuthStatus,
+} from "./security/operationalAuth.js";
+import { createOperationalRouter } from "./observability/OperationalController.js";
+import { attachPlayerIdentity } from "./auth/identity.js";
+import { authRouter } from "./auth/AuthController.js";
+import { guestTokenDurability } from "./auth/guestToken.js";
+import { initialiseProgressionStore, persistenceStatus } from "./persistence/index.js";
+import { hydrateProgression } from "./persistence/hydrate.js";
+import { progressionSync } from "./persistence/ProgressionSync.js";
+import { profileRouter } from "./profile/ProfileController.js";
+import { rankingRouter } from "./ranking/RankingController.js";
+import { tournamentRouter, seasonRouter } from "./tournaments/TournamentController.js";
+import socialRouter from "./social/SocialController.js";
+import partyRouter from "./party/PartyController.js";
+
+/**
+ * Refuse to boot a production process that cannot protect its own telemetry.
+ *
+ * Deliberately the FIRST thing that runs, before a port is bound or a monitor
+ * is started. The failure being prevented is a server that starts perfectly,
+ * reports itself healthy, and publishes room summaries and event timelines to
+ * anyone who asks — a silence nobody notices. A process that exits on boot is
+ * noticed within a minute of the deploy.
+ *
+ * Outside production this only warns. `npm run dev` keeps needing zero
+ * infrastructure, and the operational endpoints answer 401 there rather than
+ * opening, so local behaviour is honest without being obstructive.
+ */
+try {
+  assertOperationalAuthConfigured();
+} catch (err) {
+  logger.error({
+    message: `Startup aborted: ${err instanceof Error ? err.message : String(err)}`,
+    module: "SERVER",
+  });
+  process.exit(1);
+}
+
+memoryMonitor.start(30_000);
 
 const PORT = Number(process.env.PORT) || 4000;
 /**
@@ -49,8 +94,32 @@ function originAllowed(origin: string | undefined, cb: (err: Error | null, ok?: 
 const startTime = Date.now();
 
 const app = express();
+app.use(securityHeaders);
 app.use(cors({ origin: originAllowed }));
 app.use(express.json());
+
+/**
+ * Resolve who is calling, before any router reads a player id.
+ *
+ * Global and non-rejecting: it sets `req.player` when a credential verifies
+ * and leaves it unset otherwise. Public routes carry on regardless; the
+ * `require*` guards on the private ones do the refusing.
+ *
+ * Mounted here rather than per-router so there is exactly one place identity
+ * is derived. Six routers each doing their own version of this is how they
+ * ended up with six different amounts of it — which is to say, none.
+ */
+app.use(attachPlayerIdentity);
+
+/** Issues guest identities. Must not sit behind a guard that needs one. */
+app.use("/api/auth", authRouter);
+
+app.use("/api/profile", profileRouter);
+app.use("/api/ranking", rankingRouter);
+app.use("/api/tournaments", tournamentRouter);
+app.use("/api/seasons", seasonRouter);
+app.use("/api/social", socialRouter);
+app.use("/api/parties", partyRouter);
 
 // Telemetry & Health endpoint
 app.get("/health", (_req, res) => {
@@ -71,6 +140,15 @@ app.get("/health", (_req, res) => {
     // signed in is the one misconfiguration whose only other symptom is
     // everybody quietly hosting sealed rooms.
     auth: verificationMode(),
+    // Whether the operational API can authorize anyone at all. Never the key
+    // itself — just which of the two doors exist, so a deploy that lost its
+    // configuration is visible without waiting for a 401 to be noticed.
+    operational: operationalAuthStatus(),
+    // Where progression lives, and whether writes are landing. `durable:false`
+    // in production is the P0-3 finding, live — and a rising `failed` count is
+    // a store that has started refusing writes, which is otherwise invisible
+    // until the next restart throws the data away.
+    progression: { ...persistenceStatus(), sync: progressionSync.status() },
     memory: {
       heapUsedMb: Math.round((memoryUsage.heapUsed / 1024 / 1024) * 100) / 100,
       heapTotalMb: Math.round((memoryUsage.heapTotal / 1024 / 1024) * 100) / 100,
@@ -103,6 +181,33 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
 const roomManager = new RoomManager(io);
 
 /**
+ * Operational surface. The gate lives ON this router (see
+ * observability/OperationalController.ts), not beside it, so no handler here
+ * can be reached — and no telemetry gathered — before authorization passes.
+ */
+app.use("/api/operational", createOperationalRouter({ roomManager, io, startTime }));
+
+/**
+ * Last stop for anything a handler threw.
+ *
+ * Express's default handler prints the stack trace into the RESPONSE when
+ * NODE_ENV is not production, and file paths and library versions are exactly
+ * what someone probing the API wants. One shape for every failure, and the
+ * detail goes to the log where the operator can read it.
+ *
+ * Registered after every route, which is the only place a four-argument error
+ * handler is reached.
+ */
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logger.error({
+    message: `Unhandled error on ${req.method} ${req.path}: ${err instanceof Error ? err.stack ?? err.message : String(err)}`,
+    module: "SERVER",
+  });
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Internal Server Error" });
+});
+
+/**
  * Identifies THIS process. Survives nothing: a redeploy, a crash, or a
  * free-tier idle spin-down all produce a new one. A client that sees the id
  * change across a reconnect knows its room was never coming back.
@@ -110,6 +215,8 @@ const roomManager = new RoomManager(io);
 const BOOT_ID = Math.random().toString(36).slice(2, 10);
 
 io.on("connection", (socket) => {
+  serverResourceTracker.register("socket", socket.id, "socket_connected");
+  metricsCollector.onSocketConnect();
   socket.emit("server:hello", {
     bootId: BOOT_ID,
     uptimeSec: Math.floor((Date.now() - startTime) / 1000),
@@ -119,57 +226,103 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     logger.info({ message: "Socket client disconnected", socketId: socket.id, module: "SOCKET" });
+    serverResourceTracker.unregister("socket", socket.id);
+    metricsCollector.onSocketDisconnect();
     globalRateLimiter.removeSocket(socket.id);
     roomManager.handleDisconnect(socket.id);
   });
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  logger.info({
-    message: `Server listening on http://0.0.0.0:${PORT} (allowed origins: ${CLIENT_ORIGINS.join(", ")})`,
+/**
+ * Boot, in the order the dependencies actually run in.
+ *
+ * Persistence is chosen and proved reachable BEFORE the port is bound, and
+ * memory is refilled from it BEFORE the first request can arrive. Doing either
+ * of those lazily produces the same class of bug: a server that looks healthy
+ * and answers the first player with an empty profile, or with a reward they
+ * already claimed.
+ *
+ * Any failure here exits rather than degrading. A process that starts without
+ * durable progression in production is the exact failure this remediation
+ * exists to remove, and it must not be reachable by forgetting one variable.
+ */
+async function boot(): Promise<void> {
+  const persistence = await initialiseProgressionStore();
+  if (persistence.durable) {
+    await hydrateProgression();
+  } else {
+    logger.warn({
+      message: "Nothing to restore: progression is in memory, so this process starts empty.",
+      module: "PERSISTENCE",
+    });
+  }
+
+  server.listen(PORT, "0.0.0.0", () => {
+    logger.info({
+      message: `Server listening on http://0.0.0.0:${PORT} (allowed origins: ${CLIENT_ORIGINS.join(", ")})`,
+      module: "SERVER",
+    });
+
+    // Which of the three account modes is live. Worth saying at every boot for
+    // the same reason as TURN below: "off" is a perfectly normal state for a
+    // dev machine and a serious one in production, and nothing else in the
+    // running app distinguishes them.
+    const auth = verificationMode();
+    if (auth === "off") {
+      logger.warn({
+        message:
+          "Sign-ins are NOT verified. `hostKind` is taken at face value, so any " +
+          "client can claim to be a member and open a shareable room. Set " +
+          "SUPABASE_JWT_SECRET (preferred) or SUPABASE_URL + SUPABASE_ANON_KEY. " +
+          "See docs/runbooks/supabase.md.",
+        module: "AUTH",
+      });
+    } else {
+      logger.info({
+        message: `Sign-ins verified via ${auth === "jwt-secret" ? "the project JWT secret" : "the Supabase auth API"}`,
+        module: "AUTH",
+      });
+    }
+
+    // Guests are now real identities with signed tokens, and the signing key
+    // decides whether they survive a restart. Said at boot for the same reason
+    // as TURN and auth below: an ephemeral key is normal on a dev machine and
+    // serious in production, and nothing else in the running app tells them
+    // apart.
+    const guests = guestTokenDurability();
+    if (!guests.durable) {
+      logger.warn({ message: guests.reason, module: "AUTH" });
+    }
+
+    // Say this at every boot. A missing relay is invisible in normal use —
+    // voice works on wifi and fails only for players behind a symmetric NAT,
+    // which is precisely the group least able to report a useful bug.
+    const turn = turnStatus();
+    if (turn.configured) {
+      logger.info({
+        message: `TURN relay active (${turn.mode} credentials, ${turn.urls} url${turn.urls === 1 ? "" : "s"})`,
+        module: "TURN",
+      });
+    } else {
+      logger.warn({
+        message:
+          "No TURN relay configured. Voice will fail for any pair of players " +
+          "behind symmetric NATs (mobile data, corporate wifi) and there is no " +
+          "client-side workaround. See docs/runbooks/turn-server.md.",
+        module: "TURN",
+      });
+    }
+  });
+}
+
+void boot().catch((err) => {
+  logger.error({
+    message: `Startup aborted: ${err instanceof Error ? err.message : String(err)}`,
     module: "SERVER",
   });
-
-  // Which of the three account modes is live. Worth saying at every boot for
-  // the same reason as TURN below: "off" is a perfectly normal state for a
-  // dev machine and a serious one in production, and nothing else in the
-  // running app distinguishes them.
-  const auth = verificationMode();
-  if (auth === "off") {
-    logger.warn({
-      message:
-        "Sign-ins are NOT verified. `hostKind` is taken at face value, so any " +
-        "client can claim to be a member and open a shareable room. Set " +
-        "SUPABASE_JWT_SECRET (preferred) or SUPABASE_URL + SUPABASE_ANON_KEY. " +
-        "See docs/runbooks/supabase.md.",
-      module: "AUTH",
-    });
-  } else {
-    logger.info({
-      message: `Sign-ins verified via ${auth === "jwt-secret" ? "the project JWT secret" : "the Supabase auth API"}`,
-      module: "AUTH",
-    });
-  }
-
-  // Say this at every boot. A missing relay is invisible in normal use —
-  // voice works on wifi and fails only for players behind a symmetric NAT,
-  // which is precisely the group least able to report a useful bug.
-  const turn = turnStatus();
-  if (turn.configured) {
-    logger.info({
-      message: `TURN relay active (${turn.mode} credentials, ${turn.urls} url${turn.urls === 1 ? "" : "s"})`,
-      module: "TURN",
-    });
-  } else {
-    logger.warn({
-      message:
-        "No TURN relay configured. Voice will fail for any pair of players " +
-        "behind symmetric NATs (mobile data, corporate wifi) and there is no " +
-        "client-side workaround. See docs/runbooks/turn-server.md.",
-      module: "TURN",
-    });
-  }
+  process.exit(1);
 });
+
 
 /**
  * Optional self-ping, to stop a sleep-on-idle host spinning the process down.
@@ -209,15 +362,63 @@ function startKeepAlive(): void {
 
 startKeepAlive();
 
+/**
+ * Stop taking traffic, then finish writing what was already accepted.
+ *
+ * The drain is the part that matters and the part that is easy to omit. A
+ * deploy sends SIGTERM, and progression writes are queued behind their
+ * callers — so exiting immediately drops exactly the writes that the redeploy
+ * was about to make matter. Draining first is the difference between "survives
+ * a deploy" and "survives a deploy unless you were unlucky".
+ *
+ * The 5s backstop is longer than the old 3s because it now has real work to
+ * finish; it is still short enough for any orchestrator's grace period.
+ */
 function shutdown(signal: string): void {
   logger.warn({ message: `Received ${signal}, starting graceful shutdown...`, module: "SERVER" });
   globalRateLimiter.destroy();
   io.close();
-  server.close(() => {
-    logger.info({ message: "HTTP and Socket servers closed cleanly.", module: "SERVER" });
-    process.exit(0);
-  });
-  setTimeout(() => process.exit(1), 3000).unref();
+
+  // Stop accepting, and hang up connections that are merely idle. Without
+  // this, a keep-alive socket from a load balancer or a health prober holds
+  // `server.close()` open for its full timeout.
+  server.close();
+  server.closeIdleConnections?.();
+
+  /*
+   * Drain FIRST, and independently of `server.close()`.
+   *
+   * The previous version nested the drain inside `server.close()`'s callback,
+   * which only fires once every connection has ended. Measured against a real
+   * restart, that callback did not fire, the drain never ran, and the process
+   * left on the 5-second backstop — silently discarding queued progression
+   * writes on every deploy, which is precisely the data loss P0-3 exists to
+   * stop. Found by `scripts/persistence/verifyDurability.mjs`, which asserts
+   * the flush line appears in the log.
+   */
+  void progressionSync
+    .drain()
+    .catch(() => undefined)
+    .then(() => {
+      const sync = progressionSync.status();
+      logger.info({
+        message:
+          `Progression writes flushed (${sync.written} written, ${sync.failed} failed). ` +
+          "HTTP and Socket servers closed.",
+        module: "SERVER",
+      });
+      process.exit(0);
+    });
+
+  // Backstop for a drain that cannot finish — a database that has stopped
+  // answering must not hold a deploy open indefinitely.
+  setTimeout(() => {
+    logger.error({
+      message: "Shutdown backstop reached; exiting with queued writes possibly unflushed.",
+      module: "SERVER",
+    });
+    process.exit(1);
+  }, 8000).unref();
 }
 
 process.on("SIGINT", () => shutdown("SIGINT"));

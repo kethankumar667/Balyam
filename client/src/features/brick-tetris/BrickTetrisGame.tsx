@@ -46,7 +46,7 @@ export const BrickTetrisGame: React.FC = () => {
       <header className="w-full max-w-4xl flex items-center justify-between py-2 px-3 sm:px-4 bg-[#141B2D]/80 backdrop-blur border border-[#232D48] rounded-2xl mb-4">
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-300 hover:text-white transition-colors"
+          className="flex items-center gap-2 min-h-[44px] text-xs font-mono font-bold text-zinc-300 hover:text-white transition-colors"
         >
           <Home className="w-4 h-4 text-emerald-400" />
           <span>LOBBY</span>

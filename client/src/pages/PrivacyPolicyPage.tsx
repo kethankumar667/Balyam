@@ -249,7 +249,7 @@ export default function PrivacyPolicyPage() {
             <h1 className="bhalyam-display text-[36px] sm:text-[48px] font-extrabold text-[#4A2508] leading-tight">
               Privacy at BHALYAM
             </h1>
-            <p className="text-[14.5px] sm:text-[15.5px] leading-relaxed text-[#7A5B3E] mt-3">
+            <p className="text-[15px] sm:text-base leading-relaxed text-[#7A5B3E] mt-3">
               The short version: you can play every game without an account, we sell nothing and
               track nothing.{" "}
               {isSupabaseConfigured
@@ -258,11 +258,15 @@ export default function PrivacyPolicyPage() {
               The long version is below, written to India&apos;s Digital Personal Data Protection
               Act, 2023.
             </p>
-            <div className="inline-flex items-center gap-2 mt-4 px-3.5 py-1.5 rounded-full bg-[#FFF8E7] border border-[#E6D4B5] text-[12.5px] font-semibold text-[#8C4A15]">
+            <div className="inline-flex items-center gap-2 mt-4 px-3.5 py-1.5 rounded-full bg-[#FFF8E7] border border-[#E6D4B5] text-[13px] font-semibold text-[#8C4A15]">
               <svg className="w-4 h-4 text-[#E85D04]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Last updated <span className="font-bold text-[#E85D04] ml-1">{LAST_UPDATED}</span>
+              Last updated {/* No `dark:` variant on purpose. This page keeps its cream surface in
+                  both themes, so flipping the ink to amber-400 dropped the ratio to
+                  1.57:1 — light ink on a light panel. Dark mode is a TWO-part change
+                  (panel and ink together); doing one half alone is the bug. */}
+              <span className="font-bold text-[#C14D03] ml-1">{LAST_UPDATED}</span>
             </div>
           </div>
 
@@ -278,8 +282,8 @@ export default function PrivacyPolicyPage() {
               🎵
             </div>
             <div>
-              <h4 className="font-extrabold text-[13.5px] text-[#4A2508] leading-tight">Retro Sounds</h4>
-              <p className="text-[11.5px] text-[#7A5B3E] leading-tight">Relive the 90s with classic game sounds</p>
+              <h4 className="font-extrabold text-sm text-[#4A2508] leading-tight">Retro Sounds</h4>
+              <p className="text-xs text-[#7A5B3E] leading-tight">Relive the 90s with classic game sounds</p>
             </div>
           </div>
 
@@ -288,8 +292,8 @@ export default function PrivacyPolicyPage() {
               🌅
             </div>
             <div>
-              <h4 className="font-extrabold text-[13.5px] text-[#4A2508] leading-tight">Day / Night Theme</h4>
-              <p className="text-[11.5px] text-[#7A5B3E] leading-tight">Play in your favorite 90s vibes</p>
+              <h4 className="font-extrabold text-sm text-[#4A2508] leading-tight">Day / Night Theme</h4>
+              <p className="text-xs text-[#7A5B3E] leading-tight">Play in your favorite 90s vibes</p>
             </div>
           </div>
 
@@ -298,8 +302,8 @@ export default function PrivacyPolicyPage() {
               🛡️
             </div>
             <div>
-              <h4 className="font-extrabold text-[13.5px] text-[#4A2508] leading-tight">Safe &amp; Ad-free</h4>
-              <p className="text-[11.5px] text-[#7A5B3E] leading-tight">100% safe for nostalgic fun</p>
+              <h4 className="font-extrabold text-sm text-[#4A2508] leading-tight">Safe &amp; Ad-free</h4>
+              <p className="text-xs text-[#7A5B3E] leading-tight">100% safe for nostalgic fun</p>
             </div>
           </div>
 
@@ -308,8 +312,8 @@ export default function PrivacyPolicyPage() {
               📱
             </div>
             <div>
-              <h4 className="font-extrabold text-[13.5px] text-[#4A2508] leading-tight">Works on Mobile</h4>
-              <p className="text-[11.5px] text-[#7A5B3E] leading-tight">Play with friends anytime, anywhere</p>
+              <h4 className="font-extrabold text-sm text-[#4A2508] leading-tight">Works on Mobile</h4>
+              <p className="text-xs text-[#7A5B3E] leading-tight">Play with friends anytime, anywhere</p>
             </div>
           </div>
         </div>
@@ -327,7 +331,7 @@ export default function PrivacyPolicyPage() {
                     <Link
                       key={item.id}
                       to={item.to}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-[#E85D04] transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-chest-700 transition-colors"
                     >
                       <span className="text-base">{item.icon}</span>
                       <span>{item.label}</span>
@@ -341,8 +345,8 @@ export default function PrivacyPolicyPage() {
                     onClick={() => setActiveTab(item.id)}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all ${
                       isActive
-                        ? "bg-[#FFF5E6] text-[#E85D04] border border-[#FCDDB5] font-bold shadow-2xs"
-                        : "text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-[#E85D04]"
+                        ? "bg-[#FFF5E6] text-chest-700 border border-[#FCDDB5] font-bold shadow-2xs"
+                        : "text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-chest-700"
                     }`}
                   >
                     <span className="text-base">{item.icon}</span>
@@ -365,7 +369,7 @@ export default function PrivacyPolicyPage() {
                   </div>
                   <h3 className="text-[19px] font-extrabold text-[#4A2508]">What we store, and why</h3>
                 </div>
-                <p className="text-[13.5px] leading-relaxed text-[#7A5B3E]">
+                <p className="text-sm leading-relaxed text-[#7A5B3E]">
                   Everything listed here lives in your browser&apos;s local storage on the device
                   you are reading this on, and never leaves it except where the next section says
                   otherwise.{" "}
@@ -396,8 +400,8 @@ export default function PrivacyPolicyPage() {
                       ✓
                     </span>
                     <div>
-                      <h5 className="font-bold text-[13.5px] text-[#4A2508]">Player ID</h5>
-                      <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                      <h5 className="font-bold text-sm text-[#4A2508]">Player ID</h5>
+                      <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                         A random id that identifies your seat at a table. Not a UUID — it embeds the moment the profile was first created.
                       </p>
                     </div>
@@ -408,8 +412,8 @@ export default function PrivacyPolicyPage() {
                       ✓
                     </span>
                     <div>
-                      <h5 className="font-bold text-[13.5px] text-[#4A2508]">Display name</h5>
-                      <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                      <h5 className="font-bold text-sm text-[#4A2508]">Display name</h5>
+                      <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                         The name shown to everyone else at the table. You typed it yourself.
                       </p>
                     </div>
@@ -420,8 +424,8 @@ export default function PrivacyPolicyPage() {
                       ✓
                     </span>
                     <div>
-                      <h5 className="font-bold text-[13.5px] text-[#4A2508]">Seat keys</h5>
-                      <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                      <h5 className="font-bold text-sm text-[#4A2508]">Seat keys</h5>
+                      <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                         Per-room proof that a seat is yours, so refreshing the page does not lose your place. Meaningless once the room ends.
                       </p>
                     </div>
@@ -495,8 +499,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Your privacy choice</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Your privacy choice</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Whether you allowed the optional settings and scores below, and when you chose. Kept so we do not ask again, and so the choice is demonstrable.
                   </p>
                 </div>
@@ -505,8 +509,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Avatar</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Avatar</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Which of the built-in avatars you picked. Just a filename — no photo of you is uploaded or stored.
                   </p>
                 </div>
@@ -515,8 +519,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Sound settings</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Sound settings</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Music and effects volume, and whether sound is muted.
                   </p>
                 </div>
@@ -525,8 +529,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Vibration setting</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Vibration setting</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Whether the phone vibrates on your turn and on wins.
                   </p>
                 </div>
@@ -535,8 +539,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Language</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Language</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Which language the interface is shown in.
                   </p>
                 </div>
@@ -545,8 +549,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Theme</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Theme</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Light or dark appearance.
                   </p>
                 </div>
@@ -560,8 +564,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Theme touched</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Theme touched</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Whether you have ever changed the theme, so we stop suggesting it.
                   </p>
                 </div>
@@ -570,8 +574,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Board skin</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Board skin</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     The visual skin chosen for game boards.
                   </p>
                 </div>
@@ -580,8 +584,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Ludo settings</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Ludo settings</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Your saved Ludo preferences, such as board theme and coin colour.
                   </p>
                 </div>
@@ -590,8 +594,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Snake best score</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Snake best score</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Your highest Snake score on this device.
                   </p>
                 </div>
@@ -600,8 +604,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Block Blast best score</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Block Blast best score</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Your highest Block Blast score on this device.
                   </p>
                 </div>
@@ -610,8 +614,8 @@ export default function PrivacyPolicyPage() {
               <div className="flex items-start gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
                 <div>
-                  <h5 className="font-bold text-[13.5px] text-[#4A2508]">Tutorial seen</h5>
-                  <p className="text-[12.5px] text-[#7A5B3E] leading-relaxed">
+                  <h5 className="font-bold text-sm text-[#4A2508]">Tutorial seen</h5>
+                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
                     Whether you have seen the tutorial so they stop reappearing.
                   </p>
                 </div>
@@ -645,7 +649,7 @@ export default function PrivacyPolicyPage() {
             </div>
             <Link
               to="/profile"
-              className="inline-flex items-center gap-1 text-[12.5px] font-bold text-[#E85D04] hover:underline mt-4"
+              className="inline-flex items-center gap-1 min-h-[44px] text-[13px] font-bold text-chest-700 hover:underline mt-4"
             >
               Know more →
             </Link>
@@ -679,7 +683,7 @@ export default function PrivacyPolicyPage() {
             </div>
             <Link
               to="/profile"
-              className="inline-flex items-center gap-1 text-[12.5px] font-bold text-[#E85D04] hover:underline mt-4"
+              className="inline-flex items-center gap-1 min-h-[44px] text-[13px] font-bold text-chest-700 hover:underline mt-4"
             >
               Know more →
             </Link>
@@ -708,7 +712,7 @@ export default function PrivacyPolicyPage() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-[1240px] mx-auto px-6 pt-10 border-t border-[#E6D4B5]/60 mt-12 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] font-semibold text-[#8C6D4F]">
+      <footer className="max-w-[1240px] mx-auto px-6 pt-10 border-t border-[#E6D4B5]/60 mt-12 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] font-semibold text-sand-600">
         <div>
           © {new Date().getFullYear()} BHALYAM · A Kethan Kumar Gontla project
         </div>

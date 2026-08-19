@@ -1,52 +1,54 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, lazy, Suspense } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
-import { isSupabaseConfigured } from "../lib/supabase/client";
+import { apiFetch, usePlayerId } from "../lib/playerIdentity";
 import { validateName, type FieldError } from "../lib/authValidation";
 import { GlobalSettings } from "../components/GlobalSettings";
 import LanguageSettings from "../components/LanguageSettings/LanguageSettings";
 import AvatarPicker from "../components/profile/AvatarPicker";
-import ProfileNav, { type ProfileSection } from "../components/profile/ProfileNav";
 import AppLayout from "../components/layout/AppLayout";
 import YourDataPanel from "../components/privacy/YourDataPanel";
+
+/**
+ * Lazy, not a static import.
+ *
+ * This route already carries every `features/profile/*` panel for the MEMBER
+ * path. `MemberLockedGate` only renders for the GUEST path (the early return
+ * below) — bundling it statically put a component the member branch never
+ * touches on every visitor's download, and tipped this chunk 120 bytes over
+ * `scripts/quality-gates/bundleBudgetGuard.mjs`'s 35 KB budget. Splitting it
+ * costs one more request on the minority path and nothing on the majority one.
+ */
+const MemberLockedGate = lazy(() => import("../components/auth/MemberLockedGate"));
+
+// Profile Features
+import ProfileHeader from "../features/profile/ProfileHeader";
+import StatsOverview from "../features/profile/StatsOverview";
+import FavoriteGames from "../features/profile/FavoriteGames";
+import CareerMetrics from "../features/profile/CareerMetrics";
+import AchievementsPanel from "../features/profile/AchievementsPanel";
+import MatchHistoryList from "../features/profile/MatchHistoryList";
+
+import type { PlayerProfile } from "@shared/profile/PlayerProfile";
+import type { PlayerStats } from "@shared/profile/PlayerStats";
+import type { MatchHistoryItem, MatchDetailRecord } from "@shared/profile/MatchHistory";
+import type { Achievement } from "@shared/profile/Achievements";
+import type { GameKind } from "@shared/types";
+
 import {
   ArrowLeftIcon,
-  CheckCircleIcon,
   FaceIcon,
   GlobeIcon,
-  LockIcon,
-  MailIcon,
   ShieldIcon,
   SlidersIcon,
   UserIcon,
 } from "../components/auth/authIcons";
 
-/**
- * Your profile.
- *
- * Laid out as a console rather than a single scrolling column: a section rail
- * down the left, cards in a two-column grid on the right, the way a settings
- * page is normally read on a laptop. The previous version capped itself at
- * 560px on every screen, which is right for a phone and leaves two-thirds of a
- * desktop window empty while pushing Language below three scrolls of sliders.
- *
- * What has NOT changed is the honesty of the content. The rail lists six
- * sections because six sections exist; it does not gain "Devices" or
- * "Notifications" to fill the column, and the account card still says the
- * account store is not built instead of showing an email field that would
- * discard what you typed.
- *
- * Everything on this page is device-local, which the header and the closing
- * strip both say, because that is the single most important thing about it
- * under the DPDP work: there is no server copy to ask anyone to delete.
- */
-
 const CARD =
-  "rounded-2xl border border-[var(--auth-card-edge)] bg-[var(--auth-card)] " +
-  "shadow-[0_1px_2px_rgba(74,44,22,0.04),0_8px_24px_-16px_rgba(74,44,22,0.28)]";
+  "rounded-3xl border border-[var(--auth-card-edge)] bg-[var(--auth-card)] " +
+  "shadow-sm";
 
-/** Section heading: a tinted icon chip and a title, repeated on every card. */
 function CardHead({
   icon,
   title,
@@ -57,378 +59,394 @@ function CardHead({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2.5 mb-4">
-      <span
-        className="inline-flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0
-                   bg-[var(--auth-note-bg)] text-[var(--auth-accent)]"
-        aria-hidden
-      >
+    <div className="flex items-center gap-3 mb-4">
+      <span className="w-8 h-8 rounded-xl bg-[var(--auth-field)] border border-[var(--auth-field-edge)] flex items-center justify-center text-amber-500 flex-shrink-0">
         {icon}
       </span>
-      <h2 className="bhalyam-display text-[var(--auth-ink)] text-[19px] leading-tight flex-1 min-w-0">
+      <h2 className="text-base font-extrabold text-[var(--auth-ink)] tracking-tight">
         {title}
       </h2>
-      {action}
+      {action && <div className="ml-auto">{action}</div>}
     </div>
   );
 }
 
 export default function ProfilePage() {
-  const { playerName, setPlayerName, avatarId, setAvatarId } = useRoomStore();
+  const navigate = useNavigate();
   const isMember = useAuthStore((s) => s.isMember);
-  const email = useAuthStore((s) => s.email);
-  const signOut = useAuthStore((s) => s.signOut);
-  const [name, setName] = useState(playerName);
-  const [error, setError] = useState<FieldError>(null);
-  const [saved, setSaved] = useState(false);
+  const currentName = useRoomStore((s) => s.playerName);
+  const currentAvatar = useRoomStore((s) => s.avatarId);
+  const setPlayerName = useRoomStore((s) => s.setPlayerName);
+  const setAvatarId = useRoomStore((s) => s.setAvatarId);
 
-  useEffect(() => {
-    setName(playerName);
-  }, [playerName]);
+  const [activeTab, setActiveTab] = useState<"career" | "history" | "achievements" | "settings">("career");
 
-  const dirty = name.trim() !== playerName.trim();
+  // Profile data state
+  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [matches, setMatches] = useState<MatchHistoryItem[]>([]);
+  const [totalMatches, setTotalMatches] = useState(0);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [selectedGame, setSelectedGame] = useState<GameKind | undefined>();
+  const [selectedMatchDetail, setSelectedMatchDetail] = useState<MatchDetailRecord | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Stable identity so the rail's observer is not torn down every render.
-  const sections = useMemo<ProfileSection[]>(
-    () => [
-      { id: "sec-profile", label: "My Profile", icon: <UserIcon className="w-[18px] h-[18px]" /> },
-      { id: "sec-avatar", label: "Avatar", icon: <FaceIcon className="w-[18px] h-[18px]" /> },
-      { id: "sec-preferences", label: "Preferences", icon: <SlidersIcon className="w-[18px] h-[18px]" /> },
-      { id: "sec-language", label: "Language", icon: <GlobeIcon className="w-[18px] h-[18px]" /> },
-      { id: "sec-account", label: "Account & Security", icon: <LockIcon className="w-[18px] h-[18px]" /> },
-      { id: "sec-data", label: "Data & Privacy", icon: <ShieldIcon className="w-[18px] h-[18px]" /> },
-    ],
-    [],
-  );
+  // Name editing
+  const [nameInput, setNameInput] = useState(currentName);
+  const [nameError, setNameError] = useState<FieldError | null>(null);
+  const [nameSaved, setNameSaved] = useState(false);
 
-  function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    const next = validateName(name);
-    setError(next);
-    if (next) {
-      document.getElementById("profile-name")?.focus();
-      return;
-    }
-    setPlayerName(name.trim());
-    setSaved(true);
+  const { playerId: effectivePlayerId, ready: identityReady } = usePlayerId();
+
+  if (!isMember) {
+    // `lazy()` requires a Suspense boundary on every render path that reaches
+    // it, not just the common one — this IS the only render path for a guest,
+    // so skipping the wrapper here would throw for every guest who lands on
+    // this route, which is the audience it exists to serve.
+    return (
+      <Suspense fallback={null}>
+        <MemberLockedGate feature="profile" />
+      </Suspense>
+    );
   }
 
+  const loadProfileData = async () => {
+    if (!effectivePlayerId) return;
+    try {
+      const [profRes, statsRes, matchRes, achRes] = await Promise.all([
+        apiFetch(`/api/profile/${effectivePlayerId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        apiFetch(`/api/profile/${effectivePlayerId}/stats`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        apiFetch(`/api/profile/${effectivePlayerId}/matches${selectedGame ? `?game=${selectedGame}` : ""}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        apiFetch(`/api/profile/${effectivePlayerId}/achievements`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]);
+
+      if (profRes?.profile) {
+        setProfile(profRes.profile);
+        if (profRes.profile.displayName && profRes.profile.displayName !== currentName) {
+          setPlayerName(profRes.profile.displayName);
+        }
+        if (profRes.profile.avatar !== undefined && profRes.profile.avatar !== currentAvatar) {
+          setAvatarId(profRes.profile.avatar || null);
+        }
+      } else {
+        setProfile({
+          playerId: effectivePlayerId ?? "",
+          displayName: currentName || (isMember ? "Member" : "Guest"),
+          avatar: currentAvatar || undefined,
+          joinedAt: Date.now() - 86400000 * 7,
+          lastSeenAt: Date.now(),
+          level: 1,
+          experiencePoints: 0,
+        });
+      }
+      if (statsRes?.stats) setStats(statsRes.stats);
+      if (matchRes?.matches) {
+        setMatches(matchRes.matches);
+        setTotalMatches(matchRes.total || 0);
+      }
+      if (achRes?.achievements) setAchievements(achRes.achievements);
+      setLoading(false);
+    } catch (err) {
+      console.warn("Could not load backend profile, using local defaults:", err);
+      // Fallback local representation
+      setProfile({
+        playerId: effectivePlayerId ?? "",
+        displayName: currentName || (isMember ? "Member" : "Guest"),
+        avatar: currentAvatar || undefined,
+        joinedAt: Date.now() - 86400000 * 7,
+        lastSeenAt: Date.now(),
+        level: 1,
+        experiencePoints: 0,
+      });
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!identityReady) return;
+    loadProfileData();
+  }, [identityReady, effectivePlayerId, selectedGame]);
+
+  const handleSaveName = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const error = validateName(nameInput);
+    if (error) {
+      setNameError(error);
+      return;
+    }
+    const clean = nameInput.trim();
+    setPlayerName(clean);
+    setNameError(null);
+    setNameSaved(true);
+    setTimeout(() => setNameSaved(false), 2000);
+
+    try {
+      await apiFetch(`/api/profile/${effectivePlayerId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: clean }),
+      });
+      if (profile) setProfile({ ...profile, displayName: clean });
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  const handleSelectAvatar = async (av: string | null) => {
+    setAvatarId(av);
+    try {
+      await apiFetch(`/api/profile/${effectivePlayerId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar: av || undefined }),
+      });
+      if (profile) setProfile({ ...profile, avatar: av || undefined });
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  const handleViewMatchDetail = async (matchId: string) => {
+    try {
+      const res = await apiFetch(`/api/profile/${effectivePlayerId}/matches/${matchId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedMatchDetail(data.match);
+      }
+    } catch (err) {
+      console.error("Failed to load match detail:", err);
+    }
+  };
+
+  const unlockedAchievementsCount = achievements.filter((a) => a.unlocked).length;
+
   return (
-    /* An ordinary destination, so it wears the global chrome like every other
-       non-gameplay screen. `min-h-full` rather than `min-h-screen`: inside
-       AppLayout the scroll container is already the viewport minus the
-       header, and a full-viewport child would add the header's height back
-       as dead scroll at the bottom. */
     <AppLayout>
-      <div className="auth-shell bhalyam-home bhalyam-font bhalyam-paper min-h-full">
-      <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 py-4 sm:py-6">
-        <div className="lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-8">
-          {/* ── Rail ─────────────────────────────────────────────── */}
-          <aside className="lg:pt-1">
+      <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Top Header Breadcrumbs Bar */}
+          <div className="flex items-center justify-between">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 min-h-[44px] px-3 -ml-3 mb-3 rounded-full
-                         text-[14px] font-bold text-[var(--auth-ink-soft)]
-                         hover:text-[var(--auth-ink)] hover:bg-[var(--auth-rule)]/45
-                         focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                         transition-colors duration-200"
+              className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
             >
-              <ArrowLeftIcon className="w-[18px] h-[18px]" />
-              Back to games
+              <ArrowLeftIcon className="w-4 h-4" />
+              Back to Lounge
             </Link>
-
-            <ProfileNav sections={sections} />
-
-            {/* The comp's illustration slot. Drawn inline rather than sourced
-                from /public, so it cannot ship as a broken-image box and
-                inherits the ink colour in both themes. */}
-            <div className="hidden lg:block mt-8 pt-6 border-t border-[var(--auth-rule)]">
-              <PaperPlane className="w-16 h-16 text-[var(--auth-accent)]/70" />
-              <p className="mt-3 text-[13px] font-bold leading-snug text-[var(--auth-ink-soft)]">
-                Play together.
-                <br />
-                Remember forever.
-              </p>
+            <div className="flex items-center gap-4 text-xs font-bold">
+              <Link
+                to="/tournaments"
+                className="text-amber-500 hover:text-amber-400 transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center"
+              >
+                🏟️ Tournaments & Seasons
+              </Link>
+              <Link
+                to="/leaderboard"
+                className="text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center"
+              >
+                🏆 Leaderboards & Quests
+              </Link>
             </div>
-          </aside>
+          </div>
 
-          {/* ── Content ──────────────────────────────────────────── */}
-          <main className="min-w-0 pt-4 lg:pt-0 pb-12">
-            <header className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1
-                  className="bhalyam-display text-[var(--auth-ink)] leading-tight"
-                  style={{ fontSize: "clamp(1.75rem, 4vw, 2.25rem)" }}
-                >
-                  My Profile
-                </h1>
-                <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--auth-ink-soft)] max-w-[62ch]">
-                  Everything here lives on this device. It travels to a table with you, not to a
-                  server.
-                </p>
-              </div>
-              {isMember && (
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="inline-flex items-center gap-2 min-h-[42px] px-4 rounded-full
-                             bg-red-50 hover:bg-red-100 border border-red-200
-                             text-red-700 font-extrabold text-[13.5px] self-start sm:self-auto
-                             active:scale-[0.99] transition cursor-pointer shadow-xs"
-                >
-                  <LockIcon className="w-4 h-4 text-red-600" />
-                  <span>Sign out</span>
-                </button>
-              )}
-            </header>
+          {/* Profile Hero Card */}
+          {profile && (
+            <ProfileHeader
+              profile={profile}
+              isMember={isMember}
+              onEditName={() => setActiveTab("settings")}
+            />
+          )}
 
-            <div className="space-y-5">
-              {/* Row 1 — name and avatar, the two things that are yours. */}
-              <div className="grid lg:grid-cols-2 gap-5 items-start">
-                <section id="sec-profile" className={`${CARD} p-5 scroll-mt-6`}>
-                  <CardHead icon={<UserIcon className="w-[18px] h-[18px]" />} title="Profile" />
+          {/* Navigation Category Tabs */}
+          <div className="flex items-center gap-2 border-b border-[var(--auth-card-edge)] pb-3 overflow-x-auto text-xs font-bold font-mono">
+            <button
+              onClick={() => setActiveTab("career")}
+              className={`px-4 py-2.5 rounded-xl transition shrink-0 min-h-[44px] flex items-center gap-2 ${
+                activeTab === "career"
+                  ? "bg-amber-500 text-zinc-950 font-black shadow-md"
+                  : "bg-[var(--auth-card)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] border border-[var(--auth-card-edge)]"
+              }`}
+            >
+              📊 Career & Stats
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`px-4 py-2.5 rounded-xl transition shrink-0 min-h-[44px] flex items-center gap-2 ${
+                activeTab === "history"
+                  ? "bg-amber-500 text-zinc-950 font-black shadow-md"
+                  : "bg-[var(--auth-card)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] border border-[var(--auth-card-edge)]"
+              }`}
+            >
+              📜 Match History ({totalMatches})
+            </button>
+            <button
+              onClick={() => setActiveTab("achievements")}
+              className={`px-4 py-2.5 rounded-xl transition shrink-0 min-h-[44px] flex items-center gap-2 ${
+                activeTab === "achievements"
+                  ? "bg-amber-500 text-zinc-950 font-black shadow-md"
+                  : "bg-[var(--auth-card)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] border border-[var(--auth-card-edge)]"
+              }`}
+            >
+              🏆 Achievements ({unlockedAchievementsCount}/{achievements.length})
+            </button>
+            <button
+              onClick={() => navigate("/profile/personal")}
+              className="px-4 py-2.5 rounded-xl transition shrink-0 min-h-[44px] flex items-center gap-2 bg-[var(--auth-card)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] border border-[var(--auth-card-edge)]"
+            >
+              👤 Personal Information
+            </button>
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`px-4 py-2.5 rounded-xl transition shrink-0 min-h-[44px] flex items-center gap-2 ${
+                activeTab === "settings"
+                  ? "bg-amber-500 text-zinc-950 font-black shadow-md"
+                  : "bg-[var(--auth-card)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] border border-[var(--auth-card-edge)]"
+              }`}
+            >
+              ⚙️ Account & Settings
+            </button>
+          </div>
 
-                  <form onSubmit={handleSave} noValidate className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label
-                        htmlFor="profile-name"
-                        className="block text-[11px] uppercase tracking-widest font-bold text-[var(--auth-ink-soft)]"
-                      >
-                        Display name
-                      </label>
-                      <input
-                        id="profile-name"
-                        type="text"
-                        value={name}
-                        maxLength={20}
-                        autoComplete="nickname"
-                        onChange={(e) => {
-                          setName(e.target.value);
-                          if (error) setError(null);
-                          if (saved) setSaved(false);
-                        }}
-                        placeholder="e.g. Sri Krishna"
-                        aria-invalid={error ? true : undefined}
-                        aria-describedby={error ? "profile-name-error" : "profile-name-help"}
-                        className={`w-full min-h-[48px] px-3.5 rounded-xl bg-[var(--auth-field)] border-2
-                                    font-semibold text-[15px] text-[var(--auth-ink)]
-                                    placeholder:font-medium placeholder:text-[var(--auth-ink-mute)]
-                                    focus:outline-none focus:ring-2 transition-[border-color,box-shadow] duration-200
-                                    ${
-                                      error
-                                        ? "border-[#C6342B]/70 focus:border-[#C6342B] focus:ring-[#C6342B]/25"
-                                        : "border-[var(--auth-field-edge)] focus:border-bhalyam-gold-dark focus:ring-bhalyam-gold/40"
-                                    }`}
-                      />
-                      {error ? (
-                        <p
-                          id="profile-name-error"
-                          role="alert"
-                          className="text-[12.5px] font-semibold leading-snug text-[var(--auth-field-error)]"
-                        >
-                          {error}
-                        </p>
-                      ) : (
-                        <p
-                          id="profile-name-help"
-                          className="text-[12.5px] leading-snug text-[var(--auth-ink-mute)]"
-                        >
-                          This is the name others see at the table. Rooms you are already in keep
-                          the name you joined them with.
-                        </p>
-                      )}
-                    </div>
+          {/* Tab 1: Career & Stats */}
+          {activeTab === "career" && stats && (
+            <div className="space-y-6">
+              <StatsOverview stats={stats} />
+              <FavoriteGames stats={stats} />
+              <CareerMetrics stats={stats} />
+            </div>
+          )}
 
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="submit"
-                        disabled={!dirty}
-                        className={`min-h-[46px] px-6 rounded-full font-extrabold text-[15px] border
-                                    transition-[filter,box-shadow] duration-200
-                                    focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                                    focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--auth-card)]
-                                    ${
-                                      dirty
-                                        ? "bhalyam-gold-leaf bhalyam-cta-shine border-bhalyam-gold-dark text-bhalyam-wood-dark cursor-pointer hover:brightness-[1.04] shadow-[0_8px_18px_-6px_rgba(228,177,40,0.6)]"
-                                        : "bg-[var(--auth-rule)] border-[var(--auth-field-edge)] text-[var(--auth-ink-soft)] cursor-not-allowed"
-                                    }`}
-                      >
-                        Save name
-                      </button>
-                    </div>
+          {/* Tab 2: Match History */}
+          {activeTab === "history" && (
+            <MatchHistoryList
+              matches={matches}
+              total={totalMatches}
+              selectedGame={selectedGame}
+              onSelectGame={(g) => setSelectedGame(g)}
+              onViewMatchDetail={handleViewMatchDetail}
+            />
+          )}
 
-                    {saved && !dirty ? (
-                      <p
-                        role="status"
-                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold
-                                   bg-[var(--auth-ok-bg)] border border-[var(--auth-ok-edge)]
-                                   text-[var(--auth-ok-ink)]"
-                      >
-                        <CheckCircleIcon className="w-[18px] h-[18px] flex-shrink-0" />
-                        Name saved successfully.
-                      </p>
-                    ) : null}
-                  </form>
-                </section>
+          {/* Tab 3: Achievements */}
+          {activeTab === "achievements" && (
+            <AchievementsPanel achievements={achievements} />
+          )}
 
-                <section id="sec-avatar" className={`${CARD} p-5 scroll-mt-6`}>
-                  <CardHead
-                    icon={<FaceIcon className="w-[18px] h-[18px]" />}
-                    title="Avatar"
-                    action={
-                      avatarId ? (
-                        <button
-                          type="button"
-                          onClick={() => setAvatarId(null)}
-                          className="text-[13px] font-bold text-[#C6342B] dark:text-[#F0B4AA]
-                                     min-h-[44px] px-2 -mr-2 rounded-lg
-                                     hover:underline focus:outline-none
-                                     focus-visible:ring-2 focus-visible:ring-[#C6342B]/60"
-                        >
-                          Remove
-                        </button>
-                      ) : undefined
-                    }
-                  />
-                  <AvatarPicker value={avatarId} onChange={setAvatarId} hideSummary />
-                  <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--auth-ink-mute)]">
-                    Shown next to your name at every table you join, and saved on this device.
-                  </p>
-                </section>
-              </div>
-
-              {/* Row 2 — preferences, wide enough for two internal columns. */}
-              <section id="sec-preferences" className={`${CARD} p-5 scroll-mt-6`}>
-                <CardHead
-                  icon={<SlidersIcon className="w-[18px] h-[18px]" />}
-                  title="Preferences"
-                />
-                <GlobalSettings bare layout="split" includeLanguage={false} />
+          {/* Tab 4: Account & Local Settings */}
+          {activeTab === "settings" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <section className={`${CARD} p-6 space-y-4`}>
+                <CardHead icon={<UserIcon className="w-[18px] h-[18px]" />} title="Display Name" />
+                <form onSubmit={handleSaveName} className="space-y-3.5">
+                  <div>
+                    <label htmlFor="displayNameInput" className="text-xs font-bold text-[var(--auth-ink-soft)] block mb-1 font-mono">
+                      Your Lounge Name
+                    </label>
+                    <input
+                      id="displayNameInput"
+                      type="text"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      maxLength={24}
+                      className="w-full bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--auth-ink)] focus:outline-none focus:border-amber-500 font-mono transition"
+                    />
+                    {nameError && (
+                      <p className="text-xs text-rose-500 mt-1 font-mono">{nameError}</p>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black px-5 py-2.5 rounded-xl text-xs font-mono uppercase tracking-wider transition shadow-xs"
+                  >
+                    {nameSaved ? "Saved!" : "Update Name"}
+                  </button>
+                </form>
               </section>
 
-              {/* Row 3 — the two "about you and your data" cards. Language and
-                  Account stack in the left column beside a taller Your Data,
-                  which is the shape the content wants: one long card, two
-                  short ones. */}
-              <div className="grid lg:grid-cols-2 gap-5 items-start">
-                <div className="space-y-5">
-                  <section id="sec-account" className={`${CARD} p-5 scroll-mt-6`}>
-                    <CardHead
-                      icon={<LockIcon className="w-[18px] h-[18px]" />}
-                      title="Account & Security"
-                    />
+              <section className={`${CARD} p-6`}>
+                <CardHead icon={<FaceIcon className="w-[18px] h-[18px]" />} title="Avatar Customization" />
+                <AvatarPicker value={currentAvatar} onChange={handleSelectAvatar} />
+              </section>
 
-                    {/* Two states, and the honesty of each is different. A
-                        guest is told what an account buys. A member is told
-                        where their account actually lives — which differs by
-                        build, and this card is the one place someone will
-                        look for that fact. */}
-                    {isMember ? (
-                      <>
-                        <p className="text-[13.5px] leading-relaxed text-[var(--auth-ink-soft)]">
-                          Signed in{email ? " as " : ""}
-                          {email ? (
-                            <span className="font-bold text-[var(--auth-ink)]">{email}</span>
-                          ) : null}
-                          .{" "}
-                          {isSupabaseConfigured
-                            ? "Your name and avatar are saved to your account, so they follow you to any device you sign in on."
-                            : "This build has no account service, so the sign-in is recorded on this device only — no password was checked and nothing was sent anywhere."}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={signOut}
-                          className="mt-3 inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full
-                                     bg-[var(--auth-field)] border border-[var(--auth-field-edge)]
-                                     text-[var(--auth-ink)] font-bold text-[14px]
-                                     hover:bg-[var(--auth-rule)] active:scale-[0.99]
-                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                                     transition-[background-color,transform] duration-200"
-                        >
-                          <LockIcon className="w-[18px] h-[18px]" />
-                          Sign out
-                        </button>
-                        <p className="mt-2 text-[12.5px] leading-snug text-[var(--auth-ink-mute)]">
-                          {isSupabaseConfigured
-                            ? "Signing out clears your name and avatar from this device. They're safe on your account — signing back in brings them with you."
-                            : "Signing out clears your name and avatar from this device."}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-[13.5px] leading-relaxed text-[var(--auth-ink-soft)]">
-                          You&apos;re playing as a guest. You can play every game against bots,
-                          pass one phone around a group, and join any room a friend invites you
-                          to. An account is what lets you open a room of your own and hand out
-                          the code.
-                        </p>
-                        <Link
-                          to="/signup?from=profile"
-                          className="mt-3 inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full
-                                     bg-[var(--auth-field)] border border-[var(--auth-field-edge)]
-                                     text-[var(--auth-ink)] font-bold text-[14px]
-                                     hover:bg-[var(--auth-rule)] active:scale-[0.99]
-                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                                     transition-[background-color,transform] duration-200"
-                        >
-                          <MailIcon className="w-[18px] h-[18px]" />
-                          Create a free account
-                        </Link>
-                      </>
-                    )}
-                  </section>
+              <section className={`${CARD} p-6`}>
+                <CardHead icon={<SlidersIcon className="w-[18px] h-[18px]" />} title="Game Audio & Sound FX" />
+                <GlobalSettings />
+              </section>
 
-                  <section id="sec-language" className={`${CARD} p-5 scroll-mt-6`}>
-                    <CardHead icon={<GlobeIcon className="w-[18px] h-[18px]" />} title="Language" />
-                    <LanguageSettings embedded hideHeading />
-                  </section>
+              <section className={`${CARD} p-6`}>
+                <CardHead icon={<GlobeIcon className="w-[18px] h-[18px]" />} title="Language Settings" />
+                <LanguageSettings embedded hideHeading />
+              </section>
+
+              <section className={`${CARD} p-6 lg:col-span-2`}>
+                <CardHead icon={<ShieldIcon className="w-[18px] h-[18px]" />} title="Privacy & Data Transparency" />
+                <YourDataPanel headingLevel="h3" hideHeading />
+              </section>
+            </div>
+          )}
+
+          {/* Match Detail Modal */}
+          {selectedMatchDetail && (
+            <div
+              className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="matchDetailTitle"
+            >
+              <div className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-2xl relative overflow-hidden">
+                <div className="flex items-center justify-between border-b border-[var(--auth-field-edge)] pb-3.5">
+                  <h3 id="matchDetailTitle" className="font-extrabold text-base text-[var(--auth-ink)] capitalize">
+                    Match Details — {selectedMatchDetail.game} (#{selectedMatchDetail.roomCode})
+                  </h3>
+                  <button
+                    onClick={() => setSelectedMatchDetail(null)}
+                    className="text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] text-sm font-bold p-1 rounded-lg"
+                    aria-label="Close dialog"
+                  >
+                    ✕
+                  </button>
                 </div>
 
-                <section id="sec-data" className={`${CARD} p-5 scroll-mt-6`}>
-                  <CardHead icon={<ShieldIcon className="w-[18px] h-[18px]" />} title="Your Data" />
-                  <YourDataPanel headingLevel="h3" hideHeading />
-                </section>
-              </div>
+                <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                  <div className="bg-[var(--auth-field)] p-3.5 rounded-2xl border border-[var(--auth-field-edge)]">
+                    <span className="text-[10px] text-[var(--auth-ink-soft)] block uppercase font-bold">Outcome</span>
+                    <span className="font-black text-sm text-emerald-500">{selectedMatchDetail.result}</span>
+                  </div>
+                  <div className="bg-[var(--auth-field)] p-3.5 rounded-2xl border border-[var(--auth-field-edge)]">
+                    <span className="text-[10px] text-[var(--auth-ink-soft)] block uppercase font-bold">Duration</span>
+                    <span className="font-black text-sm text-[var(--auth-ink)]">{Math.round(selectedMatchDetail.durationMs / 1000)}s</span>
+                  </div>
+                  <div className="bg-[var(--auth-field)] p-3.5 rounded-2xl border border-[var(--auth-field-edge)]">
+                    <span className="text-[10px] text-[var(--auth-ink-soft)] block uppercase font-bold">Total Moves</span>
+                    <span className="font-black text-sm text-[var(--auth-ink)]">{selectedMatchDetail.movesCount}</span>
+                  </div>
+                  <div className="bg-[var(--auth-field)] p-3.5 rounded-2xl border border-[var(--auth-field-edge)]">
+                    <span className="text-[10px] text-[var(--auth-ink-soft)] block uppercase font-bold">Winner</span>
+                    <span className="font-black text-sm text-amber-500">{selectedMatchDetail.winnerName || "None / Tie"}</span>
+                  </div>
+                </div>
 
-              {/* Closing reassurance. The comp puts a line here and it earns
-                  its place: this page is the one screen where someone is
-                  actively wondering where their information goes. */}
-              <div
-                className={`${CARD} px-5 py-4 flex items-center gap-3.5
-                            bg-[var(--auth-note-bg)] border-[var(--auth-note-edge)]`}
-              >
-                <ShieldIcon className="w-6 h-6 flex-shrink-0 text-[var(--auth-accent)]" />
-                <p className="text-[13px] leading-relaxed text-[var(--auth-note-ink)]">
-                  This is your space. Your name, your sound, your way — and all of it stays on
-                  this device.
-                </p>
+                {selectedMatchDetail.replayAvailable && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 flex items-center justify-between text-xs font-mono">
+                    <span className="text-amber-500 font-bold">Replay Available on Timeline Store</span>
+                    <span className="text-[10px] bg-amber-500 text-zinc-950 font-black px-2.5 py-0.5 rounded-full uppercase">
+                      READY
+                    </span>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setSelectedMatchDetail(null)}
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black py-2.5 rounded-xl text-xs font-mono uppercase tracking-wider transition shadow-xs"
+                >
+                  Close
+                </button>
               </div>
             </div>
-          </main>
+          )}
         </div>
       </div>
-      </div>
     </AppLayout>
-  );
-}
-
-/** Rail doodle. Inline so it has no asset to 404 and follows `currentColor`. */
-function PaperPlane({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 64 64"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M57 8 6 27l19 8 8 19L57 8Z" />
-      <path d="M25 35 57 8" />
-      <path d="M25 35v13l8-7" />
-      <path d="M8 48c3-1 5 1 4 4M15 56c2-.7 3.4.7 2.7 2.7" opacity="0.55" />
-    </svg>
   );
 }

@@ -2,6 +2,9 @@ import { Link } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { useNavigation } from "../../navigation/useNavigation";
 import type { NavBadge, ResolvedNavigationItem } from "../../navigation/types";
+import { useRoomStore } from "../../store/roomStore";
+import { useAuthStore } from "../../store/authStore";
+import SeatAvatar from "../profile/SeatAvatar";
 
 interface AppSidebarProps {
   onOpenJoin?: () => void;
@@ -48,12 +51,16 @@ export default function AppSidebar({
     openGameSheet: onOpenGameSheet,
   });
 
+  const { playerName, avatarId } = useRoomStore();
+  const isMember = useAuthStore((s) => s.isMember);
+  const currentDisplayName = playerName.trim() || (isMember ? "Member" : "Guest");
+
   const renderItem = (item: ResolvedNavigationItem) => {
     const Icon = item.icon;
     const content = (
       <div
         className={`relative w-full flex items-center justify-between gap-2.5 pl-4 pr-3.5 min-h-[44px] rounded-2xl
-                    font-bold text-[13.5px] transition-all cursor-pointer select-none ${
+                    font-bold text-sm transition-all cursor-pointer select-none ${
                       item.active
                         ? "bg-[var(--chrome-active-bg)] text-[var(--chrome-active-ink)] font-extrabold shadow-2xs"
                         : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)]"
@@ -122,10 +129,10 @@ export default function AppSidebar({
 
   return (
     <aside
-      aria-label={`${section.header?.title || "Main"} Navigation`}
-      className="w-64 h-full overflow-y-auto flex-shrink-0 p-3.5 flex flex-col justify-between
+      className="hidden lg:flex flex-col w-64 h-[calc(100vh-5rem)] sticky top-20 flex-shrink-0
                  border-r border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]
-                 text-[var(--chrome-ink)] transition-colors select-none"
+                 p-4 overflow-y-auto"
+      aria-label="Main Navigation"
     >
       <div className="space-y-3">
         {/* Section Context Header with Back Link */}
@@ -135,21 +142,30 @@ export default function AppSidebar({
               <Link
                 to={section.header.parentPath}
                 onClick={onCloseMobile}
-                className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[var(--chrome-accent)] hover:underline group"
+                className="inline-flex items-center gap-1 min-h-[24px] text-[11px] font-extrabold text-[var(--chrome-accent)] hover:underline group"
               >
                 <ChevronLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
                 <span>{section.header.parentLabel || "Back to Home"}</span>
               </Link>
             )}
             <div className="flex items-center gap-2.5 pt-0.5">
-              {section.header.icon && (
+              {section.id === "profile" ? (
+                <div className="w-8 h-8 rounded-xl overflow-hidden border border-[var(--chrome-border)] flex items-center justify-center flex-shrink-0 bg-[var(--chrome-active-bg)]">
+                  <SeatAvatar
+                    avatar={avatarId ?? undefined}
+                    name={currentDisplayName}
+                    className="w-full h-full"
+                    textClassName="text-xs font-black"
+                  />
+                </div>
+              ) : section.header.icon ? (
                 <div className="w-7 h-7 rounded-xl bg-[var(--chrome-active-bg)] text-[var(--chrome-accent)] flex items-center justify-center flex-shrink-0">
                   <section.header.icon className="w-4 h-4" />
                 </div>
-              )}
+              ) : null}
               <div className="min-w-0">
                 <h2 className="text-xs font-black uppercase tracking-wider text-[var(--chrome-ink)] truncate">
-                  {section.header.title}
+                  {section.id === "profile" ? currentDisplayName : section.header.title}
                 </h2>
                 {section.header.subtitle && (
                   <p className="text-[10px] font-semibold text-[var(--chrome-ink-soft)] truncate">

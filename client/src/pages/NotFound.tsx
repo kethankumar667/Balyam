@@ -50,7 +50,7 @@ export default function NotFound() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.2, 0.7, 0.3, 1] }}
             className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em]
-                       bg-[#FFF4E4] text-[#E54D0D] border border-[#F2D5A9]"
+                       bg-[#FFF4E4] text-chest-700 border border-[#F2D5A9]"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#E54D0D]" aria-hidden />
             Game not found

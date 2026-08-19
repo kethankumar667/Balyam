@@ -40,7 +40,9 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
     setReportDismissed,
     drawLine,
   } = useDotsBoxesBoard(props);
-  const tut = useTutorialGate(DOTSBOXES_TUTORIAL.key);
+  // Never over a live turn: safe once it isn't this player's turn, or no
+  // deadline is currently running. See GameTutorial.tsx's useTutorialGate doc.
+  const tut = useTutorialGate(DOTSBOXES_TUTORIAL.key, !myTurn || state.turnDeadline === null);
 
   return (
     <ClassroomScene footer={state.phase === "finished" ? <RematchPanel players={props.players} selfId={props.selfId} className="bg-[#fef9f0]/90 border-2 border-amber-700/40 rounded-lg" /> : undefined}>

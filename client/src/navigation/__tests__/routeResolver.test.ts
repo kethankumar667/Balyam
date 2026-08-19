@@ -100,11 +100,13 @@ describe("Route Resolver & Context-Aware Navigation", () => {
       expect(active?.id).toBe("home-feed");
     });
 
-    it("filters out requiresAuth items for guests", () => {
+    it("marks requiresAuth items as locked for guests", () => {
       const guestNav = resolveNavigation({ pathname: "/", isMember: false });
       const memberNav = resolveNavigation({ pathname: "/", isMember: true });
-      expect(guestNav.items.some((i) => i.id === "home-settings")).toBe(false);
-      expect(memberNav.items.some((i) => i.id === "home-settings")).toBe(true);
+      const guestSettings = guestNav.items.find((i) => i.id === "home-settings");
+      const memberSettings = memberNav.items.find((i) => i.id === "home-settings");
+      expect(guestSettings?.badge?.text).toBe("🔒 Lock");
+      expect(memberSettings?.badge?.text).toBeUndefined();
     });
 
     it("switches context to games navigation with header when on /games", () => {

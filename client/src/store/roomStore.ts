@@ -1,5 +1,27 @@
 import { create } from "zustand";
-import type { ChatMessage, RematchState, RoomPublicState } from "@shared/types";
+import type {
+  ChatMessage,
+  RematchState,
+  RoomPublicState,
+  Player,
+  GameKind,
+  RpsState,
+  RummyPlayerState,
+  LudoState,
+  SnlState,
+  HcState,
+  UnoPlayerState,
+  WordBuildingPublicState,
+  DotsBoxesPublicState,
+  StarPlayerView,
+  BingoPlayerState,
+  NamePlaceAnimalPlayerState,
+  TambolaPlayerState,
+  SnakePublicState,
+  CarromPublicState,
+  ChessPublicState,
+  SpaceWarPublicState,
+} from "@shared/types";
 
 const idleRematch: RematchState = {
   status: "idle",
@@ -11,17 +33,31 @@ const idleRematch: RematchState = {
 };
 
 /**
+ * Type-safe mapping of all game states by GameKind.
+ */
+export interface GameStateMap {
+  rps: RpsState;
+  rummy: RummyPlayerState;
+  ludo: LudoState;
+  snl: SnlState;
+  handcricket: HcState;
+  uno: UnoPlayerState;
+  wordbuilding: WordBuildingPublicState;
+  dotsboxes: DotsBoxesPublicState;
+  stargame: StarPlayerView;
+  bingo: BingoPlayerState;
+  namesplaceanimal: NamePlaceAnimalPlayerState;
+  tambola: TambolaPlayerState;
+  snake: SnakePublicState;
+  carrom: CarromPublicState;
+  chess: ChessPublicState;
+  spacewar: SpaceWarPublicState;
+  roadrash: unknown;
+  blockblast: unknown;
+}
+
+/**
  * What proves a seat is yours, per room.
- *
- * `playerId` alone used to be the whole credential, and it is broadcast to
- * everyone in the room — so anyone who could see it could take the seat. The
- * server now issues a token alongside it (see server/src/lib/seatToken) and
- * only that reclaims a seat.
- *
- * Keyed by room code rather than kept as one global pair, because a token is
- * scoped to a single room. That also fixes an old wrinkle: the single global
- * `playerId` was sent when joining ANY room, including ones it had nothing to
- * do with, and got overwritten by whatever the last room minted.
  */
 export interface SeatCredential {
   playerId: string;
@@ -40,8 +76,7 @@ interface RoomStore {
   messages: ChatMessage[];
   lastError: string | null;
   rematch: RematchState;
-  /** Last 3 distinct named Rummy rosters the player joined — "Friday Rummy
-   *  Nights" memory (docs/rummy/roadmap.md A.5). Most recent first. */
+  /** Last 3 distinct named Rummy rosters the player joined */
   lastGangs: LastGangEntry[];
 
   setPlayerId: (id: string | null) => void;
@@ -178,8 +213,6 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
     set((s) => {
       const key = code.trim().toUpperCase();
       const next = { ...s.seats, [key]: { playerId, seatToken } };
-      // Trim oldest-first once over the cap. Insertion order is good enough:
-      // a room whose code fell off the end has almost certainly ended.
       const codes = Object.keys(next);
       for (const stale of codes.slice(0, Math.max(0, codes.length - MAX_REMEMBERED_SEATS))) {
         delete next[stale];
@@ -211,3 +244,38 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       rematch: idleRematch,
     }),
 }));
+
+const EMPTY_PLAYERS: Player[] = [];
+const EMPTY_MESSAGES: ChatMessage[] = [];
+
+// ── Fine-grained, memoized Zustand selectors ──
+export const useRoomPlayers = (): Player[] =>
+  useRoomStore((s) => s.roomState?.players ?? EMPTY_PLAYERS);
+
+export const useRoomPhase = (): RoomPublicState["phase"] =>
+  useRoomStore((s) => s.roomState?.phase ?? "lobby");
+
+export const useRoomHostId = (): string | null =>
+  useRoomStore((s) => s.roomState?.hostId ?? null);
+
+export const useRoomCode = (): string | null =>
+  useRoomStore((s) => s.roomState?.code ?? null);
+
+export const useRoomMessages = (): ChatMessage[] =>
+  useRoomStore((s) => s.messages ?? EMPTY_MESSAGES);
+
+export const useRoomRematch = (): RematchState =>
+  useRoomStore((s) => s.rematch);
+
+export const useRoomPlayerId = (): string | null =>
+  useRoomStore((s) => s.playerId);
+
+export const useRoomPlayerName = (): string =>
+  useRoomStore((s) => s.playerName);
+
+export const useRoomAvatarId = (): string | null =>
+  useRoomStore((s) => s.avatarId);
+
+export function useGameState<K extends GameKind>(_game: K): GameStateMap[K] | null {
+  return useRoomStore((s) => s.gameState as GameStateMap[K] | null);
+}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { GameKind } from "@shared/types";
+import { Ticket, QrCode, Camera, Copy, Link2, Check } from "lucide-react";
 import QrCodeModal from "../QrCodeModal";
 import { captureAndShareScreenshot } from "../../lib/screenshot";
 
@@ -99,11 +100,11 @@ export default function RoomShareCard({
 
   return (
     <>
-      <div className="w-full bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 relative overflow-hidden">
+      <div className="w-full bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 relative overflow-hidden">
         {/* Ticket Header */}
         <div className="flex items-center justify-between">
           <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400">
-            <span aria-hidden>🎟️</span>
+            <Ticket size={14} aria-hidden />
             <span>Room Code</span>
           </div>
 
@@ -115,7 +116,7 @@ export default function RoomShareCard({
               aria-label="Show QR Code for this room"
               className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] p-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700 text-[#6E5E4D] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer"
             >
-              <span aria-hidden className="text-sm">📷</span>
+              <QrCode size={15} aria-hidden />
               <span className="sr-only sm:not-sr-only sm:ml-1 text-[11px]">QR</span>
             </button>
 
@@ -127,7 +128,7 @@ export default function RoomShareCard({
               aria-label="Share Screenshot of Room"
               className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] p-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700 text-[#6E5E4D] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer disabled:opacity-50"
             >
-              <span aria-hidden className="text-sm">📸</span>
+              <Camera size={15} aria-hidden />
               <span className="sr-only sm:not-sr-only sm:ml-1 text-[11px]">Snapshot</span>
             </button>
           </div>
@@ -139,7 +140,7 @@ export default function RoomShareCard({
             type="button"
             onClick={copyCode}
             aria-label={`Room code: ${code}. Tap to copy`}
-            className="flex-1 w-full flex items-center justify-between sm:justify-center gap-3 px-4 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-b from-[#FFFDF8] to-[#FFF4E0] dark:from-[#161E2E] dark:to-[#0F1420] border-2 border-dashed border-[#D4A574] dark:border-amber-500/50 hover:border-[#EA5A1F] dark:hover:border-amber-400 transition active:scale-[0.99] cursor-pointer shadow-inner relative group"
+            className="flex-1 w-full flex items-center justify-between sm:justify-center gap-3 px-4 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-b from-[#FFFDF8] to-[#FFF4E0] dark:from-[#161E2E] dark:to-[#0F1420] border-2 border-dashed border-[var(--rim-gold)] dark:border-amber-500/50 hover:border-[#EA5A1F] dark:hover:border-amber-400 transition active:scale-[0.99] cursor-pointer shadow-inner relative group"
           >
             <span
               id="room-share-code-text"
@@ -151,7 +152,7 @@ export default function RoomShareCard({
             <span className="text-[11px] font-bold text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1 group-hover:text-[#EA5A1F]">
               {copied ? (
                 <span className="text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1">
-                  <span>✓</span> Copied
+                  <Check size={13} aria-hidden /> Copied
                 </span>
               ) : (
                 <span>Tap to copy</span>
@@ -167,7 +168,7 @@ export default function RoomShareCard({
               aria-label="Copy Room Code"
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm bg-gradient-to-r from-[#EA5A1F] to-[#D84F17] hover:from-[#F06A32] hover:to-[#EA5A1F] text-white shadow-sm transition active:scale-95 cursor-pointer whitespace-nowrap"
             >
-              <span aria-hidden>📋</span>
+              <Copy size={14} aria-hidden />
               <span>{copied ? "Copied!" : "Copy Code"}</span>
             </button>
 
@@ -177,7 +178,7 @@ export default function RoomShareCard({
               aria-label="Share Room Link"
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-white dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700/80 text-[#352C24] dark:text-slate-100 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer whitespace-nowrap shadow-xs"
             >
-              <span aria-hidden>🔗</span>
+              <Link2 size={14} aria-hidden />
               <span>Share</span>
             </button>
           </div>

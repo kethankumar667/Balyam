@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
@@ -11,6 +11,9 @@ import { AUDIO, type AudioThemeId } from "../constants/audio";
 import { THEMES } from "../assets/audio/themes/manifests";
 import AvatarPicker from "../components/profile/AvatarPicker";
 import SelfAvatar from "../components/profile/SelfAvatar";
+import MemberLockedGate from "../components/auth/MemberLockedGate";
+import { SecondaryButton, Button } from "../design-system/dls";
+import Modal from "../components/Modal";
 import { loadAccountDetails } from "../lib/accountGenerator";
 import {
   User,
@@ -41,17 +44,9 @@ type SettingsSection =
 export default function SettingsPage() {
   const [theme, toggleTheme] = useTheme();
   const isDark = theme === "dark";
-  const navigate = useNavigate();
 
   const { playerName, setPlayerName, avatarId, setAvatarId } = useRoomStore();
   const { isMember, ready, email: authEmail, signOut } = useAuthStore();
-
-  // Redirect guests away from settings once auth state is confirmed
-  useEffect(() => {
-    if (ready && !isMember) {
-      navigate("/", { replace: true });
-    }
-  }, [ready, isMember, navigate]);
 
   const { settings: audioSettings, setMasterVolume, setMusicVolume, setEffectsVolume, toggleMute, setAudioTheme, play } = useAudio();
   const haptics = useHaptics();
@@ -88,32 +83,13 @@ export default function SettingsPage() {
   const [eraseModalOpen, setEraseModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  /**
-   * Escape closes whichever modal is open, and the page behind stops
-   * scrolling while one is.
-   *
-   * Neither happened before. On a phone that meant the only exit from the
-   * avatar picker was a 32px button in a corner, and flicking the grid
-   * scrolled the settings page underneath it instead.
-   */
-  const anyModalOpen = avatarModalOpen || passwordModalOpen || eraseModalOpen || isEditingName;
-  useEffect(() => {
-    if (!anyModalOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setAvatarModalOpen(false);
-      setPasswordModalOpen(false);
-      setEraseModalOpen(false);
-      setIsEditingName(false);
-    };
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [anyModalOpen]);
+  // Focus trap, Escape, focus restoration and body-scroll lock for all four
+  // modals below are owned by <Modal> at each modal's own return site — one
+  // shared cross-modal Escape effect used to live here (added because no
+  // shared dialog primitive existed yet) and is gone now that one does.
+  const editNameInputRef = useRef<HTMLInputElement>(null);
+  const currentPasswordInputRef = useRef<HTMLInputElement>(null);
+  const eraseCancelBtnRef = useRef<HTMLButtonElement>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -194,9 +170,7 @@ export default function SettingsPage() {
     { id: "your-data", label: "Your Data", icon: Database },
   ];
 
-  // Every hook above has run unconditionally by this point, so bailing out
-  // here is safe in a way bailing out before them was not.
-  if (blocked) return null;
+  if (blocked) return <MemberLockedGate feature="settings" />;
 
   return (
     <AppLayout sidebar={false}>
@@ -238,7 +212,7 @@ export default function SettingsPage() {
                         active
                           ? isDark
                             ? "bg-amber-500/15 border border-amber-500/30 text-amber-300 font-extrabold shadow-2xs"
-                            : "bg-[#FFF2D6] border border-[#F2D7A2] text-[#8C4A0E] font-extrabold shadow-2xs"
+                            : "bg-[var(--chrome-active-bg)] border border-[#F2D7A2] text-[#8C4A0E] font-extrabold shadow-2xs"
                           : isDark
                           ? "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
                           : "text-[#6E543D] hover:text-[#3D2612] hover:bg-[#F3E7D3] border border-transparent"
@@ -262,11 +236,11 @@ export default function SettingsPage() {
                 <div className="absolute -top-2 -right-2 w-10 h-4 bg-[#F2E0B2]/90 dark:bg-[#D4B67A]/50 border border-[#DFC28B] shadow-2xs rotate-[30deg]" />
 
                 <div className="space-y-1 pt-1">
-                  <p className="text-[12.5px] font-bold text-[#16223B] dark:text-white leading-snug">
+                  <p className="text-[13px] font-bold text-[#16223B] dark:text-white leading-snug">
                     These settings are saved on{" "}
                     <span className="text-orange-600 dark:text-orange-400 font-extrabold">this device only.</span>
                   </p>
-                  <p className="text-[11px] font-medium text-[#7A5E45] dark:text-zinc-400">
+                  <p className="text-[11px] font-medium text-[var(--chrome-ink-soft)] dark:text-zinc-400">
                     They won&apos;t sync across devices.
                   </p>
                 </div>
@@ -327,7 +301,7 @@ export default function SettingsPage() {
               <section
                 id="profile-account"
                 className={`rounded-3xl border p-5 sm:p-6 shadow-[0_4px_20px_rgba(74,44,18,0.04)] text-left transition-colors space-y-4 ${
-                  isDark ? "bg-[#101728]/95 border-white/10" : "bg-[#FFFDF8] border-[#ECD9BA]"
+                  isDark ? "bg-[#101728]/95 border-white/10" : "bg-[#FFFDF8] border-[var(--chrome-hairline)]"
                 }`}
               >
                 {/* Section Heading */}
@@ -335,7 +309,7 @@ export default function SettingsPage() {
                   <span className="w-5 h-5 rounded-full bg-[#16223B] dark:bg-amber-500 text-white dark:text-slate-950 font-black text-[11px] flex items-center justify-center">
                     1
                   </span>
-                  <h2 className="font-bold text-[13.5px] uppercase tracking-wider text-[#16223B] dark:text-white">
+                  <h2 className="font-bold text-sm uppercase tracking-wider text-[#16223B] dark:text-white">
                     PROFILE & ACCOUNT
                   </h2>
                 </div>
@@ -350,7 +324,7 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => setAvatarModalOpen(true)}
-                        className="w-[72px] h-[72px] rounded-full overflow-hidden border-2 border-emerald-500 bg-[#FAF2DF] dark:bg-amber-900/40 flex items-center justify-center shadow-md cursor-pointer hover:ring-2 hover:ring-amber-400/60 transition group relative"
+                        className="w-[72px] h-[72px] rounded-full overflow-hidden border-2 border-emerald-500 bg-[var(--chrome-control)] dark:bg-amber-900/40 flex items-center justify-center shadow-md cursor-pointer hover:ring-2 hover:ring-amber-400/60 transition group relative"
                         title="Change Avatar"
                       >
                         <SelfAvatar
@@ -371,7 +345,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={() => setAvatarModalOpen(true)}
                         title="Change Avatar"
-                        className="absolute -bottom-1 -right-1 z-20 w-7 h-7 min-w-[28px] min-h-[28px] rounded-full bg-[#FAF2DF] dark:bg-[#1E293B] border-2 border-[#D4A574] dark:border-amber-400 text-[#8C4A0E] dark:text-amber-300 flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition cursor-pointer"
+                        className="absolute -bottom-1 -right-1 z-20 w-7 h-7 min-w-[28px] min-h-[28px] rounded-full bg-[var(--chrome-control)] dark:bg-[#1E293B] border-2 border-[var(--rim-gold)] dark:border-amber-400 text-[#8C4A0E] dark:text-amber-300 flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition cursor-pointer"
                       >
                         <Pencil className="w-3.5 h-3.5 stroke-[2.5]" />
                       </button>
@@ -380,17 +354,17 @@ export default function SettingsPage() {
                     {/* Inputs & Tags */}
                     <div className="flex-1 min-w-0 space-y-1.5">
                       <div>
-                        <span className="block text-[10px] font-bold text-[#7A5E45] dark:text-zinc-400 mb-0.5">
+                        <span className="block text-[10px] font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-0.5">
                           Display Name
                         </span>
-                        <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-xl border border-[#ECD9BA] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E]">
-                          <span className="text-[12.5px] font-black text-[#16223B] dark:text-white truncate">
+                        <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-xl border border-[var(--chrome-hairline)] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E]">
+                          <span className="text-[13px] font-black text-[#16223B] dark:text-white truncate">
                             {displayName}
                           </span>
                           <button
                             type="button"
                             onClick={() => setIsEditingName(true)}
-                            className="px-2 py-0.5 rounded-md text-[10px] font-bold border border-[#ECD9BA] dark:border-white/10 bg-white dark:bg-white/5 hover:border-amber-400 transition cursor-pointer flex-shrink-0"
+                            className="px-2 py-0.5 rounded-md text-[10px] font-bold border border-[var(--chrome-hairline)] dark:border-white/10 bg-white dark:bg-white/5 hover:border-amber-400 transition cursor-pointer flex-shrink-0"
                           >
                             Edit
                           </button>
@@ -398,11 +372,11 @@ export default function SettingsPage() {
                       </div>
 
                       <div>
-                        <span className="block text-[10px] font-bold text-[#7A5E45] dark:text-zinc-400 mb-0.5">
+                        <span className="block text-[10px] font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-0.5">
                           Profile ID
                         </span>
-                        <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-xl border border-[#ECD9BA] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E]">
-                          <span className="text-[11.5px] font-mono font-bold text-[#6E543D] dark:text-zinc-300">
+                        <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-xl border border-[var(--chrome-hairline)] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E]">
+                          <span className="text-xs font-mono font-bold text-[#6E543D] dark:text-zinc-300">
                             {profileId}
                           </span>
                           <button
@@ -418,10 +392,10 @@ export default function SettingsPage() {
 
                       {/* Bio Tags */}
                       <div className="flex items-center gap-1.5 pt-0.5">
-                        <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FAF2DF] dark:bg-white/5 border border-[#ECD9BA] dark:border-white/10 text-[#6E543D] dark:text-zinc-300 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--chrome-control)] dark:bg-white/5 border border-[var(--chrome-hairline)] dark:border-white/10 text-[#6E543D] dark:text-zinc-300 whitespace-nowrap">
                           🤠 90s kid
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FAF2DF] dark:bg-white/5 border border-[#ECD9BA] dark:border-white/10 text-[#6E543D] dark:text-zinc-300 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--chrome-control)] dark:bg-white/5 border border-[var(--chrome-hairline)] dark:border-white/10 text-[#6E543D] dark:text-zinc-300 whitespace-nowrap">
                           🃏 Rummy Lover
                         </span>
                       </div>
@@ -431,30 +405,30 @@ export default function SettingsPage() {
                   {/* Sub-card 2: Account Details (5 cols) */}
                   <div className="md:col-span-5 space-y-2 border-l md:border-[#ECD9BA]/60 md:dark:border-white/10 md:pl-5">
                     <div className="grid grid-cols-12 items-center text-xs py-0.5">
-                      <span className="col-span-4 font-bold text-[#7A5E45] dark:text-zinc-400 text-[10.5px]">Account ID</span>
+                      <span className="col-span-4 font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 text-[11px]">Account ID</span>
                       <span className="col-span-8 font-mono font-bold text-[#16223B] dark:text-white text-[11px] text-right sm:text-left">{accountId}</span>
                     </div>
 
                     <div className="grid grid-cols-12 items-center text-xs py-0.5">
-                      <span className="col-span-4 font-bold text-[#7A5E45] dark:text-zinc-400 text-[10.5px]">Created On</span>
+                      <span className="col-span-4 font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 text-[11px]">Created On</span>
                       <span className="col-span-8 font-medium text-[#16223B] dark:text-white text-[11px] text-right sm:text-left">{createdOn}</span>
                     </div>
 
                     <div className="grid grid-cols-12 items-center text-xs py-0.5">
-                      <span className="col-span-4 font-bold text-[#7A5E45] dark:text-zinc-400 text-[10.5px]">Email Address</span>
+                      <span className="col-span-4 font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 text-[11px]">Email Address</span>
                       <div className="col-span-8 flex items-center justify-end sm:justify-start gap-1 min-w-0">
-                        <span className="font-mono text-[#6E543D] dark:text-zinc-300 text-[10.5px] truncate">{email}</span>
-                        <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
+                        <span className="font-mono text-[#6E543D] dark:text-zinc-300 text-[11px] truncate">{email}</span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
                           Verified
                         </span>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-12 items-center text-xs py-0.5">
-                      <span className="col-span-4 font-bold text-[#7A5E45] dark:text-zinc-400 text-[10.5px]">Mobile Number</span>
+                      <span className="col-span-4 font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 text-[11px]">Mobile Number</span>
                       <div className="col-span-8 flex items-center justify-end sm:justify-start gap-1 min-w-0">
-                        <span className="font-mono text-[#6E543D] dark:text-zinc-300 text-[10.5px]">{phone}</span>
-                        <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
+                        <span className="font-mono text-[#6E543D] dark:text-zinc-300 text-[11px]">{phone}</span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
                           Verified
                         </span>
                       </div>
@@ -463,7 +437,7 @@ export default function SettingsPage() {
 
                   {/* Sub-card 3: Spiral Notepad with Pencil & Shield (3 cols) */}
                   <div className="md:col-span-3">
-                    <div className="relative bg-[#FFFDF8] dark:bg-[#141C2E] border border-[#ECD9BA] dark:border-white/10 rounded-2xl p-3.5 shadow-xs text-center">
+                    <div className="relative bg-[#FFFDF8] dark:bg-[#141C2E] border border-[var(--chrome-hairline)] dark:border-white/10 rounded-2xl p-3.5 shadow-xs text-center">
                       {/* Top Spiral Wire Rings */}
                       <div className="absolute -top-1.5 inset-x-4 flex justify-between px-1">
                         {[1, 2, 3, 4, 5, 6].map((k) => (
@@ -473,7 +447,7 @@ export default function SettingsPage() {
 
                       {/* Angled Pencil on Top Right */}
                       <div className="absolute -top-3 right-1 w-11 h-2.5 bg-amber-500 rounded-xs border border-amber-700 shadow-2xs rotate-[35deg] flex items-center justify-between px-0.5">
-                        <div className="w-1.5 h-full bg-[#FAF2DF]" />
+                        <div className="w-1.5 h-full bg-[var(--chrome-control)]" />
                         <div className="w-1 h-full bg-[#E57373] rounded-xs" />
                       </div>
 
@@ -482,10 +456,10 @@ export default function SettingsPage() {
                         <span className="text-xs">🛡️</span>
                       </div>
 
-                      <h4 className="font-bold text-[11.5px] text-[#16223B] dark:text-white leading-tight">
+                      <h4 className="font-bold text-xs text-[#16223B] dark:text-white leading-tight">
                         Your account, your memories.
                       </h4>
-                      <p className="text-[9.5px] text-[#7A5E45] dark:text-zinc-400 mt-0.5 leading-snug">
+                      <p className="text-[10px] text-[var(--chrome-ink-soft)] dark:text-zinc-400 mt-0.5 leading-snug">
                         Keep your account details up to date and secure.
                       </p>
                     </div>
@@ -503,22 +477,21 @@ export default function SettingsPage() {
                     <Lock className="w-4 h-4 text-[#8C4A0E] dark:text-amber-400" />
                     <div>
                       <div className="text-[12px] font-bold text-[#16223B] dark:text-white">Change Password</div>
-                      <div className="text-[10.5px] text-[#7A5E45] dark:text-zinc-400">Update your password regularly</div>
+                      <div className="text-[11px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Update your password regularly</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-zinc-400 ml-1" />
                   </button>
 
-                  <button
-                    type="button"
+                  <SecondaryButton
+                    size="sm"
                     onClick={() => {
                       signOut();
                       showToast("Signed out successfully.");
                     }}
-                    className="px-3.5 py-1.5 rounded-xl border border-orange-500/80 text-orange-600 dark:text-orange-400 text-xs font-bold flex items-center gap-1.5 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition cursor-pointer"
+                    leftIcon={<LogOut className="w-3.5 h-3.5" />}
                   >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out</span>
-                  </button>
+                    Sign Out
+                  </SecondaryButton>
                 </div>
               </section>
 
@@ -529,14 +502,14 @@ export default function SettingsPage() {
               <section
                 id="sound-haptics"
                 className={`rounded-3xl border p-5 sm:p-6 shadow-[0_4px_20px_rgba(74,44,18,0.04)] text-left transition-colors space-y-4 ${
-                  isDark ? "bg-[#101728]/95 border-white/10" : "bg-[#FFFDF8] border-[#ECD9BA]"
+                  isDark ? "bg-[#101728]/95 border-white/10" : "bg-[#FFFDF8] border-[var(--chrome-hairline)]"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-[#16223B] dark:bg-amber-500 text-white dark:text-slate-950 font-black text-[11px] flex items-center justify-center">
                     2
                   </span>
-                  <h2 className="font-bold text-[13.5px] uppercase tracking-wider text-[#16223B] dark:text-white">
+                  <h2 className="font-bold text-sm uppercase tracking-wider text-[#16223B] dark:text-white">
                     SOUND & HAPTICS
                   </h2>
                 </div>
@@ -548,8 +521,8 @@ export default function SettingsPage() {
                     {/* Sound Switch */}
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <div className="text-[12.5px] font-bold text-[#16223B] dark:text-white">Sound</div>
-                        <div className="text-[10.5px] text-[#7A5E45] dark:text-zinc-400">Turn all game sounds on or off</div>
+                        <div className="text-[13px] font-bold text-[#16223B] dark:text-white">Sound</div>
+                        <div className="text-[11px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Turn all game sounds on or off</div>
                       </div>
                       <button
                         type="button"
@@ -571,8 +544,8 @@ export default function SettingsPage() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <div>
-                          <span className="font-bold text-[#16223B] dark:text-white text-[11.5px]">Master Volume</span>
-                          <p className="text-[10px] text-[#7A5E45] dark:text-zinc-400">Overall device volume</p>
+                          <span className="font-bold text-[#16223B] dark:text-white text-xs">Master Volume</span>
+                          <p className="text-[10px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Overall device volume</p>
                         </div>
                         <span className="font-bold text-xs text-[#16223B] dark:text-white">
                           {Math.round(audioSettings.masterVolume * 100)}%
@@ -585,7 +558,7 @@ export default function SettingsPage() {
                         value={Math.round(audioSettings.masterVolume * 100)}
                         disabled={audioSettings.isMuted}
                         onChange={(e) => setMasterVolume(Number(e.target.value) / 100)}
-                        className="w-full h-1.5 bg-[#ECD9BA] dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                        className="w-full h-1.5 bg-[var(--chrome-hairline)] dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-600"
                       />
                     </div>
 
@@ -593,8 +566,8 @@ export default function SettingsPage() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <div>
-                          <span className="font-bold text-[#16223B] dark:text-white text-[11.5px]">Music Volume</span>
-                          <p className="text-[10px] text-[#7A5E45] dark:text-zinc-400">Background music in rooms</p>
+                          <span className="font-bold text-[#16223B] dark:text-white text-xs">Music Volume</span>
+                          <p className="text-[10px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Background music in rooms</p>
                         </div>
                         <span className="font-bold text-xs text-[#16223B] dark:text-white">
                           {Math.round(audioSettings.musicVolume * 100)}%
@@ -607,7 +580,7 @@ export default function SettingsPage() {
                         value={Math.round(audioSettings.musicVolume * 100)}
                         disabled={audioSettings.isMuted}
                         onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
-                        className="w-full h-1.5 bg-[#ECD9BA] dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                        className="w-full h-1.5 bg-[var(--chrome-hairline)] dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-600"
                       />
                     </div>
 
@@ -615,8 +588,8 @@ export default function SettingsPage() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <div>
-                          <span className="font-bold text-[#16223B] dark:text-white text-[11.5px]">Effects Volume</span>
-                          <p className="text-[10px] text-[#7A5E45] dark:text-zinc-400">Game effects &amp; interactions</p>
+                          <span className="font-bold text-[#16223B] dark:text-white text-xs">Effects Volume</span>
+                          <p className="text-[10px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Game effects &amp; interactions</p>
                         </div>
                         <span className="font-bold text-xs text-[#16223B] dark:text-white">
                           {Math.round(audioSettings.effectsVolume * 100)}%
@@ -629,7 +602,7 @@ export default function SettingsPage() {
                         value={Math.round(audioSettings.effectsVolume * 100)}
                         disabled={audioSettings.isMuted}
                         onChange={(e) => setEffectsVolume(Number(e.target.value) / 100)}
-                        className="w-full h-1.5 bg-[#ECD9BA] dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                        className="w-full h-1.5 bg-[var(--chrome-hairline)] dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-600"
                       />
                     </div>
                   </div>
@@ -638,8 +611,8 @@ export default function SettingsPage() {
                   <div className="md:col-span-6 space-y-3.5">
                     {/* Audio Theme Dropdown */}
                     <div className="space-y-1">
-                      <div className="text-[12.5px] font-bold text-[#16223B] dark:text-white">Audio Theme</div>
-                      <div className="text-[10.5px] text-[#7A5E45] dark:text-zinc-400">Choose your favourite sound pack</div>
+                      <div className="text-[13px] font-bold text-[#16223B] dark:text-white">Audio Theme</div>
+                      <div className="text-[11px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Choose your favourite sound pack</div>
                       <div className="relative mt-1">
                         <select
                           value={audioSettings.selectedAudioTheme}
@@ -648,7 +621,7 @@ export default function SettingsPage() {
                             play(AUDIO.UI_CLICK);
                             showToast(`Theme: ${THEMES.find(th => th.id === e.target.value)?.name}`);
                           }}
-                          className="w-full px-3.5 py-2 rounded-xl border border-[#ECD9BA] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E] text-xs font-bold text-[#16223B] dark:text-white appearance-none cursor-pointer focus:outline-none"
+                          className="w-full px-3.5 py-2 rounded-xl border border-[var(--chrome-hairline)] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E] text-xs font-bold text-[#16223B] dark:text-white appearance-none cursor-pointer focus:outline-none"
                         >
                           {THEMES.map((themeItem) => (
                             <option key={themeItem.id} value={themeItem.id}>
@@ -663,8 +636,8 @@ export default function SettingsPage() {
                     {/* Vibration Switch */}
                     <div className="flex items-center justify-between gap-2 pt-1">
                       <div>
-                        <div className="text-[12.5px] font-bold text-[#16223B] dark:text-white">Vibration</div>
-                        <div className="text-[10.5px] text-[#7A5E45] dark:text-zinc-400">Vibrate on actions &amp; game events</div>
+                        <div className="text-[13px] font-bold text-[#16223B] dark:text-white">Vibration</div>
+                        <div className="text-[11px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Vibrate on actions &amp; game events</div>
                       </div>
                       <button
                         type="button"
@@ -684,14 +657,14 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Audio Quote Banner with Headphones & Airplane */}
-                    <div className="p-3.5 rounded-2xl border border-[#ECD9BA] dark:border-white/10 bg-[#FFFDF8] dark:bg-[#141C2E] flex items-center justify-between gap-3">
+                    <div className="p-3.5 rounded-2xl border border-[var(--chrome-hairline)] dark:border-white/10 bg-[#FFFDF8] dark:bg-[#141C2E] flex items-center justify-between gap-3">
                       <div className="flex items-start gap-2.5">
                         <Headphones className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                         <div>
                           <div className="text-[12px] font-bold text-[#16223B] dark:text-white">
                             Sound makes every win sweeter!
                           </div>
-                          <div className="text-[10px] text-[#7A5E45] dark:text-zinc-400">
+                          <div className="text-[10px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">
                             Use volumes to set the perfect mood for your games.
                           </div>
                         </div>
@@ -715,14 +688,14 @@ export default function SettingsPage() {
               <section
                 id="appearance-language"
                 className={`rounded-3xl border p-5 sm:p-6 shadow-[0_4px_20px_rgba(74,44,18,0.04)] text-left transition-colors space-y-4 ${
-                  isDark ? "bg-[#101728]/95 border-white/10" : "bg-[#FFFDF8] border-[#ECD9BA]"
+                  isDark ? "bg-[#101728]/95 border-white/10" : "bg-[#FFFDF8] border-[var(--chrome-hairline)]"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-[#16223B] dark:bg-amber-500 text-white dark:text-slate-950 font-black text-[11px] flex items-center justify-center">
                     3
                   </span>
-                  <h2 className="font-bold text-[13.5px] uppercase tracking-wider text-[#16223B] dark:text-white">
+                  <h2 className="font-bold text-sm uppercase tracking-wider text-[#16223B] dark:text-white">
                     APPEARANCE & LANGUAGE
                   </h2>
                 </div>
@@ -731,8 +704,8 @@ export default function SettingsPage() {
                   
                   {/* Left Column: Theme Picker (6 cols) */}
                   <div className="md:col-span-6 space-y-1.5">
-                    <div className="text-[12.5px] font-bold text-[#16223B] dark:text-white">Theme</div>
-                    <div className="text-[10.5px] text-[#7A5E45] dark:text-zinc-400">Choose your preferred look</div>
+                    <div className="text-[13px] font-bold text-[#16223B] dark:text-white">Theme</div>
+                    <div className="text-[11px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Choose your preferred look</div>
 
                     <div className="grid grid-cols-2 gap-3 pt-1">
                       {/* Light Mode Card */}
@@ -757,7 +730,7 @@ export default function SettingsPage() {
                           <span className="text-base">☀️</span>
                           <span className="font-bold text-xs text-[#16223B] dark:text-white">Light Mode</span>
                         </div>
-                        <div className="h-10 rounded-xl bg-gradient-to-t from-[#F5DEB3] to-[#FFF9E6] border border-[#ECD9BA] flex items-end justify-center pb-1">
+                        <div className="h-10 rounded-xl bg-gradient-to-t from-[#F5DEB3] to-[#FFF9E6] border border-[var(--chrome-hairline)] flex items-end justify-center pb-1">
                           <div className="w-8 h-4 rounded-t-full bg-amber-400/80" />
                         </div>
                       </button>
@@ -772,7 +745,7 @@ export default function SettingsPage() {
                         className={`relative p-3 rounded-2xl border-2 text-left transition-all cursor-pointer overflow-hidden ${
                           isDark
                             ? "border-amber-400 bg-[#141D30] shadow-md scale-[1.02]"
-                            : "border-[#ECD9BA] bg-[#FAF4E6] hover:border-amber-400/50"
+                            : "border-[var(--chrome-hairline)] bg-[#FAF4E6] hover:border-amber-400/50"
                         }`}
                       >
                         {isDark && (
@@ -794,8 +767,8 @@ export default function SettingsPage() {
                   {/* Right Column: Language Selector & Community Banner (6 cols) */}
                   <div className="md:col-span-6 space-y-3.5">
                     <div className="space-y-1">
-                      <div className="text-[12.5px] font-bold text-[#16223B] dark:text-white">Language</div>
-                      <div className="text-[10.5px] text-[#7A5E45] dark:text-zinc-400">Change the language of the app</div>
+                      <div className="text-[13px] font-bold text-[#16223B] dark:text-white">Language</div>
+                      <div className="text-[11px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Change the language of the app</div>
                       <div className="relative mt-1">
                         <select
                           value={locale}
@@ -803,7 +776,7 @@ export default function SettingsPage() {
                             setLocale(e.target.value as any);
                             showToast(`Language set to ${e.target.value}`);
                           }}
-                          className="w-full px-3.5 py-2 rounded-xl border border-[#ECD9BA] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E] text-xs font-bold text-[#16223B] dark:text-white appearance-none cursor-pointer focus:outline-none"
+                          className="w-full px-3.5 py-2 rounded-xl border border-[var(--chrome-hairline)] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E] text-xs font-bold text-[#16223B] dark:text-white appearance-none cursor-pointer focus:outline-none"
                         >
                           <option value="en">🇮🇳 English (India)</option>
                           <option value="te">🇮🇳 తెలుగు (Telugu)</option>
@@ -818,14 +791,14 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Community Banner */}
-                    <div className="p-3.5 rounded-2xl border border-[#ECD9BA] dark:border-white/10 bg-[#FFFDF8] dark:bg-[#141C2E] flex items-center justify-between gap-3">
+                    <div className="p-3.5 rounded-2xl border border-[var(--chrome-hairline)] dark:border-white/10 bg-[#FFFDF8] dark:bg-[#141C2E] flex items-center justify-between gap-3">
                       <div className="flex items-start gap-2.5">
                         <Globe className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                         <div>
                           <div className="text-[12px] font-bold text-[#16223B] dark:text-white">
                             More languages coming soon!
                           </div>
-                          <div className="text-[10px] text-[#7A5E45] dark:text-zinc-400">
+                          <div className="text-[10px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">
                             Bhalyam will grow with our community.
                           </div>
                         </div>
@@ -849,14 +822,14 @@ export default function SettingsPage() {
               <section
                 id="your-data"
                 className={`rounded-3xl border p-5 sm:p-6 shadow-[0_4px_20px_rgba(74,44,18,0.04)] text-left transition-colors space-y-4 ${
-                  isDark ? "bg-[#101728]/95 border-white/10" : "bg-[#FFFDF8] border-[#ECD9BA]"
+                  isDark ? "bg-[#101728]/95 border-white/10" : "bg-[#FFFDF8] border-[var(--chrome-hairline)]"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-[#16223B] dark:bg-amber-500 text-white dark:text-slate-950 font-black text-[11px] flex items-center justify-center">
                     4
                   </span>
-                  <h2 className="font-bold text-[13.5px] uppercase tracking-wider text-[#16223B] dark:text-white">
+                  <h2 className="font-bold text-sm uppercase tracking-wider text-[#16223B] dark:text-white">
                     YOUR DATA
                   </h2>
                 </div>
@@ -875,7 +848,7 @@ export default function SettingsPage() {
                         <Download className="w-4 h-4 text-[#8C4A0E] dark:text-amber-400" />
                         <div className="text-left">
                           <div className="text-[12px] font-bold text-[#16223B] dark:text-white">Download My Data</div>
-                          <div className="text-[10px] text-[#7A5E45] dark:text-zinc-400">Get a copy of your data and activity</div>
+                          <div className="text-[10px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Get a copy of your data and activity</div>
                         </div>
                       </div>
                       <ChevronRight className="w-4 h-4 text-zinc-400" />
@@ -891,7 +864,7 @@ export default function SettingsPage() {
                         <Trash2 className="w-4 h-4 text-rose-600" />
                         <div className="text-left">
                           <div className="text-[12px] font-bold text-rose-600 dark:text-rose-400">Erase Everything</div>
-                          <div className="text-[10px] text-[#7A5E45] dark:text-zinc-400">Delete all data from this device</div>
+                          <div className="text-[10px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Delete all data from this device</div>
                         </div>
                       </div>
                       <ChevronRight className="w-4 h-4 text-zinc-400" />
@@ -900,16 +873,16 @@ export default function SettingsPage() {
 
                   {/* Right Column: Data Policy Note (6 cols) */}
                   <div className="md:col-span-6">
-                    <div className="p-3.5 rounded-2xl border border-[#ECD9BA] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E] flex items-center justify-between gap-3">
+                    <div className="p-3.5 rounded-2xl border border-[var(--chrome-hairline)] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E] flex items-center justify-between gap-3">
                       <div className="flex items-start gap-2.5">
                         <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <Database className="w-4.5 h-4.5" />
                         </div>
                         <div>
-                          <div className="text-[12.5px] font-bold text-[#16223B] dark:text-white">
+                          <div className="text-[13px] font-bold text-[#16223B] dark:text-white">
                             Your data, your choice.
                           </div>
-                          <div className="text-[10.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-0.5">
+                          <div className="text-[11px] text-[var(--chrome-ink-soft)] dark:text-zinc-400 leading-snug mt-0.5">
                             You can download or delete your data anytime. We keep it simple and transparent.
                           </div>
                         </div>
@@ -931,197 +904,180 @@ export default function SettingsPage() {
           </div>
         </main>
 
-        {/* ── Avatar Picker Modal ──────────────────────────────
-            Backdrop click and Escape both close it. Neither used to: the
-            only way out was the one small button in the corner, which on a
-            phone is the hardest target on the screen. `role="dialog"` and
-            `aria-modal` are what make a screen reader treat this as a layer
-            over the page rather than more page. */}
-        {avatarModalOpen && (
-          <div
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setAvatarModalOpen(false)}
-          >
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="avatar-modal-title"
-              onClick={(e) => e.stopPropagation()}
-              className={`w-full max-w-md rounded-3xl border p-5 sm:p-6 shadow-2xl space-y-4 text-left ${
-                isDark ? "bg-[#131926] border-[#2A3346]" : "bg-[#FFFDF8] border-[#E4D4B4]"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3
-                    id="avatar-modal-title"
-                    className="font-bold text-[17px] text-[#2A221B] dark:text-[#F1F5F9]"
-                  >
-                    Choose your avatar
-                  </h3>
-                  <p className="text-[12.5px] text-[#6B5340] dark:text-[#9FB0C6] mt-0.5">
-                    Saved as soon as you pick one.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setAvatarModalOpen(false)}
-                  aria-label="Close"
-                  className="flex-shrink-0 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border flex items-center justify-center cursor-pointer
-                             border-[#A17C4E] text-[#6B5340] hover:bg-[#F2E4CB] hover:text-[#2A221B]
-                             dark:border-[#66799A] dark:text-[#9FB0C6] dark:hover:bg-[#27324A] dark:hover:text-[#F1F5F9]
-                             focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2410C] dark:focus-visible:ring-[#FBBF24]
-                             transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <AvatarPicker
-                value={avatarId}
-                onChange={(id) => {
-                  setAvatarId(id);
-                  setAvatarModalOpen(false);
-                  showToast(id ? "Avatar updated" : "Avatar removed");
-                }}
-              />
+        {/* ── Avatar Picker Modal ── */}
+        <Modal
+          open={avatarModalOpen}
+          onClose={() => setAvatarModalOpen(false)}
+          ariaLabelledBy="avatar-modal-title"
+          panelClassName={`w-full max-w-md rounded-3xl border p-5 sm:p-6 shadow-2xl space-y-4 text-left ${
+            isDark ? "bg-[var(--chrome-panel)] border-[var(--chrome-hairline)]" : "bg-[#FFFDF8] border-[#E4D4B4]"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3
+                id="avatar-modal-title"
+                className="font-bold text-[17px] text-[var(--chrome-ink)]"
+              >
+                Choose your avatar
+              </h3>
+              <p className="text-[13px] text-[#6B5340] dark:text-[var(--chrome-ink-soft)] mt-0.5">
+                Saved as soon as you pick one.
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setAvatarModalOpen(false)}
+              aria-label="Close"
+              className="flex-shrink-0 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border flex items-center justify-center cursor-pointer
+                         border-[var(--chrome-border)] text-[#6B5340] hover:bg-[var(--chrome-control-hi)] hover:text-[var(--chrome-ink)]
+                         dark:text-[var(--chrome-ink-soft)]
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chrome-accent)]
+                         transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        )}
+
+          <AvatarPicker
+            value={avatarId}
+            onChange={(id) => {
+              setAvatarId(id);
+              setAvatarModalOpen(false);
+              showToast(id ? "Avatar updated" : "Avatar removed");
+            }}
+          />
+        </Modal>
 
         {/* ── Edit Display Name Modal ───────────────────────── */}
-        {isEditingName && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div
-              className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 text-left ${
-                isDark ? "bg-[#101728] border-white/15" : "bg-[#FFFDF8] border-[#ECD9BA]"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-[16px] text-[#16223B] dark:text-white">Edit Display Name</h3>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingName(false)}
-                  className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-sm font-black cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveName} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#7A5E45] dark:text-zinc-400 mb-1">
-                    Display Name
-                  </label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl text-sm font-bold border border-amber-500 bg-white dark:bg-[#141D30] text-[#16223B] dark:text-white focus:outline-none"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-md transition cursor-pointer"
-                >
-                  Save Name
-                </button>
-              </form>
-            </div>
+        <Modal
+          open={isEditingName}
+          onClose={() => setIsEditingName(false)}
+          initialFocusRef={editNameInputRef}
+          ariaLabelledBy="edit-name-modal-title"
+          panelClassName={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 text-left ${
+            isDark ? "bg-[#101728] border-white/15" : "bg-[#FFFDF8] border-[var(--chrome-hairline)]"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <h3 id="edit-name-modal-title" className="font-bold text-[16px] text-[#16223B] dark:text-white">
+              Edit Display Name
+            </h3>
+            <SecondaryButton
+              size="iconOnly"
+              onClick={() => setIsEditingName(false)}
+              aria-label="Close"
+              leftIcon={<X className="w-4 h-4" aria-hidden />}
+            />
           </div>
-        )}
+
+          <form onSubmit={handleSaveName} className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-1">
+                Display Name
+              </label>
+              <input
+                ref={editNameInputRef}
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl text-sm font-bold border border-amber-500 bg-white dark:bg-[#141D30] text-[#16223B] dark:text-white focus:outline-none"
+              />
+            </div>
+            <Button type="submit" variant="primary" size="sm" className="w-full">
+              Save Name
+            </Button>
+          </form>
+        </Modal>
 
         {/* ── Change Password Modal ─────────────────────────── */}
-        {passwordModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div
-              className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 text-left ${
-                isDark ? "bg-[#101728] border-white/15" : "bg-[#FFFDF8] border-[#ECD9BA]"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-[16px] text-[#16223B] dark:text-white">Change Password</h3>
-                <button
-                  type="button"
-                  onClick={() => setPasswordModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-sm font-black cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#7A5E45] dark:text-zinc-400 mb-1">Current Password</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2 rounded-xl text-sm border bg-[#FAF4E6] dark:bg-[#141C2E] border-[#ECD9BA] dark:border-white/15"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-[#7A5E45] dark:text-zinc-400 mb-1">New Password</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2 rounded-xl text-sm border bg-[#FAF4E6] dark:bg-[#141C2E] border-[#ECD9BA] dark:border-white/15"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPasswordModalOpen(false);
-                    showToast("✓ Password updated successfully!");
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-md transition cursor-pointer"
-                >
-                  Update Password
-                </button>
-              </div>
-            </div>
+        <Modal
+          open={passwordModalOpen}
+          onClose={() => setPasswordModalOpen(false)}
+          initialFocusRef={currentPasswordInputRef}
+          ariaLabelledBy="change-password-modal-title"
+          panelClassName={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 text-left ${
+            isDark ? "bg-[#101728] border-white/15" : "bg-[#FFFDF8] border-[var(--chrome-hairline)]"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <h3 id="change-password-modal-title" className="font-bold text-[16px] text-[#16223B] dark:text-white">
+              Change Password
+            </h3>
+            <SecondaryButton
+              size="iconOnly"
+              onClick={() => setPasswordModalOpen(false)}
+              aria-label="Close"
+              leftIcon={<X className="w-4 h-4" aria-hidden />}
+            />
           </div>
-        )}
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-1">Current Password</label>
+              <input
+                ref={currentPasswordInputRef}
+                type="password"
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2 rounded-xl text-sm border bg-[#FAF4E6] dark:bg-[#141C2E] border-[var(--chrome-hairline)] dark:border-white/15"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-1">New Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2 rounded-xl text-sm border bg-[#FAF4E6] dark:bg-[#141C2E] border-[var(--chrome-hairline)] dark:border-white/15"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                setPasswordModalOpen(false);
+                showToast("✓ Password updated successfully!");
+              }}
+            >
+              Update Password
+            </Button>
+          </div>
+        </Modal>
 
         {/* ── Erase Everything Confirmation Modal ───────────── */}
-        {eraseModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div
-              className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 text-left ${
-                isDark ? "bg-[#101728] border-rose-500/30" : "bg-[#FFFDF8] border-rose-200"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-[16px] text-rose-600">Erase All Data</h3>
-                <button
-                  type="button"
-                  onClick={() => setEraseModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-sm font-black cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-              <p className="text-xs text-[#7A5E45] dark:text-zinc-400">
-                Are you sure you want to erase all your local data from this device? This will clear your saved settings, local rooms, and login preferences.
-              </p>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEraseModalOpen(false)}
-                  className="flex-1 py-2 rounded-xl border border-[#ECD9BA] text-xs font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleEraseAllData}
-                  className="flex-1 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-md cursor-pointer hover:bg-rose-700 transition"
-                >
-                  Erase Data
-                </button>
-              </div>
-            </div>
+        <Modal
+          open={eraseModalOpen}
+          onClose={() => setEraseModalOpen(false)}
+          initialFocusRef={eraseCancelBtnRef}
+          ariaLabelledBy="erase-modal-title"
+          panelClassName={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 text-left ${
+            isDark ? "bg-[#101728] border-rose-500/30" : "bg-[#FFFDF8] border-rose-200"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <h3 id="erase-modal-title" className="font-bold text-[16px] text-rose-600">
+              Erase All Data
+            </h3>
+            <SecondaryButton
+              size="iconOnly"
+              onClick={() => setEraseModalOpen(false)}
+              aria-label="Close"
+              leftIcon={<X className="w-4 h-4" aria-hidden />}
+            />
           </div>
-        )}
+          <p className="text-xs text-[var(--chrome-ink-soft)] dark:text-zinc-400">
+            Are you sure you want to erase all your local data from this device? This will clear your saved settings, local rooms, and login preferences.
+          </p>
+          <div className="flex gap-2 pt-2">
+            <SecondaryButton ref={eraseCancelBtnRef} size="sm" className="flex-1" onClick={() => setEraseModalOpen(false)}>
+              Cancel
+            </SecondaryButton>
+            <Button variant="danger" size="sm" className="flex-1" onClick={handleEraseAllData}>
+              Erase Data
+            </Button>
+          </div>
+        </Modal>
 
       </div>
     </AppLayout>

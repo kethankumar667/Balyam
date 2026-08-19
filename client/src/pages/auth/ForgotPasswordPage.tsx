@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
         <div className="space-y-5">
           <div className="flex items-start gap-3 rounded-xl border border-[var(--auth-note-edge)] bg-[var(--auth-note-bg)] p-3.5">
             <MailIcon className="w-5 h-5 mt-0.5 flex-shrink-0 text-[var(--auth-accent)]" />
-            <div className="min-w-0 text-[13.5px] leading-relaxed text-[var(--auth-note-ink)]">
+            <div className="min-w-0 text-sm leading-relaxed text-[var(--auth-note-ink)]">
               <p className="font-bold break-words">{email.trim()}</p>
               <p className="mt-0.5">
                 The link works once and expires in an hour. Check spam if it hasn&apos;t

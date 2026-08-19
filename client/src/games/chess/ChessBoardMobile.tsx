@@ -126,7 +126,7 @@ export default function ChessBoardMobile({
             <h1 className="text-sm font-black font-serif tracking-wide text-[#2B1909] flex items-center gap-1">
               <span>👑</span> CHESS LOUNGE <span>✨</span>
             </h1>
-            <div className="px-2 py-0.2 rounded-full bg-gradient-to-r from-[#2B6CB0] to-[#1A365D] text-white text-[8px] font-black uppercase tracking-widest shadow-sm">
+            <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-[#2B6CB0] to-[#1A365D] text-white text-[8px] font-black uppercase tracking-widest shadow-sm">
               CLASSIC MODE
             </div>
           </div>
@@ -299,7 +299,7 @@ export default function ChessBoardMobile({
               </div>
             ) : (
               turnsList.map((t) => (
-                <div key={t.num} className="flex items-center justify-between px-1 py-0.2 rounded bg-[#EAD6B8]">
+                <div key={t.num} className="flex items-center justify-between px-1 py-0.5 rounded bg-[#EAD6B8]">
                   <span className="font-bold text-[#8B5A2B] w-5">{t.num}.</span>
                   <span className="flex-1">{t.white ?? "..."}</span>
                   <span className="flex-1 text-right text-[#6D4323]">{t.black ?? ""}</span>

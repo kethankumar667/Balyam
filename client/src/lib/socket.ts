@@ -5,6 +5,10 @@ import { logConn } from "./connectionLog";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:4000";
 
+export function getApiBaseUrl(): string {
+  return SERVER_URL;
+}
+
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 export type ConnectionState =

@@ -91,7 +91,13 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const { history, champion } = props;
   const m = useUnoBoard(props);
   const { state, players, selfId, messages, roomCode, onLeave } = m;
-  const tut = useTutorialGate(UNO_TUTORIAL.key);
+  // Never over a live turn or challenge window — same condition this board
+  // already uses to decide whether the turn-timer warning is active (below).
+  // See GameTutorial.tsx's useTutorialGate doc.
+  const tut = useTutorialGate(
+    UNO_TUTORIAL.key,
+    (!m.myTurn && !m.isChallengeTarget) || state.turnDeadline == null,
+  );
 
   const needsLandscape = useOrientationReport();
   const gate = useUnoRotationGate({

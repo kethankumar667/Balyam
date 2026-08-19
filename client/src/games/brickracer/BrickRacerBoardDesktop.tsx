@@ -216,15 +216,15 @@ export default function BrickRacerBoardDesktop({ onExit }: BrickRacerBoardProps)
         {/* Center Column: Handset Frame with LCD Canvas & Keypad */}
         <section className="lg:col-span-6 flex justify-center">
           <BrickConsoleFrame>
-            {/* 10x20 Physical Beveled LCD Matrix Screen */}
-            <div className="relative w-[210px] h-[340px] bg-[#9BBC0F] rounded-xl border-4 border-[#0F380F] shadow-inner overflow-hidden flex items-center justify-center p-1">
+            {/* 12x12 Physical Beveled LCD Matrix Screen */}
+            <div className="relative w-[260px] h-[260px] sm:w-[280px] sm:h-[280px] bg-[#9BBC0F] rounded-2xl border-4 border-[#0F380F] shadow-inner overflow-hidden flex items-center justify-center p-1.5">
               {/* LCD Phosphor Pixel Texture Overlay */}
               <div className="absolute inset-0 bg-[linear-gradient(rgba(15,56,15,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,56,15,0.06)_1px,transparent_1px)] bg-[size:4px_4px] pointer-events-none z-10" />
 
               <canvas
                 ref={canvasRef}
-                width={142}
-                height={272}
+                width={228}
+                height={228}
                 className="w-full h-full block image-rendering-pixelated"
               />
             </div>

@@ -6,6 +6,7 @@ import { useRoomStore } from "./roomStore";
 import { getSupabase, isSupabaseConfigured, SESSION_STORAGE_KEY } from "../lib/supabase/client";
 import { fetchProfile, saveProfile } from "../lib/supabase/profile";
 import { saveAccountDetails, clearAccountDetails } from "../lib/accountGenerator";
+import { clearGuestIdentity } from "../lib/playerIdentity";
 
 /**
  * Whether this browser is a guest or a member.
@@ -184,6 +185,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
       useRoomStore.getState().setAvatarId(null);
       localStorage.removeItem("mpg.playerName");
       localStorage.removeItem("mpg.avatar");
+      localStorage.removeItem("bhalyam.profile.displayName");
+      localStorage.removeItem("bhalyam.profile.bio");
+      localStorage.removeItem("bhalyam.profile.region");
+      clearGuestIdentity();
     } catch {}
     set({
       ...GUEST,

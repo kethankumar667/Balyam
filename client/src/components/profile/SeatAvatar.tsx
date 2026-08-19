@@ -42,7 +42,7 @@ function toneFor(name: string): string {
 }
 
 function initialOf(name: string): string {
-  const trimmed = name.trim();
+  const trimmed = (name || "").trim();
   // `[...str]` rather than `str[0]`, so a name starting with an astral
   // character (or a Telugu cluster) is not sliced through the middle of a
   // surrogate pair into a replacement glyph.
@@ -63,6 +63,8 @@ export interface SeatAvatarProps {
    * circle shaves heads.
    */
   objectPosition?: string;
+  /** Optional custom fallback element if no avatar is resolved. */
+  fallback?: React.ReactNode;
 }
 
 export default function SeatAvatar({
@@ -71,43 +73,84 @@ export default function SeatAvatar({
   className = "w-8 h-8",
   textClassName = "text-[11px]",
   objectPosition = "50% 22%",
+  fallback,
 }: SeatAvatarProps) {
   const option = findAvatar(avatar);
   const [failed, setFailed] = useState(false);
 
+  const isEmoji =
+    avatar &&
+    avatar.length <= 4 &&
+    !avatar.includes(".") &&
+    !avatar.includes("/") &&
+    !avatar.includes("_");
+
+  const isDirectImage =
+    avatar &&
+    (avatar.startsWith("http://") || avatar.startsWith("https://") || avatar.startsWith("/"));
+
   // A seat can change hands (host migration, a reconnect with a new choice),
   // and a stale `failed` would hide the incoming player's perfectly good
   // avatar behind the previous occupant's failure.
-  useEffect(() => setFailed(false), [option?.src]);
+  useEffect(() => setFailed(false), [option?.src, avatar]);
 
-  if (!option || failed) {
+  if (option && !failed) {
     return (
-      <span
-        className={`inline-flex items-center justify-center rounded-full
-                    font-bold text-white flex-shrink-0 select-none
-                    ${className} ${textClassName}`}
-        style={{ backgroundColor: toneFor(name) }}
-        aria-hidden
-      >
-        {initialOf(name)}
+      <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
+        <img
+          src={option.src}
+          alt=""
+          aria-hidden
+          className="w-full h-full object-cover scale-[1.25] origin-center"
+          style={{ objectPosition }}
+          onError={() => setFailed(true)}
+          draggable={false}
+        />
       </span>
     );
   }
 
-  return (
-    <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
-      <img
-        src={option.src}
-        /* Decorative: the player's name is rendered immediately beside this in
-           every caller, so announcing "Avatar 12" would add a number the player
-           never chose and cannot act on. */
-        alt=""
+  if (isDirectImage && !failed) {
+    return (
+      <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
+        <img
+          src={avatar}
+          alt=""
+          aria-hidden
+          className="w-full h-full object-cover scale-[1.25] origin-center"
+          style={{ objectPosition }}
+          onError={() => setFailed(true)}
+          draggable={false}
+        />
+      </span>
+    );
+  }
+
+  if (isEmoji) {
+    return (
+      <span
+        className={`inline-flex items-center justify-center rounded-full
+                    flex-shrink-0 select-none ${className} ${textClassName}`}
         aria-hidden
-        className="w-full h-full object-cover scale-[1.25] origin-center"
-        style={{ objectPosition }}
-        onError={() => setFailed(true)}
-        draggable={false}
-      />
+      >
+        {avatar}
+      </span>
+    );
+  }
+
+  if (fallback !== undefined) {
+    return <>{fallback}</>;
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center rounded-full
+                  font-bold text-white flex-shrink-0 select-none
+                  ${className} ${textClassName}`}
+      style={{ backgroundColor: toneFor(name) }}
+      aria-hidden
+    >
+      {initialOf(name)}
     </span>
   );
 }

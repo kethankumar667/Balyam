@@ -28,7 +28,10 @@ import {
  */
 export default function RpsBroadcastMobile(props: RpsBoardProps) {
   const m = useRpsBoard(props);
-  const tut = useTutorialGate(RPS_TUTORIAL.key);
+  // Never over a live round: safe once this player doesn't need to choose,
+  // or no round deadline is running — same condition this board already uses
+  // for the turn-timer warning (below). See GameTutorial.tsx's useTutorialGate doc.
+  const tut = useTutorialGate(RPS_TUTORIAL.key, !m.iNeedToChoose || m.roundDeadline == null);
   const [, setSkin] = useSkin();
   const showResult = m.state.isOver;
 

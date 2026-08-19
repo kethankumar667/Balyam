@@ -66,7 +66,7 @@ export default function VerifyEmailPage() {
             role="status"
           >
             <CheckCircleIcon className="w-6 h-6 flex-shrink-0" />
-            <p className="text-[13.5px] font-bold leading-snug">Email verified</p>
+            <p className="text-sm font-bold leading-snug">Email verified</p>
           </div>
 
           <Link
@@ -96,7 +96,7 @@ export default function VerifyEmailPage() {
       <div className="space-y-5">
         <div className="flex items-start gap-3 rounded-xl border border-[var(--auth-note-edge)] bg-[var(--auth-note-bg)] p-3.5">
           <MailIcon className="w-5 h-5 mt-0.5 flex-shrink-0 text-[var(--auth-accent)]" />
-          <div className="min-w-0 text-[13.5px] leading-relaxed text-[var(--auth-note-ink)]">
+          <div className="min-w-0 text-sm leading-relaxed text-[var(--auth-note-ink)]">
             {address ? (
               <p className="font-bold break-words">{address}</p>
             ) : (

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Player } from "@shared/types";
+import { Trash2 } from "lucide-react";
 
 export default function ParticipantActionMenu({
   player,
@@ -93,7 +94,7 @@ export default function ParticipantActionMenu({
               onClick={() => setIsConfirmingRemove(true)}
               className="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 transition cursor-pointer min-h-[40px]"
             >
-              <span aria-hidden>🗑️</span>
+              <Trash2 size={14} aria-hidden />
               <span>{player.isBot ? "Remove Bot" : "Remove Local Seat"}</span>
             </button>
           ) : (

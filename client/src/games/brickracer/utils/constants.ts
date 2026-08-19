@@ -1,18 +1,18 @@
 import type { LaneIndex } from "../types";
 
 export const GRID_CONFIG = {
-  COLS: 10,
-  ROWS: 20,
-  CELL_SIZE: 13, // Pixel size per LCD block
+  COLS: 12,
+  ROWS: 12,
+  CELL_SIZE: 18, // Pixel size per LCD block
   PADDING: 6,
-  CANVAS_WIDTH: 10 * 13 + 12, // 142px
-  CANVAS_HEIGHT: 20 * 13 + 12, // 272px
+  CANVAS_WIDTH: 12 * 18 + 12, // 228px
+  CANVAS_HEIGHT: 12 * 18 + 12, // 228px
 } as const;
 
 export const LANE_CENTERS: Record<LaneIndex, number> = {
-  0: 2, // Left Lane (x in [1, 3])
-  1: 5, // Center Lane (x in [4, 6])
-  2: 7, // Right Lane (x in [6, 8])
+  0: 3, // Left Lane (x in [2, 4])
+  1: 6, // Center Lane (x in [5, 7])
+  2: 9, // Right Lane (x in [8, 10])
 };
 
 export const LCD_THEME = {

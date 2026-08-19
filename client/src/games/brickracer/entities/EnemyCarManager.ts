@@ -5,12 +5,12 @@ export class EnemyCarManager {
   public enemies: EnemyCar[] = [];
   private nextId: number = 1;
   private spawnCooldown: number = 0;
-  public readonly minSpawnCooldown: number = 6; // Minimum 6 rows vertical gap between waves
+  public readonly minSpawnCooldown: number = 4; // Minimum 4 rows vertical gap between waves
 
   public reset(): void {
     this.enemies = [];
     this.nextId = 1;
-    this.spawnCooldown = 4;
+    this.spawnCooldown = 3;
   }
 
   public advance(): { dodgedCount: number } {
@@ -19,8 +19,8 @@ export class EnemyCarManager {
 
     for (const enemy of this.enemies) {
       enemy.y += 1;
-      if (enemy.y > 20) {
-        // Car passed beyond screen
+      if (enemy.y > 12) {
+        // Car passed beyond 12-row screen
         dodgedCount++;
       } else {
         remaining.push(enemy);

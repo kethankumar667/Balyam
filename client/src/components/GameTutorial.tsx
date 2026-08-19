@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Modal from "./Modal";
 
 /** One tutorial slide: a big emoji, a title, and rich body content. */
 export interface TutorialSlide {
@@ -12,23 +13,51 @@ export interface TutorialSlide {
  * Rummy/WordBuilding helpers (localStorage key `<game>.tutorial.completed.v1`)
  * so every other game shares ONE modal implementation instead of copying it.
  *
- * `open` starts true the first time this browser opens the game; closing via
- * {@link GameTutorial} marks the key seen so it won't auto-open again. A header
- * "?" button ({@link TutorialButton}) can re-open it anytime.
+ * Closing via {@link GameTutorial} marks the key seen so it won't auto-open
+ * again. A header "?" button ({@link TutorialButton}) can re-open it anytime.
  *
  * SSR/private-mode safe: if localStorage throws we simply don't auto-open.
+ *
+ * ── `canAutoOpen` — never steal a live turn ────────────────────────────
+ * The deck used to auto-open unconditionally on first mount, which on a
+ * turn-based board can mean mounting with a live turn timer already running
+ * (a page refresh, a rejoin inside the 90s disconnect grace, or simply being
+ * first in turn order) — the modal then sits over the board while the real
+ * clock underneath keeps counting down and can time the player out of a turn
+ * they never got to see. Documented reproduction: Ludo, first play, "10s
+ * left" on open → "3s left" four seconds later, board unreachable throughout.
+ *
+ * `canAutoOpen` (default `true`, so every existing call site is unaffected)
+ * lets a turn-based board pass a live boolean meaning "safe to interrupt
+ * right now" — typically `!myTurn || noActiveDeadline`. When it is `false`
+ * at mount, the storage key is deliberately NOT read yet: the effect below
+ * waits for `canAutoOpen` to become `true` and opens then, once, so a
+ * first-time player still sees the tutorial — just not mid-countdown.
  */
-export function useTutorialGate(storageKey: string): {
+export function useTutorialGate(
+  storageKey: string,
+  canAutoOpen: boolean = true,
+): {
   open: boolean;
   setOpen: (open: boolean) => void;
 } {
-  const [open, setOpen] = useState<boolean>(() => {
+  const [open, setOpen] = useState(false);
+  const hasAutoOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasAutoOpenedRef.current || !canAutoOpen) return;
+    let alreadySeen = true;
     try {
-      return localStorage.getItem(storageKey) !== "1";
+      alreadySeen = localStorage.getItem(storageKey) === "1";
     } catch {
-      return false;
+      alreadySeen = true; // can't confirm — fail closed, don't auto-open
     }
-  });
+    if (!alreadySeen) {
+      hasAutoOpenedRef.current = true;
+      setOpen(true);
+    }
+  }, [canAutoOpen, storageKey]);
+
   return { open, setOpen };
 }
 
@@ -95,6 +124,7 @@ export default function GameTutorial({
   const slide = slides[step];
   const isFirst = step === 0;
   const isLast = step === slides.length - 1;
+  const nextBtnRef = useRef<HTMLButtonElement>(null);
 
   function done() {
     markSeen(storageKey);
@@ -111,18 +141,19 @@ export default function GameTutorial({
   if (!slide) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 overflow-auto"
-      role="dialog"
-      aria-modal="true"
+    <Modal
+      open
+      onClose={done}
+      initialFocusRef={nextBtnRef}
+      ariaLabelledBy="game-tutorial-title"
+      zIndex={60}
+      className="overflow-auto"
+      panelClassName="rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 relative"
+      panelStyle={{
+        background: "linear-gradient(160deg, #2a2118 0%, #17110c 100%)",
+        border: `2px solid ${accent}`,
+      }}
     >
-      <div
-        className="rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 relative"
-        style={{
-          background: "linear-gradient(160deg, #2a2118 0%, #17110c 100%)",
-          border: `2px solid ${accent}`,
-        }}
-      >
         <button
           onClick={done}
           className="absolute top-3 right-3 text-white/60 hover:text-white text-xl leading-none"
@@ -156,6 +187,7 @@ export default function GameTutorial({
         <div className="text-center">
           <div className="text-5xl mb-2">{slide.emoji}</div>
           <h2
+            id="game-tutorial-title"
             className="text-xl font-extrabold tracking-wider uppercase"
             style={{ color: accent }}
           >
@@ -182,6 +214,7 @@ export default function GameTutorial({
             Skip
           </button>
           <button
+            ref={nextBtnRef}
             onClick={next}
             className="text-sm px-5 py-1.5 rounded-lg font-extrabold transition text-[#2a2118]"
             style={{ background: accent }}
@@ -189,7 +222,6 @@ export default function GameTutorial({
             {isLast ? "Got it!" : "Next →"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

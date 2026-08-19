@@ -5,9 +5,13 @@ import App from "./App";
 import { AudioProvider } from "./context/AudioContext";
 import { resolveTheme } from "./lib/useTheme";
 import { initLayoutGuard } from "./lib/layoutGuard";
+import { initErrorMonitoring } from "./lib/errorMonitoring";
+import { timelineRecorder } from "./core/events/TimelineRecorder";
 import "./index.css";
 
 if (typeof document !== "undefined") {
+  initErrorMonitoring();
+  timelineRecorder.start();
   document.documentElement.setAttribute("data-theme", resolveTheme());
   initLayoutGuard();
 }

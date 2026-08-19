@@ -260,6 +260,32 @@ export const COLOR_HEX: Record<LudoColor, string> = {
   brown: "#A16207",  // Bronze
 };
 
+/**
+ * What each seat colour is CALLED, as distinct from the id it travels under.
+ *
+ * `LudoColor` is a wire type: `"cyan"` and `"brown"` are protocol identifiers
+ * shared with the server and pinned by engine tests, and renaming them is a
+ * contract change. The palette above moved on without them — `cyan` has been
+ * Magenta and `brown` has been Bronze since the 2026-07-26 palette pass — so
+ * the colour picker, which built its labels with `capitalize(id)`, offered a
+ * swatch labelled "Cyan" that painted magenta and one labelled "Brown" that
+ * painted bronze. A player picking by name got a different colour than the
+ * one they read.
+ *
+ * The label belongs next to the swatch it names, so that changing one without
+ * the other is a visible edit rather than a silent drift.
+ */
+export const COLOR_LABEL: Record<LudoColor, string> = {
+  red: "Crimson",
+  green: "Emerald",
+  yellow: "Gold",
+  blue: "Royal Blue",
+  purple: "Violet",
+  cyan: "Magenta",
+  orange: "Orange",
+  brown: "Bronze",
+};
+
 /** ~0.7× shade of each, for token bases, card rims and pip/border edges. */
 export const COLOR_HEX_DARK: Record<LudoColor, string> = {
   red: "#971B2B",

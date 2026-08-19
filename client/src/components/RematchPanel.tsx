@@ -208,14 +208,15 @@ function PendingResponseAvatars({
           : r === "decline" ? "bg-rose-500"
           : "bg-amber-400 animate-pulse";
         return (
-          <span
-            key={p.id}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--room-btn)] border border-amber-200 dark:border-amber-700 px-2 py-0.5 text-xs font-bold text-amber-900 dark:text-amber-300"
-            title={`${p.name} — ${r}`}
-          >
-            <span className={`w-2 h-2 rounded-full ${dot}`} aria-hidden />
-            {p.name}
-          </span>
+            <span
+              key={p.id}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--room-btn)] border border-amber-200 dark:border-amber-700 px-2 py-0.5 text-xs font-bold text-amber-900 dark:text-amber-300"
+              title={`${p.name} — ${r}`}
+            >
+              <span className={`w-2 h-2 rounded-full ${dot}`} aria-hidden />
+              <span>{p.name}</span>
+              <span className="sr-only">({r})</span>
+            </span>
         );
       })}
     </div>

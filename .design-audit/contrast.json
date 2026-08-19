@@ -1,0 +1,1190 @@
+[
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/",
+    "fails": [
+      {
+        "text": "200",
+        "ratio": 4.18,
+        "req": 4.5,
+        "size": 10,
+        "weight": 700,
+        "fg": "rgb(180, 83, 9)",
+        "bg": "rgb(252, 232, 195)",
+        "cls": "bg-amber-500/15 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] font-m"
+      },
+      {
+        "text": "Set your custom avatar and username in your prof",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Jump into Ludo, Rummy, UNO, or any retro classic",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Win a round or score points to earn your first b",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Send a friend request or form a multiplayer part",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "View live competitive brackets and seasonal rewa",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Complete your first steps in BHALYAM to unlock e",
+        "ratio": 4.43,
+        "req": 4.5,
+        "size": 12,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(253, 245, 228)",
+        "cls": "text-xs text-[#8A6D4B] dark:text-slate-400 font-mono"
+      },
+      {
+        "text": "% Complete",
+        "ratio": 4.43,
+        "req": 4.5,
+        "size": 10,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(253, 245, 228)",
+        "cls": "text-[10px] text-[#8A6D4B] dark:text-slate-500 block"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/games",
+    "fails": []
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/social",
+    "fails": [
+      {
+        "text": "Members Only • Social Hub",
+        "ratio": 2.87,
+        "req": 4.5,
+        "size": 11,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(254, 242, 219)",
+        "cls": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-ambe"
+      },
+      {
+        "text": "✨ Included with Free Member Account:",
+        "ratio": 2.96,
+        "req": 4.5,
+        "size": 12,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(253, 246, 231)",
+        "cls": "text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/tournaments",
+    "fails": [
+      {
+        "text": "Members Only • Tournament Arena",
+        "ratio": 2.87,
+        "req": 4.5,
+        "size": 11,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(254, 242, 219)",
+        "cls": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-ambe"
+      },
+      {
+        "text": "✨ Included with Free Member Account:",
+        "ratio": 2.96,
+        "req": 4.5,
+        "size": 12,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(253, 246, 231)",
+        "cls": "text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/leaderboard",
+    "fails": [
+      {
+        "text": "Members Only • Global Rankings",
+        "ratio": 2.87,
+        "req": 4.5,
+        "size": 11,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(254, 242, 219)",
+        "cls": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-ambe"
+      },
+      {
+        "text": "✨ Included with Free Member Account:",
+        "ratio": 2.96,
+        "req": 4.5,
+        "size": 12,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(253, 246, 231)",
+        "cls": "text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/settings",
+    "fails": [
+      {
+        "text": "Members Only • Account Settings",
+        "ratio": 2.87,
+        "req": 4.5,
+        "size": 11,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(254, 242, 219)",
+        "cls": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-ambe"
+      },
+      {
+        "text": "✨ Included with Free Member Account:",
+        "ratio": 2.96,
+        "req": 4.5,
+        "size": 12,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(253, 246, 231)",
+        "cls": "text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/about",
+    "fails": []
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/privacy",
+    "fails": []
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/design-system",
+    "fails": []
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/login",
+    "fails": [
+      {
+        "text": "Or",
+        "ratio": 2.1,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 500,
+        "fg": "rgb(148, 163, 184)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-medium text-[#94A3B8]"
+      },
+      {
+        "text": "© 2026 Bhalyam · Made for the kids we were",
+        "ratio": 2.83,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 600,
+        "fg": "rgba(140, 109, 79, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[10.5px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1"
+      },
+      {
+        "text": "Don't you have an account?",
+        "ratio": 3.91,
+        "req": 4.5,
+        "size": 13,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[13px] text-[#64748B] pt-2"
+      },
+      {
+        "text": "Forgot Password?",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 12,
+        "weight": 600,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[12px] font-semibold text-[#2563EB] hover:underline inline-flex items-center min-h-[4"
+      },
+      {
+        "text": "Sign up",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 13,
+        "weight": 700,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/signup",
+    "fails": [
+      {
+        "text": "or",
+        "ratio": 2.1,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 500,
+        "fg": "rgb(148, 163, 184)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "shrink-0 whitespace-nowrap text-[10.5px] font-medium text-[#94A3B8]"
+      },
+      {
+        "text": "© 2026 Bhalyam · Made for the kids we were",
+        "ratio": 2.83,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 600,
+        "fg": "rgba(140, 109, 79, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[10.5px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1"
+      },
+      {
+        "text": "Password",
+        "ratio": 3.43,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 700,
+        "fg": "rgba(122, 91, 62, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-bold text-[#7A5B3E]/80"
+      },
+      {
+        "text": "Avatar",
+        "ratio": 3.43,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 700,
+        "fg": "rgba(122, 91, 62, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-bold text-[#7A5B3E]/80"
+      },
+      {
+        "text": "Already have an account?",
+        "ratio": 3.91,
+        "req": 4.5,
+        "size": 12,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[12px] text-[#64748B]"
+      },
+      {
+        "text": "Sign in",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 12,
+        "weight": 700,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline text-[12p"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "mobile",
+    "route": "/no-such-404",
+    "fails": []
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/",
+    "fails": [
+      {
+        "text": "200",
+        "ratio": 4.18,
+        "req": 4.5,
+        "size": 10,
+        "weight": 700,
+        "fg": "rgb(180, 83, 9)",
+        "bg": "rgb(252, 232, 195)",
+        "cls": "bg-amber-500/15 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] font-m"
+      },
+      {
+        "text": "Set your custom avatar and username in your prof",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Jump into Ludo, Rummy, UNO, or any retro classic",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Win a round or score points to earn your first b",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Send a friend request or form a multiplayer part",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "View live competitive brackets and seasonal rewa",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(250, 240, 215)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Complete your first steps in BHALYAM to unlock e",
+        "ratio": 4.43,
+        "req": 4.5,
+        "size": 12,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(253, 245, 228)",
+        "cls": "text-xs text-[#8A6D4B] dark:text-slate-400 font-mono"
+      },
+      {
+        "text": "% Complete",
+        "ratio": 4.43,
+        "req": 4.5,
+        "size": 10,
+        "weight": 400,
+        "fg": "rgb(138, 109, 75)",
+        "bg": "rgb(253, 245, 228)",
+        "cls": "text-[10px] text-[#8A6D4B] dark:text-slate-500 block"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/games",
+    "fails": []
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/social",
+    "fails": [
+      {
+        "text": "Members Only • Social Hub",
+        "ratio": 2.87,
+        "req": 4.5,
+        "size": 11,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(254, 242, 219)",
+        "cls": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-ambe"
+      },
+      {
+        "text": "✨ Included with Free Member Account:",
+        "ratio": 2.96,
+        "req": 4.5,
+        "size": 12,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(253, 246, 231)",
+        "cls": "text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/tournaments",
+    "fails": [
+      {
+        "text": "Members Only • Tournament Arena",
+        "ratio": 2.87,
+        "req": 4.5,
+        "size": 11,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(254, 242, 219)",
+        "cls": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-ambe"
+      },
+      {
+        "text": "✨ Included with Free Member Account:",
+        "ratio": 2.96,
+        "req": 4.5,
+        "size": 12,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(253, 246, 231)",
+        "cls": "text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/leaderboard",
+    "fails": [
+      {
+        "text": "Members Only • Global Rankings",
+        "ratio": 2.87,
+        "req": 4.5,
+        "size": 11,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(254, 242, 219)",
+        "cls": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-ambe"
+      },
+      {
+        "text": "✨ Included with Free Member Account:",
+        "ratio": 2.96,
+        "req": 4.5,
+        "size": 12,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(253, 246, 231)",
+        "cls": "text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/settings",
+    "fails": [
+      {
+        "text": "Members Only • Account Settings",
+        "ratio": 2.87,
+        "req": 4.5,
+        "size": 11,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(254, 242, 219)",
+        "cls": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-ambe"
+      },
+      {
+        "text": "✨ Included with Free Member Account:",
+        "ratio": 2.96,
+        "req": 4.5,
+        "size": 12,
+        "weight": 900,
+        "fg": "rgb(217, 119, 6)",
+        "bg": "rgb(253, 246, 231)",
+        "cls": "text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/about",
+    "fails": []
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/privacy",
+    "fails": []
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/design-system",
+    "fails": []
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/login",
+    "fails": [
+      {
+        "text": "Or",
+        "ratio": 2.1,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 500,
+        "fg": "rgb(148, 163, 184)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-medium text-[#94A3B8]"
+      },
+      {
+        "text": "© 2026 Bhalyam · Made for the kids we were",
+        "ratio": 2.83,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 600,
+        "fg": "rgba(140, 109, 79, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[10.5px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1"
+      },
+      {
+        "text": "Don't you have an account?",
+        "ratio": 3.91,
+        "req": 4.5,
+        "size": 13,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[13px] text-[#64748B] pt-2"
+      },
+      {
+        "text": "Forgot Password?",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 12,
+        "weight": 600,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[12px] font-semibold text-[#2563EB] hover:underline inline-flex items-center min-h-[4"
+      },
+      {
+        "text": "Sign up",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 13,
+        "weight": 700,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/signup",
+    "fails": [
+      {
+        "text": "or",
+        "ratio": 2.1,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 500,
+        "fg": "rgb(148, 163, 184)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "shrink-0 whitespace-nowrap text-[10.5px] font-medium text-[#94A3B8]"
+      },
+      {
+        "text": "© 2026 Bhalyam · Made for the kids we were",
+        "ratio": 2.83,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 600,
+        "fg": "rgba(140, 109, 79, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[10.5px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1"
+      },
+      {
+        "text": "Password",
+        "ratio": 3.43,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 700,
+        "fg": "rgba(122, 91, 62, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-bold text-[#7A5B3E]/80"
+      },
+      {
+        "text": "Avatar",
+        "ratio": 3.43,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 700,
+        "fg": "rgba(122, 91, 62, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-bold text-[#7A5B3E]/80"
+      },
+      {
+        "text": "Already have an account?",
+        "ratio": 3.91,
+        "req": 4.5,
+        "size": 12,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[12px] text-[#64748B]"
+      },
+      {
+        "text": "Sign in",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 12,
+        "weight": 700,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline text-[12p"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "vp": "desktop",
+    "route": "/no-such-404",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/",
+    "fails": [
+      {
+        "text": "Set your custom avatar and username in your prof",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Jump into Ludo, Rummy, UNO, or any retro classic",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Win a round or score points to earn your first b",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Send a friend request or form a multiplayer part",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "View live competitive brackets and seasonal rewa",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "% Complete",
+        "ratio": 3.69,
+        "req": 4.5,
+        "size": 10,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(19, 25, 38)",
+        "cls": "text-[10px] text-[#8A6D4B] dark:text-slate-500 block"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/games",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/social",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/tournaments",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/leaderboard",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/settings",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/about",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/privacy",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/design-system",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/login",
+    "fails": [
+      {
+        "text": "Or",
+        "ratio": 2.1,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 500,
+        "fg": "rgb(148, 163, 184)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-medium text-[#94A3B8]"
+      },
+      {
+        "text": "© 2026 Bhalyam · Made for the kids we were",
+        "ratio": 2.83,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 600,
+        "fg": "rgba(140, 109, 79, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[10.5px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1"
+      },
+      {
+        "text": "Don't you have an account?",
+        "ratio": 3.91,
+        "req": 4.5,
+        "size": 13,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[13px] text-[#64748B] pt-2"
+      },
+      {
+        "text": "Forgot Password?",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 12,
+        "weight": 600,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[12px] font-semibold text-[#2563EB] hover:underline inline-flex items-center min-h-[4"
+      },
+      {
+        "text": "Sign up",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 13,
+        "weight": 700,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/signup",
+    "fails": [
+      {
+        "text": "or",
+        "ratio": 2.1,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 500,
+        "fg": "rgb(148, 163, 184)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "shrink-0 whitespace-nowrap text-[10.5px] font-medium text-[#94A3B8]"
+      },
+      {
+        "text": "© 2026 Bhalyam · Made for the kids we were",
+        "ratio": 2.83,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 600,
+        "fg": "rgba(140, 109, 79, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[10.5px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1"
+      },
+      {
+        "text": "Password",
+        "ratio": 3.43,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 700,
+        "fg": "rgba(122, 91, 62, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-bold text-[#7A5B3E]/80"
+      },
+      {
+        "text": "Avatar",
+        "ratio": 3.43,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 700,
+        "fg": "rgba(122, 91, 62, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-bold text-[#7A5B3E]/80"
+      },
+      {
+        "text": "Already have an account?",
+        "ratio": 3.91,
+        "req": 4.5,
+        "size": 12,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[12px] text-[#64748B]"
+      },
+      {
+        "text": "Sign in",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 12,
+        "weight": 700,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline text-[12p"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "vp": "mobile",
+    "route": "/no-such-404",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/",
+    "fails": [
+      {
+        "text": "Set your custom avatar and username in your prof",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Jump into Ludo, Rummy, UNO, or any retro classic",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Win a round or score points to earn your first b",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "Send a friend request or form a multiplayer part",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "View live competitive brackets and seasonal rewa",
+        "ratio": 3.49,
+        "req": 4.5,
+        "size": 11,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(22, 30, 46)",
+        "cls": "text-[11px] font-mono text-[#8A6D4B] dark:text-slate-500 truncate"
+      },
+      {
+        "text": "% Complete",
+        "ratio": 3.69,
+        "req": 4.5,
+        "size": 10,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(19, 25, 38)",
+        "cls": "text-[10px] text-[#8A6D4B] dark:text-slate-500 block"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/games",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/social",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/tournaments",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/leaderboard",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/settings",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/about",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/privacy",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/design-system",
+    "fails": []
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/login",
+    "fails": [
+      {
+        "text": "Or",
+        "ratio": 2.1,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 500,
+        "fg": "rgb(148, 163, 184)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-medium text-[#94A3B8]"
+      },
+      {
+        "text": "© 2026 Bhalyam · Made for the kids we were",
+        "ratio": 2.83,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 600,
+        "fg": "rgba(140, 109, 79, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[10.5px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1"
+      },
+      {
+        "text": "Don't you have an account?",
+        "ratio": 3.91,
+        "req": 4.5,
+        "size": 13,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[13px] text-[#64748B] pt-2"
+      },
+      {
+        "text": "Forgot Password?",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 12,
+        "weight": 600,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[12px] font-semibold text-[#2563EB] hover:underline inline-flex items-center min-h-[4"
+      },
+      {
+        "text": "Sign up",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 13,
+        "weight": 700,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/signup",
+    "fails": [
+      {
+        "text": "or",
+        "ratio": 2.1,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 500,
+        "fg": "rgb(148, 163, 184)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "shrink-0 whitespace-nowrap text-[10.5px] font-medium text-[#94A3B8]"
+      },
+      {
+        "text": "© 2026 Bhalyam · Made for the kids we were",
+        "ratio": 2.83,
+        "req": 4.5,
+        "size": 10.5,
+        "weight": 600,
+        "fg": "rgba(140, 109, 79, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-center text-[10.5px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1"
+      },
+      {
+        "text": "Password",
+        "ratio": 3.43,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 700,
+        "fg": "rgba(122, 91, 62, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-bold text-[#7A5B3E]/80"
+      },
+      {
+        "text": "Avatar",
+        "ratio": 3.43,
+        "req": 4.5,
+        "size": 11.5,
+        "weight": 700,
+        "fg": "rgba(122, 91, 62, 0.8)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[11.5px] font-bold text-[#7A5B3E]/80"
+      },
+      {
+        "text": "Already have an account?",
+        "ratio": 3.91,
+        "req": 4.5,
+        "size": 12,
+        "weight": 400,
+        "fg": "rgb(100, 116, 139)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "text-[12px] text-[#64748B]"
+      },
+      {
+        "text": "Sign in",
+        "ratio": 4.24,
+        "req": 4.5,
+        "size": 12,
+        "weight": 700,
+        "fg": "rgb(37, 99, 235)",
+        "bg": "rgb(250, 230, 202)",
+        "cls": "inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline text-[12p"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "vp": "desktop",
+    "route": "/no-such-404",
+    "fails": []
+  }
+]

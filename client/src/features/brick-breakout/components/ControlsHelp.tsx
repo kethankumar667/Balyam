@@ -24,6 +24,10 @@ export const ControlsHelp: React.FC = () => {
           <span className="font-bold text-amber-300">P / Esc</span>
         </div>
         <div className="flex justify-between">
+          <span className="text-zinc-400">Toggle Sound:</span>
+          <span className="font-bold text-amber-300">M / S</span>
+        </div>
+        <div className="flex justify-between">
           <span className="text-zinc-400">Restart:</span>
           <span className="font-bold text-amber-300">R</span>
         </div>

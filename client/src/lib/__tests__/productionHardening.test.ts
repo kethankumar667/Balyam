@@ -25,7 +25,7 @@ describe("Production Hardening — Client Suite", () => {
       });
 
       const events = telemetry.getRecentEvents();
-      const lastEvent = events[events.length - 1];
+      const lastEvent = events[events.length - 1]!;
       expect(lastEvent).toBeDefined();
       expect(lastEvent.name).toBe("user_login_attempt");
       expect(lastEvent.data?.email).toBe("player@example.com");

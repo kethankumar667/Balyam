@@ -65,28 +65,34 @@ export function NokiaKeypad({ onKeyPress }: NokiaKeypadProps) {
         </button>
       </div>
 
-      {/* Auxiliary Keypad Row for Complete Nokia Aesthetic */}
+      {/* Auxiliary Keypad Row: 4 - Sound, 0 - Pause, 6 - High Score */}
       <div className="grid grid-cols-3 gap-2 w-full pt-0.5">
         <button
           type="button"
-          onClick={() => onKeyPress("4")}
-          className="min-h-[38px] rounded-xl flex items-center justify-center bg-[#253240] hover:bg-[#2e3e50] border-b-2 border-[#18222C] text-[#8EA1B4] text-xs font-bold active:translate-y-0.5 cursor-pointer"
+          onClick={() => onKeyPress("SOUND")}
+          aria-label="Toggle Sound (4)"
+          className="min-h-[38px] rounded-xl flex items-center justify-center gap-1.5 bg-[#253240] hover:bg-[#2e3e50] border-b-2 border-[#18222C] text-[#8EA1B4] hover:text-[#DCE4EC] text-[11px] font-bold active:translate-y-0.5 cursor-pointer shadow-xs transition"
         >
-          ◄ 4
+          <span className="text-xs">🔊</span>
+          <span>4 • SOUND</span>
         </button>
         <button
           type="button"
           onClick={() => onKeyPress("0")}
-          className="min-h-[38px] rounded-xl flex items-center justify-center bg-[#253240] hover:bg-[#2e3e50] border-b-2 border-[#18222C] text-amber-300 text-xs font-bold active:translate-y-0.5 cursor-pointer"
+          aria-label="Pause / Resume (0)"
+          className="min-h-[38px] rounded-xl flex items-center justify-center gap-1.5 bg-[#253240] hover:bg-[#2e3e50] border-b-2 border-[#18222C] text-amber-300 hover:text-amber-200 text-[11px] font-bold active:translate-y-0.5 cursor-pointer shadow-xs transition"
         >
-          ⏸ 0
+          <span>⏸</span>
+          <span>0</span>
         </button>
         <button
           type="button"
           onClick={() => onKeyPress("6")}
-          className="min-h-[38px] rounded-xl flex items-center justify-center bg-[#253240] hover:bg-[#2e3e50] border-b-2 border-[#18222C] text-[#8EA1B4] text-xs font-bold active:translate-y-0.5 cursor-pointer"
+          aria-label="High Score (6)"
+          className="min-h-[38px] rounded-xl flex items-center justify-center gap-1.5 bg-[#253240] hover:bg-[#2e3e50] border-b-2 border-[#18222C] text-[#8EA1B4] hover:text-[#DCE4EC] text-[11px] font-bold active:translate-y-0.5 cursor-pointer shadow-xs transition"
         >
-          6 ►
+          <span className="text-xs">🏆</span>
+          <span>6 • SCORE</span>
         </button>
       </div>
     </div>

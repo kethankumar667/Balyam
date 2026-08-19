@@ -1,4 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=Nunito:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Poppins:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;500;700&family=Caveat:wght@400;500;600;700&display=swap');
+/* Every family this stylesheet needs (Fredoka, Kalam, Patrick Hand, Nunito,
+   JetBrains Mono, Poppins, Noto Sans Telugu, Caveat) is now loaded by the
+   single <link> in index.html, merged with its own font set so nothing here
+   lost a weight — see that file's comment. This `@import` used to fetch an
+   overlapping set a second time, on its own blocking round trip. */
 
 @tailwind base;
 @tailwind components;
@@ -31,6 +35,32 @@
   img, svg, canvas, video, audio {
     max-width: 100%;
   }
+
+  /* Mobile touch responsiveness and remove tap grey flicker on iOS/Android */
+  button, a, input, select, textarea, [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Keyboard focus indicators for WCAG 2.1 AA */
+  :focus-visible {
+    outline: 2px solid #F59E0B;
+    outline-offset: 2px;
+  }
+}
+
+/* Safe area padding utilities for notches, Dynamic Island, and navigation bars */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /*
@@ -143,7 +173,11 @@
   --text-hi:   #0f172a;
   --text-mid:  #334155;
   --text-lo:   #475569;
-  --text-mute: #64748b;
+  /* Was #64748b, measured at 4.30:1 against the light paper (#faf3e0) — under
+     the 4.5:1 that WCAG 2.1 AA and platform Rule 6 both require. Same slate
+     hue, one step darker: 5.19:1. Fixed at the token so every consumer of
+     `text-ink-mute` inherits it rather than each being patched. */
+  --text-mute: #5a6779;
 
   /* Rims / borders */
   --rim-gold: #d4a574;
@@ -198,7 +232,9 @@
   --text-hi:   #F8FAFC;
   --text-mid:  #CBD5E1;
   --text-lo:   #94A3B8;
-  --text-mute: #64748B;
+  /* Was #64748B, measured at 4.14:1 against the dark surface (#070b14). On a
+     dark ground the fix is to LIGHTEN, not darken: #7C8BA1 gives 5.68:1. */
+  --text-mute: #7C8BA1;
   --rim-gold:  rgba(245, 158, 11, 0.4);
   --rim-soft:  rgba(255, 255, 255, 0.08);
   --ring: 0 0 0 2px var(--chrome-panel), 0 0 0 4px #F59E0B;
@@ -247,7 +283,6 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Nunito', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--surface-0);
   color: var(--text-hi);
   overflow-x: hidden;

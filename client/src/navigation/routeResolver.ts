@@ -155,22 +155,22 @@ export function resolveNavigation({
       ? `${item.path}${item.search || ""}${item.hash || ""}`
       : undefined;
 
+    // Show locked badge if member-only and current user is a guest
+    let badge = item.badge;
+    if (item.requiresAuth && !isMember) {
+      badge = { text: "🔒 Lock", variant: "amber" };
+    }
+
     return {
       ...item,
+      badge,
       active,
       fullHref,
     };
   };
 
-  const filterAuth = (item: NavigationItem): boolean => {
-    if (item.requiresAuth && !isMember) {
-      return false;
-    }
-    return true;
-  };
-
-  const items = section.items.filter(filterAuth).map(mapItem);
-  const footerItems = section.footerItems?.filter(filterAuth).map(mapItem);
+  const items = section.items.map(mapItem);
+  const footerItems = section.footerItems?.map(mapItem);
 
   return {
     id: section.id,

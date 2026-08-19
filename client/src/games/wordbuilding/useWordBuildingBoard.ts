@@ -166,7 +166,7 @@ export function useWordBuildingBoard({
 
   function pickCell(r: number, c: number) {
     if (!canPlay) return;
-    if (state.board[r][c] !== "") return;
+    if (state.board[r]?.[c] !== "") return;
     setSelected({ r, c });
     setError(null);
   }

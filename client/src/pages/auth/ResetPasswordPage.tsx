@@ -67,7 +67,7 @@ export default function ResetPasswordPage() {
           aria-live="polite"
         >
           <SpinnerIcon className="w-5 h-5 flex-shrink-0 auth-spin" />
-          <p className="text-[13.5px] font-bold">Opening your reset link…</p>
+          <p className="text-sm font-bold">Opening your reset link…</p>
         </div>
       </AuthShell>
     );

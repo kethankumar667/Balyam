@@ -59,16 +59,33 @@ export function RevealOnScroll({
  * Convenience child for `RevealOnScroll` with stagger. Wraps a `motion.div`
  * with the `fadeUp` variants so the parent can orchestrate the cascade.
  */
+/**
+ * One staggered child of a `RevealOnScroll`.
+ *
+ * ── Why `as` exists ───────────────────────────────────────────────────
+ * It used to always render a `motion.div`. When the parent was `as="ul"` and
+ * the caller put an `<li>` inside, the resulting DOM was
+ * `ul > div > li` — and a `<li>` whose parent is a `div` is an orphan. axe
+ * reported 24 `listitem` violations plus 4 `list` violations on the home page's
+ * game grid: assistive technology announced the tiles as list items belonging to
+ * no list, and lost the item count that makes a list worth being one.
+ *
+ * The wrapper is unavoidable (it carries the stagger variants), so the fix is to
+ * let it BE the list item rather than sit inside one.
+ */
 export function RevealItem({
   children,
   className,
+  as: As = "div",
 }: {
   children: React.ReactNode;
   className?: string;
+  as?: "div" | "li";
 }) {
+  const MotionTag = As === "li" ? motion.li : motion.div;
   return (
-    <motion.div variants={fadeUp} className={className}>
+    <MotionTag variants={fadeUp} className={className}>
       {children}
-    </motion.div>
+    </MotionTag>
   );
 }

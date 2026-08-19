@@ -4,6 +4,7 @@ import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
 import SignInWall from "../auth/SignInWall";
+import Modal from "../Modal";
 import { ArrowRightIcon } from "./icons";
 import QrScannerModal from "../QrScannerModal";
 import { isCompleteRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from "../../lib/roomCode";
@@ -106,25 +107,8 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
     }
   }, [open, playerName]);
 
-  // ESC closes the modal.
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  // Lock body scroll while open so the page doesn't jiggle behind the sheet.
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  // Focus trap, Escape, focus restoration and body-scroll lock are all
+  // owned by <Modal> at the return site below.
 
   // Focus the most useful field on open: name if empty (first-time visitor),
   // otherwise the code box (returning player who already gave their name).
@@ -259,24 +243,25 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center
-                 bg-bhalyam-wood-dark/70 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="join-room-modal-title"
-        onClick={(e) => e.stopPropagation()}
-        className="bhalyam-font relative w-full md:max-w-md
-                   max-h-[92dvh] overflow-y-auto
-                   bg-bhalyam-cream-soft dark:bg-[#111622] text-bhalyam-wood-dark dark:text-slate-100
-                   border-2 border-bhalyam-cream-edge/70 dark:border-slate-800
-                   rounded-t-3xl md:rounded-3xl
-                   shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
-                   md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)]"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    <>
+    <Modal
+      open={open}
+      onClose={onClose}
+      mobileSheet
+      // Same target the delayed screen-reader-ordering effect above focuses
+      // a tick later — this just means the synchronous first focus already
+      // lands in the right place instead of on whatever is first in the DOM.
+      initialFocusRef={playerName ? codeInputRef : nameInputRef}
+      ariaLabelledBy="join-room-modal-title"
+      className="animate-fade-in"
+      panelClassName="bhalyam-font relative w-full md:max-w-md
+                 max-h-[92dvh] overflow-y-auto
+                 bg-bhalyam-cream-soft dark:bg-[#111622] text-bhalyam-wood-dark dark:text-slate-100
+                 border-2 border-bhalyam-cream-edge/70 dark:border-slate-800
+                 rounded-t-3xl md:rounded-3xl
+                 shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
+                 md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)]"
+      panelStyle={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {/* Pull handle (mobile bottom-sheet only) */}
         <div className="md:hidden flex justify-center pt-2.5">
@@ -339,7 +324,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               aria-invalid={nameError ? true : undefined}
               aria-describedby={nameError ? "join-name-error" : undefined}
               className={`w-full min-h-[44px] px-3 rounded-xl
-                         bg-bhalyam-cream-soft dark:bg-[#0B0F19] border-2
+                         bg-bhalyam-cream-soft dark:bg-[var(--surface-0)] border-2
                          text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/40 dark:placeholder:text-slate-500
                          font-semibold
                          focus:outline-none focus:ring-2
@@ -389,7 +374,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                   codeError ? "join-code-error" : "join-code-help"
                 }
                 className={`w-full min-h-[52px] px-3 rounded-xl
-                           bg-bhalyam-cream-soft dark:bg-[#0B0F19] border-2
+                           bg-bhalyam-cream-soft dark:bg-[var(--surface-0)] border-2
                            text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/30 dark:placeholder:text-slate-600
                            font-mono font-black text-2xl tracking-[0.45em] text-center
                            focus:outline-none focus:ring-2
@@ -445,7 +430,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             </div>
           )}
         </form>
-      </div>
+    </Modal>
 
       <QrScannerModal
         open={scannerOpen}
@@ -474,7 +459,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
           joinWithCode(scanned, n);
         }}
       />
-    </div>
+    </>
   );
 }
 

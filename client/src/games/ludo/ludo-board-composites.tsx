@@ -1249,7 +1249,7 @@ export function LudoOverlays({
             className="ludo-cut-flash bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 text-white text-5xl font-black px-10 py-5 rounded-2xl shadow-2xl"
             style={{ textShadow: "0 3px 8px rgba(0,0,0,0.5)" }}
           >
-            💥 CUT!
+            💥 Govinda Govinda! 💥
           </div>
         </div>
       )}

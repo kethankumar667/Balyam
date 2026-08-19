@@ -4,23 +4,26 @@ import { PencilIcon } from "../components/auth/authIcons";
 import { findAvatar } from "../lib/avatars";
 import { PRIVACY_CONTACT_EMAIL } from "../lib/privacy/contact";
 import SelfAvatar from "../components/profile/SelfAvatar";
+import SeatAvatar from "../components/profile/SeatAvatar";
 import { motion, AnimatePresence } from "framer-motion";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
 import { RevealOnScroll, RevealItem } from "../components/RevealOnScroll";
 import GsapSplitHeadline from "../components/GsapSplitHeadline";
-import CountUp from "../components/CountUp";
 import { useTheme } from "../lib/useTheme";
 import GlobalSettings from "../components/GlobalSettings";
 import { tileHover, ctaPress, bhalyamSpring } from "../lib/motion";
 import { getSocket } from "../lib/socket";
+import { formatTimeAgo } from "../lib/formatTimeAgo";
+import { usePlayerSnapshot, type PlayerSnapshot } from "../hooks/usePlayerSnapshot";
 import CategoryFilter, {
   filterGames,
   type GameFilter,
 } from "../components/bhalyam/CategoryFilter";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
+import { WelcomeModal, GettingStartedCard, journeyTracker } from "../features/onboarding";
 import {
   BHALYAM_GAMES,
   isLocked,
@@ -126,6 +129,16 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
 export default function BhalyamHome() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(() => {
+    return !journeyTracker.getState().hasCompletedWelcome;
+  });
+  const [showGettingStarted, setShowGettingStarted] = useState(true);
+  const isMember = useAuthStore((s) => s.isMember);
+  // Guests get the honest "Guest Mode" branch in WelcomePlayerStrip and never
+  // reach PlayerJourneyDashboard's member content, so there is nothing for
+  // this fetch to back for them — `enabled: false` until the caller is a
+  // member, one fetch shared by both surfaces instead of two.
+  const playerSnapshot = usePlayerSnapshot(isMember);
 
   // Warm the socket connection on landing so the first room create/join
   // doesn't pay the cold WebSocket handshake at click time
@@ -141,24 +154,40 @@ export default function BhalyamHome() {
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}
           />
-          <WelcomePlayerStrip onSelect={setSheetGame} />
+          <WelcomePlayerStrip onSelect={setSheetGame} snapshot={playerSnapshot} />
+          {showGettingStarted && (
+            <GettingStartedCard
+              className="mb-5"
+              onDismiss={() => setShowGettingStarted(false)}
+            />
+          )}
           <GamesSection onSelect={setSheetGame} />
           <WhatAreWePlayingSection
             onSelectGame={setSheetGame}
             onOpenCreateRoom={() => setJoinOpen(true)}
           />
-          <PlayerJourneyDashboard onSelect={setSheetGame} onOpenJoin={() => setJoinOpen(true)} />
-          <LiveLoungePulse onSelect={setSheetGame} />
+          <PlayerJourneyDashboard onSelect={setSheetGame} snapshot={playerSnapshot} />
           <Footer />
         </div>
         <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
         <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
+        <WelcomeModal
+          open={welcomeOpen}
+          onClose={() => setWelcomeOpen(false)}
+          onStartQuest={() => setSheetGame("uno")}
+        />
       </div>
     </AppLayout>
   );
 }
 
-function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
+function WelcomePlayerStrip({
+  onSelect,
+  snapshot,
+}: {
+  onSelect: (slug: BhalyamGameSlug) => void;
+  snapshot: PlayerSnapshot;
+}) {
   const { playerName } = useRoomStore();
   const { isMember } = useAuthStore();
   const [theme] = useTheme();
@@ -182,7 +211,7 @@ function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =>
                 Guest Mode
               </span>
             </div>
-            <p className="text-[11.5px] font-semibold text-[#6B5E52] dark:text-zinc-400 mt-0.5">
+            <p className="text-xs font-semibold text-[#6B5E52] dark:text-zinc-400 mt-0.5">
               Jump into any game instantly vs bots or join friends with a room code.
             </p>
           </div>
@@ -204,6 +233,16 @@ function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =>
 
   const displayName = playerName.trim() || "Champion";
 
+  // Real numbers only. `streak`/`xpIntoLevel` are 0 for a brand-new member —
+  // that renders as "nothing to show yet" below, not as a fabricated "0-Day
+  // Streak" that would be just as dishonest as the number it replaced.
+  const streak = snapshot.stats?.currentPlayStreak ?? 0;
+  const xp = snapshot.profile?.experiencePoints ?? 0;
+  const level = snapshot.profile?.level ?? 1;
+  const xpIntoLevel = xp % 100;
+  const lastMatch = snapshot.matches[0];
+  const lastGameCard = lastMatch ? BHALYAM_GAMES.find((g) => g.slug === lastMatch.game) : undefined;
+
   return (
     <div className={`mb-5 p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
       isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D8BE]"
@@ -222,30 +261,46 @@ function WelcomePlayerStrip({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =>
               Member
             </span>
           </div>
-          <p className="text-[11.5px] font-semibold text-[#6B5E52] dark:text-zinc-400 flex items-center gap-2 mt-0.5">
-            <span className="inline-flex items-center gap-1"><Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> 3-Day Streak</span>
-            <span>•</span>
-            <span className="text-emerald-700 dark:text-emerald-400 font-bold inline-flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> 1,450 / 2,000 XP
-            </span>
-          </p>
+          {snapshot.ready && (streak > 0 || xp > 0) && (
+            <p className="text-xs font-semibold text-[#6B5E52] dark:text-zinc-400 flex items-center gap-2 mt-0.5">
+              {streak > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> {streak}-Day Streak
+                </span>
+              )}
+              {streak > 0 && xp > 0 && <span>•</span>}
+              {xp > 0 && (
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold inline-flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> {xpIntoLevel} / 100 XP to Level {level + 1}
+                </span>
+              )}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Right: Quick Continue Playing & Daily Reward */}
+      {/* Right: Quick Continue Playing — real last-played game, or a real
+          first-game CTA. No "Daily Bonus" pill: there is no daily-bonus
+          system behind it to actually grant one. */}
       <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
-        <button
-          type="button"
-          onClick={() => onSelect("uno")}
-          className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
-        >
-          <Play className="w-3.5 h-3.5 fill-current" />
-          <span>Continue UNO</span>
-        </button>
-        <span className="flex-1 sm:flex-initial min-h-[44px] px-3 py-2 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-[11px] font-black whitespace-nowrap inline-flex items-center justify-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-          <span>Daily Bonus (+100 XP)</span>
-        </span>
+        {lastGameCard ? (
+          <button
+            type="button"
+            onClick={() => onSelect(lastGameCard.slug)}
+            className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Continue {lastGameCard.title}</span>
+          </button>
+        ) : (
+          <Link
+            to="/games"
+            className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Play Your First Game</span>
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -266,7 +321,7 @@ function TrophyProgressionStrip() {
           <h3 className="bhalyam-display text-[18px] sm:text-[22px] text-amber-300 flex items-center gap-2">
             <Trophy className="w-5 h-5 text-amber-400" /> Nostalgia Trophy Cabinet
           </h3>
-          <p className="text-[12.5px] text-zinc-300">Unlock childhood badges as you play with friends</p>
+          <p className="text-[13px] text-zinc-300">Unlock childhood badges as you play with friends</p>
         </div>
         <span className="px-3 py-1 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 w-fit">
           Level 12 • Gold Tier
@@ -283,9 +338,9 @@ function TrophyProgressionStrip() {
                 : "bg-white/5 border-white/10 opacity-60"
             }`}
           >
-            <div className="text-[12.5px] font-black text-amber-200 truncate">{t.title}</div>
-            <div className="text-[10.5px] text-zinc-300 mt-0.5 line-clamp-1">{t.desc}</div>
-            <div className="mt-2 text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-400">
+            <div className="text-[13px] font-black text-amber-200 truncate">{t.title}</div>
+            <div className="text-[11px] text-zinc-300 mt-0.5 line-clamp-1">{t.desc}</div>
+            <div className="mt-2 text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
               {t.unlocked ? "✓ Unlocked (+50 XP)" : "🔒 In Progress"}
             </div>
           </div>
@@ -353,7 +408,7 @@ function Hero({
         <div className="relative z-10 px-5 sm:px-10 py-7 sm:py-9 max-w-xl">
           {/* Top Label */}
           <span
-            className={`text-[11.5px] sm:text-[13px] font-black uppercase tracking-[0.22em] block mb-2 sm:mb-2.5 ${
+            className={`text-xs sm:text-[13px] font-black uppercase tracking-[0.22em] block mb-2 sm:mb-2.5 ${
               isDark ? "text-amber-400" : "text-[#7B2F0E]"
             }`}
           >
@@ -376,7 +431,7 @@ function Hero({
 
           {/* Description (Hidden on mobile screens only) */}
           <p
-            className={`hidden sm:block text-[14px] sm:text-[15.5px] font-semibold max-w-sm sm:max-w-md mt-3 leading-snug ${
+            className={`hidden sm:block text-[14px] sm:text-base font-semibold max-w-sm sm:max-w-md mt-3 leading-snug ${
               isDark ? "text-slate-300" : "text-[#3B332A]"
             }`}
           >
@@ -428,7 +483,7 @@ function Hero({
                   Share on WhatsApp
                 </span>
                 <span
-                  className={`text-[10.5px] font-medium leading-tight mt-0.5 ${
+                  className={`text-[11px] font-medium leading-tight mt-0.5 ${
                     isDark ? "text-slate-400" : "text-[#7A6F62]"
                   }`}
                 >
@@ -470,7 +525,7 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ ...bhalyamSpring, delay: 0.15 }}
-            className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#EA5A1F] border border-[#F2D5A9] shadow-[0_4px_10px_-3px_rgba(234,90,31,0.45)] flex-shrink-0"
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] sm:text-[12px] font-bold bg-[#FFF4E4] text-[#C04A19] border border-[#F2D5A9] shadow-[0_4px_10px_-3px_rgba(234,90,31,0.45)] flex-shrink-0"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#EA5A1F] animate-pulse" aria-hidden />
             Most Played Today
@@ -500,17 +555,18 @@ function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void 
         as="ul"
         staggerChildren
         amount={0.08}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 list-none"
       >
+        {/* `as="li"` rather than an inner `<li>`: the wrapper carries the
+            stagger variants, so it must BE the list item — an inner `<li>`
+            produced ul > div > li and orphaned every tile. */}
         {shown.map((game) => (
-          <RevealItem key={game.slug}>
-            <li>
-              <GameTile
-                game={game}
-                onSelect={() => onSelect(game.slug)}
-                compact
-              />
-            </li>
+          <RevealItem as="li" key={game.slug}>
+            <GameTile
+              game={game}
+              onSelect={() => onSelect(game.slug)}
+              compact
+            />
           </RevealItem>
         ))}
       </RevealOnScroll>
@@ -565,44 +621,18 @@ export interface NotificationItem {
   roomCode?: string;
 }
 
-export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "notif-1",
-    type: "invite",
-    title: "Ravi invited you to UNO Adda!",
-    desc: "Room: 6-letter Code #UN984X · 3 friends waiting",
-    time: "2m ago",
-    unread: true,
-    gameSlug: "uno",
-    roomCode: "UN984X",
-  },
-  {
-    id: "notif-2",
-    type: "reward",
-    title: "Day 3 Login Bonus Claimed!",
-    desc: "+100 XP added to your Veteran progression",
-    time: "1h ago",
-    unread: true,
-  },
-  {
-    id: "notif-3",
-    type: "gang",
-    title: "Suresh scored 184 runs in Hand Cricket!",
-    desc: "Can you beat his 90s classroom record?",
-    time: "3h ago",
-    unread: true,
-    gameSlug: "handcricket",
-  },
-  {
-    id: "notif-4",
-    type: "trophy",
-    title: "New Trophy Unlocked: Sixer Legend! 🎲",
-    desc: "You rolled three 6s in Ludo under pressure",
-    time: "Yesterday",
-    unread: false,
-    gameSlug: "ludo",
-  },
-];
+/**
+ * No seeded notifications. There is no backend that produces one yet — a
+ * fabricated invite from "Ravi", a fake reward claim, and a fake friend's
+ * fake score used to render here for every player who had never played,
+ * complete with a badge count that made the bell look like it had real news.
+ * `NotificationsSheet` below already renders an honest empty state
+ * ("You're all caught up!") when this is empty, and `AppHeader`'s own
+ * comment on `unreadCount` already says the rule this violated: "Absent or
+ * zero renders no badge at all." Populate this from a real event source when
+ * one exists — never with placeholder content standing in for one.
+ */
+export const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 
 function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -632,7 +662,7 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl font-bold text-[13.5px] shadow-2xl border flex items-center gap-2 ${
+            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl font-bold text-sm shadow-2xl border flex items-center gap-2 ${
               isDark
                 ? "bg-[#1D2C4A] text-white border-amber-400/40"
                 : "bg-[#FFF5DC] border-[#E8D1A7] text-[#854D0E] shadow-amber-900/10"
@@ -656,7 +686,7 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
               <span className={`bhalyam-display text-[19px] sm:text-[24px] lg:text-[26px] tracking-tight truncate ${isDark ? "text-white" : "text-[#2A221B]"}`}>
                 BHALYAM
               </span>
-              <span className="text-[8.5px] sm:text-[10px] uppercase tracking-[0.16em] font-extrabold text-[#FF8F00] -mt-0.5">
+              <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] font-extrabold text-[#FF8F00] -mt-0.5">
                 Relive Childhood
               </span>
             </span>
@@ -986,16 +1016,12 @@ export function ProfileSheet({
                        shadow-[0_6px_20px_rgba(212,158,36,0.45),inset_0_2px_4px_rgba(0,0,0,0.15)]
                        flex items-center justify-center text-bhalyam-wood-dark bg-[#FFF8E7]"
           >
-            {avatar ? (
-              <img
-                src={avatar.src}
-                alt=""
-                className="w-full h-full object-cover scale-[1.25] origin-center"
-                style={{ objectPosition: "50% 22%" }}
-              />
-            ) : (
-              <UserIcon className="w-9 h-9" />
-            )}
+            <SeatAvatar
+              avatar={avatarId ?? undefined}
+              name={playerName.trim() || (signedIn ? "Member" : "Guest")}
+              className="w-full h-full"
+              textClassName="text-2xl font-black"
+            />
           </span>
           <Link
             to="/profile"
@@ -1017,7 +1043,7 @@ export function ProfileSheet({
           {named ? playerName : "Add your name"}
         </div>
 
-        <p className="mt-1 text-[12.5px] font-semibold text-[var(--auth-accent)]">
+        <p className="mt-1 text-[13px] font-semibold text-[var(--auth-accent)]">
           {signedIn ? "Signed in" : "Playing as a guest"}
         </p>
 
@@ -1035,7 +1061,7 @@ export function ProfileSheet({
               <div className="text-[11px] uppercase tracking-[0.22em] font-extrabold text-[#7B5024]">
                 Your Membership
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[10.5px] font-black">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-black">
                 Active Member
               </span>
             </div>
@@ -1043,7 +1069,7 @@ export function ProfileSheet({
               to="/profile"
               onClick={onClose}
               className="w-full h-11 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] text-[#7B5024]
-                         font-extrabold text-[13.5px] inline-flex items-center justify-center gap-2
+                         font-extrabold text-sm inline-flex items-center justify-center gap-2
                          hover:bg-[#F8EEDB] active:scale-[0.99]
                          focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
                          transition-[background-color,transform] duration-200"
@@ -1059,7 +1085,7 @@ export function ProfileSheet({
               useAuthStore.getState().signOut();
             }}
             className="w-full h-11 rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-700
-                       font-extrabold text-[13.5px] inline-flex items-center justify-center gap-2
+                       font-extrabold text-sm inline-flex items-center justify-center gap-2
                        active:scale-[0.99] transition cursor-pointer shadow-xs"
           >
             <LogOut className="w-4 h-4 text-red-600" />
@@ -1092,7 +1118,7 @@ export function ProfileSheet({
           >
             Sign in
           </Link>
-          <p className="text-center text-[11.5px] leading-relaxed text-[var(--auth-ink-soft)]">
+          <p className="text-center text-xs leading-relaxed text-[var(--auth-ink-soft)]">
             Guests play every game against bots and join any room they&apos;re invited to.
             An account is for opening your own.
           </p>
@@ -1136,17 +1162,18 @@ export function MenuSheet({
         </>
       }
     >
-      <div className="rounded-2xl p-4 border border-[#E8D8BE] bg-white">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#2BB44A] animate-pulse" aria-hidden />
-          <span className="text-[13px] font-semibold text-[#365A37]">
-            132 players online right now
-          </span>
-        </div>
-        <div className="text-[11px] text-[#7B5024] mt-1">
-          Most are on Hand Cricket and Snakes &amp; Ladders.
-        </div>
-      </div>
+      {/*
+        A "132 players online right now / Most are on Hand Cricket and
+        Snakes & Ladders" presence card used to sit here — a static literal
+        with a pulsing green dot, same fabricated-telemetry pattern as the
+        removed LiveLoungePulse section (TRUST-REMEDIATION-REPORT.md row 12).
+        `/health` exposes a real `socketCount`, but it is an ops uptime
+        endpoint, not a product API, and using it here would be the exact
+        inconsistency this pass exists to remove: treating one "players
+        online" claim as fabrication and its twin as fine because it happens
+        to resolve to a real-looking number. Removed rather than wired, for
+        the same reason its sibling was.
+      */}
 
       <nav className="flex flex-col gap-2" aria-label="Menu actions">
         <SheetAction
@@ -1251,7 +1278,7 @@ export function NotificationsSheet({
             Notifications
           </span>
           {unreadCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-red-500 text-white shadow-xs">
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-red-500 text-white shadow-xs">
               {unreadCount} New
             </span>
           )}
@@ -1265,7 +1292,7 @@ export function NotificationsSheet({
               key={tab}
               type="button"
               onClick={() => setFilterTab(tab)}
-              className={`px-3 py-1 rounded-full text-[11.5px] font-bold capitalize transition cursor-pointer ${
+              className={`px-3 py-1 rounded-full text-xs font-bold capitalize transition cursor-pointer ${
                 filterTab === tab
                   ? "bg-amber-500 text-black font-black shadow-xs"
                   : isDark
@@ -1281,7 +1308,7 @@ export function NotificationsSheet({
           <button
             type="button"
             onClick={markAllRead}
-            className="text-[11.5px] font-bold text-amber-500 hover:underline cursor-pointer inline-flex items-center gap-1"
+            className="text-xs font-bold text-amber-500 hover:underline cursor-pointer inline-flex items-center gap-1"
           >
             <Check className="w-3.5 h-3.5" />
             <span>Mark all read</span>
@@ -1344,7 +1371,7 @@ export function NotificationsSheet({
                     <h4 className={`text-[13px] font-bold leading-tight ${isDark ? "text-white" : "text-[#2A221B]"}`}>
                       {item.title}
                     </h4>
-                    <p className={`text-[11.5px] mt-0.5 leading-snug ${isDark ? "text-zinc-300" : "text-[#6E5A4B]"}`}>
+                    <p className={`text-xs mt-0.5 leading-snug ${isDark ? "text-zinc-300" : "text-[#6E5A4B]"}`}>
                       {item.desc}
                     </p>
                     <span className="text-[10px] text-zinc-500 mt-1 block font-semibold">
@@ -1561,6 +1588,36 @@ function DoorPlusIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * Module-scope, not per-render: this used to be redeclared inside `GameTile`
+ * on every render. Hoisted here (behaviour-identical) so `PlayerJourneyDashboard`
+ * can reuse the same 21 tile paths for a real "last played" card instead of
+ * a 22nd copy of this table.
+ */
+const TILE_ART_BY_GAME: Record<BhalyamGameSlug, string> = {
+  handcricket: "/HandCricketTile.png",
+  snl: "/S&LTile.png",
+  ludo: "/LudoTile.png",
+  rummy: "/RummyTile.png",
+  rps: "/RPSTile.png",
+  uno: "/UNOTile.png",
+  wordbuilding: "/words_building.png",
+  dotsboxes: "/Dots&boxes.png",
+  namesplaceanimal: "/Name-place-thing-animal.png",
+  tambola: "/Tambola.png",
+  stargame: "/StarTile.png",
+  bingo: "/Bingo Tile.png",
+  snake: "/Snake Game Tile.png",
+  roadrash: "/BrickRacer Game Tile.png",
+  brickblocks: "/BlockBlast Game Tile.png",
+  tetris: "/BlockBlast Game Tile.png",
+  breakout: "/BrickBreakout Game Tile.png",
+  carrom: "/Carrom Game Tile.png",
+  chess: "/Chess Game Tile.png",
+  spacewar: "/SpacewarTile.png",
+  nokiacricket: "/RetroCricket Game Tile.png",
+};
+
 // Exported so the dedicated /games page can render the same tile design.
 export function GameTile({
   game,
@@ -1574,30 +1631,7 @@ export function GameTile({
   compact?: boolean;
 }) {
   const Glyph = GAME_GLYPHS[game.slug];
-
-  const tileArtByGame: Record<BhalyamGameSlug, string> = {
-    handcricket: "/HandCricketTile.png",
-    snl: "/S&LTile.png",
-    ludo: "/LudoTile.png",
-    rummy: "/RummyTile.png",
-    rps: "/RPSTile.png",
-    uno: "/UNOTile.png",
-    wordbuilding: "/words_building.png",
-    dotsboxes: "/Dots&boxes.png",
-    namesplaceanimal: "/Name-place-thing-animal.png",
-    tambola: "/Tambola.png",
-    stargame: "/StarTile.png",
-    bingo: "/Bingo Tile.png",
-    snake: "/Snake Game Tile.png",
-    roadrash: "/BrickRacer Game Tile.png",
-    brickblocks: "/BlockBlast Game Tile.png",
-    tetris: "/BlockBlast Game Tile.png",
-    breakout: "/BrickBreakout Game Tile.png",
-    carrom: "/Carrom Game Tile.png",
-    chess: "/Chess Game Tile.png",
-    spacewar: "/SpacewarTile.png",
-    nokiacricket: "/RetroCricket Game Tile.png",
-  };
+  const tileArtByGame = TILE_ART_BY_GAME;
 
   const [theme] = useTheme();
   const isDark = theme === "dark";
@@ -1753,10 +1787,10 @@ function GameTileArt({
 
 function PlayerJourneyDashboard({
   onSelect,
-  onOpenJoin,
+  snapshot,
 }: {
   onSelect: (slug: BhalyamGameSlug) => void;
-  onOpenJoin: () => void;
+  snapshot: PlayerSnapshot;
 }) {
   const [theme] = useTheme();
   const isDark = theme === "dark";
@@ -1768,6 +1802,22 @@ function PlayerJourneyDashboard({
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
+  // Real numbers, computed once and shared by Card 1 and Card 2 below.
+  // `matches` is limit=1 from usePlayerSnapshot, so [0] IS "last played".
+  const lastMatch = snapshot.matches[0];
+  const lastGameCard = lastMatch ? BHALYAM_GAMES.find((g) => g.slug === lastMatch.game) : undefined;
+  const lastGameStats = lastMatch ? snapshot.stats?.perGame[lastMatch.game] : undefined;
+  const overallStreak = snapshot.stats?.currentWinStreak ?? 0;
+
+  const xp = snapshot.profile?.experiencePoints ?? 0;
+  const level = snapshot.profile?.level ?? 1;
+  const xpIntoLevel = xp % 100;
+  // Closest to completion first — the most motivating "next" target, and the
+  // one most likely to already be in progress.
+  const nextAchievement = [...snapshot.achievements]
+    .filter((a) => !a.unlocked)
+    .sort((a, b) => b.progressPercent - a.progressPercent)[0];
+
   return (
     <RevealOnScroll as="section" amount={0.1} className="mt-6 mb-8">
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -1775,87 +1825,114 @@ function PlayerJourneyDashboard({
           <h2 className={`bhalyam-display text-[22px] sm:text-[28px] leading-tight ${
             isDark ? "text-white" : "text-[#1D2C4A]"
           }`}>
-            Continue Your Journey &amp; Daily Quests
+            Continue Your Journey
           </h2>
           <p className={`text-[13px] sm:text-[14px] font-medium ${
             isDark ? "text-slate-400" : "text-[#6D5C4D]"
           }`}>
-            Earn XP, unlock nostalgic avatars, and climb the school leaderboard
+            Pick up where you left off and track real progress toward your next achievement
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch">
-        
-        {/* Card 1: Continue Your Journey */}
+
+        {/* Card 1: Jump back into the real last-played game, or an honest
+            first-game prompt when there is no match history yet. */}
         <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
           isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D9C1]"
         }`}>
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border ${
-                isDark
-                  ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
-                  : "bg-amber-100 text-amber-900 border-amber-300"
-              }`}>
-                ▶ Jump Back In
-              </span>
-              <span className={`text-[12px] font-semibold ${
-                isDark ? "text-slate-400" : "text-[#8C7A6B]"
-              }`}>
-                Last played 2 hours ago
-              </span>
-            </div>
+          {lastMatch && lastGameCard ? (
+            <>
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border ${
+                    isDark
+                      ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
+                      : "bg-amber-100 text-amber-900 border-amber-300"
+                  }`}>
+                    ▶ Jump Back In
+                  </span>
+                  <span className={`text-[12px] font-semibold ${
+                    isDark ? "text-slate-400" : "text-sand-600"
+                  }`}>
+                    Last played {formatTimeAgo(lastMatch.finishedAt)}
+                  </span>
+                </div>
 
-            <div className={`flex items-center gap-3.5 my-3 p-3 rounded-2xl border ${
-              isDark ? "bg-white/5 border-white/10" : "bg-[#F5ECE0] border-[#E6D4B8]"
-            }`}>
-              <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-200 border-2 border-amber-400 p-1 flex-shrink-0 flex items-center justify-center shadow-inner">
-                <img
-                  src="/HandCricketTile.png"
-                  alt="Hand Cricket"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className={`font-display font-black text-[20px] leading-tight truncate ${
-                  isDark ? "text-white" : "text-[#1D2C4A]"
+                <div className={`flex items-center gap-3.5 my-3 p-3 rounded-2xl border ${
+                  isDark ? "bg-white/5 border-white/10" : "bg-[#F5ECE0] border-[#E6D4B8]"
                 }`}>
-                  Hand Cricket
-                </h4>
-                <div className={`flex items-center gap-2 text-[12px] font-bold mt-0.5 ${
-                  isDark ? "text-slate-300" : "text-[#6D5C4D]"
-                }`}>
-                  <span className={isDark ? "text-emerald-400 font-bold" : "text-emerald-700 font-bold"}>🏆 45 Wins</span>
-                  <span>•</span>
-                  <span>Lvl 8</span>
-                  <span>•</span>
-                  <span className={isDark ? "text-orange-400 font-extrabold" : "text-orange-600 font-extrabold"}>🔥 3x Streak</span>
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-200 border-2 border-amber-400 p-1 flex-shrink-0 flex items-center justify-center shadow-inner">
+                    <img
+                      src={TILE_ART_BY_GAME[lastGameCard.slug]}
+                      alt={lastGameCard.title}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className={`font-display font-black text-[20px] leading-tight truncate ${
+                      isDark ? "text-white" : "text-[#1D2C4A]"
+                    }`}>
+                      {lastGameCard.title}
+                    </h4>
+                    <div className={`flex items-center gap-2 text-[12px] font-bold mt-0.5 ${
+                      isDark ? "text-slate-300" : "text-[#6D5C4D]"
+                    }`}>
+                      {lastGameStats && (
+                        <>
+                          <span className={isDark ? "text-emerald-400 font-bold" : "text-emerald-700 font-bold"}>
+                            🏆 {lastGameStats.wins} Win{lastGameStats.wins === 1 ? "" : "s"}
+                          </span>
+                          <span>•</span>
+                        </>
+                      )}
+                      <span>Lvl {level}</span>
+                      {overallStreak > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className={isDark ? "text-chest-300 font-extrabold" : "text-chest-700 font-extrabold"}>
+                            🔥 {overallStreak}x Streak
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className={`my-3 p-2.5 rounded-xl border text-[12px] font-semibold flex items-center gap-2 ${
-              isDark
-                ? "bg-amber-950/30 border-amber-700/40 text-amber-200"
-                : "bg-[#FFF8EE] border-amber-200/80 text-[#6D4323]"
-            }`}>
-              <span className="text-base">🎁</span>
-              <span><strong>Next Milestone:</strong> Golden Willow Bat Avatar in 2 wins</span>
+              <button
+                type="button"
+                onClick={() => onSelect(lastGameCard.slug)}
+                className="w-full mt-3 py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white font-black text-[14px] uppercase tracking-wider shadow-md active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Resume {lastGameCard.title}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center text-center py-6 gap-3 flex-1">
+              <span className="text-3xl" aria-hidden>🎮</span>
+              <p className={`text-[14px] font-bold ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
+                Play your first game to start your history
+              </p>
+              <p className={`text-[12px] font-medium ${isDark ? "text-slate-400" : "text-[#6D5C4D]"}`}>
+                Your last-played game will appear here so you can jump straight back in.
+              </p>
+              <Link
+                to="/games"
+                className="mt-1 py-2.5 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white font-black text-[13px] uppercase tracking-wider shadow-md transition inline-flex items-center gap-2"
+              >
+                <span>Browse Games</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => onSelect("handcricket")}
-            className="w-full mt-3 py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white font-black text-[14px] uppercase tracking-wider shadow-md active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>Resume Hand Cricket</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          )}
         </article>
 
-        {/* Card 2: Achievement Progress & Daily Quests */}
+        {/* Card 2: Real level progress and the real closest-to-unlocking
+            achievement. No daily quests — there is no daily-quest system to
+            back them. */}
         <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
           isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D9C1]"
         }`}>
@@ -1864,14 +1941,14 @@ function PlayerJourneyDashboard({
               <span className={`font-display font-black text-[18px] ${
                 isDark ? "text-white" : "text-[#1D2C4A]"
               }`}>
-                🏆 Level 12 Progress
+                🏆 Level {level} Progress
               </span>
               <span className={`text-[12px] font-extrabold px-2.5 py-0.5 rounded-full border ${
                 isDark
                   ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
                   : "bg-amber-100 text-amber-900 border-amber-300"
               }`}>
-                60% Complete
+                {xpIntoLevel}% Complete
               </span>
             </div>
 
@@ -1881,70 +1958,44 @@ function PlayerJourneyDashboard({
             }`}>
               <div
                 className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
-                style={{ width: "60%" }}
+                style={{ width: `${xpIntoLevel}%` }}
               />
             </div>
 
-            {/* Next Targeted Milestone */}
-            <div className={`p-2.5 rounded-xl border mb-3 ${
-              isDark ? "bg-white/5 border-white/10" : "bg-[#FFF8EE] border-[#EEDCC2]"
-            }`}>
-              <div className={`text-[11.5px] font-black uppercase tracking-wider ${
-                isDark ? "text-orange-400" : "text-[#EA5A1F]"
+            {/* Next real achievement, closest to completion */}
+            {nextAchievement ? (
+              <div className={`p-2.5 rounded-xl border ${
+                isDark ? "bg-white/5 border-white/10" : "bg-[#FFF8EE] border-[#EEDCC2]"
               }`}>
-                🎯 Next Achievement
+                <div className={`text-xs font-black uppercase tracking-wider ${
+                  isDark ? "text-chest-300" : "text-chest-700"
+                }`}>
+                  🎯 Next Achievement
+                </div>
+                <div className={`text-[13px] font-bold mt-0.5 ${
+                  isDark ? "text-white" : "text-[#1D2C4A]"
+                }`}>
+                  {nextAchievement.title}
+                </div>
+                <div className={`text-[11px] font-semibold ${
+                  isDark ? "text-slate-300" : "text-[#7A6B5C]"
+                }`}>
+                  {nextAchievement.currentProgress} / {nextAchievement.targetValue} — {nextAchievement.description}
+                </div>
               </div>
-              <div className={`text-[13px] font-bold mt-0.5 ${
-                isDark ? "text-white" : "text-[#1D2C4A]"
-              }`}>
-                Win 1 More Rummy Match
-              </div>
-              <div className={`text-[11px] font-semibold ${
-                isDark ? "text-slate-300" : "text-[#7A6B5C]"
-              }`}>
-                Reward: <strong className={isDark ? "text-amber-300" : "text-amber-800"}>+100 XP</strong> &amp; Exclusive "Rummy Master" Badge
-              </div>
-            </div>
-
-            {/* Daily Quests List */}
-            <div className="space-y-1.5">
-              <div className={`text-[11.5px] font-black uppercase tracking-wider ${
-                isDark ? "text-slate-400" : "text-[#6D5C4D]"
-              }`}>
-                Daily Quests (Refreshes in 4h)
-              </div>
-              
-              <div className={`p-2 rounded-lg flex items-center justify-between text-[12px] font-bold ${
-                isDark ? "bg-emerald-950/40 border border-emerald-500/30 text-emerald-300" : "bg-[#F5ECE0] text-[#2A221B]"
-              }`}>
-                <span className="flex items-center gap-1.5">
-                  <span>✅</span> Play 1 UNO Match
-                </span>
-                <span className={isDark ? "text-emerald-400 font-extrabold" : "text-emerald-700 font-extrabold"}>+50 XP</span>
-              </div>
-
-              <div className={`p-2 rounded-lg flex items-center justify-between text-[12px] font-bold ${
-                isDark ? "bg-white/5 border border-white/5 text-slate-200" : "bg-[#F5ECE0] text-[#2A221B]"
-              }`}>
-                <span className="flex items-center gap-1.5">
-                  <span className={isDark ? "text-slate-500" : "text-zinc-400"}>⬜</span> Win 1 Hand Cricket Match
-                </span>
-                <span className={isDark ? "text-amber-400 font-extrabold" : "text-amber-800 font-extrabold"}>+75 XP</span>
-              </div>
-
-              <div className={`p-2 rounded-lg flex items-center justify-between text-[12px] font-bold ${
-                isDark ? "bg-white/5 border border-white/5 text-slate-200" : "bg-[#F5ECE0] text-[#2A221B]"
-              }`}>
-                <span className="flex items-center gap-1.5">
-                  <span className={isDark ? "text-slate-500" : "text-zinc-400"}>⬜</span> Invite 1 Friend to Room
-                </span>
-                <span className={isDark ? "text-purple-400 font-extrabold" : "text-purple-800 font-extrabold"}>+100 XP</span>
-              </div>
-            </div>
+            ) : (
+              <p className={`text-[12px] font-semibold ${isDark ? "text-slate-400" : "text-[#6D5C4D]"}`}>
+                {snapshot.ready
+                  ? "Every achievement unlocked so far. Play a match to find the next one."
+                  : "Play matches to start unlocking achievements."}
+              </p>
+            )}
           </div>
         </article>
 
-        {/* Card 3: Incentivized Friend Referral */}
+        {/* Card 3: Invite Friends — real WhatsApp share action. No fabricated
+            "2/3 Friends Joined" counter: there is no referral-tracking system
+            behind it, so it can never move for a real user. */}
         <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between relative overflow-hidden transition-colors ${
           isDark
             ? "bg-[#0E1526] border-amber-500/30"
@@ -1959,13 +2010,13 @@ function PlayerJourneyDashboard({
                 Invite Friends, Unlock Perks
               </h4>
             </div>
-            <p className={`text-[12.5px] font-medium mb-3 ${
+            <p className={`text-[13px] font-medium mb-3 ${
               isDark ? "text-slate-300" : "text-[#6D5C4D]"
             }`}>
               Bring 3 friends to BHALYAM and instantly unlock exclusive nostalgia rewards:
             </p>
 
-            <ul className={`space-y-2 mb-4 text-[12.5px] font-bold ${
+            <ul className={`space-y-2 mb-4 text-[13px] font-bold ${
               isDark ? "text-slate-200" : "text-[#2A221B]"
             }`}>
               <li className="flex items-center gap-2">
@@ -1993,27 +2044,24 @@ function PlayerJourneyDashboard({
                 <span>Retro 90s School Slate Board Theme</span>
               </li>
             </ul>
-
-            {/* Step count */}
-            <div className={`flex items-center justify-between p-2.5 rounded-xl border mb-3 text-[12px] font-bold ${
-              isDark
-                ? "bg-amber-950/40 border-amber-700/40 text-amber-200"
-                : "bg-amber-50 border-amber-200 text-amber-900"
-            }`}>
-              <span>Referral Progress:</span>
-              <span className={`font-black ${isDark ? "text-amber-300" : "text-amber-800"}`}>
-                2 / 3 Friends Joined
-              </span>
-            </div>
           </div>
 
+          {/*
+            Dark ink on the WhatsApp green, not white.
+
+            White on #25D366 measures 1.98:1 in the browser — the worst
+            contrast in the lounge, on a 14px uppercase label. The fill has to
+            stay: this button is recognised by its colour before it is read.
+            So the label darkens instead, to 7.4:1 on the rest state and 5.9:1
+            on hover, and the glyph follows it.
+          */}
           <button
             type="button"
             onClick={handleShareWhatsAppReferral}
-            className="w-full mt-3 py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-black text-[14px] uppercase tracking-wider shadow-[0_4px_14px_rgba(37,211,102,0.35)] active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full mt-3 py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-[#0B2E20] font-black text-[14px] uppercase tracking-wider shadow-[0_4px_14px_rgba(37,211,102,0.35)] active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
           >
-            <WhatsappGlyph className="w-4 h-4 text-white" />
-            <span>Invite on WhatsApp (+100 XP)</span>
+            <WhatsappGlyph className="w-4 h-4 text-[#0B2E20]" />
+            <span>Invite on WhatsApp</span>
           </button>
         </article>
 
@@ -2022,177 +2070,18 @@ function PlayerJourneyDashboard({
   );
 }
 
-/* ───────────────────────────── Live Lounge Pulse & Community Feed ───────────────────────────── */
-
-function LiveLoungePulse({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
-  const [theme] = useTheme();
-  const isDark = theme === "dark";
-
-  const liveStats = [
-    { label: "Players Online", value: 548, icon: "🟢", toneLight: "text-emerald-700", toneDark: "text-emerald-400", bgLight: "bg-emerald-50 border-emerald-200", bgDark: "bg-emerald-950/40 border-emerald-700/40" },
-    { label: "Active Live Rooms", value: 68, icon: "🔥", toneLight: "text-orange-700", toneDark: "text-orange-400", bgLight: "bg-orange-50 border-orange-200", bgDark: "bg-orange-950/40 border-orange-700/40" },
-    { label: "School Gangs Active", value: 23, icon: "👥", toneLight: "text-blue-700", toneDark: "text-blue-400", bgLight: "bg-blue-50 border-blue-200", bgDark: "bg-blue-950/40 border-blue-700/40" },
-    { label: "Matches Won Today", value: 145, icon: "🎉", toneLight: "text-purple-700", toneDark: "text-purple-400", bgLight: "bg-purple-50 border-purple-200", bgDark: "bg-purple-950/40 border-purple-700/40" },
-  ];
-
-  const communityTicker = [
-    "🟢 Ravi won a 4-Player UNO match with a +4 counter!",
-    "🔥 Ajay achieved a 5-match win streak in Hand Cricket!",
-    "🎉 Pooja unlocked the 'Wildcard Queen' trophy in UNO",
-    "⚡ 16 new rooms were created across Bangalore, Hyderabad, & Chennai",
-    "👑 Suman invited 3 friends and unlocked the Retro Slate Theme!",
-  ];
-  const [tickerIndex, setTickerIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTickerIndex((i) => (i + 1) % communityTicker.length);
-    }, 4500);
-    return () => clearInterval(timer);
-  }, [communityTicker.length]);
-
-  return (
-    <RevealOnScroll as="section" amount={0.1} className="my-6">
-      {/* 4 Live Metric Pills */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
-        {liveStats.map((st) => (
-          <div
-            key={st.label}
-            className={`p-3.5 sm:p-4 rounded-2xl border shadow-xs flex items-center gap-3 transition-colors ${
-              isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D8BE]"
-            }`}
-          >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 border ${
-              isDark ? st.bgDark : st.bgLight
-            }`} aria-hidden>
-              {st.icon}
-            </div>
-            <div className="min-w-0">
-              <div className={`text-[20px] sm:text-[24px] font-black leading-tight ${
-                isDark ? st.toneDark : st.toneLight
-              }`}>
-                <CountUp to={st.value} />
-              </div>
-              <div className={`text-[11.5px] sm:text-[12px] font-bold truncate ${
-                isDark ? "text-slate-400" : "text-[#6D5C4D]"
-              }`}>
-                {st.label}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Community Feed & Leaderboard Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-        {/* Left 2 cols: Live Adda Feed */}
-        <div className={`lg:col-span-2 p-4 sm:p-5 rounded-3xl border shadow-sm flex flex-col justify-between transition-colors ${
-          isDark
-            ? "bg-[#0E1526] border-white/10 text-white"
-            : "bg-[#FCF8EF] border-[#E8D8BE] text-[#1D2C4A]"
-        }`}>
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white animate-pulse">
-                LIVE FEED
-              </span>
-              <h4 className={`bhalyam-display text-[17px] ${
-                isDark ? "text-amber-400" : "text-[#1D2C4A]"
-              }`}>
-                School Adda Activity
-              </h4>
-            </div>
-            <span className={`text-[11.5px] font-semibold ${
-              isDark ? "text-slate-400" : "text-[#6D5C4D]"
-            }`}>
-              Live updates • Zero lag
-            </span>
-          </div>
-
-          <div className={`my-2 p-3.5 rounded-2xl border text-[13px] font-bold min-h-[48px] flex items-center transition-colors ${
-            isDark
-              ? "bg-white/5 border-white/10 text-amber-200"
-              : "bg-[#FFF8EE] border-amber-200/90 text-[#3B2918]"
-          }`}>
-            {communityTicker[tickerIndex]}
-          </div>
-
-          <div className={`flex items-center justify-between text-[11.5px] font-semibold mt-2 pt-2 border-t ${
-            isDark ? "border-white/10 text-slate-400" : "border-[#E8D8BE] text-[#6D5C4D]"
-          }`}>
-            <span>🌟 Join a room to appear in the live feed</span>
-            <button
-              type="button"
-              onClick={() => onSelect("uno")}
-              className={`font-bold hover:underline cursor-pointer ${
-                isDark ? "text-amber-400 hover:text-amber-300" : "text-amber-700 hover:text-amber-900"
-              }`}
-            >
-              Play UNO Now →
-            </button>
-          </div>
-        </div>
-
-        {/* Right col: Weekly School Gang Leaderboard */}
-        <div className={`p-4 sm:p-5 rounded-3xl border shadow-sm transition-colors ${
-          isDark
-            ? "bg-[#0E1526] border-white/10 text-white"
-            : "bg-[#FCF8EF] border-[#E8D8BE] text-[#1D2C4A]"
-        }`}>
-          <div className="flex items-center justify-between mb-3">
-            <h4 className={`font-display font-black text-[16px] ${
-              isDark ? "text-white" : "text-[#1D2C4A]"
-            }`}>
-              Weekly Leaderboard 🏆
-            </h4>
-            <span className={`text-[10.5px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
-              isDark
-                ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
-                : "bg-amber-100 text-amber-900 border-amber-300"
-            }`}>
-              Gold League
-            </span>
-          </div>
-
-          <div className="space-y-1.5 text-[12px] font-bold">
-            <div className={`p-2 rounded-xl border flex items-center justify-between ${
-              isDark
-                ? "bg-amber-950/40 border-amber-500/40 text-amber-200"
-                : "bg-amber-100/80 border-amber-300/80 text-amber-950"
-            }`}>
-              <span>🥇 1. Ajay Kumar</span>
-              <span className="font-black">2,450 XP</span>
-            </div>
-            <div className={`p-2 rounded-xl border flex items-center justify-between ${
-              isDark
-                ? "bg-white/5 border-white/5 text-slate-200"
-                : "bg-[#F5ECE0] border-[#E6D4B8]/60 text-[#2A221B]"
-            }`}>
-              <span>🥈 2. Ravi Teja</span>
-              <span className="font-black">2,100 XP</span>
-            </div>
-            <div className={`p-2 rounded-xl border flex items-center justify-between ${
-              isDark
-                ? "bg-white/5 border-white/5 text-slate-200"
-                : "bg-[#F5ECE0] border-[#E6D4B8]/60 text-[#2A221B]"
-            }`}>
-              <span>🥉 3. Pooja Reddy</span>
-              <span className="font-black">1,890 XP</span>
-            </div>
-            <div className={`p-2 rounded-xl border flex items-center justify-between ${
-              isDark
-                ? "bg-emerald-950/50 border-emerald-500/40 text-emerald-300"
-                : "bg-emerald-100/80 border-emerald-300/80 text-emerald-950"
-            }`}>
-              <span>🏅 4. You (Champion)</span>
-              <span className="font-black">1,450 XP</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </RevealOnScroll>
-  );
-}
+/*
+ * `LiveLoungePulse` (four platform-wide activity tiles, a rotating
+ * "community feed" ticker, and a "Weekly Leaderboard" that named the real
+ * signed-in user at a fixed fake rank) was removed rather than wired.
+ *
+ * Unlike the cards above, nothing here had a real source to wire to: there is
+ * no online-presence counter, no cross-player activity feed, and no weekly
+ * XP leaderboard service anywhere in `server/src`. Every number — "548
+ * Players Online", "68 Active Live Rooms", "23 School Gangs Active", "145
+ * Matches Won Today" — was a hardcoded literal animated with `<CountUp>` to
+ * read as live telemetry it was not. See TRUST-REMEDIATION-REPORT.md.
+ */
 
 /* ───────────────────────────── Footer ───────────────────────────── */
 
@@ -2274,7 +2163,7 @@ function Footer() {
                   href="https://www.instagram.com/"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[13px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
                 >
                   <InstagramGlyph className="w-4 h-4 text-[#E11D48]" />
                   <span>Instagram</span>
@@ -2284,7 +2173,7 @@ function Footer() {
                   href="https://wa.me/?text=Join%20me%20on%20BHALYAM%20-%20https%3A%2F%2Fbhalyam.onrender.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[13px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
                 >
                   <WhatsappGlyph className="w-4 h-4 text-[#25D366]" />
                   <span>WhatsApp</span>
@@ -2292,7 +2181,7 @@ function Footer() {
 
                 <a
                   href="mailto:hello@bhalyam.app"
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[13px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
                 >
                   <MailGlyph className="w-4 h-4 text-[#2563EB]" />
                   <span>Email</span>
@@ -2339,11 +2228,11 @@ function Footer() {
                 <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
                   EXPLORE
                 </h4>
-                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                  <li><Link to="/games" className="hover:text-[#E85D04] transition-colors">All Games</Link></li>
-                  <li><a href="#rooms" className="hover:text-[#E85D04] transition-colors">Rooms</a></li>
-                  <li><a href="#how-it-works" className="hover:text-[#E85D04] transition-colors">How It Works</a></li>
-                  <li><a href="#leaderboard" className="hover:text-[#E85D04] transition-colors">Leaderboard</a></li>
+                <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
+                  <li><Link to="/games" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">All Games</Link></li>
+                  <li><a href="#rooms" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Rooms</a></li>
+                  <li><a href="#how-it-works" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">How It Works</a></li>
+                  <li><a href="#leaderboard" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Leaderboard</a></li>
                 </ul>
               </div>
 
@@ -2352,11 +2241,11 @@ function Footer() {
                 <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
                   SUPPORT
                 </h4>
-                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors">Help Center</Link></li>
-                  <li><a href="#safety" className="hover:text-[#E85D04] transition-colors">Safety Guide</a></li>
-                  <li><a href="#rules" className="hover:text-[#E85D04] transition-colors">Community Rules</a></li>
-                  <li><a href="#report" className="hover:text-[#E85D04] transition-colors">Report an Issue</a></li>
+                <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
+                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Help Center</Link></li>
+                  <li><a href="#safety" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Safety Guide</a></li>
+                  <li><a href="#rules" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Community Rules</a></li>
+                  <li><a href="#report" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Report an Issue</a></li>
                 </ul>
               </div>
 
@@ -2365,11 +2254,11 @@ function Footer() {
                 <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
                   COMPANY
                 </h4>
-                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors">About BHALYAM</Link></li>
-                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors">Our Story</Link></li>
-                  <li><a href="#careers" className="hover:text-[#E85D04] transition-colors">Careers</a></li>
-                  <li><a href="#press" className="hover:text-[#E85D04] transition-colors">Press Kit</a></li>
+                <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
+                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">About BHALYAM</Link></li>
+                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Our Story</Link></li>
+                  <li><a href="#careers" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Careers</a></li>
+                  <li><a href="#press" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Press Kit</a></li>
                 </ul>
               </div>
 
@@ -2378,10 +2267,10 @@ function Footer() {
                 <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
                   LEGAL
                 </h4>
-                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
-                  <li><Link to="/privacy" className="hover:text-[#E85D04] transition-colors">Privacy Notice</Link></li>
-                  <li><a href="#terms" className="hover:text-[#E85D04] transition-colors">Terms of Service</a></li>
-                  <li><Link to="/profile" className="hover:text-[#E85D04] transition-colors">Your Data &amp; Choices</Link></li>
+                <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
+                  <li><Link to="/privacy" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Privacy Notice</Link></li>
+                  <li><a href="#terms" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Terms of Service</a></li>
+                  <li><Link to="/profile" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Your Data &amp; Choices</Link></li>
                 </ul>
               </div>
 
@@ -2403,12 +2292,12 @@ function Footer() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
-                    className="bg-transparent text-[11.5px] text-[#4A2508] placeholder-[#9C7E63] px-2.5 focus:outline-none flex-1 min-w-0 font-medium"
+                    className="bg-transparent text-xs text-[#4A2508] placeholder-[#9C7E63] px-2.5 focus:outline-none flex-1 min-w-0 font-medium"
                     required
                   />
                   <button
                     type="submit"
-                    className="bg-[#E85D04] hover:bg-[#D45000] text-white text-[11.5px] font-bold rounded-lg px-3.5 py-1.5 transition-all shadow-xs active:scale-95 flex-shrink-0"
+                    className="bg-chest-600 hover:bg-chest-700 text-white text-xs font-bold rounded-lg px-3.5 py-1.5 transition-all shadow-xs active:scale-95 flex-shrink-0"
                   >
                     Subscribe
                   </button>
@@ -2479,13 +2368,13 @@ function Footer() {
             </div>
             
             <div className="flex items-center gap-4 flex-wrap justify-center">
-              <Link to="/privacy" className="hover:text-[#E85D04] transition-colors">Privacy Notice</Link>
+              <Link to="/privacy" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Privacy Notice</Link>
               <span>•</span>
-              <a href="#terms" className="hover:text-[#E85D04] transition-colors">Terms of Service</a>
+              <a href="#terms" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Terms of Service</a>
               <span>•</span>
-              <Link to="/profile" className="hover:text-[#E85D04] transition-colors">Your Data Choices</Link>
+              <Link to="/profile" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Your Data Choices</Link>
               <span>•</span>
-              <a href="#cookies" className="hover:text-[#E85D04] transition-colors">Cookie Settings</a>
+              <a href="#cookies" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Cookie Settings</a>
             </div>
           </div>
 

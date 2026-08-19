@@ -305,14 +305,44 @@ export function useLudoBoard({
   }, [displayTurnPlayerId]);
 
   const LUDO_TUTORIAL_KEY = "ludo.tutorial.completed.v1";
-  const [showInstructions, setShowInstructionsRaw] = useState<boolean>(() => {
-    // Auto-open "How to play" once per browser — parity with every other game.
+  const [showInstructions, setShowInstructionsRaw] = useState(false);
+  const hasAutoOpenedInstructionsRef = useRef(false);
+
+  /**
+   * Auto-open "How to play" once per browser — but only once it is SAFE to,
+   * not unconditionally on mount.
+   *
+   * This board can mount with a live turn timer already running: a page
+   * refresh, a rejoin inside the 90s disconnect grace, or simply being first
+   * in `playerOrder`. The unconditional version of this effect opened the
+   * modal over the board regardless, and the real clock underneath — the
+   * same `turnDeadline` the header's countdown chip reads — kept counting
+   * down the whole time the player couldn't see or touch the board.
+   * Reproduced: first play, "10s left" on open → "3s left" four seconds
+   * later, still covered.
+   *
+   * Safe means: it is not my turn, or no deadline is currently running
+   * (`turnDeadline: null` — between turns, or the round hasn't started
+   * ticking). `myTurn` and `state.turnDeadline` already exist above for the
+   * live turn-timer UI; this reads the same two values rather than adding a
+   * third notion of "my turn" that could drift from the real one.
+   */
+  useEffect(() => {
+    if (hasAutoOpenedInstructionsRef.current) return;
+    const safeToOpen = !myTurn || state.turnDeadline === null;
+    if (!safeToOpen) return;
+    let alreadySeen = true;
     try {
-      return localStorage.getItem(LUDO_TUTORIAL_KEY) !== "1";
+      alreadySeen = localStorage.getItem(LUDO_TUTORIAL_KEY) === "1";
     } catch {
-      return false;
+      alreadySeen = true; // can't confirm — fail closed, don't auto-open
     }
-  });
+    if (!alreadySeen) {
+      hasAutoOpenedInstructionsRef.current = true;
+      setShowInstructionsRaw(true);
+    }
+  }, [myTurn, state.turnDeadline]);
+
   const setShowInstructions = useCallback(
     (v: boolean) => {
       // Closing it (auto-opened or via the Rules button) marks it seen so it
