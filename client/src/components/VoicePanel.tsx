@@ -1,4 +1,5 @@
 import type { Player } from "@shared/types";
+import { Mic } from "lucide-react";
 import SeatAvatar from "./profile/SeatAvatar";
 import { useVoiceSession } from "../lib/voice-session";
 import {
@@ -66,10 +67,10 @@ export default function VoicePanel({
   }
 
   return (
-    <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
+    <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1.5">
-          <span aria-hidden>🎙</span>
+          <Mic size={14} className="shrink-0" aria-hidden />
           <span>Voice Chat</span>
         </h3>
         {connected && <span className="text-xs font-bold text-emerald-500">● Live</span>}
@@ -83,7 +84,7 @@ export default function VoicePanel({
             disabled={busy}
             className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold py-2 sm:py-2.5 rounded-xl shadow-sm transition active:scale-95 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer disabled:opacity-50"
           >
-            <span aria-hidden>🎙</span>
+            <Mic size={16} aria-hidden />
             <span>{busy ? "Requesting mic..." : "Connect mic"}</span>
           </button>
           <p className="text-[11px] text-center text-[#8A6D4B] dark:text-slate-400 font-medium">

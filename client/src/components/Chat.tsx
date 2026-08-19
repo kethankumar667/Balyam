@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@shared/types";
+import { MessageSquare } from "lucide-react";
 import { getSocket } from "../lib/socket";
 
 /**
@@ -67,13 +68,13 @@ export default function Chat({
 
   return (
     <div
-      className={`w-full max-w-full h-full min-h-0 flex flex-col bg-[#FFFDF8] dark:bg-[#131926] border border-[#EEDBCA]/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-xs overflow-hidden ${className}`}
+      className={`w-full max-w-full h-full min-h-0 flex flex-col bg-[#FFFDF8] dark:bg-[var(--surface-1)] border border-[#EEDBCA]/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-xs overflow-hidden ${className}`}
     >
       {/* Optional Header */}
       {showHeader && (
-        <div className="flex-shrink-0 flex items-center justify-between px-3.5 py-2.5 border-b border-[#EEDBCA]/60 dark:border-slate-800 bg-[#FFFDF8]/90 dark:bg-[#131926]/90 backdrop-blur-xs">
+        <div className="flex-shrink-0 flex items-center justify-between px-3.5 py-2.5 border-b border-[#EEDBCA]/60 dark:border-slate-800 bg-[#FFFDF8]/90 dark:bg-[var(--surface-1)]/90 backdrop-blur-xs">
           <h3 className="text-xs font-black uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1.5">
-            <span aria-hidden>💬</span>
+            <MessageSquare size={14} aria-hidden />
             <span>Chat</span>
           </h3>
           <span className="text-[11px] font-bold text-[#8A6D4B] dark:text-slate-400">
@@ -142,7 +143,7 @@ export default function Chat({
       {/* Message Composer (Sticky Bottom, Safe Area Padded, Guaranteed Visible Send Button) */}
       <form
         onSubmit={handleSubmit}
-        className="flex-shrink-0 sticky bottom-0 z-10 bg-[#FFFDF8] dark:bg-[#131926] p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))] border-t border-[#EEDBCA] dark:border-slate-800"
+        className="flex-shrink-0 sticky bottom-0 z-10 bg-[#FFFDF8] dark:bg-[var(--surface-1)] p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))] border-t border-[#EEDBCA] dark:border-slate-800"
       >
         <div className="flex items-center gap-1.5 sm:gap-2 max-w-full relative">
           <input

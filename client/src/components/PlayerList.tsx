@@ -1,4 +1,5 @@
 import type { Player } from "@shared/types";
+import { Users, Crown, Check, Target } from "lucide-react";
 import SeatAvatar from "./profile/SeatAvatar";
 
 export default function PlayerList({
@@ -11,10 +12,10 @@ export default function PlayerList({
   onTapPlayer?: (id: string) => void;
 }) {
   return (
-    <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
+    <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1.5">
-          <span aria-hidden>👥</span>
+          <Users size={14} aria-hidden />
           <span>Players ({players.length})</span>
         </h3>
       </div>
@@ -54,8 +55,8 @@ export default function PlayerList({
                 </span>
               )}
               {p.isHost && (
-                <span className="text-amber-500 text-xs" title="Room Host">
-                  👑
+                <span className="text-amber-500" title="Room Host">
+                  <Crown size={13} aria-hidden />
                 </span>
               )}
             </div>
@@ -76,8 +77,8 @@ export default function PlayerList({
                 </span>
               )}
               {p.isReady ? (
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  ✓
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  <Check size={13} aria-hidden />
                 </span>
               ) : (
                 <span className="text-xs font-bold text-[#8A6D4B] dark:text-slate-500">
@@ -87,10 +88,10 @@ export default function PlayerList({
               {p.id !== selfId && onTapPlayer && (
                 <button
                   type="button"
-                  className="text-xs text-[#8A6D4B] hover:text-[#EA5A1F]"
+                  className="text-[#8A6D4B] hover:text-[#EA5A1F]"
                   title={`React at ${p.name}`}
                 >
-                  🎯
+                  <Target size={14} aria-hidden />
                 </button>
               )}
             </div>
@@ -99,7 +100,7 @@ export default function PlayerList({
       </ul>
 
       <div className="flex items-center gap-1.5 text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium">
-        <span aria-hidden>👥</span>
+        <Users size={14} aria-hidden />
         <span>{players.length >= 6 ? "Table full · All ready!" : "Waiting for players..."}</span>
       </div>
     </div>

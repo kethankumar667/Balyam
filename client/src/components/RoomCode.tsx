@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Copy, QrCode } from "lucide-react";
 import QrCodeModal from "./QrCodeModal";
 
 export default function RoomCode({ code }: { code: string }) {
@@ -27,7 +28,7 @@ export default function RoomCode({ code }: { code: string }) {
           className="inline-flex items-center gap-1 text-xs bg-[#EA5A1F] hover:bg-[#D84F17] text-white font-bold rounded-xl px-3 py-1.5 transition shadow-sm active:scale-95 cursor-pointer"
           title="Copy room code"
         >
-          <span aria-hidden>📋</span>
+          <Copy size={14} aria-hidden />
           {copied ? "Copied" : "Copy"}
         </button>
         <button
@@ -36,7 +37,7 @@ export default function RoomCode({ code }: { code: string }) {
           className="inline-flex items-center gap-1 text-xs bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700 border border-[#E8D8BE] dark:border-slate-700 text-[#352C24] dark:text-slate-200 font-semibold rounded-xl px-2.5 py-1.5 transition shadow-sm active:scale-95 cursor-pointer"
           title="Show QR Code"
         >
-          <span aria-hidden>📷</span>
+          <QrCode size={14} aria-hidden />
           QR Code
         </button>
       </div>

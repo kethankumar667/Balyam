@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { BotDifficulty, GameKind } from "@shared/types";
+import { Bot } from "lucide-react";
 import Modal from "../Modal";
 import { RewardButton, SecondaryButton } from "../../design-system/dls/Buttons";
 
@@ -72,7 +73,7 @@ export default function BotManagementDialog({
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-[#EEDBCA]/60 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <span className="text-xl" aria-hidden>🤖</span>
+            <Bot size={20} aria-hidden />
             <h3
               id="bot-dialog-title"
               className="text-base font-extrabold text-[#2B3550] dark:text-slate-100"

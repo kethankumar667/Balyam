@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RoomPublicState } from "@shared/types";
+import { LogOut } from "lucide-react";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
 import RoomNameEditor from "../RoomNameEditor";
 import RummyRoomHistory from "../nostalgia/RummyRoomHistory";
@@ -57,7 +58,7 @@ export default function RoomHeader({
             aria-label="Leave room"
             className="inline-flex items-center justify-center gap-1.5 min-h-[44px] text-xs sm:text-sm bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-[#EEDBCA] dark:border-slate-700 px-3.5 py-1.5 rounded-full transition shadow-xs active:scale-95 cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F]"
           >
-            <span aria-hidden>🚪</span>
+            <LogOut size={16} aria-hidden />
             <span className="text-[#0F172A] dark:text-slate-100 font-extrabold">Leave</span>
           </button>
         </div>
