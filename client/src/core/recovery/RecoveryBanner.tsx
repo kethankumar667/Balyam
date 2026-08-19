@@ -1,9 +1,15 @@
+import { useLocation } from "react-router-dom";
 import { useRecovery } from "./useRecovery";
+import { useRoomStore } from "../../store/roomStore";
 
 export default function RecoveryBanner() {
   const { connectionState, retryRecovery } = useRecovery();
+  const location = useLocation();
+  const roomState = useRoomStore((s) => s.roomState);
 
-  if (connectionState === "CONNECTED" || connectionState === "DISCONNECTED") {
+  const isInRoom = location.pathname.startsWith("/room/") || roomState !== null;
+
+  if (!isInRoom || connectionState === "CONNECTED" || connectionState === "DISCONNECTED") {
     return null;
   }
 

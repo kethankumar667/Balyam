@@ -272,33 +272,33 @@ export class StateMachine {
   }
 
   private renderBoot(r: RenderPipeline): void {
-    r.drawText("BRICK GAME", 34, 35, r.PIXEL_COLOR, 10);
-    r.drawText("FORMULA 1", 38, 50, r.PIXEL_COLOR, 10);
-    r.drawCar(5, 7, r.PIXEL_COLOR);
-    r.drawText("PRESS 5 / ANY KEY", 18, 175, r.PIXEL_COLOR, 8);
-    r.drawText("9999 IN 1 RACER", 28, 235, r.PIXEL_COLOR, 8);
+    r.drawText("BRICK GAME", 64, 30, r.PIXEL_COLOR, 13);
+    r.drawText("FORMULA 1", 70, 50, r.PIXEL_COLOR, 12);
+    r.drawCar(6, 3, r.PIXEL_COLOR);
+    r.drawText("PRESS 5 / START", 54, 160, r.PIXEL_COLOR, 10);
+    r.drawText("9999 IN 1 RACER", 58, 190, r.PIXEL_COLOR, 9);
   }
 
   private renderMenu(r: RenderPipeline): void {
-    r.drawText("★ FORMULA 1 ★", 24, 20, r.PIXEL_COLOR, 10);
-    r.drawLine(10, 38, 132, 38);
+    r.drawText("★ FORMULA 1 ★", 54, 18, r.PIXEL_COLOR, 13);
+    r.drawLine(16, 38, 212, 38);
 
-    let y = 55;
+    let y = 52;
     this.menuItems.forEach((item, idx) => {
       const isSelected = idx === this.selectedMenuIndex;
       if (isSelected) {
-        r.fillRect(12, y - 2, 118, 16, r.PIXEL_COLOR);
-        r.drawText(`► ${item}`, 18, y + 1, r.BG_COLOR, 9);
+        r.fillRect(20, y - 2, 188, 20, r.PIXEL_COLOR);
+        r.drawText(`► ${item}`, 28, y + 2, r.BG_COLOR, 11);
       } else {
-        r.drawText(`  ${item}`, 18, y + 1, r.PIXEL_COLOR, 9);
+        r.drawText(`  ${item}`, 28, y + 2, r.PIXEL_COLOR, 11);
       }
-      y += 24;
+      y += 28;
     });
 
-    r.drawCar(5, 12, r.PIXEL_COLOR);
+    r.drawCar(6, 6, r.PIXEL_COLOR);
 
-    r.drawLine(10, 220, 132, 220);
-    r.drawText("4/6:NAV  5:START", 24, 232, r.PIXEL_COLOR, 8);
+    r.drawLine(16, 190, 212, 190);
+    r.drawText("4/6:NAV  5:START", 54, 202, r.PIXEL_COLOR, 10);
   }
 
   private renderPlaying(r: RenderPipeline): void {
@@ -307,7 +307,7 @@ export class StateMachine {
 
     // 2. Draw descending enemy traffic
     for (const enemy of this.enemyManager.enemies) {
-      if (enemy.y >= -3 && enemy.y < 20) {
+      if (enemy.y >= -3 && enemy.y < 12) {
         const cx = LANE_CENTERS[enemy.lane];
         r.drawCar(cx, enemy.y, r.PIXEL_COLOR);
       }
@@ -318,68 +318,67 @@ export class StateMachine {
 
     // 4. Ready Countdown Overlay
     if (this.state === "READY") {
-      r.fillRect(32, 100, 78, 38, r.PIXEL_COLOR);
-      r.drawText("GET READY", 40, 106, r.BG_COLOR, 9);
-      r.drawText(`- ${this.readyCountdown} -`, 58, 120, r.BG_COLOR, 10);
+      r.fillRect(44, 75, 140, 60, r.PIXEL_COLOR);
+      r.drawText("GET READY", 66, 85, r.BG_COLOR, 12);
+      r.drawText(`- ${this.readyCountdown} -`, 94, 106, r.BG_COLOR, 14);
     }
   }
 
   private renderPaused(r: RenderPipeline): void {
     this.renderPlaying(r);
-    r.fillRect(16, 90, 110, 60, r.PIXEL_COLOR);
-    r.drawText("★ RACE PAUSED ★", 22, 98, r.BG_COLOR, 9);
-    r.drawText("5/0: RESUME", 34, 118, r.BG_COLOR, 8);
-    r.drawText("4/6: QUIT MENU", 26, 132, r.BG_COLOR, 8);
+    r.fillRect(24, 70, 180, 85, r.PIXEL_COLOR);
+    r.drawText("★ RACE PAUSED ★", 40, 80, r.BG_COLOR, 12);
+    r.drawText("5/0: RESUME", 68, 108, r.BG_COLOR, 10);
+    r.drawText("4/6: QUIT MENU", 56, 126, r.BG_COLOR, 10);
   }
 
   private renderGameOver(r: RenderPipeline): void {
     r.drawRoadStripes(0);
     r.drawCrashExplosion(this.player.centerCol, this.player.y);
 
-    r.fillRect(10, 30, 122, 140, r.PIXEL_COLOR);
+    r.fillRect(16, 18, 196, 172, r.PIXEL_COLOR);
     const isNewRecord = this.score > 0 && this.score >= this.saveData.highScore;
     const title = isNewRecord ? "★ NEW RECORD! ★" : "★ CRASHED! ★";
-    r.drawText(title, 24, 38, r.BG_COLOR, 9);
+    r.drawText(title, 48, 28, r.BG_COLOR, 12);
 
-    r.drawText(`SCORE: ${this.score}`, 20, 62, r.BG_COLOR, 8.5);
-    r.drawText(`BEST:  ${this.saveData.highScore}`, 20, 78, r.BG_COLOR, 8.5);
-    r.drawText(`DODGED:${this.carsDodged} CARS`, 20, 94, r.BG_COLOR, 8.5);
-    r.drawText(`DIST:  ${this.distanceMeters} M`, 20, 110, r.BG_COLOR, 8.5);
-    r.drawText(`LEVEL: LV ${this.level}`, 20, 126, r.BG_COLOR, 8.5);
+    r.drawText(`SCORE: ${this.score}`, 32, 54, r.BG_COLOR, 10.5);
+    r.drawText(`BEST:  ${this.saveData.highScore}`, 32, 72, r.BG_COLOR, 10.5);
+    r.drawText(`DODGED:${this.carsDodged} CARS`, 32, 90, r.BG_COLOR, 10.5);
+    r.drawText(`DIST:  ${this.distanceMeters} M`, 32, 108, r.BG_COLOR, 10.5);
+    r.drawText(`LEVEL: LV ${this.level}`, 32, 126, r.BG_COLOR, 10.5);
 
-    r.drawText("5:PLAY AGAIN", 28, 148, r.BG_COLOR, 8);
+    r.drawText("5:PLAY AGAIN", 60, 154, r.BG_COLOR, 11);
 
-    r.drawLine(10, 220, 132, 220);
-    r.drawText("0: BACK TO MENU", 26, 232, r.PIXEL_COLOR, 8);
+    r.drawLine(16, 198, 212, 198);
+    r.drawText("0: BACK TO MENU", 54, 208, r.PIXEL_COLOR, 10);
   }
 
   private renderHighScores(r: RenderPipeline): void {
-    r.drawText("★ HIGH SCORES ★", 22, 20, r.PIXEL_COLOR, 10);
-    r.drawLine(10, 38, 132, 38);
+    r.drawText("★ HIGH SCORES ★", 48, 18, r.PIXEL_COLOR, 13);
+    r.drawLine(16, 38, 212, 38);
 
-    r.drawText(`BEST SCORE: ${this.saveData.highScore}`, 16, 55, r.PIXEL_COLOR, 8.5);
-    r.drawText(`TOTAL DODGED:${this.saveData.totalCarsDodged}`, 16, 75, r.PIXEL_COLOR, 8.5);
-    r.drawText(`MAX DIST:   ${this.saveData.longestDistance}M`, 16, 95, r.PIXEL_COLOR, 8.5);
-    r.drawText(`RACES:      ${this.saveData.matchesPlayed}`, 16, 115, r.PIXEL_COLOR, 8.5);
-    r.drawText(`BEST LEVEL: LV ${this.saveData.bestLevel}`, 16, 135, r.PIXEL_COLOR, 8.5);
+    r.drawText(`BEST SCORE: ${this.saveData.highScore}`, 24, 55, r.PIXEL_COLOR, 10.5);
+    r.drawText(`TOTAL DODGED:${this.saveData.totalCarsDodged}`, 24, 80, r.PIXEL_COLOR, 10.5);
+    r.drawText(`MAX DIST:   ${this.saveData.longestDistance}M`, 24, 105, r.PIXEL_COLOR, 10.5);
+    r.drawText(`RACES:      ${this.saveData.matchesPlayed}`, 24, 130, r.PIXEL_COLOR, 10.5);
+    r.drawText(`BEST LEVEL: LV ${this.saveData.bestLevel}`, 24, 155, r.PIXEL_COLOR, 10.5);
 
-    r.drawLine(10, 220, 132, 220);
-    r.drawText("5/0: BACK TO MENU", 22, 232, r.PIXEL_COLOR, 8);
+    r.drawLine(16, 195, 212, 195);
+    r.drawText("5/0: BACK TO MENU", 48, 206, r.PIXEL_COLOR, 10);
   }
 
   private renderInstructions(r: RenderPipeline): void {
-    r.drawText("HOW TO PLAY", 34, 20, r.PIXEL_COLOR, 10);
-    r.drawLine(10, 38, 132, 38);
+    r.drawText("HOW TO PLAY", 64, 18, r.PIXEL_COLOR, 13);
+    r.drawLine(16, 38, 212, 38);
 
-    r.drawText("4/A: MOVE LEFT", 16, 55, r.PIXEL_COLOR, 8.5);
-    r.drawText("6/D: MOVE RIGHT", 16, 72, r.PIXEL_COLOR, 8.5);
-    r.drawText("8/S: BOOST SPEED", 16, 89, r.PIXEL_COLOR, 8.5);
-    r.drawText("0/P: PAUSE / RESUME", 16, 106, r.PIXEL_COLOR, 8.5);
-    r.drawText("DODGE CARS TO SCORE", 12, 130, r.PIXEL_COLOR, 8);
-    r.drawText("BOOST GIVES 2X PTS!", 12, 146, r.PIXEL_COLOR, 8);
-    r.drawText("SURVIVE FAST WAVES", 14, 162, r.PIXEL_COLOR, 8);
+    r.drawText("4/A: MOVE LEFT", 24, 52, r.PIXEL_COLOR, 10.5);
+    r.drawText("6/D: MOVE RIGHT", 24, 72, r.PIXEL_COLOR, 10.5);
+    r.drawText("8/S: BOOST SPEED", 24, 92, r.PIXEL_COLOR, 10.5);
+    r.drawText("0/P: PAUSE / RESUME", 24, 112, r.PIXEL_COLOR, 10.5);
+    r.drawText("DODGE CARS TO SCORE", 20, 140, r.PIXEL_COLOR, 10);
+    r.drawText("BOOST GIVES 2X PTS!", 20, 160, r.PIXEL_COLOR, 10);
 
-    r.drawLine(10, 220, 132, 220);
-    r.drawText("5/0: BACK TO MENU", 22, 232, r.PIXEL_COLOR, 8);
+    r.drawLine(16, 195, 212, 195);
+    r.drawText("5/0: BACK TO MENU", 48, 206, r.PIXEL_COLOR, 10);
   }
 }

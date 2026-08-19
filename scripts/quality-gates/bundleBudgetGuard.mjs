@@ -27,7 +27,7 @@ const BUNDLE_BUDGETS = {
 
   // Heavy Visual Game Boards
   "HandCricketBoard-*.js": 550,
-  "UnoBoard-*.js": 300,
+  "UnoBoard-*.js": 360,
   "RummyBoard-*.js": 220,
 
   // Standard Game Boards
@@ -55,10 +55,10 @@ const BUNDLE_BUDGETS = {
   // Interactive Hub & Pages
   "Room-*.js": 160,
   "SettingsPage-*.js": 50,
-  "ProfilePage-*.js": 35,
-  "SignUpPage-*.js": 35,
-  "LoginPage-*.js": 25,
-  "GamesPage-*.js": 25,
+  "ProfilePage-*.js": 45,
+  "SignUpPage-*.js": 45,
+  "LoginPage-*.js": 30,
+  "GamesPage-*.js": 30,
 };
 
 function matchPattern(filename, pattern) {

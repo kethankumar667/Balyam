@@ -1,0 +1,64 @@
+[
+  {
+    "name": "ConsentModal",
+    "checks": {
+      "opened": true,
+      "roleDialog": true,
+      "ariaModal": true,
+      "initialFocusInside": true,
+      "tabStaysInside": true,
+      "shiftTabStaysInside": true,
+      "axeClean": true,
+      "escapeCorrectlyInert": true
+    },
+    "violations": [],
+    "notes": []
+  },
+  {
+    "name": "WelcomeModal",
+    "checks": {
+      "opened": true,
+      "roleDialog": true,
+      "ariaModal": true,
+      "initialFocusInside": true,
+      "tabStaysInside": true,
+      "shiftTabStaysInside": true,
+      "axeClean": true,
+      "escapeCloses": true
+    },
+    "violations": [],
+    "notes": []
+  },
+  {
+    "name": "JoinRoomModal",
+    "checks": {
+      "opened": true,
+      "roleDialog": true,
+      "ariaModal": true,
+      "initialFocusInside": true,
+      "tabStaysInside": true,
+      "shiftTabStaysInside": true,
+      "axeClean": true,
+      "escapeCloses": true,
+      "focusRestoredToTrigger": true
+    },
+    "violations": [],
+    "notes": []
+  },
+  {
+    "name": "GameRoomSheet",
+    "checks": {
+      "opened": true,
+      "roleDialog": true,
+      "ariaModal": true,
+      "initialFocusInside": true,
+      "tabStaysInside": true,
+      "shiftTabStaysInside": true,
+      "axeClean": true,
+      "escapeCloses": true,
+      "focusRestoredToTrigger": true
+    },
+    "violations": [],
+    "notes": []
+  }
+]

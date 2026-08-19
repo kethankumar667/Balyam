@@ -331,7 +331,7 @@ export default function PrivacyPolicyPage() {
                     <Link
                       key={item.id}
                       to={item.to}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-[#E85D04] transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-chest-700 transition-colors"
                     >
                       <span className="text-base">{item.icon}</span>
                       <span>{item.label}</span>
@@ -345,8 +345,8 @@ export default function PrivacyPolicyPage() {
                     onClick={() => setActiveTab(item.id)}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all ${
                       isActive
-                        ? "bg-[#FFF5E6] text-[#E85D04] border border-[#FCDDB5] font-bold shadow-2xs"
-                        : "text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-[#E85D04]"
+                        ? "bg-[#FFF5E6] text-chest-700 border border-[#FCDDB5] font-bold shadow-2xs"
+                        : "text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-chest-700"
                     }`}
                   >
                     <span className="text-base">{item.icon}</span>
@@ -649,7 +649,7 @@ export default function PrivacyPolicyPage() {
             </div>
             <Link
               to="/profile"
-              className="inline-flex items-center gap-1 text-[12.5px] font-bold text-[#E85D04] hover:underline mt-4"
+              className="inline-flex items-center gap-1 min-h-[44px] text-[12.5px] font-bold text-chest-700 hover:underline mt-4"
             >
               Know more →
             </Link>
@@ -683,7 +683,7 @@ export default function PrivacyPolicyPage() {
             </div>
             <Link
               to="/profile"
-              className="inline-flex items-center gap-1 text-[12.5px] font-bold text-[#E85D04] hover:underline mt-4"
+              className="inline-flex items-center gap-1 min-h-[44px] text-[12.5px] font-bold text-chest-700 hover:underline mt-4"
             >
               Know more →
             </Link>
@@ -712,7 +712,7 @@ export default function PrivacyPolicyPage() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-[1240px] mx-auto px-6 pt-10 border-t border-[#E6D4B5]/60 mt-12 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] font-semibold text-[#8C6D4F]">
+      <footer className="max-w-[1240px] mx-auto px-6 pt-10 border-t border-[#E6D4B5]/60 mt-12 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] font-semibold text-sand-600">
         <div>
           © {new Date().getFullYear()} BHALYAM · A Kethan Kumar Gontla project
         </div>

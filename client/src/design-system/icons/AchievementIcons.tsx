@@ -60,7 +60,7 @@ export const AchievementRarityBadge: React.FC<AchievementBadgeProps> = ({
     >
       <span className="text-xl sm:text-2xl leading-none select-none">{icon}</span>
       {unlocked && (
-        <div className="absolute -bottom-1.5 px-1.5 py-0.2 bg-stone-950/90 rounded-full border border-stone-800 shadow">
+        <div className="absolute -bottom-1.5 px-1.5 py-0.5 bg-stone-950/90 rounded-full border border-stone-800 shadow">
           {getRarityPill()}
         </div>
       )}

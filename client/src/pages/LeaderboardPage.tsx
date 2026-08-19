@@ -21,17 +21,11 @@ import type { PlayerStats } from "@shared/profile/PlayerStats";
 import type { GameKind } from "@shared/types";
 
 import { ArrowLeftIcon } from "../components/auth/authIcons";
+import { useAuthStore } from "../store/authStore";
+import MemberLockedGate from "../components/auth/MemberLockedGate";
 
 export default function LeaderboardPage() {
-
-  /**
-   * Identity now comes from a credential the server verifies, not from a
-   * string this page picks. The old line read `userId ||
-   * localStorage.getItem("mpg.playerId") || "guest_player_1"` and put the
-   * result in the URL of every request — which is how a stranger could read
-   * and write another player's records, and why every guest who had never
-   * joined a room shared the single profile `guest_player_1`.
-   */
+  const isMember = useAuthStore((s) => s.isMember);
   const { playerId: effectivePlayerId, ready: identityReady } = usePlayerId();
 
   const [activeTab, setActiveTab] = useState<"leaderboard" | "challenges" | "social">("leaderboard");
@@ -46,6 +40,10 @@ export default function LeaderboardPage() {
   const [challenges, setChallenges] = useState<PlayerChallenges | null>(null);
   const [recentPlayers, setRecentPlayers] = useState<RecentPlayer[]>([]);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
+
+  if (!isMember) {
+    return <MemberLockedGate feature="leaderboard" />;
+  }
 
   const loadData = async () => {
     // Identity first: a request built on a null id is a request the server

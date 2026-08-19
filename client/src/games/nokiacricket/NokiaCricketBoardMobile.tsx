@@ -38,6 +38,8 @@ export default function NokiaCricketBoardMobile({ onExit }: NokiaCricketBoardPro
     strikeRate: 0,
   });
 
+  const [muted, setMuted] = useState(false);
+
   useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -76,11 +78,15 @@ export default function NokiaCricketBoardMobile({ onExit }: NokiaCricketBoardPro
       } else if (key === "6" || key === "d" || key === "arrowright") {
         engine.handleInput("RIGHT");
         subtle();
-      } else if (key === "5" || key === "w" || key === "s" || key === " " || key === "enter" || key === "arrowup") {
+      } else if (key === "5" || key === "w" || key === " " || key === "enter" || key === "arrowup") {
         engine.handleInput("SELECT");
         subtle();
       } else if (key === "0" || key === "p" || key === "escape") {
         engine.togglePause();
+        subtle();
+      } else if (key === "m" || key === "s") {
+        const nextMute = engine.toggleSound();
+        setMuted(nextMute);
         subtle();
       }
     };
@@ -94,19 +100,26 @@ export default function NokiaCricketBoardMobile({ onExit }: NokiaCricketBoardPro
   }, [subtle, onExit]);
 
   const handleKeypadPress = (key: string) => {
-    soundRef.current.playKeyTick();
     subtle();
     if (!engineRef.current) return;
 
-    if (key === "4") engineRef.current.handleInput("LEFT");
-    else if (key === "5") engineRef.current.handleInput("SELECT");
-    else if (key === "6") engineRef.current.handleInput("RIGHT");
-    else if (key === "0") engineRef.current.togglePause();
+    if (key === "SOUND" || key === "sound") {
+      const nextMute = engineRef.current.toggleSound();
+      setMuted(nextMute);
+    } else if (key === "4") {
+      engineRef.current.handleInput("LEFT");
+    } else if (key === "5") {
+      engineRef.current.handleInput("SELECT");
+    } else if (key === "6") {
+      engineRef.current.handleInput("RIGHT");
+    } else if (key === "0") {
+      engineRef.current.togglePause();
+    }
   };
 
   return (
     <div className="w-full min-h-screen flex flex-col items-center justify-between p-3 select-none">
-      {/* Top Mobile Bar with Back & Pause */}
+      {/* Top Mobile Bar with Back, Sound & Pause */}
       <div className="w-full max-w-sm flex items-center justify-between py-1">
         {onExit ? (
           <button
@@ -120,13 +133,30 @@ export default function NokiaCricketBoardMobile({ onExit }: NokiaCricketBoardPro
           <span />
         )}
 
-        <button
-          type="button"
-          onClick={() => engineRef.current?.togglePause()}
-          className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs cursor-pointer"
-        >
-          ⏸ Pause
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (engineRef.current) {
+                const nextMute = engineRef.current.toggleSound();
+                setMuted(nextMute);
+                subtle();
+              }
+            }}
+            className="px-2.5 py-1 rounded-full bg-white/10 text-zinc-300 font-bold text-xs cursor-pointer flex items-center gap-1 active:scale-95 transition"
+          >
+            <span>{muted ? "🔇" : "🔊"}</span>
+            <span>{muted ? "Muted" : "Sound"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => engineRef.current?.togglePause()}
+            className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs cursor-pointer"
+          >
+            ⏸ Pause
+          </button>
+        </div>
       </div>
 
       <NokiaDeviceFrame>

@@ -14,6 +14,7 @@ import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 const Room = lazy(() => import("./pages/Room"));
 const GamesPage = lazy(() => import("./pages/GamesPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const PersonalInformationPage = lazy(() => import("./pages/PersonalInformationPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const SignUpPage = lazy(() => import("./pages/auth/SignUpPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
@@ -107,8 +108,16 @@ export default function App() {
             <Route
               path="/profile"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireMember={false}>
                   <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/personal"
+              element={
+                <ProtectedRoute requireMember={false}>
+                  <PersonalInformationPage />
                 </ProtectedRoute>
               }
             />

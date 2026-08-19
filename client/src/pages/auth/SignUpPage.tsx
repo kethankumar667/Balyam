@@ -1,9 +1,7 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  User,
-  Mail,
   Lock,
   Eye,
   EyeOff,
@@ -12,10 +10,7 @@ import {
   ArrowLeft,
   LayoutGrid,
   Calendar,
-  Sparkles,
   X,
-  BadgePercent,
-  IdCard,
 } from "lucide-react";
 import AuthShell from "../../components/auth/AuthShell";
 import { useSignUp } from "../../components/auth/useAccountAuth";
@@ -33,16 +28,17 @@ import {
 } from "../../lib/authValidation";
 import { useRoomStore } from "../../store/roomStore";
 import { AVATARS, findAvatar } from "../../lib/avatars";
-import { AppleMark, GoogleMark } from "../../components/auth/authIcons";
+import { GoogleMark } from "../../components/auth/authIcons";
 import { generateAccountId, getEraFromBirthYear } from "../../lib/accountGenerator";
 
 export default function SignUpPage() {
+  const navigate = useNavigate();
   const { playerName, setPlayerName, avatarId, setAvatarId } = useRoomStore();
 
-  // Wizard state: Step 1 (Credentials & Personal Details) | Step 2 (Avatar & Terms)
-  const [step, setStep] = useState<1 | 2>(1);
+  // 4-Step Wizard: 1 (About You) | 2 (Password) | 3 (Avatar) | 4 (Welcome)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
-  // Form Fields
+  // Step 1: Personal Details
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [displayName, setDisplayName] = useState(playerName.trim());
@@ -50,15 +46,19 @@ export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [dob, setDob] = useState("1995-05-20");
   const [gender, setGender] = useState<"Male" | "Female" | "Other" | "">("Male");
+
+  // Step 2: Password
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState(avatarId || AVATARS[0]?.id || "");
+
+  // Step 3: Avatar & Terms
+  const [selectedAvatar, setSelectedAvatar] = useState(avatarId || AVATARS[0]?.id || "avatar_1");
   const [showAllAvatarsModal, setShowAllAvatarsModal] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
 
-  // Validation Errors
+  // Field Errors
   const [firstNameError, setFirstNameError] = useState<FieldError>(null);
   const [lastNameError, setLastNameError] = useState<FieldError>(null);
   const [displayNameError, setDisplayNameError] = useState<FieldError>(null);
@@ -70,12 +70,8 @@ export default function SignUpPage() {
 
   const { loading, error, configured, submit, withGoogle, clearError } = useSignUp();
 
-  /** Apple needs a paid developer account this project does not have. */
-  const [appleUnavailable, setAppleUnavailable] = useState(false);
-
   function clearNotices() {
     if (error) clearError();
-    if (appleUnavailable) setAppleUnavailable(false);
   }
 
   // Handle First & Last Name auto-generation for Display Name
@@ -101,14 +97,7 @@ export default function SignUpPage() {
     }
   }
 
-  function handleDisplayNameChange(val: string) {
-    setDisplayName(val);
-    setIsCustomDisplayName(true);
-    if (displayNameError) setDisplayNameError(null);
-    clearNotices();
-  }
-
-  // Dynamic Era & Account ID generation based on DOB
+  // Dynamic Era & Account ID generation
   const birthYear = useMemo(() => {
     if (!dob) return 1995;
     const y = new Date(dob).getFullYear();
@@ -117,7 +106,6 @@ export default function SignUpPage() {
 
   const eraTag = useMemo(() => getEraFromBirthYear(birthYear), [birthYear]);
 
-  // Persistent random 4-digit and 2-digit suffix for this session
   const randomSuffix = useMemo(() => {
     const xxxx = Math.floor(1000 + Math.random() * 9000);
     const yyy = Math.floor(10 + Math.random() * 90);
@@ -128,16 +116,16 @@ export default function SignUpPage() {
     return `BHYM-${eraTag}-${randomSuffix}`;
   }, [eraTag, randomSuffix]);
 
-  // Live password strength criteria
+  // Live password validation
   const hasMinLength = password.length >= 8;
   const hasNumOrSymbol = /[0-9!@#$%^&*()]/.test(password);
-  const hasLetters = /[a-zA-Z]/.test(password);
   const passwordsMatch = password.length > 0 && confirmPassword.length > 0 && password === confirmPassword;
 
-  // Display top 12 avatars in 3x4 grid for Step 2
-  const top12Avatars = AVATARS.slice(0, 12);
+  // 12 avatars for Step 3 grid
+  const primaryAvatars = useMemo(() => AVATARS.slice(0, 12), []);
 
-  function handleGoToStep2(e: React.FormEvent) {
+  // Step 1 Validation -> Proceed to Step 2
+  function handleProceedToStep2(e: React.FormEvent) {
     e.preventDefault();
     const nextFirst = validateFirstName(firstName);
     const nextLast = validateLastName(lastName);
@@ -145,8 +133,6 @@ export default function SignUpPage() {
     const nextEmail = validateEmail(email);
     const nextDob = validateDob(dob);
     const nextGender = validateGender(gender);
-    const nextPassword = validatePassword(password);
-    const nextConfirm = validatePasswordConfirm(password, confirmPassword);
 
     setFirstNameError(nextFirst);
     setLastNameError(nextLast);
@@ -154,24 +140,29 @@ export default function SignUpPage() {
     setEmailError(nextEmail);
     setDobError(nextDob);
     setGenderError(nextGender);
-    setPasswordError(nextPassword);
-    setConfirmPasswordError(nextConfirm);
 
-    if (
-      nextFirst ||
-      nextLast ||
-      nextName ||
-      nextEmail ||
-      nextDob ||
-      nextGender ||
-      nextPassword ||
-      nextConfirm
-    ) {
+    if (nextFirst || nextLast || nextName || nextEmail || nextDob || nextGender) {
       return;
     }
     setStep(2);
   }
 
+  // Step 2 Validation -> Proceed to Step 3
+  function handleProceedToStep3(e: React.FormEvent) {
+    e.preventDefault();
+    const nextPassword = validatePassword(password);
+    const nextConfirm = validatePasswordConfirm(password, confirmPassword);
+
+    setPasswordError(nextPassword);
+    setConfirmPasswordError(nextConfirm);
+
+    if (nextPassword || nextConfirm) {
+      return;
+    }
+    setStep(3);
+  }
+
+  // Step 3 -> Final Account Creation Submission
   function handleFinalSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!agreeTerms) return;
@@ -182,7 +173,7 @@ export default function SignUpPage() {
       setAvatarId(selectedAvatar);
     }
 
-    // Submit with all required profile & generated account metadata
+    // Submit registration with all profile data
     submit(email, password, displayName, {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -193,616 +184,719 @@ export default function SignUpPage() {
     });
   }
 
+  const chosenAvatarObj = findAvatar(selectedAvatar) || AVATARS[0];
+
   return (
     <AuthShell
       heroType="signup"
-      currentStep={step}
-      onBackStep={step === 2 ? () => setStep(1) : undefined}
+      currentStep={step <= 3 ? step : undefined}
+      onBackStep={step === 2 ? () => setStep(1) : step === 3 ? () => setStep(2) : undefined}
     >
-      <div className="space-y-3">
+      <div className="space-y-3 text-left">
         
-        {/* Floating White Card */}
-        <div className="bg-white/95 backdrop-blur-md border border-[#F2E3C6] rounded-[28px] p-5 sm:p-6 lg:p-7 shadow-xl shadow-amber-900/10 text-left relative overflow-hidden">
-          
-          <AnimatePresence mode="wait">
-            {step === 1 ? (
-              /* ── STEP 1: Account Information & Personal Details ── */
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-3.5"
-              >
-                {/* Card Header */}
-                <div className="text-center">
-                  <h2 className="bhalyam-display text-[24px] sm:text-[27px] font-extrabold text-[#4A2508] tracking-tight flex items-center justify-center gap-1.5">
-                    <span>Create your account</span>
-                    <span className="text-[#E85D04]">✨</span>
-                  </h2>
-                  <p className="text-[12px] text-[#7A5B3E] font-medium mt-0.5">
-                    Join the nostalgic gaming lounge in less than a minute.
-                  </p>
+        {/* ── TOP PROGRESS INDICATOR (Steps 1, 2, 3) ── */}
+        {step <= 3 && (
+          <div className="w-full space-y-1 pb-1">
+            <div className="text-center text-[10px] font-extrabold tracking-widest text-[#7A5B3E] uppercase">
+              STEP {step} OF 3
+            </div>
+            
+            <div className="flex items-center justify-center gap-1.5 sm:gap-2 max-w-[360px] mx-auto">
+              {/* Step 1 */}
+              <div className="flex items-center gap-1">
+                <span
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10.5px] font-black transition-all ${
+                    step === 1
+                      ? "bg-[#162A3B] text-white ring-2 ring-[#162A3B]/20 shadow-xs"
+                      : step > 1
+                      ? "bg-[#162A3B] text-white"
+                      : "bg-white/80 border border-[#CBD5E1] text-[#94A3B8]"
+                  }`}
+                >
+                  {step > 1 ? "✓" : "1"}
+                </span>
+                <span className={`text-[11.5px] font-bold ${step === 1 ? "text-[#162A3B]" : "text-[#7A5B3E]/80"}`}>
+                  About You
+                </span>
+              </div>
+
+              <span className={`h-0.5 w-6 sm:w-8 rounded-full transition-all ${step >= 2 ? "bg-[#162A3B]" : "bg-[#E2E8F0]"}`} />
+
+              {/* Step 2 */}
+              <div className="flex items-center gap-1">
+                <span
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10.5px] font-black transition-all ${
+                    step === 2
+                      ? "bg-[#162A3B] text-white ring-2 ring-[#162A3B]/20 shadow-xs"
+                      : step > 2
+                      ? "bg-[#162A3B] text-white"
+                      : "bg-white/80 border border-[#CBD5E1] text-[#94A3B8]"
+                  }`}
+                >
+                  {step > 2 ? "✓" : "2"}
+                </span>
+                <span className={`text-[11.5px] font-bold ${step === 2 ? "text-[#162A3B]" : "text-[#7A5B3E]/80"}`}>
+                  Password
+                </span>
+              </div>
+
+              <span className={`h-0.5 w-6 sm:w-8 rounded-full transition-all ${step >= 3 ? "bg-[#162A3B]" : "bg-[#E2E8F0]"}`} />
+
+              {/* Step 3 */}
+              <div className="flex items-center gap-1">
+                <span
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10.5px] font-black transition-all ${
+                    step === 3
+                      ? "bg-[#162A3B] text-white ring-2 ring-[#162A3B]/20 shadow-xs"
+                      : "bg-white/80 border border-[#CBD5E1] text-[#94A3B8]"
+                  }`}
+                >
+                  3
+                </span>
+                <span className={`text-[11.5px] font-bold ${step === 3 ? "text-[#162A3B]" : "text-[#7A5B3E]/80"}`}>
+                  Avatar
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <AnimatePresence mode="wait">
+          {/* ══════════════════════════════════════════════════════════
+              STEP 1: ABOUT YOU
+             ══════════════════════════════════════════════════════════ */}
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-2.5"
+            >
+              {/* Heading & Subtitle */}
+              <div className="text-left space-y-0.5">
+                <h1 className="text-[21px] sm:text-[24px] font-black text-[#111827] tracking-tight flex items-center gap-1.5">
+                  <span>Create your Bhalyam account</span>
+                  <span className="text-xl">👋</span>
+                </h1>
+                <p className="text-[12px] sm:text-[12.5px] text-[#5C3717] font-medium">
+                  Your childhood games are waiting.
+                </p>
+              </div>
+
+              {/* Continue with Google */}
+              <div>
+                <button
+                  type="button"
+                  onClick={withGoogle}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2.5 py-2 px-4 bg-white/95 hover:bg-white border border-[#E2E8F0] rounded-xl text-[13px] font-semibold text-[#334155] transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.99]"
+                >
+                  <GoogleMark className="w-4 h-4" />
+                  <span>Continue with Google</span>
+                </button>
+              </div>
+
+              {error ? (
+                <FormNotice tone="error" title="Couldn't create your account">
+                  {error}
+                </FormNotice>
+              ) : !configured ? (
+                <FormNotice tone="info" title="This build has no account service">
+                  Creating an account here only unlocks hosting on this device — nothing
+                  is stored on a server and no email is sent.
+                </FormNotice>
+              ) : null}
+
+              {/* Divider */}
+              <div className="flex items-center gap-2.5 my-0.5">
+                <span className="h-px flex-1 bg-[#E2E8F0]" />
+                <span className="shrink-0 whitespace-nowrap text-[10.5px] font-medium text-[#94A3B8]">
+                  or
+                </span>
+                <span className="h-px flex-1 bg-[#E2E8F0]" />
+              </div>
+
+              {/* Step 1 Form */}
+              <form onSubmit={handleProceedToStep2} className="space-y-2">
+                {/* Row 1: First Name & Last Name */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-0.5">
+                    <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                      First Name <span className="text-[#E85D04]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => handleFirstNameChange(e.target.value)}
+                      placeholder="e.g. Kethan"
+                      className={`w-full bg-white/95 border rounded-xl px-3.5 py-1.5 text-[13px] font-medium text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all ${
+                        firstNameError ? "border-[#E11D48]" : "border-[#E2E8F0]"
+                      }`}
+                      required
+                    />
+                    {firstNameError && (
+                      <span className="text-[10px] font-bold text-[#E11D48] block">
+                        {firstNameError}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                      Last Name <span className="text-[#E85D04]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => handleLastNameChange(e.target.value)}
+                      placeholder="e.g. Kumar"
+                      className={`w-full bg-white/95 border rounded-xl px-3.5 py-1.5 text-[13px] font-medium text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all ${
+                        lastNameError ? "border-[#E11D48]" : "border-[#E2E8F0]"
+                      }`}
+                      required
+                    />
+                    {lastNameError && (
+                      <span className="text-[10px] font-bold text-[#E11D48] block">
+                        {lastNameError}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Social Sign Up Buttons */}
-                <div className="space-y-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={withGoogle}
-                    disabled={loading}
-                    className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] active:scale-98 rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <GoogleMark className="w-4 h-4" />
-                    <span>Continue with Google</span>
-                  </button>
+                {/* Row 2: Display Name */}
+                <div className="space-y-0.5">
+                  <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                    Display Name <span className="text-[#E85D04]">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => {
+                        setDisplayName(e.target.value);
+                        setIsCustomDisplayName(true);
+                        if (displayNameError) setDisplayNameError(null);
+                      }}
+                      placeholder="e.g. MasterGamer"
+                      className={`w-full bg-white/95 border rounded-xl px-3.5 py-1.5 pr-8 text-[13px] font-medium text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all ${
+                        displayNameError ? "border-[#E11D48]" : "border-[#E2E8F0]"
+                      }`}
+                      required
+                    />
+                    {displayName.trim().length >= 2 && !displayNameError && (
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#10B981] text-white flex items-center justify-center">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                      </div>
+                    )}
+                  </div>
+                  {displayNameError && (
+                    <span className="text-[10px] font-bold text-[#E11D48] block">
+                      {displayNameError}
+                    </span>
+                  )}
+                </div>
 
+                {/* Row 3: Email ID */}
+                <div className="space-y-0.5">
+                  <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                    Email ID <span className="text-[#E85D04]">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailError) setEmailError(null);
+                      clearNotices();
+                    }}
+                    placeholder="e.g. rajamonica@bhalyam.test"
+                    className={`w-full bg-white/95 border rounded-xl px-3.5 py-1.5 text-[13px] font-medium text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all ${
+                      emailError ? "border-[#E11D48]" : "border-[#E2E8F0]"
+                    }`}
+                    required
+                  />
+                  {emailError && (
+                    <span className="text-[10px] font-bold text-[#E11D48] block">
+                      {emailError}
+                    </span>
+                  )}
+                </div>
+
+                {/* Row 4: Birthday & Gender */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-0.5">
+                    <label htmlFor="signup-dob" className="block text-[11.5px] font-semibold text-[#1E293B]">
+                      Birthday <span className="text-[#E85D04]">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="signup-dob"
+                        type="date"
+                        value={dob}
+                        max={new Date().toISOString().split("T")[0]}
+                        min="1930-01-01"
+                        onChange={(e) => {
+                          setDob(e.target.value);
+                          if (dobError) setDobError(null);
+                          clearNotices();
+                        }}
+                        className={`w-full bg-white/95 border rounded-xl px-3 py-1.5 pr-8 text-[12px] font-medium text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all ${
+                          dobError ? "border-[#E11D48]" : "border-[#E2E8F0]"
+                        }`}
+                        required
+                      />
+                      <Calendar className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8] pointer-events-none" />
+                    </div>
+                    {dobError && (
+                      <span className="text-[10px] font-bold text-[#E11D48] block">
+                        {dobError}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                      Gender <span className="text-[#E85D04]">*</span>
+                    </label>
+                    <div className="flex items-center gap-1 pt-0.5">
+                      {(["Male", "Female", "Other"] as const).map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => {
+                            setGender(g);
+                            if (genderError) setGenderError(null);
+                          }}
+                          className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] font-semibold border transition-all cursor-pointer text-center ${
+                            gender === g
+                              ? "bg-[#162A3B] border-[#162A3B] text-white shadow-xs"
+                              : "bg-white/95 border-[#E2E8F0] text-[#475569] hover:bg-white"
+                          }`}
+                        >
+                          {g === "Male" ? "👦 Male" : g === "Female" ? "👧 Female" : "✨ Other"}
+                        </button>
+                      ))}
+                    </div>
+                    {genderError && (
+                      <span className="text-[10px] font-bold text-[#E11D48] block">
+                        {genderError}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Continue CTA */}
+                <button
+                  type="submit"
+                  className="w-full bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-2.5 rounded-xl text-[13.5px] shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-1.5 cursor-pointer"
+                >
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+
+              {/* Footer Text */}
+              <div className="text-center pt-0.5">
+                <span className="text-[12px] text-[#64748B]">
+                  Already have an account?{" "}
+                </span>
+                <Link to="/login" className="inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline text-[12px]">
+                  Sign in
+                </Link>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              STEP 2: CREATE PASSWORD
+             ══════════════════════════════════════════════════════════ */}
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3"
+            >
+              {/* Heading & Subtitle */}
+              <div className="text-left space-y-0.5">
+                <h1 className="text-[21px] sm:text-[24px] font-black text-[#111827] tracking-tight flex items-center gap-1.5">
+                  <span>Almost there!</span>
+                  <span className="text-xl">🔐</span>
+                </h1>
+                <p className="text-[12px] sm:text-[12.5px] text-[#5C3717] font-medium">
+                  Create a password to keep your Bhalyam account safe.
+                </p>
+              </div>
+
+              {/* Password Form */}
+              <form onSubmit={handleProceedToStep3} className="space-y-2.5">
+                {/* Password Field */}
+                <div className="space-y-0.5">
+                  <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                    Password <span className="text-[#E85D04]">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8] pointer-events-none" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (passwordError) setPasswordError(null);
+                        clearNotices();
+                      }}
+                      placeholder="••••••••••"
+                      className={`w-full bg-white/95 border rounded-xl pl-8 pr-8 py-2 text-[13px] font-medium text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all ${
+                        passwordError ? "border-[#E11D48]" : "border-[#E2E8F0]"
+                      }`}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 min-h-[24px] min-w-[24px] inline-flex items-center justify-center text-[#94A3B8] hover:text-[#0F172A] cursor-pointer"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  {passwordError && (
+                    <span className="text-[10px] font-bold text-[#E11D48] block">
+                      {passwordError}
+                    </span>
+                  )}
+                </div>
+
+                {/* Confirm Password Field */}
+                <div className="space-y-0.5">
+                  <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                    Confirm Password <span className="text-[#E85D04]">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8] pointer-events-none" />
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (confirmPasswordError) setConfirmPasswordError(null);
+                        clearNotices();
+                      }}
+                      placeholder="••••••••••"
+                      className={`w-full bg-white/95 border rounded-xl pl-8 pr-8 py-2 text-[13px] font-medium text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all ${
+                        confirmPasswordError ? "border-[#E11D48]" : "border-[#E2E8F0]"
+                      }`}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 min-h-[24px] min-w-[24px] inline-flex items-center justify-center text-[#94A3B8] hover:text-[#0F172A] cursor-pointer"
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  {confirmPasswordError && (
+                    <span className="text-[10px] font-bold text-[#E11D48] block">
+                      {confirmPasswordError}
+                    </span>
+                  )}
+                </div>
+
+                {/* Dynamic Password Requirements Box */}
+                <div className="bg-white/80 border border-[#E6D4B5]/80 rounded-xl p-2.5 space-y-1 text-left shadow-2xs">
+                  <div className="text-[11px] font-bold text-[#475569]">
+                    Password requirements
+                  </div>
+                  <div className="space-y-0.5 text-[11px] font-medium">
+                    <div className={`flex items-center gap-1.5 ${hasMinLength ? "text-[#10B981] font-semibold" : "text-[#64748B]"}`}>
+                      <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7.5px] font-bold ${
+                        hasMinLength ? "bg-[#10B981] text-white" : "border border-[#CBD5E1] text-transparent"
+                      }`}>
+                        ✓
+                      </span>
+                      <span>8+ characters</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 ${hasNumOrSymbol ? "text-[#10B981] font-semibold" : "text-[#64748B]"}`}>
+                      <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7.5px] font-bold ${
+                        hasNumOrSymbol ? "bg-[#10B981] text-white" : "border border-[#CBD5E1] text-transparent"
+                      }`}>
+                        ✓
+                      </span>
+                      <span>1 number or symbol</span>
+                    </div>
+                    {confirmPassword.length > 0 && (
+                      <div className={`flex items-center gap-1.5 ${passwordsMatch ? "text-[#10B981] font-semibold" : "text-rose-600 font-semibold"}`}>
+                        <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7.5px] font-bold ${
+                          passwordsMatch ? "bg-[#10B981] text-white" : "bg-rose-500 text-white"
+                        }`}>
+                          {passwordsMatch ? "✓" : "✕"}
+                        </span>
+                        <span>{passwordsMatch ? "Passwords match" : "Passwords do not match"}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons: Back + Continue */}
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => setAppleUnavailable(true)}
-                    className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-[#D9C4A3] hover:border-[#B38918] hover:bg-[#FFFDF5] active:scale-98 rounded-full text-[13px] font-bold text-[#4A2508] transition-all shadow-xs cursor-pointer"
+                    onClick={() => setStep(1)}
+                    className="px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white/95 text-[13px] font-bold text-[#5C3717] hover:bg-white active:scale-95 transition shadow-2xs cursor-pointer flex items-center gap-1.5"
                   >
-                    <AppleMark className="w-[17px] h-[17px]" />
-                    <span>Continue with Apple</span>
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
                   </button>
+                  <button
+                    type="submit"
+                    className="flex-1 bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-2.5 rounded-xl text-[13.5px] shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Continue</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+
+              {/* Footer Text */}
+              <div className="text-center pt-0.5">
+                <span className="text-[12px] text-[#64748B]">
+                  Already have an account?{" "}
+                </span>
+                <Link to="/login" className="inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline text-[12px]">
+                  Sign in
+                </Link>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              STEP 3: CHOOSE AVATAR
+             ══════════════════════════════════════════════════════════ */}
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3"
+            >
+              {/* Heading & Subtitle */}
+              <div className="text-left space-y-0.5">
+                <h1 className="text-[21px] sm:text-[24px] font-black text-[#111827] tracking-tight flex items-center gap-1.5">
+                  <span>Pick your Bhalyam avatar</span>
+                  <span className="text-xl">🎮</span>
+                </h1>
+                <p className="text-[12px] sm:text-[12.5px] text-[#5C3717] font-medium">
+                  Choose the character that feels most like you.
+                </p>
+              </div>
+
+              {/* Selected Avatar Preview Chip */}
+              <div className="bg-white/90 border border-[#E2E8F0] rounded-xl p-2 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-amber-500 bg-white flex-shrink-0">
+                    <img
+                      src={chosenAvatarObj?.src || "/Avatars/file_0000000084c48208b1f893419d784cf2_1.jpg"}
+                      alt={displayName}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <div className="font-bold text-[12.5px] text-[#16223B] truncate">
+                      {displayName || "Player"}
+                    </div>
+                    <div className="font-mono text-[10px] text-[#7A5E45] truncate">
+                      ID: <span className="font-bold text-[#16223B]">{generatedAccountId}</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAllAvatarsModal(true)}
+                  className="px-2.5 py-1 rounded-lg bg-[#FFF5E0] border border-[#E6D4B5] text-[10.5px] font-bold text-[#5C3717] hover:bg-[#FBE7BD] transition cursor-pointer"
+                >
+                  All Avatars
+                </button>
+              </div>
+
+              {/* 3x4 Avatar Selection Grid */}
+              <div className="grid grid-cols-4 sm:grid-cols-4 gap-2.5 py-1 justify-items-center">
+                {primaryAvatars.map((av) => {
+                  const isSelected = selectedAvatar === av.id;
+                  return (
+                    <button
+                      key={av.id}
+                      type="button"
+                      onClick={() => setSelectedAvatar(av.id)}
+                      className={`relative w-13 h-13 sm:w-14 sm:h-14 rounded-full border-2 overflow-hidden transition-all duration-150 cursor-pointer shadow-2xs ${
+                        isSelected
+                          ? "border-[#162A3B] ring-3 ring-[#162A3B]/30 scale-105 shadow-sm"
+                          : "border-[#E6D4B5] hover:border-[#D4A574] hover:scale-105"
+                      }`}
+                      title={av.label}
+                    >
+                      <img
+                        src={av.src}
+                        alt={av.label}
+                        className="w-full h-full object-cover"
+                      />
+                      {isSelected && (
+                        <div className="absolute top-0 right-0 w-4.5 h-4.5 rounded-full bg-[#162A3B] border-2 border-white text-white flex items-center justify-center shadow-xs">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Final Submit Form */}
+              <form onSubmit={handleFinalSubmit} className="space-y-2 pt-0.5">
+                {/* Terms Checkbox */}
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    id="agreeTerms"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded border-[#CBD5E1] text-[#162A3B] focus:ring-amber-500 accent-[#162A3B] cursor-pointer"
+                    required
+                  />
+                  <label
+                    htmlFor="agreeTerms"
+                    className="text-[11.5px] font-medium text-[#475569] select-none cursor-pointer leading-tight"
+                  >
+                    I agree to the{" "}
+                    <Link to="/privacy" className="text-[#2563EB] underline font-semibold">
+                      Privacy Policy
+                    </Link>{" "}
+                    and{" "}
+                    <a href="#terms" className="text-[#2563EB] underline font-semibold">
+                      Terms of Service
+                    </a>
+                  </label>
                 </div>
 
                 {error ? (
                   <FormNotice tone="error" title="Couldn't create your account">
                     {error}
                   </FormNotice>
-                ) : appleUnavailable ? (
-                  <FormNotice tone="info" title="Apple sign-up isn't available">
-                    It needs a paid Apple developer account, which this app doesn&apos;t
-                    have. Google and email both work.
-                  </FormNotice>
-                ) : !configured ? (
-                  <FormNotice tone="info" title="This build has no account service">
-                    Creating an account here only unlocks hosting on this device — nothing
-                    is stored on a server and no email is sent.
-                  </FormNotice>
                 ) : null}
 
-                {/* Divider */}
-                <div className="flex items-center gap-3 py-0.5">
-                  <span className="h-px flex-1 bg-[#E6D4B5]" />
-                  <span className="shrink-0 whitespace-nowrap text-[10.5px] font-extrabold text-[#9C7E63] uppercase tracking-wider">
-                    or fill your details
-                  </span>
-                  <span className="h-px flex-1 bg-[#E6D4B5]" />
-                </div>
-
-                {/* Step 1 Form */}
-                <form onSubmit={handleGoToStep2} className="space-y-3">
-                  
-                  {/* Row 1: First Name & Last Name (2 columns) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* First Name */}
-                    <div>
-                      <label className="block text-[11.5px] font-extrabold text-[#4A2508] mb-1">
-                        First Name <span className="text-[#E85D04]">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={firstName}
-                        onChange={(e) => handleFirstNameChange(e.target.value)}
-                        placeholder="e.g. Kethan"
-                        className={`w-full bg-[#FFFDF8] border rounded-2xl px-3.5 py-2 text-[13px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
-                          firstNameError ? "border-[#E11D48]" : "border-[#E6D4B5]"
-                        }`}
-                        required
-                      />
-                      {firstNameError && (
-                        <span className="text-[10px] font-bold text-[#E11D48] mt-0.5 block">
-                          {firstNameError}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Last Name */}
-                    <div>
-                      <label className="block text-[11.5px] font-extrabold text-[#4A2508] mb-1">
-                        Last Name <span className="text-[#E85D04]">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={lastName}
-                        onChange={(e) => handleLastNameChange(e.target.value)}
-                        placeholder="e.g. Kumar"
-                        className={`w-full bg-[#FFFDF8] border rounded-2xl px-3.5 py-2 text-[13px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
-                          lastNameError ? "border-[#E11D48]" : "border-[#E6D4B5]"
-                        }`}
-                        required
-                      />
-                      {lastNameError && (
-                        <span className="text-[10px] font-bold text-[#E11D48] mt-0.5 block">
-                          {lastNameError}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Row 2: Display Name (Auto-Generated & Editable) */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11.5px] font-extrabold text-[#4A2508]">
-                        Display Name <span className="text-[#E85D04]">*</span>
-                      </label>
-                      <span className="text-[10px] font-semibold text-[#86694C] bg-[#FAF2DF] px-2 py-0.5 rounded-full border border-[#E6D4B5]">
-                        {isCustomDisplayName ? "Customized ✏️" : "Auto-generated 🪄"}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9C7E63] pointer-events-none" />
-                      <input
-                        type="text"
-                        value={displayName}
-                        onChange={(e) => handleDisplayNameChange(e.target.value)}
-                        placeholder="e.g. Kethan Kumar"
-                        className={`w-full bg-[#FFFDF8] border rounded-2xl pl-10 pr-10 py-2 text-[13px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
-                          displayNameError ? "border-[#E11D48]" : "border-[#E6D4B5]"
-                        }`}
-                        required
-                      />
-                      {displayName.trim().length >= 2 && !displayNameError && (
-                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#10B981] text-white flex items-center justify-center">
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-[10.5px] text-[#7A5B3E] font-medium mt-0.5 block">
-                      Generated from your name. You can customize this anytime!
-                    </span>
-                    {displayNameError && (
-                      <span className="text-[10px] font-bold text-[#E11D48] mt-0.5 block">
-                        {displayNameError}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Row 3: Email Input */}
-                  <div>
-                    <label className="block text-[11.5px] font-extrabold text-[#4A2508] mb-1">
-                      Email ID <span className="text-[#E85D04]">*</span>
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9C7E63] pointer-events-none" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          if (emailError) setEmailError(null);
-                          clearNotices();
-                        }}
-                        placeholder="you@example.com"
-                        className={`w-full bg-[#FFFDF8] border rounded-2xl pl-10 pr-4 py-2 text-[13px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
-                          emailError ? "border-[#E11D48]" : "border-[#E6D4B5]"
-                        }`}
-                        required
-                      />
-                    </div>
-                    {emailError && (
-                      <span className="text-[10px] font-bold text-[#E11D48] mt-0.5 block">
-                        {emailError}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Row 4: Date of Birth & Gender (2 columns) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* Date of Birth */}
-                    <div>
-                      {/* `htmlFor`/`id`, not just proximity. The label existed
-                          and was not ASSOCIATED, so axe reported the date input
-                          as unlabelled at critical impact: a screen reader
-                          announced "date, edit" with no indication of which
-                          date. Visual adjacency is not an association. */}
-                      <label htmlFor="signup-dob" className="block text-[11.5px] font-extrabold text-[#4A2508] mb-1">
-                        Date of Birth <span className="text-[#E85D04]">*</span>
-                      </label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9C7E63] pointer-events-none" />
-                        <input
-                          id="signup-dob"
-                          type="date"
-                          value={dob}
-                          max={new Date().toISOString().split("T")[0]}
-                          min="1930-01-01"
-                          onChange={(e) => {
-                            setDob(e.target.value);
-                            if (dobError) setDobError(null);
-                            clearNotices();
-                          }}
-                          /* `focus:outline-*`, not `focus-visible:`, and not a ring.
-                             Measured: keyboard-focusing this date input produced
-                             outline-style:none AND box-shadow:none — no visible focus
-                             indicator at all, on 1 of 20 tab stops in both themes. The
-                             `outline-none` suppressed the global focus ring and the
-                             `ring-2` replacement never painted on this control, which is
-                             exactly the failure accessibility-standards §1.2 warns about:
-                             never remove an outline without an accessible replacement that
-                             actually renders.
-
-                             `:focus-visible` is the usual choice and is wrong HERE: Chromium
-                             puts focus inside a date input's shadow DOM, so the host does not
-                             match `:focus-visible` and the app's global
-                             `*:focus-visible { box-shadow: var(--ring) }` never paints. `:focus`
-                             always matches the host. A date field is only ever focused
-                             deliberately, so the usual reason to prefer `:focus-visible` —
-                             avoiding a ring on mouse clicks — does not apply. */
-                          className={`w-full bg-[#FFFDF8] border rounded-2xl pl-10 pr-3 py-2 text-[12.5px] font-medium text-[#4A2508] focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[#F4C430] transition-all ${
-                            dobError ? "border-[#E11D48]" : "border-[#E6D4B5]"
-                          }`}
-                          required
-                        />
-                      </div>
-                      {dobError && (
-                        <span className="text-[10px] font-bold text-[#E11D48] mt-0.5 block">
-                          {dobError}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Gender */}
-                    <div>
-                      <label className="block text-[11.5px] font-extrabold text-[#4A2508] mb-1">
-                        Gender <span className="text-[#E85D04]">*</span>
-                      </label>
-                      <div className="flex items-center gap-1.5 pt-0.5">
-                        {(["Male", "Female", "Other"] as const).map((g) => (
-                          <button
-                            key={g}
-                            type="button"
-                            onClick={() => {
-                              setGender(g);
-                              if (genderError) setGenderError(null);
-                            }}
-                            className={`flex-1 py-1.5 px-2 rounded-xl text-[11.5px] font-bold border transition-all cursor-pointer text-center ${
-                              gender === g
-                                ? "bg-[#FAF2DF] border-[#D4A574] text-[#8C4A0E] ring-2 ring-[#F4C430]/60 shadow-xs font-black"
-                                : "bg-white border-[#E6D4B5] text-[#7A5B3E] hover:border-[#D4A574]"
-                            }`}
-                          >
-                            {g === "Male" ? "Male 👨" : g === "Female" ? "Female 👩" : "Other 🌟"}
-                          </button>
-                        ))}
-                      </div>
-                      {genderError && (
-                        <span className="text-[10px] font-bold text-[#E11D48] mt-0.5 block">
-                          {genderError}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Dynamic Account ID & Era Badge Preview */}
-                  <div className="bg-[#FAF4E6] border border-[#ECD9BA] rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
-                        <IdCard className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-bold text-[#7A5E45] uppercase tracking-wider">
-                            Generated Account ID:
-                          </span>
-                          <span className="font-mono font-black text-[12px] text-[#16223B]">
-                            {generatedAccountId}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-bold text-[#B45309] block truncate">
-                          🎂 Era: {eraTag === "90S" ? "90s Kid (1991–2000)" : eraTag === "21S" ? "21st Century Kid (2001–2010)" : `${eraTag} Era`}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 flex-shrink-0">
-                      Auto-Assigned
-                    </span>
-                  </div>
-
-                  {/* Row 5: Password & Confirm Password (2 columns) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* Password */}
-                    <div>
-                      <label className="block text-[11.5px] font-extrabold text-[#4A2508] mb-1">
-                        Password <span className="text-[#E85D04]">*</span>
-                      </label>
-                      <div className="relative">
-                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9C7E63] pointer-events-none" />
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={password}
-                          onChange={(e) => {
-                            setPassword(e.target.value);
-                            if (passwordError) setPasswordError(null);
-                            clearNotices();
-                          }}
-                          placeholder="8+ characters"
-                          className={`w-full bg-[#FFFDF8] border rounded-2xl pl-10 pr-9 py-2 text-[13px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
-                            passwordError ? "border-[#E11D48]" : "border-[#E6D4B5]"
-                          }`}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9C7E63] hover:text-[#4A2508] cursor-pointer"
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                        >
-                          {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                      {passwordError && (
-                        <span className="text-[10px] font-bold text-[#E11D48] mt-0.5 block">
-                          {passwordError}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Confirm Password */}
-                    <div>
-                      <label className="block text-[11.5px] font-extrabold text-[#4A2508] mb-1">
-                        Confirm Password <span className="text-[#E85D04]">*</span>
-                      </label>
-                      <div className="relative">
-                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9C7E63] pointer-events-none" />
-                        <input
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={confirmPassword}
-                          onChange={(e) => {
-                            setConfirmPassword(e.target.value);
-                            if (confirmPasswordError) setConfirmPasswordError(null);
-                            clearNotices();
-                          }}
-                          placeholder="Re-type password"
-                          className={`w-full bg-[#FFFDF8] border rounded-2xl pl-10 pr-9 py-2 text-[13px] font-medium text-[#4A2508] placeholder-[#B5987A] focus:outline-none focus:ring-2 focus:ring-[#F4C430] transition-all ${
-                            confirmPasswordError ? "border-[#E11D48]" : "border-[#E6D4B5]"
-                          }`}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9C7E63] hover:text-[#4A2508] cursor-pointer"
-                          aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                        >
-                          {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                      {confirmPasswordError && (
-                        <span className="text-[10px] font-bold text-[#E11D48] mt-0.5 block">
-                          {confirmPasswordError}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Live Password Rules & Match Checklist */}
-                  <div className="flex items-center gap-2.5 pt-0.5 flex-wrap text-[10.5px] font-bold text-[#7A5B3E]">
-                    <div className="flex items-center gap-1">
-                      <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-black ${
-                        hasMinLength ? "bg-[#10B981] text-white" : "bg-[#E6D4B5] text-transparent"
-                      }`}>
-                        ✓
-                      </span>
-                      <span className={hasMinLength ? "text-[#10B981]" : "text-[#7A5B3E]"}>
-                        8+ chars
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-black ${
-                        hasNumOrSymbol ? "bg-[#10B981] text-white" : "bg-[#E6D4B5] text-transparent"
-                      }`}>
-                        ✓
-                      </span>
-                      <span className={hasNumOrSymbol ? "text-[#10B981]" : "text-[#7A5B3E]"}>
-                        1 number/symbol
-                      </span>
-                    </div>
-
-                    {confirmPassword.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-black ${
-                          passwordsMatch ? "bg-[#10B981] text-white" : "bg-rose-500 text-white"
-                        }`}>
-                          {passwordsMatch ? "✓" : "✕"}
-                        </span>
-                        <span className={passwordsMatch ? "text-[#10B981]" : "text-rose-600 font-extrabold"}>
-                          {passwordsMatch ? "Passwords match" : "Doesn't match"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Next CTA Button */}
-                  <button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-[#FFB703] via-[#F4C430] to-[#E85D04] hover:from-[#F4C430] hover:to-[#D45000] text-[#4A2508] font-extrabold py-2.5 rounded-full text-[14px] shadow-md hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
-                  >
-                    <span>Next: Choose Avatar</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-
-                </form>
-
-                {/* Footer Text */}
-                <div className="text-center pt-2 border-t border-[#F2E3C6]">
-                  <span className="text-[12px] text-[#7A5B3E] font-medium">
-                    Already have an account?{" "}
-                  </span>
-                  <Link to="/login" className="text-[12px] font-extrabold text-[#E85D04] hover:underline">
-                    Sign in
-                  </Link>
-                </div>
-
-              </motion.div>
-            ) : (
-              /* ── STEP 2: Avatar Selection & Finalize (UX Screen 6) ── */
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-3.5"
-              >
-                {/* Top Navigation Row: Back Arrow + Heading */}
-                <div className="flex items-center justify-between">
+                {/* Actions: Back + Create My Account */}
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => setStep(1)}
-                    aria-label="Back to previous step"
-                    className="w-8 h-8 rounded-full bg-[#FFF5E0] border border-[#E6D4B5] text-[#5C3717] flex items-center justify-center hover:bg-[#FBE7BD] active:scale-95 transition cursor-pointer"
+                    onClick={() => setStep(2)}
+                    disabled={loading}
+                    className="px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white/95 text-[13px] font-bold text-[#5C3717] hover:bg-white active:scale-95 transition shadow-2xs cursor-pointer flex items-center gap-1.5"
                   >
-                    <ArrowLeft className="w-4 h-4" />
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
                   </button>
-                  <div className="text-center flex-1 pr-8">
-                    <h2 className="bhalyam-display text-[22px] sm:text-[25px] font-extrabold text-[#4A2508] tracking-tight flex items-center justify-center gap-1.5">
-                      <span>Almost there!</span>
-                      <span className="text-[#E85D04]">✨</span>
-                    </h2>
-                    <p className="text-[12px] text-[#7A5B3E] font-medium mt-0.5">
-                      Pick an avatar to represent you at the table.
-                    </p>
-                  </div>
-                </div>
 
-                {/* Account Summary Banner */}
-                <div className="bg-[#FAF4E6] border border-[#ECD9BA] rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-amber-500 bg-white flex-shrink-0">
-                      <img
-                        src={findAvatar(selectedAvatar)?.src || "/Avatars/file_0000000084c48208b1f893419d784cf2_1.jpg"}
-                        alt={displayName}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-[13px] text-[#16223B] truncate">
-                        {displayName}
-                      </div>
-                      <div className="font-mono text-[10.5px] text-[#7A5E45] truncate">
-                        ID: <span className="font-bold text-[#16223B]">{generatedAccountId}</span> • {email}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 flex-shrink-0">
-                    {gender}
-                  </span>
-                </div>
-
-                {/* 3x4 Avatar Grid */}
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 py-1 justify-items-center">
-                  {top12Avatars.map((av) => {
-                    const isSelected = selectedAvatar === av.id;
-                    return (
-                      <button
-                        key={av.id}
-                        type="button"
-                        onClick={() => setSelectedAvatar(av.id)}
-                        className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 overflow-hidden transition-all duration-150 cursor-pointer shadow-xs ${
-                          isSelected
-                            ? "border-[#E85D04] ring-4 ring-[#F4C430]/60 scale-105 shadow-md"
-                            : "border-[#E6D4B5] hover:border-[#D4A574] hover:scale-105"
-                        }`}
-                        title={av.label}
-                      >
-                        <img
-                          src={av.src}
-                          alt={av.label}
-                          className="w-full h-full object-cover"
-                        />
-                        {isSelected && (
-                          <div className="absolute top-0 right-0 w-5 h-5 rounded-full bg-[#E85D04] border-2 border-white text-white flex items-center justify-center shadow-xs">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* View More Button */}
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowAllAvatarsModal(true)}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-[#E6D4B5] bg-[#FFF8E7] text-[12px] font-bold text-[#5C3717] hover:bg-white hover:border-[#D4A574] active:scale-95 transition-all shadow-2xs cursor-pointer"
-                  >
-                    <span>View more avatars</span>
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Final Form: Terms Checkbox + Create Account CTA */}
-                <form onSubmit={handleFinalSubmit} className="space-y-3 pt-1">
-                  
-                  {/* Terms Checkbox */}
-                  <div className="flex items-start gap-2.5">
-                    <input
-                      type="checkbox"
-                      id="agreeTerms"
-                      checked={agreeTerms}
-                      onChange={(e) => setAgreeTerms(e.target.checked)}
-                      className="w-4 h-4 mt-0.5 rounded border-[#D9C4A3] text-[#E85D04] focus:ring-[#F4C430] accent-[#E85D04] cursor-pointer"
-                      required
-                    />
-                    <label
-                      htmlFor="agreeTerms"
-                      className="text-[11.5px] font-bold text-[#5C3717] select-none cursor-pointer leading-tight"
-                    >
-                      I agree to the{" "}
-                      <Link to="/privacy" className="text-[#E85D04] underline font-extrabold">
-                        Privacy Policy
-                      </Link>{" "}
-                      and{" "}
-                      <a href="#terms" className="text-[#E85D04] underline font-extrabold">
-                        Terms of Service
-                      </a>
-                    </label>
-                  </div>
-
-                  {error ? (
-                    <FormNotice tone="error" title="Couldn't create your account">
-                      {error}
-                    </FormNotice>
-                  ) : null}
-
-                  {/* Create Account Primary CTA */}
                   <button
                     type="submit"
                     disabled={loading || !agreeTerms}
-                    className={`w-full font-extrabold py-3 rounded-full text-[14.5px] shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`flex-1 font-bold py-2.5 rounded-xl text-[13.5px] shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
                       !agreeTerms || loading
-                        ? "bg-[#D9C4A3] text-[#8C6D4F] cursor-not-allowed opacity-70"
-                        : "bg-gradient-to-r from-[#FFB703] via-[#F4C430] to-[#E85D04] hover:from-[#F4C430] hover:to-[#D45000] text-[#4A2508] hover:scale-[1.01] active:scale-95"
+                        ? "bg-[#CBD5E1] text-[#64748B] cursor-not-allowed opacity-70"
+                        : "bg-[#162A3B] hover:bg-[#0E1E2B] text-white active:scale-[0.98]"
                     }`}
                   >
-                    <span>{loading ? "Creating account..." : "Create account & Play 🚀"}</span>
+                    <span>{loading ? "Creating account..." : "Create My Account 🎉"}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
+                </div>
+              </form>
 
-                </form>
+              {/* Footer Text */}
+              <div className="text-center pt-0.5">
+                <span className="text-[12px] text-[#64748B]">
+                  Already have an account?{" "}
+                </span>
+                <Link to="/login" className="inline-flex items-center -my-3.5 py-3.5 font-bold text-[#2563EB] hover:underline text-[12px]">
+                  Sign in
+                </Link>
+              </div>
+            </motion.div>
+          )}
 
-                {/* Footer Text */}
-                <div className="text-center pt-2 border-t border-[#F2E3C6]">
-                  <span className="text-[12px] text-[#7A5B3E] font-medium">
-                    Already have an account?{" "}
-                  </span>
-                  <Link to="/login" className="text-[12px] font-extrabold text-[#E85D04] hover:underline">
-                    Sign in
-                  </Link>
+          {/* ══════════════════════════════════════════════════════════
+              STEP 4: WELCOME TO BHALYAM!
+             ══════════════════════════════════════════════════════════ */}
+          {step === 4 && (
+            <motion.div
+              key="step4"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4 text-center py-2"
+            >
+              <div className="inline-block px-3 py-1 rounded-full bg-[#162A3B] text-white text-[11px] font-black uppercase tracking-wider">
+                WELCOME TO BHALYAM!
+              </div>
+
+              <div className="space-y-1">
+                <h1 className="text-[24px] sm:text-[28px] font-black text-[#111827] tracking-tight">
+                  Welcome to Bhalyam! 🎉
+                </h1>
+                <p className="text-[13px] text-[#5C3717] font-medium">
+                  Your childhood gaming lounge is ready.
+                </p>
+              </div>
+
+              {/* Celebratory Avatar Display with Doodles */}
+              <div className="relative w-28 h-28 mx-auto my-3 flex items-center justify-center">
+                {/* Background Glow */}
+                <div className="absolute inset-0 bg-[#F4C430]/30 rounded-full blur-md" />
+                
+                {/* Avatar frame */}
+                <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-[#162A3B] shadow-lg bg-white">
+                  <img
+                    src={chosenAvatarObj?.src || "/Avatars/file_0000000084c48208b1f893419d784cf2_1.jpg"}
+                    alt={displayName}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
 
-              </motion.div>
-            )}
-          </AnimatePresence>
+                {/* Handcrafted Doodle Accents */}
+                <span className="absolute -top-1 -right-1 text-xl animate-bounce">
+                  ✨
+                </span>
+                <span className="absolute -bottom-1 -left-1 text-lg">
+                  🏆
+                </span>
+              </div>
 
-        </div>
+              <div className="space-y-0.5">
+                <div className="text-[16px] font-black text-[#16223B]">
+                  {displayName}
+                </div>
+                <div className="font-mono text-[11px] text-[#7A5E45]">
+                  ID: <span className="font-bold text-[#16223B]">{generatedAccountId}</span>
+                </div>
+              </div>
 
+              {/* Enter Bhalyam CTA */}
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="w-full bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-3.5 rounded-xl text-[14.5px] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                <span>Enter Bhalyam</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── ALL AVATARS MODAL SHEET ── */}
@@ -859,7 +953,7 @@ export default function SignUpPage() {
                         }}
                         className={`relative w-14 h-14 rounded-full border-2 overflow-hidden transition-all duration-150 cursor-pointer ${
                           isSelected
-                            ? "border-[#E85D04] ring-4 ring-[#F4C430]/60 scale-105 shadow-md"
+                            ? "border-[#162A3B] ring-3 ring-[#162A3B]/30 scale-105 shadow-md"
                             : "border-[#E6D4B5] hover:border-[#D4A574] hover:scale-105"
                         }`}
                       >
@@ -869,7 +963,7 @@ export default function SignUpPage() {
                           className="w-full h-full object-cover"
                         />
                         {isSelected && (
-                          <div className="absolute top-0 right-0 w-4.5 h-4.5 rounded-full bg-[#E85D04] border-2 border-white text-white flex items-center justify-center">
+                          <div className="absolute top-0 right-0 w-4.5 h-4.5 rounded-full bg-[#162A3B] border-2 border-white text-white flex items-center justify-center">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
                         )}

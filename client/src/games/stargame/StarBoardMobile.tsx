@@ -88,7 +88,13 @@ function ActionButton({
 export default function StarBoardMobile(props: StarBoardProps) {
   const m = useStarBoard(props);
   const reduce = useReducedMotion();
-  const tut = useTutorialGate(STARGAME_TUTORIAL.key);
+  // Never over a live action window — Star Game has two ("themeSelect" and
+  // "pass"), so both must be clear, or no deadline is running at all.
+  // See GameTutorial.tsx's useTutorialGate doc.
+  const tut = useTutorialGate(
+    STARGAME_TUTORIAL.key,
+    (!m.iNeedToSelect && !m.iNeedToPass) || m.deadline == null,
+  );
 
   // Self-tick once a second so the <DeadlinePill> (which reads Date.now() at
   // render) shows a live countdown. Cheap re-render; no other side effects.

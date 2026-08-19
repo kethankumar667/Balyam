@@ -30,7 +30,7 @@ export class ScoringEngine {
           runs: 6,
           outcome: "SIX",
           trajectory: { angle: shotAngle, power: 100 },
-          feedbackText: "SIX! OVER THE ROOF!",
+          feedbackText: "SIX! MAXIMUM!",
         };
       }
       return {
@@ -38,7 +38,7 @@ export class ScoringEngine {
         runs: 4,
         outcome: "FOUR",
         trajectory: { angle: shotAngle, power: 85 },
-        feedbackText: "FOUR! RACING TO ROPE!",
+        feedbackText: "FOUR! BOUNDARY!",
       };
     }
 
@@ -59,7 +59,7 @@ export class ScoringEngine {
           runs: 1,
           outcome: "RUNS_1",
           trajectory: { angle: shotAngle, power: 40 },
-          feedbackText: "1 RUN (EDGED)",
+          feedbackText: "1 RUN (SINGLE)",
         };
       }
       return {
@@ -67,7 +67,7 @@ export class ScoringEngine {
         runs: 4,
         outcome: "FOUR",
         trajectory: { angle: shotAngle, power: 75 },
-        feedbackText: "FOUR RUNS!",
+        feedbackText: "FOUR RUNS! 4",
       };
     }
 
@@ -78,7 +78,7 @@ export class ScoringEngine {
           runs: 0,
           outcome: "CAUGHT",
           trajectory: { angle: shotAngle, power: 35 },
-          feedbackText: "CAUGHT! MIS-TIMED SHOT!",
+          feedbackText: "CAUGHT OUT! W",
         };
       }
       return {
@@ -97,7 +97,7 @@ export class ScoringEngine {
       runs: 0,
       outcome: isBowled ? "BOWLED" : "DOT",
       trajectory: { angle: 0, power: 0 },
-      feedbackText: isBowled ? "CLEAN BOWLED!" : "DOT BALL",
+      feedbackText: isBowled ? "CLEAN BOWLED! W" : "DOT BALL (0)",
     };
   }
 }

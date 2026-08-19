@@ -290,9 +290,19 @@ export default function AboutPage() {
                   <SketchbookArtSVG className="absolute inset-0 pl-5" />
 
                   {/* Yellow Taped Sticky Note with PushPin */}
-                  <div className="absolute top-2.5 right-2 rotate-[4deg] bg-[#FEF08A] dark:bg-[#EAB308]/90 text-[#713F12] border border-[#CA8A04] rounded-lg p-2.5 shadow-md max-w-[155px] z-20">
+                  <div className="absolute top-2.5 right-2 rotate-[4deg] bg-[#FEF08A] dark:bg-[#EAB308]/90 text-sand-800 border border-[#CA8A04] rounded-lg p-2.5 shadow-md max-w-[155px] z-20">
                     <PushPin className="absolute -top-3.5 left-1/2 -translate-x-1/2" />
-                    <p className="font-script text-[15px] font-extrabold leading-tight text-center pt-1">
+                    {/*
+                      Ink stated on the paragraph, and stated for BOTH themes.
+
+                      The sticky note is yellow in dark mode too (`dark:bg-[#EAB308]/90`),
+                      so it is one of the few surfaces that must NOT flip its ink when the
+                      page does. Inheriting from the wrapper was not enough: in dark mode
+                      the paragraph resolved to #F1F5F9 on #D5A40C — 2.10:1, measured.
+                      That is the two-part rule failing in the usual way, one half flipping
+                      without the other.
+                    */}
+                    <p className="font-script text-[15px] font-extrabold leading-tight text-center pt-1 text-sand-800 dark:text-sand-900">
                       “Not just games, It&apos;s our childhood again. ♡”
                     </p>
                   </div>
@@ -338,7 +348,7 @@ export default function AboutPage() {
               
               {/* Left: Our Story Narrative */}
               <div className="lg:col-span-4 text-left space-y-2.5">
-                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase">
+                <div className="flex items-center gap-1.5 text-chest-700 dark:text-lamp-300 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase">
                   <span>★</span>
                   <span>OUR STORY</span>
                 </div>
@@ -463,7 +473,7 @@ export default function AboutPage() {
                 : "bg-[#FFFDF8] border-[#ECD9BA]"
             }`}>
               <div>
-                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase mb-4">
+                <div className="flex items-center gap-1.5 text-chest-700 dark:text-lamp-300 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase mb-4">
                   <span>★</span>
                   <span>OUR CORE VALUES</span>
                 </div>
@@ -568,7 +578,7 @@ export default function AboutPage() {
                 : "bg-[#FFFDF8] border-[#ECD9BA]"
             }`}>
               
-              <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase mb-4">
+              <div className="flex items-center gap-1.5 text-chest-700 dark:text-lamp-300 font-extrabold tracking-widest text-[11px] sm:text-[12px] uppercase mb-4">
                 <span>★</span>
                 <span>WHAT MAKES BHALYAM DIFFERENT?</span>
               </div>

@@ -57,13 +57,13 @@ export const Keypad: React.FC<KeypadProps> = ({ state, dispatch }) => {
   };
 
   return (
-    <div className="flex flex-col items-center gap-3 w-full max-w-[280px] select-none pt-2">
-      {/* Action / Launch Big Yellow Button */}
+    <div className="flex flex-col items-center gap-2.5 w-full max-w-[260px] select-none pt-2 font-mono">
+      {/* Action / Launch Big Button */}
       <div className="flex justify-center w-full">
         <button
           type="button"
           onClick={handleAction}
-          className="w-full h-12 rounded-xl bg-gradient-to-b from-[#e4b128] to-[#b45309] border-2 border-amber-300 text-black font-black text-sm uppercase tracking-wider shadow-lg active:translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full h-11 rounded-xl bg-gradient-to-b from-[#e4b128] to-[#b45309] border-2 border-amber-300 text-black font-black text-xs uppercase tracking-wider shadow-lg active:translate-y-0.5 flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <span>⚡</span>
           <span>
@@ -83,13 +83,13 @@ export const Keypad: React.FC<KeypadProps> = ({ state, dispatch }) => {
       </div>
 
       {/* D-Pad Horizontal Movement */}
-      <div className="flex items-center justify-between w-full gap-3">
+      <div className="flex items-center justify-between w-full gap-2.5">
         <button
           type="button"
           onClick={handleLeft}
           disabled={status !== "playing" && status !== "serving"}
           aria-label="Move paddle left"
-          className="flex-1 h-14 rounded-xl bg-[#262b1b] hover:bg-[#343b25] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-[#8bac0f]/40 text-[#9bbc0f] font-black text-2xl shadow-lg active:translate-y-0.5 flex items-center justify-center cursor-pointer"
+          className="flex-1 h-12 rounded-xl bg-[#262b1b] hover:bg-[#343b25] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-[#8bac0f]/40 text-[#9bbc0f] font-black text-xl shadow-md active:translate-y-0.5 flex items-center justify-center cursor-pointer"
         >
           ◀
         </button>
@@ -99,18 +99,18 @@ export const Keypad: React.FC<KeypadProps> = ({ state, dispatch }) => {
           onClick={handleRight}
           disabled={status !== "playing" && status !== "serving"}
           aria-label="Move paddle right"
-          className="flex-1 h-14 rounded-xl bg-[#262b1b] hover:bg-[#343b25] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-[#8bac0f]/40 text-[#9bbc0f] font-black text-2xl shadow-lg active:translate-y-0.5 flex items-center justify-center cursor-pointer"
+          className="flex-1 h-12 rounded-xl bg-[#262b1b] hover:bg-[#343b25] disabled:opacity-40 disabled:cursor-not-allowed border-2 border-[#8bac0f]/40 text-[#9bbc0f] font-black text-xl shadow-md active:translate-y-0.5 flex items-center justify-center cursor-pointer"
         >
           ▶
         </button>
       </div>
 
       {/* Auxiliary small buttons: Pause, Sound, Restart */}
-      <div className="flex items-center justify-between w-full gap-2 pt-1">
+      <div className="flex items-center justify-between w-full gap-1.5 pt-0.5">
         <button
           type="button"
           onClick={handlePause}
-          className="flex-1 py-1.5 rounded-lg bg-[#303820] hover:bg-[#404a2b] border border-[#8bac0f]/30 text-[#8bac0f] font-bold text-xs shadow cursor-pointer uppercase"
+          className="flex-1 py-1.5 rounded-lg bg-[#303820] hover:bg-[#404a2b] border border-[#8bac0f]/30 text-[#8bac0f] font-bold text-[11px] shadow cursor-pointer uppercase text-center"
         >
           {status === "paused" ? "▶ Play" : "⏸ Pause"}
         </button>
@@ -118,7 +118,7 @@ export const Keypad: React.FC<KeypadProps> = ({ state, dispatch }) => {
         <button
           type="button"
           onClick={handleSound}
-          className="flex-1 py-1.5 rounded-lg bg-[#303820] hover:bg-[#404a2b] border border-[#8bac0f]/30 text-[#8bac0f] font-bold text-xs shadow cursor-pointer uppercase"
+          className="flex-1 py-1.5 rounded-lg bg-[#303820] hover:bg-[#404a2b] border border-[#8bac0f]/30 text-[#8bac0f] font-bold text-[11px] shadow cursor-pointer uppercase text-center"
         >
           {settings.soundEnabled ? "🔊 Sound" : "🔇 Mute"}
         </button>
@@ -126,7 +126,7 @@ export const Keypad: React.FC<KeypadProps> = ({ state, dispatch }) => {
         <button
           type="button"
           onClick={handleRestart}
-          className="flex-1 py-1.5 rounded-lg bg-[#4a1c1c] hover:bg-[#602424] border border-red-500/40 text-red-200 font-bold text-xs shadow cursor-pointer uppercase"
+          className="flex-1 py-1.5 rounded-lg bg-[#4a1c1c] hover:bg-[#602424] border border-red-500/40 text-red-200 font-bold text-[11px] shadow cursor-pointer uppercase text-center"
         >
           ⟳ Reset
         </button>

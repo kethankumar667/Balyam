@@ -75,14 +75,14 @@ export default function ParticipantRow({
             </span>
 
             {isMe && (
-              <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 rounded-md px-1.5 py-0.2 shrink-0">
+              <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 rounded-md px-1.5 py-0.5 shrink-0">
                 You
               </span>
             )}
 
             {player.isHost && (
               <span
-                className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70 border border-amber-300/60 dark:border-amber-700/50 rounded-md px-1.5 py-0.2 flex items-center gap-0.5 shrink-0"
+                className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70 border border-amber-300/60 dark:border-amber-700/50 rounded-md px-1.5 py-0.5 flex items-center gap-0.5 shrink-0"
                 title="Room Host"
               >
                 <span>👑</span>
@@ -92,7 +92,7 @@ export default function ParticipantRow({
 
             {player.isBot && (
               <span
-                className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0.2 shrink-0 flex items-center gap-0.5"
+                className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0.5 shrink-0 flex items-center gap-0.5"
                 title={player.bingoDifficulty ? `Bot (${player.bingoDifficulty})` : "AI Bot"}
               >
                 <span>🤖</span>
@@ -101,7 +101,7 @@ export default function ParticipantRow({
             )}
 
             {player.isLocal && (
-              <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/70 rounded-md px-1.5 py-0.2 shrink-0">
+              <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/70 rounded-md px-1.5 py-0.5 shrink-0">
                 Local
               </span>
             )}

@@ -6,6 +6,7 @@ import {
   RemoveFriendUserIcon,
   StatusConnectedIcon,
 } from "../../design-system/icons";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 interface RecentPlayersHubProps {
   recentPlayers: RecentPlayer[];
@@ -115,7 +116,12 @@ export default function RecentPlayersHub({
                 className="bg-stone-900/80 dark:bg-zinc-900/80 border border-stone-800 dark:border-zinc-800 rounded-xl p-3.5 flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{rp.avatar || "👤"}</span>
+                  <SeatAvatar
+                    avatar={rp.avatar}
+                    name={rp.displayName}
+                    className="w-10 h-10 rounded-xl flex-shrink-0"
+                    textClassName="text-base"
+                  />
                   <div>
                     <h4 className="font-bold text-sm text-stone-100 dark:text-zinc-100">
                       {rp.displayName}
@@ -155,7 +161,12 @@ export default function RecentPlayersHub({
                 className="bg-stone-900/80 dark:bg-zinc-900/80 border border-stone-800 dark:border-zinc-800 rounded-xl p-3.5 flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{f.avatar || "👤"}</span>
+                  <SeatAvatar
+                    avatar={f.avatar}
+                    name={f.displayName}
+                    className="w-10 h-10 rounded-xl flex-shrink-0"
+                    textClassName="text-base"
+                  />
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="font-bold text-sm text-stone-100 dark:text-zinc-100">

@@ -2,11 +2,7 @@ import type { Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
 
 import type { LudoColor } from "@shared/types";
-import { COLOR_HEX, PLAYER_COLORS_ORDER } from "../games/ludo/board-layout";
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
+import { COLOR_HEX, COLOR_LABEL, PLAYER_COLORS_ORDER } from "../games/ludo/board-layout";
 
 // All 8 seats, in the same canonical order the server assigns colors in.
 // The engine's pool is sized to the BOARD's wedge count, not the player
@@ -18,7 +14,7 @@ function capitalize(s: string): string {
 // A pick outside the eventual board's pool is not a dead end: that player
 // simply draws randomly from the free colors like anyone who never picked.
 const COLORS: { id: LudoColor; label: string; hex: string }[] = PLAYER_COLORS_ORDER.map(
-  (id) => ({ id, label: capitalize(id), hex: COLOR_HEX[id] })
+  (id) => ({ id, label: COLOR_LABEL[id], hex: COLOR_HEX[id] })
 );
 
 export default function LudoColorPicker({

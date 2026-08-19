@@ -1,3 +1,4 @@
+import React from "react";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
 
 interface FavoriteGamesProps {
@@ -9,52 +10,58 @@ export default function FavoriteGames({ stats }: FavoriteGamesProps) {
 
   if (gamesList.length === 0) {
     return (
-      <div className="bg-stone-900/60 dark:bg-zinc-900/60 border border-stone-800 dark:border-zinc-800 rounded-xl p-6 text-center text-stone-500 dark:text-zinc-500 text-xs">
+      <div className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-2xl p-6 text-center text-[var(--auth-ink-soft)] text-xs font-mono shadow-xs">
         No per-game matches recorded yet. Jump into Ludo, Rummy, or Hand Cricket to build your stats!
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <h2 className="text-sm font-bold text-stone-200 dark:text-zinc-200 uppercase tracking-wider text-xs">
-        Per-Game Career Breakdown
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="space-y-3.5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-mono font-bold text-[var(--auth-ink-soft)] uppercase tracking-wider">
+          Per-Game Career Breakdown
+        </h2>
+        <span className="text-[10px] font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+          {gamesList.length} GAMES PLAYED
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {gamesList.map((g) => (
           <div
             key={g.game}
-            className="bg-stone-900/80 dark:bg-zinc-900/80 border border-stone-800 dark:border-zinc-800 rounded-xl p-4 space-y-3"
+            className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] hover:border-amber-500/40 rounded-2xl p-4 space-y-3 shadow-xs hover:shadow-md transition group"
           >
             <div className="flex items-center justify-between">
-              <span className="font-bold text-sm text-stone-100 dark:text-zinc-100 capitalize">
+              <span className="font-extrabold text-sm text-[var(--auth-ink)] capitalize">
                 {g.game}
               </span>
-              <span className="text-xs font-mono font-bold text-emerald-400">
+              <span className="text-xs font-mono font-bold text-emerald-500">
                 {g.winRate}% Win
               </span>
             </div>
 
             {/* Win Rate Bar */}
-            <div className="h-1.5 bg-stone-950 rounded-full overflow-hidden">
+            <div className="h-2 bg-[var(--auth-field)] rounded-full overflow-hidden border border-[var(--auth-field-edge)] shadow-inner">
               <div
-                className="h-full bg-emerald-500 rounded-full"
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300"
                 style={{ width: `${g.winRate}%` }}
               />
             </div>
 
-            <div className="grid grid-cols-3 text-center text-xs font-mono pt-1 border-t border-stone-800/60 dark:border-zinc-800/60">
+            <div className="grid grid-cols-3 text-center text-xs font-mono pt-2 border-t border-[var(--auth-field-edge)]">
               <div>
-                <span className="text-[10px] text-stone-500 block">Played</span>
-                <span className="font-bold text-stone-200">{g.matchesPlayed}</span>
+                <span className="text-[10px] text-[var(--auth-ink-soft)] block uppercase">Played</span>
+                <span className="font-bold text-[var(--auth-ink)]">{g.matchesPlayed}</span>
               </div>
               <div>
-                <span className="text-[10px] text-stone-500 block">Wins</span>
-                <span className="font-bold text-emerald-400">{g.wins}</span>
+                <span className="text-[10px] text-[var(--auth-ink-soft)] block uppercase">Wins</span>
+                <span className="font-bold text-emerald-500">{g.wins}</span>
               </div>
               <div>
-                <span className="text-[10px] text-stone-500 block">Avg Time</span>
-                <span className="font-bold text-amber-400">{g.averageMatchDurationMinutes}m</span>
+                <span className="text-[10px] text-[var(--auth-ink-soft)] block uppercase">Avg Time</span>
+                <span className="font-bold text-amber-500">{g.averageMatchDurationMinutes}m</span>
               </div>
             </div>
           </div>

@@ -31,7 +31,15 @@
     "coverage": "npm run coverage:server && npm run coverage:client",
     "verify:schema": "node scripts/persistence/verifySchema.mjs",
     "verify:durability": "node scripts/persistence/verifyDurability.mjs",
-    "check:a11y-rendered": "node client/scripts/accessibility/runner.mjs"
+    "check:a11y-rendered": "node client/scripts/accessibility/runner.mjs",
+    "design:colors": "node scripts/design-audit/colors.mjs",
+    "design:tokens": "node scripts/design-audit/tokens.mjs",
+    "design:components": "node scripts/design-audit/components.mjs",
+    "design:palette": "node scripts/design-audit/palette.mjs",
+    "design:dead-classes": "node scripts/design-audit/deadClasses.mjs",
+    "design:contrast": "node client/scripts/design-audit/contrast.mjs",
+    "design:touch": "node client/scripts/design-audit/touch-targets.mjs",
+    "design:audit": "npm run design:tokens && npm run design:colors && npm run design:components && npm run design:palette && npm run design:dead-classes"
   },
   "devDependencies": {
     "axe-core": "^4.13.0",

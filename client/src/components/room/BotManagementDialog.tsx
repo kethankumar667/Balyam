@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { BotDifficulty, GameKind } from "@shared/types";
+import Modal from "../Modal";
 
 const BOT_NAME_SUGGESTIONS = [
   "AlphaBot",
@@ -28,46 +29,16 @@ export default function BotManagementDialog({
   const [botName, setBotName] = useState("");
   const [difficulty, setDifficulty] = useState<BotDifficulty>("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Form reset on close — separate from focus-trap/Escape/restoration, which
+  // <Modal> now owns via useFocusTrap.
   useEffect(() => {
     if (!isOpen) {
       setBotName("");
       setIsSubmitting(false);
-      return;
     }
-
-    inputRef.current?.focus();
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      } else if (e.key === "Tab") {
-        if (!modalRef.current) return;
-        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
+  }, [isOpen]);
 
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -90,16 +61,13 @@ export default function BotManagementDialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="bot-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      initialFocusRef={inputRef}
+      ariaLabelledBy="bot-dialog-title"
+      panelClassName="w-full max-w-md rounded-2xl bg-[#FFFDF8] dark:bg-[#151D2A] border border-[#EEDBCA] dark:border-slate-800 p-5 sm:p-6 shadow-2xl space-y-4 text-left"
     >
-      <div
-        ref={modalRef}
-        className="w-full max-w-md rounded-2xl bg-[#FFFDF8] dark:bg-[#151D2A] border border-[#EEDBCA] dark:border-slate-800 p-5 sm:p-6 shadow-2xl space-y-4 text-left"
-      >
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-[#EEDBCA]/60 dark:border-slate-800">
           <div className="flex items-center gap-2">
@@ -211,7 +179,6 @@ export default function BotManagementDialog({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

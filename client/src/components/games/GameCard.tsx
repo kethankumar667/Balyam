@@ -91,6 +91,19 @@ export default function GameCard({
 
   const isSolo = ["snake", "roadrash", "brickblocks", "tetris", "breakout", "spacewar", "nokiacricket"].includes(game.slug);
 
+  /**
+   * The category chip must not repeat the mode badge.
+   *
+   * The badge on the left already says "Multiplayer" or "Single Player", and
+   * the chip on the right rendered `tags[0]` — which is literally
+   * `"multiplayer"` on 14 of the 20 catalogue entries. Every one of those
+   * cards showed the same word twice, once per corner, on the lounge and on
+   * /games. Taking the first tag the badge does NOT already convey gives the
+   * chip something to say ("Board", "Classroom", "Party", "Retro") and leaves
+   * it empty rather than redundant when there is nothing left.
+   */
+  const categoryTag = game.tags?.find((t) => t !== "multiplayer" && t !== "solo");
+
   const btnFrom = game.btnGradient?.from ?? accent.from;
   const btnTo = game.btnGradient?.to ?? accent.to;
   const btnShadow = game.btnGradient?.shadow ?? accent.to;
@@ -122,9 +135,9 @@ export default function GameCard({
           <span>{isSolo ? "Single Player" : "Multiplayer"}</span>
         </span>
 
-        {game.tags?.[0] && (
+        {categoryTag && (
           <span className="text-[10px] font-bold uppercase tracking-wider text-ink-mute">
-            {game.tags[0]}
+            {categoryTag}
           </span>
         )}
       </div>

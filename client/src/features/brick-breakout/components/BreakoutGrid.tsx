@@ -61,7 +61,7 @@ export const BreakoutGrid: React.FC<BreakoutGridProps> = ({ state }) => {
   }, [paddle, ball, bricks]);
 
   return (
-    <div className={styles.lcdContainer} style={{ width: "100%", maxWidth: 280, aspectRatio: "10/20" }}>
+    <div className={styles.lcdContainer} style={{ width: "100%", maxWidth: 190, aspectRatio: "10/19" }}>
       <div className={styles.matrixGrid}>
         {matrix.map((row, rIdx) =>
           row.map((cellType, cIdx) => {

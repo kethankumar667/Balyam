@@ -117,11 +117,11 @@ export default function GamesPage() {
         <div className="space-y-3.5">
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             <div className="flex-1">
-              <SearchField
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search games by title, rules, or nostalgia quote…"
-              />
+              {/* Placeholder and accessible name both come from SearchField's
+                  own defaults. The override that used to live here — "Search
+                  games by title, rules, or nostalgia quote…" — is 49 characters
+                  and clipped to "…or nost" at 390px. */}
+              <SearchField value={searchQuery} onChange={setSearchQuery} />
             </div>
             <div className="text-xs font-bold text-ink-mute flex items-center justify-end px-1 whitespace-nowrap">
               {displayedGames.length} {displayedGames.length === 1 ? "game" : "games"} found

@@ -1,23 +1,20 @@
-import { findAvatar } from "../../lib/avatars";
+import SeatAvatar from "./SeatAvatar";
 import { useRoomStore } from "../../store/roomStore";
+import { useAuthStore } from "../../store/authStore";
 
 /**
  * The signed-in-ish player's own face, wherever the app shows their identity.
  *
- * One component so the fallback is decided once. Every surface that used to
- * hard-code a silhouette now asks this instead, which means adding a second
- * avatar source later (an account photo, say) is one edit rather than a hunt.
- *
- * Scope is "you", on surfaces that show your identity rather than a seat:
- * the header button, the profile sheet, the profile page. Seats at a table
- * are drawn by `SeatAvatar`, which takes the avatar off server state so it
- * can render everyone. Use that one anywhere the subject is a `Player`.
+ * Delegating to `SeatAvatar` ensures consistent rendering across avatar IDs,
+ * direct images, emojis, and initial fallbacks with warm background tones.
  */
 export interface SelfAvatarProps {
   /** Rendered when no avatar is chosen — usually the surface's own icon. */
-  fallback: React.ReactNode;
+  fallback?: React.ReactNode;
   /** Tailwind size classes for the circle, e.g. "w-11 h-11". */
   className?: string;
+  /** Font size for the fallback initial. */
+  textClassName?: string;
   /**
    * Portraits put faces in the upper half, so a centred square crop inside a
    * circle shaves heads. Overridable for surfaces with different proportions.
@@ -28,24 +25,22 @@ export interface SelfAvatarProps {
 export default function SelfAvatar({
   fallback,
   className = "",
+  textClassName = "text-[11px]",
   objectPosition = "50% 22%",
 }: SelfAvatarProps) {
   const avatarId = useRoomStore((s) => s.avatarId);
-  const avatar = findAvatar(avatarId);
-
-  if (!avatar) return <>{fallback}</>;
+  const playerName = useRoomStore((s) => s.playerName);
+  const isMember = useAuthStore((s) => s.isMember);
+  const displayName = playerName.trim() || (isMember ? "Member" : "Guest");
 
   return (
-    <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
-      <img
-        src={avatar.src}
-        // Decorative here: every caller already labels the control it sits in
-        // ("Your profile"), and a second announcement is noise, not information.
-        alt=""
-        className="w-full h-full object-cover scale-[1.25] origin-center"
-        style={{ objectPosition }}
-        draggable={false}
-      />
-    </span>
+    <SeatAvatar
+      avatar={avatarId || undefined}
+      name={displayName}
+      className={className}
+      textClassName={textClassName}
+      objectPosition={objectPosition}
+      fallback={fallback}
+    />
   );
 }

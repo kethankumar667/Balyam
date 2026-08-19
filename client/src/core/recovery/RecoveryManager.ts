@@ -56,18 +56,26 @@ class RoomRecoveryManager {
     });
 
     this.socket.on("disconnect", (reason) => {
-      connectionStateManager.transition("RECONNECTING", `Socket disconnected: ${reason}`);
+      if (this.currentRoomCode) {
+        connectionStateManager.transition("RECONNECTING", `Socket disconnected: ${reason}`);
+      } else {
+        connectionStateManager.transition("DISCONNECTED", `Socket disconnected: ${reason}`);
+      }
     });
 
     this.socket.on("connect_error", (err) => {
-      connectionStateManager.transition("RECONNECTING", `Socket connect error: ${err?.message}`);
+      if (this.currentRoomCode) {
+        connectionStateManager.transition("RECONNECTING", `Socket connect error: ${err?.message}`);
+      } else {
+        connectionStateManager.transition("DISCONNECTED", `Socket connect error: ${err?.message}`);
+      }
     });
 
     this.socket.io.on("reconnect", () => {
       if (this.currentRoomCode) {
         this.attemptRecovery(this.currentRoomCode);
       } else {
-        connectionStateManager.transition("RECOVERED", "Socket reconnected");
+        connectionStateManager.transition("CONNECTED", "Socket reconnected");
       }
     });
   }

@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
+import { render, screen } from "@testing-library/react";
 import TournamentCard from "../TournamentCard";
 import TournamentBracket from "../TournamentBracket";
+import { TournamentHeroBanner } from "../TournamentHeroBanner";
+import { TournamentTrustStrip } from "../TournamentTrustStrip";
+import { TournamentGameArtwork, TournamentTrophyArtwork, TournamentPodiumCard } from "../TournamentArtwork";
 import SeasonDashboard from "../SeasonDashboard";
 import SeasonLeaderboard from "../SeasonLeaderboard";
 import TournamentHistory from "../TournamentHistory";
@@ -13,8 +17,8 @@ import type { Season, PlayerSeasonStats } from "@shared/seasons/Season";
 describe("Tournament & Seasons UI Components", () => {
   const mockTournament: Tournament = {
     id: "t_test_1",
-    title: "Ludo Open Cup",
-    description: "Weekly knockout tournament",
+    title: "Ludo Grand Prix — Weekly Open",
+    description: "Fast-paced 8-player knockout championship with double XP rewards.",
     game: "ludo",
     type: "SINGLE_ELIMINATION",
     status: "REGISTRATION_OPEN",
@@ -39,16 +43,78 @@ describe("Tournament & Seasons UI Components", () => {
     ],
   };
 
-  it("creates TournamentCard element with props", () => {
-    const el = React.createElement(TournamentCard, {
-      tournament: mockTournament,
-      onViewBracket: () => {},
-    });
-    expect(el).toBeDefined();
-    expect(el.type).toBe(TournamentCard);
+  it("renders TournamentCard with dynamic metadata, artwork, and Register button", () => {
+    render(
+      <TournamentCard
+        tournament={mockTournament}
+        currentPlayerId="u2"
+        onRegister={async () => {}}
+        onViewBracket={() => {}}
+      />
+    );
+
+    expect(screen.getByText("Ludo Grand Prix — Weekly Open")).toBeDefined();
+    expect(screen.getByText(/1 \/ 8 Players/i)).toBeDefined();
+    expect(screen.getByText(/500 XP/i)).toBeDefined();
+    expect(screen.getByText("REGISTRATION OPEN")).toBeDefined();
+    expect(screen.getByText("View Bracket")).toBeDefined();
+    expect(screen.getByText("Register")).toBeDefined();
   });
 
-  it("creates TournamentBracket element with props", () => {
+  it("renders registered state badge on TournamentCard when player is enrolled", () => {
+    render(
+      <TournamentCard
+        tournament={mockTournament}
+        currentPlayerId="u1"
+        onRegister={async () => {}}
+        onViewBracket={() => {}}
+      />
+    );
+
+    expect(screen.getByText("✓ Checked In")).toBeDefined();
+  });
+
+  it("renders TournamentHeroBanner with featured badge, title, prize pool, and Enter Arena button", () => {
+    render(
+      <TournamentHeroBanner
+        tournament={mockTournament}
+        onEnterArena={() => {}}
+      />
+    );
+
+    expect(screen.getByText(/Featured Arena Event/i)).toBeDefined();
+    expect(screen.getByText("Ludo Grand Prix — Weekly Open")).toBeDefined();
+    expect(screen.getByText(/500 XP \+ Trophy/i)).toBeDefined();
+    expect(screen.getByText("Enter Tournament Arena")).toBeDefined();
+  });
+
+  it("renders TournamentTrustStrip with all 4 championship trust pillars", () => {
+    render(<TournamentTrustStrip />);
+
+    expect(screen.getByText("Fair Play Certified")).toBeDefined();
+    expect(screen.getByText("Exciting Rewards")).toBeDefined();
+    expect(screen.getByText("For Everyone")).toBeDefined();
+    expect(screen.getByText("BHALYAM Arena")).toBeDefined();
+  });
+
+  it("renders vector artwork scenes without errors", () => {
+    const uno = render(<TournamentGameArtwork game="uno" />);
+    expect(uno.container.querySelector("svg")).toBeDefined();
+
+    const ludo = render(<TournamentGameArtwork game="ludo" />);
+    expect(ludo.container.querySelector("svg")).toBeDefined();
+
+    const rummy = render(<TournamentGameArtwork game="rummy" />);
+    expect(rummy.container.querySelector("svg")).toBeDefined();
+
+    const trophy = render(<TournamentTrophyArtwork size={120} />);
+    expect(trophy.container.querySelector("svg")).toBeDefined();
+
+    const podium = render(<TournamentPodiumCard />);
+    expect(podium.getByText("Championship Arena")).toBeDefined();
+  });
+
+  it("renders TournamentBracket element with knockout rounds and matches", () => {
     const mockBracket: TournamentBracketType = {
       tournamentId: "t_test_1",
       rounds: [
@@ -73,15 +139,18 @@ describe("Tournament & Seasons UI Components", () => {
       ],
     };
 
-    const el = React.createElement(TournamentBracket, {
-      tournament: mockTournament,
-      bracket: mockBracket,
-    });
-    expect(el).toBeDefined();
-    expect(el.type).toBe(TournamentBracket);
+    render(
+      <TournamentBracket
+        tournament={mockTournament}
+        bracket={mockBracket}
+      />
+    );
+
+    expect(screen.getByText("Finals")).toBeDefined();
+    expect(screen.getByText("Alice")).toBeDefined();
   });
 
-  it("creates SeasonDashboard element with props", () => {
+  it("renders SeasonDashboard with season progression and reward ladder", () => {
     const mockSeason: Season = {
       id: "season_1",
       name: "Season 1: Launch",
@@ -104,29 +173,69 @@ describe("Tournament & Seasons UI Components", () => {
       rewardsClaimed: [],
     };
 
-    const el = React.createElement(SeasonDashboard, {
-      season: mockSeason,
-      stats: mockStats,
-      rewards: [],
-      onClaimReward: async () => {},
-    });
-    expect(el).toBeDefined();
-    expect(el.type).toBe(SeasonDashboard);
+    render(
+      <SeasonDashboard
+        season={mockSeason}
+        stats={mockStats}
+        rewards={[
+          { tierId: "t1", name: "Novice Badge", minSeasonXP: 100, bonusXP: 50, icon: "🎖️", badge: "🎖️", title: "Novice", unlocked: true, claimed: false },
+        ]}
+        onClaimReward={async () => {}}
+      />
+    );
+
+    expect(screen.getByText("Season 1: Launch")).toBeDefined();
+    expect(screen.getByText(/Season Level 5/i)).toBeDefined();
+    expect(screen.getByText("450 Total Season XP")).toBeDefined();
+    expect(screen.getByText("Claim +50 XP")).toBeDefined();
   });
 
-  it("creates SeasonLeaderboard element with props", () => {
-    const el = React.createElement(SeasonLeaderboard, {
-      leaderboard: [],
-    });
-    expect(el).toBeDefined();
-    expect(el.type).toBe(SeasonLeaderboard);
+  it("renders SeasonLeaderboard with rank badges", () => {
+    render(
+      <SeasonLeaderboard
+        leaderboard={[
+          {
+            playerId: "u1",
+            seasonId: "s1",
+            displayName: "Alice Master",
+            seasonXP: 1200,
+            seasonLevel: 10,
+            seasonRankTier: "Champion",
+            seasonWins: 15,
+            seasonMatches: 20,
+            seasonWinRate: 75,
+            tournamentWins: 3,
+            rewardsClaimed: [],
+            rank: 1,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText("Alice Master")).toBeDefined();
+    expect(screen.getByText("Champion")).toBeDefined();
+    expect(screen.getByText("1200")).toBeDefined();
   });
 
-  it("creates TournamentHistory element with props", () => {
-    const el = React.createElement(TournamentHistory, {
-      history: [],
-    });
-    expect(el).toBeDefined();
-    expect(el.type).toBe(TournamentHistory);
+  it("renders TournamentHistory with placement badges and XP won", () => {
+    render(
+      <TournamentHistory
+        history={[
+          {
+            tournamentId: "t_old_1",
+            tournamentName: "UNO Blitz Cup",
+            game: "uno",
+            placement: 1,
+            participatedAt: Date.now() - 86400000,
+            prizeXP: 500,
+            badge: "👑",
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText("UNO Blitz Cup")).toBeDefined();
+    expect(screen.getByText(/1st Place \(Champion\)/i)).toBeDefined();
+    expect(screen.getByText("+500 XP")).toBeDefined();
   });
 });

@@ -2,6 +2,7 @@ import React from "react";
 import type { Friend, SharedHistory } from "@shared/social/Friend";
 import { SURFACES } from "../../design-system/dls";
 import { TournamentCupIcon, StreakFlameIcon } from "../../design-system/icons";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 interface SharedHistoryModalProps {
   friend: Friend | null;
@@ -33,8 +34,13 @@ export default function SharedHistoryModal({
       <div
         className={`max-w-md w-full rounded-3xl p-6 sm:p-8 ${SURFACES.modalHero} text-center space-y-6 relative overflow-hidden border border-stone-800 shadow-2xl`}
       >
-        <div className="w-16 h-16 rounded-2xl bg-stone-950 border border-stone-800 flex items-center justify-center text-3xl mx-auto shadow">
-          {friend.avatar || "👤"}
+        <div className="flex justify-center">
+          <SeatAvatar
+            avatar={friend.avatar}
+            name={friend.displayName}
+            className="w-16 h-16 rounded-2xl border border-stone-800 shadow"
+            textClassName="text-2xl"
+          />
         </div>
 
         <div className="space-y-1">

@@ -82,11 +82,15 @@ export default function NokiaCricketBoardDesktop({ onExit }: NokiaCricketBoardPr
       } else if (key === "6" || key === "d" || key === "arrowright") {
         engine.handleInput("RIGHT");
         subtle();
-      } else if (key === "5" || key === "w" || key === "s" || key === " " || key === "enter" || key === "arrowup") {
+      } else if (key === "5" || key === "w" || key === " " || key === "enter" || key === "arrowup") {
         engine.handleInput("SELECT");
         subtle();
       } else if (key === "0" || key === "p" || key === "escape") {
         engine.togglePause();
+        subtle();
+      } else if (key === "m" || key === "s") {
+        const nextMute = engine.toggleSound();
+        setMuted(nextMute);
         subtle();
       }
     };
@@ -100,18 +104,30 @@ export default function NokiaCricketBoardDesktop({ onExit }: NokiaCricketBoardPr
   }, [subtle, onExit]);
 
   const handleKeypadPress = (key: string) => {
-    soundRef.current.playKeyTick();
     subtle();
     if (!engineRef.current) return;
 
-    if (key === "4") engineRef.current.handleInput("LEFT");
-    else if (key === "5") engineRef.current.handleInput("SELECT");
-    else if (key === "6") engineRef.current.handleInput("RIGHT");
-    else if (key === "0") engineRef.current.togglePause();
+    if (key === "SOUND" || key === "sound") {
+      const nextMute = engineRef.current.toggleSound();
+      setMuted(nextMute);
+    } else if (key === "4") {
+      engineRef.current.handleInput("LEFT");
+    } else if (key === "5") {
+      engineRef.current.handleInput("SELECT");
+    } else if (key === "6") {
+      engineRef.current.handleInput("RIGHT");
+    } else if (key === "0") {
+      engineRef.current.togglePause();
+    }
   };
 
   const toggleSound = () => {
-    const nextMute = soundRef.current.toggleMute();
+    if (!engineRef.current) {
+      const nextMute = soundRef.current.toggleMute();
+      setMuted(nextMute);
+      return;
+    }
+    const nextMute = engineRef.current.toggleSound();
     setMuted(nextMute);
   };
 
@@ -299,6 +315,15 @@ export default function NokiaCricketBoardDesktop({ onExit }: NokiaCricketBoardPr
                   <kbd className="px-2 py-0.5 rounded bg-black/40 border border-white/20 font-mono font-bold text-amber-300">D</kbd>
                   <span className="text-zinc-500">or</span>
                   <kbd className="px-2 py-0.5 rounded bg-black/40 border border-white/20 font-mono font-bold text-amber-300">6</kbd>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl">
+                <span className="text-zinc-300">Sound Toggle</span>
+                <div className="flex items-center gap-1">
+                  <kbd className="px-2 py-0.5 rounded bg-black/40 border border-white/20 font-mono font-bold text-emerald-300">M</kbd>
+                  <span className="text-zinc-500">or</span>
+                  <kbd className="px-2 py-0.5 rounded bg-black/40 border border-white/20 font-mono font-bold text-emerald-300">S</kbd>
                 </div>
               </div>
             </div>

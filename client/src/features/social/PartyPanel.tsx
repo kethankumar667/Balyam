@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Party } from "@shared/party/Party";
 import { ChampionCrownIcon, SwordsClashIcon, LevelSparkleIcon } from "../../design-system/icons";
-import { SURFACES } from "../../design-system/dls";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 interface PartyPanelProps {
   party: Party | null;
@@ -26,22 +26,23 @@ export default function PartyPanel({
 
   if (!party) {
     return (
-      <div className={`${SURFACES.cardElevated} p-6 sm:p-8 text-center space-y-4`}>
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-3xl mx-auto shadow-inner">
-          <SwordsClashIcon size={32} className="text-amber-400" />
+      <div className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-3xl p-6 sm:p-10 text-center space-y-4 shadow-sm relative overflow-hidden">
+        <div className="w-16 h-16 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-3xl mx-auto shadow-inner text-purple-500">
+          <SwordsClashIcon size={32} />
         </div>
-        <div className="space-y-1 max-w-sm mx-auto">
-          <h3 className="text-lg font-black text-stone-100 dark:text-zinc-100 tracking-tight">
+        <div className="space-y-1.5 max-w-md mx-auto">
+          <h3 className="text-xl font-black text-[var(--auth-ink)] tracking-tight">
             Create a Multiplayer Squad
           </h3>
-          <p className="text-xs text-stone-400 font-mono">
-            Form a party with up to 4 friends to queue together for rooms and championship brackets.
+          <p className="text-xs text-[var(--auth-ink-soft)] leading-relaxed">
+            Form a party with up to 4 friends to queue together for rooms and weekly championship brackets with double XP bonuses!
           </p>
         </div>
         <button
           onClick={onCreateParty}
-          className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-zinc-950 font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg shadow-amber-500/20 active:scale-98"
+          className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-zinc-950 font-black px-6 py-3 rounded-2xl text-xs uppercase font-mono tracking-wider transition shadow-md shadow-amber-500/20 active:scale-98 flex items-center gap-2 mx-auto"
         >
+          <SwordsClashIcon size={14} />
           Assemble Party
         </button>
       </div>
@@ -52,22 +53,22 @@ export default function PartyPanel({
   const currentMember = party.members.find((m) => m.playerId === currentPlayerId);
 
   return (
-    <div className={`${SURFACES.cardElevated} p-6 sm:p-8 space-y-6 relative overflow-hidden`}>
+    <div className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-3xl p-6 sm:p-8 space-y-6 relative overflow-hidden shadow-sm">
       {/* Radiant Party Aura */}
-      <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--auth-field-edge)]">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-black text-amber-400 uppercase tracking-widest bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+            <span className="text-[10px] font-mono font-black text-purple-500 uppercase tracking-widest bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
               SQUAD LOBBY
             </span>
-            <span className="text-xs font-mono font-bold text-stone-400">
+            <span className="text-xs font-mono font-bold text-[var(--auth-ink-soft)]">
               {party.members.length} / {party.maxMembers} Members
             </span>
           </div>
-          <h3 className="text-xl font-black text-stone-100">Party Headquarters</h3>
+          <h3 className="text-xl font-black text-[var(--auth-ink)]">Party Headquarters</h3>
         </div>
 
         <div className="flex items-center gap-2">
@@ -76,8 +77,8 @@ export default function PartyPanel({
               onClick={() => onSetReady(!currentMember.isReady)}
               className={`px-4 py-2 rounded-xl text-xs font-bold font-mono transition uppercase ${
                 currentMember.isReady
-                  ? "bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20"
-                  : "bg-stone-800 text-stone-300 border border-stone-700"
+                  ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/20"
+                  : "bg-[var(--auth-field)] text-[var(--auth-ink)] border border-[var(--auth-field-edge)]"
               }`}
             >
               {currentMember.isReady ? "✓ Ready for Match" : "Not Ready"}
@@ -87,14 +88,14 @@ export default function PartyPanel({
           {isLeader ? (
             <button
               onClick={onDisbandParty}
-              className="bg-stone-800/80 hover:bg-rose-950/50 text-stone-400 hover:text-rose-300 px-3 py-2 rounded-xl text-xs font-mono border border-stone-700 transition"
+              className="bg-[var(--auth-field)] hover:bg-rose-500/15 text-[var(--auth-ink-soft)] hover:text-rose-500 px-3 py-2 rounded-xl text-xs font-mono border border-[var(--auth-field-edge)] transition"
             >
               Disband
             </button>
           ) : (
             <button
               onClick={onLeaveParty}
-              className="bg-stone-800/80 hover:bg-rose-950/50 text-stone-400 hover:text-rose-300 px-3 py-2 rounded-xl text-xs font-mono border border-stone-700 transition"
+              className="bg-[var(--auth-field)] hover:bg-rose-500/15 text-[var(--auth-ink-soft)] hover:text-rose-500 px-3 py-2 rounded-xl text-xs font-mono border border-[var(--auth-field-edge)] transition"
             >
               Leave Party
             </button>
@@ -103,39 +104,42 @@ export default function PartyPanel({
       </div>
 
       {/* Members Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {party.members.map((member) => (
           <div
             key={member.playerId}
             className={`p-4 rounded-2xl border flex flex-col justify-between space-y-3 transition ${
               member.isReady
-                ? "bg-stone-900/90 border-emerald-500/50 shadow-[0_0_16px_rgba(16,185,129,0.15)]"
-                : "bg-stone-900/60 border-stone-800"
+                ? "bg-[var(--auth-card)] border-emerald-500/50 shadow-sm"
+                : "bg-[var(--auth-field)] border-[var(--auth-field-edge)]"
             }`}
           >
             <div className="flex items-center justify-between">
-              <div className="w-12 h-12 rounded-xl bg-stone-950 border border-stone-800 flex items-center justify-center text-2xl shadow">
-                {member.avatar || "👤"}
-              </div>
+              <SeatAvatar
+                avatar={member.avatar}
+                name={member.displayName}
+                className="w-12 h-12 rounded-2xl border border-[var(--auth-field-edge)] shadow-inner"
+                textClassName="text-xl"
+              />
               {member.isLeader && (
-                <span className="text-[10px] font-mono font-black text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-[10px] font-mono font-black text-amber-500 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <ChampionCrownIcon size={10} /> LEADER
                 </span>
               )}
             </div>
 
             <div>
-              <h4 className="font-bold text-sm text-stone-100">{member.displayName}</h4>
-              <span className="text-[10px] font-mono text-stone-500 block">
+              <h4 className="font-bold text-sm text-[var(--auth-ink)]">{member.displayName}</h4>
+              <span className="text-[10px] font-mono text-[var(--auth-ink-soft)] block">
                 ID: {member.playerId}
               </span>
             </div>
 
-            <div className="pt-2 border-t border-stone-800/60 flex items-center justify-between text-xs font-mono">
-              <span className="text-stone-400">Status</span>
+            <div className="pt-2 border-t border-[var(--auth-field-edge)] flex items-center justify-between text-xs font-mono">
+              <span className="text-[var(--auth-ink-soft)]">Status</span>
               <span
                 className={`font-bold ${
-                  member.isReady ? "text-emerald-400" : "text-amber-400"
+                  member.isReady ? "text-emerald-500" : "text-amber-500"
                 }`}
               >
                 {member.isReady ? "READY" : "PREPARING"}
@@ -147,8 +151,8 @@ export default function PartyPanel({
 
       {/* Leader Target Selector */}
       {isLeader && (
-        <div className="bg-stone-950/80 border border-stone-800 rounded-2xl p-4 space-y-3">
-          <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+        <div className="bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-2xl p-4 space-y-3">
+          <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
             <LevelSparkleIcon size={14} />
             Leader Room Target
           </h4>
@@ -159,17 +163,17 @@ export default function PartyPanel({
               value={roomCodeInput}
               onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
               maxLength={8}
-              className="flex-1 bg-stone-900 border border-stone-800 rounded-xl px-3.5 py-2 text-xs text-stone-200 placeholder-stone-500 focus:outline-none focus:border-amber-500 font-mono"
+              className="flex-1 bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-xl px-3.5 py-2 text-xs text-[var(--auth-ink)] placeholder-[var(--auth-ink-soft)] focus:outline-none focus:border-amber-500 font-mono"
             />
             <button
               onClick={() => onSetTarget(undefined, roomCodeInput.trim())}
               className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs px-4 py-2 rounded-xl transition uppercase font-mono tracking-wider shrink-0"
             >
-              Set Squad Target
+              Set Target
             </button>
           </div>
           {party.targetRoomCode && (
-            <p className="text-xs font-mono text-emerald-400">
+            <p className="text-xs font-mono text-emerald-500">
               Active Squad Objective: Room <strong>{party.targetRoomCode}</strong>
             </p>
           )}

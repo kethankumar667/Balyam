@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { needsConsent, recordConsent } from "../../lib/privacy/consent";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
 import { KeyholeIcon } from "../auth/authIcons";
+import Modal from "../Modal";
 
 /**
  * First-run consent — DPDP Sections 5 and 6.
@@ -23,8 +24,7 @@ import { KeyholeIcon } from "../auth/authIcons";
  */
 export default function ConsentModal() {
   const [open, setOpen] = useState(false);
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  const acceptRef = useRef<HTMLButtonElement | null>(null);
+  const acceptRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     // Deferred a beat so it does not fight the page's first paint.
@@ -32,36 +32,10 @@ export default function ConsentModal() {
     return () => window.clearTimeout(id);
   }, []);
 
-  useEffect(() => {
-    if (open) acceptRef.current?.focus();
-  }, [open]);
-
-  // Focus stays inside while it is up: this is a decision, and tabbing into
-  // the page behind it would leave a keyboard user answering a question they
-  // can no longer see.
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key !== "Tab") return;
-      const root = dialogRef.current;
-      if (!root) return;
-      const focusable = root.querySelectorAll<HTMLElement>(
-        'button, a[href], [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
+  // Focus trap and initial focus (onto "Allow all") are owned by <Modal> at
+  // the return site below. No onClose is passed: this is a decision, not a
+  // dismissible dialog — Escape and the backdrop must not be able to answer
+  // it on the user's behalf, so both are intentionally inert here.
 
   if (!open) return null;
 
@@ -71,21 +45,19 @@ export default function ConsentModal() {
   }
 
   return (
-    <div
-      className="auth-shell fixed inset-0 z-[60] flex items-end sm:items-center justify-center
-                 bg-[#2A1D11]/55 backdrop-blur-sm p-0 sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="consent-title"
-      aria-describedby="consent-body"
-    >
-      <div
-        ref={dialogRef}
-        className="w-full sm:max-w-[460px] rounded-t-3xl sm:rounded-3xl
+    <Modal
+      open={open}
+      initialFocusRef={acceptRef}
+      mobileSheet
+      zIndex={60}
+      ariaLabelledBy="consent-title"
+      ariaDescribedBy="consent-body"
+      className="auth-shell"
+      panelClassName="w-full sm:max-w-[460px] rounded-t-3xl sm:rounded-3xl
                    border border-[var(--auth-card-edge)] bg-[var(--auth-card)]
                    p-5 sm:p-6 shadow-[0_-8px_40px_-12px_rgba(74,44,18,0.5)]
                    max-h-[88vh] overflow-y-auto"
-      >
+    >
         <span
           className="inline-flex w-11 h-11 rounded-2xl items-center justify-center
                      bhalyam-gold-leaf text-bhalyam-wood-dark
@@ -165,7 +137,6 @@ export default function ConsentModal() {
           You can change this any time from Profile → Your data, and erase everything from the
           same place.
         </p>
-      </div>
-    </div>
+    </Modal>
   );
 }

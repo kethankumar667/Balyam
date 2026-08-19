@@ -74,11 +74,20 @@ export class GameEngine {
     this.stateMachine.togglePause();
   }
 
-  public handleInput(action: "LEFT" | "STRAIGHT" | "RIGHT" | "UP" | "DOWN" | "SELECT" | "BACK" | "PAUSE"): void {
+  public toggleSound(): boolean {
+    return this.stateMachine.toggleSound();
+  }
+
+  public handleInput(action: "LEFT" | "STRAIGHT" | "RIGHT" | "UP" | "DOWN" | "SELECT" | "BACK" | "PAUSE" | "SOUND"): void {
     const currentState = this.stateMachine.getState();
 
     if (action === "PAUSE") {
       this.stateMachine.togglePause();
+      return;
+    }
+
+    if (action === "SOUND") {
+      this.stateMachine.toggleSound();
       return;
     }
 

@@ -3,6 +3,7 @@ import type { LeaderboardEntry, LeaderboardMetric } from "@shared/ranking/Player
 import { RANK_TIERS } from "@shared/ranking/RankingRules";
 import type { GameKind } from "@shared/types";
 import { RankTierIcon, GameCategoryIcon, SearchNavIcon, AddFriendUserIcon } from "../../design-system/icons";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -143,7 +144,12 @@ export default function LeaderboardTable({
                       <td className="py-3 px-4 text-center">{getRankBadge(item.rank)}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5 font-sans">
-                          <span className="text-xl">{item.avatar || "👤"}</span>
+                          <SeatAvatar
+                            avatar={item.avatar}
+                            name={item.displayName}
+                            className="w-7 h-7 rounded-xl flex-shrink-0"
+                            textClassName="text-xs"
+                          />
                           <div>
                             <span className="font-bold text-stone-100 block">{item.displayName}</span>
                             <span className="text-[10px] font-mono text-stone-500">LVL {item.level}</span>
@@ -197,7 +203,12 @@ export default function LeaderboardTable({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-sans">
                       <span className="font-bold text-stone-400">{getRankBadge(item.rank)}</span>
-                      <span className="text-lg">{item.avatar || "👤"}</span>
+                      <SeatAvatar
+                        avatar={item.avatar}
+                        name={item.displayName}
+                        className="w-7 h-7 rounded-xl flex-shrink-0"
+                        textClassName="text-xs"
+                      />
                       <div>
                         <span className="font-bold text-stone-100 block">{item.displayName}</span>
                         <span className="text-[10px] text-stone-500 font-mono">Level {item.level}</span>

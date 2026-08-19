@@ -67,11 +67,11 @@ export class RenderPipeline {
   }
 
   public drawRoadStripes(offset: number): void {
-    // Left border (Col 0) and Right border (Col 9)
+    // Left border (Col 0) and Right border (Col GRID_CONFIG.COLS - 1)
     for (let r = 0; r < GRID_CONFIG.ROWS; r++) {
       if ((r + offset) % 3 !== 0) {
         this.drawBlock(0, r, this.PIXEL_COLOR);
-        this.drawBlock(9, r, this.PIXEL_COLOR);
+        this.drawBlock(GRID_CONFIG.COLS - 1, r, this.PIXEL_COLOR);
       }
     }
   }

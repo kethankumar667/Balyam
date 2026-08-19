@@ -74,6 +74,14 @@ export interface Capabilities {
   /** Attach a big screen to a room (`/tv/:code`) without taking a seat.
    *  Member-only: it is a code-led way into a room, same as `joinByCode`. */
   spectate: boolean;
+  /** Participate in or browse competitive tournaments. Member-only. */
+  viewTournaments: boolean;
+  /** View global leaderboards and seasonal rankings. Member-only. */
+  viewLeaderboards: boolean;
+  /** View persistent career profile and personal stats. Member-only. */
+  viewProfile: boolean;
+  /** Access the Social Hub — friends, parties, shared history. Member-only. */
+  viewSocial: boolean;
 }
 
 const GUEST: Capabilities = {
@@ -86,6 +94,10 @@ const GUEST: Capabilities = {
   editProfile: true,
   voiceChat: true,
   spectate: true,
+  viewTournaments: false,
+  viewLeaderboards: false,
+  viewProfile: false,
+  viewSocial: false,
 };
 
 const MEMBER: Capabilities = {
@@ -98,6 +110,10 @@ const MEMBER: Capabilities = {
   editProfile: true,
   voiceChat: true,
   spectate: true,
+  viewTournaments: true,
+  viewLeaderboards: true,
+  viewProfile: true,
+  viewSocial: true,
 };
 
 export function capabilitiesFor(kind: AccountKind): Capabilities {

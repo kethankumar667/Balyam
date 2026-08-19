@@ -10,17 +10,15 @@ import OnlineFriendsPanel from "../features/social/OnlineFriendsPanel";
 import PartyPanel from "../features/social/PartyPanel";
 import PartyInvitationModal from "../features/social/PartyInvitationModal";
 import SharedHistoryModal from "../features/social/SharedHistoryModal";
+import SocialQuickActions from "../features/social/SocialQuickActions";
+import SocialTipsCard from "../features/social/SocialTipsCard";
+import { SocialHeroArtwork } from "../features/social/SocialArtwork";
 
 import type { Friend, SharedHistory } from "@shared/social/Friend";
 import type { FriendRequest } from "@shared/social/FriendRequest";
 import type { PlayerPresence } from "@shared/social/Presence";
 import type { Party, PartyInvitation } from "@shared/party/Party";
 
-import {
-  StandardLoungePageLayout,
-  TYPOGRAPHY,
-  SURFACES,
-} from "../design-system/dls";
 import {
   FriendUserIcon,
   AddFriendUserIcon,
@@ -29,25 +27,23 @@ import {
 } from "../design-system/icons";
 import { ArrowLeftIcon } from "../components/auth/authIcons";
 
+import { useAuthStore } from "../store/authStore";
+import MemberLockedGate from "../components/auth/MemberLockedGate";
+
 export default function SocialHubPage() {
-  const currentName = useRoomStore((s) => s.playerName) || "Player";
+  const isMember = useAuthStore((s) => s.isMember);
+  const currentName = useRoomStore((s) => s.playerName) || (isMember ? "Member" : "Guest");
   const currentAvatar = useRoomStore((s) => s.avatarId);
 
-  /**
-   * Identity now comes from a credential the server verifies.
-   *
-   * What was here invented its own: a random `guest_xxxxxxx` written to
-   * `bhalyam.guest_player_id`, a key nothing else in the app knew about — so
-   * it was absent from the DPDP data inventory, and the erase-my-data control
-   * could not erase it. It also proved nothing: the string went into the URL
-   * of every social and party call, and the server believed it, which is how
-   * `POST /api/parties/create {"leaderId":"victim_user"}` worked.
-   */
   const { playerId: effectivePlayerId, ready: identityReady } = usePlayerId();
 
   const [activeTab, setActiveTab] = useState<"friends" | "requests" | "party">(
     "friends"
   );
+
+  if (!isMember) {
+    return <MemberLockedGate feature="social" />;
+  }
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<FriendRequest[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<FriendRequest[]>([]);
@@ -66,8 +62,6 @@ export default function SocialHubPage() {
     useState<PartyInvitation | null>(null);
 
   const loadData = async () => {
-    // Identity first: a request built on a null id is a request the server
-    // now refuses, and rightly.
     if (!effectivePlayerId) return;
     try {
       // 1. Load friends
@@ -193,6 +187,7 @@ export default function SocialHubPage() {
         leaderAvatar: currentAvatar,
       }),
     });
+    setActiveTab("party");
     await loadData();
   };
 
@@ -302,140 +297,172 @@ export default function SocialHubPage() {
 
   return (
     <AppLayout>
-      <StandardLoungePageLayout
-        backLink={
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-stone-400 hover:text-stone-100 transition"
-          >
-            <ArrowLeftIcon className="w-4 h-4" />
-            Back to Lounge
-          </Link>
-        }
-        headerAction={
-          <div className="flex items-center gap-4 text-xs font-bold">
+      <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Top Header Breadcrumbs Bar */}
+          <div className="flex items-center justify-between">
             <Link
-              to="/tournaments"
-              className="text-amber-400 hover:text-amber-300 transition underline underline-offset-2 min-h-[24px] inline-flex items-center"
+              to="/"
+              className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
             >
-              🏟️ Tournaments
+              <ArrowLeftIcon className="w-4 h-4" />
+              Back to Lounge
             </Link>
-            <Link
-              to="/leaderboard"
-              className="text-stone-400 hover:text-stone-200 transition underline underline-offset-2 min-h-[24px] inline-flex items-center"
-            >
-              🏆 Rankings
-            </Link>
+            <div className="flex items-center gap-4 text-xs font-bold">
+              <Link
+                to="/tournaments"
+                className="text-amber-500 hover:text-amber-400 transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center"
+              >
+                🏟️ Tournaments
+              </Link>
+              <Link
+                to="/leaderboard"
+                className="text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center"
+              >
+                🏆 Rankings
+              </Link>
+            </div>
           </div>
-        }
-      >
-        {/* Page Hero */}
-        <div className={`${SURFACES.cardElevated} p-6 sm:p-8 relative overflow-hidden`}>
-          <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-          <div className="space-y-2 relative z-10 max-w-2xl">
-            <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-black flex items-center gap-1.5">
-              <StatusConnectedIcon size={14} className="text-amber-400" />
-              COMMUNITY & MULTIPLAYER SQUADS
-            </span>
-            <h1 className={TYPOGRAPHY.heroTitle}>BHALYAM Social Hub</h1>
-            <p className={TYPOGRAPHY.bodySubtle}>
-              Assemble squads, invite friends, track shared combat history, and queue into games together.
-            </p>
+
+          {/* Wide Social Hub Hero Banner */}
+          <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-purple-950/95 via-indigo-950/90 to-purple-900/95 border border-purple-800/40 text-white shadow-2xl relative overflow-hidden">
+            {/* Ambient Radial Flare */}
+            <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
+              <div className="space-y-3 max-w-xl">
+                <span className="text-xs font-mono uppercase tracking-widest text-purple-300 font-black flex items-center gap-2 bg-purple-500/20 px-3 py-1 rounded-full border border-purple-500/30 w-fit">
+                  <StatusConnectedIcon size={14} className="text-purple-300" />
+                  COMMUNITY & MULTIPLAYER SQUADS
+                </span>
+                <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white drop-shadow-sm">
+                  BHALYAM Social Hub
+                </h1>
+                <p className="text-xs sm:text-sm text-purple-200/90 leading-relaxed font-sans">
+                  Assemble 4-player squads, connect with fellow gamers, track head-to-head combat records, and queue seamlessly into multiplayer tournaments together!
+                </p>
+              </div>
+
+              {/* Vector Artwork Region */}
+              <div className="flex justify-center sm:justify-end flex-shrink-0">
+                <SocialHeroArtwork className="w-44 h-32 sm:w-56 sm:h-40 drop-shadow-2xl" />
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Online Friends Rail */}
-        <OnlineFriendsPanel
-          friends={friends}
-          presences={presences}
-          onInviteToParty={handleInviteToParty}
-        />
-
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-stone-800/60 pb-3 overflow-x-auto text-xs font-bold font-mono">
-          <button
-            onClick={() => setActiveTab("friends")}
-            className={`px-4 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${
-              activeTab === "friends"
-                ? "bg-amber-500 text-zinc-950 font-black shadow"
-                : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
-            }`}
-          >
-            <FriendUserIcon size={14} />
-            Friends List ({friends.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("party")}
-            className={`px-4 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${
-              activeTab === "party"
-                ? "bg-amber-500 text-zinc-950 font-black shadow"
-                : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
-            }`}
-          >
-            <SwordsClashIcon size={14} />
-            Party Headquarters {party ? `(${party.members.length}/4)` : ""}
-          </button>
-          <button
-            onClick={() => setActiveTab("requests")}
-            className={`px-4 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${
-              activeTab === "requests"
-                ? "bg-amber-500 text-zinc-950 font-black shadow"
-                : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
-            }`}
-          >
-            <AddFriendUserIcon size={14} />
-            Requests ({incomingRequests.length})
-          </button>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === "friends" && (
-          <FriendsList
+          {/* Active Friends Notice Banner */}
+          <OnlineFriendsPanel
             friends={friends}
             presences={presences}
-            onRemoveFriend={handleRemoveFriend}
             onInviteToParty={handleInviteToParty}
-            onViewHistory={handleViewSharedHistory}
+            onOpenInviteModal={() => setActiveTab("requests")}
           />
-        )}
 
-        {activeTab === "party" && (
-          <PartyPanel
-            party={party}
-            currentPlayerId={effectivePlayerId ?? ""}
-            onCreateParty={handleCreateParty}
-            onSetReady={handleSetReady}
-            onLeaveParty={handleLeaveParty}
-            onDisbandParty={handleDisbandParty}
-            onSetTarget={handleSetTarget}
+          {/* Navigation Category Tabs */}
+          <div className="flex items-center gap-2 border-b border-[var(--auth-card-edge)] pb-3 overflow-x-auto text-xs font-bold font-mono">
+            <button
+              onClick={() => setActiveTab("friends")}
+              className={`px-4 py-2.5 rounded-xl transition shrink-0 flex items-center gap-2 min-h-[44px] ${
+                activeTab === "friends"
+                  ? "bg-amber-500 text-zinc-950 font-black shadow-md"
+                  : "bg-[var(--auth-card)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] border border-[var(--auth-card-edge)]"
+              }`}
+            >
+              <FriendUserIcon size={15} />
+              Friends List ({friends.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("party")}
+              className={`px-4 py-2.5 rounded-xl transition shrink-0 flex items-center gap-2 min-h-[44px] ${
+                activeTab === "party"
+                  ? "bg-amber-500 text-zinc-950 font-black shadow-md"
+                  : "bg-[var(--auth-card)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] border border-[var(--auth-card-edge)]"
+              }`}
+            >
+              <SwordsClashIcon size={15} />
+              Party Headquarters {party ? `(${party.members.length}/4)` : ""}
+            </button>
+            <button
+              onClick={() => setActiveTab("requests")}
+              className={`px-4 py-2.5 rounded-xl transition shrink-0 flex items-center gap-2 min-h-[44px] ${
+                activeTab === "requests"
+                  ? "bg-amber-500 text-zinc-950 font-black shadow-md"
+                  : "bg-[var(--auth-card)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] border border-[var(--auth-card-edge)]"
+              }`}
+            >
+              <AddFriendUserIcon size={15} />
+              Requests ({incomingRequests.length})
+            </button>
+          </div>
+
+          {/* Two-Column Desktop Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Primary Tab Content (8 of 12 columns) */}
+            <div className="lg:col-span-8 space-y-6">
+              {activeTab === "friends" && (
+                <FriendsList
+                  friends={friends}
+                  presences={presences}
+                  onRemoveFriend={handleRemoveFriend}
+                  onInviteToParty={handleInviteToParty}
+                  onViewHistory={handleViewSharedHistory}
+                  onOpenInviteModal={() => setActiveTab("requests")}
+                />
+              )}
+
+              {activeTab === "party" && (
+                <PartyPanel
+                  party={party}
+                  currentPlayerId={effectivePlayerId ?? ""}
+                  onCreateParty={handleCreateParty}
+                  onSetReady={handleSetReady}
+                  onLeaveParty={handleLeaveParty}
+                  onDisbandParty={handleDisbandParty}
+                  onSetTarget={handleSetTarget}
+                />
+              )}
+
+              {activeTab === "requests" && (
+                <FriendRequestPanel
+                  incoming={incomingRequests}
+                  outgoing={outgoingRequests}
+                  onSendRequest={handleSendFriendRequest}
+                  onAccept={handleAcceptRequest}
+                  onDecline={handleDeclineRequest}
+                />
+              )}
+            </div>
+
+            {/* Right Column: Secondary Side Panels (4 of 12 columns) */}
+            <div className="lg:col-span-4 space-y-6">
+              <SocialQuickActions
+                onCreateSquad={handleCreateParty}
+                onInviteFriends={() => setActiveTab("requests")}
+                onOpenRecentRooms={() => {
+                  if (typeof window !== "undefined") window.location.href = "/games";
+                }}
+              />
+              <SocialTipsCard />
+            </div>
+          </div>
+
+          {/* Modals */}
+          <SharedHistoryModal
+            friend={selectedFriendForHistory}
+            history={sharedHistoryData}
+            isOpen={isHistoryModalOpen}
+            onClose={() => setIsHistoryModalOpen(false)}
           />
-        )}
 
-        {activeTab === "requests" && (
-          <FriendRequestPanel
-            incoming={incomingRequests}
-            outgoing={outgoingRequests}
-            onSendRequest={handleSendFriendRequest}
-            onAccept={handleAcceptRequest}
-            onDecline={handleDeclineRequest}
+          <PartyInvitationModal
+            invitation={activePartyInvite}
+            isOpen={!!activePartyInvite}
+            onAccept={handleAcceptPartyInvite}
+            onDecline={handleDeclinePartyInvite}
           />
-        )}
-
-        {/* Modals */}
-        <SharedHistoryModal
-          friend={selectedFriendForHistory}
-          history={sharedHistoryData}
-          isOpen={isHistoryModalOpen}
-          onClose={() => setIsHistoryModalOpen(false)}
-        />
-
-        <PartyInvitationModal
-          invitation={activePartyInvite}
-          isOpen={!!activePartyInvite}
-          onAccept={handleAcceptPartyInvite}
-          onDecline={handleDeclinePartyInvite}
-        />
-      </StandardLoungePageLayout>
+        </div>
+      </div>
     </AppLayout>
   );
 }

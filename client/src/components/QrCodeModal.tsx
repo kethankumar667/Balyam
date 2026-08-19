@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { captureAndShareScreenshot } from "../lib/screenshot";
+import Modal from "./Modal";
 
 export interface QrCodeModalProps {
   open: boolean;
@@ -24,28 +25,12 @@ export default function QrCodeModal({
 }: QrCodeModalProps) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const copyLinkBtnRef = useRef<HTMLButtonElement>(null);
 
   const roomUrl = `${window.location.origin}/room/${code}`;
 
-  // ESC to close
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  // Prevent background scroll
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  // Focus trap, Escape, focus restoration and body-scroll lock are all
+  // owned by <Modal> at the return site below.
 
   if (!open) return null;
 
@@ -70,23 +55,19 @@ export default function QrCodeModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4
-                 bg-black/60 dark:bg-black/80 backdrop-blur-sm dark:backdrop-blur-md animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="qr-modal-title"
-        onClick={(e) => e.stopPropagation()}
-        className="bhalyam-font relative w-full max-w-sm
+    <Modal
+      open={open}
+      onClose={onClose}
+      initialFocusRef={copyLinkBtnRef}
+      ariaLabelledBy="qr-modal-title"
+      className="animate-fade-in"
+      panelClassName="bhalyam-font relative w-full max-w-sm
                    bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
                    border-2 border-[#EEDBCA] dark:border-slate-800
                    rounded-3xl p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]
                    flex flex-col items-center text-center space-y-4"
-        style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
-      >
+      panelStyle={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
+    >
         {/* Header */}
         <div className="w-full flex items-center justify-between border-b-2 border-[#EEDBCA]/60 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2.5 text-left">
@@ -173,6 +154,7 @@ export default function QrCodeModal({
         {/* Action buttons */}
         <div className="w-full flex gap-2 pt-1">
           <button
+            ref={copyLinkBtnRef}
             type="button"
             onClick={copyLink}
             className="flex-1 inline-flex items-center justify-center gap-2 min-h-[44px]
@@ -204,8 +186,7 @@ export default function QrCodeModal({
             Share Image
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

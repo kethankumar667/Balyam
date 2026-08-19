@@ -3,7 +3,7 @@ import { LANE_CENTERS } from "../utils/constants";
 
 export class PlayerCar {
   public lane: LaneIndex = 1; // Start in Center Lane
-  public readonly y: number = 16; // Anchored at bottom rows [16, 17, 18, 19]
+  public readonly y: number = 8; // Anchored at bottom rows [8, 9, 10, 11] on 12-row screen
   public isBoosting: boolean = false;
 
   public reset(): void {

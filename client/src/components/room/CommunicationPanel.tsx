@@ -58,7 +58,7 @@ export default function CommunicationPanel({
           <span aria-hidden>💬</span>
           <span>Chat</span>
           {messages.length > 0 && (
-            <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.2 ml-0.5 font-extrabold">
+            <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.5 ml-0.5 font-extrabold">
               {messages.length}
             </span>
           )}
@@ -127,7 +127,7 @@ export default function CommunicationPanel({
               <span className="text-sm">💬</span>
               <span>Chat & 🎙 Voice</span>
               {messages.length > 0 && (
-                <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.2 font-black">
+                <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.5 font-black">
                   {messages.length}
                 </span>
               )}

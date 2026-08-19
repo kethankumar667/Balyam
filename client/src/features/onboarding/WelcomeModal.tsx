@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SURFACES } from "../../design-system/dls";
 import { journeyTracker } from "./PlayerJourneyTracker";
+import Modal from "../../components/Modal";
 
 interface WelcomeModalProps {
   open: boolean;
@@ -48,6 +49,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   onStartQuest,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const nextBtnRef = useRef<HTMLButtonElement>(null);
 
   if (!open) return null;
 
@@ -69,13 +71,19 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <Modal
+      open={open}
+      onClose={handleSkip}
+      initialFocusRef={nextBtnRef}
+      ariaLabelledBy="welcome-modal-title"
+      panelClassName="w-full max-w-lg"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 12 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
-        className={`${SURFACES.cardElevated} w-full max-w-lg p-6 sm:p-8 rounded-3xl border border-stone-800 shadow-2xl relative overflow-hidden`}
+        className={`${SURFACES.cardElevated} p-6 sm:p-8 rounded-3xl border border-stone-800 shadow-2xl relative overflow-hidden`}
       >
         {/* Background Aura */}
         <div
@@ -101,7 +109,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
 
           <button
             onClick={handleSkip}
-            className="text-xs font-mono font-bold text-stone-400 hover:text-stone-200 transition px-2.5 py-1 rounded-lg hover:bg-stone-800"
+            className="text-xs font-mono font-bold text-stone-400 hover:text-stone-200 transition px-2.5 min-h-[44px] rounded-lg hover:bg-stone-800"
           >
             Skip Intro
           </button>
@@ -127,7 +135,10 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               >
                 {current.badge}
               </span>
-              <h2 className="text-xl sm:text-2xl font-black text-stone-100 dark:text-zinc-100 tracking-tight">
+              <h2
+                id="welcome-modal-title"
+                className="text-xl sm:text-2xl font-black text-stone-100 dark:text-zinc-100 tracking-tight"
+              >
                 {current.title}
               </h2>
             </div>
@@ -155,6 +166,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
             )}
 
             <button
+              ref={nextBtnRef}
               onClick={handleNext}
               className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 font-black font-mono text-xs uppercase tracking-wider px-6 py-2.5 rounded-xl shadow-lg transition"
             >
@@ -165,6 +177,6 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
           </div>
         </div>
       </motion.div>
-    </div>
+    </Modal>
   );
 };

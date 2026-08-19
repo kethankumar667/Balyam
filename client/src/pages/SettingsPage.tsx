@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
@@ -11,6 +11,8 @@ import { AUDIO, type AudioThemeId } from "../constants/audio";
 import { THEMES } from "../assets/audio/themes/manifests";
 import AvatarPicker from "../components/profile/AvatarPicker";
 import SelfAvatar from "../components/profile/SelfAvatar";
+import MemberLockedGate from "../components/auth/MemberLockedGate";
+import { SecondaryButton } from "../design-system/dls";
 import { loadAccountDetails } from "../lib/accountGenerator";
 import {
   User,
@@ -41,17 +43,9 @@ type SettingsSection =
 export default function SettingsPage() {
   const [theme, toggleTheme] = useTheme();
   const isDark = theme === "dark";
-  const navigate = useNavigate();
 
   const { playerName, setPlayerName, avatarId, setAvatarId } = useRoomStore();
   const { isMember, ready, email: authEmail, signOut } = useAuthStore();
-
-  // Redirect guests away from settings once auth state is confirmed
-  useEffect(() => {
-    if (ready && !isMember) {
-      navigate("/", { replace: true });
-    }
-  }, [ready, isMember, navigate]);
 
   const { settings: audioSettings, setMasterVolume, setMusicVolume, setEffectsVolume, toggleMute, setAudioTheme, play } = useAudio();
   const haptics = useHaptics();
@@ -194,9 +188,7 @@ export default function SettingsPage() {
     { id: "your-data", label: "Your Data", icon: Database },
   ];
 
-  // Every hook above has run unconditionally by this point, so bailing out
-  // here is safe in a way bailing out before them was not.
-  if (blocked) return null;
+  if (blocked) return <MemberLockedGate feature="settings" />;
 
   return (
     <AppLayout sidebar={false}>
@@ -444,7 +436,7 @@ export default function SettingsPage() {
                       <span className="col-span-4 font-bold text-[#7A5E45] dark:text-zinc-400 text-[10.5px]">Email Address</span>
                       <div className="col-span-8 flex items-center justify-end sm:justify-start gap-1 min-w-0">
                         <span className="font-mono text-[#6E543D] dark:text-zinc-300 text-[10.5px] truncate">{email}</span>
-                        <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
+                        <span className="px-1.5 py-0.5 rounded-full text-[8.5px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
                           Verified
                         </span>
                       </div>
@@ -454,7 +446,7 @@ export default function SettingsPage() {
                       <span className="col-span-4 font-bold text-[#7A5E45] dark:text-zinc-400 text-[10.5px]">Mobile Number</span>
                       <div className="col-span-8 flex items-center justify-end sm:justify-start gap-1 min-w-0">
                         <span className="font-mono text-[#6E543D] dark:text-zinc-300 text-[10.5px]">{phone}</span>
-                        <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
+                        <span className="px-1.5 py-0.5 rounded-full text-[8.5px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
                           Verified
                         </span>
                       </div>
@@ -508,17 +500,16 @@ export default function SettingsPage() {
                     <ChevronRight className="w-4 h-4 text-zinc-400 ml-1" />
                   </button>
 
-                  <button
-                    type="button"
+                  <SecondaryButton
+                    size="sm"
                     onClick={() => {
                       signOut();
                       showToast("Signed out successfully.");
                     }}
-                    className="px-3.5 py-1.5 rounded-xl border border-orange-500/80 text-orange-600 dark:text-orange-400 text-xs font-bold flex items-center gap-1.5 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition cursor-pointer"
+                    leftIcon={<LogOut className="w-3.5 h-3.5" />}
                   >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out</span>
-                  </button>
+                    Sign Out
+                  </SecondaryButton>
                 </div>
               </section>
 
