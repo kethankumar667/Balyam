@@ -155,7 +155,7 @@ export default function WhatAreWePlayingSection({
               <span>Bring your gang back!</span>
               <span className="text-rose-500 animate-bounce">❤️</span>
             </h3>
-            <p className="text-[12.5px] sm:text-[13.5px] font-medium text-[#7A5B3E] dark:text-zinc-300 mt-1">
+            <p className="text-[13px] sm:text-sm font-medium text-[#7A5B3E] dark:text-zinc-300 mt-1">
               Old friends. Same jokes. New memories.
             </p>
           </div>
@@ -229,7 +229,7 @@ export default function WhatAreWePlayingSection({
           <button
             type="button"
             onClick={onOpenCreateRoom}
-            className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#047857] hover:bg-[#065F46] active:scale-95 text-white font-extrabold text-[13.5px] sm:text-[14px] shadow-md transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
+            className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#047857] hover:bg-[#065F46] active:scale-95 text-white font-extrabold text-sm sm:text-[14px] shadow-md transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
           >
             <Plus className="w-4.5 h-4.5" />
             <span>Create Room</span>

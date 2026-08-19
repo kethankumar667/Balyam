@@ -36,8 +36,8 @@ export default function AuthLangToggle() {
         disabled={!ready}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
                    bg-white/90 backdrop-blur-xs border border-[#E6D4B5]
-                   text-[#4A2508] text-[12.5px] font-bold shadow-2xs hover:bg-white
-                   hover:border-[#D4A574] active:scale-95 transition-all cursor-pointer"
+                   text-[#4A2508] text-[13px] font-bold shadow-2xs hover:bg-white
+                   hover:border-[var(--rim-gold)] active:scale-95 transition-all cursor-pointer"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -65,7 +65,7 @@ export default function AuthLangToggle() {
                   setLocale(id);
                   setOpen(false);
                 }}
-                className={`w-full px-3.5 py-2 text-left text-[12.5px] font-bold flex items-center justify-between
+                className={`w-full px-3.5 py-2 text-left text-[13px] font-bold flex items-center justify-between
                             transition-colors cursor-pointer ${
                               isSelected
                                 ? "bg-[#FFF5E0] text-[#E85D04]"
@@ -74,7 +74,7 @@ export default function AuthLangToggle() {
               >
                 <div>
                   <div className="font-extrabold">{meta.nativeName}</div>
-                  <div className="text-[10.5px] text-[#9C7E63] font-medium">{meta.englishName}</div>
+                  <div className="text-[11px] text-[#9C7E63] font-medium">{meta.englishName}</div>
                 </div>
                 {isSelected && <Check className="w-3.5 h-3.5 text-[#E85D04]" />}
               </button>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { LeaderboardEntry, LeaderboardMetric } from "@shared/ranking/PlayerRank";
 import { RANK_TIERS } from "@shared/ranking/RankingRules";
 import type { GameKind } from "@shared/types";
-import { RankTierIcon, GameCategoryIcon, SearchNavIcon, AddFriendUserIcon } from "../../design-system/icons";
+import { RankTierIcon, GameCategoryIcon, SearchNavIcon, AddFriendUserIcon, GoldRankIcon, SilverRankIcon, BronzeRankIcon } from "../../design-system/icons";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 
 interface LeaderboardTableProps {
@@ -32,9 +32,9 @@ export default function LeaderboardTable({
   });
 
   const getRankBadge = (rank: number) => {
-    if (rank === 1) return <span className="text-xl">🥇</span>;
-    if (rank === 2) return <span className="text-xl">🥈</span>;
-    if (rank === 3) return <span className="text-xl">🥉</span>;
+    if (rank === 1) return <GoldRankIcon size={22} />;
+    if (rank === 2) return <SilverRankIcon size={22} />;
+    if (rank === 3) return <BronzeRankIcon size={22} />;
     return <span className="font-mono font-bold text-xs text-stone-400">#{rank}</span>;
   };
 

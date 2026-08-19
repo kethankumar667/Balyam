@@ -74,7 +74,7 @@ export default function ConsentModal() {
           What BHALYAM keeps
         </h2>
 
-        <div id="consent-body" className="mt-2 space-y-3 text-[13.5px] leading-relaxed text-[var(--auth-ink-soft)]">
+        <div id="consent-body" className="mt-2 space-y-3 text-sm leading-relaxed text-[var(--auth-ink-soft)]">
           <p>
             To seat you at a table we store a display name and a random player id on this device.
             That much is what playing requires.

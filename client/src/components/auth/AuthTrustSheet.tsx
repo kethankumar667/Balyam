@@ -67,7 +67,7 @@ export default function AuthTrustSheet({ open, onClose }: AuthTrustSheetProps) {
                   <h4 className="bhalyam-display text-[16px] font-extrabold text-[#4A2508] leading-tight">
                     Secure &amp; Private
                   </h4>
-                  <p className="text-[12.5px] text-[#7A5B3E] font-medium mt-0.5 leading-snug">
+                  <p className="text-[13px] text-[#7A5B3E] font-medium mt-0.5 leading-snug">
                     Your data stays yours. We never sell or share it with third parties.
                   </p>
                 </div>
@@ -82,7 +82,7 @@ export default function AuthTrustSheet({ open, onClose }: AuthTrustSheetProps) {
                   <h4 className="bhalyam-display text-[16px] font-extrabold text-[#4A2508] leading-tight">
                     No Spam
                   </h4>
-                  <p className="text-[12.5px] text-[#7A5B3E] font-medium mt-0.5 leading-snug">
+                  <p className="text-[13px] text-[#7A5B3E] font-medium mt-0.5 leading-snug">
                     We respect your space. No marketing junk, popups, or annoying pings, ever.
                   </p>
                 </div>
@@ -97,7 +97,7 @@ export default function AuthTrustSheet({ open, onClose }: AuthTrustSheetProps) {
                   <h4 className="bhalyam-display text-[16px] font-extrabold text-[#4A2508] leading-tight">
                     Your Gang, Your Way
                   </h4>
-                  <p className="text-[12.5px] text-[#7A5B3E] font-medium mt-0.5 leading-snug">
+                  <p className="text-[13px] text-[#7A5B3E] font-medium mt-0.5 leading-snug">
                     Built for real friendships, pure nostalgia, and genuine 90s fun.
                   </p>
                 </div>

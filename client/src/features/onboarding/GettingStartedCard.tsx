@@ -20,7 +20,7 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({
   return (
     <div
       className={`
-        bg-[#FDF5E4] dark:bg-[#131926]
+        bg-[#FDF5E4] dark:bg-[var(--surface-1)]
         border border-[#DFC98A] dark:border-[rgba(148,163,184,0.18)]
         p-5 sm:p-6 rounded-3xl relative overflow-hidden shadow-md
         ${className}

@@ -114,7 +114,7 @@ export default function YourDataPanel({
             Your data
           </Heading>
         )}
-        <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--room-ink-soft)]">
+        <p className="mt-1 text-[13px] leading-relaxed text-[var(--room-ink-soft)]">
           {/* "can keep", not "keeps": this is the notice, describing what the
               app is capable of storing. What is actually on the device right
               now is what the export below returns, and the two are different
@@ -132,7 +132,7 @@ export default function YourDataPanel({
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="inline-flex items-center min-h-[44px] text-[12.5px] font-bold
+        className="inline-flex items-center min-h-[44px] text-[13px] font-bold
                    text-[#8A5A11] dark:text-amber-300 underline
                    decoration-[#D9BE7A] underline-offset-4 rounded-sm
                    focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"

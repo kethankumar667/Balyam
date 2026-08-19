@@ -124,7 +124,7 @@ export default function QrCodeModal({
             onClick={copyCode}
             title="Tap to copy code"
             className="font-mono font-black text-2xl tracking-[0.3em] text-[#2B3550] dark:text-slate-100
-                       bg-[#FFF9EE] dark:bg-[#0B0F19] px-3.5 py-1 rounded-2xl border-2 border-dashed border-[#EEDBCA] dark:border-amber-500/40
+                       bg-[#FFF9EE] dark:bg-[var(--surface-0)] px-3.5 py-1 rounded-2xl border-2 border-dashed border-[#EEDBCA] dark:border-amber-500/40
                        hover:bg-[#FFF4E0] dark:hover:bg-[#141C2B] active:scale-95 transition cursor-pointer"
           >
             {copiedCode ? "COPIED" : code}

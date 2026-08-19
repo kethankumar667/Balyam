@@ -211,7 +211,7 @@ function WelcomePlayerStrip({
                 Guest Mode
               </span>
             </div>
-            <p className="text-[11.5px] font-semibold text-[#6B5E52] dark:text-zinc-400 mt-0.5">
+            <p className="text-xs font-semibold text-[#6B5E52] dark:text-zinc-400 mt-0.5">
               Jump into any game instantly vs bots or join friends with a room code.
             </p>
           </div>
@@ -262,7 +262,7 @@ function WelcomePlayerStrip({
             </span>
           </div>
           {snapshot.ready && (streak > 0 || xp > 0) && (
-            <p className="text-[11.5px] font-semibold text-[#6B5E52] dark:text-zinc-400 flex items-center gap-2 mt-0.5">
+            <p className="text-xs font-semibold text-[#6B5E52] dark:text-zinc-400 flex items-center gap-2 mt-0.5">
               {streak > 0 && (
                 <span className="inline-flex items-center gap-1">
                   <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> {streak}-Day Streak
@@ -321,7 +321,7 @@ function TrophyProgressionStrip() {
           <h3 className="bhalyam-display text-[18px] sm:text-[22px] text-amber-300 flex items-center gap-2">
             <Trophy className="w-5 h-5 text-amber-400" /> Nostalgia Trophy Cabinet
           </h3>
-          <p className="text-[12.5px] text-zinc-300">Unlock childhood badges as you play with friends</p>
+          <p className="text-[13px] text-zinc-300">Unlock childhood badges as you play with friends</p>
         </div>
         <span className="px-3 py-1 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 w-fit">
           Level 12 • Gold Tier
@@ -338,9 +338,9 @@ function TrophyProgressionStrip() {
                 : "bg-white/5 border-white/10 opacity-60"
             }`}
           >
-            <div className="text-[12.5px] font-black text-amber-200 truncate">{t.title}</div>
-            <div className="text-[10.5px] text-zinc-300 mt-0.5 line-clamp-1">{t.desc}</div>
-            <div className="mt-2 text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-400">
+            <div className="text-[13px] font-black text-amber-200 truncate">{t.title}</div>
+            <div className="text-[11px] text-zinc-300 mt-0.5 line-clamp-1">{t.desc}</div>
+            <div className="mt-2 text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
               {t.unlocked ? "✓ Unlocked (+50 XP)" : "🔒 In Progress"}
             </div>
           </div>
@@ -408,7 +408,7 @@ function Hero({
         <div className="relative z-10 px-5 sm:px-10 py-7 sm:py-9 max-w-xl">
           {/* Top Label */}
           <span
-            className={`text-[11.5px] sm:text-[13px] font-black uppercase tracking-[0.22em] block mb-2 sm:mb-2.5 ${
+            className={`text-xs sm:text-[13px] font-black uppercase tracking-[0.22em] block mb-2 sm:mb-2.5 ${
               isDark ? "text-amber-400" : "text-[#7B2F0E]"
             }`}
           >
@@ -431,7 +431,7 @@ function Hero({
 
           {/* Description (Hidden on mobile screens only) */}
           <p
-            className={`hidden sm:block text-[14px] sm:text-[15.5px] font-semibold max-w-sm sm:max-w-md mt-3 leading-snug ${
+            className={`hidden sm:block text-[14px] sm:text-base font-semibold max-w-sm sm:max-w-md mt-3 leading-snug ${
               isDark ? "text-slate-300" : "text-[#3B332A]"
             }`}
           >
@@ -483,7 +483,7 @@ function Hero({
                   Share on WhatsApp
                 </span>
                 <span
-                  className={`text-[10.5px] font-medium leading-tight mt-0.5 ${
+                  className={`text-[11px] font-medium leading-tight mt-0.5 ${
                     isDark ? "text-slate-400" : "text-[#7A6F62]"
                   }`}
                 >
@@ -662,7 +662,7 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl font-bold text-[13.5px] shadow-2xl border flex items-center gap-2 ${
+            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl font-bold text-sm shadow-2xl border flex items-center gap-2 ${
               isDark
                 ? "bg-[#1D2C4A] text-white border-amber-400/40"
                 : "bg-[#FFF5DC] border-[#E8D1A7] text-[#854D0E] shadow-amber-900/10"
@@ -686,7 +686,7 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
               <span className={`bhalyam-display text-[19px] sm:text-[24px] lg:text-[26px] tracking-tight truncate ${isDark ? "text-white" : "text-[#2A221B]"}`}>
                 BHALYAM
               </span>
-              <span className="text-[8.5px] sm:text-[10px] uppercase tracking-[0.16em] font-extrabold text-[#FF8F00] -mt-0.5">
+              <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] font-extrabold text-[#FF8F00] -mt-0.5">
                 Relive Childhood
               </span>
             </span>
@@ -1043,7 +1043,7 @@ export function ProfileSheet({
           {named ? playerName : "Add your name"}
         </div>
 
-        <p className="mt-1 text-[12.5px] font-semibold text-[var(--auth-accent)]">
+        <p className="mt-1 text-[13px] font-semibold text-[var(--auth-accent)]">
           {signedIn ? "Signed in" : "Playing as a guest"}
         </p>
 
@@ -1061,7 +1061,7 @@ export function ProfileSheet({
               <div className="text-[11px] uppercase tracking-[0.22em] font-extrabold text-[#7B5024]">
                 Your Membership
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[10.5px] font-black">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-black">
                 Active Member
               </span>
             </div>
@@ -1069,7 +1069,7 @@ export function ProfileSheet({
               to="/profile"
               onClick={onClose}
               className="w-full h-11 rounded-full bg-[#FCF8EF] border border-[#EEDCC2] text-[#7B5024]
-                         font-extrabold text-[13.5px] inline-flex items-center justify-center gap-2
+                         font-extrabold text-sm inline-flex items-center justify-center gap-2
                          hover:bg-[#F8EEDB] active:scale-[0.99]
                          focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
                          transition-[background-color,transform] duration-200"
@@ -1085,7 +1085,7 @@ export function ProfileSheet({
               useAuthStore.getState().signOut();
             }}
             className="w-full h-11 rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-700
-                       font-extrabold text-[13.5px] inline-flex items-center justify-center gap-2
+                       font-extrabold text-sm inline-flex items-center justify-center gap-2
                        active:scale-[0.99] transition cursor-pointer shadow-xs"
           >
             <LogOut className="w-4 h-4 text-red-600" />
@@ -1118,7 +1118,7 @@ export function ProfileSheet({
           >
             Sign in
           </Link>
-          <p className="text-center text-[11.5px] leading-relaxed text-[var(--auth-ink-soft)]">
+          <p className="text-center text-xs leading-relaxed text-[var(--auth-ink-soft)]">
             Guests play every game against bots and join any room they&apos;re invited to.
             An account is for opening your own.
           </p>
@@ -1278,7 +1278,7 @@ export function NotificationsSheet({
             Notifications
           </span>
           {unreadCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-red-500 text-white shadow-xs">
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-red-500 text-white shadow-xs">
               {unreadCount} New
             </span>
           )}
@@ -1292,7 +1292,7 @@ export function NotificationsSheet({
               key={tab}
               type="button"
               onClick={() => setFilterTab(tab)}
-              className={`px-3 py-1 rounded-full text-[11.5px] font-bold capitalize transition cursor-pointer ${
+              className={`px-3 py-1 rounded-full text-xs font-bold capitalize transition cursor-pointer ${
                 filterTab === tab
                   ? "bg-amber-500 text-black font-black shadow-xs"
                   : isDark
@@ -1308,7 +1308,7 @@ export function NotificationsSheet({
           <button
             type="button"
             onClick={markAllRead}
-            className="text-[11.5px] font-bold text-amber-500 hover:underline cursor-pointer inline-flex items-center gap-1"
+            className="text-xs font-bold text-amber-500 hover:underline cursor-pointer inline-flex items-center gap-1"
           >
             <Check className="w-3.5 h-3.5" />
             <span>Mark all read</span>
@@ -1371,7 +1371,7 @@ export function NotificationsSheet({
                     <h4 className={`text-[13px] font-bold leading-tight ${isDark ? "text-white" : "text-[#2A221B]"}`}>
                       {item.title}
                     </h4>
-                    <p className={`text-[11.5px] mt-0.5 leading-snug ${isDark ? "text-zinc-300" : "text-[#6E5A4B]"}`}>
+                    <p className={`text-xs mt-0.5 leading-snug ${isDark ? "text-zinc-300" : "text-[#6E5A4B]"}`}>
                       {item.desc}
                     </p>
                     <span className="text-[10px] text-zinc-500 mt-1 block font-semibold">
@@ -1967,7 +1967,7 @@ function PlayerJourneyDashboard({
               <div className={`p-2.5 rounded-xl border ${
                 isDark ? "bg-white/5 border-white/10" : "bg-[#FFF8EE] border-[#EEDCC2]"
               }`}>
-                <div className={`text-[11.5px] font-black uppercase tracking-wider ${
+                <div className={`text-xs font-black uppercase tracking-wider ${
                   isDark ? "text-chest-300" : "text-chest-700"
                 }`}>
                   🎯 Next Achievement
@@ -2010,13 +2010,13 @@ function PlayerJourneyDashboard({
                 Invite Friends, Unlock Perks
               </h4>
             </div>
-            <p className={`text-[12.5px] font-medium mb-3 ${
+            <p className={`text-[13px] font-medium mb-3 ${
               isDark ? "text-slate-300" : "text-[#6D5C4D]"
             }`}>
               Bring 3 friends to BHALYAM and instantly unlock exclusive nostalgia rewards:
             </p>
 
-            <ul className={`space-y-2 mb-4 text-[12.5px] font-bold ${
+            <ul className={`space-y-2 mb-4 text-[13px] font-bold ${
               isDark ? "text-slate-200" : "text-[#2A221B]"
             }`}>
               <li className="flex items-center gap-2">
@@ -2163,7 +2163,7 @@ function Footer() {
                   href="https://www.instagram.com/"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[13px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
                 >
                   <InstagramGlyph className="w-4 h-4 text-[#E11D48]" />
                   <span>Instagram</span>
@@ -2173,7 +2173,7 @@ function Footer() {
                   href="https://wa.me/?text=Join%20me%20on%20BHALYAM%20-%20https%3A%2F%2Fbhalyam.onrender.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[13px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
                 >
                   <WhatsappGlyph className="w-4 h-4 text-[#25D366]" />
                   <span>WhatsApp</span>
@@ -2181,7 +2181,7 @@ function Footer() {
 
                 <a
                   href="mailto:hello@bhalyam.app"
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[12.5px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#D9C4A3] text-[13px] font-bold text-[#5C3717] hover:bg-[#FBE7C6] transition-all shadow-xs"
                 >
                   <MailGlyph className="w-4 h-4 text-[#2563EB]" />
                   <span>Email</span>
@@ -2228,7 +2228,7 @@ function Footer() {
                 <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
                   EXPLORE
                 </h4>
-                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
+                <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
                   <li><Link to="/games" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">All Games</Link></li>
                   <li><a href="#rooms" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Rooms</a></li>
                   <li><a href="#how-it-works" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">How It Works</a></li>
@@ -2241,7 +2241,7 @@ function Footer() {
                 <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
                   SUPPORT
                 </h4>
-                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
+                <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
                   <li><Link to="/about" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Help Center</Link></li>
                   <li><a href="#safety" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Safety Guide</a></li>
                   <li><a href="#rules" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Community Rules</a></li>
@@ -2254,7 +2254,7 @@ function Footer() {
                 <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
                   COMPANY
                 </h4>
-                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
+                <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
                   <li><Link to="/about" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">About BHALYAM</Link></li>
                   <li><Link to="/about" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Our Story</Link></li>
                   <li><a href="#careers" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Careers</a></li>
@@ -2267,7 +2267,7 @@ function Footer() {
                 <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
                   LEGAL
                 </h4>
-                <ul className="space-y-1.5 text-[12.5px] font-medium text-[#7A5B3E]">
+                <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
                   <li><Link to="/privacy" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Privacy Notice</Link></li>
                   <li><a href="#terms" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Terms of Service</a></li>
                   <li><Link to="/profile" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Your Data &amp; Choices</Link></li>
@@ -2292,12 +2292,12 @@ function Footer() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
-                    className="bg-transparent text-[11.5px] text-[#4A2508] placeholder-[#9C7E63] px-2.5 focus:outline-none flex-1 min-w-0 font-medium"
+                    className="bg-transparent text-xs text-[#4A2508] placeholder-[#9C7E63] px-2.5 focus:outline-none flex-1 min-w-0 font-medium"
                     required
                   />
                   <button
                     type="submit"
-                    className="bg-chest-600 hover:bg-chest-700 text-white text-[11.5px] font-bold rounded-lg px-3.5 py-1.5 transition-all shadow-xs active:scale-95 flex-shrink-0"
+                    className="bg-chest-600 hover:bg-chest-700 text-white text-xs font-bold rounded-lg px-3.5 py-1.5 transition-all shadow-xs active:scale-95 flex-shrink-0"
                   >
                     Subscribe
                   </button>

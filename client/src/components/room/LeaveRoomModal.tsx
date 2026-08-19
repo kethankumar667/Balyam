@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import Modal from "../Modal";
+import { DangerButton, SecondaryButton } from "../../design-system/dls/Buttons";
 
 export default function LeaveRoomModal({
   isOpen,
@@ -42,24 +43,19 @@ export default function LeaveRoomModal({
       </div>
 
       <div className="flex items-center gap-2 pt-2">
-        <button
-          ref={cancelBtnRef}
-          type="button"
-          onClick={onClose}
-          className="flex-1 min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-[#FFF9EE] dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700 text-[#6E5E4D] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer"
-        >
+        <SecondaryButton ref={cancelBtnRef} size="sm" className="flex-1" onClick={onClose}>
           Stay Here
-        </button>
-        <button
-          type="button"
+        </SecondaryButton>
+        <DangerButton
+          size="sm"
+          className="flex-1"
           onClick={() => {
             onClose();
             onConfirm();
           }}
-          className="flex-1 min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white shadow-md transition active:scale-95 cursor-pointer"
         >
           Leave Room
-        </button>
+        </DangerButton>
       </div>
     </Modal>
   );

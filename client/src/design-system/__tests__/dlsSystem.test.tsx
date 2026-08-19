@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import React from "react";
+import React, { useRef } from "react";
+import { render, screen, waitFor } from "@testing-library/react";
 import {
   DESIGN_PRINCIPLES,
   VISUAL_IDENTITY,
@@ -16,6 +17,7 @@ import {
   SectionHeaderBlock,
   DashboardGrid,
 } from "../dls";
+import Modal from "../../components/Modal";
 
 describe("BHALYAM Design Language System (DLS) Foundation", () => {
   it("defines 5 core gaming design principles", () => {
@@ -55,6 +57,32 @@ describe("BHALYAM Design Language System (DLS) Foundation", () => {
     expect(React.createElement(TournamentCTAButton, null, "Arena")).toBeDefined();
     expect(React.createElement(RewardButton, null, "Reward")).toBeDefined();
     expect(React.createElement(DangerButton, null, "Danger")).toBeDefined();
+  });
+
+  /**
+   * The button-consolidation pass routes several `<Modal initialFocusRef>`
+   * targets (e.g. LeaveRoomModal's "Stay Here") through DLS `Button`
+   * variants instead of a raw `<button ref={...}>`. `useFocusTrap` calls
+   * `.focus()` on whatever `initialFocusRef.current` resolves to — if
+   * `Button` didn't forward its ref to the real DOM node, that would
+   * silently stay `null` and nothing would be focused, a gap invisible to
+   * anything except a keyboard-only pass. This is the regression test for
+   * that specific chain, not a general "does Modal work" test (see
+   * MODAL-SYSTEM-AUDIT.md for that).
+   */
+  it("forwards a ref through SecondaryButton to the real <button>, and Modal's initialFocusRef focuses it", async () => {
+    function Harness() {
+      const btnRef = useRef<HTMLButtonElement>(null);
+      return (
+        <Modal open initialFocusRef={btnRef}>
+          <SecondaryButton ref={btnRef}>Stay Here</SecondaryButton>
+        </Modal>
+      );
+    }
+    render(<Harness />);
+    const btn = screen.getByText("Stay Here").closest("button");
+    expect(btn).not.toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(btn));
   });
 
   it("renders layout blueprints and grid structures", () => {

@@ -1,0 +1,222 @@
+{
+  "generatedAt": "2026-08-19T15:57:16.134Z",
+  "scope": "client/src, .tsx and .ts, read-only static analysis",
+  "totalSourceFiles": 583,
+  "governance": {
+    "documentsLoaded": [
+      "AGENTS.md",
+      "docs/ai/bhalyam-design-system.md",
+      "docs/ai/ui-ux-standards.md",
+      "docs/ai/frontend-standards.md",
+      "docs/ai/accessibility-standards.md"
+    ],
+    "findingSummary": "Governance docs mandate design-system/dls and design-system/premium as the reference implementation; measured product adoption of both is near-zero. See DESIGN-SYSTEM-ARCHITECTURE.md §1."
+  },
+  "inventory": {
+    "buttons": {
+      "rawTagCount": 706,
+      "filesWithStaticallyReadableClassName": 127,
+      "distinctSignatures": 22
+    },
+    "modalsDialogs": {
+      "overlays": 79,
+      "overlayFiles": 59,
+      "roleDialogCount": 33,
+      "withFocusTrap": 10,
+      "withFocusRestoration": 10,
+      "withEscapeToClose": 18,
+      "nativeDialogElementUsage": 0
+    },
+    "inputs": {
+      "inputElements": 54,
+      "textareaElements": 2
+    },
+    "selects": {
+      "selectElements": 4,
+      "customSelectComponent": false
+    },
+    "cards": {
+      "matchedContainers": 347,
+      "distinctSignatures": 61
+    },
+    "chipsBadges": {
+      "namedComponents": [
+        "components/BoardPreviewPill.tsx",
+        "components/paper/PaperBadge.tsx",
+        "components/paper/TornChip.tsx"
+      ],
+      "unnamedInlineShapes": 6
+    },
+    "tabs": {
+      "tabStateComponents": 11,
+      "withRoleTab": 3
+    },
+    "navigation": {
+      "namedSurfaces": [
+        "components/layout/AppHeader.tsx",
+        "components/layout/AppSidebar.tsx",
+        "navigation/navigationConfig.tsx"
+      ],
+      "navElementCount": 5
+    },
+    "tooltips": {
+      "implementations": 0
+    },
+    "dropdownsMenus": {
+      "namedComponents": [
+        "components/room/ParticipantActionMenu.tsx",
+        "features/brick-breakout/screens/MenuScreen.tsx",
+        "features/brick-tetris/screens/MenuScreen.tsx",
+        "games/ludo/SettingsMenu.tsx"
+      ]
+    },
+    "avatars": {
+      "implementations": 10
+    },
+    "toasts": {
+      "implementations": 5
+    }
+  },
+  "tokens": {
+    "designTokenClasses": 425,
+    "rawTailwindPaletteClasses": 4216,
+    "arbitraryHexClasses": 2808,
+    "totalColourBearingClasses": 7449,
+    "tokenCompliancePercent": 5.7,
+    "semanticTokens": {
+      "success": 0,
+      "warning": 0,
+      "danger": 0,
+      "info": 0,
+      "note": "0 utility-class consumers each; meanings expressed via raw palette classes instead (see markdown §1)"
+    },
+    "caveat": "Cannot see bg-[var(--chrome-*)] arbitrary-value token usage — see DESIGN-SYSTEM-ARCHITECTURE.md §3"
+  },
+  "typography": {
+    "onScaleSizes": 1721,
+    "arbitrarySizes": 1592,
+    "distinctArbitrarySizeValues": 43,
+    "subPixelSizes": {
+      "distinctValues": 9,
+      "totalCallSites": 221,
+      "breakdown": {
+        "text-[12.5px]": 60,
+        "text-[13.5px]": 50,
+        "text-[11.5px]": 49,
+        "text-[10.5px]": 30,
+        "text-[9.5px]": 10,
+        "text-[14.5px]": 8,
+        "text-[8.5px]": 5,
+        "text-[7.5px]": 5,
+        "text-[15.5px]": 4
+      }
+    },
+    "sizesBelow12px": 1013,
+    "statisticallyTaggedElements": 3271,
+    "distinctSignatures": 430,
+    "topSignatures": {
+      "text-xs · font-bold · (inherited)": 207,
+      "text-xs · (no weight) · (inherited)": 150,
+      "text-xs · font-black · (inherited)": 90,
+      "text-[10px] · font-bold · (inherited)": 88,
+      "text-sm · (no weight) · (inherited)": 87,
+      "text-[11px] · (no weight) · (inherited)": 78,
+      "text-sm · font-bold · (inherited)": 71,
+      "text-[11px] · font-bold · (inherited)": 69,
+      "text-[10px] · (no weight) · (inherited)": 69,
+      "text-xs · (no weight) · font-mono": 61,
+      "text-[11px] · font-black · (inherited)": 56,
+      "text-xs · font-bold · font-mono": 55,
+      "text-[10px] · font-black · (inherited)": 51,
+      "text-sm · font-black · (inherited)": 47,
+      "text-xl · (no weight) · (inherited)": 45
+    },
+    "fontFamiliesLoaded": [
+      "Poppins",
+      "Righteous",
+      "Caveat",
+      "JetBrains Mono",
+      "Kalam",
+      "Patrick Hand",
+      "Architects Daughter",
+      "Playfair Display",
+      "Fredoka",
+      "Noto Sans Telugu",
+      "Nunito"
+    ],
+    "fontWeightDistribution": {
+      "font-bold": 1119,
+      "font-black": 801,
+      "font-extrabold": 324,
+      "font-semibold": 187,
+      "font-medium": 83,
+      "font-normal": 16
+    }
+  },
+  "icons": {
+    "systems": {
+      "lucide-react": 38,
+      "design-system/icons": 24,
+      "components/bhalyam/icons": 3,
+      "inlineAdHoc": {
+        "definitions": 96,
+        "files": 23
+      }
+    },
+    "rawSvgTags": 282,
+    "emoji": {
+      "totalOccurrencesCommentsExcluded": 1251,
+      "inGameSurfaces": 822,
+      "inChrome": 429,
+      "chromeSelfMarkedDecorative_ariaHidden": 38,
+      "distinctGlyphs": 223,
+      "topChromeFiles": {
+        "pages/AboutPage.tsx": 34,
+        "pages/SettingsPage.tsx": 34,
+        "pages/PrivacyPolicyPage.tsx": 32,
+        "components/bhalyam/data.ts": 28,
+        "pages/auth/SignUpPage.tsx": 16,
+        "pages/BhalyamHome.tsx": 15,
+        "features/profile/EditProfileModal.tsx": 13,
+        "components/InlineRoomRail.tsx": 12,
+        "features/tournaments/TournamentArtwork.tsx": 12,
+        "pages/PersonalInformationPage.tsx": 11,
+        "components/Chat.tsx": 10,
+        "pages/Room.tsx": 10
+      }
+    }
+  },
+  "architecture": {
+    "sharedLibraryDirectories": {
+      "design-system/dls": 8,
+      "design-system/premium": 14,
+      "design-system/icons": 9,
+      "components/bhalyam": 9
+    },
+    "dlsButtonAdoption": {
+      "PrimaryButton": 0,
+      "SecondaryButton": 1,
+      "TournamentCTAButton": 0,
+      "RewardButton": 0,
+      "DangerButton": 0
+    },
+    "premiumComponentAdoption": {
+      "PremiumCard": 0,
+      "PremiumStatCard": 0,
+      "PremiumProgressCard": 0,
+      "PremiumHeroCard": 0,
+      "RewardRevealModal": 0,
+      "EmptyStateIllustration": 2,
+      "SkeletonLoader": 1,
+      "PremiumErrorState": 0
+    },
+    "filesImportingAnyDesignSystem": 28,
+    "themeConfiguration": {
+      "mechanism": "CSS custom properties in client/src/index.css, dark mode via [data-theme=\"dark\"] class attribute",
+      "tailwindDarkModeConfig": "darkMode: [\"class\", '[data-theme=\"dark\"]']",
+      "indexCssLines": 2747,
+      "tailwindConfigLines": 473
+    },
+    "dualLayoutCompliance": "19/19 games have both BoardMobile and BoardDesktop"
+  }
+}

@@ -205,7 +205,7 @@ export default function SignUpPage() {
               {/* Step 1 */}
               <div className="flex items-center gap-1">
                 <span
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10.5px] font-black transition-all ${
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black transition-all ${
                     step === 1
                       ? "bg-[#162A3B] text-white ring-2 ring-[#162A3B]/20 shadow-xs"
                       : step > 1
@@ -215,7 +215,7 @@ export default function SignUpPage() {
                 >
                   {step > 1 ? "✓" : "1"}
                 </span>
-                <span className={`text-[11.5px] font-bold ${step === 1 ? "text-[#162A3B]" : "text-[#7A5B3E]/80"}`}>
+                <span className={`text-xs font-bold ${step === 1 ? "text-[#162A3B]" : "text-[#7A5B3E]/80"}`}>
                   About You
                 </span>
               </div>
@@ -225,7 +225,7 @@ export default function SignUpPage() {
               {/* Step 2 */}
               <div className="flex items-center gap-1">
                 <span
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10.5px] font-black transition-all ${
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black transition-all ${
                     step === 2
                       ? "bg-[#162A3B] text-white ring-2 ring-[#162A3B]/20 shadow-xs"
                       : step > 2
@@ -235,7 +235,7 @@ export default function SignUpPage() {
                 >
                   {step > 2 ? "✓" : "2"}
                 </span>
-                <span className={`text-[11.5px] font-bold ${step === 2 ? "text-[#162A3B]" : "text-[#7A5B3E]/80"}`}>
+                <span className={`text-xs font-bold ${step === 2 ? "text-[#162A3B]" : "text-[#7A5B3E]/80"}`}>
                   Password
                 </span>
               </div>
@@ -245,7 +245,7 @@ export default function SignUpPage() {
               {/* Step 3 */}
               <div className="flex items-center gap-1">
                 <span
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10.5px] font-black transition-all ${
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black transition-all ${
                     step === 3
                       ? "bg-[#162A3B] text-white ring-2 ring-[#162A3B]/20 shadow-xs"
                       : "bg-white/80 border border-[#CBD5E1] text-[#94A3B8]"
@@ -253,7 +253,7 @@ export default function SignUpPage() {
                 >
                   3
                 </span>
-                <span className={`text-[11.5px] font-bold ${step === 3 ? "text-[#162A3B]" : "text-[#7A5B3E]/80"}`}>
+                <span className={`text-xs font-bold ${step === 3 ? "text-[#162A3B]" : "text-[#7A5B3E]/80"}`}>
                   Avatar
                 </span>
               </div>
@@ -280,7 +280,7 @@ export default function SignUpPage() {
                   <span>Create your Bhalyam account</span>
                   <span className="text-xl">👋</span>
                 </h1>
-                <p className="text-[12px] sm:text-[12.5px] text-[#5C3717] font-medium">
+                <p className="text-[12px] sm:text-[13px] text-[#5C3717] font-medium">
                   Your childhood games are waiting.
                 </p>
               </div>
@@ -312,7 +312,7 @@ export default function SignUpPage() {
               {/* Divider */}
               <div className="flex items-center gap-2.5 my-0.5">
                 <span className="h-px flex-1 bg-[#E2E8F0]" />
-                <span className="shrink-0 whitespace-nowrap text-[10.5px] font-medium text-[#94A3B8]">
+                <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[#94A3B8]">
                   or
                 </span>
                 <span className="h-px flex-1 bg-[#E2E8F0]" />
@@ -323,7 +323,7 @@ export default function SignUpPage() {
                 {/* Row 1: First Name & Last Name */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="space-y-0.5">
-                    <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                    <label className="block text-xs font-semibold text-[#1E293B]">
                       First Name <span className="text-[#E85D04]">*</span>
                     </label>
                     <input
@@ -344,7 +344,7 @@ export default function SignUpPage() {
                   </div>
 
                   <div className="space-y-0.5">
-                    <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                    <label className="block text-xs font-semibold text-[#1E293B]">
                       Last Name <span className="text-[#E85D04]">*</span>
                     </label>
                     <input
@@ -367,7 +367,7 @@ export default function SignUpPage() {
 
                 {/* Row 2: Display Name */}
                 <div className="space-y-0.5">
-                  <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                  <label className="block text-xs font-semibold text-[#1E293B]">
                     Display Name <span className="text-[#E85D04]">*</span>
                   </label>
                   <div className="relative">
@@ -400,7 +400,7 @@ export default function SignUpPage() {
 
                 {/* Row 3: Email ID */}
                 <div className="space-y-0.5">
-                  <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                  <label className="block text-xs font-semibold text-[#1E293B]">
                     Email ID <span className="text-[#E85D04]">*</span>
                   </label>
                   <input
@@ -427,7 +427,7 @@ export default function SignUpPage() {
                 {/* Row 4: Birthday & Gender */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="space-y-0.5">
-                    <label htmlFor="signup-dob" className="block text-[11.5px] font-semibold text-[#1E293B]">
+                    <label htmlFor="signup-dob" className="block text-xs font-semibold text-[#1E293B]">
                       Birthday <span className="text-[#E85D04]">*</span>
                     </label>
                     <div className="relative">
@@ -457,7 +457,7 @@ export default function SignUpPage() {
                   </div>
 
                   <div className="space-y-0.5">
-                    <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                    <label className="block text-xs font-semibold text-[#1E293B]">
                       Gender <span className="text-[#E85D04]">*</span>
                     </label>
                     <div className="flex items-center gap-1 pt-0.5">
@@ -490,7 +490,7 @@ export default function SignUpPage() {
                 {/* Continue CTA */}
                 <button
                   type="submit"
-                  className="w-full bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-2.5 rounded-xl text-[13.5px] shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-1.5 cursor-pointer"
+                  className="w-full bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-2.5 rounded-xl text-sm shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-1.5 cursor-pointer"
                 >
                   <span>Continue</span>
                   <ArrowRight className="w-4 h-4" />
@@ -527,7 +527,7 @@ export default function SignUpPage() {
                   <span>Almost there!</span>
                   <span className="text-xl">🔐</span>
                 </h1>
-                <p className="text-[12px] sm:text-[12.5px] text-[#5C3717] font-medium">
+                <p className="text-[12px] sm:text-[13px] text-[#5C3717] font-medium">
                   Create a password to keep your Bhalyam account safe.
                 </p>
               </div>
@@ -536,7 +536,7 @@ export default function SignUpPage() {
               <form onSubmit={handleProceedToStep3} className="space-y-2.5">
                 {/* Password Field */}
                 <div className="space-y-0.5">
-                  <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                  <label className="block text-xs font-semibold text-[#1E293B]">
                     Password <span className="text-[#E85D04]">*</span>
                   </label>
                   <div className="relative">
@@ -573,7 +573,7 @@ export default function SignUpPage() {
 
                 {/* Confirm Password Field */}
                 <div className="space-y-0.5">
-                  <label className="block text-[11.5px] font-semibold text-[#1E293B]">
+                  <label className="block text-xs font-semibold text-[#1E293B]">
                     Confirm Password <span className="text-[#E85D04]">*</span>
                   </label>
                   <div className="relative">
@@ -615,7 +615,7 @@ export default function SignUpPage() {
                   </div>
                   <div className="space-y-0.5 text-[11px] font-medium">
                     <div className={`flex items-center gap-1.5 ${hasMinLength ? "text-[#10B981] font-semibold" : "text-[#64748B]"}`}>
-                      <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7.5px] font-bold ${
+                      <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold ${
                         hasMinLength ? "bg-[#10B981] text-white" : "border border-[#CBD5E1] text-transparent"
                       }`}>
                         ✓
@@ -623,7 +623,7 @@ export default function SignUpPage() {
                       <span>8+ characters</span>
                     </div>
                     <div className={`flex items-center gap-1.5 ${hasNumOrSymbol ? "text-[#10B981] font-semibold" : "text-[#64748B]"}`}>
-                      <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7.5px] font-bold ${
+                      <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold ${
                         hasNumOrSymbol ? "bg-[#10B981] text-white" : "border border-[#CBD5E1] text-transparent"
                       }`}>
                         ✓
@@ -632,7 +632,7 @@ export default function SignUpPage() {
                     </div>
                     {confirmPassword.length > 0 && (
                       <div className={`flex items-center gap-1.5 ${passwordsMatch ? "text-[#10B981] font-semibold" : "text-rose-600 font-semibold"}`}>
-                        <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7.5px] font-bold ${
+                        <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold ${
                           passwordsMatch ? "bg-[#10B981] text-white" : "bg-rose-500 text-white"
                         }`}>
                           {passwordsMatch ? "✓" : "✕"}
@@ -655,7 +655,7 @@ export default function SignUpPage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-2.5 rounded-xl text-[13.5px] shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="flex-1 bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-2.5 rounded-xl text-sm shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Continue</span>
                     <ArrowRight className="w-4 h-4" />
@@ -693,7 +693,7 @@ export default function SignUpPage() {
                   <span>Pick your Bhalyam avatar</span>
                   <span className="text-xl">🎮</span>
                 </h1>
-                <p className="text-[12px] sm:text-[12.5px] text-[#5C3717] font-medium">
+                <p className="text-[12px] sm:text-[13px] text-[#5C3717] font-medium">
                   Choose the character that feels most like you.
                 </p>
               </div>
@@ -709,7 +709,7 @@ export default function SignUpPage() {
                     />
                   </div>
                   <div className="min-w-0 text-left">
-                    <div className="font-bold text-[12.5px] text-[#16223B] truncate">
+                    <div className="font-bold text-[13px] text-[#16223B] truncate">
                       {displayName || "Player"}
                     </div>
                     <div className="font-mono text-[10px] text-[#7A5E45] truncate">
@@ -720,7 +720,7 @@ export default function SignUpPage() {
                 <button
                   type="button"
                   onClick={() => setShowAllAvatarsModal(true)}
-                  className="px-2.5 py-1 rounded-lg bg-[#FFF5E0] border border-[#E6D4B5] text-[10.5px] font-bold text-[#5C3717] hover:bg-[#FBE7BD] transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-[#FFF5E0] border border-[#E6D4B5] text-[11px] font-bold text-[#5C3717] hover:bg-[#FBE7BD] transition cursor-pointer"
                 >
                   All Avatars
                 </button>
@@ -771,7 +771,7 @@ export default function SignUpPage() {
                   />
                   <label
                     htmlFor="agreeTerms"
-                    className="text-[11.5px] font-medium text-[#475569] select-none cursor-pointer leading-tight"
+                    className="text-xs font-medium text-[#475569] select-none cursor-pointer leading-tight"
                   >
                     I agree to the{" "}
                     <Link to="/privacy" className="text-[#2563EB] underline font-semibold">
@@ -805,7 +805,7 @@ export default function SignUpPage() {
                   <button
                     type="submit"
                     disabled={loading || !agreeTerms}
-                    className={`flex-1 font-bold py-2.5 rounded-xl text-[13.5px] shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`flex-1 font-bold py-2.5 rounded-xl text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
                       !agreeTerms || loading
                         ? "bg-[#CBD5E1] text-[#64748B] cursor-not-allowed opacity-70"
                         : "bg-[#162A3B] hover:bg-[#0E1E2B] text-white active:scale-[0.98]"
@@ -889,7 +889,7 @@ export default function SignUpPage() {
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="w-full bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-3.5 rounded-xl text-[14.5px] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="w-full bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-3.5 rounded-xl text-[15px] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <span>Enter Bhalyam</span>
                 <ArrowRight className="w-4 h-4" />

@@ -44,11 +44,22 @@ const PREFIX = "(?:bg|text|border|from|to|via|ring|fill|stroke|divide|placeholde
 /* ───────────────────────────── colour tokens ───────────────────────────── */
 
 heading("Colour token adoption");
-const tokenClasses = count(new RegExp(`\\b${PREFIX}-(?:ink-(?:hi|mid|lo|mute)|surface-(?:[0-3]|rim)|brand-\\d+|gold-\\d+|bhalyam-[a-z-]+|success|warning|danger|info)\\b`, "g"));
+const namedTokenClasses = count(new RegExp(`\\b${PREFIX}-(?:ink-(?:hi|mid|lo|mute)|surface-(?:[0-3]|rim)|brand-\\d+|gold-\\d+|bhalyam-[a-z-]+|success|warning|danger|info)\\b`, "g"));
+// `[var(--foo)]` is Tailwind's arbitrary-value escape hatch, not a named
+// utility — a real, distinct way to consume a token (forced whenever an
+// opacity modifier would otherwise be needed, see TOKEN-ADOPTION-REPORT.md
+// §"Tailwind opacity-modifier limitation"). Excluded from the original regex
+// below, which undercounted adoption for every var()-based swap; counted
+// here as its own bucket so the split is visible, and summed into the same
+// "Design-token classes" total the compliance % is built from.
+const varTokenClasses = count(new RegExp(`\\b${PREFIX}-\\[var\\(--[a-zA-Z0-9-]+\\)\\]`, "g"));
+const tokenClasses = namedTokenClasses + varTokenClasses;
 const paletteClasses = count(new RegExp(`\\b${PREFIX}-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\\d{2,3}\\b`, "g"));
 const arbitrary = count(new RegExp(`\\b${PREFIX}-\\[#[0-9a-fA-F]{3,8}\\]`, "g"));
 const total = tokenClasses + paletteClasses + arbitrary;
-row("Design-token classes", tokenClasses);
+row("Design-token classes (named utility)", namedTokenClasses);
+row("Design-token classes (var() arbitrary)", varTokenClasses);
+row("Design-token classes (total)", tokenClasses);
 row("Raw Tailwind palette classes", paletteClasses);
 row("Arbitrary hex classes", arbitrary);
 row("TOTAL colour-bearing classes", total);

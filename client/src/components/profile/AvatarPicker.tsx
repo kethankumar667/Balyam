@@ -135,7 +135,7 @@ export default function AvatarPicker({ value, onChange, hideSummary = false }: A
             <p className="text-[14px] font-bold text-[#2A221B] dark:text-[#F1F5F9] truncate">
               {chosen ? chosen.label : "No avatar yet"}
             </p>
-            <p className="text-[12.5px] leading-snug text-[#6B5340] dark:text-[#9FB0C6]">
+            <p className="text-[13px] leading-snug text-[#6B5340] dark:text-[#9FB0C6]">
               {chosen
                 ? "Shown next to your name on this device."
                 : "Pick one below, or keep the plain silhouette."}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { BotDifficulty, GameKind } from "@shared/types";
 import Modal from "../Modal";
+import { RewardButton, SecondaryButton } from "../../design-system/dls/Buttons";
 
 const BOT_NAME_SUGGESTIONS = [
   "AlphaBot",
@@ -154,29 +155,13 @@ export default function BotManagementDialog({
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-[#FFF9EE] dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700 text-[#6E5E4D] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer disabled:opacity-50"
-            >
+            <SecondaryButton type="button" size="sm" className="flex-1" onClick={onClose} disabled={isSubmitting}>
               Cancel
-            </button>
+            </SecondaryButton>
 
-            <button
-              type="submit"
-              disabled={isSubmitting || availableSeats <= 0}
-              className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              {isSubmitting ? (
-                <span>Adding...</span>
-              ) : (
-                <>
-                  <span>+</span>
-                  <span>Add Bot</span>
-                </>
-              )}
-            </button>
+            <RewardButton type="submit" size="sm" className="flex-1" disabled={isSubmitting || availableSeats <= 0}>
+              {isSubmitting ? "Adding..." : "+ Add Bot"}
+            </RewardButton>
           </div>
         </form>
     </Modal>

@@ -107,7 +107,7 @@ export default function AuthShell({
                   <span className="text-xl">👋</span>
                 </h1>
                 {subtitle && (
-                  <p className="text-[12px] sm:text-[12.5px] text-[#5C3717] font-medium leading-tight">
+                  <p className="text-[12px] sm:text-[13px] text-[#5C3717] font-medium leading-tight">
                     {subtitle}
                   </p>
                 )}
@@ -119,7 +119,7 @@ export default function AuthShell({
             {footer && <div className="mt-1 text-center">{footer}</div>}
 
             {/* Bottom Copyright */}
-            <div className="text-center text-[10.5px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1">
+            <div className="text-center text-[11px] font-semibold text-[#8C6D4F]/80 tracking-wide pt-1">
               © 2026 Bhalyam · Made for the kids we were
             </div>
           </div>

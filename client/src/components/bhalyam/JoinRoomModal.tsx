@@ -324,7 +324,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               aria-invalid={nameError ? true : undefined}
               aria-describedby={nameError ? "join-name-error" : undefined}
               className={`w-full min-h-[44px] px-3 rounded-xl
-                         bg-bhalyam-cream-soft dark:bg-[#0B0F19] border-2
+                         bg-bhalyam-cream-soft dark:bg-[var(--surface-0)] border-2
                          text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/40 dark:placeholder:text-slate-500
                          font-semibold
                          focus:outline-none focus:ring-2
@@ -374,7 +374,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                   codeError ? "join-code-error" : "join-code-help"
                 }
                 className={`w-full min-h-[52px] px-3 rounded-xl
-                           bg-bhalyam-cream-soft dark:bg-[#0B0F19] border-2
+                           bg-bhalyam-cream-soft dark:bg-[var(--surface-0)] border-2
                            text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/30 dark:placeholder:text-slate-600
                            font-mono font-black text-2xl tracking-[0.45em] text-center
                            focus:outline-none focus:ring-2

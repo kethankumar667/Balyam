@@ -99,7 +99,7 @@ export default function RoomShareCard({
 
   return (
     <>
-      <div className="w-full bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 relative overflow-hidden">
+      <div className="w-full bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 relative overflow-hidden">
         {/* Ticket Header */}
         <div className="flex items-center justify-between">
           <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400">
@@ -139,7 +139,7 @@ export default function RoomShareCard({
             type="button"
             onClick={copyCode}
             aria-label={`Room code: ${code}. Tap to copy`}
-            className="flex-1 w-full flex items-center justify-between sm:justify-center gap-3 px-4 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-b from-[#FFFDF8] to-[#FFF4E0] dark:from-[#161E2E] dark:to-[#0F1420] border-2 border-dashed border-[#D4A574] dark:border-amber-500/50 hover:border-[#EA5A1F] dark:hover:border-amber-400 transition active:scale-[0.99] cursor-pointer shadow-inner relative group"
+            className="flex-1 w-full flex items-center justify-between sm:justify-center gap-3 px-4 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-b from-[#FFFDF8] to-[#FFF4E0] dark:from-[#161E2E] dark:to-[#0F1420] border-2 border-dashed border-[var(--rim-gold)] dark:border-amber-500/50 hover:border-[#EA5A1F] dark:hover:border-amber-400 transition active:scale-[0.99] cursor-pointer shadow-inner relative group"
           >
             <span
               id="room-share-code-text"

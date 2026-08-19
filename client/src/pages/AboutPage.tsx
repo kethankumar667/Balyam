@@ -224,18 +224,18 @@ export default function AboutPage() {
                 </div>
 
                 {/* Founder Quote */}
-                <blockquote className="font-serif italic text-[14.5px] sm:text-[16px] text-[#4A3320] dark:text-amber-100/90 leading-snug pl-3 border-l-2 border-[#E85D04]">
+                <blockquote className="font-serif italic text-[15px] sm:text-[16px] text-[#4A3320] dark:text-amber-100/90 leading-snug pl-3 border-l-2 border-[#E85D04]">
                   “I wanted to build the place I wished existed when our school gang grew up.”
                 </blockquote>
 
                 {/* Prose */}
-                <p className="text-[13.5px] sm:text-[14.5px] leading-relaxed text-[#6E543D] dark:text-zinc-300">
+                <p className="text-sm sm:text-[15px] leading-relaxed text-[#6E543D] dark:text-zinc-300">
                   Bhalyam is our love letter to the 90s — to the friendships, the chalk-dust, the lunch breaks, the game nights, and the unforgettable memories that made us who we are.
                 </p>
 
                 {/* 4 Feature Badges Strip */}
                 <div className="flex items-center gap-2 flex-wrap pt-1">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11.5px] font-extrabold border transition-all ${
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border transition-all ${
                     isDark
                       ? "bg-white/5 border-white/10 text-amber-300"
                       : "bg-[#FFF9EC] border-[#E6D4B7] text-[#5C3D24]"
@@ -243,7 +243,7 @@ export default function AboutPage() {
                     <span className="text-rose-500">♡</span> Made with Love
                   </span>
 
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11.5px] font-extrabold border transition-all ${
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border transition-all ${
                     isDark
                       ? "bg-white/5 border-white/10 text-amber-300"
                       : "bg-[#FFF9EC] border-[#E6D4B7] text-[#5C3D24]"
@@ -251,7 +251,7 @@ export default function AboutPage() {
                     <span>👥</span> For 90s Kids
                   </span>
 
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11.5px] font-extrabold border transition-all ${
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border transition-all ${
                     isDark
                       ? "bg-white/5 border-white/10 text-amber-300"
                       : "bg-[#FFF9EC] border-[#E6D4B7] text-[#5C3D24]"
@@ -259,7 +259,7 @@ export default function AboutPage() {
                     <span className="text-emerald-500">🛡️</span> Safe &amp; Friendly
                   </span>
 
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11.5px] font-extrabold border transition-all ${
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border transition-all ${
                     isDark
                       ? "bg-white/5 border-white/10 text-amber-300"
                       : "bg-[#FFF9EC] border-[#E6D4B7] text-[#5C3D24]"
@@ -353,11 +353,11 @@ export default function AboutPage() {
                   <span>OUR STORY</span>
                 </div>
 
-                <p className="text-[13.5px] sm:text-[14.5px] leading-relaxed text-[#4A3220] dark:text-zinc-200">
+                <p className="text-sm sm:text-[15px] leading-relaxed text-[#4A3220] dark:text-zinc-200">
                   Bhalyam started as a simple thought: What if all the games we loved as kids could bring us together again?
                 </p>
 
-                <p className="text-[13.5px] sm:text-[14.5px] leading-relaxed text-[#6E543D] dark:text-zinc-400">
+                <p className="text-sm sm:text-[15px] leading-relaxed text-[#6E543D] dark:text-zinc-400">
                   From cricket in the corridor to carrom championships, from paper games to board game battles — every memory is now a room you can join.
                 </p>
 
@@ -386,7 +386,7 @@ export default function AboutPage() {
                       <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         The Idea
                       </h4>
-                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                      <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         A dream to recreate our childhood playground.
                       </p>
                     </div>
@@ -401,7 +401,7 @@ export default function AboutPage() {
                       <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         Built with Passion
                       </h4>
-                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                      <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         Countless sketches, cups of chai and late night coding.
                       </p>
                     </div>
@@ -416,7 +416,7 @@ export default function AboutPage() {
                       <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         Testing with Friends
                       </h4>
-                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                      <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         Friends, school gangs and endless game nights.
                       </p>
                     </div>
@@ -431,7 +431,7 @@ export default function AboutPage() {
                       <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         Bhalyam is Born
                       </h4>
-                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                      <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         A platform to relive, reconnect and recreate memories.
                       </p>
                     </div>
@@ -446,7 +446,7 @@ export default function AboutPage() {
                       <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         The Journey Continues
                       </h4>
-                      <p className="text-[11.5px] text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
+                      <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         This is just the beginning...
                       </p>
                     </div>
@@ -609,7 +609,7 @@ export default function AboutPage() {
                       <span className="w-4.5 h-4.5 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs">
                         ✓
                       </span>
-                      <span className="text-[12px] sm:text-[12.5px] font-bold text-[#3D2816] dark:text-zinc-200 leading-snug">
+                      <span className="text-[12px] sm:text-[13px] font-bold text-[#3D2816] dark:text-zinc-200 leading-snug">
                         {text}
                       </span>
                     </div>
@@ -626,7 +626,7 @@ export default function AboutPage() {
                     {/* Corner Tape */}
                     <WashiTape className="-top-2.5 -left-2" rotate={-20} />
 
-                    <p className="font-script text-[13.5px] font-extrabold text-[#5C3D24] dark:text-amber-200 leading-tight">
+                    <p className="font-script text-sm font-extrabold text-[#5C3D24] dark:text-amber-200 leading-tight">
                       “We didn&apos;t lose friends. <br />
                       We just grew up. <br />
                       Bhalyam brings us back. ♡”

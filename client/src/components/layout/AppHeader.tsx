@@ -15,6 +15,7 @@ import { useTheme } from "../../lib/useTheme";
 import { useRoomStore } from "../../store/roomStore";
 import { useAuthStore } from "../../store/authStore";
 import { type BhalyamGameSlug } from "../bhalyam/data";
+import { Button } from "../../design-system/dls/Buttons";
 
 /**
  * The global header.
@@ -78,15 +79,16 @@ export default function AppHeader({
       <div className="h-full w-full flex items-center overflow-hidden">
         {/* Left: Sidebar-Aligned Brand Area */}
         <div className="w-auto lg:w-64 min-w-0 lg:flex-shrink-0 px-3 sm:px-6 flex items-center gap-2.5 sm:gap-3">
-          <button
+          <Button
             type="button"
+            variant="chrome"
+            size="iconOnly"
             onClick={onToggleMobileMenu}
-            className={`lg:hidden rounded-2xl ${CONTROL}`}
+            className="lg:hidden"
             title="Toggle Menu"
             aria-label="Toggle Menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+            leftIcon={<Menu className="w-5 h-5" />}
+          />
 
           <Link
             to="/"
@@ -108,7 +110,7 @@ export default function AppHeader({
               <span className="bhalyam-display text-[22px] sm:text-[26px] tracking-tight truncate text-[var(--chrome-ink)] group-hover:text-[var(--chrome-accent)] transition-colors">
                 BHALYAM
               </span>
-              <span className="text-[9px] sm:text-[10.5px] uppercase tracking-[0.2em] font-extrabold text-[var(--chrome-accent)] mt-0.5 truncate">
+              <span className="text-[9px] sm:text-[11px] uppercase tracking-[0.2em] font-extrabold text-[var(--chrome-accent)] mt-0.5 truncate">
                 Relive Childhood
               </span>
             </span>
@@ -126,8 +128,10 @@ export default function AppHeader({
         <div className="flex-1 lg:flex-none flex items-center justify-end px-3 sm:px-6">
           <div className="flex items-center gap-2 sm:gap-2.5">
             {/* 1. Notifications */}
-            <button
+            <Button
               type="button"
+              variant="chrome"
+              size="iconOnly"
               onClick={onOpenNotifications}
               title="Notifications"
               aria-label={
@@ -135,15 +139,16 @@ export default function AppHeader({
                   ? `Notifications (${unreadCount} unread)`
                   : "Notifications (none unread)"
               }
-              className={`relative ${CONTROL}`}
-            >
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
+              className="relative"
+              leftIcon={<Bell className="w-5 h-5" />}
+              rightIcon={
+                unreadCount > 0 ? (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                ) : undefined
+              }
+            />
 
             {/* 2. User Profile Chip */}
             <button
@@ -169,7 +174,7 @@ export default function AppHeader({
                   {displayName}
                 </span>
                 {!isMember && (
-                  <span className="text-[9.5px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-lamp-800 dark:text-lamp-300">
+                  <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-lamp-800 dark:text-lamp-300">
                     Guest
                   </span>
                 )}
@@ -180,15 +185,15 @@ export default function AppHeader({
             {/* 3. Theme toggle. `isDark` earns its place here — the glyph and
                    the label are genuinely different content, not two colours
                    for one thing. */}
-            <button
+            <Button
               type="button"
+              variant="chrome"
+              size="iconOnly"
               onClick={toggleTheme}
               title={isDark ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className={CONTROL}
-            >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+              leftIcon={isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            />
 
             {/* 4. Settings — members only, matching the sidebar's own gate. */}
             {isMember && (

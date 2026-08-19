@@ -49,7 +49,7 @@ export default function CompactColorSelector({
     const selectedColor = self?.chosenColor;
 
     return (
-      <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
+      <div className="bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
         <div className="flex items-baseline justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span aria-hidden>🎨</span>
@@ -126,7 +126,7 @@ export default function CompactColorSelector({
   const selectedCoin = self?.coinColor;
 
   return (
-    <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
+    <div className="bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
       <div className="flex items-baseline justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <span aria-hidden>🪙</span>

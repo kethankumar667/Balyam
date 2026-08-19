@@ -10,6 +10,7 @@ import {
   SpinnerIcon,
 } from "./authIcons";
 import { scorePassword, type StrengthLabel } from "../../lib/authValidation";
+import { Button } from "../../design-system/dls/Buttons";
 
 /**
  * Form parts shared by every auth screen.
@@ -57,13 +58,13 @@ export function AuthField({ id, label, error, help, children, action }: AuthFiel
         <p
           id={errorId}
           role="alert"
-          className="flex items-start gap-1.5 text-[12.5px] font-semibold leading-snug text-[var(--auth-field-error)]"
+          className="flex items-start gap-1.5 text-[13px] font-semibold leading-snug text-[var(--auth-field-error)]"
         >
           <AlertIcon className="w-[15px] h-[15px] mt-px flex-shrink-0" />
           {error}
         </p>
       ) : help ? (
-        <p id={helpId} className="text-[12.5px] leading-snug text-[#7A5B3E]">
+        <p id={helpId} className="text-[13px] leading-snug text-[#7A5B3E]">
           {help}
         </p>
       ) : null}
@@ -75,7 +76,7 @@ export function AuthField({ id, label, error, help, children, action }: AuthFiel
 export function inputClass(hasError: boolean, extra = ""): string {
   return [
     "w-full min-h-[52px] px-4 rounded-xl bg-white border-2 font-semibold",
-    "text-[15.5px] text-[#4A2508] placeholder:font-medium placeholder:text-[#9C826B]",
+    "text-base text-[#4A2508] placeholder:font-medium placeholder:text-[#9C826B]",
     "focus:outline-none focus:ring-2 transition-[border-color,box-shadow] duration-200",
     hasError
       ? "border-[#C6342B]/70 focus:border-[#C6342B] focus:ring-[#C6342B]/25"
@@ -158,7 +159,7 @@ export function PasswordStrengthMeter({ password }: { password: string }) {
           />
         ))}
       </div>
-      <p className="mt-1.5 text-[12.5px] leading-snug text-[#7A5B3E]" aria-live="polite">
+      <p className="mt-1.5 text-[13px] leading-snug text-[#7A5B3E]" aria-live="polite">
         <span className="font-bold capitalize" style={{ color: STRENGTH_FILL[label] }}>
           {label}
         </span>
@@ -180,29 +181,23 @@ export interface SubmitButtonProps {
 export function SubmitButton({ children, loading, loadingLabel, disabled }: SubmitButtonProps) {
   const inert = loading || disabled;
   return (
-    <button
+    <Button
       type="submit"
+      variant="auth"
+      size="lg"
       disabled={inert}
       aria-busy={loading || undefined}
-      className={`w-full min-h-[56px] px-6 rounded-2xl inline-flex items-center justify-center gap-2.5
-                  font-extrabold text-[17px] tracking-wide border transition-all duration-200
-                  focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E85D04]/70
-                  focus-visible:ring-offset-2
-                  ${
-                    inert
-                      ? "bg-[#E6D4B5] border-[#DCCDB4] text-[#7A5B3E] cursor-not-allowed"
-                      : "bg-gradient-to-r from-[#FF8F00] via-[#E85D04] to-[#D97706] border-[#D97706] text-white cursor-pointer hover:brightness-105 active:scale-[0.99] shadow-[0_8px_20px_-4px_rgba(232,93,4,0.45)]"
-                  }`}
+      className="w-full text-[17px] tracking-wide focus-visible:ring-[#E85D04]/70 focus-visible:ring-offset-2"
     >
       {loading ? (
-        <>
+        <span className="inline-flex items-center gap-2.5">
           <SpinnerIcon className="w-5 h-5 auth-spin" />
           <span>{loadingLabel ?? "Working…"}</span>
-        </>
+        </span>
       ) : (
         children
       )}
-    </button>
+    </Button>
   );
 }
 
@@ -215,7 +210,7 @@ export function GoogleButton({ onClick, label }: { onClick: () => void; label: s
       type="button"
       onClick={onClick}
       className="w-full min-h-[54px] px-6 rounded-2xl inline-flex items-center justify-center gap-3
-                 bg-white border-2 border-[#E6D4B5] text-[#4A2508] font-extrabold text-[15.5px] cursor-pointer
+                 bg-white border-2 border-[#E6D4B5] text-[#4A2508] font-extrabold text-base cursor-pointer
                  hover:bg-[#FAF3E0] hover:border-[#DCCDB4] active:scale-[0.99]
                  shadow-[0_2px_8px_-2px_rgba(74,37,8,0.12)]
                  focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E85D04]/70
@@ -250,7 +245,7 @@ export function OrDivider({ label = "or sign in with email" }: { label?: string 
   return (
     <div className="flex items-center gap-3 py-1.5" aria-hidden>
       <span className="h-px flex-1 bg-[#E6D4B5]" />
-      <span className="text-[11.5px] uppercase tracking-widest font-extrabold text-[#7A5B3E]">
+      <span className="text-xs uppercase tracking-widest font-extrabold text-[#7A5B3E]">
         {label}
       </span>
       <span className="h-px flex-1 bg-[#E6D4B5]" />
@@ -297,7 +292,7 @@ export function FormNotice({
 export function AuthSwitch({ prompt, to, cta }: { prompt: string; to: string; cta: string }) {
   return (
     <div className="space-y-3 pt-1">
-      <p className="text-[14.5px] text-[#7A5B3E] font-medium text-center">
+      <p className="text-[15px] text-[#7A5B3E] font-medium text-center">
         {prompt}{" "}
         <Link
           to={to}

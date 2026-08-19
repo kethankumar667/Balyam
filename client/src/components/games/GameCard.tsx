@@ -110,7 +110,7 @@ export default function GameCard({
 
   const bgStyle = isDark
     ? `linear-gradient(155deg, ${btnFrom}2e 0%, ${btnTo}14 45%, #0B101C 100%)`
-    : `linear-gradient(155deg, #FFFFFF 0%, ${btnFrom}28 40%, ${btnTo}48 100%)`;
+    : `linear-gradient(155deg, var(--surface-1) 0%, ${btnFrom}28 40%, ${btnTo}48 100%)`;
 
   return (
     <motion.article

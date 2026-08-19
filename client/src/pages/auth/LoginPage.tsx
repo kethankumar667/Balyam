@@ -124,7 +124,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-3.5 rounded-xl text-[14.5px] shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer mt-1"
+            className="w-full bg-[#162A3B] hover:bg-[#0E1E2B] text-white font-bold py-3.5 rounded-xl text-[15px] shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer mt-1"
           >
             {loading ? "Signing in..." : "Sign in"}
           </button>
@@ -133,7 +133,7 @@ export default function LoginPage() {
         {/* Divider */}
         <div className="flex items-center gap-3 my-3">
           <span className="h-px flex-1 bg-[#E2E8F0]" />
-          <span className="text-[11.5px] font-medium text-[#94A3B8]">
+          <span className="text-xs font-medium text-[#94A3B8]">
             Or
           </span>
           <span className="h-px flex-1 bg-[#E2E8F0]" />

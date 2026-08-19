@@ -749,7 +749,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 aria-invalid={nameError ? true : undefined}
                 aria-describedby={nameError ? "grs-name-error" : undefined}
                 className={`w-full min-h-[46px] px-3.5 rounded-2xl
-                           bg-[#FFF9EE] dark:bg-[#0B0F19] border-2
+                           bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2
                            text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
                            font-bold text-sm
                            focus:outline-none focus:ring-4
@@ -1188,7 +1188,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                       aria-invalid={codeError ? true : undefined}
                       aria-describedby={codeError ? "grs-code-error" : undefined}
                       className={`w-full min-h-[44px] px-3.5 rounded-2xl
-                                 bg-[#FFF9EE] dark:bg-[#0B0F19] border-2 border-dashed
+                                 bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2 border-dashed
                                  text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
                                  font-mono font-black tracking-[0.35em] text-center text-base
                                  focus:outline-none focus:ring-4
@@ -1297,7 +1297,7 @@ function UnavailableGameSheet({
             >
               {meta?.title ?? "This game"} isn&apos;t available
             </h2>
-            <p className="mt-2 text-[13.5px] leading-relaxed text-[#8A6D4B] dark:text-slate-400">
+            <p className="mt-2 text-sm leading-relaxed text-[#8A6D4B] dark:text-slate-400">
               This one has been taken out of BHALYAM for now. The tile is still
               here because we&apos;d like to bring it back — there&apos;s just
               nothing to play behind it today.
@@ -1533,7 +1533,7 @@ function PassPlayBlock({
                 placeholder={`Player ${i + 2}`}
                 maxLength={20}
                 className="flex-1 min-h-[42px] px-3.5 rounded-xl
-                           bg-white dark:bg-[#0B0F19] border-2 border-[#EEDBCA] dark:border-slate-700
+                           bg-white dark:bg-[var(--surface-0)] border-2 border-[#EEDBCA] dark:border-slate-700
                            text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
                            font-semibold text-[13px]
                            focus:outline-none focus:border-amber-500 dark:focus:border-amber-400

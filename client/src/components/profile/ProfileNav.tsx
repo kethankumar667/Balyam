@@ -86,7 +86,7 @@ export default function ProfileNav({ sections }: { sections: ProfileSection[] })
                 onClick={(e) => go(e, s.id)}
                 aria-current={on ? "true" : undefined}
                 className={`group flex items-center gap-2.5 whitespace-nowrap
-                            min-h-[44px] px-3 rounded-xl text-[13.5px] font-bold
+                            min-h-[44px] px-3 rounded-xl text-sm font-bold
                             transition-colors duration-200
                             focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
                             ${

@@ -17,7 +17,7 @@ export const PremiumHeroCard: React.FC<PremiumHeroCardProps> = ({
   subtitle,
   actions,
   badge,
-  glowColor = "#F59E0B",
+  glowColor = "var(--color-warning)",
   className = "",
 }) => {
   return (

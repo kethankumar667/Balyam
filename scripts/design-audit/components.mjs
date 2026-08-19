@@ -78,7 +78,17 @@ for (const [k, n] of [...signatures.entries()].sort((a, b) => b[1] - a[1]).slice
   row(`   ${k}`, n, 52);
 }
 
-const dlsButtons = /\b(?:Primary|Secondary|Danger|TournamentCTA|Reward)Button\b/;
+/**
+ * The five named wrapper exports, plus real usage of the base `<Button`
+ * itself (`variant="chrome"`/`"auth"` consumers — AppHeader, AuthControls —
+ * never mention any of the five names, so a wrapper-only regex undercounted
+ * real adoption the moment a caller reached for `<Button variant=...>`
+ * directly). `<Button\s` requires an attribute or multi-line prop list to
+ * follow, same reasoning as the `<Modal\s` fix above: excludes this file's
+ * own bare mentions of the component by name in prose, which no real call
+ * site is ever written as.
+ */
+const dlsButtons = /\b(?:Primary|Secondary|Danger|TournamentCTA|Reward)Button\b|<Button\s/;
 const dlsRefs = sources.filter((s) => dlsButtons.test(s.src));
 console.log("");
 row("Files referencing DLS Buttons", dlsRefs.length);

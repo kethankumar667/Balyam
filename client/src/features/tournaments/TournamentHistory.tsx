@@ -1,6 +1,6 @@
 import React from "react";
 import type { TournamentHistoryItem } from "@shared/tournaments/Tournament";
-import { GameCategoryIcon } from "../../design-system/icons";
+import { GameCategoryIcon, GoldRankIcon, SilverRankIcon, BronzeRankIcon } from "../../design-system/icons";
 
 interface TournamentHistoryProps {
   history: TournamentHistoryItem[];
@@ -10,22 +10,25 @@ export default function TournamentHistory({ history }: TournamentHistoryProps) {
   const getPlacementBadge = (placement: number) => {
     if (placement === 1) {
       return (
-        <span className="bg-amber-500/20 text-amber-500 dark:text-amber-300 border border-amber-500/40 text-xs font-black px-3.5 py-1.5 rounded-full font-mono shadow-xs">
-          👑 1st Place (Champion)
+        <span className="inline-flex items-center gap-1.5 bg-amber-500/20 text-amber-500 dark:text-amber-300 border border-amber-500/40 text-xs font-black px-3.5 py-1.5 rounded-full font-mono shadow-xs">
+          <GoldRankIcon size={14} />
+          1st Place (Champion)
         </span>
       );
     }
     if (placement === 2) {
       return (
-        <span className="bg-stone-300/30 text-stone-700 dark:text-stone-200 border border-stone-400/40 text-xs font-black px-3.5 py-1.5 rounded-full font-mono shadow-xs">
-          🥈 2nd Place (Finalist)
+        <span className="inline-flex items-center gap-1.5 bg-stone-300/30 text-stone-700 dark:text-stone-200 border border-stone-400/40 text-xs font-black px-3.5 py-1.5 rounded-full font-mono shadow-xs">
+          <SilverRankIcon size={14} />
+          2nd Place (Finalist)
         </span>
       );
     }
     if (placement === 3) {
       return (
-        <span className="bg-amber-700/20 text-amber-700 dark:text-amber-400 border border-amber-700/30 text-xs font-black px-3.5 py-1.5 rounded-full font-mono shadow-xs">
-          🥉 3rd Place (Semifinalist)
+        <span className="inline-flex items-center gap-1.5 bg-amber-700/20 text-amber-700 dark:text-amber-400 border border-amber-700/30 text-xs font-black px-3.5 py-1.5 rounded-full font-mono shadow-xs">
+          <BronzeRankIcon size={14} />
+          3rd Place (Semifinalist)
         </span>
       );
     }

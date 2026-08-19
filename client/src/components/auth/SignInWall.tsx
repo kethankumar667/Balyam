@@ -55,10 +55,10 @@ export default function SignInWall({ reason, from, compact }: SignInWallProps) {
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-[13.5px] font-extrabold leading-snug text-[#2B3550] dark:text-slate-100">
+          <p className="text-sm font-extrabold leading-snug text-[#2B3550] dark:text-slate-100">
             {reason}
           </p>
-          <p className="mt-0.5 text-[12.5px] leading-snug text-[#8A6D4B] dark:text-slate-400">
+          <p className="mt-0.5 text-[13px] leading-snug text-[#8A6D4B] dark:text-slate-400">
             {SIGN_IN_PITCH}. Your name and avatar come with you.
           </p>
 
@@ -68,7 +68,7 @@ export default function SignInWall({ reason, from, compact }: SignInWallProps) {
               className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-full
                          bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500
                          hover:from-amber-300 hover:to-orange-400
-                         text-slate-950 font-extrabold text-[13.5px]
+                         text-slate-950 font-extrabold text-sm
                          border border-amber-300/60 active:scale-[0.98]
                          focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70
                          shadow-[0_6px_18px_-6px_rgba(245,158,11,0.6)]

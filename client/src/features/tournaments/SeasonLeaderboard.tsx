@@ -1,6 +1,7 @@
 import React from "react";
 import type { PlayerSeasonStats } from "@shared/seasons/Season";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import { GoldRankIcon, SilverRankIcon, BronzeRankIcon } from "../../design-system/icons";
 
 interface SeasonLeaderboardProps {
   leaderboard: Array<PlayerSeasonStats & { displayName: string; avatar?: string; rank: number }>;
@@ -8,9 +9,9 @@ interface SeasonLeaderboardProps {
 
 export default function SeasonLeaderboard({ leaderboard }: SeasonLeaderboardProps) {
   const getRankBadge = (rank: number) => {
-    if (rank === 1) return <span className="text-2xl drop-shadow-sm">🥇</span>;
-    if (rank === 2) return <span className="text-2xl drop-shadow-sm">🥈</span>;
-    if (rank === 3) return <span className="text-2xl drop-shadow-sm">🥉</span>;
+    if (rank === 1) return <GoldRankIcon size={26} />;
+    if (rank === 2) return <SilverRankIcon size={26} />;
+    if (rank === 3) return <BronzeRankIcon size={26} />;
     return <span className="font-mono font-black text-sm text-[var(--auth-ink-soft)] dark:text-stone-400">#{rank}</span>;
   };
 

@@ -15,7 +15,7 @@ export const PremiumStatCard: React.FC<PremiumStatCardProps> = ({
   value,
   icon,
   subValue,
-  accentColor = "#F59E0B",
+  accentColor = "var(--color-warning)",
   className = "",
 }) => {
   return (

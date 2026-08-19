@@ -60,7 +60,7 @@ export default function AppSidebar({
     const content = (
       <div
         className={`relative w-full flex items-center justify-between gap-2.5 pl-4 pr-3.5 min-h-[44px] rounded-2xl
-                    font-bold text-[13.5px] transition-all cursor-pointer select-none ${
+                    font-bold text-sm transition-all cursor-pointer select-none ${
                       item.active
                         ? "bg-[var(--chrome-active-bg)] text-[var(--chrome-active-ink)] font-extrabold shadow-2xs"
                         : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)]"

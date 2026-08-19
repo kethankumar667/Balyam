@@ -1,7 +1,8 @@
 import React from "react";
 import type { PartyInvitation } from "@shared/party/Party";
 import { SwordsClashIcon } from "../../design-system/icons";
-import { SURFACES } from "../../design-system/dls";
+import { SURFACES, RewardButton } from "../../design-system/dls";
+import Modal from "../../components/Modal";
 
 interface PartyInvitationModalProps {
   invitation: PartyInvitation | null;
@@ -19,15 +20,17 @@ export default function PartyInvitationModal({
   if (!isOpen || !invitation) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="partyInviteTitle"
+    // No onClose: this dialog has never had a way to dismiss itself without
+    // Accept or Decline (no such prop exists on this component) — a pending
+    // invitation closed by Escape or a backdrop click with neither call made
+    // would leave the inviter's request silently unanswered. Matches
+    // ConsentModal's precedent for "must be answered, not dismissed".
+    <Modal
+      open
+      ariaLabelledBy="partyInviteTitle"
+      className="animate-in fade-in duration-200"
+      panelClassName={`max-w-md w-full rounded-3xl p-6 sm:p-8 ${SURFACES.modalHero} text-center space-y-6 relative overflow-hidden border border-amber-500/50 shadow-2xl`}
     >
-      <div
-        className={`max-w-md w-full rounded-3xl p-6 sm:p-8 ${SURFACES.modalHero} text-center space-y-6 relative overflow-hidden border border-amber-500/50 shadow-2xl`}
-      >
         <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-3xl mx-auto shadow-inner">
           <SwordsClashIcon size={32} className="text-amber-400" />
         </div>
@@ -45,12 +48,14 @@ export default function PartyInvitationModal({
         </div>
 
         <div className="flex gap-3">
-          <button
-            onClick={() => onAccept(invitation.id)}
-            className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-zinc-950 font-black py-3 rounded-xl text-xs uppercase tracking-wider transition shadow"
-          >
+          <RewardButton size="sm" className="flex-1" onClick={() => onAccept(invitation.id)}>
             Accept & Join
-          </button>
+          </RewardButton>
+          {/* Not migrated: this whole dialog is hardcoded dark (SURFACES.modalHero
+              resolves dark in both branches, no `dark:` toggle anywhere else in
+              this file), but DLS's `secondary` is genuinely theme-aware — it
+              would flip pale in light mode and mismatch every other surface
+              here. Left as the matching raw dark treatment. */}
           <button
             onClick={() => onDecline(invitation.id)}
             className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition border border-stone-700"
@@ -58,7 +63,6 @@ export default function PartyInvitationModal({
             Decline
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
