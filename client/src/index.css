@@ -2367,6 +2367,23 @@ body, #root, .bhalyam-paper {
   caret-color: #B38918;
 }
 
+/* Login/Signup/ForgotPassword/etc. — same problem, different surface.
+   `AuthShell.tsx` renders `.auth-page-shell`, not `.auth-shell` (that class
+   belongs to unrelated components — MemberLockedGate, ConsentModal,
+   EditProfileModal), so neither autofill rule above ever reached these
+   inputs. Matched to what this surface's inputs actually use
+   (bg-white/90, text-[#0F172A]), not the auth-shell token set, since this
+   surface never adopts that either. */
+.auth-page-shell input:-webkit-autofill,
+.auth-page-shell input:-webkit-autofill:hover,
+.auth-page-shell input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0F172A;
+  -webkit-box-shadow: 0 0 0 40px #FFFFFF inset;
+  box-shadow: 0 0 0 40px #FFFFFF inset;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #E85D04;
+}
+
 /* The one indeterminate spinner in the auth flow. */
 @keyframes auth-spin {
   to { transform: rotate(360deg); }

@@ -44,8 +44,8 @@ export default function SignUpPage() {
   const [displayName, setDisplayName] = useState(playerName.trim());
   const [isCustomDisplayName, setIsCustomDisplayName] = useState(false);
   const [email, setEmail] = useState("");
-  const [dob, setDob] = useState("1995-05-20");
-  const [gender, setGender] = useState<"Male" | "Female" | "Other" | "">("Male");
+  const [dob, setDob] = useState("");
+  const [gender, setGender] = useState<"Male" | "Female" | "Other" | "">("");
 
   // Step 2: Password
   const [password, setPassword] = useState("");
@@ -56,7 +56,7 @@ export default function SignUpPage() {
   // Step 3: Avatar & Terms
   const [selectedAvatar, setSelectedAvatar] = useState(avatarId || AVATARS[0]?.id || "avatar_1");
   const [showAllAvatarsModal, setShowAllAvatarsModal] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   // Field Errors
   const [firstNameError, setFirstNameError] = useState<FieldError>(null);

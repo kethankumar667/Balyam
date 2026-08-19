@@ -129,12 +129,12 @@ export default function BrickRacerBoardMobile({ onExit }: BrickRacerBoardProps) 
 
   return (
     <div
-      className="w-full min-h-screen bg-[#111827] text-white flex flex-col items-center justify-between p-3 sm:p-4 select-none font-sans"
+      className="w-full min-h-screen bg-[#111827] text-white flex flex-col items-center p-3 sm:p-4 select-none font-sans gap-2"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
       {/* Top Mobile Bar with Back, Title & Controls */}
-      <header className="w-full max-w-sm flex items-center justify-between py-1.5 border-b border-white/10 mb-2">
+      <header className="w-full max-w-sm flex items-center justify-between py-1.5 border-b border-white/10">
         <div className="flex items-center gap-2">
           {onExit ? (
             <button
@@ -187,7 +187,7 @@ export default function BrickRacerBoardMobile({ onExit }: BrickRacerBoardProps) 
       {/* Live Race Telemetry HUD Strip (Score, Level, High Score & Speed) */}
       <section
         aria-label="Race Telemetry"
-        className="w-full max-w-sm bg-[#1E293B] border border-white/10 rounded-2xl p-2.5 mb-2 shadow-lg flex flex-col gap-2 font-mono"
+        className="w-full max-w-sm bg-[#1E293B] border border-white/10 rounded-2xl p-2.5 shadow-lg flex flex-col gap-2 font-mono"
       >
         {/* Row 1: Score & Level */}
         <div className="grid grid-cols-2 gap-2">
@@ -263,27 +263,34 @@ export default function BrickRacerBoardMobile({ onExit }: BrickRacerBoardProps) 
         </div>
       </section>
 
-      {/* Handheld Handset Frame */}
-      <BrickConsoleFrame>
-        {/* 12x12 Physical Beveled LCD Matrix Screen */}
-        <div className="relative w-[240px] h-[240px] sm:w-[260px] sm:h-[260px] bg-[#9BBC0F] rounded-2xl border-4 border-[#0F380F] shadow-inner overflow-hidden flex items-center justify-center p-1.5">
-          {/* LCD Phosphor Pixel Texture Overlay */}
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,56,15,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,56,15,0.06)_1px,transparent_1px)] bg-[size:4px_4px] pointer-events-none z-10" />
+      {/* Handheld Handset Frame — grows into whatever room the compact
+          header/telemetry/footer leave, instead of sitting fixed-size in
+          whatever gap `justify-between` used to leave around it. */}
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+        <BrickConsoleFrame>
+          {/* 12x12 Physical Beveled LCD Matrix Screen — scales with the
+              viewport (bounded by width, height, and a sane cap) instead of
+              a fixed 240/260px that left most phones with dead space around
+              a console frame not big enough for the room around it. */}
+          <div className="relative w-[min(80vw,48vh,380px)] h-[min(80vw,48vh,380px)] bg-[#9BBC0F] rounded-2xl border-4 border-[#0F380F] shadow-inner overflow-hidden flex items-center justify-center p-1.5">
+            {/* LCD Phosphor Pixel Texture Overlay */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(15,56,15,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,56,15,0.06)_1px,transparent_1px)] bg-[size:4px_4px] pointer-events-none z-10" />
 
-          <canvas
-            ref={canvasRef}
-            width={228}
-            height={228}
-            className="w-full h-full block image-rendering-pixelated"
+            <canvas
+              ref={canvasRef}
+              width={228}
+              height={228}
+              className="w-full h-full block image-rendering-pixelated"
+            />
+          </div>
+
+          {/* Tactile Rubber Keypad */}
+          <BrickKeypad
+            onKeyPress={handleKeypadPress}
+            isBoosting={stats.isBoosting}
           />
-        </div>
-
-        {/* Tactile Rubber Keypad */}
-        <BrickKeypad
-          onKeyPress={handleKeypadPress}
-          isBoosting={stats.isBoosting}
-        />
-      </BrickConsoleFrame>
+        </BrickConsoleFrame>
+      </div>
 
       {/* Footer */}
       <div className="text-[10px] text-zinc-500 py-1 font-mono text-center">

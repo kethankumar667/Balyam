@@ -5,7 +5,7 @@ interface BrickKeypadProps {
 
 export function BrickKeypad({ onKeyPress, isBoosting }: BrickKeypadProps) {
   return (
-    <div className="w-full max-w-[320px] mt-3 flex flex-col items-center gap-3 select-none font-mono">
+    <div className="w-full max-w-[380px] mt-3 flex flex-col items-center gap-3 select-none font-mono">
       {/* Top Small Action Buttons */}
       <div className="w-full flex justify-between px-1 gap-2.5">
         <button
