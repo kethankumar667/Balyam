@@ -129,7 +129,7 @@ export default function AppSidebar({
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-64 h-[calc(100vh-5rem)] sticky top-20 flex-shrink-0
+      className="flex flex-col w-64 lg:h-[calc(100vh-5rem)] h-full lg:sticky lg:top-20 flex-shrink-0
                  border-r border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]
                  p-4 overflow-y-auto"
       aria-label="Main Navigation"

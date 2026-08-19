@@ -28,7 +28,7 @@ export default function AuthShell({
   const isLogin = heroType === "login";
 
   return (
-    <div className="h-screen max-h-[100dvh] w-full font-sans text-[#5C3717] flex flex-col justify-between overflow-hidden relative bg-[#FAE6CA]">
+    <div className="auth-page-shell h-screen max-h-[100dvh] w-full font-sans text-[#5C3717] flex flex-col justify-between overflow-hidden relative bg-[#FAE6CA]">
       {/* Background Image Layer: Full on mobile (< lg), exactly 54% of screen on desktop (lg:w-[54%]), positioned left-aligned */}
       <div
         className={`absolute inset-y-0 left-0 w-full lg:w-[54%] bg-cover bg-[position:15%_center] lg:bg-[position:15%_center] bg-no-repeat pointer-events-none z-0 lg:border-r lg:border-[#E6D4B5]/50 ${
