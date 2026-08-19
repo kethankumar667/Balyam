@@ -111,11 +111,8 @@ const NOOP: () => void = () => {};
 type DropTarget =
   | "openpile"
   | "finishslot"
-  | "ungrouped"
-  | "ungroupedEnd"
   | "new"
-  | `group:${string}`
-  | `before:${string}`;
+  | `group:${string}`;
 
 function resolveDropTarget(x: number, y: number): DropTarget | null {
   let el = document.elementFromPoint(x, y) as Element | null;
@@ -467,19 +464,48 @@ export default function RummyBoardMobile({
     const handSet = new Set(handIds);
     let freshlyAdded: string | null = null;
     setLayout((prev) => {
-      // First time: auto-sort hand into ungrouped.
+      // First time: split the hand by suit straight into meld groups — all
+      // cards live inside a group at all times now, mirroring the desktop
+      // board (see RummyBoardDesktop.tsx's hand->layout reconciliation).
       if (!initialized.current && handIds.length >= 13) {
         initialized.current = true;
-        return { groups: [], ungrouped: sortIds(handIds, byId, wildRank) };
+        const suitLanes = splitBySuit(hand);
+        return {
+          groups: suitLanes.slice(0, MAX_GROUPS).map((cards) => ({
+            id: newGroupId(),
+            cardIds: cards.map((c) => c.id),
+          })),
+          ungrouped: [],
+        };
       }
       const groups = prev.groups
         .map((g) => ({ ...g, cardIds: g.cardIds.filter((id) => handSet.has(id)) }))
         .filter((g) => g.cardIds.length > 0);
-      const ungrouped = prev.ungrouped.filter((id) => handSet.has(id));
-      const knownIds = new Set([...groups.flatMap((g) => g.cardIds), ...ungrouped]);
+      const knownIds = new Set(groups.flatMap((g) => g.cardIds));
       const fresh = handIds.filter((id) => !knownIds.has(id));
       if (fresh.length > 0) freshlyAdded = fresh[fresh.length - 1];
-      return { groups, ungrouped: [...ungrouped, ...fresh] };
+      if (fresh.length === 0) {
+        return { groups, ungrouped: [] };
+      }
+      // Add each incoming card to a matching-suit group, or start a new
+      // group (capped), or fall back to the first group once at the cap.
+      const newGroups = groups.map((g) => ({ ...g, cardIds: [...g.cardIds] }));
+      for (const id of fresh) {
+        const card = byId.get(id);
+        if (!card) continue;
+        const matchingGroup = newGroups.find((g) => {
+          const firstCard = byId.get(g.cardIds[0]);
+          return firstCard && firstCard.suit === card.suit;
+        });
+        if (matchingGroup) {
+          matchingGroup.cardIds.push(id);
+        } else if (newGroups.length < MAX_GROUPS) {
+          newGroups.push({ id: newGroupId(), cardIds: [id] });
+        } else if (newGroups.length > 0) {
+          newGroups[0].cardIds.push(id);
+        }
+      }
+      return { groups: newGroups, ungrouped: [] };
     });
     if (freshlyAdded) {
       setFreshCardId(freshlyAdded);
@@ -583,9 +609,8 @@ export default function RummyBoardMobile({
   // === Drag & drop reorder ===
 
   function moveCardsTo(
-    targetKind: "group" | "ungrouped" | "new",
+    targetKind: "group" | "new",
     targetLaneId: string | null,
-    beforeCardId: string | null,
     ids: string[],
   ) {
     setLayout((l) => {
@@ -593,7 +618,6 @@ export default function RummyBoardMobile({
       const order = new Map<string, number>();
       let i = 0;
       for (const g of l.groups) for (const id of g.cardIds) order.set(id, i++);
-      for (const id of l.ungrouped) order.set(id, i++);
       const sortedIds = [...ids].sort(
         (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0),
       );
@@ -602,48 +626,21 @@ export default function RummyBoardMobile({
       // Remove from current locations.
       const groupsFiltered = l.groups
         .map((g) => ({ ...g, cardIds: g.cardIds.filter((id) => !idSet.has(id)) }));
-      const ungroupedFiltered = l.ungrouped.filter((id) => !idSet.has(id));
 
       if (targetKind === "new") {
         const cleaned = groupsFiltered.filter((g) => g.cardIds.length > 0);
         return {
           groups: [...cleaned, { id: newGroupId(), cardIds: sortedIds }],
-          ungrouped: ungroupedFiltered,
+          ungrouped: [],
         };
-      }
-
-      if (targetKind === "ungrouped") {
-        let insertAt = beforeCardId != null
-          ? ungroupedFiltered.indexOf(beforeCardId)
-          : -1;
-        if (insertAt < 0) insertAt = ungroupedFiltered.length;
-        const newUngrouped = [
-          ...ungroupedFiltered.slice(0, insertAt),
-          ...sortedIds,
-          ...ungroupedFiltered.slice(insertAt),
-        ];
-        const cleaned = groupsFiltered.filter((g) => g.cardIds.length > 0);
-        return { groups: cleaned, ungrouped: newUngrouped };
       }
 
       // targetKind === "group"
-      const newGroups = groupsFiltered.map((g) => {
-        if (g.id !== targetLaneId) return g;
-        let insertAt = beforeCardId != null
-          ? g.cardIds.indexOf(beforeCardId)
-          : -1;
-        if (insertAt < 0) insertAt = g.cardIds.length;
-        return {
-          ...g,
-          cardIds: [
-            ...g.cardIds.slice(0, insertAt),
-            ...sortedIds,
-            ...g.cardIds.slice(insertAt),
-          ],
-        };
-      });
+      const newGroups = groupsFiltered.map((g) =>
+        g.id === targetLaneId ? { ...g, cardIds: [...g.cardIds, ...sortedIds] } : g,
+      );
       const cleaned = newGroups.filter((g) => g.cardIds.length > 0);
-      return { groups: cleaned, ungrouped: ungroupedFiltered };
+      return { groups: cleaned, ungrouped: [] };
     });
   }
 
@@ -679,8 +676,6 @@ export default function RummyBoardMobile({
       } else if (target === "finishslot") {
         const id = ids[0];
         if (id) dropOnFinishSlot(id);
-      } else if (target === "ungrouped" || target === "ungroupedEnd") {
-        moveCardsTo("ungrouped", null, null, ids);
       } else if (target === "new") {
         // Count how many groups would remain after the dragged cards
         // are pulled out of their source. If the source group empties
@@ -692,17 +687,11 @@ export default function RummyBoardMobile({
         if (remaining >= MAX_GROUPS) {
           setError(`Max ${MAX_GROUPS} groups — drop into an existing meld instead`);
         } else {
-          moveCardsTo("new", null, null, ids);
+          moveCardsTo("new", null, ids);
         }
-      } else if (target.startsWith("before:")) {
-        // Within-lane reorder — insert before the specified card.
-        // moveCardsTo handles this whether the source was in ungrouped or a
-        // group, so the same handler covers cross-lane drops too.
-        const beforeCardId = target.slice("before:".length);
-        moveCardsTo("ungrouped", null, beforeCardId, ids);
       } else if (target.startsWith("group:")) {
         const groupId = target.slice("group:".length);
-        moveCardsTo("group", groupId, null, ids);
+        moveCardsTo("group", groupId, ids);
       }
     }
     onDragEnd();
@@ -739,10 +728,13 @@ export default function RummyBoardMobile({
     }
   }
 
-  function sortUngrouped() {
+  function sortMeldGroups() {
     setLayout((l) => ({
-      ...l,
-      ungrouped: sortIds(l.ungrouped, byId, wildRank),
+      groups: l.groups.map((g) => ({
+        ...g,
+        cardIds: sortIds(g.cardIds, byId, wildRank),
+      })),
+      ungrouped: [],
     }));
   }
 
@@ -769,10 +761,9 @@ export default function RummyBoardMobile({
       const groups = l.groups
         .map((g) => ({ ...g, cardIds: g.cardIds.filter((id) => !selected.has(id)) }))
         .filter((g) => g.cardIds.length > 0);
-      const ungrouped = l.ungrouped.filter((id) => !selected.has(id));
       return {
         groups: [...groups, { id: newGroupId(), cardIds: orderedIds }],
-        ungrouped,
+        ungrouped: [],
       };
     });
     setSelected(new Set());
@@ -782,11 +773,24 @@ export default function RummyBoardMobile({
   function ungroupGroup(groupId: string) {
     setLayout((l) => {
       const g = l.groups.find((gg) => gg.id === groupId);
-      if (!g) return l;
-      return {
-        groups: l.groups.filter((gg) => gg.id !== groupId),
-        ungrouped: [...l.ungrouped, ...g.cardIds],
-      };
+      // Nothing to redistribute into once this was the last group — there is
+      // no "ungrouped" bucket to fall back to anymore (see RummyBoardDesktop).
+      if (!g || l.groups.length <= 1) return l;
+      const remainingGroups = l.groups.filter((gg) => gg.id !== groupId);
+      const updatedGroups = remainingGroups.map((gg) => ({ ...gg, cardIds: [...gg.cardIds] }));
+      for (const id of g.cardIds) {
+        const card = byId.get(id);
+        const match = updatedGroups.find((gg) => {
+          const firstCard = byId.get(gg.cardIds[0]);
+          return firstCard && firstCard.suit === card?.suit;
+        });
+        if (match) {
+          match.cardIds.push(id);
+        } else if (updatedGroups.length > 0) {
+          updatedGroups[0].cardIds.push(id);
+        }
+      }
+      return { groups: updatedGroups, ungrouped: [] };
     });
     setError(null);
   }
@@ -794,7 +798,7 @@ export default function RummyBoardMobile({
   function discardSelected() {
     if (!canDiscardOrDeclare) return;
     if (selected.size !== 1) {
-      setError("Pick exactly one card to discard");
+      setError("Pick exactly one card in a meld group to discard");
       return;
     }
     const id = [...selected][0];
@@ -816,7 +820,7 @@ export default function RummyBoardMobile({
       groups: l.groups
         .map((g) => ({ ...g, cardIds: g.cardIds.filter((id) => id !== cardId) }))
         .filter((g) => g.cardIds.length > 0),
-      ungrouped: l.ungrouped.filter((id) => id !== cardId),
+      ungrouped: [],
     }));
     setError(null);
   }
@@ -881,10 +885,9 @@ export default function RummyBoardMobile({
   // melds. The player must form their own sequences/sets, which is what makes
   // the post-show 15-second rearrange window matter.
   function autoArrange() {
-    const all: Card[] = [
-      ...layout.groups.flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c)),
-      ...layout.ungrouped.map((id) => byId.get(id)).filter((c): c is Card => !!c),
-    ];
+    const all: Card[] = layout.groups.flatMap((g) =>
+      g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c),
+    );
     if (all.length === 0) {
       setError(null);
       return;
@@ -916,7 +919,7 @@ export default function RummyBoardMobile({
         id: newGroupId(),
         cardIds: cards.map((c) => c.id),
       })),
-      ungrouped: lanes.slice(MAX_GROUPS).flat().map((c) => c.id),
+      ungrouped: [],
     });
     setSelected(new Set());
     setError(null);
@@ -946,10 +949,9 @@ export default function RummyBoardMobile({
    */
   function requestSmartHint() {
     try { haptics.subtle(); } catch { /* ignore */ }
-    const allCards: Card[] = [
-      ...layout.groups.flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c)),
-      ...layout.ungrouped.map((id) => byId.get(id)).filter((c): c is Card => !!c),
-    ];
+    const allCards: Card[] = layout.groups.flatMap((g) =>
+      g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c),
+    );
     if (allCards.length === 0) return;
 
     const suggestion = suggestArrangement(allCards, wildRank as Rank);
@@ -970,7 +972,15 @@ export default function RummyBoardMobile({
       id: newGroupId(),
       cardIds: cards.map((c) => c.id),
     }));
-    const newUngroupedIds = pendingHint.ungrouped.map((c) => c.id);
+    // No "ungrouped" slot to drop the leftover suggestion cards into
+    // anymore — fold them into one more group instead, same as
+    // RummyBoardDesktop's approveSmartHint.
+    if (pendingHint.ungrouped.length > 0) {
+      newGroups.push({
+        id: newGroupId(),
+        cardIds: pendingHint.ungrouped.map((c) => c.id),
+      });
+    }
 
     const allCards = [
       ...pendingHint.groups.flat(),
@@ -983,7 +993,7 @@ export default function RummyBoardMobile({
 
     setLayout({
       groups: newGroups,
-      ungrouped: newUngroupedIds,
+      ungrouped: [],
     });
 
     if (pendingHint.bestDiscardCard) {
@@ -1016,6 +1026,13 @@ export default function RummyBoardMobile({
     setSoundOn(next);
   }
 
+  // Mirrors RummyBoardDesktop's declareViaButton: with no "ungrouped" slot
+  // to stage a discard into anymore, FINISH smart-picks a card to declare
+  // with — the one selected card if there is exactly one, otherwise a card
+  // from an invalid meld (so the player is nudged toward the group that's
+  // actually blocking them), otherwise the last card of the last group.
+  // The validation + emit itself is identical to a drag-to-finish-slot, so
+  // this delegates to dropOnFinishSlot rather than duplicating it.
   function finishRound() {
     if (!canDiscardOrDeclare) {
       setError("You can only finish after drawing");
@@ -1025,24 +1042,27 @@ export default function RummyBoardMobile({
       setError(`Need 14 cards to finish, have ${hand.length}`);
       return;
     }
-    if (layout.ungrouped.length !== 1) {
-      setError(
-        `Move exactly 1 card to ungrouped (your discard). Currently ${layout.ungrouped.length} ungrouped.`,
-      );
+    let finishCardId: string | null = null;
+    if (selected.size === 1) {
+      finishCardId = [...selected][0];
+    } else {
+      for (const g of layout.groups) {
+        const cls = meldByGroupId[g.id];
+        if (!cls?.valid && g.cardIds.length > 0) {
+          finishCardId = g.cardIds[g.cardIds.length - 1];
+          break;
+        }
+      }
+      if (!finishCardId && layout.groups.length > 0) {
+        const lastGroup = layout.groups[layout.groups.length - 1];
+        finishCardId = lastGroup.cardIds[lastGroup.cardIds.length - 1];
+      }
+    }
+    if (!finishCardId) {
+      setError("Select 1 card in a meld group to finish and declare.");
       return;
     }
-    const totalGrouped = layout.groups.reduce((s, g) => s + g.cardIds.length, 0);
-    if (totalGrouped !== 13) {
-      setError(`All 13 non-discard cards must be in groups (currently ${totalGrouped})`);
-      return;
-    }
-    const discardCardId = layout.ungrouped[0];
-    const melds = layout.groups.map((g) => g.cardIds);
-    getSocket().emit("game:move", {
-      type: "declare",
-      data: { discardCardId, melds },
-    });
-    setError(null);
+    dropOnFinishSlot(finishCardId);
   }
 
   // === Live meld classification + finish readiness ===
@@ -1064,26 +1084,35 @@ export default function RummyBoardMobile({
     return map;
   }, [layout.groups, byId, wildRank]);
 
+  // With no "ungrouped" slot, readiness is evaluated AS IF the single
+  // selected card (if exactly one is selected) were the tentative discard —
+  // same idea as RummyBoardDesktop's finishReadiness, so the checklist gives
+  // real-time "you'd be ready if you discarded THIS one" feedback.
   const readiness = useMemo(() => {
-    const groups = layout.groups.map((g) => ({
-      cards: g.cardIds.map((id) => byId.get(id)).filter(Boolean) as Card[],
-    }));
+    const selCardId = selected.size === 1 ? Array.from(selected)[0] : null;
+    const groups = layout.groups
+      .map((g) => ({
+        cards: g.cardIds
+          .filter((id) => id !== selCardId)
+          .map((id) => byId.get(id))
+          .filter(Boolean) as Card[],
+      }))
+      .filter((g) => g.cards.length > 0);
     const totalGrouped = groups.reduce((s, g) => s + g.cards.length, 0);
-    return evaluateFinishReadiness(groups, wildRank as Rank, totalGrouped, layout.ungrouped.length);
-  }, [layout, byId, wildRank]);
+    return evaluateFinishReadiness(groups, wildRank as Rank, totalGrouped, selCardId ? 1 : 0);
+  }, [layout.groups, byId, selected, wildRank]);
 
   const livePoints = useMemo(() => {
     const groups = layout.groups.map((g) => {
       const cards = g.cardIds.map((id) => byId.get(id)).filter(Boolean) as Card[];
       return { cards, classification: meldByGroupId[g.id] };
     });
-    const ungroupedCards = layout.ungrouped.map((id) => byId.get(id)).filter(Boolean) as Card[];
-    return computeLivePoints(groups, ungroupedCards, wildRank as Rank);
-  }, [layout, byId, wildRank, meldByGroupId]);
+    return computeLivePoints(groups, [], wildRank as Rank);
+  }, [layout.groups, byId, wildRank, meldByGroupId]);
 
   // === Derived flags for button states ===
 
-  const canSort = layout.ungrouped.length > 1;
+  const canSort = layout.groups.some((g) => g.cardIds.length > 1);
   // Rearranging (group/sort/auto/drag) is allowed both during normal play AND
   // the post-show window — only blocked once the round is fully scored.
   const canGroup = selected.size >= 1 && state.phase !== "finished";
@@ -1091,9 +1120,14 @@ export default function RummyBoardMobile({
   // Allow drop both before drawing (first-drop, 20 pts) and after drawing
   // (middle-drop, card points). Not dropped, playing phase, and my turn.
   const canDropBtn = myTurn && !iDropped && state.phase === "playing";
-  const canFinish = canDiscardOrDeclare && hand.length === 14 &&
-    layout.ungrouped.length === 1 &&
-    layout.groups.reduce((s, g) => s + g.cardIds.length, 0) === 13;
+  // Not gated on `readiness.ready`: that reflects only the currently
+  // *selected* card, but FINISH smart-picks a discard even with nothing
+  // selected (see finishRound). Gating on readiness would disable the
+  // button in a winnable position just because the player hadn't
+  // pre-selected the right card. The real validation still runs on click
+  // (dropOnFinishSlot / finishRound) and surfaces a clear error if the
+  // hand genuinely isn't ready — same pattern every other button here uses.
+  const canFinish = canDiscardOrDeclare && hand.length === 14;
 
   // === Render ===
 
@@ -1272,7 +1306,7 @@ export default function RummyBoardMobile({
           onDropClick={() => setConfirmDrop(true)}
           onFinish={finishRound}
           onAutoArrange={autoArrange}
-          onSort={sortUngrouped}
+          onSort={sortMeldGroups}
         />
       </div>
 
@@ -2499,19 +2533,11 @@ function HandArea({
             onDragRelease={onDragRelease}
           />
         ))}
-        <UngroupedLane
-          cardIds={layout.ungrouped}
-          byId={byId}
-          wildRank={wildRank}
-          selected={selected}
-          draggingIds={draggingIds}
-          dragOverTarget={dragOverTarget}
-          freshCardId={freshCardId}
-          onCardClick={onCardClick}
-          onDragBegin={onDragBegin}
-          onDragHover={onDragHover}
-          onDragRelease={onDragRelease}
-        />
+        {layout.groups.length === 0 && (
+          <div className="text-[11px] italic text-amber-200/70 px-2 py-3">
+            No melds yet — tap cards, then GROUP.
+          </div>
+        )}
         {dragging && (
           <NewMeldZone
             active={dragOverTarget === "new"}
@@ -2662,135 +2688,6 @@ function GroupLane({
             />
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function UngroupedLane({
-  cardIds,
-  byId,
-  wildRank,
-  selected,
-  draggingIds,
-  dragOverTarget,
-  freshCardId,
-  onCardClick,
-  onDragBegin,
-  onDragHover,
-  onDragRelease,
-}: {
-  cardIds: string[];
-  byId: Map<string, Card>;
-  wildRank: string;
-  selected: Set<string>;
-  draggingIds: string[];
-  dragOverTarget: string | null;
-  freshCardId: string | null;
-  onCardClick: (id: string) => void;
-  onDragBegin: (ids: string[]) => void;
-  onDragHover: (target: DropTarget | null) => void;
-  onDragRelease: (target: DropTarget | null) => void;
-}) {
-  const isOver = dragOverTarget === "ungrouped";
-  return (
-    <div
-      data-rummy-drop="ungrouped"
-      className="rounded-xl p-1.5 pb-1 flex flex-col gap-0.5 flex-shrink-0 transition"
-      style={{
-        background: isOver ? "rgba(252,211,77,0.12)" : "rgba(0,0,0,0.12)",
-        border: isOver ? "1.5px dashed #fcd34d" : "1.5px dashed rgba(255,255,255,0.18)",
-        boxShadow: isOver ? "0 0 14px rgba(252,211,77,0.4)" : undefined,
-        minWidth: 0,
-      }}
-    >
-      <div className="px-0.5 text-[9px] uppercase tracking-wider font-extrabold text-amber-200">
-        Ungrouped ({cardIds.length})
-      </div>
-      <div className="flex relative">
-        {cardIds.map((cid, idx) => {
-          const card = byId.get(cid);
-          if (!card) return null;
-          const draggingThis = draggingIds.includes(cid);
-          // Only show the "before:<cid>" slot when an actual drag is in
-          // progress — otherwise the indicator clutters the table at rest.
-          // The slot itself is a thin (~16px) absolute strip on the card's
-          // left edge so it doesn't disrupt the existing -18px overlap.
-          const showSlot = draggingIds.length > 0 && !draggingThis;
-          const isSlotHover = dragOverTarget === `before:${cid}`;
-          return (
-            <div key={cid} className="relative flex-shrink-0">
-              {showSlot && (
-                <div
-                  data-rummy-drop={`before:${cid}`}
-                  aria-hidden
-                  className="absolute -top-1 bottom-0 z-40 transition-all duration-100"
-                  style={{
-                    left: idx === 0 ? -2 : -20,
-                    width: 22,
-                    background: isSlotHover
-                      ? "linear-gradient(180deg, rgba(252,211,77,0.85), rgba(245,158,11,0.5))"
-                      : "transparent",
-                    borderLeft: isSlotHover
-                      ? "3px solid #fcd34d"
-                      : "3px solid transparent",
-                    borderRadius: 3,
-                    boxShadow: isSlotHover
-                      ? "0 0 14px rgba(252,211,77,0.7)"
-                      : undefined,
-                  }}
-                />
-              )}
-              <DraggableHandCard
-                cardId={cid}
-                card={card}
-                wildRank={wildRank}
-                isSelected={selected.has(cid)}
-                isDragged={draggingThis}
-                isFresh={cid === freshCardId}
-                marginLeft={idx === 0 ? 0 : -18}
-                zIndex={idx}
-                selected={selected}
-                onTap={onCardClick}
-                onDragBegin={onDragBegin}
-                onDragHover={onDragHover}
-                onDragRelease={onDragRelease}
-              />
-            </div>
-          );
-        })}
-        {/* Drop-at-end strip — appears after the last card so a user can drop
-            a dragged card at the far right of ungrouped without aiming at
-            the lane background (which would still work, but the dedicated
-            strip gives them clear visual feedback). */}
-        {cardIds.length > 0 && draggingIds.length > 0 && (
-          <div
-            data-rummy-drop="ungroupedEnd"
-            aria-hidden
-            className="ml-1 self-stretch transition-all duration-100"
-            style={{
-              width: 22,
-              borderLeft:
-                dragOverTarget === "ungroupedEnd"
-                  ? "3px solid #fcd34d"
-                  : "3px dashed rgba(255,255,255,0.18)",
-              borderRadius: 3,
-              background:
-                dragOverTarget === "ungroupedEnd"
-                  ? "linear-gradient(180deg, rgba(252,211,77,0.85), rgba(245,158,11,0.5))"
-                  : "transparent",
-              boxShadow:
-                dragOverTarget === "ungroupedEnd"
-                  ? "0 0 14px rgba(252,211,77,0.7)"
-                  : undefined,
-            }}
-          />
-        )}
-        {cardIds.length === 0 && (
-          <div className="text-[11px] italic text-emerald-300/60 px-1 py-2">
-            All cards grouped.
-          </div>
-        )}
       </div>
     </div>
   );
