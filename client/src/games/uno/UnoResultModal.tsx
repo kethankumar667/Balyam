@@ -107,7 +107,7 @@ export default function UnoResultModal({
         </button>
 
         {/* Modal Inner Scroll Area (offset to the right to clear binder holes) */}
-        <div className="overflow-y-auto flex-1 pl-8 sm:pl-12 pr-4 sm:pr-8 pt-4 sm:pt-6 pb-4 sm:pb-6 overscroll-contain space-y-3 sm:space-y-4 relative z-10">
+        <div className="overflow-y-auto flex-1 pl-8 sm:pl-12 pr-4 sm:pr-8 pt-4 sm:pt-6 pb-4 sm:pb-6 overscroll-contain space-y-2 sm:space-y-4 relative z-10">
           {/* Top Trophy & Header */}
           <div className="flex flex-col items-center text-center">
             {/* Hand-Drawn Golden Trophy Icon */}
@@ -149,7 +149,7 @@ export default function UnoResultModal({
           {/* 2-Column Main Content Body */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 md:gap-5 items-center my-1 sm:my-2">
             {/* LEFT: Polaroid Photo Card */}
-            <div className="md:col-span-5 flex justify-center">
+            <div className="hidden md:flex md:col-span-5 justify-center">
               <div className="relative w-full max-w-[160px] sm:max-w-[190px] md:max-w-[220px] bg-white p-2.5 sm:p-3 pb-3 sm:pb-4 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.14)] border border-[#E4D7C0] flex flex-col items-center transform -rotate-1 hover:rotate-0 transition-transform duration-300">
                 {/* Masking tape on top-center */}
                 <div
@@ -324,7 +324,7 @@ export default function UnoResultModal({
               <button
                 type="button"
                 onClick={requestRematch}
-                className="w-full py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base text-white bg-[#204987] hover:bg-[#1A3E75] active:scale-[0.98] border-2 border-[#3F6FB3] shadow-[0_4px_14px_rgba(32,73,135,0.4)] flex items-center justify-center gap-2.5 transition cursor-pointer"
+                className="w-full py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base text-white bg-[#204987] hover:bg-[#1A3E75] active:scale-[0.98] border-2 border-[#3F6FB3] border-dashed shadow-[0_4px_14px_rgba(32,73,135,0.4)] flex items-center justify-center gap-2.5 transition cursor-pointer"
               >
                 <svg
                   viewBox="0 0 24 24"
