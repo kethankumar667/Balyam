@@ -213,6 +213,16 @@ export default function RummyBoardDesktop({
   const [controlsOpen, setControlsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const initialized = useRef(false);
+  const justDrewFromOpenRef = useRef(false);
+  const prevOpenTopRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (state.openPile && state.openPile.length > 0) {
+      prevOpenTopRef.current = state.openPile[state.openPile.length - 1].id;
+    } else if (state.topOfOpenPile) {
+      prevOpenTopRef.current = state.topOfOpenPile.id;
+    }
+  }, [state.openPile, state.topOfOpenPile]);
 
   /* ─── Reconcile hand → layout: ALL cards sit inside meld groups ─── */
   useEffect(() => {
@@ -241,11 +251,22 @@ export default function RummyBoardDesktop({
         };
       }
 
-      // Add incoming cards to matching suit group or first available group
+      // Add incoming cards: if card was taken from the open deck, ALWAYS place it into a new meld
       const newGroups = filteredGroups.map((g) => ({ ...g, cardIds: [...g.cardIds] }));
       for (const id of incoming) {
         const card = byId.get(id);
         if (!card) continue;
+
+        const isFromOpen =
+          justDrewFromOpenRef.current ||
+          (prevOpenTopRef.current !== null && id === prevOpenTopRef.current);
+
+        if (isFromOpen) {
+          // Open deck draw: never align with existing melds; start in a dedicated new meld group
+          newGroups.push({ id: newGroupId(), cardIds: [id] });
+          continue;
+        }
+
         const matchingGroup = newGroups.find((g) => {
           const firstCard = byId.get(g.cardIds[0]);
           return firstCard && firstCard.suit === card.suit;
@@ -258,6 +279,7 @@ export default function RummyBoardDesktop({
           newGroups[0].cardIds.push(id);
         }
       }
+      justDrewFromOpenRef.current = false;
       return { groups: newGroups, ungrouped: [] };
     });
   }, [hand, byId, wildRank]);
@@ -375,6 +397,8 @@ export default function RummyBoardDesktop({
       setError("Printed jokers can't be drawn from the discard pile");
       return;
     }
+    justDrewFromOpenRef.current = true;
+    prevOpenTopRef.current = state.topOfOpenPile.id;
     getSocket().emit("game:move", { type: "draw", data: { from: "open" } });
     rummySfx.draw();
   }

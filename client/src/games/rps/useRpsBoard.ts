@@ -151,6 +151,20 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
       // Targeted reactions stay exclusive to that player - see ludo/useLudoBoard.ts.
       if (!r.targetPlayerId) {
         setRains((prev) => [...prev.slice(-2), { id: r.id, emoji: r.emoji }]);
+      } else {
+        // Make the hit land: the struck card flinches as the emoji arrives
+        // (720ms of flight) — same imperative classList approach and timing
+        // as Ludo's useLudoBoard.ts, off the same playerCardRefs map this
+        // hook already keeps for the arc's anchor points.
+        const hitId = r.targetPlayerId;
+        window.setTimeout(() => {
+          const el = playerCardRefs.current.get(hitId);
+          if (!el) return;
+          el.classList.remove("reaction-hit-shake");
+          void el.offsetWidth;
+          el.classList.add("reaction-hit-shake");
+          window.setTimeout(() => el.classList.remove("reaction-hit-shake"), 460);
+        }, 700);
       }
       setTimeout(() => setReactions((p) => p.filter((x) => x.id !== r.id)), 2000);
       setTimeout(() => setRains((p) => p.filter((x) => x.id !== r.id)), 3200);

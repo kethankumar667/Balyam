@@ -38,10 +38,45 @@ export const NUDGE_REACTIONS = ["⏰", "🐌", "😴", "☕", "👀", "🎲", "�
 /** Older glyphs still accepted from clients that predate the split lists. */
 const LEGACY_REACTIONS = ["😢", "🤔", "🙌"] as const;
 
+/**
+ * Per-game targeted-throw sets — the comeback row a player sees when they've
+ * tapped a specific opponent, themed to match that game's own flavour rather
+ * than one generic set everywhere. Mirrors `BOT_NAMES_BY_GAME` in
+ * `server/src/rooms/RoomManager.ts` — same idea (each game draws from its own
+ * cultural texture), same shape (keyed by GameKind, not every key required).
+ *
+ * A game absent from this map (Ludo, UNO — both already have their own
+ * targeted-reaction implementation; Space War — no opponent seats to target
+ * at all; Road Rash — not yet a real playable game) falls back to the
+ * generic `THROW_REACTIONS` wherever this is read (see InlineRoomRail.tsx).
+ *
+ * Only ever ADD emoji here, never swap one out for a completely different
+ * glyph without checking `ALLOWED_REACTIONS` below still has to include it —
+ * this map is unioned into that allowlist automatically, so the two cannot
+ * drift, but a removed glyph still means the server starts rejecting it.
+ */
+export const GAME_REACTIONS: Partial<Record<string, readonly string[]>> = {
+  rummy: ["🍅", "🩴", "🃏", "😤", "💰", "😂"],
+  rps: ["👊", "✊", "✌️", "🔥", "😤", "😂"],
+  handcricket: ["🏏", "🎯", "🔥", "💪", "😤", "🙌"],
+  carrom: ["🎯", "💥", "👊", "😎", "🔥", "😂"],
+  chess: ["♟️", "👑", "🧠", "😏", "🔥", "😂"],
+  bingo: ["🔢", "🎊", "🙌", "🍀", "😂", "🎉"],
+  tambola: ["🔢", "🎊", "🙌", "🍀", "😂", "🎉"],
+  snl: ["🐍", "🪜", "🎲", "😂", "🤞", "🎉"],
+  dotsboxes: ["✏️", "📐", "🧹", "😆", "🔲", "😂"],
+  wordbuilding: ["📖", "✏️", "🤓", "💡", "😂", "🎓"],
+  namesplaceanimal: ["📝", "🤔", "💡", "😂", "🎓", "⚡"],
+  blockblast: ["🧩", "💥", "🎯", "😎", "🔥", "😂"],
+  stargame: ["🎈", "🍬", "😝", "🎉", "🤪", "😂"],
+  snake: ["🐍", "🍎", "💥", "😂", "🔥"],
+};
+
 /** Everything a client may send. The server validates against exactly this. */
 export const ALLOWED_REACTIONS: ReadonlySet<string> = new Set<string>([
   ...QUICK_REACTIONS,
   ...THROW_REACTIONS,
   ...NUDGE_REACTIONS,
   ...LEGACY_REACTIONS,
+  ...Object.values(GAME_REACTIONS).flatMap((set) => set ?? []),
 ]);

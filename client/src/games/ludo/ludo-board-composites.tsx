@@ -11,7 +11,7 @@ import { Token } from "./Token";
 import InstructionsModal from "./InstructionsModal";
 import Toast from "./Toast";
 import Confetti from "./Confetti";
-import FloatingReactionsLayer from "./FloatingReactionsLayer";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import CursorLayer from "./CursorLayer";
 import EndGameCard from "./EndGameCard";
 import EmojiRain from "./EmojiRain";
@@ -1263,7 +1263,10 @@ export function LudoOverlays({
       <FloatingReactionsLayer
         reactions={m.reactions}
         anchorOf={m.reactionAnchor}
-        playerColors={state.playerColors}
+        glowOf={(id) => {
+          const color = state.playerColors[id];
+          return color ? COLOR_HEX[color] : undefined;
+        }}
       />
       {!m.reduceMotion &&
         m.rains.map((r) => <EmojiRain key={r.id} emoji={r.emoji} />)}

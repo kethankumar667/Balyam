@@ -459,11 +459,16 @@ export function CarromPlayerCards({
    *  and score, built twice and already drifting (the copy used a 40px avatar
    *  and no turn glow). */
   orientation = "row",
+  /** From useSeatReactions() — registers each seat's card as the anchor a
+   *  targeted reaction flies to/from and shakes on landing. Optional so this
+   *  component still renders fine anywhere reactions aren't wired up. */
+  registerCardRef,
 }: {
   state: CarromPublicState;
   players: Player[];
   selfId: string;
   orientation?: "row" | "column";
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const nameOf = useMemo(() => {
     const map = new Map(players.map((p) => [p.id, p.name]));
@@ -498,6 +503,7 @@ export function CarromPlayerCards({
           return (
             <div
               key={s.playerId}
+              ref={registerCardRef?.(s.playerId)}
               className="flex items-center gap-3 px-3 py-2.5 transition-all duration-200"
               style={{
                 // The active seat already reads three ways: this warm field,
@@ -563,6 +569,7 @@ export function CarromPlayerCards({
         return (
           <div
             key={s.playerId}
+            ref={registerCardRef?.(s.playerId)}
             className="flex-1 flex flex-col items-center gap-1 p-2 rounded-xl min-w-[72px] transition-all duration-300"
             style={{
               background: isTurn

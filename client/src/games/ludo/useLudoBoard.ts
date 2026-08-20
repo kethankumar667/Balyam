@@ -495,12 +495,12 @@ export function useLudoBoard({
         window.setTimeout(() => {
           const el = playerCardRefs.current.get(hitId);
           if (!el) return;
-          el.classList.remove("ludo-hit-shake");
+          el.classList.remove("reaction-hit-shake");
           // Force a reflow so re-adding the class restarts the animation for
           // rapid-fire hits on the same card.
           void (el as HTMLElement).offsetWidth;
-          el.classList.add("ludo-hit-shake");
-          window.setTimeout(() => el.classList.remove("ludo-hit-shake"), 460);
+          el.classList.add("reaction-hit-shake");
+          window.setTimeout(() => el.classList.remove("reaction-hit-shake"), 460);
         }, 700);
       }
       setTimeout(() => {

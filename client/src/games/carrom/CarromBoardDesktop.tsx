@@ -16,6 +16,8 @@ import {
 } from "./carrom-shared";
 import CarromSkinModal from "./CarromSkinModal";
 import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 export default function CarromBoardDesktop({
   state,
@@ -32,6 +34,7 @@ export default function CarromBoardDesktop({
   const [showSkins, setShowSkins] = useState(false);
   const [localStriker, setLocalStriker] = useState<StrikerSkin>(state.strikerSkin ?? "pearl");
   const [localFelt, setLocalFelt] = useState<BoardFeltSkin>(state.boardSkin ?? "birch");
+  const reactions = useSeatReactions();
 
   const myTurn = state.turnPlayerId === selfId && state.phase === "aiming";
   const striker = state.pieces.find((p) => p.kind === "striker");
@@ -132,6 +135,7 @@ export default function CarromBoardDesktop({
             players={players}
             selfId={selfId}
             orientation="column"
+            registerCardRef={reactions.registerCardRef}
           />
 
           {/* Turn Indicator */}
@@ -233,6 +237,8 @@ export default function CarromBoardDesktop({
           onMove("setOptions", { boardSkin: skin });
         }}
       />
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

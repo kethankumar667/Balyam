@@ -368,6 +368,16 @@ export default function RummyBoardMobile({
   const [error, setError] = useState<string | null>(null);
   const [confirmDrop, setConfirmDrop] = useState(false);
   const initialized = useRef(false);
+  const justDrewFromOpenRef = useRef(false);
+  const prevOpenTopRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (state.openPile && state.openPile.length > 0) {
+      prevOpenTopRef.current = state.openPile[state.openPile.length - 1].id;
+    } else if (state.topOfOpenPile) {
+      prevOpenTopRef.current = state.topOfOpenPile.id;
+    }
+  }, [state.openPile, state.topOfOpenPile]);
 
   // Drag state — for HTML5 drag-and-drop card reordering.
   const [draggingIds, setDraggingIds] = useState<string[]>([]);
@@ -529,12 +539,22 @@ export default function RummyBoardMobile({
       if (fresh.length === 0) {
         return { groups, ungrouped: [] };
       }
-      // Add each incoming card to a matching-suit group, or start a new
-      // group (capped), or fall back to the first group once at the cap.
+      // Add each incoming card: if card was taken from the open deck, ALWAYS place it into a new meld
       const newGroups = groups.map((g) => ({ ...g, cardIds: [...g.cardIds] }));
       for (const id of fresh) {
         const card = byId.get(id);
         if (!card) continue;
+
+        const isFromOpen =
+          justDrewFromOpenRef.current ||
+          (prevOpenTopRef.current !== null && id === prevOpenTopRef.current);
+
+        if (isFromOpen) {
+          // Open deck draw: never align with existing melds; start in a dedicated new meld group
+          newGroups.push({ id: newGroupId(), cardIds: [id] });
+          continue;
+        }
+
         const matchingGroup = newGroups.find((g) => {
           const firstCard = byId.get(g.cardIds[0]);
           return firstCard && firstCard.suit === card.suit;
@@ -547,6 +567,7 @@ export default function RummyBoardMobile({
           newGroups[0].cardIds.push(id);
         }
       }
+      justDrewFromOpenRef.current = false;
       return { groups: newGroups, ungrouped: [] };
     });
     if (freshlyAdded) {
@@ -856,6 +877,8 @@ export default function RummyBoardMobile({
       setError("Printed jokers can't be drawn from the discard pile");
       return;
     }
+    justDrewFromOpenRef.current = true;
+    prevOpenTopRef.current = state.topOfOpenPile.id;
     getSocket().emit("game:move", { type: "draw", data: { from: "open" } });
   }
 

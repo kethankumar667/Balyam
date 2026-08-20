@@ -68,9 +68,10 @@ export class StateMachine {
         this.readyCountdown--;
         if (this.readyCountdown <= 0) {
           this.state = "PLAYING";
+          this.soundEngine.playGameStartFanfare();
         } else {
           this.readyTimer = 350;
-          this.soundEngine.playMenuBeep();
+          this.soundEngine.playCountdownBeep(this.readyCountdown === 1);
         }
       }
     } else if (this.state === "PLAYING") {
@@ -79,8 +80,9 @@ export class StateMachine {
   }
 
   private tickRace(): void {
-    // 1. Advance road animation stripes
+    // 1. Advance road animation stripes and engine motor rhythm tick
     this.roadOffset = (this.roadOffset + 1) % 3;
+    this.soundEngine.playEngineTick(this.player.isBoosting);
 
     // 2. Advance enemy traffic
     const { dodgedCount } = this.enemyManager.advance();
@@ -120,7 +122,11 @@ export class StateMachine {
     this.state = "GAME_OVER";
     this.crashAnimationTimer = 600;
 
-    const isNewHigh = this.score > this.saveData.highScore;
+    const isNewHigh = this.score > 0 && this.score > this.saveData.highScore;
+    setTimeout(() => {
+      this.soundEngine.playGameOver(isNewHigh);
+    }, 450);
+
     const nextData = StorageService.save({
       highScore: Math.max(this.saveData.highScore, this.score),
       matchesPlayed: this.saveData.matchesPlayed + 1,
@@ -174,7 +180,7 @@ export class StateMachine {
       }
     } else if (this.state === "PAUSED") {
       if (input === "SELECT" || input === "PAUSE") {
-        this.state = this.previousState || "PLAYING";
+        this.togglePause();
       } else if (input === "BACK" || input === "LEFT" || input === "RIGHT") {
         this.state = "MENU";
       }
@@ -213,7 +219,7 @@ export class StateMachine {
     this.state = "READY";
     this.readyCountdown = 3;
     this.readyTimer = 350;
-    this.soundEngine.playMenuBeep();
+    this.soundEngine.playCountdownBeep(false);
     this.updateStats();
   }
 
@@ -221,8 +227,10 @@ export class StateMachine {
     if (this.state === "PLAYING" || this.state === "READY") {
       this.previousState = this.state;
       this.state = "PAUSED";
+      this.soundEngine.playPause();
     } else if (this.state === "PAUSED") {
       this.state = this.previousState || "PLAYING";
+      this.soundEngine.playResume();
     }
   }
 

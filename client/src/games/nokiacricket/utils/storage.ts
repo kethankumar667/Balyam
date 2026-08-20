@@ -43,6 +43,8 @@ export const StorageService = {
       bestWickets: 0,
       matchesPlayed: 0,
       matchesWon: 0,
+      chaseMatchesPlayed: 0,
+      chaseMatchesWon: 0,
       totalRuns: 0,
       totalSixes: 0,
       totalFours: 0,
@@ -83,13 +85,18 @@ export const StorageService = {
     balls: number,
     sixes: number,
     fours: number,
-    won: boolean
+    won: boolean,
+    isChase: boolean = false
   ): { nextData: NokiaCricketSaveData; newAchievements: Achievement[] } {
     const data = this.load();
     const newAchievements: Achievement[] = [];
 
     data.matchesPlayed += 1;
     if (won) data.matchesWon += 1;
+    if (isChase) {
+      data.chaseMatchesPlayed = (data.chaseMatchesPlayed || 0) + 1;
+      if (won) data.chaseMatchesWon = (data.chaseMatchesWon || 0) + 1;
+    }
     data.totalRuns += runs;
     data.totalSixes += sixes;
     data.totalFours += fours;
@@ -115,7 +122,7 @@ export const StorageService = {
 
     if (sixes > 0 || fours > 0) unlock("FIRST_BOUNDARY");
     if (runs >= 50) unlock("HALF_CENTURY");
-    if (won) unlock("CHASE_MASTER");
+    if (won && isChase) unlock("CHASE_MASTER");
 
     const nextData = this.save(data);
     return { nextData, newAchievements };

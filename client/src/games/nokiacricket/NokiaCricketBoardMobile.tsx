@@ -24,12 +24,19 @@ export default function NokiaCricketBoardMobile({ onExit }: NokiaCricketBoardPro
   const { subtle } = useHaptics();
 
   const [stats, setStats] = useState<MatchStats>({
+    mode: "CLASSIC",
+    difficulty: "MEDIUM",
+    userTeam: "IND",
+    oppTeam: "AUS",
     score: 0,
     wickets: 0,
     balls: 0,
     overs: "0.0",
     target: 0,
     targetOvers: 5,
+    runsNeeded: 0,
+    ballsRemaining: 30,
+    reqRunRate: 0,
     currentOverDeliveries: [],
     sixes: 0,
     fours: 0,

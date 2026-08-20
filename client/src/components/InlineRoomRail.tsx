@@ -6,12 +6,12 @@ import {
   QUICK_REACTIONS,
   THROW_REACTIONS,
   NUDGE_REACTIONS,
+  GAME_REACTIONS,
 } from "@shared/reactions";
 import { SOUNDBOARD_CLIPS, SOUND_RATE_LIMIT, type SoundClip } from "@shared/soundboard";
 
 // Local aliases keep the JSX below reading the same as before.
 const QUICK_EMOJIS: readonly string[] = QUICK_REACTIONS;
-const MORE_EMOJIS: readonly string[] = THROW_REACTIONS;
 const NUDGE_EMOJIS: readonly string[] = NUDGE_REACTIONS;
 
 import PlayerList from "./PlayerList";
@@ -68,6 +68,11 @@ export default function InlineRoomRail({
   onUnreadChange?: (n: number) => void;
 }) {
   const paper = variant === "paper";
+  // The "throw at a target" row is themed per game (Rummy gets tomatoes and
+  // chappals, Chess gets a smug king, etc.) — see GAME_REACTIONS' doc
+  // comment for which games are covered and why some fall back to the
+  // generic set.
+  const throwEmojis: readonly string[] = GAME_REACTIONS[game] ?? THROW_REACTIONS;
   const visualViewport = useVisualViewport();
   const [open, setOpen] = useState<Panel | null>(null);
   const [emojiCooldown, setEmojiCooldown] = useState(false);
@@ -242,6 +247,7 @@ export default function InlineRoomRail({
           instant. */}
       {open === "emoji" && (
         <EmojiPopover
+          throwEmojis={throwEmojis}
           onPick={(e) => {
             sendReaction(e);
             if (reactionTarget) {
@@ -396,6 +402,7 @@ function InlineButton({
 }
 
 function EmojiPopover({
+  throwEmojis,
   onPick,
   onPickSound,
   soundBlocked,
@@ -404,6 +411,8 @@ function EmojiPopover({
   targetName,
   paper = false,
 }: {
+  /** The (possibly game-themed) targeted-throw row. */
+  throwEmojis: readonly string[];
   onPick: (e: string) => void;
   onPickSound: (clipId: string) => void;
   soundBlocked: boolean;
@@ -468,7 +477,7 @@ function EmojiPopover({
             it leads; a general cheer leads with the applause set. Burying the
             throwables behind "+" made the targeted flow two taps deep for the
             one emotion it exists to serve. */}
-        {(targetName ? MORE_EMOJIS : QUICK_EMOJIS).map((e) => (
+        {(targetName ? throwEmojis : QUICK_EMOJIS).map((e) => (
           <button
             key={e}
             onClick={() => onPick(e)}
@@ -491,7 +500,7 @@ function EmojiPopover({
             className="flex items-center gap-1 pl-2 ml-1 border-l"
             style={{ borderColor: "rgba(148,163,184,0.25)" }}
           >
-            {[...NUDGE_EMOJIS, ...(targetName ? QUICK_EMOJIS : MORE_EMOJIS)].map((e) => (
+            {[...NUDGE_EMOJIS, ...(targetName ? QUICK_EMOJIS : throwEmojis)].map((e) => (
               <button
                 key={e}
                 onClick={() => onPick(e)}

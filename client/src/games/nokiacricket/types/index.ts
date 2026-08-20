@@ -2,6 +2,11 @@ export type GameState =
   | "BOOT"
   | "MENU"
   | "SELECT_OVERS"
+  | "CHASE_SELECT_USER_TEAM"
+  | "CHASE_SELECT_OPP_TEAM"
+  | "CHASE_SELECT_DIFFICULTY"
+  | "CHASE_SELECT_OVERS"
+  | "CHASE_TARGET_SPLASH"
   | "READY"
   | "BOWLING"
   | "SHOT_PLAYED"
@@ -11,6 +16,29 @@ export type GameState =
   | "HIGH_SCORES"
   | "INSTRUCTIONS"
   | "PAUSED";
+
+export type CricketGameMode = "CLASSIC" | "CHASING";
+
+export type CricketDifficulty = "EASY" | "MEDIUM" | "HARD";
+
+export type CricketTeamCode = "IND" | "AUS" | "ENG" | "PAK" | "RSA" | "WI" | "NZ" | "SL";
+
+export interface CricketTeamInfo {
+  code: CricketTeamCode;
+  name: string;
+  flag: string;
+}
+
+export const CRICKET_TEAMS: CricketTeamInfo[] = [
+  { code: "IND", name: "INDIA", flag: "🇮🇳" },
+  { code: "AUS", name: "AUSTRALIA", flag: "🇦🇺" },
+  { code: "ENG", name: "ENGLAND", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
+  { code: "PAK", name: "PAKISTAN", flag: "🇵🇰" },
+  { code: "RSA", name: "S. AFRICA", flag: "🇿🇦" },
+  { code: "WI", name: "W. INDIES", flag: "🌴" },
+  { code: "NZ", name: "NEW ZEALAND", flag: "🇳🇿" },
+  { code: "SL", name: "SRI LANKA", flag: "🇱🇰" },
+];
 
 export type DeliveryType =
   | "FAST"
@@ -57,18 +85,30 @@ export interface ShotResult {
 }
 
 export interface MatchStats {
+  mode: CricketGameMode;
+  difficulty: CricketDifficulty;
+  userTeam: CricketTeamCode;
+  oppTeam: CricketTeamCode;
   score: number;
   wickets: number;
   balls: number;
   overs: string;
   target: number;
   targetOvers: number;
+  runsNeeded: number;
+  ballsRemaining: number;
+  reqRunRate: number;
   currentOverDeliveries: Array<{ outcome: BallOutcome; runs: number }>;
   sixes: number;
   fours: number;
   lastOutcome: BallOutcome | null;
   lastFeedback: string;
   strikeRate: number;
+  isMatchWon?: boolean;
+  isRecord?: boolean;
+  wonByWickets?: number;
+  wonByBalls?: number;
+  lostByRuns?: number;
 }
 
 export interface NokiaCricketSaveData {
@@ -76,6 +116,8 @@ export interface NokiaCricketSaveData {
   bestWickets: number;
   matchesPlayed: number;
   matchesWon: number;
+  chaseMatchesPlayed: number;
+  chaseMatchesWon: number;
   totalRuns: number;
   totalSixes: number;
   totalFours: number;

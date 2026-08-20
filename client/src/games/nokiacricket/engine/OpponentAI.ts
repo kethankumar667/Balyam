@@ -1,51 +1,68 @@
-import type { DeliveryProfile, DeliveryType } from "../types";
+import type { DeliveryProfile, DeliveryType, CricketDifficulty } from "../types";
 
 export class OpponentAI {
-  public selectDelivery(currentBall: number, wickets: number): DeliveryProfile {
+  public selectDelivery(
+    currentBall: number,
+    wickets: number,
+    difficulty: CricketDifficulty = "MEDIUM"
+  ): DeliveryProfile {
     const rand = Math.random();
-
-    // Scale delivery variation as the innings progresses
     let type: DeliveryType = "FAST";
 
-    if (currentBall <= 6) {
-      // Over 1: Mostly Fast and Swing
-      if (rand < 0.5) type = "FAST";
-      else if (rand < 0.75) type = "OUTSWING";
-      else if (rand < 0.9) type = "SLOW";
-      else type = "BOUNCER";
-    } else if (currentBall <= 18) {
-      // Middle overs: Spin, Yorker, and Off-pace
-      if (rand < 0.3) type = "FAST";
-      else if (rand < 0.55) type = "OFFBREAK";
-      else if (rand < 0.75) type = "YORKER";
-      else if (rand < 0.9) type = "SLOW";
-      else type = "BOUNCER";
+    if (difficulty === "EASY") {
+      // EASY: Gentle, predictable bowling (mostly straight & slow)
+      if (rand < 0.6) type = "FAST";
+      else if (rand < 0.85) type = "SLOW";
+      else if (rand < 0.95) type = "OUTSWING";
+      else type = "OFFBREAK";
+    } else if (difficulty === "HARD") {
+      // HARD: Aggressive, high variation, deadly yorkers & bouncers
+      if (rand < 0.3) type = "YORKER";
+      else if (rand < 0.55) type = "BOUNCER";
+      else if (rand < 0.75) type = "OFFBREAK";
+      else if (rand < 0.9) type = "OUTSWING";
+      else type = "FAST";
     } else {
-      // Death overs / high pressure: Fast Yorkers & Bouncers
-      if (rand < 0.35) type = "YORKER";
-      else if (rand < 0.6) type = "BOUNCER";
-      else if (rand < 0.8) type = "OFFBREAK";
-      else type = "OUTSWING";
+      // MEDIUM: Balanced match progression
+      if (currentBall <= 6) {
+        if (rand < 0.5) type = "FAST";
+        else if (rand < 0.75) type = "OUTSWING";
+        else if (rand < 0.9) type = "SLOW";
+        else type = "BOUNCER";
+      } else if (currentBall <= 18) {
+        if (rand < 0.3) type = "FAST";
+        else if (rand < 0.55) type = "OFFBREAK";
+        else if (rand < 0.75) type = "YORKER";
+        else if (rand < 0.9) type = "SLOW";
+        else type = "BOUNCER";
+      } else {
+        if (rand < 0.35) type = "YORKER";
+        else if (rand < 0.6) type = "BOUNCER";
+        else if (rand < 0.8) type = "OFFBREAK";
+        else type = "OUTSWING";
+      }
     }
 
-    return this.buildProfile(type);
+    return this.buildProfile(type, difficulty);
   }
 
-  private buildProfile(type: DeliveryType): DeliveryProfile {
+  private buildProfile(type: DeliveryType, difficulty: CricketDifficulty): DeliveryProfile {
+    const speedMult = difficulty === "EASY" ? 0.86 : difficulty === "HARD" ? 1.15 : 1.0;
+
     const config: Record<
       DeliveryType,
       { speedY: number; initialX: number; pitchY: number; postPitchVx: number; bounceScale: number; label: string }
     > = {
       FAST: {
-        speedY: 78,
+        speedY: Math.round(78 * speedMult),
         initialX: 64 + (Math.random() * 4 - 2),
         pitchY: 54,
         postPitchVx: 0,
         bounceScale: 1.0,
-        label: "FAST 140KPH",
+        label: difficulty === "HARD" ? "EXPRESS 152KPH" : difficulty === "EASY" ? "MED-PACE 125KPH" : "FAST 140KPH",
       },
       SLOW: {
-        speedY: 48,
+        speedY: Math.round(48 * speedMult),
         initialX: 64,
         pitchY: 50,
         postPitchVx: 0,
@@ -53,7 +70,7 @@ export class OpponentAI {
         label: "OFF-PACE SLOW",
       },
       YORKER: {
-        speedY: 86,
+        speedY: Math.round(86 * speedMult),
         initialX: 64,
         pitchY: 72,
         postPitchVx: 0,
@@ -61,26 +78,26 @@ export class OpponentAI {
         label: "TOE CRUSHER YORKER",
       },
       BOUNCER: {
-        speedY: 74,
+        speedY: Math.round(74 * speedMult),
         initialX: 63,
         pitchY: 40,
-        postPitchVx: 0.2,
-        bounceScale: 1.8,
+        postPitchVx: difficulty === "HARD" ? 0.4 : 0.2,
+        bounceScale: difficulty === "HARD" ? 2.0 : 1.8,
         label: "SHARP BOUNCER",
       },
       OUTSWING: {
-        speedY: 68,
+        speedY: Math.round(68 * speedMult),
         initialX: 63,
         pitchY: 52,
-        postPitchVx: 1.1,
+        postPitchVx: difficulty === "HARD" ? 1.4 : 1.1,
         bounceScale: 1.0,
         label: "OUTSWINGER",
       },
       OFFBREAK: {
-        speedY: 54,
+        speedY: Math.round(54 * speedMult),
         initialX: 67,
         pitchY: 54,
-        postPitchVx: -1.5,
+        postPitchVx: difficulty === "HARD" ? -1.8 : -1.5,
         bounceScale: 1.2,
         label: "OFF BREAK SPIN",
       },

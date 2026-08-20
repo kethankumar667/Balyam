@@ -1,32 +1,37 @@
 import type { ReactionRecvPayload } from "@shared/types";
-import { COLOR_HEX } from "./board-layout";
-import type { LudoColor } from "@shared/types";
 
 /**
- * Reactions, in two flavours.
+ * Reactions, in two flavours. Game-agnostic — any board can mount this once
+ * it can answer "where on screen is this player's seat right now".
  *
- * TARGETED — the emotional one. Someone sent your token home, and you lob a
- * chappal back at them. The emoji launches from the SENDER's seat card, arcs
- * across the table and lands on the TARGET's card with a splash ring. It only
- * reads as "aimed at you" if you can see it travel: a reaction that merely
- * appears above a card is a notification, one that flies at someone is a joke
- * shared between two people.
+ * TARGETED — the emotional one. Someone just did something to you, and you
+ * lob a reaction back at them. The emoji launches from the SENDER's seat,
+ * arcs across the table and lands on the TARGET's seat with a splash ring.
+ * It only reads as "aimed at you" if you can see it travel: a reaction that
+ * merely appears above a seat is a notification, one that flies at someone
+ * is a joke shared between two people.
  *
- * UNTARGETED — a plain cheer, floating up over the sender's own card.
+ * UNTARGETED — a plain cheer, floating up over the sender's own seat.
  *
- * Both need `anchorOf` to resolve a seat card to a viewport position. If
- * either end is unknown (a card not mounted yet) the throw degrades to the
- * float rather than vanishing.
+ * Both need `anchorOf` to resolve a seat to a viewport position. If either
+ * end is unknown (a seat not mounted yet, or not visible on this layout) the
+ * throw degrades to the float rather than vanishing.
+ *
+ * Originally built for Ludo (`ludo-fling-*` CSS, since generalized to
+ * `reaction-fling-*` in index.css) — lifted out so every game gets the same
+ * arc instead of hand-rolling its own (see UNO's separate, duplicated
+ * inline framer-motion version this is meant to eventually replace).
  */
 export default function FloatingReactionsLayer({
   reactions,
   anchorOf,
-  playerColors,
+  glowOf,
 }: {
   reactions: ReactionRecvPayload[];
   /** Returns { left, top } in viewport percent for a given playerId, or null if unknown. */
   anchorOf: (playerId: string) => { left: number; top: number } | null;
-  playerColors: Record<string, LudoColor>;
+  /** Optional per-sender glow colour (e.g. a Ludo seat's board colour). Defaults to white. */
+  glowOf?: (playerId: string) => string | undefined;
 }) {
   return (
     <div className="pointer-events-none fixed inset-0 z-40">
@@ -34,8 +39,7 @@ export default function FloatingReactionsLayer({
         const to = anchorOf(r.targetPlayerId ?? r.fromPlayerId);
         if (!to) return null;
         const from = r.targetPlayerId ? anchorOf(r.fromPlayerId) : null;
-        const hue = playerColors[r.fromPlayerId];
-        const glow = hue ? COLOR_HEX[hue] : "#ffffff";
+        const glow = glowOf?.(r.fromPlayerId) ?? "#ffffff";
 
         if (from && r.targetPlayerId && r.targetPlayerId !== r.fromPlayerId) {
           return <FlungReaction key={r.id} from={from} to={to} emoji={r.emoji} glow={glow} />;
@@ -91,13 +95,13 @@ function FlungReaction({
   //
   // MUST be a whole number of turns. This was +/-540deg, and 540 mod 360 is
   // 180 — so every thrown reaction came to REST upside-down on the target's
-  // card and stayed that way for the rest of its life. Two full turns keeps
+  // seat and stayed that way for the rest of its life. Two full turns keeps
   // the same lively tumble over the 720ms flight and lands it upright.
   const spin = dx >= 0 ? 720 : -720;
   return (
     <>
       <div
-        className="ludo-fling absolute"
+        className="reaction-fling absolute"
         style={{
           left: `${from.left}%`,
           top: `${from.top}%`,
@@ -106,7 +110,7 @@ function FlungReaction({
         }}
       >
         <div
-          className="ludo-fling-arc"
+          className="reaction-fling-arc"
           style={{
             ["--fling-lift" as string]: `${lift}vh`,
             ["--fling-spin" as string]: `${spin}deg`,
@@ -122,7 +126,7 @@ function FlungReaction({
       </div>
       {/* Landing splash, delayed to arrive with the emoji. */}
       <div
-        className="ludo-fling-impact absolute rounded-full"
+        className="reaction-fling-impact absolute rounded-full"
         style={{
           left: `${to.left}%`,
           top: `${to.top}%`,

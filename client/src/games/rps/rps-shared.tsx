@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import type { ReactNode } from "react";
 import type { ReactionRecvPayload, RpsChoice } from "@shared/types";
-import FloatingReactionsLayer from "../ludo/FloatingReactionsLayer";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import EmojiRain from "../ludo/EmojiRain";
 import Confetti from "../ludo/Confetti";
 import type { ClientRpsState, RoundOutcome } from "./useRpsBoard";
@@ -93,7 +93,7 @@ export function RpsOverlays({
 }) {
   return (
     <>
-      <FloatingReactionsLayer reactions={reactions} anchorOf={anchorOf} playerColors={{}} />
+      <FloatingReactionsLayer reactions={reactions} anchorOf={anchorOf} />
       {rains.map((r) => (
         <EmojiRain key={r.id} emoji={r.emoji} />
       ))}

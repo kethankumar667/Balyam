@@ -10,19 +10,21 @@ describe("Nokia Cricket - TimingEngine", () => {
   const timing = new TimingEngine();
 
   it("identifies exact sweet spot (Y = 78) as PERFECT", () => {
-    expect(timing.evaluateTiming(78.0)).toBe("PERFECT");
-    expect(timing.evaluateTiming(77.0)).toBe("PERFECT");
-    expect(timing.evaluateTiming(79.5)).toBe("PERFECT");
+    expect(timing.evaluateTiming(78.0, "MEDIUM")).toBe("PERFECT");
+    expect(timing.evaluateTiming(77.0, "MEDIUM")).toBe("PERFECT");
+    expect(timing.evaluateTiming(79.5, "MEDIUM")).toBe("PERFECT");
   });
 
-  it("identifies proximity shots as GOOD", () => {
-    expect(timing.evaluateTiming(74.0)).toBe("GOOD");
-    expect(timing.evaluateTiming(82.5)).toBe("GOOD");
+  it("has wider tolerance on EASY difficulty", () => {
+    // 78 - 3.5 = 74.5 is PERFECT on EASY (diff <= 3.8) but GOOD on MEDIUM (diff > 2.8)
+    expect(timing.evaluateTiming(74.5, "EASY")).toBe("PERFECT");
+    expect(timing.evaluateTiming(74.5, "MEDIUM")).toBe("GOOD");
   });
 
-  it("identifies early and late swings correctly", () => {
-    expect(timing.evaluateTiming(70.0)).toBe("EARLY");
-    expect(timing.evaluateTiming(85.0)).toBe("LATE");
+  it("has tighter tolerance on HARD difficulty", () => {
+    // 78 - 2.5 = 75.5 is PERFECT on MEDIUM (diff <= 2.8) but GOOD on HARD (diff > 2.0)
+    expect(timing.evaluateTiming(75.5, "MEDIUM")).toBe("PERFECT");
+    expect(timing.evaluateTiming(75.5, "HARD")).toBe("GOOD");
   });
 
   it("identifies out of window balls as MISS", () => {
@@ -104,17 +106,26 @@ describe("Nokia Cricket - OpponentAI", () => {
   const ai = new OpponentAI();
 
   it("generates valid delivery profiles with positive speeds", () => {
-    const delivery = ai.selectDelivery(1, 0);
+    const delivery = ai.selectDelivery(1, 0, "MEDIUM");
     expect(delivery.speedY).toBeGreaterThan(40);
     expect(delivery.pitchY).toBeGreaterThan(30);
     expect(delivery.label).toBeDefined();
+  });
+
+  it("scales ball speeds across EASY and HARD difficulties", () => {
+    const easyFast = ai.selectDelivery(1, 0, "EASY");
+    const hardDelivery = ai.selectDelivery(1, 0, "HARD");
+    expect(easyFast.speedY).toBeLessThan(100);
+    expect(hardDelivery.speedY).toBeGreaterThan(50);
   });
 });
 
 describe("Nokia Cricket - StorageService", () => {
   it("records match statistics and returns high score", () => {
-    const result = StorageService.recordMatch(36, 1, 12, 4, 3, true);
+    const result = StorageService.recordMatch(36, 1, 12, 4, 3, true, true);
     expect(result.nextData.totalRuns).toBeGreaterThanOrEqual(36);
     expect(result.nextData.highScore).toBeGreaterThanOrEqual(36);
+    expect(result.nextData.chaseMatchesPlayed).toBeGreaterThanOrEqual(1);
+    expect(result.nextData.chaseMatchesWon).toBeGreaterThanOrEqual(1);
   });
 });

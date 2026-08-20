@@ -27,12 +27,19 @@ export default function NokiaCricketBoardDesktop({ onExit }: NokiaCricketBoardPr
   const { subtle } = useHaptics();
 
   const [stats, setStats] = useState<MatchStats>({
+    mode: "CLASSIC",
+    difficulty: "MEDIUM",
+    userTeam: "IND",
+    oppTeam: "AUS",
     score: 0,
     wickets: 0,
     balls: 0,
     overs: "0.0",
     target: 0,
     targetOvers: 5,
+    runsNeeded: 0,
+    ballsRemaining: 30,
+    reqRunRate: 0,
     currentOverDeliveries: [],
     sixes: 0,
     fours: 0,
@@ -60,7 +67,10 @@ export default function NokiaCricketBoardDesktop({ onExit }: NokiaCricketBoardPr
       shotEngine,
       opponentAI,
       soundEngine,
-      (updatedStats) => setStats({ ...updatedStats })
+      (updatedStats) => {
+        setStats({ ...updatedStats });
+        setSaveData(StorageService.load());
+      }
     );
 
     const engine = new GameEngine(
@@ -196,10 +206,10 @@ export default function NokiaCricketBoardDesktop({ onExit }: NokiaCricketBoardPr
           <div className="p-4 rounded-3xl bg-[#1E293B] border border-white/10 shadow-xl space-y-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <span className="text-[11px] font-black uppercase tracking-wider text-amber-400">
-                Match Telemetry
+                {stats.mode === "CHASING" ? `TARGET CHASE: ${stats.userTeam} v ${stats.oppTeam}` : "Match Telemetry"}
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[10.5px]">
-                {stats.targetOvers} Overs Match
+                {stats.mode === "CHASING" ? `${stats.difficulty} • ${stats.targetOvers}O` : `${stats.targetOvers} Overs Match`}
               </span>
             </div>
 
@@ -212,6 +222,24 @@ export default function NokiaCricketBoardDesktop({ onExit }: NokiaCricketBoardPr
                 <div className="text-[11px] text-amber-300/80 font-semibold">SR: {stats.strikeRate}%</div>
               </div>
             </div>
+
+            {/* Chasing Target Status Banner */}
+            {stats.mode === "CHASING" && (
+              <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-2xl flex items-center justify-between text-[11px]">
+                <div>
+                  <span className="text-zinc-400">Target: </span>
+                  <span className="font-extrabold text-amber-300">{stats.target} Runs</span>
+                </div>
+                <div>
+                  <span className="text-zinc-400">Need: </span>
+                  <span className="font-extrabold text-emerald-300">{stats.runsNeeded} off {stats.ballsRemaining}b</span>
+                </div>
+                <div>
+                  <span className="text-zinc-400">RRR: </span>
+                  <span className="font-extrabold text-white">{stats.reqRunRate}</span>
+                </div>
+              </div>
+            )}
 
             {/* Current Over Balls Timeline */}
             <div>
@@ -254,8 +282,8 @@ export default function NokiaCricketBoardDesktop({ onExit }: NokiaCricketBoardPr
                 <div className="font-black text-amber-300">{saveData.highScore} Runs</div>
               </div>
               <div className="bg-white/5 p-2 rounded-xl border border-white/5">
-                <div className="text-zinc-400 text-[10px]">Matches Won</div>
-                <div className="font-black text-emerald-300">{saveData.matchesWon}</div>
+                <div className="text-zinc-400 text-[10px]">Chase Wins</div>
+                <div className="font-black text-emerald-300">{saveData.chaseMatchesWon || 0} / {saveData.chaseMatchesPlayed || 0}</div>
               </div>
             </div>
           </div>

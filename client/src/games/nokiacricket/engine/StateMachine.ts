@@ -4,7 +4,11 @@ import type {
   ShotType,
   ShotResult,
   NokiaCricketSaveData,
+  CricketGameMode,
+  CricketDifficulty,
+  CricketTeamCode,
 } from "../types";
+import { CRICKET_TEAMS } from "../types";
 import { BallPhysics } from "./BallPhysics";
 import { ShotEngine } from "./ShotEngine";
 import { OpponentAI } from "./OpponentAI";
@@ -16,7 +20,7 @@ import { StorageService } from "../utils/storage";
 export class StateMachine {
   private state: GameState = "BOOT";
   private selectedMenuIndex: number = 0;
-  private menuItems = ["START MATCH", "HIGH SCORES", "INSTRUCTIONS", "SOUND: ON"];
+  private menuItems = ["CLASSIC MATCH", "CHASE TARGET", "HIGH SCORES", "INSTRUCTIONS", "SOUND: ON"];
 
   private selectedOversIndex: number = 2; // Default 5 Overs
   private overOptions = [
@@ -26,13 +30,30 @@ export class StateMachine {
     { label: "10 OVERS (PRO)", overs: 10 },
   ];
 
+  // Chasing Mode Flow Selections
+  private selectedUserTeamIndex: number = 0; // Default IND
+  private selectedOppTeamIndex: number = 1;  // Default AUS
+  private selectedDifficultyIndex: number = 1; // Default MEDIUM
+  private difficultyOptions: Array<{ label: string; value: CricketDifficulty; stars: string }> = [
+    { label: "EASY", value: "EASY", stars: "★" },
+    { label: "MEDIUM", value: "MEDIUM", stars: "★★" },
+    { label: "HARD", value: "HARD", stars: "★★★" },
+  ];
+
   private stats: MatchStats = {
+    mode: "CLASSIC",
+    difficulty: "MEDIUM",
+    userTeam: "IND",
+    oppTeam: "AUS",
     score: 0,
     wickets: 0,
     balls: 0,
     overs: "0.0",
     target: 0,
     targetOvers: 5,
+    runsNeeded: 0,
+    ballsRemaining: 30,
+    reqRunRate: 0,
     currentOverDeliveries: [],
     sixes: 0,
     fours: 0,
@@ -72,7 +93,7 @@ export class StateMachine {
 
   public toggleSound(): boolean {
     const isMuted = this.soundEngine.toggleMute();
-    this.menuItems[3] = isMuted ? "SOUND: OFF" : "SOUND: ON";
+    this.menuItems[4] = isMuted ? "SOUND: OFF" : "SOUND: ON";
     this.soundToastText = isMuted ? "SOUND: OFF" : "SOUND: ON";
     this.soundToastTimer = 1200;
     if (!isMuted) {
@@ -114,11 +135,21 @@ export class StateMachine {
       if (this.stateTimer <= 0) {
         this.state = "MENU";
       }
+    } else if (this.state === "CHASE_TARGET_SPLASH") {
+      this.stateTimer -= dt;
+      if (this.stateTimer <= 0) {
+        this.state = "READY";
+        this.stateTimer = 900;
+      }
     } else if (this.state === "READY") {
       this.stateTimer -= dt;
       if (this.stateTimer <= 0) {
-        // Start bowler delivery
-        const delivery = this.opponentAI.selectDelivery(this.stats.balls + 1, this.stats.wickets);
+        // Start bowler delivery with active difficulty
+        const delivery = this.opponentAI.selectDelivery(
+          this.stats.balls + 1,
+          this.stats.wickets,
+          this.stats.difficulty
+        );
         this.ballPhysics.initDelivery(delivery);
         this.state = "BOWLING";
       }
@@ -158,11 +189,78 @@ export class StateMachine {
         this.selectedOversIndex = (this.selectedOversIndex + 1) % this.overOptions.length;
       } else if (action === "SELECT" || action === "STRAIGHT") {
         const chosen = this.overOptions[this.selectedOversIndex].overs;
-        this.resetMatch(chosen);
+        this.resetMatch(chosen, "CLASSIC", "MEDIUM", "IND", "AUS", 0);
         this.state = "READY";
         this.stateTimer = 900;
       } else if (action === "BACK") {
         this.state = "MENU";
+      }
+    } else if (this.state === "CHASE_SELECT_USER_TEAM") {
+      if (action === "LEFT" || action === "UP") {
+        this.selectedUserTeamIndex = (this.selectedUserTeamIndex - 1 + CRICKET_TEAMS.length) % CRICKET_TEAMS.length;
+      } else if (action === "RIGHT" || action === "DOWN") {
+        this.selectedUserTeamIndex = (this.selectedUserTeamIndex + 1) % CRICKET_TEAMS.length;
+      } else if (action === "SELECT" || action === "STRAIGHT") {
+        // Auto-shift opponent if it collides with user team
+        if (this.selectedOppTeamIndex === this.selectedUserTeamIndex) {
+          this.selectedOppTeamIndex = (this.selectedUserTeamIndex + 1) % CRICKET_TEAMS.length;
+        }
+        this.state = "CHASE_SELECT_OPP_TEAM";
+      } else if (action === "BACK") {
+        this.state = "MENU";
+      }
+    } else if (this.state === "CHASE_SELECT_OPP_TEAM") {
+      const availableTeams = CRICKET_TEAMS.filter((_, idx) => idx !== this.selectedUserTeamIndex);
+      const currentAvailableIdx = availableTeams.findIndex((t) => t.code === CRICKET_TEAMS[this.selectedOppTeamIndex]?.code);
+      let nextAvailableIdx = currentAvailableIdx >= 0 ? currentAvailableIdx : 0;
+
+      if (action === "LEFT" || action === "UP") {
+        nextAvailableIdx = (nextAvailableIdx - 1 + availableTeams.length) % availableTeams.length;
+        const targetTeam = availableTeams[nextAvailableIdx];
+        this.selectedOppTeamIndex = CRICKET_TEAMS.findIndex((t) => t.code === targetTeam.code);
+      } else if (action === "RIGHT" || action === "DOWN") {
+        nextAvailableIdx = (nextAvailableIdx + 1) % availableTeams.length;
+        const targetTeam = availableTeams[nextAvailableIdx];
+        this.selectedOppTeamIndex = CRICKET_TEAMS.findIndex((t) => t.code === targetTeam.code);
+      } else if (action === "SELECT" || action === "STRAIGHT") {
+        this.state = "CHASE_SELECT_DIFFICULTY";
+      } else if (action === "BACK") {
+        this.state = "CHASE_SELECT_USER_TEAM";
+      }
+    } else if (this.state === "CHASE_SELECT_DIFFICULTY") {
+      if (action === "LEFT" || action === "UP") {
+        this.selectedDifficultyIndex = (this.selectedDifficultyIndex - 1 + this.difficultyOptions.length) % this.difficultyOptions.length;
+      } else if (action === "RIGHT" || action === "DOWN") {
+        this.selectedDifficultyIndex = (this.selectedDifficultyIndex + 1) % this.difficultyOptions.length;
+      } else if (action === "SELECT" || action === "STRAIGHT") {
+        this.state = "CHASE_SELECT_OVERS";
+      } else if (action === "BACK") {
+        this.state = "CHASE_SELECT_OPP_TEAM";
+      }
+    } else if (this.state === "CHASE_SELECT_OVERS") {
+      if (action === "LEFT" || action === "UP") {
+        this.selectedOversIndex = (this.selectedOversIndex - 1 + this.overOptions.length) % this.overOptions.length;
+      } else if (action === "RIGHT" || action === "DOWN") {
+        this.selectedOversIndex = (this.selectedOversIndex + 1) % this.overOptions.length;
+      } else if (action === "SELECT" || action === "STRAIGHT") {
+        const chosenOvers = this.overOptions[this.selectedOversIndex].overs;
+        const chosenDifficulty = this.difficultyOptions[this.selectedDifficultyIndex].value;
+        const userTeam = CRICKET_TEAMS[this.selectedUserTeamIndex].code;
+        const oppTeam = CRICKET_TEAMS[this.selectedOppTeamIndex].code;
+
+        // Dynamic Target Generation based on Complexity & Overs
+        const target = this.generateChaseTarget(chosenOvers, chosenDifficulty);
+
+        this.resetMatch(chosenOvers, "CHASING", chosenDifficulty, userTeam, oppTeam, target);
+        this.state = "CHASE_TARGET_SPLASH";
+        this.stateTimer = 2200;
+      } else if (action === "BACK") {
+        this.state = "CHASE_SELECT_DIFFICULTY";
+      }
+    } else if (this.state === "CHASE_TARGET_SPLASH") {
+      if (action === "SELECT" || action === "STRAIGHT" || action === "BACK") {
+        this.state = "READY";
+        this.stateTimer = 900;
       }
     } else if (this.state === "HIGH_SCORES" || this.state === "INSTRUCTIONS") {
       if (action === "BACK" || action === "SELECT" || action === "STRAIGHT") {
@@ -183,21 +281,36 @@ export class StateMachine {
 
   private triggerMenuAction(): void {
     switch (this.selectedMenuIndex) {
-      case 0: // Start Match -> Go to Overs Selector
+      case 0: // Classic Match
         this.state = "SELECT_OVERS";
         break;
-      case 1: // High Scores
+      case 1: // Chase Target Mode
+        this.state = "CHASE_SELECT_USER_TEAM";
+        break;
+      case 2: // High Scores
         this.saveData = StorageService.load();
         this.state = "HIGH_SCORES";
         break;
-      case 2: // Instructions
+      case 3: // Instructions
         this.state = "INSTRUCTIONS";
         break;
-      case 3: // Sound toggle
+      case 4: // Sound toggle
         const isMuted = this.soundEngine.toggleMute();
-        this.menuItems[3] = isMuted ? "SOUND: OFF" : "SOUND: ON";
+        this.menuItems[4] = isMuted ? "SOUND: OFF" : "SOUND: ON";
         break;
     }
+  }
+
+  private generateChaseTarget(overs: number, difficulty: CricketDifficulty): number {
+    if (difficulty === "EASY") {
+      // ~8 runs per over + random variance
+      return overs * 8 + Math.floor(Math.random() * 5) + 1;
+    } else if (difficulty === "HARD") {
+      // ~16 runs per over + random variance
+      return overs * 16 + Math.floor(Math.random() * 9) + 1;
+    }
+    // MEDIUM: ~12 runs per over
+    return overs * 12 + Math.floor(Math.random() * 7) + 1;
   }
 
   public handleBattingShot(shot: ShotType): void {
@@ -210,7 +323,8 @@ export class StateMachine {
       shot,
       this.ballPhysics.x,
       this.ballPhysics.y,
-      this.ballPhysics.currentDelivery
+      this.ballPhysics.currentDelivery,
+      this.stats.difficulty
     );
 
     this.currentShotResult = result;
@@ -223,7 +337,7 @@ export class StateMachine {
     } else {
       // Clean Miss or Bowled
       if (result.outcome === "BOWLED") {
-        this.soundEngine.playWicket();
+        this.soundEngine.playWicket("BOWLED");
       } else {
         this.soundEngine.playDot();
       }
@@ -243,7 +357,7 @@ export class StateMachine {
     };
 
     if (isWicket) {
-      this.soundEngine.playWicket();
+      this.soundEngine.playWicket("BOWLED");
     } else {
       this.soundEngine.playDot();
     }
@@ -267,7 +381,7 @@ export class StateMachine {
 
     if (result.outcome === "BOWLED" || result.outcome === "CAUGHT" || result.outcome === "LBW") {
       this.stats.wickets += 1;
-      this.soundEngine.playWicket();
+      this.soundEngine.playWicket(result.outcome);
     } else {
       this.stats.score += result.runs;
       if (result.runs === 4) {
@@ -277,7 +391,7 @@ export class StateMachine {
         this.stats.sixes += 1;
         this.soundEngine.playSix();
       } else if (result.runs > 0) {
-        this.soundEngine.playRun();
+        this.soundEngine.playRun(result.runs);
       }
     }
 
@@ -286,22 +400,58 @@ export class StateMachine {
     this.stats.strikeRate = Math.round((this.stats.score / this.stats.balls) * 100);
     this.stats.currentOverDeliveries.push({ outcome: result.outcome, runs: result.runs });
 
+    // Target Chasing metrics
+    this.stats.runsNeeded = Math.max(0, this.stats.target - this.stats.score);
+    this.stats.ballsRemaining = Math.max(0, this.stats.targetOvers * 6 - this.stats.balls);
+    this.stats.reqRunRate =
+      this.stats.ballsRemaining > 0
+        ? Number(((this.stats.runsNeeded / this.stats.ballsRemaining) * 6).toFixed(1))
+        : 0;
+
     this.onStatsChange(this.stats);
 
-    // CRITICAL: Game is completely independent of score.
-    // Match only ends when all chosen overs are completed OR all 10 wickets are lost!
+    // Check Match Completion
     const lostAllWickets = this.stats.wickets >= 10;
     const oversFinished = this.stats.balls >= this.stats.targetOvers * 6;
+    const targetChased = this.stats.mode === "CHASING" && this.stats.score >= this.stats.target;
 
-    if (lostAllWickets || oversFinished) {
+    if (targetChased || lostAllWickets || oversFinished) {
       const isRecord = this.stats.score > this.saveData.highScore;
+      const isChase = this.stats.mode === "CHASING";
+      const won = isChase ? targetChased : false;
+
+      this.stats.isMatchWon = won;
+      this.stats.isRecord = isRecord;
+
+      if (isChase) {
+        if (won) {
+          this.stats.wonByWickets = 10 - this.stats.wickets;
+          this.stats.wonByBalls = this.stats.ballsRemaining;
+          if (isRecord) {
+            this.soundEngine.playHighScoreRecord();
+          } else {
+            this.soundEngine.playMatchWon();
+          }
+        } else {
+          this.stats.lostByRuns = this.stats.target - this.stats.score;
+          this.soundEngine.playMatchLost();
+        }
+      } else {
+        if (isRecord) {
+          this.soundEngine.playHighScoreRecord();
+        } else {
+          this.soundEngine.playMatchWon();
+        }
+      }
+
       StorageService.recordMatch(
         this.stats.score,
         this.stats.wickets,
         this.stats.balls,
         this.stats.sixes,
         this.stats.fours,
-        isRecord
+        won,
+        isChase
       );
       this.saveData = StorageService.load();
       this.state = "GAME_OVER";
@@ -320,14 +470,28 @@ export class StateMachine {
     this.stateTimer = 700;
   }
 
-  private resetMatch(targetOvers: number = 5): void {
+  private resetMatch(
+    targetOvers: number = 5,
+    mode: CricketGameMode = "CLASSIC",
+    difficulty: CricketDifficulty = "MEDIUM",
+    userTeam: CricketTeamCode = "IND",
+    oppTeam: CricketTeamCode = "AUS",
+    target: number = 0
+  ): void {
     this.stats = {
+      mode,
+      difficulty,
+      userTeam,
+      oppTeam,
       score: 0,
       wickets: 0,
       balls: 0,
       overs: "0.0",
-      target: 0,
+      target,
       targetOvers,
+      runsNeeded: target,
+      ballsRemaining: targetOvers * 6,
+      reqRunRate: target > 0 ? Number(((target / (targetOvers * 6)) * 6).toFixed(1)) : 0,
       currentOverDeliveries: [],
       sixes: 0,
       fours: 0,
@@ -352,6 +516,21 @@ export class StateMachine {
         break;
       case "SELECT_OVERS":
         this.renderSelectOvers(r);
+        break;
+      case "CHASE_SELECT_USER_TEAM":
+        this.renderChaseSelectUserTeam(r);
+        break;
+      case "CHASE_SELECT_OPP_TEAM":
+        this.renderChaseSelectOppTeam(r);
+        break;
+      case "CHASE_SELECT_DIFFICULTY":
+        this.renderChaseSelectDifficulty(r);
+        break;
+      case "CHASE_SELECT_OVERS":
+        this.renderChaseSelectOvers(r);
+        break;
+      case "CHASE_TARGET_SPLASH":
+        this.renderChaseTargetSplash(r);
         break;
       case "READY":
       case "BOWLING":
@@ -385,34 +564,34 @@ export class StateMachine {
   }
 
   private renderBoot(r: RenderPipeline): void {
-    r.drawText("RETRO CRICKET", 24, 28);
-    r.drawText("2D BHALYAM", 32, 42);
-    r.drawSprite(SPRITES.TROPHY, 60, 58);
-    r.drawText("PRESS ANY KEY", 26, 80);
+    r.drawText("RETRO CRICKET", 24, 24);
+    r.drawText("2D BHALYAM", 32, 38);
+    r.drawSprite(SPRITES.TROPHY, 60, 54);
+    r.drawText("PRESS ANY KEY", 26, 78);
   }
 
   private renderMenu(r: RenderPipeline): void {
-    r.drawText("★ RETRO CRICKET ★", 12, 8);
-    r.drawLine(4, 18, 124, 18);
+    r.drawText("★ RETRO CRICKET ★", 12, 6);
+    r.drawLine(4, 16, 124, 16);
 
-    let y = 26;
+    let y = 22;
     this.menuItems.forEach((item, idx) => {
       const isSelected = idx === this.selectedMenuIndex;
       if (isSelected) {
-        r.fillRect(8, y - 2, 112, 11, r.PIXEL_COLOR);
-        r.drawText(`► ${item}`, 12, y, r.BG_COLOR);
+        r.fillRect(6, y - 2, 116, 11, r.PIXEL_COLOR);
+        r.drawText(`► ${item}`, 10, y, r.BG_COLOR);
       } else {
-        r.drawText(`  ${item}`, 12, y, r.PIXEL_COLOR);
+        r.drawText(`  ${item}`, 10, y, r.PIXEL_COLOR);
       }
-      y += 14;
+      y += 13;
     });
 
-    r.drawLine(4, 82, 124, 82);
-    r.drawText("4/6:MOVE  5:OK", 22, 86);
+    r.drawLine(4, 84, 124, 84);
+    r.drawText("4/6:MOVE  5:OK", 22, 87);
   }
 
   private renderSelectOvers(r: RenderPipeline): void {
-    r.drawText("SELECT OVERS", 28, 8);
+    r.drawText("CLASSIC: OVERS", 20, 8);
     r.drawLine(4, 18, 124, 18);
 
     let y = 26;
@@ -431,23 +610,142 @@ export class StateMachine {
     r.drawText("4/6:MOVE  5:START", 14, 86);
   }
 
+  private renderChaseSelectUserTeam(r: RenderPipeline): void {
+    r.drawText("YOUR TEAM", 34, 8);
+    r.drawLine(4, 18, 124, 18);
+
+    // 2-Column grid of 8 teams
+    CRICKET_TEAMS.forEach((team, idx) => {
+      const col = idx % 2;
+      const row = Math.floor(idx / 2);
+      const x = col === 0 ? 8 : 68;
+      const y = 24 + row * 14;
+      const isSelected = idx === this.selectedUserTeamIndex;
+
+      if (isSelected) {
+        r.fillRect(x - 2, y - 2, 54, 12, r.PIXEL_COLOR);
+        r.drawText(`►${team.code}`, x, y, r.BG_COLOR);
+      } else {
+        r.drawText(` ${team.code}`, x, y, r.PIXEL_COLOR);
+      }
+    });
+
+    r.drawLine(4, 82, 124, 82);
+    r.drawText("4/6:MOVE  5:SELECT", 10, 86);
+  }
+
+  private renderChaseSelectOppTeam(r: RenderPipeline): void {
+    r.drawText("OPPONENT TEAM", 24, 8);
+    r.drawLine(4, 18, 124, 18);
+
+    // 2-Column grid of remaining 7 teams
+    const available = CRICKET_TEAMS.filter((_, idx) => idx !== this.selectedUserTeamIndex);
+    available.forEach((team, idx) => {
+      const col = idx % 2;
+      const row = Math.floor(idx / 2);
+      const x = col === 0 ? 8 : 68;
+      const y = 24 + row * 14;
+      const isSelected = team.code === CRICKET_TEAMS[this.selectedOppTeamIndex]?.code;
+
+      if (isSelected) {
+        r.fillRect(x - 2, y - 2, 54, 12, r.PIXEL_COLOR);
+        r.drawText(`►${team.code}`, x, y, r.BG_COLOR);
+      } else {
+        r.drawText(` ${team.code}`, x, y, r.PIXEL_COLOR);
+      }
+    });
+
+    r.drawLine(4, 82, 124, 82);
+    r.drawText("4/6:MOVE  5:SELECT", 10, 86);
+  }
+
+  private renderChaseSelectDifficulty(r: RenderPipeline): void {
+    r.drawText("COMPLEXITY", 32, 8);
+    r.drawLine(4, 18, 124, 18);
+
+    let y = 26;
+    this.difficultyOptions.forEach((diff, idx) => {
+      const isSelected = idx === this.selectedDifficultyIndex;
+      const text = `${diff.label} ${diff.stars}`;
+      if (isSelected) {
+        r.fillRect(8, y - 2, 112, 12, r.PIXEL_COLOR);
+        r.drawText(`► ${text}`, 12, y, r.BG_COLOR);
+      } else {
+        r.drawText(`  ${text}`, 12, y, r.PIXEL_COLOR);
+      }
+      y += 16;
+    });
+
+    r.drawLine(4, 82, 124, 82);
+    r.drawText("4/6:DIFF  5:CHOOSE", 10, 86);
+  }
+
+  private renderChaseSelectOvers(r: RenderPipeline): void {
+    r.drawText("CHASE OVERS", 30, 8);
+    r.drawLine(4, 18, 124, 18);
+
+    let y = 26;
+    this.overOptions.forEach((opt, idx) => {
+      const isSelected = idx === this.selectedOversIndex;
+      if (isSelected) {
+        r.fillRect(8, y - 2, 112, 11, r.PIXEL_COLOR);
+        r.drawText(`► ${opt.label}`, 12, y, r.BG_COLOR);
+      } else {
+        r.drawText(`  ${opt.label}`, 12, y, r.PIXEL_COLOR);
+      }
+      y += 14;
+    });
+
+    r.drawLine(4, 82, 124, 82);
+    r.drawText("4/6:MOVE  5:SET TARGET", 4, 86);
+  }
+
+  private renderChaseTargetSplash(r: RenderPipeline): void {
+    r.fillRect(0, 0, 128, 12, r.PIXEL_COLOR);
+    r.drawText("★ TARGET SET! ★", 20, 3, r.BG_COLOR);
+
+    r.drawText(`${this.stats.userTeam} vs ${this.stats.oppTeam}`, 28, 18);
+    r.drawText(`DIFF: ${this.stats.difficulty}`, 30, 30);
+
+    r.fillRect(16, 44, 96, 16, r.PIXEL_COLOR);
+    r.drawText(`TARGET: ${this.stats.target} RUNS`, 22, 49, r.BG_COLOR);
+
+    r.drawText(`NEED: ${this.stats.target} IN ${this.stats.targetOvers * 6} BALLS`, 8, 66);
+    r.drawText(`REQ RR: ${this.stats.reqRunRate}`, 34, 76);
+
+    r.drawLine(4, 86, 124, 86);
+    r.drawText("5:START CHASE", 24, 88);
+  }
+
   private renderMatch(r: RenderPipeline): void {
-    // 1. Top HUD Bar (Score / Wickets, Overs / Total Overs, Strike Rate)
+    // 1. Top HUD Bar
     r.fillRect(0, 0, 128, 10, r.PIXEL_COLOR);
-    const scoreStr = `${String(this.stats.score).padStart(3, "0")}/${this.stats.wickets}`;
-    const overStr = `O:${this.stats.overs}/${this.stats.targetOvers}`;
-    const srStr = `SR:${this.stats.strikeRate}`;
 
-    // Layout on 128px strip with zero collisions:
-    // Left: scoreStr at x = 2 (e.g. "000/1" -> 5 chars = 29px)
-    // Middle: overStr at x = 38 (e.g. "O:0.1/5" -> 7 chars = 41px, ends at 79)
-    // Right: srStr right-aligned from x = 126
-    const srW = srStr.length * 6 - 1;
-    const srX = Math.max(82, 126 - srW);
+    if (this.stats.mode === "CHASING") {
+      // Chasing Top HUD: [Team Score/Wkts] [Target] [Need in Balls]
+      const scoreStr = `${this.stats.userTeam} ${this.stats.score}/${this.stats.wickets}`;
+      const targetStr = `T:${this.stats.target}`;
+      const needStr = `N:${this.stats.runsNeeded}(${this.stats.ballsRemaining})`;
 
-    r.drawText(scoreStr, 2, 2, r.BG_COLOR);
-    r.drawText(overStr, 38, 2, r.BG_COLOR);
-    r.drawText(srStr, srX, 2, r.BG_COLOR);
+      const needW = needStr.length * 6 - 1;
+      const needX = Math.max(82, 126 - needW);
+
+      r.drawText(scoreStr, 2, 2, r.BG_COLOR);
+      r.drawText(targetStr, 48, 2, r.BG_COLOR);
+      r.drawText(needStr, needX, 2, r.BG_COLOR);
+    } else {
+      // Classic Top HUD: [Score/Wkts] [Overs] [Strike Rate]
+      const scoreStr = `${String(this.stats.score).padStart(3, "0")}/${this.stats.wickets}`;
+      const overStr = `O:${this.stats.overs}/${this.stats.targetOvers}`;
+      const srStr = `SR:${this.stats.strikeRate}`;
+
+      const srW = srStr.length * 6 - 1;
+      const srX = Math.max(82, 126 - srW);
+
+      r.drawText(scoreStr, 2, 2, r.BG_COLOR);
+      r.drawText(overStr, 38, 2, r.BG_COLOR);
+      r.drawText(srStr, srX, 2, r.BG_COLOR);
+    }
 
     // 2. Pitch Geometry
     r.drawLine(52, 14, 76, 14, r.FAINT_COLOR); // Bowling crease top
@@ -497,7 +795,7 @@ export class StateMachine {
       r.drawSprite(SPRITES.BATSMAN_CUT, batX + 2, batY, r.PIXEL_COLOR);
     }
 
-    // 7. Ball Result Overlay Toast (Auto-centered and dynamically sized)
+    // 7. Ball Result Overlay Toast (Auto-centered)
     if (this.state === "BALL_RESULT" && this.stats.lastFeedback) {
       const text = this.stats.lastFeedback.trim();
       const textW = text.length * 6 - 1;
@@ -511,42 +809,63 @@ export class StateMachine {
       r.drawText(text, textX, boxY + 3, r.BG_COLOR);
     }
 
-    // 8. Bottom Keypad Help
+    // 8. Bottom Keypad Help / Match Status Line
     r.drawLine(0, 87, 128, 87, r.PIXEL_COLOR);
-    r.drawText("4:PULL 5:DRIVE 6:CUT", 4, 89, r.PIXEL_COLOR);
+    if (this.stats.mode === "CHASING") {
+      const subLine = `${this.stats.userTeam} v ${this.stats.oppTeam} | RRR:${this.stats.reqRunRate}`;
+      r.drawText(subLine, 4, 89, r.PIXEL_COLOR);
+    } else {
+      r.drawText("4:PULL 5:DRIVE 6:CUT", 4, 89, r.PIXEL_COLOR);
+    }
   }
 
   private renderGameOver(r: RenderPipeline): void {
-    const isNewRecord = this.stats.score > 0 && this.stats.score >= this.saveData.highScore;
+    const isNewRecord = this.stats.isRecord ?? (this.stats.score > 0 && this.stats.score >= this.saveData.highScore);
     r.fillRect(0, 0, 128, 12, r.PIXEL_COLOR);
-    const title = this.stats.wickets >= 10 ? "★ ALL OUT ★" : isNewRecord ? "★ NEW RECORD! ★" : "★ INNINGS OVER ★";
-    r.drawText(title, Math.max(8, Math.floor((128 - title.length * 6) / 2)), 3, r.BG_COLOR);
 
-    r.drawText(`SCORE: ${this.stats.score}/${this.stats.wickets}`, 20, 22);
-    r.drawText(`OVERS: ${this.stats.overs} / ${this.stats.targetOvers}.0`, 16, 34);
-    r.drawText(`BOUNDARIES: ${this.stats.fours}X4 ${this.stats.sixes}X6`, 12, 46);
-    r.drawText(`STRIKE RATE: ${this.stats.strikeRate}%`, 14, 58);
-
-    if (isNewRecord) {
-      r.drawSprite(SPRITES.TROPHY, 18, 70);
-      r.drawText("HIGH SCORE!", 34, 72);
+    if (this.stats.mode === "CHASING") {
+      if (this.stats.isMatchWon) {
+        const title = "★ TARGET CHASED! ★";
+        r.drawText(title, Math.max(8, Math.floor((128 - title.length * 6) / 2)), 3, r.BG_COLOR);
+        r.drawText(`${this.stats.userTeam} WON BY ${this.stats.wonByWickets} WKTS!`, 12, 18);
+        r.drawText(`BALLS LEFT: ${this.stats.wonByBalls}`, 24, 30);
+      } else {
+        const title = "★ TARGET MISSED ★";
+        r.drawText(title, Math.max(8, Math.floor((128 - title.length * 6) / 2)), 3, r.BG_COLOR);
+        r.drawText(`${this.stats.oppTeam} WON BY ${this.stats.lostByRuns} RUNS`, 10, 18);
+        r.drawText(`TARGET WAS: ${this.stats.target}`, 20, 30);
+      }
+    } else {
+      const title = this.stats.wickets >= 10 ? "★ ALL OUT ★" : isNewRecord ? "★ NEW RECORD! ★" : "★ INNINGS OVER ★";
+      r.drawText(title, Math.max(8, Math.floor((128 - title.length * 6) / 2)), 3, r.BG_COLOR);
+      r.drawText(`OVERS: ${this.stats.overs} / ${this.stats.targetOvers}.0`, 16, 22);
     }
 
-    r.drawLine(4, 82, 124, 82);
-    r.drawText("5:RETURN TO MENU", 14, 86);
+    r.drawText(`SCORE: ${this.stats.score}/${this.stats.wickets}`, 20, 42);
+    r.drawText(`BOUNDARIES: ${this.stats.fours}X4 ${this.stats.sixes}X6`, 12, 54);
+    r.drawText(`STRIKE RATE: ${this.stats.strikeRate}%`, 14, 66);
+
+    if (isNewRecord) {
+      r.drawSprite(SPRITES.TROPHY, 18, 74);
+      r.drawText("HIGH SCORE!", 34, 76);
+    }
+
+    r.drawLine(4, 84, 124, 84);
+    r.drawText("5:RETURN TO MENU", 14, 87);
   }
 
   private renderHighScores(r: RenderPipeline): void {
     r.drawText("★ HIGH SCORES ★", 18, 8);
     r.drawLine(4, 18, 124, 18);
 
-    r.drawText(`BEST: ${this.saveData.highScore} RUNS`, 16, 26);
-    r.drawText(`MATCHES PLAYED: ${this.saveData.matchesPlayed}`, 12, 38);
-    r.drawText(`TOTAL SIXES: ${this.saveData.totalSixes}`, 16, 50);
-    r.drawText(`BEST SR: ${this.saveData.bestStrikeRate}%`, 16, 62);
+    r.drawText(`BEST: ${this.saveData.highScore} RUNS`, 16, 24);
+    r.drawText(`MATCHES: ${this.saveData.matchesPlayed}`, 16, 36);
+    r.drawText(`CHASE WINS: ${this.saveData.chaseMatchesWon || 0}/${this.saveData.chaseMatchesPlayed || 0}`, 10, 48);
+    r.drawText(`TOTAL SIXES: ${this.saveData.totalSixes}`, 16, 60);
+    r.drawText(`BEST SR: ${this.saveData.bestStrikeRate}%`, 16, 72);
 
-    r.drawLine(4, 82, 124, 82);
-    r.drawText("5:BACK TO MENU", 20, 86);
+    r.drawLine(4, 84, 124, 84);
+    r.drawText("5:BACK TO MENU", 20, 87);
   }
 
   private renderInstructions(r: RenderPipeline): void {
@@ -554,13 +873,13 @@ export class StateMachine {
     r.drawLine(4, 18, 124, 18);
 
     r.drawText("4:PULL 5:DRIVE 6:CUT", 8, 24);
-    r.drawText("0:PAUSE MATCH", 22, 36);
-    r.drawText("TIMING: PITCH BOUNCE", 6, 48);
-    r.drawText("SCORE MAX IN OVERS", 10, 60);
-    r.drawText("ONLY 4,5,6,0 KEYS", 14, 72);
+    r.drawText("CHASE: REACH TARGET", 6, 36);
+    r.drawText("DIFF: EASY/MED/HARD", 6, 48);
+    r.drawText("TIMING: PITCH BOUNCE", 6, 60);
+    r.drawText("0:PAUSE MATCH", 22, 72);
 
-    r.drawLine(4, 82, 124, 82);
-    r.drawText("5:BACK TO MENU", 20, 86);
+    r.drawLine(4, 84, 124, 84);
+    r.drawText("5:BACK TO MENU", 20, 87);
   }
 
   private renderPaused(r: RenderPipeline): void {

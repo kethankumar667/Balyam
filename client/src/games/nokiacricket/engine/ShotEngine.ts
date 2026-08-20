@@ -1,4 +1,4 @@
-import type { ShotType, ShotResult, DeliveryProfile } from "../types";
+import type { ShotType, ShotResult, DeliveryProfile, CricketDifficulty } from "../types";
 import { TimingEngine } from "./TimingEngine";
 import { ScoringEngine } from "./ScoringEngine";
 
@@ -12,9 +12,10 @@ export class ShotEngine {
     shot: ShotType,
     ballX: number,
     ballY: number,
-    delivery: DeliveryProfile
+    delivery: DeliveryProfile,
+    difficulty: CricketDifficulty = "MEDIUM"
   ): ShotResult {
-    const timing = this.timingEngine.evaluateTiming(ballY);
+    const timing = this.timingEngine.evaluateTiming(ballY, difficulty);
     return this.scoringEngine.calculateOutcome(shot, ballX, timing, delivery);
   }
 }

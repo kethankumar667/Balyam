@@ -945,15 +945,6 @@ export default function SignUpPage() {
               <span>♡ Made with love for the 90&apos;s kids ⭐️</span>
             </div>
           </div>
-
-          {/* Founder Section Asset */}
-          <div className="flex justify-center pt-4 pb-2">
-            <img
-              src="/Foundersectionasset.png"
-              alt="Bhalyam Founders"
-              className="h-24 sm:h-28 w-auto object-contain opacity-90"
-            />
-          </div>
         </div>
       </div>
 
