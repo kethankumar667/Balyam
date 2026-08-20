@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { NamePlaceAnimalAnswers, NamePlaceAnimalCategory, NamePlaceAnimalPublicState } from "@shared/types";
+import type { NamePlaceAnimalAnswers, NamePlaceAnimalCategory, NamePlaceAnimalPublicState, Player } from "@shared/types";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface NamePlaceAnimalBoardProps {
@@ -7,6 +7,7 @@ export interface NamePlaceAnimalBoardProps {
   myAnswers: NamePlaceAnimalAnswers;
   myPlayerId: string;
   onMove: (type: string, data?: unknown) => void;
+  players?: Player[];
 }
 
 const SAMPLE_CLUES: Record<string, Record<NamePlaceAnimalCategory, string>> = {

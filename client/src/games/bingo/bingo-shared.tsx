@@ -1,6 +1,7 @@
 import type { BingoBoard, BingoLetter, BingoPlayerPublic, BingoWinner } from "@shared/types";
 import RematchPanel from "../../components/RematchPanel";
 import type { Player } from "@shared/types";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 export const BINGO_LETTERS: BingoLetter[] = ["B", "I", "N", "G", "O"];
 
@@ -296,10 +297,16 @@ export function BingoGrid({
 export function AllPlayerBoardsView({
   players,
   selfId,
+  roster,
 }: {
   players: BingoPlayerPublic[];
   selfId: string | null;
+  /** Full player roster (carries `avatar`), used only to look up each seat's picture. */
+  roster?: Player[];
 }) {
+  const avatarById = new Map<string, string | undefined>();
+  for (const r of roster ?? []) avatarById.set(r.id, r.avatar);
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-5xl overflow-y-auto p-2">
       {players.map((p) => {
@@ -315,6 +322,12 @@ export function AllPlayerBoardsView({
           >
             <div className="flex items-center justify-between w-full font-bold text-sm text-bhalyam-wood-dark px-1">
               <span className="flex items-center gap-1.5">
+                <SeatAvatar
+                  avatar={avatarById.get(p.id)}
+                  name={p.name}
+                  className="w-6 h-6"
+                  textClassName="text-[9px]"
+                />
                 {p.name} {isSelf && "(You)"}
                 {p.isBot && <span className="text-[10px] uppercase text-bhalyam-wood-dark/50 bg-bhalyam-wood/10 px-1.5 py-0.5 rounded">bot</span>}
               </span>

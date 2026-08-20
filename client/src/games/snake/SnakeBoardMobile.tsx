@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { SnakePublicState, SnakeTheme } from "@shared/types";
+import type { Player, SnakePublicState, SnakeTheme } from "@shared/types";
 import { AnimatePresence, motion } from "framer-motion";
 import SnakeCanvas from "./SnakeCanvas";
 import QuadDPad, { type PadDir } from "../../components/QuadDPad";
@@ -10,6 +10,8 @@ export interface SnakeBoardProps {
   state: SnakePublicState;
   selfId: string;
   onMove: (type: string, data?: unknown) => void;
+  /** Full room roster (carries `avatar`), used to draw each seat's picture. */
+  players: Player[];
 }
 
 export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardProps) {

@@ -16,6 +16,7 @@ import type {
   RummyTurnAction,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import { findAvatar } from "../../lib/avatars";
 import { PlayingCard, FaceDownCard } from "./Card";
 import CardTracker from "./CardTracker";
 import QrCodeModal from "../../components/QrCodeModal";
@@ -1028,6 +1029,7 @@ export default function RummyBoardDesktop({
                 key={id}
                 letter={seatLetterOf(id)}
                 name={id === selfId ? `${nameOf(id)} (You)` : nameOf(id)}
+                avatar={players.find((p) => p.id === id)?.avatar}
                 isSelf={id === selfId}
                 isTurn={state.turnPlayerId === id && state.phase === "playing"}
                 handSize={state.handSizes[id] ?? 0}
@@ -1902,6 +1904,7 @@ function TurnPill({
 function SeatCard({
   letter,
   name,
+  avatar,
   isSelf,
   isTurn,
   handSize,
@@ -1915,6 +1918,7 @@ function SeatCard({
 }: {
   letter: string;
   name: string;
+  avatar?: string;
   isSelf: boolean;
   isTurn: boolean;
   /** Which half of the active turn — the only publicly observable sub-state. */
@@ -1928,6 +1932,10 @@ function SeatCard({
   cumulativeScore?: number;
 }) {
   const out = dropped || eliminated;
+  const avatarOption = findAvatar(avatar);
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => setImgFailed(false), [avatarOption?.src]);
+  const showAvatarImg = !!avatarOption && !imgFailed;
   /**
    * STATUS only — never a number.
    *
@@ -1961,7 +1969,16 @@ function SeatCard({
     <div className={`rm-seat${isTurn ? " is-turn" : ""}${out ? " is-out" : ""}`}>
       <div className="rm-seat__top">
         <span className="rm-seat__avatar" aria-hidden>
-          {letter}
+          {showAvatarImg ? (
+            <img
+              src={avatarOption!.src}
+              alt=""
+              onError={() => setImgFailed(true)}
+              draggable={false}
+            />
+          ) : (
+            letter
+          )}
         </span>
         <span className="rm-seat__id">
           <span className="rm-seat__name" title={name}>

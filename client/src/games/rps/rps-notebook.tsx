@@ -39,9 +39,11 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { RpsChoice } from "@shared/types";
 import type { RoundOutcome } from "./useRpsBoard";
+import { findAvatar } from "../../lib/avatars";
 
 /* ─────────────────────── Palette constants ─────────────────────── */
 const PAPER   = "#F5E9C4";
@@ -270,6 +272,7 @@ export function NotebookTopBar({
 
 export function NotebookPlayerCard({
   name,
+  avatar,
   isSelf,
   score,
   target,
@@ -282,6 +285,7 @@ export function NotebookPlayerCard({
   cardRef,
 }: {
   name: string;
+  avatar?: string;
   isSelf?: boolean;
   score: number;
   target: number;
@@ -346,7 +350,7 @@ export function NotebookPlayerCard({
 
       {/* Avatar + name row */}
       <div className="flex items-center gap-2.5 mt-2">
-        <CartoonAvatar color={color} />
+        <CartoonAvatar color={color} avatar={avatar} />
         <div>
           <div className="font-black leading-tight" style={{ color, fontSize: 15 }}>
             {name}
@@ -843,8 +847,32 @@ function StarIcon({
   );
 }
 
-/** Cartoon avatar — simple circular face sketch. */
-function CartoonAvatar({ color }: { color: string }) {
+/** The player's chosen picture in a colored ring — or, when they haven't
+ *  picked one (or it fails to load), the original circular face sketch. */
+function CartoonAvatar({ color, avatar }: { color: string; avatar?: string }) {
+  const option = findAvatar(avatar);
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => setImgFailed(false), [option?.src]);
+
+  if (option && !imgFailed) {
+    return (
+      <span
+        className="inline-block rounded-full overflow-hidden flex-shrink-0"
+        style={{ width: 44, height: 44, border: `2.5px solid ${color}` }}
+      >
+        <img
+          src={option.src}
+          alt=""
+          aria-hidden
+          className="w-full h-full object-cover scale-[1.25] origin-center"
+          style={{ objectPosition: "50% 22%" }}
+          onError={() => setImgFailed(true)}
+          draggable={false}
+        />
+      </span>
+    );
+  }
+
   return (
     <svg
       width={44}

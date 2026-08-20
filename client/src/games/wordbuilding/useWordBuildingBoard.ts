@@ -38,6 +38,7 @@ export interface WordBuildingBoardModel {
   setReportDismissed: (dismissed: boolean) => void;
   inkOf: Record<string, Ink>;
   nameOf: (id: string) => string;
+  avatarOf: (id: string) => string | undefined;
   cellOverlays: Map<string, WordBuildingScoredWord[]>;
   activeAnnotation: WordBuildingScoredWord | null;
   activePulse: WordBuildingScoredWord | null;
@@ -101,6 +102,8 @@ export function useWordBuildingBoard({
 
   const nameOf = (id: string): string =>
     players.find((p) => p.id === id)?.name ?? "?";
+  const avatarOf = (id: string): string | undefined =>
+    players.find((p) => p.id === id)?.avatar;
 
   // Cell -> { color, word } map of the most recent scored word that covers
   // each cell. Overlapping words layer via stacked underlines (see render).
@@ -239,6 +242,7 @@ export function useWordBuildingBoard({
     setReportDismissed,
     inkOf,
     nameOf,
+    avatarOf,
     cellOverlays,
     activeAnnotation,
     activePulse,

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { CarromPublicState, CarromSeat, Player, StrikerSkin, BoardFeltSkin } from "@shared/types";
 import { CARROM_BOARD } from "@shared/types";
 import { HapticsManager } from "../../services/HapticsManager";
+import { findAvatar } from "../../lib/avatars";
 import {
   appendEntry,
   formatFeedClock,
@@ -232,12 +233,14 @@ export function CarromRulesList({ className = "" }: { className?: string }) {
 /** Generates a colored avatar circle with the first letter of the player's name. */
 function LetterAvatar({
   name,
+  avatar,
   isWhite,
   size = 40,
   isSelf,
   isTurn,
 }: {
   name: string;
+  avatar?: string;
   isWhite: boolean;
   size?: number;
   isSelf?: boolean;
@@ -249,28 +252,44 @@ function LetterAvatar({
     : "linear-gradient(135deg, #4A3728, #2A1A10)";
   const textColor = isWhite ? WARM.woodDark : "#E8D5B5";
   const borderColor = isTurn ? WARM.gold : isWhite ? "#C4A87A" : "#6B4226";
+  const option = findAvatar(avatar);
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => setImgFailed(false), [option?.src]);
+  const showImage = !!option && !imgFailed;
 
   return (
     <div
-      className="relative rounded-full flex items-center justify-center flex-shrink-0 shadow-md"
+      className="relative rounded-full flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden"
       style={{
         width: size,
         height: size,
-        background: bg,
+        background: showImage ? undefined : bg,
         border: `2.5px solid ${borderColor}`,
         boxShadow: isTurn ? `0 0 12px ${WARM.gold}55` : "0 2px 6px rgba(0,0,0,0.15)",
       }}
     >
-      <span
-        className="font-black"
-        style={{
-          color: textColor,
-          fontSize: size * 0.42,
-          lineHeight: 1,
-        }}
-      >
-        {letter}
-      </span>
+      {showImage ? (
+        <img
+          src={option!.src}
+          alt=""
+          aria-hidden
+          className="w-full h-full object-cover scale-[1.25] origin-center"
+          style={{ objectPosition: "50% 22%" }}
+          onError={() => setImgFailed(true)}
+          draggable={false}
+        />
+      ) : (
+        <span
+          className="font-black"
+          style={{
+            color: textColor,
+            fontSize: size * 0.42,
+            lineHeight: 1,
+          }}
+        >
+          {letter}
+        </span>
+      )}
       {isSelf && (
         <span
           className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-wider px-1.5 py-0 rounded-full"
@@ -450,6 +469,10 @@ export function CarromPlayerCards({
     const map = new Map(players.map((p) => [p.id, p.name]));
     return (id: string) => map.get(id) ?? "Player";
   }, [players]);
+  const avatarOf = useMemo(() => {
+    const map = new Map(players.map((p) => [p.id, p.avatar]));
+    return (id: string) => map.get(id);
+  }, [players]);
 
   if (orientation === "column") {
     return (
@@ -485,7 +508,7 @@ export function CarromPlayerCards({
                 borderBottom: `1px solid ${WARM.border}`,
               }}
             >
-              <LetterAvatar name={name} isWhite={isWhite} size={38} isSelf={isSelf} isTurn={isTurn} />
+              <LetterAvatar name={name} avatar={avatarOf(s.playerId)} isWhite={isWhite} size={38} isSelf={isSelf} isTurn={isTurn} />
               <div className="flex-1 min-w-0">
                 <span className="text-xs font-bold truncate block" style={{ color: WARM.woodDark }}>
                   {name}
@@ -555,6 +578,7 @@ export function CarromPlayerCards({
           >
             <LetterAvatar
               name={name}
+              avatar={avatarOf(s.playerId)}
               isWhite={isWhite}
               size={36}
               isSelf={isSelf}

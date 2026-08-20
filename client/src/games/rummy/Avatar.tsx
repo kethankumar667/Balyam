@@ -1,7 +1,12 @@
+import { useEffect, useState } from "react";
+import { findAvatar } from "../../lib/avatars";
+
 /**
- * Premium player avatar: initials on a deterministic gradient with optional
- * countdown ring, dealer badge, and score pill. Used for both the opponent
- * strip at the top of the table and the player strip at the bottom.
+ * Premium player avatar: the player's chosen picture — or, when they haven't
+ * picked one (or the image fails to load), initials on a deterministic
+ * gradient — with optional countdown ring, dealer badge, and score pill.
+ * Used for both the opponent strip at the top of the table and the player
+ * strip at the bottom.
  */
 
 const PALETTES: Array<[string, string]> = [
@@ -41,6 +46,8 @@ function ringColor(secondsLeft: number): string {
 
 export interface AvatarProps {
   name: string;
+  /** The seat's chosen avatar filename, from server state. */
+  avatar?: string;
   /** Diameter in px. Defaults to 56. */
   size?: number;
   /** Show a countdown ring around the avatar. */
@@ -60,6 +67,7 @@ export interface AvatarProps {
 
 export default function Avatar({
   name,
+  avatar,
   size = 56,
   countdown,
   scoreBadge,
@@ -68,6 +76,13 @@ export default function Avatar({
 }: AvatarProps) {
   const initials = initialsOf(name);
   const [start, end] = paletteFor(name);
+  const option = findAvatar(avatar);
+  const [imgFailed, setImgFailed] = useState(false);
+  // A seat can change hands (host migration, reconnect with a new pick) —
+  // a stale failure would hide the incoming player's perfectly good avatar
+  // behind the previous occupant's broken one.
+  useEffect(() => setImgFailed(false), [option?.src]);
+  const showImage = !!option && !imgFailed;
   const ringStroke = 4;
   // SVG ring sits inside a slightly larger box than the avatar diameter so it
   // doesn't get clipped by the circle's border.
@@ -120,15 +135,18 @@ export default function Avatar({
         </svg>
       )}
 
-      {/* Avatar disk with initials */}
+      {/* Avatar disk — the player's picture, or initials on a gradient when
+          they haven't picked one (or it failed to load). */}
       <div
-        className="absolute flex items-center justify-center font-extrabold select-none rounded-full"
+        className="absolute flex items-center justify-center font-extrabold select-none rounded-full overflow-hidden"
         style={{
           left: ringStroke,
           top: ringStroke,
           width: size,
           height: size,
-          background: `linear-gradient(135deg, ${start} 0%, ${end} 100%)`,
+          background: showImage
+            ? undefined
+            : `linear-gradient(135deg, ${start} 0%, ${end} 100%)`,
           color: "#fff",
           fontSize: size * 0.4,
           textShadow: "0 1px 2px rgba(0,0,0,0.5)",
@@ -137,7 +155,19 @@ export default function Avatar({
           opacity: dimmed ? 0.45 : 1,
         }}
       >
-        {initials}
+        {showImage ? (
+          <img
+            src={option!.src}
+            alt=""
+            aria-hidden
+            className="w-full h-full object-cover scale-[1.25] origin-center"
+            style={{ objectPosition: "50% 22%" }}
+            onError={() => setImgFailed(true)}
+            draggable={false}
+          />
+        ) : (
+          initials
+        )}
       </div>
 
       {/* Countdown number — sits on top of the ring at top-right */}

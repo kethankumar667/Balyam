@@ -185,6 +185,7 @@ export default function BingoBoardMobile(props: BingoBoardProps) {
             <AllPlayerBoardsView
               players={state.players}
               selfId={model.selfId}
+              roster={model.players}
             />
           )}
 

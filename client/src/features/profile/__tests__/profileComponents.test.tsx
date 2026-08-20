@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
+import { render, screen } from "@testing-library/react";
 import ProfileHeader from "../ProfileHeader";
 import StatsOverview from "../StatsOverview";
 import CareerMetrics from "../CareerMetrics";
@@ -22,6 +23,23 @@ describe("Profile UI Sub-Components", () => {
     const element = ProfileHeader({ profile });
     expect(element).toBeDefined();
     expect(element.type).toBe("div");
+  });
+
+  it("ProfileHeader prefers the live `name`/`avatar` props over profile.displayName/avatar — this REST snapshot must not shadow a name/avatar saved elsewhere (Settings, the header's own profile sheet) while the page stays mounted", () => {
+    const profile = {
+      playerId: "p_1",
+      displayName: "Stale Snapshot Name",
+      avatar: "avatar_1.jpg",
+      joinedAt: 1700000000000,
+      lastSeenAt: 1700000000000,
+      level: 5,
+      experiencePoints: 450,
+    };
+
+    render(<ProfileHeader profile={profile} name="Live Renamed" avatar="avatar_2.jpg" />);
+
+    expect(screen.getByText("Live Renamed")).toBeDefined();
+    expect(screen.queryByText("Stale Snapshot Name")).toBeNull();
   });
 
   it("renders StatsOverview component element with correct stats", () => {

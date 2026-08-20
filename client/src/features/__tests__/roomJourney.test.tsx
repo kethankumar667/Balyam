@@ -168,6 +168,109 @@ describe("Priority 2: Room Lifecycle & Host Controls User Journey", () => {
       fireEvent.click(quickBotBtn);
       expect(onAddBot).toHaveBeenCalledTimes(1);
     });
+
+    it("renders all 7+ participants and bots without truncation", () => {
+      const sevenPlayers: Player[] = [
+        { id: "p_host", name: "Jetpacker", isHost: true, isReady: false, isConnected: true },
+        { id: "bot_1", name: "Jugadu", isHost: false, isReady: true, isConnected: true, isBot: true },
+        { id: "bot_2", name: "Baazi", isHost: false, isReady: true, isConnected: true, isBot: true },
+        { id: "bot_3", name: "Chikki", isHost: false, isReady: true, isConnected: true, isBot: true },
+        { id: "bot_4", name: "Khatarnak", isHost: false, isReady: true, isConnected: true, isBot: true },
+        { id: "bot_5", name: "Raftaar", isHost: false, isReady: true, isConnected: true, isBot: true },
+        { id: "bot_6", name: "Bijli", isHost: false, isReady: true, isConnected: true, isBot: true },
+      ];
+
+      render(
+        <ParticipantPanel
+          players={sevenPlayers}
+          maxPlayers={10}
+          selfId="p_host"
+          isHost={true}
+          game="uno"
+          onAddBot={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText("Participants (7/10)")).toBeDefined();
+      expect(screen.getByText("6/7 Ready")).toBeDefined();
+      expect(screen.getByText("Jetpacker")).toBeDefined();
+      expect(screen.getByText("Jugadu")).toBeDefined();
+      expect(screen.getByText("Baazi")).toBeDefined();
+      expect(screen.getByText("Chikki")).toBeDefined();
+      expect(screen.getByText("Khatarnak")).toBeDefined();
+      expect(screen.getByText("Raftaar")).toBeDefined();
+      expect(screen.getByText("Bijli")).toBeDefined();
+    });
+
+    it("removes bot directly without confirmation dialog when Remove Bot is clicked", () => {
+      const onRemoveBot = vi.fn();
+      const botPlayers: Player[] = [
+        { id: "p_host", name: "Host Player", isHost: true, isReady: true, isConnected: true },
+        { id: "bot_sikandar", name: "Sikandar", isHost: false, isReady: true, isConnected: true, isBot: true },
+      ];
+
+      render(
+        <ParticipantPanel
+          players={botPlayers}
+          maxPlayers={4}
+          selfId="p_host"
+          isHost={true}
+          game="ludo"
+          onAddBot={vi.fn()}
+          onRemoveBot={onRemoveBot}
+        />
+      );
+
+      // Open three dots menu for bot
+      const actionBtn = screen.getByRole("button", { name: /Actions for Sikandar/i });
+      fireEvent.click(actionBtn);
+
+      // Click Remove Bot
+      const removeBtn = screen.getByRole("menuitem", { name: /Remove Bot/i });
+      fireEvent.click(removeBtn);
+
+      // Verify direct 1-tap call with NO confirmation prompt
+      expect(onRemoveBot).toHaveBeenCalledWith("bot_sikandar");
+      expect(screen.queryByText("Confirm removal?")).toBeNull();
+    });
+
+    it("allows renaming bot via the three-dots action menu", () => {
+      const onRenameBot = vi.fn();
+      const botPlayers: Player[] = [
+        { id: "p_host", name: "Host Player", isHost: true, isReady: true, isConnected: true },
+        { id: "bot_sikandar", name: "Sikandar", isHost: false, isReady: true, isConnected: true, isBot: true },
+      ];
+
+      render(
+        <ParticipantPanel
+          players={botPlayers}
+          maxPlayers={4}
+          selfId="p_host"
+          isHost={true}
+          game="ludo"
+          onAddBot={vi.fn()}
+          onRenameBot={onRenameBot}
+        />
+      );
+
+      // Open three dots menu for bot
+      const actionBtn = screen.getByRole("button", { name: /Actions for Sikandar/i });
+      fireEvent.click(actionBtn);
+
+      // Click Rename Bot
+      const renameBtn = screen.getByRole("menuitem", { name: /Rename Bot/i });
+      fireEvent.click(renameBtn);
+
+      // Type new bot name
+      const input = screen.getByPlaceholderText("Enter bot nickname");
+      fireEvent.change(input, { target: { value: "Commander Bot" } });
+
+      // Click Save
+      const saveBtn = screen.getByRole("button", { name: /Save/i });
+      fireEvent.click(saveBtn);
+
+      expect(onRenameBot).toHaveBeenCalledWith("bot_sikandar", "Commander Bot");
+    });
   });
 
   describe("3. Color Selection System", () => {

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { NamePlaceAnimalAnswers, NamePlaceAnimalCategory, NamePlaceAnimalPublicState } from "@shared/types";
 import { motion, AnimatePresence } from "framer-motion";
 import type { NamePlaceAnimalBoardProps } from "./NamePlaceAnimalBoardMobile";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 const SAMPLE_CLUES: Record<string, Record<NamePlaceAnimalCategory, string>> = {
   A: { name: "Arjun, Anil, Alice", place: "Amsterdam, Agra, Austin", animal: "Alligator, Anteater, Ant", thing: "Apple, Anchor, Arrow" },
@@ -34,6 +35,7 @@ export default function NamePlaceAnimalBoardDesktop({
   myAnswers: initialMyAnswers,
   myPlayerId,
   onMove,
+  players,
 }: NamePlaceAnimalBoardProps) {
   const [form, setForm] = useState<NamePlaceAnimalAnswers>(() => ({
     name: initialMyAnswers?.name || "",
@@ -405,7 +407,10 @@ export default function NamePlaceAnimalBoardDesktop({
           </h2>
 
           <div className="space-y-3">
-            {state.players.map((p) => (
+            {state.players.map((p) => {
+              const roster = players?.find((rp) => rp.id === p.id);
+              const displayName = p.id === myPlayerId ? "You" : roster?.name || `Player (${p.id.slice(0, 5)})`;
+              return (
               <div
                 key={p.id}
                 className={`p-4 rounded-xl border flex items-center justify-between ${
@@ -421,8 +426,14 @@ export default function NamePlaceAnimalBoardDesktop({
                     }`}
                   />
                   <div>
-                    <div className="font-bold text-sm text-ink-hi">
-                      {p.id === myPlayerId ? "You" : `Player (${p.id.slice(0, 5)})`}
+                    <div className="font-bold text-sm text-ink-hi inline-flex items-center gap-1.5">
+                      <SeatAvatar
+                        avatar={roster?.avatar}
+                        name={displayName}
+                        className="w-6 h-6"
+                        textClassName="text-[9px]"
+                      />
+                      {displayName}
                     </div>
                     <div className="text-xs text-ink-mute font-medium">
                       {p.hasSubmitted ? "Submitted" : "Filling..."}
@@ -435,7 +446,8 @@ export default function NamePlaceAnimalBoardDesktop({
                   <div className="text-xs text-ink-mute">{p.roundWins} round wins</div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="pt-4 border-t border-surface-rim text-xs text-ink-mid space-y-2">

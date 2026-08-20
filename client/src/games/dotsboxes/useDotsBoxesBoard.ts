@@ -46,6 +46,8 @@ export interface DotsBoxesBoardModel {
   penOf: Record<string, Pen>;
   nameOf: (id: string) => string;
   initialOf: (id: string) => string;
+  /** The player's chosen avatar filename, for SeatAvatar. */
+  avatarOf: (id: string) => string | undefined;
   /** Local player's stroke color, for the hover preview. */
   selfPenColor?: string;
   drawnH: Set<string>;
@@ -105,6 +107,8 @@ export function useDotsBoxesBoard(
     players.find((p) => p.id === id)?.name ?? "?";
   const initialOf = (id: string): string =>
     (nameOf(id).trim().charAt(0) || "?").toUpperCase();
+  const avatarOf = (id: string): string | undefined =>
+    players.find((p) => p.id === id)?.avatar;
 
   // Lookup sets — used to check whether each candidate line is already drawn.
   const drawnH = useMemo(() => {
@@ -181,6 +185,7 @@ export function useDotsBoxesBoard(
     penOf,
     nameOf,
     initialOf,
+    avatarOf,
     selfPenColor,
     drawnH,
     drawnV,

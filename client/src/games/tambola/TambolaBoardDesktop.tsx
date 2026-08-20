@@ -1,10 +1,13 @@
 import type { TambolaClaimType } from "@shared/types";
 import { motion } from "framer-motion";
 import type { TambolaBoardProps } from "./TambolaBoardMobile";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
-export default function TambolaBoardDesktop({ state, selfId, onMove }: TambolaBoardProps) {
+export default function TambolaBoardDesktop({ state, selfId, onMove, players }: TambolaBoardProps) {
   const isArranging = state.phase === "arranging";
   const myPlayer = state.players.find((p) => p.id === selfId);
+  const avatarById = new Map<string, string | undefined>();
+  for (const r of players) avatarById.set(r.id, r.avatar);
 
   const handleMark = (row: number, col: number) => {
     onMove("markCell", { row, col });
@@ -111,6 +114,12 @@ export default function TambolaBoardDesktop({ state, selfId, onMove }: TambolaBo
                 }`}
               >
                 <span>{p.isReady ? "✓" : "⏳"}</span>
+                <SeatAvatar
+                  avatar={avatarById.get(p.id)}
+                  name={p.name ?? p.id}
+                  className="w-6 h-6"
+                  textClassName="text-[9px]"
+                />
                 <span>{p.id === selfId ? "You" : p.name ?? p.id}</span>
               </span>
             ))}

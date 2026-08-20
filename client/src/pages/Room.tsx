@@ -919,6 +919,7 @@ export default function Room() {
                 onAddBot={(name, diff) => { getSocket().emit("room:addBot", name, diff); }}
                 onRemoveBot={(id) => { getSocket().emit("room:removeBot", id); }}
                 onRemoveLocalPlayer={(id) => { getSocket().emit("room:removeLocalPlayer", id); }}
+                onRenameBot={(id, newName) => { getSocket().emit("room:renameBot", id, newName); }}
               />
 
               {viewModel.colorPickerKind && (
@@ -1190,6 +1191,7 @@ export default function Room() {
                   myAnswers={(gameState as NamePlaceAnimalPlayerState).myAnswers}
                   myPlayerId={playerId || ""}
                   onMove={sendMove}
+                  players={roomState.players}
                 />
               )}
 
@@ -1198,6 +1200,7 @@ export default function Room() {
                   state={gameState as TambolaPlayerState}
                   selfId={playerId || ""}
                   onMove={sendMove}
+                  players={roomState.players}
                 />
               )}
 
@@ -1206,6 +1209,7 @@ export default function Room() {
                   onMove={sendMove}
                   state={gameState as SnakePublicState}
                   selfId={playerId || ""}
+                  players={roomState.players}
                 />
               )}
 

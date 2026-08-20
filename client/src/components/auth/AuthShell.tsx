@@ -29,9 +29,9 @@ export default function AuthShell({
 
   return (
     <div className="auth-page-shell h-screen max-h-[100dvh] w-full font-sans text-[#5C3717] flex flex-col justify-between overflow-hidden relative bg-[#FAE6CA]">
-      {/* Background Image Layer: Full on mobile (< lg), exactly 54% of screen on desktop (lg:w-[54%]), positioned left-aligned */}
+      {/* Background Image Layer: Hidden on mobile, 40% of screen on desktop */}
       <div
-        className={`absolute inset-y-0 left-0 w-full lg:w-[54%] bg-cover bg-[position:15%_center] lg:bg-[position:15%_center] bg-no-repeat pointer-events-none z-0 lg:border-r lg:border-[#E6D4B5]/50 ${
+        className={`absolute inset-y-0 left-0 hidden lg:block lg:w-[40%] bg-cover bg-[position:15%_center] bg-no-repeat pointer-events-none z-0 lg:border-r lg:border-[#E6D4B5]/50 ${
           isLogin
             ? "bg-[url('/LoginBG.png')]"
             : "bg-[url('/SignupBG.png')]"
@@ -91,15 +91,15 @@ export default function AuthShell({
         </div>
       </header>
 
-      {/* Main Content (54% / 46% split on desktop, zero page scroll on standard screens) */}
+      {/* Main Content (40% / 60% split on desktop, zero page scroll on standard screens) */}
       <main className="max-w-[1440px] w-full mx-auto px-4 sm:px-8 py-1 sm:py-2 flex-1 flex items-center justify-center min-h-0 overflow-y-auto lg:overflow-y-auto z-10">
         <div className="w-full my-auto flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8">
           
-          {/* Left Column: 54% clean illustration area */}
-          <div className="hidden lg:block lg:w-[54%] flex-shrink-0 h-full pointer-events-none" />
+          {/* Left Column: 40% clean illustration area */}
+          <div className="hidden lg:block lg:w-[40%] flex-shrink-0 h-full pointer-events-none" />
 
-          {/* Right Onboarding Panel: 46% dedicated area */}
-          <div className="w-full lg:w-[46%] max-w-[540px] mx-auto flex flex-col justify-center text-left space-y-2 px-1 sm:px-3">
+          {/* Right Onboarding Panel: 60% dedicated area */}
+          <div className="w-full lg:w-[60%] max-w-[540px] mx-auto flex flex-col justify-center text-left space-y-2 px-1 sm:px-3">
             {title ? (
               <div className="space-y-0.5">
                 <h1 className="text-[22px] sm:text-[26px] font-black text-[#111827] tracking-tight flex items-center gap-2">

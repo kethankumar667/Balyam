@@ -27,6 +27,7 @@ import {
   IconWicket,
   type ProSide,
 } from "../pro/pro-kit";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 /**
  * HAND CRICKET — broadcast skin.
@@ -738,6 +739,7 @@ export function HcProScoreBug({
 }) {
   const seat = state.playerOrder.indexOf(innings.battingPlayerId);
   const bat = proTeam(state, innings.battingPlayerId, players, seat < 0 ? 0 : seat);
+  const battingPlayer = players.find((p) => p.id === innings.battingPlayerId);
   const oversBowled = Math.floor(innings.balls / 6);
   const ballsThisOver = innings.balls % 6;
   const runRate = innings.balls > 0 ? (innings.runs / innings.balls) * 6 : 0;
@@ -777,6 +779,12 @@ export function HcProScoreBug({
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <TeamPlate team={bat} size={compact ? "md" : "lg"} />
+          <SeatAvatar
+            avatar={battingPlayer?.avatar}
+            name={bat.playerName}
+            className={compact ? "w-7 h-7" : "w-8 h-8"}
+            textClassName={compact ? "text-[10px]" : "text-[11px]"}
+          />
           <div className="min-w-0">
             {/* Team colour on a wide-tracked micro-label: 4.44:1 for IND
                 orange is under AA body but clears the 3:1 control/large bar,
@@ -923,6 +931,7 @@ export function HcProPlayersBar({
 
   const iBat = innings.battingPlayerId === selfId;
   const iBowl = innings.bowlingPlayerId === selfId;
+  const bowlingPlayer = players.find((p) => p.id === innings.bowlingPlayerId);
 
   const batLine = (s: typeof strikerStats) =>
     s
@@ -992,6 +1001,8 @@ export function HcProPlayersBar({
           label="Bowling"
           mine={iBowl}
           name={bowler?.name ?? "Waiting…"}
+          avatar={bowler ? bowlingPlayer?.avatar : undefined}
+          avatarName={bowler ? bowlingPlayer?.name : undefined}
           sub={
             bowler
               ? bowlerStats
@@ -1014,6 +1025,8 @@ function CreaseCell({
   name,
   sub,
   mine,
+  avatar,
+  avatarName,
   dim = false,
   warn = false,
   onStrike = false,
@@ -1028,6 +1041,13 @@ function CreaseCell({
   /** Side identity — batting colour for the two batters, bowling colour for
    *  the bowler. Carried on the label and a top rail, never on the figures. */
   accent?: string;
+  /** The controlling account's avatar filename, if there is one to show.
+   *  `name`/`sub` above are the fictional roster cricketer at this crease
+   *  position, not an account — only the bowling cell (a real seat, not a
+   *  roster slot) carries this. */
+  avatar?: string;
+  /** Real player name backing `avatar`, used for the initial/colour fallback. */
+  avatarName?: string;
   dim?: boolean;
   warn?: boolean;
   onStrike?: boolean;
@@ -1069,11 +1089,21 @@ function CreaseCell({
         )}
         {mine && <span className="text-[9px] font-black" style={{ color: PRO.gold, letterSpacing: "0.12em" }}>YOU</span>}
       </div>
-      <div
-        className={`mt-1 truncate font-black ${compact ? "text-[13px]" : "text-[15px]"}`}
-        style={{ color: warn ? PRO.gold : dim ? PRO.inkMid : PRO.ink }}
-      >
-        {name}
+      <div className="mt-1 flex min-w-0 items-center gap-1.5">
+        {avatarName && (
+          <SeatAvatar
+            avatar={avatar}
+            name={avatarName}
+            className={compact ? "w-5 h-5" : "w-6 h-6"}
+            textClassName="text-[9px]"
+          />
+        )}
+        <div
+          className={`truncate font-black ${compact ? "text-[13px]" : "text-[15px]"}`}
+          style={{ color: warn ? PRO.gold : dim ? PRO.inkMid : PRO.ink }}
+        >
+          {name}
+        </div>
       </div>
       <div className="mt-0.5 truncate text-[11px] font-semibold tabular-nums" style={{ color: PRO.inkLo }}>
         {sub}

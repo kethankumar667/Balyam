@@ -50,7 +50,7 @@ export default function LoginPage() {
       {/* ════════════════════════════════════════════════════════════
           LEFT FULL-SCREEN PAGE: NOSTALGIC SCHOOL PLAYGROUND SPREAD
          ════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[48%] xl:w-[48%] min-h-[460px] lg:min-h-screen relative flex flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-hidden border-b-2 lg:border-b-0 lg:border-r-2 border-[#E0CCAC]">
+      <div className="hidden lg:flex lg:w-[48%] xl:w-[48%] lg:min-h-screen relative flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-hidden lg:border-r-2 border-[#E0CCAC]">
         {/* Full nostalgic background artwork: 5 boys sitting on stone ledge overlooking playground */}
         <img
           src="/SignuppageBG.png"
@@ -137,7 +137,7 @@ export default function LoginPage() {
       {/* ════════════════════════════════════════════════════════════
           RIGHT FULL-SCREEN PAGE: SPIRAL NOTEBOOK LOGIN FORM
          ════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[52%] xl:w-[52%] lg:min-h-screen bg-[#FAF6EE] flex flex-col p-6 sm:p-10 lg:p-12 xl:p-16 relative overflow-y-auto">
+      <div className="w-full lg:w-[52%] xl:w-[52%] min-h-screen bg-[#FAF6EE] flex flex-col items-center p-6 sm:p-10 lg:p-12 xl:p-16 relative overflow-y-auto">
         {/* Top Right Taped Sticky Note */}
         <div className="absolute top-4 right-4 sm:top-6 sm:right-8 bg-[#FBF0B5] px-3.5 py-2.5 rounded-md border border-[#E6DC9E] shadow-sm rotate-2 z-20 max-w-[200px] text-right pointer-events-none hidden sm:block">
           <div className="w-10 h-3 bg-[#E0D48A]/80 absolute -top-1.5 left-1/2 -translate-x-1/2 shadow-2xs" />
@@ -152,8 +152,17 @@ export default function LoginPage() {
             under overflow instead of centering the overflow itself, which
             would strand content above scrollTop:0 where it can't be reached. */}
         <div className="my-auto w-full">
+          {/* Bhalyam Logo */}
+          <div className="flex justify-center -mt-6 pb-2">
+            <img
+              src="/FooterBhalyamlogo.png"
+              alt="BHALYAM - Play Together. Remember Forever."
+              className="h-24 sm:h-28 w-auto object-contain"
+            />
+          </div>
+
           {/* Top Header */}
-          <div className="text-center space-y-1.5 pt-6 sm:pt-4 max-w-[460px] mx-auto w-full">
+          <div className="text-center space-y-1.5 max-w-[460px] mx-auto w-full">
             <div className="flex items-center justify-center gap-2">
               <span className="font-script text-[#0F172A] text-2xl font-bold tracking-widest">
                 ≡
@@ -339,6 +348,15 @@ export default function LoginPage() {
             <div className="flex items-center justify-center pt-1 text-[13.5px] font-script text-[#7A5B3E] font-bold select-none pointer-events-none">
               <span>⭐️ Best Friends Forever ⭐️</span>
             </div>
+          </div>
+
+          {/* Founder Section Asset */}
+          <div className="flex justify-center pt-4 pb-2">
+            <img
+              src="/Foundersectionasset.png"
+              alt="Bhalyam Founders"
+              className="h-24 sm:h-28 w-auto object-contain opacity-90"
+            />
           </div>
         </div>
       </div>

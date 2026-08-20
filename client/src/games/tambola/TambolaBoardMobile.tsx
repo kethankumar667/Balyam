@@ -1,17 +1,22 @@
 import { useState } from "react";
-import type { TambolaClaimType, TambolaPlayerState } from "@shared/types";
+import type { Player, TambolaClaimType, TambolaPlayerState } from "@shared/types";
 import { motion, AnimatePresence } from "framer-motion";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 export interface TambolaBoardProps {
   state: TambolaPlayerState;
   selfId: string;
   onMove: (type: string, data?: unknown) => void;
+  /** Full room roster (carries `avatar`), used to draw each seat's picture. */
+  players: Player[];
 }
 
-export default function TambolaBoardMobile({ state, selfId, onMove }: TambolaBoardProps) {
+export default function TambolaBoardMobile({ state, selfId, onMove, players }: TambolaBoardProps) {
   const [showCalledList, setShowCalledList] = useState(false);
   const isArranging = state.phase === "arranging";
   const myPlayer = state.players.find((p) => p.id === selfId);
+  const avatarById = new Map<string, string | undefined>();
+  for (const r of players) avatarById.set(r.id, r.avatar);
 
   const handleMark = (row: number, col: number) => {
     onMove("markCell", { row, col });
@@ -115,6 +120,12 @@ export default function TambolaBoardMobile({ state, selfId, onMove }: TambolaBoa
                 }`}
               >
                 <span>{p.isReady ? "✓" : "⏳"}</span>
+                <SeatAvatar
+                  avatar={avatarById.get(p.id)}
+                  name={p.name ?? p.id}
+                  className="w-5 h-5"
+                  textClassName="text-[8px]"
+                />
                 <span>{p.id === selfId ? "You" : p.name ?? p.id}</span>
               </span>
             ))}

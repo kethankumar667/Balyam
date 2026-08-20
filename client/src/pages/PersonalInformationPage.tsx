@@ -29,6 +29,16 @@ export default function PersonalInformationPage() {
   const currentAvatar = useRoomStore((s) => s.avatarId);
   const setPlayerName = useRoomStore((s) => s.setPlayerName);
   const setAvatarId = useRoomStore((s) => s.setAvatarId);
+  // Bio/region live in roomStore (not page-local state) so that, for a
+  // signed-in member, they ride the same debounced sync that already keeps
+  // display name/avatar in `public.profiles` — see authStore's
+  // startProfileSync. Saving here is then just `setBio`/`setRegion`, the
+  // same one-liner Settings already uses for name/avatar; no separate
+  // network call needed on this page's part.
+  const bio = useRoomStore((s) => s.bio);
+  const setBio = useRoomStore((s) => s.setBio);
+  const region = useRoomStore((s) => s.region);
+  const setRegion = useRoomStore((s) => s.setRegion);
 
   const authEmail = useAuthStore((s) => s.email);
   const isMember = useAuthStore((s) => s.isMember);
@@ -37,12 +47,6 @@ export default function PersonalInformationPage() {
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [matches, setMatches] = useState<MatchHistoryItem[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [bio, setBio] = useState<string>(() => {
-    return typeof localStorage !== "undefined" ? localStorage.getItem("bhalyam.profile.bio") || "" : "";
-  });
-  const [region, setRegion] = useState<string>(() => {
-    return typeof localStorage !== "undefined" ? localStorage.getItem("bhalyam.profile.region") || "India 🇮🇳" : "India 🇮🇳";
-  });
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -64,13 +68,14 @@ export default function PersonalInformationPage() {
       ]);
 
       if (profRes?.profile) {
+        // NOT pushed into roomStore: `profRes.profile` is `player_profiles`,
+        // a denormalized copy kept for stats/leaderboard display (level, XP,
+        // joined date) — it can lag behind the real name/avatar, which live
+        // in `public.profiles` and stay correct in roomStore via authStore's
+        // own sync. Pulling this GET's possibly-stale displayName/avatar
+        // back into roomStore used to silently revert a correct name to
+        // whatever this table last happened to hold.
         setProfile(profRes.profile);
-        if (profRes.profile.displayName && profRes.profile.displayName !== currentName) {
-          setPlayerName(profRes.profile.displayName);
-        }
-        if (profRes.profile.avatar !== undefined && profRes.profile.avatar !== currentAvatar) {
-          setAvatarId(profRes.profile.avatar || null);
-        }
       } else {
         setProfile({
           playerId: effectivePlayerId ?? "",
@@ -105,14 +110,12 @@ export default function PersonalInformationPage() {
   }, [identityReady, effectivePlayerId]);
 
   const handleSaveProfile = async (data: { displayName: string; bio: string; region: string }) => {
+    // setBio/setRegion persist to localStorage themselves (roomStore, same
+    // as setPlayerName always has), and — for a signed-in member — reach
+    // public.profiles via authStore's debounced sync, same as name/avatar.
     setPlayerName(data.displayName);
     setBio(data.bio);
     setRegion(data.region);
-
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem("bhalyam.profile.bio", data.bio);
-      localStorage.setItem("bhalyam.profile.region", data.region);
-    }
 
     try {
       await apiFetch(`/api/profile/${effectivePlayerId}`, {
@@ -182,6 +185,8 @@ export default function PersonalInformationPage() {
           {profile && (
             <ProfileHeader
               profile={profile}
+              name={currentName}
+              avatar={currentAvatar}
               isMember={isMember}
               onEditName={() => setIsEditModalOpen(true)}
             />
@@ -221,6 +226,7 @@ export default function PersonalInformationPage() {
               {profile && (
                 <PersonalInformationCard
                   profile={profile}
+                  name={currentName}
                   email={authEmail}
                   isVerifiedEmail={isMember}
                   region={region}
@@ -249,7 +255,7 @@ export default function PersonalInformationPage() {
           {profile && (
             <EditProfileModal
               isOpen={isEditModalOpen}
-              initialDisplayName={profile.displayName}
+              initialDisplayName={currentName}
               initialBio={bio}
               initialRegion={region}
               onClose={() => setIsEditModalOpen(false)}

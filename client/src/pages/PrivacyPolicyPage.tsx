@@ -374,7 +374,7 @@ export default function PrivacyPolicyPage() {
                   you are reading this on, and never leaves it except where the next section says
                   otherwise.{" "}
                   {isSupabaseConfigured
-                    ? "The one exception is an account, which is optional: creating one stores your email address, a scrambled form of your password, and your display name and avatar with our account service, so they follow you to a second device."
+                    ? "The one exception is an account, which is optional: creating one stores your email address, a scrambled form of your password, and your display name, avatar, bio and region with our account service, so they follow you to a second device."
                     : "This build has no user accounts and no database behind it."}
                 </p>
               </div>

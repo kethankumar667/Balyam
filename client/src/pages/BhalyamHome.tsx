@@ -24,6 +24,8 @@ import CategoryFilter, {
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
 import { WelcomeModal, GettingStartedCard, journeyTracker } from "../features/onboarding";
+import AvatarPicker from "../components/profile/AvatarPicker";
+import Modal from "../components/Modal";
 import {
   BHALYAM_GAMES,
   isLocked,
@@ -378,117 +380,120 @@ function Hero({
 
   return (
     <RevealOnScroll as="section" amount={0.05} className="pt-2 pb-6 sm:pt-4 sm:pb-8">
-      {/* ── Main Hero Card ── */}
-      <div
-        className={`relative overflow-hidden rounded-[26px] sm:rounded-[36px] border ${
-          isDark
-            ? "border-slate-800 shadow-[0_14px_30px_-15px_rgba(0,0,0,0.7)]"
-            : "border-[#E2D3BA] shadow-[0_14px_30px_-15px_rgba(74,44,22,0.35)]"
-        }`}
-        style={{ background: isDark ? "#0A0F1D" : "#FAF2DF" }}
-      >
-        <img
-          key={heroImage}
-          src={heroImage}
-          alt="Childhood games lounge"
-          className="bhalyam-hero-drift absolute inset-0 w-full h-full object-cover object-right opacity-95"
-          loading="eager"
-          onError={() => setFailed(true)}
-        />
-        {/* Soft linear fade on left half to keep text readable */}
+      {/* ── Clip layer: owns border-radius + overflow-hidden, NO transforms ── */}
+      <div className={`rounded-[26px] sm:rounded-[36px] overflow-hidden border ${
+        isDark
+          ? "border-slate-800 shadow-[0_14px_30px_-15px_rgba(0,0,0,0.7)]"
+          : "border-[#E2D3BA] shadow-[0_14px_30px_-15px_rgba(74,44,22,0.35)]"
+      }`}>
+        {/* ── Main Hero Card ── */}
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: isDark
-              ? "linear-gradient(90deg, rgba(10,15,29,0.98) 0%, rgba(10,15,29,0.92) 42%, rgba(10,15,29,0.55) 65%, rgba(10,15,29,0.05) 95%)"
-              : "linear-gradient(90deg, rgba(254,249,235,0.98) 0%, rgba(254,249,235,0.94) 42%, rgba(254,249,235,0.55) 65%, rgba(254,249,235,0.05) 95%)",
-          }}
-        />
+          className="relative"
+          style={{ background: isDark ? "#0A0F1D" : "#FAF2DF" }}
+        >
+          <img
+            key={heroImage}
+            src={heroImage}
+            alt="Childhood games lounge"
+            className="bhalyam-hero-drift absolute inset-0 w-full h-full object-cover object-right opacity-95"
+            loading="eager"
+            onError={() => setFailed(true)}
+          />
+          {/* Soft linear fade on left half to keep text readable */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: isDark
+                ? "linear-gradient(90deg, rgba(10,15,29,0.98) 0%, rgba(10,15,29,0.92) 42%, rgba(10,15,29,0.55) 65%, rgba(10,15,29,0.05) 95%)"
+                : "linear-gradient(90deg, rgba(254,249,235,0.98) 0%, rgba(254,249,235,0.94) 42%, rgba(254,249,235,0.55) 65%, rgba(254,249,235,0.05) 95%)",
+            }}
+          />
 
-        <div className="relative z-10 px-5 sm:px-10 py-7 sm:py-9 max-w-xl">
-          {/* Top Label */}
-          <span
-            className={`text-xs sm:text-[13px] font-black uppercase tracking-[0.22em] block mb-2 sm:mb-2.5 ${
-              isDark ? "text-amber-400" : "text-[#7B2F0E]"
-            }`}
-          >
-            ✦ WELCOME TO BHALYAM ✦
-          </span>
-
-          {/* Headline with 4 lines & color coding */}
-          <h1
-            className={`bhalyam-display text-[32px] sm:text-[46px] lg:text-[54px] leading-[1.04] tracking-tight flex flex-col ${
-              isDark ? "text-white" : "text-[#15294E]"
-            }`}
-          >
-            <span>Ready to</span>
-            <span className="text-[#A855F7] w-fit">
-              relive
-            </span>
-            <span>your</span>
-            <span className={isDark ? "text-[#10B981]" : "text-[#15803D]"}>childhood?</span>
-          </h1>
-
-          {/* Description (Hidden on mobile screens only) */}
-          <p
-            className={`hidden sm:block text-[14px] sm:text-base font-semibold max-w-sm sm:max-w-md mt-3 leading-snug ${
-              isDark ? "text-slate-300" : "text-[#3B332A]"
-            }`}
-          >
-            Pick a game, send the room code to your school WhatsApp group, and play instantly.
-          </p>
-          <p
-            className={`hidden sm:block font-script italic text-[17px] sm:text-[20px] mt-1 ${
-              isDark ? "text-amber-300" : "text-[#7B2F0E]"
-            }`}
-          >
-            Bring your school gang back together!
-          </p>
-
-          {/* Side-by-side Action Buttons inside Hero Card */}
-          <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-4">
-            {/* 1. Join Room Button */}
-            <button
-              type="button"
-              onClick={onOpenJoin}
-              className="w-full sm:w-auto py-3 px-5 sm:px-6 rounded-full flex items-center justify-center gap-2 font-black text-[14px] sm:text-[15px] bg-[#F59E0B] hover:bg-[#D97706] text-black shadow-lg active:scale-95 transition cursor-pointer flex-shrink-0 min-h-[44px]"
-            >
-              <DoorOpen className="w-5 h-5 text-black" />
-              <span>Join Room with a code</span>
-            </button>
-
-            {/* 2. WhatsApp Share Card */}
-            <div
-              onClick={handleShareWhatsApp}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") handleShareWhatsApp();
-              }}
-              className={`w-full sm:w-auto rounded-full py-2 sm:py-1.5 px-4 border flex items-center justify-center sm:justify-start gap-3 cursor-pointer active:scale-95 transition shadow-sm min-h-[44px] ${
-                isDark
-                  ? "bg-[#0B101E]/90 border-slate-700/80 hover:border-emerald-500/60 text-white"
-                  : "bg-white/95 border-[#E5D5BC] hover:border-emerald-500/60 text-[#15294E]"
+          <div className="relative z-10 px-5 sm:px-10 py-7 sm:py-9 max-w-xl">
+            {/* Top Label */}
+            <span
+              className={`text-xs sm:text-[13px] font-black uppercase tracking-[0.22em] block mb-2 sm:mb-2.5 ${
+                isDark ? "text-amber-400" : "text-[#7B2F0E]"
               }`}
             >
-              <div className="w-8 h-8 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                <WhatsappGlyph className="w-4.5 h-4.5 text-white" />
-              </div>
-              <div className="flex flex-col text-left">
-                <span
-                  className={`text-[13px] font-black leading-tight ${
-                    isDark ? "text-white" : "text-[#15294E]"
-                  }`}
-                >
-                  Share on WhatsApp
-                </span>
-                <span
-                  className={`text-[11px] font-medium leading-tight mt-0.5 ${
-                    isDark ? "text-slate-400" : "text-[#7A6F62]"
-                  }`}
-                >
-                  Send the code in seconds!
-                </span>
+              ✦ WELCOME TO BHALYAM ✦
+            </span>
+
+            {/* Headline with 4 lines & color coding */}
+            <h1
+              className={`bhalyam-display text-[32px] sm:text-[46px] lg:text-[54px] leading-[1.04] tracking-tight flex flex-col ${
+                isDark ? "text-white" : "text-[#15294E]"
+              }`}
+            >
+              <span>Ready to</span>
+              <span className="text-[#A855F7] w-fit">
+                relive
+              </span>
+              <span>your</span>
+              <span className={isDark ? "text-[#10B981]" : "text-[#15803D]"}>childhood?</span>
+            </h1>
+
+            {/* Description (Hidden on mobile screens only) */}
+            <p
+              className={`hidden sm:block text-[14px] sm:text-base font-semibold max-w-sm sm:max-w-md mt-3 leading-snug ${
+                isDark ? "text-slate-300" : "text-[#3B332A]"
+              }`}
+            >
+              Pick a game, send the room code to your school WhatsApp group, and play instantly.
+            </p>
+            <p
+              className={`hidden sm:block font-script italic text-[17px] sm:text-[20px] mt-1 ${
+                isDark ? "text-amber-300" : "text-[#7B2F0E]"
+              }`}
+            >
+              Bring your school gang back together!
+            </p>
+
+            {/* Side-by-side Action Buttons inside Hero Card */}
+            <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-4">
+              {/* 1. Join Room Button */}
+              <button
+                type="button"
+                onClick={onOpenJoin}
+                className="w-full sm:w-auto py-3 px-5 sm:px-6 rounded-full flex items-center justify-center gap-2 font-black text-[14px] sm:text-[15px] bg-[#F59E0B] hover:bg-[#D97706] text-black shadow-lg active:scale-95 transition cursor-pointer flex-shrink-0 min-h-[44px]"
+              >
+                <DoorOpen className="w-5 h-5 text-black" />
+                <span>Join Room with a code</span>
+              </button>
+
+              {/* 2. WhatsApp Share Card */}
+              <div
+                onClick={handleShareWhatsApp}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") handleShareWhatsApp();
+                }}
+                className={`w-full sm:w-auto rounded-full py-2 sm:py-1.5 px-4 border flex items-center justify-center sm:justify-start gap-3 cursor-pointer active:scale-95 transition shadow-sm min-h-[44px] ${
+                  isDark
+                    ? "bg-[#0B101E]/90 border-slate-700/80 hover:border-emerald-500/60 text-white"
+                    : "bg-white/95 border-[#E5D5BC] hover:border-emerald-500/60 text-[#15294E]"
+                }`}
+              >
+                <div className="w-8 h-8 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                  <WhatsappGlyph className="w-4.5 h-4.5 text-white" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span
+                    className={`text-[13px] font-black leading-tight ${
+                      isDark ? "text-white" : "text-[#15294E]"
+                    }`}
+                  >
+                    Share on WhatsApp
+                  </span>
+                  <span
+                    className={`text-[11px] font-medium leading-tight mt-0.5 ${
+                      isDark ? "text-slate-400" : "text-[#7A6F62]"
+                    }`}
+                  >
+                    Send the code in seconds!
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -496,6 +501,7 @@ function Hero({
       </div>
     </RevealOnScroll>
   );
+
 }
 
 /** Tiles the home grid shows before deferring to /games. */
@@ -976,6 +982,167 @@ function SheetShell({
 }
 
 /**
+ * GuestProfileModal — Unified Edit Profile modal matching the JoinRoomModal design.
+ * Collects name and avatar in a single, polished dialog.
+ */
+export function GuestProfileModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { playerName, avatarId, setPlayerName, setAvatarId } = useRoomStore();
+  const [draftName, setDraftName] = useState(playerName);
+  const [draftAvatarId, setDraftAvatarId] = useState<string | null>(avatarId);
+  const [nameError, setNameError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setDraftName(playerName);
+      setDraftAvatarId(avatarId);
+      setNameError(null);
+    }
+  }, [open, playerName, avatarId]);
+
+  if (!open) return null;
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const clean = draftName.trim().slice(0, 20);
+    setPlayerName(clean);
+    setAvatarId(draftAvatarId);
+    onClose();
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      mobileSheet
+      ariaLabelledBy="guest-profile-modal-title"
+      className="animate-fade-in"
+      panelClassName="bhalyam-font relative w-full md:max-w-sm
+                 max-h-[92dvh] overflow-hidden flex flex-col
+                 bg-bhalyam-cream-soft dark:bg-[#111622] text-bhalyam-wood-dark dark:text-slate-100
+                 border-2 border-bhalyam-cream-edge/70 dark:border-slate-800
+                 rounded-t-3xl md:rounded-3xl
+                 shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
+                 md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)]"
+      panelStyle={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
+      {/* Pull handle (mobile bottom-sheet only) */}
+      <div className="md:hidden flex justify-center pt-2">
+        <span aria-hidden className="w-8 h-1 rounded-full bg-bhalyam-wood/30 dark:bg-slate-700" />
+      </div>
+
+      {/* Header — compact, always visible */}
+      <header className="flex-shrink-0 flex items-center gap-2.5 px-4 py-2.5 border-b border-bhalyam-cream-edge/50 dark:border-slate-800">
+        <span
+          className="inline-flex w-9 h-9 rounded-xl items-center justify-center flex-shrink-0"
+          style={{
+            background: "linear-gradient(135deg, #EA5A1F, #B53917)",
+            boxShadow: "0 4px 10px -3px #B5391766",
+          }}
+          aria-hidden
+        >
+          <UserIcon className="w-4.5 h-4.5 text-white" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2
+            id="guest-profile-modal-title"
+            className="font-bold text-bhalyam-wood-dark dark:text-slate-100 text-base leading-tight truncate"
+          >
+            Player Profile
+          </h2>
+          <div className="text-[9px] uppercase tracking-widest font-bold text-bhalyam-wood/70 dark:text-slate-500">
+            Nickname &amp; avatar
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="w-8 h-8 rounded-full inline-flex items-center justify-center
+                     bg-bhalyam-cream-warm dark:bg-[#1E2738] text-bhalyam-wood-dark dark:text-slate-200 cursor-pointer
+                     hover:bg-bhalyam-cream-edge dark:hover:bg-[#2A374F] active:scale-95
+                     focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
+                     transition-all duration-200"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </header>
+
+      {/* Body Form — only this area scrolls if content overflows */}
+      <form
+        className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3"
+        onSubmit={handleSubmit}
+        noValidate
+      >
+        {/* Name input field */}
+        <div className="space-y-1">
+          <label
+            htmlFor="guest-profile-name"
+            className="block text-[10px] uppercase tracking-widest font-extrabold text-[#7B5024] dark:text-slate-400"
+          >
+            Your Name
+          </label>
+          <input
+            id="guest-profile-name"
+            type="text"
+            value={draftName}
+            onChange={(e) => {
+              setDraftName(e.target.value);
+              if (nameError) setNameError(null);
+            }}
+            placeholder="e.g. Sri Krishna"
+            maxLength={20}
+            autoComplete="given-name"
+            className="w-full h-10 px-3 rounded-xl
+                       bg-bhalyam-cream-soft dark:bg-[var(--surface-0)] border-2
+                       border-bhalyam-cream-edge/80 dark:border-slate-700/80
+                       text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/40 dark:placeholder:text-slate-500
+                       font-bold text-sm
+                       focus:outline-none focus:ring-2 focus:border-bhalyam-gold-dark dark:focus:border-amber-400 focus:ring-bhalyam-gold/40
+                       transition-all duration-200 shadow-xs"
+          />
+        </div>
+
+        {/* Avatar Picker section */}
+        <div className="space-y-1">
+          <label className="block text-[10px] uppercase tracking-widest font-extrabold text-[#7B5024] dark:text-slate-400">
+            Choose Avatar
+          </label>
+          <AvatarPicker
+            value={draftAvatarId}
+            onChange={(id) => setDraftAvatarId(id)}
+            hideSummary={true}
+            isGuest={true}
+          />
+        </div>
+
+        {/* Save CTA */}
+        <div className="pt-1">
+          <button
+            type="submit"
+            className="w-full h-11 rounded-2xl
+                       bhalyam-gold-leaf bhalyam-cta-shine
+                       border border-bhalyam-gold-dark text-bhalyam-wood-dark
+                       font-black text-sm inline-flex items-center justify-center gap-2
+                       hover:brightness-[1.04] shadow-[0_6px_14px_-4px_rgba(228,177,40,0.55)]
+                       active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark
+                       transition-[filter,box-shadow,transform] duration-200 cursor-pointer"
+          >
+            <span>Save Profile</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/**
  * Profile sheet — entirely dedicated to the upcoming personal-profile
  * feature. No navigation actions here; those live in MenuSheet.
  */
@@ -991,68 +1158,79 @@ export function ProfileSheet({
   const named = playerName.trim().length > 0;
   const signedIn = useAuthStore((s) => s.isMember);
 
+  const [showEditModal, setShowEditModal] = useState(false);
+
   return (
-    <SheetShell
-      open={open}
-      onClose={onClose}
-      ariaLabel="Your profile"
-      titleLeft={
-        <>
-          <UserIcon className="w-5 h-5 text-[var(--auth-ink)]" />
-          <span className="bhalyam-display text-[20px] text-[var(--auth-ink)] tracking-tight">
-            Profile
-          </span>
-        </>
-      }
-    >
-      <div
-        className="rounded-2xl p-5 border border-[#E0AE3B] bg-gradient-to-br from-[#FFF7E2] to-[#FBE7BD]
-                   shadow-[0_4px_14px_-6px_rgba(228,177,40,0.55)] text-center"
+    <>
+      <SheetShell
+        open={open}
+        onClose={onClose}
+        ariaLabel="Your profile"
+        titleLeft={
+          <>
+            <UserIcon className="w-5 h-5 text-[var(--auth-ink)]" />
+            <span className="bhalyam-display text-[20px] text-[var(--auth-ink)] tracking-tight">
+              Profile
+            </span>
+          </>
+        }
       >
-        <div className="relative mx-auto w-20 h-20 mb-3">
-          <span
-            className="block w-20 h-20 rounded-full overflow-hidden
-                       ring-4 ring-[#FBE7BD] border-2 border-[#D49E24]
-                       shadow-[0_6px_20px_rgba(212,158,36,0.45),inset_0_2px_4px_rgba(0,0,0,0.15)]
-                       flex items-center justify-center text-bhalyam-wood-dark bg-[#FFF8E7]"
-          >
-            <SeatAvatar
-              avatar={avatarId ?? undefined}
-              name={playerName.trim() || (signedIn ? "Member" : "Guest")}
-              className="w-full h-full"
-              textClassName="text-2xl font-black"
-            />
-          </span>
-          <Link
-            to="/profile"
-            onClick={onClose}
-            aria-label={avatar ? "Change your avatar and name" : "Choose an avatar and set your name"}
-            className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full inline-flex items-center
-                       justify-center bg-[#FFFDF8] text-[#5C3717]
-                       ring-2 ring-[#FFF7E2] border-2 border-[#D49E24]
-                       shadow-[0_3px_8px_rgba(92,55,23,0.35)]
-                       hover:bg-[#FFF4DE] hover:scale-105 active:scale-95
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark
-                       transition-[background-color,transform,box-shadow] duration-150"
-          >
-            <Pencil className="w-4 h-4 text-[#5C3717]" />
-          </Link>
-        </div>
+        {/* Single unified interactive profile card */}
+        <button
+          type="button"
+          onClick={() => setShowEditModal(true)}
+          className="w-full group relative rounded-2xl p-5 border-2 border-[#E0AE3B] bg-gradient-to-br from-[#FFF7E2] to-[#FBE7BD]
+                     shadow-[0_4px_14px_-6px_rgba(228,177,40,0.55)] text-center cursor-pointer hover:border-[#D49E24]
+                     hover:shadow-[0_8px_20px_-6px_rgba(228,177,40,0.7)] active:scale-[0.99] transition-all duration-200"
+        >
+          {/* Avatar with edit pencil badge */}
+          <div className="relative mx-auto w-20 h-20 mb-3">
+            <div
+              className="w-20 h-20 rounded-full overflow-hidden
+                         ring-4 ring-[#FBE7BD] border-2 border-[#D49E24]
+                         shadow-[0_6px_20px_rgba(212,158,36,0.45),inset_0_2px_4px_rgba(0,0,0,0.15)]
+                         flex items-center justify-center text-bhalyam-wood-dark bg-[#FFF8E7]
+                         group-hover:scale-105 transition-transform duration-150"
+            >
+              <SeatAvatar
+                avatar={avatarId ?? undefined}
+                name={playerName.trim() || (signedIn ? "Member" : "Guest")}
+                className="w-full h-full"
+                textClassName="text-2xl font-black"
+              />
+            </div>
+            <span
+              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full inline-flex items-center
+                         justify-center bg-[#FFFDF8] text-[#5C3717]
+                         ring-2 ring-[#FFF7E2] border-2 border-[#D49E24]
+                         shadow-[0_3px_8px_rgba(92,55,23,0.35)]
+                         group-hover:bg-[#FFF4DE] group-hover:scale-105 transition-all duration-150"
+            >
+              <Pencil className="w-4 h-4 text-[#5C3717]" />
+            </span>
+          </div>
 
-        <div className="bhalyam-display text-[var(--auth-ink)] text-[22px] leading-tight break-words">
-          {named ? playerName : "Add your name"}
-        </div>
+          {/* Name Display */}
+          <div className="flex items-center justify-center gap-1.5">
+            <span className="bhalyam-display text-[var(--auth-ink)] text-[22px] leading-tight break-words group-hover:text-[#8C531B] transition-colors">
+              {named ? playerName : "Add your name"}
+            </span>
+          </div>
 
-        <p className="mt-1 text-[13px] font-semibold text-[var(--auth-accent)]">
-          {signedIn ? "Signed in" : "Playing as a guest"}
-        </p>
-
-        {!named ? (
-          <p className="bhalyam-script text-[var(--auth-accent)] text-[19px] leading-[1.15] mt-3">
-            Tap the pencil so the table knows who you are.
+          <p className="mt-1 text-[13px] font-semibold text-[var(--auth-accent)]">
+            {signedIn ? "Signed in" : "Playing as a guest"}
           </p>
-        ) : null}
-      </div>
+
+          <p className="bhalyam-script text-[var(--auth-accent)] text-[17px] leading-[1.15] mt-2.5">
+            Tap to customize your name &amp; avatar
+          </p>
+        </button>
+
+        {/* Edit Profile Modal (matches JoinRoomModal design) */}
+        <GuestProfileModal
+          open={showEditModal}
+          onClose={() => setShowEditModal(false)}
+        />
 
       {signedIn ? (
         <div className="space-y-3">
@@ -1125,6 +1303,7 @@ export function ProfileSheet({
         </div>
       )}
     </SheetShell>
+    </>
   );
 }
 

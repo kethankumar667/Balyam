@@ -9,9 +9,19 @@ interface ProfileHeaderProps {
   profile: PlayerProfile;
   isMember?: boolean;
   onEditName?: () => void;
+  /**
+   * Live identity, straight from `roomStore` — overrides `profile.displayName`
+   * / `profile.avatar` when given. `profile` is a REST snapshot fetched once
+   * per page load, so it goes stale the moment the name/avatar changes via a
+   * different save surface (Settings, the header's own profile sheet, sign-up)
+   * while this page stays mounted. Optional so a caller with no live store
+   * handy still gets sane behaviour from `profile` alone.
+   */
+  name?: string;
+  avatar?: string | null;
 }
 
-export default function ProfileHeader({ profile, isMember = false, onEditName }: ProfileHeaderProps) {
+export default function ProfileHeader({ profile, isMember = false, onEditName, name, avatar }: ProfileHeaderProps) {
   const memberDate = new Date(profile.joinedAt).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
@@ -22,7 +32,8 @@ export default function ProfileHeader({ profile, isMember = false, onEditName }:
   const currentLevelXp = (profile.level - 1) * 100;
   const progressInLevel = Math.max(0, profile.experiencePoints - currentLevelXp);
   const progressPct = Math.min(100, Math.round((progressInLevel / 100) * 100));
-  const effectiveName = (profile.displayName || "").trim() || (isMember ? "Member" : "Guest");
+  const effectiveName = (name ?? profile.displayName ?? "").trim() || (isMember ? "Member" : "Guest");
+  const effectiveAvatar = avatar !== undefined ? avatar ?? undefined : profile.avatar;
 
   return (
     <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-stone-900/95 via-zinc-900/90 to-stone-900/95 border border-stone-800/80 text-white shadow-2xl relative overflow-hidden">
@@ -37,7 +48,7 @@ export default function ProfileHeader({ profile, isMember = false, onEditName }:
             <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-500 p-1 shadow-[0_0_24px_rgba(245,158,11,0.35)] transition-transform duration-300 group-hover:scale-105">
               <div className="w-full h-full bg-stone-950 rounded-[22px] overflow-hidden flex items-center justify-center select-none">
                 <SeatAvatar
-                  avatar={profile.avatar}
+                  avatar={effectiveAvatar}
                   name={effectiveName}
                   className="w-full h-full rounded-[22px]"
                   textClassName="text-4xl sm:text-5xl font-black"

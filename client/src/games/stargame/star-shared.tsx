@@ -7,6 +7,7 @@ import type {
   StarStanding,
 } from "@shared/types";
 import type { StarSeat } from "./useStarBoard";
+import { findAvatar } from "../../lib/avatars";
 
 /**
  * Star Game shared visual kit — the heartfelt, handcrafted "folded paper chit"
@@ -974,6 +975,10 @@ export function SeatTile({
   phase?: StarPhase;
 }) {
   const { pub, name, isSelf, isBot, isConnected } = seat;
+  const avatarOption = findAvatar(seat.player?.avatar);
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => setImgFailed(false), [avatarOption?.src]);
+  const showAvatarImg = !!avatarOption && !imgFailed;
   let badge = "";
   let badgeColor: string = PAPER.pencil;
   if (pub.starEligible) { badge = "★ four!"; badgeColor = PAPER.clay; }
@@ -994,11 +999,22 @@ export function SeatTile({
     >
       <div className="relative shrink-0">
         <div
-          className="flex h-9 w-9 items-center justify-center rounded-full font-display text-sm font-black text-white"
-          style={{ background: active ? `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})` : `linear-gradient(160deg, ${PAPER.terracotta}, ${PAPER.clay})`, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full font-display text-sm font-black text-white"
+          style={{ background: showAvatarImg ? undefined : (active ? `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})` : `linear-gradient(160deg, ${PAPER.terracotta}, ${PAPER.clay})`), boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
           aria-hidden
         >
-          {name.slice(0, 1).toUpperCase()}
+          {showAvatarImg ? (
+            <img
+              src={avatarOption!.src}
+              alt=""
+              className="h-full w-full object-cover scale-[1.25] origin-center"
+              style={{ objectPosition: "50% 22%" }}
+              onError={() => setImgFailed(true)}
+              draggable={false}
+            />
+          ) : (
+            name.slice(0, 1).toUpperCase()
+          )}
         </div>
         <span
           aria-hidden

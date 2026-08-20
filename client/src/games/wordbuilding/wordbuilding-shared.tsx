@@ -8,6 +8,7 @@ import type {
 import type { Ink } from "./inks";
 import type { WordBuildingBoardModel } from "./useWordBuildingBoard";
 import CoachHintButton, { type CoachState } from "../../components/CoachHintButton";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 /**
  * Word Building — shared presentational layer.
@@ -346,6 +347,7 @@ export function StudentBar({
   state,
   inkOf,
   nameOf,
+  avatarOf,
   selfId,
   remainingSec,
   coach,
@@ -355,6 +357,7 @@ export function StudentBar({
   state: WordBuildingPublicState;
   inkOf: Record<string, Ink>;
   nameOf: (id: string) => string;
+  avatarOf: (id: string) => string | undefined;
   selfId: string | null;
   remainingSec: number | null;
   /** AI Coach state from the board model. Omitted by shells without one. */
@@ -398,7 +401,8 @@ export function StudentBar({
               fontFamily: "'Caveat', 'Patrick Hand', cursive",
             }}
           >
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-center gap-1.5">
+              <SeatAvatar avatar={avatarOf(pid)} name={nameOf(pid)} className="w-6 h-6" textClassName="text-[9px]" />
               <span className="font-black text-[17px] sm:text-[22px]" style={{ color: ink.inkColor }}>
                 {nameOf(pid)}{me ? " (you)" : ""}
               </span>

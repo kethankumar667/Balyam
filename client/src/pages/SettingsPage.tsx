@@ -69,7 +69,13 @@ export default function SettingsPage() {
 
   // Profile State
   const storedAccount = loadAccountDetails();
-  const [displayName, setDisplayName] = useState(playerName.trim() || storedAccount?.displayName || "Jetpacker!");
+  // The displayed name reads straight from roomStore (not a local mirror) so
+  // it stays live if the name changes via any OTHER save surface — the
+  // header's own profile sheet, Sign Up, etc. — while this page is mounted.
+  // Only the edit modal gets a local draft, resynced from the store each
+  // time it opens (same pattern as GuestProfileModal/JoinRoomModal).
+  const displayName = playerName.trim() || storedAccount?.displayName || "Jetpacker!";
+  const [nameDraft, setNameDraft] = useState(displayName);
   const [profileId] = useState("BH123456");
   const [accountId] = useState(storedAccount?.accountId || "BHYM-90S-4827-11");
   const [createdOn] = useState(storedAccount?.createdAt || "20 May 2026");
@@ -103,12 +109,19 @@ export default function SettingsPage() {
 
   const handleSaveName = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (displayName.trim()) {
-      setPlayerName(displayName.trim());
+    if (nameDraft.trim()) {
+      setPlayerName(nameDraft.trim());
       showToast("✓ Display Name updated!");
     }
     setIsEditingName(false);
   };
+
+  // Resync the edit modal's draft to the live name each time it opens, so
+  // it starts from whatever the name currently is (not a stale mount-time
+  // snapshot) — same pattern GuestProfileModal/JoinRoomModal already use.
+  useEffect(() => {
+    if (isEditingName) setNameDraft(displayName);
+  }, [isEditingName, displayName]);
 
   const scrollToSection = (id: SettingsSection) => {
     setActiveSection(id);
@@ -979,8 +992,8 @@ export default function SettingsPage() {
               <input
                 ref={editNameInputRef}
                 type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl text-sm font-bold border border-amber-500 bg-white dark:bg-[#141D30] text-[#16223B] dark:text-white focus:outline-none"
               />
             </div>

@@ -151,6 +151,22 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam.profile.bio",
+    label: "Profile bio",
+    description:
+      "The \"about me\" text on your Personal Information page. On a signed-in account it also follows you to other devices.",
+    purpose: "identity",
+    isPersonalData: true,
+  },
+  {
+    key: "bhalyam.profile.region",
+    label: "Profile region",
+    description:
+      "The country/region you picked on your Personal Information page. On a signed-in account it also follows you to other devices.",
+    purpose: "identity",
+    isPersonalData: true,
+  },
+  {
     key: "bhalyam.connlog",
     label: "Connection log",
     description:
@@ -263,7 +279,7 @@ export const THIRD_PARTIES: readonly ThirdParty[] = [
   {
     name: "Supabase (the account service)",
     receives:
-      "Your email address, a scrambled form of your password, your display name and avatar, and the IP address you signed in from. Google sign-in also passes them the name and email on your Google account.",
+      "Your email address, a scrambled form of your password, your display name, avatar, bio and region, and the IP address you signed in from. Google sign-in also passes them the name and email on your Google account.",
     when:
       "Only if you create an account. Guests never reach them. Configured by the VITE_SUPABASE_* keys — a build without those has no account service at all.",
   },

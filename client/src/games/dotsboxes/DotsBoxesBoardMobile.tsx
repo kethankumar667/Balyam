@@ -31,6 +31,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
     penOf,
     nameOf,
     initialOf,
+    avatarOf,
     selfPenColor,
     drawnH,
     drawnV,
@@ -66,7 +67,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
       </div>
 
       {/* Top: scoreboard + turn indicator (wraps on narrow phones) */}
-      <ScoreBar state={state} penOf={penOf} nameOf={nameOf} selfId={props.selfId} />
+      <ScoreBar state={state} penOf={penOf} nameOf={nameOf} avatarOf={avatarOf} selfId={props.selfId} />
 
       {/* Rough Notebook page */}
       <NotebookPaper>

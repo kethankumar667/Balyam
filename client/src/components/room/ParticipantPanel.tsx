@@ -13,6 +13,7 @@ export default function ParticipantPanel({
   onAddBot,
   onRemoveBot,
   onRemoveLocalPlayer,
+  onRenameBot,
 }: {
   players: Player[];
   maxPlayers: number;
@@ -22,10 +23,10 @@ export default function ParticipantPanel({
   onAddBot: (name?: string, difficulty?: BotDifficulty) => Promise<void> | void;
   onRemoveBot?: (botId: string) => void;
   onRemoveLocalPlayer?: (localId: string) => void;
+  onRenameBot?: (botId: string, newName: string) => void;
 }) {
   const [showAddBotDialog, setShowAddBotDialog] = useState(false);
   const [isAddingQuickBot, setIsAddingQuickBot] = useState(false);
-  const [isExpandedMobile, setIsExpandedMobile] = useState(false);
 
   const availableSeats = Math.max(0, maxPlayers - players.length);
   const isRoomFull = availableSeats <= 0;
@@ -42,10 +43,6 @@ export default function ParticipantPanel({
       setTimeout(() => setIsAddingQuickBot(false), 300);
     }
   }
-
-  // On very small screens, show first 4 players by default if many
-  const isLongList = players.length > 4;
-  const displayedPlayers = isLongList && !isExpandedMobile ? players.slice(0, 4) : players;
 
   return (
     <>
@@ -107,7 +104,7 @@ export default function ParticipantPanel({
 
         {/* Unified Player List Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {displayedPlayers.map((player) => (
+          {players.map((player) => (
             <ParticipantRow
               key={player.id}
               player={player}
@@ -115,24 +112,10 @@ export default function ParticipantPanel({
               isHost={isHost}
               onRemoveBot={onRemoveBot}
               onRemoveLocalPlayer={onRemoveLocalPlayer}
+              onRenameBot={onRenameBot}
             />
           ))}
         </div>
-
-        {/* Mobile "Show More / Less" toggle if long list */}
-        {isLongList && (
-          <div className="block sm:hidden text-center pt-1">
-            <button
-              type="button"
-              onClick={() => setIsExpandedMobile((prev) => !prev)}
-              className="text-xs font-bold text-[#8A6D4B] dark:text-slate-400 hover:text-[#EA5A1F] dark:hover:text-amber-400 py-1 px-3 rounded-full bg-[#EEDBCA]/30 dark:bg-slate-800 transition"
-            >
-              {isExpandedMobile
-                ? "Show Less"
-                : `Show All Players (${players.length})`}
-            </button>
-          </div>
-        )}
       </section>
 
       {/* Add Bot Dialog */}

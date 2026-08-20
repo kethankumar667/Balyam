@@ -40,6 +40,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
         state={state}
         inkOf={m.inkOf}
         nameOf={m.nameOf}
+        avatarOf={m.avatarOf}
         selfId={selfId}
         remainingSec={m.remainingSec}
         coach={m.coach}

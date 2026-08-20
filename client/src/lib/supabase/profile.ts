@@ -29,6 +29,8 @@ export interface Profile {
   dob?: string | null;
   gender?: string | null;
   accountId?: string | null;
+  bio?: string | null;
+  region?: string | null;
 }
 
 /** Row shape, snake_case as Postgres has it. Kept private to this module. */
@@ -41,6 +43,8 @@ interface ProfileRow {
   dob?: string | null;
   gender?: string | null;
   account_id?: string | null;
+  bio?: string | null;
+  region?: string | null;
 }
 
 /**
@@ -56,7 +60,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("display_name, avatar_id, first_name, last_name, email, dob, gender, account_id")
+    .select("display_name, avatar_id, first_name, last_name, email, dob, gender, account_id, bio, region")
     .eq("id", userId)
     .maybeSingle<ProfileRow>();
   if (error || !data) return null;
@@ -69,6 +73,8 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
     dob: data.dob,
     gender: data.gender,
     accountId: data.account_id,
+    bio: data.bio,
+    region: data.region,
   };
 }
 
@@ -79,29 +85,40 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
  * signup trigger creates one, but a project restored from a backup, or an
  * account made before that trigger existed, would otherwise have nothing to
  * update and fail silently forever.
+ *
+ * ── Partial by design — every field here is optional ──────────────────
+ * `profile` is a `Partial<Profile>`: a caller passes only the fields it
+ * actually changed (a name/avatar edit passes just those two; a bio/region
+ * edit passes just those two), and only THOSE columns end up in the upsert
+ * payload — Postgres leaves every column absent from the payload untouched
+ * on the conflict-update path. Getting this wrong once meant every routine
+ * name/avatar sync (see `startProfileSync`'s debounced push, which only
+ * ever has `displayName`/`avatarId` to send) silently overwrote
+ * firstName/lastName/email/dob/gender/accountId with NULL on every save,
+ * because the old version always included all eight columns in the
+ * payload, falling back to `null` for whichever ones the caller hadn't
+ * provided. Never widen this back to an unconditional object literal.
  */
 export async function saveProfile(
   userId: string,
-  profile: Profile,
+  profile: Partial<Profile>,
 ): Promise<boolean> {
   const supabase = getSupabase();
   if (!supabase) return false;
 
-  const { error } = await supabase.from("profiles").upsert(
-    {
-      id: userId,
-      display_name: profile.displayName?.trim() || null,
-      avatar_id: profile.avatarId,
-      first_name: profile.firstName?.trim() || null,
-      last_name: profile.lastName?.trim() || null,
-      email: profile.email?.trim() || null,
-      dob: profile.dob || null,
-      gender: profile.gender || null,
-      account_id: profile.accountId || null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "id" },
-  );
+  const row: Record<string, unknown> = { id: userId, updated_at: new Date().toISOString() };
+  if (profile.displayName !== undefined) row.display_name = profile.displayName?.trim() || null;
+  if (profile.avatarId !== undefined) row.avatar_id = profile.avatarId;
+  if (profile.firstName !== undefined) row.first_name = profile.firstName?.trim() || null;
+  if (profile.lastName !== undefined) row.last_name = profile.lastName?.trim() || null;
+  if (profile.email !== undefined) row.email = profile.email?.trim() || null;
+  if (profile.dob !== undefined) row.dob = profile.dob || null;
+  if (profile.gender !== undefined) row.gender = profile.gender || null;
+  if (profile.accountId !== undefined) row.account_id = profile.accountId || null;
+  if (profile.bio !== undefined) row.bio = profile.bio?.trim() || null;
+  if (profile.region !== undefined) row.region = profile.region || null;
+
+  const { error } = await supabase.from("profiles").upsert(row, { onConflict: "id" });
   return !error;
 }
 

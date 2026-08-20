@@ -53,8 +53,8 @@ export function computeStadiumSeating(playerOrder: string[], selfId: string | nu
   const total = afterSelf.length;
   if (total === 0) return empty;
   const remaining = total - 1;
-  const leftCount = Math.min(3, Math.floor(remaining / 2));
-  const rightCount = Math.min(3, remaining - leftCount);
+  const leftCount = Math.floor(remaining / 2);
+  const rightCount = remaining - leftCount;
   const left = afterSelf.slice(0, leftCount);
   const spotlight = afterSelf[leftCount] ?? null;
   const right = afterSelf.slice(leftCount + 1, leftCount + 1 + rightCount);
@@ -121,10 +121,15 @@ export function computeStadiumPositions(
     } else if (rightCount === 2) {
       pos[seating.right[0]] = { left: "78%", top: "24%" };
       pos[seating.right[1]] = { left: "78%", top: "54%" };
-    } else if (rightCount >= 3) {
+    } else if (rightCount === 3) {
       pos[seating.right[0]] = { left: "76%", top: "20%" };
       pos[seating.right[1]] = { left: "80%", top: "38%" };
       pos[seating.right[2]] = { left: "76%", top: "56%" };
+    } else if (rightCount >= 4) {
+      pos[seating.right[0]] = { left: "76%", top: "16%" };
+      pos[seating.right[1]] = { left: "80%", top: "30%" };
+      pos[seating.right[2]] = { left: "80%", top: "44%" };
+      pos[seating.right[3]] = { left: "76%", top: "58%" };
     }
 
     const leftCount = seating.left.length;
@@ -133,10 +138,15 @@ export function computeStadiumPositions(
     } else if (leftCount === 2) {
       pos[seating.left[0]] = { left: "22%", top: "54%" };
       pos[seating.left[1]] = { left: "22%", top: "24%" };
-    } else if (leftCount >= 3) {
+    } else if (leftCount === 3) {
       pos[seating.left[0]] = { left: "24%", top: "56%" };
       pos[seating.left[1]] = { left: "20%", top: "38%" };
       pos[seating.left[2]] = { left: "24%", top: "20%" };
+    } else if (leftCount >= 4) {
+      pos[seating.left[0]] = { left: "24%", top: "58%" };
+      pos[seating.left[1]] = { left: "20%", top: "44%" };
+      pos[seating.left[2]] = { left: "20%", top: "30%" };
+      pos[seating.left[3]] = { left: "24%", top: "16%" };
     }
 
     if (selfId) {
@@ -157,10 +167,15 @@ export function computeStadiumPositions(
   } else if (rightCount === 2) {
     pos[seating.right[0]] = { left: "78%", top: "15%" };
     pos[seating.right[1]] = { left: "88%", top: "54%" };
-  } else if (rightCount >= 3) {
+  } else if (rightCount === 3) {
     pos[seating.right[0]] = { left: "75%", top: "15%" }; // Top-Right Shoulder (Khatarnak)
     pos[seating.right[1]] = { left: "91%", top: "37%" }; // Mid-Right Flank (Raftaar)
     pos[seating.right[2]] = { left: "84%", top: "62%" }; // Bottom-Right Hip (Bijli)
+  } else if (rightCount >= 4) {
+    pos[seating.right[0]] = { left: "74%", top: "14%" };
+    pos[seating.right[1]] = { left: "88%", top: "28%" };
+    pos[seating.right[2]] = { left: "92%", top: "44%" };
+    pos[seating.right[3]] = { left: "84%", top: "60%" };
   }
 
   // Left column seats (seating.left is closest-to-self-first: bottom-to-top)
@@ -168,15 +183,21 @@ export function computeStadiumPositions(
   const l0 = seating.left[0];
   const l1 = seating.left[1];
   const l2 = seating.left[2];
+  const l3 = seating.left[3];
   if (leftCount === 1 && l0) {
     pos[l0] = { left: "12%", top: "42%" };
   } else if (leftCount === 2) {
     if (l0) pos[l0] = { left: "14%", top: "56%" };
     if (l1) pos[l1] = { left: "22%", top: "15%" };
-  } else if (leftCount >= 3) {
+  } else if (leftCount === 3) {
     if (l0) pos[l0] = { left: "16%", top: "62%" }; // Bottom-Left Hip (Jugadu)
     if (l1) pos[l1] = { left: "9%", top: "37%" }; // Mid-Left Flank (Baazi)
     if (l2) pos[l2] = { left: "25%", top: "15%" }; // Top-Left Shoulder (Chikki)
+  } else if (leftCount >= 4) {
+    if (l0) pos[l0] = { left: "16%", top: "60%" };
+    if (l1) pos[l1] = { left: "8%", top: "44%" };
+    if (l2) pos[l2] = { left: "12%", top: "28%" };
+    if (l3) pos[l3] = { left: "26%", top: "14%" };
   }
 
   // Self seat (YOU) — on desktop centered at bottom; on mobile positioned at bottom-left

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { CoinColor, Player, SnlEvent, SnlState } from "@shared/types";
 import { COIN_COLOR_HEX } from "../../components/CoinColorPicker";
 import { Dice } from "../ludo/Dice";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 /**
  * Snakes & Ladders — shared presentational layer.
@@ -853,6 +854,12 @@ export function SnlPlayerRail({
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs text-slate-100 font-semibold truncate flex items-center gap-1">
+                <SeatAvatar
+                  avatar={p?.avatar}
+                  name={p?.name ?? "—"}
+                  className="w-5 h-5"
+                  textClassName="text-[8px]"
+                />
                 {p?.name ?? "—"}
                 {id === selfId && <span className="text-[9px] text-slate-400 dark:text-slate-300 font-normal">(you)</span>}
                 {finished && <span title="Finished">🏁</span>}

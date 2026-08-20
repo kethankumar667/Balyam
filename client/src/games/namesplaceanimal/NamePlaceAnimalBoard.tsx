@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import NamePlaceAnimalBoardMobile from "./NamePlaceAnimalBoardMobile";
 import NamePlaceAnimalBoardDesktop from "./NamePlaceAnimalBoardDesktop";
-import type { NamePlaceAnimalAnswers, NamePlaceAnimalPublicState } from "@shared/types";
+import type { NamePlaceAnimalAnswers, NamePlaceAnimalPublicState, Player } from "@shared/types";
 
 export interface NamePlaceAnimalBoardContainerProps {
   state: NamePlaceAnimalPublicState;
   myAnswers?: NamePlaceAnimalAnswers;
   myPlayerId: string;
   onMove: (type: string, data?: unknown) => void;
+  players?: Player[];
 }
 
 function isDesktopLayout(): boolean {
@@ -42,6 +43,7 @@ export default function NamePlaceAnimalBoard(props: NamePlaceAnimalBoardContaine
     myAnswers: safeAnswers,
     myPlayerId: props.myPlayerId,
     onMove: props.onMove,
+    players: props.players,
   };
 
   return isDesktop ? (

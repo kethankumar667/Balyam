@@ -101,7 +101,7 @@ export default function PlayerList({
 
       <div className="flex items-center gap-1.5 text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium">
         <Users size={14} aria-hidden />
-        <span>{players.length >= 6 ? "Table full · All ready!" : "Waiting for players..."}</span>
+        <span>{players.length > 0 && players.every((p) => p.isReady) ? "All players ready!" : "Waiting for players..."}</span>
       </div>
     </div>
   );

@@ -190,6 +190,7 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
             <AllPlayerBoardsView
               players={state.players}
               selfId={model.selfId}
+              roster={model.players}
             />
           )}
 

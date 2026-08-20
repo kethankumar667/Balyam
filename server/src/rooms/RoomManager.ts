@@ -879,6 +879,19 @@ export class RoomManager {
     this.broadcastRoomState(room);
   }
 
+  renameBot(socketId: string, botId: string, newName: string): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (player.id !== room.hostId) return;
+    if (room.phase !== "lobby") return;
+    const target = room.players.get(botId);
+    if (!target?.isBot) return;
+    const cleaned = newName?.trim().slice(0, 20);
+    if (!cleaned || cleaned.length === 0) return;
+    target.name = cleaned;
+    this.broadcastRoomState(room);
+  }
+
   /**
    * Pass & Play: host adds a local human seat. Unlike a bot, the seat will
    * NOT auto-move — it just waits its turn while the host's UI shows a

@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import type { DotsBoxesPublicState } from "@shared/types";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 /* ─────────────────────────── Player pens (College stationery) ─────────────────────────── */
 /*
@@ -929,12 +930,14 @@ export function ScoreBar({
   state,
   penOf,
   nameOf,
+  avatarOf,
   selfId,
   vertical = false,
 }: {
   state: DotsBoxesPublicState;
   penOf: Record<string, Pen>;
   nameOf: (id: string) => string;
+  avatarOf: (id: string) => string | undefined;
   selfId: string | null;
   /** Desktop side-rail mode: stack the player chips in a column. */
   vertical?: boolean;
@@ -969,7 +972,8 @@ export function ScoreBar({
             {vertical ? (
               /* ── Desktop: two-line layout ── */
               <>
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-center gap-2">
+                  <SeatAvatar avatar={avatarOf(pid)} name={nameOf(pid)} className="w-7 h-7" textClassName="text-[10px]" />
                   <span className="font-black" style={{ color: pen.color, fontSize: 22 }}>
                     {nameOf(pid)}{me ? " (you)" : ""}
                   </span>
@@ -984,11 +988,14 @@ export function ScoreBar({
             ) : (
               /* ── Mobile: compact single-row chip ── */
               <div className="flex items-center justify-between gap-2">
-                <div style={{ minWidth: 0 }}>
-                  <div className="font-black truncate" style={{ color: pen.color, fontSize: 15, lineHeight: 1.2 }}>
-                    {nameOf(pid)}{me ? " (you)" : ""}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <SeatAvatar avatar={avatarOf(pid)} name={nameOf(pid)} className="w-6 h-6" textClassName="text-[9px]" />
+                  <div style={{ minWidth: 0 }}>
+                    <div className="font-black truncate" style={{ color: pen.color, fontSize: 15, lineHeight: 1.2 }}>
+                      {nameOf(pid)}{me ? " (you)" : ""}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#6b5b48", lineHeight: 1 }}>{pen.name}</div>
                   </div>
-                  <div style={{ fontSize: 10, color: "#6b5b48", lineHeight: 1 }}>{pen.name}</div>
                 </div>
                 <span className="font-black flex-shrink-0" style={{ color: pen.color, fontSize: 20, lineHeight: 1 }}>
                   {state.scores[pid] ?? 0}

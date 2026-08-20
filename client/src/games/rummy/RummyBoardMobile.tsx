@@ -1423,6 +1423,7 @@ export default function RummyBoardMobile({
             state={state}
             selfId={selfId}
             nameOf={nameOf}
+            avatar={players.find((p) => p.id === selfId)?.avatar}
             livePoints={livePoints}
           />
           {hand.length > 0 && (
@@ -2298,6 +2299,7 @@ function OpponentRow({
           >
             <Avatar
               name={player?.name ?? "?"}
+              avatar={player?.avatar}
               size={52}
               countdown={isTurn && state.phase === "playing" ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
               scoreBadge={cumulative !== undefined ? cumulative : undefined}
@@ -2314,11 +2316,13 @@ function PlayerStrip({
   state,
   selfId,
   nameOf,
+  avatar,
   livePoints,
 }: {
   state: RummyPlayerState;
   selfId: string | null;
   nameOf: (id: string) => string;
+  avatar?: string;
   livePoints: LivePoints;
 }) {
   const myTurn = state.turnPlayerId === selfId;
@@ -2330,6 +2334,7 @@ function PlayerStrip({
     <div className="flex items-center gap-1.5 flex-shrink-0">
       <Avatar
         name={myName}
+        avatar={avatar}
         size={52}
         countdown={myTurn ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
         scoreBadge={cumulative !== undefined ? cumulative : undefined}

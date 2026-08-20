@@ -62,6 +62,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         {/* ── Player 1 card (left) ── */}
         <NotebookPlayerCard
           name={m.me?.name ?? "You"}
+          avatar={m.me?.avatar}
           isSelf
           score={m.myScore}
           target={m.target}
@@ -90,6 +91,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         {/* ── Player 2 card (right) ── */}
         <NotebookPlayerCard
           name={m.opponent?.name ?? "Opponent"}
+          avatar={m.opponent?.avatar}
           score={m.oppScore}
           target={m.target}
           streak={m.oppStreak}

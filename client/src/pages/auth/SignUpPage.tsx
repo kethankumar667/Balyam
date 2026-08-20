@@ -205,7 +205,7 @@ export default function SignUpPage() {
       {/* ════════════════════════════════════════════════════════════
           LEFT FULL-SCREEN PAGE: BRANDING & NOSTALGIA STORYTELLING
          ════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[48%] xl:w-[48%] min-h-[460px] lg:min-h-screen relative flex flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-hidden border-b-2 lg:border-b-0 lg:border-r-2 border-[#E0CCAC]">
+      <div className="hidden lg:flex lg:w-[48%] xl:w-[48%] lg:min-h-screen relative flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-hidden lg:border-r-2 border-[#E0CCAC]">
         {/* Full nostalgic background artwork: Gameboy, Polaroid, Pencils, Cassette, Good Old Days button */}
         <img
           src="/LoginPageBg.png"
@@ -288,7 +288,7 @@ export default function SignUpPage() {
       {/* ════════════════════════════════════════════════════════════
           RIGHT FULL-SCREEN PAGE: INTERACTIVE SIGNUP EXPERIENCE
          ════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[52%] xl:w-[52%] lg:min-h-screen bg-[#FAF6EE] flex flex-col p-6 sm:p-10 lg:p-12 xl:p-16 relative overflow-y-auto">
+      <div className="w-full lg:w-[52%] xl:w-[52%] min-h-screen bg-[#FAF6EE] flex flex-col items-center p-6 sm:p-10 lg:p-12 xl:p-16 relative overflow-y-auto">
         {/* Vertically centers as ONE block when there's room; degrades to a
             plain top-aligned, scrollable column when content is taller than
             the viewport (short mobile screens, or step 3's avatar grid) —
@@ -296,25 +296,24 @@ export default function SignUpPage() {
             overflow itself, which would strand content above scrollTop:0
             where it can't be reached. */}
         <div className="my-auto w-full">
+          {/* Bhalyam Logo */}
+          <div className="flex justify-center pt-2 pb-2">
+            <img
+              src="/FooterBhalyamlogo.png"
+              alt="BHALYAM - Play Together. Remember Forever."
+              className="h-24 sm:h-28 w-auto object-contain"
+            />
+          </div>
+
           {/* Top Title with hand-drawn rays & red underline */}
-          <div className="text-center space-y-1 pt-4 max-w-[460px] mx-auto w-full">
-            {/* Mobile mini brand header (< lg) */}
-            <div className="flex lg:hidden items-center justify-center gap-1.5 pb-1 text-amber-700">
-              <span>👑</span>
-              <span className="font-script text-[28px] font-black text-[#162A3B]">
-                Bhalyam
-              </span>
-              <span className="font-script text-[15px] font-bold text-[#A82020]">
-                — Game Lounge —
-              </span>
-            </div>
+          <div className="text-center space-y-1 max-w-[460px] mx-auto w-full">
 
             <div className="flex items-center justify-center gap-2">
               <span className="font-script text-[#A82020] text-2xl font-bold tracking-widest">
                 ≡
               </span>
               <h1 className="font-script text-[36px] sm:text-[44px] font-black text-[#162A3B] leading-none tracking-tight">
-                Create Your Account
+                Create Your Account {' '}
               </h1>
               <span className="font-script text-[#A82020] text-2xl font-bold tracking-widest">
                 ≡
@@ -434,8 +433,8 @@ export default function SignUpPage() {
                     className="space-y-3.5 text-left"
                   >
                     {/* Row 1: First Name & Last Name */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex-1 space-y-1">
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                           <input
@@ -460,7 +459,7 @@ export default function SignUpPage() {
                         )}
                       </div>
 
-                      <div className="space-y-1">
+                      <div className="flex-1 space-y-1">
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                           <input
@@ -524,8 +523,8 @@ export default function SignUpPage() {
                     </div>
 
                     {/* Row 3: Date of Birth & Gender */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex-1 space-y-1">
                         <label className="text-[10.5px] font-bold text-[#5C4A32] uppercase tracking-wider pl-1 block">
                           Date of Birth
                         </label>
@@ -554,7 +553,7 @@ export default function SignUpPage() {
                         )}
                       </div>
 
-                      <div className="space-y-1">
+                      <div className="flex-1 space-y-1">
                         <label className="text-[10.5px] font-bold text-[#5C4A32] uppercase tracking-wider pl-1 block">
                           Gender
                         </label>
@@ -597,21 +596,20 @@ export default function SignUpPage() {
                       </div>
                     </div>
 
-                    {/* Bottom Action Row: Continue with Google + Crimson Next Step CTA */}
-                    <div className="flex items-center justify-between gap-3 pt-2">
+                    <div className="grid grid-cols-2 gap-3 pt-2">
                       <button
                         type="button"
                         onClick={withGoogle}
                         disabled={loading}
-                        className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-[#CBD5E1] bg-white hover:bg-slate-50 text-xs font-bold text-[#334155] transition shadow-2xs cursor-pointer active:scale-95"
+                        className="flex items-center justify-center gap-2.5 py-3 px-4 bg-white hover:bg-slate-50 border border-[#CBD5E1] rounded-full text-[13px] font-bold text-[#334155] transition shadow-2xs cursor-pointer active:scale-95 w-full"
                       >
-                        <GoogleMark className="w-3.5 h-3.5" />
+                        <GoogleMark className="w-4 h-4" />
                         <span>Google</span>
                       </button>
 
                       <button
                         type="submit"
-                        className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-full bg-[#881337] hover:bg-[#9F1239] text-white font-bold text-sm shadow-sm hover:shadow-md active:scale-98 transition cursor-pointer ml-auto"
+                        className="flex items-center justify-center gap-2 py-3 px-4 bg-[#881337] hover:bg-[#9F1239] text-white font-bold text-sm rounded-full shadow-sm hover:shadow-md active:scale-98 transition cursor-pointer w-full"
                       >
                         <span>Next Step</span>
                         <ArrowRight className="w-4 h-4" />
@@ -946,6 +944,15 @@ export default function SignUpPage() {
             <div className="flex items-center justify-center pt-1.5 text-[13.5px] font-script text-[#7A5B3E] font-bold select-none pointer-events-none">
               <span>♡ Made with love for the 90&apos;s kids ⭐️</span>
             </div>
+          </div>
+
+          {/* Founder Section Asset */}
+          <div className="flex justify-center pt-4 pb-2">
+            <img
+              src="/Foundersectionasset.png"
+              alt="Bhalyam Founders"
+              className="h-24 sm:h-28 w-auto object-contain opacity-90"
+            />
           </div>
         </div>
       </div>

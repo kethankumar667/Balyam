@@ -11,12 +11,14 @@ export default function ParticipantRow({
   isHost,
   onRemoveBot,
   onRemoveLocalPlayer,
+  onRenameBot,
 }: {
   player: Player;
   selfId: string | null;
   isHost: boolean;
   onRemoveBot?: (botId: string) => void;
   onRemoveLocalPlayer?: (localId: string) => void;
+  onRenameBot?: (botId: string, newName: string) => void;
 }) {
   const isMe = player.id === selfId;
 
@@ -159,6 +161,7 @@ export default function ParticipantRow({
             isHost={isHost}
             onRemoveBot={onRemoveBot}
             onRemoveLocalPlayer={onRemoveLocalPlayer}
+            onRenameBot={onRenameBot}
           />
         )}
       </div>

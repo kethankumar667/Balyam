@@ -1,21 +1,28 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
 import type { LudoColor } from "@shared/types";
+import { findAvatar } from "../../lib/avatars";
 
 /**
- * Deterministic SVG avatar built locally — no external API.
- * Generates a circular badge with the player's initials and a subtle
- * patterned background so each name produces a recognisable visual.
+ * The player's chosen picture when they have one — or, when they haven't (or
+ * it fails to load), a deterministic SVG badge built locally: a circular
+ * gradient with the player's initials and a subtle patterned background so
+ * each name still produces a recognisable visual.
  */
 export function Avatar({
   name,
+  avatar,
   color,
   size = 32,
 }: {
   name: string;
+  avatar?: string;
   color?: LudoColor;
   size?: number;
 }) {
+  const option = findAvatar(avatar);
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => setImgFailed(false), [option?.src]);
   const initials = initialsOf(name);
   const seed = hashStr(name || "?");
   const hue = color ? null : seed % 360;
@@ -30,6 +37,25 @@ export function Avatar({
   // Reproduced with two bots named "Rocky": the second intended #F4B400 (Gold)
   // and rendered #00A86B (Emerald), disagreeing with its own board sector.
   const gid = `lav${useId().replace(/:/g, "")}`;
+
+  if (option && !imgFailed) {
+    return (
+      <span
+        className="inline-block rounded-full overflow-hidden flex-shrink-0"
+        style={{ width: size, height: size }}
+      >
+        <img
+          src={option.src}
+          alt=""
+          aria-hidden
+          className="w-full h-full object-cover scale-[1.25] origin-center"
+          style={{ objectPosition: "50% 22%" }}
+          onError={() => setImgFailed(true)}
+          draggable={false}
+        />
+      </span>
+    );
+  }
 
   return (
     <svg

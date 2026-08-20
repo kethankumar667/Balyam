@@ -4,6 +4,7 @@ import { ChessBoardGrid, legalTargetsFor } from "./chess-shared";
 import ChessSkinModal from "./ChessSkinModal";
 import type { ChessBoardTheme, ChessPieceSet } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 export default function ChessBoardMobile({
   state,
@@ -27,6 +28,11 @@ export default function ChessBoardMobile({
     return (id: string) => map.get(id) ?? "Player";
   }, [players]);
 
+  const avatarOf = useMemo(() => {
+    const map = new Map(players.map((p) => [p.id, p.avatar]));
+    return (id: string) => map.get(id);
+  }, [players]);
+
   const isWhite = state.whitePlayerId === selfId;
   const isBlack = state.blackPlayerId === selfId;
   const myColor = isBlack ? "b" : "w";
@@ -35,6 +41,8 @@ export default function ChessBoardMobile({
   const opponentId = isWhite ? state.blackPlayerId : state.whitePlayerId;
   const opponentName = opponentId ? nameOf(opponentId) : "Vishy";
   const myName = nameOf(selfId);
+  const opponentAvatar = opponentId ? avatarOf(opponentId) : undefined;
+  const myAvatar = avatarOf(selfId);
 
   const opponentTime = isWhite ? state.blackTimeRemainingMs : state.whiteTimeRemainingMs;
   const myTime = isWhite ? state.whiteTimeRemainingMs : state.whiteTimeRemainingMs;
@@ -165,6 +173,7 @@ export default function ChessBoardMobile({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
+                  <SeatAvatar avatar={myAvatar} name={myName} className="w-6 h-6" textClassName="text-[9px]" />
                   <span className="text-[11px] font-black text-[#2B1909] truncate">{myName}</span>
                   <span className="px-1 rounded text-[7px] font-black bg-[#38A169] text-white uppercase">
                     YOU
@@ -197,7 +206,10 @@ export default function ChessBoardMobile({
                 👨‍🦰
               </div>
               <div className="min-w-0">
-                <span className="text-[11px] font-black text-[#2B1909] truncate block">{opponentName}</span>
+                <div className="flex items-center gap-1">
+                  <SeatAvatar avatar={opponentAvatar} name={opponentName} className="w-6 h-6" textClassName="text-[9px]" />
+                  <span className="text-[11px] font-black text-[#2B1909] truncate">{opponentName}</span>
+                </div>
                 <span className="text-[9px] font-bold text-[#6D5432] block">
                   1420 🏆
                 </span>

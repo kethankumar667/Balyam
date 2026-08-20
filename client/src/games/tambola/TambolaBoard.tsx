@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import TambolaBoardMobile from "./TambolaBoardMobile";
 import TambolaBoardDesktop from "./TambolaBoardDesktop";
-import type { TambolaPlayerState } from "@shared/types";
+import type { Player, TambolaPlayerState } from "@shared/types";
 
 export interface TambolaBoardContainerProps {
   state: TambolaPlayerState;
   selfId: string;
   onMove: (type: string, data?: unknown) => void;
+  /** Full room roster (carries `avatar`), used to draw each seat's picture. */
+  players: Player[];
 }
 
 function isDesktopLayout(): boolean {

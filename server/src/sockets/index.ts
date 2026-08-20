@@ -144,6 +144,10 @@ export function registerSocketHandlers(
     rooms.removeBot(socket.id, botId);
   });
 
+  socket.on("room:renameBot", (botId, newName) => {
+    rooms.renameBot(socket.id, botId, newName);
+  });
+
   socket.on("room:chooseColor", (color) => {
     rooms.chooseColor(socket.id, color);
   });

@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import { findAvatar } from "../../lib/avatars";
 
 /**
  * BROADCAST KIT — the shared visual language for the "professional" skin.
@@ -362,28 +364,38 @@ export function ProIconButton({
 
 /* ── identity ────────────────────────────────────────────────────────────── */
 
-/** Gradient initial disc. Falls back to "?" so a missing name never renders empty. */
+/**
+ * The player's chosen picture — or, when they haven't picked one (or it
+ * fails to load), a gradient initial disc so a missing name never renders
+ * empty.
+ */
 export function ProAvatar({
   name,
+  avatar,
   side,
   size = 40,
   ring = false,
 }: {
   name: string;
+  avatar?: string;
   side: ProSide;
   size?: number;
   /** Gold ring — marks whose turn it is. */
   ring?: boolean;
 }) {
   const initial = (name?.trim()?.[0] ?? "?").toUpperCase();
+  const option = findAvatar(avatar);
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => setImgFailed(false), [option?.src]);
+  const showImage = !!option && !imgFailed;
   return (
     <div
-      className="grid shrink-0 place-items-center rounded-full font-black"
+      className="grid shrink-0 place-items-center rounded-full font-black overflow-hidden"
       style={{
         width: size,
         height: size,
         fontSize: size * 0.42,
-        background: `linear-gradient(168deg, ${side.light}, ${side.deep})`,
+        background: showImage ? undefined : `linear-gradient(168deg, ${side.light}, ${side.deep})`,
         color: "#08111F",
         border: ring ? `2px solid ${PRO.gold}` : "2px solid rgba(255,255,255,0.5)",
         boxShadow: ring
@@ -391,7 +403,19 @@ export function ProAvatar({
           : "0 4px 12px rgba(0,0,0,0.45)",
       }}
     >
-      {initial}
+      {showImage ? (
+        <img
+          src={option!.src}
+          alt=""
+          aria-hidden
+          className="w-full h-full object-cover scale-[1.25] origin-center"
+          style={{ objectPosition: "50% 22%" }}
+          onError={() => setImgFailed(true)}
+          draggable={false}
+        />
+      ) : (
+        initial
+      )}
     </div>
   );
 }

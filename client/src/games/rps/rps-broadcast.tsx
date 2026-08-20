@@ -173,6 +173,7 @@ export function ProTopBar({
 
 export function ProPlayerCard({
   name,
+  avatar,
   isSelf,
   score,
   target,
@@ -186,6 +187,7 @@ export function ProPlayerCard({
   compact = false,
 }: {
   name: string;
+  avatar?: string;
   isSelf?: boolean;
   score: number;
   target: number;
@@ -204,7 +206,7 @@ export function ProPlayerCard({
     <ProPanel glow={matchPoint} className={compact ? "p-3" : ""}>
       <div ref={cardRef}>
         <div className={`flex items-center gap-3 ${right ? "flex-row-reverse text-right" : ""}`}>
-          <ProAvatar name={name} side={side} size={compact ? 34 : 44} ring={matchPoint} />
+          <ProAvatar name={name} avatar={avatar} side={side} size={compact ? 34 : 44} ring={matchPoint} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5" style={{ justifyContent: right ? "flex-end" : "flex-start" }}>
               <span className="truncate text-[13px] font-extrabold" style={{ color: PRO.ink }}>

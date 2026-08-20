@@ -48,6 +48,7 @@ import {
   ROLE_BADGE_TONE,
   ROLE_BADGE_LABEL,
 } from "../../components/paper";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 /**
  * Shared props for every Hand Cricket shell (picker, mobile, desktop).
@@ -1589,7 +1590,7 @@ export function InningsPhase({
         />
       )}
 
-      <CurrentPlayersBar state={state} innings={innings} selfId={selfId} big={isDesktop} />
+      <CurrentPlayersBar state={state} innings={innings} selfId={selfId} players={players} big={isDesktop} />
 
       {/* Wicket + new batter announcement — shows for 4 s when a wicket falls. */}
       {wicketAnnounce && (
@@ -1712,11 +1713,16 @@ export function CurrentPlayersBar({
   state,
   innings,
   selfId,
+  players,
   big = false,
 }: {
   state: HcState;
   innings: HcInnings;
   selfId: string;
+  /** Real (human) players — used to resolve the controlling account's avatar
+   *  for the bowling seat. Striker/non-striker names come from the roster
+   *  (fictional cricketers), not from an account, so they don't get one. */
+  players: Player[];
   big?: boolean;
 }) {
   const battingSelection = state.teamSelections[innings.battingPlayerId];
@@ -1759,6 +1765,7 @@ export function CurrentPlayersBar({
 
   const bowlingIsMine = innings.bowlingPlayerId === selfId;
   const waitingForBowler = !currentBowler;
+  const bowlingPlayer = players.find((p) => p.id === innings.bowlingPlayerId);
 
   return (
     // One organic single-stroke sketch box holds all three columns — divided
@@ -1784,35 +1791,45 @@ export function CurrentPlayersBar({
         {/* Bowling column — orange/red hand-inked flag + pulsing "waiting"
             state and a detailed stitched ball while no bowler is picked yet. */}
         <div className={cn("flex items-center justify-between gap-2", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")}>
-          <div className="min-w-0">
-            <div
-              className="font-extrabold uppercase tracking-[0.12em]"
-              style={{ fontSize: big ? 11 : 9, color: waitingForBowler ? "#c2410c" : "#4a5a82" }}
-            >
-              ⚾ Bowling
-              {bowlingIsMine && (
-                <span className="ml-1 font-extrabold" style={{ fontSize: big ? 11 : 9, color: "#c2410c" }}>· YOU</span>
+          <div className="min-w-0 flex items-center gap-2">
+            {!waitingForBowler && (
+              <SeatAvatar
+                avatar={bowlingPlayer?.avatar}
+                name={bowlingPlayer?.name ?? "?"}
+                className={big ? "w-8 h-8" : "w-7 h-7"}
+                textClassName={big ? "text-[11px]" : "text-[10px]"}
+              />
+            )}
+            <div className="min-w-0">
+              <div
+                className="font-extrabold uppercase tracking-[0.12em]"
+                style={{ fontSize: big ? 11 : 9, color: waitingForBowler ? "#c2410c" : "#4a5a82" }}
+              >
+                ⚾ Bowling
+                {bowlingIsMine && (
+                  <span className="ml-1 font-extrabold" style={{ fontSize: big ? 11 : 9, color: "#c2410c" }}>· YOU</span>
+                )}
+              </div>
+              {waitingForBowler ? (
+                <div
+                  className="font-bold leading-tight animate-pulse"
+                  style={{ fontSize: big ? 15 : 12, color: "#c2410c" }}
+                >
+                  Waiting… Pick a bowler
+                </div>
+              ) : (
+                <>
+                  <div className="leading-tight font-bold text-hc-ink truncate" style={{ fontSize: big ? 18 : 13 }}>
+                    {currentBowler?.name}
+                  </div>
+                  <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 14 : 11 }}>
+                    {bowlerStats
+                      ? `${Math.floor(bowlerStats.balls / 6)}.${bowlerStats.balls % 6}-${bowlerStats.wickets}-${bowlerStats.runs}`
+                      : "0.0-0-0"}
+                  </div>
+                </>
               )}
             </div>
-            {waitingForBowler ? (
-              <div
-                className="font-bold leading-tight animate-pulse"
-                style={{ fontSize: big ? 15 : 12, color: "#c2410c" }}
-              >
-                Waiting… Pick a bowler
-              </div>
-            ) : (
-              <>
-                <div className="leading-tight font-bold text-hc-ink truncate" style={{ fontSize: big ? 18 : 13 }}>
-                  {currentBowler?.name}
-                </div>
-                <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 14 : 11 }}>
-                  {bowlerStats
-                    ? `${Math.floor(bowlerStats.balls / 6)}.${bowlerStats.balls % 6}-${bowlerStats.wickets}-${bowlerStats.runs}`
-                    : "0.0-0-0"}
-                </div>
-              </>
-            )}
           </div>
           {waitingForBowler && (
             <div className="flex-shrink-0" style={{ animation: "hc-glow-pulse 1.6s ease-in-out infinite" }}>
@@ -1986,6 +2003,7 @@ export function Scoreboard({
   big?: boolean;
 }) {
   const batterTeam = teamLabel(state, innings.battingPlayerId, players);
+  const battingPlayer = players.find((p) => p.id === innings.battingPlayerId);
   const oversBowled = Math.floor(innings.balls / 6);
   const ballsThisOver = innings.balls % 6;
   return (
@@ -2002,6 +2020,12 @@ export function Scoreboard({
 
       <div className="flex items-center gap-3">
         <span className={big ? "text-3xl" : "text-2xl"}>{batterTeam.flag}</span>
+        <SeatAvatar
+          avatar={battingPlayer?.avatar}
+          name={batterTeam.playerName}
+          className={big ? "w-8 h-8" : "w-7 h-7"}
+          textClassName={big ? "text-[11px]" : "text-[10px]"}
+        />
         <div>
           <div
             className="font-bold uppercase tracking-[0.12em] text-hc-ink-lt"

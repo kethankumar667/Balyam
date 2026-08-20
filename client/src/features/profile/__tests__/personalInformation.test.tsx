@@ -63,6 +63,23 @@ describe("Personal Information Feature Components", () => {
 
       expect(screen.getByText("No email linked (Guest Session)")).toBeDefined();
     });
+
+    it("prefers the live `name` prop over profile.displayName — the page's own REST snapshot must not shadow a name saved elsewhere while this page stays mounted", () => {
+      render(
+        <MemoryRouter>
+          <PersonalInformationCard
+            profile={mockProfile}
+            name="Renamed Elsewhere"
+            email={null}
+            isVerifiedEmail={false}
+            onEditProfile={vi.fn()}
+          />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText("Renamed Elsewhere")).toBeDefined();
+      expect(screen.queryByText(mockProfile.displayName)).toBeNull();
+    });
   });
 
   describe("2. EditProfileModal", () => {

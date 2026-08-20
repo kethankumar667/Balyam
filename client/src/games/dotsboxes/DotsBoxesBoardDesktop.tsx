@@ -33,6 +33,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
     penOf,
     nameOf,
     initialOf,
+    avatarOf,
     selfPenColor,
     drawnH,
     drawnV,
@@ -119,6 +120,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
           state={state}
           penOf={penOf}
           nameOf={nameOf}
+          avatarOf={avatarOf}
           selfId={props.selfId}
           vertical
         />

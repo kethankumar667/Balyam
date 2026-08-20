@@ -2608,6 +2608,8 @@ export interface ClientToServerEvents {
   /** `difficulty` is only meaningful for game === "bingo"; every other game ignores it. */
   "room:addBot": (botName?: string, difficulty?: BotDifficulty) => void;
   "room:removeBot": (botId: string) => void;
+  /** Host-only: rename a bot seat in the lobby */
+  "room:renameBot": (botId: string, newName: string) => void;
   /** Pass & Play: host adds a local human seat with the given name. */
   "room:addLocalPlayer": (name: string) => void;
   /** Pass & Play: host removes a local seat by id. */

@@ -8,6 +8,7 @@ import {
 import ChessSkinModal from "./ChessSkinModal";
 import type { ChessBoardTheme, ChessPieceSet } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
 export default function ChessBoardDesktop({
   state,
@@ -31,6 +32,11 @@ export default function ChessBoardDesktop({
     return (id: string) => map.get(id) ?? "Player";
   }, [players]);
 
+  const avatarOf = useMemo(() => {
+    const map = new Map(players.map((p) => [p.id, p.avatar]));
+    return (id: string) => map.get(id);
+  }, [players]);
+
   const isWhite = state.whitePlayerId === selfId;
   const isBlack = state.blackPlayerId === selfId;
   const myColor = isBlack ? "b" : "w";
@@ -39,6 +45,8 @@ export default function ChessBoardDesktop({
   const opponentId = isWhite ? state.blackPlayerId : state.whitePlayerId;
   const opponentName = opponentId ? nameOf(opponentId) : "Opponent";
   const myName = nameOf(selfId);
+  const opponentAvatar = opponentId ? avatarOf(opponentId) : undefined;
+  const myAvatar = avatarOf(selfId);
 
   const opponentTime = isWhite ? state.blackTimeRemainingMs : state.whiteTimeRemainingMs;
   const myTime = isWhite ? state.whiteTimeRemainingMs : state.whiteTimeRemainingMs;
@@ -175,11 +183,17 @@ export default function ChessBoardDesktop({
             </h3>
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-950/30 border border-amber-500/20">
-                <span className="font-bold text-stone-200 truncate">{myName}</span>
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  <SeatAvatar avatar={myAvatar} name={myName} className="w-6 h-6" textClassName="text-[9px]" />
+                  <span className="font-bold text-stone-200 truncate">{myName}</span>
+                </span>
                 <span className="font-mono font-black text-amber-400">{state.capturedPieces.white.length} pts</span>
               </div>
               <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-950/30 border border-white/5">
-                <span className="font-bold text-stone-300 truncate">{opponentName}</span>
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  <SeatAvatar avatar={opponentAvatar} name={opponentName} className="w-6 h-6" textClassName="text-[9px]" />
+                  <span className="font-bold text-stone-300 truncate">{opponentName}</span>
+                </span>
                 <span className="font-mono font-black text-amber-400">{state.capturedPieces.black.length} pts</span>
               </div>
             </div>
@@ -221,6 +235,7 @@ export default function ChessBoardDesktop({
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
+                    <SeatAvatar avatar={myAvatar} name={myName} className="w-6 h-6" textClassName="text-[9px]" />
                     <span className="text-xs font-black text-amber-100 truncate">{myName}</span>
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-500 text-stone-950 uppercase">
                       YOU
@@ -249,7 +264,10 @@ export default function ChessBoardDesktop({
                   ⚔️
                 </div>
                 <div className="min-w-0">
-                  <span className="text-xs font-black text-amber-100 truncate block">{opponentName}</span>
+                  <div className="flex items-center gap-1.5">
+                    <SeatAvatar avatar={opponentAvatar} name={opponentName} className="w-6 h-6" textClassName="text-[9px]" />
+                    <span className="text-xs font-black text-amber-100 truncate">{opponentName}</span>
+                  </div>
                   <span className="text-[10px] font-bold text-amber-400/80 block">
                     {opponentColor === "w" ? "⚪ WHITE" : "⚫ BLACK"}
                   </span>

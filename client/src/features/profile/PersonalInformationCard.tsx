@@ -16,6 +16,10 @@ import {
 
 interface PersonalInformationCardProps {
   profile: PlayerProfile;
+  /** Live name from `roomStore` — overrides `profile.displayName` when
+   *  given, so this row doesn't go stale if the name changes via a
+   *  different save surface while this page stays mounted. */
+  name?: string;
   email?: string | null;
   isVerifiedEmail?: boolean;
   region?: string;
@@ -32,6 +36,7 @@ function maskEmail(email: string): string {
 
 export default function PersonalInformationCard({
   profile,
+  name,
   email,
   isVerifiedEmail = false,
   region = "India 🇮🇳",
@@ -39,6 +44,7 @@ export default function PersonalInformationCard({
   onEditProfile,
 }: PersonalInformationCardProps) {
   const [copiedId, setCopiedId] = useState(false);
+  const displayName = name ?? profile.displayName;
 
   const memberDate = new Date(profile.joinedAt).toLocaleDateString("en-US", {
     year: "numeric",
@@ -98,7 +104,7 @@ export default function PersonalInformationCard({
                 Display Name
               </span>
               <span className="text-sm font-extrabold text-[var(--auth-ink)]">
-                {profile.displayName}
+                {displayName}
               </span>
             </div>
           </div>

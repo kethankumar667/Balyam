@@ -69,6 +69,10 @@ interface RoomStore {
   playerName: string;
   /** Chosen avatar filename from public/Avatars, or null for none. */
   avatarId: string | null;
+  /** Free-text "about me", shown on the profile page. */
+  bio: string;
+  /** Region/country the player picked for matchmaking display. */
+  region: string;
   /** Seat credentials by room code. Never sent anywhere but `room:join`. */
   seats: Record<string, SeatCredential>;
   roomState: RoomPublicState | null;
@@ -82,6 +86,8 @@ interface RoomStore {
   setPlayerId: (id: string | null) => void;
   setPlayerName: (name: string) => void;
   setAvatarId: (id: string | null) => void;
+  setBio: (bio: string) => void;
+  setRegion: (region: string) => void;
   /** Store the credential from a `room:create` / `room:join` ack. */
   rememberSeat: (code: string, playerId: string, seatToken: string) => void;
   /** The credential for a room, if this browser holds one. */
@@ -106,6 +112,11 @@ const STORED_ID_KEY = "mpg.playerId";
 const LAST_GANGS_KEY = "mpg.rummy.lastGangs";
 const SEATS_KEY = "mpg.seats";
 const AVATAR_KEY = "mpg.avatar";
+// Names kept as-is (not the mpg.* prefix above) — these already existed as
+// page-local localStorage keys before bio/region moved into this store, and
+// renaming them would orphan whatever a returning player already has saved.
+const BIO_KEY = "bhalyam.profile.bio";
+const REGION_KEY = "bhalyam.profile.region";
 
 /** Rooms remembered at once. Old codes are dead the moment their room is. */
 const MAX_REMEMBERED_SEATS = 12;
@@ -173,6 +184,8 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   playerId: safeGetStorage(STORED_ID_KEY),
   playerName: safeGetStorage(STORED_NAME_KEY) ?? "",
   avatarId: safeGetStorage(AVATAR_KEY),
+  bio: safeGetStorage(BIO_KEY) ?? "",
+  region: safeGetStorage(REGION_KEY) ?? "India 🇮🇳",
   seats: loadSeats(),
   roomState: null,
   gameState: null,
@@ -208,6 +221,22 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       }
     }
     set({ avatarId: id });
+  },
+  setBio: (bio) => {
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      try {
+        localStorage.setItem(BIO_KEY, bio);
+      } catch {}
+    }
+    set({ bio });
+  },
+  setRegion: (region) => {
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      try {
+        localStorage.setItem(REGION_KEY, region);
+      } catch {}
+    }
+    set({ region });
   },
   rememberSeat: (code, playerId, seatToken) =>
     set((s) => {
@@ -275,6 +304,10 @@ export const useRoomPlayerName = (): string =>
 
 export const useRoomAvatarId = (): string | null =>
   useRoomStore((s) => s.avatarId);
+
+export const useRoomBio = (): string => useRoomStore((s) => s.bio);
+
+export const useRoomRegion = (): string => useRoomStore((s) => s.region);
 
 export function useGameState<K extends GameKind>(_game: K): GameStateMap[K] | null {
   return useRoomStore((s) => s.gameState as GameStateMap[K] | null);

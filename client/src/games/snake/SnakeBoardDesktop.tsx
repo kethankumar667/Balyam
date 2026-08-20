@@ -4,8 +4,9 @@ import SnakeCanvas from "./SnakeCanvas";
 import { RulesModal, type SnakeBoardProps } from "./SnakeBoardMobile";
 import { useHaptics } from "../../hooks/useHaptics";
 import { SNAKE_THEME_CHROME, THEME_LABELS, SNAKE_THEMES } from "./snakeChrome";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 
-export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardProps) {
+export default function SnakeBoardDesktop({ state, selfId, onMove, players }: SnakeBoardProps) {
   const [showRules, setShowRules] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [activeTheme, setActiveTheme] = useState<SnakeTheme>(state.theme || "nokia-monochrome");
@@ -78,6 +79,11 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
     }
     prevOverRef.current = !!state.isOver;
   }, [state.isOver, haptics]);
+
+  // Avatar lookup: `state.players` is the engine's public DTO and has no
+  // `avatar` field, so seats look their picture up from the full room roster.
+  const avatarById = new Map<string, string | undefined>();
+  for (const r of players) avatarById.set(r.id, r.avatar);
 
   // Rank calculation
   const sortedPlayers = [...state.players].sort((a, b) => b.score - a.score);
@@ -154,6 +160,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove }: SnakeBoardP
                         {idx + 1}
                       </span>
                       <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
+                      <SeatAvatar avatar={avatarById.get(p.id)} name={p.name} className="w-6 h-6" textClassName="text-[9px]" />
                       <span className={`font-extrabold ${p.isAlive ? "" : "line-through opacity-50"}`}>
                         {p.id === selfId ? "You" : p.name}
                       </span>

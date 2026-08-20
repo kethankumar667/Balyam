@@ -159,6 +159,10 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
 type LudoSeatMeta = {
   pid: string;
   name: string;
+  /** The seat's chosen avatar filename, from server state. Not optional for
+   *  the same reason as `autoReason` below — an optional field here breaks
+   *  the type predicate that filters colourless seats out of the list. */
+  avatar: string | undefined;
   color: LudoColor;
   online: boolean;
   isBot: boolean;
@@ -239,6 +243,7 @@ function orderedSeats(state: LudoState, players: Player[], selfId?: string | nul
         pid,
         color,
         name: p?.name ?? "Player",
+        avatar: p?.avatar,
         online: p?.isConnected !== false,
         isBot: p?.isBot === true,
         autoPlaying: p?.isAutoPlaying === true,
@@ -368,7 +373,7 @@ function LudoPlayerCard({
       )}
       <div className="relative flex-shrink-0">
         <div className="ludo-chip rounded-full" style={{ padding: 2.5, ...chipVars(tint, rim) }}>
-          <Avatar name={seat.name} color={seat.color} size={avatarPx} />
+          <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
         </div>
         {showTimer && <TurnCountdownRing pct={pct} color={timerColor} box={avatarPx + 12} />}
         <span

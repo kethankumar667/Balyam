@@ -298,14 +298,26 @@ async function startProfileSync(userId: string): Promise<void> {
   stopProfileSync?.();
 
   const room = useRoomStore.getState();
-  const local = { displayName: room.playerName.trim() || null, avatarId: room.avatarId };
+  const local = {
+    displayName: room.playerName.trim() || null,
+    avatarId: room.avatarId,
+    bio: room.bio.trim() || null,
+    region: room.region.trim() || null,
+  };
   const remote = await fetchProfile(userId);
 
-  let lastSynced = { displayName: remote?.displayName ?? null, avatarId: remote?.avatarId ?? null };
+  let lastSynced = {
+    displayName: remote?.displayName ?? null,
+    avatarId: remote?.avatarId ?? null,
+    bio: remote?.bio ?? null,
+    region: remote?.region ?? null,
+  };
 
   if (remote?.displayName || remote?.avatarId || remote?.accountId) {
     if (remote.displayName) useRoomStore.getState().setPlayerName(remote.displayName);
     if (remote.avatarId) useRoomStore.getState().setAvatarId(remote.avatarId);
+    if (remote.bio) useRoomStore.getState().setBio(remote.bio);
+    if (remote.region) useRoomStore.getState().setRegion(remote.region);
     saveAccountDetails({
       firstName: remote.firstName || "",
       lastName: remote.lastName || "",
@@ -321,12 +333,19 @@ async function startProfileSync(userId: string): Promise<void> {
       ...remote,
       displayName: remote.displayName ?? local.displayName,
       avatarId: remote.avatarId ?? local.avatarId,
+      bio: remote.bio ?? local.bio,
+      region: remote.region ?? local.region,
     };
-    if (merged.displayName !== lastSynced.displayName || merged.avatarId !== lastSynced.avatarId) {
+    if (
+      merged.displayName !== lastSynced.displayName ||
+      merged.avatarId !== lastSynced.avatarId ||
+      merged.bio !== lastSynced.bio ||
+      merged.region !== lastSynced.region
+    ) {
       lastSynced = merged;
       void saveProfile(userId, merged);
     }
-  } else if (local.displayName || local.avatarId) {
+  } else if (local.displayName || local.avatarId || local.bio || local.region) {
     lastSynced = local;
     void saveProfile(userId, local);
   }
@@ -335,8 +354,18 @@ async function startProfileSync(userId: string): Promise<void> {
   // one would otherwise be its own round trip.
   let timer: number | null = null;
   const unsubscribe = useRoomStore.subscribe((state) => {
-    const next = { displayName: state.playerName.trim() || null, avatarId: state.avatarId };
-    if (next.displayName === lastSynced.displayName && next.avatarId === lastSynced.avatarId) {
+    const next = {
+      displayName: state.playerName.trim() || null,
+      avatarId: state.avatarId,
+      bio: state.bio.trim() || null,
+      region: state.region.trim() || null,
+    };
+    if (
+      next.displayName === lastSynced.displayName &&
+      next.avatarId === lastSynced.avatarId &&
+      next.bio === lastSynced.bio &&
+      next.region === lastSynced.region
+    ) {
       return;
     }
     if (timer !== null) window.clearTimeout(timer);

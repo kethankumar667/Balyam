@@ -98,6 +98,14 @@ export default function ProfilePage() {
 
   const { playerId: effectivePlayerId, ready: identityReady } = usePlayerId();
 
+  // Resync the "Update Name" field to the live name whenever it changes via
+  // any OTHER save surface (Settings, the header's own profile sheet, etc.)
+  // while this page stays mounted — otherwise it keeps showing whatever
+  // name was current at first render.
+  useEffect(() => {
+    setNameInput(currentName);
+  }, [currentName]);
+
   if (!isMember) {
     // `lazy()` requires a Suspense boundary on every render path that reaches
     // it, not just the common one — this IS the only render path for a guest,
@@ -121,13 +129,14 @@ export default function ProfilePage() {
       ]);
 
       if (profRes?.profile) {
+        // NOT pushed into roomStore: `profRes.profile` is `player_profiles`,
+        // a denormalized copy kept for stats/leaderboard display (level, XP,
+        // joined date) — it can lag behind the real name/avatar, which live
+        // in `public.profiles` and stay correct in roomStore via authStore's
+        // own sync. Pulling this GET's possibly-stale displayName/avatar
+        // back into roomStore used to silently revert a correct name to
+        // whatever this table last happened to hold.
         setProfile(profRes.profile);
-        if (profRes.profile.displayName && profRes.profile.displayName !== currentName) {
-          setPlayerName(profRes.profile.displayName);
-        }
-        if (profRes.profile.avatar !== undefined && profRes.profile.avatar !== currentAvatar) {
-          setAvatarId(profRes.profile.avatar || null);
-        }
       } else {
         setProfile({
           playerId: effectivePlayerId ?? "",
@@ -253,6 +262,8 @@ export default function ProfilePage() {
           {profile && (
             <ProfileHeader
               profile={profile}
+              name={currentName}
+              avatar={currentAvatar}
               isMember={isMember}
               onEditName={() => setActiveTab("settings")}
             />

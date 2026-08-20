@@ -106,6 +106,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
       <div className="grid grid-cols-2 gap-2.5 px-4 pt-2">
         <NotebookPlayerCard
           name={m.me?.name ?? "You"}
+          avatar={m.me?.avatar}
           isSelf
           score={m.myScore}
           target={m.target}
@@ -119,6 +120,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
         />
         <NotebookPlayerCard
           name={m.opponent?.name ?? "Opp"}
+          avatar={m.opponent?.avatar}
           score={m.oppScore}
           target={m.target}
           streak={m.oppStreak}
