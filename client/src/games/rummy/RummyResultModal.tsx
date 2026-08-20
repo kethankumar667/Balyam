@@ -106,7 +106,7 @@ export default function RummyResultModal({
 
   // Shared grid template so the column labels line up with every row.
   const COLS =
-    "grid-cols-[40px_minmax(84px,1.3fr)_minmax(0,4fr)_56px_84px] sm:grid-cols-[52px_minmax(120px,1.3fr)_minmax(0,4fr)_72px_104px]";
+    "grid-cols-[36px_minmax(80px,1fr)_minmax(0,4.5fr)_48px_72px] sm:grid-cols-[44px_minmax(110px,1fr)_minmax(0,4.5fr)_60px_84px]";
 
   // One derived row per player — shared by the live HTML table below and
   // the printable score-sheet SVG (docs/rummy/roadmap.md B.4) so neither
@@ -160,7 +160,7 @@ export default function RummyResultModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4"
       style={{ background: "rgba(20,14,8,0.72)", inset: 0 }}
       role="dialog"
       aria-modal="true"
@@ -230,24 +230,24 @@ export default function RummyResultModal({
         className="relative rounded-2xl sm:rounded-3xl border border-amber-500/30 shadow-[0_20px_60px_rgba(0,0,0,0.85)]
                    flex flex-col overflow-hidden bg-gradient-to-b from-[#18261e] via-[#101b15] to-[#0a110d] text-white"
         style={{
-          width: "min(96vw, 1140px)",
-          maxHeight: "92vh",
+          width: "min(96vw, 1080px)",
+          maxHeight: "94vh",
         }}
       >
         {/* Ambient Top Glow */}
-        <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-amber-500/15 via-emerald-500/5 to-transparent pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-amber-500/15 via-emerald-500/5 to-transparent pointer-events-none" />
 
         {/* ── Header Bar ── */}
-        <div className="relative flex-shrink-0 flex items-center justify-between px-3.5 sm:px-6 py-3 border-b border-white/10 bg-black/40 backdrop-blur-md">
-          <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-amber-600 to-amber-300 flex items-center justify-center text-lg sm:text-2xl shadow-[0_0_15px_rgba(245,158,11,0.5)] flex-shrink-0">
+        <div className="relative flex-shrink-0 flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 border-b border-white/10 bg-black/40 backdrop-blur-md">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-amber-600 to-amber-300 flex items-center justify-center text-base sm:text-xl shadow-[0_0_15px_rgba(245,158,11,0.5)] flex-shrink-0">
               {selfRank === 1 ? "🏆" : "👑"}
             </div>
             <div className="flex flex-col min-w-0">
-              <h2 className="bhalyam-display text-[16px] sm:text-[22px] font-black text-amber-300 tracking-tight truncate">
+              <h2 className="bhalyam-display text-[15px] sm:text-[20px] font-black text-amber-300 tracking-tight truncate">
                 {headerText}
               </h2>
-              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11.5px] text-zinc-300">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[9.5px] sm:text-[11px] text-zinc-300">
                 {roomCode && <span className="font-mono text-amber-200/80">#{roomCode}</span>}
                 <span className="opacity-40">•</span>
                 <span className="text-emerald-300 font-semibold">{matchLabel}</span>
@@ -265,17 +265,20 @@ export default function RummyResultModal({
             <button
               type="button"
               onClick={() => setPreviewMode(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-xs font-bold transition cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-[11px] sm:text-xs font-bold transition cursor-pointer"
+              title="View board behind result"
             >
-              👁 Board Preview
+              <span>👁</span>
+              <span className="hidden xs:inline">Board Preview</span>
             </button>
             <button
               type="button"
               onClick={saveSheet}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-200 text-xs font-bold transition cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-200 text-[11px] sm:text-xs font-bold transition cursor-pointer"
+              title="Save score sheet image"
             >
               <SaveIcon className="w-3.5 h-3.5" />
-              Save Sheet
+              <span className="hidden xs:inline">Save Sheet</span>
             </button>
             {onLeave && (
               <button
@@ -291,7 +294,7 @@ export default function RummyResultModal({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 flex items-center justify-center text-sm font-black transition cursor-pointer ml-1"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 flex items-center justify-center text-xs sm:text-sm font-black transition cursor-pointer ml-0.5"
             >
               ✕
             </button>
@@ -299,16 +302,16 @@ export default function RummyResultModal({
         </div>
 
         {/* ── Main Scrollable Content ── */}
-        <div className="flex-1 min-h-0 overflow-y-auto rummy-scroll-soft p-3 sm:p-5 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto rummy-scroll-soft p-2.5 sm:p-4 space-y-2 sm:space-y-2.5">
           
           {/* Mobile Layout: Responsive Player Scorecards (< 640px) */}
-          <div className="block sm:hidden space-y-2.5">
+          <div className="block sm:hidden space-y-2">
             {rows.map((row) => {
               const { id, rank, isWin, isWrongShower, isDropped, isMe, name, points, chips, hand } = row;
               return (
                 <div
                   key={id}
-                  className={`rounded-xl p-3 border transition ${
+                  className={`rounded-xl p-2.5 border transition ${
                     isWin
                       ? "bg-gradient-to-r from-amber-500/20 via-amber-900/20 to-black/40 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
                       : isMe
@@ -317,30 +320,30 @@ export default function RummyResultModal({
                   }`}
                 >
                   {/* Card Header: Rank + Player Name + Points & Chips */}
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-black/50 border border-white/20 text-[11px] font-black text-amber-300">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="flex items-center justify-center w-5.5 h-5.5 rounded-full bg-black/50 border border-white/20 text-[10px] font-black text-amber-300 flex-shrink-0">
                         {isWrongShower ? "—" : rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`}
                       </div>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-extrabold text-[14px] text-white truncate">{name}</span>
+                      <div className="flex items-center gap-1 min-w-0 flex-wrap">
+                        <span className="font-extrabold text-[13px] text-white truncate max-w-[100px]">{name}</span>
                         {isMe && (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-400 text-black text-[9px] font-black uppercase">
+                          <span className="px-1 py-0.2 rounded bg-amber-400 text-black text-[8.5px] font-black uppercase">
                             YOU
                           </span>
                         )}
                         {isWin && (
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-black text-[9px] font-black uppercase">
+                          <span className="px-1 py-0.2 rounded bg-emerald-500 text-black text-[8.5px] font-black uppercase">
                             WINNER
                           </span>
                         )}
                         {isWrongShower && (
-                          <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-black uppercase">
+                          <span className="px-1 py-0.2 rounded bg-red-600 text-white text-[8.5px] font-black uppercase">
                             WRONG SHOW
                           </span>
                         )}
                         {isDropped && (
-                          <span className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[9px] font-extrabold uppercase">
+                          <span className="px-1 py-0.2 rounded bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[8.5px] font-extrabold uppercase">
                             DROPPED
                           </span>
                         )}
@@ -348,16 +351,16 @@ export default function RummyResultModal({
                     </div>
 
                     {/* Points & Chips */}
-                    <div className="flex items-center gap-2.5 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <div className="flex flex-col items-end">
-                        <span className="text-[9px] text-zinc-400 font-bold uppercase">Points</span>
-                        <span className={`text-xs font-black ${points === 0 ? "text-emerald-400" : "text-rose-300"}`}>
+                        <span className="text-[8.5px] text-zinc-400 font-bold uppercase">Points</span>
+                        <span className={`text-[11.5px] font-black ${points === 0 ? "text-emerald-400" : "text-rose-300"}`}>
                           {points}
                         </span>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-[9px] text-zinc-400 font-bold uppercase">Chips</span>
-                        <span className={`text-xs font-black ${chips >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        <span className="text-[8.5px] text-zinc-400 font-bold uppercase">Chips</span>
+                        <span className={`text-[11.5px] font-black ${chips >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                           {chips > 0 ? `+${chips}` : chips}
                         </span>
                       </div>
@@ -365,11 +368,11 @@ export default function RummyResultModal({
                   </div>
 
                   {/* Card Body: Melds breakdown */}
-                  <div className="pt-2">
+                  <div className="pt-1.5">
                     {isDropped ? (
                       <span className="text-zinc-500 text-xs italic">Cards hidden (dropped)</span>
                     ) : (
-                      <div className="overflow-x-auto pb-1 scrollbar-none">
+                      <div className="overflow-x-auto rummy-scroll-soft pb-1">
                         <MeldGroups
                           hand={hand}
                           declaredMelds={state.finalMelds?.[id]}
@@ -388,8 +391,8 @@ export default function RummyResultModal({
           <div className="hidden sm:block">
             {/* Table Header */}
             <div
-              className={`grid ${COLS} items-center gap-x-3 py-2 px-3
-                          text-[11px] font-sans font-black uppercase tracking-wider
+              className={`grid ${COLS} items-center gap-x-2.5 py-1.5 px-3
+                          text-[10.5px] font-sans font-black uppercase tracking-wider
                           text-amber-400/80 bg-black/30 rounded-xl border border-white/5`}
             >
               <div>Rank</div>
@@ -401,12 +404,12 @@ export default function RummyResultModal({
 
             {/* Table Rows */}
             <div className="divide-y divide-white/5 mt-1">
-              {rows.map((row, idx) => {
+              {rows.map((row) => {
                 const { id, rank, isWin, isWrongShower, isDropped, isMe, name, points, chips, hand } = row;
                 return (
                   <div
                     key={id}
-                    className={`grid ${COLS} items-center gap-x-3 px-3 py-3 rounded-xl transition ${
+                    className={`grid ${COLS} items-center gap-x-2.5 px-3 py-1.5 sm:py-2 rounded-xl transition ${
                       isWin
                         ? "bg-gradient-to-r from-amber-500/15 via-amber-900/10 to-transparent border border-amber-400/40"
                         : isMe
@@ -415,39 +418,39 @@ export default function RummyResultModal({
                     }`}
                   >
                     {/* Rank */}
-                    <div className="flex items-center gap-1.5 font-black text-sm text-zinc-300">
+                    <div className="flex items-center gap-1 font-black text-xs sm:text-sm text-zinc-300">
                       {rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : isWrongShower ? "—" : `#${rank}`}
                     </div>
 
                     {/* Name */}
-                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                      <span className={`font-extrabold text-[15px] truncate ${isWin ? "text-amber-300" : "text-white"}`}>
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                      <span className={`font-extrabold text-[13.5px] sm:text-[14px] truncate ${isWin ? "text-amber-300" : "text-white"}`}>
                         {name}
                       </span>
                       {isMe && (
-                        <span className="px-1.5 py-0.5 rounded bg-amber-400 text-black text-[9px] font-black uppercase">
+                        <span className="px-1.5 py-0.2 rounded bg-amber-400 text-black text-[8.5px] font-black uppercase">
                           YOU
                         </span>
                       )}
                       {isWin && (
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-black text-[9px] font-black uppercase">
+                        <span className="px-1.5 py-0.2 rounded bg-emerald-500 text-black text-[8.5px] font-black uppercase">
                           WINNER
                         </span>
                       )}
                       {isWrongShower && (
-                        <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-black uppercase">
+                        <span className="px-1.5 py-0.2 rounded bg-red-600 text-white text-[8.5px] font-black uppercase">
                           WRONG SHOW
                         </span>
                       )}
                       {isDropped && (
-                        <span className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[9px] font-extrabold uppercase">
+                        <span className="px-1.5 py-0.2 rounded bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[8.5px] font-extrabold uppercase">
                           DROPPED
                         </span>
                       )}
                     </div>
 
                     {/* Cards / Melds */}
-                    <div className="min-w-0 overflow-x-auto scrollbar-none py-1">
+                    <div className="min-w-0 overflow-x-auto rummy-scroll-soft py-0.5 max-w-full">
                       {isDropped ? (
                         <span className="text-zinc-500 text-xs italic">Cards hidden</span>
                       ) : (
@@ -461,12 +464,12 @@ export default function RummyResultModal({
                     </div>
 
                     {/* Points */}
-                    <div className={`text-right font-black tabular-nums text-[15px] ${points === 0 ? "text-emerald-400" : "text-zinc-300"}`}>
+                    <div className={`text-right font-black tabular-nums text-[13.5px] sm:text-[14px] ${points === 0 ? "text-emerald-400" : "text-zinc-300"}`}>
                       {points}
                     </div>
 
                     {/* Chips */}
-                    <div className={`text-right font-black tabular-nums text-[15px] ${chips >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    <div className={`text-right font-black tabular-nums text-[13.5px] sm:text-[14px] ${chips >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                       {chips > 0 ? `+${chips}` : chips}
                     </div>
                   </div>
@@ -477,27 +480,8 @@ export default function RummyResultModal({
         </div>
 
         {/* ── Footer Bar & Rematch Negotiation ── */}
-        <div className="flex-shrink-0 border-t border-white/10 bg-black/50 p-3 sm:p-4 space-y-2">
-          {/* Mobile preview & save buttons row */}
-          <div className="flex sm:hidden items-center justify-between gap-2 pb-1">
-            <button
-              type="button"
-              onClick={() => setPreviewMode(true)}
-              className="flex-1 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold text-center"
-            >
-              👁 Board Preview
-            </button>
-            <button
-              type="button"
-              onClick={saveSheet}
-              className="flex-1 py-1.5 rounded-xl bg-white/10 border border-white/15 text-zinc-200 text-xs font-bold text-center flex items-center justify-center gap-1"
-            >
-              <SaveIcon className="w-3.5 h-3.5" />
-              Save Image
-            </button>
-          </div>
-
-          <RematchPanel players={players} selfId={selfId} />
+        <div className="flex-shrink-0 border-t border-white/10 bg-black/70 backdrop-blur-md p-2.5 sm:p-3.5">
+          <RematchPanel players={players} selfId={selfId} className="max-w-md mx-auto" />
         </div>
       </div>
     </div>
@@ -590,7 +574,7 @@ function MeldGroups({
   };
 
   return (
-    <div className="flex items-center gap-2.5 w-max">
+    <div className="flex items-center gap-1.5 sm:gap-2 w-max">
       {groups.map((g, gi) => {
         const pts = pointsForGroup(g);
         const d = describeGroup(g, pts);
@@ -636,21 +620,21 @@ function ScoreGroup({
   const credited = points === 0;
   return (
     <div
-      className="relative flex-shrink-0 rounded-xl px-2 pt-1.5 pb-4 bg-black/40 border shadow-sm"
+      className="relative flex-shrink-0 rounded-lg px-1.5 pt-1 pb-3 bg-black/40 border shadow-xs"
       style={{ borderColor: st.ring }}
       title={credited ? `${label} · counts 0` : `${label} · +${points} points`}
     >
       <div className="flex">
         {cards.map((c, i) => (
-          <span key={c.id} className="flex-shrink-0" style={{ marginLeft: i === 0 ? 0 : -16 }}>
-            <PlayingCard card={c} isWildJoker={c.rank === wildRank} small />
+          <span key={c.id} className="flex-shrink-0" style={{ marginLeft: i === 0 ? 0 : -14 }}>
+            <PlayingCard card={c} isWildJoker={c.rank === wildRank} size="xs" />
           </span>
         ))}
       </div>
       {/* Type + points chip pinned along the group's bottom edge. */}
       <span
-        className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap inline-flex items-center gap-1
-                   px-2 h-[18px] rounded-full text-[9.5px] font-sans font-extrabold uppercase tracking-wide shadow-md"
+        className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap inline-flex items-center gap-0.5
+                   px-1.5 h-[15px] rounded-full text-[8.5px] font-sans font-extrabold uppercase tracking-wide shadow-xs"
         style={{ background: st.badge, color: "#fff", border: "1px solid rgba(255,255,255,0.4)" }}
       >
         <span>{label}</span>

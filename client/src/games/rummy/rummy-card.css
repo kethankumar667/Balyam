@@ -52,8 +52,15 @@
     opacity var(--rm-dur-quick) var(--rm-ease-out);
 }
 
+.rm-card--xs { width: var(--rm-card-w-xs); }
 .rm-card--sm { width: var(--rm-card-w-sm); }
 .rm-card--lg { width: var(--rm-card-w-lg); }
+
+.rm-card--xs .rm-card__corner--tl { top: 1px; left: 2px; }
+.rm-card--xs .rm-card__corner--br { bottom: 1px; right: 2px; }
+.rm-card--xs .rm-card__rank { font-size: 0.65rem; }
+.rm-card--xs .rm-card__pip { font-size: 0.5rem; margin-top: 0px; }
+.rm-card--xs .rm-card__center { font-size: 0.95rem; }
 
 /* The lit-from-above sheen. A card table is a lit object; this is the light,
    not a decorative gloss. */

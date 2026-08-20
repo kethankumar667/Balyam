@@ -21,7 +21,8 @@ import { splitBySuit, suggestArrangement, suggestDiscard } from "./autoArrange";
 import { captureRects, playFlip } from "../../lib/anim";
 import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
 import { useTurnHaptics, useHaptics } from "../../hooks/useHaptics";
-import TutorialModal, { hasSeenTutorial } from "./TutorialModal";
+import TutorialModal from "./TutorialModal";
+import { useTutorialGate } from "../../components/GameTutorial";
 import PlayerList from "../../components/PlayerList";
 import QrCodeModal from "../../components/QrCodeModal";
 import VoicePanel from "../../components/VoicePanel";
@@ -383,8 +384,14 @@ export default function RummyBoardMobile({
   const [freshCardId, setFreshCardId] = useState<string | null>(null);
   const [discardPulseKey, setDiscardPulseKey] = useState(0);
 
-  // Tutorial — auto-opens on first ever Rummy game (per browser).
-  const [tutorialOpen, setTutorialOpen] = useState(() => !hasSeenTutorial());
+  // Tutorial — auto-opens on first ever Rummy game (per browser), but never
+  // steals a live turn: see GameTutorial.tsx's useTutorialGate doc. Without
+  // this, mounting mid-turn (rejoin, first-in-turn-order) opens the modal
+  // over an already-running turnDeadline and can time the player out while
+  // they're still reading slide 1.
+  const tut = useTutorialGate("rummy.tutorial.completed.v1", !myTurn || state.turnDeadline == null);
+  const tutorialOpen = tut.open;
+  const setTutorialOpen = tut.setOpen;
 
   // Modal overlays — secondary info kept off the felt to maximize hand visibility.
   const [trackerOpen, setTrackerOpen] = useState(false);
@@ -633,20 +640,6 @@ export default function RummyBoardMobile({
   function toggleSelect(id: string) {
     try { haptics.subtle(); } catch { /* ignore */ }
     setSelected((prev) => {
-      // Tap-to-swap in same meld: if exactly 1 card is selected and user taps another in the same meld, swap them!
-      if (prev.size === 1) {
-        const [prevId] = Array.from(prev);
-        if (prevId && prevId !== id) {
-          const commonGroup = layout.groups.find(
-            (g) => g.cardIds.includes(prevId) && g.cardIds.includes(id),
-          );
-          if (commonGroup) {
-            swapCardsInGroup(commonGroup.id, prevId, id);
-            return new Set();
-          }
-        }
-      }
-
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);

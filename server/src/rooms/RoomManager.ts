@@ -252,6 +252,12 @@ interface Room {
    *  can be told what they missed when they come back. */
   autoPlayedFor: Map<string, number>;
   turnTimer: NodeJS.Timeout | null;
+  /** Rummy/UNO only: safety-net timer while the very first turn's clock
+   *  waits on every player's needsRotation to clear. See scheduleInitialTurnTimer. */
+  dealGateWaitTimer: NodeJS.Timeout | null;
+  /** Rummy/UNO only: fixed shuffle+deal animation pause counting down before
+   *  the very first turn timer actually arms. See scheduleInitialTurnTimer. */
+  dealGateAnimTimer: NodeJS.Timeout | null;
   /** Server-owned simulation loop for real-time engines. See startSimulation. */
   simTimer: NodeJS.Timeout | null;
   /** Socket ids watching without a seat (Smart TV / Party Mode). */
@@ -576,6 +582,8 @@ export class RoomManager {
       idleStrikes: new Map(),
       autoPlayedFor: new Map(),
       turnTimer: null,
+      dealGateWaitTimer: null,
+      dealGateAnimTimer: null,
       simTimer: null,
       spectators: new Set<string>(),
       // All multiplayer tables are open for joining via room code
@@ -981,6 +989,15 @@ export class RoomManager {
     if (player.needsRotation === needsRotation) return;
     player.needsRotation = needsRotation;
     this.broadcastRoomState(room);
+    // If the very first turn's clock is holding on this room's rotation
+    // gate (see scheduleInitialTurnTimer) and this report just cleared the
+    // last blocker, arm it now instead of waiting out the safety net.
+    if (room.dealGateWaitTimer && !needsRotation) {
+      const stillBlocking = Array.from(room.players.values()).some(
+        (p) => p.isConnected && !p.isBot && p.needsRotation,
+      );
+      if (!stillBlocking) this.armInitialTurnTimer(room);
+    }
   }
 
   /**
@@ -1139,7 +1156,7 @@ export class RoomManager {
       this.broadcastRoomState(room);
       this.broadcastGameState(room);
       this.armTakeoversForAbsentSeats(room);
-      this.scheduleTurnTimer(room);
+      this.scheduleInitialTurnTimer(room);
       this.startSimulation(room);
       this.scheduleBotMoveIfNeeded(room);
     } catch (err) {
@@ -1457,6 +1474,84 @@ export class RoomManager {
     }
   }
 
+  /** Fixed shuffle+deal animation Rummy/UNO always play once the rotation
+   *  gate clears — settle(600) + shuffle(900) + deal(900) in rotation-sync.tsx,
+   *  rounded up. Kept as one constant so both games' opener timings can
+   *  drift without this needing to track each one exactly. */
+  private static readonly DEAL_GATE_ANIM_MS = 2_500;
+  /** Upper bound on how long the very first turn's clock will wait on a
+   *  player's needsRotation before arming anyway — same worst case as
+   *  before this fix (immediate arm), never worse, but gives a real
+   *  chance for someone to actually rotate their phone first. */
+  private static readonly DEAL_GATE_MAX_WAIT_MS = 20_000;
+
+  /**
+   * Rummy and UNO hold the board behind a synchronized "wait for everyone to
+   * rotate, then replay shuffle + deal" opener for a match's very first turn
+   * (see client/src/games/rummy/rotation-sync.tsx, mirrored by UNO's own
+   * rotation-sync.tsx) — a full-screen, input-blocking sequence lasting
+   * ~2.4s in the common case, or indefinitely if a player's device won't
+   * rotate.
+   *
+   * scheduleTurnTimer used to arm that first deadline the instant
+   * engine.init() ran, with zero awareness of the client sequence, so a
+   * player could lose seconds — or their entire turn, if stuck on the
+   * rotate prompt — before the board was ever reachable. This defers the
+   * first arm until the same `needsRotation` signal the client gate already
+   * waits on resolves (or the safety net above fires), then adds the fixed
+   * animation pause, so the deadline lines up with when the board actually
+   * becomes interactive instead of when the server happened to finish init.
+   *
+   * Only the initial lobby -> playing transition (startGame) needs this: a
+   * rematch/next round never re-arms the client's `justStarted` flag
+   * (Room.tsx only sets it when the previous phase was "lobby"), so it never
+   * replays the gate and can keep calling scheduleTurnTimer directly.
+   */
+  private scheduleInitialTurnTimer(room: Room): void {
+    if (room.game !== "rummy" && room.game !== "uno") {
+      this.scheduleTurnTimer(room);
+      return;
+    }
+    const stillBlocking = Array.from(room.players.values()).some(
+      (p) => p.isConnected && !p.isBot && p.needsRotation,
+    );
+    if (!stillBlocking) {
+      this.armInitialTurnTimer(room);
+      return;
+    }
+    room.dealGateWaitTimer = setTimeout(() => {
+      room.dealGateWaitTimer = null;
+      this.armInitialTurnTimer(room);
+    }, RoomManager.DEAL_GATE_MAX_WAIT_MS);
+  }
+
+  /** Clears the rotation-wait leg (if pending) and starts the fixed
+   *  shuffle+deal animation pause, at the end of which the first turn timer
+   *  actually arms — called either once nobody's blocking anymore, or once
+   *  the safety-net wait expires. */
+  private armInitialTurnTimer(room: Room): void {
+    if (room.dealGateWaitTimer) {
+      clearTimeout(room.dealGateWaitTimer);
+      room.dealGateWaitTimer = null;
+    }
+    if (room.dealGateAnimTimer) return; // already counting down
+    room.dealGateAnimTimer = setTimeout(() => {
+      room.dealGateAnimTimer = null;
+      if (room.phase === "playing") this.scheduleTurnTimer(room);
+    }, RoomManager.DEAL_GATE_ANIM_MS);
+  }
+
+  private clearDealGateTimers(room: Room): void {
+    if (room.dealGateWaitTimer) {
+      clearTimeout(room.dealGateWaitTimer);
+      room.dealGateWaitTimer = null;
+    }
+    if (room.dealGateAnimTimer) {
+      clearTimeout(room.dealGateAnimTimer);
+      room.dealGateAnimTimer = null;
+    }
+  }
+
   /**
    * Server-owned simulation loop for real-time games.
    *
@@ -1595,6 +1690,7 @@ export class RoomManager {
     serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_abandoned");
     metricsCollector.onRoomAbandoned(room.game);
     this.clearTurnTimer(room);
+    this.clearDealGateTimers(room);
     this.stopSimulation(room);
     for (const t of room.cleanupTimers.values()) clearTimeout(t);
     room.cleanupTimers.clear();

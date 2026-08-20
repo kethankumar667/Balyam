@@ -6,9 +6,9 @@ import type {
   WordBuildingScoredWord,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
-import { hasSeenWordBuildingTutorial } from "./TutorialModal";
 import { useTurnHaptics } from "../../hooks/useHaptics";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
+import { useTutorialGate } from "../../components/GameTutorial";
 import { inkFor, type Ink } from "./inks";
 import { useCoach, type CoachState } from "../../components/CoachHintButton";
 
@@ -73,10 +73,15 @@ export function useWordBuildingBoard({
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
 
   // Auto-open the tutorial on the very first Word Building session (per
-  // browser). The "?" button on the header re-opens it anytime.
-  const [tutorialOpen, setTutorialOpen] = useState<boolean>(
-    () => !hasSeenWordBuildingTutorial(),
+  // browser). The "?" button on the header re-opens it anytime. Gated on
+  // canAutoOpen so it never opens on top of a live turnDeadline — see
+  // GameTutorial.tsx's useTutorialGate doc.
+  const tut = useTutorialGate(
+    "wordbuilding.tutorial.completed.v1",
+    !myTurn || state.turnDeadline == null,
   );
+  const tutorialOpen = tut.open;
+  const setTutorialOpen = tut.setOpen;
 
   // End-of-round scorecard dismissed flag — re-opens automatically when
   // the phase flips back to "playing" (a future pool-style rematch).

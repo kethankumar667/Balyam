@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * BHALYAM Dependency Governance & Supply Chain Guard
  * Audits package.json configurations across client and server:

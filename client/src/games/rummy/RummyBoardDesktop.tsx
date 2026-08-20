@@ -770,23 +770,9 @@ export default function RummyBoardDesktop({
   }
 
 
-  /* ─── Card tap / selection & in-meld tap-to-swap ─── */
+  /* ─── Card tap / multi-card selection ─── */
   function onCardTap(cardId: string) {
     setSelected((sel) => {
-      // Tap-to-swap: if exactly 1 card is already selected and in the same meld, swap them!
-      if (sel.size === 1) {
-        const [prevId] = Array.from(sel);
-        if (prevId && prevId !== cardId) {
-          const commonGroup = layout.groups.find(
-            (g) => g.cardIds.includes(prevId) && g.cardIds.includes(cardId),
-          );
-          if (commonGroup) {
-            swapCardsInGroup(commonGroup.id, prevId, cardId);
-            return new Set(); // Clear selection after swap
-          }
-        }
-      }
-
       const next = new Set(sel);
       if (next.has(cardId)) next.delete(cardId);
       else next.add(cardId);

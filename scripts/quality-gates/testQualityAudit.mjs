@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * BHALYAM Test Quality & Anti-Skip Guard
  * Audits all test files across client and server to prevent:

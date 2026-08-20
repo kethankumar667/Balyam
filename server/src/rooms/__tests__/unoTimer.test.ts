@@ -78,8 +78,21 @@ describe("RoomManager — UNO turn timer wiring", () => {
     try {
       rooms.startGame("s0");
 
+      const justStarted = latestGameStateFor("s0");
+      expect(justStarted.phase).toBe("playing");
+      // scheduleInitialTurnTimer defers UNO's very first deadline behind the
+      // client's synchronized rotate+deal opener (rotation-sync.tsx) so the
+      // clock can't run out from under a player before the board is even
+      // interactive — see RoomManager's DEAL_GATE_ANIM_MS. No blockers here
+      // (test players report no needsRotation), so the gate is just the
+      // fixed animation pause, not the full rotation wait.
+      expect(justStarted.turnDeadline).toBeNull();
+
+      // Let the deal-gate animation pause elapse — this is what actually
+      // arms the first deadline (armInitialTurnTimer -> scheduleTurnTimer).
+      vi.advanceTimersByTime(2_600);
+
       const before = latestGameStateFor("s0");
-      expect(before.phase).toBe("playing");
       // scheduleTurnTimer's UnoEngine branch must have set a real deadline
       // (this was the original dead-code gap — turnDeadline stayed null
       // forever because RoomManager never called setTurnDeadline for UNO).

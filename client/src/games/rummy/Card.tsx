@@ -39,7 +39,7 @@ function suitInk(suit: string): string {
  * the single most confusing thing the table did.
  */
 export type CardState = "idle" | "loading" | "error" | "success";
-export type CardSize = "sm" | "md" | "lg";
+export type CardSize = "xs" | "sm" | "md" | "lg";
 
 /** Cards may not be interacted with while a move is resolving or barred. */
 function isInert(state: CardState, disabled: boolean): boolean {
@@ -47,6 +47,7 @@ function isInert(state: CardState, disabled: boolean): boolean {
 }
 
 function sizeClass(size: CardSize): string {
+  if (size === "xs") return " rm-card--xs";
   if (size === "sm") return " rm-card--sm";
   if (size === "lg") return " rm-card--lg";
   return "";
@@ -210,9 +211,9 @@ export function PlayingCard({
       {/* Centre — face cards get Indian royal artwork; index cards (10/A)
           get a rank-between-pips treatment; number cards 2–9 get a big pip. */}
       {isCourt ? (
-        <IndianCourtCenter rank={card.rank as "J" | "Q" | "K"} suit={card.suit} small={resolvedSize === "sm"} />
+        <IndianCourtCenter rank={card.rank as "J" | "Q" | "K"} suit={card.suit} small={resolvedSize === "sm" || resolvedSize === "xs"} />
       ) : isIndex ? (
-        <IndexCenter rank={card.rank} suit={card.suit} ink={ink} small={resolvedSize === "sm"} />
+        <IndexCenter rank={card.rank} suit={card.suit} ink={ink} small={resolvedSize === "sm" || resolvedSize === "xs"} />
       ) : (
         <span className="rm-card__center" aria-hidden>
           {SUIT_GLYPHS[card.suit]}

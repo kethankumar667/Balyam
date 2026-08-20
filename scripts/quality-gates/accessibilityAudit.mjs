@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * BHALYAM Automated Accessibility (A11y) Quality Gate
  * Audits React JSX/TSX components across client/src for WCAG 2.1 AA compliance:
