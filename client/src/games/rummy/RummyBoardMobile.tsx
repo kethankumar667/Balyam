@@ -112,7 +112,8 @@ type DropTarget =
   | "openpile"
   | "finishslot"
   | "new"
-  | `group:${string}`;
+  | `group:${string}`
+  | `card:${string}:${string}`;
 
 function resolveDropTarget(x: number, y: number): DropTarget | null {
   let el = document.elementFromPoint(x, y) as Element | null;
@@ -212,6 +213,10 @@ function DraggableHandCard({
   onDragBegin,
   onDragHover,
   onDragRelease,
+  groupId,
+  index,
+  totalCards,
+  onMoveCard,
 }: {
   cardId: string;
   card: Card;
@@ -226,6 +231,10 @@ function DraggableHandCard({
   onDragBegin: (ids: string[]) => void;
   onDragHover: (target: DropTarget | null) => void;
   onDragRelease: (target: DropTarget | null) => void;
+  groupId?: string;
+  index?: number;
+  totalCards?: number;
+  onMoveCard?: (dir: -1 | 1) => void;
 }) {
   const handlers = useCardPointerDrag({
     cardId,
@@ -238,25 +247,51 @@ function DraggableHandCard({
   return (
     <div
       {...handlers}
-      className={isFresh ? "rummy-card-arrive" : ""}
+      data-rummy-drop={groupId ? `card:${groupId}:${cardId}` : undefined}
+      className={`relative ${isFresh ? "rummy-card-arrive" : ""}`}
       style={{
-        position: "relative",
         marginLeft,
         zIndex: isSelected ? 50 : zIndex,
         opacity: isDragged ? 0.35 : 1,
+        pointerEvents: isDragged ? "none" : "auto",
         cursor: "grab",
         touchAction: "none",
-        transition: "opacity 150ms",
+        transform: isSelected ? "translateY(-10px)" : "translateY(0)",
+        transition: "transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 150ms",
       }}
     >
-      {/* Inner card receives a NOOP onClick so it renders as a <button> with
-          cursor-pointer + hover-lift visuals, but the real tap handling is
-          the wrapper's onPointerUp → onTap above. If we passed the real
-          onTap here, every tap would fire twice (wrapper's onPointerUp AND
-          the browser's synthesised click on the inner button) and the
-          select toggle would cancel itself. We also intentionally omit
-          `draggable` here: HTML5 drag on the inner would race the wrapper's
-          pointer capture and produce a broken ghost drag image on desktop. */}
+      {/* Quick Shift buttons when card is selected in a meld with >= 2 cards */}
+      {isSelected && onMoveCard && (totalCards ?? 0) > 1 && (
+        <div
+          className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-1 z-50 bg-black/85 rounded-full px-1.5 py-0.5 border border-amber-400/80 shadow-md backdrop-blur-xs"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            disabled={index === 0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveCard(-1);
+            }}
+            className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-amber-300 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+            title="Move left in meld"
+          >
+            ◀
+          </button>
+          <button
+            type="button"
+            disabled={index === (totalCards ?? 1) - 1}
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveCard(1);
+            }}
+            className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-amber-300 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+            title="Move right in meld"
+          >
+            ▶
+          </button>
+        </div>
+      )}
       <PlayingCard
         card={card}
         isWildJoker={card.rank === wildRank}
@@ -598,6 +633,20 @@ export default function RummyBoardMobile({
   function toggleSelect(id: string) {
     try { haptics.subtle(); } catch { /* ignore */ }
     setSelected((prev) => {
+      // Tap-to-swap in same meld: if exactly 1 card is selected and user taps another in the same meld, swap them!
+      if (prev.size === 1) {
+        const [prevId] = Array.from(prev);
+        if (prevId && prevId !== id) {
+          const commonGroup = layout.groups.find(
+            (g) => g.cardIds.includes(prevId) && g.cardIds.includes(id),
+          );
+          if (commonGroup) {
+            swapCardsInGroup(commonGroup.id, prevId, id);
+            return new Set();
+          }
+        }
+      }
+
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -606,7 +655,7 @@ export default function RummyBoardMobile({
     setError(null);
   }
 
-  // === Drag & drop reorder ===
+  // === Drag & drop reorder & swapping ===
 
   function moveCardsTo(
     targetKind: "group" | "new",
@@ -641,6 +690,100 @@ export default function RummyBoardMobile({
       );
       const cleaned = newGroups.filter((g) => g.cardIds.length > 0);
       return { groups: cleaned, ungrouped: [] };
+    });
+  }
+
+  function moveCardsToCardPosition(
+    targetGroupId: string,
+    targetCardId: string,
+    ids: string[],
+  ) {
+    setLayout((l) => {
+      const idSet = new Set(ids);
+      const targetGroup = l.groups.find((g) => g.id === targetGroupId);
+      if (!targetGroup) return l;
+
+      // Intra-group swap/reorder
+      const isSameGroup = targetGroup.cardIds.some((cid) => idSet.has(cid));
+
+      if (isSameGroup && ids.length === 1) {
+        const draggedCardId = ids[0];
+        if (draggedCardId === targetCardId) return l;
+
+        const newCardIds = [...targetGroup.cardIds];
+        const fromIdx = newCardIds.indexOf(draggedCardId);
+        const toIdx = newCardIds.indexOf(targetCardId);
+
+        if (fromIdx !== -1 && toIdx !== -1) {
+          newCardIds.splice(fromIdx, 1);
+          newCardIds.splice(toIdx, 0, draggedCardId);
+
+          const newGroups = l.groups.map((g) =>
+            g.id === targetGroupId ? { ...g, cardIds: newCardIds } : g,
+          );
+          rummySfx.cardSlide();
+          return { groups: newGroups, ungrouped: [] };
+        }
+      }
+
+      // Moving from another group into targetGroup at targetCardId's exact spot
+      const groupsFiltered = l.groups.map((g) => ({
+        ...g,
+        cardIds: g.cardIds.filter((id) => !idSet.has(id)),
+      }));
+
+      const newGroups = groupsFiltered.map((g) => {
+        if (g.id !== targetGroupId) return g;
+        const targetIdx = g.cardIds.indexOf(targetCardId);
+        const nextIds = [...g.cardIds];
+        if (targetIdx !== -1) {
+          nextIds.splice(targetIdx, 0, ...ids);
+        } else {
+          nextIds.push(...ids);
+        }
+        return { ...g, cardIds: nextIds };
+      });
+
+      const cleaned = newGroups.filter((g) => g.cardIds.length > 0);
+      rummySfx.cardSlide();
+      return { groups: cleaned, ungrouped: [] };
+    });
+  }
+
+  function swapCardsInGroup(groupId: string, cardIdA: string, cardIdB: string) {
+    setLayout((l) => {
+      const newGroups = l.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        const idxA = g.cardIds.indexOf(cardIdA);
+        const idxB = g.cardIds.indexOf(cardIdB);
+        if (idxA === -1 || idxB === -1) return g;
+        const nextIds = [...g.cardIds];
+        nextIds[idxA] = cardIdB;
+        nextIds[idxB] = cardIdA;
+        return { ...g, cardIds: nextIds };
+      });
+      rummySfx.cardSlide();
+      return { groups: newGroups, ungrouped: [] };
+    });
+  }
+
+  function moveCardInGroup(groupId: string, cardId: string, direction: -1 | 1) {
+    setLayout((l) => {
+      const newGroups = l.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        const idx = g.cardIds.indexOf(cardId);
+        if (idx === -1) return g;
+        const targetIdx = idx + direction;
+        if (targetIdx < 0 || targetIdx >= g.cardIds.length) return g;
+        const nextIds = [...g.cardIds];
+        const [removed] = nextIds.splice(idx, 1);
+        if (removed) {
+          nextIds.splice(targetIdx, 0, removed);
+        }
+        return { ...g, cardIds: nextIds };
+      });
+      rummySfx.cardSlide();
+      return { groups: newGroups, ungrouped: [] };
     });
   }
 
@@ -688,6 +831,13 @@ export default function RummyBoardMobile({
           setError(`Max ${MAX_GROUPS} groups — drop into an existing meld instead`);
         } else {
           moveCardsTo("new", null, ids);
+        }
+      } else if (target.startsWith("card:")) {
+        const parts = target.slice("card:".length).split(":");
+        const targetGroupId = parts[0];
+        const targetCardId = parts[1];
+        if (targetGroupId && targetCardId) {
+          moveCardsToCardPosition(targetGroupId, targetCardId, ids);
         }
       } else if (target.startsWith("group:")) {
         const groupId = target.slice("group:".length);
@@ -1266,6 +1416,7 @@ export default function RummyBoardMobile({
           onDragBegin={onDragBegin}
           onDragHover={onDragHover}
           onDragRelease={onDragRelease}
+          onMoveCard={(groupId, cardId, dir) => moveCardInGroup(groupId, cardId, dir)}
         />
       )}
 
@@ -2488,6 +2639,7 @@ function HandArea({
   onDragBegin,
   onDragHover,
   onDragRelease,
+  onMoveCard,
 }: {
   layout: Layout;
   byId: Map<string, Card>;
@@ -2502,6 +2654,7 @@ function HandArea({
   onDragBegin: (ids: string[]) => void;
   onDragHover: (target: DropTarget | null) => void;
   onDragRelease: (target: DropTarget | null) => void;
+  onMoveCard?: (groupId: string, cardId: string, dir: -1 | 1) => void;
 }) {
   const dragging = draggingIds.length > 0;
   return (
@@ -2531,6 +2684,7 @@ function HandArea({
             onDragBegin={onDragBegin}
             onDragHover={onDragHover}
             onDragRelease={onDragRelease}
+            onMoveCard={onMoveCard ? (cardId, dir) => onMoveCard(g.id, cardId, dir) : undefined}
           />
         ))}
         {layout.groups.length === 0 && (
@@ -2589,6 +2743,7 @@ function GroupLane({
   onDragBegin,
   onDragHover,
   onDragRelease,
+  onMoveCard,
 }: {
   laneId: string;
   label: string;
@@ -2605,6 +2760,7 @@ function GroupLane({
   onDragBegin: (ids: string[]) => void;
   onDragHover: (target: DropTarget | null) => void;
   onDragRelease: (target: DropTarget | null) => void;
+  onMoveCard?: (cardId: string, dir: -1 | 1) => void;
 }) {
   const target: DropTarget = `group:${laneId}`;
   const isOver = dragOverTarget === target;
@@ -2685,6 +2841,10 @@ function GroupLane({
               onDragBegin={onDragBegin}
               onDragHover={onDragHover}
               onDragRelease={onDragRelease}
+              groupId={laneId}
+              index={idx}
+              totalCards={cardIds.length}
+              onMoveCard={onMoveCard ? (dir) => onMoveCard(cid, dir) : undefined}
             />
           );
         })}

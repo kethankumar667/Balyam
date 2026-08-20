@@ -225,189 +225,279 @@ export default function RummyResultModal({
         </svg>
       </div>
 
-      {/* ── The notebook page ───────────────────────────────────────────────
-          Sized to its CONTENT and capped at 90vh — a 2-player round is a short
-          card, a 6-player round grows until it hits the cap and then the rows
-          scroll. This kills the "tall modal with empty space below the names"
-          problem. Width is capped so it never stretches edge-to-edge on wide
-          desktops while still giving the card melds room to breathe. */}
+      {/* ── Executive Rummy Scorecard Modal Container ── */}
       <div
-        className="nostalgia-paper rummy-result-pop relative rounded-lg border border-nostalgia-paper-edge/60 shadow-lift-3
-                   flex flex-col overflow-hidden"
+        className="relative rounded-2xl sm:rounded-3xl border border-amber-500/30 shadow-[0_20px_60px_rgba(0,0,0,0.85)]
+                   flex flex-col overflow-hidden bg-gradient-to-b from-[#18261e] via-[#101b15] to-[#0a110d] text-white"
         style={{
-          width: "min(94vw, 1180px)",
-          maxHeight: "90vh",
+          width: "min(96vw, 1140px)",
+          maxHeight: "92vh",
         }}
       >
-        {/* Ruled lines overlay — clipped by overflow-hidden on the container */}
-        <div
-          aria-hidden
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: "repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(46,36,25,0.16) 31px, rgba(46,36,25,0.16) 32px)",
-            backgroundPositionY: "10px",
-          }}
-        />
+        {/* Ambient Top Glow */}
+        <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-amber-500/15 via-emerald-500/5 to-transparent pointer-events-none" />
 
-        {/* Close ✕ */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-2 right-2 z-10 w-9 h-9 rounded-full flex items-center justify-center
-                     text-nostalgia-paper text-base font-black shadow-lift-2 active:translate-y-px font-sans"
-          style={{ background: "#2E2419" }}
-        >
-          ✕
-        </button>
+        {/* ── Header Bar ── */}
+        <div className="relative flex-shrink-0 flex items-center justify-between px-3.5 sm:px-6 py-3 border-b border-white/10 bg-black/40 backdrop-blur-md">
+          <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-amber-600 to-amber-300 flex items-center justify-center text-lg sm:text-2xl shadow-[0_0_15px_rgba(245,158,11,0.5)] flex-shrink-0">
+              {selfRank === 1 ? "🏆" : "👑"}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <h2 className="bhalyam-display text-[16px] sm:text-[22px] font-black text-amber-300 tracking-tight truncate">
+                {headerText}
+              </h2>
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11.5px] text-zinc-300">
+                {roomCode && <span className="font-mono text-amber-200/80">#{roomCode}</span>}
+                <span className="opacity-40">•</span>
+                <span className="text-emerald-300 font-semibold">{matchLabel}</span>
+                <span className="opacity-40">•</span>
+                <span className="flex items-center gap-1 font-semibold text-zinc-200">
+                  <span>Wild Joker:</span>
+                  <span className="text-amber-300 font-bold">{state.wildJoker.rank}{SUIT_GLYPHS[state.wildJoker.suit] ?? ""}</span>
+                </span>
+              </div>
+            </div>
+          </div>
 
-        {/* ── All content: relative, flex-column, fills the paper ── */}
-        <div className="relative font-script text-nostalgia-pen text-base flex flex-col flex-1 p-4 gap-0 min-h-0">
-
-          {/* Header — flex-shrink-0 so it never gets squeezed */}
-          <div className="flex-shrink-0 flex items-start justify-between gap-3 pr-10 pb-2">
-            <span className="text-[20px] sm:text-[26px] leading-tight">{headerText}</span>
+          {/* Action pills & Close */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setPreviewMode(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-xs font-bold transition cursor-pointer"
+            >
+              👁 Board Preview
+            </button>
+            <button
+              type="button"
+              onClick={saveSheet}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-200 text-xs font-bold transition cursor-pointer"
+            >
+              <SaveIcon className="w-3.5 h-3.5" />
+              Save Sheet
+            </button>
             {onLeave && (
               <button
                 type="button"
                 onClick={onLeave}
-                className="inline-flex items-center gap-1.5 rounded-md border border-nostalgia-paper-edge
-                           text-nostalgia-pen/80 text-[11px] sm:text-[12px] font-sans font-semibold px-2.5 py-1.5
-                           flex-shrink-0 active:translate-y-px hover:bg-nostalgia-paper-edge/30 transition-colors"
-                aria-label="Leave game"
+                className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-[11px] sm:text-xs font-bold transition cursor-pointer"
               >
                 <LeaveIcon className="w-3.5 h-3.5" />
-                Leave
+                <span>Leave</span>
               </button>
             )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 flex items-center justify-center text-sm font-black transition cursor-pointer ml-1"
+            >
+              ✕
+            </button>
           </div>
+        </div>
 
-          {/* Column labels — flex-shrink-0 */}
-          <div
-            className={`flex-shrink-0 grid ${COLS} items-center gap-x-2 py-1.5 px-1
-                        text-[10px] sm:text-[11px] font-sans font-bold uppercase tracking-[0.1em]
-                        text-nostalgia-pen/55 border-b border-nostalgia-paper-edge`}
-          >
-            <div>Rank</div>
-            <div>Name</div>
-            <div>Cards</div>
-            <div className="text-right">Points</div>
-            <div className="text-right">Chips</div>
-          </div>
-
-          {/* Rows — flex-1 + min-h-0 allows them to shrink and scroll */}
-          <div className="flex-1 min-h-0 overflow-y-auto rummy-scroll-soft">
-            {rows.map((row, idx) => {
+        {/* ── Main Scrollable Content ── */}
+        <div className="flex-1 min-h-0 overflow-y-auto rummy-scroll-soft p-3 sm:p-5 space-y-3">
+          
+          {/* Mobile Layout: Responsive Player Scorecards (< 640px) */}
+          <div className="block sm:hidden space-y-2.5">
+            {rows.map((row) => {
               const { id, rank, isWin, isWrongShower, isDropped, isMe, name, points, chips, hand } = row;
               return (
                 <div
                   key={id}
-                  className={`rummy-row-in grid ${COLS} items-center gap-x-2 px-1 py-2 border-b border-nostalgia-paper-edge/60
-                              ${isMe ? "bg-nostalgia-paper-edge/25" : ""}`}
-                  style={{ animationDelay: `${180 + idx * 120}ms` }}
+                  className={`rounded-xl p-3 border transition ${
+                    isWin
+                      ? "bg-gradient-to-r from-amber-500/20 via-amber-900/20 to-black/40 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                      : isMe
+                      ? "bg-white/10 border-white/20"
+                      : "bg-black/30 border-white/10"
+                  }`}
                 >
-                  {/* Rank */}
-                  <div className="flex items-center gap-1 font-sans font-bold tabular-nums text-[13px] sm:text-[15px] text-nostalgia-pen/70">
-                    {isMe && <span className="text-nostalgia-brass text-[10px] sm:text-xs">»</span>}
-                    <span>{isWrongShower ? "—" : rank}</span>
+                  {/* Card Header: Rank + Player Name + Points & Chips */}
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-black/50 border border-white/20 text-[11px] font-black text-amber-300">
+                        {isWrongShower ? "—" : rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`}
+                      </div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-extrabold text-[14px] text-white truncate">{name}</span>
+                        {isMe && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-400 text-black text-[9px] font-black uppercase">
+                            YOU
+                          </span>
+                        )}
+                        {isWin && (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-black text-[9px] font-black uppercase">
+                            WINNER
+                          </span>
+                        )}
+                        {isWrongShower && (
+                          <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-black uppercase">
+                            WRONG SHOW
+                          </span>
+                        )}
+                        {isDropped && (
+                          <span className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[9px] font-extrabold uppercase">
+                            DROPPED
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Points & Chips */}
+                    <div className="flex items-center gap-2.5 flex-shrink-0">
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] text-zinc-400 font-bold uppercase">Points</span>
+                        <span className={`text-xs font-black ${points === 0 ? "text-emerald-400" : "text-rose-300"}`}>
+                          {points}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] text-zinc-400 font-bold uppercase">Chips</span>
+                        <span className={`text-xs font-black ${chips >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                          {chips > 0 ? `+${chips}` : chips}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Name */}
-                  <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                    {isWin ? (
-                      <WinnerCircle>
-                        <span className="font-bold truncate text-[15px] sm:text-[18px]">{name}</span>
-                      </WinnerCircle>
-                    ) : (
-                      <span className="font-bold truncate text-[15px] sm:text-[18px]">{name}</span>
-                    )}
-                    {isWrongShower && (
-                      <span className="rounded px-1 py-0.5 text-[9px] sm:text-[10px] font-sans font-bold uppercase tracking-wide
-                                        bg-nostalgia-pen-red/15 text-nostalgia-pen-red flex-shrink-0">
-                        Wrong Show
-                      </span>
-                    )}
-                    {isDropped && (
-                      <span
-                        className="rounded-full px-3 py-1 text-[11px] sm:text-[13px] font-sans font-extrabold uppercase tracking-wider flex-shrink-0"
-                        style={{
-                          background: "rgba(239,68,68,0.15)",
-                          border: "1.5px solid rgba(239,68,68,0.50)",
-                          color: "#e05252",
-                          letterSpacing: "0.08em",
-                        }}
-                      >
-                        ⏏ Dropped
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Cards — dropped players never had a hand recorded
-                      server-side (RummyEngine.handleDrop never writes to
-                      finalHands for them), so this is belt-and-suspenders:
-                      even if `hand` were ever non-empty, a dropped player's
-                      cards are never shown to the table. */}
-                  <div className="min-w-0 overflow-x-auto scrollbar-none pt-1 pb-3">
+                  {/* Card Body: Melds breakdown */}
+                  <div className="pt-2">
                     {isDropped ? (
-                      <span className="text-amber-100/50 text-[11px] italic">Cards hidden</span>
+                      <span className="text-zinc-500 text-xs italic">Cards hidden (dropped)</span>
                     ) : (
-                      <MeldGroups hand={hand} declaredMelds={state.finalMelds?.[id]} wildRank={wildRank} isWrongShower={isWrongShower} />
+                      <div className="overflow-x-auto pb-1 scrollbar-none">
+                        <MeldGroups
+                          hand={hand}
+                          declaredMelds={state.finalMelds?.[id]}
+                          wildRank={wildRank}
+                          isWrongShower={isWrongShower}
+                        />
+                      </div>
                     )}
-                  </div>
-
-                  {/* Points */}
-                  <div className="text-right font-sans font-bold tabular-nums text-[13px] sm:text-[16px] text-nostalgia-pen">
-                    {points}
-                  </div>
-
-                  {/* Chips */}
-                  <div className="text-right font-sans font-bold tabular-nums text-[13px] sm:text-[16px] text-nostalgia-pen">
-                    {chips > 0 ? `+${chips}` : chips}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Footer — flex-shrink-0 so it's always visible at the bottom */}
-          <div className="flex-shrink-0 flex items-center flex-wrap gap-3 pt-3 mt-1 border-t border-nostalgia-paper-edge font-sans">
-            <div className="flex-shrink-0">
-              <PlayingCard card={state.wildJoker} isWildJoker small />
+          {/* Desktop Layout: Full High-End Table (>= 640px) */}
+          <div className="hidden sm:block">
+            {/* Table Header */}
+            <div
+              className={`grid ${COLS} items-center gap-x-3 py-2 px-3
+                          text-[11px] font-sans font-black uppercase tracking-wider
+                          text-amber-400/80 bg-black/30 rounded-xl border border-white/5`}
+            >
+              <div>Rank</div>
+              <div>Player</div>
+              <div>Melds Breakdown</div>
+              <div className="text-right">Points</div>
+              <div className="text-right">Chips</div>
             </div>
-            <div className="text-nostalgia-pen/70 text-[11px] sm:text-[12px] font-semibold">Joker</div>
-            <div className="w-px h-5 bg-nostalgia-paper-edge" />
-            {roomCode && (
-              <div className="text-nostalgia-pen/50 text-[11px] sm:text-[12px] font-mono">#{roomCode}</div>
-            )}
-            <div className="w-px h-5 bg-nostalgia-paper-edge" />
-            <div className="text-nostalgia-pen/60 text-[11px] sm:text-[12px] font-semibold">{matchLabel}</div>
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPreviewMode(true)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-amber-600/40 bg-amber-500/20
-                           text-amber-900 text-[11px] sm:text-[12px] font-sans font-bold px-2.5 py-1.5
-                           flex-shrink-0 active:translate-y-px hover:bg-amber-500/30 transition-colors cursor-pointer"
-              >
-                👁 Board Preview
-              </button>
-              <button
-                type="button"
-                onClick={saveSheet}
-                className="inline-flex items-center gap-1.5 rounded-md border border-nostalgia-paper-edge
-                           text-nostalgia-pen/80 text-[11px] sm:text-[12px] font-sans font-semibold px-2.5 py-1.5
-                           flex-shrink-0 active:translate-y-px hover:bg-nostalgia-paper-edge/30 transition-colors"
-              >
-                <SaveIcon className="w-3.5 h-3.5" />
-                Save sheet
-              </button>
+
+            {/* Table Rows */}
+            <div className="divide-y divide-white/5 mt-1">
+              {rows.map((row, idx) => {
+                const { id, rank, isWin, isWrongShower, isDropped, isMe, name, points, chips, hand } = row;
+                return (
+                  <div
+                    key={id}
+                    className={`grid ${COLS} items-center gap-x-3 px-3 py-3 rounded-xl transition ${
+                      isWin
+                        ? "bg-gradient-to-r from-amber-500/15 via-amber-900/10 to-transparent border border-amber-400/40"
+                        : isMe
+                        ? "bg-white/5"
+                        : "hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    {/* Rank */}
+                    <div className="flex items-center gap-1.5 font-black text-sm text-zinc-300">
+                      {rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : isWrongShower ? "—" : `#${rank}`}
+                    </div>
+
+                    {/* Name */}
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <span className={`font-extrabold text-[15px] truncate ${isWin ? "text-amber-300" : "text-white"}`}>
+                        {name}
+                      </span>
+                      {isMe && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-400 text-black text-[9px] font-black uppercase">
+                          YOU
+                        </span>
+                      )}
+                      {isWin && (
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-black text-[9px] font-black uppercase">
+                          WINNER
+                        </span>
+                      )}
+                      {isWrongShower && (
+                        <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-black uppercase">
+                          WRONG SHOW
+                        </span>
+                      )}
+                      {isDropped && (
+                        <span className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[9px] font-extrabold uppercase">
+                          DROPPED
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Cards / Melds */}
+                    <div className="min-w-0 overflow-x-auto scrollbar-none py-1">
+                      {isDropped ? (
+                        <span className="text-zinc-500 text-xs italic">Cards hidden</span>
+                      ) : (
+                        <MeldGroups
+                          hand={hand}
+                          declaredMelds={state.finalMelds?.[id]}
+                          wildRank={wildRank}
+                          isWrongShower={isWrongShower}
+                        />
+                      )}
+                    </div>
+
+                    {/* Points */}
+                    <div className={`text-right font-black tabular-nums text-[15px] ${points === 0 ? "text-emerald-400" : "text-zinc-300"}`}>
+                      {points}
+                    </div>
+
+                    {/* Chips */}
+                    <div className={`text-right font-black tabular-nums text-[15px] ${chips >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      {chips > 0 ? `+${chips}` : chips}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          </div>
+        </div>
+
+        {/* ── Footer Bar & Rematch Negotiation ── */}
+        <div className="flex-shrink-0 border-t border-white/10 bg-black/50 p-3 sm:p-4 space-y-2">
+          {/* Mobile preview & save buttons row */}
+          <div className="flex sm:hidden items-center justify-between gap-2 pb-1">
+            <button
+              type="button"
+              onClick={() => setPreviewMode(true)}
+              className="flex-1 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold text-center"
+            >
+              👁 Board Preview
+            </button>
+            <button
+              type="button"
+              onClick={saveSheet}
+              className="flex-1 py-1.5 rounded-xl bg-white/10 border border-white/15 text-zinc-200 text-xs font-bold text-center flex items-center justify-center gap-1"
+            >
+              <SaveIcon className="w-3.5 h-3.5" />
+              Save Image
+            </button>
           </div>
 
-          {/* Rematch — flex-shrink-0, always below footer */}
-          <div className="flex-shrink-0 pt-2 font-sans">
-            <RematchPanel players={players} selfId={selfId} />
-          </div>
+          <RematchPanel players={players} selfId={selfId} />
         </div>
       </div>
     </div>
@@ -522,10 +612,10 @@ function MeldGroups({
 type GroupKind = "pure" | "run" | "set" | "dead";
 
 const GROUP_STYLES: Record<GroupKind, { badge: string; chip: string; ring: string }> = {
-  pure: { badge: "linear-gradient(135deg,#16a34a,#15803d)", chip: "#166534", ring: "rgba(22,163,74,0.55)" },
-  run:  { badge: "linear-gradient(135deg,#0ea5e9,#0369a1)", chip: "#075985", ring: "rgba(14,165,233,0.55)" },
-  set:  { badge: "linear-gradient(135deg,#8b5cf6,#6d28d9)", chip: "#5b21b6", ring: "rgba(139,92,246,0.55)" },
-  dead: { badge: "linear-gradient(135deg,#ef4444,#b91c1c)", chip: "#b91c1c", ring: "rgba(239,68,68,0.55)" },
+  pure: { badge: "linear-gradient(135deg,#10b981,#059669)", chip: "#047857", ring: "rgba(16,185,129,0.7)" },
+  run:  { badge: "linear-gradient(135deg,#0ea5e9,#0284c7)", chip: "#0369a1", ring: "rgba(14,165,233,0.7)" },
+  set:  { badge: "linear-gradient(135deg,#a855f7,#7e22ce)", chip: "#6b21a8", ring: "rgba(168,85,247,0.7)" },
+  dead: { badge: "linear-gradient(135deg,#ef4444,#b91c1c)", chip: "#991b1b", ring: "rgba(239,68,68,0.7)" },
 };
 
 function ScoreGroup({
@@ -546,9 +636,9 @@ function ScoreGroup({
   const credited = points === 0;
   return (
     <div
-      className="relative flex-shrink-0 rounded-lg px-1.5 pt-1.5 pb-4"
-      style={{ border: `1.5px solid ${st.ring}`, background: "rgba(255,255,255,0.28)" }}
-      title={credited ? `${label} · counts 0` : `${label} · ${points} points`}
+      className="relative flex-shrink-0 rounded-xl px-2 pt-1.5 pb-4 bg-black/40 border shadow-sm"
+      style={{ borderColor: st.ring }}
+      title={credited ? `${label} · counts 0` : `${label} · +${points} points`}
     >
       <div className="flex">
         {cards.map((c, i) => (
@@ -560,10 +650,10 @@ function ScoreGroup({
       {/* Type + points chip pinned along the group's bottom edge. */}
       <span
         className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap inline-flex items-center gap-1
-                   px-1.5 h-[16px] rounded-full text-[9px] font-sans font-extrabold uppercase tracking-wide"
-        style={{ background: st.badge, color: "#fff", border: "1.5px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.45)" }}
+                   px-2 h-[18px] rounded-full text-[9.5px] font-sans font-extrabold uppercase tracking-wide shadow-md"
+        style={{ background: st.badge, color: "#fff", border: "1px solid rgba(255,255,255,0.4)" }}
       >
-        {label}
+        <span>{label}</span>
         <span className="tabular-nums opacity-95">· {credited ? "0" : `+${points}`}</span>
       </span>
     </div>

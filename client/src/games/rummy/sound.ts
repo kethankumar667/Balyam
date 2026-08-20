@@ -76,6 +76,11 @@ export const rummySfx = {
     tone(380, 70, "square", 0.12);
     noise(120, 0.04, 30);
   },
+  cardSlide(): void {
+    // subtle tactile card slide / swap sound
+    noise(90, 0.03);
+    tone(440, 45, "sine", 0.05, 10);
+  },
   shuffle(): void {
     // multiple rapid swishes
     for (let i = 0; i < 5; i++) noise(110, 0.045, i * 80);
