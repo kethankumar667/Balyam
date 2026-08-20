@@ -168,7 +168,7 @@ export default function LoginPage() {
                 ≡
               </span>
               <h1 className="font-script text-[36px] sm:text-[46px] font-black text-[#0F172A] leading-none tracking-tight">
-                Welcome Back!
+                Welcome Back!{' '}
               </h1>
               <span className="font-script text-[#0F172A] text-2xl font-bold tracking-widest">
                 ≡

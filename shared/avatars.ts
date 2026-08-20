@@ -96,3 +96,30 @@ export function isKnownAvatar(id: string | null | undefined): id is string {
 export function sanitizeAvatar(id: unknown): string | undefined {
   return typeof id === "string" && KNOWN.has(id) ? id : undefined;
 }
+
+/**
+ * A stable avatar for a bot, chosen from its name.
+ *
+ * ── Why "matching the name" can only mean "stable", not "on-theme" ─────
+ * The 50 files above are AI-generated, undescribed, and interchangeable —
+ * see the file header. Nobody has looked at them and tagged which one
+ * "looks like a Sachin" or a "Kanakam", so there is no thematic pairing to
+ * do here. What IS achievable, and what this gives every bot: the SAME
+ * name always renders the SAME face, room after room, session after
+ * session — matching the exact precedent `SeatAvatar.tsx`'s `toneFor`
+ * already sets for the initials-circle fallback ("same name always lands
+ * on the same colour, so a player who reconnects does not visibly change
+ * identity"). This is that same idea, one level up: a bot's face is part
+ * of its identity the moment it has a name at all, instead of every bot
+ * everywhere falling back to a bare initial.
+ *
+ * Same `h = h*31 + charCode` polynomial hash already used for this exact
+ * purpose elsewhere (Rummy's/Ludo's/UNO's own per-seat Avatar components) —
+ * kept here, not duplicated, because bot avatars are assigned server-side
+ * at creation time and need to agree with nothing else, just be stable.
+ */
+export function pickAvatarForName(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_FILES[Math.abs(h) % AVATAR_FILES.length];
+}

@@ -58,7 +58,7 @@ import { createEngine, getGameLimits } from "../games/registry.js";
 import type { RematchState, CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
 import { SEALED_ROOM_ERROR } from "@shared/permissions.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
-import { sanitizeAvatar } from "@shared/avatars.js";
+import { sanitizeAvatar, pickAvatarForName } from "@shared/avatars.js";
 import { ALLOWED_SOUND_CLIPS, SOUND_RATE_LIMIT } from "@shared/soundboard.js";
 import type { RoomLifecycleState } from "@shared/lifecycle.js";
 import { isValidLifecycleTransition } from "@shared/lifecycle.js";
@@ -863,6 +863,10 @@ export class RoomManager {
       isConnected: true,
       isBot: true,
       bingoDifficulty: difficulty ?? "medium",
+      // Deterministic, not random: the same bot name always gets the same
+      // face (see pickAvatarForName's doc comment for why "matching the
+      // name" can only mean stable, not thematically on-theme).
+      avatar: pickAvatarForName(botName),
     };
     room.players.set(botId, bot);
     this.broadcastRoomState(room);
@@ -889,6 +893,9 @@ export class RoomManager {
     const cleaned = newName?.trim().slice(0, 20);
     if (!cleaned || cleaned.length === 0) return;
     target.name = cleaned;
+    // Re-derive rather than leave the old face behind — the avatar is
+    // supposed to track the name, not the seat.
+    target.avatar = pickAvatarForName(cleaned);
     this.broadcastRoomState(room);
   }
 
