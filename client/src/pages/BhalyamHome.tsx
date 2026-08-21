@@ -1236,25 +1236,42 @@ export function ProfileSheet({
             Lives as a drill-in row here instead of its own dialog; the
             badge is the same "number/dot" unread signal the header bell
             used to carry alone. */}
-        <button
+        <motion.button
           type="button"
+          whileHover={{ x: 2 }}
+          whileTap={{ scale: 0.98 }}
+          transition={bhalyamSpring}
           onClick={() => setView("notifications")}
           className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-left cursor-pointer
-                     bg-white border border-[#E8D8BE] hover:bg-[#FFF8EE] active:scale-[0.99]
-                     focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
-                     transition-all duration-150"
+                     bg-white border border-[#E8D8BE] hover:bg-[#FFF8EE]
+                     focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60"
         >
           <span className="relative w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#FFF8EE] text-[#2A221B] border border-[#E8D8BE]">
             {unreadCount > 0 ? (
-              <BellRing className="w-5 h-5 text-amber-500" />
+              <motion.span
+                initial={{ rotate: 0 }}
+                animate={{ rotate: [0, -12, 10, -6, 0] }}
+                transition={{ duration: 0.6, ease: "easeInOut", delay: 0.15 }}
+              >
+                <BellRing className="w-5 h-5 text-amber-500" />
+              </motion.span>
             ) : (
               <Bell className="w-5 h-5 text-[#7B5024]" />
             )}
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs ring-2 ring-white">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
+            <AnimatePresence>
+              {unreadCount > 0 && (
+                <motion.span
+                  key="profile-notif-badge"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={bhalyamSpring}
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs ring-2 ring-white"
+                >
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </motion.span>
+              )}
+            </AnimatePresence>
           </span>
           <span className="min-w-0 flex-1">
             <span className="block font-extrabold text-[15px] leading-tight text-[#2A221B]">
@@ -1265,7 +1282,7 @@ export function ProfileSheet({
             </span>
           </span>
           <ChevronRight className="w-4 h-4 text-[#7B5024] flex-shrink-0" />
-        </button>
+        </motion.button>
 
       {signedIn ? (
         <div className="space-y-3">
@@ -1512,14 +1529,21 @@ function NotificationsPanelBody({
               key={tab}
               type="button"
               onClick={() => setFilterTab(tab)}
-              className={`px-3 py-1 rounded-full text-xs font-bold capitalize transition cursor-pointer ${
+              className={`relative px-3 py-1 rounded-full text-xs font-bold capitalize transition-colors cursor-pointer ${
                 filterTab === tab
-                  ? "bg-amber-500 text-black font-black shadow-xs"
+                  ? "text-black font-black"
                   : isDark
-                  ? "bg-white/5 text-zinc-400 hover:text-white"
-                  : "bg-black/5 text-[#6E5A4B] hover:text-[#2A221B]"
+                  ? "text-zinc-400 hover:text-white"
+                  : "text-[#6E5A4B] hover:text-[#2A221B]"
               }`}
             >
+              {filterTab === tab && (
+                <motion.span
+                  layoutId="notif-filter-pill"
+                  transition={bhalyamSpring}
+                  className="absolute inset-0 rounded-full bg-amber-500 shadow-xs -z-10"
+                />
+              )}
               {tab}
             </button>
           ))}
@@ -1546,9 +1570,14 @@ function NotificationsPanelBody({
             <p className="text-[11px] text-zinc-500 mt-0.5">No notifications in this filter.</p>
           </div>
         ) : (
-          filteredNotifs.map((item) => (
-            <div
+          <AnimatePresence initial={false}>
+          {filteredNotifs.map((item, index) => (
+            <motion.div
               key={item.id}
+              layout
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1, transition: { delay: index * 0.04, ...bhalyamSpring } }}
+              exit={{ opacity: 0, x: -24, scale: 0.96, transition: { duration: 0.18 } }}
               onClick={() => {
                 if (item.unread) {
                   onUpdateNotifications((prev) =>
@@ -1556,7 +1585,7 @@ function NotificationsPanelBody({
                   );
                 }
               }}
-              className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+              className={`p-3.5 rounded-2xl border cursor-pointer ${
                 isDark
                   ? item.unread
                     ? "bg-[#141E34] border-amber-400/40 shadow-xs"
@@ -1633,8 +1662,9 @@ function NotificationsPanelBody({
                   </button>
                 </div>
               )}
-            </div>
-          ))
+            </motion.div>
+          ))}
+          </AnimatePresence>
         )}
       </div>
     </>

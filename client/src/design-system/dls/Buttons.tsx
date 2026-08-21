@@ -1,6 +1,15 @@
 import React from "react";
+import { motion } from "framer-motion";
+import { ctaPress, bhalyamSpring } from "../../lib/motion";
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps
+  extends Omit<
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    // framer-motion's `motion.button` redeclares these three with its own
+    // (incompatible) event-handler signatures — omit rather than fight the
+    // type conflict, since no caller here passes drag/animation handlers.
+    "onDrag" | "onDragStart" | "onDragEnd" | "onAnimationStart" | "onAnimationEnd" | "onAnimationIteration"
+  > {
   variant?: "primary" | "secondary" | "tournament" | "reward" | "danger" | "ghost" | "chrome" | "auth";
   size?: "sm" | "md" | "lg" | "iconOnly";
   loading?: boolean;
@@ -99,11 +108,18 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
     }
   };
 
+  const interactive = !disabled && !loading;
+
   return (
-    <button
+    <motion.button
       ref={ref}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 transition-all duration-200 active:scale-97 select-none focus:outline-none focus:ring-2 focus:ring-amber-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 ${getSizeStyles()} ${getVariantStyles()} ${className}`}
+      variants={ctaPress}
+      initial="rest"
+      whileHover={interactive ? "hover" : undefined}
+      whileTap={interactive ? "tap" : undefined}
+      transition={bhalyamSpring}
+      className={`inline-flex items-center justify-center gap-2 transition-colors duration-200 select-none focus:outline-none focus:ring-2 focus:ring-amber-500/50 disabled:opacity-50 disabled:cursor-not-allowed ${getSizeStyles()} ${getVariantStyles()} ${className}`}
       {...props}
     >
       {loading ? (
@@ -116,7 +132,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
           {rightIcon && <span className="shrink-0">{rightIcon}</span>}
         </>
       )}
-    </button>
+    </motion.button>
   );
 });
 Button.displayName = "Button";

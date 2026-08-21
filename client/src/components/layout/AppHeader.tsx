@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   User as UserIcon,
   ChevronDown,
@@ -19,6 +20,7 @@ import { type BhalyamGameSlug } from "../bhalyam/data";
 import { Button, Tooltip } from "../../design-system/dls";
 import { useFavourites } from "../../hooks/useFavourites";
 import { useRecentlyPlayed } from "../../hooks/useRecentlyPlayed";
+import { bhalyamSpring } from "../../lib/motion";
 
 /**
  * The global header.
@@ -206,8 +208,11 @@ export default function AppHeader({
               }
               side="bottom"
             >
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={bhalyamSpring}
                 onClick={onOpenProfile}
                 title="Your profile"
                 aria-label={
@@ -216,7 +221,7 @@ export default function AppHeader({
                     : `Profile — ${displayName}`
                 }
                 className="relative min-h-[44px] min-w-[44px] w-11 md:w-auto flex items-center gap-0 md:gap-2.5 px-0 md:px-3
-                           justify-center rounded-full border transition hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0
+                           justify-center rounded-full border transition-colors cursor-pointer flex-shrink-0
                            bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink)]
                            hover:bg-[var(--chrome-control-hi)]"
               >
@@ -228,11 +233,20 @@ export default function AppHeader({
                     textClassName="text-[11px]"
                   />
                 </div>
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shadow-sm ring-2 ring-[var(--chrome-panel)]">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
+                <AnimatePresence>
+                  {unreadCount > 0 && (
+                    <motion.span
+                      key="unread-badge"
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={bhalyamSpring}
+                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shadow-sm ring-2 ring-[var(--chrome-panel)]"
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
                 <div className="hidden md:flex items-center gap-1.5 min-w-0">
                   <span className="text-[13px] font-black tracking-tight max-w-[130px] truncate">
                     {displayName}
@@ -244,7 +258,7 @@ export default function AppHeader({
                   )}
                 </div>
                 <ChevronDown className="hidden md:block w-3.5 h-3.5 text-[var(--chrome-ink-soft)] flex-shrink-0" />
-              </button>
+              </motion.button>
             </Tooltip>
 
             {/* 3. Theme toggle — desktop only (mobile has it in drawer/menu) */}

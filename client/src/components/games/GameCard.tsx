@@ -6,6 +6,7 @@ import { useFavourites } from "../../hooks/useFavourites";
 import { useToast } from "../../hooks/useToast";
 import { HapticsManager } from "../../services/HapticsManager";
 import { Tooltip } from "../../design-system/dls";
+import { tileHover, ctaPress, bhalyamSpring } from "../../lib/motion";
 import {
   type BhalyamGameCard,
   type BhalyamGameSlug,
@@ -119,8 +120,12 @@ export default function GameCard({
 
   return (
     <motion.article
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className={`group relative w-full rounded-[26px] overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border transition-all duration-300 shadow-md ${
+      variants={tileHover}
+      initial="rest"
+      whileHover="hover"
+      whileTap="tap"
+      transition={bhalyamSpring}
+      className={`group relative w-full rounded-[26px] overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border shadow-md ${
         isDark ? "border-white/10" : "border-black/10"
       } ${className}`}
       style={{
@@ -151,8 +156,11 @@ export default function GameCard({
             content={isFav ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
             side="top"
           >
-            <button
+            <motion.button
               type="button"
+              whileHover={{ scale: 1.12 }}
+              whileTap={{ scale: 0.85, rotate: -8 }}
+              transition={bhalyamSpring}
               onClick={(e) => {
                 e.stopPropagation();
                 HapticsManager.getInstance().subtle();
@@ -160,14 +168,14 @@ export default function GameCard({
                 showToast(nowFav ? `${game.title} added to favourites` : `${game.title} removed from favourites`);
               }}
               aria-label={isFav ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
-              className={`p-1.5 rounded-full transition-all cursor-pointer ${
+              className={`p-1.5 rounded-full transition-colors cursor-pointer ${
                 isFav
                   ? "bg-rose-500/20 text-rose-500 hover:bg-rose-500/30"
                   : "bg-black/5 dark:bg-white/10 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10"
               }`}
             >
               <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-current" : ""}`} />
-            </button>
+            </motion.button>
           </Tooltip>
         </div>
       </div>
@@ -210,12 +218,17 @@ export default function GameCard({
       </div>
 
       {/* Action button (min 44x44 touch target) */}
-      <button
+      <motion.button
         type="button"
+        variants={ctaPress}
+        initial="rest"
+        whileHover={underMaintenance ? undefined : "hover"}
+        whileTap={underMaintenance ? undefined : "tap"}
+        transition={bhalyamSpring}
         onClick={underMaintenance ? undefined : onSelect}
         disabled={underMaintenance}
         aria-label={`Play ${game.title}`}
-        className={`w-full min-h-[44px] py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider text-white active:scale-98 transition-all duration-200 cursor-pointer shadow-md ${
+        className={`w-full min-h-[44px] py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider text-white transition-[filter,box-shadow] duration-200 cursor-pointer shadow-md ${
           underMaintenance
             ? "bg-zinc-600 opacity-60 cursor-not-allowed"
             : "hover:brightness-110 hover:shadow-lg"
@@ -227,7 +240,7 @@ export default function GameCard({
       >
         <span>{underMaintenance ? "Coming Soon" : "Play Now"}</span>
         <ArrowRight className="w-4 h-4" />
-      </button>
+      </motion.button>
     </motion.article>
   );
 }
