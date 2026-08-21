@@ -4,12 +4,8 @@ import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
 import JoinRoomModal from "../bhalyam/JoinRoomModal";
 import GameRoomSheet from "../bhalyam/GameRoomSheet";
-import {
-  ProfileSheet,
-  MenuSheet,
-  type NotificationItem,
-  INITIAL_NOTIFICATIONS,
-} from "../../pages/BhalyamHome";
+import { ProfileSheet, type NotificationItem, INITIAL_NOTIFICATIONS } from "../../pages/home/sheets/ProfileSheet";
+import { MenuSheet } from "../../pages/home/sheets/MenuSheet";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";
