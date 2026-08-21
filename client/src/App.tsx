@@ -46,8 +46,9 @@ const SocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 const PreviewLoader = lazy(() => import("./pages/PreviewLoader"));
 const GameTileShowcase = lazy(() => import("./pages/GameTileShowcase"));
 import PremiumGamingLoader from "./components/loading/PremiumGamingLoader";
-import { ProfileSkeleton, LeaderboardSkeleton } from "./design-system/dls";
+import { ProfileSkeleton, LeaderboardSkeleton, GamesGridSkeleton } from "./design-system/dls";
 import AppLayout from "./components/layout/AppLayout";
+import GamesFamilyLayout from "./components/layout/GamesFamilyLayout";
 
 function RouteLoadingFallback() {
   const { pathname } = useLocation();
@@ -70,6 +71,22 @@ function RouteLoadingFallback() {
         <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto space-y-6">
             <LeaderboardSkeleton />
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (
+    pathname.startsWith("/games") ||
+    pathname.startsWith("/favorites") ||
+    pathname.startsWith("/recently-played")
+  ) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto space-y-6">
+            <GamesGridSkeleton />
           </div>
         </div>
       </AppLayout>
@@ -129,9 +146,18 @@ export default function App() {
           <Routes>
             <Route path="/" element={<BhalyamHome />} />
             <Route path="/home" element={<BhalyamHome />} />
-            <Route path="/games" element={<GamesPage />} />
-            <Route path="/favorites" element={<FavoritesPage />} />
-            <Route path="/recently-played" element={<RecentlyPlayedPage />} />
+            {/*
+              One persistent layout route for the three pages a player
+              bounces between constantly (header nav pills go straight
+              between them). Without this, each page's own `<AppLayout>`
+              meant every hop fully remounted the header/sidebar — see
+              GamesFamilyLayout.tsx.
+            */}
+            <Route element={<GamesFamilyLayout />}>
+              <Route path="/games" element={<GamesPage />} />
+              <Route path="/favorites" element={<FavoritesPage />} />
+              <Route path="/recently-played" element={<RecentlyPlayedPage />} />
+            </Route>
 
             {/* Protected profile & account management */}
             <Route

@@ -927,6 +927,7 @@ export function GuestProfileModal({
   onClose: () => void;
 }) {
   const { playerName, avatarId, setPlayerName, setAvatarId } = useRoomStore();
+  const isMember = useAuthStore((s) => s.isMember);
   const [draftName, setDraftName] = useState(playerName);
   const [draftAvatarId, setDraftAvatarId] = useState<string | null>(avatarId);
   const [nameError, setNameError] = useState<string | null>(null);
@@ -1051,7 +1052,7 @@ export function GuestProfileModal({
             value={draftAvatarId}
             onChange={(id) => setDraftAvatarId(id)}
             hideSummary={true}
-            isGuest={true}
+            isGuest={!isMember}
           />
         </div>
 

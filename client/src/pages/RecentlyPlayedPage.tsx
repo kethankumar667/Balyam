@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { History } from "lucide-react";
-import AppLayout from "../components/layout/AppLayout";
-import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
+import type { GamesFamilyOutletContext } from "../components/layout/GamesFamilyLayout";
 import GameCard from "../components/games/GameCard";
 import EmptyState from "../components/games/EmptyState";
-import { BHALYAM_GAMES, type BhalyamGameSlug } from "../components/bhalyam/data";
+import { BHALYAM_GAMES } from "../components/bhalyam/data";
 import { useRecentlyPlayed } from "../hooks/useRecentlyPlayed";
 
 /**
@@ -14,7 +13,7 @@ import { useRecentlyPlayed } from "../hooks/useRecentlyPlayed";
  * Reuses the same GameCard grid /games and /favorites already use.
  */
 export default function RecentlyPlayedPage() {
-  const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
+  const { openGameSheet } = useOutletContext<GamesFamilyOutletContext>();
   const navigate = useNavigate();
   const { recentItems } = useRecentlyPlayed();
 
@@ -34,7 +33,7 @@ export default function RecentlyPlayedPage() {
   );
 
   return (
-    <AppLayout onSelectGame={setSheetGame}>
+    <>
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1440px] mx-auto pb-20">
         <header className="space-y-1.5 text-left">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
@@ -64,15 +63,13 @@ export default function RecentlyPlayedPage() {
             >
               {games.map((game) => (
                 <li key={game.slug} role="listitem">
-                  <GameCard game={game} onSelect={() => setSheetGame(game.slug)} />
+                  <GameCard game={game} onSelect={() => openGameSheet(game.slug)} />
                 </li>
               ))}
             </ul>
           )}
         </section>
       </div>
-
-      <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
-    </AppLayout>
+    </>
   );
 }

@@ -1,13 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Heart } from "lucide-react";
-import AppLayout from "../components/layout/AppLayout";
-import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
+import type { GamesFamilyOutletContext } from "../components/layout/GamesFamilyLayout";
 import GameCard from "../components/games/GameCard";
 import EmptyState from "../components/games/EmptyState";
-import { type BhalyamGameSlug } from "../components/bhalyam/data";
 import { filterGames } from "../components/bhalyam/CategoryFilter";
 import { useFavourites } from "../hooks/useFavourites";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 /**
  * A dedicated page rather than a filter pill on /games — favourites are a
@@ -16,7 +14,7 @@ import { useNavigate } from "react-router-dom";
  * Reuses the same GameCard grid /games already uses (no new card design).
  */
 export default function FavoritesPage() {
-  const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
+  const { openGameSheet } = useOutletContext<GamesFamilyOutletContext>();
   const navigate = useNavigate();
   // Subscribed (return value unused) purely so this page re-renders the
   // instant a card's heart is toggled — including toggling the last
@@ -30,7 +28,7 @@ export default function FavoritesPage() {
   const games = filterGames({ category: "favourites" });
 
   return (
-    <AppLayout onSelectGame={setSheetGame}>
+    <>
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1440px] mx-auto pb-20">
         <header className="space-y-1.5 text-left">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
@@ -61,15 +59,13 @@ export default function FavoritesPage() {
             >
               {games.map((game) => (
                 <li key={game.slug} role="listitem">
-                  <GameCard game={game} onSelect={() => setSheetGame(game.slug)} />
+                  <GameCard game={game} onSelect={() => openGameSheet(game.slug)} />
                 </li>
               ))}
             </ul>
           )}
         </section>
       </div>
-
-      <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
-    </AppLayout>
+    </>
   );
 }

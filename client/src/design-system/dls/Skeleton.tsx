@@ -157,6 +157,45 @@ export function MatchHistorySkeleton({ count = 4, className = "" }: { count?: nu
   );
 }
 
+/**
+ * Games-grid skeleton — GamesPage, FavoritesPage, RecentlyPlayedPage.
+ *
+ * Without a route-specific Suspense fallback, these three fell through to
+ * the generic full-screen `PremiumGamingLoader`, which renders with no
+ * `AppLayout` chrome around it. Navigating to a not-yet-loaded chunk swapped
+ * the whole page — header and sidebar included — out for that bare loader
+ * and back again once the chunk resolved: a one-time "flash" on the first
+ * visit to each route per session, gone on every visit after because the
+ * chunk is cached. This skeleton renders inside `AppLayout` like
+ * `ProfileSkeleton`/`LeaderboardSkeleton` do, so the chrome never leaves.
+ */
+export function GamesGridSkeleton({ count = 6, className = "" }: { count?: number; className?: string }) {
+  return (
+    <div aria-hidden="true" className={`space-y-5 ${className}`}>
+      <div className="space-y-2">
+        <Skeleton variant="text" className="h-3 w-40" />
+        <Skeleton variant="text" className="h-8 w-64" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: count }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-[26px] border border-black/5 dark:border-white/10 bg-[var(--auth-card)] p-4 sm:p-5 space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <Skeleton variant="rounded" className="h-5 w-24 rounded-full" />
+              <Skeleton variant="circular" className="h-6 w-6" />
+            </div>
+            <Skeleton variant="rounded" className="h-28 sm:h-32 w-full rounded-2xl" />
+            <Skeleton variant="text" className="h-5 w-2/3 mx-auto" />
+            <Skeleton variant="rounded" className="h-11 w-full rounded-2xl" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Dashboard KPI & Grid Skeleton */
 export function DashboardSkeleton({ className = "" }: { className?: string }) {
   return (

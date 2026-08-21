@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useOutletContext } from "react-router-dom";
 import { Sparkles } from "lucide-react";
-import AppLayout from "../components/layout/AppLayout";
-import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
+import type { GamesFamilyOutletContext } from "../components/layout/GamesFamilyLayout";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
 import GameCard from "../components/games/GameCard";
 import GameCardSkeleton from "../components/games/GameCardSkeleton";
@@ -12,7 +11,6 @@ import EmptyState from "../components/games/EmptyState";
 import OfflineBanner from "../components/games/OfflineBanner";
 import {
   BHALYAM_GAMES,
-  type BhalyamGameSlug,
   type GameTag,
 } from "../components/bhalyam/data";
 import {
@@ -24,7 +22,7 @@ import { getSocket } from "../lib/socket";
 import { useTheme } from "../lib/useTheme";
 
 export default function GamesPage() {
-  const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
+  const { openGameSheet } = useOutletContext<GamesFamilyOutletContext>();
   const [joinOpen, setJoinOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -75,7 +73,7 @@ export default function GamesPage() {
   }, [filter, searchQuery]);
 
   return (
-    <AppLayout onSelectGame={setSheetGame}>
+    <>
       <OfflineBanner />
 
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1440px] mx-auto pb-20">
@@ -141,7 +139,7 @@ export default function GamesPage() {
                 <li key={game.slug} role="listitem">
                   <GameCard
                     game={game}
-                    onSelect={() => setSheetGame(game.slug)}
+                    onSelect={() => openGameSheet(game.slug)}
                   />
                 </li>
               ))}
@@ -150,8 +148,7 @@ export default function GamesPage() {
         </section>
       </div>
 
-      <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
       <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
-    </AppLayout>
+    </>
   );
 }
