@@ -66,7 +66,13 @@ class RecentlyPlayedManagerService {
   }
 
   public getRecentlyPlayed(): RecentlyPlayedItem[] {
-    return this.load().slice();
+    // No defensive .slice() here — this is useSyncExternalStore's
+    // getSnapshot. It must return the SAME reference across calls until
+    // the data actually changes, or React sees a "new" value on every
+    // render and re-renders forever ("Maximum update depth exceeded").
+    // `this.cache` only gets a new reference when recordRecentlyPlayed /
+    // clearRecentlyPlayed / the first load() actually change the data.
+    return this.load();
   }
 
   public recordRecentlyPlayed(slug: BhalyamGameSlug): void {
