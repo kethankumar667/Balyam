@@ -180,14 +180,20 @@ export const useAuthStore = create<AuthStore>((set) => ({
     }
     saveLocalAccount(GUEST);
     clearAccountDetails();
+    /*
+     * Used to also wipe `useRoomStore`'s playerName/avatarId (and their
+     * localStorage keys) here — every sign-out erased the device's name and
+     * avatar outright. That is `startProfileSync`'s whole reason to exist
+     * turned backwards: the point of syncing a member's name/avatar to the
+     * server is "still you" across devices and sessions, and erasing the
+     * only reliably-available copy the moment they sign out bet that
+     * entirely on a round trip to the server having already landed — which
+     * a debounced 800ms save right before sign-out is not guaranteed to
+     * have done. Name/avatar are a *device* play-identity, orthogonal to
+     * being signed in; leave them alone here and let a real "not you?" flow
+     * be the place that clears them, if one is ever built.
+     */
     try {
-      useRoomStore.getState().setPlayerName("");
-      useRoomStore.getState().setAvatarId(null);
-      localStorage.removeItem("mpg.playerName");
-      localStorage.removeItem("mpg.avatar");
-      localStorage.removeItem("bhalyam.profile.displayName");
-      localStorage.removeItem("bhalyam.profile.bio");
-      localStorage.removeItem("bhalyam.profile.region");
       clearGuestIdentity();
     } catch {}
     set({
@@ -264,12 +270,18 @@ function applySession(session: Session | null): void {
 function applyGuest(): void {
   saveLocalAccount(GUEST);
   clearAccountDetails();
-  try {
-    useRoomStore.getState().setPlayerName("");
-    useRoomStore.getState().setAvatarId(null);
-    localStorage.removeItem("mpg.playerName");
-    localStorage.removeItem("mpg.avatar");
-  } catch {}
+  /*
+   * Used to also wipe `useRoomStore`'s playerName/avatarId here — but this
+   * runs on EVERY resolved "no session" check, which for an actual guest is
+   * every single page load (`getSession()` always resolves with no session
+   * for them). `useRoomStore`'s own initializer already restores the name
+   * from localStorage synchronously at import time, before this async
+   * handler ever runs — so the sequence on every guest page load was: name
+   * renders correctly for a moment, then this callback fires a beat later
+   * and erases it, in both memory and localStorage. Name/avatar are a
+   * device play-identity, independent of auth state; this function's job
+   * is only to reset the *auth* state to guest.
+   */
   useAuthStore.setState({
     ...GUEST,
     userId: null,
