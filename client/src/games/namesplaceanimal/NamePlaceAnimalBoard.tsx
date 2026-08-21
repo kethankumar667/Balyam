@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import NamePlaceAnimalBoardMobile from "./NamePlaceAnimalBoardMobile";
 import NamePlaceAnimalBoardDesktop from "./NamePlaceAnimalBoardDesktop";
-import type { NamePlaceAnimalAnswers, NamePlaceAnimalPublicState, Player } from "@shared/types";
+import type { ChatMessage, NamePlaceAnimalAnswers, NamePlaceAnimalPublicState, Player } from "@shared/types";
 
 export interface NamePlaceAnimalBoardContainerProps {
   state: NamePlaceAnimalPublicState;
@@ -9,6 +9,11 @@ export interface NamePlaceAnimalBoardContainerProps {
   myPlayerId: string;
   onMove: (type: string, data?: unknown) => void;
   players?: Player[];
+  /** Room chrome (chat/voice/players/reactions) — wired up so InlineRoomRail
+   *  can mount; previously this board never received them at all. */
+  messages?: ChatMessage[];
+  roomCode?: string;
+  roomPhase?: string;
 }
 
 function isDesktopLayout(): boolean {
@@ -44,6 +49,9 @@ export default function NamePlaceAnimalBoard(props: NamePlaceAnimalBoardContaine
     myPlayerId: props.myPlayerId,
     onMove: props.onMove,
     players: props.players,
+    messages: props.messages,
+    roomCode: props.roomCode,
+    roomPhase: props.roomPhase,
   };
 
   return isDesktop ? (

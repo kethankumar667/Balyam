@@ -11,9 +11,12 @@ import {
 } from "./bingo-shared";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 export default function BingoBoardDesktop(props: BingoBoardProps) {
   const model = useBingoBoard(props);
+  const reactions = useSeatReactions();
   const {
     state,
     onLeave,
@@ -191,6 +194,7 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
               players={state.players}
               selfId={model.selfId}
               roster={model.players}
+              registerCardRef={reactions.registerCardRef}
             />
           )}
 
@@ -215,6 +219,8 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
           onContinue={props.onScorecardClose}
         />
       )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

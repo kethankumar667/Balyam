@@ -38,6 +38,8 @@ export default function CarromBoardMobile({
   const [localStriker, setLocalStriker] = useState<StrikerSkin>(state.strikerSkin ?? "pearl");
   const [localFelt, setLocalFelt] = useState<BoardFeltSkin>(state.boardSkin ?? "birch");
   const reactions = useSeatReactions();
+  const selfSeatIndex = state.seats.findIndex((s) => s.playerId === selfId);
+  const isFlipped = selfSeatIndex === 1;
 
   const myTurn = state.turnPlayerId === selfId && state.phase === "aiming";
   const striker = state.pieces.find((p) => p.kind === "striker");
@@ -57,7 +59,7 @@ export default function CarromBoardMobile({
   function toBoard(e: React.PointerEvent<SVGSVGElement>): { x: number; y: number } | null {
     const svg = svgRef.current;
     if (!svg) return null;
-    return pointerToBoard(svg.getBoundingClientRect(), e.clientX, e.clientY);
+    return pointerToBoard(svg.getBoundingClientRect(), e.clientX, e.clientY, isFlipped);
   }
 
   const aim: AimData | null = useMemo(() => {
@@ -165,6 +167,7 @@ export default function CarromBoardMobile({
           myTurn={myTurn}
           aim={aim}
           svgRef={svgRef}
+          isFlipped={isFlipped}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -179,6 +182,7 @@ export default function CarromBoardMobile({
           onPlace={(pos) => onMove("place", { pos })}
           aim={aim}
           phase={state.phase}
+          isFlipped={isFlipped}
         />
       </div>
 

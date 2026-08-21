@@ -1,7 +1,9 @@
 import { useState, useEffect, ReactNode } from "react";
-import { Users as UsersIcon, Clock, ArrowRight, User } from "lucide-react";
+import { Users as UsersIcon, Clock, ArrowRight, User, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "../../lib/useTheme";
+import { useFavourites } from "../../hooks/useFavourites";
+import { HapticsManager } from "../../services/HapticsManager";
 import {
   type BhalyamGameCard,
   type BhalyamGameSlug,
@@ -85,6 +87,8 @@ export default function GameCard({
 }: GameCardProps) {
   const [theme] = useTheme();
   const isDark = theme === "dark";
+  const { isFavourite, toggleFavourite } = useFavourites();
+  const isFav = isFavourite(game.slug);
   const underMaintenance = isLocked(game);
   const accent = getGameAccent(game);
   const Glyph = GAME_GLYPHS[game.slug] || StarGameGlyph;
@@ -96,9 +100,7 @@ export default function GameCard({
    *
    * The badge on the left already says "Multiplayer" or "Single Player", and
    * the chip on the right rendered `tags[0]` — which is literally
-   * `"multiplayer"` on 14 of the 20 catalogue entries. Every one of those
-   * cards showed the same word twice, once per corner, on the lounge and on
-   * /games. Taking the first tag the badge does NOT already convey gives the
+   * `"multiplayer"` on 14 of the 20 catalogue entries. Taking the first tag the badge does NOT already convey gives the
    * chip something to say ("Board", "Classroom", "Party", "Retro") and leaves
    * it empty rather than redundant when there is nothing left.
    */
@@ -122,7 +124,7 @@ export default function GameCard({
         background: bgStyle,
       }}
     >
-      {/* Top row: Mode badge & Category */}
+      {/* Top row: Mode badge, Category & Favourite Toggle */}
       <div className="flex items-center justify-between gap-2 z-10">
         <span
           className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 ${
@@ -135,11 +137,30 @@ export default function GameCard({
           <span>{isSolo ? "Single Player" : "Multiplayer"}</span>
         </span>
 
-        {categoryTag && (
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-mute">
-            {categoryTag}
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {categoryTag && (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-mute">
+              {categoryTag}
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              HapticsManager.getInstance().subtle();
+              toggleFavourite(game.slug);
+            }}
+            aria-label={isFav ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
+            className={`p-1.5 rounded-full transition-all cursor-pointer ${
+              isFav
+                ? "bg-rose-500/20 text-rose-500 hover:bg-rose-500/30"
+                : "bg-black/5 dark:bg-white/10 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10"
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-current" : ""}`} />
+          </button>
+        </div>
       </div>
 
       {/* Hero illustration */}

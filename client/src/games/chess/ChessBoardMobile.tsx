@@ -5,6 +5,9 @@ import ChessSkinModal from "./ChessSkinModal";
 import type { ChessBoardTheme, ChessPieceSet } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 export default function ChessBoardMobile({
   state,
@@ -19,6 +22,8 @@ export default function ChessBoardMobile({
   const [skinModalOpen, setSkinModalOpen] = useState(false);
   const [chatText, setChatText] = useState("");
   const [hintCount, setHintCount] = useState(3);
+  const [unread, setUnread] = useState(0);
+  const reactions = useSeatReactions();
 
   const [localTheme, setLocalTheme] = useState<ChessBoardTheme>(state.boardTheme ?? "emerald");
   const [localPieceSet, setLocalPieceSet] = useState<ChessPieceSet>(state.pieceSet ?? "neo");
@@ -161,6 +166,7 @@ export default function ChessBoardMobile({
         <div className="grid grid-cols-2 gap-2">
           {/* Left Player Card (You) */}
           <div
+            ref={reactions.registerCardRef(selfId)}
             className={`p-1.5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
               myTurn
                 ? "bg-[#EDF7ED] border-[#4E9A51] ring-2 ring-[#4E9A51]/40"
@@ -195,6 +201,7 @@ export default function ChessBoardMobile({
 
           {/* Right Player Card (Opponent) */}
           <div
+            ref={reactions.registerCardRef(opponentId ?? null)}
             className={`p-1.5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
               state.turn === opponentColor && state.phase === "aiming"
                 ? "bg-[#EDF7ED] border-[#4E9A51] ring-2 ring-[#4E9A51]/40"
@@ -364,32 +371,33 @@ export default function ChessBoardMobile({
       </div>
 
       {/* ──────────────── 5. Bottom Fixed Parchment Navigation Bar ──────────────── */}
+      {/* These five buttons used to be almost entirely inert (CHAT fired one
+          canned line, EMOJI posted "😊" as a plain chat message, VOICE and
+          PLAYERS did nothing). They now drive the strip-less InlineRoomRail
+          mounted below through the `bhalyam:open-room-panel` bridge — same
+          pattern as Carrom/Ludo mobile — so EMOJI opens the real, game-themed
+          (♟️👑🧠😏🔥😂) targeted reaction tray and PLAYERS opens the panel
+          whose tap-a-player row pre-targets it. */}
       <div className="fixed bottom-1 left-1.5 right-1.5 z-40 max-w-lg mx-auto p-1.5 rounded-2xl bg-gradient-to-r from-[#F5E6D3] via-[#EADBCE] to-[#F5E6D3] border-2 border-[#8B5A2B] shadow-2xl flex items-center justify-around text-[#3D2514]">
         <button
           type="button"
-          onClick={() => {
-            const socket = getSocket();
-            socket.emit("chat:send", { text: "Good game!" });
-          }}
+          onClick={() => window.dispatchEvent(new CustomEvent("bhalyam:open-room-panel", { detail: { panel: "chat" } }))}
           className="flex flex-col items-center gap-0.5 relative cursor-pointer active:scale-95"
         >
           <div className="w-8 h-8 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-sm shadow-md">
             💬
           </div>
           <span className="text-[8px] font-black uppercase tracking-wider">CHAT</span>
-          {messages.length > 0 && (
+          {unread > 0 && (
             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-600 text-white font-mono text-[8px] font-black flex items-center justify-center border border-white">
-              {messages.length}
+              {unread}
             </span>
           )}
         </button>
 
         <button
           type="button"
-          onClick={() => {
-            const socket = getSocket();
-            socket.emit("chat:send", { text: "😊" });
-          }}
+          onClick={() => window.dispatchEvent(new CustomEvent("bhalyam:open-room-panel", { detail: { panel: "emoji" } }))}
           className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95"
         >
           <div className="w-8 h-8 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-sm shadow-md">
@@ -400,6 +408,7 @@ export default function ChessBoardMobile({
 
         <button
           type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("bhalyam:open-room-panel", { detail: { panel: "voice" } }))}
           className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95"
         >
           <div className="w-8 h-8 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-sm shadow-md">
@@ -410,7 +419,7 @@ export default function ChessBoardMobile({
 
         <button
           type="button"
-          onClick={() => setSkinModalOpen(true)}
+          onClick={() => window.dispatchEvent(new CustomEvent("bhalyam:open-room-panel", { detail: { panel: "players" } }))}
           className="flex flex-col items-center gap-0.5 cursor-pointer active:scale-95"
         >
           <div className="w-8 h-8 rounded-full bg-[#E5CFB3] border border-[#8B5A2B]/40 text-[#3D2514] flex items-center justify-center text-sm shadow-md">
@@ -431,6 +440,26 @@ export default function ChessBoardMobile({
           <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-600 border border-white" />
         </button>
       </div>
+
+      {/* Strip-less room rail: the bottom bar above is the only visible
+          toolbar and opens these panels through the `bhalyam:open-room-panel`
+          bridge. Without this mount mobile Chess had no chat, voice, player
+          list or reaction picker at all — the buttons above just looked like
+          they worked. */}
+      {roomCode && (
+        <InlineRoomRail
+          code={roomCode}
+          game="chess"
+          phase={roomPhase ?? "playing"}
+          players={players}
+          selfId={selfId}
+          messages={messages}
+          hideStrip
+          onUnreadChange={setUnread}
+        />
+      )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
 
       {/* Skin Customization Modal */}
       <ChessSkinModal

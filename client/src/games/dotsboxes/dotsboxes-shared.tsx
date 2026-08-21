@@ -933,6 +933,7 @@ export function ScoreBar({
   avatarOf,
   selfId,
   vertical = false,
+  registerCardRef,
 }: {
   state: DotsBoxesPublicState;
   penOf: Record<string, Pen>;
@@ -941,6 +942,8 @@ export function ScoreBar({
   selfId: string | null;
   /** Desktop side-rail mode: stack the player chips in a column. */
   vertical?: boolean;
+  /** Opponent-targeted reactions: registers this row as the fly-to/flinch anchor for `pid`. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   return (
     <div
@@ -957,6 +960,7 @@ export function ScoreBar({
         return (
           <div
             key={pid}
+            ref={registerCardRef?.(pid)}
             className="rounded-md transition"
             style={{
               background: isTurn ? "rgba(251,191,36,0.18)" : "rgba(255,255,255,0.6)",

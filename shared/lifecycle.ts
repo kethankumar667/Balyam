@@ -35,9 +35,13 @@ export function isValidLifecycleTransition(
     case "IN_PROGRESS":
       return to === "PAUSED" || to === "RECOVERING" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
     case "PAUSED":
-      return to === "IN_PROGRESS" || to === "RECOVERING" || to === "ABANDONED" || to === "CLOSED";
+      // A match can finish (bot/timeout-driven auto-move) while the table
+      // is paused for a solo disconnected human — see RoomManager.finalizeMatch.
+      return to === "IN_PROGRESS" || to === "RECOVERING" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
     case "RECOVERING":
-      return to === "IN_PROGRESS" || to === "PAUSED" || to === "ABANDONED" || to === "CLOSED";
+      // Same reasoning: other seats can keep playing (and finish the match)
+      // while one seat is mid-grace-period recovery.
+      return to === "IN_PROGRESS" || to === "PAUSED" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
     case "COMPLETED":
       return to === "READY_CHECK" || to === "STARTING" || to === "IN_PROGRESS" || to === "ABANDONED" || to === "CLOSED";
     case "ABANDONED":

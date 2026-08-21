@@ -48,7 +48,9 @@ import { useTheme } from "../../lib/useTheme";
  * not looking at colour at all.
  */
 
-export type CategorySelection = GameTag | "all";
+import { FavouritesManager } from "../../services/FavouritesManager";
+
+export type CategorySelection = GameTag | "all" | "favourites";
 
 /** One selection at a time. "all" clears it. */
 export interface GameFilter {
@@ -64,6 +66,9 @@ export function gamesWithTag(tag: GameTag, includeLocked = true): BhalyamGameCar
 export function filterGames(filter: GameFilter, includeLocked = true): BhalyamGameCard[] {
   return BHALYAM_GAMES.filter((g) => {
     if (!includeLocked && isLocked(g)) return false;
+    if (filter.category === "favourites") {
+      return FavouritesManager.isFavourite(g.slug);
+    }
     return filter.category === "all" || g.tags.includes(filter.category);
   });
 }
@@ -71,6 +76,7 @@ export function filterGames(filter: GameFilter, includeLocked = true): BhalyamGa
 /** How many games carry a tag. */
 export function countIn(id: CategorySelection): number {
   if (id === "all") return BHALYAM_GAMES.length;
+  if (id === "favourites") return FavouritesManager.getFavourites().length;
   return gamesWithTag(id).length;
 }
 

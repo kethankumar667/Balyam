@@ -894,6 +894,7 @@ export function HcProPlayersBar({
   selfId,
   players,
   compact = false,
+  registerCardRef,
 }: {
   state: HcState;
   innings: HcInnings;
@@ -901,6 +902,10 @@ export function HcProPlayersBar({
   /** Needed to resolve each side's identity colour. */
   players: Player[];
   compact?: boolean;
+  /** From useSeatReactions() — registers the bowling cell (the one real
+   *  account at the crease) as a reaction anchor. Optional so this still
+   *  renders fine anywhere reactions aren't wired up. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const batSel = state.teamSelections[innings.battingPlayerId];
   const bowlSel = state.teamSelections[innings.bowlingPlayerId];
@@ -1014,6 +1019,7 @@ export function HcProPlayersBar({
           compact={compact}
           bordered
           accent={bowlColor}
+          cardRef={registerCardRef?.(innings.bowlingPlayerId)}
         />
       </div>
     </ProPanel>
@@ -1033,6 +1039,7 @@ function CreaseCell({
   bordered = false,
   compact = false,
   accent,
+  cardRef,
 }: {
   label: string;
   name: string;
@@ -1053,9 +1060,14 @@ function CreaseCell({
   onStrike?: boolean;
   bordered?: boolean;
   compact?: boolean;
+  /** From useSeatReactions()'s registerCardRef, pre-bound to a playerId by
+   *  the caller. Only the bowling cell passes this — same reasoning as
+   *  `avatar` above, it's the one cell backed by a real account. */
+  cardRef?: (el: HTMLElement | null) => void;
 }) {
   return (
     <div
+      ref={cardRef}
       className={`min-w-0 ${compact ? "px-2 py-1.5" : "px-4 py-3"}`}
       style={{
         // Now that the cells are side by side at every width, the divider is
@@ -1893,11 +1905,16 @@ export function HcProInnings({
   selfId,
   players,
   compact = false,
+  registerCardRef,
 }: {
   state: HcState;
   selfId: string;
   players: Player[];
   compact?: boolean;
+  /** From useSeatReactions() — threaded down to the crease bar's bowling
+   *  cell, the one real account shown there. Optional so this still renders
+   *  fine anywhere reactions aren't wired up. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const innings = state.phase === "innings1" ? state.innings1! : state.innings2!;
   const myRole =
@@ -2060,7 +2077,7 @@ export function HcProInnings({
   ) : null;
 
   const crease = (
-    <HcProPlayersBar state={state} innings={innings} selfId={selfId} players={players} compact={compact} />
+    <HcProPlayersBar state={state} innings={innings} selfId={selfId} players={players} compact={compact} registerCardRef={registerCardRef} />
   );
 
   /**

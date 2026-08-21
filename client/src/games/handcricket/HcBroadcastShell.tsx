@@ -15,6 +15,8 @@ import {
   HcProTossChoice,
   HcProWaiting,
 } from "./hc-broadcast";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 /**
  * Hand Cricket — broadcast shell, shared by desktop and mobile.
@@ -42,6 +44,7 @@ export default function HcBroadcastShell({
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
   const [, setSkin] = useSkin();
+  const reactions = useSeatReactions();
 
   const mySelection = state.teamSelections[sid];
   const isTeamSelect = state.phase === "teamSelect";
@@ -79,7 +82,15 @@ export default function HcBroadcastShell({
     if (state.phase === "toss") return <HcProToss state={state} selfId={sid} players={players} />;
     if (state.phase === "tossChoice") return <HcProTossChoice state={state} selfId={sid} players={players} />;
     if (state.phase === "innings1" || state.phase === "innings2") {
-      return <HcProInnings state={state} selfId={sid} players={players} compact={compact} />;
+      return (
+        <HcProInnings
+          state={state}
+          selfId={sid}
+          players={players}
+          compact={compact}
+          registerCardRef={reactions.registerCardRef}
+        />
+      );
     }
     if (state.phase === "finished") {
       return <HcProSummary state={state} players={players} selfId={sid} onContinue={onScorecardClose} />;
@@ -149,6 +160,8 @@ export default function HcBroadcastShell({
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </ProShell>
   );
 }

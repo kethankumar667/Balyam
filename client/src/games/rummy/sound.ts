@@ -144,6 +144,10 @@ export const rummySfx = {
     // turn timer tick
     tone(880, 30, "square", 0.06);
   },
+  select(): void {
+    // light blip for a non-destructive UI pick (e.g. requesting a hint)
+    tone(700, 50, "sine", 0.08);
+  },
   kettle(): void {
     // Distant kettle whistle between rounds — soft, ambient, never alarming.
     // ponytail: synthesized sweep, matching every other cue in this file

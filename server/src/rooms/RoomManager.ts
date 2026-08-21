@@ -821,10 +821,23 @@ export class RoomManager {
       // Already counted-down; if a non-host leaves at the last second, the
       // start will still go through with current players.
     }
-    this.broadcastRoomState(room);
-    // The engine has moved the turn off the departed seat — push that, and
-    // give the clock and the auto-players a fresh start on it.
-    this.resumeTable(room);
+    if (room.engine?.isOver()) {
+      // The departure itself just ended the match — a 1v1 forfeit-to-
+      // opponent (Chess/Carrom/RPS/Hand Cricket's removePlayer) or a
+      // multiplayer walkover down to the last seat (Ludo/UNO/SNL/...).
+      // Without this, room.phase stayed "playing" forever: the engine
+      // knew it was over but nothing ever told the room, so no match
+      // history/XP/achievements were recorded and rematch stayed
+      // unreachable (it's gated on phase === "finished"). Finalize it the
+      // same way every other completion path does (see
+      // MULTIPLAYER-RELIABILITY-BASELINE.md gap G14).
+      this.finalizeMatch(room);
+    } else {
+      this.broadcastRoomState(room);
+      // The engine has moved the turn off the departed seat — push that, and
+      // give the clock and the auto-players a fresh start on it.
+      this.resumeTable(room);
+    }
   }
 
   addBot(socketId: string, customName?: string, difficulty?: BotDifficulty): void {
@@ -1190,6 +1203,25 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player || !room.engine) return;
 
+    // Backstop against a late-arriving or replayed move reaching a room
+    // that is not currently mid-match (lobby, finished, or between a
+    // rematch settling) — Core Principle #5 ("completed matches cannot be
+    // reopened by stale events") / Edge Case 20. Before this, the only
+    // thing standing between a stale move and a "finished" room's engine
+    // state was each of the 17 engines individually remembering its own
+    // phase check inside applyMove; one missing check would have let a
+    // late move silently mutate a match that already ended (see
+    // MULTIPLAYER-RELIABILITY-BASELINE.md gap G4). This is a coarse,
+    // room-level gate — it does not replace per-engine turn/phase
+    // validation (whose-turn-is-it, arranging vs. playing sub-phases).
+    if (room.phase !== "playing") {
+      console.log(
+        `[move] rejected room=${room.code} game=${room.game} type=${type} player=${player.id} error=Room is not in an active match (phase=${room.phase})`
+      );
+      this.io.sockets.sockets.get(socketId)?.emit("game:error", "Match is not active");
+      return;
+    }
+
     // Platform-level idempotency protection against slow mobile connections & rapid taps
     if (actionId && typeof actionId === "string") {
       const actionKey = `${player.id}:${actionId}`;
@@ -1253,50 +1285,71 @@ export class RoomManager {
     serverTimelineRecorder.recordMoveMade(room.code, effectivePlayerId, room.game, type);
     this.broadcastGameState(room);
     if (room.engine.isOver()) {
-      room.phase = "finished";
-      this.transitionLifecycle(room, "COMPLETED", "Match finished");
-      serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine as any).getWinner?.() ?? null);
-      metricsCollector.onMatchFinished(room.game, 0);
-      try {
-        const winnerId = (room.engine as any).getWinner?.() ?? undefined;
-        const participants = Array.from(room.players.values()).map((p) => ({
-          playerId: p.id,
-          name: p.name,
-          avatar: p.avatar,
-          isWinner: Boolean(winnerId && p.id === winnerId),
-          isBot: p.isBot,
-        }));
-        profileService.recordMatchFinished({
-          roomCode: room.code,
-          game: room.game,
-          startedAt: room.createdAt,
-          finishedAt: Date.now(),
-          durationMs: Math.max(1000, Date.now() - room.createdAt),
-          winnerId: winnerId ?? undefined,
-          participants,
-        });
-        recentPlayersService.recordMatch({
-          roomCode: room.code,
-          game: room.game,
-          participants,
-        });
-        rankingService.invalidateCache();
-      } catch (err) {
-        logger.warn({ message: `Failed to record match in profile/ranking service: ${String(err)}`, module: "PROFILE" });
-      }
-      for (const p of room.players.values()) p.isReady = false;
-      this.clearTurnTimer(room);
-      this.broadcastRoomState(room);
-      // Cheapest possible version of UNO_GAME_PLAN.md §3's "measurable now"
-      // match-completion metric — a queryable log line, not a real
-      // analytics pipeline (still correctly deferred, needs accounts/
-      // persistence). Generic across every game for the same reason as the
-      // move-rejection log above.
-      console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
+      this.finalizeMatch(room);
     } else {
       this.scheduleTurnTimer(room);
       this.scheduleBotMoveIfNeeded(room);
     }
+  }
+
+  /**
+   * Single source of truth for "a match just ended." MUST be the only
+   * place that flips `room.phase` to `"finished"`, advances
+   * `lifecycleState` to `COMPLETED`, and records the result into
+   * profile/ranking/recent-players. `room.engine.isOver()` is checked
+   * from four independent code paths (a direct move, a bot/takeover
+   * sub-move, a real-time simulation tick, and a turn-timeout auto-move)
+   * — before this method existed, three of those four set `room.phase`
+   * directly and skipped recording + the lifecycle transition entirely,
+   * so a match that ended by timeout, bot-takeover, or a real-time
+   * engine (Snake/Carrom/SpaceWar) finishing left no match history, no
+   * XP, no achievements, and a `lifecycleState` stuck at whatever it was
+   * before (see MULTIPLAYER-RELIABILITY-BASELINE.md gaps G1/G2). Callers
+   * that own an interval/timer of their own (e.g. `startSimulation`)
+   * must stop it themselves before calling this — this method does not
+   * know about timers it didn't set.
+   */
+  private finalizeMatch(room: Room): void {
+    room.phase = "finished";
+    this.transitionLifecycle(room, "COMPLETED", "Match finished");
+    serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine as any).getWinner?.() ?? null);
+    metricsCollector.onMatchFinished(room.game, 0);
+    try {
+      const winnerId = (room.engine as any).getWinner?.() ?? undefined;
+      const participants = Array.from(room.players.values()).map((p) => ({
+        playerId: p.id,
+        name: p.name,
+        avatar: p.avatar,
+        isWinner: Boolean(winnerId && p.id === winnerId),
+        isBot: p.isBot,
+      }));
+      profileService.recordMatchFinished({
+        roomCode: room.code,
+        game: room.game,
+        startedAt: room.createdAt,
+        finishedAt: Date.now(),
+        durationMs: Math.max(1000, Date.now() - room.createdAt),
+        winnerId: winnerId ?? undefined,
+        participants,
+      });
+      recentPlayersService.recordMatch({
+        roomCode: room.code,
+        game: room.game,
+        participants,
+      });
+      rankingService.invalidateCache();
+    } catch (err) {
+      logger.warn({ message: `Failed to record match in profile/ranking service: ${String(err)}`, module: "PROFILE" });
+    }
+    for (const p of room.players.values()) p.isReady = false;
+    this.clearTurnTimer(room);
+    this.broadcastRoomState(room);
+    // Cheapest possible version of UNO_GAME_PLAN.md §3's "measurable now"
+    // match-completion metric — a queryable log line, not a real
+    // analytics pipeline (still correctly deferred, needs accounts/
+    // persistence). Generic across every game for the same reason as the
+    // move-rejection log above.
+    console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
   }
 
   /**
@@ -1473,10 +1526,7 @@ export class RoomManager {
       this.broadcastGameState(room);
 
       if (engine.isOver()) {
-        room.phase = "finished";
-        for (const p of room.players.values()) p.isReady = false;
-        this.clearTurnTimer(room);
-        this.broadcastRoomState(room);
+        this.finalizeMatch(room);
         return;
       }
       this.scheduleTurnTimer(room);
@@ -1646,14 +1696,11 @@ export class RoomManager {
       }
       this.broadcastGameState(room);
       if (result?.isOver || room.engine.isOver()) {
-        // Same finish sequence the move path uses (see applyMove) — phase
-        // flips, ready flags reset so a rematch can be offered, timers die.
+        // Same finish sequence every other completion path uses — see
+        // finalizeMatch. stopSimulation is specific to this path (only the
+        // real-time tick loop owns an interval to tear down).
         this.stopSimulation(room);
-        room.phase = "finished";
-        for (const p of room.players.values()) p.isReady = false;
-        this.clearTurnTimer(room);
-        this.broadcastRoomState(room);
-        console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
+        this.finalizeMatch(room);
       } else if (result?.turnPhaseChanged) {
         // A real-time physics turn (e.g., Carrom strike) just completed and returned to aiming phase.
         // Re-arm turn timers and trigger bot scheduler so bot/taken-over seats take their turn!
@@ -1712,6 +1759,7 @@ export class RoomManager {
     this.clearTurnTimer(room);
     this.clearDealGateTimers(room);
     this.stopSimulation(room);
+    this.clearRematchTimers(room);
     for (const t of room.cleanupTimers.values()) clearTimeout(t);
     room.cleanupTimers.clear();
     for (const t of room.takeoverTimers.values()) clearTimeout(t);
@@ -2336,10 +2384,7 @@ export class RoomManager {
   private afterAutoMove(room: Room, isOver: boolean): void {
     this.broadcastGameState(room);
     if (isOver) {
-      room.phase = "finished";
-      for (const p of room.players.values()) p.isReady = false;
-      this.clearTurnTimer(room);
-      this.broadcastRoomState(room);
+      this.finalizeMatch(room);
       return;
     }
     this.scheduleTurnTimer(room);
@@ -2678,8 +2723,16 @@ export class RoomManager {
         if (stillRoom.hostId === playerId) {
           this.reassignHost(stillRoom, playerId);
         }
-        this.broadcastRoomState(stillRoom);
-        this.resumeTable(stillRoom);
+        if (stillRoom.engine?.isOver()) {
+          // Same reasoning as the explicit-leave path above (see G14): a
+          // grace-expiry reap can also be what tips a 1v1 forfeit or a
+          // multiplayer walkover, and room.phase must not stay "playing"
+          // forever once the engine already knows the match is over.
+          this.finalizeMatch(stillRoom);
+        } else {
+          this.broadcastRoomState(stillRoom);
+          this.resumeTable(stillRoom);
+        }
       }
       stillRoom.cleanupTimers.delete(playerId);
     }, graceMs);

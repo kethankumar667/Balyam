@@ -1,4 +1,6 @@
 import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { useSnlBoard, type SnlBoardProps } from "./useSnlBoard";
 import {
   SnlHeader,
@@ -8,6 +10,7 @@ import {
   EventFeed,
   SnlFinishedBanner,
 } from "./snl-board-shared";
+import { COIN_COLOR_HEX } from "../../components/CoinColorPicker";
 import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
 import { SNL_TUTORIAL } from "../tutorials";
 
@@ -20,6 +23,7 @@ import { SNL_TUTORIAL } from "../tutorials";
 export default function SnlBoardMobile(props: SnlBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
   const m = useSnlBoard(props);
+  const reactions = useSeatReactions();
   // Never over a live turn. SNL's public state has no `turnDeadline` field to
   // also check (unlike Ludo/DotsBoxes/UNO), so `!myTurn` alone is the guard —
   // still strictly safe, since a countdown can only cost THIS player a turn
@@ -69,6 +73,7 @@ export default function SnlBoardMobile(props: SnlBoardProps) {
           coinColorOf={m.coinColorOf}
           initialOf={m.initialOf}
           selfId={selfId}
+          registerCardRef={reactions.registerCardRef}
         />
         <EventFeed events={state.recentEvents} players={players} />
       </div>
@@ -85,6 +90,12 @@ export default function SnlBoardMobile(props: SnlBoardProps) {
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <FloatingReactionsLayer
+        reactions={reactions.items}
+        anchorOf={reactions.anchorOf}
+        glowOf={(playerId) => COIN_COLOR_HEX[m.coinColorOf[playerId]]?.fill}
+      />
     </div>
   );
 }

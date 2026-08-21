@@ -1,7 +1,10 @@
 import { useState } from "react";
-import type { Player, TambolaClaimType, TambolaPlayerState } from "@shared/types";
+import type { ChatMessage, Player, TambolaClaimType, TambolaPlayerState } from "@shared/types";
 import { motion, AnimatePresence } from "framer-motion";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 export interface TambolaBoardProps {
   state: TambolaPlayerState;
@@ -9,10 +12,14 @@ export interface TambolaBoardProps {
   onMove: (type: string, data?: unknown) => void;
   /** Full room roster (carries `avatar`), used to draw each seat's picture. */
   players: Player[];
+  messages: ChatMessage[];
+  roomCode: string;
+  roomPhase: string;
 }
 
-export default function TambolaBoardMobile({ state, selfId, onMove, players }: TambolaBoardProps) {
+export default function TambolaBoardMobile({ state, selfId, onMove, players, messages, roomCode, roomPhase }: TambolaBoardProps) {
   const [showCalledList, setShowCalledList] = useState(false);
+  const reactions = useSeatReactions();
   const isArranging = state.phase === "arranging";
   const myPlayer = state.players.find((p) => p.id === selfId);
   const avatarById = new Map<string, string | undefined>();
@@ -113,6 +120,7 @@ export default function TambolaBoardMobile({ state, selfId, onMove, players }: T
             {state.players.map((p) => (
               <span
                 key={p.id}
+                ref={reactions.registerCardRef(p.id)}
                 className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
                   p.isReady
                     ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
@@ -131,6 +139,19 @@ export default function TambolaBoardMobile({ state, selfId, onMove, players }: T
             ))}
           </div>
         </div>
+
+        {roomCode && (
+          <InlineRoomRail
+            code={roomCode}
+            game="tambola"
+            phase={roomPhase}
+            players={players}
+            selfId={selfId}
+            messages={messages}
+          />
+        )}
+
+        <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
       </div>
     );
   }
@@ -263,6 +284,19 @@ export default function TambolaBoardMobile({ state, selfId, onMove, players }: T
           })}
         </div>
       </div>
+
+      {roomCode && (
+        <InlineRoomRail
+          code={roomCode}
+          game="tambola"
+          phase={roomPhase}
+          players={players}
+          selfId={selfId}
+          messages={messages}
+        />
+      )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

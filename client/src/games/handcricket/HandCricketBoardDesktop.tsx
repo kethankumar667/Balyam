@@ -20,6 +20,8 @@ import {
   HcPhaseCard,
   HcScrapbookDoodles,
 } from "./hc-notebook";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 /**
  * Hand Cricket — desktop notebook shell.
@@ -51,6 +53,7 @@ export default function HandCricketBoardDesktop({
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
   const [, setSkin] = useSkin();
+  const reactions = useSeatReactions();
 
   const isTeamSelect = state.phase === "teamSelect";
   const isIpl = state.options.category === "ipl";
@@ -143,7 +146,7 @@ export default function HandCricketBoardDesktop({
       ) : state.phase === "innings1" || state.phase === "innings2" ? (
         <PhaseStage maxWidth={980} compact>
           <HcPhaseCard>
-            <InningsPhase state={state} selfId={sid} players={players} isDesktop />
+            <InningsPhase state={state} selfId={sid} players={players} isDesktop registerCardRef={reactions.registerCardRef} />
           </HcPhaseCard>
         </PhaseStage>
       ) : state.phase === "finished" ? (
@@ -162,6 +165,8 @@ export default function HandCricketBoardDesktop({
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </HcNotebookPage>
   );
 }

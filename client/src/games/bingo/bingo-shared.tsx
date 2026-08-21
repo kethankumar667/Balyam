@@ -298,11 +298,14 @@ export function AllPlayerBoardsView({
   players,
   selfId,
   roster,
+  registerCardRef,
 }: {
   players: BingoPlayerPublic[];
   selfId: string | null;
   /** Full player roster (carries `avatar`), used only to look up each seat's picture. */
   roster?: Player[];
+  /** Reaction-targeting: registers each seat's card element as the fly-to/flinch anchor. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const avatarById = new Map<string, string | undefined>();
   for (const r of roster ?? []) avatarById.set(r.id, r.avatar);
@@ -314,6 +317,7 @@ export function AllPlayerBoardsView({
         return (
           <div
             key={p.id}
+            ref={registerCardRef?.(p.id)}
             className={`flex flex-col items-center gap-2 rounded-2xl p-3.5 border-2 transition-all ${
               isSelf
                 ? "bg-amber-500/10 border-amber-400 shadow-md"

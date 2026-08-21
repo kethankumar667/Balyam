@@ -18,6 +18,7 @@ import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
 import SignInWall from "../auth/SignInWall";
+import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
 import {
   BHALYAM_GAMES,
   getGameAccent,
@@ -419,6 +420,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     }
     if (!game) return;
     if (RETRO_ROUTES[game]) {
+      RecentlyPlayedManager.recordRecentlyPlayed(game);
       navigate(RETRO_ROUTES[game]!);
       onClose();
       return;
@@ -512,6 +514,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             socket.emit("room:setReady", true);
             socket.emit("room:startGame");
           }
+          if (game) RecentlyPlayedManager.recordRecentlyPlayed(game);
           navigate(`/room/${res.code}`);
         },
       );
@@ -611,6 +614,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           setTimeout(() => {
             socket.emit("room:startGame");
             setBusy(false);
+            if (game) RecentlyPlayedManager.recordRecentlyPlayed(game);
             navigate(`/room/${roomCode}`);
           }, 80);
         }, 80);
@@ -659,6 +663,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         if (res.state) useRoomStore.getState().setRoomState(res.state);
         if (res.playerId) setPlayerId(res.playerId);
         if (res.playerId && res.seatToken) rememberSeat(code, res.playerId, res.seatToken);
+        if (game) RecentlyPlayedManager.recordRecentlyPlayed(game);
         navigate(`/room/${code}`);
       },
     );

@@ -1481,11 +1481,16 @@ export function InningsPhase({
   selfId,
   players,
   isDesktop = false,
+  registerCardRef,
 }: {
   state: HcState;
   selfId: string;
   players: Player[];
   isDesktop?: boolean;
+  /** From useSeatReactions() — threaded down to the Scoreboard (batting
+   *  player) and CurrentPlayersBar (bowler) identity blocks. Optional so this
+   *  still renders fine anywhere reactions aren't wired up. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const innings = state.phase === "innings1" ? state.innings1! : state.innings2!;
   const myRole = innings.battingPlayerId === selfId ? "batter"
@@ -1577,6 +1582,7 @@ export function InningsPhase({
         target={target}
         players={players}
         big={isDesktop}
+        registerCardRef={registerCardRef}
       />
 
       {isPowerplayOver && innings.currentBowlerId != null && (
@@ -1590,7 +1596,7 @@ export function InningsPhase({
         />
       )}
 
-      <CurrentPlayersBar state={state} innings={innings} selfId={selfId} players={players} big={isDesktop} />
+      <CurrentPlayersBar state={state} innings={innings} selfId={selfId} players={players} big={isDesktop} registerCardRef={registerCardRef} />
 
       {/* Wicket + new batter announcement — shows for 4 s when a wicket falls. */}
       {wicketAnnounce && (
@@ -1715,6 +1721,7 @@ export function CurrentPlayersBar({
   selfId,
   players,
   big = false,
+  registerCardRef,
 }: {
   state: HcState;
   innings: HcInnings;
@@ -1724,6 +1731,11 @@ export function CurrentPlayersBar({
    *  (fictional cricketers), not from an account, so they don't get one. */
   players: Player[];
   big?: boolean;
+  /** From useSeatReactions() — registers the bowling seat (the one real
+   *  account shown here) as a reaction anchor. Striker/non-striker never get
+   *  one, same reasoning as the avatar note above. Optional so this still
+   *  renders fine anywhere reactions aren't wired up. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const battingSelection = state.teamSelections[innings.battingPlayerId];
   const bowlingSelection = state.teamSelections[innings.bowlingPlayerId];
@@ -1790,7 +1802,10 @@ export function CurrentPlayersBar({
         />
         {/* Bowling column — orange/red hand-inked flag + pulsing "waiting"
             state and a detailed stitched ball while no bowler is picked yet. */}
-        <div className={cn("flex items-center justify-between gap-2", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")}>
+        <div
+          ref={registerCardRef?.(innings.bowlingPlayerId)}
+          className={cn("flex items-center justify-between gap-2", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")}
+        >
           <div className="min-w-0 flex items-center gap-2">
             {!waitingForBowler && (
               <SeatAvatar
@@ -1995,12 +2010,17 @@ export function Scoreboard({
   target,
   players,
   big = false,
+  registerCardRef,
 }: {
   state: HcState;
   innings: HcInnings;
   target: number | null;
   players: Player[];
   big?: boolean;
+  /** From useSeatReactions() — registers the batting player's identity block
+   *  (avatar + name) as a reaction anchor. Optional so this still renders
+   *  fine anywhere reactions aren't wired up. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const batterTeam = teamLabel(state, innings.battingPlayerId, players);
   const battingPlayer = players.find((p) => p.id === innings.battingPlayerId);
@@ -2018,7 +2038,7 @@ export function Scoreboard({
       <MaskingTapeCorner side="left" />
       <MaskingTapeCorner side="right" />
 
-      <div className="flex items-center gap-3">
+      <div ref={registerCardRef?.(innings.battingPlayerId)} className="flex items-center gap-3">
         <span className={big ? "text-3xl" : "text-2xl"}>{batterTeam.flag}</span>
         <SeatAvatar
           avatar={battingPlayer?.avatar}

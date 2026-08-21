@@ -5,13 +5,17 @@ import { RulesModal, type SnakeBoardProps } from "./SnakeBoardMobile";
 import { useHaptics } from "../../hooks/useHaptics";
 import { SNAKE_THEME_CHROME, THEME_LABELS, SNAKE_THEMES } from "./snakeChrome";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
-export default function SnakeBoardDesktop({ state, selfId, onMove, players }: SnakeBoardProps) {
+export default function SnakeBoardDesktop({ state, selfId, onMove, players, messages, roomCode, roomPhase }: SnakeBoardProps) {
   const [showRules, setShowRules] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [activeTheme, setActiveTheme] = useState<SnakeTheme>(state.theme || "nokia-monochrome");
   const [elapsedSec, setElapsedSec] = useState(0);
   const haptics = useHaptics();
+  const reactions = useSeatReactions();
 
   const [bestScore, setBestScore] = useState<number>(() => {
     return parseInt(localStorage.getItem("mpg.snake.best") || "0", 10);
@@ -120,6 +124,17 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players }: Sn
               </div>
             </div>
 
+            {roomCode && (
+              <InlineRoomRail
+                code={roomCode}
+                game="snake"
+                phase={roomPhase ?? "playing"}
+                players={players}
+                selfId={selfId}
+                messages={messages ?? []}
+              />
+            )}
+
             <p className={`text-xs leading-relaxed ${chrome.subText}`}>
               Steer your snake, eat food, grow longer and outlast your opponents!
             </p>
@@ -153,6 +168,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players }: Sn
                 {sortedPlayers.map((p, idx) => (
                   <div
                     key={p.id}
+                    ref={reactions.registerCardRef(p.id)}
                     className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs border ${chrome.cardBg}`}
                   >
                     <div className="flex items-center gap-2">
@@ -337,6 +353,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players }: Sn
       </div>
 
       <RulesModal open={showRules} onClose={() => setShowRules(false)} />
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

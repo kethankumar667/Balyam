@@ -8,6 +8,8 @@ import {
   FooterRow,
   ReportCardOverlay,
 } from "./wordbuilding-shared";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 // Desktop has room for larger cells than the mobile fit — fixed per board
 // size, comfortably within the 1200px column. Physical-keyboard input stays
@@ -30,6 +32,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
   const { state, selfId, roomCode, players, messages, roomPhase, onLeave } = props;
   const m = useWordBuildingBoard(props);
   const cellPx = desktopCellPx(m.size);
+  const reactions = useSeatReactions();
 
   return (
     <div
@@ -46,6 +49,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
         coach={m.coach}
         onOpenTutorial={() => m.setTutorialOpen(true)}
         onLeave={onLeave}
+        registerCardRef={reactions.registerCardRef}
       />
 
       <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 items-start mt-1">
@@ -84,6 +88,8 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
       {m.tutorialOpen && <WordBuildingTutorialModal onClose={() => m.setTutorialOpen(false)} />}
 
       <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn && state.phase === "playing"} />
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

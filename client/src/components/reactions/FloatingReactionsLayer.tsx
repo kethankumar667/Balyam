@@ -1,6 +1,25 @@
 import type { ReactionRecvPayload } from "@shared/types";
 
 /**
+ * A few hand-picked "hit" combos (kept from UNO's original implementation,
+ * the one place in the app that already had this touch) — everything else
+ * falls back to a generic sparkle-burst rather than going without. Small and
+ * curated on purpose: a combo per emoji across every game's themed set
+ * (`shared/reactions.ts` GAME_REACTIONS) would be dozens of entries to keep
+ * meaningful, for a detail nobody reads mid-game — the fallback already
+ * carries the "something just landed" feeling on its own.
+ */
+const IMPACT_GLYPH: Record<string, string> = {
+  "🍅": "💥🍅",
+  "🩴": "💥🩴",
+  "🧨": "💥🔥",
+  "🎉": "🎊🎉",
+};
+function impactGlyphFor(emoji: string): string {
+  return IMPACT_GLYPH[emoji] ?? `✨${emoji}`;
+}
+
+/**
  * Reactions, in two flavours. Game-agnostic — any board can mount this once
  * it can answer "where on screen is this player's seat right now".
  *
@@ -134,6 +153,18 @@ function FlungReaction({
           boxShadow: `0 0 18px ${glow}`,
         }}
       />
+      {/* The hit itself — a bigger combo-glyph burst, same delay as the ring
+          so the two read as one impact instead of the throw just stopping. */}
+      <div
+        className="reaction-fling-hit absolute text-5xl select-none"
+        style={{
+          left: `${to.left}%`,
+          top: `${to.top}%`,
+          filter: `drop-shadow(0 0 14px ${glow})`,
+        }}
+      >
+        {impactGlyphFor(emoji)}
+      </div>
     </>
   );
 }

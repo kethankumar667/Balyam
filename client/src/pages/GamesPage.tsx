@@ -37,8 +37,8 @@ export default function GamesPage() {
   const [params, setParams] = useSearchParams();
   const filter: GameFilter = useMemo(() => {
     const raw = params.get("c");
-    const valid = raw && BHALYAM_GAMES.some((g) => g.tags.includes(raw as GameTag));
-    return { category: (valid ? (raw as GameTag) : "all") as CategorySelection };
+    const valid = raw === "favourites" || (raw && BHALYAM_GAMES.some((g) => g.tags.includes(raw as GameTag)));
+    return { category: (valid ? (raw as CategorySelection) : "all") };
   }, [params]);
 
   function setFilter(next: GameFilter) {

@@ -171,16 +171,33 @@ export const BOARD_VIEW = {
 
 /** Maps a pointer event to engine board coordinates. Must track BOARD_VIEW —
  *  the SVG is square and uses the default `xMidYMid meet`, so the viewBox maps
- *  linearly onto the element's box. */
+ *  linearly onto the element's box. When `isFlipped` is true (Seat 1), coordinates
+ *  are rotated 180 degrees into world space. */
 export function pointerToBoard(
   rect: { left: number; top: number; width: number; height: number },
   clientX: number,
-  clientY: number
+  clientY: number,
+  isFlipped = false
 ): { x: number; y: number } {
-  return {
-    x: BOARD_VIEW.min + ((clientX - rect.left) / rect.width) * BOARD_VIEW.span,
-    y: BOARD_VIEW.min + ((clientY - rect.top) / rect.height) * BOARD_VIEW.span,
-  };
+  let x = BOARD_VIEW.min + ((clientX - rect.left) / rect.width) * BOARD_VIEW.span;
+  let y = BOARD_VIEW.min + ((clientY - rect.top) / rect.height) * BOARD_VIEW.span;
+  if (isFlipped) {
+    x = CARROM_BOARD.size - x;
+    y = CARROM_BOARD.size - y;
+  }
+  return { x, y };
+}
+
+/** Converts server 0..1 striker position to UI slider position (left-to-right on screen). */
+export function toUiSliderPos(serverPos: number, isFlipped = false): number {
+  const clamped = Math.max(0, Math.min(1, serverPos));
+  return isFlipped ? 1 - clamped : clamped;
+}
+
+/** Converts UI slider position (left-to-right on screen) back to server 0..1 striker position. */
+export function toServerSliderPos(uiPos: number, isFlipped = false): number {
+  const clamped = Math.max(0, Math.min(1, uiPos));
+  return isFlipped ? 1 - clamped : clamped;
 }
 
 /* ─────────────────────────── BHALYAM Warm Palette ─────────────────────────── */
@@ -747,6 +764,7 @@ export function CarromSvgBoard({
   myTurn,
   aim,
   svgRef,
+  isFlipped = false,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -756,6 +774,7 @@ export function CarromSvgBoard({
   myTurn: boolean;
   aim: AimData | null;
   svgRef: React.RefObject<SVGSVGElement>;
+  isFlipped?: boolean;
   onPointerDown: (e: React.PointerEvent<SVGSVGElement>) => void;
   onPointerMove: (e: React.PointerEvent<SVGSVGElement>) => void;
   onPointerUp: (e: React.PointerEvent<SVGSVGElement>) => void;
@@ -975,310 +994,312 @@ export function CarromSvgBoard({
           </filter>
         </defs>
 
-        {/* ── Wooden frame ── */}
-        <rect
-          x={frameOut}
-          y={frameOut}
-          width={BOARD_VIEW.span}
-          height={BOARD_VIEW.span}
-          rx={4}
-          fill="url(#frameGrad)"
-        />
-        {/* Grain on the frame too — a flat orange band was the last thing
-            still reading as vector art rather than timber. */}
-        <rect
-          x={frameOut}
-          y={frameOut}
-          width={BOARD_VIEW.span}
-          height={BOARD_VIEW.span}
-          rx={4}
-          fill="#3A1F06"
-          mask="url(#grainMask)"
-          opacity={0.16}
-        />
-        <rect
-          x={frameOut}
-          y={frameOut}
-          width={BOARD_VIEW.span}
-          height={BOARD_VIEW.span}
-          rx={4}
-          fill="none"
-          stroke="#00000055"
-          strokeWidth={0.8}
-        />
+        <g transform={isFlipped ? `rotate(180 ${center} ${center})` : undefined}>
+          {/* ── Wooden frame ── */}
+          <rect
+            x={frameOut}
+            y={frameOut}
+            width={BOARD_VIEW.span}
+            height={BOARD_VIEW.span}
+            rx={4}
+            fill="url(#frameGrad)"
+          />
+          {/* Grain on the frame too — a flat orange band was the last thing
+              still reading as vector art rather than timber. */}
+          <rect
+            x={frameOut}
+            y={frameOut}
+            width={BOARD_VIEW.span}
+            height={BOARD_VIEW.span}
+            rx={4}
+            fill="#3A1F06"
+            mask="url(#grainMask)"
+            opacity={0.16}
+          />
+          <rect
+            x={frameOut}
+            y={frameOut}
+            width={BOARD_VIEW.span}
+            height={BOARD_VIEW.span}
+            rx={4}
+            fill="none"
+            stroke="#00000055"
+            strokeWidth={0.8}
+          />
 
-        {/* ── Lacquered band ── */}
-        <rect
-          x={bandIn}
-          y={bandIn}
-          width={size - bandIn * 2}
-          height={size - bandIn * 2}
-          rx={1.6}
-          fill="url(#bandGrad)"
-        />
+          {/* ── Lacquered band ── */}
+          <rect
+            x={bandIn}
+            y={bandIn}
+            width={size - bandIn * 2}
+            height={size - bandIn * 2}
+            rx={1.6}
+            fill="url(#bandGrad)"
+          />
 
-        {/* ── Corner blocks + Lightning Bolt Icon ── */}
-        {[0, 90, 180, 270].map((deg) => {
-          const b = 12;
-          const rr = 3;
-          const x0 = frameOut;
-          return (
-            <g key={`corner-${deg}`} transform={`rotate(${deg} ${center} ${center})`}>
-              <path
-                d={`M ${x0 + rr} ${x0} L ${x0 + b} ${x0} L ${x0 + b} ${x0 + b} L ${x0} ${x0 + b} L ${x0} ${x0 + rr} A ${rr} ${rr} 0 0 1 ${x0 + rr} ${x0} Z`}
-                fill={feltSkin.frameCorner}
-              />
-              <polygon
-                points={`${x0 + 4.5},${x0 + 2.2} ${x0 + 8.5},${x0 + 2.2} ${x0 + 5.8},${x0 + 6.0} ${x0 + 9.5},${x0 + 6.0} ${x0 + 3.8},${x0 + 10.5} ${x0 + 5.4},${x0 + 6.8} ${x0 + 2.8},${x0 + 6.8}`}
-                fill="#DC2626"
-                stroke="#991B1B"
-                strokeWidth={0.25}
-              />
-            </g>
-          );
-        })}
-
-        {/* ── Playing surface ── */}
-        <rect x={play} y={play} width={playW} height={playW} fill="url(#surfaceGrad)" />
-        <rect
-          x={play}
-          y={play}
-          width={playW}
-          height={playW}
-          fill={feltSkin.grain}
-          mask="url(#grainMask)"
-          opacity={0.38}
-        />
-        <rect x={play} y={play} width={playW} height={playW} fill="url(#surfaceVignette)" />
-        {/* Crisp edge where the surface meets the lacquered band */}
-        <rect
-          x={play}
-          y={play}
-          width={playW}
-          height={playW}
-          fill="none"
-          stroke="#00000070"
-          strokeWidth={0.6}
-        />
-
-        {/* ── Markings on all 4 corners ── */}
-        {[0, 90, 180, 270].map((deg) => (
-          <g key={`mark-line-${deg}`} transform={`rotate(${deg} ${center} ${center})`}>
-            {/* Base-line pair */}
-            <line x1={lineOut} y1={lineOut} x2={R + sr} y2={lineOut} stroke={feltSkin.boardLine} strokeWidth={0.9} />
-            <line x1={lineOut} y1={lineIn} x2={R + sr} y2={lineIn} stroke={feltSkin.boardLine} strokeWidth={0.9} />
-
-            {/* Red base circles, one at each end of the channel */}
-            {[L + 4.8, R - 4.8].map((bx) => (
-              <g key={`base-${bx}`}>
-                <circle cx={bx} cy={L} r={2.55} fill="#C42B1C" />
-                <circle cx={bx} cy={L} r={2.55} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.6} />
-              </g>
-            ))}
-
-            {/* Corner spot, centred in the crossing square */}
-            <circle cx={L} cy={L} r={1.3} fill={feltSkin.boardLine} />
-
-            {/* Diagonal aim line, pointing out to the pocket */}
-            <line x1={lineOut} y1={lineOut} x2={12.4} y2={12.4} stroke={feltSkin.boardLine} strokeWidth={0.7} />
-            <polygon points={arrowHead(10.9, 10.9, -0.7071, -0.7071, 2.2, 1.15)} fill={feltSkin.boardLine} />
-          </g>
-        ))}
-
-        {/* ── Corner Sweep Arcs (Mirrored Top vs Bottom for exact Design Board Parity) ── */}
-        {[
-          { cx: L, cy: L, a0: 75, a1: 20, tipAngle: 20, dirX: Math.sin((20 * Math.PI) / 180), dirY: -Math.cos((20 * Math.PI) / 180) },
-          { cx: R, cy: L, a0: 105, a1: 160, tipAngle: 160, dirX: -Math.sin((160 * Math.PI) / 180), dirY: Math.cos((160 * Math.PI) / 180) },
-          { cx: R, cy: R, a0: 255, a1: 200, tipAngle: 200, dirX: Math.sin((200 * Math.PI) / 180), dirY: -Math.cos((200 * Math.PI) / 180) },
-          { cx: L, cy: R, a0: 285, a1: 340, tipAngle: 340, dirX: -Math.sin((340 * Math.PI) / 180), dirY: Math.cos((340 * Math.PI) / 180) },
-        ].map((arc, idx) => (
-          <g key={`corner-arc-${idx}`}>
-            <path
-              d={arcPath(arc.cx, arc.cy, 9.6, arc.a0, arc.a1)}
-              fill="none"
-              stroke={feltSkin.boardLine}
-              strokeWidth={0.75}
-              strokeLinecap="round"
-            />
-            <polygon
-              points={arrowHead(
-                arc.cx + 9.6 * Math.cos((arc.tipAngle * Math.PI) / 180),
-                arc.cy + 9.6 * Math.sin((arc.tipAngle * Math.PI) / 180),
-                arc.dirX,
-                arc.dirY,
-                2.1,
-                1.1
-              )}
-              fill={feltSkin.boardLine}
-            />
-          </g>
-        ))}
-
-        {/* ── Centre circle: smooth outer ring, smooth red inner rings ── */}
-        <circle cx={center} cy={center} r={11.6} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.7} />
-        <circle cx={center} cy={center} r={9.45} fill="none" stroke="#C42B1C" strokeWidth={1.8} />
-        <circle cx={center} cy={center} r={7.5} fill="none" stroke="#C42B1C" strokeWidth={0.7} />
-        <circle cx={center} cy={center} r={1.9} fill="#C42B1C" />
-
-        {/* ── Pockets ── */}
-        {pockets.map((p, i) => (
-          <g key={`pocket-${i}`}>
-            {/* Bed wrapped around the hole. Without this the lacquer band ran
-                straight behind the pocket and it read as a black blob resting
-                on the frame rather than a hole cut into the playing surface. */}
-            <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 1.3} fill="url(#surfaceGrad)" />
-            <circle
-              cx={p.x}
-              cy={p.y}
-              r={CARROM_BOARD.pocketRadius + 1.3}
-              fill={feltSkin.grain}
-              mask="url(#grainMask)"
-              opacity={0.38}
-            />
-            <circle
-              cx={p.x}
-              cy={p.y}
-              r={CARROM_BOARD.pocketRadius + 1.3}
-              fill="none"
-              stroke="#00000040"
-              strokeWidth={0.4}
-            />
-            <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 0.6} fill={feltSkin.pocketRim} opacity={0.9} />
-            <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius} fill="url(#pocketInner)" />
-            <circle
-              cx={p.x}
-              cy={p.y}
-              r={CARROM_BOARD.pocketRadius}
-              fill="none"
-              stroke="#000000"
-              strokeWidth={0.5}
-              opacity={0.7}
-            />
-          </g>
-        ))}
-
-        {/* ── Rendered Pieces ── */}
-        {state.pieces
-          .filter((p) => !p.pocketed)
-          .map((p) => {
-            const isStriker = p.kind === "striker";
-            const isQueen = p.kind === "queen";
-            const isWhite = p.kind === "white";
-            const r = isStriker ? CARROM_BOARD.strikerRadius : CARROM_BOARD.coinRadius;
-            const ringColor = isStriker
-              ? strikerSkin.core
-              : isWhite
-              ? "#00000030"
-              : "#FFFFFF2E";
-
+          {/* ── Corner blocks + Lightning Bolt Icon ── */}
+          {[0, 90, 180, 270].map((deg) => {
+            const b = 12;
+            const rr = 3;
+            const x0 = frameOut;
             return (
-              <g key={p.id} filter="url(#pieceShadow)">
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r={r}
-                  fill={
-                    isStriker
-                      ? "url(#customStrikerGrad)"
-                      : isQueen
-                      ? "url(#queenGrad)"
-                      : isWhite
-                      ? "url(#whiteCoinGrad)"
-                      : "url(#blackCoinGrad)"
-                  }
-                  stroke={
-                    isStriker
-                      ? strikerSkin.rim
-                      : isQueen
-                      ? CARROM_THEME.queenRim
-                      : isWhite
-                      ? CARROM_THEME.whiteCoinRim
-                      : CARROM_THEME.blackCoinRim
-                  }
-                  strokeWidth={isStriker ? 0.45 : 0.35}
+              <g key={`corner-${deg}`} transform={`rotate(${deg} ${center} ${center})`}>
+                <path
+                  d={`M ${x0 + rr} ${x0} L ${x0 + b} ${x0} L ${x0 + b} ${x0 + b} L ${x0} ${x0 + b} L ${x0} ${x0 + rr} A ${rr} ${rr} 0 0 1 ${x0 + rr} ${x0} Z`}
+                  fill={feltSkin.frameCorner}
                 />
-                {/* Turned concentric grooves — the detail that reads as a
-                    machined disc rather than a flat dot. */}
-                <circle cx={p.x} cy={p.y} r={r * 0.72} fill="none" stroke={ringColor} strokeWidth={0.3} />
-                <circle cx={p.x} cy={p.y} r={r * 0.48} fill="none" stroke={ringColor} strokeWidth={0.25} />
-                {/* Specular highlight */}
-                <ellipse
-                  cx={p.x - r * 0.3}
-                  cy={p.y - r * 0.36}
-                  rx={r * 0.32}
-                  ry={r * 0.22}
-                  fill="#FFFFFF"
-                  opacity={isWhite || isStriker ? 0.5 : 0.24}
-                  transform={`rotate(-35 ${p.x - r * 0.3} ${p.y - r * 0.36})`}
+                <polygon
+                  points={`${x0 + 4.5},${x0 + 2.2} ${x0 + 8.5},${x0 + 2.2} ${x0 + 5.8},${x0 + 6.0} ${x0 + 9.5},${x0 + 6.0} ${x0 + 3.8},${x0 + 10.5} ${x0 + 5.4},${x0 + 6.8} ${x0 + 2.8},${x0 + 6.8}`}
+                  fill="#DC2626"
+                  stroke="#991B1B"
+                  strokeWidth={0.25}
                 />
-                {isQueen && <circle cx={p.x} cy={p.y} r={r * 0.25} fill="#F59E0B" opacity={0.9} />}
-                {isStriker && <circle cx={p.x} cy={p.y} r={r * 0.26} fill={strikerSkin.core} />}
               </g>
             );
           })}
 
-        {/* ── 1-Cushion Reflection Trajectory ── */}
-        {trajectoryPoints && (
-          <g>
-            {/* Direct Ray — white dashed line like the mockup */}
-            <line
-              x1={trajectoryPoints.startX}
-              y1={trajectoryPoints.startY}
-              x2={trajectoryPoints.hitX}
-              y2={trajectoryPoints.hitY}
-              stroke="#FFFFFF"
-              strokeWidth={0.6}
-              strokeDasharray="1.2 1"
-              opacity={0.85}
-            />
+          {/* ── Playing surface ── */}
+          <rect x={play} y={play} width={playW} height={playW} fill="url(#surfaceGrad)" />
+          <rect
+            x={play}
+            y={play}
+            width={playW}
+            height={playW}
+            fill={feltSkin.grain}
+            mask="url(#grainMask)"
+            opacity={0.38}
+          />
+          <rect x={play} y={play} width={playW} height={playW} fill="url(#surfaceVignette)" />
+          {/* Crisp edge where the surface meets the lacquered band */}
+          <rect
+            x={play}
+            y={play}
+            width={playW}
+            height={playW}
+            fill="none"
+            stroke="#00000070"
+            strokeWidth={0.6}
+          />
 
-            {/* Rebound Ray */}
-            {trajectoryPoints.isReflected && (
-              <>
-                <line
-                  x1={trajectoryPoints.hitX}
-                  y1={trajectoryPoints.hitY}
-                  x2={trajectoryPoints.endX}
-                  y2={trajectoryPoints.endY}
-                  stroke="#38BDF8"
-                  strokeWidth={0.5}
-                  strokeDasharray="1 0.7"
-                  opacity={0.6}
-                />
-                {/* Rebound Starburst Dot */}
-                <circle
-                  cx={trajectoryPoints.hitX}
-                  cy={trajectoryPoints.hitY}
-                  r={1}
-                  fill="#38BDF8"
-                  className="animate-ping"
-                />
-              </>
-            )}
+          {/* ── Markings on all 4 corners ── */}
+          {[0, 90, 180, 270].map((deg) => (
+            <g key={`mark-line-${deg}`} transform={`rotate(${deg} ${center} ${center})`}>
+              {/* Base-line pair */}
+              <line x1={lineOut} y1={lineOut} x2={R + sr} y2={lineOut} stroke={feltSkin.boardLine} strokeWidth={0.9} />
+              <line x1={lineOut} y1={lineIn} x2={R + sr} y2={lineIn} stroke={feltSkin.boardLine} strokeWidth={0.9} />
 
-            {/* Target Reticle */}
-            <circle
-              cx={trajectoryPoints.isReflected ? trajectoryPoints.endX : trajectoryPoints.hitX}
-              cy={trajectoryPoints.isReflected ? trajectoryPoints.endY : trajectoryPoints.hitY}
-              r={CARROM_BOARD.coinRadius}
-              fill="none"
-              stroke={trajectoryPoints.isReflected ? "#38BDF8" : "#FFFFFF"}
-              strokeWidth={0.4}
-              strokeDasharray="0.8 0.5"
-            />
-          </g>
-        )}
+              {/* Red base circles, one at each end of the channel */}
+              {[L + 4.8, R - 4.8].map((bx) => (
+                <g key={`base-${bx}`}>
+                  <circle cx={bx} cy={L} r={2.55} fill="#C42B1C" />
+                  <circle cx={bx} cy={L} r={2.55} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.6} />
+                </g>
+              ))}
 
-        {/* Lacquer sheen across the whole board, struck from the top-left. */}
-        <rect
-          x={frameOut}
-          y={frameOut}
-          width={BOARD_VIEW.span}
-          height={BOARD_VIEW.span}
-          rx={4}
-          fill="url(#boardGloss)"
-          pointerEvents="none"
-        />
+              {/* Corner spot, centred in the crossing square */}
+              <circle cx={L} cy={L} r={1.3} fill={feltSkin.boardLine} />
+
+              {/* Diagonal aim line, pointing out to the pocket */}
+              <line x1={lineOut} y1={lineOut} x2={12.4} y2={12.4} stroke={feltSkin.boardLine} strokeWidth={0.7} />
+              <polygon points={arrowHead(10.9, 10.9, -0.7071, -0.7071, 2.2, 1.15)} fill={feltSkin.boardLine} />
+            </g>
+          ))}
+
+          {/* ── Corner Sweep Arcs (Mirrored Top vs Bottom for exact Design Board Parity) ── */}
+          {[
+            { cx: L, cy: L, a0: 75, a1: 20, tipAngle: 20, dirX: Math.sin((20 * Math.PI) / 180), dirY: -Math.cos((20 * Math.PI) / 180) },
+            { cx: R, cy: L, a0: 105, a1: 160, tipAngle: 160, dirX: -Math.sin((160 * Math.PI) / 180), dirY: Math.cos((160 * Math.PI) / 180) },
+            { cx: R, cy: R, a0: 255, a1: 200, tipAngle: 200, dirX: Math.sin((200 * Math.PI) / 180), dirY: -Math.cos((200 * Math.PI) / 180) },
+            { cx: L, cy: R, a0: 285, a1: 340, tipAngle: 340, dirX: -Math.sin((340 * Math.PI) / 180), dirY: Math.cos((340 * Math.PI) / 180) },
+          ].map((arc, idx) => (
+            <g key={`corner-arc-${idx}`}>
+              <path
+                d={arcPath(arc.cx, arc.cy, 9.6, arc.a0, arc.a1)}
+                fill="none"
+                stroke={feltSkin.boardLine}
+                strokeWidth={0.75}
+                strokeLinecap="round"
+              />
+              <polygon
+                points={arrowHead(
+                  arc.cx + 9.6 * Math.cos((arc.tipAngle * Math.PI) / 180),
+                  arc.cy + 9.6 * Math.sin((arc.tipAngle * Math.PI) / 180),
+                  arc.dirX,
+                  arc.dirY,
+                  2.1,
+                  1.1
+                )}
+                fill={feltSkin.boardLine}
+              />
+            </g>
+          ))}
+
+          {/* ── Centre circle: smooth outer ring, smooth red inner rings ── */}
+          <circle cx={center} cy={center} r={11.6} fill="none" stroke={feltSkin.boardLine} strokeWidth={0.7} />
+          <circle cx={center} cy={center} r={9.45} fill="none" stroke="#C42B1C" strokeWidth={1.8} />
+          <circle cx={center} cy={center} r={7.5} fill="none" stroke="#C42B1C" strokeWidth={0.7} />
+          <circle cx={center} cy={center} r={1.9} fill="#C42B1C" />
+
+          {/* ── Pockets ── */}
+          {pockets.map((p, i) => (
+            <g key={`pocket-${i}`}>
+              {/* Bed wrapped around the hole. Without this the lacquer band ran
+                  straight behind the pocket and it read as a black blob resting
+                  on the frame rather than a hole cut into the playing surface. */}
+              <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 1.3} fill="url(#surfaceGrad)" />
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={CARROM_BOARD.pocketRadius + 1.3}
+                fill={feltSkin.grain}
+                mask="url(#grainMask)"
+                opacity={0.38}
+              />
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={CARROM_BOARD.pocketRadius + 1.3}
+                fill="none"
+                stroke="#00000040"
+                strokeWidth={0.4}
+              />
+              <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 0.6} fill={feltSkin.pocketRim} opacity={0.9} />
+              <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius} fill="url(#pocketInner)" />
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={CARROM_BOARD.pocketRadius}
+                fill="none"
+                stroke="#000000"
+                strokeWidth={0.5}
+                opacity={0.7}
+              />
+            </g>
+          ))}
+
+          {/* ── Rendered Pieces ── */}
+          {state.pieces
+            .filter((p) => !p.pocketed)
+            .map((p) => {
+              const isStriker = p.kind === "striker";
+              const isQueen = p.kind === "queen";
+              const isWhite = p.kind === "white";
+              const r = isStriker ? CARROM_BOARD.strikerRadius : CARROM_BOARD.coinRadius;
+              const ringColor = isStriker
+                ? strikerSkin.core
+                : isWhite
+                ? "#00000030"
+                : "#FFFFFF2E";
+
+              return (
+                <g key={p.id} filter="url(#pieceShadow)">
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={r}
+                    fill={
+                      isStriker
+                        ? "url(#customStrikerGrad)"
+                        : isQueen
+                        ? "url(#queenGrad)"
+                        : isWhite
+                        ? "url(#whiteCoinGrad)"
+                        : "url(#blackCoinGrad)"
+                    }
+                    stroke={
+                      isStriker
+                        ? strikerSkin.rim
+                        : isQueen
+                        ? CARROM_THEME.queenRim
+                        : isWhite
+                        ? CARROM_THEME.whiteCoinRim
+                        : CARROM_THEME.blackCoinRim
+                    }
+                    strokeWidth={isStriker ? 0.45 : 0.35}
+                  />
+                  {/* Turned concentric grooves — the detail that reads as a
+                      machined disc rather than a flat dot. */}
+                  <circle cx={p.x} cy={p.y} r={r * 0.72} fill="none" stroke={ringColor} strokeWidth={0.3} />
+                  <circle cx={p.x} cy={p.y} r={r * 0.48} fill="none" stroke={ringColor} strokeWidth={0.25} />
+                  {/* Specular highlight */}
+                  <ellipse
+                    cx={p.x - r * 0.3}
+                    cy={p.y - r * 0.36}
+                    rx={r * 0.32}
+                    ry={r * 0.22}
+                    fill="#FFFFFF"
+                    opacity={isWhite || isStriker ? 0.5 : 0.24}
+                    transform={`rotate(-35 ${p.x - r * 0.3} ${p.y - r * 0.36})`}
+                  />
+                  {isQueen && <circle cx={p.x} cy={p.y} r={r * 0.25} fill="#F59E0B" opacity={0.9} />}
+                  {isStriker && <circle cx={p.x} cy={p.y} r={r * 0.26} fill={strikerSkin.core} />}
+                </g>
+              );
+            })}
+
+          {/* ── 1-Cushion Reflection Trajectory ── */}
+          {trajectoryPoints && (
+            <g>
+              {/* Direct Ray — white dashed line like the mockup */}
+              <line
+                x1={trajectoryPoints.startX}
+                y1={trajectoryPoints.startY}
+                x2={trajectoryPoints.hitX}
+                y2={trajectoryPoints.hitY}
+                stroke="#FFFFFF"
+                strokeWidth={0.6}
+                strokeDasharray="1.2 1"
+                opacity={0.85}
+              />
+
+              {/* Rebound Ray */}
+              {trajectoryPoints.isReflected && (
+                <>
+                  <line
+                    x1={trajectoryPoints.hitX}
+                    y1={trajectoryPoints.hitY}
+                    x2={trajectoryPoints.endX}
+                    y2={trajectoryPoints.endY}
+                    stroke="#38BDF8"
+                    strokeWidth={0.5}
+                    strokeDasharray="1 0.7"
+                    opacity={0.6}
+                  />
+                  {/* Rebound Starburst Dot */}
+                  <circle
+                    cx={trajectoryPoints.hitX}
+                    cy={trajectoryPoints.hitY}
+                    r={1}
+                    fill="#38BDF8"
+                    className="animate-ping"
+                  />
+                </>
+              )}
+
+              {/* Target Reticle */}
+              <circle
+                cx={trajectoryPoints.isReflected ? trajectoryPoints.endX : trajectoryPoints.hitX}
+                cy={trajectoryPoints.isReflected ? trajectoryPoints.endY : trajectoryPoints.hitY}
+                r={CARROM_BOARD.coinRadius}
+                fill="none"
+                stroke={trajectoryPoints.isReflected ? "#38BDF8" : "#FFFFFF"}
+                strokeWidth={0.4}
+                strokeDasharray="0.8 0.5"
+              />
+            </g>
+          )}
+
+          {/* Lacquer sheen across the whole board, struck from the top-left. */}
+          <rect
+            x={frameOut}
+            y={frameOut}
+            width={BOARD_VIEW.span}
+            height={BOARD_VIEW.span}
+            rx={4}
+            fill="url(#boardGloss)"
+            pointerEvents="none"
+          />
+        </g>
       </svg>
     </div>
   );
@@ -1291,12 +1312,14 @@ export function CarromShotControls({
   onPlace,
   aim,
   phase,
+  isFlipped = false,
 }: {
   myTurn: boolean;
   strikerPos: number;
   onPlace: (pos: number) => void;
   aim: AimData | null;
   phase: string;
+  isFlipped?: boolean;
 }) {
   const power = aim?.power ?? 0;
   const powerPct = Math.round(power * 100);
@@ -1317,10 +1340,12 @@ export function CarromShotControls({
     ? "Release to shoot — drag further for more power"
     : "Drag back from the striker to aim";
 
+  const uiPos = toUiSliderPos(strikerPos, isFlipped);
+
   function step(delta: number) {
     HapticsManager.getInstance().subtle();
-    const next = Math.max(0, Math.min(1, strikerPos + delta));
-    onPlace(next);
+    const nextUi = Math.max(0, Math.min(1, uiPos + delta));
+    onPlace(toServerSliderPos(nextUi, isFlipped));
   }
 
   return (
@@ -1434,11 +1459,12 @@ export function CarromShotControls({
             min={0}
             max={1}
             step={0.005}
-            value={strikerPos}
+            value={uiPos}
             aria-label="Striker position on the baseline"
             onChange={(e) => {
               HapticsManager.getInstance().subtle();
-              onPlace(Number(e.target.value));
+              const nextUi = Number(e.target.value);
+              onPlace(toServerSliderPos(nextUi, isFlipped));
             }}
             className="flex-1 h-2 rounded-lg cursor-pointer"
             style={{ accentColor: WARM.gold }}

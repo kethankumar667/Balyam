@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { Player, SnakePublicState, SnakeTheme } from "@shared/types";
+import type { ChatMessage, Player, SnakePublicState, SnakeTheme } from "@shared/types";
 import { AnimatePresence, motion } from "framer-motion";
 import SnakeCanvas from "./SnakeCanvas";
 import QuadDPad, { type PadDir } from "../../components/QuadDPad";
 import { useHaptics } from "../../hooks/useHaptics";
 import { SNAKE_THEME_CHROME, THEME_LABELS, SNAKE_THEMES } from "./snakeChrome";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 export interface SnakeBoardProps {
   state: SnakePublicState;
@@ -12,14 +15,18 @@ export interface SnakeBoardProps {
   onMove: (type: string, data?: unknown) => void;
   /** Full room roster (carries `avatar`), used to draw each seat's picture. */
   players: Player[];
+  messages?: ChatMessage[];
+  roomCode?: string;
+  roomPhase?: string;
 }
 
-export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardProps) {
+export default function SnakeBoardMobile({ state, selfId, onMove, players, messages, roomCode, roomPhase }: SnakeBoardProps) {
   const [showRules, setShowRules] = useState(false);
   const [activeTheme, setActiveTheme] = useState<SnakeTheme>(state.theme || "nokia-monochrome");
   const [isMuted, setIsMuted] = useState(false);
   const swipeRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const haptics = useHaptics();
+  const reactions = useSeatReactions();
 
   useEffect(() => {
     if (state.theme) setActiveTheme(state.theme);
@@ -259,7 +266,20 @@ export default function SnakeBoardMobile({ state, selfId, onMove }: SnakeBoardPr
 
       </div>
 
+      {roomCode && (
+        <InlineRoomRail
+          code={roomCode}
+          game="snake"
+          phase={roomPhase ?? "playing"}
+          players={players}
+          selfId={selfId}
+          messages={messages ?? []}
+          hideStrip
+        />
+      )}
+
       <RulesModal open={showRules} onClose={() => setShowRules(false)} />
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

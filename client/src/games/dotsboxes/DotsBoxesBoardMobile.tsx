@@ -14,6 +14,8 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
 import { DOTSBOXES_TUTORIAL } from "../tutorials";
 import RematchPanel from "../../components/RematchPanel";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 /**
  * Touch-first single-column layout. The scoreboard wraps across the top,
@@ -44,6 +46,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
   // Never over a live turn: safe once it isn't this player's turn, or no
   // deadline is currently running. See GameTutorial.tsx's useTutorialGate doc.
   const tut = useTutorialGate(DOTSBOXES_TUTORIAL.key, !myTurn || state.turnDeadline === null);
+  const reactions = useSeatReactions();
 
   return (
     <ClassroomScene footer={state.phase === "finished" ? <RematchPanel players={props.players} selfId={props.selfId} className="bg-[#fef9f0]/90 border-2 border-amber-700/40 rounded-lg" /> : undefined}>
@@ -67,7 +70,14 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
       </div>
 
       {/* Top: scoreboard + turn indicator (wraps on narrow phones) */}
-      <ScoreBar state={state} penOf={penOf} nameOf={nameOf} avatarOf={avatarOf} selfId={props.selfId} />
+      <ScoreBar
+        state={state}
+        penOf={penOf}
+        nameOf={nameOf}
+        avatarOf={avatarOf}
+        selfId={props.selfId}
+        registerCardRef={reactions.registerCardRef}
+      />
 
       {/* Rough Notebook page */}
       <NotebookPaper>
@@ -173,6 +183,8 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
     </ClassroomScene>
   );

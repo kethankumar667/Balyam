@@ -19,6 +19,8 @@ import {
   HcFranchisePickerNotebook,
   HcPhaseCard,
 } from "./hc-notebook";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 /**
  * Hand Cricket — mobile notebook shell.
@@ -42,6 +44,7 @@ export default function HandCricketBoardMobile({
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
   const [, setSkin] = useSkin();
+  const reactions = useSeatReactions();
 
   const isTeamSelect = state.phase === "teamSelect";
   const isIpl = state.options.category === "ipl";
@@ -111,7 +114,7 @@ export default function HandCricketBoardMobile({
           )}
           {(state.phase === "innings1" || state.phase === "innings2") && (
             <HcPhaseCard>
-              <InningsPhase state={state} selfId={sid} players={players} />
+              <InningsPhase state={state} selfId={sid} players={players} registerCardRef={reactions.registerCardRef} />
             </HcPhaseCard>
           )}
           {state.phase === "finished" && (
@@ -137,6 +140,8 @@ export default function HandCricketBoardMobile({
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </HcNotebookPage>
   );
 }

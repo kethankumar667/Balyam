@@ -49,6 +49,9 @@ import {
   WaitingForPlayersBanner,
 } from "./rotation-sync";
 import { RummyDealOverlay } from "./RummyBoardMobile";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 /* ─────────────────────────── Types ─────────────────────────── */
 
@@ -341,6 +344,8 @@ export default function RummyBoardDesktop({
       selCardId ? 1 : 0,
     );
   }, [layout.groups, byId, selected, wildRank]);
+
+  const reactions = useSeatReactions();
 
   /* ─── Turn / phase helpers ─── */
   const isArranging = state.phase === "arranging";
@@ -1064,6 +1069,7 @@ export default function RummyBoardDesktop({
                 autoReason={players.find((p) => p.id === id)?.autoPlayReason}
                 cumulativeScore={state.cumulativeScores?.[id]}
                 turnAction={state.turnAction}
+                cardRef={reactions.registerCardRef(id)}
               />
             ))}
           </div>
@@ -1307,7 +1313,17 @@ export default function RummyBoardDesktop({
                       {activeTab === "voice" && (
                         <VoicePanel players={players} selfId={selfId} restoreOrientation="any" />
                       )}
-                      {activeTab === "players" && <PlayerList players={players} selfId={selfId} />}
+                      {activeTab === "players" && (
+                        <PlayerList
+                          players={players}
+                          selfId={selfId}
+                          onTapPlayer={(id) =>
+                            window.dispatchEvent(
+                              new CustomEvent("bhalyam:react-at-player", { detail: { playerId: id } }),
+                            )
+                          }
+                        />
+                      )}
                       {activeTab === "points" && (
                         <div className="flex flex-col gap-3">
                           <PointsPanel
@@ -1527,6 +1543,23 @@ export default function RummyBoardDesktop({
           </div>
         </div>
       )}
+
+      {/* Strip-less room rail: Rummy renders its own chat/voice/players tabs
+          in the side panel above, so only the `bhalyam:react-at-player` /
+          `bhalyam:open-room-panel` bridge and the emoji tray are needed here. */}
+      {roomCode && (
+        <InlineRoomRail
+          code={roomCode}
+          game="rummy"
+          phase={state.phase}
+          players={players}
+          selfId={selfId}
+          messages={messages}
+          hideStrip
+        />
+      )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
     </CoachHighlightProvider>
   );
@@ -1939,6 +1972,7 @@ function SeatCard({
   autoReason,
   cumulativeScore,
   turnAction,
+  cardRef,
 }: {
   letter: string;
   name: string;
@@ -1954,6 +1988,8 @@ function SeatCard({
   autoPlaying: boolean;
   autoReason?: "disconnected" | "idle";
   cumulativeScore?: number;
+  /** From useSeatReactions() — anchors a targeted reaction's arc/flinch to this seat. */
+  cardRef?: (el: HTMLElement | null) => void;
 }) {
   const out = dropped || eliminated;
   const avatarOption = findAvatar(avatar);
@@ -1990,7 +2026,7 @@ function SeatCard({
         : (isSelf ? "Your turn · discard" : "Discarding…"))
     : "Waiting";
   return (
-    <div className={`rm-seat${isTurn ? " is-turn" : ""}${out ? " is-out" : ""}`}>
+    <div ref={cardRef} className={`rm-seat${isTurn ? " is-turn" : ""}${out ? " is-out" : ""}`}>
       <div className="rm-seat__top">
         <span className="rm-seat__avatar" aria-hidden>
           {showAvatarImg ? (

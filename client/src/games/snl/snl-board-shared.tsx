@@ -797,12 +797,17 @@ export function SnlPlayerRail({
   coinColorOf,
   initialOf,
   selfId,
+  registerCardRef,
 }: {
   players: Player[];
   state: SnlState;
   coinColorOf: Record<string, CoinColor>;
   initialOf: Record<string, string>;
   selfId: string | null;
+  /** From useSeatReactions() — registers this row as the anchor a targeted
+   *  reaction flies to/from and shakes on landing. Optional so this
+   *  component still renders fine anywhere reactions aren't wired up. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   return (
     <div
@@ -825,6 +830,7 @@ export function SnlPlayerRail({
         return (
           <div
             key={id}
+            ref={registerCardRef?.(id)}
             className={`flex items-center gap-2 p-1.5 rounded-lg transition ${
               isTurn ? "bg-slate-800/80" : "bg-slate-800/30"
             }`}

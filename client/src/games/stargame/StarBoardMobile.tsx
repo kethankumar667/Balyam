@@ -5,6 +5,8 @@ import { useStarBoard } from "./useStarBoard";
 import type { StarBoardProps } from "./useStarBoard";
 import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/GameTutorial";
 import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { STARGAME_TUTORIAL } from "../tutorials";
 import {
   PAPER,
@@ -88,6 +90,7 @@ function ActionButton({
 export default function StarBoardMobile(props: StarBoardProps) {
   const m = useStarBoard(props);
   const reduce = useReducedMotion();
+  const reactions = useSeatReactions();
   // Never over a live action window — Star Game has two ("themeSelect" and
   // "pass"), so both must be clear, or no deadline is running at all.
   // See GameTutorial.tsx's useTutorialGate doc.
@@ -459,6 +462,7 @@ export default function StarBoardMobile(props: StarBoardProps) {
             // real viewport instead, capped so it never dominates a tablet.
             width={tableW}
             height={Math.round(tableW * 0.78)}
+            registerCardRef={reactions.registerCardRef}
           />
         </div>
       )}
@@ -514,6 +518,8 @@ export default function StarBoardMobile(props: StarBoardProps) {
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

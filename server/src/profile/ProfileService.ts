@@ -114,12 +114,15 @@ export class ProfileService {
       // 1. Record in match history
       matchHistoryService.recordMatch(p.playerId, matchItem);
 
-      // 2. Project stats
-      const currentStats = this.stats.get(p.playerId) || INITIAL_PLAYER_STATS(p.playerId);
-      const updatedStats = StatsProjection.projectMatch(currentStats, p.playerId, matchItem);
-      this.stats.set(p.playerId, updatedStats);
-
-      // 3. Award XP & Level Up
+      // 2. Award XP & Level Up — MUST run before stats projection below.
+      // getOrCreateProfile's "brand new player" branch seeds this.stats to
+      // INITIAL_PLAYER_STATS as a side effect; ordering it after the stats
+      // projection meant a player's first-ever recorded match was projected
+      // correctly and then immediately overwritten back to all-zero the
+      // instant this line ran for a player it had never seen before (every
+      // OTHER match kept its stats, since the "existing profile" branch
+      // never touches this.stats — only the very first one was silently
+      // dropped).
       const profile = this.getOrCreateProfile(p.playerId, p.name, p.avatar);
       const xpEarned = result === "WIN" ? 50 : result === "DRAW" ? 25 : 15;
       profile.experiencePoints += xpEarned;
@@ -130,6 +133,12 @@ export class ProfileService {
       progressionSync.xpAwarded(
         p.playerId, xpEarned, "match", matchItem.matchId, `${result} at ${params.game}`,
       );
+
+      // 3. Project stats — after getOrCreateProfile, so this write is the
+      // last thing to touch this.stats for this player this call.
+      const currentStats = this.stats.get(p.playerId) || INITIAL_PLAYER_STATS(p.playerId);
+      const updatedStats = StatsProjection.projectMatch(currentStats, p.playerId, matchItem);
+      this.stats.set(p.playerId, updatedStats);
 
       // 4. Update achievements
       const unlMap = this.unlockedAchievements.get(p.playerId) || {};

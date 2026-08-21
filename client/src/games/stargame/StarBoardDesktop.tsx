@@ -5,6 +5,8 @@ import { useStarBoard } from "./useStarBoard";
 import type { StarBoardModel, StarBoardProps } from "./useStarBoard";
 import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/GameTutorial";
 import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { STARGAME_TUTORIAL } from "../tutorials";
 import { getSocket } from "../../lib/socket";
 import {
@@ -48,6 +50,7 @@ import {
 export default function StarBoardDesktop(props: StarBoardProps) {
   const m = useStarBoard(props);
   const reduce = useReducedMotion();
+  const reactions = useSeatReactions();
   // Never over a live action window — Star Game has two ("themeSelect" and
   // "pass"), so both must be clear, or no deadline is running at all.
   // See GameTutorial.tsx's useTutorialGate doc.
@@ -312,6 +315,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
                 onPlaceHand={m.placeHand}
                 width={tableWidth}
                 height={tableHeight}
+                registerCardRef={reactions.registerCardRef}
               >
                 <CenterContent m={m} reduce={!!reduce} selectedCount={selectedCount} shuffledCount={shuffledCount} />
               </StarTable>
@@ -476,6 +480,8 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

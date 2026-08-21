@@ -137,6 +137,7 @@ export interface BhalyamGameCard {
   accent: { from: string; to: string };
   maintenance?: boolean;
   accessible?: boolean;
+  tileImage?: string;
 }
 
 /**

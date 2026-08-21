@@ -3,6 +3,9 @@ import type { NamePlaceAnimalAnswers, NamePlaceAnimalCategory, NamePlaceAnimalPu
 import { motion, AnimatePresence } from "framer-motion";
 import type { NamePlaceAnimalBoardProps } from "./NamePlaceAnimalBoardMobile";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 const SAMPLE_CLUES: Record<string, Record<NamePlaceAnimalCategory, string>> = {
   A: { name: "Arjun, Anil, Alice", place: "Amsterdam, Agra, Austin", animal: "Alligator, Anteater, Ant", thing: "Apple, Anchor, Arrow" },
@@ -36,7 +39,11 @@ export default function NamePlaceAnimalBoardDesktop({
   myPlayerId,
   onMove,
   players,
+  messages,
+  roomCode,
+  roomPhase,
 }: NamePlaceAnimalBoardProps) {
+  const reactions = useSeatReactions();
   const [form, setForm] = useState<NamePlaceAnimalAnswers>(() => ({
     name: initialMyAnswers?.name || "",
     place: initialMyAnswers?.place || "",
@@ -413,6 +420,7 @@ export default function NamePlaceAnimalBoardDesktop({
               return (
               <div
                 key={p.id}
+                ref={reactions.registerCardRef(p.id)}
                 className={`p-4 rounded-xl border flex items-center justify-between ${
                   p.id === myPlayerId
                     ? "bg-amber-500/10 border-amber-500/30"
@@ -457,7 +465,21 @@ export default function NamePlaceAnimalBoardDesktop({
             <p>• <strong>0 pts</strong> for empty/invalid entries.</p>
           </div>
         </div>
+
+        {/* In-board chat / players / voice / reactions rail — this game never
+            had one mounted, so InlineRoomRail's targeted-reaction picker had
+            nowhere to trigger from. */}
+        <InlineRoomRail
+          code={roomCode ?? ""}
+          game="namesplaceanimal"
+          phase={roomPhase ?? state.phase}
+          players={players ?? []}
+          selfId={myPlayerId}
+          messages={messages ?? []}
+        />
       </div>
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

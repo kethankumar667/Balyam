@@ -9,6 +9,8 @@ import {
   FooterRow,
   ReportCardOverlay,
 } from "./wordbuilding-shared";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 /**
  * Viewport-fitted cell size. The original board hard-coded 44/38/28px by board
@@ -45,6 +47,7 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
   const { state, selfId, roomCode, players, messages, roomPhase, onLeave } = props;
   const m = useWordBuildingBoard(props);
   const cellPx = useFitCellPx(m.size);
+  const reactions = useSeatReactions();
 
   return (
     <div
@@ -61,6 +64,7 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
         coach={m.coach}
         onOpenTutorial={() => m.setTutorialOpen(true)}
         onLeave={onLeave}
+        registerCardRef={reactions.registerCardRef}
       />
 
       <WorkbookBoard m={m} state={state} cellPx={cellPx} roomCode={roomCode} />
@@ -100,6 +104,8 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
       {/* 10-second turn-out warning — only renders while it's MY turn and the
           deadline is within the window. Pointer-events disabled. */}
       <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn && state.phase === "playing"} />
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

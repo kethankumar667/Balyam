@@ -1192,6 +1192,9 @@ export default function Room() {
                   myPlayerId={playerId || ""}
                   onMove={sendMove}
                   players={roomState.players}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  roomPhase={roomState.phase}
                 />
               )}
 
@@ -1201,6 +1204,9 @@ export default function Room() {
                   selfId={playerId || ""}
                   onMove={sendMove}
                   players={roomState.players}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  roomPhase={roomState.phase}
                 />
               )}
 
@@ -1210,6 +1216,9 @@ export default function Room() {
                   state={gameState as SnakePublicState}
                   selfId={playerId || ""}
                   players={roomState.players}
+                  messages={messages}
+                  roomCode={roomState.code}
+                  roomPhase={roomState.phase}
                 />
               )}
 

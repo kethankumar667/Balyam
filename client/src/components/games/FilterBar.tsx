@@ -1,5 +1,5 @@
 import { ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LayoutGrid, Sparkles, User, Users, Shield, GraduationCap, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutGrid, Sparkles, User, Users, Shield, GraduationCap, ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import type { CategorySelection } from "../bhalyam/CategoryFilter";
 import { useTheme } from "../../lib/useTheme";
 
@@ -17,6 +17,7 @@ interface CategoryOption {
 
 const CATEGORIES: CategoryOption[] = [
   { id: "all", label: "All Games", icon: <LayoutGrid className="w-4 h-4" /> },
+  { id: "favourites", label: "Favourites", icon: <Heart className="w-4 h-4 text-rose-500 fill-current" /> },
   { id: "retro", label: "Retro 90s", icon: <Sparkles className="w-4 h-4 text-amber-500" /> },
   { id: "board", label: "Board & Cards", icon: <Shield className="w-4 h-4" /> },
   { id: "multiplayer", label: "Multiplayer", icon: <Users className="w-4 h-4" /> },

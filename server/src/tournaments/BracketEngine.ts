@@ -147,6 +147,22 @@ export class BracketEngine {
 
     if (!targetMatch) return { success: false, isTournamentOver: false };
 
+    // Idempotency guard: a match that already has a recorded result must
+    // not be re-processed. Without this, a retried or duplicated report
+    // of the SAME match (most consequentially the tournament final) would
+    // re-run through TournamentService.distributeRewards, which has no
+    // ledger of its own for XP/season-stat grants — a replay would
+    // double-count them (MULTIPLAYER-RELIABILITY-BASELINE.md gap G3).
+    // Returning `isTournamentOver: false` on a replay is what makes this
+    // work: TournamentService only distributes rewards on the call that
+    // first flips it true, so a replay of an already-decided final is a
+    // no-op success rather than a second reward grant. This also means a
+    // later report with a *different* winnerId for an already-decided
+    // match is silently ignored rather than overwriting history.
+    if (targetMatch.status === "COMPLETED") {
+      return { success: true, isTournamentOver: false };
+    }
+
     const winner =
       targetMatch.player1?.playerId === winnerId
         ? targetMatch.player1

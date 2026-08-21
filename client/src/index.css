@@ -1894,19 +1894,47 @@ body, #root, .bhalyam-paper {
   animation: reaction-fling-impact 520ms ease-out 660ms forwards;
 }
 
+/* The "hit" moment itself — a bigger burst of the thrown emoji (paired with
+   💥, see FlungReaction) punching in at the landing point, same delay as the
+   ring above so both read as one impact. Without this the throw just...
+   stops moving; the impact splash ring alone reads as a glow, not a HIT.
+   Matches the punch UNO's own targeted reactions already had (its impact
+   layer swaps to a combo glyph — 🍅 becomes 💥🍅 — at the same moment) that
+   the rest of the app was missing before this was generalized. */
+@keyframes reaction-fling-hit {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  30%  { opacity: 1;  transform: translate(-50%, -50%) scale(1.5); }
+  100% { opacity: 0;  transform: translate(-50%, -50%) scale(1.9); }
+}
+.reaction-fling-hit {
+  opacity: 0;
+  animation: reaction-fling-hit 480ms ease-out 660ms forwards;
+}
+
 /* The struck seat card flinches. Applied imperatively (classList add/remove)
    when a targeted reaction lands, off whatever DOM ref the board already
    registered for that seat — no card needs to subscribe to the reaction
    stream just to twitch. Originally Ludo-only (ludo-hit-shake); generalized
    so any game with a seat-ref map (Ludo, RPS, ...) can reuse the same
-   class instead of re-defining the keyframe per game. */
+   class instead of re-defining the keyframe per game.
+   Squash-then-overshoot rather than a flat side-to-side wobble — the
+   `cubic-bezier` "back ease" on the animation itself layers a spring-like
+   overshoot on TOP of the keyframe's own scale swing, approximating the
+   elastic feel of UNO's react-spring flinch (usePlayerWobble) without
+   needing every consuming board to convert its seat card to react-spring's
+   `animated.div` — this stays a plain classList toggle, so the "register a
+   ref, mount the layer" integration in useSeatReactions.ts stays 3 lines. */
 @keyframes reaction-hit-shake {
-  0%, 100% { transform: translateX(0) rotate(0deg); }
-  20%      { transform: translateX(-4px) rotate(-1.6deg); }
-  45%      { transform: translateX(4px) rotate(1.6deg); }
-  70%      { transform: translateX(-2px) rotate(-0.8deg); }
+  0%   { transform: translateX(0) rotate(0deg) scale(1, 1); }
+  18%  { transform: translateX(-5px) rotate(-7deg) scale(1.14, 0.88); }
+  42%  { transform: translateX(5px) rotate(5deg) scale(0.93, 1.09); }
+  68%  { transform: translateX(-2px) rotate(-2deg) scale(1.03, 0.98); }
+  100% { transform: translateX(0) rotate(0deg) scale(1, 1); }
 }
-.reaction-hit-shake { animation: reaction-hit-shake 420ms ease-in-out; }
+.reaction-hit-shake {
+  animation: reaction-hit-shake 460ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center;
+}
 
 /* UNO — comedic "hit" flourish, per live user request ("funny animations
    whenever player got fired by special power cards"): a bouncy overshoot

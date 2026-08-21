@@ -1142,6 +1142,7 @@ export function StarTable({
   width = 420,
   height = 340,
   children,
+  registerCardRef,
 }: {
   seats: StarSeat[];
   selfId: string | null;
@@ -1162,6 +1163,11 @@ export function StarTable({
   width?: number;
   height?: number;
   children?: React.ReactNode;
+  /** From useSeatReactions() — registers each seat's ring wrapper as the
+   *  anchor a targeted reaction flies to/from and shakes on landing.
+   *  Optional so this component still renders fine anywhere reactions
+   *  aren't wired up. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const reduce = useReducedMotion();
   const ordered = useMemo(() => {
@@ -1331,6 +1337,7 @@ export function StarTable({
         return (
           <div
             key={s.id}
+            ref={registerCardRef?.(s.id)}
             className="absolute -translate-x-1/2 -translate-y-1/2 z-20"
             style={{ left: pos.x, top: pos.y }}
           >

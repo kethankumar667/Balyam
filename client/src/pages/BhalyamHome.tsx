@@ -103,6 +103,8 @@ import {
 
 import AppLayout from "../components/layout/AppLayout";
 import WhatAreWePlayingSection from "../components/bhalyam/WhatAreWePlayingSection";
+import RecentlyPlayedSection from "../components/bhalyam/RecentlyPlayedSection";
+import FavouritesSection from "../components/bhalyam/FavouritesSection";
 
 const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
   handcricket: HandCricketGlyph,
@@ -157,6 +159,8 @@ export default function BhalyamHome() {
             onOpenJoin={() => setJoinOpen(true)}
           />
           <WelcomePlayerStrip onSelect={setSheetGame} snapshot={playerSnapshot} />
+          <RecentlyPlayedSection onSelectGame={setSheetGame} />
+          <FavouritesSection onSelectGame={setSheetGame} />
           {showGettingStarted && (
             <GettingStartedCard
               className="mb-5"

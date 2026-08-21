@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
-import type { NamePlaceAnimalAnswers, NamePlaceAnimalCategory, NamePlaceAnimalPublicState, Player } from "@shared/types";
+import type { ChatMessage, NamePlaceAnimalAnswers, NamePlaceAnimalCategory, NamePlaceAnimalPublicState, Player } from "@shared/types";
 import { motion, AnimatePresence } from "framer-motion";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 export interface NamePlaceAnimalBoardProps {
   state: NamePlaceAnimalPublicState;
@@ -8,6 +11,9 @@ export interface NamePlaceAnimalBoardProps {
   myPlayerId: string;
   onMove: (type: string, data?: unknown) => void;
   players?: Player[];
+  messages?: ChatMessage[];
+  roomCode?: string;
+  roomPhase?: string;
 }
 
 const SAMPLE_CLUES: Record<string, Record<NamePlaceAnimalCategory, string>> = {
@@ -41,7 +47,12 @@ export default function NamePlaceAnimalBoardMobile({
   myAnswers: initialMyAnswers,
   myPlayerId,
   onMove,
+  players,
+  messages,
+  roomCode,
+  roomPhase,
 }: NamePlaceAnimalBoardProps) {
+  const reactions = useSeatReactions();
   const [form, setForm] = useState<NamePlaceAnimalAnswers>(() => ({
     name: initialMyAnswers?.name || "",
     place: initialMyAnswers?.place || "",
@@ -424,6 +435,25 @@ export default function NamePlaceAnimalBoardMobile({
           </div>
         </div>
       )}
+
+      {/* In-board chat / players / voice / reactions rail — this game never
+          had one mounted, so InlineRoomRail's targeted-reaction picker had
+          nowhere to trigger from. Mobile has no persistent player-identity
+          row to anchor a fly-to/flinch target on (the standings above are
+          transient, round-summary-only), so the flinch animation degrades to
+          a plain float here — see FloatingReactionsLayer's doc comment. */}
+      <div className="mt-2">
+        <InlineRoomRail
+          code={roomCode ?? ""}
+          game="namesplaceanimal"
+          phase={roomPhase ?? state.phase}
+          players={players ?? []}
+          selfId={myPlayerId}
+          messages={messages ?? []}
+        />
+      </div>
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );
 }

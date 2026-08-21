@@ -353,6 +353,7 @@ export function StudentBar({
   coach,
   onOpenTutorial,
   onLeave,
+  registerCardRef,
 }: {
   state: WordBuildingPublicState;
   inkOf: Record<string, Ink>;
@@ -364,6 +365,8 @@ export function StudentBar({
   coach?: CoachState;
   onOpenTutorial: () => void;
   onLeave?: () => void;
+  /** Opponent-targeted reactions: registers this row as the fly-to/flinch anchor for `pid`. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 px-1 sm:px-2">
@@ -393,6 +396,7 @@ export function StudentBar({
         return (
           <div
             key={pid}
+            ref={registerCardRef?.(pid)}
             className="rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 transition min-w-[96px] sm:min-w-[130px]"
             style={{
               background: isTurn ? "rgba(251,191,36,0.22)" : "rgba(255,255,255,0.55)",

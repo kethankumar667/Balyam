@@ -33,6 +33,9 @@ import Avatar from "./Avatar";
 import RummyResultModal from "./RummyResultModal";
 import RummyRoomHistory from "../../components/nostalgia/RummyRoomHistory";
 import { RUMMY_COPY } from "./copy";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import {
   enterFullscreen,
   exitFullscreen,
@@ -384,7 +387,7 @@ export default function RummyBoardMobile({
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
   // Reactions + emoji rain
-  const [reactions, setReactions] = useState<ReactionRecvPayload[]>([]);
+  const reactions = useSeatReactions();
   const [rains, setRains] = useState<{ id: string; emoji: string }[]>([]);
 
   // Sound on/off — persists between renders via the module's internal state.
@@ -591,21 +594,16 @@ export default function RummyBoardMobile({
     lastDiscardIdRef.current = newTopId;
   }, [state.topOfOpenPile]);
 
-  // Subscribe to reaction broadcasts → animate floating reactions + emoji rain.
+  // Subscribe to reaction broadcasts → trigger emoji rain for big celebratory
+  // emojis. (Targeted arc/flinch reactions are handled by useSeatReactions above.)
   useEffect(() => {
     const socket = getSocket();
     function onReaction(payload: ReactionRecvPayload) {
-      setReactions((prev) => [...prev, payload].slice(-20));
-      // Trigger a brief emoji rain for big celebratory emojis.
       if (["🔥", "🎉", "💯", "🏆", "🙌", "👏"].includes(payload.emoji)) {
         const id = `rain_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         setRains((prev) => [...prev, { id, emoji: payload.emoji }]);
         setTimeout(() => setRains((prev) => prev.filter((r) => r.id !== id)), 2800);
       }
-      // Auto-remove floating reactions after 2s.
-      setTimeout(() => {
-        setReactions((prev) => prev.filter((r) => r.id !== payload.id));
-      }, 2000);
     }
     socket.on("room:reaction", onReaction);
     return () => {
@@ -1371,7 +1369,13 @@ export default function RummyBoardMobile({
             style={{ gridTemplateColumns: "1fr auto 1fr" }}
           >
             <div className="flex justify-end items-center min-w-0 pr-1">
-              <OpponentRow opponents={leftOpponents} state={state} players={players} selfId={selfId} />
+              <OpponentRow
+                opponents={leftOpponents}
+                state={state}
+                players={players}
+                selfId={selfId}
+                registerCardRef={reactions.registerCardRef}
+              />
             </div>
             {/* relative wrapper scopes the post-show countdown (below) to just
                 this deck zone — see ArrangeCenterTimerMobile's own comment for
@@ -1396,7 +1400,13 @@ export default function RummyBoardMobile({
               )}
             </div>
             <div className="flex justify-start items-center min-w-0 pl-1">
-              <OpponentRow opponents={rightOpponents} state={state} players={players} selfId={selfId} />
+              <OpponentRow
+                opponents={rightOpponents}
+                state={state}
+                players={players}
+                selfId={selfId}
+                registerCardRef={reactions.registerCardRef}
+              />
             </div>
           </div>
         );
@@ -1558,8 +1568,9 @@ export default function RummyBoardMobile({
       {/* Drop flourish — a card slams down when a player drops. */}
       {dropAnnounce && <DropAnnounceMobile name={dropAnnounce.name} mine={dropAnnounce.mine} />}
 
-      {/* Floating reactions — small bubbles bouncing up from below the player names */}
-      <FloatingRummyReactions reactions={reactions} players={players} selfId={selfId} />
+      {/* Targeted arc + flinch reactions — anchored to opponent avatars via
+          OpponentRow's registerCardRef below. */}
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
 
       {/* Emoji rain layer — global overlay */}
       {rains.map((r: any) => (
@@ -1575,6 +1586,16 @@ export default function RummyBoardMobile({
         <RummyModal title="Menu" onClose={() => setMenuOpen(false)}>
           <div className="grid grid-cols-1 gap-1.5">
             <MenuRow emoji="👥" label="Players" onClick={() => { setMenuOpen(false); setPlayersOpen(true); }} />
+            <MenuRow
+              emoji="🙂"
+              label="React"
+              onClick={() => {
+                setMenuOpen(false);
+                window.dispatchEvent(
+                  new CustomEvent("bhalyam:open-room-panel", { detail: { panel: "emoji" } }),
+                );
+              }}
+            />
             <MenuRow emoji="🎤" label="Voice chat" onClick={() => { setMenuOpen(false); setVoiceOpen(true); }} />
             <MenuRow
               emoji="💬"
@@ -1610,7 +1631,16 @@ export default function RummyBoardMobile({
       {/* Players overlay */}
       {playersOpen && (
         <RummyModal title="Players" onClose={() => setPlayersOpen(false)}>
-          <PlayerList players={players} selfId={selfId} />
+          <PlayerList
+            players={players}
+            selfId={selfId}
+            onTapPlayer={(id) => {
+              setPlayersOpen(false);
+              window.dispatchEvent(
+                new CustomEvent("bhalyam:react-at-player", { detail: { playerId: id } }),
+              );
+            }}
+          />
         </RummyModal>
       )}
 
@@ -1862,6 +1892,21 @@ export default function RummyBoardMobile({
           </div>
         </div>
       )}
+
+      {/* Strip-less room rail: mobile drives Players/Voice/Chat from its own
+          hamburger menu above, so only the `bhalyam:react-at-player` /
+          `bhalyam:open-room-panel` bridge and the emoji tray are needed here. */}
+      {roomCode && (
+        <InlineRoomRail
+          code={roomCode}
+          game="rummy"
+          phase={state.phase}
+          players={players}
+          selfId={selfId}
+          messages={messages}
+          hideStrip
+        />
+      )}
     </div>
     </CoachHighlightProvider>
   );
@@ -2045,48 +2090,6 @@ function ModalActionButton({
       <span className="text-lg" aria-hidden>{emoji}</span>
       <span>{label}</span>
     </button>
-  );
-}
-
-function FloatingRummyReactions({
-  reactions,
-  players,
-  selfId,
-}: {
-  reactions: ReactionRecvPayload[];
-  players: Player[];
-  selfId: string | null;
-}) {
-  return (
-    <div className="pointer-events-none fixed inset-0 z-40">
-      {reactions.map((r, i) => {
-        const isSelf = r.fromPlayerId === selfId;
-        const name = players.find((p) => p.id === r.fromPlayerId)?.name ?? "";
-        const baseTop = isSelf ? 75 : 18;
-        const drift = ((i % 3) - 1) * 10;
-        return (
-          <div
-            key={r.id}
-            className="absolute reaction-float"
-            style={{
-              left: `calc(50% + ${drift}vw)`,
-              top: `${baseTop}%`,
-              transform: "translate(-50%, -100%)",
-            }}
-          >
-            <div className="flex flex-col items-center gap-0.5">
-              <div className="text-5xl select-none drop-shadow-lg">{r.emoji}</div>
-              <div
-                className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(15,23,42,0.85)", color: "#fde68a" }}
-              >
-                {name}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
@@ -2291,11 +2294,14 @@ function OpponentRow({
   state,
   players,
   selfId,
+  registerCardRef,
 }: {
   opponents?: string[];
   state: RummyPlayerState;
   players: Player[];
   selfId: string | null;
+  /** From useSeatReactions() — anchors a targeted reaction's arc/flinch to this seat. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const opponents = customOpponents ?? state.playerOrder.filter((id) => id !== selfId);
   // Recompute seconds-remaining at 250ms so the countdown ring updates smoothly.
@@ -2317,6 +2323,7 @@ function OpponentRow({
           // name and hand size even though only the avatar is rendered.
           <div
             key={id}
+            ref={registerCardRef?.(id)}
             className="flex flex-col items-center flex-shrink-0"
             title={`${player?.name ?? "?"} · ${handSize} cards${isDropped ? " (out)" : ""}`}
           >

@@ -19,6 +19,7 @@ import type {
   ChatMessage,
 } from "@shared/types";
 import { HC_COUNTRIES, HC_FRANCHISES, getRosterFor } from "@shared/hc-rosters";
+import { GAME_REACTIONS, THROW_REACTIONS } from "@shared/reactions";
 import { getSocket } from "../../lib/socket";
 import QrCodeModal from "../../components/QrCodeModal";
 import {
@@ -653,12 +654,28 @@ function HcActionBarStrip({
     .slice(lastReadCount)
     .filter((m) => m.playerId !== selfId).length;
 
+  // Who the next reaction is aimed at — set by tapping a row in the Players
+  // panel below. Mirrors InlineRoomRail's own targeting so tap-an-opponent
+  // works the same way here as it does everywhere else, just under the
+  // notebook's own torn-paper chrome instead of InlineRoomRail's.
+  const [reactionTarget, setReactionTarget] = useState<string | null>(null);
+  const targetName = reactionTarget ? players.find((p) => p.id === reactionTarget)?.name ?? null : null;
+  // Themed comeback set for a targeted throw (falls back the same way
+  // InlineRoomRail does for a game with no entry in GAME_REACTIONS).
+  const throwEmojis: readonly string[] = GAME_REACTIONS.handcricket ?? THROW_REACTIONS;
+
   const [cooldown, setCooldown] = useState(false);
   function react(emoji: string) {
     if (cooldown) return;
-    getSocket().emit("room:reaction", { emoji });
+    getSocket().emit("room:reaction", { emoji, targetPlayerId: reactionTarget ?? undefined });
     setCooldown(true);
     window.setTimeout(() => setCooldown(false), 400);
+    if (reactionTarget) {
+      // A targeted throw is a single aimed gesture — close up same as
+      // InlineRoomRail. An untargeted cheer stays open for rapid-fire taps.
+      setOpen(null);
+      setReactionTarget(null);
+    }
   }
 
   useEffect(() => {
@@ -735,14 +752,20 @@ function HcActionBarStrip({
           <StripIconBtn
             label="React"
             active={open === "emoji"}
-            onClick={() => setOpen(open === "emoji" ? null : "emoji")}
+            onClick={() => {
+              setReactionTarget(null);
+              setOpen(open === "emoji" ? null : "emoji");
+            }}
           >
             <IconSmileySketch />
           </StripIconBtn>
         </div>
       </div>
 
-      {/* Quick-react popover — sits right under the strip, no backdrop. */}
+      {/* Quick-react popover — sits right under the strip, no backdrop.
+          Untargeted taps a generic cheer; a target (set by tapping a row in
+          the Players panel) swaps in the handcricket-themed comeback set and
+          shows who it's aimed at. */}
       {open === "emoji" && (
         <div
           style={{
@@ -757,6 +780,7 @@ function HcActionBarStrip({
             style={{
               position: "relative",
               display: "flex",
+              alignItems: "center",
               gap: 2,
               padding: "6px 8px",
               background: PAPER_L,
@@ -765,7 +789,23 @@ function HcActionBarStrip({
               boxShadow: "0 6px 18px rgba(46,25,8,0.28)",
             }}
           >
-            {QUICK_EMOJIS.map((e) => (
+            {targetName && (
+              <div
+                className="font-notebook"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  color: INK_RED,
+                  paddingRight: 6,
+                  marginRight: 4,
+                  borderRight: `1px solid ${BORDER}`,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                🎯 {targetName}
+              </div>
+            )}
+            {(targetName ? throwEmojis : QUICK_EMOJIS).map((e) => (
               <button
                 key={e}
                 onClick={() => react(e)}
@@ -927,7 +967,14 @@ function HcActionBarStrip({
               )}
               {open === "players" && (
                 <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-                  <PlayerList players={players} selfId={selfId} />
+                  <PlayerList
+                    players={players}
+                    selfId={selfId}
+                    onTapPlayer={(id) => {
+                      setReactionTarget(id);
+                      setOpen("emoji");
+                    }}
+                  />
                 </div>
               )}
               {open === "voice" && (

@@ -14,6 +14,8 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
 import { DOTSBOXES_TUTORIAL } from "../tutorials";
 import RematchPanel from "../../components/RematchPanel";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 /**
  * Dedicated desktop layout — not the mobile column stretched. The play
@@ -46,6 +48,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
   // Never over a live turn: safe once it isn't this player's turn, or no
   // deadline is currently running. See GameTutorial.tsx's useTutorialGate doc.
   const tut = useTutorialGate(DOTSBOXES_TUTORIAL.key, !myTurn || state.turnDeadline === null);
+  const reactions = useSeatReactions();
 
   return (
     <ClassroomScene footer={state.phase === "finished" ? <RematchPanel players={props.players} selfId={props.selfId} className="bg-[#fef9f0]/90 border-2 border-amber-700/40 rounded-lg" /> : undefined}>
@@ -123,6 +126,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
           avatarOf={avatarOf}
           selfId={props.selfId}
           vertical
+          registerCardRef={reactions.registerCardRef}
         />
 
         {/* Persistent turn status — replaces the mobile "Waiting…" caption. */}
@@ -230,6 +234,8 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
     </ClassroomScene>
   );

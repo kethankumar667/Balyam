@@ -2,9 +2,13 @@ import type { TambolaClaimType } from "@shared/types";
 import { motion } from "framer-motion";
 import type { TambolaBoardProps } from "./TambolaBoardMobile";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import InlineRoomRail from "../../components/InlineRoomRail";
+import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
+import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
-export default function TambolaBoardDesktop({ state, selfId, onMove, players }: TambolaBoardProps) {
+export default function TambolaBoardDesktop({ state, selfId, onMove, players, messages, roomCode, roomPhase }: TambolaBoardProps) {
   const isArranging = state.phase === "arranging";
+  const reactions = useSeatReactions();
   const myPlayer = state.players.find((p) => p.id === selfId);
   const avatarById = new Map<string, string | undefined>();
   for (const r of players) avatarById.set(r.id, r.avatar);
@@ -107,6 +111,7 @@ export default function TambolaBoardDesktop({ state, selfId, onMove, players }: 
             {state.players.map((p) => (
               <span
                 key={p.id}
+                ref={reactions.registerCardRef(p.id)}
                 className={`text-xs px-3 py-1 rounded-full font-bold border flex items-center gap-1.5 ${
                   p.isReady
                     ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
@@ -125,12 +130,26 @@ export default function TambolaBoardDesktop({ state, selfId, onMove, players }: 
             ))}
           </div>
         </div>
+
+        {roomCode && (
+          <InlineRoomRail
+            code={roomCode}
+            game="tambola"
+            phase={roomPhase}
+            players={players}
+            selfId={selfId}
+            messages={messages}
+          />
+        )}
+
+        <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
       </div>
     );
   }
 
   /* ── 2. Playing / Finished Phase ── */
   return (
+    <>
     <div className="min-h-[calc(100vh-6rem)] max-w-6xl mx-auto p-6 text-ink-hi font-sans grid grid-cols-12 gap-6">
       {/* Left Column (Interactive Ticket & Claim Panel) */}
       <div className="col-span-7 space-y-6 flex flex-col justify-between">
@@ -292,5 +311,21 @@ export default function TambolaBoardDesktop({ state, selfId, onMove, players }: 
         </div>
       </div>
     </div>
+
+    {roomCode && (
+      <div className="max-w-6xl mx-auto px-6">
+        <InlineRoomRail
+          code={roomCode}
+          game="tambola"
+          phase={roomPhase}
+          players={players}
+          selfId={selfId}
+          messages={messages}
+        />
+      </div>
+    )}
+
+    <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
+    </>
   );
 }
