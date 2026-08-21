@@ -1,4 +1,4 @@
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, Plus, Sparkles, Heart } from "lucide-react";
 import { useTheme } from "../../lib/useTheme";
 import { type BhalyamGameSlug } from "./data";
 
@@ -76,7 +76,7 @@ export default function WhatAreWePlayingSection({
         <h2 className="bhalyam-display text-[22px] sm:text-[28px] font-black text-[#2A221B] dark:text-white tracking-tight">
           What are we playing today?
         </h2>
-        <span className="text-xl text-amber-500 animate-pulse">⭐</span>
+        <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500/20 animate-pulse" aria-hidden />
       </div>
 
       {/* ── 4 Nostalgic Scene Cards ── */}
@@ -151,9 +151,9 @@ export default function WhatAreWePlayingSection({
           </div>
 
           <div className="leading-tight">
-            <h3 className="bhalyam-display text-[20px] sm:text-[23px] font-black flex items-center gap-1.5 text-[#2A221B] dark:text-white">
+            <h3 className="bhalyam-display text-[20px] sm:text-[23px] font-black flex items-center gap-2 text-[#2A221B] dark:text-white">
               <span>Bring your gang back!</span>
-              <span className="text-rose-500 animate-bounce">❤️</span>
+              <Heart className="w-5 h-5 text-rose-500 fill-rose-500 inline-block animate-bounce shrink-0" aria-hidden />
             </h3>
             <p className="text-[13px] sm:text-sm font-medium text-[#7A5B3E] dark:text-zinc-300 mt-1">
               Old friends. Same jokes. New memories.

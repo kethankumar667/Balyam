@@ -2,6 +2,7 @@ import type { PlayerRank, XPProgression } from "@shared/ranking/PlayerRank";
 import { RANK_TIERS } from "@shared/ranking/RankingRules";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
 import { RankTierIcon, StreakFlameIcon, LevelSparkleIcon } from "../../design-system/icons";
+import CountUp from "../../components/CountUp";
 
 interface PlayerRankCardProps {
   rank: PlayerRank;
@@ -38,13 +39,15 @@ export default function PlayerRankCard({ rank, progression, stats }: PlayerRankC
           <div className="space-y-1 text-center md:text-left">
             <div className="flex items-center gap-2">
               <span className="text-2xl sm:text-3xl font-black font-mono text-stone-100 dark:text-zinc-100">
-                {rank.rating}
+                <CountUp end={rank.rating} duration={1.5} />
               </span>
               <span className="text-xs text-stone-400 font-mono uppercase tracking-wider font-bold">Rating</span>
             </div>
 
             <div className="flex items-center gap-2 text-xs font-mono text-stone-400">
-              <span>Global Rank: <strong className="text-amber-400">#{rank.globalRank}</strong></span>
+              <span>
+                Global Rank: <strong className="text-amber-400">#<CountUp end={rank.globalRank} duration={1.2} /></strong>
+              </span>
               <span>• Top {rank.percentile}%</span>
             </div>
 
@@ -52,7 +55,9 @@ export default function PlayerRankCard({ rank, progression, stats }: PlayerRankC
             <div className="w-48 sm:w-56 pt-1 space-y-1">
               <div className="flex justify-between text-[11px] text-stone-400 font-mono">
                 <span>Tier Progress</span>
-                <span className="font-bold text-stone-200">{rank.tierProgressPercent}%</span>
+                <span className="font-bold text-stone-200">
+                  <CountUp end={rank.tierProgressPercent} suffix="%" duration={1.2} />
+                </span>
               </div>
               <div className="h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
                 <div
@@ -74,10 +79,10 @@ export default function PlayerRankCard({ rank, progression, stats }: PlayerRankC
             <div className="flex justify-between items-center text-xs font-mono">
               <span className="font-bold text-amber-400 flex items-center gap-1.5">
                 <LevelSparkleIcon size={14} className="text-amber-400" />
-                Level {progression.currentLevel}
+                Level <CountUp end={progression.currentLevel} duration={1.2} />
               </span>
               <span className="text-stone-400 text-[11px]">
-                {progression.currentXP} / {progression.nextLevelXP} XP
+                <CountUp end={progression.currentXP} duration={1.5} /> / {progression.nextLevelXP} XP
               </span>
             </div>
             <div className="h-2 bg-stone-900 rounded-full overflow-hidden border border-stone-800">
@@ -93,10 +98,14 @@ export default function PlayerRankCard({ rank, progression, stats }: PlayerRankC
             <div className="flex items-center gap-2 text-xs font-mono">
               <div className="bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg text-amber-400 flex items-center gap-1.5">
                 <StreakFlameIcon size={14} className="text-amber-400" />
-                <span>Win Streak: <strong>{stats.currentWinStreak}</strong> (Best: {stats.bestWinStreak})</span>
+                <span>
+                  Win Streak: <strong><CountUp end={stats.currentWinStreak} duration={1} /></strong> (Best: {stats.bestWinStreak})
+                </span>
               </div>
               <div className="bg-sky-500/10 border border-sky-500/20 px-3 py-1.5 rounded-lg text-sky-400 flex items-center gap-1">
-                <span>Play Streak: <strong>{stats.currentPlayStreak}d</strong></span>
+                <span>
+                  Play Streak: <strong><CountUp end={stats.currentPlayStreak} suffix="d" duration={1} /></strong>
+                </span>
               </div>
             </div>
           )}

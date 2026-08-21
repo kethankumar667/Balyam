@@ -70,6 +70,17 @@ interface InternalState {
    * draw happens no player may pick a printed joker off the pile again.
    */
   firstDrawTaken: boolean;
+  /**
+   * The card the CURRENT turn owner most recently drew, and which pile it
+   * came from — cleared the instant they discard/declare/drop. Exists so
+   * the client can place an open-deck pickup into its own new meld instead
+   * of auto-grouping it with an existing one, without the client having to
+   * infer "was this the open card" from a client-side ref that a page
+   * refresh, a reconnect, or a mobile/desktop layout swap (a full component
+   * remount) would silently reset. Scoped to the drawer only in
+   * {@link getStateFor} — other players never see it.
+   */
+  lastDraw: { playerId: string; cardId: string; source: "open" | "closed" } | null;
   options: RummyGameOptions;
   /** All players (kept for resetting between rounds). */
   allPlayers: Player[];
@@ -316,6 +327,7 @@ export class RummyEngine implements GameEngine {
       deadlineOwnerId: null,
       pendingAnimationPauseMs: 0,
       firstDrawTaken: false,
+      lastDraw: null,
       options: { ...this.pendingOptions },
       allPlayers: players.slice(),
       matchMode: this.pendingOptions.mode,
@@ -369,6 +381,7 @@ export class RummyEngine implements GameEngine {
     this.s.deadlineOwnerId = null;
     this.s.pendingAnimationPauseMs = 0;
     this.s.firstDrawTaken = false;
+    this.s.lastDraw = null;
     this.s.roundNumber += 1;
     // Wipe stale arrangements — last round's groups don't apply to the
     // fresh hands dealt for this round.
@@ -511,6 +524,7 @@ export class RummyEngine implements GameEngine {
       }
       const drawn = this.s.closedDeck.shift()!;
       hand.push(drawn);
+      this.s.lastDraw = { playerId: move.playerId, cardId: drawn.id, source: "closed" };
     } else {
       if (this.s.openPile.length === 0) {
         return { ok: false, error: "Open pile is empty" };
@@ -525,6 +539,7 @@ export class RummyEngine implements GameEngine {
       }
       const drawn = this.s.openPile.pop()!;
       hand.push(drawn);
+      this.s.lastDraw = { playerId: move.playerId, cardId: drawn.id, source: "open" };
     }
     this.s.firstDrawTaken = true;
     this.s.turnAction = "discardOrDeclare";
@@ -546,6 +561,7 @@ export class RummyEngine implements GameEngine {
 
     const [card] = hand.splice(idx, 1);
     this.s.openPile.push(card);
+    this.s.lastDraw = null;
     this.advanceTurn();
     return { ok: true };
   }
@@ -784,9 +800,12 @@ export class RummyEngine implements GameEngine {
   }
 
   getStateFor(playerId: string): RummyPlayerState {
+    const mine = this.s.lastDraw?.playerId === playerId ? this.s.lastDraw : null;
     return {
       ...this.getPublicState(),
       myHand: (this.s.hands.get(playerId) ?? []).slice(),
+      lastDrawnCardId: mine?.cardId ?? null,
+      lastDrawSource: mine?.source ?? null,
     };
   }
 

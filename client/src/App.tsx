@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import BhalyamHome from "./pages/BhalyamHome";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -13,8 +13,13 @@ import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 // ── Lazy-loaded pages & routes (code-split) ──
 const Room = lazy(() => import("./pages/Room"));
 const GamesPage = lazy(() => import("./pages/GamesPage"));
-const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const FavoritesPage = lazy(() => import("./pages/FavoritesPage"));
+const RecentlyPlayedPage = lazy(() => import("./pages/RecentlyPlayedPage"));
+const ProfileOverviewPage = lazy(() => import("./pages/ProfileOverviewPage"));
 const PersonalInformationPage = lazy(() => import("./pages/PersonalInformationPage"));
+const GameStatisticsPage = lazy(() => import("./pages/GameStatisticsPage"));
+const MatchHistoryPage = lazy(() => import("./pages/MatchHistoryPage"));
+const AchievementsPage = lazy(() => import("./pages/AchievementsPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const SignUpPage = lazy(() => import("./pages/auth/SignUpPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
@@ -22,6 +27,8 @@ const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
 const VerifyEmailPage = lazy(() => import("./pages/auth/VerifyEmailPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
+const PreferencesPage = lazy(() => import("./pages/PreferencesPage"));
+const SecurityDataPage = lazy(() => import("./pages/SecurityDataPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const NokiaCricketPage = lazy(() => import("./pages/NokiaCricketPage"));
 const NokiaSnakePage = lazy(() => import("./pages/NokiaSnakePage"));
@@ -36,24 +43,40 @@ const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const TournamentsPage = lazy(() => import("./pages/TournamentsPage"));
 const DesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatalogPage"));
 const SocialHubPage = lazy(() => import("./pages/SocialHubPage"));
+const PreviewLoader = lazy(() => import("./pages/PreviewLoader"));
+const GameTileShowcase = lazy(() => import("./pages/GameTileShowcase"));
+import PremiumGamingLoader from "./components/loading/PremiumGamingLoader";
+import { ProfileSkeleton, LeaderboardSkeleton } from "./design-system/dls";
+import AppLayout from "./components/layout/AppLayout";
 
 function RouteLoadingFallback() {
-  return (
-    <div
-      className="min-h-screen bhalyam-paper flex flex-col items-center justify-center p-6 text-center"
-      role="status"
-      aria-live="polite"
-      aria-label="Loading page"
-    >
-      <div className="animate-pulse flex flex-col items-center gap-3">
-        <BhalyamLogo size={56} decorative />
-        <div className="flex items-center gap-2 text-sm font-bold text-[#8A6D4B] dark:text-zinc-400">
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-          <span>Opening table…</span>
+  const { pathname } = useLocation();
+
+  if (pathname.startsWith("/profile")) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto space-y-6">
+            <ProfileSkeleton />
+          </div>
         </div>
-      </div>
-    </div>
-  );
+      </AppLayout>
+    );
+  }
+
+  if (pathname.startsWith("/leaderboard")) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto space-y-6">
+            <LeaderboardSkeleton />
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  return <PremiumGamingLoader />;
 }
 
 /**
@@ -86,6 +109,8 @@ function ScrollToTopOnRouteChange() {
 }
 
 import { RecoveryProvider } from "./core/recovery/RecoveryProvider";
+import ToastHost from "./components/ToastHost";
+import { TooltipProvider } from "./design-system/dls";
 
 export default function App() {
   useEffect(() => {
@@ -96,28 +121,68 @@ export default function App() {
   return (
     <ErrorBoundary>
       <RecoveryProvider>
-        <ScrollToTopOnRouteChange />
-        <ConsentModal />
+        <TooltipProvider delayDuration={200} skipDelayDuration={100}>
+          <ScrollToTopOnRouteChange />
+          <ToastHost />
+          <ConsentModal />
         <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
             <Route path="/" element={<BhalyamHome />} />
             <Route path="/home" element={<BhalyamHome />} />
             <Route path="/games" element={<GamesPage />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
+            <Route path="/recently-played" element={<RecentlyPlayedPage />} />
 
             {/* Protected profile & account management */}
             <Route
               path="/profile"
               element={
                 <ProtectedRoute requireMember={false}>
-                  <ProfilePage />
+                  <ProfileOverviewPage />
                 </ProtectedRoute>
               }
+            />
+            <Route
+              path="/profile/overview"
+              element={<Navigate to="/profile" replace />}
             />
             <Route
               path="/profile/personal"
               element={
                 <ProtectedRoute requireMember={false}>
                   <PersonalInformationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/statistics"
+              element={
+                <ProtectedRoute requireMember={false}>
+                  <GameStatisticsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/stats"
+              element={<Navigate to="/profile/statistics" replace />}
+            />
+            <Route
+              path="/profile/matches"
+              element={
+                <ProtectedRoute requireMember={false}>
+                  <MatchHistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/history"
+              element={<Navigate to="/profile/matches" replace />}
+            />
+            <Route
+              path="/profile/achievements"
+              element={
+                <ProtectedRoute requireMember={false}>
+                  <AchievementsPage />
                 </ProtectedRoute>
               }
             />
@@ -128,7 +193,9 @@ export default function App() {
 
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings" element={<Navigate to="/settings/preferences" replace />} />
+            <Route path="/settings/preferences" element={<PreferencesPage />} />
+            <Route path="/settings/security" element={<SecurityDataPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUpPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -141,6 +208,10 @@ export default function App() {
             {/* Connection log for debugging reconnect failures on real devices. */}
             <Route path="/diagnostics" element={<Diagnostics />} />
             <Route path="/preview/ludo" element={<PreviewLudo />} />
+            <Route path="/preview/loader" element={<PreviewLoader />} />
+            <Route path="/loader" element={<PreviewLoader />} />
+            <Route path="/preview/tiles" element={<GameTileShowcase />} />
+            <Route path="/showcase/tiles" element={<GameTileShowcase />} />
             {/*
               Two gates, deliberately.
 
@@ -182,6 +253,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </TooltipProvider>
       </RecoveryProvider>
     </ErrorBoundary>
   );

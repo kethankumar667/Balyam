@@ -1,71 +1,112 @@
-# Rummy Hint System — Architectural Design & Implementation
+# Rummy: Auto Button → Hint Button
 
-> **Status:** IMPLEMENTED AND VERIFIED  
-> **Target:** BHALYAM Indian Rummy (Mobile & Desktop)  
-> **Quality Gate:** 100% Passing (0 TypeScript errors, 6/6 isolated hint tests, 538 repository tests)
+## Auto Button Analysis (before this change)
 
----
+**Purpose**: `autoArrange()` (`RummyBoardMobile.tsx`, `RummyBoardDesktop.tsx`) sorted
+the player's own hand into suit lanes (`splitBySuit`) and wrote the result into
+local component state (`setLayout(...)`). It never built a real meld — Rummy's
+on-screen "groups" are client-side scratch space until the player Discards or
+Declares — and never touched the server.
 
-## 1. Executive Summary & Problem Addressed
+**Handlers**: `onClick={autoArrange}` (desktop `ToolButton`, "Auto Group"),
+`onClick={onAutoArrange}` → `autoArrange` (mobile `ActionButton`, label
+`"AUTO"`). Desktop additionally bound it to the `A` key.
 
-In online Indian Rummy platforms, intrusive "Auto Play" buttons can accidentally make irreversible moves, rearrange customized card groups without player consent, or strip the player of strategic agency.
+**State dependencies**: `layout.groups`/`byId` (read), `setLayout`,
+`setSelected`, `rummySfx.meldFormed()` (write) — plus, on mobile only, a FLIP
+animation (`captureRects`/`playFlip`) so the resort didn't snap instantly.
 
-Under the BHALYAM platform governance tenets:
-- **No Auto-Play Guarantee:** The Hint System never mutates game state, never auto-moves cards, and never auto-discards.
-- **Player Retains 100% Control:** The Hint System acts purely as a tactical advisor, calculating and displaying visual/textual advice (draw recommendations, discard guidance, and meld completion status) without touching the player's private hand or dispatching socket moves automatically.
+**Visibility**: Always rendered whenever the action bar/tool rail was visible
+(mobile: `canAutoArrange={hand.length > 0 && state.phase !== "finished"}`;
+desktop: unconditional).
 
----
+**Verdict**: harmless in isolation (no state mutation reaches the server), but
+redundant and confusing once a real strategy assistant exists — a plain suit
+sort next to a feature that suggests actual melds and discards.
 
-## 2. Core Architecture & Pure Hint Engine
+## What already existed: the Hint feature
 
-The hint generation lives in [`client/src/games/rummy/hintEngine.ts`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/games/rummy/hintEngine.ts) as a deterministic, pure function:
+A "Smart Hint" system was already built (not by this change) and satisfies
+the brief's constraints as-is:
 
-```typescript
-export function generateRummyHint(params: {
-  hand: Card[];
-  wildRank: Rank;
-  turnAction: "draw" | "discardOrDeclare" | null;
-  canDraw: boolean;
-  canDiscardOrDeclare: boolean;
-  topOfOpenPile: Card | null;
-  openJokerDrawable: boolean;
-  isReadyToDeclare: boolean;
-}): RummyHint
-```
+- `client/src/games/rummy/hintEngine.ts` — pure function `generateRummyHint()`.
+  Reads `hand`, `wildRank`, turn state, and the open pile; returns a
+  recommendation (`draw` from open/closed, `discard` a specific card, or
+  `declare`) with a human-readable reason. Confirmed pure by its own test
+  (`hintEngine.test.ts`: *"never mutates input arrays or objects"*).
+- `requestSmartHint()` (both boards) computes a proposed meld arrangement +
+  best discard via `suggestArrangement`/`suggestDiscard` (`autoArrange.ts`)
+  and stores it in `pendingHint` state — a **preview**, not an action.
+- The preview renders as a banner (inline JSX, both boards) showing the
+  proposed groups and discard candidate, with two buttons: **Approve &
+  Rearrange** (`approveSmartHint()`) and **Cancel** (`dismissSmartHint()`).
+- `approveSmartHint()` only calls `setLayout(...)`/`setSelected(...)` — it
+  **pre-selects** the suggested discard card, it does not call
+  `discardSelected()`. The player still has to press Discard themselves.
+- Neither `requestSmartHint` nor `approveSmartHint` emits a socket move.
+  (Layout changes — from dragging, the hint, or anything else — are
+  separately synced to the server via a debounced `rummy:arrangement`
+  event purely so a reconnect restores your grouping; this is pre-existing,
+  uniform for every layout change, and carries no game-rule weight of its
+  own.)
+- Never reads or reveals opponent hands — `generateRummyHint`'s only inputs
+  are the caller's own `hand` and public table state (open pile, wild rank).
 
-### 2.1 Decision Logic Matrix
+Net: the "Hint" half of this task was already correct. The work here is
+removing Auto so Hint is the only assistant surface.
 
-| Game Phase | Hand Condition | Hint Recommendation | Rationale |
-|---|---|---|---|
-| **Draw Phase** | Open card completes or improves a pure/impure meld or is Wild Joker | `actionType: "draw"`, `recommendedDeck: "open"` | Picking the open card reduces deadwood points or secures a Wild Joker. |
-| **Draw Phase** | Open card does not match any sequence/set | `actionType: "draw"`, `recommendedDeck: "closed"` | Drawing unseen card from stockpile preserves hand secrecy and maximizes upside. |
-| **Discard Phase** | Hand contains unmatched high-value cards | `actionType: "discard"`, `recommendedCard: bestDiscard` | Suggests discarding the card that minimizes total deadwood penalty points. |
-| **Discard Phase** | All 13 cards form valid pure/impure sequences & sets (0 deadwood) | `actionType: "declare"` | Alerts player that hand is complete and ready to finish. |
-| **Idle / Opponent Turn** | Waiting for turn | `actionType: "idle"` | Displays current deadwood points, weakest card, and wild joker reminders. |
+## Migration Plan (executed)
 
----
+1. **Mobile** (`RummyBoardMobile.tsx`): removed the `AUTO` `ActionButton`
+   entry, `canAutoArrange`/`onAutoArrange` from `ActionBar`'s props and call
+   site, and the now-unreachable `autoArrange()` function body.
+2. **Desktop** (`RummyBoardDesktop.tsx`): removed the "Auto Group"
+   `ToolButton`, the `A` keyboard shortcut (and its doc comment line), the
+   `autoArrange()` function, and the now-unused `AutoGroupIcon` component.
+3. **Copy**: `TutorialModal.tsx` referenced the AUTO button twice ("The
+   **AUTO** button can find a starting layout for you", "Try the **AUTO**
+   button on your first hand") — both rewritten to point at **💡 HINT**.
+4. **Dead code**: deleted `HintBanner.tsx` — a fully-built but never-imported
+   earlier draft of the hint banner, superseded by the inline JSX in both
+   boards (confirmed zero importers repo-wide before deletion).
+5. Confirmed no other file references `autoArrange`/`AUTO button`/
+   `Auto Group` (grepped `client/src/games/rummy/`, `CoachHintButton.tsx`).
 
-## 3. UI/UX Presentation Layer
+Nothing else in the layout changed — `SORT`/`GROUP`/`DISCARD`/`DROP`/`FINISH`
+keep their positions; removing one chip from a `flex-wrap` row reflows the
+rest without a layout rewrite. The floating **💡 HINT** pill (top-left,
+both layouts) is unchanged — it was already the sole trigger for the
+Smart Hint flow before this change and remains so now.
 
-1. **[`HintBanner.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/games/rummy/HintBanner.tsx):**
-   - Accessible banner with `role="region"`, `aria-label="Tactical Move Hint"`.
-   - Clear icon cues (lightbulb, pulse effect, ready badges).
-   - Dismissible with a single tap (`X` button).
-   - Responsive presentation: bottom docked sheet on mobile, centered header card on desktop.
+## Files Modified
 
-2. **Smart Hint Approval Flow ([`RummyBoardDesktop.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/games/rummy/RummyBoardDesktop.tsx) & [`RummyBoardMobile.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/games/rummy/RummyBoardMobile.tsx)):**
-   - Replaced raw auto-button with `Smart Hint` button.
-   - Clicking `Smart Hint` opens a preview banner highlighting proposed groups and recommended discard.
-   - Player can review the proposal, click `Approve` to apply the grouping, or `Dismiss` to keep their current layout unchanged.
+- `client/src/games/rummy/RummyBoardMobile.tsx`
+- `client/src/games/rummy/RummyBoardDesktop.tsx`
+- `client/src/games/rummy/TutorialModal.tsx`
+- `client/src/games/rummy/HintBanner.tsx` (deleted, dead code)
 
----
+## Tests
 
-## 4. Verification & Testing
+No new tests were needed for the removal itself (deleting a button with no
+server-facing behavior has nothing to regress). Existing coverage that
+verifies Hint's constraints was already in place and re-run clean:
 
-Unit test suite in [`client/src/games/rummy/__tests__/hintEngine.test.ts`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/games/rummy/__tests__/hintEngine.test.ts):
-- ✅ Recommends open deck when card completes or improves a meld.
-- ✅ Recommends closed deck when open discard is unhelpful.
-- ✅ Recommends drawing open card when it is a Wild Joker.
-- ✅ Recommends the highest deadwood card to discard.
-- ✅ Recommends declare when hand is fully melded and valid.
-- ✅ Invariant: Never mutates input hand arrays or objects.
+- `client/src/games/rummy/__tests__/hintEngine.test.ts` — 6/6 passing: open
+  vs. closed draw recommendation, wild-joker draw, highest-deadwood discard,
+  declare-when-ready, and the explicit non-mutation guarantee.
+
+## Verification Results
+
+- `[x]` `cd client && npm run typecheck` → clean
+- `[x]` `cd client && npm test` → 538/538 passing (no regressions from the
+  removal; `hintEngine.test.ts` 6/6 green)
+- `[x]` Grepped the full `client/src/` tree for `autoArrange`, `AUTO` (as a
+  Rummy button label), and `Auto Group` — zero remaining references outside
+  the `./autoArrange` **module filename** (still used by both boards' and
+  `RummyResultModal.tsx`'s calls to `suggestArrangement`/`splitBySuit`,
+  which are unrelated helper functions, not the removed button)
+- `[ ]` Not browser-verified in this pass (no browser automation available
+  in this environment) — the action bar's flex-wrap layout and the
+  hint pill's existing position mean visual risk is low, but this should be
+  eyeballed at 375/768/1024/1440px per `AGENTS.md` §6 before calling the UI
+  change itself "done," not just typechecked.

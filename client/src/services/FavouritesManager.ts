@@ -70,18 +70,16 @@ class FavouritesManagerService {
 
   public toggleFavourite(slug: BhalyamGameSlug): boolean {
     const list = this.load();
-    const index = list.indexOf(slug);
-    let isNowFav: boolean;
+    const isNowFav = !list.includes(slug);
 
-    if (index >= 0) {
-      list.splice(index, 1);
-      isNowFav = false;
-    } else {
-      list.push(slug);
-      isNowFav = true;
-    }
-
-    this.cache = list;
+    // A NEW array, not a mutated one — this.cache must change REFERENCE,
+    // not just contents. getFavourites() intentionally stopped defensively
+    // copying (see its comment) so useSyncExternalStore can tell "changed"
+    // from "unchanged" via a plain reference check; mutating the existing
+    // array in place (the previous `list.splice`/`list.push` here) left
+    // that reference identical before and after, so React never re-rendered
+    // — the favourite toggled in storage but the heart icon never updated.
+    this.cache = isNowFav ? [...list, slug] : list.filter((s) => s !== slug);
     this.save();
     this.notify();
     return isNowFav;
@@ -90,8 +88,7 @@ class FavouritesManagerService {
   public addFavourite(slug: BhalyamGameSlug): void {
     const list = this.load();
     if (!list.includes(slug)) {
-      list.push(slug);
-      this.cache = list;
+      this.cache = [...list, slug];
       this.save();
       this.notify();
     }
@@ -99,10 +96,8 @@ class FavouritesManagerService {
 
   public removeFavourite(slug: BhalyamGameSlug): void {
     const list = this.load();
-    const index = list.indexOf(slug);
-    if (index >= 0) {
-      list.splice(index, 1);
-      this.cache = list;
+    if (list.includes(slug)) {
+      this.cache = list.filter((s) => s !== slug);
       this.save();
       this.notify();
     }

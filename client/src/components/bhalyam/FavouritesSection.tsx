@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Heart, Play, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Heart, Play, Sparkles, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useFavourites } from "../../hooks/useFavourites";
 import { BHALYAM_GAMES, type BhalyamGameSlug } from "./data";
@@ -44,6 +45,16 @@ export default function FavouritesSection({
             </p>
           </div>
         </div>
+
+        {resolvedGames.length > 0 && (
+          <Link
+            to="/favorites"
+            className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-500 transition-colors select-none group"
+          >
+            <span>View all</span>
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        )}
       </div>
 
       {resolvedGames.length === 0 ? (

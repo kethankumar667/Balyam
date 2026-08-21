@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
+import { AlertCircle } from "lucide-react";
 import { telemetry } from "../lib/observability";
 
 interface Props {
@@ -43,8 +44,8 @@ export class GameErrorBoundary extends Component<Props, State> {
           role="alert"
           aria-live="polite"
         >
-          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-amber-200 dark:bg-zinc-700 flex items-center justify-center text-2xl">
-            🎲
+          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-amber-200 dark:bg-zinc-700 flex items-center justify-center">
+            <AlertCircle className="w-6 h-6 text-amber-800 dark:text-amber-300" aria-hidden />
           </div>
           <h2 className="text-lg font-black text-[#5C3D1E] dark:text-amber-300">
             {this.props.gameName ? `${this.props.gameName} encountered an issue` : "Game board hiccup"}

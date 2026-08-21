@@ -17,7 +17,8 @@ import {
 } from "./meldCheck";
 import EmojiRain from "../ludo/EmojiRain";
 import CardTracker from "./CardTracker";
-import { splitBySuit, suggestArrangement, suggestDiscard } from "./autoArrange";
+import { suggestArrangement, suggestDiscard } from "./autoArrange";
+import { freshMeldLayout, appendIncomingCards } from "./reconcileLayout";
 import { captureRects, playFlip } from "../../lib/anim";
 import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
 import { useTurnHaptics, useHaptics } from "../../hooks/useHaptics";
@@ -371,16 +372,6 @@ export default function RummyBoardMobile({
   const [error, setError] = useState<string | null>(null);
   const [confirmDrop, setConfirmDrop] = useState(false);
   const initialized = useRef(false);
-  const justDrewFromOpenRef = useRef(false);
-  const prevOpenTopRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (state.openPile && state.openPile.length > 0) {
-      prevOpenTopRef.current = state.openPile[state.openPile.length - 1].id;
-    } else if (state.topOfOpenPile) {
-      prevOpenTopRef.current = state.topOfOpenPile.id;
-    }
-  }, [state.openPile, state.topOfOpenPile]);
 
   // Drag state — for HTML5 drag-and-drop card reordering.
   const [draggingIds, setDraggingIds] = useState<string[]>([]);
@@ -518,20 +509,25 @@ export default function RummyBoardMobile({
     const handIds = hand.map((c) => c.id);
     const handSet = new Set(handIds);
     let freshlyAdded: string | null = null;
+    // Server-authoritative — see RummyBoardDesktop.tsx's matching comment
+    // for why this replaced a client-side ref: a ref only survives as long
+    // as this component instance does, and a page refresh, a reconnect, or
+    // the board swapping between RummyBoardMobile/RummyBoardDesktop at a
+    // viewport breakpoint are all full remounts that silently reset one.
+    const openPickupId =
+      state.lastDrawSource === "open" && state.lastDrawnCardId && handSet.has(state.lastDrawnCardId)
+        ? state.lastDrawnCardId
+        : null;
     setLayout((prev) => {
       // First time: split the hand by suit straight into meld groups — all
       // cards live inside a group at all times now, mirroring the desktop
       // board (see RummyBoardDesktop.tsx's hand->layout reconciliation).
+      // The open-deck pickup, if this is a fresh mount reconciling mid-turn,
+      // is carved out first so it never lands in a suit lane with an
+      // existing card.
       if (!initialized.current && handIds.length >= 13) {
         initialized.current = true;
-        const suitLanes = splitBySuit(hand);
-        return {
-          groups: suitLanes.slice(0, MAX_GROUPS).map((cards) => ({
-            id: newGroupId(),
-            cardIds: cards.map((c) => c.id),
-          })),
-          ungrouped: [],
-        };
+        return freshMeldLayout(hand, openPickupId, newGroupId, MAX_GROUPS);
       }
       const groups = prev.groups
         .map((g) => ({ ...g, cardIds: g.cardIds.filter((id) => handSet.has(id)) }))
@@ -543,34 +539,7 @@ export default function RummyBoardMobile({
         return { groups, ungrouped: [] };
       }
       // Add each incoming card: if card was taken from the open deck, ALWAYS place it into a new meld
-      const newGroups = groups.map((g) => ({ ...g, cardIds: [...g.cardIds] }));
-      for (const id of fresh) {
-        const card = byId.get(id);
-        if (!card) continue;
-
-        const isFromOpen =
-          justDrewFromOpenRef.current ||
-          (prevOpenTopRef.current !== null && id === prevOpenTopRef.current);
-
-        if (isFromOpen) {
-          // Open deck draw: never align with existing melds; start in a dedicated new meld group
-          newGroups.push({ id: newGroupId(), cardIds: [id] });
-          continue;
-        }
-
-        const matchingGroup = newGroups.find((g) => {
-          const firstCard = byId.get(g.cardIds[0]);
-          return firstCard && firstCard.suit === card.suit;
-        });
-        if (matchingGroup) {
-          matchingGroup.cardIds.push(id);
-        } else if (newGroups.length < MAX_GROUPS) {
-          newGroups.push({ id: newGroupId(), cardIds: [id] });
-        } else if (newGroups.length > 0) {
-          newGroups[0].cardIds.push(id);
-        }
-      }
-      justDrewFromOpenRef.current = false;
+      const newGroups = appendIncomingCards(groups, fresh, byId, openPickupId, newGroupId, MAX_GROUPS);
       return { groups: newGroups, ungrouped: [] };
     });
     if (freshlyAdded) {
@@ -582,7 +551,7 @@ export default function RummyBoardMobile({
     }
     // Drop selection for cards no longer in hand
     setSelected((prev) => new Set([...prev].filter((id) => handSet.has(id))));
-  }, [hand, byId, wildRank]);
+  }, [hand, byId, wildRank, state.lastDrawnCardId, state.lastDrawSource]);
 
   // Pulse the discard pile when a new card lands on top.
   const lastDiscardIdRef = useRef<string | null>(null);
@@ -875,8 +844,6 @@ export default function RummyBoardMobile({
       setError("Printed jokers can't be drawn from the discard pile");
       return;
     }
-    justDrewFromOpenRef.current = true;
-    prevOpenTopRef.current = state.topOfOpenPile.id;
     getSocket().emit("game:move", { type: "draw", data: { from: "open" } });
   }
 
@@ -1041,65 +1008,9 @@ export default function RummyBoardMobile({
     getSocket().emit("game:move", { type: "drop" });
   }
 
-  /** Cancels an in-flight auto-arrange FLIP on unmount. */
+  /** Cancels an in-flight Smart Hint approval FLIP on unmount. */
   const flipCleanup = useRef<(() => void) | null>(null);
   useEffect(() => () => flipCleanup.current?.(), []);
-
-  // AUTO only tidies the hand into suit lanes (♠♥♦♣ + jokers) — it never builds
-  // melds. The player must form their own sequences/sets, which is what makes
-  // the post-show 15-second rearrange window matter.
-  function autoArrange() {
-    const all: Card[] = layout.groups.flatMap((g) =>
-      g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c),
-    );
-    if (all.length === 0) {
-      setError(null);
-      return;
-    }
-    const lanes = splitBySuit(all);
-
-    /*
-     * FLIP the rearrange instead of snapping it.
-     *
-     * AUTO rewrote the whole hand in a single frame: thirteen cards vanished
-     * from where they were and reappeared sorted, so a player could not tell
-     * what it had done or why — the one moment the feature most needs to
-     * explain itself. Measure where every card is now, let React commit the
-     * new lanes, then animate each card from its old position to its new one.
-     *
-     * This is the case CSS genuinely cannot cover (you cannot keyframe a DOM
-     * reorder), which is what makes it worth reaching for anime.js here. The
-     * helper animates transform only, staggers the starts so the eye can
-     * follow individual cards, and no-ops entirely under reduced motion —
-     * where the hand still sorts, just instantly.
-     */
-    const nodes = new Map<string, HTMLElement | null>(
-      all.map((c) => [c.id, document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(c.id)}"]`)]),
-    );
-    const before = captureRects(nodes);
-
-    setLayout({
-      groups: lanes.slice(0, MAX_GROUPS).map((cards) => ({
-        id: newGroupId(),
-        cardIds: cards.map((c) => c.id),
-      })),
-      ungrouped: [],
-    });
-    setSelected(new Set());
-    setError(null);
-    rummySfx.meldFormed();
-
-    // After paint, so the "last" measurement reads the committed layout.
-    requestAnimationFrame(() => {
-      const fresh = new Map<string, HTMLElement | null>(
-        all.map((c) => [c.id, document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(c.id)}"]`)]),
-      );
-      // Held so leaving the table mid-flight cancels the tweens rather than
-      // leaving anime.js ticking against detached nodes.
-      flipCleanup.current?.();
-      flipCleanup.current = playFlip(fresh, before);
-    });
-  }
 
   const [pendingHint, setPendingHint] = useState<{
     groups: Card[][];
@@ -1476,15 +1387,15 @@ export default function RummyBoardMobile({
           canDiscard={canDiscardBtn}
           canDrop={canDropBtn}
           canFinish={canFinish}
-          canAutoArrange={hand.length > 0 && state.phase !== "finished"}
           canSort={canSort}
+          canHint={hand.length > 0 && state.phase !== "finished"}
           iDropped={iDropped}
           onGroup={groupSelected}
           onDiscard={discardSelected}
           onDropClick={() => setConfirmDrop(true)}
           onFinish={finishRound}
-          onAutoArrange={autoArrange}
           onSort={sortMeldGroups}
+          onHint={requestSmartHint}
         />
       </div>
 
@@ -1768,26 +1679,6 @@ export default function RummyBoardMobile({
         <RummyModal title="Live Points" onClose={() => setPointsOpen(false)}>
           <PointsPanel points={livePoints} />
         </RummyModal>
-      )}
-
-      {/* Junglee Rummy Smart Hint button — requests proposed arrangement for approval */}
-      {state.phase === "playing" && (
-        <div className="absolute left-3 top-11 z-[45]">
-          <button
-            onClick={requestSmartHint}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider transition transform hover:scale-105 active:scale-95 cursor-pointer"
-            style={{
-              background: "linear-gradient(135deg, #F59E0B, #D97706)",
-              color: "#1F1300",
-              border: "1.5px solid #FCD34D",
-              boxShadow: "0 4px 14px rgba(245,158,11,0.45), inset 0 1px 0 rgba(255,255,255,0.4)",
-            }}
-            title="Smart Hint: Previews best melds & optimal discard for your approval"
-          >
-            <span>💡</span>
-            <span>HINT</span>
-          </button>
-        </div>
       )}
 
       {/* Smart Hint Approval Banner — requires player click on APPROVE before touching the hand */}
@@ -3060,29 +2951,29 @@ function ActionBar({
   canDiscard,
   canDrop,
   canFinish,
-  canAutoArrange,
   canSort,
+  canHint,
   iDropped,
   onGroup,
   onDiscard,
   onDropClick,
   onFinish,
-  onAutoArrange,
   onSort,
+  onHint,
 }: {
   canGroup: boolean;
   canDiscard: boolean;
   canDrop: boolean;
   canFinish: boolean;
-  canAutoArrange: boolean;
   canSort: boolean;
+  canHint: boolean;
   iDropped: boolean;
   onGroup: () => void;
   onDiscard: () => void;
   onDropClick: () => void;
   onFinish: () => void;
-  onAutoArrange: () => void;
   onSort: () => void;
+  onHint: () => void;
 }) {
   if (iDropped) return null;
   return (
@@ -3102,11 +2993,11 @@ function ActionBar({
         onClick={onSort}
       />
       <ActionButton
-        label="AUTO"
-        emoji="✨"
+        label="HINT"
+        emoji="💡"
         color="#0891b2"
-        enabled={canAutoArrange}
-        onClick={onAutoArrange}
+        enabled={canHint}
+        onClick={onHint}
       />
       <ActionButton
         label="GROUP"

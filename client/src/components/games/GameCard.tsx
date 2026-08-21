@@ -3,7 +3,9 @@ import { Users as UsersIcon, Clock, ArrowRight, User, Heart } from "lucide-react
 import { motion } from "framer-motion";
 import { useTheme } from "../../lib/useTheme";
 import { useFavourites } from "../../hooks/useFavourites";
+import { useToast } from "../../hooks/useToast";
 import { HapticsManager } from "../../services/HapticsManager";
+import { Tooltip } from "../../design-system/dls";
 import {
   type BhalyamGameCard,
   type BhalyamGameSlug,
@@ -88,6 +90,7 @@ export default function GameCard({
   const [theme] = useTheme();
   const isDark = theme === "dark";
   const { isFavourite, toggleFavourite } = useFavourites();
+  const { showToast } = useToast();
   const isFav = isFavourite(game.slug);
   const underMaintenance = isLocked(game);
   const accent = getGameAccent(game);
@@ -144,22 +147,28 @@ export default function GameCard({
             </span>
           )}
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              HapticsManager.getInstance().subtle();
-              toggleFavourite(game.slug);
-            }}
-            aria-label={isFav ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
-            className={`p-1.5 rounded-full transition-all cursor-pointer ${
-              isFav
-                ? "bg-rose-500/20 text-rose-500 hover:bg-rose-500/30"
-                : "bg-black/5 dark:bg-white/10 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10"
-            }`}
+          <Tooltip
+            content={isFav ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
+            side="top"
           >
-            <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-current" : ""}`} />
-          </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                HapticsManager.getInstance().subtle();
+                const nowFav = toggleFavourite(game.slug);
+                showToast(nowFav ? `${game.title} added to favourites` : `${game.title} removed from favourites`);
+              }}
+              aria-label={isFav ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
+              className={`p-1.5 rounded-full transition-all cursor-pointer ${
+                isFav
+                  ? "bg-rose-500/20 text-rose-500 hover:bg-rose-500/30"
+                  : "bg-black/5 dark:bg-white/10 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10"
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-current" : ""}`} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 

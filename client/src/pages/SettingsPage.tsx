@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { useState, useRef } from "react";
+import { toast } from "../hooks/useToast";
 import AppLayout from "../components/layout/AppLayout";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
@@ -9,34 +9,24 @@ import { useHaptics } from "../hooks/useHaptics";
 import { useTranslation } from "../hooks/useTranslation";
 import { AUDIO, type AudioThemeId } from "../constants/audio";
 import { THEMES } from "../assets/audio/themes/manifests";
-import AvatarPicker from "../components/profile/AvatarPicker";
-import SelfAvatar from "../components/profile/SelfAvatar";
 import MemberLockedGate from "../components/auth/MemberLockedGate";
 import { SecondaryButton, Button } from "../design-system/dls";
 import Modal from "../components/Modal";
-import { loadAccountDetails } from "../lib/accountGenerator";
 import {
-  User,
   Volume2,
   Palette,
   Database,
-  Pencil,
-  Copy,
   ChevronRight,
   ChevronDown,
-  LogOut,
-  Lock,
   Headphones,
   Globe,
   Download,
   Trash2,
   Check,
-  CheckCircle2,
   X,
 } from "lucide-react";
 
 type SettingsSection =
-  | "profile-account"
   | "sound-haptics"
   | "appearance-language"
   | "your-data";
@@ -45,83 +35,25 @@ export default function SettingsPage() {
   const [theme, toggleTheme] = useTheme();
   const isDark = theme === "dark";
 
-  const { playerName, setPlayerName, avatarId, setAvatarId } = useRoomStore();
-  const { isMember, ready, email: authEmail, signOut } = useAuthStore();
+  const { playerName, avatarId } = useRoomStore();
+  const { isMember, ready } = useAuthStore();
 
   const { settings: audioSettings, setMasterVolume, setMusicVolume, setEffectsVolume, toggleMute, setAudioTheme, play } = useAudio();
   const haptics = useHaptics();
   const { locale, setLocale } = useTranslation();
 
-  /**
-   * The guard is a flag here, and the early return lives below every hook.
-   *
-   * It used to `return null` at this point, before roughly twenty `useState`
-   * calls further down. `ready` starts false while the session is read back,
-   * so the first render registered eight hooks and the second registered
-   * twenty-eight — and React throws "rendered more hooks than during the
-   * previous render" the moment auth resolves. Hooks cannot sit behind a
-   * conditional return; the condition has to wait for them.
-   */
   const blocked = !ready || !isMember;
 
   // Active section
-  const [activeSection, setActiveSection] = useState<SettingsSection>("profile-account");
-
-  // Profile State
-  const storedAccount = loadAccountDetails();
-  // The displayed name reads straight from roomStore (not a local mirror) so
-  // it stays live if the name changes via any OTHER save surface — the
-  // header's own profile sheet, Sign Up, etc. — while this page is mounted.
-  // Only the edit modal gets a local draft, resynced from the store each
-  // time it opens (same pattern as GuestProfileModal/JoinRoomModal).
-  const displayName = playerName.trim() || storedAccount?.displayName || "Jetpacker!";
-  const [nameDraft, setNameDraft] = useState(displayName);
-  const [profileId] = useState("BH123456");
-  const [accountId] = useState(storedAccount?.accountId || "BHYM-90S-4827-11");
-  const [createdOn] = useState(storedAccount?.createdAt || "20 May 2026");
-  const [email] = useState(authEmail || storedAccount?.email || "jetpacker90s@gmail.com");
-  const [phone] = useState("+91 9XXXXXXXXX");
+  const [activeSection, setActiveSection] = useState<SettingsSection>("sound-haptics");
 
   // Modals
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [eraseModalOpen, setEraseModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Focus trap, Escape, focus restoration and body-scroll lock for all four
-  // modals below are owned by <Modal> at each modal's own return site — one
-  // shared cross-modal Escape effect used to live here (added because no
-  // shared dialog primitive existed yet) and is gone now that one does.
-  const editNameInputRef = useRef<HTMLInputElement>(null);
-  const currentPasswordInputRef = useRef<HTMLInputElement>(null);
   const eraseCancelBtnRef = useRef<HTMLButtonElement>(null);
 
   const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    toast(msg);
   };
-
-  const copyProfileId = () => {
-    navigator.clipboard?.writeText(profileId);
-    showToast(`✓ Copied Profile ID: ${profileId}`);
-  };
-
-  const handleSaveName = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (nameDraft.trim()) {
-      setPlayerName(nameDraft.trim());
-      showToast("✓ Display Name updated!");
-    }
-    setIsEditingName(false);
-  };
-
-  // Resync the edit modal's draft to the live name each time it opens, so
-  // it starts from whatever the name currently is (not a stale mount-time
-  // snapshot) — same pattern GuestProfileModal/JoinRoomModal already use.
-  useEffect(() => {
-    if (isEditingName) setNameDraft(displayName);
-  }, [isEditingName, displayName]);
 
   const scrollToSection = (id: SettingsSection) => {
     setActiveSection(id);
@@ -134,12 +66,7 @@ export default function SettingsPage() {
   const handleDownloadData = () => {
     const data = {
       profile: {
-        displayName,
-        profileId,
-        accountId,
-        createdOn,
-        email,
-        phone,
+        displayName: playerName || "Player",
         avatarId,
       },
       preferences: {
@@ -158,10 +85,10 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `bhalyam-data-${profileId}.json`;
+    a.download = "bhalyam-settings.json";
     a.click();
     URL.revokeObjectURL(url);
-    showToast("✓ Data downloaded successfully!");
+    showToast("✓ Settings data downloaded successfully!");
   };
 
   const handleEraseAllData = () => {
@@ -177,7 +104,6 @@ export default function SettingsPage() {
   };
 
   const NAV_ITEMS: Array<{ id: SettingsSection; label: string; icon: any }> = [
-    { id: "profile-account", label: "Profile & Account", icon: User },
     { id: "sound-haptics", label: "Sound & Haptics", icon: Volume2 },
     { id: "appearance-language", label: "Appearance & Language", icon: Palette },
     { id: "your-data", label: "Your Data", icon: Database },
@@ -192,14 +118,6 @@ export default function SettingsPage() {
           isDark ? "bg-[#0A0F1D] text-slate-100" : "bg-[#FAF4E8] text-[#3D2612]"
         }`}
       >
-        {/* Toast Notification */}
-        {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 bg-[#16223B] text-amber-300 border border-amber-400/40 px-4 py-2.5 rounded-2xl shadow-xl font-bold text-sm flex items-center gap-2 animate-bounce">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>{toastMessage}</span>
-          </div>
-        )}
-
         <main className="max-w-[1360px] mx-auto px-3.5 sm:px-6 pt-5 sm:pt-7">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
@@ -304,213 +222,12 @@ export default function SettingsPage() {
 
 
             {/* ══════════════════════════════════════════════════════════
-                RIGHT CONTENT CONSOLE (9 Columns, 4 Numbered Sections)
+                RIGHT CONTENT CONSOLE (9 Columns, 3 Numbered Sections)
                 ══════════════════════════════════════════════════════════ */}
             <div className="lg:col-span-9 space-y-5">
 
               {/* ────────────────────────────────────────────────────────
-                  SECTION ❶: PROFILE & ACCOUNT
-                  ──────────────────────────────────────────────────────── */}
-              <section
-                id="profile-account"
-                className={`rounded-3xl border p-5 sm:p-6 shadow-[0_4px_20px_rgba(74,44,18,0.04)] text-left transition-colors space-y-4 ${
-                  isDark ? "bg-[#101728]/95 border-white/10" : "bg-[#FFFDF8] border-[var(--chrome-hairline)]"
-                }`}
-              >
-                {/* Section Heading */}
-                <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-[#16223B] dark:bg-amber-500 text-white dark:text-slate-950 font-black text-[11px] flex items-center justify-center">
-                    1
-                  </span>
-                  <h2 className="font-bold text-sm uppercase tracking-wider text-[#16223B] dark:text-white">
-                    PROFILE & ACCOUNT
-                  </h2>
-                </div>
-
-                {/* Top 3 Columns: Profile Info | Account Metadata | Notepad Shield */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                  
-                  {/* Sub-card 1: Profile (Avatar, Name, ID, Tags) - 4 cols */}
-                  <div className="md:col-span-4 flex items-start gap-3">
-                    {/* Avatar with Edit Pencil */}
-                    <div className="relative flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setAvatarModalOpen(true)}
-                        className="w-[72px] h-[72px] rounded-full overflow-hidden border-2 border-emerald-500 bg-[var(--chrome-control)] dark:bg-amber-900/40 flex items-center justify-center shadow-md cursor-pointer hover:ring-2 hover:ring-amber-400/60 transition group relative"
-                        title="Change Avatar"
-                      >
-                        <SelfAvatar
-                          className="w-full h-full"
-                          fallback={
-                            <img
-                              src="/Avatars/file_0000000084c48208b1f893419d784cf2_1.jpg"
-                              alt="Jetpacker Avatar"
-                              className="w-full h-full object-cover scale-[1.25] origin-center"
-                              onError={(e) => {
-                                e.currentTarget.src = "/Founder.png";
-                              }}
-                            />
-                          }
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAvatarModalOpen(true)}
-                        title="Change Avatar"
-                        className="absolute -bottom-1 -right-1 z-20 w-7 h-7 min-w-[28px] min-h-[28px] rounded-full bg-[var(--chrome-control)] dark:bg-[#1E293B] border-2 border-[var(--rim-gold)] dark:border-amber-400 text-[#8C4A0E] dark:text-amber-300 flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition cursor-pointer"
-                      >
-                        <Pencil className="w-3.5 h-3.5 stroke-[2.5]" />
-                      </button>
-                    </div>
-
-                    {/* Inputs & Tags */}
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <div>
-                        <span className="block text-[10px] font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-0.5">
-                          Display Name
-                        </span>
-                        <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-xl border border-[var(--chrome-hairline)] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E]">
-                          <span className="text-[13px] font-black text-[#16223B] dark:text-white truncate">
-                            {displayName}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingName(true)}
-                            className="px-2 py-0.5 rounded-md text-[10px] font-bold border border-[var(--chrome-hairline)] dark:border-white/10 bg-white dark:bg-white/5 hover:border-amber-400 transition cursor-pointer flex-shrink-0"
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <span className="block text-[10px] font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-0.5">
-                          Profile ID
-                        </span>
-                        <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-xl border border-[var(--chrome-hairline)] dark:border-white/10 bg-[#FAF4E6] dark:bg-[#141C2E]">
-                          <span className="text-xs font-mono font-bold text-[#6E543D] dark:text-zinc-300">
-                            {profileId}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={copyProfileId}
-                            title="Copy ID"
-                            className="p-0.5 hover:text-amber-600 transition cursor-pointer flex-shrink-0"
-                          >
-                            <Copy className="w-3 h-3 text-zinc-400" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Bio Tags */}
-                      <div className="flex items-center gap-1.5 pt-0.5">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--chrome-control)] dark:bg-white/5 border border-[var(--chrome-hairline)] dark:border-white/10 text-[#6E543D] dark:text-zinc-300 whitespace-nowrap">
-                          🤠 90s kid
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--chrome-control)] dark:bg-white/5 border border-[var(--chrome-hairline)] dark:border-white/10 text-[#6E543D] dark:text-zinc-300 whitespace-nowrap">
-                          🃏 Rummy Lover
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sub-card 2: Account Details (5 cols) */}
-                  <div className="md:col-span-5 space-y-2 border-l md:border-[#ECD9BA]/60 md:dark:border-white/10 md:pl-5">
-                    <div className="grid grid-cols-12 items-center text-xs py-0.5">
-                      <span className="col-span-4 font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 text-[11px]">Account ID</span>
-                      <span className="col-span-8 font-mono font-bold text-[#16223B] dark:text-white text-[11px] text-right sm:text-left">{accountId}</span>
-                    </div>
-
-                    <div className="grid grid-cols-12 items-center text-xs py-0.5">
-                      <span className="col-span-4 font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 text-[11px]">Created On</span>
-                      <span className="col-span-8 font-medium text-[#16223B] dark:text-white text-[11px] text-right sm:text-left">{createdOn}</span>
-                    </div>
-
-                    <div className="grid grid-cols-12 items-center text-xs py-0.5">
-                      <span className="col-span-4 font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 text-[11px]">Email Address</span>
-                      <div className="col-span-8 flex items-center justify-end sm:justify-start gap-1 min-w-0">
-                        <span className="font-mono text-[#6E543D] dark:text-zinc-300 text-[11px] truncate">{email}</span>
-                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
-                          Verified
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-12 items-center text-xs py-0.5">
-                      <span className="col-span-4 font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 text-[11px]">Mobile Number</span>
-                      <div className="col-span-8 flex items-center justify-end sm:justify-start gap-1 min-w-0">
-                        <span className="font-mono text-[#6E543D] dark:text-zinc-300 text-[11px]">{phone}</span>
-                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
-                          Verified
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sub-card 3: Spiral Notepad with Pencil & Shield (3 cols) */}
-                  <div className="md:col-span-3">
-                    <div className="relative bg-[#FFFDF8] dark:bg-[#141C2E] border border-[var(--chrome-hairline)] dark:border-white/10 rounded-2xl p-3.5 shadow-xs text-center">
-                      {/* Top Spiral Wire Rings */}
-                      <div className="absolute -top-1.5 inset-x-4 flex justify-between px-1">
-                        {[1, 2, 3, 4, 5, 6].map((k) => (
-                          <div key={k} className="w-1.5 h-3 bg-zinc-400 rounded-full border border-zinc-600" />
-                        ))}
-                      </div>
-
-                      {/* Angled Pencil on Top Right */}
-                      <div className="absolute -top-3 right-1 w-11 h-2.5 bg-amber-500 rounded-xs border border-amber-700 shadow-2xs rotate-[35deg] flex items-center justify-between px-0.5">
-                        <div className="w-1.5 h-full bg-[var(--chrome-control)]" />
-                        <div className="w-1 h-full bg-[#E57373] rounded-xs" />
-                      </div>
-
-                      {/* Golden Shield Icon */}
-                      <div className="w-7 h-7 mx-auto rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center shadow-xs mt-1 mb-1">
-                        <span className="text-xs">🛡️</span>
-                      </div>
-
-                      <h4 className="font-bold text-xs text-[#16223B] dark:text-white leading-tight">
-                        Your account, your memories.
-                      </h4>
-                      <p className="text-[10px] text-[var(--chrome-ink-soft)] dark:text-zinc-400 mt-0.5 leading-snug">
-                        Keep your account details up to date and secure.
-                      </p>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Bottom Action Row */}
-                <div className="pt-2.5 border-t border-[#ECD9BA]/60 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPasswordModalOpen(true)}
-                    className="flex items-center gap-2.5 text-left hover:text-amber-600 transition cursor-pointer"
-                  >
-                    <Lock className="w-4 h-4 text-[#8C4A0E] dark:text-amber-400" />
-                    <div>
-                      <div className="text-[12px] font-bold text-[#16223B] dark:text-white">Change Password</div>
-                      <div className="text-[11px] text-[var(--chrome-ink-soft)] dark:text-zinc-400">Update your password regularly</div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-zinc-400 ml-1" />
-                  </button>
-
-                  <SecondaryButton
-                    size="sm"
-                    onClick={() => {
-                      signOut();
-                      showToast("Signed out successfully.");
-                    }}
-                    leftIcon={<LogOut className="w-3.5 h-3.5" />}
-                  >
-                    Sign Out
-                  </SecondaryButton>
-                </div>
-              </section>
-
-
-              {/* ────────────────────────────────────────────────────────
-                  SECTION ❷: SOUND & HAPTICS
+                  SECTION ❶: SOUND & HAPTICS
                   ──────────────────────────────────────────────────────── */}
               <section
                 id="sound-haptics"
@@ -520,7 +237,7 @@ export default function SettingsPage() {
               >
                 <div className="flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-[#16223B] dark:bg-amber-500 text-white dark:text-slate-950 font-black text-[11px] flex items-center justify-center">
-                    2
+                    1
                   </span>
                   <h2 className="font-bold text-sm uppercase tracking-wider text-[#16223B] dark:text-white">
                     SOUND & HAPTICS
@@ -696,7 +413,7 @@ export default function SettingsPage() {
 
 
               {/* ────────────────────────────────────────────────────────
-                  SECTION ❸: APPEARANCE & LANGUAGE
+                  SECTION ❷: APPEARANCE & LANGUAGE
                   ──────────────────────────────────────────────────────── */}
               <section
                 id="appearance-language"
@@ -706,7 +423,7 @@ export default function SettingsPage() {
               >
                 <div className="flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-[#16223B] dark:bg-amber-500 text-white dark:text-slate-950 font-black text-[11px] flex items-center justify-center">
-                    3
+                    2
                   </span>
                   <h2 className="font-bold text-sm uppercase tracking-wider text-[#16223B] dark:text-white">
                     APPEARANCE & LANGUAGE
@@ -830,7 +547,7 @@ export default function SettingsPage() {
 
 
               {/* ────────────────────────────────────────────────────────
-                  SECTION ❹: YOUR DATA
+                  SECTION ❸: YOUR DATA
                   ──────────────────────────────────────────────────────── */}
               <section
                 id="your-data"
@@ -840,7 +557,7 @@ export default function SettingsPage() {
               >
                 <div className="flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-[#16223B] dark:bg-amber-500 text-white dark:text-slate-950 font-black text-[11px] flex items-center justify-center">
-                    4
+                    3
                   </span>
                   <h2 className="font-bold text-sm uppercase tracking-wider text-[#16223B] dark:text-white">
                     YOUR DATA
@@ -916,147 +633,6 @@ export default function SettingsPage() {
 
           </div>
         </main>
-
-        {/* ── Avatar Picker Modal ── */}
-        <Modal
-          open={avatarModalOpen}
-          onClose={() => setAvatarModalOpen(false)}
-          ariaLabelledBy="avatar-modal-title"
-          panelClassName={`w-full max-w-md rounded-3xl border p-5 sm:p-6 shadow-2xl space-y-4 text-left ${
-            isDark ? "bg-[var(--chrome-panel)] border-[var(--chrome-hairline)]" : "bg-[#FFFDF8] border-[#E4D4B4]"
-          }`}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3
-                id="avatar-modal-title"
-                className="font-bold text-[17px] text-[var(--chrome-ink)]"
-              >
-                Choose your avatar
-              </h3>
-              <p className="text-[13px] text-[#6B5340] dark:text-[var(--chrome-ink-soft)] mt-0.5">
-                Saved as soon as you pick one.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setAvatarModalOpen(false)}
-              aria-label="Close"
-              className="flex-shrink-0 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border flex items-center justify-center cursor-pointer
-                         border-[var(--chrome-border)] text-[#6B5340] hover:bg-[var(--chrome-control-hi)] hover:text-[var(--chrome-ink)]
-                         dark:text-[var(--chrome-ink-soft)]
-                         focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chrome-accent)]
-                         transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <AvatarPicker
-            value={avatarId}
-            onChange={(id) => {
-              setAvatarId(id);
-              setAvatarModalOpen(false);
-              showToast(id ? "Avatar updated" : "Avatar removed");
-            }}
-          />
-        </Modal>
-
-        {/* ── Edit Display Name Modal ───────────────────────── */}
-        <Modal
-          open={isEditingName}
-          onClose={() => setIsEditingName(false)}
-          initialFocusRef={editNameInputRef}
-          ariaLabelledBy="edit-name-modal-title"
-          panelClassName={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 text-left ${
-            isDark ? "bg-[#101728] border-white/15" : "bg-[#FFFDF8] border-[var(--chrome-hairline)]"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <h3 id="edit-name-modal-title" className="font-bold text-[16px] text-[#16223B] dark:text-white">
-              Edit Display Name
-            </h3>
-            <SecondaryButton
-              size="iconOnly"
-              onClick={() => setIsEditingName(false)}
-              aria-label="Close"
-              leftIcon={<X className="w-4 h-4" aria-hidden />}
-            />
-          </div>
-
-          <form onSubmit={handleSaveName} className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-1">
-                Display Name
-              </label>
-              <input
-                ref={editNameInputRef}
-                type="text"
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl text-sm font-bold border border-amber-500 bg-white dark:bg-[#141D30] text-[#16223B] dark:text-white focus:outline-none"
-              />
-            </div>
-            <Button type="submit" variant="primary" size="sm" className="w-full">
-              Save Name
-            </Button>
-          </form>
-        </Modal>
-
-        {/* ── Change Password Modal ─────────────────────────── */}
-        <Modal
-          open={passwordModalOpen}
-          onClose={() => setPasswordModalOpen(false)}
-          initialFocusRef={currentPasswordInputRef}
-          ariaLabelledBy="change-password-modal-title"
-          panelClassName={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 text-left ${
-            isDark ? "bg-[#101728] border-white/15" : "bg-[#FFFDF8] border-[var(--chrome-hairline)]"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <h3 id="change-password-modal-title" className="font-bold text-[16px] text-[#16223B] dark:text-white">
-              Change Password
-            </h3>
-            <SecondaryButton
-              size="iconOnly"
-              onClick={() => setPasswordModalOpen(false)}
-              aria-label="Close"
-              leftIcon={<X className="w-4 h-4" aria-hidden />}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-1">Current Password</label>
-              <input
-                ref={currentPasswordInputRef}
-                type="password"
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2 rounded-xl text-sm border bg-[#FAF4E6] dark:bg-[#141C2E] border-[var(--chrome-hairline)] dark:border-white/15"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[var(--chrome-ink-soft)] dark:text-zinc-400 mb-1">New Password</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2 rounded-xl text-sm border bg-[#FAF4E6] dark:bg-[#141C2E] border-[var(--chrome-hairline)] dark:border-white/15"
-              />
-            </div>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              className="w-full"
-              onClick={() => {
-                setPasswordModalOpen(false);
-                showToast("✓ Password updated successfully!");
-              }}
-            >
-              Update Password
-            </Button>
-          </div>
-        </Modal>
 
         {/* ── Erase Everything Confirmation Modal ───────────── */}
         <Modal

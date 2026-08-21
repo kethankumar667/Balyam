@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import { Link } from "react-router-dom";
+import { Lock, Zap, Gamepad2 } from "lucide-react";
 import {
   AlertIcon,
   CheckCircleIcon,
@@ -307,11 +308,20 @@ export function AuthSwitch({ prompt, to, cta }: { prompt: string; to: string; ct
 
       {/* Trust & Benefits Footer Row */}
       <div className="flex items-center justify-center gap-4 text-[11px] font-bold text-[#7A5B3E] pt-2 border-t border-[#F2E3C6]">
-        <span className="flex items-center gap-1">🔒 Secure</span>
+        <span className="flex items-center gap-1.5">
+          <Lock className="w-3.5 h-3.5 text-emerald-700" aria-hidden />
+          <span>Secure</span>
+        </span>
         <span>•</span>
-        <span className="flex items-center gap-1">⚡ Instant Setup</span>
+        <span className="flex items-center gap-1.5">
+          <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500/20" aria-hidden />
+          <span>Instant Setup</span>
+        </span>
         <span>•</span>
-        <span className="flex items-center gap-1">🎮 Free Forever</span>
+        <span className="flex items-center gap-1.5">
+          <Gamepad2 className="w-3.5 h-3.5 text-[#EA580C]" aria-hidden />
+          <span>Free Forever</span>
+        </span>
       </div>
     </div>
   );

@@ -899,6 +899,14 @@ body, #root, .bhalyam-paper {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-100%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
 .bhalyam-skeleton {
   background: linear-gradient(
     90deg,

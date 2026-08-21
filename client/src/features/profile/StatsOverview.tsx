@@ -1,5 +1,6 @@
 import React from "react";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
+import CountUp from "../../components/CountUp";
 
 interface StatsOverviewProps {
   stats: PlayerStats;
@@ -14,7 +15,7 @@ export default function StatsOverview({ stats }: StatsOverviewProps) {
           Matches Played
         </span>
         <div className="text-2xl sm:text-3xl font-black font-mono text-[var(--auth-ink)] my-2">
-          {stats.totalMatches}
+          <CountUp end={stats.totalMatches} duration={1.5} />
         </div>
         <span className="text-[11px] text-[var(--auth-ink-soft)] font-mono font-medium">
           {stats.wins}W • {stats.losses}L • {stats.draws}D
@@ -27,7 +28,7 @@ export default function StatsOverview({ stats }: StatsOverviewProps) {
           Win Rate
         </span>
         <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-500 my-2">
-          {stats.winRate}%
+          <CountUp end={stats.winRate} suffix="%" duration={1.5} />
         </div>
         <span className="text-[11px] text-[var(--auth-ink-soft)] font-mono font-medium">
           {stats.wins} victories
@@ -40,7 +41,7 @@ export default function StatsOverview({ stats }: StatsOverviewProps) {
           Total Play Time
         </span>
         <div className="text-2xl sm:text-3xl font-black font-mono text-amber-500 my-2">
-          {stats.totalPlayTimeMinutes} <span className="text-xs font-normal text-[var(--auth-ink-soft)]">min</span>
+          <CountUp end={stats.totalPlayTimeMinutes} duration={1.5} separator="," /> <span className="text-xs font-normal text-[var(--auth-ink-soft)]">min</span>
         </div>
         <span className="text-[11px] text-[var(--auth-ink-soft)] font-mono font-medium">
           Avg {stats.averageMatchMinutes} min/match
@@ -53,7 +54,7 @@ export default function StatsOverview({ stats }: StatsOverviewProps) {
           Best Game
         </span>
         <div className="text-lg sm:text-xl font-bold capitalize text-sky-500 my-2 truncate">
-          {stats.favoriteGame === "none" ? "None yet" : stats.favoriteGame}
+          {(!stats.favoriteGame || stats.favoriteGame === "none" || stats.totalMatches === 0) ? "None yet" : stats.favoriteGame}
         </div>
         <span className="text-[11px] text-[var(--auth-ink-soft)] font-mono font-medium">
           Most active table

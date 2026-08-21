@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import { operationalFetch, OperationalAuthError } from "../lib/operationalApi";
+import { DashboardSkeleton } from "../design-system/dls";
+import CountUp from "../components/CountUp";
 
 interface HealthData {
   status: "HEALTHY" | "WARNING" | "CRITICAL";
@@ -210,10 +212,9 @@ export default function AdminDashboardPage() {
       )}
 
       {isLoading ? (
-        <div className="max-w-7xl mx-auto py-20 text-center text-zinc-500">
-          <span className="inline-block w-4 h-4 rounded-full bg-amber-500 animate-ping mr-2" />
-          Connecting to operational telemetry pipeline…
-        </div>
+        <main className="max-w-7xl mx-auto py-6">
+          <DashboardSkeleton />
+        </main>
       ) : (
         <main className="max-w-7xl mx-auto space-y-8">
           {/* Active Alerts */}
@@ -236,40 +237,40 @@ export default function AdminDashboardPage() {
             <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-4">
               <span className="text-xs text-zinc-500 font-medium">Active Rooms</span>
               <div className="text-2xl sm:text-3xl font-bold mt-1 text-zinc-100 font-mono">
-                {metrics?.rooms.active ?? 0}
+                <CountUp end={metrics?.rooms.active ?? 0} duration={1.5} />
               </div>
               <span className="text-[11px] text-zinc-500">
-                Created: {metrics?.rooms.createdTotal ?? 0}
+                Created: <CountUp end={metrics?.rooms.createdTotal ?? 0} duration={1.2} />
               </span>
             </div>
 
             <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-4">
               <span className="text-xs text-zinc-500 font-medium">Recovery Success Rate</span>
               <div className="text-2xl sm:text-3xl font-bold mt-1 text-emerald-400 font-mono">
-                {metrics?.recovery.successRate ?? 100}%
+                <CountUp end={metrics?.recovery.successRate ?? 100} suffix="%" duration={1.5} />
               </div>
               <span className="text-[11px] text-zinc-500">
-                {metrics?.recovery.successTotal ?? 0} / {metrics?.recovery.attemptsTotal ?? 0} recovered
+                <CountUp end={metrics?.recovery.successTotal ?? 0} duration={1.2} /> / <CountUp end={metrics?.recovery.attemptsTotal ?? 0} duration={1.2} /> recovered
               </span>
             </div>
 
             <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-4">
               <span className="text-xs text-zinc-500 font-medium">Connected Sockets</span>
               <div className="text-2xl sm:text-3xl font-bold mt-1 text-sky-400 font-mono">
-                {metrics?.realtime.connectedSockets ?? 0}
+                <CountUp end={metrics?.realtime.connectedSockets ?? 0} duration={1.5} />
               </div>
               <span className="text-[11px] text-zinc-500">
-                Reconnect rate: {metrics?.realtime.reconnectSuccessRate ?? 100}%
+                Reconnect rate: <CountUp end={metrics?.realtime.reconnectSuccessRate ?? 100} suffix="%" duration={1.2} />
               </span>
             </div>
 
             <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-4">
               <span className="text-xs text-zinc-500 font-medium">Heap Memory</span>
               <div className="text-2xl sm:text-3xl font-bold mt-1 text-amber-400 font-mono">
-                {metrics?.memory.current.heapUsedMb ?? 0} <span className="text-sm font-normal text-zinc-500">MB</span>
+                <CountUp end={metrics?.memory.current.heapUsedMb ?? 0} duration={1.5} /> <span className="text-sm font-normal text-zinc-500">MB</span>
               </div>
               <span className="text-[11px] text-zinc-500">
-                Total: {metrics?.memory.current.heapTotalMb ?? 0} MB
+                Total: <CountUp end={metrics?.memory.current.heapTotalMb ?? 0} duration={1.2} /> MB
               </span>
             </div>
           </div>

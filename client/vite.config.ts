@@ -16,10 +16,59 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes("node_modules")) {
             if (id.includes("framer-motion")) return "vendor-framer-motion";
+            // Shared across Ludo's player-wobble/bounce animations and
+            // several UNO card effects — its own chunk so it's cached once
+            // instead of duplicated into every board that imports it.
+            // Also: "@react-spring" contains "react" as a substring, so it
+            // needs to be claimed before the precise react-runtime check
+            // below or it silently falls through into whichever board
+            // happens to import it first (this is what pushed UnoBoard
+            // over its own budget the moment the loose match was tightened).
+            if (id.includes("@react-spring")) return "vendor-react-spring";
             if (id.includes("@supabase")) return "vendor-supabase";
             if (id.includes("socket.io-client")) return "vendor-socketio";
             if (id.includes("howler") || id.includes("use-sound")) return "vendor-audio";
-            if (id.includes("react") || id.includes("react-dom") || id.includes("react-router-dom")) return "vendor-react";
+            // Heavy, feature-specific libraries get their own chunk instead
+            // of riding along in whichever page happens to import them
+            // first. `design-system/dls` is a barrel module
+            // (`export * from "./Tooltip"` etc.) imported from very
+            // widely-used shared components (AppHeader, GameCard), so
+            // without an explicit bucket here these libraries were landing
+            // in the main entry chunk (loaded on every page) or bleeding
+            // into unrelated lazy chunks like a game board — not because
+            // that board needs them, but because Rollup has to put a shared
+            // dependency's code somewhere once it isn't isolated.
+            if (id.includes("@radix-ui")) return "vendor-radix";
+            if (id.includes("@tanstack")) return "vendor-tanstack";
+            if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+            if (id.includes("@dnd-kit")) return "vendor-dnd";
+            if (
+              id.includes("react-hook-form") ||
+              id.includes("@hookform") ||
+              id.includes("/zod/") ||
+              id.includes("\\zod\\")
+            ) return "vendor-forms";
+            if (
+              id.includes("react-joyride") ||
+              id.includes("canvas-confetti") ||
+              id.includes("cmdk") ||
+              id.includes("react-loading-skeleton") ||
+              id.includes("react-parallax-tilt") ||
+              id.includes("react-countup")
+            ) return "vendor-ui-extras";
+            // Precise package-boundary match — only the core React runtime.
+            // A loose `id.includes("react")` also matches every OTHER
+            // package whose npm name happens to contain "react"
+            // (react-hook-form, react-joyride, react-loading-skeleton,
+            // react-countup, react-parallax-tilt, every @radix-ui/react-*
+            // primitive, @tanstack/react-table, @tanstack/react-virtual...).
+            // Those are per-route dependencies used by lazy-loaded pages
+            // (Preferences, Settings, stats/profile screens) and must stay
+            // free to code-split with the route that imports them — sweeping
+            // them into vendor-react instead put them in the bundle every
+            // page loads and pushed it over budget (334KB vs the 300KB
+            // check:bundle gate) for pages that never touch them.
+            if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom|scheduler)[\\/]/.test(id)) return "vendor-react";
           }
         },
       },

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trophy } from "lucide-react";
 import type { Card, Player, RummyChampion, RummyRoundRecap } from "@shared/types";
 import { classifyMeld, sortMeldCards } from "../../games/rummy/meldCheck";
 import NotebookSheet from "./NotebookSheet";
@@ -50,9 +51,12 @@ function describeRound(recap: RummyRoundRecap, players: Player[]): string {
 
 function ChampionBadge({ champion }: { champion: RummyChampion }) {
   return (
-    <div className="text-nostalgia-pen-red text-sm border-b border-dashed border-nostalgia-paper-edge pb-2 mb-2">
-      🏆 House Champion: <span className="font-bold">{champion.playerName}</span>{" "}
-      <span className="text-xs opacity-70">since {champion.date}</span>
+    <div className="text-nostalgia-pen-red text-sm border-b border-dashed border-nostalgia-paper-edge pb-2 mb-2 flex items-center gap-1.5">
+      <Trophy className="w-4 h-4 text-amber-600 fill-amber-500/20 shrink-0" aria-hidden />
+      <span>
+        House Champion: <span className="font-bold">{champion.playerName}</span>{" "}
+        <span className="text-xs opacity-70">since {champion.date}</span>
+      </span>
     </div>
   );
 }

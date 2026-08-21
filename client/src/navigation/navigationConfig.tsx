@@ -36,6 +36,7 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
     id: "home",
     showPromoNote: true,
     items: [
+      // Primary Group
       {
         id: "home-feed",
         label: "Home",
@@ -48,34 +49,10 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         label: "Games",
         icon: Gamepad2,
         path: "/games",
-        isActive: (p) => p.startsWith("/games"),
+        isActive: (p) => p === "/games" || (p.startsWith("/games") && !p.startsWith("/games/recent") && !p.startsWith("/games/favorites")),
       },
-      {
-        id: "home-tournaments",
-        label: "Tournaments",
-        icon: Swords,
-        path: "/tournaments",
-        badge: { text: "Arena", variant: "amber" },
-        requiresAuth: true,
-        isActive: (p) => p.startsWith("/tournaments"),
-      },
-      {
-        id: "home-social",
-        label: "Social Hub",
-        icon: Users,
-        path: "/social",
-        badge: { text: "Squads", variant: "emerald" },
-        requiresAuth: true,
-        isActive: (p) => p.startsWith("/social"),
-      },
-      {
-        id: "home-leaderboard",
-        label: "Leaderboards",
-        icon: Trophy,
-        path: "/leaderboard",
-        requiresAuth: true,
-        isActive: (p) => p.startsWith("/leaderboard"),
-      },
+
+      // Multiplayer & Social Gaming Group
       {
         id: "home-rooms",
         label: "Rooms",
@@ -83,10 +60,54 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         action: "openJoin",
       },
       {
+        id: "home-recent",
+        label: "Recently Played",
+        icon: Clock,
+        path: "/recently-played",
+        isActive: (p) => p.startsWith("/recently-played"),
+      },
+      {
+        id: "home-favorites",
+        label: "Favorites",
+        icon: Bookmark,
+        path: "/favorites",
+        isActive: (p) => p.startsWith("/favorites"),
+      },
+
+      // Upcoming Competitive Group
+      {
+        id: "home-tournaments",
+        label: "Tournaments",
+        icon: Swords,
+        path: "/tournaments",
+        badge: { text: "Coming Soon", variant: "muted" },
+        dividerBefore: true,
+        isActive: (p) => p.startsWith("/tournaments"),
+      },
+      {
+        id: "home-social",
+        label: "Social Hub",
+        icon: Users,
+        path: "/social",
+        badge: { text: "Coming Soon", variant: "muted" },
+        isActive: (p) => p.startsWith("/social"),
+      },
+      {
+        id: "home-leaderboard",
+        label: "Leaderboard",
+        icon: Trophy,
+        path: "/leaderboard",
+        badge: { text: "Coming Soon", variant: "muted" },
+        isActive: (p) => p.startsWith("/leaderboard"),
+      },
+
+      // Personal, Settings & Help Group
+      {
         id: "home-help",
         label: "Help Center",
         icon: HelpCircle,
         path: "/about",
+        dividerBefore: true,
         isActive: (p) => p === "/about",
       },
       {
@@ -94,7 +115,6 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         label: "Profile",
         icon: User,
         path: "/profile",
-        requiresAuth: true,
         isActive: (p) => p.startsWith("/profile"),
       },
       {
@@ -102,7 +122,6 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         label: "Settings",
         icon: SettingsIcon,
         path: "/settings",
-        requiresAuth: true,
         isActive: (p) => p === "/settings",
       },
     ],
@@ -185,17 +204,15 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         id: "games-recent",
         label: "Recently Played",
         icon: Clock,
-        path: "/games",
-        search: "?f=popular",
-        isActive: (_, s) => s.includes("f=popular"),
+        path: "/recently-played",
+        isActive: (p) => p.startsWith("/recently-played"),
       },
       {
         id: "games-favorites",
         label: "Favorites",
         icon: Bookmark,
-        path: "/games",
-        search: "?f=quick",
-        isActive: (_, s) => s.includes("f=quick"),
+        path: "/favorites",
+        isActive: (p) => p.startsWith("/favorites"),
       },
     ],
   },
@@ -323,12 +340,13 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
       parentLabel: "Back to Home",
     },
     items: [
+      // ── Group 1: Profile ──
       {
         id: "profile-overview",
         label: "Profile Overview",
         icon: User,
         path: "/profile",
-        isActive: (p) => p === "/profile",
+        isActive: (p) => p === "/profile" || p === "/profile/overview",
       },
       {
         id: "profile-personal",
@@ -337,35 +355,34 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         path: "/profile/personal",
         isActive: (p) => p === "/profile/personal",
       },
+
+      // ── Group 2: Gaming ──
       {
         id: "profile-stats",
         label: "Game Statistics",
         icon: BarChart2,
-        path: "/profile",
-        isActive: (p, s) => p === "/profile" && s.includes("tab=career"),
+        path: "/profile/statistics",
+        dividerBefore: true,
+        isActive: (p) => p === "/profile/statistics" || p === "/profile/stats",
+      },
+      {
+        id: "profile-matches",
+        label: "Match History",
+        icon: History,
+        path: "/profile/matches",
+        isActive: (p) => p === "/profile/matches" || p === "/profile/history",
       },
       {
         id: "profile-achievements",
         label: "Achievements",
         icon: Award,
-        path: "/profile",
-        isActive: (p, s) => p === "/profile" && s.includes("tab=achievements"),
+        path: "/profile/achievements",
+        isActive: (p) => p === "/profile/achievements",
       },
-      {
-        id: "profile-preferences",
-        label: "Preferences",
-        icon: Sliders,
-        path: "/settings",
-        isActive: (p) => p === "/settings",
-      },
-      {
-        id: "profile-security",
-        label: "Security",
-        icon: Lock,
-        path: "/settings",
-        hash: "#profile-account",
-        isActive: (p, _, h) => p === "/settings" && h === "#profile-account",
-      },
+      // Preferences / Security & Data used to be duplicated here, pointing
+      // at the exact same /settings/* routes the Settings section already
+      // lists — one feature, two places in the nav to find it. They now
+      // live under Settings only (see that section below).
     ],
   },
 
@@ -382,50 +399,18 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
     },
     items: [
       {
-        id: "settings-general",
-        label: "General",
-        icon: SettingsIcon,
-        path: "/settings",
-        hash: "#sound-haptics",
-        isActive: (p, _, h) => p === "/settings" && (!h || h === "" || h === "#sound-haptics"),
-      },
-      {
-        id: "settings-appearance",
-        label: "Appearance",
+        id: "settings-preferences",
+        label: "Preferences",
         icon: Sliders,
-        path: "/settings",
-        hash: "#appearance-language",
-        isActive: (p, _, h) => p === "/settings" && h === "#appearance-language",
-      },
-      {
-        id: "settings-notifications",
-        label: "Notifications",
-        icon: Bell,
-        path: "/settings",
-        hash: "#profile-account",
-        isActive: (p, _, h) => p === "/settings" && h === "#profile-account",
-      },
-      {
-        id: "settings-privacy",
-        label: "Privacy",
-        icon: Shield,
-        path: "/settings",
-        hash: "#your-data",
-        isActive: (p, _, h) => p === "/settings" && h === "#your-data",
+        path: "/settings/preferences",
+        isActive: (p) => p === "/settings/preferences" || p === "/settings",
       },
       {
         id: "settings-security",
-        label: "Security",
-        icon: Lock,
-        path: "/settings",
-        hash: "#profile-account",
-      },
-      {
-        id: "settings-account",
-        label: "Account",
-        icon: User,
-        path: "/settings",
-        hash: "#profile-account",
+        label: "Security & Data",
+        icon: Shield,
+        path: "/settings/security",
+        isActive: (p) => p === "/settings/security",
       },
     ],
   },

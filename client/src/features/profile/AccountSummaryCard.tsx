@@ -1,18 +1,16 @@
 import React from "react";
-import { Shield, Activity, Users, Radio, CheckCircle } from "lucide-react";
+import { Shield, Activity, Radio, CheckCircle, Clock, Globe, Users } from "lucide-react";
 
 interface AccountSummaryCardProps {
   isMember: boolean;
   lastSeenAt?: number;
   friendCount?: number;
-  squadName?: string;
 }
 
 export default function AccountSummaryCard({
   isMember,
   lastSeenAt,
-  friendCount = 3,
-  squadName = "Lounge Champions",
+  friendCount,
 }: AccountSummaryCardProps) {
   const lastActiveText = lastSeenAt
     ? formatLastSeen(lastSeenAt)
@@ -31,7 +29,7 @@ export default function AccountSummaryCard({
           </h3>
         </div>
         <span
-          className={`inline-flex items-center gap-1 text-[10px] font-black font-mono px-2 py-0.5 rounded-full border ${
+          className={`inline-flex items-center gap-1 text-[10px] font-black font-mono px-2.5 py-0.5 rounded-full border ${
             isMember
               ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
               : "bg-amber-500/15 text-amber-500 border-amber-500/30"
@@ -43,7 +41,7 @@ export default function AccountSummaryCard({
       </div>
 
       {/* Metrics List */}
-      <div className="space-y-3 text-xs font-mono">
+      <div className="space-y-2.5 text-xs font-mono">
         {/* Status */}
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--auth-field)] border border-[var(--auth-field-edge)]">
           <span className="text-[var(--auth-ink-soft)] font-bold flex items-center gap-2">
@@ -59,16 +57,17 @@ export default function AccountSummaryCard({
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--auth-field)] border border-[var(--auth-field-edge)]">
           <span className="text-[var(--auth-ink-soft)] font-bold flex items-center gap-2">
             <Radio className="w-3.5 h-3.5 text-sky-500 animate-pulse" />
-            Live Presence
+            Presence
           </span>
           <span className="font-bold text-[var(--auth-ink)]">
-            Online • In Lounge
+            Active in Lounge
           </span>
         </div>
 
         {/* Last Active */}
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--auth-field)] border border-[var(--auth-field-edge)]">
-          <span className="text-[var(--auth-ink-soft)] font-bold">
+          <span className="text-[var(--auth-ink-soft)] font-bold flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-amber-500" />
             Last Active
           </span>
           <span className="font-bold text-[var(--auth-ink)]">
@@ -76,14 +75,27 @@ export default function AccountSummaryCard({
           </span>
         </div>
 
-        {/* Friend Count */}
+        {/* Friends if provided */}
+        {friendCount !== undefined && (
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--auth-field)] border border-[var(--auth-field-edge)]">
+            <span className="text-[var(--auth-ink-soft)] font-bold flex items-center gap-2">
+              <Users className="w-3.5 h-3.5 text-amber-500" />
+              Connected Friends
+            </span>
+            <span className="font-bold text-amber-500">
+              {friendCount} Friends
+            </span>
+          </div>
+        )}
+
+        {/* Matchmaking Node */}
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--auth-field)] border border-[var(--auth-field-edge)]">
           <span className="text-[var(--auth-ink-soft)] font-bold flex items-center gap-2">
-            <Users className="w-3.5 h-3.5 text-amber-500" />
-            Connected Friends
+            <Globe className="w-3.5 h-3.5 text-purple-500" />
+            Lounge Server
           </span>
-          <span className="font-bold text-amber-500">
-            {friendCount} Friends
+          <span className="font-bold text-[var(--auth-ink)]">
+            India (IN-South)
           </span>
         </div>
       </div>

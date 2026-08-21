@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Lightbulb, Loader2 } from "lucide-react";
 import type { CoachHint, CoachHintResponse } from "@shared/types";
 import { getSocket } from "../lib/socket";
 
@@ -137,7 +138,11 @@ export default function CoachHintButton({
         }`}
         title="Ask the coach what to do next"
       >
-        <span aria-hidden>{loading ? "…" : "💡"}</span>
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden />
+        ) : (
+          <Lightbulb className="w-4 h-4 shrink-0" aria-hidden />
+        )}
         {!compact && <span>{loading ? "Thinking" : hint || error ? "Hide hint" : "Hint"}</span>}
       </button>
 

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Crown, RotateCcw } from "lucide-react";
 import type { Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
 import { findAvatar } from "../lib/avatars";
+import CountUp from "./CountUp";
 
 export interface RankedPlayerResult {
   id: string;
@@ -217,14 +219,14 @@ export default function BhalyamResultModal({
                       )}
                     </div>
 
-                    <span className="truncate flex-1 font-extrabold text-[#2C1D11]">
-                      {p.name}
-                      {p.id === selfId && " (you)"}
-                      {isWinnerRow && " 👑"}
+                    <span className="truncate flex-1 font-extrabold text-[#2C1D11] flex items-center gap-1.5">
+                      <span>{p.name}</span>
+                      {p.id === selfId && <span className="text-xs text-[#7C6652] font-semibold">(you)</span>}
+                      {isWinnerRow && <Crown className="w-4 h-4 text-amber-600 fill-amber-500/30 flex-shrink-0" aria-hidden />}
                     </span>
 
                     <span className={`tabular-nums shrink-0 font-black ${isWinnerRow ? "text-amber-800 text-sm" : "text-[#7C6652]"}`}>
-                      {p.score}
+                      <CountUp end={p.score} duration={1.2} />
                     </span>
                   </div>
                 );
@@ -284,7 +286,7 @@ export default function BhalyamResultModal({
               onClick={requestRematch}
               className="w-full py-3.5 px-6 rounded-2xl font-black text-base text-white bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] hover:from-[#EA580C] hover:to-[#9A3412] active:scale-[0.98] shadow-[0_4px_16px_rgba(234,88,12,0.4)] flex items-center justify-center gap-2 transition cursor-pointer"
             >
-              <span className="text-lg">🔄</span>
+              <RotateCcw className="w-5 h-5" aria-hidden />
               <span>Play Again</span>
             </button>
           )}

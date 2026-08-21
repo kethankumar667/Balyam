@@ -1,4 +1,5 @@
 import { memo, useCallback } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import { useAudio } from "../../hooks/useAudio";
 import { useTranslation } from "../../hooks/useTranslation";
 import { AUDIO, type AudioThemeId } from "../../constants/audio";
@@ -49,13 +50,23 @@ function AudioSettingsImpl({ className }: { className?: string }) {
           onClick={onMute}
           aria-pressed={settings.isMuted}
           aria-label={settings.isMuted ? t("audio.unmute") : t("audio.mute")}
-          className={`text-xs font-bold px-3 py-1.5 rounded-full transition-colors ${
+          className={`text-xs font-bold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${
             settings.isMuted
               ? "bg-[#E6A11E] hover:bg-[#D89215] text-[var(--room-ink)]"
               : "bg-[#31A157] hover:bg-[#2A8B4B] text-white"
           }`}
         >
-          {settings.isMuted ? `🔇 ${t("audio.muted")}` : `🔊 ${t("audio.soundOn")}`}
+          {settings.isMuted ? (
+            <>
+              <VolumeX className="w-3.5 h-3.5" aria-hidden />
+              <span>{t("audio.muted")}</span>
+            </>
+          ) : (
+            <>
+              <Volume2 className="w-3.5 h-3.5" aria-hidden />
+              <span>{t("audio.soundOn")}</span>
+            </>
+          )}
         </button>
       </header>
 

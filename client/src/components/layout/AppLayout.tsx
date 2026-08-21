@@ -6,13 +6,13 @@ import JoinRoomModal from "../bhalyam/JoinRoomModal";
 import GameRoomSheet from "../bhalyam/GameRoomSheet";
 import {
   ProfileSheet,
-  NotificationsSheet,
   MenuSheet,
   type NotificationItem,
   INITIAL_NOTIFICATIONS,
 } from "../../pages/BhalyamHome";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
+import { useAuthStore } from "../../store/authStore";
 
 interface AppLayoutContextType {
   openJoin: () => void;
@@ -65,8 +65,23 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [profileInitialView, setProfileInitialView] = useState<"profile" | "notifications">("profile");
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  /**
+   * `INITIAL_NOTIFICATIONS` is dummy design/dev-reference data (see its own
+   * comment in BhalyamHome.tsx) — never a guest's real notifications, since
+   * there is no backend that produces those yet. Guests always start empty;
+   * only a signed-in member sees the sample set, and only once auth has
+   * actually resolved (`ready`) so a guest mid-load never gets a one-frame
+   * flash of it.
+   */
+  const { isMember, ready } = useAuthStore();
+  useEffect(() => {
+    if (ready && isMember) {
+      setNotifications(INITIAL_NOTIFICATIONS);
+    }
+  }, [ready, isMember]);
 
   /**
    * Drop the drawer when the chrome goes away.
@@ -91,8 +106,17 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
     openJoin: () => setJoinOpen(true),
     openGameSheet: (slug: BhalyamGameSlug) => setSheetGame(slug),
     openSettings: () => setSettingsOpen(true),
-    openProfile: () => setProfileOpen(true),
-    openNotifications: () => setNotificationsOpen(true),
+    openProfile: () => {
+      setProfileInitialView("profile");
+      setProfileOpen(true);
+    },
+    // Notifications now live inside the Profile sheet's own "notifications"
+    // view instead of a separate dialog — this just opens that sheet
+    // straight to that page.
+    openNotifications: () => {
+      setProfileInitialView("notifications");
+      setProfileOpen(true);
+    },
   };
 
   return (
@@ -108,8 +132,10 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
         {chrome && (
           <AppHeader
             onOpenJoin={() => setJoinOpen(true)}
-            onOpenProfile={() => setProfileOpen(true)}
-            onOpenNotifications={() => setNotificationsOpen(true)}
+            onOpenProfile={() => {
+              setProfileInitialView("profile");
+              setProfileOpen(true);
+            }}
             onOpenSettings={() => setSettingsOpen(true)}
             onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
             onSelectGame={handleSelectGame}
@@ -128,9 +154,15 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
               <AppSidebar
                 onOpenJoin={() => setJoinOpen(true)}
                 onOpenCreateRoom={() => setJoinOpen(true)}
-                onOpenProfile={() => setProfileOpen(true)}
+                onOpenProfile={() => {
+                  setProfileInitialView("profile");
+                  setProfileOpen(true);
+                }}
                 onOpenSettings={() => setSettingsOpen(true)}
-                onOpenNotifications={() => setNotificationsOpen(true)}
+                onOpenNotifications={() => {
+                  setProfileInitialView("notifications");
+                  setProfileOpen(true);
+                }}
                 onOpenGameSheet={(slug) => handleSelectGame(slug as BhalyamGameSlug)}
               />
             </div>
@@ -145,14 +177,14 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs lg:hidden"
+                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] lg:hidden"
                 />
                 <motion.div
                   initial={{ x: -280 }}
                   animate={{ x: 0 }}
                   exit={{ x: -280 }}
                   transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                  className="fixed top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] h-full shadow-2xl lg:hidden"
+                  className="fixed top-0 bottom-0 left-0 z-50 w-76 sm:w-80 max-w-[86vw] h-full shadow-2xl lg:hidden"
                 >
                   <AppSidebar
                     onOpenJoin={() => {
@@ -165,6 +197,7 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
                     }}
                     onOpenProfile={() => {
                       setMobileMenuOpen(false);
+                      setProfileInitialView("profile");
                       setProfileOpen(true);
                     }}
                     onOpenSettings={() => {
@@ -173,7 +206,8 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
                     }}
                     onOpenNotifications={() => {
                       setMobileMenuOpen(false);
-                      setNotificationsOpen(true);
+                      setProfileInitialView("notifications");
+                      setProfileOpen(true);
                     }}
                     onOpenGameSheet={(slug) => {
                       setMobileMenuOpen(false);
@@ -206,14 +240,14 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
             setJoinOpen(true);
           }}
         />
-        <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
-        <NotificationsSheet
-          open={notificationsOpen}
+        <ProfileSheet
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
           notifications={notifications}
           onUpdateNotifications={setNotifications}
-          onClose={() => setNotificationsOpen(false)}
+          initialView={profileInitialView}
           onOpenJoin={() => {
-            setNotificationsOpen(false);
+            setProfileOpen(false);
             setJoinOpen(true);
           }}
         />

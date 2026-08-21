@@ -63,8 +63,9 @@ const SLIDES: Slide[] = [
           or <strong>click to multi-select</strong> and use the action buttons.
         </p>
         <p className="mt-2 text-emerald-200">
-          The <strong>AUTO</strong> button can find a starting layout for you. The
-          <strong> SORT</strong> button reorders ungrouped cards by suit + rank.
+          The <strong>💡 HINT</strong> button suggests your strongest move — what to
+          draw, what to discard, and how to group your hand — but never plays it for
+          you. The <strong>SORT</strong> button reorders ungrouped cards by suit + rank.
         </p>
       </>
     ),
@@ -253,7 +254,7 @@ const SLIDES: Slide[] = [
           Quick tips:
         </p>
         <ul className="list-disc list-inside text-sm space-y-1 mt-1">
-          <li>Try the <strong>AUTO</strong> button on your first hand to learn good groupings.</li>
+          <li>Try the <strong>💡 HINT</strong> button on your first hand to learn good groupings.</li>
           <li>Watch the <strong>Card Tracker</strong> — knowing what's left in the deck is power.</li>
           <li>The <strong>Risk if caught</strong> meter drops only when you have a pure sequence.</li>
           <li>Drag and drop is faster than clicking SORT + GROUP.</li>

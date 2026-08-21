@@ -2,6 +2,7 @@ import React from "react";
 import type { Achievement } from "@shared/profile/Achievements";
 import { AchievementRarityBadge, type AchievementRarity } from "../../design-system/icons";
 import { PREMIUM_RARITY_COLORS } from "../../design-system/premium";
+import { Sparkles, CheckCircle2 } from "lucide-react";
 
 interface AchievementCardProps {
   achievement: Achievement;
@@ -28,14 +29,14 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
       onClick={() => onSelect?.(achievement)}
       className={`rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 relative overflow-hidden cursor-pointer group ${
         achievement.unlocked
-          ? "bg-stone-900/90 dark:bg-zinc-900/90 border border-stone-850 dark:border-zinc-850 hover:border-stone-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-          : "bg-stone-950/40 dark:bg-zinc-950/40 border border-stone-900 opacity-60 text-stone-500 hover:opacity-80"
+          ? "bg-[var(--auth-card)] border-2 border-amber-500/30 hover:border-amber-500/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+          : "bg-[var(--auth-field)] border border-[var(--auth-field-edge)] opacity-70 hover:opacity-90"
       }`}
     >
       {/* Subtle rarity backdrop shimmer */}
       {achievement.unlocked && (
         <div
-          className="absolute -top-12 -right-12 w-28 h-28 rounded-full blur-2xl opacity-15 pointer-events-none group-hover:opacity-30 transition-opacity"
+          className="absolute -top-12 -right-12 w-28 h-28 rounded-full blur-2xl opacity-15 pointer-events-none group-hover:opacity-35 transition-opacity"
           style={{ backgroundColor: colorToken.primary }}
         />
       )}
@@ -50,27 +51,28 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
           />
           {achievement.unlocked ? (
             <span
-              className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border shadow"
+              className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border shadow-xs flex items-center gap-1"
               style={{
                 borderColor: `${colorToken.primary}66`,
                 backgroundColor: `${colorToken.primary}22`,
                 color: colorToken.primary,
               }}
             >
+              <CheckCircle2 className="w-3 h-3" />
               UNLOCKED
             </span>
           ) : (
-            <span className="text-[10px] font-mono text-stone-500">
+            <span className="text-[10px] font-mono font-bold text-[var(--auth-ink-soft)] bg-[var(--auth-card)] px-2 py-0.5 rounded-md border border-[var(--auth-card-edge)]">
               {achievement.currentProgress} / {achievement.targetValue}
             </span>
           )}
         </div>
 
         <div>
-          <h3 className="font-bold text-sm text-stone-100 dark:text-zinc-100 group-hover:text-amber-300 transition-colors">
+          <h3 className="font-extrabold text-sm text-[var(--auth-ink)] group-hover:text-amber-500 transition-colors">
             {achievement.title}
           </h3>
-          <p className="text-xs text-stone-400 dark:text-zinc-400 leading-snug mt-0.5">
+          <p className="text-xs text-[var(--auth-ink-soft)] leading-snug mt-0.5">
             {achievement.description}
           </p>
         </div>
@@ -78,14 +80,14 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
 
       {/* Progress Bar for Locked */}
       {!achievement.unlocked && (
-        <div className="mt-3 pt-2 border-t border-stone-800/50 space-y-1">
-          <div className="flex justify-between text-[10px] font-mono text-stone-500">
+        <div className="mt-3 pt-2 border-t border-[var(--auth-field-edge)] space-y-1">
+          <div className="flex justify-between text-[10px] font-mono font-bold text-[var(--auth-ink-soft)]">
             <span>Progress</span>
             <span>{achievement.progressPercent}%</span>
           </div>
-          <div className="h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-850">
+          <div className="h-1.5 bg-[var(--auth-card)] rounded-full overflow-hidden border border-[var(--auth-card-edge)]">
             <div
-              className="h-full bg-amber-500/70 rounded-full transition-all duration-300"
+              className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-300"
               style={{ width: `${achievement.progressPercent}%` }}
             />
           </div>

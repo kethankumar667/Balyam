@@ -1,60 +1,104 @@
-# Favourite Games — Architectural Design & Specification
+# Favourites — Design & Verification
 
-> **Status:** IMPLEMENTED AND VERIFIED  
-> **Target:** Global BHALYAM Lounge Feature  
-> **Quality Gate:** 100% Passing (0 TypeScript errors, 5/5 manager tests, 538 repository tests)
+## Status
 
----
+Already implemented (client-only) — built ahead of this audit, same author
+and pattern as Recently Played. This document records the architecture,
+evaluates it against the brief, and gives a concrete recommendation for the
+DB-backed extension.
 
-## 1. Overview & Objectives
+## Current Architecture
 
-The **Favourite Games** feature lets players bookmark and quickly access their preferred titles across the BHALYAM lounge and all-games catalogue.
+- **Storage**: `client/src/services/FavouritesManager.ts` — a plain
+  singleton wrapping `localStorage["bhalyam.favourites"]` (a flat
+  `BhalyamGameSlug[]`), same shape as `RecentlyPlayedManager`.
+- **Bridge into React**: `client/src/hooks/useFavourites.ts` via
+  `useSyncExternalStore`, exposing `favourites`, `isFavourite`,
+  `toggleFavourite`, `addFavourite`, `removeFavourite`.
+- **Add / remove / view**:
+  - Toggle: `client/src/components/games/GameCard.tsx:147-162` — a heart
+    icon button on every game card (`toggleFavourite(game.slug)`),
+    `aria-label` swaps between "Add … to favourites" / "Remove … from
+    favourites," `e.stopPropagation()` so it doesn't also trigger the
+    card's own launch action.
+  - View: `client/src/components/bhalyam/FavouritesSection.tsx`, mounted on
+    Home (`BhalyamHome.tsx:163`), plus a dedicated "Favourites" entry in
+    `client/src/components/bhalyam/CategoryFilter.tsx` for filtering the
+    full catalog down to just favourited games (`getFavouriteCount` via
+    `FavouritesManager.getFavourites().length`).
+- **Ordering**: insertion order (`push` on add) — stable, not re-sorted by
+  recency or alphabetically, so a player's favourites stay where they put
+  them.
+- **Guest and authenticated users**: identical code path, same as Recently
+  Played — works for both today because it's device-local, not
+  account-gated.
 
-### Core Tenets:
-1. **1-Click Heart Toggle:** Every game card carries an accessible, touch-friendly heart toggle button with subtle haptic feedback.
-2. **Instant Sync:** React state updates reactively across all open tabs and components.
-3. **Dedicated Catalogue Filter:** A new **"Favourites"** tab in the games catalogue (`/games?c=favourites`) allows dedicated filtering.
-4. **Lounge Showcase:** Favourited titles are surfaced in a high-priority shelf on the home lounge.
+## Bug found and fixed this session
 
----
+Same defect as `RecentlyPlayedManager`, same root cause:
+`getFavourites()` returned `this.load().slice()` — a fresh array every
+call, breaking `useSyncExternalStore`'s reference-stability contract and
+producing the infinite-render crash reported by the user. Fixed
+identically (return the stable cached reference; a new one is only minted
+on an actual `toggleFavourite`/`addFavourite`/`removeFavourite`). Verified
+against `client/src/services/__tests__/favourites.test.ts` (5/5 passing).
 
-## 2. Architecture & Data Layer
+## Favourites Data Model
 
-### 2.1 Core Service ([`FavouritesManager.ts`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/services/FavouritesManager.ts))
-- **Storage Key:** `bhalyam.favourites`
-- **`isFavourite(slug)`**: Boolean check for bookmark state.
-- **`toggleFavourite(slug)`**: Atomic toggle operation that saves to localStorage and notifies listeners.
-- **`addFavourite(slug)` / `removeFavourite(slug)`**: Explicit add/remove operations.
-- **`getFavourites()`**: Returns array of favourited game slugs.
-- **`subscribe(listener)`**: External store listener for React integration.
+**Authenticated users — should favourites be stored in DB?** Yes, for the
+same reason as Recently Played: a member's favourites should follow them to
+a new device, and today they don't.
 
-### 2.2 React Hook ([`useFavourites.ts`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/hooks/useFavourites.ts))
-Provides reactive access to favourites state with `useSyncExternalStore`.
+**Guest users — should favourites be stored locally?** Yes — a guest has no
+durable server-side identity to attach it to (see Recently Played's data
+model review; the same reasoning applies verbatim here).
 
----
+## Recommendation
 
-## 3. UI/UX Integration
+**Identical shape to Recently Played, for consistency and because the two
+features share almost the same code today**: add a `favourite_games jsonb`
+column to `public.profiles` (an ordered array of `BhalyamGameSlug`),
+written through on every `toggleFavourite`/`addFavourite`/`removeFavourite`
+call for signed-in members, merged with the local list on sign-in
+(union, de-duplicated, insertion order preserved from whichever list saw
+the game favourited first), same migration style as `bio`/`region` and the
+same `dataInventory.ts` entry pattern as Recently Played.
 
-1. **[`GameCard.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/components/games/GameCard.tsx):**
-   - Top-right header row includes heart toggle button.
-   - Filled rose styling (`bg-rose-500/20 text-rose-500`) when active; subtle ghost style when inactive.
-   - Accessible ARIA labels (`"Add [Game] to favourites"`, `"Remove [Game] from favourites"`).
-   - Event propagation isolation (`e.stopPropagation()`) prevents accidentally opening the game sheet when toggling.
+A dedicated table is not warranted for the same reason it isn't for
+Recently Played: this list is only ever read/written whole by its owner,
+never queried across players. **Not implemented in this pass** — recommendation only, per "do not implement schema changes blindly."
 
-2. **[`FavouritesSection.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/components/bhalyam/FavouritesSection.tsx):**
-   - Featured horizontal card track in [`BhalyamHome.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/pages/BhalyamHome.tsx).
-   - Direct quick-play gradient buttons (`from-rose-500 to-amber-500`).
-   - Clean empty state with prompt when rendered in dedicated views.
+## Favourites UX — requirements check
 
-3. **[`FilterBar.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/components/games/FilterBar.tsx) & [`CategoryFilter.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/components/bhalyam/CategoryFilter.tsx):**
-   - Added `"favourites"` category filter with heart icon to allow 1-click filtering of all bookmarked titles in [`GamesPage.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/pages/GamesPage.tsx).
+| Requirement | Status |
+|---|---|
+| Reuse existing icons | `lucide-react`'s `Heart` — already used elsewhere in the app's icon set, not a new import |
+| Reuse existing card components | `GameCard.tsx` — the toggle is a small addition to the existing card header, not a new card type |
+| No redesign | Confirmed — no layout structure changed, only the icon button already present |
+| Keyboard support | Native `<button type="button">` — reachable via `Tab`, activates on `Enter`/`Space` by default, no custom key handling needed or added |
+| Mobile support | Present on every `GameCard` instance, which is the primary catalog browsing surface on mobile |
+| Accessible interaction states | `aria-label` correctly swaps with state; visual state (filled heart, rose background) is paired with the label change, not color-only |
 
----
+**One real gap found, not fixed**: the toggle button's tappable area is
+`p-1.5` around a `w-3.5 h-3.5` (14px) icon — roughly 26×26px, under the
+44×44px minimum touch target mandated by `docs/ai/accessibility-standards.md`
+and `docs/ai/ui-ux-standards.md` §4. Not corrected in this pass: the button
+sits in a deliberately compact card header row (mode badge + category tag +
+heart, in the space of one text line), and inflating it to a full 44px box
+would visibly change that row's proportions — exactly the "redesign" this
+task's brief says not to do. Fixing this properly needs an invisible
+expanded hit-area (e.g. a padded `::before`/absolute overlay) that keeps the
+visual icon size unchanged while satisfying the touch-target rule, which is
+a small, targeted, but distinct change from anything else in this task.
+Flagged as a remaining risk rather than fixed silently under a "no redesign"
+instruction that could reasonably be read either way.
 
-## 4. Test Verification ([`favourites.test.ts`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/services/__tests__/favourites.test.ts))
+## Verification
 
-- ✅ Adds and correctly checks favourite status.
-- ✅ Removes games from favourites.
-- ✅ Toggles favourite state idempotently.
-- ✅ Preserves ordering of added favourites.
-- ✅ Accurately notifies subscribers on every state change.
+- `[x]` `cd client && npx vitest run src/services/__tests__/favourites.test.ts` → 5/5 passing (add, remove, persistence, ordering)
+- `[x]` `cd client && npm run typecheck` → clean
+- `[x]` `cd client && npm test` → 538/538 passing
+- `[x]` Confirmed wiring: `GameCard.tsx` toggle, `FavouritesSection.tsx` on Home, `CategoryFilter.tsx` favourites filter
+- `[ ]` Cross-device / DB persistence — not implemented, see Recommendation above
+- `[ ]` 44×44px touch target on the card toggle — not met, see gap above; not fixed to avoid an unrequested layout change
+- `[ ]` Not freshly browser-verified for dark/light mode or 375/768/1024/1440px in this pass

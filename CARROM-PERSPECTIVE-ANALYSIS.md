@@ -4,6 +4,17 @@
 > **Author:** Antigravity Autonomous Engineering & Game Architecture Specialist  
 > **Target:** BHALYAM Carrom Multiplayer Gameplay UX
 
+> **Independent re-verification note:** every factual claim in this
+> document — the baseline formula in `CarromEngine.ts`, the
+> `CARROM_BOARD` constants (`size`, `cushion`, `baseline`,
+> `strikerRadius`), the rendering/physics decoupling, and the selected
+> Option A transform — was independently re-checked against the current
+> repository (not re-derived from this document) as part of implementing
+> and verifying the fix. All held up; nothing here needed correction. See
+> `CARROM-PLAYER-PERSPECTIVE-FIX.md` for the verification evidence,
+> including which parts of the *implementation* report were downgraded
+> from earlier over-claims.
+
 ---
 
 ## 1. Executive Summary & Problem Statement

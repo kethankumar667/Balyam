@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { DoorOpen } from "lucide-react";
 import Modal from "../Modal";
 import { DangerButton, SecondaryButton } from "../../design-system/dls/Buttons";
 
@@ -23,8 +24,8 @@ export default function LeaveRoomModal({
       panelClassName="w-full max-w-sm rounded-2xl bg-[#FFFDF8] dark:bg-[#151D2A] border border-[#EEDBCA] dark:border-slate-800 p-5 sm:p-6 shadow-2xl space-y-4"
     >
       <div className="flex items-center gap-3 text-left">
-        <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60 flex items-center justify-center text-rose-600 dark:text-rose-400 text-lg shrink-0">
-          🚪
+        <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+          <DoorOpen className="w-5 h-5" aria-hidden />
         </div>
         <div>
           <h3

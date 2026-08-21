@@ -35,9 +35,12 @@ import {
 } from "../components/bhalyam/data";
 import {
   Bell,
+  BellRing,
   Settings as SettingsIcon,
   User as UserIcon,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Home as HomeIcon,
   LayoutGrid,
   Users as UsersLucideIcon,
@@ -103,8 +106,6 @@ import {
 
 import AppLayout from "../components/layout/AppLayout";
 import WhatAreWePlayingSection from "../components/bhalyam/WhatAreWePlayingSection";
-import RecentlyPlayedSection from "../components/bhalyam/RecentlyPlayedSection";
-import FavouritesSection from "../components/bhalyam/FavouritesSection";
 
 const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
   handcricket: HandCricketGlyph,
@@ -158,16 +159,22 @@ export default function BhalyamHome() {
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}
           />
-          <WelcomePlayerStrip onSelect={setSheetGame} snapshot={playerSnapshot} />
-          <RecentlyPlayedSection onSelectGame={setSheetGame} />
-          <FavouritesSection onSelectGame={setSheetGame} />
+          <PlayYourWaySection
+            onPlayFriends={() => setJoinOpen(true)}
+            onPlayBots={() => {
+              const gamesElem = document.getElementById("games-section");
+              if (gamesElem) gamesElem.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
           {showGettingStarted && (
             <GettingStartedCard
-              className="mb-5"
+              className="mb-6"
               onDismiss={() => setShowGettingStarted(false)}
             />
           )}
-          <GamesSection onSelect={setSheetGame} />
+          <div id="games-section">
+            <GamesSection onSelect={setSheetGame} />
+          </div>
           <WhatAreWePlayingSection
             onSelectGame={setSheetGame}
             onOpenCreateRoom={() => setJoinOpen(true)}
@@ -187,130 +194,86 @@ export default function BhalyamHome() {
   );
 }
 
-function WelcomePlayerStrip({
-  onSelect,
-  snapshot,
+function PlayYourWaySection({
+  onPlayFriends,
+  onPlayBots,
 }: {
-  onSelect: (slug: BhalyamGameSlug) => void;
-  snapshot: PlayerSnapshot;
+  onPlayFriends: () => void;
+  onPlayBots: () => void;
 }) {
-  const { playerName } = useRoomStore();
-  const { isMember } = useAuthStore();
   const [theme] = useTheme();
   const isDark = theme === "dark";
 
-  if (!isMember) {
-    return (
-      <div className={`mb-5 p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-        isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D8BE]"
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl overflow-hidden bg-amber-100 dark:bg-slate-800 border border-amber-300 dark:border-slate-700 flex items-center justify-center shadow-inner flex-shrink-0">
-            <UserIcon className="w-5 h-5 text-amber-800 dark:text-amber-300" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className={`text-[14px] font-black ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
-                Welcome to BHALYAM Lounge!
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/50">
-                Guest Mode
-              </span>
-            </div>
-            <p className="text-xs font-semibold text-[#6B5E52] dark:text-zinc-400 mt-0.5">
-              Jump into any game instantly vs bots or join friends with a room code.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => onSelect("uno")}
-            className="flex-1 sm:flex-initial min-h-[42px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Play UNO Now</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const displayName = playerName.trim() || "Champion";
-
-  // Real numbers only. `streak`/`xpIntoLevel` are 0 for a brand-new member —
-  // that renders as "nothing to show yet" below, not as a fabricated "0-Day
-  // Streak" that would be just as dishonest as the number it replaced.
-  const streak = snapshot.stats?.currentPlayStreak ?? 0;
-  const xp = snapshot.profile?.experiencePoints ?? 0;
-  const level = snapshot.profile?.level ?? 1;
-  const xpIntoLevel = xp % 100;
-  const lastMatch = snapshot.matches[0];
-  const lastGameCard = lastMatch ? BHALYAM_GAMES.find((g) => g.slug === lastMatch.game) : undefined;
-
   return (
-    <div className={`mb-5 p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-      isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D8BE]"
-    }`}>
-      {/* Left: Player Profile & Greeting */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-2xl overflow-hidden bg-amber-100 border-2 border-amber-400 flex items-center justify-center shadow-inner flex-shrink-0">
-          <SelfAvatar className="w-full h-full" fallback={<UserIcon className="w-5 h-5 text-amber-900" />} />
-        </div>
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-[14px] font-black ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
-              Welcome back, {displayName}!
-            </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/50">
-              Member
-            </span>
-          </div>
-          {snapshot.ready && (streak > 0 || xp > 0) && (
-            <p className="text-xs font-semibold text-[#6B5E52] dark:text-zinc-400 flex items-center gap-2 mt-0.5">
-              {streak > 0 && (
-                <span className="inline-flex items-center gap-1">
-                  <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> {streak}-Day Streak
-                </span>
-              )}
-              {streak > 0 && xp > 0 && <span>•</span>}
-              {xp > 0 && (
-                <span className="text-emerald-700 dark:text-emerald-400 font-bold inline-flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> {xpIntoLevel} / 100 XP to Level {level + 1}
-                </span>
-              )}
-            </p>
-          )}
-        </div>
+    <section className="mb-5 sm:mb-6">
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        <span className="text-xs font-black uppercase tracking-[0.2em] text-[#7B2F0E] dark:text-amber-400">
+          ✦ PLAY YOUR WAY ✦
+        </span>
       </div>
 
-      {/* Right: Quick Continue Playing — real last-played game, or a real
-          first-game CTA. No "Daily Bonus" pill: there is no daily-bonus
-          system behind it to actually grant one. */}
-      <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
-        {lastGameCard ? (
-          <button
-            type="button"
-            onClick={() => onSelect(lastGameCard.slug)}
-            className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Continue {lastGameCard.title}</span>
-          </button>
-        ) : (
-          <Link
-            to="/games"
-            className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-black text-[12px] shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Play Your First Game</span>
-          </Link>
-        )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* 1. Play with Friends */}
+        <button
+          type="button"
+          onClick={onPlayFriends}
+          className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group ${
+            isDark
+              ? "bg-[#0E1526] border-white/10 hover:border-amber-500/40"
+              : "bg-[#FCF8EF] border-[#E8D8BE] hover:border-amber-500/50"
+          }`}
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <UsersLucideIcon className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <h3 className={`text-[15px] font-black tracking-tight ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
+                Play with Friends
+              </h3>
+              <p className="text-xs font-medium text-[#6B5E52] dark:text-zinc-400 mt-0.5 truncate">
+                Join or host a multiplayer lounge table
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-black text-amber-600 dark:text-amber-400 shrink-0 font-mono">
+            Join Room →
+          </span>
+        </button>
+
+        {/* 2. Play with Bots */}
+        <button
+          type="button"
+          onClick={onPlayBots}
+          className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group ${
+            isDark
+              ? "bg-[#0E1526] border-white/10 hover:border-emerald-500/40"
+              : "bg-[#FCF8EF] border-[#E8D8BE] hover:border-emerald-500/50"
+          }`}
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <Gamepad2 className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <h3 className={`text-[15px] font-black tracking-tight ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
+                Play with Bots
+              </h3>
+              <p className="text-xs font-medium text-[#6B5E52] dark:text-zinc-400 mt-0.5 truncate">
+                Solo instant play against smart AI
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 shrink-0 font-mono">
+            Choose Game →
+          </span>
+        </button>
       </div>
-    </div>
+    </section>
   );
 }
+
+
 
 function TrophyProgressionStrip() {
   const trophies = [
@@ -453,52 +416,19 @@ function Hero({
               Bring your school gang back together!
             </p>
 
-            {/* Side-by-side Action Buttons inside Hero Card */}
-            <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-4">
-              {/* 1. Join Room Button */}
+            {/* Primary Action Button inside Hero Card */}
+            <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <button
                 type="button"
                 onClick={onOpenJoin}
-                className="w-full sm:w-auto py-3 px-5 sm:px-6 rounded-full flex items-center justify-center gap-2 font-black text-[14px] sm:text-[15px] bg-[#F59E0B] hover:bg-[#D97706] text-black shadow-lg active:scale-95 transition cursor-pointer flex-shrink-0 min-h-[44px]"
+                className="w-full sm:w-auto py-3.5 px-6 sm:px-8 rounded-full flex items-center justify-center gap-2.5 font-black text-[15px] sm:text-[16px] bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 shadow-lg active:scale-95 transition cursor-pointer flex-shrink-0 min-h-[48px]"
               >
-                <DoorOpen className="w-5 h-5 text-black" />
+                <DoorOpen className="w-5 h-5 text-stone-950" />
                 <span>Join Room with a code</span>
               </button>
-
-              {/* 2. WhatsApp Share Card */}
-              <div
-                onClick={handleShareWhatsApp}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") handleShareWhatsApp();
-                }}
-                className={`w-full sm:w-auto rounded-full py-2 sm:py-1.5 px-4 border flex items-center justify-center sm:justify-start gap-3 cursor-pointer active:scale-95 transition shadow-sm min-h-[44px] ${
-                  isDark
-                    ? "bg-[#0B101E]/90 border-slate-700/80 hover:border-emerald-500/60 text-white"
-                    : "bg-white/95 border-[#E5D5BC] hover:border-emerald-500/60 text-[#15294E]"
-                }`}
-              >
-                <div className="w-8 h-8 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                  <WhatsappGlyph className="w-4.5 h-4.5 text-white" />
-                </div>
-                <div className="flex flex-col text-left">
-                  <span
-                    className={`text-[13px] font-black leading-tight ${
-                      isDark ? "text-white" : "text-[#15294E]"
-                    }`}
-                  >
-                    Share on WhatsApp
-                  </span>
-                  <span
-                    className={`text-[11px] font-medium leading-tight mt-0.5 ${
-                      isDark ? "text-slate-400" : "text-[#7A6F62]"
-                    }`}
-                  >
-                    Send the code in seconds!
-                  </span>
-                </div>
-              </div>
+              <span className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-[#6E5D4E]"}`}>
+                Have a 6-letter code or invite link? Tap to enter.
+              </span>
             </div>
           </div>
         </div>
@@ -632,24 +562,60 @@ export interface NotificationItem {
 }
 
 /**
- * No seeded notifications. There is no backend that produces one yet — a
- * fabricated invite from "Ravi", a fake reward claim, and a fake friend's
- * fake score used to render here for every player who had never played,
- * complete with a badge count that made the bell look like it had real news.
- * `NotificationsSheet` below already renders an honest empty state
- * ("You're all caught up!") when this is empty, and `AppHeader`'s own
- * comment on `unreadCount` already says the rule this violated: "Absent or
- * zero renders no badge at all." Populate this from a real event source when
- * one exists — never with placeholder content standing in for one.
+ * Sample notifications, one of each `NotificationItem["type"]`, seeded at
+ * explicit request for design/dev reference while the profile-sheet
+ * notifications view is being built out — there is still no backend that
+ * produces real ones. This reverses an earlier deliberate decision to ship
+ * this list empty (a fabricated invite/reward/friend-score used to render
+ * here for every player, "real news" that was never real); that concern
+ * still applies the moment this ships to actual users, so swap this back to
+ * an empty array — or a real feed — before release. `ProfileSheet`'s
+ * notifications view already renders an honest empty state
+ * ("You're all caught up!") for that case.
  */
-export const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
+export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: "sample-invite-1",
+    type: "invite",
+    title: "Priya invited you to a Rummy table",
+    desc: "Room ANNA42 · 3 of 4 seats filled",
+    time: "2m ago",
+    unread: true,
+    gameSlug: "rummy",
+    roomCode: "ANNA42",
+  },
+  {
+    id: "sample-reward-1",
+    type: "reward",
+    title: "Daily streak bonus unlocked",
+    desc: "3-day streak — claim your bonus XP",
+    time: "1h ago",
+    unread: true,
+  },
+  {
+    id: "sample-gang-1",
+    type: "gang",
+    title: "Arjun joined your gang",
+    desc: "Your friend circle now has 5 members",
+    time: "5h ago",
+    unread: false,
+  },
+  {
+    id: "sample-trophy-1",
+    type: "trophy",
+    title: "New personal best in Hand Cricket",
+    desc: "You scored 86 runs against the bot",
+    time: "Yesterday",
+    unread: false,
+    gameSlug: "handcricket",
+  },
+];
 
 function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileInitialView, setProfileInitialView] = useState<"profile" | "notifications">("profile");
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const navigate = useNavigate();
   const { playerName } = useRoomStore();
   const displayName = playerName.trim() || "monica";
@@ -658,31 +624,8 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
-
   return (
     <>
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl font-bold text-sm shadow-2xl border flex items-center gap-2 ${
-              isDark
-                ? "bg-[#1D2C4A] text-white border-amber-400/40"
-                : "bg-[#FFF5DC] border-[#E8D1A7] text-[#854D0E] shadow-amber-900/10"
-            }`}
-          >
-            <span>{toastMessage}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <header className={`w-full border-b transition-colors ${
         isDark
           ? "bg-[#070B14] border-white/10"
@@ -704,41 +647,32 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
 
           {/* Right Action Stack */}
           <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
-            {/* 1. Notification Bell Icon with dynamic unread badge -> opens Notifications side modal */}
+            {/* Profile Button (Avatar + Name on desktop / Avatar on mobile + Caret) -> Opens Profile functionality.
+                Notifications live inside that sheet now instead of a standalone bell,
+                so the unread count surfaces here as a small badge on the avatar. */}
             <button
               type="button"
-              onClick={() => setNotificationsOpen(true)}
-              title="Notifications"
-              className={`relative w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border flex items-center justify-center text-sm transition hover:scale-105 cursor-pointer flex-shrink-0 ${
-                isDark
-                  ? "bg-[#0D1426] border-[#1E2945] text-zinc-300 hover:bg-[#141E38]"
-                  : "bg-[#FAF2DF] border-[#ECD9BA] text-[#5C3B1E] hover:bg-[#F2E4CB]"
-              }`}
-            >
-              <Bell className="w-4.5 h-4.5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {/* 2. Profile Button (Avatar + Name on desktop / Avatar on mobile + Caret) -> Opens Profile functionality */}
-            <button
-              type="button"
-              onClick={() => setProfileOpen(true)}
-              className={`h-9 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 rounded-full border transition hover:scale-102 cursor-pointer flex-shrink-0 ${
+              onClick={() => {
+                setProfileInitialView("profile");
+                setProfileOpen(true);
+              }}
+              className={`relative h-9 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 rounded-full border transition hover:scale-102 cursor-pointer flex-shrink-0 ${
                 isDark
                   ? "bg-[#0D1426] border-[#1E2945] text-white hover:bg-[#141E38]"
                   : "bg-[#FAF2DF] border-[#ECD9BA] text-[#2A221B] hover:bg-[#F2E4CB]"
               }`}
             >
-              <div className="w-6 h-6 min-w-[24px] min-h-[24px] rounded-full overflow-hidden border border-amber-400 flex items-center justify-center flex-shrink-0">
+              <div className="relative w-6 h-6 min-w-[24px] min-h-[24px] rounded-full overflow-hidden border border-amber-400 flex items-center justify-center flex-shrink-0">
                 <SelfAvatar
                   className="w-full h-full"
                   fallback={<UserIcon className="w-4 h-4 text-amber-500" />}
                 />
               </div>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
               <span className="hidden sm:inline text-[13px] font-bold tracking-tight max-w-[90px] truncate">
                 {displayName}!
               </span>
@@ -775,15 +709,11 @@ function Header({ onOpenJoin }: { onOpenJoin: () => void }) {
       <ProfileSheet
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
-      />
-
-      <NotificationsSheet
-        open={notificationsOpen}
         notifications={notifications}
         onUpdateNotifications={setNotifications}
-        onClose={() => setNotificationsOpen(false)}
+        initialView={profileInitialView}
         onOpenJoin={() => {
-          setNotificationsOpen(false);
+          setProfileOpen(false);
           onOpenJoin();
         }}
       />
@@ -1147,22 +1077,88 @@ export function GuestProfileModal({
 }
 
 /**
- * Profile sheet — entirely dedicated to the upcoming personal-profile
- * feature. No navigation actions here; those live in MenuSheet.
+ * Profile sheet — the one right-side panel for everything about "you":
+ * the profile card itself, and (migrated in from the old standalone
+ * bell-triggered sheet) notifications. `view` toggles between the two
+ * bodies inside the same SheetShell so it reads as one panel with a
+ * drill-in, not two different dialogs. `initialView` lets a caller (the
+ * header bell) open straight into the notifications pane while the
+ * profile avatar chip opens to the profile card as before.
  */
 export function ProfileSheet({
   open,
   onClose,
+  notifications,
+  onUpdateNotifications,
+  onOpenJoin,
+  initialView = "profile",
 }: {
   open: boolean;
   onClose: () => void;
+  notifications: NotificationItem[];
+  onUpdateNotifications: React.Dispatch<React.SetStateAction<NotificationItem[]>>;
+  onOpenJoin: () => void;
+  initialView?: "profile" | "notifications";
 }) {
   const { playerName, avatarId } = useRoomStore();
   const avatar = findAvatar(avatarId);
   const named = playerName.trim().length > 0;
   const signedIn = useAuthStore((s) => s.isMember);
+  const [theme] = useTheme();
+  const isDark = theme === "dark";
 
   const [showEditModal, setShowEditModal] = useState(false);
+  const [view, setView] = useState<"profile" | "notifications">(initialView);
+
+  // Land on whichever view opened the sheet, every time it opens — the
+  // bell wants straight to notifications, the avatar chip wants the
+  // profile card. Both are the same panel now, just a different page of it.
+  useEffect(() => {
+    if (open) setView(initialView);
+  }, [open, initialView]);
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
+
+  if (view === "notifications") {
+    return (
+      <SheetShell
+        open={open}
+        onClose={onClose}
+        ariaLabel="Notifications"
+        titleLeft={
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setView("profile")}
+              aria-label="Back to profile"
+              title="Back to profile"
+              className="w-8 h-8 -ml-1.5 rounded-full inline-flex items-center justify-center cursor-pointer
+                         text-[var(--auth-ink)] hover:bg-black/5 dark:hover:bg-white/10 transition"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <Bell className="w-5 h-5 text-amber-500" />
+            <span className="bhalyam-display text-[20px] text-[var(--auth-ink)] tracking-tight">
+              Notifications
+            </span>
+            {unreadCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-red-500 text-white shadow-xs">
+                {unreadCount} New
+              </span>
+            )}
+          </div>
+        }
+      >
+        <NotificationsPanelBody
+          notifications={notifications}
+          onUpdateNotifications={onUpdateNotifications}
+          onClose={onClose}
+          onOpenJoin={onOpenJoin}
+          isDark={isDark}
+        />
+      </SheetShell>
+    );
+  }
 
   return (
     <>
@@ -1235,6 +1231,41 @@ export function ProfileSheet({
           open={showEditModal}
           onClose={() => setShowEditModal(false)}
         />
+
+        {/* Notifications — migrated in from the old standalone bell sheet.
+            Lives as a drill-in row here instead of its own dialog; the
+            badge is the same "number/dot" unread signal the header bell
+            used to carry alone. */}
+        <button
+          type="button"
+          onClick={() => setView("notifications")}
+          className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-left cursor-pointer
+                     bg-white border border-[#E8D8BE] hover:bg-[#FFF8EE] active:scale-[0.99]
+                     focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60
+                     transition-all duration-150"
+        >
+          <span className="relative w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#FFF8EE] text-[#2A221B] border border-[#E8D8BE]">
+            {unreadCount > 0 ? (
+              <BellRing className="w-5 h-5 text-amber-500" />
+            ) : (
+              <Bell className="w-5 h-5 text-[#7B5024]" />
+            )}
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs ring-2 ring-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-extrabold text-[15px] leading-tight text-[#2A221B]">
+              Notifications
+            </span>
+            <span className="block text-[11px] mt-0.5 font-semibold text-[#7B5024]">
+              {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
+            </span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-[#7B5024] flex-shrink-0" />
+        </button>
 
       {signedIn ? (
         <div className="space-y-3">
@@ -1367,6 +1398,24 @@ export function MenuSheet({
           primary
         />
         <SheetAction
+          label="Recently played"
+          hint="Jump back into your recent games"
+          onClick={() => {
+            onClose();
+            navigate("/recently-played");
+          }}
+          icon={<Clock className="w-5 h-5 text-amber-500" />}
+        />
+        <SheetAction
+          label="Favorite games"
+          hint="Quick access to your starred titles"
+          onClick={() => {
+            onClose();
+            navigate("/favorites");
+          }}
+          icon={<Heart className="w-5 h-5 text-rose-500 fill-rose-500/20" />}
+        />
+        <SheetAction
           label="How to play"
           hint="Quick rules for every game"
           onClick={onClose}
@@ -1419,22 +1468,27 @@ export function MenuSheet({
 }
 
 
-export function NotificationsSheet({
-  open,
+/**
+ * Notifications body — the filter tabs + list that used to be the whole
+ * `NotificationsSheet` dialog. Now rendered inline inside `ProfileSheet`'s
+ * "notifications" view, so it owns no SheetShell/title of its own; the
+ * parent sheet supplies chrome, back button, and the unread-count title
+ * badge.
+ */
+function NotificationsPanelBody({
   notifications,
   onUpdateNotifications,
   onClose,
   onOpenJoin,
+  isDark,
 }: {
-  open: boolean;
   notifications: NotificationItem[];
   onUpdateNotifications: React.Dispatch<React.SetStateAction<NotificationItem[]>>;
   onClose: () => void;
   onOpenJoin: () => void;
+  isDark: boolean;
 }) {
   const [filterTab, setFilterTab] = useState<"all" | "invites" | "rewards">("all");
-  const [theme] = useTheme();
-  const isDark = theme === "dark";
   const navigate = useNavigate();
 
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -1450,24 +1504,7 @@ export function NotificationsSheet({
   });
 
   return (
-    <SheetShell
-      open={open}
-      onClose={onClose}
-      ariaLabel="Notifications"
-      titleLeft={
-        <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-amber-500" />
-          <span className={`bhalyam-display text-[20px] tracking-tight ${isDark ? "text-white" : "text-[#2A221B]"}`}>
-            Notifications
-          </span>
-          {unreadCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-red-500 text-white shadow-xs">
-              {unreadCount} New
-            </span>
-          )}
-        </div>
-      }
-    >
+    <>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           {(["all", "invites", "rewards"] as const).map((tab) => (
@@ -1600,7 +1637,7 @@ export function NotificationsSheet({
           ))
         )}
       </div>
-    </SheetShell>
+    </>
   );
 }
 

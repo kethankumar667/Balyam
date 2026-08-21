@@ -44,6 +44,11 @@ describe("Route Resolver & Context-Aware Navigation", () => {
     it("defaults unknown routes to 'home'", () => {
       expect(determineSection("/random-404")).toBe("home");
     });
+
+    it("maps /favorites and /recently-played to 'games' (Games Hub chrome, not a bare home fallback)", () => {
+      expect(determineSection("/favorites")).toBe("games");
+      expect(determineSection("/recently-played")).toBe("games");
+    });
   });
 
   describe("isItemActive", () => {
@@ -100,13 +105,18 @@ describe("Route Resolver & Context-Aware Navigation", () => {
       expect(active?.id).toBe("home-feed");
     });
 
-    it("marks requiresAuth items as locked for guests", () => {
+    it("marks upcoming items with Coming Soon badge and keeps profile/settings open", () => {
       const guestNav = resolveNavigation({ pathname: "/", isMember: false });
       const memberNav = resolveNavigation({ pathname: "/", isMember: true });
+      const tournamentsItem = guestNav.items.find((i) => i.id === "home-tournaments");
+      const leaderboardItem = guestNav.items.find((i) => i.id === "home-leaderboard");
       const guestSettings = guestNav.items.find((i) => i.id === "home-settings");
-      const memberSettings = memberNav.items.find((i) => i.id === "home-settings");
-      expect(guestSettings?.badge?.text).toBe("🔒 Lock");
-      expect(memberSettings?.badge?.text).toBeUndefined();
+      const guestProfile = guestNav.items.find((i) => i.id === "home-profile");
+
+      expect(tournamentsItem?.badge?.text).toBe("Coming Soon");
+      expect(leaderboardItem?.badge?.text).toBe("Coming Soon");
+      expect(guestSettings?.badge?.text).toBeUndefined();
+      expect(guestProfile?.badge?.text).toBeUndefined();
     });
 
     it("switches context to games navigation with header when on /games", () => {
@@ -115,6 +125,36 @@ describe("Route Resolver & Context-Aware Navigation", () => {
       expect(resolved.header?.title).toBe("Games Hub");
       const active = resolved.items.find((i) => i.active);
       expect(active?.id).toBe("games-retro");
+    });
+
+    /**
+     * Regression: these two Games Hub items used to point at /games with a
+     * search param (`?f=popular`, `?f=quick`) that GamesPage never read, so
+     * the link navigated but nothing filtered and "All Games" stayed
+     * highlighted. They now point at their own dedicated routes.
+     */
+    it("resolves Recently Played and Favorites to their own routes, active on their own pages", () => {
+      const onGames = resolveNavigation({ pathname: "/games" });
+      const recentItem = onGames.items.find((i) => i.id === "games-recent");
+      const favItem = onGames.items.find((i) => i.id === "games-favorites");
+      expect(recentItem?.fullHref).toBe("/recently-played");
+      expect(favItem?.fullHref).toBe("/favorites");
+      expect(recentItem?.active).toBe(false);
+      expect(favItem?.active).toBe(false);
+
+      const onRecent = resolveNavigation({ pathname: "/recently-played" });
+      expect(onRecent.id).toBe("games");
+      expect(onRecent.items.find((i) => i.id === "games-recent")?.active).toBe(true);
+
+      const onFavorites = resolveNavigation({ pathname: "/favorites" });
+      expect(onFavorites.id).toBe("games");
+      expect(onFavorites.items.find((i) => i.id === "games-favorites")?.active).toBe(true);
+    });
+
+    it("exposes Recently Played and Favorites on the Home section too", () => {
+      const home = resolveNavigation({ pathname: "/" });
+      expect(home.items.some((i) => i.id === "home-recent" && i.fullHref === "/recently-played")).toBe(true);
+      expect(home.items.some((i) => i.id === "home-favorites" && i.fullHref === "/favorites")).toBe(true);
     });
   });
 

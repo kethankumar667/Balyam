@@ -4,10 +4,12 @@ import type { GameKind } from "@shared/types";
 import { SearchNavIcon, GamesNavIcon } from "../../design-system/icons";
 import { ProfileEmptyMatchesArtwork } from "./ProfileArtwork";
 import { formatTimeAgo } from "../../lib/formatTimeAgo";
+import { MatchHistorySkeleton } from "../../design-system/dls";
 
 interface MatchHistoryListProps {
   matches: MatchHistoryItem[];
   total: number;
+  loading?: boolean;
   selectedGame?: GameKind;
   onSelectGame: (g?: GameKind) => void;
   onViewMatchDetail?: (matchId: string) => void;
@@ -15,6 +17,7 @@ interface MatchHistoryListProps {
 
 export default function MatchHistoryList({
   matches,
+  loading = false,
   selectedGame,
   onSelectGame,
   onViewMatchDetail,
@@ -107,7 +110,9 @@ export default function MatchHistoryList({
       </div>
 
       {/* Matches List */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <MatchHistorySkeleton count={5} />
+      ) : filtered.length === 0 ? (
         <div className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-3xl p-8 sm:p-12 text-center space-y-4 shadow-sm">
           <div className="flex justify-center">
             <ProfileEmptyMatchesArtwork className="w-36 h-36" />

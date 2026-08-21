@@ -178,8 +178,9 @@ export default function MemberLockedGate({
 
             {/* Perks List */}
             <div className="relative z-10 bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-2xl p-4 sm:p-5 text-left space-y-3">
-              <p className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono">
-                ✨ Included with Free Member Account:
+              <p className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" aria-hidden />
+                <span>Included with Free Member Account:</span>
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {meta.perks.map((perk, idx) => {

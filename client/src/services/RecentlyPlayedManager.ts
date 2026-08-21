@@ -78,34 +78,17 @@ class RecentlyPlayedManagerService {
   public recordRecentlyPlayed(slug: BhalyamGameSlug): void {
     const list = this.load();
     const now = Date.now();
-    const existingIndex = list.findIndex((item) => item.slug === slug);
+    const existing = list.find((item) => item.slug === slug);
 
-    let updatedItem: RecentlyPlayedItem;
-    if (existingIndex >= 0) {
-      const existing = list[existingIndex];
-      updatedItem = {
-        slug,
-        lastPlayedAt: now,
-        playCount: (existing.playCount || 1) + 1,
-      };
-      list.splice(existingIndex, 1);
-    } else {
-      updatedItem = {
-        slug,
-        lastPlayedAt: now,
-        playCount: 1,
-      };
-    }
+    const updatedItem: RecentlyPlayedItem = existing
+      ? { slug, lastPlayedAt: now, playCount: (existing.playCount || 1) + 1 }
+      : { slug, lastPlayedAt: now, playCount: 1 };
 
-    // Insert at front (newest first)
-    list.unshift(updatedItem);
-
-    // Limit to max 10
-    if (list.length > MAX_RECENT_ITEMS) {
-      list.length = MAX_RECENT_ITEMS;
-    }
-
-    this.cache = list;
+    // A NEW array, not the existing one mutated in place (splice/unshift/
+    // length= all mutate) — this.cache must change REFERENCE for
+    // useSyncExternalStore to detect the change; see getRecentlyPlayed's
+    // comment and FavouritesManager's identical fix for why.
+    this.cache = [updatedItem, ...list.filter((item) => item.slug !== slug)].slice(0, MAX_RECENT_ITEMS);
     this.save();
     this.notify();
   }

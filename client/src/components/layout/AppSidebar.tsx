@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, X, Sun, Moon } from "lucide-react";
 import { useNavigation } from "../../navigation/useNavigation";
 import type { NavBadge, ResolvedNavigationItem } from "../../navigation/types";
 import { useRoomStore } from "../../store/roomStore";
 import { useAuthStore } from "../../store/authStore";
 import SeatAvatar from "../profile/SeatAvatar";
+import { Tooltip } from "../../design-system/dls";
+import BhalyamLogo from "../bhalyam/BhalyamLogo";
+import { useTheme } from "../../lib/useTheme";
 
 interface AppSidebarProps {
   onOpenJoin?: () => void;
@@ -28,6 +31,8 @@ function getBadgeStyles(variant?: NavBadge["variant"]): string {
       return "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30";
     case "accent":
       return "bg-[var(--chrome-accent)]/15 text-[var(--chrome-accent)] border-[var(--chrome-accent)]/30";
+    case "muted":
+      return "bg-stone-500/10 text-stone-600 dark:text-stone-400 border-stone-500/25";
     default:
       return "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] border-[var(--chrome-border)]";
   }
@@ -54,12 +59,14 @@ export default function AppSidebar({
   const { playerName, avatarId } = useRoomStore();
   const isMember = useAuthStore((s) => s.isMember);
   const currentDisplayName = playerName.trim() || (isMember ? "Member" : "Guest");
+  const [theme, toggleTheme] = useTheme();
+  const isDark = theme === "dark";
 
   const renderItem = (item: ResolvedNavigationItem) => {
     const Icon = item.icon;
     const content = (
       <div
-        className={`relative w-full flex items-center justify-between gap-2.5 pl-4 pr-3.5 min-h-[44px] rounded-2xl
+        className={`relative w-full flex items-center justify-between gap-2.5 px-3.5 min-h-[44px] rounded-2xl
                     font-bold text-sm transition-all cursor-pointer select-none ${
                       item.active
                         ? "bg-[var(--chrome-active-bg)] text-[var(--chrome-active-ink)] font-extrabold shadow-2xs"
@@ -74,19 +81,19 @@ export default function AppSidebar({
           />
         )}
 
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <Icon
             className={`w-5 h-5 flex-shrink-0 transition-colors ${
               item.active ? "text-[var(--chrome-accent)]" : ""
             }`}
           />
-          <span className="truncate">{item.label}</span>
+          <span className="font-bold text-sm truncate">{item.label}</span>
         </div>
 
         {/* Badge Indicator */}
         {item.badge && (
           <span
-            className={`px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md border flex-shrink-0 ${getBadgeStyles(
+            className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider rounded-md border shrink-0 ${getBadgeStyles(
               item.badge.variant,
             )}`}
           >
@@ -96,9 +103,9 @@ export default function AppSidebar({
       </div>
     );
 
-    if (item.fullHref) {
-      return (
-        <li key={item.id} role="listitem">
+    const listItem = item.fullHref ? (
+      <li key={item.id} role="listitem">
+        <Tooltip content={item.label} side="right" align="center">
           <Link
             to={item.fullHref}
             onClick={onCloseMobile}
@@ -107,34 +114,75 @@ export default function AppSidebar({
           >
             {content}
           </Link>
-        </li>
+        </Tooltip>
+      </li>
+    ) : (
+      <li key={item.id} role="listitem">
+        <Tooltip content={item.label} side="right" align="center">
+          <button
+            type="button"
+            onClick={() => {
+              handleAction(item.action, item.actionParam);
+              onCloseMobile?.();
+            }}
+            className="w-full text-left block rounded-2xl focus:outline-none focus:ring-2 focus:ring-[var(--chrome-accent)]/50"
+          >
+            {content}
+          </button>
+        </Tooltip>
+      </li>
+    );
+
+    if (item.dividerBefore) {
+      return (
+        <div key={`group-${item.id}`} className="space-y-1">
+          <li aria-hidden="true" className="my-2 border-t border-[var(--chrome-hairline)] list-none" />
+          {listItem}
+        </div>
       );
     }
 
-    return (
-      <li key={item.id} role="listitem">
-        <button
-          type="button"
-          onClick={() => {
-            handleAction(item.action, item.actionParam);
-            onCloseMobile?.();
-          }}
-          className="w-full text-left block rounded-2xl focus:outline-none focus:ring-2 focus:ring-[var(--chrome-accent)]/50"
-        >
-          {content}
-        </button>
-      </li>
-    );
+    return listItem;
   };
 
   return (
     <aside
-      className="flex flex-col w-64 lg:h-[calc(100vh-5rem)] h-full lg:sticky lg:top-20 flex-shrink-0
+      className="flex flex-col w-full h-full lg:w-68 xl:w-72 lg:h-[calc(100vh-5rem)] lg:sticky lg:top-20 flex-shrink-0
                  border-r border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]
-                 p-4 overflow-y-auto"
+                 p-3.5 sm:p-4 overflow-y-auto"
       aria-label="Main Navigation"
     >
-      <div className="space-y-3">
+      <div className="space-y-3 flex-1 flex flex-col">
+        {/* Top Brand Mark — Mobile Drawer Only (Desktop has AppHeader logo above) */}
+        <div className="lg:hidden pb-3 mb-1 border-b border-[var(--chrome-hairline)] flex items-center justify-between">
+          <Link
+            to="/"
+            onClick={onCloseMobile}
+            className="flex items-center gap-2.5 group min-w-0 select-none"
+            aria-label="BHALYAM — go to the lounge home"
+          >
+            <BhalyamLogo size={36} decorative />
+            <div className="flex flex-col min-w-0">
+              <span className="font-display font-black text-lg leading-none tracking-wider text-[var(--chrome-ink)] group-hover:text-[var(--chrome-accent)] transition-colors">
+                BHALYAM
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--chrome-ink-soft)] leading-tight">
+                Game Lounge
+              </span>
+            </div>
+          </Link>
+          {onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="p-1.5 rounded-xl text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)] transition cursor-pointer"
+              aria-label="Close Navigation"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
         {/* Section Context Header with Back Link */}
         {section.header && (
           <div className="px-3 py-2.5 rounded-2xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] space-y-1.5 shadow-2xs">
@@ -178,58 +226,76 @@ export default function AppSidebar({
         )}
 
         {/* Navigation List */}
-        <nav aria-label={section.header?.title || "Sidebar"}>
+        <nav aria-label={section.header?.title || "Sidebar"} className="flex-1">
           <ul role="list" className="space-y-1">
             {section.items.map(renderItem)}
           </ul>
         </nav>
-      </div>
 
-      {/* Optional Sticky / Pinned Promo Note */}
-      {section.showPromoNote && (
-        <div className="mt-4 pt-2">
-          <div className="relative p-3.5 rounded-2xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-center transition-all shadow-sm select-none">
-            {/* Washi tape */}
-            <div className="absolute -top-2 left-2 w-9 h-3.5 bg-[var(--chrome-active-bg)] border-y border-[var(--chrome-border)] shadow-xs rotate-[-8deg]" />
-            <div className="absolute -top-2 right-2 w-9 h-3.5 bg-[var(--chrome-active-bg)] border-y border-[var(--chrome-border)] shadow-xs rotate-[8deg]" />
+        {/* Theme toggle — mobile drawer only; desktop already carries one in
+            AppHeader. This was the gap the header's own comment ("mobile has
+            it in drawer/menu") assumed was covered and wasn't — dark/light is
+            a local device preference, not a membership feature, so it needs
+            no `isMember` gate and works the same for a guest as for anyone
+            signed in. */}
+        <div className="lg:hidden">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            className="relative w-full flex items-center gap-3 px-3.5 min-h-[44px] rounded-2xl
+                       font-bold text-sm transition-all cursor-pointer select-none
+                       text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)]"
+          >
+            {isDark ? (
+              <Sun className="w-5 h-5 flex-shrink-0" />
+            ) : (
+              <Moon className="w-5 h-5 flex-shrink-0" />
+            )}
+            <span className="truncate">{isDark ? "Switch to light mode" : "Switch to dark mode"}</span>
+          </button>
+        </div>
 
-            <p className="font-script text-[17px] font-bold text-[var(--chrome-accent)] leading-tight">
-              Play Together.
-            </p>
-            <p className="font-script text-[17px] font-bold text-[var(--chrome-accent)] leading-tight">
-              Remember
-            </p>
-            <p className="font-script text-[17px] font-bold text-[var(--chrome-accent)] leading-tight">
-              Forever.
-            </p>
-            <p className="font-script text-[15px] font-bold text-[var(--chrome-accent)]" aria-hidden>
-              ♡
-            </p>
+        {/* Pinned Nostalgic Quote Card */}
+        {section.showPromoNote && (
+          <div className="mt-auto pt-3">
+            <div className="relative p-2.5 rounded-2xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-center transition-all shadow-xs select-none">
+              {/* Washi tape */}
+              <div className="absolute -top-1.5 left-3 w-7 h-2.5 bg-[var(--chrome-active-bg)] border-y border-[var(--chrome-border)] shadow-2xs rotate-[-6deg]" />
+              <div className="absolute -top-1.5 right-3 w-7 h-2.5 bg-[var(--chrome-active-bg)] border-y border-[var(--chrome-border)] shadow-2xs rotate-[6deg]" />
 
-            {/* Dotted flight loop */}
-            <div className="flex justify-center mt-1 text-[var(--chrome-accent)]">
-              <svg
-                viewBox="0 0 70 25"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-16 h-6"
-                aria-hidden
-              >
-                <path
-                  d="M 2 18 Q 25 2 45 15 Q 55 22 65 5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeDasharray="3 3"
-                />
-                <g transform="translate(54, 2) rotate(15) scale(0.65)">
-                  <polygon points="0,15 25,0 12,25 9,16" fill="currentColor" />
-                  <polygon points="25,0 9,16 12,25" fill="currentColor" opacity="0.7" />
-                </g>
-              </svg>
+              <p className="font-script text-[14px] font-bold text-[var(--chrome-accent)] leading-snug">
+                Play Together.
+              </p>
+              <p className="font-script text-[14px] font-bold text-[var(--chrome-accent)] leading-snug">
+                Remember Forever. <span className="text-xs">♡</span>
+              </p>
+
+              {/* Dotted flight loop with paper plane */}
+              <div className="flex justify-center mt-0.5 text-[var(--chrome-accent)]">
+                <svg
+                  viewBox="0 0 50 18"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-11 h-4"
+                  aria-hidden
+                >
+                  <path
+                    d="M 2 13 Q 18 2 32 11 Q 40 16 46 4"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeDasharray="2.5 2.5"
+                  />
+                  <g transform="translate(38, 1) rotate(15) scale(0.48)">
+                    <polygon points="0,15 25,0 12,25 9,16" fill="currentColor" />
+                    <polygon points="25,0 9,16 12,25" fill="currentColor" opacity="0.7" />
+                  </g>
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 }

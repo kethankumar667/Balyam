@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { History, Play, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { History, Play, Sparkles, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRecentlyPlayed } from "../../hooks/useRecentlyPlayed";
 import { BHALYAM_GAMES, type BhalyamGameSlug } from "./data";
@@ -58,6 +59,14 @@ export default function RecentlyPlayedSection({
             </p>
           </div>
         </div>
+
+        <Link
+          to="/recently-played"
+          className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-500 transition-colors select-none group"
+        >
+          <span>View all</span>
+          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+        </Link>
       </div>
 
       <div className="flex items-stretch gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-stone-700 snap-x">

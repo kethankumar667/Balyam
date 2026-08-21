@@ -5,3 +5,5 @@ export * from "./Spacing";
 export * from "./Surfaces";
 export * from "./Buttons";
 export * from "./PageBlueprints";
+export * from "./Tooltip";
+export * from "./Skeleton";

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Trophy } from "lucide-react";
 import type { Player } from "@shared/types";
 import RematchPanel from "./RematchPanel";
 
@@ -117,7 +118,7 @@ export default function GameOverScreen({
             boxShadow: "0 0 24px rgba(255,143,0,0.45)",
           }}
         >
-          <span className="text-xl" aria-hidden>🏆</span>
+          <Trophy className="w-5 h-5 text-[#1a0800] fill-[#1a0800]/30 shrink-0" aria-hidden />
           <span
             className="font-black text-base tracking-wide"
             style={{ color: "#1a0800" }}

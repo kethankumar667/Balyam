@@ -33,7 +33,8 @@ import {
   cardPoints,
   type MeldClassification,
 } from "./meldCheck";
-import { splitBySuit, suggestArrangement, suggestDiscard } from "./autoArrange";
+import { suggestArrangement, suggestDiscard } from "./autoArrange";
+import { freshMeldLayout, appendIncomingCards } from "./reconcileLayout";
 import { useRummyFeed, type RummyFeedItem } from "./useRummyFeed";
 import { isRummySoundEnabled, rummySfx, setRummySoundEnabled } from "./sound";
 import VoicePanel from "../../components/VoicePanel";
@@ -216,18 +217,17 @@ export default function RummyBoardDesktop({
   const [controlsOpen, setControlsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const initialized = useRef(false);
-  const justDrewFromOpenRef = useRef(false);
-  const prevOpenTopRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (state.openPile && state.openPile.length > 0) {
-      prevOpenTopRef.current = state.openPile[state.openPile.length - 1].id;
-    } else if (state.topOfOpenPile) {
-      prevOpenTopRef.current = state.topOfOpenPile.id;
-    }
-  }, [state.openPile, state.topOfOpenPile]);
-
-  /* ─── Reconcile hand → layout: ALL cards sit inside meld groups ─── */
+  /* ─── Reconcile hand → layout: ALL cards sit inside meld groups ───
+   * The open-deck pickup, if any, always gets its own dedicated meld —
+   * driven by `state.lastDrawnCardId`/`lastDrawSource` (server-authoritative,
+   * per-viewer) rather than a client-side ref. A ref survives only as long
+   * as this component instance does; a page refresh, a reconnect, or the
+   * board swapping between RummyBoardDesktop/RummyBoardMobile at a viewport
+   * breakpoint are all full remounts that would silently reset it and let a
+   * just-drawn open card fall into the generic suit-matching path below. The
+   * server field survives every one of those because it's just part of the
+   * next state snapshot, not local memory. */
   useEffect(() => {
     setLayout((prev) => {
       const known = new Set<string>(prev.groups.flatMap((g) => g.cardIds));
@@ -242,50 +242,24 @@ export default function RummyBoardDesktop({
       }
       initialized.current = true;
 
-      // If no groups exist yet (e.g. initial deal), split hand by suit into meld groups
+      const openPickupId =
+        state.lastDrawSource === "open" && state.lastDrawnCardId && handIds.has(state.lastDrawnCardId)
+          ? state.lastDrawnCardId
+          : null;
+
+      // If no groups exist yet (initial deal, OR the first reconciliation
+      // pass after a remount mid-turn), split the hand by suit — except the
+      // open-deck pickup, carved out first so it never lands in a suit lane
+      // alongside an existing card.
       if (filteredGroups.length === 0) {
-        const suitLanes = splitBySuit(hand);
-        return {
-          groups: suitLanes.slice(0, MAX_GROUPS).map((cards) => ({
-            id: newGroupId(),
-            cardIds: cards.map((c) => c.id),
-          })),
-          ungrouped: [],
-        };
+        return freshMeldLayout(hand, openPickupId, newGroupId, MAX_GROUPS);
       }
 
-      // Add incoming cards: if card was taken from the open deck, ALWAYS place it into a new meld
-      const newGroups = filteredGroups.map((g) => ({ ...g, cardIds: [...g.cardIds] }));
-      for (const id of incoming) {
-        const card = byId.get(id);
-        if (!card) continue;
-
-        const isFromOpen =
-          justDrewFromOpenRef.current ||
-          (prevOpenTopRef.current !== null && id === prevOpenTopRef.current);
-
-        if (isFromOpen) {
-          // Open deck draw: never align with existing melds; start in a dedicated new meld group
-          newGroups.push({ id: newGroupId(), cardIds: [id] });
-          continue;
-        }
-
-        const matchingGroup = newGroups.find((g) => {
-          const firstCard = byId.get(g.cardIds[0]);
-          return firstCard && firstCard.suit === card.suit;
-        });
-        if (matchingGroup) {
-          matchingGroup.cardIds.push(id);
-        } else if (newGroups.length < MAX_GROUPS) {
-          newGroups.push({ id: newGroupId(), cardIds: [id] });
-        } else if (newGroups.length > 0) {
-          newGroups[0].cardIds.push(id);
-        }
-      }
-      justDrewFromOpenRef.current = false;
+      // Add incoming cards: if a card was taken from the open deck, ALWAYS place it into a new meld
+      const newGroups = appendIncomingCards(filteredGroups, incoming, byId, openPickupId, newGroupId, MAX_GROUPS);
       return { groups: newGroups, ungrouped: [] };
     });
-  }, [hand, byId, wildRank]);
+  }, [hand, byId, wildRank, state.lastDrawnCardId, state.lastDrawSource]);
 
   /* ─── Stream arrangement to server (debounced) ─── */
   useEffect(() => {
@@ -402,8 +376,6 @@ export default function RummyBoardDesktop({
       setError("Printed jokers can't be drawn from the discard pile");
       return;
     }
-    justDrewFromOpenRef.current = true;
-    prevOpenTopRef.current = state.topOfOpenPile.id;
     getSocket().emit("game:move", { type: "draw", data: { from: "open" } });
     rummySfx.draw();
   }
@@ -675,23 +647,6 @@ export default function RummyBoardDesktop({
       ungrouped: [],
     }));
   }
-  function autoArrange() {
-    const all: CardType[] = [
-      ...layout.groups.flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is CardType => !!c)),
-    ];
-    if (all.length === 0) return;
-    const lanes = splitBySuit(all);
-    setLayout({
-      groups: lanes.slice(0, MAX_GROUPS).map((cards) => ({
-        id: newGroupId(),
-        cardIds: cards.map((c) => c.id),
-      })),
-      ungrouped: [],
-    });
-    setSelected(new Set());
-    rummySfx.meldFormed();
-  }
-
   const [pendingHint, setPendingHint] = useState<{
     groups: CardType[][];
     ungrouped: CardType[];
@@ -825,7 +780,7 @@ export default function RummyBoardDesktop({
          *   Space -> Discard the selected card
          *   G -> Group selected cards
          *   S -> Sort meld groups
-         *   A -> Auto-arrange hand
+         *   H -> Smart Hint (preview only — never plays automatically)
          *   Enter -> Declare hand
          *   Escape -> Clear card selection
          */
@@ -844,8 +799,8 @@ export default function RummyBoardDesktop({
         case "s":
           e.preventDefault(); sortMeldGroups();
           break;
-        case "a":
-          e.preventDefault(); autoArrange();
+        case "h":
+          e.preventDefault(); requestSmartHint();
           break;
         case " ":
           if (canDiscardOrDeclare && selected.size === 1) {
@@ -1181,13 +1136,12 @@ export default function RummyBoardDesktop({
               title="Sort cards within all meld groups by suit and rank (S)"
             />
             <ToolButton
-              icon={<AutoGroupIcon />}
-              label="Auto Group"
-              note="Group Cards"
-              onClick={autoArrange}
-              title="Tidy the whole hand into suit lanes (A)"
+              icon={<HintIcon />}
+              label="Hint"
+              note="Suggest Move"
+              onClick={requestSmartHint}
+              title="Smart Hint: previews the best melds & discard for your approval — never plays automatically (H)"
             />
-
             <PointsReadout hand={livePoints.handTotal} ground={livePoints.caughtNow} />
 
             <button
@@ -1420,26 +1374,6 @@ export default function RummyBoardDesktop({
       {/* 5-second winner burst — pointer-events: none so the scorecard
           modal underneath stays interactive. */}
       {winnerBurstKey != null && <WinnerCelebrationBurst key={winnerBurstKey} />}
-
-      {/* Junglee Rummy Smart Hint button — requests proposed arrangement for approval */}
-      {state.phase === "playing" && (
-        <div className="absolute left-6 top-6 z-[45]">
-          <button
-            onClick={requestSmartHint}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider transition transform hover:scale-105 active:scale-95 cursor-pointer"
-            style={{
-              background: "linear-gradient(135deg, #F59E0B, #D97706)",
-              color: "#1F1300",
-              border: "1.5px solid #FCD34D",
-              boxShadow: "0 4px 14px rgba(245,158,11,0.45), inset 0 1px 0 rgba(255,255,255,0.4)",
-            }}
-            title="Smart Hint: Previews best melds & optimal discard for your approval"
-          >
-            <span>💡</span>
-            <span>HINT</span>
-          </button>
-        </div>
-      )}
 
       {/* Smart Hint Approval Banner — requires player click on APPROVE before touching the hand */}
       {pendingHint && (
@@ -2279,13 +2213,11 @@ function SortIcon() {
   );
 }
 
-function AutoGroupIcon() {
+function HintIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <rect x="3" y="4" width="7" height="7" rx="1.6" />
-      <rect x="14" y="4" width="7" height="7" rx="1.6" />
-      <rect x="3" y="14" width="7" height="7" rx="1.6" />
-      <path d="M17.5 14v7M14 17.5h7" strokeLinecap="round" />
+      <path d="M9 18h6M10 21h4" strokeLinecap="round" />
+      <path d="M12 3a6 6 0 0 0-3.6 10.8c.6.45 1.1 1.35 1.1 2.2h5c0-.85.5-1.75 1.1-2.2A6 6 0 0 0 12 3Z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Copy, QrCode } from "lucide-react";
+import { Copy, QrCode, Check } from "lucide-react";
 import QrCodeModal from "./QrCodeModal";
+import { Tooltip } from "../design-system/dls";
 
 export default function RoomCode({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -22,24 +23,28 @@ export default function RoomCode({ code }: { code: string }) {
         <div className="font-mono text-base font-black tracking-[0.2em] text-[#2B3550] dark:text-slate-100 bg-[#FFF9EE] dark:bg-[#0F1420] border border-dashed border-[#E6C99F] dark:border-amber-500/40 rounded-xl px-2.5 py-1">
           {code}
         </div>
-        <button
-          type="button"
-          onClick={copy}
-          className="inline-flex items-center gap-1 text-xs bg-[#EA5A1F] hover:bg-[#D84F17] text-white font-bold rounded-xl px-3 py-1.5 transition shadow-sm active:scale-95 cursor-pointer"
-          title="Copy room code"
-        >
-          <Copy size={14} aria-hidden />
-          {copied ? "Copied" : "Copy"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setQrOpen(true)}
-          className="inline-flex items-center gap-1 text-xs bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700 border border-[#E8D8BE] dark:border-slate-700 text-[#352C24] dark:text-slate-200 font-semibold rounded-xl px-2.5 py-1.5 transition shadow-sm active:scale-95 cursor-pointer"
-          title="Show QR Code"
-        >
-          <QrCode size={14} aria-hidden />
-          QR Code
-        </button>
+        <Tooltip content={copied ? "Copied to clipboard!" : "Copy 6-letter room code"} side="top">
+          <button
+            type="button"
+            onClick={copy}
+            className="inline-flex items-center gap-1 text-xs bg-[#EA5A1F] hover:bg-[#D84F17] text-white font-bold rounded-xl px-3 py-1.5 transition shadow-sm active:scale-95 cursor-pointer"
+            aria-label={copied ? "Copied" : "Copy room code"}
+          >
+            {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </Tooltip>
+        <Tooltip content="Display QR code for mobile scanning" side="top">
+          <button
+            type="button"
+            onClick={() => setQrOpen(true)}
+            className="inline-flex items-center gap-1 text-xs bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700 border border-[#E8D8BE] dark:border-slate-700 text-[#352C24] dark:text-slate-200 font-semibold rounded-xl px-2.5 py-1.5 transition shadow-sm active:scale-95 cursor-pointer"
+            aria-label="Show QR Code"
+          >
+            <QrCode size={14} aria-hidden />
+            QR Code
+          </button>
+        </Tooltip>
       </div>
 
       <QrCodeModal

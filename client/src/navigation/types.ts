@@ -37,6 +37,7 @@ export interface NavigationItem {
   badge?: NavBadge;
   requiresAuth?: boolean;
   disabled?: boolean;
+  dividerBefore?: boolean;
   isActive?: (pathname: string, search: string, hash: string) => boolean;
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Trophy, Target, Users, ArrowLeft, Swords } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import { apiFetch, usePlayerId } from "../lib/playerIdentity";
 
@@ -7,7 +8,7 @@ import PlayerRankCard from "../features/rankings/PlayerRankCard";
 import LeaderboardTable from "../features/rankings/LeaderboardTable";
 import ChallengesBoard from "../features/rankings/ChallengesBoard";
 import RecentPlayersHub from "../features/rankings/RecentPlayersHub";
-import { SkeletonLoader } from "../design-system/premium";
+import { LeaderboardSkeleton } from "../design-system/dls";
 
 import type {
   PlayerRank,
@@ -40,6 +41,7 @@ export default function LeaderboardPage() {
   const [challenges, setChallenges] = useState<PlayerChallenges | null>(null);
   const [recentPlayers, setRecentPlayers] = useState<RecentPlayer[]>([]);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
   if (!isMember) {
     return <MemberLockedGate feature="leaderboard" />;
@@ -70,8 +72,10 @@ export default function LeaderboardPage() {
       if (chalRes.challenges) setChallenges(chalRes.challenges);
       if (recentRes.recent) setRecentPlayers(recentRes.recent);
       if (friendsRes.friends) setFriends(friendsRes.friends);
+      setLoading(false);
     } catch (err) {
       console.warn("Could not load full ranking data:", err);
+      setLoading(false);
     }
   };
 
@@ -119,15 +123,16 @@ export default function LeaderboardPage() {
               to="/"
               className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
             >
-              <ArrowLeftIcon className="w-4 h-4" />
-              Back to Lounge
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Lounge</span>
             </Link>
             <div className="flex items-center gap-4 text-xs font-bold">
               <Link
                 to="/tournaments"
-                className="text-amber-400 hover:text-amber-300 transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center"
+                className="text-amber-400 hover:text-amber-300 transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center gap-1.5"
               >
-                🏟️ Tournaments & Seasons
+                <Swords className="w-3.5 h-3.5" />
+                <span>Tournaments & Seasons</span>
               </Link>
               <Link
                 to="/profile"
@@ -138,78 +143,88 @@ export default function LeaderboardPage() {
             </div>
           </div>
 
-          {/* Player's Live Rank Card */}
-          {rankData && (
-            <PlayerRankCard
-              rank={rankData.rank}
-              progression={rankData.progression}
-              stats={playerStats}
-            />
-          )}
+          {/* Loading Skeleton */}
+          {loading && !rankData ? (
+            <LeaderboardSkeleton />
+          ) : (
+            <>
+              {/* Player's Live Rank Card */}
+              {rankData && (
+                <PlayerRankCard
+                  rank={rankData.rank}
+                  progression={rankData.progression}
+                  stats={playerStats}
+                />
+              )}
 
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 border-b border-stone-800/60 dark:border-zinc-800/60 pb-3 overflow-x-auto text-xs font-bold">
-            <button
-              onClick={() => setActiveTab("leaderboard")}
-              className={`px-4 min-h-[44px] inline-flex items-center justify-center rounded-xl transition shrink-0 ${
-                activeTab === "leaderboard"
-                  ? "bg-amber-500 text-zinc-950 font-black shadow"
-                  : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
-              }`}
-            >
-              🏆 Competitive Leaderboards
-            </button>
-            <button
-              onClick={() => setActiveTab("challenges")}
-              className={`px-4 min-h-[44px] inline-flex items-center justify-center rounded-xl transition shrink-0 ${
-                activeTab === "challenges"
-                  ? "bg-amber-500 text-zinc-950 font-black shadow"
-                  : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
-              }`}
-            >
-              🎯 Daily & Weekly Quests
-            </button>
-            <button
-              onClick={() => setActiveTab("social")}
-              className={`px-4 min-h-[44px] inline-flex items-center justify-center rounded-xl transition shrink-0 ${
-                activeTab === "social"
-                  ? "bg-amber-500 text-zinc-950 font-black shadow"
-                  : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
-              }`}
-            >
-              👥 Recent Opponents & Friends ({recentPlayers.length})
-            </button>
-          </div>
+              {/* Navigation Tabs */}
+              <div className="flex items-center gap-2 border-b border-stone-800/60 dark:border-zinc-800/60 pb-3 overflow-x-auto text-xs font-bold">
+                <button
+                  onClick={() => setActiveTab("leaderboard")}
+                  className={`px-4 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl transition shrink-0 ${
+                    activeTab === "leaderboard"
+                      ? "bg-amber-500 text-zinc-950 font-black shadow"
+                      : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
+                  }`}
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span>Competitive Leaderboards</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab("challenges")}
+                  className={`px-4 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl transition shrink-0 ${
+                    activeTab === "challenges"
+                      ? "bg-amber-500 text-zinc-950 font-black shadow"
+                      : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
+                  }`}
+                >
+                  <Target className="w-4 h-4" />
+                  <span>Daily & Weekly Quests</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab("social")}
+                  className={`px-4 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl transition shrink-0 ${
+                    activeTab === "social"
+                      ? "bg-amber-500 text-zinc-950 font-black shadow"
+                      : "bg-stone-900/40 text-stone-400 hover:text-stone-200"
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Recent Opponents & Friends ({recentPlayers.length})</span>
+                </button>
+              </div>
 
-          {/* Tab 1: Leaderboard */}
-          {activeTab === "leaderboard" && (
-            <LeaderboardTable
-              entries={leaderboardEntries}
-              total={leaderboardTotal}
-              selectedMetric={selectedMetric}
-              selectedGame={selectedGame}
-              onSelectMetric={setSelectedMetric}
-              onSelectGame={setSelectedGame}
-              onAddFriend={handleAddFriend}
-            />
-          )}
+              {/* Tab 1: Leaderboard */}
+              {activeTab === "leaderboard" && (
+                <LeaderboardTable
+                  entries={leaderboardEntries}
+                  total={leaderboardTotal}
+                  selectedMetric={selectedMetric}
+                  selectedGame={selectedGame}
+                  onSelectMetric={setSelectedMetric}
+                  onSelectGame={setSelectedGame}
+                  onAddFriend={handleAddFriend}
+                />
+              )}
 
-          {/* Tab 2: Daily & Weekly Quests */}
-          {activeTab === "challenges" && challenges && (
-            <ChallengesBoard
-              challenges={challenges}
-              onClaimReward={handleClaimReward}
-            />
-          )}
+              {/* Tab 2: Daily & Weekly Quests */}
+              {activeTab === "challenges" && challenges && (
+                <ChallengesBoard
+                  challenges={challenges}
+                  onClaimReward={handleClaimReward}
+                />
+              )}
 
-          {/* Tab 3: Recent Players & Social Hub */}
-          {activeTab === "social" && (
-            <RecentPlayersHub
-              recentPlayers={recentPlayers}
-              friends={friends}
-              onAddFriend={handleAddFriend}
-              onRemoveFriend={handleRemoveFriend}
-            />
+              {/* Tab 3: Recent Players & Social Hub */}
+              {activeTab === "social" && (
+                <RecentPlayersHub
+                  recentPlayers={recentPlayers}
+                  friends={friends}
+                  onAddFriend={handleAddFriend}
+                  onRemoveFriend={handleRemoveFriend}
+                />
+              )}
+            </>
           )}
         </div>
       </div>

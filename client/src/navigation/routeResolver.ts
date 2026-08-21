@@ -37,7 +37,12 @@ export function determineSection(pathname: string): NavigationSectionId {
     return "home";
   }
 
-  if (normalized.startsWith("/games") || RETRO_GAME_ROUTES.has(normalized)) {
+  if (
+    normalized.startsWith("/games") ||
+    normalized.startsWith("/favorites") ||
+    normalized.startsWith("/recently-played") ||
+    RETRO_GAME_ROUTES.has(normalized)
+  ) {
     return "games";
   }
 
@@ -155,10 +160,10 @@ export function resolveNavigation({
       ? `${item.path}${item.search || ""}${item.hash || ""}`
       : undefined;
 
-    // Show locked badge if member-only and current user is a guest
+    // Show locked/member badge only if member-only and item has no explicit badge
     let badge = item.badge;
-    if (item.requiresAuth && !isMember) {
-      badge = { text: "🔒 Lock", variant: "amber" };
+    if (item.requiresAuth && !isMember && !badge) {
+      badge = { text: "Member", variant: "amber" };
     }
 
     return {

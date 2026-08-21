@@ -4,6 +4,7 @@ import { RANK_TIERS } from "@shared/ranking/RankingRules";
 import type { GameKind } from "@shared/types";
 import { RankTierIcon, GameCategoryIcon, SearchNavIcon, AddFriendUserIcon, GoldRankIcon, SilverRankIcon, BronzeRankIcon } from "../../design-system/icons";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import CountUp from "../../components/CountUp";
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -169,10 +170,18 @@ export default function LeaderboardTable({
                           {item.tier}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center font-bold text-amber-400">{item.rating}</td>
-                      <td className="py-3 px-4 text-center font-bold text-emerald-400">{item.wins}</td>
-                      <td className="py-3 px-4 text-center font-bold text-sky-400">{item.winRate}%</td>
-                      <td className="py-3 px-4 text-center text-stone-400">{item.matchesPlayed}</td>
+                      <td className="py-3 px-4 text-center font-bold text-amber-400">
+                        <CountUp end={item.rating} format="raw" duration={1.2} />
+                      </td>
+                      <td className="py-3 px-4 text-center font-bold text-emerald-400">
+                        <CountUp end={item.wins} format="raw" duration={1.2} />
+                      </td>
+                      <td className="py-3 px-4 text-center font-bold text-sky-400">
+                        <CountUp end={item.winRate} suffix="%" format="raw" duration={1.2} />
+                      </td>
+                      <td className="py-3 px-4 text-center text-stone-400">
+                        <CountUp end={item.matchesPlayed} format="raw" duration={1.2} />
+                      </td>
                       <td className="py-3 px-4 text-right">
                         {onAddFriend && (
                           <button
@@ -230,19 +239,27 @@ export default function LeaderboardTable({
                   <div className="grid grid-cols-4 gap-1 pt-1 border-t border-stone-800/80 text-center text-[11px]">
                     <div>
                       <span className="text-[9px] text-stone-500 block">Rating</span>
-                      <span className="font-bold text-amber-400">{item.rating}</span>
+                      <span className="font-bold text-amber-400">
+                        <CountUp end={item.rating} format="raw" duration={1.2} />
+                      </span>
                     </div>
                     <div>
                       <span className="text-[9px] text-stone-500 block">Wins</span>
-                      <span className="font-bold text-emerald-400">{item.wins}</span>
+                      <span className="font-bold text-emerald-400">
+                        <CountUp end={item.wins} format="raw" duration={1.2} />
+                      </span>
                     </div>
                     <div>
                       <span className="text-[9px] text-stone-500 block">Win Rate</span>
-                      <span className="font-bold text-sky-400">{item.winRate}%</span>
+                      <span className="font-bold text-sky-400">
+                        <CountUp end={item.winRate} suffix="%" format="raw" duration={1.2} />
+                      </span>
                     </div>
                     <div>
                       <span className="text-[9px] text-stone-500 block">Matches</span>
-                      <span className="text-stone-300">{item.matchesPlayed}</span>
+                      <span className="text-stone-300">
+                        <CountUp end={item.matchesPlayed} format="raw" duration={1.2} />
+                      </span>
                     </div>
                   </div>
                 </div>

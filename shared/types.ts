@@ -352,6 +352,16 @@ export interface RummyPublicState {
 
 export interface RummyPlayerState extends RummyPublicState {
   myHand: Card[];
+  /**
+   * The card id YOU most recently drew, and which pile it came from — null
+   * once you've discarded/declared/dropped, or if it isn't your draw to
+   * report. Authoritative signal for "place this card in a new meld, not
+   * an existing one" on open-deck pickups: unlike a client-side ref, this
+   * survives a page refresh, a reconnect, or the mobile/desktop board
+   * swapping (a full component remount).
+   */
+  lastDrawnCardId: string | null;
+  lastDrawSource: "open" | "closed" | null;
 }
 
 export interface RummyDrawMove {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Ticket, Users, Mic, MessageSquare, X } from "lucide-react";
 import type { ChatMessage, Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
 import { captureAndShareScreenshot } from "../lib/screenshot";
@@ -299,19 +300,37 @@ export default function InlineRoomRail({
           >
             <div className="flex items-center justify-between pb-2 mb-2 flex-shrink-0 border-b border-[#E8D8BE]">
               <h2 className="text-sm uppercase tracking-wider font-extrabold text-[#5C4A38] flex items-center gap-1.5">
-                <span>
-                  {open === "room" && "🎟️ Room"}
-                  {open === "players" && "👥 Players"}
-                  {open === "voice" && "🎙️ Voice"}
-                  {open === "chat" && "💬 Chat"}
-                </span>
+                {open === "room" && (
+                  <>
+                    <Ticket className="w-4 h-4 text-amber-700" aria-hidden />
+                    <span>Room</span>
+                  </>
+                )}
+                {open === "players" && (
+                  <>
+                    <Users className="w-4 h-4 text-amber-700" aria-hidden />
+                    <span>Players</span>
+                  </>
+                )}
+                {open === "voice" && (
+                  <>
+                    <Mic className="w-4 h-4 text-amber-700" aria-hidden />
+                    <span>Voice</span>
+                  </>
+                )}
+                {open === "chat" && (
+                  <>
+                    <MessageSquare className="w-4 h-4 text-amber-700" aria-hidden />
+                    <span>Chat</span>
+                  </>
+                )}
               </h2>
               <button
                 onClick={() => setOpen(null)}
                 aria-label="Close panel"
-                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full bg-[#EFE2C7] hover:bg-[#E5D4B2] text-[#5C4A38] font-black flex items-center justify-center cursor-pointer transition active:scale-95 text-sm"
+                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full bg-[#EFE2C7] hover:bg-[#E5D4B2] text-[#5C4A38] font-black flex items-center justify-center cursor-pointer transition active:scale-95"
               >
-                ✕
+                <X className="w-4 h-4" aria-hidden />
               </button>
             </div>
 

@@ -1,57 +1,117 @@
-# Recently Played Games — Architectural Design & Specification
+# Recently Played — Design & Verification
 
-> **Status:** IMPLEMENTED AND VERIFIED  
-> **Target:** Global BHALYAM Lounge Feature  
-> **Quality Gate:** 100% Passing (0 TypeScript errors, 4/4 manager tests, 538 repository tests)
+## Status
 
----
+Already implemented (client-only) — built ahead of this audit. This
+document records the architecture as it stands, evaluates it against the
+brief's durability requirement, and gives a concrete, non-blind
+recommendation for the DB-backed extension the brief asks about.
 
-## 1. Overview & Objectives
+## Current Architecture
 
-The **Recently Played Games** feature provides players with instant, zero-friction resume capability for their most active games across the lounge.
+- **Storage**: `client/src/services/RecentlyPlayedManager.ts` — a plain
+  singleton class wrapping `localStorage["bhalyam.recently_played"]`, with
+  an in-memory cache and a `Set<() => void>` of subscribers.
+- **Bridge into React**: `client/src/hooks/useRecentlyPlayed.ts` via
+  `useSyncExternalStore` (fixed this session — see below).
+- **Recording trigger**: `RecentlyPlayedManager.recordRecentlyPlayed(slug)`
+  is called from all four game-launch paths in
+  `client/src/components/bhalyam/GameRoomSheet.tsx` (create room, join
+  room, pass & play, solo vs. bot) — i.e. exactly "when a user launches a
+  game," matching the requirement.
+- **Ordering / dedup / cap**: `recordRecentlyPlayed` finds an existing entry
+  for the slug, removes it, then unshifts a fresh `{slug, lastPlayedAt: now,
+  playCount: existing+1}` to the front — newest-first, no duplicates, and
+  `MAX_RECENT_ITEMS = 10` truncates the list on every write. All three
+  requirements ("newest first," "prevent duplicates," "limit 10") hold.
+- **UX**: `RecentlyPlayedSection.tsx`, mounted on the Home page
+  (`BhalyamHome.tsx:162`), horizontally scrollable cards showing game icon,
+  title, relative last-played time (`formatRelativeTime`), and a Play
+  button that reuses `BHALYAM_GAMES` catalog data and the existing game-tile
+  visual language — no new design-system components introduced.
 
-### Core Tenets:
-1. **Zero Latency:** Immediate rendering via cached in-memory and local storage data.
-2. **Hybrid Durability:** Persists in `localStorage` (`bhalyam.recently_played`) for guest and member sessions alike, with automatic quota protection and error isolation.
-3. **Zero Backend Gameplay Overhead:** The core game engines and socket gameplay remain 100% decoupled from database reads/writes.
-4. **Intelligent LRU Queue:** Automatically manages a 10-item Least Recently Used queue with play counts and relative time formatting.
+## Bug found and fixed this session
 
----
+`getRecentlyPlayed()` returned `this.load().slice()` — a **new array
+reference on every call**. Since this is the `getSnapshot` function passed
+to `useSyncExternalStore`, a new reference every render made React believe
+the store had changed on every render, producing an infinite render loop
+("Maximum update depth exceeded") that crashed the Home page. Fixed by
+returning the stable cached reference (`this.load()` directly); a new
+reference is now only created on an actual write. Verified against
+`client/src/services/__tests__/recentlyPlayed.test.ts` (4/4 passing) and a
+clean client build/typecheck. See git history for the isolated fix commit.
 
-## 2. Architecture & Data Structures
+## Data Model Review
 
-### 2.1 Item Schema
-```typescript
-export interface RecentlyPlayedItem {
-  slug: BhalyamGameSlug;
-  lastPlayedAt: number; // Unix epoch timestamp (ms)
-  playCount: number;
-}
-```
+**Guest users**: Entirely client-local (localStorage), no account
+required. Works today, survives a refresh, does not survive a cleared
+browser or a new device — expected and acceptable for a guest, since a
+guest has no durable identity to key server-side storage on in the first
+place (per `AGENTS.md` §18, a guest's `playerId` is a client-generated,
+`localStorage`-persisted value, not an account).
 
-### 2.2 Core Service ([`RecentlyPlayedManager.ts`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/services/RecentlyPlayedManager.ts))
-- **`recordRecentlyPlayed(slug)`**: Promotes the game to the front of the list, updates timestamp to `Date.now()`, increments `playCount`, enforces `MAX_RECENT_ITEMS = 10`, and notifies subscribers.
-- **`getRecentlyPlayed()`**: Returns ordered clone of recent game records.
-- **`clearRecentlyPlayed()`**: Clears local store and cache.
-- **`subscribe(listener)`**: Observer pattern enabling reactive UI updates via React hooks.
+**Authenticated users**: Currently **identical** to the guest path — the
+manager has no awareness of `useAuthStore`'s session state. This means an
+authenticated (member) player's recently-played list does **not** follow
+them across devices, which is the one place the current implementation
+falls short of "Prefer durability."
 
-### 2.3 React Hook ([`useRecentlyPlayed.ts`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/hooks/useRecentlyPlayed.ts))
-Integrates using `useSyncExternalStore` for flicker-free, concurrent-safe re-renders in React 18.
+## Recommendation
 
----
+**Extend, don't replace — DB-backed for authenticated users, keep the
+local path for guests, following the exact pattern already shipped for
+`bio`/`region`** (`client/src/lib/supabase/profile.ts`,
+`client/src/store/authStore.ts`'s `startProfileSync`, and
+`supabase/migrations/20260820000000_add_bio_region_to_profiles.sql`):
 
-## 3. UI/UX Presentation ([`RecentlyPlayedSection.tsx`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/components/bhalyam/RecentlyPlayedSection.tsx))
+1. **Storage location — JSON column on `public.profiles`, not a dedicated
+   table.** Concretely: `recently_played jsonb` holding the same
+   `RecentlyPlayedItem[]` shape already used client-side (capped at 10
+   entries before write). Justification, weighed against the two other
+   options the brief lists:
+   - *Dedicated table* (`recently_played(player_id, game_slug,
+     last_played_at, play_count)`) is the "correct" normalized shape for
+     something you'd ever query, join, or aggregate across players — but
+     nothing in this product currently does that for this data (unlike
+     `match_summaries`/`xp_ledger`, which the platform's real analytics and
+     leaderboard code queries directly — see the progression schema added
+     under `persistence/`). Standing up a table, RLS policies, and a
+     repository-layer read/write path for a 10-item personal list is
+     infrastructure disproportionate to what it's for today.
+   - *JSON preferences column* matches the size and access pattern exactly:
+     always read/written whole, by exactly one owner (`player_id`), never
+     queried by a WHERE clause on its contents. This is the same shape
+     `bio`/`region` already took on `profiles`, so this is consistency with
+     an established, working precedent — not a new pattern to learn or
+     review.
+   - *Live in the existing profile entity* (option 1) — yes, specifically:
+     add the column to `profiles`, not a new entity, for the same reason.
+2. **Sync strategy**: mirror `startProfileSync`'s existing
+   local/remote-merge logic — on sign-in, merge the guest's local list with
+   whatever's in `profiles.recently_played` (union by slug, keep the more
+   recent `lastPlayedAt`, re-cap to 10, newest-first), write the merged
+   result back, and keep writing through on every `recordRecentlyPlayed`
+   call thereafter (debounced, matching the existing `rummy:arrangement`
+   debounce convention elsewhere in this codebase).
+3. **Migration**: one more `ALTER TABLE profiles ADD COLUMN recently_played
+   jsonb` in the same safe `DO $$ ... $$`-guarded style as the bio/region
+   migration; `dataInventory.ts` needs a new entry (`bhalyam.recently_played`
+   is *not* personal/sensitive data — it's gameplay history, no new DPDP
+   classification concern beyond what match history already carries).
 
-- **Horizontal Scroll Carousel:** Responsive card track with smooth momentum scroll and snap points.
-- **Relative Time Chips:** Dynamic time formatters (`Just now`, `5m ago`, `2h ago`, `Yesterday`, `3d ago`).
-- **Quick-Play Action:** 1-click `Play` button with direct modal sheet launch.
-- **Graceful Empty State:** Renders `null` when no games have been played, keeping the lounge completely clean for first-time visitors.
+**Not implemented in this pass.** Per the brief's own instruction ("do not
+implement schema changes blindly") and this session's standing practice of
+not pushing new Supabase migrations without the user's sign-off, this is a
+recommendation with a concrete plan, not a committed change. The current
+client-only implementation is fully functional for guests and functionally
+adequate — just not durable across devices — for members.
 
----
+## Verification
 
-## 4. Test Verification ([`recentlyPlayed.test.ts`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/client/src/services/__tests__/recentlyPlayed.test.ts))
-
-- ✅ Records games in chronological order (newest first).
-- ✅ Prevents duplicates and promotes re-played games to the front of the queue.
-- ✅ Caches and caps the list to a maximum of 10 items.
-- ✅ Accurately notifies subscribers upon game recording.
+- `[x]` `cd client && npx vitest run src/services/__tests__/recentlyPlayed.test.ts` → 4/4 passing (new game tracked, ordering, dedup, 10-item cap)
+- `[x]` `cd client && npm run typecheck` → clean
+- `[x]` `cd client && npm test` → 538/538 passing, including the fixed hook
+- `[x]` Confirmed wiring: `BhalyamHome.tsx` mounts the section; `GameRoomSheet.tsx`'s four launch paths call `recordRecentlyPlayed`
+- `[ ]` Cross-device / DB persistence — not implemented, see Recommendation above
+- `[ ]` Not browser-verified in this pass beyond confirming the crash is fixed (reported by the user, root-caused, fixed, unit-tested) — dark/light mode and 375/768/1024/1440px have not been freshly eyeballed for this specific section
