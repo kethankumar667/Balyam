@@ -44,6 +44,7 @@ import type { ReactNode } from "react";
 import type { RpsChoice } from "@shared/types";
 import type { RoundOutcome } from "./useRpsBoard";
 import { findAvatar } from "../../lib/avatars";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 
 /* ─────────────────────── Palette constants ─────────────────────── */
 const PAPER   = "#F5E9C4";
@@ -283,6 +284,10 @@ export function NotebookPlayerCard({
   tapeColor, // "green" | "red-dots"
   side,      // "left" | "right"
   cardRef,
+  targetPlayerId,
+  onTarget,
+  activeTargetId,
+  onCloseTarget,
 }: {
   name: string;
   avatar?: string;
@@ -296,12 +301,20 @@ export function NotebookPlayerCard({
   tapeColor: "green" | "red-dots";
   side: "left" | "right";
   cardRef?: (el: HTMLDivElement | null) => void;
+  targetPlayerId?: string | null;
+  onTarget?: (playerId: string) => void;
+  activeTargetId?: string | null;
+  onCloseTarget?: () => void;
 }) {
   const STARS = 7;
+  const isTargetActive = targetPlayerId && activeTargetId === targetPlayerId;
+  const canTarget = !isSelf && targetPlayerId;
   return (
     <div
       ref={cardRef}
-      className="relative"
+      className={`relative ${canTarget ? "cursor-pointer hover:brightness-105 active:scale-[0.99]" : ""}`}
+      onClick={canTarget ? () => onTarget?.(targetPlayerId) : undefined}
+      title={canTarget ? `Tap to react at ${name}` : undefined}
       style={{
         background: PAPER_L,
         border: `1.5px solid ${BORDER}`,
@@ -311,6 +324,15 @@ export function NotebookPlayerCard({
         minWidth: 160,
       }}
     >
+      {isTargetActive && onCloseTarget && targetPlayerId && (
+        <SeatTargetReactionWheel
+          game="rps"
+          targetPlayerId={targetPlayerId}
+          targetPlayerName={name}
+          onClose={onCloseTarget}
+          position="bottom"
+        />
+      )}
       {/* Washi tape strip */}
       <div
         className="absolute -top-3 left-1/2 -translate-x-1/2"

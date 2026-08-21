@@ -18,7 +18,7 @@ import {
 import EmojiRain from "../ludo/EmojiRain";
 import CardTracker from "./CardTracker";
 import { suggestArrangement, suggestDiscard } from "./autoArrange";
-import { freshMeldLayout, appendIncomingCards } from "./reconcileLayout";
+import { freshMeldLayout, appendIncomingCards, applyHintSuggestion, redistributeCards } from "./reconcileLayout";
 import { captureRects, playFlip } from "../../lib/anim";
 import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
 import { useTurnHaptics, useHaptics } from "../../hooks/useHaptics";
@@ -32,11 +32,13 @@ import Chat from "../../components/Chat";
 import RematchPanel from "../../components/RematchPanel";
 import Avatar from "./Avatar";
 import RummyResultModal from "./RummyResultModal";
+import { RummyDeclareFlourish, RummyWinnerCelebration, RummyInvalidDeclareOverlay } from "./RummyAnimations";
 import RummyRoomHistory from "../../components/nostalgia/RummyRoomHistory";
 import { RUMMY_COPY } from "./copy";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import {
   enterFullscreen,
   exitFullscreen,
@@ -378,7 +380,7 @@ export default function RummyBoardMobile({
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
   // Reactions + emoji rain
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(selfId);
   const [rains, setRains] = useState<{ id: string; emoji: string }[]>([]);
 
   // Sound on/off — persists between renders via the module's internal state.
@@ -902,26 +904,25 @@ export default function RummyBoardMobile({
   }
 
   function ungroupGroup(groupId: string) {
+    // Same open-deck isolation invariant enforced elsewhere (see
+    // reconcileLayout.ts) — dismissing a meld (most often the pickup's own
+    // lone-card group, which looks like a mistake and invites a "clean up"
+    // tap) must never fold the just-drawn card into another meld via
+    // suit-matching.
+    const openPickupId =
+      state.lastDrawSource === "open" && state.lastDrawnCardId && byId.has(state.lastDrawnCardId)
+        ? state.lastDrawnCardId
+        : null;
     setLayout((l) => {
       const g = l.groups.find((gg) => gg.id === groupId);
       // Nothing to redistribute into once this was the last group — there is
       // no "ungrouped" bucket to fall back to anymore (see RummyBoardDesktop).
       if (!g || l.groups.length <= 1) return l;
       const remainingGroups = l.groups.filter((gg) => gg.id !== groupId);
-      const updatedGroups = remainingGroups.map((gg) => ({ ...gg, cardIds: [...gg.cardIds] }));
-      for (const id of g.cardIds) {
-        const card = byId.get(id);
-        const match = updatedGroups.find((gg) => {
-          const firstCard = byId.get(gg.cardIds[0]);
-          return firstCard && firstCard.suit === card?.suit;
-        });
-        if (match) {
-          match.cardIds.push(id);
-        } else if (updatedGroups.length > 0) {
-          updatedGroups[0].cardIds.push(id);
-        }
-      }
-      return { groups: updatedGroups, ungrouped: [] };
+      return {
+        groups: redistributeCards(remainingGroups, g.cardIds, byId, openPickupId, newGroupId),
+        ungrouped: [],
+      };
     });
     setError(null);
   }
@@ -1016,6 +1017,7 @@ export default function RummyBoardMobile({
     groups: Card[][];
     ungrouped: Card[];
     bestDiscardCard: Card | null;
+    openPickupCard: Card | null;
   } | null>(null);
 
   /**
@@ -1024,42 +1026,68 @@ export default function RummyBoardMobile({
    */
   function requestSmartHint() {
     try { haptics.subtle(); } catch { /* ignore */ }
-    const allCards: Card[] = layout.groups.flatMap((g) =>
-      g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c),
-    );
+
+    // Carve the open-deck pickup out before optimizing — `suggestArrangement`
+    // has no concept of it and will happily fold it into whatever pure
+    // sequence/set it best fits, which is exactly the "is this card new or
+    // was it already there?" confusion players hit. It stays eligible as a
+    // discard candidate (a useless just-drawn card is still worth flagging).
+    const openPickupId =
+      state.lastDrawSource === "open" && state.lastDrawnCardId && byId.has(state.lastDrawnCardId)
+        ? state.lastDrawnCardId
+        : null;
+    const openPickupCard = openPickupId ? byId.get(openPickupId) ?? null : null;
+
+    const allCards: Card[] = layout.groups
+      .flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c))
+      .filter((c) => c.id !== openPickupId);
     if (allCards.length === 0) return;
 
     const suggestion = suggestArrangement(allCards, wildRank as Rank);
-    const bestDiscard = suggestDiscard(suggestion.ungrouped, allCards, wildRank as Rank);
+    const discardCandidates = openPickupCard ? [...suggestion.ungrouped, openPickupCard] : suggestion.ungrouped;
+    const discardHand = openPickupCard ? [...allCards, openPickupCard] : allCards;
+    const bestDiscard = suggestDiscard(discardCandidates, discardHand, wildRank as Rank);
 
     setPendingHint({
       groups: suggestion.groups,
       ungrouped: suggestion.ungrouped,
       bestDiscardCard: bestDiscard,
+      openPickupCard,
     });
   }
 
   function approveSmartHint() {
     if (!pendingHint) return;
+
+    // The hand can change out from under an open hint banner — most often
+    // the AFK auto-play safety net taking one or more turns on the player's
+    // behalf while they haven't dismissed it. Applying a stale suggestion in
+    // that case would inject melds referencing cards no longer in the hand,
+    // rendering as an orphaned empty meld box. Bail out instead.
+    const referencedIds = [
+      ...pendingHint.groups.flat().map((c) => c.id),
+      ...pendingHint.ungrouped.map((c) => c.id),
+      ...(pendingHint.openPickupCard ? [pendingHint.openPickupCard.id] : []),
+    ];
+    if (referencedIds.some((id) => !byId.has(id))) {
+      setPendingHint(null);
+      setError("Your hand changed — hint expired, tap HINT again");
+      return;
+    }
+
     try { haptics.subtle(); } catch { /* ignore */ }
 
-    const newGroups = pendingHint.groups.map((cards) => ({
-      id: newGroupId(),
-      cardIds: cards.map((c) => c.id),
-    }));
-    // No "ungrouped" slot to drop the leftover suggestion cards into
-    // anymore — fold them into one more group instead, same as
-    // RummyBoardDesktop's approveSmartHint.
-    if (pendingHint.ungrouped.length > 0) {
-      newGroups.push({
-        id: newGroupId(),
-        cardIds: pendingHint.ungrouped.map((c) => c.id),
-      });
-    }
+    const newGroups = applyHintSuggestion(
+      pendingHint.groups,
+      pendingHint.ungrouped,
+      pendingHint.openPickupCard,
+      newGroupId,
+    );
 
     const allCards = [
       ...pendingHint.groups.flat(),
       ...pendingHint.ungrouped,
+      ...(pendingHint.openPickupCard ? [pendingHint.openPickupCard] : []),
     ];
     const nodes = new Map<string, HTMLElement | null>(
       allCards.map((c) => [c.id, document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(c.id)}"]`)]),
@@ -1286,6 +1314,9 @@ export default function RummyBoardMobile({
                 players={players}
                 selfId={selfId}
                 registerCardRef={reactions.registerCardRef}
+                onTarget={reactions.openTarget}
+                activeTargetId={reactions.activeTargetId}
+                onCloseTarget={reactions.closeTarget}
               />
             </div>
             {/* relative wrapper scopes the post-show countdown (below) to just
@@ -1317,6 +1348,9 @@ export default function RummyBoardMobile({
                 players={players}
                 selfId={selfId}
                 registerCardRef={reactions.registerCardRef}
+                onTarget={reactions.openTarget}
+                activeTargetId={reactions.activeTargetId}
+                onCloseTarget={reactions.closeTarget}
               />
             </div>
           </div>
@@ -1410,6 +1444,13 @@ export default function RummyBoardMobile({
           isFirstDrop={state.turnAction === "draw"}
           handPts={livePoints.handTotal}
         />
+      )}
+
+      {state.phase === "finished" && state.invalidDeclareBy && (
+        <RummyInvalidDeclareOverlay />
+      )}
+      {state.phase === "finished" && state.winnerId && !resultDismissed && (
+        <RummyWinnerCelebration winnerName={players.find((p) => p.id === state.winnerId)?.name ?? "Winner"} />
       )}
 
       {/* End-of-round / end-of-match cards render as dismissable modal overlays
@@ -1738,6 +1779,29 @@ export default function RummyBoardMobile({
                 </div>
               );
             })}
+            {pendingHint.openPickupCard && (
+              <div
+                className="px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 flex-wrap"
+                style={{
+                  background: "rgba(56,189,248,0.18)",
+                  border: "1px solid #38bdf8",
+                  color: "#bae6fd",
+                }}
+              >
+                <span className="font-extrabold uppercase text-[10px] tracking-wide" style={{ color: "#7dd3fc" }}>
+                  🆕 Just Drawn (kept separate):
+                </span>
+                <span className="font-mono tracking-wider text-white font-black text-xs">
+                  {(() => {
+                    const c = pendingHint.openPickupCard;
+                    if (c.isPrintedJoker) return "🃏";
+                    const suit = c.suit === "S" ? "♠" : c.suit === "H" ? "♥" : c.suit === "D" ? "♦" : "♣";
+                    const rank = c.rank === "T" ? "10" : c.rank;
+                    return `${rank}${suit}`;
+                  })()}
+                </span>
+              </div>
+            )}
             {pendingHint.bestDiscardCard && (
               <div className="px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 bg-rose-950/90 border border-rose-500 text-rose-200">
                 <span className="font-extrabold uppercase text-[10px] tracking-wide text-rose-400">
@@ -2186,6 +2250,9 @@ function OpponentRow({
   players,
   selfId,
   registerCardRef,
+  onTarget,
+  activeTargetId,
+  onCloseTarget,
 }: {
   opponents?: string[];
   state: RummyPlayerState;
@@ -2193,6 +2260,9 @@ function OpponentRow({
   selfId: string | null;
   /** From useSeatReactions() — anchors a targeted reaction's arc/flinch to this seat. */
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+  onTarget?: (playerId: string) => void;
+  activeTargetId?: string | null;
+  onCloseTarget?: () => void;
 }) {
   const opponents = customOpponents ?? state.playerOrder.filter((id) => id !== selfId);
   // Recompute seconds-remaining at 250ms so the countdown ring updates smoothly.
@@ -2209,15 +2279,26 @@ function OpponentRow({
         const player = players.find((p) => p.id === id);
         const cumulative = state.cumulativeScores?.[id];
         const handSize = state.handSizes[id] ?? 0;
+        const isTargetActive = activeTargetId === id;
         return (
           // Wrapper has the tooltip so hovering still reveals the full player
           // name and hand size even though only the avatar is rendered.
           <div
             key={id}
             ref={registerCardRef?.(id)}
-            className="flex flex-col items-center flex-shrink-0"
-            title={`${player?.name ?? "?"} · ${handSize} cards${isDropped ? " (out)" : ""}`}
+            className="relative flex flex-col items-center flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
+            title={`${player?.name ?? "?"} · ${handSize} cards (Tap to react)`}
+            onClick={() => onTarget?.(id)}
           >
+            {isTargetActive && onCloseTarget && (
+              <SeatTargetReactionWheel
+                game="rummy"
+                targetPlayerId={id}
+                targetPlayerName={player?.name}
+                onClose={onCloseTarget}
+                position="bottom"
+              />
+            )}
             <Avatar
               name={player?.name ?? "?"}
               avatar={player?.avatar}

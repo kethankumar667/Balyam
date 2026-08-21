@@ -13,10 +13,11 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { BingoBallCalledOverlay, BingoWinnerCelebration } from "./BingoAnimations";
 
 export default function BingoBoardDesktop(props: BingoBoardProps) {
   const model = useBingoBoard(props);
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(model.selfId);
   const {
     state,
     onLeave,
@@ -195,6 +196,9 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
               selfId={model.selfId}
               roster={model.players}
               registerCardRef={reactions.registerCardRef}
+              onTarget={reactions.openTarget}
+              activeTargetId={reactions.activeTargetId}
+              onCloseTarget={reactions.closeTarget}
             />
           )}
 
@@ -205,6 +209,16 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
             </div>
           )}
         </div>
+      )}
+
+      {/* GAL Animations */}
+      {model.activeBallCalled && (
+        <BingoBallCalledOverlay number={model.activeBallCalled} />
+      )}
+      {isOver && state.winnerId && (
+        <BingoWinnerCelebration
+          winnerName={model.nameOf(state.winnerId)}
+        />
       )}
 
       {/* Result Overlay */}

@@ -10,6 +10,7 @@ import {
 } from "./wordbuilding-shared";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { WordBuildingWordBurst, WordBuildingWinnerCelebration } from "./WordBuildingAnimations";
 
 // Desktop has room for larger cells than the mobile fit — fixed per board
 // size, comfortably within the 1200px column. Physical-keyboard input stays
@@ -32,7 +33,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
   const { state, selfId, roomCode, players, messages, roomPhase, onLeave } = props;
   const m = useWordBuildingBoard(props);
   const cellPx = desktopCellPx(m.size);
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(selfId);
 
   return (
     <div
@@ -50,6 +51,9 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
         onOpenTutorial={() => m.setTutorialOpen(true)}
         onLeave={onLeave}
         registerCardRef={reactions.registerCardRef}
+        onTarget={reactions.openTarget}
+        activeTargetId={reactions.activeTargetId}
+        onCloseTarget={reactions.closeTarget}
       />
 
       <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 items-start mt-1">
@@ -75,6 +79,20 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
           />
         </aside>
       </div>
+
+      {/* GAL Animations */}
+      {m.activeWordBurst && (
+        <WordBuildingWordBurst
+          word={m.activeWordBurst.word}
+          points={m.activeWordBurst.points}
+          playerName={m.activeWordBurst.playerName}
+        />
+      )}
+      {state.phase === "finished" && state.winnerId && !m.reportDismissed && (
+        <WordBuildingWinnerCelebration
+          winnerName={m.nameOf(state.winnerId)}
+        />
+      )}
 
       {state.phase === "finished" && !m.reportDismissed && (
         <ReportCardOverlay

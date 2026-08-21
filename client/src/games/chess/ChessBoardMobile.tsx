@@ -8,6 +8,8 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
+import { ChessCheckOverlay, ChessWinnerCelebration } from "./ChessAnimations";
 
 export default function ChessBoardMobile({
   state,
@@ -23,7 +25,7 @@ export default function ChessBoardMobile({
   const [chatText, setChatText] = useState("");
   const [hintCount, setHintCount] = useState(3);
   const [unread, setUnread] = useState(0);
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(selfId);
 
   const [localTheme, setLocalTheme] = useState<ChessBoardTheme>(state.boardTheme ?? "emerald");
   const [localPieceSet, setLocalPieceSet] = useState<ChessPieceSet>(state.pieceSet ?? "neo");
@@ -202,12 +204,23 @@ export default function ChessBoardMobile({
           {/* Right Player Card (Opponent) */}
           <div
             ref={reactions.registerCardRef(opponentId ?? null)}
-            className={`p-1.5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
+            className={`relative p-1.5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
               state.turn === opponentColor && state.phase === "aiming"
                 ? "bg-[#EDF7ED] border-[#4E9A51] ring-2 ring-[#4E9A51]/40"
                 : "bg-[#FFF8F0]/90 border-[#E2B790]"
-            }`}
+            }${opponentId ? " cursor-pointer hover:border-amber-400 active:scale-[0.98]" : ""}`}
+            onClick={opponentId ? () => reactions.openTarget(opponentId) : undefined}
+            title={opponentId ? `Tap to react at ${opponentName}` : undefined}
           >
+            {opponentId && reactions.activeTargetId === opponentId && (
+              <SeatTargetReactionWheel
+                game="chess"
+                targetPlayerId={opponentId}
+                targetPlayerName={opponentName}
+                onClose={reactions.closeTarget}
+                position="bottom"
+              />
+            )}
             <div className="flex items-center gap-1.5 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-orange-200 border border-orange-400 flex items-center justify-center text-sm shrink-0 shadow-inner">
                 👨‍🦰
@@ -460,6 +473,16 @@ export default function ChessBoardMobile({
       )}
 
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
+
+      {/* GAL Animations */}
+      {state.inCheck && (
+        <ChessCheckOverlay />
+      )}
+      {state.phase === "finished" && state.winnerId && (
+        <ChessWinnerCelebration
+          winnerName={nameOf(state.winnerId)}
+        />
+      )}
 
       {/* Skin Customization Modal */}
       <ChessSkinModal

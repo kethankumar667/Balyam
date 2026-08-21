@@ -66,7 +66,18 @@ export function determineSection(pathname: string): NavigationSectionId {
     return "settings";
   }
 
-  if (normalized.startsWith("/about") || normalized.startsWith("/privacy")) {
+  if (
+    normalized.startsWith("/about") ||
+    normalized.startsWith("/privacy") ||
+    normalized.startsWith("/how-to-play") ||
+    normalized.startsWith("/community-rules") ||
+    normalized.startsWith("/rules") ||
+    normalized.startsWith("/support") ||
+    normalized.startsWith("/faqs") ||
+    normalized.startsWith("/terms") ||
+    normalized.startsWith("/safety") ||
+    normalized.startsWith("/help")
+  ) {
     return "help";
   }
 

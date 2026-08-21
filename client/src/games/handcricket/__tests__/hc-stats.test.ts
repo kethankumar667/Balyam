@@ -33,6 +33,7 @@ function balls(spec: Array<number | "w">, batters: string[] = []): HcBall[] {
     isRestrictedBall: false,
     batterId: batters[i] ?? "bat1",
     bowlerId: "bowl1",
+    milestone: null,
   }));
 }
 

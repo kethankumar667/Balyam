@@ -26,6 +26,11 @@ const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"))
 const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
 const VerifyEmailPage = lazy(() => import("./pages/auth/VerifyEmailPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
+const HowToPlayPage = lazy(() => import("./pages/HowToPlayPage"));
+const CommunityRulesPage = lazy(() => import("./pages/CommunityRulesPage"));
+const SupportFaqsPage = lazy(() => import("./pages/SupportFaqsPage"));
+const TermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
+const SafetyCenterPage = lazy(() => import("./pages/SafetyCenterPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const PreferencesPage = lazy(() => import("./pages/PreferencesPage"));
 const SecurityDataPage = lazy(() => import("./pages/SecurityDataPage"));
@@ -49,6 +54,7 @@ import PremiumGamingLoader from "./components/loading/PremiumGamingLoader";
 import { ProfileSkeleton, LeaderboardSkeleton, GamesGridSkeleton } from "./design-system/dls";
 import AppLayout from "./components/layout/AppLayout";
 import GamesFamilyLayout from "./components/layout/GamesFamilyLayout";
+import ProfileFamilyLayout from "./components/layout/ProfileFamilyLayout";
 
 function RouteLoadingFallback() {
   const { pathname } = useLocation();
@@ -159,66 +165,59 @@ export default function App() {
               <Route path="/recently-played" element={<RecentlyPlayedPage />} />
             </Route>
 
-            {/* Protected profile & account management */}
+            {/* Protected profile & account management.
+                One persistent layout route for the five pages the sidebar
+                bounces straight between — see ProfileFamilyLayout.tsx. */}
             <Route
-              path="/profile"
               element={
                 <ProtectedRoute requireMember={false}>
-                  <ProfileOverviewPage />
+                  <ProfileFamilyLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route path="/profile" element={<ProfileOverviewPage />} />
+              <Route path="/profile/personal" element={<PersonalInformationPage />} />
+              <Route path="/profile/statistics" element={<GameStatisticsPage />} />
+              <Route path="/profile/matches" element={<MatchHistoryPage />} />
+              <Route path="/profile/achievements" element={<AchievementsPage />} />
+            </Route>
             <Route
               path="/profile/overview"
               element={<Navigate to="/profile" replace />}
-            />
-            <Route
-              path="/profile/personal"
-              element={
-                <ProtectedRoute requireMember={false}>
-                  <PersonalInformationPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile/statistics"
-              element={
-                <ProtectedRoute requireMember={false}>
-                  <GameStatisticsPage />
-                </ProtectedRoute>
-              }
             />
             <Route
               path="/profile/stats"
               element={<Navigate to="/profile/statistics" replace />}
             />
             <Route
-              path="/profile/matches"
-              element={
-                <ProtectedRoute requireMember={false}>
-                  <MatchHistoryPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/profile/history"
               element={<Navigate to="/profile/matches" replace />}
-            />
-            <Route
-              path="/profile/achievements"
-              element={
-                <ProtectedRoute requireMember={false}>
-                  <AchievementsPage />
-                </ProtectedRoute>
-              }
             />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />
             <Route path="/social" element={<SocialHubPage />} />
             <Route path="/design-system" element={<DesignSystemCatalogPage />} />
 
-            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            {/* Help & Trust Architecture */}
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/how-to-play" element={<HowToPlayPage />} />
+            <Route path="/help/how-to-play" element={<Navigate to="/how-to-play" replace />} />
+            <Route path="/community-rules" element={<CommunityRulesPage />} />
+            <Route path="/rules" element={<Navigate to="/community-rules" replace />} />
+            <Route path="/help/community-rules" element={<Navigate to="/community-rules" replace />} />
+            <Route path="/support" element={<SupportFaqsPage />} />
+            <Route path="/faqs" element={<Navigate to="/support" replace />} />
+            <Route path="/faq" element={<Navigate to="/support" replace />} />
+            <Route path="/help/faqs" element={<Navigate to="/support" replace />} />
+            <Route path="/help/support" element={<Navigate to="/support" replace />} />
+            <Route path="/help" element={<Navigate to="/how-to-play" replace />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/help/privacy" element={<Navigate to="/privacy" replace />} />
+            <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
+            <Route path="/help/terms" element={<Navigate to="/terms" replace />} />
+            <Route path="/safety" element={<SafetyCenterPage />} />
+            <Route path="/help/safety" element={<Navigate to="/safety" replace />} />
             <Route path="/settings" element={<Navigate to="/settings/preferences" replace />} />
             <Route path="/settings/preferences" element={<PreferencesPage />} />
             <Route path="/settings/security" element={<SecurityDataPage />} />

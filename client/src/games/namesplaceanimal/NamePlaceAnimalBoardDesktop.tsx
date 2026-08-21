@@ -6,6 +6,8 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
+import { NpatLetterRevealBurst, NpatWinnerCelebration } from "./NpatAnimations";
 
 const SAMPLE_CLUES: Record<string, Record<NamePlaceAnimalCategory, string>> = {
   A: { name: "Arjun, Anil, Alice", place: "Amsterdam, Agra, Austin", animal: "Alligator, Anteater, Ant", thing: "Apple, Anchor, Arrow" },
@@ -43,7 +45,7 @@ export default function NamePlaceAnimalBoardDesktop({
   roomCode,
   roomPhase,
 }: NamePlaceAnimalBoardProps) {
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(myPlayerId);
   const [form, setForm] = useState<NamePlaceAnimalAnswers>(() => ({
     name: initialMyAnswers?.name || "",
     place: initialMyAnswers?.place || "",
@@ -417,16 +419,29 @@ export default function NamePlaceAnimalBoardDesktop({
             {state.players.map((p) => {
               const roster = players?.find((rp) => rp.id === p.id);
               const displayName = p.id === myPlayerId ? "You" : roster?.name || `Player (${p.id.slice(0, 5)})`;
+              const isSelf = p.id === myPlayerId;
+              const isTargetActive = reactions.activeTargetId === p.id;
               return (
               <div
                 key={p.id}
                 ref={reactions.registerCardRef(p.id)}
-                className={`p-4 rounded-xl border flex items-center justify-between ${
-                  p.id === myPlayerId
+                className={`relative p-4 rounded-xl border flex items-center justify-between transition-all ${
+                  isSelf
                     ? "bg-amber-500/10 border-amber-500/30"
-                    : "bg-surface-1 border-surface-rim"
+                    : "bg-surface-1 border-surface-rim cursor-pointer hover:border-amber-500/50 active:scale-[0.99]"
                 }`}
+                onClick={!isSelf ? () => reactions.openTarget(p.id) : undefined}
+                title={!isSelf ? `Tap to react at ${displayName}` : undefined}
               >
+                {isTargetActive && (
+                  <SeatTargetReactionWheel
+                    game="namesplaceanimal"
+                    targetPlayerId={p.id}
+                    targetPlayerName={displayName}
+                    onClose={reactions.closeTarget}
+                    position="left"
+                  />
+                )}
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-3 h-3 rounded-full ${
@@ -478,6 +493,16 @@ export default function NamePlaceAnimalBoardDesktop({
           messages={messages ?? []}
         />
       </div>
+
+      {/* GAL Animations */}
+      {!isSpinningWheel && letter && (
+        <NpatLetterRevealBurst letter={letter} />
+      )}
+      {state.phase === "finished" && state.winnerId && (
+        <NpatWinnerCelebration
+          winnerName={players?.find((p) => p.id === state.winnerId)?.name ?? "Winner"}
+        />
+      )}
 
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>

@@ -8,6 +8,7 @@ import type {
 } from "@shared/types";
 import type { StarSeat } from "./useStarBoard";
 import { findAvatar } from "../../lib/avatars";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 
 /**
  * Star Game shared visual kit — the heartfelt, handcrafted "folded paper chit"
@@ -1143,6 +1144,9 @@ export function StarTable({
   height = 340,
   children,
   registerCardRef,
+  onTarget,
+  activeTargetId,
+  onCloseTarget,
 }: {
   seats: StarSeat[];
   selfId: string | null;
@@ -1168,6 +1172,9 @@ export function StarTable({
    *  Optional so this component still renders fine anywhere reactions
    *  aren't wired up. */
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+  onTarget?: (playerId: string) => void;
+  activeTargetId?: string | null;
+  onCloseTarget?: () => void;
 }) {
   const reduce = useReducedMotion();
   const ordered = useMemo(() => {
@@ -1334,13 +1341,26 @@ export function StarTable({
 
       {ordered.map((s, i) => {
         const pos = posOf(i);
+        const isTargetActive = activeTargetId === s.id;
+        const canTarget = s.id !== selfId;
         return (
           <div
             key={s.id}
             ref={registerCardRef?.(s.id)}
-            className="absolute -translate-x-1/2 -translate-y-1/2 z-20"
+            className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 ${canTarget ? "cursor-pointer hover:scale-105 active:scale-95" : ""}`}
+            onClick={canTarget ? () => onTarget?.(s.id) : undefined}
+            title={canTarget ? `Tap to react at ${s.name}` : undefined}
             style={{ left: pos.x, top: pos.y }}
           >
+            {isTargetActive && onCloseTarget && (
+              <SeatTargetReactionWheel
+                game="stargame"
+                targetPlayerId={s.id}
+                targetPlayerName={s.name}
+                onClose={onCloseTarget}
+                position="top"
+              />
+            )}
             <TableSeat
               seat={s}
               active={isActive(s)}

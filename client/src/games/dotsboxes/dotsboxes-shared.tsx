@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import type { DotsBoxesPublicState } from "@shared/types";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 
 /* ─────────────────────────── Player pens (College stationery) ─────────────────────────── */
 /*
@@ -934,6 +935,9 @@ export function ScoreBar({
   selfId,
   vertical = false,
   registerCardRef,
+  onTarget,
+  activeTargetId,
+  onCloseTarget,
 }: {
   state: DotsBoxesPublicState;
   penOf: Record<string, Pen>;
@@ -944,6 +948,9 @@ export function ScoreBar({
   vertical?: boolean;
   /** Opponent-targeted reactions: registers this row as the fly-to/flinch anchor for `pid`. */
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+  onTarget?: (playerId: string) => void;
+  activeTargetId?: string | null;
+  onCloseTarget?: () => void;
 }) {
   return (
     <div
@@ -957,11 +964,14 @@ export function ScoreBar({
         const pen = penOf[pid];
         const isTurn = state.turnPlayerId === pid;
         const me = pid === selfId;
+        const isTargetActive = activeTargetId === pid;
         return (
           <div
             key={pid}
             ref={registerCardRef?.(pid)}
-            className="rounded-md transition"
+            className={`relative rounded-md transition ${!me ? "cursor-pointer hover:brightness-110 active:scale-[0.98]" : ""}`}
+            onClick={!me ? () => onTarget?.(pid) : undefined}
+            title={!me ? `Tap to react at ${nameOf(pid)}` : undefined}
             style={{
               background: isTurn ? "rgba(251,191,36,0.18)" : "rgba(255,255,255,0.6)",
               border: isTurn ? `2px solid ${pen.color}` : "1px solid rgba(40,70,140,0.28)",
@@ -973,6 +983,15 @@ export function ScoreBar({
                 : { padding: "3px 8px", minWidth: 110 }),
             }}
           >
+            {isTargetActive && onCloseTarget && (
+              <SeatTargetReactionWheel
+                game="dotsboxes"
+                targetPlayerId={pid}
+                targetPlayerName={nameOf(pid)}
+                onClose={onCloseTarget}
+                position={vertical ? "left" : "bottom"}
+              />
+            )}
             {vertical ? (
               /* ── Desktop: two-line layout ── */
               <>

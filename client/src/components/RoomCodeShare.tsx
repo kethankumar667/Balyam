@@ -2,6 +2,9 @@ import { useState } from "react";
 import type { GameKind } from "@shared/types";
 import QrCodeModal from "./QrCodeModal";
 import { captureAndShareScreenshot } from "../lib/screenshot";
+import { useAudio } from "../hooks/useAudio";
+import { AUDIO } from "../constants/audio";
+import { useHaptics } from "../hooks/useHaptics";
 
 /**
  * Featured lobby block for the room code.
@@ -31,6 +34,8 @@ export default function RoomCodeShare({
 }) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const { play } = useAudio();
+  const haptics = useHaptics();
 
   const roomUrl = `${window.location.origin}/room/${code}`;
   const friendlyGameName: Partial<Record<GameKind, string>> = {
@@ -70,6 +75,8 @@ export default function RoomCodeShare({
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
+      play(AUDIO.SYS_TICK);
+      haptics.subtle();
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
       // Clipboard API is blocked (insecure context, permissions denied).

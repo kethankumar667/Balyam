@@ -86,3 +86,77 @@ export function appendIncomingCards(
   }
   return newGroups;
 }
+
+/**
+ * Converts an approved Smart Hint suggestion into meld groups, enforcing the
+ * same open-deck isolation invariant as {@link appendIncomingCards} and
+ * {@link freshMeldLayout}.
+ *
+ * `suggestArrangement` (the hint's combinatorial optimizer) has no concept
+ * of the open-deck pickup — callers must exclude it before generating a
+ * suggestion — but without this step the pickup card would simply be
+ * missing from the applied layout. It always gets appended as its own
+ * dedicated group, exactly where the rest of this module puts it, so a
+ * player can never end up unable to tell a just-drawn open-deck card apart
+ * from cards that were already sitting in a meld.
+ */
+export function applyHintSuggestion(
+  suggestionGroups: Card[][],
+  ungrouped: Card[],
+  openPickupCard: Card | null,
+  newGroupId: () => string,
+): MeldGroup[] {
+  const groups: MeldGroup[] = suggestionGroups.map((cards) => ({
+    id: newGroupId(),
+    cardIds: cards.map((c) => c.id),
+  }));
+  if (ungrouped.length > 0) {
+    groups.push({ id: newGroupId(), cardIds: ungrouped.map((c) => c.id) });
+  }
+  if (openPickupCard) {
+    groups.push({ id: newGroupId(), cardIds: [openPickupCard.id] });
+  }
+  return groups;
+}
+
+/**
+ * Redistributes a known set of card ids among existing meld groups by
+ * suit-matching — used when a player dismisses ("ungroups") a meld and its
+ * cards need a new home.
+ *
+ * Enforces the same open-deck isolation invariant as
+ * {@link appendIncomingCards}: if the open-deck pickup is among the cards
+ * being redistributed, it's excluded from suit-matching entirely — both as
+ * a card to place AND as a target other cards could land next to — and
+ * always ends up back in its own dedicated group. Without this, dismissing
+ * the pickup's own one-card meld (the obvious thing to do with a lone card
+ * that looks like a mistake) would silently fold it into whatever
+ * same-suit meld it best matched, exactly like an unguarded Smart Hint or
+ * reconciliation pass would.
+ */
+export function redistributeCards(
+  groups: MeldGroup[],
+  cardIds: string[],
+  byId: Map<string, Card>,
+  openPickupId: string | null,
+  newGroupId: () => string,
+): MeldGroup[] {
+  const updatedGroups = groups.map((g) => ({ ...g, cardIds: [...g.cardIds] }));
+  for (const id of cardIds) {
+    if (id === openPickupId) continue;
+    const card = byId.get(id);
+    const match = updatedGroups.find((g) => {
+      const firstCard = byId.get(g.cardIds[0]);
+      return firstCard && card && firstCard.suit === card.suit;
+    });
+    if (match) {
+      match.cardIds.push(id);
+    } else if (updatedGroups.length > 0) {
+      updatedGroups[0].cardIds.push(id);
+    }
+  }
+  if (openPickupId && cardIds.includes(openPickupId)) {
+    updatedGroups.push({ id: newGroupId(), cardIds: [openPickupId] });
+  }
+  return updatedGroups;
+}

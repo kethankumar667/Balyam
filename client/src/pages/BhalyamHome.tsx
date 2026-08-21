@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import BhalyamLogo from "../components/bhalyam/BhalyamLogo";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
+import AmbientDoodles from "../animations/app/AmbientDoodles";
 import { RevealOnScroll, RevealItem } from "../components/RevealOnScroll";
 import GsapSplitHeadline from "../components/GsapSplitHeadline";
 import { useTheme } from "../lib/useTheme";
@@ -23,7 +24,7 @@ import CategoryFilter, {
 } from "../components/bhalyam/CategoryFilter";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
-import { WelcomeModal, GettingStartedCard, journeyTracker } from "../features/onboarding";
+import { WelcomeModal, journeyTracker } from "../features/onboarding";
 import AvatarPicker from "../components/profile/AvatarPicker";
 import Modal from "../components/Modal";
 import {
@@ -137,7 +138,6 @@ export default function BhalyamHome() {
   const [welcomeOpen, setWelcomeOpen] = useState(() => {
     return !journeyTracker.getState().hasCompletedWelcome;
   });
-  const [showGettingStarted, setShowGettingStarted] = useState(true);
   const isMember = useAuthStore((s) => s.isMember);
   // Guests get the honest "Guest Mode" branch in WelcomePlayerStrip and never
   // reach PlayerJourneyDashboard's member content, so there is nothing for
@@ -153,8 +153,9 @@ export default function BhalyamHome() {
 
   return (
     <AppLayout onSelectGame={setSheetGame}>
-      <div className="bhalyam-home bhalyam-font min-h-full bhalyam-paper flex flex-col">
-        <div className="mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-4 pb-12 flex-1">
+      <div className="bhalyam-home bhalyam-font min-h-full bhalyam-paper flex flex-col relative overflow-hidden">
+        <AmbientDoodles />
+        <div className="mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-4 pb-12 flex-1 relative z-10">
           <Hero
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}
@@ -166,12 +167,6 @@ export default function BhalyamHome() {
               if (gamesElem) gamesElem.scrollIntoView({ behavior: "smooth" });
             }}
           />
-          {showGettingStarted && (
-            <GettingStartedCard
-              className="mb-6"
-              onDismiss={() => setShowGettingStarted(false)}
-            />
-          )}
           <div id="games-section">
             <GamesSection onSelect={setSheetGame} />
           </div>
@@ -2060,14 +2055,7 @@ function PlayerJourneyDashboard({
   const lastGameStats = lastMatch ? snapshot.stats?.perGame[lastMatch.game] : undefined;
   const overallStreak = snapshot.stats?.currentWinStreak ?? 0;
 
-  const xp = snapshot.profile?.experiencePoints ?? 0;
   const level = snapshot.profile?.level ?? 1;
-  const xpIntoLevel = xp % 100;
-  // Closest to completion first — the most motivating "next" target, and the
-  // one most likely to already be in progress.
-  const nextAchievement = [...snapshot.achievements]
-    .filter((a) => !a.unlocked)
-    .sort((a, b) => b.progressPercent - a.progressPercent)[0];
 
   return (
     <RevealOnScroll as="section" amount={0.1} className="mt-6 mb-8">
@@ -2086,7 +2074,7 @@ function PlayerJourneyDashboard({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-stretch">
 
         {/* Card 1: Jump back into the real last-played game, or an honest
             first-game prompt when there is no match history yet. */}
@@ -2181,70 +2169,7 @@ function PlayerJourneyDashboard({
           )}
         </article>
 
-        {/* Card 2: Real level progress and the real closest-to-unlocking
-            achievement. No daily quests — there is no daily-quest system to
-            back them. */}
-        <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
-          isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D9C1]"
-        }`}>
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <span className={`font-display font-black text-[18px] ${
-                isDark ? "text-white" : "text-[#1D2C4A]"
-              }`}>
-                🏆 Level {level} Progress
-              </span>
-              <span className={`text-[12px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                isDark
-                  ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
-                  : "bg-amber-100 text-amber-900 border-amber-300"
-              }`}>
-                {xpIntoLevel}% Complete
-              </span>
-            </div>
-
-            {/* XP Bar */}
-            <div className={`w-full h-2.5 rounded-full overflow-hidden mb-3 ${
-              isDark ? "bg-slate-800" : "bg-[#EADCC8]"
-            }`}>
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
-                style={{ width: `${xpIntoLevel}%` }}
-              />
-            </div>
-
-            {/* Next real achievement, closest to completion */}
-            {nextAchievement ? (
-              <div className={`p-2.5 rounded-xl border ${
-                isDark ? "bg-white/5 border-white/10" : "bg-[#FFF8EE] border-[#EEDCC2]"
-              }`}>
-                <div className={`text-xs font-black uppercase tracking-wider ${
-                  isDark ? "text-chest-300" : "text-chest-700"
-                }`}>
-                  🎯 Next Achievement
-                </div>
-                <div className={`text-[13px] font-bold mt-0.5 ${
-                  isDark ? "text-white" : "text-[#1D2C4A]"
-                }`}>
-                  {nextAchievement.title}
-                </div>
-                <div className={`text-[11px] font-semibold ${
-                  isDark ? "text-slate-300" : "text-[#7A6B5C]"
-                }`}>
-                  {nextAchievement.currentProgress} / {nextAchievement.targetValue} — {nextAchievement.description}
-                </div>
-              </div>
-            ) : (
-              <p className={`text-[12px] font-semibold ${isDark ? "text-slate-400" : "text-[#6D5C4D]"}`}>
-                {snapshot.ready
-                  ? "Every achievement unlocked so far. Play a match to find the next one."
-                  : "Play matches to start unlocking achievements."}
-              </p>
-            )}
-          </div>
-        </article>
-
-        {/* Card 3: Invite Friends — real WhatsApp share action. No fabricated
+        {/* Card 2 (was "Card 3"): Invite Friends — real WhatsApp share action. No fabricated
             "2/3 Friends Joined" counter: there is no referral-tracking system
             behind it, so it can never move for a real user. */}
         <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between relative overflow-hidden transition-colors ${

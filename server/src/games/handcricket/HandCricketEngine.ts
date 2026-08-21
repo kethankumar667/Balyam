@@ -25,6 +25,7 @@ import {
   getAllPlayersFor,
 } from "@shared/hc-rosters.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
+import { milestoneCrossed } from "./milestones.js";
 
 const VALID_PICKS = [1, 2, 3, 4, 5, 6];
 
@@ -558,8 +559,10 @@ export class HandCricketEngine implements GameEngine {
 
     // Per-player stats — ensure entries exist (defensive for legacy/test paths).
     const bStats = (innings.batterStats[batterId] ??= freshBatterStats());
+    const runsBeforeBall = bStats.runs;
     bStats.balls += 1;
     bStats.runs += runs;
+    const milestone = milestoneCrossed(runsBeforeBall, bStats.runs, wicket);
     if (batterPick === 4 && !wicket) bStats.fours += 1;
     if (batterPick === 6 && !wicket) bStats.sixes += 1;
     if (wicket) {
@@ -591,6 +594,7 @@ export class HandCricketEngine implements GameEngine {
       isRestrictedBall,
       batterId,
       bowlerId,
+      milestone,
     };
     innings.history.push(ball);
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ChatMessage,
   DotsBoxesPublicState,
@@ -58,6 +58,8 @@ export interface DotsBoxesBoardModel {
   vOwner: Map<string, string>;
   boxOwner: Map<string, string>;
   bonusBanner: { id: number; pid: string } | null;
+  activeMineBurst: { playerName: string; penColor?: string } | null;
+  dismissMineBurst: () => void;
   error: string | null;
   reportDismissed: boolean;
   setReportDismissed: (v: boolean) => void;
@@ -103,12 +105,18 @@ export function useDotsBoxesBoard(
     });
     return map;
   }, [state.playerOrder]);
-  const nameOf = (id: string): string =>
-    players.find((p) => p.id === id)?.name ?? "?";
-  const initialOf = (id: string): string =>
-    (nameOf(id).trim().charAt(0) || "?").toUpperCase();
-  const avatarOf = (id: string): string | undefined =>
-    players.find((p) => p.id === id)?.avatar;
+  const nameOf = useCallback(
+    (id: string): string => players.find((p) => p.id === id)?.name ?? "?",
+    [players],
+  );
+  const initialOf = useCallback(
+    (id: string): string => (nameOf(id).trim().charAt(0) || "?").toUpperCase(),
+    [nameOf],
+  );
+  const avatarOf = useCallback(
+    (id: string): string | undefined => players.find((p) => p.id === id)?.avatar,
+    [players],
+  );
 
   // Lookup sets — used to check whether each candidate line is already drawn.
   const drawnH = useMemo(() => {
@@ -139,16 +147,36 @@ export function useDotsBoxesBoard(
 
   /* ─── "Bonus move!" hint when the last move closed a box ─── */
   const [bonusBanner, setBonusBanner] = useState<{ id: number; pid: string } | null>(null);
+  const [activeMineBurst, setActiveMineBurst] = useState<{ playerName: string; penColor?: string } | null>(null);
   const prevMoveCount = useRef(0);
+  const dismissTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (state.moveCount === prevMoveCount.current) return;
     prevMoveCount.current = state.moveCount;
     if (state.lastMoveScored) {
+      if (dismissTimerRef.current) {
+        window.clearTimeout(dismissTimerRef.current);
+      }
       setBonusBanner({ id: Date.now(), pid: state.turnPlayerId });
-      const t = window.setTimeout(() => setBonusBanner(null), 1500);
-      return () => window.clearTimeout(t);
+      const pName = nameOf(state.turnPlayerId);
+      const pColor = penOf[state.turnPlayerId]?.color;
+      setActiveMineBurst({ playerName: pName, penColor: pColor });
+      dismissTimerRef.current = window.setTimeout(() => {
+        setBonusBanner(null);
+        setActiveMineBurst(null);
+        dismissTimerRef.current = null;
+      }, 900);
     }
-  }, [state.moveCount, state.lastMoveScored, state.turnPlayerId]);
+  }, [state.moveCount, state.lastMoveScored, state.turnPlayerId, nameOf, penOf]);
+
+  useEffect(() => {
+    return () => {
+      if (dismissTimerRef.current) {
+        window.clearTimeout(dismissTimerRef.current);
+      }
+    };
+  }, []);
 
   /* ─── Move dispatch ─── */
   const [error, setError] = useState<string | null>(null);
@@ -193,6 +221,15 @@ export function useDotsBoxesBoard(
     vOwner,
     boxOwner,
     bonusBanner,
+    activeMineBurst,
+    dismissMineBurst: () => {
+      if (dismissTimerRef.current) {
+        window.clearTimeout(dismissTimerRef.current);
+        dismissTimerRef.current = null;
+      }
+      setBonusBanner(null);
+      setActiveMineBurst(null);
+    },
     error,
     reportDismissed,
     setReportDismissed,

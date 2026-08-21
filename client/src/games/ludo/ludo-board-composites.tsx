@@ -16,6 +16,7 @@ import CursorLayer from "./CursorLayer";
 import EndGameCard from "./EndGameCard";
 import EmojiRain from "./EmojiRain";
 import WinnerCelebration from "./WinnerCelebration";
+import { GotchaCaptureOverlay, SafeShieldPop, OutOfGateBurst, HomeEntryBurst, LuckySixBurst } from "./LudoAnimations";
 import SettingsMenu from "./SettingsMenu";
 import PrintBoardSVG from "./PrintBoardSVG";
 import { seatColor, seatColorDark } from "./print-board";
@@ -184,40 +185,6 @@ type LudoSeatMeta = {
   rank: number | null;
 };
 
-/**
- * Turn countdown ring drawn around the active seat's avatar. Pure
- * presentation — the caller owns the timer so the same value can also be
- * printed as text (the number lives in the "Turn" chip rather than a floating
- * badge, which the card's `overflow-hidden` would clip).
- */
-function TurnCountdownRing({ pct, color, box }: { pct: number; color: string; box: number }) {
-  const stroke = 2.5;
-  const r = (box - stroke) / 2;
-  const circumference = 2 * Math.PI * r;
-  return (
-    <svg
-      className="absolute pointer-events-none"
-      width={box}
-      height={box}
-      style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%) rotate(-90deg)" }}
-      aria-hidden
-    >
-      <circle cx={box / 2} cy={box / 2} r={r} fill="none" stroke="rgba(109,67,35,0.18)" strokeWidth={stroke} />
-      <circle
-        cx={box / 2}
-        cy={box / 2}
-        r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={circumference * (1 - pct)}
-        style={{ transition: "stroke-dashoffset 900ms linear, stroke 250ms" }}
-      />
-    </svg>
-  );
-}
 
 const CROSS_YARD_ANGLES: Record<string, number> = {
   red: 315,
@@ -275,8 +242,10 @@ function orderedSeats(state: LudoState, players: Player[], selfId?: string | nul
 /** Compact seat card. Progressive disclosure per the AAA critique: one
  *  progress indicator only (4 pips — the redundant "x/4 home" caption is
  *  dropped; exact count lives in the title tooltip), slimmer padding, and
- *  the active seat expands with a pulsing colored glow ring + a "Turn"
- *  badge so whose-turn-it-is reads without parsing text. */
+/** Compact, beautiful player seat card.
+ *  Features clean typography, crisp avatar ring, token progress dots,
+ *  and a clear active turn timer pill without visual clipping.
+ */
 function LudoPlayerCard({
   seat,
   deadline,
@@ -307,16 +276,12 @@ function LudoPlayerCard({
   const rim = COLOR_HEX_DARK[seat.color];
   const tint = COLOR_HEX[seat.color];
   const offline = !seat.online;
-  const avatarPx = dense ? 26 : isManyPlayers ? 28 : 32;
+  const avatarPx = dense ? 28 : isManyPlayers ? 30 : 34;
 
   // Turn timer.
   const timedKey = seat.active && !offline ? (deadline ?? null) : null;
   const secondsLeft = useTurnSecondsLeft(timedKey);
-  const [track, setTrack] = useState<{ key: number | null; total: number }>({ key: null, total: 1 });
-  if (timedKey !== track.key) setTrack({ key: timedKey, total: Math.max(1, secondsLeft) });
   const showTimer = timedKey != null;
-  const pct = Math.max(0, Math.min(1, secondsLeft / Math.max(1, track.total)));
-  const timerColor = secondsLeft <= 5 ? "#DC2626" : secondsLeft <= 10 ? "#F59E0B" : tint;
 
   return (
     <div
@@ -335,155 +300,212 @@ function LudoPlayerCard({
           : undefined
       }
       title={onTarget && !isSelf ? `React at ${seat.name}` : undefined}
-      className={`ludo-card-in relative flex-1 min-w-0 rounded-2xl overflow-hidden flex items-center gap-2 sm:gap-2.5 ${
-        isManyPlayers ? "px-2.5 py-2 min-h-[48px] sm:min-h-[52px]" : "px-3.5 py-2.5 min-h-[52px]"
+      className={`ludo-card-in relative flex-1 min-w-0 rounded-2xl flex items-center justify-between gap-2.5 transition-all ${
+        isManyPlayers ? "px-2.5 py-1.5 min-h-[46px]" : "px-3.5 py-2 min-h-[52px]"
       } ${
         onTarget && !isSelf ? "cursor-pointer" : ""
       }`}
       style={{
-        background: seat.isWinner ? "rgba(255,247,214,0.98)" : "rgba(255,251,240,0.96)",
-        border: `2px solid ${seat.isWinner ? "#E0AE3B" : tint}`,
-        boxShadow: seat.isWinner
-          ? "0 0 0 2.5px #E0AE3B, 0 4px 14px rgba(0,0,0,0.16)"
-          : isSelf
-            ? "0 0 0 2.5px #E0AE3B, 0 4px 12px rgba(0,0,0,0.12)"
+        background: seat.isWinner
+          ? "linear-gradient(135deg, #FFFDF0 0%, #FEF9C3 100%)"
+          : seat.active
+          ? `linear-gradient(135deg, #FFFFFF 0%, ${tint}14 100%)`
+          : "#FFFDF8",
+        border: `2px solid ${
+          seat.isWinner
+            ? "#E0AE3B"
             : seat.active
-              ? `0 0 0 2.5px ${tint}, 0 4px 14px ${tint}40`
-              : "0 2px 8px rgba(0,0,0,0.08)",
-        opacity: offline ? 0.62 : 1,
+            ? tint
+            : isSelf
+            ? "#E0AE3B"
+            : "rgba(200, 166, 107, 0.45)"
+        }`,
+        boxShadow: seat.isWinner
+          ? "0 0 0 2px #E0AE3B, 0 4px 14px rgba(224,174,59,0.25)"
+          : seat.active
+          ? `0 0 0 1.5px ${tint}, 0 4px 14px ${tint}30`
+          : isSelf
+          ? "0 0 0 1.5px #E0AE3B40, 0 2px 6px rgba(0,0,0,0.06)"
+          : "0 2px 6px rgba(0,0,0,0.04)",
+        opacity: offline ? 0.65 : 1,
         filter: offline ? "grayscale(0.45)" : undefined,
         animationDelay: `${Math.min(index, 8) * 45}ms`,
       }}
     >
-      {/* Breathing turn glow — the "current player" cue. */}
-      {seat.active && (
-        <span
-          aria-hidden
-          className="ludo-seat-glow absolute -inset-0.5 rounded-2xl pointer-events-none"
-          style={{ boxShadow: `0 0 0 2.5px ${tint}, 0 0 16px 2px ${tint}80` }}
-        />
-      )}
-      {/* Light sweep crossing the active card. */}
-      {seat.active && !offline && (
-        <span
-          aria-hidden
-          className="ludo-turn-sweep absolute inset-y-0 w-1/3 pointer-events-none"
-          style={{ background: `linear-gradient(90deg, transparent, ${tint}26, transparent)` }}
-        />
-      )}
-      <div className="relative flex-shrink-0">
-        <div className="ludo-chip rounded-full" style={{ padding: 2.5, ...chipVars(tint, rim) }}>
-          <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
-        </div>
-        {showTimer && <TurnCountdownRing pct={pct} color={timerColor} box={avatarPx + 12} />}
-        <span
-          className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full z-10 ${offline ? "ludo-reconnect" : ""}`}
-          style={{ background: seat.online ? "#37B24D" : "#F59E0B", border: "1.5px solid #FFFBF0" }}
-          title={seat.online ? "Online" : "Reconnecting…"}
-        />
-        {isSelf && (
-          <span
-            className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-10 px-1 rounded-full text-[7.5px] font-black uppercase tracking-[0.05em] leading-[1.3] whitespace-nowrap shadow-xs"
-            style={{ background: "linear-gradient(135deg,#F7DA8B,#E0AE3B)", color: "#4A3300", border: "1px solid #FFFBF0" }}
+      {/* Left: Avatar Hub */}
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <div className="relative flex-shrink-0 flex items-center justify-center">
+          <div
+            className={`rounded-full p-0.5 transition-all flex items-center justify-center ${
+              seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs" : ""
+            }`}
+            style={{
+              background: seat.active
+                ? `linear-gradient(135deg, ${tint}, ${rim})`
+                : `${tint}35`,
+            }}
           >
-            You
-          </span>
-        )}
+            <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
+              <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
+            </div>
+          </div>
+
+          {/* Presence Status Dot */}
+          <span
+            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full z-10 ${
+              offline ? "ludo-reconnect" : ""
+            }`}
+            style={{
+              background: seat.online ? "#10B981" : "#F59E0B",
+              border: "1.5px solid #FFFDF8",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+            }}
+            title={seat.online ? "Online" : "Reconnecting…"}
+          />
+        </div>
+
+        {/* Center: Player Name & Tokens Progress */}
+        <div className="min-w-0 flex-1 flex flex-col justify-center gap-0.5">
+          {/* Row 1: Name + Role Badges */}
+          <div className="flex items-center gap-1.5 min-w-0 leading-tight">
+            {seat.isWinner && <span className="flex-shrink-0 text-xs leading-none" aria-hidden>👑</span>}
+            {!seat.isWinner && seat.rank != null && (
+              <span
+                className="flex-shrink-0 rounded px-1 text-[8px] font-black leading-none bg-[#6D4323] text-[#FFF7E0] py-0.5"
+                title={`Finished ${ordinal(seat.rank)}`}
+              >
+                {ordinal(seat.rank)}
+              </span>
+            )}
+            <span
+              className="truncate font-extrabold uppercase tracking-tight text-xs sm:text-[13px] text-stone-900"
+              style={{ color: rim }}
+              title={`${seat.name}${seat.isBot ? " (bot)" : ""}`}
+            >
+              {seat.name}
+            </span>
+            {isSelf && (
+              <span
+                className="flex-shrink-0 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider leading-none text-amber-950 shadow-2xs"
+                style={{ background: "linear-gradient(135deg, #FDE047, #F59E0B)" }}
+              >
+                You
+              </span>
+            )}
+            {seat.isBot && <span className="flex-shrink-0 text-[10px] opacity-70" title="Bot">🤖</span>}
+          </div>
+
+          {/* Row 2: Tokens Home Progress or Away Status */}
+          {offline || seat.autoPlaying ? (
+            <div
+              className="text-[9.5px] font-extrabold truncate leading-none flex items-center gap-1 text-amber-700"
+            >
+              <span>⚠️</span>
+              <span>
+                {seat.autoReason === "idle"
+                  ? "Away · auto"
+                  : seat.autoPlaying
+                    ? "Reconnecting"
+                    : "Reconnecting…"}
+              </span>
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-1.5 mt-0.5 leading-none"
+              title={`${seat.tokensHome}/4 tokens reached home`}
+            >
+              {isManyPlayers ? (
+                /* Numeric notation for 5-8 players */
+                <span
+                  className="inline-flex items-center gap-1 font-mono font-black text-[10px] tabular-nums px-1.5 py-0.5 rounded leading-none"
+                  style={{
+                    background: seat.tokensHome > 0 ? `${tint}20` : "rgba(109,67,35,0.08)",
+                    color: seat.tokensHome > 0 ? rim : "#6D4C3D",
+                    border: `1px solid ${seat.tokensHome > 0 ? `${tint}40` : "rgba(109,67,35,0.15)"}`,
+                  }}
+                >
+                  <span className="text-[9px]">🏠</span>
+                  <span>{seat.tokensHome}/4</span>
+                </span>
+              ) : (
+                /* Elegant token dots notation for 2-4 players */
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
+                    {[0, 1, 2, 3].map((i) => {
+                      const isHome = i < seat.tokensHome;
+                      return (
+                        <span
+                          key={i}
+                          className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 transition-all ${
+                            isHome ? "scale-110 shadow-xs" : "opacity-40"
+                          }`}
+                          style={{
+                            background: isHome
+                              ? `linear-gradient(135deg, ${tint}, ${rim})`
+                              : "#CBD5E1",
+                            border: isHome
+                              ? "1px solid rgba(255,255,255,0.9)"
+                              : "1px solid rgba(148,163,184,0.4)",
+                            boxShadow: isHome ? `0 0 6px ${tint}80` : undefined,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                  <span
+                    className="font-mono font-extrabold text-[9.5px] tabular-nums text-stone-500"
+                  >
+                    {seat.tokensHome}/4
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="min-w-0 flex-1 flex flex-col justify-center">
-        {/* Row 1: Player Name */}
-        <div className="flex items-center gap-1 min-w-0 leading-tight">
-          {seat.isWinner && <span className="flex-shrink-0 text-[11px] leading-none" aria-hidden>👑</span>}
-          {!seat.isWinner && seat.rank != null && (
-            <span
-              className="flex-shrink-0 rounded px-1 text-[8.5px] font-black leading-none"
-              style={{ background: "#6D4323", color: "#FFF7E0", paddingBlock: 1.5 }}
-              title={`Finished ${ordinal(seat.rank)}`}
-            >
-              {ordinal(seat.rank)}
-            </span>
-          )}
+      {/* Right: Status & Turn Countdown Hub */}
+      <div className="flex-shrink-0 flex items-center justify-end">
+        {seat.isWinner ? (
           <span
-            className="truncate font-black uppercase tracking-tight text-[11px] sm:text-[12.5px]"
-            style={{ color: rim }}
-            title={`${seat.name}${seat.isBot ? " (bot)" : ""}`}
+            className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 text-amber-950 border border-amber-300"
+            style={{ background: "linear-gradient(135deg, #FDE047, #F59E0B)" }}
           >
-            {seat.name}
+            <span>🏆</span>
+            <span>Won</span>
           </span>
-          {seat.isBot && <span className="flex-shrink-0 text-[9px] opacity-50" title="Bot">🤖</span>}
-        </div>
-
-        {/* Row 2: Tokens / Turn / Status */}
-        {offline || seat.autoPlaying ? (
+        ) : seat.active && !offline ? (
           <div
-            className="text-[9px] font-bold mt-0.5 truncate leading-none"
-            style={{ color: "#B45309" }}
-            title={
-              seat.autoReason === "idle"
-                ? `${seat.name} isn't responding — the table is playing their turns.`
-                : seat.autoPlaying
-                  ? `${seat.name} lost connection — auto playing.`
-                  : `${seat.name} is reconnecting`
-            }
+            className={`text-[11px] font-black uppercase tracking-wide px-3 py-1 rounded-full shadow-sm flex items-center gap-1.5 border transition-all ${
+              showTimer && secondsLeft <= 5
+                ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-red-300 animate-pulse shadow-red-500/30"
+                : "text-amber-950 border-amber-300/80 shadow-amber-500/20"
+            }`}
+            style={{
+              background:
+                showTimer && secondsLeft <= 5
+                  ? undefined
+                  : "linear-gradient(135deg, #FDE047 0%, #F59E0B 100%)",
+            }}
+            title={showTimer ? `${secondsLeft}s left in this turn` : "Active turn"}
           >
-            {seat.autoReason === "idle"
-              ? "Away · auto"
-              : seat.autoPlaying
-                ? "Reconnecting"
-                : "Reconnecting…"}
+            <span className="text-xs leading-none" aria-hidden>🎲</span>
+            <span className="tabular-nums font-mono font-black">
+              {showTimer ? `${secondsLeft}s` : "Turn"}
+            </span>
           </div>
+        ) : seat.rank != null ? (
+          <span
+            className="text-[9.5px] font-extrabold px-2 py-0.5 rounded-full text-stone-600 bg-stone-200/80 border border-stone-300"
+          >
+            {ordinal(seat.rank)}
+          </span>
         ) : (
-          <div
-            className="flex items-center gap-1 mt-0.5 min-w-0 leading-none"
-            title={`${seat.tokensHome}/4 tokens home`}
+          <span
+            className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full text-stone-500 bg-stone-100 border border-stone-200"
           >
-            {isManyPlayers ? (
-              /* Numeric 0/4 notation for 5-8 player boards */
-              <span
-                className="inline-flex items-center font-mono font-black text-[10px] sm:text-[11px] tabular-nums tracking-tight px-1.5 py-0.5 rounded leading-none"
-                style={{
-                  background: seat.tokensHome > 0 ? `${tint}25` : "rgba(109,67,35,0.08)",
-                  color: seat.tokensHome > 0 ? rim : "#6D4C3D",
-                  border: `1px solid ${seat.tokensHome > 0 ? `${tint}50` : "rgba(109,67,35,0.18)"}`,
-                }}
-              >
-                {seat.tokensHome}/4
-              </span>
-            ) : (
-              /* Dot pips notation for 2-4 player boards */
-              [0, 1, 2, 3].map((i) =>
-                i < seat.tokensHome ? (
-                  <span key={i} className="ludo-chip w-3 h-3 rounded-full flex-shrink-0" style={chipVars(tint, rim)} />
-                ) : (
-                  <span
-                    key={i}
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ background: "rgba(109,67,35,0.14)", border: "1px solid rgba(109,67,35,0.22)" }}
-                  />
-                ),
-              )
-            )}
-
-            {seat.isWinner ? (
-              <span
-                className="ludo-chip flex-shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                style={{ ...chipVars("#F4B400", "#AB7E00"), color: "#4A3300" }}
-              >
-                <span className="relative">Won</span>
-              </span>
-            ) : seat.active ? (
-              <span
-                className="ludo-chip flex-shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                style={{ ...chipVars(showTimer ? timerColor : tint, rim), color: "#fff" }}
-                title={showTimer ? `${secondsLeft}s left in this turn` : "Their turn"}
-              >
-                <span className="relative tabular-nums whitespace-nowrap">
-                  {showTimer ? `${secondsLeft}s` : "Turn"}
-                </span>
-              </span>
-            ) : null}
-          </div>
+            Waiting
+          </span>
         )}
       </div>
     </div>
@@ -1198,6 +1220,32 @@ export function LudoBoardArea({
         </span>
       ))}
 
+      {/* GAL: Gotcha Capture Overlay */}
+      {m.activeCapture && (
+        <GotchaCaptureOverlay
+          victimName={m.activeCapture.victimName}
+          attackerName={m.activeCapture.attackerName}
+          attackerColor={m.activeCapture.attackerColor}
+          left={m.activeCapture.left}
+          top={m.activeCapture.top}
+        />
+      )}
+
+      {/* GAL: Safe Square Shield Pops */}
+      {m.activeSafePops.map((sp) => (
+        <SafeShieldPop key={sp.id} left={sp.left} top={sp.top} color={sp.color} />
+      ))}
+
+      {/* GAL: Out of Gate Entry Bursts */}
+      {m.activeOutOfGates.map((og) => (
+        <OutOfGateBurst key={og.id} left={og.left} top={og.top} color={og.color} />
+      ))}
+
+      {/* GAL: Home Entry Badges */}
+      {m.activeHomeEntries.map((he) => (
+        <HomeEntryBurst key={he.id} left={he.left} top={he.top} color={he.color} />
+      ))}
+
       {/* Per-home mini confetti bursts */}
       {m.homeBursts.map((b) => (
         <MiniBurst key={b.id} left={b.left} top={b.top} color={b.color} />
@@ -1238,6 +1286,7 @@ export function LudoOverlays({
       <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn && state.phase === "playing"} />
       {m.showInstructions && <InstructionsModal onClose={() => m.setShowInstructions(false)} />}
       {m.showSettings && <SettingsMenu onClose={() => m.setShowSettings(false)} />}
+      {m.activeLuckySix && <LuckySixBurst />}
       {m.luckyBanner && (
         <div className="fixed inset-0 z-40 pointer-events-none flex items-center justify-center">
           <div

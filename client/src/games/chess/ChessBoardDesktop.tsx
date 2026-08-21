@@ -11,6 +11,8 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
+import { ChessCheckOverlay, ChessWinnerCelebration } from "./ChessAnimations";
 
 export default function ChessBoardDesktop({
   state,
@@ -24,7 +26,7 @@ export default function ChessBoardDesktop({
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [skinModalOpen, setSkinModalOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(selfId);
 
   const [localTheme, setLocalTheme] = useState<ChessBoardTheme>(state.boardTheme ?? "emerald");
   const [localPieceSet, setLocalPieceSet] = useState<ChessPieceSet>(state.pieceSet ?? "neo");
@@ -256,12 +258,23 @@ export default function ChessBoardDesktop({
             {/* Opponent Card (Right) */}
             <div
               ref={reactions.registerCardRef(opponentId ?? null)}
-              className={`p-3 rounded-2xl border transition-all flex items-center justify-between ${
+              className={`relative p-3 rounded-2xl border transition-all flex items-center justify-between ${
                 state.turn === opponentColor && state.phase === "aiming"
                   ? "bg-gradient-to-r from-amber-500/20 to-amber-600/10 border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
                   : "bg-[#1A1412] border-amber-500/20"
-              }`}
+              }${opponentId ? " cursor-pointer hover:border-amber-400/80 active:scale-[0.99]" : ""}`}
+              onClick={opponentId ? () => reactions.openTarget(opponentId) : undefined}
+              title={opponentId ? `Tap to react at ${opponentName}` : undefined}
             >
+              {opponentId && reactions.activeTargetId === opponentId && (
+                <SeatTargetReactionWheel
+                  game="chess"
+                  targetPlayerId={opponentId}
+                  targetPlayerName={opponentName}
+                  onClose={reactions.closeTarget}
+                  position="bottom"
+                />
+              )}
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-stone-800 border border-white/10 flex items-center justify-center text-lg font-black shrink-0">
                   ⚔️
@@ -387,6 +400,16 @@ export default function ChessBoardDesktop({
           onMove("setOptions", { pieceSet: s });
         }}
       />
+
+      {/* GAL Animations */}
+      {state.inCheck && (
+        <ChessCheckOverlay />
+      )}
+      {state.phase === "finished" && state.winnerId && (
+        <ChessWinnerCelebration
+          winnerName={nameOf(state.winnerId)}
+        />
+      )}
 
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import GameTutorial, { useTutorialGate, TutorialButton } from "../../components/GameTutorial";
@@ -7,6 +8,7 @@ import { RpsOverlays } from "./rps-shared";
 import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
 import { useSkin } from "../skin";
+import { RpsClashOverlay, RpsWinnerCelebration } from "./RpsAnimations";
 import {
   NotebookPage,
   NotebookTopBar,
@@ -35,6 +37,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
   const tut = useTutorialGate(RPS_TUTORIAL.key, !m.iNeedToChoose || m.roundDeadline == null);
   const [, setSkin] = useSkin();
   const showScorecard = m.state.isOver;
+  const [activeTargetId, setActiveTargetId] = useState<string | null>(null);
 
   return (
     <NotebookPage className="h-full">
@@ -101,6 +104,10 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
           tapeColor="red-dots"
           side="right"
           cardRef={m.registerCardRef(m.opponent?.id ?? null)}
+          targetPlayerId={m.opponent?.id}
+          onTarget={(id) => setActiveTargetId(id)}
+          activeTargetId={activeTargetId}
+          onCloseTarget={() => setActiveTargetId(null)}
         />
       </div>
 
@@ -160,6 +167,19 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
           storageKey={RPS_TUTORIAL.key}
           accent={RPS_TUTORIAL.accent}
           onClose={() => tut.setOpen(false)}
+        />
+      )}
+
+      {/* GAL Animations */}
+      {m.activeClash && (
+        <RpsClashOverlay
+          kind={m.activeClash.kind}
+          message={m.activeClash.message}
+        />
+      )}
+      {m.state.isOver && m.state.winnerId && (
+        <RpsWinnerCelebration
+          winnerName={m.players.find((p) => p.id === m.state.winnerId)?.name ?? "Winner"}
         />
       )}
 

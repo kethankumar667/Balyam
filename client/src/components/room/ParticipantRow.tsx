@@ -1,7 +1,9 @@
 import type { Player } from "@shared/types";
-import { Crown, Bot, Check } from "lucide-react";
+import { Crown, Bot } from "lucide-react";
+import { motion } from "framer-motion";
 import SeatAvatar from "../profile/SeatAvatar";
 import ParticipantActionMenu from "./ParticipantActionMenu";
+import { ReadyCheckmarkPencil } from "../../animations/app/ReadyCheckmarkDraw";
 import { COLOR_HEX } from "../../games/ludo/board-layout";
 import { COIN_COLOR_HEX } from "../CoinColorPicker";
 
@@ -34,7 +36,11 @@ export default function ParticipantRow({
   }
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+      transition={{ duration: 0.28, ease: "backOut" }}
       className={`flex items-center justify-between gap-2.5 p-3 rounded-2xl border transition-all ${
         isMe
           ? "bg-[#FFFDF8] dark:bg-[#161F2E] border-amber-300/80 dark:border-amber-500/50 shadow-xs ring-1 ring-amber-400/20"
@@ -141,7 +147,7 @@ export default function ParticipantRow({
             className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/60 rounded-full px-2.5 py-1 whitespace-nowrap shadow-2xs"
             aria-label="Ready"
           >
-            <Check size={13} aria-hidden />
+            <ReadyCheckmarkPencil size={13} />
             <span>Ready</span>
           </span>
         ) : (
@@ -165,6 +171,6 @@ export default function ParticipantRow({
           />
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

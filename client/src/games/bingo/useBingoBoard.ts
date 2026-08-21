@@ -57,6 +57,7 @@ export interface BingoBoardModel {
   /** True the instant the window rescues me, so the UI can own up to it. */
   wasAutoMarkedForMe: boolean;
   autoMark: boolean;
+  activeBallCalled: number | null;
 
   markNumber: (num: number) => void;
   setAutoMark: (on: boolean) => void;
@@ -152,15 +153,19 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
 
   /* ── Calling out ──────────────────────────────────────────────────── */
 
+  const [activeBallCalled, setActiveBallCalled] = useState<number | null>(null);
   const prevCalledCount = useRef<number>(0);
   useEffect(() => {
     if (state.calledNumbers.length > prevCalledCount.current) {
       const called = state.lastCalledNumber?.value;
       play(AUDIO.SYS_TICK);
       haptics.subtle();
-      // Said aloud, in the player's own language — the beat the round runs
-      // on. See announcer.ts.
-      if (typeof called === "number") announceNumber(called, locale);
+      if (typeof called === "number") {
+        announceNumber(called, locale);
+        setActiveBallCalled(called);
+        const t = window.setTimeout(() => setActiveBallCalled(null), 1200);
+        return () => window.clearTimeout(t);
+      }
     }
     prevCalledCount.current = state.calledNumbers.length;
   }, [state.calledNumbers, state.lastCalledNumber, play, haptics, locale]);
@@ -245,6 +250,7 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
     setActiveTab,
 
     pendingNumber,
+    activeBallCalled,
     secondsToMark: state.markDeadline != null ? secondsToMark : null,
     iHaveMarkedCurrent,
     waitingOn,
