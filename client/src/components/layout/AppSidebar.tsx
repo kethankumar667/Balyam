@@ -25,19 +25,19 @@ interface AppSidebarProps {
 function getBadgeStyles(variant?: NavBadge["variant"]): string {
   switch (variant) {
     case "emerald":
-      return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
+      return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 rounded-full";
     case "amber":
-      return "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30";
+      return "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30 rounded-full";
     case "rose":
-      return "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30";
+      return "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 rounded-full";
     case "purple":
-      return "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30";
+      return "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 rounded-full";
     case "accent":
-      return "bg-[var(--chrome-accent)]/15 text-[var(--chrome-accent)] border-[var(--chrome-accent)]/30";
+      return "bg-[var(--chrome-accent)]/15 text-[var(--chrome-accent)] border-[var(--chrome-accent)]/30 rounded-full";
     case "muted":
-      return "bg-stone-500/10 text-stone-600 dark:text-stone-400 border-stone-500/25";
+      return "bg-stone-100/90 dark:bg-stone-800/80 text-stone-600 dark:text-stone-300 border-stone-200/90 dark:border-stone-700 shadow-2xs rounded-full px-2.5 py-0.5 text-[8.5px] font-mono font-bold tracking-widest uppercase";
     default:
-      return "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] border-[var(--chrome-border)]";
+      return "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] border-[var(--chrome-border)] rounded-full";
   }
 }
 
@@ -106,7 +106,7 @@ export default function AppSidebar({
         {/* Badge Indicator */}
         {item.badge && (
           <span
-            className={`px-2 py-0.5 text-[9.5px] font-mono font-bold uppercase tracking-wider rounded-md border shrink-0 ${getBadgeStyles(
+            className={`px-2.5 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-wider rounded-full border shrink-0 ${getBadgeStyles(
               item.badge.variant,
             )}`}
           >
