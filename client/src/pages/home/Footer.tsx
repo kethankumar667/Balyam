@@ -42,88 +42,88 @@ export function Footer() {
       <RevealOnScroll as="div" className="space-y-6">
         {/* ── Main Outer Frame Card ── */}
         <div
-          className="bhalyam-footer-card relative rounded-[32px] sm:rounded-[40px] border border-[#E8DFC8] dark:border-[#222A44]
-                     bg-[#FAF5EE] dark:bg-[#11162A] p-6 sm:p-10 lg:p-12 shadow-sm space-y-8 text-left"
+          className="bhalyam-footer-card relative rounded-[28px] sm:rounded-[32px] border border-[#E8DFC8] dark:border-[#222A44]
+                     bg-[#FAF5EE] dark:bg-[#11162A] p-5 sm:p-7 lg:p-8 shadow-sm space-y-5 text-left"
         >
           {/* ── Top Section: Brand + 4 Navigation Columns ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-6 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 lg:gap-4 items-start">
             {/* Column 1: Brand & Bio (4 Cols) */}
-            <div className="lg:col-span-4 space-y-4">
+            <div className="lg:col-span-4 space-y-2.5">
               <Link to="/" className="inline-block group select-none">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-xs bg-amber-500/10 flex items-center justify-center p-1 border border-amber-500/20">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden shadow-xs bg-amber-500/10 flex items-center justify-center p-0.5 border border-amber-500/20">
                     <img
                       src="/bhalyam-logo.png"
                       alt="BHALYAM"
-                      className="w-full h-full object-cover rounded-xl"
+                      className="w-full h-full object-cover rounded-lg"
                     />
                   </div>
                   <div>
-                    <h3 className="font-display font-black text-3xl tracking-tight text-slate-900 dark:text-white group-hover:text-[#EA580C] transition-colors leading-none">
+                    <h3 className="font-display font-black text-2xl tracking-tight text-slate-900 dark:text-white group-hover:text-[#EA580C] transition-colors leading-none">
                       BHALYAM
                     </h3>
-                    <p className="text-xs font-script font-bold text-[#EA580C] mt-1">
+                    <p className="text-[11px] font-script font-bold text-[#EA580C] mt-0.5">
                       Play Together. Remember Forever.
                     </p>
                   </div>
                 </div>
               </Link>
 
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium max-w-sm">
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium max-w-xs">
                 BHALYAM is your digital playground for timeless games, friendly competition, and
                 unforgettable memories with friends and family.
               </p>
 
               {/* Made with ❤️ for 90s Kids Badge */}
-              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#D4A574]/40 dark:border-amber-500/30 bg-white/70 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 text-xs font-bold shadow-2xs">
+              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#D4A574]/40 dark:border-amber-500/30 bg-white/70 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 text-[11px] font-bold shadow-2xs">
                 <span>☆</span>
                 <span>Made with</span>
-                <Heart className="w-3.5 h-3.5 text-rose-500 fill-current inline mx-0.5" />
+                <Heart className="w-3 h-3 text-rose-500 fill-current inline mx-0.5" />
                 <span>for 90s Kids</span>
               </div>
             </div>
 
             {/* Column 2: EXPLORE (2 Cols) */}
-            <div className="lg:col-span-2 space-y-3">
-              <div className="border-t-2 border-[#EA580C] w-7 pt-2">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            <div className="lg:col-span-2 space-y-2">
+              <div className="border-t-2 border-[#EA580C] w-6 pt-1.5">
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white">
                   EXPLORE
                 </h4>
               </div>
-              <ul className="space-y-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400">
+              <ul className="space-y-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                 <li>
                   <Link
                     to="/games"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <Gamepad2 className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <Gamepad2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>All Games</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/games"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <BookOpen className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <BookOpen className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Rooms</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/how-to-play"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <PlayCircle className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <PlayCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>How It Works</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/leaderboard"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <Trophy className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <Trophy className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Leaderboard</span>
                   </Link>
                 </li>
@@ -131,46 +131,46 @@ export function Footer() {
             </div>
 
             {/* Column 3: HELP & SUPPORT (2 Cols) */}
-            <div className="lg:col-span-2 space-y-3">
-              <div className="border-t-2 border-[#EA580C] w-7 pt-2">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            <div className="lg:col-span-2 space-y-2">
+              <div className="border-t-2 border-[#EA580C] w-6 pt-1.5">
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white">
                   HELP &amp; SUPPORT
                 </h4>
               </div>
-              <ul className="space-y-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400">
+              <ul className="space-y-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                 <li>
                   <Link
                     to="/how-to-play"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <BookOpen className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <BookOpen className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>How to Play</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/community-rules"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <Shield className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <Shield className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Community Rules</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/support"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <HelpCircle className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <HelpCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Support &amp; FAQs</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/contact"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 text-[#EA580C] font-bold min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 text-[#EA580C] font-bold min-h-[28px]"
                   >
-                    <Mail className="w-4 h-4 text-[#EA580C] shrink-0" />
+                    <Mail className="w-3.5 h-3.5 text-[#EA580C] shrink-0" />
                     <span>Contact Us</span>
                   </Link>
                 </li>
@@ -178,46 +178,46 @@ export function Footer() {
             </div>
 
             {/* Column 4: COMPANY (2 Cols) */}
-            <div className="lg:col-span-2 space-y-3">
-              <div className="border-t-2 border-[#EA580C] w-7 pt-2">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            <div className="lg:col-span-2 space-y-2">
+              <div className="border-t-2 border-[#EA580C] w-6 pt-1.5">
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white">
                   COMPANY
                 </h4>
               </div>
-              <ul className="space-y-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400">
+              <ul className="space-y-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                 <li>
                   <Link
                     to="/about"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <Info className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>About BHALYAM</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/about"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <Heart className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <Heart className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Our Story</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/design-system"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <Palette className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <Palette className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Design System</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/diagnostics"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <Monitor className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <Monitor className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Diagnostics</span>
                   </Link>
                 </li>
@@ -225,37 +225,37 @@ export function Footer() {
             </div>
 
             {/* Column 5: LEGAL (2 Cols) */}
-            <div className="lg:col-span-2 space-y-3">
-              <div className="border-t-2 border-[#EA580C] w-7 pt-2">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            <div className="lg:col-span-2 space-y-2">
+              <div className="border-t-2 border-[#EA580C] w-6 pt-1.5">
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white">
                   LEGAL
                 </h4>
               </div>
-              <ul className="space-y-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400">
+              <ul className="space-y-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                 <li>
                   <Link
                     to="/privacy"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <Lock className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Privacy Policy</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/terms"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <FileText className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Terms of Service</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     to="/safety"
-                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2.5 min-h-[36px]"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
                   >
-                    <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Safety Center</span>
                   </Link>
                 </li>
@@ -264,11 +264,11 @@ export function Footer() {
           </div>
 
           {/* ── Middle Section: Two Wide Action Cards Side-by-Side (50% / 50%) ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left Card: NEED A HAND? */}
-            <div className="bg-[#FFF8EE] dark:bg-[#1A1210]/80 border border-[#FAD9A8] dark:border-amber-900/40 rounded-3xl overflow-hidden flex flex-row items-stretch shadow-2xs min-h-[200px]">
-              {/* Left: Large envelope illustration area */}
-              <div className="relative flex items-center justify-center p-6 shrink-0 w-[160px] sm:w-[180px]">
+            <div className="bg-[#FFF8EE] dark:bg-[#1A1210]/80 border border-[#FAD9A8] dark:border-amber-900/40 rounded-2xl overflow-hidden flex flex-row items-stretch shadow-2xs">
+              {/* Left: envelope illustration area */}
+              <div className="relative flex items-center justify-center p-4 shrink-0 w-[130px] sm:w-[150px]">
                 {/* Sparkle decorations */}
                 <span className="absolute top-4 left-4 text-[#F97316] text-lg select-none">✦</span>
                 <span className="absolute bottom-8 left-8 text-[#F97316]/40 text-sm select-none">✦</span>
@@ -277,78 +277,78 @@ export function Footer() {
               </div>
 
               {/* Right: Text + Button */}
-              <div className="flex-1 flex flex-col justify-center gap-3 py-6 pr-6">
-                <div className="space-y-1.5">
-                  <p className="text-sm font-black uppercase tracking-widest text-[#EA580C]">
+              <div className="flex-1 flex flex-col justify-center gap-2.5 py-4 pr-4">
+                <div className="space-y-1">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-[#EA580C]">
                     NEED A HAND?
                   </p>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white leading-snug">
+                  <h4 className="text-base font-black text-slate-900 dark:text-white leading-snug">
                     We're here when you need us.
                   </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                    Our team is ready to help you<br />with any questions or issues.
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                    Our team is ready to help you with any questions or issues.
                   </p>
                 </div>
                 <Link
                   to="/contact"
-                  className="self-start inline-flex items-center gap-2 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-sm px-7 py-3 rounded-full shadow-sm hover:shadow-md transition min-h-[46px] whitespace-nowrap"
+                  className="self-start inline-flex items-center gap-2 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-sm hover:shadow-md transition whitespace-nowrap"
                 >
                   <span>Contact BHALYAM</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             </div>
 
             {/* Right Card: STAY IN THE LOOP */}
-            <div className="bg-[#EEE9FF] dark:bg-[#18134A]/80 border border-[#D1C4F8] dark:border-purple-900/40 rounded-3xl p-6 sm:p-7 flex flex-col justify-between gap-4 shadow-2xs relative overflow-hidden min-h-[200px]">
+            <div className="bg-[#EEE9FF] dark:bg-[#18134A]/80 border border-[#D1C4F8] dark:border-purple-900/40 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3 shadow-2xs relative overflow-hidden">
               {/* Paper airplane top-right decoration */}
-              <div className="absolute top-5 right-5 pointer-events-none">
+              <div className="absolute top-4 right-4 pointer-events-none">
                 <PurplePlaneIllustration />
               </div>
 
               {/* Top: Title & desc */}
-              <div className="space-y-1.5 pr-16">
-                <h5 className="text-base font-black uppercase tracking-wider text-[#5B21B6] dark:text-[#A78BFA]">
+              <div className="space-y-1 pr-14">
+                <h5 className="text-sm font-black uppercase tracking-wider text-[#5B21B6] dark:text-[#A78BFA]">
                   STAY IN THE LOOP
                 </h5>
-                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-snug">
-                  Get updates about new games,<br />events and awesome 90s vibes.
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-snug">
+                  Get updates about new games, events and awesome 90s vibes.
                 </p>
               </div>
 
               {/* Subscribe form */}
               <form onSubmit={handleSubscribe}>
-                <div className="flex items-center bg-white dark:bg-[#151A2E] rounded-full p-1.5 border border-[#DDD6FE] dark:border-purple-900/50 shadow-2xs">
-                  <Mail className="w-4 h-4 text-slate-400 ml-3 shrink-0" />
+                <div className="flex items-center bg-white dark:bg-[#151A2E] rounded-full p-1 border border-[#DDD6FE] dark:border-purple-900/50 shadow-2xs">
+                  <Mail className="w-3.5 h-3.5 text-slate-400 ml-2.5 shrink-0" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
                     required
-                    className="bg-transparent text-xs text-slate-900 dark:text-white placeholder-slate-400 px-3 focus:outline-none flex-1 min-w-0 font-medium"
+                    className="bg-transparent text-[11px] text-slate-900 dark:text-white placeholder-slate-400 px-2.5 focus:outline-none flex-1 min-w-0 font-medium"
                   />
                   <button
                     type="submit"
-                    className="bg-[#5B21B6] hover:bg-[#4C1D95] text-white text-xs font-bold rounded-full px-5 py-2.5 transition-all shadow-xs flex-shrink-0 flex items-center gap-1.5 cursor-pointer"
+                    className="bg-[#5B21B6] hover:bg-[#4C1D95] text-white text-[11px] font-bold rounded-full px-4 py-2 transition-all shadow-xs flex-shrink-0 flex items-center gap-1 cursor-pointer"
                   >
                     <span>Subscribe</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
                 {subscribed && (
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1.5 block">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 block">
                     ✓ Subscribed successfully!
                   </span>
                 )}
               </form>
 
               {/* Micro-tags */}
-              <div className="flex items-center gap-2 text-[11px] font-bold text-purple-700 dark:text-purple-300">
-                <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
+              <div className="flex items-center gap-2 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                <Gamepad2 className="w-3 h-3 shrink-0" />
                 <span>New Games</span>
                 <span>•</span>
-                <Trophy className="w-3.5 h-3.5 shrink-0" />
+                <Trophy className="w-3 h-3 shrink-0" />
                 <span>Events</span>
                 <span>•</span>
                 <span>🎒</span>
@@ -357,55 +357,55 @@ export function Footer() {
             </div>
           </div>
 
-          {/* ── Middle Values & Trust Strip (Framed Card with 4 Pillars) ── */}
-          <div className="rounded-2xl border border-[#E8DFC8] dark:border-slate-800 bg-white/70 dark:bg-[#151A2E]/60 p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-[#E8DFC8] dark:divide-slate-800">
+          {/* ── Middle Values & Trust Strip ── */}
+          <div className="rounded-xl border border-[#E8DFC8] dark:border-slate-800 bg-white/70 dark:bg-[#151A2E]/60 p-3 sm:p-4 grid grid-cols-2 lg:grid-cols-4 gap-3 divide-y-0 sm:divide-x divide-[#E8DFC8] dark:divide-slate-800">
             {/* 1. Safe & Friendly */}
-            <div className="flex items-center gap-3 sm:px-3 pt-2 sm:pt-0">
-              <div className="w-10 h-10 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5" />
+            <div className="flex items-center gap-2.5 sm:px-3">
+              <div className="w-8 h-8 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4" />
               </div>
-              <div className="space-y-0.5">
-                <h5 className="text-xs font-bold text-slate-900 dark:text-white">Safe &amp; Friendly</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight font-medium">
+              <div>
+                <h5 className="text-[11px] font-bold text-slate-900 dark:text-white">Safe &amp; Friendly</h5>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug font-medium">
                   We keep BHALYAM safe and fun for everyone.
                 </p>
               </div>
             </div>
 
             {/* 2. Fair Play */}
-            <div className="flex items-center gap-3 sm:px-3 pt-2 sm:pt-0">
-              <div className="w-10 h-10 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
-                <Users2 className="w-5 h-5" />
+            <div className="flex items-center gap-2.5 sm:px-3">
+              <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
+                <Users2 className="w-4 h-4" />
               </div>
-              <div className="space-y-0.5">
-                <h5 className="text-xs font-bold text-slate-900 dark:text-white">Fair Play</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight font-medium">
+              <div>
+                <h5 className="text-[11px] font-bold text-slate-900 dark:text-white">Fair Play</h5>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug font-medium">
                   Cheating has no place here. Let's play fair and square.
                 </p>
               </div>
             </div>
 
             {/* 3. Respect Everyone */}
-            <div className="flex items-center gap-3 sm:px-3 pt-2 sm:pt-0">
-              <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <Heart className="w-5 h-5 fill-current" />
+            <div className="flex items-center gap-2.5 sm:px-3">
+              <div className="w-8 h-8 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <Heart className="w-4 h-4 fill-current" />
               </div>
-              <div className="space-y-0.5">
-                <h5 className="text-xs font-bold text-slate-900 dark:text-white">Respect Everyone</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight font-medium">
+              <div>
+                <h5 className="text-[11px] font-bold text-slate-900 dark:text-white">Respect Everyone</h5>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug font-medium">
                   Be kind, supportive and enjoy together.
                 </p>
               </div>
             </div>
 
             {/* 4. Have Fun! */}
-            <div className="flex items-center gap-3 sm:px-3 pt-2 sm:pt-0">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <Gamepad2 className="w-5 h-5" />
+            <div className="flex items-center gap-2.5 sm:px-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <Gamepad2 className="w-4 h-4" />
               </div>
-              <div className="space-y-0.5">
-                <h5 className="text-xs font-bold text-slate-900 dark:text-white">Have Fun!</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight font-medium">
+              <div>
+                <h5 className="text-[11px] font-bold text-slate-900 dark:text-white">Have Fun!</h5>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug font-medium">
                   Games are better when we play together.
                 </p>
               </div>
