@@ -441,11 +441,11 @@ body, #root, .bhalyam-paper {
 }
 
 .bhalyam-paper {
-  background-color: #F7E8C4;
+  background-color: #FAF3E0;
   background-image:
-    radial-gradient(rgba(228, 177, 40, 0.06) 1px, transparent 1px),
-    radial-gradient(rgba(109, 67, 35, 0.04) 1px, transparent 1px),
-    linear-gradient(135deg, rgba(216, 195, 144, 0.12), transparent 60%);
+    radial-gradient(rgba(228, 177, 40, 0.04) 1px, transparent 1px),
+    radial-gradient(rgba(109, 67, 35, 0.03) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(216, 195, 144, 0.08), transparent 60%);
   background-size: 14px 14px, 22px 22px, 100% 100%;
   background-position: 0 0, 7px 11px, 0 0;
 }
@@ -455,11 +455,11 @@ body, #root, .bhalyam-paper {
 }
 
 :root[data-theme="dark"] .bhalyam-paper {
-  background-color: #0B0F19;
+  background-color: #070B14;
   background-image:
     radial-gradient(rgba(245, 158, 11, 0.04) 1px, transparent 1px),
     radial-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
-    linear-gradient(135deg, rgba(30, 41, 59, 0.35), rgba(11, 15, 25, 0.96) 75%);
+    linear-gradient(135deg, rgba(30, 41, 59, 0.35), rgba(7, 11, 20, 0.96) 75%);
   background-size: 16px 16px, 24px 24px, 100% 100%;
   background-position: 0 0, 8px 12px, 0 0;
 }

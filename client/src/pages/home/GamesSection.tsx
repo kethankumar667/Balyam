@@ -134,8 +134,8 @@ export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =
         <Link
           to={filtered ? `/games?c=${filter.category}` : "/games"}
           className="inline-flex items-center gap-2 rounded-full px-5 py-2.5
-                     bg-[#FCF8EF] border border-[#EEDCC2] text-[#2A221B] font-extrabold text-[14px]
-                     hover:bg-[#F8EEDB] active:translate-y-px
+                     bg-[#FFFDF7] dark:bg-[#1E2739] border border-[#ECD9BA] dark:border-[#66799A] text-[var(--chrome-ink)] font-extrabold text-[14px]
+                     hover:bg-[#FAF2DF] dark:hover:bg-[#27324A] active:translate-y-px
                      focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
                      shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
                      transition-colors duration-200"

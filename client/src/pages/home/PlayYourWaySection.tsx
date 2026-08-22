@@ -26,8 +26,8 @@ export function PlayYourWaySection({
           onClick={onPlayFriends}
           className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group ${
             isDark
-              ? "bg-[#0E1526] border-white/10 hover:border-amber-500/40"
-              : "bg-[#FCF8EF] border-[#E8D8BE] hover:border-amber-500/50"
+              ? "bg-[#131926] border-white/10 hover:border-amber-500/40"
+              : "bg-[#FFFDF7] border-[#ECD9BA] hover:border-amber-500/50"
           }`}
         >
           <div className="flex items-center gap-3.5 min-w-0">
@@ -54,8 +54,8 @@ export function PlayYourWaySection({
           onClick={onPlayBots}
           className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group ${
             isDark
-              ? "bg-[#0E1526] border-white/10 hover:border-emerald-500/40"
-              : "bg-[#FCF8EF] border-[#E8D8BE] hover:border-emerald-500/50"
+              ? "bg-[#131926] border-white/10 hover:border-emerald-500/40"
+              : "bg-[#FFFDF7] border-[#ECD9BA] hover:border-emerald-500/50"
           }`}
         >
           <div className="flex items-center gap-3.5 min-w-0">

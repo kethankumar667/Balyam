@@ -76,7 +76,7 @@ export function PlayerJourneyDashboard({
         {/* Card 1: Jump back into the real last-played game, or an honest
             first-game prompt when there is no match history yet. */}
         <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
-          isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D9C1]"
+          isDark ? "bg-[#131926] border-white/10" : "bg-[#FFFDF7] border-[#ECD9BA]"
         }`}>
           {lastMatch && lastGameCard ? (
             <>
@@ -97,7 +97,7 @@ export function PlayerJourneyDashboard({
                 </div>
 
                 <div className={`flex items-center gap-3.5 my-3 p-3 rounded-2xl border ${
-                  isDark ? "bg-white/5 border-white/10" : "bg-[#F5ECE0] border-[#E6D4B8]"
+                  isDark ? "bg-white/5 border-white/10" : "bg-[#FAF2DF] border-[#ECD9BA]"
                 }`}>
                   <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-200 border-2 border-amber-400 p-1 flex-shrink-0 flex items-center justify-center shadow-inner">
                     <img
@@ -170,7 +170,7 @@ export function PlayerJourneyDashboard({
             achievement. No daily quests — there is no daily-quest system to
             back them. */}
         <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
-          isDark ? "bg-[#0E1526] border-white/10" : "bg-[#FCF8EF] border-[#E8D9C1]"
+          isDark ? "bg-[#131926] border-white/10" : "bg-[#FFFDF7] border-[#ECD9BA]"
         }`}>
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
@@ -190,7 +190,7 @@ export function PlayerJourneyDashboard({
 
             {/* XP Bar */}
             <div className={`w-full h-2.5 rounded-full overflow-hidden mb-3 ${
-              isDark ? "bg-slate-800" : "bg-[#EADCC8]"
+              isDark ? "bg-slate-800" : "bg-[#ECD9BA]"
             }`}>
               <div
                 className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
@@ -201,7 +201,7 @@ export function PlayerJourneyDashboard({
             {/* Next real achievement, closest to completion */}
             {nextAchievement ? (
               <div className={`p-2.5 rounded-xl border ${
-                isDark ? "bg-white/5 border-white/10" : "bg-[#FFF8EE] border-[#EEDCC2]"
+                isDark ? "bg-white/5 border-white/10" : "bg-[#FAF2DF] border-[#ECD9BA]"
               }`}>
                 <div className={`text-xs font-black uppercase tracking-wider ${
                   isDark ? "text-chest-300" : "text-chest-700"

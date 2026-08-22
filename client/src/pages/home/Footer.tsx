@@ -43,8 +43,8 @@ export function Footer() {
       <RevealOnScroll as="div" className="space-y-6">
         {/* ── Main Outer Frame Card ── */}
         <div
-          className="bhalyam-footer-card relative rounded-[28px] sm:rounded-[32px] border border-[#E8DFC8] dark:border-[#222A44]
-                     bg-[#FAF5EE] dark:bg-[#11162A] p-5 sm:p-7 lg:p-8 shadow-sm space-y-5 text-left"
+          className="bhalyam-footer-card relative rounded-[28px] sm:rounded-[32px] border border-[#ECD9BA] dark:border-[#222A44]
+                     bg-[#FFFDF7] dark:bg-[#11162A] p-5 sm:p-7 lg:p-8 shadow-sm space-y-5 text-left"
         >
           {/* ── Top Section: Brand + 4 Navigation Columns ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 lg:gap-4 items-start">
