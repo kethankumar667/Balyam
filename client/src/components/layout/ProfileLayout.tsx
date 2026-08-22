@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowLeft, Trophy, BarChart3 } from "lucide-react";
+import { ArrowLeft, Trophy, BarChart3, Lock } from "lucide-react";
 import ProfileHeader from "../../features/profile/ProfileHeader";
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 
@@ -28,15 +28,10 @@ export default function ProfileLayout({
   compactHeader,
 }: ProfileLayoutProps) {
   const { pathname } = useLocation();
-  const isOverview = pathname === "/profile" || pathname === "/profile/overview";
-  const isPersonal = pathname === "/profile/personal";
-  const isStatistics = pathname === "/profile/statistics";
-  const isAchievements = pathname === "/profile/achievements";
-  const isMatches = pathname === "/profile/matches" || pathname === "/profile/history";
-  const isCompact = compactHeader !== undefined ? compactHeader : (!isOverview && !isPersonal && !isStatistics && !isAchievements && !isMatches);
+  const isCompact = compactHeader ?? (pathname !== "/profile" && pathname !== "/profile/personal");
 
   return (
-    <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-[85vh] bhalyam-paper auth-shell py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-6">
           {/* Top Breadcrumb & Lounge Navigation */}
           <div className="flex items-center justify-between">
@@ -48,21 +43,17 @@ export default function ProfileLayout({
               <span>Back to Lounge</span>
             </Link>
 
-            <div className="flex items-center gap-4 text-xs font-bold">
-              <Link
-                to="/tournaments"
-                className="text-amber-600 dark:text-amber-400 hover:underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center gap-1.5"
-              >
+            <div className="flex items-center gap-3 text-xs font-bold text-[var(--auth-ink-soft)] opacity-60">
+              <span className="inline-flex items-center gap-1.5 cursor-not-allowed py-2">
                 <Trophy className="w-3.5 h-3.5" />
                 <span>Tournaments</span>
-              </Link>
-              <Link
-                to="/leaderboard"
-                className="text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition underline underline-offset-2 min-h-[44px] py-2 inline-flex items-center gap-1.5"
-              >
+                <Lock className="w-3 h-3" />
+              </span>
+              <span className="inline-flex items-center gap-1.5 cursor-not-allowed py-2">
                 <BarChart3 className="w-3.5 h-3.5" />
                 <span>Leaderboard</span>
-              </Link>
+                <Lock className="w-3 h-3" />
+              </span>
             </div>
           </div>
 

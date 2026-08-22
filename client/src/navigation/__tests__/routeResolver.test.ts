@@ -105,7 +105,7 @@ describe("Route Resolver & Context-Aware Navigation", () => {
       expect(active?.id).toBe("home-feed");
     });
 
-    it("marks member-only items with Member badge for guests and keeps them unlocked for members", () => {
+    it("marks unreleased items with Coming Soon badge and disabled state, and gates profile for guests", () => {
       const guestNav = resolveNavigation({ pathname: "/", isMember: false });
       const memberNav = resolveNavigation({ pathname: "/", isMember: true });
       const guestTournaments = guestNav.items.find((i) => i.id === "home-tournaments");
@@ -116,16 +116,27 @@ describe("Route Resolver & Context-Aware Navigation", () => {
 
       const memberTournaments = memberNav.items.find((i) => i.id === "home-tournaments");
       const memberLeaderboard = memberNav.items.find((i) => i.id === "home-leaderboard");
+      const memberSocial = memberNav.items.find((i) => i.id === "home-social");
       const memberProfile = memberNav.items.find((i) => i.id === "home-profile");
 
-      expect(guestTournaments?.badge?.text).toBe("Member");
-      expect(guestLeaderboard?.badge?.text).toBe("Member");
-      expect(guestSocial?.badge?.text).toBe("Member");
+      // Tournaments, Leaderboard, Social are disabled Coming Soon for all users
+      expect(guestTournaments?.badge?.text).toBe("Coming Soon");
+      expect(guestTournaments?.disabled).toBe(true);
+      expect(guestLeaderboard?.badge?.text).toBe("Coming Soon");
+      expect(guestLeaderboard?.disabled).toBe(true);
+      expect(guestSocial?.badge?.text).toBe("Coming Soon");
+      expect(guestSocial?.disabled).toBe(true);
+
+      expect(memberTournaments?.badge?.text).toBe("Coming Soon");
+      expect(memberTournaments?.disabled).toBe(true);
+      expect(memberLeaderboard?.badge?.text).toBe("Coming Soon");
+      expect(memberLeaderboard?.disabled).toBe(true);
+      expect(memberSocial?.badge?.text).toBe("Coming Soon");
+      expect(memberSocial?.disabled).toBe(true);
+
+      // Profile is Member gated: Member badge for guests, unlocked for members
       expect(guestProfile?.badge?.text).toBe("Member");
       expect(guestSettings?.badge?.text).toBeUndefined();
-
-      expect(memberTournaments?.badge).toBeUndefined();
-      expect(memberLeaderboard?.badge).toBeUndefined();
       expect(memberProfile?.badge).toBeUndefined();
     });
 

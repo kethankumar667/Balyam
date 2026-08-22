@@ -74,13 +74,14 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         isActive: (p) => p.startsWith("/favorites"),
       },
 
-      // Member-Gated Competitive & Social Group
+      // Upcoming Disabled / Coming Soon Features (Locked for all users)
       {
         id: "home-tournaments",
         label: "Tournaments",
         icon: Swords,
         path: "/tournaments",
-        requiresAuth: true,
+        badge: { text: "Coming Soon", variant: "muted" },
+        disabled: true,
         dividerBefore: true,
         isActive: (p) => p.startsWith("/tournaments"),
       },
@@ -89,7 +90,8 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         label: "Social Hub",
         icon: Users,
         path: "/social",
-        requiresAuth: true,
+        badge: { text: "Coming Soon", variant: "muted" },
+        disabled: true,
         isActive: (p) => p.startsWith("/social"),
       },
       {
@@ -97,7 +99,8 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         label: "Leaderboard",
         icon: Trophy,
         path: "/leaderboard",
-        requiresAuth: true,
+        badge: { text: "Coming Soon", variant: "muted" },
+        disabled: true,
         isActive: (p) => p.startsWith("/leaderboard"),
       },
 
