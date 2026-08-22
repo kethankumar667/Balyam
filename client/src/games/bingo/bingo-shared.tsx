@@ -2,6 +2,7 @@ import type { BingoBoard, BingoLetter, BingoPlayerPublic, BingoWinner } from "@s
 import RematchPanel from "../../components/RematchPanel";
 import type { Player } from "@shared/types";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 
 export const BINGO_LETTERS: BingoLetter[] = ["B", "I", "N", "G", "O"];
 
@@ -299,6 +300,9 @@ export function AllPlayerBoardsView({
   selfId,
   roster,
   registerCardRef,
+  onTarget,
+  activeTargetId,
+  onCloseTarget,
 }: {
   players: BingoPlayerPublic[];
   selfId: string | null;
@@ -306,6 +310,9 @@ export function AllPlayerBoardsView({
   roster?: Player[];
   /** Reaction-targeting: registers each seat's card element as the fly-to/flinch anchor. */
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+  onTarget?: (playerId: string) => void;
+  activeTargetId?: string | null;
+  onCloseTarget?: () => void;
 }) {
   const avatarById = new Map<string, string | undefined>();
   for (const r of roster ?? []) avatarById.set(r.id, r.avatar);
@@ -314,16 +321,28 @@ export function AllPlayerBoardsView({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-5xl overflow-y-auto p-2">
       {players.map((p) => {
         const isSelf = p.id === selfId;
+        const isTargetActive = activeTargetId === p.id;
         return (
           <div
             key={p.id}
             ref={registerCardRef?.(p.id)}
-            className={`flex flex-col items-center gap-2 rounded-2xl p-3.5 border-2 transition-all ${
+            className={`relative flex flex-col items-center gap-2 rounded-2xl p-3.5 border-2 transition-all ${
               isSelf
                 ? "bg-amber-500/10 border-amber-400 shadow-md"
-                : "bg-white/80 border-bhalyam-wood/20"
+                : "bg-white/80 border-bhalyam-wood/20 cursor-pointer hover:border-amber-400 hover:shadow-lg active:scale-[0.99]"
             }`}
+            onClick={!isSelf ? () => onTarget?.(p.id) : undefined}
+            title={!isSelf ? `Tap to react at ${p.name}` : undefined}
           >
+            {isTargetActive && onCloseTarget && (
+              <SeatTargetReactionWheel
+                game="bingo"
+                targetPlayerId={p.id}
+                targetPlayerName={p.name}
+                onClose={onCloseTarget}
+                position="top"
+              />
+            )}
             <div className="flex items-center justify-between w-full font-bold text-sm text-bhalyam-wood-dark px-1">
               <span className="flex items-center gap-1.5">
                 <SeatAvatar

@@ -38,6 +38,8 @@ import LobbyActionBar from "../components/room/LobbyActionBar";
 import CommunicationPanel from "../components/room/CommunicationPanel";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
+import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
+import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
 import { GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
 import type { GameKind, Player, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
@@ -516,11 +518,15 @@ export default function Room() {
   //   2. For ALL games, fire a "game start" haptic so the host (and every
   //      other player) feels a confirmation buzz the moment dealing
   //      begins. Mirrors the audio cue but works in silent mode.
+  const [showMatchCountdown, setShowMatchCountdown] = useState(false);
+  const [showAllReadyBanner, setShowAllReadyBanner] = useState(false);
+
   const prevRoomPhaseRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const prev = prevRoomPhaseRef.current;
     const next = roomState?.phase;
     if (next === "playing" && prev === "lobby") {
+      setShowMatchCountdown(true);
       try {
         HapticsManager.getInstance().gameStart();
       } catch {
@@ -545,6 +551,19 @@ export default function Room() {
     }
     prevRoomPhaseRef.current = next;
   }, [roomState?.phase, roomState?.game, code]);
+
+  const allPlayersReady = useMemo(() => {
+    if (!roomState || roomState.phase !== "lobby" || roomState.players.length < 2) return false;
+    return roomState.players.every((p) => p.isReady);
+  }, [roomState]);
+
+  const prevAllReadyRef = useRef(false);
+  useEffect(() => {
+    if (allPlayersReady && !prevAllReadyRef.current) {
+      setShowAllReadyBanner(true);
+    }
+    prevAllReadyRef.current = allPlayersReady;
+  }, [allPlayersReady]);
 
   const selfIsHost = useMemo(
     () => roomState?.hostId === playerId,
@@ -1327,6 +1346,16 @@ export default function Room() {
             <span>Auto-play is on — tap to take back your turn</span>
           </button>
         </div>
+      )}
+
+      {/* Universal BHALYAM Match Countdown */}
+      {showMatchCountdown && (
+        <BhalyamMatchCountdown onComplete={() => setShowMatchCountdown(false)} />
+      )}
+
+      {/* Everyone Ready Banner in Lobby */}
+      {showAllReadyBanner && (
+        <EveryoneReadyBanner onComplete={() => setShowAllReadyBanner(false)} />
       )}
 
       {showGameOver && gameOverDeadlineMs > 0 && (

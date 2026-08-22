@@ -25,8 +25,9 @@ import { getSocket } from "../../lib/socket";
  * InlineRoomRail's Players panel, or dispatch `bhalyam:react-at-player` from
  * the seat itself) — this hook only handles RECEIVING and rendering.
  */
-export function useSeatReactions() {
+export function useSeatReactions(selfId?: string | null) {
   const [items, setItems] = useState<ReactionRecvPayload[]>([]);
+  const [activeTargetId, setActiveTargetId] = useState<string | null>(null);
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
 
   useEffect(() => {
@@ -73,5 +74,31 @@ export function useSeatReactions() {
     };
   }, []);
 
-  return { items, registerCardRef, anchorOf };
+  const targetPlayer = useCallback((playerId: string) => {
+    if (!playerId || (selfId && playerId === selfId)) return;
+    setActiveTargetId(playerId);
+    window.dispatchEvent(
+      new CustomEvent("bhalyam:react-at-player", { detail: { playerId } }),
+    );
+  }, [selfId]);
+
+  const openTarget = useCallback((playerId: string) => {
+    if (!playerId || (selfId && playerId === selfId)) return;
+    setActiveTargetId(playerId);
+  }, [selfId]);
+
+  const closeTarget = useCallback(() => {
+    setActiveTargetId(null);
+  }, []);
+
+  return {
+    items,
+    registerCardRef,
+    anchorOf,
+    targetPlayer,
+    activeTargetId,
+    setActiveTargetId,
+    openTarget,
+    closeTarget,
+  };
 }

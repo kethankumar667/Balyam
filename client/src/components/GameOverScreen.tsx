@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import type { Player } from "@shared/types";
 import RematchPanel from "./RematchPanel";
+import { fireFireworksBurst } from "../animations/particles/comicBursts";
 
 /**
  * Full-viewport end-of-session screen — game-agnostic.
@@ -45,6 +46,7 @@ export default function GameOverScreen({
   const total = AUTO_LEAVE_MS / 1000; // 100
 
   useEffect(() => {
+    fireFireworksBurst({ intensity: 0.9 });
     const id = window.setInterval(() => {
       const remaining = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
       setSecondsLeft(remaining);

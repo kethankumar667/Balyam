@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { NpatLetterRevealBurst, NpatWinnerCelebration } from "./NpatAnimations";
 
 export interface NamePlaceAnimalBoardProps {
   state: NamePlaceAnimalPublicState;
@@ -52,7 +53,7 @@ export default function NamePlaceAnimalBoardMobile({
   roomCode,
   roomPhase,
 }: NamePlaceAnimalBoardProps) {
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(myPlayerId);
   const [form, setForm] = useState<NamePlaceAnimalAnswers>(() => ({
     name: initialMyAnswers?.name || "",
     place: initialMyAnswers?.place || "",
@@ -452,6 +453,16 @@ export default function NamePlaceAnimalBoardMobile({
           messages={messages ?? []}
         />
       </div>
+
+      {/* GAL Animations */}
+      {!isSpinningWheel && letter && (
+        <NpatLetterRevealBurst letter={letter} />
+      )}
+      {state.phase === "finished" && state.winnerId && (
+        <NpatWinnerCelebration
+          winnerName={players?.find((p) => p.id === state.winnerId)?.name ?? "Winner"}
+        />
+      )}
 
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>

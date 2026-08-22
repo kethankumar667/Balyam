@@ -2822,6 +2822,7 @@ type HcCelebrationData =
   | { kind: "wicket"; id: number; batter: string; bowler: string; message: string }
   | { kind: "hattrickWickets"; id: number; bowler: string; message: string }
   | { kind: "streak"; id: number; batter: string; title: string; message: string; variant: "sixes" | "fours" | "mixed" }
+  | { kind: "milestone"; id: number; batter: string; runs: number; message: string }
   | { kind: "winner"; id: number; youWon: boolean; winnerName: string; margin: string; isTie: boolean };
 
 /** Resolve a batter/bowler profile id to the real player's name (e.g. "Pathum
@@ -2941,6 +2942,29 @@ export function HcCelebrationLayer({
             `🔥 ${bowlerName} rips the heart out of the innings!`,
           ]),
         });
+      } else if (lastBall.milestone) {
+        // Takes priority over the plain four/six/streak cards below — a
+        // named personal milestone (50, 100, 150…) is the more special
+        // moment even when the ball that brought it up was also a boundary.
+        // Can't coincide with `allWickets`/`lastBall.wicket`: a dismissal
+        // ball scores 0 runs, so it can never cross a runs milestone.
+        const m = lastBall.milestone;
+        setActive({
+          kind: "milestone",
+          id: stamp,
+          batter: batterName,
+          runs: m,
+          message:
+            m === 100
+              ? pickLine([
+                  `💯 ${batterName} brings up a magnificent century!`,
+                  `👏 ${batterName} reaches three figures!`,
+                ])
+              : pickLine([
+                  `🎉 ${batterName} brings up a well-deserved ${m}!`,
+                  `👏 ${batterName} raises the bat for ${m}!`,
+                ]),
+        });
       } else if (bigStreak) {
         const s = describeBoundaryStreak(last3, batterName);
         setActive({ kind: "streak", id: stamp, batter: batterName, ...s });
@@ -3029,6 +3053,10 @@ export function HcCelebrationLayer({
     if (!active) return;
     const ms =
       active.kind === "winner" ? 4200
+      // A century is a bigger deal than a fifty — and both are rarer than a
+      // plain boundary, so they hold the screen closer to the streak/
+      // hat-trick beat than the four/six one.
+      : active.kind === "milestone" ? (active.runs >= 100 ? 2800 : 2200)
       : active.kind === "hattrickWickets" || active.kind === "streak" ? 2400
       : active.kind === "six" ? 1300
       : active.kind === "wicket" ? 1300
@@ -3057,27 +3085,12 @@ export function HcCelebrationLayer({
 
 export function HcCelebrationOverlay({ data }: { data: HcCelebrationData }) {
   return (
-    /*
-     * `pointer-events-none` is load-bearing, not styling.
-     *
-     * This is a full-viewport z-60 layer that fires after every boundary and
-     * every wicket. Without it, both players were locked out of the pick row,
-     * the next-batter and bowler pickers, Leave and chat for the whole hold —
-     * an involuntary stall on the exact beats that should feel fastest.
-     * Celebration is feedback; it must never gate input. A tap anywhere
-     * dismisses it early via the transparent catcher below.
-     */
     <div
       className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center px-4"
       aria-live="polite"
       aria-atomic="true"
       role="status"
     >
-      {/* Dismissal is handled by a window listener in HcCelebrationLayer, NOT
-          by a full-screen catcher element here. A catcher would need
-          pointer-events-auto to be clickable, which would re-block the input
-          this layer exists to stop blocking. The listener lets one tap both
-          clear the graphic and land on the control underneath. */}
       <div
         className="absolute inset-0"
         style={{
@@ -3095,7 +3108,12 @@ export function HcCelebrationOverlay({ data }: { data: HcCelebrationData }) {
       {(data.kind === "wicket" || data.kind === "hattrickWickets") && (
         <EmojiBurst emojis={data.kind === "wicket" ? ["💥", "🎯"] : ["🎯", "💥", "🔥"]} count={data.kind === "hattrickWickets" ? 18 : 10} />
       )}
-      {data.kind === "winner" && !data.isTie && <ConfettiRain count={60} />}
+      {data.kind === "milestone" && (
+        <EmojiBurst emojis={data.runs >= 100 ? ["💯", "🎉", "👏", "🏏"] : ["🎉", "👏", "🏏"]} count={data.runs >= 100 ? 24 : 16} />
+      )}
+      {data.kind === "winner" && !data.isTie && (
+        <ConfettiRain count={60} />
+      )}
 
       <HcCelebrationCard data={data} />
     </div>
@@ -3235,6 +3253,33 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
             {data.title}
           </div>
           <div className="mt-2 text-amber-50 font-extrabold text-base sm:text-xl drop-shadow max-w-xl mx-auto">
+            {data.message}
+          </div>
+        </div>
+      );
+    }
+    case "milestone": {
+      // "50" / "100" / "150"… reads better than a word for anything past a
+      // century — there's no snappy English name for 150 the way FOUR/SIX
+      // have one, and a cricket follower reads the number instantly anyway.
+      const headline = data.runs === 50 ? "FIFTY!" : data.runs === 100 ? "CENTURY!" : `${data.runs}!`;
+      return (
+        <div className="relative hc-celebrate-pop text-center">
+          <div className="text-[26px] sm:text-[34px] mb-1">{data.runs >= 100 ? "💯" : "🎉"}</div>
+          <div
+            className="font-black tracking-tight leading-none hc-glow-pulse"
+            style={{
+              fontSize: "clamp(64px, 17vw, 160px)",
+              background: "linear-gradient(180deg, #fff3a0 0%, #f59e0b 55%, #9a3412 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              textShadow: "0 6px 22px rgba(0,0,0,0.6)",
+            }}
+          >
+            {headline}
+          </div>
+          <div className="mt-2 text-amber-100 font-bold text-base sm:text-lg drop-shadow">
             {data.message}
           </div>
         </div>

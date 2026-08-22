@@ -17,6 +17,8 @@ import RematchPanel from "../../components/RematchPanel";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
+import { DotsBoxesMineBurst, DotsBoxesWinnerCelebration } from "./DotsBoxesAnimations";
+
 /**
  * Touch-first single-column layout. The scoreboard wraps across the top,
  * the notebook page (with the board centred inside) sits below it, and
@@ -38,6 +40,8 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
     drawnH,
     drawnV,
     bonusBanner,
+    activeMineBurst,
+    dismissMineBurst,
     error,
     reportDismissed,
     setReportDismissed,
@@ -46,7 +50,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
   // Never over a live turn: safe once it isn't this player's turn, or no
   // deadline is currently running. See GameTutorial.tsx's useTutorialGate doc.
   const tut = useTutorialGate(DOTSBOXES_TUTORIAL.key, !myTurn || state.turnDeadline === null);
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(props.selfId);
 
   return (
     <ClassroomScene footer={state.phase === "finished" ? <RematchPanel players={props.players} selfId={props.selfId} className="bg-[#fef9f0]/90 border-2 border-amber-700/40 rounded-lg" /> : undefined}>
@@ -77,6 +81,9 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
         avatarOf={avatarOf}
         selfId={props.selfId}
         registerCardRef={reactions.registerCardRef}
+        onTarget={reactions.openTarget}
+        activeTargetId={reactions.activeTargetId}
+        onCloseTarget={reactions.closeTarget}
       />
 
       {/* Rough Notebook page */}
@@ -155,6 +162,20 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* GAL Animations */}
+      <AnimatePresence>
+        {activeMineBurst && (
+          <DotsBoxesMineBurst
+            playerName={activeMineBurst.playerName}
+            penColor={activeMineBurst.penColor}
+            onComplete={dismissMineBurst}
+          />
+        )}
+      </AnimatePresence>
+      {state.phase === "finished" && state.winnerId && !reportDismissed && (
+        <DotsBoxesWinnerCelebration winnerName={nameOf(state.winnerId)} />
+      )}
 
       {/* End-of-game report — dismissable so the finished board can be
           inspected behind it. Re-opens on the next round. */}

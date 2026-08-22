@@ -1,7 +1,6 @@
 import React, { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft, Trophy, BarChart3 } from "lucide-react";
-import AppLayout from "./AppLayout";
 import ProfileHeader from "../../features/profile/ProfileHeader";
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 
@@ -14,6 +13,7 @@ interface ProfileLayoutProps {
   avatar?: string | null;
   favoriteGame?: string;
   badgeLabel?: string;
+  compactHeader?: boolean;
 }
 
 export default function ProfileLayout({
@@ -25,14 +25,19 @@ export default function ProfileLayout({
   avatar,
   favoriteGame,
   badgeLabel,
+  compactHeader,
 }: ProfileLayoutProps) {
   const { pathname } = useLocation();
   const isOverview = pathname === "/profile" || pathname === "/profile/overview";
+  const isPersonal = pathname === "/profile/personal";
+  const isStatistics = pathname === "/profile/statistics";
+  const isAchievements = pathname === "/profile/achievements";
+  const isMatches = pathname === "/profile/matches" || pathname === "/profile/history";
+  const isCompact = compactHeader !== undefined ? compactHeader : (!isOverview && !isPersonal && !isStatistics && !isAchievements && !isMatches);
 
   return (
-    <AppLayout>
-      <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-6">
           {/* Top Breadcrumb & Lounge Navigation */}
           <div className="flex items-center justify-between">
             <Link
@@ -61,7 +66,7 @@ export default function ProfileLayout({
             </div>
           </div>
 
-          {/* Profile Header (Full Hero on Overview, Compact on Inner Pages) */}
+          {/* Profile Header (Full Hero on Overview and Personal pages) */}
           {profile && (
             <ProfileHeader
               profile={profile}
@@ -69,7 +74,7 @@ export default function ProfileLayout({
               onEditName={onEditName}
               name={name}
               avatar={avatar}
-              compact={!isOverview}
+              compact={isCompact}
               favoriteGame={favoriteGame}
               badgeLabel={badgeLabel}
             />
@@ -79,6 +84,5 @@ export default function ProfileLayout({
           <main>{children}</main>
         </div>
       </div>
-    </AppLayout>
   );
 }

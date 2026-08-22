@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, CoinColor, Player, SnlState } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { useTurnHaptics } from "../../hooks/useHaptics";
-import { resolveCoinColors, toastForEvent } from "./snl-board-shared";
+import { resolveCoinColors, toastForEvent, cellInfo } from "./snl-board-shared";
 
 /**
  * Shared props for every Snakes & Ladders shell (picker, mobile, desktop).
@@ -34,6 +34,9 @@ export interface SnlBoardModel {
   startCount: number;
   turnPlayer: Player | undefined;
   turnColor: CoinColor | undefined;
+  activeSnakeBite: { playerName: string; from: number; to: number; x: number; y: number } | null;
+  activeLadderClimb: { playerName: string; from: number; to: number; x: number; y: number } | null;
+  activeWinner: boolean;
   doRoll: () => void;
 }
 
@@ -115,7 +118,11 @@ export function useSnlBoard({ state, players, selfId }: SnlBoardProps): SnlBoard
   }, [state.diceValue]);
 
   const [toast, setToast] = useState<SnlToast | null>(null);
+  const [activeSnakeBite, setActiveSnakeBite] = useState<{ playerName: string; from: number; to: number; x: number; y: number } | null>(null);
+  const [activeLadderClimb, setActiveLadderClimb] = useState<{ playerName: string; from: number; to: number; x: number; y: number } | null>(null);
+  const [activeWinner, setActiveWinner] = useState(false);
   const lastEventTs = useRef<number>(0);
+
   useEffect(() => {
     const latest = state.recentEvents[state.recentEvents.length - 1];
     if (!latest || latest.ts === lastEventTs.current) return;
@@ -125,6 +132,27 @@ export function useSnlBoard({ state, players, selfId }: SnlBoardProps): SnlBoard
       setToast(t);
       const tid = setTimeout(() => setToast(null), 2400);
       return () => clearTimeout(tid);
+    }
+  }, [state.recentEvents, players]);
+
+  useEffect(() => {
+    const latest = state.recentEvents[state.recentEvents.length - 1];
+    if (!latest) return;
+    const pName = players.find((p) => p.id === latest.playerId)?.name ?? "Player";
+    const fromPos = latest.from ?? 1;
+    const toPos = latest.to ?? 1;
+    if (latest.kind === "snake") {
+      const pos = cellInfo(fromPos);
+      setActiveSnakeBite({ playerName: pName, from: fromPos, to: toPos, x: pos.x, y: pos.y });
+      const tid = setTimeout(() => setActiveSnakeBite(null), 1400);
+      return () => clearTimeout(tid);
+    } else if (latest.kind === "ladder") {
+      const pos = cellInfo(fromPos);
+      setActiveLadderClimb({ playerName: pName, from: fromPos, to: toPos, x: pos.x, y: pos.y });
+      const tid = setTimeout(() => setActiveLadderClimb(null), 1400);
+      return () => clearTimeout(tid);
+    } else if (latest.kind === "win") {
+      setActiveWinner(true);
     }
   }, [state.recentEvents, players]);
 
@@ -150,6 +178,9 @@ export function useSnlBoard({ state, players, selfId }: SnlBoardProps): SnlBoard
     startCount,
     turnPlayer,
     turnColor,
+    activeSnakeBite,
+    activeLadderClimb,
+    activeWinner,
     doRoll,
   };
 }

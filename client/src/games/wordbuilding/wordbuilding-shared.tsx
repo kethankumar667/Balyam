@@ -9,6 +9,7 @@ import type { Ink } from "./inks";
 import type { WordBuildingBoardModel } from "./useWordBuildingBoard";
 import CoachHintButton, { type CoachState } from "../../components/CoachHintButton";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 
 /**
  * Word Building — shared presentational layer.
@@ -354,6 +355,9 @@ export function StudentBar({
   onOpenTutorial,
   onLeave,
   registerCardRef,
+  onTarget,
+  activeTargetId,
+  onCloseTarget,
 }: {
   state: WordBuildingPublicState;
   inkOf: Record<string, Ink>;
@@ -367,6 +371,9 @@ export function StudentBar({
   onLeave?: () => void;
   /** Opponent-targeted reactions: registers this row as the fly-to/flinch anchor for `pid`. */
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+  onTarget?: (playerId: string) => void;
+  activeTargetId?: string | null;
+  onCloseTarget?: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 px-1 sm:px-2">
@@ -393,11 +400,14 @@ export function StudentBar({
         const ink = inkOf[pid];
         const isTurn = state.turnPlayerId === pid;
         const me = pid === selfId;
+        const isTargetActive = activeTargetId === pid;
         return (
           <div
             key={pid}
             ref={registerCardRef?.(pid)}
-            className="rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 transition min-w-[96px] sm:min-w-[130px]"
+            className={`relative rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 transition min-w-[96px] sm:min-w-[130px] ${!me ? "cursor-pointer hover:brightness-110 active:scale-[0.98]" : ""}`}
+            onClick={!me ? () => onTarget?.(pid) : undefined}
+            title={!me ? `Tap to react at ${nameOf(pid)}` : undefined}
             style={{
               background: isTurn ? "rgba(251,191,36,0.22)" : "rgba(255,255,255,0.55)",
               border: isTurn ? `2px solid ${ink.inkColor}` : "1px solid rgba(120,82,40,0.22)",
@@ -405,6 +415,15 @@ export function StudentBar({
               fontFamily: "'Caveat', 'Patrick Hand', cursive",
             }}
           >
+            {isTargetActive && onCloseTarget && (
+              <SeatTargetReactionWheel
+                game="wordbuilding"
+                targetPlayerId={pid}
+                targetPlayerName={nameOf(pid)}
+                onClose={onCloseTarget}
+                position="bottom"
+              />
+            )}
             <div className="flex items-center gap-1.5">
               <SeatAvatar avatar={avatarOf(pid)} name={nameOf(pid)} className="w-6 h-6" textClassName="text-[9px]" />
               <span className="font-black text-[17px] sm:text-[22px]" style={{ color: ink.inkColor }}>

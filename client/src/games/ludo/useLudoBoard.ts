@@ -22,6 +22,7 @@ import { ROLL_COOLDOWN_MS, hopMsFor, stepMsFor } from "@shared/ludo-pacing";
 import {
   COLOR_HEX,
   HOME_SLOTS,
+  SAFE_SQUARES,
   STRETCH_CELLS,
   TRACK_CELLS,
   YARD_CELLS,
@@ -135,6 +136,11 @@ export interface LudoBoardModel {
   captureFaces: LudoCaptureFace[];
   homeBursts: LudoHomeBurst[];
   celebratingIds: Set<string>;
+  activeCapture: { id: string; victimName: string; attackerName: string; attackerColor: LudoColor; left: number; top: number } | null;
+  activeSafePops: { id: string; left: number; top: number; color?: LudoColor }[];
+  activeOutOfGates: { id: string; left: number; top: number; color: LudoColor }[];
+  activeHomeEntries: { id: string; left: number; top: number; color: LudoColor }[];
+  activeLuckySix: boolean;
   hoverPreview: LudoHoverPreview | null;
   onHoverToken: (pid: string, token: LudoToken) => void;
   clearHoverPreview: () => void;
@@ -646,6 +652,18 @@ export function useLudoBoard({
   const [captureFaces, setCaptureFaces] = useState<LudoCaptureFace[]>([]);
   const [homeBursts, setHomeBursts] = useState<LudoHomeBurst[]>([]);
   const [celebratingIds, setCelebratingIds] = useState<Set<string>>(new Set());
+  const [activeCapture, setActiveCapture] = useState<{
+    id: string;
+    victimName: string;
+    attackerName: string;
+    attackerColor: LudoColor;
+    left: number;
+    top: number;
+  } | null>(null);
+  const [activeSafePops, setActiveSafePops] = useState<{ id: string; left: number; top: number; color?: LudoColor }[]>([]);
+  const [activeOutOfGates, setActiveOutOfGates] = useState<{ id: string; left: number; top: number; color: LudoColor }[]>([]);
+  const [activeHomeEntries, setActiveHomeEntries] = useState<{ id: string; left: number; top: number; color: LudoColor }[]>([]);
+  const [activeLuckySix, setActiveLuckySix] = useState(false);
 
   // ---- Hover preview: glow the destination cell for the hovered token ----
   const [hoverPreview, setHoverPreview] = useState<LudoHoverPreview | null>(null);
@@ -974,14 +992,43 @@ export function useLudoBoard({
     return fanSlot(Math.max(0, group.indexOf(token.id)), group.length);
   }
 
-  // Detect capture / home-arrival transitions on the displayed token snapshot.
+  // Detect capture / home-arrival / out-of-gate / safe transitions on the displayed token snapshot.
   useEffect(() => {
     const prev = prevTokens.current;
+    const safeSet = polygonGeo?.safeSquares ?? SAFE_SQUARES;
     for (const { pid, token: cur } of allTokens) {
       const before = prev[cur.id];
       if (!before) {
         prev[cur.id] = cur;
         continue;
+      }
+      // Out of Gate: was in yard -> now on track
+      if (before.state === "yard" && cur.state === "track") {
+        const pos = posFromState(cur, armOf(pid));
+        if (pos) {
+          const id = `oog_${cur.id}_${Date.now()}`;
+          const color = state.playerColors[pid];
+          setActiveOutOfGates((arr) => [...arr, { id, ...pos, color }]);
+          if (soundOn) sfx.tokenMove();
+          setTimeout(() => {
+            setActiveOutOfGates((arr) => arr.filter((x) => x.id !== id));
+          }, 850);
+        }
+      }
+      // Safe Square landing: was moving on track -> landed on safe square
+      if (before.state === "track" && cur.state === "track" && cur.trackPos != null && cur.trackPos !== before.trackPos) {
+        if (safeSet.has(cur.trackPos)) {
+          const pos = posFromState(cur, armOf(pid));
+          if (pos) {
+            const id = `safe_${cur.id}_${Date.now()}`;
+            const color = state.playerColors[pid];
+            setActiveSafePops((arr) => [...arr, { id, ...pos, color }]);
+            if (soundOn) sfx.home();
+            setTimeout(() => {
+              setActiveSafePops((arr) => arr.filter((x) => x.id !== id));
+            }, 950);
+          }
+        }
       }
       // Captured: was on track → now in yard
       if (before.state === "track" && cur.state === "yard") {
@@ -989,9 +1036,22 @@ export function useLudoBoard({
         if (pos) {
           const id = `cf_${cur.id}_${Date.now()}`;
           setCaptureFaces((curArr) => [...curArr, { id, ...pos }]);
+          const victimName = nameOf(pid);
+          const attackerId = state.turnPlayerId;
+          const attackerName = attackerId ? nameOf(attackerId) : "Opponent";
+          const attackerColor = attackerId ? state.playerColors[attackerId] ?? "red" : "red";
+          setActiveCapture({
+            id,
+            victimName,
+            attackerName,
+            attackerColor,
+            left: pos.left,
+            top: pos.top,
+          });
           setTimeout(() => {
             setCaptureFaces((curArr) => curArr.filter((c) => c.id !== id));
-          }, 950);
+            setActiveCapture((cur) => (cur?.id === id ? null : cur));
+          }, 1200);
         }
       }
       // Home arrival: just reached "home" state
@@ -1000,9 +1060,11 @@ export function useLudoBoard({
         const id = `hb_${cur.id}_${Date.now()}`;
         const color = state.playerColors[pid];
         setHomeBursts((curArr) => [...curArr, { id, left: pos.left, top: pos.top, color }]);
+        setActiveHomeEntries((arr) => [...arr, { id, left: pos.left, top: pos.top, color }]);
         setTimeout(() => {
           setHomeBursts((curArr) => curArr.filter((c) => c.id !== id));
-        }, 800);
+          setActiveHomeEntries((arr) => arr.filter((x) => x.id !== id));
+        }, 1100);
         setCelebratingIds((curSet) => {
           const next = new Set(curSet);
           next.add(cur.id);
@@ -1213,6 +1275,11 @@ export function useLudoBoard({
     captureFaces,
     homeBursts,
     celebratingIds,
+    activeCapture,
+    activeSafePops,
+    activeOutOfGates,
+    activeHomeEntries,
+    activeLuckySix,
     hoverPreview,
     onHoverToken,
     clearHoverPreview,

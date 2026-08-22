@@ -7,6 +7,7 @@ import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { StarBurstOverlay, StarWinnerCelebration } from "./StarAnimations";
 import { STARGAME_TUTORIAL } from "../tutorials";
 import {
   PAPER,
@@ -90,7 +91,7 @@ function ActionButton({
 export default function StarBoardMobile(props: StarBoardProps) {
   const m = useStarBoard(props);
   const reduce = useReducedMotion();
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(props.selfId);
   // Never over a live action window — Star Game has two ("themeSelect" and
   // "pass"), so both must be clear, or no deadline is running at all.
   // See GameTutorial.tsx's useTutorialGate doc.
@@ -463,6 +464,9 @@ export default function StarBoardMobile(props: StarBoardProps) {
             width={tableW}
             height={Math.round(tableW * 0.78)}
             registerCardRef={reactions.registerCardRef}
+            onTarget={reactions.openTarget}
+            activeTargetId={reactions.activeTargetId}
+            onCloseTarget={reactions.closeTarget}
           />
         </div>
       )}
@@ -509,6 +513,18 @@ export default function StarBoardMobile(props: StarBoardProps) {
           variant="dark"
         />
       </div>
+
+      {/* GAL Animations */}
+      {(m.phase === "star" || m.phase === "handstack") && m.state.starWinnerId && (
+        <StarBurstOverlay
+          playerName={m.nameOf(m.state.starWinnerId)}
+        />
+      )}
+      {m.phase === "finished" && m.state.winnerId && (
+        <StarWinnerCelebration
+          winnerName={m.nameOf(m.state.winnerId)}
+        />
+      )}
 
       {tut.open && (
         <GameTutorial

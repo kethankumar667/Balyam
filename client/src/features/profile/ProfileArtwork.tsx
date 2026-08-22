@@ -161,3 +161,83 @@ export function ProfileResilienceArtwork({ className = "w-7 h-7" }: { className?
     </svg>
   );
 }
+
+export function MatchHistoryEmptyArtwork({ className = "w-36 h-36" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 160 160"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* Soft Glow */}
+      <circle cx="80" cy="80" r="65" fill="#FEF3C7" fillOpacity="0.5" />
+
+      {/* Little Star Sparkles */}
+      <path d="M 35 45 Q 35 48 32 48 Q 35 48 35 51 Q 35 48 38 48 Q 35 48 35 45 Z" fill="#F59E0B" opacity="0.8" />
+      <path d="M 125 35 Q 125 38 122 38 Q 125 38 125 41 Q 125 38 128 38 Q 125 38 125 35 Z" fill="#F59E0B" opacity="0.8" />
+      <path d="M 135 105 Q 135 108 132 108 Q 135 108 135 111 Q 135 108 138 108 Q 135 108 135 105 Z" fill="#F59E0B" opacity="0.8" />
+      <path d="M 28 108 Q 28 111 25 111 Q 28 111 28 114 Q 28 111 31 111 Q 28 111 28 108 Z" fill="#F59E0B" opacity="0.8" />
+
+      {/* Flying Paper Plane & Trail */}
+      <path d="M 25 65 Q 40 45 60 52" stroke="#FDE68A" strokeWidth="1.5" strokeDasharray="3 3" />
+      <g transform="translate(20, 60) rotate(-20) scale(0.6)">
+        <path d="M 0 0 L 24 10 L 0 20 L 6 10 Z" fill="#FBBF24" stroke="#D97706" strokeWidth="1.5" />
+      </g>
+
+      {/* Dotted Arch Trail on Right */}
+      <path d="M 115 65 Q 135 80 120 100" stroke="#FDE68A" strokeWidth="1.5" strokeDasharray="3 3" />
+
+      {/* Notebook Shadow */}
+      <rect x="52" y="38" width="62" height="84" rx="8" fill="#FDE68A" fillOpacity="0.4" transform="rotate(3 80 80)" />
+
+      {/* Notebook Body */}
+      <rect
+        x="48"
+        y="34"
+        width="64"
+        height="86"
+        rx="8"
+        fill="#FFFDF9"
+        stroke="#D97706"
+        strokeWidth="2"
+      />
+
+      {/* Inner Notebook Page Line Border */}
+      <rect
+        x="54"
+        y="40"
+        width="52"
+        height="74"
+        rx="5"
+        fill="#FFFFFF"
+        stroke="#FCD34D"
+        strokeWidth="1.2"
+        strokeDasharray="2 2"
+      />
+
+      {/* Spiral Bindings on Left */}
+      <g stroke="#92400E" strokeWidth="1.8" strokeLinecap="round">
+        <path d="M 44 44 C 48 44 52 46 52 48 C 52 50 48 52 44 52" />
+        <path d="M 44 56 C 48 56 52 58 52 60 C 52 62 48 64 44 64" />
+        <path d="M 44 68 C 48 68 52 70 52 72 C 52 74 48 76 44 76" />
+        <path d="M 44 80 C 48 80 52 82 52 84 C 52 86 48 88 44 88" />
+        <path d="M 44 92 C 48 92 52 94 52 96 C 52 98 48 100 44 100" />
+        <path d="M 44 104 C 48 104 52 106 52 108 C 52 110 48 112 44 112" />
+      </g>
+
+      {/* Gamepad Outline Drawn on Notebook */}
+      <g transform="translate(64, 62) scale(0.65)" stroke="#D97706" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        {/* Gamepad Body */}
+        <path d="M 6 14 C 6 6 12 4 25 4 C 38 4 44 6 44 14 C 44 26 40 38 34 38 C 30 38 27 32 25 32 C 23 32 20 38 16 38 C 10 38 6 26 6 14 Z" />
+        {/* D-pad */}
+        <path d="M 13 14 L 19 14 M 16 11 L 16 17" strokeWidth="2" />
+        {/* Action Buttons */}
+        <circle cx="33" cy="12" r="1.5" fill="#D97706" />
+        <circle cx="37" cy="15" r="1.5" fill="#D97706" />
+      </g>
+    </svg>
+  );
+}
+

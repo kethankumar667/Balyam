@@ -124,7 +124,7 @@ describe("Personal Information Feature Components", () => {
       );
 
       expect(screen.getByText("Account Summary")).toBeDefined();
-      expect(screen.getByText("Active Member")).toBeDefined();
+      expect(screen.getAllByText("Active Member").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("5 Friends")).toBeDefined();
     });
   });

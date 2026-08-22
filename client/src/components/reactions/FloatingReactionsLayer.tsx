@@ -1,20 +1,75 @@
+import { useEffect } from "react";
 import type { ReactionRecvPayload } from "@shared/types";
+import { fireComicDustBurst, fireStarSparkleBurst } from "../../animations/particles/comicBursts";
 
 /**
- * A few hand-picked "hit" combos (kept from UNO's original implementation,
- * the one place in the app that already had this touch) — everything else
- * falls back to a generic sparkle-burst rather than going without. Small and
- * curated on purpose: a combo per emoji across every game's themed set
- * (`shared/reactions.ts` GAME_REACTIONS) would be dozens of entries to keep
- * meaningful, for a detail nobody reads mid-game — the fallback already
- * carries the "something just landed" feeling on its own.
+ * Game-specific rich impact glyph combos.
+ * When a thrown emoji lands on the target player's seat, it explodes into a
+ * distinct impact combo matching the theme of that game.
  */
 const IMPACT_GLYPH: Record<string, string> = {
+  // Retaliation & classic throws
   "🍅": "💥🍅",
   "🩴": "💥🩴",
   "🧨": "💥🔥",
   "🎉": "🎊🎉",
+  "😡": "💢😡",
+  "😭": "🌊😭",
+  "🎯": "🎯💥",
+  "💪": "💪⚡",
+  "💔": "💔💥",
+
+  // Rummy
+  "🃏": "✨🃏",
+  "💰": "✨💰💸",
+  "😤": "😤💨",
+
+  // Hand Cricket
+  "🏏": "💥🏏⚡",
+  "🙌": "🙌✨",
+
+  // Snakes & Ladders
+  "🐍": "🐍💨",
+  "🪜": "🪜✨",
+  "🎲": "🎲✨",
+  "🤞": "🤞✨",
+
+  // Dots & Boxes
+  "✏️": "✏️✨",
+  "📐": "📐✨",
+  "🧹": "🧹💨",
+  "🔲": "📦💥",
+  "😆": "😆✨",
+
+  // Word Building
+  "📖": "📖✨💡",
+  "🤓": "🤓🧠✨",
+  "💡": "💡✨",
+  "🎓": "🎓✨",
+
+  // Bingo
+  "🔢": "🔢✨🎊",
+  "🍀": "🍀✨💰",
+
+  // Chess
+  "♟️": "♟️💥",
+  "👑": "👑✨⚡",
+  "🧠": "🧠⚡💡",
+  "😏": "😏✨",
+
+  // RPS
+  "👊": "👊💥🪨",
+  "✊": "✊💥",
+  "✌️": "✌️✨✂️",
+
+  // Star Game & Others
+  "🎈": "🎈💥✨",
+  "🍬": "🍬✨",
+  "🍎": "🍎✨🐍",
+  "📝": "📝⚡💡",
+  "🧩": "🧩💥",
 };
+
 function impactGlyphFor(emoji: string): string {
   return IMPACT_GLYPH[emoji] ?? `✨${emoji}`;
 }
@@ -117,6 +172,15 @@ function FlungReaction({
   // seat and stayed that way for the rest of its life. Two full turns keeps
   // the same lively tumble over the 720ms flight and lands it upright.
   const spin = dx >= 0 ? 720 : -720;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      fireComicDustBurst({ left: `${to.left}%`, top: `${to.top}%` }, { intensity: 0.65 });
+      fireStarSparkleBurst({ left: `${to.left}%`, top: `${to.top}%` }, { intensity: 0.5 });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [to.left, to.top]);
+
   return (
     <>
       <div

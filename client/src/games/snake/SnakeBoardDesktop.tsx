@@ -8,6 +8,7 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 
 export default function SnakeBoardDesktop({ state, selfId, onMove, players, messages, roomCode, roomPhase }: SnakeBoardProps) {
   const [showRules, setShowRules] = useState(false);
@@ -15,7 +16,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players, mess
   const [activeTheme, setActiveTheme] = useState<SnakeTheme>(state.theme || "nokia-monochrome");
   const [elapsedSec, setElapsedSec] = useState(0);
   const haptics = useHaptics();
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(selfId);
 
   const [bestScore, setBestScore] = useState<number>(() => {
     return parseInt(localStorage.getItem("mpg.snake.best") || "0", 10);
@@ -165,25 +166,40 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players, mess
                 <span>👑</span> <span>Leaderboard</span>
               </div>
               <div className="space-y-1.5">
-                {sortedPlayers.map((p, idx) => (
-                  <div
-                    key={p.id}
-                    ref={reactions.registerCardRef(p.id)}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs border ${chrome.cardBg}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold">
-                        {idx + 1}
-                      </span>
-                      <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
-                      <SeatAvatar avatar={avatarById.get(p.id)} name={p.name} className="w-6 h-6" textClassName="text-[9px]" />
-                      <span className={`font-extrabold ${p.isAlive ? "" : "line-through opacity-50"}`}>
-                        {p.id === selfId ? "You" : p.name}
-                      </span>
+                {sortedPlayers.map((p, idx) => {
+                  const isSelf = p.id === selfId;
+                  const isTargetActive = reactions.activeTargetId === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      ref={reactions.registerCardRef(p.id)}
+                      className={`relative flex items-center justify-between rounded-xl px-3 py-2 text-xs border ${chrome.cardBg} ${!isSelf ? "cursor-pointer hover:border-emerald-400/60 active:scale-[0.99]" : ""}`}
+                      onClick={!isSelf ? () => reactions.openTarget(p.id) : undefined}
+                      title={!isSelf ? `Tap to react at ${p.name}` : undefined}
+                    >
+                      {isTargetActive && (
+                        <SeatTargetReactionWheel
+                          game="snake"
+                          targetPlayerId={p.id}
+                          targetPlayerName={p.name}
+                          onClose={reactions.closeTarget}
+                          position="left"
+                        />
+                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold">
+                          {idx + 1}
+                        </span>
+                        <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
+                        <SeatAvatar avatar={avatarById.get(p.id)} name={p.name} className="w-6 h-6" textClassName="text-[9px]" />
+                        <span className={`font-extrabold ${p.isAlive ? "" : "line-through opacity-50"}`}>
+                          {isSelf ? "You" : p.name}
+                        </span>
+                      </div>
+                      <span className={`font-black ${chrome.accentText}`}>{p.score}</span>
                     </div>
-                    <span className={`font-black ${chrome.accentText}`}>{p.score}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

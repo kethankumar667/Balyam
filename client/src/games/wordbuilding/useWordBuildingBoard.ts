@@ -42,6 +42,7 @@ export interface WordBuildingBoardModel {
   cellOverlays: Map<string, WordBuildingScoredWord[]>;
   activeAnnotation: WordBuildingScoredWord | null;
   activePulse: WordBuildingScoredWord | null;
+  activeWordBurst: { word: string; points: number; playerName: string } | null;
   selected: { r: number; c: number } | null;
   setSelected: (cell: { r: number; c: number } | null) => void;
   error: string | null;
@@ -133,6 +134,7 @@ export function useWordBuildingBoard({
    */
   const [activeAnnotation, setActiveAnnotation] = useState<WordBuildingScoredWord | null>(null);
   const [activePulse, setActivePulse] = useState<WordBuildingScoredWord | null>(null);
+  const [activeWordBurst, setActiveWordBurst] = useState<{ word: string; points: number; playerName: string } | null>(null);
   const seenWordIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     // First mount: seed the set so we don't fire a burst of annotations
@@ -150,9 +152,12 @@ export function useWordBuildingBoard({
     const top = fresh.reduce((a, b) => (a.points >= b.points ? a : b));
     setActiveAnnotation(top);
     setActivePulse(top);
+    const pName = nameOf(top.scorerId);
+    setActiveWordBurst({ word: top.word, points: top.points, playerName: pName });
     const aT = window.setTimeout(() => {
       setActiveAnnotation((cur) => (cur?.id === top.id ? null : cur));
-    }, 1000);
+      setActiveWordBurst(null);
+    }, 1200);
     const pT = window.setTimeout(() => {
       setActivePulse((cur) => (cur?.id === top.id ? null : cur));
     }, 1400);
@@ -160,7 +165,7 @@ export function useWordBuildingBoard({
       window.clearTimeout(aT);
       window.clearTimeout(pT);
     };
-  }, [state.scoredWords]);
+  }, [state.scoredWords, nameOf]);
 
   /* ─── Cell selection + letter input ─── */
   const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
@@ -246,6 +251,7 @@ export function useWordBuildingBoard({
     cellOverlays,
     activeAnnotation,
     activePulse,
+    activeWordBurst,
     selected,
     setSelected,
     error,

@@ -3,6 +3,7 @@ import type { CarromPublicState, CarromSeat, Player, StrikerSkin, BoardFeltSkin 
 import { CARROM_BOARD } from "@shared/types";
 import { HapticsManager } from "../../services/HapticsManager";
 import { findAvatar } from "../../lib/avatars";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import {
   appendEntry,
   formatFeedClock,
@@ -480,12 +481,18 @@ export function CarromPlayerCards({
    *  targeted reaction flies to/from and shakes on landing. Optional so this
    *  component still renders fine anywhere reactions aren't wired up. */
   registerCardRef,
+  onTarget,
+  activeTargetId,
+  onCloseTarget,
 }: {
   state: CarromPublicState;
   players: Player[];
   selfId: string;
   orientation?: "row" | "column";
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+  onTarget?: (playerId: string) => void;
+  activeTargetId?: string | null;
+  onCloseTarget?: () => void;
 }) {
   const nameOf = useMemo(() => {
     const map = new Map(players.map((p) => [p.id, p.name]));
@@ -516,21 +523,29 @@ export function CarromPlayerCards({
           const isSelf = s.playerId === selfId;
           const name = nameOf(s.playerId);
           const isWhite = s.color === "white";
+          const isTargetActive = activeTargetId === s.playerId;
 
           return (
             <div
               key={s.playerId}
               ref={registerCardRef?.(s.playerId)}
-              className="flex items-center gap-3 px-3 py-2.5 transition-all duration-200"
+              className={`relative flex items-center gap-3 px-3 py-2.5 transition-all duration-200 ${!isSelf ? "cursor-pointer hover:bg-amber-100/40 active:scale-[0.99]" : ""}`}
+              onClick={!isSelf ? () => onTarget?.(s.playerId) : undefined}
+              title={!isSelf ? `Tap to react at ${name}` : undefined}
               style={{
-                // The active seat already reads three ways: this warm field,
-                // the avatar's gold ring and glow, and the turn bar directly
-                // below. The 3px gold stripe this row used to carry down its
-                // left edge was a fourth, blunter repeat of the same fact.
                 background: isTurn ? `${WARM.gold}22` : "transparent",
                 borderBottom: `1px solid ${WARM.border}`,
               }}
             >
+              {isTargetActive && onCloseTarget && (
+                <SeatTargetReactionWheel
+                  game="carrom"
+                  targetPlayerId={s.playerId}
+                  targetPlayerName={name}
+                  onClose={onCloseTarget}
+                  position="top"
+                />
+              )}
               <LetterAvatar name={name} avatar={avatarOf(s.playerId)} isWhite={isWhite} size={38} isSelf={isSelf} isTurn={isTurn} />
               <div className="flex-1 min-w-0">
                 <span className="text-xs font-bold truncate block" style={{ color: WARM.woodDark }}>
@@ -582,12 +597,15 @@ export function CarromPlayerCards({
         const isSelf = s.playerId === selfId;
         const name = nameOf(s.playerId);
         const isWhite = s.color === "white";
+        const isTargetActive = activeTargetId === s.playerId;
 
         return (
           <div
             key={s.playerId}
             ref={registerCardRef?.(s.playerId)}
-            className="flex-1 flex flex-col items-center gap-1 p-2 rounded-xl min-w-[72px] transition-all duration-300"
+            className={`relative flex-1 flex flex-col items-center gap-1 p-2 rounded-xl min-w-[72px] transition-all duration-300 ${!isSelf ? "cursor-pointer hover:brightness-105 active:scale-[0.98]" : ""}`}
+            onClick={!isSelf ? () => onTarget?.(s.playerId) : undefined}
+            title={!isSelf ? `Tap to react at ${name}` : undefined}
             style={{
               background: isTurn
                 ? `linear-gradient(135deg, ${WARM.gold}22, ${WARM.goldDark}15)`
@@ -600,6 +618,15 @@ export function CarromPlayerCards({
                 : "0 1px 3px rgba(0,0,0,0.06)",
             }}
           >
+            {isTargetActive && onCloseTarget && (
+              <SeatTargetReactionWheel
+                game="carrom"
+                targetPlayerId={s.playerId}
+                targetPlayerName={name}
+                onClose={onCloseTarget}
+                position="top"
+              />
+            )}
             <LetterAvatar
               name={name}
               avatar={avatarOf(s.playerId)}

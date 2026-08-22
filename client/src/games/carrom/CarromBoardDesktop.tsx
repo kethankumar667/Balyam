@@ -34,7 +34,7 @@ export default function CarromBoardDesktop({
   const [showSkins, setShowSkins] = useState(false);
   const [localStriker, setLocalStriker] = useState<StrikerSkin>(state.strikerSkin ?? "pearl");
   const [localFelt, setLocalFelt] = useState<BoardFeltSkin>(state.boardSkin ?? "birch");
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(selfId);
   const selfSeatIndex = state.seats.findIndex((s) => s.playerId === selfId);
   const isFlipped = selfSeatIndex === 1;
 
@@ -138,6 +138,9 @@ export default function CarromBoardDesktop({
             selfId={selfId}
             orientation="column"
             registerCardRef={reactions.registerCardRef}
+            onTarget={reactions.openTarget}
+            activeTargetId={reactions.activeTargetId}
+            onCloseTarget={reactions.closeTarget}
           />
 
           {/* Turn Indicator */}

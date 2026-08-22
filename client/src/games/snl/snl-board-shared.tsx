@@ -3,6 +3,8 @@ import type { CoinColor, Player, SnlEvent, SnlState } from "@shared/types";
 import { COIN_COLOR_HEX } from "../../components/CoinColorPicker";
 import { Dice } from "../ludo/Dice";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import { SnakeBiteOverlay, LadderClimbOverlay } from "./SnlAnimations";
+import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 
 /**
  * Snakes & Ladders — shared presentational layer.
@@ -53,7 +55,7 @@ const LADDER_WOOD_BOTTOM = "#6E4422";
 const LADDER_WOOD_DARK   = "#3F2412";
 const LADDER_RUNG        = "#8E5B30";
 
-function cellInfo(n: number): { x: number; y: number; row: number; col: number; color: string; dark: string } {
+export function cellInfo(n: number): { x: number; y: number; row: number; col: number; color: string; dark: string } {
   const idx = n - 1;
   const row = Math.floor(idx / 10);
   let col = idx % 10;
@@ -653,8 +655,7 @@ function TokensLayer({
 
 /**
  * The full felt board: the SVG (cells + snakes + ladders + tokens) plus the
- * floating event toast. Shared verbatim by both shells — only the wrapping
- * column width differs between mobile and desktop.
+ * floating event toast and GAL overlays. Shared verbatim by both shells.
  */
 export function SnlBoardSvg({
   state,
@@ -663,6 +664,8 @@ export function SnlBoardSvg({
   squareGroups,
   startCount,
   toast,
+  activeSnakeBite,
+  activeLadderClimb,
 }: {
   state: SnlState;
   coinColorOf: Record<string, CoinColor>;
@@ -670,6 +673,8 @@ export function SnlBoardSvg({
   squareGroups: Map<number, string[]>;
   startCount: number;
   toast: { text: string; emoji: string; color: string } | null;
+  activeSnakeBite?: { playerName: string; from: number; to: number; x: number; y: number } | null;
+  activeLadderClimb?: { playerName: string; from: number; to: number; x: number; y: number } | null;
 }) {
   return (
     <div className="relative">
@@ -702,6 +707,28 @@ export function SnlBoardSvg({
           squareGroups={squareGroups}
         />
       </svg>
+
+      {/* GAL: Snake Bite Animation */}
+      {activeSnakeBite && (
+        <SnakeBiteOverlay
+          playerName={activeSnakeBite.playerName}
+          from={activeSnakeBite.from}
+          to={activeSnakeBite.to}
+          x={activeSnakeBite.x}
+          y={activeSnakeBite.y}
+        />
+      )}
+
+      {/* GAL: Ladder Climb Animation */}
+      {activeLadderClimb && (
+        <LadderClimbOverlay
+          playerName={activeLadderClimb.playerName}
+          from={activeLadderClimb.from}
+          to={activeLadderClimb.to}
+          x={activeLadderClimb.x}
+          y={activeLadderClimb.y}
+        />
+      )}
 
       {toast && (
         <div
@@ -798,6 +825,9 @@ export function SnlPlayerRail({
   initialOf,
   selfId,
   registerCardRef,
+  onTarget,
+  activeTargetId,
+  onCloseTarget,
 }: {
   players: Player[];
   state: SnlState;
@@ -808,6 +838,9 @@ export function SnlPlayerRail({
    *  reaction flies to/from and shakes on landing. Optional so this
    *  component still renders fine anywhere reactions aren't wired up. */
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+  onTarget?: (playerId: string) => void;
+  activeTargetId?: string | null;
+  onCloseTarget?: () => void;
 }) {
   return (
     <div
@@ -827,27 +860,32 @@ export function SnlPlayerRail({
         const isTurn = state.turnPlayerId === id;
         const finished = state.finishedOrder.includes(id);
         const palette = COIN_COLOR_HEX[coinColorOf[id]];
+        const isTargetActive = activeTargetId === id;
         return (
           <div
             key={id}
             ref={registerCardRef?.(id)}
-            className={`flex items-center gap-2 p-1.5 rounded-lg transition ${
+            className={`relative flex items-center gap-2 p-1.5 rounded-lg transition ${
               isTurn ? "bg-slate-800/80" : "bg-slate-800/30"
-            }`}
+            }${id !== selfId ? " cursor-pointer hover:bg-slate-700/50 active:scale-[0.99]" : ""}`}
+            onClick={id !== selfId ? () => onTarget?.(id) : undefined}
+            title={id !== selfId ? `Tap to react at ${p?.name ?? "player"}` : undefined}
             style={{
-              // Was `borderLeft: 3px solid ${palette.fill}` — a coloured side
-              // border above 1px on a list item, which the craft floor bans
-              // outright (and the detector flags as `side-tab`). The seat's
-              // colour now washes the row from its leading edge instead: same
-              // "this seat is live, and it is the blue one" reading, without
-              // the stripe. Matches how the Hand Cricket score bug carries its
-              // innings identity, so the two games stay consistent.
               backgroundImage: isTurn
                 ? `linear-gradient(90deg, ${palette.fill}38, transparent 55%)`
                 : undefined,
               boxShadow: isTurn ? `0 0 10px ${palette.fill}40` : undefined,
             }}
           >
+            {isTargetActive && onCloseTarget && (
+              <SeatTargetReactionWheel
+                game="snl"
+                targetPlayerId={id}
+                targetPlayerName={p?.name}
+                onClose={onCloseTarget}
+                position="top"
+              />
+            )}
             <div
               className="flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-extrabold flex-shrink-0"
               style={{

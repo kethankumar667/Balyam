@@ -11,6 +11,7 @@ import {
 } from "./wordbuilding-shared";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { WordBuildingWordBurst, WordBuildingWinnerCelebration } from "./WordBuildingAnimations";
 
 /**
  * Viewport-fitted cell size. The original board hard-coded 44/38/28px by board
@@ -47,7 +48,7 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
   const { state, selfId, roomCode, players, messages, roomPhase, onLeave } = props;
   const m = useWordBuildingBoard(props);
   const cellPx = useFitCellPx(m.size);
-  const reactions = useSeatReactions();
+  const reactions = useSeatReactions(selfId);
 
   return (
     <div
@@ -65,6 +66,9 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
         onOpenTutorial={() => m.setTutorialOpen(true)}
         onLeave={onLeave}
         registerCardRef={reactions.registerCardRef}
+        onTarget={reactions.openTarget}
+        activeTargetId={reactions.activeTargetId}
+        onCloseTarget={reactions.closeTarget}
       />
 
       <WorkbookBoard m={m} state={state} cellPx={cellPx} roomCode={roomCode} />
@@ -89,6 +93,20 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
           messages={messages ?? []}
         />
       </div>
+
+      {/* GAL Animations */}
+      {m.activeWordBurst && (
+        <WordBuildingWordBurst
+          word={m.activeWordBurst.word}
+          points={m.activeWordBurst.points}
+          playerName={m.activeWordBurst.playerName}
+        />
+      )}
+      {state.phase === "finished" && state.winnerId && !m.reportDismissed && (
+        <WordBuildingWinnerCelebration
+          winnerName={m.nameOf(state.winnerId)}
+        />
+      )}
 
       {state.phase === "finished" && !m.reportDismissed && (
         <ReportCardOverlay

@@ -1,726 +1,354 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { DATA_INVENTORY, THIRD_PARTIES } from "../lib/privacy/dataInventory";
 import {
-  GRIEVANCE_ACK_DAYS,
-  GRIEVANCE_RESOLVE_DAYS,
-  PRIVACY_CONTACT_EMAIL,
-} from "../lib/privacy/contact";
-import { ArrowLeftIcon } from "../components/auth/authIcons";
-import { isSupabaseConfigured } from "../lib/supabase/client";
+  Shield,
+  Lock,
+  Eye,
+  FileText,
+  UserCheck,
+  Trash2,
+  HelpCircle,
+  CheckCircle2,
+  XCircle,
+  Mail,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 
-const LAST_UPDATED = "15 August 2026";
-
-/* ────────────── Inline SVG Illustrations ────────────── */
-
-function KidsLogoHeaderSVG({ className = "w-16 h-8" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <circle cx="25" cy="18" r="8" stroke="#5C3717" strokeWidth="2" fill="#FFF8E7" />
-      <path d="M18 16 Q 25 10 32 16" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <circle cx="22" cy="18" r="1" fill="#5C3717" />
-      <circle cx="28" cy="18" r="1" fill="#5C3717" />
-      <path d="M23 22 Q 25 24 27 22" stroke="#5C3717" strokeWidth="1.5" fill="none" />
-      <path d="M25 26 L25 42 M16 31 L34 31 M25 42 L18 56 M25 42 L32 56" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" />
-
-      <circle cx="60" cy="14" r="8" stroke="#5C3717" strokeWidth="2" fill="#FFF8E7" />
-      <path d="M50 14 C 48 8, 54 8, 56 12" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M70 14 C 72 8, 66 8, 64 12" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <circle cx="57" cy="14" r="1" fill="#5C3717" />
-      <circle cx="63" cy="14" r="1" fill="#5C3717" />
-      <path d="M58 18 Q 60 20 62 18" stroke="#5C3717" strokeWidth="1.5" fill="none" />
-      <path d="M60 22 L52 40 L68 40 Z M60 40 L54 54 M60 40 L66 54" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="#FFF8E7" />
-
-      <circle cx="95" cy="18" r="8" stroke="#5C3717" strokeWidth="2" fill="#FFF8E7" />
-      <path d="M88 16 Q 95 10 102 16" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <circle cx="92" cy="18" r="1" fill="#5C3717" />
-      <circle cx="98" cy="18" r="1" fill="#5C3717" />
-      <path d="M93 22 Q 95 24 97 22" stroke="#5C3717" strokeWidth="1.5" fill="none" />
-      <path d="M95 26 L95 42 M86 31 L104 31 M95 42 L88 56 M95 42 L102 56" stroke="#5C3717" strokeWidth="2" strokeLinecap="round" />
-
-      <path d="M32 31 Q 42 36 52 31" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M68 31 Q 78 36 86 31" stroke="#5C3717" strokeWidth="2" fill="none" />
-    </svg>
-  );
-}
-
-function NotebookShieldSVG({ className = "w-48 h-48" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 220 200" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      {/* Paper Plane Doodle background */}
-      <path d="M15 45 Q 30 25 45 35 L60 20 L50 50 Z" stroke="#D4A574" strokeWidth="1.5" fill="none" strokeDasharray="3 3" opacity="0.7" />
-      {/* Car Doodle background */}
-      <path d="M15 165 L35 165 C 40 155 50 155 55 165 L85 165" stroke="#D4A574" strokeWidth="1.5" fill="none" opacity="0.7" />
-      <circle cx="28" cy="165" r="4" fill="#FFFDF5" stroke="#D4A574" strokeWidth="1.5" />
-      <circle cx="70" cy="165" r="4" fill="#FFFDF5" stroke="#D4A574" strokeWidth="1.5" />
-      
-      {/* Star Doodles */}
-      <path d="M125 30 L127 35 L132 35 L128 38 L130 43 L125 40 L120 43 L122 38 L118 35 L123 35 Z" fill="#FFB703" opacity="0.8" />
-      <path d="M185 80 L186 83 L189 83 L187 85 L188 88 L185 86 L182 88 L183 85 L181 83 L184 83 Z" fill="#E85D04" opacity="0.6" />
-
-      {/* Notebook Body */}
-      <rect x="75" y="35" width="105" height="135" rx="10" fill="#FFFDF5" stroke="#5C3717" strokeWidth="2.5" />
-      <line x1="90" y1="35" x2="90" y2="170" stroke="#EAD9BC" strokeWidth="1.5" />
-
-      {/* Binder Spiral Rings */}
-      {[48, 64, 80, 96, 112, 128, 144, 160].map((y) => (
-        <g key={y}>
-          <path d={`M67 ${y} C 67 ${y-4}, 80 ${y-4}, 80 ${y}`} stroke="#5C3717" strokeWidth="2.8" fill="none" />
-          <circle cx="80" cy={y} r="2" fill="#5C3717" />
-        </g>
-      ))}
-
-      {/* Shield Icon on Notebook */}
-      <path d="M138 68 C 138 68 158 68 158 68 C 158 98 138 115 138 115 C 138 115 118 98 118 68 Z" fill="#FFF8E7" stroke="#5C3717" strokeWidth="2.5" />
-      {/* Lock inside Shield */}
-      <rect x="131" y="87" width="14" height="12" rx="2.5" fill="#5C3717" />
-      <path d="M134 87 V 82 C 134 79, 142 79, 142 82 V 87" stroke="#5C3717" strokeWidth="2.2" fill="none" />
-
-      {/* Wooden Pencil beside Notebook */}
-      <g transform="rotate(35 180 150)">
-        <polygon points="170,120 182,120 182,165 176,175 170,165" fill="#E85D04" stroke="#5C3717" strokeWidth="1.8" />
-        <polygon points="170,165 176,175 182,165" fill="#FCE7D0" stroke="#5C3717" strokeWidth="1" />
-        <polygon points="174,171 176,175 178,171" fill="#4A2508" />
-      </g>
-    </svg>
-  );
-}
-
-function TreasureChestSVG({ className = "w-24 h-24" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <rect x="25" y="45" width="70" height="40" rx="5" fill="#C68A4C" stroke="#5C3717" strokeWidth="2.5" />
-      <path d="M25 45 C 25 22, 95 22, 95 45 Z" fill="#D99B5B" stroke="#5C3717" strokeWidth="2.5" />
-      <line x1="25" y1="45" x2="95" y2="45" stroke="#5C3717" strokeWidth="2.5" />
-      <rect x="54" y="40" width="12" height="16" rx="2" fill="#FFB703" stroke="#5C3717" strokeWidth="2" />
-      <circle cx="60" cy="46" r="2" fill="#5C3717" />
-      {/* Marbles/Toys inside chest */}
-      <circle cx="40" cy="38" r="5.5" fill="#E85D04" />
-      <circle cx="52" cy="34" r="4.5" fill="#2563EB" />
-      <circle cx="70" cy="35" r="5.5" fill="#10B981" />
-      <circle cx="82" cy="39" r="4.5" fill="#FFB703" />
-      <circle cx="90" cy="35" r="3.5" fill="#E85D04" />
-      <circle cx="33" cy="37" r="3.5" fill="#2563EB" />
-    </svg>
-  );
-}
-
-function ChalkboardKidsSVG({ className = "w-32 h-24" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 140 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      {/* Wooden Frame */}
-      <rect x="10" y="10" width="120" height="80" rx="6" fill="#5C3717" stroke="#3A210D" strokeWidth="3" />
-      {/* Inner Chalkboard */}
-      <rect x="16" y="16" width="108" height="68" rx="3" fill="#2E4A3E" />
-      
-      {/* Sun drawing */}
-      <circle cx="28" cy="28" r="5" stroke="#FFFDF5" strokeWidth="1.2" strokeDasharray="2 1" fill="none" />
-      <line x1="28" y1="20" x2="28" y2="22" stroke="#FFFDF5" strokeWidth="1.2" />
-      <line x1="28" y1="34" x2="28" y2="36" stroke="#FFFDF5" strokeWidth="1.2" />
-      <line x1="20" y1="28" x2="22" y2="28" stroke="#FFFDF5" strokeWidth="1.2" />
-      <line x1="34" y1="28" x2="36" y2="28" stroke="#FFFDF5" strokeWidth="1.2" />
-
-      {/* Kids holding hands stick figures */}
-      <g stroke="#FFFDF5" strokeWidth="1.3" fill="none">
-        {/* Kid 1 */}
-        <circle cx="50" cy="38" r="4" />
-        <line x1="50" y1="42" x2="50" y2="58" />
-        <line x1="42" y1="48" x2="58" y2="48" />
-        <line x1="50" y1="58" x2="45" y2="70" />
-        <line x1="50" y1="58" x2="55" y2="70" />
-
-        {/* Kid 2 */}
-        <circle cx="70" cy="36" r="4" />
-        <line x1="70" y1="40" x2="70" y2="56" />
-        <line x1="62" y1="46" x2="78" y2="46" />
-        <line x1="70" y1="56" x2="65" y2="68" />
-        <line x1="70" y1="56" x2="75" y2="68" />
-
-        {/* Kid 3 */}
-        <circle cx="90" cy="38" r="4" />
-        <line x1="90" y1="42" x2="90" y2="58" />
-        <line x1="82" y1="48" x2="98" y2="48" />
-        <line x1="90" y1="58" x2="85" y2="70" />
-        <line x1="90" y1="58" x2="95" y2="70" />
-      </g>
-
-      {/* Chalk piece on ledge */}
-      <rect x="96" y="77" width="14" height="3.5" rx="1" fill="#FFFDF5" />
-    </svg>
-  );
-}
-
-function PhotoCardsStackSVG({ className = "w-24 h-24" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <g transform="rotate(-12 60 50)">
-        <rect x="30" y="15" width="60" height="70" rx="4" fill="#FFF8E7" stroke="#D4A574" strokeWidth="2" />
-      </g>
-      <g transform="rotate(-4 60 50)">
-        <rect x="30" y="15" width="60" height="70" rx="4" fill="#FFF6E2" stroke="#C8965D" strokeWidth="2" />
-      </g>
-      <g transform="rotate(6 60 50)">
-        <rect x="30" y="15" width="60" height="70" rx="4" fill="#FFFDF5" stroke="#5C3717" strokeWidth="2" />
-        <circle cx="60" cy="40" r="10" stroke="#5C3717" strokeWidth="1.5" fill="#FFF8E7" />
-        <path d="M52 37 Q 60 33 68 37" stroke="#5C3717" strokeWidth="1.5" fill="none" />
-        <circle cx="56" cy="39" r="1" fill="#5C3717" />
-        <circle cx="64" cy="39" r="1" fill="#5C3717" />
-        <path d="M57 43 Q 60 45 63 43" stroke="#5C3717" strokeWidth="1.2" fill="none" />
-        <path d="M60 50 L52 68 M60 50 L68 68" stroke="#5C3717" strokeWidth="1.5" strokeLinecap="round" />
-      </g>
-    </svg>
-  );
-}
-
-function AlarmClockSVG({ className = "w-20 h-20" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <path d="M22 24 C 22 14, 37 14, 37 24 Z" fill="#5C3717" stroke="#3A210D" strokeWidth="2" />
-      <path d="M78 24 C 78 14, 63 14, 63 24 Z" fill="#5C3717" stroke="#3A210D" strokeWidth="2" />
-      <line x1="30" y1="80" x2="20" y2="92" stroke="#3A210D" strokeWidth="4" strokeLinecap="round" />
-      <line x1="70" y1="80" x2="80" y2="92" stroke="#3A210D" strokeWidth="4" strokeLinecap="round" />
-      <circle cx="50" cy="55" r="32" fill="#FFFDF5" stroke="#3A210D" strokeWidth="3" />
-      <circle cx="50" cy="55" r="28" fill="#FFF8E7" stroke="#D4A574" strokeWidth="1.5" />
-      <line x1="50" y1="55" x2="50" y2="38" stroke="#3A210D" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1="50" y1="55" x2="66" y2="55" stroke="#3A210D" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="50" cy="55" r="3" fill="#E85D04" />
-    </svg>
-  );
-}
-
-function FourKidsHoldingHandsSVG({ className = "w-36 h-12" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 200 70" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      {[25, 75, 125, 175].map((x, i) => (
-        <g key={i}>
-          <circle cx={x} cy="20" r="9" stroke="#5C3717" strokeWidth="2.2" fill="#FFF8E7" />
-          <path d={`M${x-6} 18 Q ${x} 14 ${x+6} 18`} stroke="#5C3717" strokeWidth="2" fill="none" />
-          <circle cx={x-3} cy="20" r="1" fill="#5C3717" />
-          <circle cx={x+3} cy="20" r="1" fill="#5C3717" />
-          <path d={`M${x-3} 24 Q ${x} 26 ${x+3} 24`} stroke="#5C3717" strokeWidth="1.8" fill="none" />
-          <path d={`M${x} 29 L${x} 48 M${x-8} 35 L${x+8} 35 M${x} 48 L${x-7} 64 M${x} 48 L${x+7} 64`} stroke="#5C3717" strokeWidth="2.2" strokeLinecap="round" />
-        </g>
-      ))}
-      <path d="M33 35 Q 54 42 67 35" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M83 35 Q 104 42 117 35" stroke="#5C3717" strokeWidth="2" fill="none" />
-      <path d="M133 35 Q 154 42 167 35" stroke="#5C3717" strokeWidth="2" fill="none" />
-    </svg>
-  );
-}
-
-/* ────────────── Navigation Items Configuration ────────────── */
-
-interface SidebarItem {
-  id: string;
-  label: string;
-  icon: string;
-  href?: string;
-  to?: string;
-}
-
-const SIDEBAR_ITEMS: SidebarItem[] = [
-  { id: "sec-overview", label: "Overview", icon: "📖", href: "#overview" },
-  { id: "sec-what-we-store", label: "What we store", icon: "💾", href: "#what-we-store" },
-  { id: "sec-settings-progress", label: "Settings & Progress", icon: "⚙️", href: "#settings-progress" },
-  { id: "sec-children", label: "Children & Guardianship", icon: "👨‍👩‍👧", href: "#children-guardianship" },
-  { id: "sec-questions", label: "Questions & Complaints", icon: "💬", href: "#questions-complaints" },
-  { id: "sec-changes", label: "When this changes", icon: "🔔", href: "#when-this-changes" },
-  { id: "action-copy", label: "Take a copy", icon: "📥", to: "/profile" },
-  { id: "action-correct", label: "Correct your data", icon: "✏️", to: "/profile" },
-  { id: "action-erase", label: "Erase your data", icon: "🗑️", to: "/profile" },
-  { id: "action-withdraw", label: "Withdraw consent", icon: "✋", to: "/profile" },
-  { id: "action-see", label: "See what's held", icon: "👁️", to: "/profile" },
-  { id: "action-contact", label: "Contact & Complaints", icon: "✉️", href: "#questions-complaints" },
+const SECTIONS = [
+  { id: "who-we-are", title: "1. Who We Are" },
+  { id: "info-we-collect", title: "2. Information We Collect" },
+  { id: "how-we-use", title: "3. How We Use Information" },
+  { id: "multiplayer-profile", title: "4. Multiplayer & Public Profile Visibility" },
+  { id: "cookies-storage", title: "5. Cookies & Local Storage" },
+  { id: "how-we-share", title: "6. How We Share Information" },
+  { id: "data-retention", title: "7. Data Retention" },
+  { id: "data-security", title: "8. Data Security & Seat Authentication" },
+  { id: "children-privacy", title: "9. Children's Privacy & Age Policy" },
+  { id: "privacy-rights", title: "10. Your Privacy Rights" },
+  { id: "data-deletion", title: "11. Data Deletion & Account Purge" },
+  { id: "international-transfers", title: "12. International Data Transfers" },
+  { id: "policy-changes", title: "13. Changes to This Policy" },
+  { id: "contact-us", title: "14. Contact Us" },
 ];
 
 export default function PrivacyPolicyPage() {
-  const [activeTab, setActiveTab] = useState("sec-overview");
+  const [activeSection, setActiveSection] = useState("who-we-are");
+
+  const scrollToSection = (id: string) => {
+    setActiveSection(id);
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   return (
     <AppLayout>
-      <div className="min-h-full bg-[#FAF3E0] font-sans text-[#5C3717] pb-16">
-        {/* Main Container */}
-        <main className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-6 space-y-6">
+      <div className="min-h-screen bhalyam-paper py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto space-y-10">
+          {/* ── Header ── */}
+          <div className="text-center space-y-3 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-600 dark:text-blue-400 text-xs font-bold font-mono uppercase tracking-wider">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Trust & Data Protection</span>
+            </div>
 
-        {/* Hero Section */}
-        <section id="overview" className="bg-[#FFFDF8] border border-[#E6D4B5] rounded-[32px] p-6 sm:p-10 shadow-xs relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="max-w-[620px] text-left">
-            <h1 className="bhalyam-display text-[36px] sm:text-[48px] font-extrabold text-[#4A2508] leading-tight">
-              Privacy at BHALYAM
+            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+              Privacy at <span className="text-[#EA580C]">BHALYAM</span>
             </h1>
-            <p className="text-[15px] sm:text-base leading-relaxed text-[#7A5B3E] mt-3">
-              The short version: you can play every game without an account, we sell nothing and
-              track nothing.{" "}
-              {isSupabaseConfigured
-                ? "If you do create one, your email and profile are held by our account service and you can delete both from your profile page at any moment."
-                : "Everything stays on your device — this build has no account service at all."}{" "}
-              The long version is below, written to India&apos;s Digital Personal Data Protection
-              Act, 2023.
+
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 font-medium">
+              We believe your childhood memories belong to you.
             </p>
-            <div className="inline-flex items-center gap-2 mt-4 px-3.5 py-1.5 rounded-full bg-[#FFF8E7] border border-[#E6D4B5] text-[13px] font-semibold text-[#8C4A15]">
-              <svg className="w-4 h-4 text-[#E85D04]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Last updated {/* No `dark:` variant on purpose. This page keeps its cream surface in
-                  both themes, so flipping the ink to amber-400 dropped the ratio to
-                  1.57:1 — light ink on a light panel. Dark mode is a TWO-part change
-                  (panel and ink together); doing one half alone is the bug. */}
-              <span className="font-bold text-[#C14D03] ml-1">{LAST_UPDATED}</span>
+
+            <div className="flex items-center justify-center gap-3 text-xs text-slate-400 font-medium pt-1">
+              <span>Last updated: August 22, 2026</span>
+              <span>•</span>
+              <span>Effective from: August 22, 2026</span>
             </div>
           </div>
 
-          <div className="flex-shrink-0">
-            <NotebookShieldSVG className="w-48 h-48 sm:w-56 sm:h-56" />
-          </div>
-        </section>
+          {/* ── Quick Summary Cards (Before Legal Text) ── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* What we collect */}
+            <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 space-y-3 shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center">
+                <Eye className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                What We Collect
+              </h3>
+              <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                  <span>Account email and verified auth session (members only).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                  <span>Public avatar choice and custom display name.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                  <span>Gameplay moves, match duration, XP, and win records.</span>
+                </li>
+              </ul>
+            </div>
 
-        {/* Top 4 Feature Badges Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-4 flex items-center gap-3 text-left shadow-xs">
-            <div className="w-10 h-10 rounded-full bg-[#FFF5E6] text-[#E85D04] border border-[#FCDDB5] flex items-center justify-center flex-shrink-0 text-lg">
-              🎵
+            {/* Why we collect it */}
+            <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 space-y-3 shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center">
+                <Shield className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                Why We Collect It
+              </h3>
+              <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <span>To synchronize real-time multiplayer turns and scores.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <span>To hold seats during brief network drops (reconnect).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <span>To prevent automated abuse, spam, and cheating.</span>
+                </li>
+              </ul>
             </div>
-            <div>
-              <h4 className="font-extrabold text-sm text-[#4A2508] leading-tight">Retro Sounds</h4>
-              <p className="text-xs text-[#7A5B3E] leading-tight">Relive the 90s with classic game sounds</p>
+
+            {/* What we don't do */}
+            <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 space-y-3 shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 flex items-center justify-center">
+                <Lock className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                What We Don't Do
+              </h3>
+              <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2">
+                <li className="flex items-start gap-2">
+                  <XCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <span>We NEVER sell your personal data to advertisers.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <XCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <span>We NEVER record or store peer-to-peer voice calls.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <XCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <span>We NEVER track you across third-party websites.</span>
+                </li>
+              </ul>
             </div>
           </div>
 
-          <div className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-4 flex items-center gap-3 text-left shadow-xs">
-            <div className="w-10 h-10 rounded-full bg-[#FFF5E6] text-[#E85D04] border border-[#FCDDB5] flex items-center justify-center flex-shrink-0 text-lg">
-              🌅
-            </div>
-            <div>
-              <h4 className="font-extrabold text-sm text-[#4A2508] leading-tight">Day / Night Theme</h4>
-              <p className="text-xs text-[#7A5B3E] leading-tight">Play in your favorite 90s vibes</p>
-            </div>
-          </div>
-
-          <div className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-4 flex items-center gap-3 text-left shadow-xs">
-            <div className="w-10 h-10 rounded-full bg-[#FFF5E6] text-[#10B981] border border-[#A7F3D0] flex items-center justify-center flex-shrink-0 text-lg">
-              🛡️
-            </div>
-            <div>
-              <h4 className="font-extrabold text-sm text-[#4A2508] leading-tight">Safe &amp; Ad-free</h4>
-              <p className="text-xs text-[#7A5B3E] leading-tight">100% safe for nostalgic fun</p>
-            </div>
-          </div>
-
-          <div className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-4 flex items-center gap-3 text-left shadow-xs">
-            <div className="w-10 h-10 rounded-full bg-[#FFF5E6] text-[#2563EB] border border-[#BFDBFE] flex items-center justify-center flex-shrink-0 text-lg">
-              📱
-            </div>
-            <div>
-              <h4 className="font-extrabold text-sm text-[#4A2508] leading-tight">Works on Mobile</h4>
-              <p className="text-xs text-[#7A5B3E] leading-tight">Play with friends anytime, anywhere</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 2-Column Main Layout: Sidebar Navigation + Detailed Content */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-          
-          {/* Left Sidebar Menu */}
-          <aside className="md:col-span-4 lg:col-span-3 bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-3 shadow-xs sticky top-6 text-left">
-            <nav className="space-y-1">
-              {SIDEBAR_ITEMS.map((item) => {
-                const isActive = activeTab === item.id;
-                if (item.to) {
-                  return (
-                    <Link
-                      key={item.id}
-                      to={item.to}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-chest-700 transition-colors"
-                    >
-                      <span className="text-base">{item.icon}</span>
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                }
-                return (
-                  <a
-                    key={item.id}
-                    href={item.href}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all ${
-                      isActive
-                        ? "bg-[#FFF5E6] text-chest-700 border border-[#FCDDB5] font-bold shadow-2xs"
-                        : "text-[#7A5B3E] hover:bg-[#FAF0D9] hover:text-chest-700"
+          {/* ── Document Layout: Sticky Sidebar TOC + Content ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Sticky Table of Contents */}
+            <div className="lg:col-span-4 sticky top-24 space-y-3 bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 shadow-xs">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">
+                Table of Contents
+              </h3>
+              <nav className="space-y-1 max-h-[70vh] overflow-y-auto [scrollbar-width:none]">
+                {SECTIONS.map((sec) => (
+                  <button
+                    key={sec.id}
+                    onClick={() => scrollToSection(sec.id)}
+                    className={`w-full text-left py-1.5 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      activeSection === sec.id
+                        ? "bg-amber-50 dark:bg-amber-950/40 text-[#EA580C] dark:text-amber-400 font-extrabold"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    <span className="text-base">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </a>
-                );
-              })}
-            </nav>
-          </aside>
+                    {sec.title}
+                  </button>
+                ))}
+              </nav>
+            </div>
 
-          {/* Right Main Content Cards */}
-          <div className="md:col-span-8 lg:col-span-9 space-y-6 text-left">
-            
-            {/* Card 1: What we store, and why */}
-            <section id="what-we-store" className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-6 shadow-xs relative overflow-hidden flex flex-col sm:flex-row items-start justify-between gap-4">
-              <div className="max-w-[500px]">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-9 h-9 rounded-full bg-[#E6F4EA] text-[#137333] flex items-center justify-center text-lg">
-                    💾
-                  </div>
-                  <h3 className="text-[19px] font-extrabold text-[#4A2508]">What we store, and why</h3>
-                </div>
-                <p className="text-sm leading-relaxed text-[#7A5B3E]">
-                  Everything listed here lives in your browser&apos;s local storage on the device
-                  you are reading this on, and never leaves it except where the next section says
-                  otherwise.{" "}
-                  {isSupabaseConfigured
-                    ? "The one exception is an account, which is optional: creating one stores your email address, a scrambled form of your password, and your display name, avatar, bio and region with our account service, so they follow you to a second device."
-                    : "This build has no user accounts and no database behind it."}
+            {/* Document Content */}
+            <div className="lg:col-span-8 bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-10 shadow-xs space-y-10 text-slate-700 dark:text-slate-300 leading-relaxed text-xs sm:text-sm">
+              {/* Section 1 */}
+              <section id="who-we-are" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  1. Who We Are
+                </h2>
+                <p>
+                  BHALYAM ("we", "our", or "us") operates the web-based multiplayer gaming platform accessible at bhalyam.com. We are dedicated to recreating traditional Indian school-yard and living room games in a secure, server-authoritative digital environment.
                 </p>
-              </div>
+              </section>
 
-              <div className="self-center sm:self-auto flex-shrink-0">
-                <TreasureChestSVG className="w-24 h-24" />
-              </div>
-            </section>
+              {/* Section 2 */}
+              <section id="info-we-collect" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  2. Information We Collect
+                </h2>
+                <p>
+                  We believe in minimal data collection. We only collect information strictly necessary to provide real-time multiplayer gaming:
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                  <li><strong>Account Data:</strong> Email address and password hash (via encrypted Supabase authentication) when creating a Member account.</li>
+                  <li><strong>Profile Information:</strong> Your chosen display name, avatar identifier, and optional regional flag.</li>
+                  <li><strong>Game Telemetry:</strong> Match duration, move sequences, win/loss records, accumulated XP, and achievement unlock states.</li>
+                  <li><strong>Technical & Connection Data:</strong> IP address (for WebSockets and WebRTC STUN signaling), device type, and client latency metrics.</li>
+                </ul>
+              </section>
 
-            {/* Card 2: Personal Data */}
-            <section className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-6 shadow-xs relative overflow-hidden flex flex-col sm:flex-row items-start justify-between gap-4">
-              <div className="max-w-[520px]">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-full bg-[#E6F4EA] text-[#137333] flex items-center justify-center text-lg">
-                    👤
-                  </div>
-                  <h3 className="text-[19px] font-extrabold text-[#4A2508]">Personal Data</h3>
-                </div>
+              {/* Section 3 */}
+              <section id="how-we-use" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  3. How We Use Information
+                </h2>
+                <p>
+                  Your information is utilized solely to:
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                  <li>Facilitate real-time room sessions, turns, and game state broadcasting.</li>
+                  <li>Authenticate player seats using cryptographic HMAC seatTokens to prevent unauthorized hijack.</li>
+                  <li>Track personal statistics, match history, and leaderboard rankings.</li>
+                  <li>Diagnose connection latency, server bottlenecks, and game engine stability.</li>
+                </ul>
+              </section>
 
-                <div className="space-y-3.5">
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-[#E6F4EA] text-[#137333] flex items-center justify-center text-[11px] font-bold mt-0.5 flex-shrink-0">
-                      ✓
+              {/* Section 4 */}
+              <section id="multiplayer-profile" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  4. Multiplayer & Public Profile Visibility
+                </h2>
+                <p>
+                  When you enter a room or match, other participants in that specific room can see your public display name, chosen avatar, and in-game moves. We do not expose email addresses or personal identifiers to other players.
+                </p>
+              </section>
+
+              {/* Section 5 */}
+              <section id="cookies-storage" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  5. Cookies & Local Storage
+                </h2>
+                <p>
+                  BHALYAM uses browser `localStorage` solely for functional preferences:
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                  <li>`mpg.seats`: Cryptographic seat authentication tokens to restore disconnected sessions.</li>
+                  <li>`bhalyam.theme`: Your Dark / Light mode visual preference.</li>
+                  <li>`bhalyam.audio`: Volume sliders and mute toggles.</li>
+                </ul>
+              </section>
+
+              {/* Section 6 */}
+              <section id="how-we-share" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  6. How We Share Information
+                </h2>
+                <p>
+                  We do not sell, rent, or trade player information. We only transmit technical data to essential infrastructure providers:
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                  <li><strong>Hosting Infrastructure:</strong> Cloud hosting partners (Vercel & Render) to run our client and game servers.</li>
+                  <li><strong>Authentication:</strong> Supabase for secure account database storage.</li>
+                  <li><strong>WebRTC STUN Signaling:</strong> Google public STUN servers for peer-to-peer voice channel discovery.</li>
+                </ul>
+              </section>
+
+              {/* Section 7 */}
+              <section id="data-retention" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  7. Data Retention
+                </h2>
+                <p>
+                  In-memory room states and game boards are completely purged from memory when a match completes or all players leave. Match history records and profile stats are retained as long as your Member account remains active.
+                </p>
+              </section>
+
+              {/* Section 8 */}
+              <section id="data-security" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  8. Data Security & Seat Authentication
+                </h2>
+                <p>
+                  All network communications are encrypted via HTTPS and WSS (WebSockets Secure). Player seat tokens are cryptographically signed with HMAC SHA-256 keys on the server to ensure zero seat hijacking.
+                </p>
+              </section>
+
+              {/* Section 9 */}
+              <section id="children-privacy" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  9. Children's Privacy & Age Policy
+                </h2>
+                <p>
+                  While BHALYAM celebrates childhood nostalgia, players under 13 must play with parental guidance. We do not knowingly collect personal identifiable information from children without verified parental consent. If we discover that personal data of a child under 13 has been collected without parental consent, we will promptly delete it.
+                </p>
+              </section>
+
+              {/* Section 10 */}
+              <section id="privacy-rights" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  10. Your Privacy Rights
+                </h2>
+                <p>
+                  You have the right to access, inspect, export, or correct your personal account details at any time directly through the Settings page (`/settings/security`).
+                </p>
+              </section>
+
+              {/* Section 11 */}
+              <section id="data-deletion" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  11. Data Deletion & Account Purge
+                </h2>
+                <p>
+                  You can permanently delete your account, statistics, match history, and all stored credentials at any time. Simply visit your Security Settings (`/settings/security`) and choose "Delete Account & Purge Data".
+                </p>
+              </section>
+
+              {/* Section 12 */}
+              <section id="international-transfers" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  12. International Data Transfers
+                </h2>
+                <p>
+                  Your information may be processed on servers located outside your country of residence. We ensure that our infrastructure providers maintain standard contractual clauses and robust cryptographic protections.
+                </p>
+              </section>
+
+              {/* Section 13 */}
+              <section id="policy-changes" className="space-y-3 scroll-mt-28">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  13. Changes to This Policy
+                </h2>
+                <p>
+                  We may update this Privacy Policy periodically to reflect platform updates or legal requirements. Material revisions will be posted with an updated "Last Updated" date at the top of this document.
+                </p>
+              </section>
+
+              {/* Section 14 */}
+              <section id="contact-us" className="space-y-3 scroll-mt-28 border-t border-[#EFEBE4] dark:border-[#222A44] pt-6">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  14. Contact Us
+                </h2>
+                <p>
+                  If you have any questions, concerns, or data privacy requests, please contact our Data Protection team at:
+                </p>
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-[#F3EFE9] dark:border-[#202740] flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-[#EA580C]" />
+                  <div>
+                    <span className="font-bold text-xs text-slate-900 dark:text-white block">
+                      Email Privacy Team
                     </span>
-                    <div>
-                      <h5 className="font-bold text-sm text-[#4A2508]">Player ID</h5>
-                      <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                        A random id that identifies your seat at a table. Not a UUID — it embeds the moment the profile was first created.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-[#E6F4EA] text-[#137333] flex items-center justify-center text-[11px] font-bold mt-0.5 flex-shrink-0">
-                      ✓
-                    </span>
-                    <div>
-                      <h5 className="font-bold text-sm text-[#4A2508]">Display name</h5>
-                      <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                        The name shown to everyone else at the table. You typed it yourself.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-[#E6F4EA] text-[#137333] flex items-center justify-center text-[11px] font-bold mt-0.5 flex-shrink-0">
-                      ✓
-                    </span>
-                    <div>
-                      <h5 className="font-bold text-sm text-[#4A2508]">Seat keys</h5>
-                      <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                        Per-room proof that a seat is yours, so refreshing the page does not lose your place. Meaningless once the room ends.
-                      </p>
-                    </div>
+                    <a
+                      href="mailto:privacy@bhalyam.com"
+                      className="text-xs text-[#EA580C] hover:underline font-mono"
+                    >
+                      privacy@bhalyam.com
+                    </a>
                   </div>
                 </div>
-              </div>
-
-              <div className="self-center sm:self-auto flex-shrink-0">
-                <ChalkboardKidsSVG className="w-32 h-24" />
-              </div>
-            </section>
-
-            {/* Card 3: Recent tables */}
-            <section className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="max-w-[500px]">
-                <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
-                  <div className="w-9 h-9 rounded-full bg-[#E0F2FE] text-[#0284C7] flex items-center justify-center text-lg">
-                    🎴
-                  </div>
-                  <h3 className="text-[18px] font-extrabold text-[#4A2508]">Recent tables</h3>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#EFF6FF] text-[#1E40AF] text-[11px] font-bold border border-[#BFDBFE]">
-                    includes other players&apos; names
-                  </span>
-                </div>
-                <p className="text-[13px] leading-relaxed text-[#7A5B3E]">
-                  The last three named Rummy tables you joined, including the display names of the other players at them.
-                </p>
-              </div>
-
-              <div className="flex-shrink-0">
-                <PhotoCardsStackSVG className="w-24 h-24" />
-              </div>
-            </section>
-
-            {/* Card 4: Connection log */}
-            <section className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="max-w-[500px]">
-                <div className="flex items-center gap-2.5 mb-1.5">
-                  <div className="w-9 h-9 rounded-full bg-[#F3E8FF] text-[#7C3AED] flex items-center justify-center text-lg">
-                    📶
-                  </div>
-                  <h3 className="text-[18px] font-extrabold text-[#4A2508]">Connection log</h3>
-                </div>
-                <p className="text-[13px] leading-relaxed text-[#7A5B3E]">
-                  Timestamped notes about connects and reconnects, used to debug dropped games. No message or game content.
-                </p>
-              </div>
-
-              <div className="flex-shrink-0">
-                <AlarmClockSVG className="w-20 h-20" />
-              </div>
-            </section>
-
+              </section>
+            </div>
           </div>
         </div>
-
-        {/* Settings and Progress Full-Width Card */}
-        <section id="settings-progress" className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-6 sm:p-8 shadow-xs text-left">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-9 h-9 rounded-full bg-[#FFF5E6] text-[#E85D04] border border-[#FCDDB5] flex items-center justify-center text-lg">
-              ⚙️
-            </div>
-            <h3 className="text-[20px] font-extrabold text-[#4A2508]">Settings and Progress</h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
-            
-            {/* Column 1 */}
-            <div className="space-y-4">
-              
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Your privacy choice</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Whether you allowed the optional settings and scores below, and when you chose. Kept so we do not ask again, and so the choice is demonstrable.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Avatar</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Which of the built-in avatars you picked. Just a filename — no photo of you is uploaded or stored.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Sound settings</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Music and effects volume, and whether sound is muted.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Vibration setting</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Whether the phone vibrates on your turn and on wins.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Language</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Which language the interface is shown in.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Theme</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Light or dark appearance.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Column 2 */}
-            <div className="space-y-4">
-              
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Theme touched</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Whether you have ever changed the theme, so we stop suggesting it.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Board skin</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    The visual skin chosen for game boards.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Ludo settings</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Your saved Ludo preferences, such as board theme and coin colour.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Snake best score</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Your highest Snake score on this device.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Block Blast best score</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Your highest Block Blast score on this device.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#E85D04] mt-2 flex-shrink-0" />
-                <div>
-                  <h5 className="font-bold text-sm text-[#4A2508]">Tutorial seen</h5>
-                  <p className="text-[13px] text-[#7A5B3E] leading-relaxed">
-                    Whether you have seen the tutorial so they stop reappearing.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-        </section>
-
-        {/* 2-Column Section: Children & Guardianship + Questions & Complaints */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-          
-          {/* Card 1: Children & Guardianship */}
-          <section id="children-guardianship" className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-6 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-[#FEF3C7] text-[#D97706] flex items-center justify-center text-lg">
-                  👨‍👩‍👧
-                </div>
-                <h3 className="text-[18px] font-extrabold text-[#4A2508]">Children and guardianship</h3>
-              </div>
-              <p className="text-[13px] leading-relaxed text-[#7A5B3E]">
-                BHALYAM is a family game lounge, so children will play it. Nothing here shows
-                advertising or profiles anyone, and every game can be played as a guest with no
-                contact details of any kind.{" "}
-                {isSupabaseConfigured
-                  ? "Creating an account does collect an email address, and verifiable guardian consent is not built yet — so an account should be made by a parent, and a child can play without one."
-                  : "This build collects no contact details at all and has no accounts, which is the safest arrangement we can offer while verifiable guardian consent is not yet built."}
-              </p>
-            </div>
-            <Link
-              to="/profile"
-              className="inline-flex items-center gap-1 min-h-[44px] text-[13px] font-bold text-chest-700 hover:underline mt-4"
-            >
-              Know more →
-            </Link>
-          </section>
-
-          {/* Card 2: Questions & Complaints */}
-          <section id="questions-complaints" className="bg-[#FFFDF6] border border-[#F2E3C6] rounded-2xl p-6 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-[#E0F2FE] text-[#0284C7] flex items-center justify-center text-lg">
-                  💬
-                </div>
-                <h3 className="text-[18px] font-extrabold text-[#4A2508]">Questions and complaints</h3>
-              </div>
-              {PRIVACY_CONTACT_EMAIL ? (
-                <p className="text-[13px] leading-relaxed text-[#7A5B3E]">
-                  Write to{" "}
-                  <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} className="font-bold text-[#E85D04] underline">
-                    {PRIVACY_CONTACT_EMAIL}
-                  </a>
-                  . We acknowledge within {GRIEVANCE_ACK_DAYS} days and resolve within {GRIEVANCE_RESOLVE_DAYS} days.
-                </p>
-              ) : (
-                <p className="text-[13px] leading-relaxed text-[#7A5B3E]">
-                  A dedicated privacy contact is not published yet. Because nothing is stored
-                  anywhere but your own device, the controls in your profile give you complete
-                  access and erasure without needing to ask anyone. You may also complain to the
-                  Data Protection Board of India.
-                </p>
-              )}
-            </div>
-            <Link
-              to="/profile"
-              className="inline-flex items-center gap-1 min-h-[44px] text-[13px] font-bold text-chest-700 hover:underline mt-4"
-            >
-              Know more →
-            </Link>
-          </section>
-
-        </div>
-
-        {/* Server Memory Disclaimer Full-Width Card */}
-        <section id="when-this-changes" className="bg-[#FFF9EA] border border-[#F3E5C8] rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-5 text-left">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFFDF6] border border-[#E6D4B5] text-[#5C3717] flex items-center justify-center text-lg flex-shrink-0 shadow-2xs">
-              🔒
-            </div>
-            <p className="text-[13px] leading-relaxed text-[#7A5B3E] max-w-[720px]">
-              One limit worth stating plainly: while you are sitting in a room, the server holds your
-              name and seat in memory so the table keeps working. Leave the room and it is gone —
-              rooms are never written to disk, and a server restart erases every one.
-            </p>
-          </div>
-
-          <div className="flex-shrink-0">
-            <FourKidsHoldingHandsSVG className="w-36 h-12" />
-          </div>
-        </section>
-
-      </main>
-
-      {/* Footer */}
-      <footer className="max-w-[1240px] mx-auto px-6 pt-10 border-t border-[#E6D4B5]/60 mt-12 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] font-semibold text-sand-600">
-        <div>
-          © {new Date().getFullYear()} BHALYAM · A Kethan Kumar Gontla project
-        </div>
-        <div className="flex items-center gap-1">
-          Built solo with <span className="text-[#E11D48]">❤️</span> for every school-gang reunion
-        </div>
-      </footer>
-
       </div>
     </AppLayout>
   );

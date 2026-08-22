@@ -7,6 +7,7 @@ import type {
   RpsState,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import type { RpsClashKind } from "./RpsAnimations";
 
 /**
  * Client-side RPS state: the server `RpsState` augmented with the per-player
@@ -74,6 +75,7 @@ export interface RpsBoardModel {
   // Reveal + banner.
   revealKey: number;
   bannerOutcome: RoundOutcome | null;
+  activeClash: { kind: RpsClashKind; message?: string } | null;
   // Overlay feeds.
   reactions: ReactionRecvPayload[];
   rains: { id: string; emoji: string }[];
@@ -99,10 +101,11 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
   const me = players.find((p) => p.id === selfId);
   const myId = selfId ?? "";
 
-  const myChoice = (selfId && state.currentChoices[selfId]) || null;
-  const oppChoice = (opponent && state.currentChoices[opponent.id]) || null;
-  const bothChose = !!myChoice && !!oppChoice;
-  const lastResult = state.history[state.history.length - 1];
+  const myChoice = state.currentChoices[myId] ?? null;
+  const oppChoice = opponent ? state.currentChoices[opponent.id] ?? null : null;
+  const bothChose = myChoice !== null && oppChoice !== null;
+
+  const lastResult = state.history[state.history.length - 1] ?? null;
 
   function pick(c: RpsChoice) {
     if (myChoice || state.isOver) return;
@@ -120,6 +123,7 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
   // Reveal + outcome banner (driven by state.lastRevealTs) -------------------
   const [revealKey, setRevealKey] = useState(0);
   const [bannerOutcome, setBannerOutcome] = useState<RoundOutcome | null>(null);
+  const [activeClash, setActiveClash] = useState<{ kind: RpsClashKind; message?: string } | null>(null);
   const prevRevealRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -133,7 +137,21 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
         ? "you-win"
         : "you-lose";
       setBannerOutcome(outcome);
-      const t = setTimeout(() => setBannerOutcome(null), 1300);
+
+      const winnerChoice = lastResult.winnerId ? lastResult.choices[lastResult.winnerId] : null;
+      const clashKind: RpsClashKind = !lastResult.winnerId
+        ? "draw"
+        : winnerChoice === "rock"
+        ? "crush"
+        : winnerChoice === "scissors"
+        ? "cut"
+        : "cover";
+      setActiveClash({ kind: clashKind });
+
+      const t = setTimeout(() => {
+        setBannerOutcome(null);
+        setActiveClash(null);
+      }, 1300);
       return () => clearTimeout(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -280,6 +298,7 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
     oppMatchPoint,
     revealKey,
     bannerOutcome,
+    activeClash,
     reactions,
     rains,
     confettiUntil,

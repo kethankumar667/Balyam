@@ -774,6 +774,11 @@ export interface HcBall {
   batterId: string;
   /** Profile id of the bowler who delivered this ball (from bowling team's squadPlayerIds). */
   bowlerId: string;
+  /** Set when this ball took the striker's score past a 50-run mark (50, 100,
+   *  150, ...) — null on every other ball. A single ball scores at most 6, so
+   *  it can cross at most one mark; this is that mark, not the batter's
+   *  total after it. */
+  milestone: number | null;
 }
 
 export interface HcBatterStats {
