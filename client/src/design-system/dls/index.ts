@@ -7,3 +7,6 @@ export * from "./Buttons";
 export * from "./PageBlueprints";
 export * from "./Tooltip";
 export * from "./Skeleton";
+export { default as Breadcrumbs } from "../../components/navigation/Breadcrumbs";
+export type { BreadcrumbsProps } from "../../components/navigation/Breadcrumbs";
+export type { BreadcrumbItem } from "../../components/navigation/breadcrumbsConfig";

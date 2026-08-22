@@ -34,16 +34,8 @@ export default function ProfileLayout({
   return (
     <div className="min-h-[85vh] bhalyam-paper auth-shell py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-6">
-          {/* Top Breadcrumb & Lounge Navigation */}
-          <div className="flex items-center justify-between">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Lounge</span>
-            </Link>
-
+          {/* Quick Shortcuts */}
+          <div className="flex items-center justify-end">
             <div className="flex items-center gap-3 text-xs font-bold text-[var(--auth-ink-soft)] opacity-70">
               <span className="inline-flex items-center gap-1.5 cursor-not-allowed py-2">
                 <Trophy className="w-3.5 h-3.5 text-amber-500/70" />

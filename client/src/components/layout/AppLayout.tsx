@@ -4,6 +4,8 @@ import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
 import JoinRoomModal from "../bhalyam/JoinRoomModal";
 import GameRoomSheet from "../bhalyam/GameRoomSheet";
+import Breadcrumbs from "../navigation/Breadcrumbs";
+import { type BreadcrumbItem } from "../navigation/breadcrumbsConfig";
 import { ProfileSheet, type NotificationItem, INITIAL_NOTIFICATIONS } from "../../pages/home/sheets/ProfileSheet";
 import { MenuSheet } from "../../pages/home/sheets/MenuSheet";
 import { type BhalyamGameSlug } from "../bhalyam/data";
@@ -50,9 +52,23 @@ interface AppLayoutProps {
    */
   chrome?: boolean;
   sidebar?: boolean;
+  /** Optional custom breadcrumbs override */
+  breadcrumbs?: BreadcrumbItem[];
+  /** Optional custom tail for the active route's crumb */
+  customTail?: string;
+  /** Whether to show the top breadcrumbs bar (defaults to true) */
+  showBreadcrumbs?: boolean;
 }
 
-export default function AppLayout({ children, onSelectGame, chrome = true, sidebar = true }: AppLayoutProps) {
+export default function AppLayout({
+  children,
+  onSelectGame,
+  chrome = true,
+  sidebar = true,
+  breadcrumbs,
+  customTail,
+  showBreadcrumbs = true,
+}: AppLayoutProps) {
   const [theme] = useTheme();
   const isDark = theme === "dark";
 
@@ -219,9 +235,17 @@ export default function AppLayout({ children, onSelectGame, chrome = true, sideb
           {/* Main Scrollable Viewport (ONLY this scrolls!) */}
           <main
             id="app-main-scroll"
-            className="flex-1 h-full overflow-y-auto overflow-x-hidden relative focus:outline-none"
+            className="flex-1 h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col"
           >
-            {children}
+            {chrome && showBreadcrumbs && (
+              <Breadcrumbs
+                crumbs={breadcrumbs}
+                customTail={customTail}
+              />
+            )}
+            <div className="flex-1 min-h-0 flex flex-col">
+              {children}
+            </div>
           </main>
         </div>
 

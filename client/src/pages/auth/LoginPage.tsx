@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Lock, Eye, EyeOff, ArrowLeft, ArrowRight, User } from "lucide-react";
+import Breadcrumbs from "../../components/navigation/Breadcrumbs";
 import { useSignIn } from "../../components/auth/useAccountAuth";
 import { FormNotice } from "../../components/auth/AuthControls";
 import {
@@ -36,15 +37,9 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen w-full bg-[#FAF6EE] text-[#2E2419] flex flex-col lg:flex-row overflow-x-hidden selection:bg-amber-200 font-sans">
-      {/* Top Lounge Navigation Floating Chip */}
-      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-40">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#EAD7B8]/80 hover:bg-[#E2CEAD] border border-[#D8C2A0] text-[#5C3E21] text-xs font-bold shadow-xs backdrop-blur-xs transition cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Lounge</span>
-        </Link>
+      {/* Top Breadcrumb Navigation Floating Chip */}
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-40 px-3.5 py-1 rounded-full bg-[#EAD7B8]/80 hover:bg-[#E2CEAD] border border-[#D8C2A0] text-[#5C3E21] text-xs font-bold shadow-xs backdrop-blur-xs transition">
+        <Breadcrumbs className="!py-0 !border-0 !bg-transparent" containerClassName="px-0" />
       </div>
 
       {/* ════════════════════════════════════════════════════════════

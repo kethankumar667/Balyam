@@ -13,6 +13,7 @@ import {
   StandardLoungePageLayout,
   SectionHeaderBlock,
   DashboardGrid,
+  Breadcrumbs,
 } from "../design-system/dls";
 import {
   RankTierIcon,
@@ -221,6 +222,54 @@ export default function DesignSystemCatalogPage() {
             actionText="Browse Games"
             onAction={() => {}}
           />
+        </div>
+
+        {/* Section 7: Flipkart-Style Breadcrumbs */}
+        <div className="space-y-4">
+          <SectionHeaderBlock
+            title="7. Flipkart-Style Breadcrumbs Hierarchy"
+            subtitle="Compact, accessible horizontal hierarchy navigation with interactive links and clean chevrons."
+          />
+          <div className="p-4 rounded-2xl bg-stone-900/60 border border-stone-800 space-y-3">
+            <div>
+              <div className="text-[11px] font-mono uppercase text-stone-400 mb-1 font-semibold">Catalog Trail Example:</div>
+              <Breadcrumbs
+                crumbs={[
+                  { label: "Home", path: "/" },
+                  { label: "All Games", path: "/games" },
+                  { label: "Card Games", path: "/games?c=cards" },
+                  { label: "Indian Rummy 13-Card" },
+                ]}
+                className="!py-1.5 !border-0 !bg-stone-950/80 rounded-xl px-3"
+                containerClassName="px-0"
+              />
+            </div>
+            <div>
+              <div className="text-[11px] font-mono uppercase text-stone-400 mb-1 font-semibold">Account / Profile Trail Example:</div>
+              <Breadcrumbs
+                crumbs={[
+                  { label: "Home", path: "/" },
+                  { label: "My Account", path: "/profile" },
+                  { label: "Personal Information" },
+                ]}
+                className="!py-1.5 !border-0 !bg-stone-950/80 rounded-xl px-3"
+                containerClassName="px-0"
+              />
+            </div>
+            <div>
+              <div className="text-[11px] font-mono uppercase text-stone-400 mb-1 font-semibold">Game Room Trail Example:</div>
+              <Breadcrumbs
+                crumbs={[
+                  { label: "Home", path: "/" },
+                  { label: "Game Lounge", path: "/games" },
+                  { label: "Ludo Classic", path: "/games" },
+                  { label: "Room #BHAL99" },
+                ]}
+                className="!py-1.5 !border-0 !bg-stone-950/80 rounded-xl px-3"
+                containerClassName="px-0"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Interactive Reward Reveal Modal */}

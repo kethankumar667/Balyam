@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Gamepad2, DoorOpen, Bot, Sparkles, User, Bookmark, Trophy, Smartphone } from "lucide-react";
 import AuthLangToggle from "./AuthLangToggle";
+import Breadcrumbs from "../navigation/Breadcrumbs";
 
 export interface AuthShellProps {
   children: React.ReactNode;
@@ -100,6 +101,7 @@ export default function AuthShell({
 
           {/* Right Onboarding Panel: 60% dedicated area */}
           <div className="w-full lg:w-[60%] max-w-[540px] mx-auto flex flex-col justify-center text-left space-y-2 px-1 sm:px-3">
+            <Breadcrumbs className="!py-0 !border-0 !bg-transparent mb-1" containerClassName="px-0" />
             {title ? (
               <div className="space-y-0.5">
                 <h1 className="text-[22px] sm:text-[26px] font-black text-[#111827] tracking-tight flex items-center gap-2">

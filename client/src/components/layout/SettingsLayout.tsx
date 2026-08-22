@@ -19,16 +19,8 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
     <AppLayout>
       <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Top Breadcrumbs */}
-          <div className="flex items-center justify-between">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Lounge</span>
-            </Link>
-
+          {/* Top Quick Links */}
+          <div className="flex items-center justify-end">
             <Link
               to="/profile"
               className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline min-h-[44px] py-2 inline-flex items-center gap-1.5"

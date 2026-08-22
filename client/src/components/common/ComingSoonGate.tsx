@@ -26,17 +26,6 @@ export default function ComingSoonGate({
     <AppLayout>
       <div className="min-h-[85vh] bhalyam-paper auth-shell py-8 sm:py-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
         <div className="max-w-2xl w-full mx-auto space-y-6">
-          {/* Breadcrumb back */}
-          <div className="flex items-center justify-between">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Lounge
-            </Link>
-          </div>
-
           {/* Main Card */}
           <div className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden text-center space-y-6">
             {/* Ambient Flares */}
