@@ -105,18 +105,28 @@ describe("Route Resolver & Context-Aware Navigation", () => {
       expect(active?.id).toBe("home-feed");
     });
 
-    it("marks upcoming items with Coming Soon badge and keeps profile/settings open", () => {
+    it("marks member-only items with Member badge for guests and keeps them unlocked for members", () => {
       const guestNav = resolveNavigation({ pathname: "/", isMember: false });
       const memberNav = resolveNavigation({ pathname: "/", isMember: true });
-      const tournamentsItem = guestNav.items.find((i) => i.id === "home-tournaments");
-      const leaderboardItem = guestNav.items.find((i) => i.id === "home-leaderboard");
-      const guestSettings = guestNav.items.find((i) => i.id === "home-settings");
+      const guestTournaments = guestNav.items.find((i) => i.id === "home-tournaments");
+      const guestLeaderboard = guestNav.items.find((i) => i.id === "home-leaderboard");
+      const guestSocial = guestNav.items.find((i) => i.id === "home-social");
       const guestProfile = guestNav.items.find((i) => i.id === "home-profile");
+      const guestSettings = guestNav.items.find((i) => i.id === "home-settings");
 
-      expect(tournamentsItem?.badge?.text).toBe("Coming Soon");
-      expect(leaderboardItem?.badge?.text).toBe("Coming Soon");
+      const memberTournaments = memberNav.items.find((i) => i.id === "home-tournaments");
+      const memberLeaderboard = memberNav.items.find((i) => i.id === "home-leaderboard");
+      const memberProfile = memberNav.items.find((i) => i.id === "home-profile");
+
+      expect(guestTournaments?.badge?.text).toBe("Member");
+      expect(guestLeaderboard?.badge?.text).toBe("Member");
+      expect(guestSocial?.badge?.text).toBe("Member");
+      expect(guestProfile?.badge?.text).toBe("Member");
       expect(guestSettings?.badge?.text).toBeUndefined();
-      expect(guestProfile?.badge?.text).toBeUndefined();
+
+      expect(memberTournaments?.badge).toBeUndefined();
+      expect(memberLeaderboard?.badge).toBeUndefined();
+      expect(memberProfile?.badge).toBeUndefined();
     });
 
     it("switches context to games navigation with header when on /games", () => {

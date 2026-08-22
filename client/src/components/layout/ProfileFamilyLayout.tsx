@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import AppLayout from "./AppLayout";
 import ProfileLayout from "./ProfileLayout";
+import MemberLockedGate from "../auth/MemberLockedGate";
 import EditProfileModal from "../../features/profile/EditProfileModal";
 import AvatarPicker from "../profile/AvatarPicker";
 import Modal from "../Modal";
@@ -54,6 +55,13 @@ export interface ProfileFamilyOutletContext {
  */
 export default function ProfileFamilyLayout() {
   const isMember = useAuthStore((s) => s.isMember);
+  const { pathname } = useLocation();
+
+  if (!isMember) {
+    const feature = pathname.startsWith("/profile/personal") ? "personal" : "profile";
+    return <MemberLockedGate feature={feature} />;
+  }
+
   const currentName = useRoomStore((s) => s.playerName);
   const currentAvatar = useRoomStore((s) => s.avatarId);
   const setPlayerName = useRoomStore((s) => s.setPlayerName);
@@ -77,7 +85,6 @@ export default function ProfileFamilyLayout() {
   // /profile/achievements wants a non-default one ("Badge Album") — a
   // static per-route value, not real page state, so it's simplest derived
   // straight from the pathname rather than threaded up through context.
-  const { pathname } = useLocation();
   const badgeLabel = pathname === "/profile/achievements" ? "Badge Album" : undefined;
 
   useEffect(() => {
