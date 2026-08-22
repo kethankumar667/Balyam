@@ -1,49 +1,65 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import ContactUsPage from "../ContactUsPage";
 
 describe("ContactUsPage / Support Helpdesk Suite", () => {
-  it("renders help categories, form inputs, and hero title", () => {
+  it("renders 8 help categories, 2-step layout, and sidebar cards", () => {
     render(
       <BrowserRouter>
         <ContactUsPage />
       </BrowserRouter>
     );
 
-    expect(screen.getByText("We're here to help.")).toBeDefined();
-    expect(screen.getAllByText("Game & Gameplay").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Rooms & Multiplayer").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Technical Issue").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Feedback & Suggestions").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Safety & Community").length).toBeGreaterThan(0);
+    // Hero title
+    expect(screen.getByText("We're here to help you get back to playing.")).toBeDefined();
+
+    // Step 1: What can we help you with?
+    expect(screen.getByText("What can we help you with?")).toBeDefined();
+    expect(screen.getByText("Game & Gameplay")).toBeDefined();
+    expect(screen.getByText("Lounges & Multiplayer")).toBeDefined();
+    expect(screen.getByText("Technical Problem")).toBeDefined();
+    expect(screen.getByText("Account & Profile")).toBeDefined();
+    expect(screen.getAllByText("Tournaments").length).toBeGreaterThan(0);
+    expect(screen.getByText("Safety & Community")).toBeDefined();
+    expect(screen.getByText("Feedback & Ideas")).toBeDefined();
+    expect(screen.getByText("Something Else")).toBeDefined();
+
+    // Step 2: Tell us more about the issue
+    expect(screen.getByText("Tell us more about the issue")).toBeDefined();
+    expect(screen.getByPlaceholderText("Score was incorrect at the end of the match")).toBeDefined();
     expect(screen.getByPlaceholderText("you@example.com")).toBeDefined();
+
+    // Sidebar
+    expect(screen.getByText("What happens next?")).toBeDefined();
+    expect(screen.getByText("Support hours")).toBeDefined();
+    expect(screen.getByText("Still need help?")).toBeDefined();
   });
 
-  it("submits the form and displays ticket reference ID (BHY-XXXXXX)", async () => {
+  it("submits the ticket form and displays reference ID (BHY-XXXXXX)", async () => {
     render(
       <BrowserRouter>
         <ContactUsPage />
       </BrowserRouter>
     );
 
-    // Fill in subject, message, email
-    const subjectInput = screen.getByPlaceholderText(/Ludo roll stuck/i);
-    const messageInput = screen.getByPlaceholderText(/Please provide details/i);
+    // Fill in summary, description, email
+    const summaryInput = screen.getByPlaceholderText("Score was incorrect at the end of the match");
+    const descriptionInput = screen.getByPlaceholderText(/We played a 5 over match/i);
     const emailInput = screen.getByPlaceholderText("you@example.com");
 
-    fireEvent.change(subjectInput, { target: { value: "Connection dropped in Uno" } });
-    fireEvent.change(messageInput, { target: { value: "Was playing Uno match when Wi-Fi reconnected and seat was lost" } });
+    fireEvent.change(summaryInput, { target: { value: "Turn timer expired prematurely" } });
+    fireEvent.change(descriptionInput, { target: { value: "Was on turn 4 in Rummy, had 15 seconds remaining when turn was auto-passed" } });
     fireEvent.change(emailInput, { target: { value: "player@example.com" } });
 
-    const submitBtn = screen.getByRole("button", { name: /Send Message/i });
+    const submitBtn = screen.getByRole("button", { name: /Send Support Request/i });
     fireEvent.click(submitBtn);
 
     // Should transition to success screen with BHY ticket
     await waitFor(() => {
       expect(screen.getByText(/Message Received!/i)).toBeDefined();
       expect(screen.getByText(/BHY-\d{6}/)).toBeDefined();
-    }, { timeout: 2000 });
+    }, { timeout: 3000 });
   });
 });
