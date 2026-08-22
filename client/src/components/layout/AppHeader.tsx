@@ -9,6 +9,7 @@ import {
   Gamepad2,
   History,
   Heart,
+  Search,
 } from "lucide-react";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
 import SelfAvatar from "../profile/SelfAvatar";
@@ -48,6 +49,7 @@ interface AppHeaderProps {
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
   onToggleMobileMenu?: () => void;
+  onOpenCommandPalette?: () => void;
   onSelectGame?: (slug: BhalyamGameSlug) => void;
   /**
    * Unread notifications, from the state AppLayout already owns.
@@ -71,6 +73,7 @@ export default function AppHeader({
   onOpenProfile,
   onOpenSettings,
   onToggleMobileMenu,
+  onOpenCommandPalette,
   unreadCount = 0,
 }: AppHeaderProps) {
   const { pathname } = useLocation();
@@ -197,6 +200,33 @@ export default function AppHeader({
         {/* Right: Actions */}
         <div className="flex-1 md:flex-none flex items-center justify-end px-3 sm:px-6">
           <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Quick Command Palette Launcher */}
+            <Tooltip content="Quick Search & Commands (Ctrl + K)" side="bottom">
+              <button
+                type="button"
+                onClick={onOpenCommandPalette}
+                aria-label="Open Command Palette (Ctrl+K)"
+                className="hidden sm:inline-flex items-center gap-2 h-11 px-3.5 rounded-full border transition hover:scale-102 active:scale-98 cursor-pointer flex-shrink-0 bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)]"
+              >
+                <Search className="w-4 h-4 text-[var(--chrome-ink-soft)]" />
+                <span className="text-xs font-semibold">Search</span>
+                <kbd className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--chrome-panel)] border border-[var(--chrome-border)] text-[var(--chrome-ink-soft)]">
+                  ⌘K
+                </kbd>
+              </button>
+            </Tooltip>
+
+            <Tooltip content="Quick Search" side="bottom">
+              <Button
+                type="button"
+                variant="chrome"
+                size="iconOnly"
+                onClick={onOpenCommandPalette}
+                className="sm:hidden"
+                aria-label="Open Search"
+                leftIcon={<Search className="w-5 h-5" />}
+              />
+            </Tooltip>
             {/* User Profile Chip — notifications live inside this sheet now
                 instead of a standalone bell button, so the unread count
                 surfaces here as a small badge instead of its own control. */}

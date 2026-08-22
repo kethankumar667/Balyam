@@ -5,6 +5,8 @@ import AppSidebar from "./AppSidebar";
 import JoinRoomModal from "../bhalyam/JoinRoomModal";
 import GameRoomSheet from "../bhalyam/GameRoomSheet";
 import Breadcrumbs from "../navigation/Breadcrumbs";
+import CommandPalette from "../navigation/CommandPalette";
+import GlobalRejoinBar from "../common/GlobalRejoinBar";
 import { type BreadcrumbItem } from "../navigation/breadcrumbsConfig";
 import { ProfileSheet, type NotificationItem, INITIAL_NOTIFICATIONS } from "../../pages/home/sheets/ProfileSheet";
 import { MenuSheet } from "../../pages/home/sheets/MenuSheet";
@@ -18,6 +20,7 @@ interface AppLayoutContextType {
   openSettings: () => void;
   openProfile: () => void;
   openNotifications: () => void;
+  openCommandPalette: () => void;
 }
 
 const AppLayoutContext = createContext<AppLayoutContextType>({
@@ -26,6 +29,7 @@ const AppLayoutContext = createContext<AppLayoutContextType>({
   openSettings: () => {},
   openProfile: () => {},
   openNotifications: () => {},
+  openCommandPalette: () => {},
 });
 
 export const useAppLayout = () => useContext(AppLayoutContext);
@@ -77,8 +81,22 @@ export default function AppLayout({
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [profileInitialView, setProfileInitialView] = useState<"profile" | "notifications">("profile");
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  // Global shortcut for Command Palette (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   /**
    * `INITIAL_NOTIFICATIONS` is dummy design/dev-reference data (see its own
@@ -129,6 +147,7 @@ export default function AppLayout({
       setProfileInitialView("notifications");
       setProfileOpen(true);
     },
+    openCommandPalette: () => setCommandPaletteOpen(true),
   };
 
   return (
@@ -150,6 +169,7 @@ export default function AppLayout({
             }}
             onOpenSettings={() => setSettingsOpen(true)}
             onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+            onOpenCommandPalette={() => setCommandPaletteOpen(true)}
             onSelectGame={handleSelectGame}
             /* The header used to hardcode `3` while this component held the
                real list — a badge that could never be cleared by reading
@@ -248,6 +268,17 @@ export default function AppLayout({
             </div>
           </main>
         </div>
+
+        {/* Global Rejoin Sticky Banner */}
+        <GlobalRejoinBar />
+
+        {/* Global Command Palette (Spotlight Modal) */}
+        <CommandPalette
+          open={commandPaletteOpen}
+          onClose={() => setCommandPaletteOpen(false)}
+          onOpenGameSheet={handleSelectGame}
+          onOpenJoinRoom={() => setJoinOpen(true)}
+        />
 
         {/* Global Modals & Sheets */}
         <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />

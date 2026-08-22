@@ -7,6 +7,7 @@ import GameCard from "../components/games/GameCard";
 import GameCardSkeleton from "../components/games/GameCardSkeleton";
 import SearchField from "../components/games/SearchField";
 import FilterBar from "../components/games/FilterBar";
+import FacetFilter, { INITIAL_FACETS, matchesFacets, type GameFacets } from "../components/games/FacetFilter";
 import EmptyState from "../components/games/EmptyState";
 import OfflineBanner from "../components/games/OfflineBanner";
 import {
@@ -26,6 +27,7 @@ export default function GamesPage() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [facets, setFacets] = useState<GameFacets>(INITIAL_FACETS);
 
   const [theme] = useTheme();
   const isLight = theme === "light";
@@ -51,11 +53,15 @@ export default function GamesPage() {
   const handleResetFilters = () => {
     setSearchQuery("");
     setFilter({ category: "all" });
+    setFacets(INITIAL_FACETS);
   };
 
-  // Base list of games filtered by active category & live search query
+  // Base list of games filtered by active category, facets & live search query
   const displayedGames = useMemo(() => {
     let list = filterGames(filter, true);
+
+    // Apply Facet Filters
+    list = list.filter((g) => matchesFacets(g, facets));
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -70,7 +76,7 @@ export default function GamesPage() {
     }
 
     return list;
-  }, [filter, searchQuery]);
+  }, [facets, filter, searchQuery]);
 
   return (
     <>
@@ -109,6 +115,13 @@ export default function GamesPage() {
           <FilterBar
             selectedCategory={filter.category}
             onSelectCategory={(cat) => setFilter({ category: cat })}
+          />
+
+          <FacetFilter
+            facets={facets}
+            onChange={setFacets}
+            onReset={() => setFacets(INITIAL_FACETS)}
+            totalMatches={displayedGames.length}
           />
         </div>
 

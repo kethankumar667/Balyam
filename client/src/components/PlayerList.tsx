@@ -1,6 +1,8 @@
+import { useState } from "react";
 import type { Player } from "@shared/types";
 import { Users, Crown, Check, Target } from "lucide-react";
 import SeatAvatar from "./profile/SeatAvatar";
+import PlayerMiniProfilePopover from "./profile/PlayerMiniProfilePopover";
 
 export default function PlayerList({
   players,
@@ -11,6 +13,8 @@ export default function PlayerList({
   selfId: string | null;
   onTapPlayer?: (id: string) => void;
 }) {
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+
   return (
     <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
       <div className="flex items-center justify-between">
@@ -26,12 +30,10 @@ export default function PlayerList({
         {players.map((p) => (
           <li
             key={p.id}
-            onClick={p.id !== selfId && onTapPlayer ? () => onTapPlayer(p.id) : undefined}
-            role={p.id !== selfId && onTapPlayer ? "button" : undefined}
-            tabIndex={p.id !== selfId && onTapPlayer ? 0 : undefined}
-            className={`flex items-center gap-2.5 bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 rounded-xl px-3 py-1.5 transition ${
-              p.id !== selfId && onTapPlayer ? "cursor-pointer hover:bg-[#FFF4E0] dark:hover:bg-[#1E2738] active:scale-[0.99]" : ""
-            }`}
+            onClick={() => setSelectedPlayer(p)}
+            role="button"
+            tabIndex={0}
+            className="flex items-center gap-2.5 bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 rounded-xl px-3 py-1.5 transition cursor-pointer hover:bg-[#FFF4E0] dark:hover:bg-[#1E2738] active:scale-[0.99]"
           >
             {/* Avatar with presence ring */}
             <span className="relative flex-shrink-0">
@@ -103,6 +105,14 @@ export default function PlayerList({
         <Users size={14} aria-hidden />
         <span>{players.length > 0 && players.every((p) => p.isReady) ? "All players ready!" : "Waiting for players..."}</span>
       </div>
+
+      <PlayerMiniProfilePopover
+        open={Boolean(selectedPlayer)}
+        onClose={() => setSelectedPlayer(null)}
+        playerId={selectedPlayer?.id || ""}
+        displayName={selectedPlayer?.name || ""}
+        avatarId={selectedPlayer?.avatar || undefined}
+      />
     </div>
   );
 }
