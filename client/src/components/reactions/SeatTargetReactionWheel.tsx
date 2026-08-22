@@ -1,7 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { User } from "lucide-react";
 import { GAME_REACTIONS, THROW_REACTIONS } from "@shared/reactions";
 import { getSocket } from "../../lib/socket";
+import PlayerMiniProfilePopover from "../profile/PlayerMiniProfilePopover";
 
 export interface SeatTargetReactionWheelProps {
   game: string;
@@ -29,26 +31,34 @@ export default function SeatTargetReactionWheel({
   className = "",
 }: SeatTargetReactionWheelProps) {
   const wheelRef = useRef<HTMLDivElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const emojis = GAME_REACTIONS[game] ?? THROW_REACTIONS;
 
   // Auto-close on click outside
   useEffect(() => {
     function onPointerDown(e: MouseEvent | TouchEvent) {
+      if (profileOpen) return;
       if (wheelRef.current && !wheelRef.current.contains(e.target as Node)) {
         onClose();
       }
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        onClose();
+        if (profileOpen) {
+          setProfileOpen(false);
+        } else {
+          onClose();
+        }
       }
     }
     window.addEventListener("mousedown", onPointerDown);
     window.addEventListener("touchstart", onPointerDown);
     window.addEventListener("keydown", onKeyDown);
 
-    // Auto-dismiss after 4.5 seconds if untouched
-    const autoDismiss = window.setTimeout(onClose, 4500);
+    // Auto-dismiss after 6 seconds if untouched
+    const autoDismiss = window.setTimeout(() => {
+      if (!profileOpen) onClose();
+    }, 6000);
 
     return () => {
       window.removeEventListener("mousedown", onPointerDown);
@@ -56,7 +66,7 @@ export default function SeatTargetReactionWheel({
       window.removeEventListener("keydown", onKeyDown);
       window.clearTimeout(autoDismiss);
     };
-  }, [onClose]);
+  }, [onClose, profileOpen]);
 
   function handleSend(emoji: string) {
     getSocket().emit("room:reaction", {
@@ -81,40 +91,69 @@ export default function SeatTargetReactionWheel({
   }[position];
 
   return (
-    <AnimatePresence>
-      <motion.div
-        ref={wheelRef}
-        initial={{ opacity: 0, scale: 0.4, y: position === "top" ? 8 : -8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.4 }}
-        transition={{ type: "spring", stiffness: 450, damping: 25 }}
-        className={`absolute z-50 flex items-center gap-1.5 p-1.5 rounded-full shadow-2xl ${positionClasses} ${className}`}
-        style={{
-          background: "rgba(15, 23, 42, 0.95)",
-          border: "2px solid rgba(251, 191, 36, 0.85)",
-          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 15px rgba(251, 191, 36, 0.3)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          pointerEvents: "auto",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {emojis.map((emoji) => (
+    <>
+      <AnimatePresence>
+        <motion.div
+          ref={wheelRef}
+          initial={{ opacity: 0, scale: 0.4, y: position === "top" ? 8 : -8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.4 }}
+          transition={{ type: "spring", stiffness: 450, damping: 25 }}
+          className={`absolute z-50 flex items-center gap-1.5 p-1.5 rounded-full shadow-2xl ${positionClasses} ${className}`}
+          style={{
+            background: "rgba(15, 23, 42, 0.95)",
+            border: "2px solid rgba(251, 191, 36, 0.85)",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 15px rgba(251, 191, 36, 0.3)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            pointerEvents: "auto",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {emojis.map((emoji) => (
+            <motion.button
+              key={emoji}
+              whileHover={{ scale: 1.35, y: -2 }}
+              whileTap={{ scale: 0.85 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSend(emoji);
+              }}
+              className="w-8 h-8 sm:w-9 sm:h-9 text-lg sm:text-xl flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors cursor-pointer select-none"
+              title={targetPlayerName ? `Throw ${emoji} at ${targetPlayerName}` : `Throw ${emoji}`}
+            >
+              {emoji}
+            </motion.button>
+          ))}
+
+          {/* Profile Inspection Pill */}
+          <div className="w-px h-5 bg-amber-500/40 mx-0.5" />
           <motion.button
-            key={emoji}
-            whileHover={{ scale: 1.35, y: -2 }}
+            whileHover={{ scale: 1.2, y: -2 }}
             whileTap={{ scale: 0.85 }}
             onClick={(e) => {
               e.stopPropagation();
-              handleSend(emoji);
+              setProfileOpen(true);
             }}
-            className="w-8 h-8 sm:w-9 sm:h-9 text-lg sm:text-xl flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors cursor-pointer select-none"
-            title={targetPlayerName ? `Throw ${emoji} at ${targetPlayerName}` : `Throw ${emoji}`}
+            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/50 transition-colors cursor-pointer"
+            title={targetPlayerName ? `View ${targetPlayerName}'s Profile & Stats` : "View Profile"}
+            aria-label="View Player Profile"
           >
-            {emoji}
+            <User className="w-4 h-4" />
           </motion.button>
-        ))}
-      </motion.div>
-    </AnimatePresence>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Mini Profile Popover Modal */}
+      <PlayerMiniProfilePopover
+        open={profileOpen}
+        onClose={() => {
+          setProfileOpen(false);
+          onClose();
+        }}
+        playerId={targetPlayerId}
+        displayName={targetPlayerName || "Player"}
+      />
+    </>
   );
 }
