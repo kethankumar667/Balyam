@@ -10,7 +10,7 @@ import { Tooltip } from "../../design-system/dls";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
 import { useTheme } from "../../lib/useTheme";
 import { bhalyamSpring } from "../../lib/motion";
-import { FancyLockIcon } from "../../design-system/icons";
+
 
 interface AppSidebarProps {
   onOpenJoin?: () => void;
@@ -91,15 +91,23 @@ export default function AppSidebar({
           />
         )}
 
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <Icon
             className={`w-5 h-5 flex-shrink-0 transition-colors ${
-              item.active && !isDisabled ? "text-[var(--chrome-accent)]" : ""
+              isDisabled
+                ? "text-amber-700/60 dark:text-amber-600/50"
+                : item.active && !isDisabled
+                ? "text-[var(--chrome-accent)]"
+                : ""
             }`}
           />
-          <span className="font-bold text-sm truncate">{item.label}</span>
+          <span className={`font-bold text-sm truncate ${isDisabled ? "text-amber-800/70 dark:text-amber-700/60" : ""}`}>
+            {item.label}
+          </span>
           {isDisabled && (
-            <FancyLockIcon size={14} glow className="shrink-0" />
+            <span className="text-base leading-none shrink-0 select-none" aria-hidden>
+              🔒
+            </span>
           )}
         </div>
 
