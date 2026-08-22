@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { RevealOnScroll } from "../../components/RevealOnScroll";
 import { WhatsappGlyph } from "./icons";
+import BhalyamLogo from "../../components/bhalyam/BhalyamLogo";
 
 export function Footer() {
   const [email, setEmail] = useState("");
@@ -51,13 +52,7 @@ export function Footer() {
             <div className="lg:col-span-4 space-y-2.5">
               <Link to="/" className="inline-block group select-none">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl overflow-hidden shadow-xs bg-amber-500/10 flex items-center justify-center p-0.5 border border-amber-500/20">
-                    <img
-                      src="/bhalyam-logo.png"
-                      alt="BHALYAM"
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  </div>
+                  <BhalyamLogo size={40} decorative />
                   <div>
                     <h3 className="font-display font-black text-2xl tracking-tight text-slate-900 dark:text-white group-hover:text-[#EA580C] transition-colors leading-none">
                       BHALYAM
