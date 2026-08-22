@@ -265,37 +265,33 @@ export function Footer() {
 
           {/* ── Middle Section: Two Wide Action Cards Side-by-Side (50% / 50%) ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-2">
-            {/* Left Card: NEED A HAND? (Warm Peach / Amber Card) */}
-            <div className="bg-gradient-to-br from-[#FFF9F0] via-[#FFF3E3] to-[#FFE8CC] dark:from-[#1E1B4B]/35 dark:via-[#1A1835]/40 dark:to-[#0F172A]/40 border border-[#FED7AA] dark:border-amber-800/40 rounded-3xl p-6 sm:p-8 flex flex-row items-center gap-5 shadow-2xs">
-              {/* Left: Envelope Circle Icon */}
-              <div className="relative shrink-0">
-                <div className="w-16 h-16 rounded-full bg-[#FDDBB4] dark:bg-orange-900/40 flex items-center justify-center text-[#EA580C]">
-                  <EnvelopeIllustration />
-                </div>
-                {/* Speech bubble with dots */}
-                <div className="absolute -top-2 -right-2 w-8 h-5 rounded-full bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-800 flex items-center justify-center shadow-xs">
-                  <span className="text-[8px] font-black text-orange-500 leading-none tracking-tight">•••</span>
-                </div>
+            {/* Left Card: NEED A HAND? */}
+            <div className="bg-[#FFF8EE] dark:bg-[#1A1210]/80 border border-[#FAD9A8] dark:border-amber-900/40 rounded-3xl overflow-hidden flex flex-row items-stretch shadow-2xs min-h-[200px]">
+              {/* Left: Large envelope illustration area */}
+              <div className="relative flex items-center justify-center p-6 shrink-0 w-[160px] sm:w-[180px]">
+                {/* Sparkle decorations */}
+                <span className="absolute top-4 left-4 text-[#F97316] text-lg select-none">✦</span>
+                <span className="absolute bottom-8 left-8 text-[#F97316]/40 text-sm select-none">✦</span>
+                {/* Large open envelope SVG illustration */}
+                <EnvelopeWithPlane />
               </div>
 
-              {/* Center: Text Stack */}
-              <div className="flex-1 min-w-0 space-y-1">
-                <p className="text-[11px] font-black uppercase tracking-widest text-[#EA580C]">
-                  NEED A HAND?
-                </p>
-                <h4 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                  We're here when<br className="hidden sm:block" /> you need us.
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-snug">
-                  Our team is ready to help you<br /> with any questions or issues.
-                </p>
-              </div>
-
-              {/* Right: CTA Button */}
-              <div className="shrink-0">
+              {/* Right: Text + Button */}
+              <div className="flex-1 flex flex-col justify-center gap-3 py-6 pr-6">
+                <div className="space-y-1.5">
+                  <p className="text-sm font-black uppercase tracking-widest text-[#EA580C]">
+                    NEED A HAND?
+                  </p>
+                  <h4 className="text-xl font-black text-slate-900 dark:text-white leading-snug">
+                    We're here when you need us.
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                    Our team is ready to help you<br />with any questions or issues.
+                  </p>
+                </div>
                 <Link
                   to="/contact"
-                  className="inline-flex items-center gap-2 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-sm px-6 py-3 rounded-full shadow-sm hover:shadow-md transition whitespace-nowrap min-h-[46px]"
+                  className="self-start inline-flex items-center gap-2 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-sm px-7 py-3 rounded-full shadow-sm hover:shadow-md transition min-h-[46px] whitespace-nowrap"
                 >
                   <span>Contact BHALYAM</span>
                   <ArrowRight className="w-4 h-4" />
@@ -303,35 +299,27 @@ export function Footer() {
               </div>
             </div>
 
-            {/* Right Card: STAY IN THE LOOP (Lilac / Lavender Card) */}
-            <div className="bg-gradient-to-br from-[#F5F3FF] via-[#EDE9FE] to-[#E0E7FF] dark:from-[#1E1B4B]/40 dark:via-[#1A1835]/40 dark:to-[#172554]/30 border border-[#DDD6FE] dark:border-purple-900/40 rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-4 shadow-2xs relative overflow-hidden">
-              {/* Airplane Trail Background Accent */}
-              <div className="absolute top-3 right-4 rotate-12 opacity-80 pointer-events-none">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"
-                    stroke="#8B5CF6"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="#C4B5FD"
-                    fillOpacity="0.4"
-                  />
-                </svg>
+            {/* Right Card: STAY IN THE LOOP */}
+            <div className="bg-[#EEE9FF] dark:bg-[#18134A]/80 border border-[#D1C4F8] dark:border-purple-900/40 rounded-3xl p-6 sm:p-7 flex flex-col justify-between gap-4 shadow-2xs relative overflow-hidden min-h-[200px]">
+              {/* Paper airplane top-right decoration */}
+              <div className="absolute top-5 right-5 pointer-events-none">
+                <PurplePlaneIllustration />
               </div>
 
-              <div className="space-y-1">
-                <h5 className="text-xs font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A78BFA]">
+              {/* Top: Title & desc */}
+              <div className="space-y-1.5 pr-16">
+                <h5 className="text-base font-black uppercase tracking-wider text-[#5B21B6] dark:text-[#A78BFA]">
                   STAY IN THE LOOP
                 </h5>
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-tight">
-                  Get updates about new games, events and awesome 90s vibes.
+                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-snug">
+                  Get updates about new games,<br />events and awesome 90s vibes.
                 </p>
               </div>
 
-              <form onSubmit={handleSubscribe} className="relative">
+              {/* Subscribe form */}
+              <form onSubmit={handleSubscribe}>
                 <div className="flex items-center bg-white dark:bg-[#151A2E] rounded-full p-1.5 border border-[#DDD6FE] dark:border-purple-900/50 shadow-2xs">
-                  <Mail className="w-4 h-4 text-slate-400 ml-2.5 shrink-0" />
+                  <Mail className="w-4 h-4 text-slate-400 ml-3 shrink-0" />
                   <input
                     type="email"
                     value={email}
@@ -342,26 +330,29 @@ export function Footer() {
                   />
                   <button
                     type="submit"
-                    className="bg-[#5B21B6] hover:bg-[#4C1D95] text-white text-xs font-bold rounded-full px-5 py-2 transition-all shadow-xs flex-shrink-0 flex items-center gap-1.5 cursor-pointer"
+                    className="bg-[#5B21B6] hover:bg-[#4C1D95] text-white text-xs font-bold rounded-full px-5 py-2.5 transition-all shadow-xs flex-shrink-0 flex items-center gap-1.5 cursor-pointer"
                   >
                     <span>Subscribe</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 {subscribed && (
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 block flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Subscribed successfully!
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1.5 block">
+                    ✓ Subscribed successfully!
                   </span>
                 )}
               </form>
 
               {/* Micro-tags */}
-              <div className="flex items-center gap-2 text-[10px] font-bold text-purple-700 dark:text-purple-300 pt-0.5">
-                <span>🎮 New Games</span>
+              <div className="flex items-center gap-2 text-[11px] font-bold text-purple-700 dark:text-purple-300">
+                <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
+                <span>New Games</span>
                 <span>•</span>
-                <span>🏆 Events</span>
+                <Trophy className="w-3.5 h-3.5 shrink-0" />
+                <span>Events</span>
                 <span>•</span>
-                <span>🎒 90s Vibes</span>
+                <span>🎒</span>
+                <span>90s Vibes</span>
               </div>
             </div>
           </div>
@@ -520,20 +511,56 @@ function InstagramGlyph({ className }: { className?: string }) {
   );
 }
 
-/** Friendly envelope illustration matching the reference design */
-function EnvelopeIllustration() {
+/** Large open envelope with a paper airplane flying out — matches reference NEED A HAND card */
+function EnvelopeWithPlane() {
   return (
-    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36" aria-hidden>
-      {/* Envelope body */}
-      <rect x="4" y="14" width="40" height="28" rx="4" fill="#F97316" fillOpacity="0.9" />
-      {/* Envelope flap (open top, triangles) */}
-      <path d="M4 18 L24 30 L44 18" stroke="#EA580C" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Top fold lines */}
-      <path d="M4 14 L24 26 L44 14" fill="#FDBA74" />
-      {/* White shine lines */}
-      <rect x="10" y="32" width="12" height="2" rx="1" fill="white" fillOpacity="0.4" />
-      <rect x="10" y="37" width="8" height="2" rx="1" fill="white" fillOpacity="0.3" />
+    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" width="120" height="120" aria-hidden>
+      {/* ── Open envelope body ── */}
+      <rect x="10" y="42" width="80" height="58" rx="7" fill="#FDBA74" />
+      {/* Envelope bottom shading */}
+      <rect x="10" y="75" width="80" height="25" rx="7" fill="#FB923C" fillOpacity="0.5" />
+
+      {/* ── Open flap (pointing upward) ── */}
+      <path d="M10 52 L50 76 L90 52" fill="#FED7AA" />
+      <path d="M10 42 L50 66 L90 42" fill="#FEF3C7" />
+
+      {/* ── White envelope shine lines ── */}
+      <rect x="20" y="80" width="24" height="4" rx="2" fill="white" fillOpacity="0.45" />
+      <rect x="20" y="89" width="16" height="4" rx="2" fill="white" fillOpacity="0.3" />
+
+      {/* ── Speech bubble (top-left of envelope) ── */}
+      <rect x="4" y="18" width="34" height="20" rx="8" fill="white" stroke="#FED7AA" strokeWidth="1.5" />
+      <path d="M14 38 L10 44 L18 40" fill="white" stroke="#FED7AA" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Dots inside bubble */}
+      <circle cx="14" cy="28" r="2.5" fill="#FB923C" />
+      <circle cx="21" cy="28" r="2.5" fill="#FB923C" />
+      <circle cx="28" cy="28" r="2.5" fill="#FB923C" />
+
+      {/* ── Paper airplane flying out to top-right ── */}
+      {/* Dotted curved trail */}
+      <path d="M72 62 Q82 46 90 34" stroke="#FB923C" strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" fill="none" />
+      {/* Plane body */}
+      <path d="M86 26 L74 36 L78 42 L86 26Z" fill="#F97316" />
+      <path d="M86 26 L96 38 L78 42 L86 26Z" fill="#FDBA74" />
+      <path d="M86 26 L74 36 L96 38 L86 26Z" fill="#FB923C" />
     </svg>
   );
 }
+
+/** Purple paper airplane for STAY IN THE LOOP card top-right */
+function PurplePlaneIllustration() {
+  return (
+    <svg viewBox="0 0 80 72" fill="none" xmlns="http://www.w3.org/2000/svg" width="80" height="72" aria-hidden>
+      {/* Dotted curved trail */}
+      <path d="M10 60 Q28 42 44 24" stroke="#A78BFA" strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" fill="none" />
+      {/* Small sparkle top-left */}
+      <circle cx="6" cy="52" r="2" fill="#C4B5FD" fillOpacity="0.6" />
+      {/* Plane */}
+      <path d="M52 16 L34 30 L40 38 L52 16Z" fill="#7C3AED" />
+      <path d="M52 16 L68 30 L40 38 L52 16Z" fill="#C4B5FD" />
+      <path d="M52 16 L34 30 L68 30 L52 16Z" fill="#8B5CF6" />
+    </svg>
+  );
+}
+
 
