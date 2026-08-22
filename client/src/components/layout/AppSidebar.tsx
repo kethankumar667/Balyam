@@ -101,11 +101,17 @@ export default function AppSidebar({
                 : ""
             }`}
           />
-          <span className={`font-bold text-sm truncate ${isDisabled ? "text-amber-800/70 dark:text-amber-700/60" : ""}`}>
+          <span
+            className={`font-bold leading-tight ${
+              isDisabled
+                ? "text-xs text-amber-800/70 dark:text-amber-700/60"
+                : "text-sm truncate"
+            }`}
+          >
             {item.label}
           </span>
           {isDisabled && (
-            <span className="text-base leading-none shrink-0 select-none" aria-hidden>
+            <span className="text-sm leading-none shrink-0 select-none" aria-hidden>
               🔒
             </span>
           )}
