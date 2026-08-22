@@ -155,16 +155,16 @@ export function Footer() {
                 </ul>
               </div>
 
-              {/* SUPPORT */}
+              {/* HELP & SUPPORT */}
               <div>
                 <h4 className="text-[12px] font-extrabold uppercase tracking-wider text-[#4A2508] mb-2">
-                  SUPPORT
+                  HELP &amp; SUPPORT
                 </h4>
                 <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
-                  <li><Link to="/about" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Help Center</Link></li>
-                  <li><a href="#safety" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Safety Guide</a></li>
-                  <li><a href="#rules" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Community Rules</a></li>
-                  <li><a href="#report" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Report an Issue</a></li>
+                  <li><Link to="/how-to-play" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">How to Play</Link></li>
+                  <li><Link to="/community-rules" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Community Rules</Link></li>
+                  <li><Link to="/support" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Support &amp; FAQs</Link></li>
+                  <li><Link to="/contact" className="text-[#E85D04] font-bold hover:underline transition-colors flex items-center min-h-[44px]">Contact Us →</Link></li>
                 </ul>
               </div>
 
@@ -176,8 +176,8 @@ export function Footer() {
                 <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
                   <li><Link to="/about" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">About BHALYAM</Link></li>
                   <li><Link to="/about" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Our Story</Link></li>
-                  <li><a href="#careers" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Careers</a></li>
-                  <li><a href="#press" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Press Kit</a></li>
+                  <li><Link to="/design-system" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Design System</Link></li>
+                  <li><Link to="/diagnostics" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Diagnostics</Link></li>
                 </ul>
               </div>
 
@@ -187,9 +187,9 @@ export function Footer() {
                   LEGAL
                 </h4>
                 <ul className="space-y-1.5 text-[13px] font-medium text-[#7A5B3E]">
-                  <li><Link to="/privacy" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Privacy Notice</Link></li>
-                  <li><a href="#terms" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Terms of Service</a></li>
-                  <li><Link to="/profile" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Your Data &amp; Choices</Link></li>
+                  <li><Link to="/privacy" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Privacy Policy</Link></li>
+                  <li><Link to="/terms" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Terms of Service</Link></li>
+                  <li><Link to="/safety" className="hover:text-[#E85D04] transition-colors flex items-center min-h-[44px]">Safety Center</Link></li>
                 </ul>
               </div>
 

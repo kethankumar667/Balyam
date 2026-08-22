@@ -10,6 +10,7 @@ import { Tooltip } from "../../design-system/dls";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
 import { useTheme } from "../../lib/useTheme";
 import { bhalyamSpring } from "../../lib/motion";
+import { FancyLockIcon } from "../../design-system/icons";
 
 interface AppSidebarProps {
   onOpenJoin?: () => void;
@@ -98,7 +99,7 @@ export default function AppSidebar({
           />
           <span className="font-bold text-sm truncate">{item.label}</span>
           {isDisabled && (
-            <Lock className="w-3 h-3 text-[var(--chrome-ink-soft)] shrink-0 opacity-75" aria-hidden="true" />
+            <FancyLockIcon size={14} glow className="shrink-0" />
           )}
         </div>
 

@@ -12,6 +12,8 @@ import {
   MicOnIcon,
   StatusConnectedIcon,
   FriendUserIcon,
+  FancyLockIcon,
+  FancyLockBadge,
   RANK_COLORS,
   RARITY_COLORS,
 } from "../icons";
@@ -46,7 +48,7 @@ describe("Design System Iconography Suite", () => {
     }
   });
 
-  it("renders Navigation, Tournament, Voice, Status, and Social icons", () => {
+  it("renders Navigation, Tournament, Voice, Status, Social, and FancyLock icons", () => {
     expect(React.createElement(HomeNavIcon)).toBeDefined();
     expect(React.createElement(GamesNavIcon)).toBeDefined();
     expect(React.createElement(TournamentsNavIcon)).toBeDefined();
@@ -55,6 +57,8 @@ describe("Design System Iconography Suite", () => {
     expect(React.createElement(MicOnIcon)).toBeDefined();
     expect(React.createElement(StatusConnectedIcon)).toBeDefined();
     expect(React.createElement(FriendUserIcon)).toBeDefined();
+    expect(React.createElement(FancyLockIcon, { size: 16, glow: true })).toBeDefined();
+    expect(React.createElement(FancyLockBadge, { size: 18 })).toBeDefined();
   });
 
   it("exports valid design token definitions for ranks and rarities", () => {

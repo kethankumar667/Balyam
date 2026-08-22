@@ -6,6 +6,7 @@ export * from "./TournamentIcons";
 export * from "./SocialIcons";
 export * from "./StatusIcons";
 export * from "./VoiceIcons";
+export * from "./FancyLockIcon";
 
 export const RANK_COLORS = {
   bronze: {

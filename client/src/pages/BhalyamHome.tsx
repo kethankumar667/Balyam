@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/authStore";
-import { WelcomeModal, GettingStartedCard, journeyTracker } from "../features/onboarding";
+import { WelcomeModal, journeyTracker } from "../features/onboarding";
 import { type BhalyamGameSlug } from "../components/bhalyam/data";
 import { getSocket } from "../lib/socket";
 import { usePlayerSnapshot } from "../hooks/usePlayerSnapshot";
@@ -41,7 +41,6 @@ export default function BhalyamHome() {
   const [welcomeOpen, setWelcomeOpen] = useState(() => {
     return !journeyTracker.getState().hasCompletedWelcome;
   });
-  const [showGettingStarted, setShowGettingStarted] = useState(true);
   const isMember = useAuthStore((s) => s.isMember);
   // Guests get the honest "Guest Mode" branch in WelcomePlayerStrip and never
   // reach PlayerJourneyDashboard's member content, so there is nothing for
@@ -70,12 +69,6 @@ export default function BhalyamHome() {
               if (gamesElem) gamesElem.scrollIntoView({ behavior: "smooth" });
             }}
           />
-          {showGettingStarted && (
-            <GettingStartedCard
-              className="mb-6"
-              onDismiss={() => setShowGettingStarted(false)}
-            />
-          )}
           <div id="games-section">
             <GamesSection onSelect={setSheetGame} />
           </div>

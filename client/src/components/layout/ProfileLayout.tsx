@@ -1,6 +1,7 @@
 import React, { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowLeft, Trophy, BarChart3, Lock } from "lucide-react";
+import { ArrowLeft, Trophy, BarChart3 } from "lucide-react";
+import { FancyLockIcon } from "../../design-system/icons";
 import ProfileHeader from "../../features/profile/ProfileHeader";
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 
@@ -43,16 +44,16 @@ export default function ProfileLayout({
               <span>Back to Lounge</span>
             </Link>
 
-            <div className="flex items-center gap-3 text-xs font-bold text-[var(--auth-ink-soft)] opacity-60">
+            <div className="flex items-center gap-3 text-xs font-bold text-[var(--auth-ink-soft)] opacity-70">
               <span className="inline-flex items-center gap-1.5 cursor-not-allowed py-2">
-                <Trophy className="w-3.5 h-3.5" />
+                <Trophy className="w-3.5 h-3.5 text-amber-500/70" />
                 <span>Tournaments</span>
-                <Lock className="w-3 h-3" />
+                <FancyLockIcon size={12} glow />
               </span>
               <span className="inline-flex items-center gap-1.5 cursor-not-allowed py-2">
-                <BarChart3 className="w-3.5 h-3.5" />
+                <BarChart3 className="w-3.5 h-3.5 text-amber-500/70" />
                 <span>Leaderboard</span>
-                <Lock className="w-3 h-3" />
+                <FancyLockIcon size={12} glow />
               </span>
             </div>
           </div>

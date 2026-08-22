@@ -11,15 +11,10 @@ import {
   Trophy,
   Wrench,
   Shield,
-  Send,
-  CheckCircle2,
-  MessageSquare,
   Sparkles,
   ArrowRight,
 } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
-import Modal from "../components/Modal";
-import { apiFetch } from "../lib/playerIdentity";
 
 interface FAQItem {
   id: string;
@@ -162,14 +157,6 @@ export default function SupportFaqsPage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [openFaqId, setOpenFaqId] = useState<string | null>("gs-1");
-  const [contactModalOpen, setContactModalOpen] = useState(false);
-  const [contactCategory, setContactCategory] = useState("Game Issue");
-  const [contactRoomCode, setContactRoomCode] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactMessage, setContactMessage] = useState("");
-  const [supportTicket, setSupportTicket] = useState<string | null>(null);
-  const [contactSubmitting, setContactSubmitting] = useState(false);
-  const [contactError, setContactError] = useState<string | null>(null);
 
   const filteredFaqs = FAQS_CATALOG.filter((item) => {
     if (activeCategory !== "all" && item.category !== activeCategory) return false;
@@ -186,43 +173,10 @@ export default function SupportFaqsPage() {
     setOpenFaqId((curr) => (curr === id ? null : id));
   };
 
-  const handleContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setContactError(null);
-    setContactSubmitting(true);
-    try {
-      const res = await apiFetch("/api/support/tickets", {
-        method: "POST",
-        body: JSON.stringify({
-          category: contactCategory,
-          email: contactEmail,
-          roomCode: contactRoomCode,
-          message: contactMessage,
-        }),
-      });
-      if (!res.ok) throw new Error("Ticket submission failed");
-      const data = await res.json();
-      setSupportTicket(data.ticket);
-    } catch {
-      setContactError("Couldn't submit your ticket right now — please try again in a moment.");
-    } finally {
-      setContactSubmitting(false);
-    }
-  };
-
-  const handleResetContact = () => {
-    setSupportTicket(null);
-    setContactError(null);
-    setContactEmail("");
-    setContactRoomCode("");
-    setContactMessage("");
-    setContactModalOpen(false);
-  };
-
   return (
     <AppLayout>
       <div className="min-h-screen bhalyam-paper py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto space-y-12">
+        <div className="max-w-4xl mx-auto space-y-10">
           {/* ── Page Hero ── */}
           <div className="text-center space-y-4 max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[#EA580C] text-xs font-bold font-mono uppercase tracking-wider">
@@ -248,7 +202,7 @@ export default function SupportFaqsPage() {
                 placeholder="Search BHALYAM help, rules, room codes, voice..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-2xl pl-11 pr-4 py-3.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 shadow-sm transition"
+                className="w-full bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-2xl pl-11 pr-4 py-3.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 shadow-sm transition font-medium"
               />
             </div>
           </div>
@@ -265,7 +219,7 @@ export default function SupportFaqsPage() {
                   className={`px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                     active
                       ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-transparent shadow-sm"
-                      : "bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 border-[#EFEBE4] dark:border-[#222A44] hover:bg-slate-50"
+                      : "bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 border-[#EFEBE4] dark:border-[#222A44] hover:bg-slate-50 dark:hover:bg-slate-800"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -278,13 +232,43 @@ export default function SupportFaqsPage() {
           {/* ── FAQ Accordion Catalog ── */}
           <div className="space-y-3">
             {filteredFaqs.length === 0 ? (
-              <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-10 text-center space-y-2">
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                  No FAQs found matching "{searchQuery}"
-                </p>
-                <p className="text-xs text-slate-400">
-                  Try adjusting your search terms or contact our support team below.
-                </p>
+              /* ── Search -> No Results Escalation ── */
+              <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-8 sm:p-12 text-center space-y-6 shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+                  <Search className="w-8 h-8 opacity-70" />
+                </div>
+                <div className="space-y-1.5 max-w-md mx-auto">
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                    No answers found for "{searchQuery}"
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                    Try another search or browse through our category sections.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setActiveCategory("all");
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+                  >
+                    Browse All FAQs
+                  </button>
+                </div>
+                <div className="pt-4 border-t border-slate-200/60 dark:border-slate-800 max-w-sm mx-auto space-y-2.5">
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    Still can't find an answer?
+                  </p>
+                  <Link
+                    to="/contact"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-600 text-white font-bold text-xs shadow-md transition"
+                  >
+                    <span>Contact Support</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
             ) : (
               filteredFaqs.map((faq) => {
@@ -321,158 +305,56 @@ export default function SupportFaqsPage() {
             )}
           </div>
 
-          {/* ── Contact Support Card ("Still Stuck?") ── */}
-          <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xs">
-            <div className="space-y-1 text-center sm:text-left">
-              <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
-                <MessageSquare className="w-5 h-5 text-amber-500" />
-                <span>Still stuck?</span>
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Our games are supposed to be difficult. Getting help shouldn't be.
+          {/* ── Dedicated Support CTA Card ("Still need a hand?") ── */}
+          <div className="mt-8 relative overflow-hidden rounded-3xl border border-[#D4A574]/40 dark:border-purple-500/30 bg-gradient-to-br from-[#FAF5EE] via-[#FDFBF7] to-[#F5EBE1] dark:from-[#13172B] dark:via-[#1A1F38] dark:to-[#0F1322] p-8 sm:p-12 text-center shadow-xl">
+            {/* Ambient Flares */}
+            <div className="absolute -top-24 -left-24 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 max-w-xl mx-auto space-y-5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 text-[11px] font-black font-mono uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Support Escalation
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                  Still need a hand?
+                </h2>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-md mx-auto">
+                  Didn't find what you were looking for? Our team is here to help you troubleshoot, report issues, or answer questions.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Link
+                  to="/contact"
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-zinc-950 font-black px-8 py-3.5 rounded-2xl text-xs sm:text-sm font-mono uppercase tracking-wider transition shadow-lg hover:shadow-orange-500/25 min-h-[44px]"
+                >
+                  <span>Contact BHALYAM Support</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                Usually we respond within <strong className="text-amber-600 dark:text-amber-400">24 hours</strong>.
               </p>
             </div>
+          </div>
 
-            <button
-              onClick={() => setContactModalOpen(true)}
-              className="px-6 py-3 rounded-2xl bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer shrink-0"
-            >
-              <span>Contact BHALYAM Support</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+          {/* ── Helpful Quick Links Strip ── */}
+          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80 flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-400">
+            <span className="text-slate-400 dark:text-slate-500">Helpful Links:</span>
+            <Link to="/how-to-play" className="hover:text-amber-600 dark:hover:text-amber-400 transition">How to Play</Link>
+            <span>•</span>
+            <Link to="/community-rules" className="hover:text-amber-600 dark:hover:text-amber-400 transition">Community Rules</Link>
+            <span>•</span>
+            <Link to="/privacy" className="hover:text-amber-600 dark:hover:text-amber-400 transition">Privacy Policy</Link>
+            <span>•</span>
+            <Link to="/terms" className="hover:text-amber-600 dark:hover:text-amber-400 transition">Terms of Service</Link>
           </div>
         </div>
       </div>
-
-      {/* ── Contact Support Modal ── */}
-      {contactModalOpen && (
-        <Modal
-          open={contactModalOpen}
-          onClose={handleResetContact}
-          ariaLabel="Contact BHALYAM Support"
-          panelClassName="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-8 shadow-2xl max-w-lg w-full text-left"
-        >
-          {supportTicket ? (
-            <div className="text-center space-y-4 py-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 mx-auto flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-
-              <div className="space-y-1">
-                <h3 className="font-black text-lg text-slate-900 dark:text-white">
-                  Ticket Created Successfully
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
-                  Our engineering and support team will inspect the server logs and follow up with you.
-                </p>
-              </div>
-
-              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl font-mono text-xs text-slate-600 dark:text-slate-300 font-bold">
-                Ticket Reference: {supportTicket}
-              </div>
-
-              <button
-                onClick={handleResetContact}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-md cursor-pointer hover:from-amber-600 hover:to-orange-600 transition"
-              >
-                Done
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleContactSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <h3 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-[#EA580C]" />
-                  <span>Contact BHALYAM Support</span>
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Send us a ticket and our support team will get back to you promptly.
-                </p>
-              </div>
-
-              {/* Category */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Topic / Issue Type
-                </label>
-                <select
-                  value={contactCategory}
-                  onChange={(e) => setContactCategory(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-[#EFEBE4] dark:border-[#252D4A] rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                >
-                  <option value="Game Issue">Gameplay or Rule Bug</option>
-                  <option value="Room Issue">Room / Multiplayer Connection Drop</option>
-                  <option value="Account Issue">Account & XP Progression</option>
-                  <option value="Voice Chat">WebRTC Voice Chat Issue</option>
-                  <option value="Feedback">Feature Request / Game Suggestion</option>
-                </select>
-              </div>
-
-              {/* Email & Room Code */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Your Email <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="you@example.com"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-[#EFEBE4] dark:border-[#252D4A] rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Room Code (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. RUMMY1"
-                    value={contactRoomCode}
-                    onChange={(e) => setContactRoomCode(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-[#EFEBE4] dark:border-[#252D4A] rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 uppercase font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Message */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  How can we help? <span className="text-rose-500">*</span>
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  placeholder="Explain what happened or what you'd like help with..."
-                  value={contactMessage}
-                  onChange={(e) => setContactMessage(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-[#EFEBE4] dark:border-[#252D4A] rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 leading-relaxed"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center gap-3">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Submit Ticket</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResetContact}
-                  className="py-3 px-5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </Modal>
-      )}
     </AppLayout>
   );
 }

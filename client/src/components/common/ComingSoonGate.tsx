@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Lock, ArrowLeft, Sparkles, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Sparkles, type LucideIcon } from "lucide-react";
+import { FancyLockIcon } from "../../design-system/icons";
 import AppLayout from "../layout/AppLayout";
 
 interface ComingSoonGateProps {
@@ -50,8 +51,8 @@ export default function ComingSoonGate({
                 >
                   <div className="w-full h-full bg-stone-950 rounded-[22px] flex items-center justify-center relative">
                     <FeatureIcon className={`w-8 h-8 sm:w-10 sm:h-10 ${accentColor}`} />
-                    <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shadow-lg border-2 border-stone-950">
-                      <Lock className="w-3.5 h-3.5" />
+                    <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-stone-900 flex items-center justify-center shadow-lg border-2 border-amber-500/60 p-1">
+                      <FancyLockIcon size={14} glow />
                     </div>
                   </div>
                 </div>
@@ -61,7 +62,7 @@ export default function ComingSoonGate({
             {/* Header / Pitch */}
             <div className="relative z-10 space-y-2.5 max-w-lg mx-auto">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-[11px] font-black font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                <Lock className="w-3 h-3" />
+                <FancyLockIcon size={13} glow />
                 Coming Soon • In Development
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-[var(--auth-ink)] tracking-tight">

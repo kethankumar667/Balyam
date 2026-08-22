@@ -29,6 +29,7 @@ const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const HowToPlayPage = lazy(() => import("./pages/HowToPlayPage"));
 const CommunityRulesPage = lazy(() => import("./pages/CommunityRulesPage"));
 const SupportFaqsPage = lazy(() => import("./pages/SupportFaqsPage"));
+const ContactUsPage = lazy(() => import("./pages/ContactUsPage"));
 const TermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
 const SafetyCenterPage = lazy(() => import("./pages/SafetyCenterPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
@@ -210,6 +211,10 @@ export default function App() {
             <Route path="/faq" element={<Navigate to="/support" replace />} />
             <Route path="/help/faqs" element={<Navigate to="/support" replace />} />
             <Route path="/help/support" element={<Navigate to="/support" replace />} />
+            <Route path="/contact" element={<ContactUsPage />} />
+            <Route path="/contact-us" element={<Navigate to="/contact" replace />} />
+            <Route path="/help/contact" element={<Navigate to="/contact" replace />} />
+            <Route path="/support/contact" element={<Navigate to="/contact" replace />} />
             <Route path="/help" element={<Navigate to="/how-to-play" replace />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/help/privacy" element={<Navigate to="/privacy" replace />} />

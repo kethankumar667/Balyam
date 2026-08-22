@@ -12,6 +12,7 @@ import {
   Crown,
 } from "lucide-react";
 import AppLayout from "../layout/AppLayout";
+import { FancyLockIcon } from "../../design-system/icons";
 
 export type LockedFeatureKind =
   | "tournaments"
@@ -154,8 +155,8 @@ export default function MemberLockedGate({
                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-500 p-1 shadow-[0_0_30px_rgba(245,158,11,0.35)] flex items-center justify-center">
                   <div className="w-full h-full bg-stone-950 rounded-[22px] flex items-center justify-center relative">
                     <FeatureIcon className="w-8 h-8 sm:w-10 sm:h-10 text-amber-400" />
-                    <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shadow-lg border-2 border-stone-950">
-                      <Lock className="w-3.5 h-3.5" />
+                    <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-stone-900 flex items-center justify-center shadow-lg border-2 border-amber-500/60 p-1">
+                      <FancyLockIcon size={14} glow />
                     </div>
                   </div>
                 </div>
@@ -165,7 +166,7 @@ export default function MemberLockedGate({
             {/* Header / Pitch */}
             <div className="relative z-10 space-y-2.5 max-w-lg mx-auto">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-[11px] font-black font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                <Lock className="w-3 h-3" />
+                <FancyLockIcon size={13} glow />
                 {meta.tag}
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-[var(--auth-ink)] tracking-tight">
