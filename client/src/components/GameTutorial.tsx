@@ -88,14 +88,18 @@ export function TutorialButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-base font-extrabold shadow-sm transition active:scale-95 ${className}`}
-      style={{
-        background: "rgba(255,255,255,0.88)",
-        color: "#6D4323",
-        border: "1px solid rgba(109,67,35,0.28)",
-      }}
+      className={`inline-flex items-center justify-center min-w-[44px] min-h-[44px] p-1.5 -m-1.5 rounded-full text-base font-extrabold shadow-sm transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer ${className}`}
     >
-      ?
+      <span
+        className="w-8 h-8 rounded-full flex items-center justify-center"
+        style={{
+          background: "rgba(255,255,255,0.88)",
+          color: "#6D4323",
+          border: "1px solid rgba(109,67,35,0.28)",
+        }}
+      >
+        ?
+      </span>
     </button>
   );
 }
