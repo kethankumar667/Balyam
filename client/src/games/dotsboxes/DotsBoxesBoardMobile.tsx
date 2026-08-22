@@ -65,8 +65,8 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
       <div className="flex items-center justify-between mb-2">
         <button
           onClick={props.onLeave}
-          className="text-sm font-semibold px-3 py-1 rounded"
-          style={{ background: "rgba(74,63,53,0.88)", color: "#FFF3E3", fontFamily: "'Caveat','Patrick Hand',cursive", fontSize: 15 }}
+          className="min-h-[44px] min-w-[44px] px-3.5 py-2 rounded-lg text-sm font-semibold flex items-center justify-center transition active:scale-95 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFF3E3]"
+          style={{ background: "rgba(74,63,53,0.88)", color: "#FFF3E3", fontFamily: "'Caveat','Patrick Hand',cursive", fontSize: 16 }}
         >
           ← Leave
         </button>
