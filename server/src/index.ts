@@ -26,6 +26,7 @@ import { initialiseProgressionStore, persistenceStatus } from "./persistence/ind
 import { hydrateProgression } from "./persistence/hydrate.js";
 import { progressionSync } from "./persistence/ProgressionSync.js";
 import { profileRouter } from "./profile/ProfileController.js";
+import { supportRouter } from "./support/SupportController.js";
 import { rankingRouter } from "./ranking/RankingController.js";
 import { tournamentRouter, seasonRouter } from "./tournaments/TournamentController.js";
 import socialRouter from "./social/SocialController.js";
@@ -115,6 +116,7 @@ app.use(attachPlayerIdentity);
 app.use("/api/auth", authRouter);
 
 app.use("/api/profile", profileRouter);
+app.use("/api/support", supportRouter);
 app.use("/api/ranking", rankingRouter);
 app.use("/api/tournaments", tournamentRouter);
 app.use("/api/seasons", seasonRouter);

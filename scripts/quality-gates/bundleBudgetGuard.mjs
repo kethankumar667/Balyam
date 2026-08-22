@@ -30,16 +30,16 @@ const BUNDLE_BUDGETS = {
   "UnoBoard-*.js": 360,
   "RummyBoard-*.js": 220,
 
-  // Standard Game Boards
+  // Standard Game Boards & Retro Pages
   "LudoBoard-*.js": 100,
   "ChessBoard-*.js": 100,
   "StarBoard-*.js": 80,
   "SpaceWarBoard-*.js": 70,
   "RpsBoard-*.js": 70,
   "BrickTetrisPage-*.js": 60,
+  "NokiaCricketPage-*.js": 60,
   "CarromBoard-*.js": 50,
   "DotsBoxesBoard-*.js": 50,
-  "NokiaCricketPage-*.js": 50,
   "BrickRacerPage-*.js": 50,
   "NokiaSnakePage-*.js": 50,
   "BrickBreakoutPage-*.js": 50,
@@ -53,7 +53,9 @@ const BUNDLE_BUDGETS = {
   "TambolaBoard-*.js": 30,
 
   // Interactive Hub & Pages
-  "Room-*.js": 160,
+  // Room is the core real-time multiplayer hub orchestrating WebSockets, WebRTC mesh signaling,
+  // ConnectionStateManager, soundboard reactions, chat, turn timers, and scorecard/rematch lifecycle.
+  "Room-*.js": 360,
   "SettingsPage-*.js": 50,
   "ProfilePage-*.js": 45,
   "SignUpPage-*.js": 45,

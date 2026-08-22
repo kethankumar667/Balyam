@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import Modal from "../components/Modal";
+import { apiFetch } from "../lib/playerIdentity";
 
 const COMMUNITY_RULES = [
   {
@@ -93,15 +94,36 @@ export default function CommunityRulesPage() {
   const [reportRoomCode, setReportRoomCode] = useState("");
   const [reportDetails, setReportDetails] = useState("");
   const [submittedTicket, setSubmittedTicket] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmitReport = (e: React.FormEvent) => {
+  const handleSubmitReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    const fakeTicket = `BHAL-REP-${Math.floor(100000 + Math.random() * 900000)}`;
-    setSubmittedTicket(fakeTicket);
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const res = await apiFetch("/api/support/reports", {
+        method: "POST",
+        body: JSON.stringify({
+          category: reportCategory,
+          targetName: reportTarget,
+          roomCode: reportRoomCode,
+          details: reportDetails,
+        }),
+      });
+      if (!res.ok) throw new Error("Report submission failed");
+      const data = await res.json();
+      setSubmittedTicket(data.ticket);
+    } catch {
+      setSubmitError("Couldn't submit your report right now — please try again in a moment.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleResetForm = () => {
     setSubmittedTicket(null);
+    setSubmitError(null);
     setReportTarget("");
     setReportRoomCode("");
     setReportDetails("");
@@ -269,7 +291,7 @@ export default function CommunityRulesPage() {
                   Report Received
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
-                  Thank you for helping keep BHALYAM safe. Our moderation team will investigate server logs and match history.
+                  Thank you for helping keep BHALYAM safe. Your report has been recorded on our servers for review.
                 </p>
               </div>
 
@@ -292,7 +314,7 @@ export default function CommunityRulesPage() {
                   <span>Report a Player or Incident</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Select a category and provide details so our moderation team can review match telemetry.
+                  Select a category and provide details so our team has enough context to review it.
                 </p>
               </div>
 
@@ -370,13 +392,18 @@ export default function CommunityRulesPage() {
                 />
               </div>
 
+              {submitError && (
+                <p className="text-xs font-bold text-rose-600 dark:text-rose-400">{submitError}</p>
+              )}
+
               <div className="pt-2 flex items-center gap-3">
                 <button
                   type="submit"
-                  className="flex-1 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  disabled={submitting}
+                  className="flex-1 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Submit Confidential Report</span>
+                  <span>{submitting ? "Submitting…" : "Submit Confidential Report"}</span>
                 </button>
                 <button
                   type="button"

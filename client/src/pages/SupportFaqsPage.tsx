@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import Modal from "../components/Modal";
+import { apiFetch } from "../lib/playerIdentity";
 
 interface FAQItem {
   id: string;
@@ -167,6 +168,8 @@ export default function SupportFaqsPage() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [supportTicket, setSupportTicket] = useState<string | null>(null);
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   const filteredFaqs = FAQS_CATALOG.filter((item) => {
     if (activeCategory !== "all" && item.category !== activeCategory) return false;
@@ -183,14 +186,33 @@ export default function SupportFaqsPage() {
     setOpenFaqId((curr) => (curr === id ? null : id));
   };
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const tkt = `BHAL-TKT-${Math.floor(100000 + Math.random() * 900000)}`;
-    setSupportTicket(tkt);
+    setContactError(null);
+    setContactSubmitting(true);
+    try {
+      const res = await apiFetch("/api/support/tickets", {
+        method: "POST",
+        body: JSON.stringify({
+          category: contactCategory,
+          email: contactEmail,
+          roomCode: contactRoomCode,
+          message: contactMessage,
+        }),
+      });
+      if (!res.ok) throw new Error("Ticket submission failed");
+      const data = await res.json();
+      setSupportTicket(data.ticket);
+    } catch {
+      setContactError("Couldn't submit your ticket right now — please try again in a moment.");
+    } finally {
+      setContactSubmitting(false);
+    }
   };
 
   const handleResetContact = () => {
     setSupportTicket(null);
+    setContactError(null);
     setContactEmail("");
     setContactRoomCode("");
     setContactMessage("");
