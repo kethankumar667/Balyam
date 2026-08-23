@@ -125,7 +125,7 @@ export default function GameCard({
       whileHover="hover"
       whileTap="tap"
       transition={bhalyamSpring}
-      className={`group relative w-full min-w-0 max-w-full rounded-[26px] overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border shadow-md ${
+      className={`group relative w-full min-w-0 max-w-full rounded-[26px] overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border shadow-md touch-pan-y ${
         isDark ? "border-white/10" : "border-black/10"
       } ${className}`}
       style={{

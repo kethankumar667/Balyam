@@ -277,7 +277,8 @@ export default function AppLayout({
           {/* Main Scrollable Viewport (ONLY this scrolls!) */}
           <main
             id="app-main-scroll"
-            className="flex-1 min-w-0 w-full max-w-full h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col"
+            tabIndex={-1}
+            className="flex-1 min-w-0 w-full max-w-full h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col touch-pan-y overscroll-y-contain"
           >
             {chrome && showBreadcrumbs && (
               <div className="flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
@@ -287,7 +288,7 @@ export default function AppLayout({
                 />
               </div>
             )}
-            <div className="flex-1 min-h-0 min-w-0 w-full max-w-full flex flex-col">
+            <div className="w-full min-w-0 flex-1">
               {children}
             </div>
           </main>

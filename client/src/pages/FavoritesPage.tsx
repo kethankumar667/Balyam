@@ -29,7 +29,7 @@ export default function FavoritesPage() {
 
   return (
     <>
-      <div className="p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 w-full max-w-[1440px] mx-auto pb-20 min-w-0 overflow-hidden">
+      <div className="p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 w-full max-w-[1440px] mx-auto pb-24 min-w-0">
         <header className="space-y-1.5 text-left w-full min-w-0">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
             <Heart className="w-3.5 h-3.5 fill-current" />
