@@ -34,13 +34,13 @@ export default function RecentlyPlayedPage() {
 
   return (
     <>
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1440px] mx-auto pb-20">
-        <header className="space-y-1.5 text-left">
+      <div className="p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 w-full max-w-[1440px] mx-auto pb-20 min-w-0 overflow-hidden">
+        <header className="space-y-1.5 text-left w-full min-w-0">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
             <History className="w-3.5 h-3.5" />
             <span>Jump Back In</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-ink-hi tracking-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-ink-hi tracking-tight truncate">
             Recently Played
           </h1>
           <p className="text-xs sm:text-sm text-ink-mid max-w-2xl">
@@ -48,7 +48,7 @@ export default function RecentlyPlayedPage() {
           </p>
         </header>
 
-        <section aria-label="Recently Played Games">
+        <section aria-label="Recently Played Games" className="w-full min-w-0">
           {games.length === 0 ? (
             <EmptyState
               title="Nothing played yet"
@@ -59,10 +59,10 @@ export default function RecentlyPlayedPage() {
           ) : (
             <ul
               role="list"
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 w-full min-w-0"
             >
               {games.map((game) => (
-                <li key={game.slug} role="listitem">
+                <li key={game.slug} role="listitem" className="w-full min-w-0 flex flex-col">
                   <GameCard game={game} onSelect={() => openGameSheet(game.slug)} />
                 </li>
               ))}
