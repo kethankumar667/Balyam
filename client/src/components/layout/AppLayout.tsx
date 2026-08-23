@@ -159,7 +159,7 @@ export default function AppLayout({
         )}
 
         {/* Layout Body Container */}
-        <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 flex overflow-hidden relative min-w-0 w-full max-w-full">
           {/* Desktop Left Sidebar (Permanently fixed, never scrolls with page) */}
           {chrome && sidebar && (
             <div className="hidden lg:block h-full flex-shrink-0">
@@ -235,15 +235,17 @@ export default function AppLayout({
           {/* Main Scrollable Viewport (ONLY this scrolls!) */}
           <main
             id="app-main-scroll"
-            className="flex-1 h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col"
+            className="flex-1 min-w-0 w-full max-w-full h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col"
           >
             {chrome && showBreadcrumbs && (
-              <Breadcrumbs
-                crumbs={breadcrumbs}
-                customTail={customTail}
-              />
+              <div className="flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
+                <Breadcrumbs
+                  crumbs={breadcrumbs}
+                  customTail={customTail}
+                />
+              </div>
             )}
-            <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 min-w-0 w-full max-w-full flex flex-col">
               {children}
             </div>
           </main>

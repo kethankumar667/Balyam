@@ -29,13 +29,13 @@ export default function FavoritesPage() {
 
   return (
     <>
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1440px] mx-auto pb-20">
-        <header className="space-y-1.5 text-left">
+      <div className="p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 w-full max-w-[1440px] mx-auto pb-20 min-w-0 overflow-hidden">
+        <header className="space-y-1.5 text-left w-full min-w-0">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
             <Heart className="w-3.5 h-3.5 fill-current" />
             <span>Your Shortlist</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-ink-hi tracking-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-ink-hi tracking-tight truncate">
             Favorites
           </h1>
           <p className="text-xs sm:text-sm text-ink-mid max-w-2xl">
@@ -44,7 +44,7 @@ export default function FavoritesPage() {
           </p>
         </header>
 
-        <section aria-label="Favorite Games">
+        <section aria-label="Favorite Games" className="w-full min-w-0">
           {games.length === 0 ? (
             <EmptyState
               title="No favorites yet"
@@ -55,10 +55,10 @@ export default function FavoritesPage() {
           ) : (
             <ul
               role="list"
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 w-full min-w-0"
             >
               {games.map((game) => (
-                <li key={game.slug} role="listitem">
+                <li key={game.slug} role="listitem" className="w-full min-w-0 flex flex-col">
                   <GameCard game={game} onSelect={() => openGameSheet(game.slug)} />
                 </li>
               ))}
