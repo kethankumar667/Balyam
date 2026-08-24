@@ -210,10 +210,10 @@ export default function AppSidebar({
             <button
               type="button"
               onClick={onCloseMobile}
-              className="p-1.5 rounded-xl text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)] transition cursor-pointer"
-              aria-label="Close Navigation"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)] active:scale-95 transition flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chrome-accent)]"
+              aria-label="Close Navigation Menu"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           )}
         </div>

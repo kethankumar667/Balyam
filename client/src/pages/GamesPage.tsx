@@ -76,14 +76,14 @@ export default function GamesPage() {
     <>
       <OfflineBanner />
 
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1440px] mx-auto pb-20">
+      <div className="p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 w-full max-w-[1440px] mx-auto pb-24 min-w-0">
         {/* Page Header */}
-        <header className="space-y-1.5 text-left">
+        <header className="space-y-1.5 text-left w-full min-w-0">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Nostalgic Indian Games Lounge</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-ink-hi tracking-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-ink-hi tracking-tight truncate">
             Explore All Games
           </h1>
           <p className="text-xs sm:text-sm text-ink-mid max-w-2xl">
@@ -92,9 +92,9 @@ export default function GamesPage() {
         </header>
 
         {/* Search Bar & Category Navigation */}
-        <div className="space-y-3.5">
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-            <div className="flex-1">
+        <div className="space-y-3.5 w-full min-w-0">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full min-w-0">
+            <div className="flex-1 min-w-0">
               {/* Placeholder and accessible name both come from SearchField's
                   own defaults. The override that used to live here — "Search
                   games by title, rules, or nostalgia quote…" — is 49 characters
@@ -113,9 +113,9 @@ export default function GamesPage() {
         </div>
 
         {/* Games Grid / Skeletons / Empty State */}
-        <section aria-label="Games Catalog">
+        <section aria-label="Games Catalog" className="w-full min-w-0">
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 w-full min-w-0">
               {Array.from({ length: 8 }).map((_, idx) => (
                 <GameCardSkeleton key={idx} />
               ))}
@@ -133,10 +133,10 @@ export default function GamesPage() {
           ) : (
             <ul
               role="list"
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 w-full min-w-0"
             >
               {displayedGames.map((game) => (
-                <li key={game.slug} role="listitem">
+                <li key={game.slug} role="listitem" className="w-full min-w-0 flex flex-col">
                   <GameCard
                     game={game}
                     onSelect={() => openGameSheet(game.slug)}

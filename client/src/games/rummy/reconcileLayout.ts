@@ -45,14 +45,12 @@ export function freshMeldLayout(
  * Steady-state reconciliation — appends newly-incoming card ids onto
  * existing groups (mutating none of them; returns a new array).
  *
- * A card drawn from the open deck (`id === openPickupId`) ALWAYS starts a
- * brand new group — the entire point of this module: an open-pile pickup
- * must never silently merge into an existing sequence/set/pile just
- * because it happens to share a suit. Every other incoming card (a
- * closed-deck draw, whose identity carries no strategic information worth
- * protecting) aligns with an existing same-suit group when one exists, or
- * starts a new one, or — once `maxGroups` is reached — folds into the
- * first group rather than growing an unbounded number of piles.
+ * In Rummy, drawn cards (whether from the open pile or closed deck) must NEVER
+ * silently merge into a player's carefully arranged pure sequences, sequences,
+ * or sets — doing so invalidates melds and frustrates players.
+ *
+ * Every newly-incoming card ALWAYS starts its own dedicated group at the end of the hand,
+ * or appends to the trailing loose-cards group if MAX_MELD_GROUPS is reached.
  */
 export function appendIncomingCards(
   groups: MeldGroup[],
@@ -67,21 +65,13 @@ export function appendIncomingCards(
     const card = byId.get(id);
     if (!card) continue;
 
-    if (id === openPickupId) {
-      newGroups.push({ id: newGroupId(), cardIds: [id] });
-      continue;
-    }
-
-    const matchingGroup = newGroups.find((g) => {
-      const firstCard = byId.get(g.cardIds[0]);
-      return firstCard && firstCard.suit === card.suit;
-    });
-    if (matchingGroup) {
-      matchingGroup.cardIds.push(id);
-    } else if (newGroups.length < maxGroups) {
+    if (newGroups.length < maxGroups) {
       newGroups.push({ id: newGroupId(), cardIds: [id] });
     } else if (newGroups.length > 0) {
-      newGroups[0].cardIds.push(id);
+      // Append to the last (loose/trailing) group, NEVER to newGroups[0] (which is typically the pure sequence)
+      newGroups[newGroups.length - 1].cardIds.push(id);
+    } else {
+      newGroups.push({ id: newGroupId(), cardIds: [id] });
     }
   }
   return newGroups;
@@ -120,19 +110,12 @@ export function applyHintSuggestion(
 }
 
 /**
- * Redistributes a known set of card ids among existing meld groups by
- * suit-matching — used when a player dismisses ("ungroups") a meld and its
- * cards need a new home.
+ * Redistributes a known set of card ids among existing meld groups — used
+ * when a player dismisses ("ungroups") a meld and its cards need a new home.
  *
- * Enforces the same open-deck isolation invariant as
- * {@link appendIncomingCards}: if the open-deck pickup is among the cards
- * being redistributed, it's excluded from suit-matching entirely — both as
- * a card to place AND as a target other cards could land next to — and
- * always ends up back in its own dedicated group. Without this, dismissing
- * the pickup's own one-card meld (the obvious thing to do with a lone card
- * that looks like a mistake) would silently fold it into whatever
- * same-suit meld it best matched, exactly like an unguarded Smart Hint or
- * reconciliation pass would.
+ * Ungrouped cards must NEVER be silently shoved into existing pure sequences or
+ * sets. Each card from the dismissed group receives its own group, or folds
+ * into the last group if maxGroups is reached.
  */
 export function redistributeCards(
   groups: MeldGroup[],
@@ -140,23 +123,17 @@ export function redistributeCards(
   byId: Map<string, Card>,
   openPickupId: string | null,
   newGroupId: () => string,
+  maxGroups: number = MAX_MELD_GROUPS,
 ): MeldGroup[] {
   const updatedGroups = groups.map((g) => ({ ...g, cardIds: [...g.cardIds] }));
   for (const id of cardIds) {
-    if (id === openPickupId) continue;
-    const card = byId.get(id);
-    const match = updatedGroups.find((g) => {
-      const firstCard = byId.get(g.cardIds[0]);
-      return firstCard && card && firstCard.suit === card.suit;
-    });
-    if (match) {
-      match.cardIds.push(id);
+    if (updatedGroups.length < maxGroups) {
+      updatedGroups.push({ id: newGroupId(), cardIds: [id] });
     } else if (updatedGroups.length > 0) {
-      updatedGroups[0].cardIds.push(id);
+      updatedGroups[updatedGroups.length - 1].cardIds.push(id);
+    } else {
+      updatedGroups.push({ id: newGroupId(), cardIds: [id] });
     }
-  }
-  if (openPickupId && cardIds.includes(openPickupId)) {
-    updatedGroups.push({ id: newGroupId(), cardIds: [openPickupId] });
   }
   return updatedGroups;
 }
