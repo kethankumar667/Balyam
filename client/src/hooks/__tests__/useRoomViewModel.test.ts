@@ -110,4 +110,28 @@ describe("computeRoomViewModel Characterization Suite", () => {
     expect(vm.minPlayersNeeded).toBe(1); // Snake can start with 1 player
     expect(vm.canStartGame).toBe(true);
   });
+
+  it("activates Dots & Boxes pen color picker in lobby", () => {
+    const mockRoomState: RoomPublicState = {
+      code: "DOTS01",
+      name: "Dots Table",
+      game: "dotsboxes",
+      phase: "lobby",
+      hostId: "p_host",
+      sealed: false,
+      players: [
+        { id: "p_host", name: "Host", isHost: true, isReady: true, isConnected: true, penColor: "gold" },
+      ],
+      history: [],
+      champion: null,
+      unoHistory: [],
+      unoChampion: null,
+      bingoHistory: [],
+      ludoHistory: [],
+      maxPlayers: 6,
+    };
+
+    const vm = computeRoomViewModel(mockRoomState, "p_host");
+    expect(vm.colorPickerKind).toBe("dotsboxes");
+  });
 });

@@ -17,6 +17,7 @@ import type {
   WebRTCSignal,
   WordBuildingOptions,
   DotsBoxesOptions,
+  DotsBoxesColor,
   StarGameOptions,
   UnoGameOptions,
   UnoChampion,
@@ -35,6 +36,7 @@ import type {
 } from "@shared/types.js";
 import {
   COIN_COLORS,
+  DOTSBOXES_COLORS,
   DEFAULT_HC_OPTIONS,
   DEFAULT_LUDO_OPTIONS,
   DEFAULT_RUMMY_OPTIONS,
@@ -1108,6 +1110,31 @@ export class RoomManager {
     this.broadcastRoomState(room);
   }
 
+  choosePenColor(socketId: string, color: string): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (room.game !== "dotsboxes") {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Pen color is only chooseable for Dots & Boxes");
+      return;
+    }
+    if (room.phase !== "lobby") {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot change color during game");
+      return;
+    }
+    if (!(DOTSBOXES_COLORS as readonly string[]).includes(color)) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Invalid pen color");
+      return;
+    }
+    for (const other of room.players.values()) {
+      if (other.id !== player.id && other.penColor === color) {
+        this.io.sockets.sockets.get(socketId)?.emit("room:error", `${other.name} already picked ${color}`);
+        return;
+      }
+    }
+    player.penColor = color as DotsBoxesColor;
+    this.broadcastRoomState(room);
+  }
+
   startGame(socketId: string): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
@@ -1148,6 +1175,16 @@ export class RoomManager {
       }
       if (engine instanceof DotsBoxesEngine) {
         engine.setOptions(room.dotsBoxesOptions);
+        const taken = new Set(
+          [...room.players.values()].map((p) => p.penColor).filter(Boolean)
+        );
+        const freeColors = DOTSBOXES_COLORS.filter((c) => !taken.has(c));
+        let freeIdx = 0;
+        for (const p of playersList) {
+          if (!p.penColor && freeIdx < freeColors.length) {
+            p.penColor = freeColors[freeIdx++];
+          }
+        }
       }
       if (engine instanceof StarGameEngine) {
         engine.setOptions(room.starGameOptions);

@@ -6,6 +6,7 @@ import ParticipantActionMenu from "./ParticipantActionMenu";
 import { ReadyCheckmarkPencil } from "../../animations/app/ReadyCheckmarkDraw";
 import { COLOR_HEX } from "../../games/ludo/board-layout";
 import { COIN_COLOR_HEX } from "../CoinColorPicker";
+import { getPlayerThemeByColor } from "../../games/dotsboxes/dotsboxes-theme";
 
 export default function ParticipantRow({
   player,
@@ -33,6 +34,12 @@ export default function ParticipantRow({
   } else if (player.coinColor && COIN_COLOR_HEX[player.coinColor]) {
     colorBadgeHex = COIN_COLOR_HEX[player.coinColor].fill;
     colorBadgeLabel = COIN_COLOR_HEX[player.coinColor].label;
+  } else if (player.penColor) {
+    const penTheme = getPlayerThemeByColor(player.penColor);
+    if (penTheme) {
+      colorBadgeHex = penTheme.primary;
+      colorBadgeLabel = player.penColor;
+    }
   }
 
   return (

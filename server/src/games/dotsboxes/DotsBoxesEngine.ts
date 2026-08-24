@@ -232,7 +232,11 @@ export class DotsBoxesEngine implements GameEngine {
   }
 
   isOver(): boolean {
-    return this.s.phase === "finished";
+    return this.s.phase === "finished" || this.s.claimedBoxes >= this.s.totalBoxes;
+  }
+
+  getWinner(): string | null {
+    return this.s.winnerId;
   }
 
   pendingActors(): string[] {
