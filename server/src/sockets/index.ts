@@ -156,6 +156,10 @@ export function registerSocketHandlers(
     rooms.chooseCoinColor(socket.id, color);
   });
 
+  socket.on("room:choosePenColor", (color) => {
+    rooms.choosePenColor(socket.id, color);
+  });
+
   socket.on("room:setTokenNicknames", ({ nicknames }) => {
     rooms.setTokenNicknames(socket.id, nicknames);
   });

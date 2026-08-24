@@ -950,6 +950,7 @@ export default function Room() {
                   selfId={playerId}
                   onChooseLudoColor={(c) => getSocket().emit("room:chooseColor", c)}
                   onChooseCoinColor={(c) => getSocket().emit("room:chooseCoinColor", c)}
+                  onChoosePenColor={(c) => getSocket().emit("room:choosePenColor", c)}
                 />
               )}
 

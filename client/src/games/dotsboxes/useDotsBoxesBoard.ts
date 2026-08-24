@@ -6,15 +6,15 @@ import type {
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { useTurnHaptics } from "../../hooks/useHaptics";
-import { penFor, type Pen } from "./dotsboxes-shared";
+import {
+  getPlayerTheme,
+  getPlayerThemeByColor,
+  type DotsBoxesPlayerTheme,
+  type DotsBoxesSkin,
+} from "./dotsboxes-theme";
+import { AudioManager } from "../../services/AudioManager";
+import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 
-/**
- * Shared prop contract for the Dots & Boxes board picker and both layout
- * shells. The shells now render an InlineRoomRail (chat/players/voice/
- * reactions) straight off `messages`/`roomCode`/`roomPhase`; the hook itself
- * doesn't consume them, but they ride the same bag so the picker can splat the
- * full prop set through unchanged.
- */
 export interface DotsBoxesBoardProps {
   state: DotsBoxesPublicState;
   players: Player[];
@@ -23,216 +23,316 @@ export interface DotsBoxesBoardProps {
   roomCode?: string;
   roomPhase?: string;
   onLeave?: () => void;
-  /** Dismissing the report card hands off to Room's game-over flow.
-   *
-   *  Dots & Boxes has always drawn its own notebook-styled ReportCardOverlay,
-   *  but was NOT listed in Room's GAMES_WITH_OWN_SCORECARD — so the generic
-   *  blue scorecard rendered on top of it and two result modals stacked. The
-   *  generic one owned `triggerGameOver`, so suppressing it without this
-   *  callback would leave the round with no way to reach the game-over
-   *  screen. */
   onScorecardClose?: () => void;
 }
 
-/** Everything both shells need to render. Pure data + handlers, no JSX. */
-export interface DotsBoxesBoardModel {
-  state: DotsBoxesPublicState;
-  size: number;
-  boxesPerSide: number;
-  myTurn: boolean;
-  canPlay: boolean;
-  /** Cell pitch in px — scaled per tier via the hook's `cellScale` arg. */
-  cellPx: number;
-  penOf: Record<string, Pen>;
-  nameOf: (id: string) => string;
-  initialOf: (id: string) => string;
-  /** The player's chosen avatar filename, for SeatAvatar. */
-  avatarOf: (id: string) => string | undefined;
-  /** Local player's stroke color, for the hover preview. */
-  selfPenColor?: string;
-  drawnH: Set<string>;
-  drawnV: Set<string>;
-  /** Edge → owner lookups. Currently unreferenced by the render (see note
-   *  in the hook) but kept on the model for parity with the original. */
-  hOwner: Map<string, string>;
-  vOwner: Map<string, string>;
-  boxOwner: Map<string, string>;
-  bonusBanner: { id: number; pid: string } | null;
-  activeMineBurst: { playerName: string; penColor?: string } | null;
-  dismissMineBurst: () => void;
-  error: string | null;
-  reportDismissed: boolean;
-  setReportDismissed: (v: boolean) => void;
-  drawLine: (kind: "h" | "v", r: number, c: number) => void;
+export interface ActivityEvent {
+  id: string;
+  playerId: string;
+  playerName: string;
+  text: string;
+  badge: string;
+  timestamp: string;
 }
 
-/**
- * All Dots & Boxes board logic — state, effects, socket emits, derived
- * memos — lifted out of the single legacy component so the mobile and
- * desktop shells can share it. Call this EXACTLY ONCE, from whichever shell
- * the picker mounts (never both, or the haptics subscription doubles up).
- *
- * @param cellScale Multiplier on the base cell pitch. Mobile passes the
- *   default (1) for the compact 64/48/38 sizing; desktop passes ~1.4 to
- *   genuinely enlarge the board instead of just stretching the mobile one.
- */
-export function useDotsBoxesBoard(
-  props: DotsBoxesBoardProps,
-  cellScale = 1,
-): DotsBoxesBoardModel {
-  const { state, players, selfId } = props;
+export interface RankedPlayer {
+  pid: string;
+  name: string;
+  score: number;
+  theme: DotsBoxesPlayerTheme;
+  avatar?: string;
+  rank: number;
+}
+
+export interface DotsBoxesBoardModel {
+  state: DotsBoxesPublicState;
+  players: Player[];
+  selfId: string | null;
+  size: number;
+  boxesPerSide: number;
+  totalBoxes: number;
+  targetBoxes: number;
+  isFinished: boolean;
+  myTurn: boolean;
+  canPlay: boolean;
+  secondsLeft: number;
+  skin: DotsBoxesSkin;
+  setSkin: (skin: DotsBoxesSkin) => void;
+  toggleSkin: () => void;
+  themeOf: (id: string) => DotsBoxesPlayerTheme;
+  nameOf: (id: string) => string;
+  avatarOf: (id: string) => string | undefined;
+  isBot: (id: string) => boolean;
+  scoreOf: (id: string) => number;
+  activities: ActivityEvent[];
+  undoCount: number;
+  useUndo: () => void;
+  isMuted: boolean;
+  toggleMute: () => void;
+  error: string | null;
+  showScorecard: boolean;
+  setShowScorecard: (v: boolean) => void;
+  rankedPlayers: RankedPlayer[];
+  winner: RankedPlayer | null;
+  isTie: boolean;
+  drawLine: (kind: "h" | "v", r: number, c: number) => void;
+  comboStreak: number;
+  comboBanner: string | null;
+  lastClosedClaim: { r: number; c: number; ownerId: string } | null;
+}
+
+export function useDotsBoxesBoard(props: DotsBoxesBoardProps): DotsBoxesBoardModel {
+  const { state, players, selfId, roomPhase } = props;
   const size = state.options.boardSize;
   const boxesPerSide = size - 1;
-  const myTurn = state.turnPlayerId === selfId;
-  const canPlay = myTurn && state.phase === "playing";
-
-  // Same turn cue as every other BHALYAM board — fires once per
-  // transition into the local player's turn.
-  useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
-
-  // End-of-round scorecard dismissed flag. Re-opens automatically when
-  // the phase flips back to "playing" (rematch).
-  const [reportDismissed, setReportDismissed] = useState(false);
-  useEffect(() => {
-    if (state.phase === "playing") setReportDismissed(false);
-  }, [state.phase]);
-
-  // Player → pen and initial.
-  const penOf = useMemo(() => {
-    const map: Record<string, Pen> = {};
-    state.playerOrder.forEach((pid, idx) => {
-      map[pid] = penFor(idx);
-    });
-    return map;
-  }, [state.playerOrder]);
-  const nameOf = useCallback(
-    (id: string): string => players.find((p) => p.id === id)?.name ?? "?",
-    [players],
-  );
-  const initialOf = useCallback(
-    (id: string): string => (nameOf(id).trim().charAt(0) || "?").toUpperCase(),
-    [nameOf],
-  );
-  const avatarOf = useCallback(
-    (id: string): string | undefined => players.find((p) => p.id === id)?.avatar,
-    [players],
-  );
-
-  // Lookup sets — used to check whether each candidate line is already drawn.
-  const drawnH = useMemo(() => {
-    const s = new Set<string>();
-    for (const l of state.hLines) s.add(`${l.r},${l.c}`);
-    return s;
-  }, [state.hLines]);
-  const drawnV = useMemo(() => {
-    const s = new Set<string>();
-    for (const l of state.vLines) s.add(`${l.r},${l.c}`);
-    return s;
-  }, [state.vLines]);
-  const hOwner = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const l of state.hLines) m.set(`${l.r},${l.c}`, l.playerId);
-    return m;
-  }, [state.hLines]);
-  const vOwner = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const l of state.vLines) m.set(`${l.r},${l.c}`, l.playerId);
-    return m;
-  }, [state.vLines]);
-  const boxOwner = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const cl of state.claims) m.set(`${cl.r},${cl.c}`, cl.ownerId);
-    return m;
-  }, [state.claims]);
-
-  /* ─── "Bonus move!" hint when the last move closed a box ─── */
-  const [bonusBanner, setBonusBanner] = useState<{ id: number; pid: string } | null>(null);
-  const [activeMineBurst, setActiveMineBurst] = useState<{ playerName: string; penColor?: string } | null>(null);
-  const prevMoveCount = useRef(0);
-  const dismissTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (state.moveCount === prevMoveCount.current) return;
-    prevMoveCount.current = state.moveCount;
-    if (state.lastMoveScored) {
-      if (dismissTimerRef.current) {
-        window.clearTimeout(dismissTimerRef.current);
-      }
-      setBonusBanner({ id: Date.now(), pid: state.turnPlayerId });
-      const pName = nameOf(state.turnPlayerId);
-      const pColor = penOf[state.turnPlayerId]?.color;
-      setActiveMineBurst({ playerName: pName, penColor: pColor });
-      dismissTimerRef.current = window.setTimeout(() => {
-        setBonusBanner(null);
-        setActiveMineBurst(null);
-        dismissTimerRef.current = null;
-      }, 900);
+  const totalBoxes = boxesPerSide * boxesPerSide;
+  const targetBoxes = Math.max(1, Math.ceil(totalBoxes / Math.max(2, state.playerOrder.length)) + 2);
+  
+  // Skin mode (default to realistic notebook)
+  const [skin, setSkinState] = useState<DotsBoxesSkin>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bhalyam.dotsboxes.skin");
+      if (saved === "neon" || saved === "notebook") return saved;
     }
-  }, [state.moveCount, state.lastMoveScored, state.turnPlayerId, nameOf, penOf]);
+    return "notebook";
+  });
 
   useEffect(() => {
-    return () => {
-      if (dismissTimerRef.current) {
-        window.clearTimeout(dismissTimerRef.current);
+    const handleStorage = () => {
+      const saved = localStorage.getItem("bhalyam.dotsboxes.skin");
+      if (saved === "neon" || saved === "notebook") {
+        setSkinState(saved);
       }
+    };
+    window.addEventListener("dotsboxes:skinChange", handleStorage);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("dotsboxes:skinChange", handleStorage);
+      window.removeEventListener("storage", handleStorage);
     };
   }, []);
 
-  /* ─── Move dispatch ─── */
+  const setSkin = useCallback((newSkin: DotsBoxesSkin) => {
+    setSkinState(newSkin);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bhalyam.dotsboxes.skin", newSkin);
+      window.dispatchEvent(new Event("dotsboxes:skinChange"));
+    }
+  }, []);
+
+  const toggleSkin = useCallback(() => {
+    setSkin(skin === "notebook" ? "neon" : "notebook");
+  }, [skin, setSkin]);
+
+  const isFinished =
+    state.phase === "finished" ||
+    roomPhase === "finished" ||
+    state.claims.length >= totalBoxes;
+
+  const myTurn = !isFinished && state.turnPlayerId === selfId;
+  const canPlay = !isFinished && myTurn && state.phase === "playing";
+
+  // Real-time 30s turn timer remaining
+  const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
+
+  // Self-contained audio manager subscription
+  const [isMuted, setIsMuted] = useState(() => AudioManager.getInstance().getSettings().isMuted);
+
+  useEffect(() => {
+    const audio = AudioManager.getInstance();
+    return audio.subscribe((settings) => setIsMuted(settings.isMuted));
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    AudioManager.getInstance().toggleMute();
+  }, []);
+
+  useTurnHaptics(state.phase === "playing" && !isFinished ? state.turnPlayerId : null, selfId);
+
+  // Scorecard modal state
+  const [showScorecard, setShowScorecard] = useState(isFinished);
+  useEffect(() => {
+    if (isFinished) {
+      setShowScorecard(true);
+    }
+  }, [isFinished]);
+
+  // Player helper functions — Always return real player name so initials (e.g. "K" for kethan) work
+  const nameOf = useCallback(
+    (id: string): string => {
+      const found = players.find((p) => p.id === id);
+      if (found?.name) return found.name;
+      return id === selfId ? "You" : "Player";
+    },
+    [players, selfId]
+  );
+
+  const themeOf = useCallback(
+    (id: string): DotsBoxesPlayerTheme => {
+      const seatIndex = state.playerOrder.indexOf(id);
+      const safeIndex = seatIndex >= 0 ? seatIndex : 0;
+      const p = players.find((pl) => pl.id === id);
+      if (p?.penColor) {
+        const custom = getPlayerThemeByColor(p.penColor, skin, safeIndex);
+        if (custom) return custom;
+      }
+      return getPlayerTheme(safeIndex, skin);
+    },
+    [players, state.playerOrder, skin]
+  );
+
+  const avatarOf = useCallback(
+    (id: string): string | undefined => players.find((p) => p.id === id)?.avatar,
+    [players]
+  );
+
+  const isBot = useCallback(
+    (id: string): boolean => !!players.find((p) => p.id === id)?.isBot,
+    [players]
+  );
+
+  const scoreOf = useCallback(
+    (id: string): number => state.scores[id] ?? 0,
+    [state.scores]
+  );
+
+  // Ranked leaderboard
+  const rankedPlayers = useMemo((): RankedPlayer[] => {
+    return [...state.playerOrder]
+      .map((pid) => ({
+        pid,
+        name: nameOf(pid),
+        score: scoreOf(pid),
+        theme: themeOf(pid),
+        avatar: avatarOf(pid),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .map((p, idx) => ({ ...p, rank: idx + 1 }));
+  }, [state.playerOrder, nameOf, scoreOf, themeOf, avatarOf]);
+
+  const winner = rankedPlayers[0] ?? null;
+  const isTie = rankedPlayers.length >= 2 && rankedPlayers[0].score === rankedPlayers[1].score;
+
+  // Activity Feed Logger & Combo Tracker
+  const [activities, setActivities] = useState<ActivityEvent[]>([]);
+  const prevClaimsCount = useRef(0);
+  const [comboStreak, setComboStreak] = useState(0);
+  const [comboBanner, setComboBanner] = useState<string | null>(null);
+  const [lastClosedClaim, setLastClosedClaim] = useState<{ r: number; c: number; ownerId: string } | null>(null);
+  const prevTurnPlayerRef = useRef(state.turnPlayerId);
+
+  // Reset combo streak on turn change
+  useEffect(() => {
+    if (state.turnPlayerId !== prevTurnPlayerRef.current) {
+      setComboStreak(0);
+      prevTurnPlayerRef.current = state.turnPlayerId;
+    }
+  }, [state.turnPlayerId]);
+
+  useEffect(() => {
+    if (state.claims.length > prevClaimsCount.current) {
+      const newClaims = state.claims.slice(prevClaimsCount.current);
+      prevClaimsCount.current = state.claims.length;
+
+      const latest = newClaims[newClaims.length - 1];
+      if (latest) {
+        setLastClosedClaim({ r: latest.r, c: latest.c, ownerId: latest.ownerId });
+      }
+
+      // Update combo streak
+      const streak = newClaims.length > 1 ? newClaims.length : comboStreak + 1;
+      setComboStreak(streak);
+
+      if (streak === 2) {
+        setComboBanner("DOUBLE BOX! 🔥");
+      } else if (streak === 3) {
+        setComboBanner("TRIPLE COMBO! ⚡");
+      } else if (streak >= 4) {
+        setComboBanner("CHAIN MASTER! 👑");
+      }
+
+      const timer = setTimeout(() => {
+        setComboBanner(null);
+      }, 2500);
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+      const newEvents: ActivityEvent[] = newClaims.map((claim, i) => {
+        const pName = nameOf(claim.ownerId);
+        return {
+          id: `${claim.closedAt}-${i}`,
+          playerId: claim.ownerId,
+          playerName: pName,
+          text: `${pName} completed a box`,
+          badge: "+1 Box",
+          timestamp: timeStr,
+        };
+      });
+
+      setActivities((prev) => [...newEvents, ...prev].slice(0, 15));
+      return () => clearTimeout(timer);
+    }
+  }, [state.claims, nameOf, comboStreak]);
+
+  // Undo System (3 per round visual budget)
+  const [undoCount, setUndoCount] = useState(3);
+  const useUndo = useCallback(() => {
+    if (undoCount > 0) {
+      setUndoCount((c) => Math.max(0, c - 1));
+    }
+  }, [undoCount]);
+
+  // Move dispatch
   const [error, setError] = useState<string | null>(null);
-  function drawLine(kind: "h" | "v", r: number, c: number) {
-    if (!canPlay) return;
-    const key = `${r},${c}`;
-    if ((kind === "h" ? drawnH : drawnV).has(key)) return;
-    // playerId is passed for pass-and-play proxying.
-    getSocket().emit("game:move", {
-      type: "draw",
-      data: { kind, r, c },
-      playerId: selfId ?? undefined,
-    });
-    setError(null);
-  }
 
-  /* ─── Board geometry ─── */
-  // Base cell size fits mobile portrait (9x9 dots = 8 cells); `cellScale`
-  // lets the desktop shell genuinely enlarge it rather than stretch.
-  const cellPx = useMemo(() => {
-    const base = size === 5 ? 64 : size === 7 ? 48 : 38; // 9
-    return Math.round(base * cellScale);
-  }, [size, cellScale]);
-
-  const selfPenColor = selfId ? penOf[selfId]?.color : undefined;
+  const drawLine = useCallback(
+    (kind: "h" | "v", r: number, c: number) => {
+      if (!canPlay) return;
+      getSocket().emit("game:move", {
+        type: "draw",
+        data: { kind, r, c },
+        playerId: selfId ?? undefined,
+      });
+      setError(null);
+    },
+    [canPlay, selfId]
+  );
 
   return {
     state,
+    players,
+    selfId,
     size,
     boxesPerSide,
+    totalBoxes,
+    targetBoxes,
+    isFinished,
     myTurn,
     canPlay,
-    cellPx,
-    penOf,
+    secondsLeft,
+    skin,
+    setSkin,
+    toggleSkin,
+    themeOf,
     nameOf,
-    initialOf,
     avatarOf,
-    selfPenColor,
-    drawnH,
-    drawnV,
-    hOwner,
-    vOwner,
-    boxOwner,
-    bonusBanner,
-    activeMineBurst,
-    dismissMineBurst: () => {
-      if (dismissTimerRef.current) {
-        window.clearTimeout(dismissTimerRef.current);
-        dismissTimerRef.current = null;
-      }
-      setBonusBanner(null);
-      setActiveMineBurst(null);
-    },
+    isBot,
+    scoreOf,
+    activities,
+    undoCount,
+    useUndo,
+    isMuted,
+    toggleMute,
     error,
-    reportDismissed,
-    setReportDismissed,
+    showScorecard,
+    setShowScorecard,
+    rankedPlayers,
+    winner,
+    isTie,
     drawLine,
+    comboStreak,
+    comboBanner,
+    lastClosedClaim,
   };
 }

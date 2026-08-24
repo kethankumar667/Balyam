@@ -28,7 +28,7 @@ export interface RoomViewModel {
   humanPlayers: Player[];
   botPlayers: Player[];
   localPlayers: Player[];
-  colorPickerKind: "ludo" | "snl" | null;
+  colorPickerKind: "ludo" | "snl" | "dotsboxes" | null;
 }
 
 export function computeRoomViewModel(
@@ -111,7 +111,7 @@ export function computeRoomViewModel(
   const localPlayers = players.filter((p) => p.isLocal);
 
   const colorPickerKind =
-    game === "ludo" ? "ludo" : game === "snl" ? "snl" : null;
+    game === "ludo" ? "ludo" : game === "snl" ? "snl" : game === "dotsboxes" ? "dotsboxes" : null;
 
   return {
     maxPlayers,

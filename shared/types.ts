@@ -66,6 +66,8 @@ export interface Player {
   chosenColor?: LudoColor;
   /** For Snakes & Ladders: player's selected coin color (10 distinct shades, first-come-first-served). */
   coinColor?: CoinColor;
+  /** For Dots & Boxes: player's selected pen color (first-come-first-served in the lobby). */
+  penColor?: DotsBoxesColor;
   /** For Ludo: optional per-token nicknames keyed by tokenId. */
   tokenNicknames?: Record<string, string>;
   /**
@@ -1113,6 +1115,17 @@ export interface WordBuildingPlaceMove {
 // Game ends when every box is owned. Highest box count wins.
 
 export type DotsBoxesBoardSize = 5 | 7 | 9;
+
+export type DotsBoxesColor = "blue" | "gold" | "purple" | "green" | "pink" | "cyan";
+
+export const DOTSBOXES_COLORS: readonly DotsBoxesColor[] = [
+  "blue",
+  "gold",
+  "purple",
+  "green",
+  "pink",
+  "cyan",
+];
 
 export interface DotsBoxesOptions {
   /** Dot-grid edge length. Box count = (size-1)^2. 5=tiny/quick, 9=marathon. */
@@ -2631,6 +2644,7 @@ export interface ClientToServerEvents {
   "room:removeLocalPlayer": (playerId: string) => void;
   "room:chooseColor": (color: LudoColor) => void;
   "room:chooseCoinColor": (color: CoinColor) => void;
+  "room:choosePenColor": (color: DotsBoxesColor) => void;
   "room:setTokenNicknames": (payload: SetTokenNicknamesPayload) => void;
   /**
    * Reports whether THIS client currently needs to rotate to landscape to
