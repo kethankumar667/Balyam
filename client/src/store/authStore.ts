@@ -7,6 +7,8 @@ import { getSupabase, isSupabaseConfigured, SESSION_STORAGE_KEY } from "../lib/s
 import { fetchProfile, saveProfile } from "../lib/supabase/profile";
 import { saveAccountDetails, clearAccountDetails } from "../lib/accountGenerator";
 import { clearGuestIdentity } from "../lib/playerIdentity";
+import { RecentlyPlayedManager } from "../services/RecentlyPlayedManager";
+import { FavouritesManager } from "../services/FavouritesManager";
 
 /**
  * The name Supabase itself already knows for this person, if any.
@@ -320,14 +322,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch {
       /* same */
     }
-    // Storage is already empty; these also reset in-memory module state
-    // (clearGuestIdentity's pending-registration cache) that a storage
-    // clear alone wouldn't touch.
+    // Storage is already empty; these also reset in-memory module state a
+    // storage clear alone can't touch — clearGuestIdentity's
+    // pending-registration cache, and RecentlyPlayedManager/
+    // FavouritesManager's own private `cache` fields. Both are
+    // useSyncExternalStore singletons: removing their storage key out from
+    // under them leaves `cache` (and every component reading it) showing
+    // the previous account's data until their own clear method runs and
+    // notifies subscribers — a bare `localStorage.clear()` is invisible to
+    // a cache that already loaded before sign-out.
     saveLocalAccount(GUEST);
     clearAccountDetails();
     try {
       clearGuestIdentity();
     } catch {}
+    RecentlyPlayedManager.clearRecentlyPlayed();
+    FavouritesManager.clearFavourites();
     useRoomStore.getState().setPlayerName("");
     useRoomStore.getState().setAvatarId(null);
     set({

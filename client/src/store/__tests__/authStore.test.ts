@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { metadataDisplayName, useAuthStore } from "../authStore";
+import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
+import { FavouritesManager } from "../../services/FavouritesManager";
 
 function fakeStorage() {
   const map = new Map<string, string>();
@@ -128,6 +130,23 @@ describe("signOut", () => {
     await useAuthStore.getState().signOut();
     expect(localMock.size).toBe(0);
     expect(sessionMock.size).toBe(0);
+  });
+
+  it("regression: resets RecentlyPlayedManager and FavouritesManager, not just their storage keys — the previous account's activity must not survive into the next guest session", async () => {
+    // These singletons cache in memory once loaded; localStorage.clear()
+    // alone (asserted above) can't reach that cache. signOut() must call
+    // each manager's own clear method for this to actually take effect —
+    // this is the exact bug a real user hit: logged out, still saw the
+    // signed-in account's Recently Played list and its unread count.
+    RecentlyPlayedManager.recordRecentlyPlayed("ludo");
+    FavouritesManager.addFavourite("rummy");
+    expect(RecentlyPlayedManager.getRecentlyPlayed().length).toBe(1);
+    expect(FavouritesManager.getFavourites().length).toBe(1);
+
+    await useAuthStore.getState().signOut();
+
+    expect(RecentlyPlayedManager.getRecentlyPlayed()).toEqual([]);
+    expect(FavouritesManager.getFavourites()).toEqual([]);
   });
 
   it("resets auth state to a signed-out guest", async () => {

@@ -103,6 +103,27 @@ class FavouritesManagerService {
     }
   }
 
+  /**
+   * Reset to empty — for sign-out on a shared device, not routine use.
+   *
+   * A raw `localStorage.clear()` elsewhere can't reach this: `cache` is a
+   * private in-memory field on this singleton, so removing the storage key
+   * out from under it leaves `cache` — and everything reading it via
+   * useSyncExternalStore — showing the previous account's stale favourites
+   * until something calls this and notifies subscribers explicitly.
+   */
+  public clearFavourites(): void {
+    this.cache = [];
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      try {
+        localStorage.removeItem(FAVOURITES_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+    this.notify();
+  }
+
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

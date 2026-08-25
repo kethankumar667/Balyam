@@ -63,4 +63,23 @@ describe("RecentlyPlayedManager", () => {
     RecentlyPlayedManager.recordRecentlyPlayed("bingo");
     expect(callCount).toBe(1);
   });
+
+  it("regression: clearRecentlyPlayed resets the in-memory cache and notifies subscribers — a raw localStorage.clear() elsewhere cannot", () => {
+    RecentlyPlayedManager.recordRecentlyPlayed("ludo");
+    RecentlyPlayedManager.recordRecentlyPlayed("rummy");
+    expect(RecentlyPlayedManager.getRecentlyPlayed().length).toBe(2);
+
+    // Simulates sign-out's blanket storage wipe happening in a DIFFERENT
+    // module, which this singleton's private `cache` field can't see.
+    localStorage.clear();
+    expect(RecentlyPlayedManager.getRecentlyPlayed().length).toBe(2);
+
+    let notified = 0;
+    const unsub = RecentlyPlayedManager.subscribe(() => notified++);
+    RecentlyPlayedManager.clearRecentlyPlayed();
+    unsub();
+
+    expect(RecentlyPlayedManager.getRecentlyPlayed()).toEqual([]);
+    expect(notified).toBe(1);
+  });
 });

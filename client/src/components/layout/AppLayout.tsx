@@ -126,12 +126,16 @@ export default function AppLayout({
    * only a signed-in member sees the sample set, and only once auth has
    * actually resolved (`ready`) so a guest mid-load never gets a one-frame
    * flash of it.
+   *
+   * The `else` matters as much as the `if`: this is plain component state,
+   * not a store `signOut()` can reach, so without it a member's sample
+   * notifications — and the header's unread badge — survived sign-out
+   * untouched. This effect re-syncs on every isMember change, both ways.
    */
   const { isMember, ready } = useAuthStore();
   useEffect(() => {
-    if (ready && isMember) {
-      setNotifications(INITIAL_NOTIFICATIONS);
-    }
+    if (!ready) return;
+    setNotifications(isMember ? INITIAL_NOTIFICATIONS : []);
   }, [ready, isMember]);
 
   /**
