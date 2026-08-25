@@ -131,4 +131,30 @@ describe("RoomStore Characterization Suite", () => {
     expect(gangs[1]?.roomName).toBe("Gang 3");
     expect(gangs[2]?.roomName).toBe("Gang 2");
   });
+
+  it("regression: resetIdentity clears playerId/name/avatar/bio/region/seats/lastGangs together — reset() deliberately does not touch any of these", () => {
+    const store = useRoomStore.getState();
+    store.setPlayerId("p_12345");
+    store.setPlayerName("Kethan");
+    store.setAvatarId("avatar-3.png");
+    store.setBio("Loves Rummy");
+    store.setRegion("Tamil Nadu");
+    store.rememberSeat("ABC123", "p_111", "token_aaa");
+    // lastGangs holds OTHER players' names — a previously-flagged privacy
+    // concern on a device this app assumes gets shared/passed around.
+    store.recordLastGang("Gang 1", ["Alice", "Bob"]);
+
+    useRoomStore.getState().resetIdentity();
+
+    const state = useRoomStore.getState();
+    expect(state.playerId).toBeNull();
+    expect(state.playerName).toBe("");
+    expect(state.avatarId).toBeNull();
+    expect(state.bio).toBe("");
+    expect(state.region).toBe("India 🇮🇳");
+    expect(state.seats).toEqual({});
+    expect(state.seatFor("ABC123")).toBeNull();
+    expect(state.lastGangs).toEqual([]);
+    expect(storeMap.size).toBe(0);
+  });
 });

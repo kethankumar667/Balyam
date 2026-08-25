@@ -99,6 +99,18 @@ interface RoomStore {
   setRematch: (state: RematchState) => void;
   recordLastGang: (roomName: string, playerNames: string[]) => void;
   reset: () => void;
+  /**
+   * Everything about THIS device's play identity, back to a fresh guest.
+   *
+   * `reset()` only ever clears the active room session (roomState/
+   * gameState/messages) — it runs between rooms, with the device's
+   * identity deliberately surviving. Sign-out is different: it's the one
+   * moment someone has said "this is no longer me," so `seats` (bearer
+   * credentials for rooms this account was in) and `lastGangs` (OTHER
+   * players' names — a real, previously-flagged privacy concern on a
+   * shared device) need to go too, not just playerName/avatarId.
+   */
+  resetIdentity: () => void;
 }
 
 export interface LastGangEntry {
@@ -117,6 +129,7 @@ const AVATAR_KEY = "mpg.avatar";
 // renaming them would orphan whatever a returning player already has saved.
 const BIO_KEY = "bhalyam.profile.bio";
 const REGION_KEY = "bhalyam.profile.region";
+const DEFAULT_REGION = "India 🇮🇳";
 
 /** Rooms remembered at once. Old codes are dead the moment their room is. */
 const MAX_REMEMBERED_SEATS = 12;
@@ -185,7 +198,7 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   playerName: safeGetStorage(STORED_NAME_KEY) ?? "",
   avatarId: safeGetStorage(AVATAR_KEY),
   bio: safeGetStorage(BIO_KEY) ?? "",
-  region: safeGetStorage(REGION_KEY) ?? "India 🇮🇳",
+  region: safeGetStorage(REGION_KEY) ?? DEFAULT_REGION,
   seats: loadSeats(),
   roomState: null,
   gameState: null,
@@ -277,6 +290,30 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       lastError: null,
       rematch: idleRematch,
     }),
+
+  resetIdentity: () => {
+    // signOut() already ran a blanket localStorage.clear() by the time this
+    // is called — these removeItem calls are defensive, not load-bearing,
+    // for a resetIdentity() call from anywhere else in the future. The
+    // in-memory set() below is what actually matters: it's the part a
+    // storage clear alone can never reach.
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      for (const key of [STORED_ID_KEY, STORED_NAME_KEY, AVATAR_KEY, BIO_KEY, REGION_KEY, SEATS_KEY, LAST_GANGS_KEY]) {
+        try {
+          localStorage.removeItem(key);
+        } catch {}
+      }
+    }
+    set({
+      playerId: null,
+      playerName: "",
+      avatarId: null,
+      bio: "",
+      region: DEFAULT_REGION,
+      seats: {},
+      lastGangs: [],
+    });
+  },
 }));
 
 const EMPTY_PLAYERS: Player[] = [];

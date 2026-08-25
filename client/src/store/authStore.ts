@@ -338,8 +338,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch {}
     RecentlyPlayedManager.clearRecentlyPlayed();
     FavouritesManager.clearFavourites();
-    useRoomStore.getState().setPlayerName("");
-    useRoomStore.getState().setAvatarId(null);
+    // Covers playerId/playerName/avatarId/bio/region AND seats (room seat
+    // credentials) and lastGangs (other players' names — flagged
+    // separately as a real privacy concern on a shared device). All are
+    // reactive roomStore state, which the earlier localStorage.clear()
+    // cannot reach any more than it could RecentlyPlayedManager's cache.
+    useRoomStore.getState().resetIdentity();
     set({
       ...GUEST,
       userId: null,

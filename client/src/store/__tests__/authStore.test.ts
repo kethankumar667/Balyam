@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { metadataDisplayName, useAuthStore } from "../authStore";
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
 import { FavouritesManager } from "../../services/FavouritesManager";
+import { useRoomStore } from "../roomStore";
 
 function fakeStorage() {
   const map = new Map<string, string>();
@@ -147,6 +148,18 @@ describe("signOut", () => {
 
     expect(RecentlyPlayedManager.getRecentlyPlayed()).toEqual([]);
     expect(FavouritesManager.getFavourites()).toEqual([]);
+  });
+
+  it("regression: resets roomStore's seats and lastGangs — bearer room credentials and other players' names must not survive into the next guest session on a shared device", async () => {
+    useRoomStore.getState().rememberSeat("ABC123", "p_111", "token_aaa");
+    useRoomStore.getState().recordLastGang("Gang 1", ["Alice", "Bob"]);
+    expect(useRoomStore.getState().seatFor("ABC123")).not.toBeNull();
+    expect(useRoomStore.getState().lastGangs.length).toBe(1);
+
+    await useAuthStore.getState().signOut();
+
+    expect(useRoomStore.getState().seatFor("ABC123")).toBeNull();
+    expect(useRoomStore.getState().lastGangs).toEqual([]);
   });
 
   it("resets auth state to a signed-out guest", async () => {
