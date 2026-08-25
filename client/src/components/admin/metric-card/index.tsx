@@ -62,11 +62,11 @@ export default function MetricCard({
 
         {progressPct !== undefined && (
           <div className="mt-3">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-zinc-400 mb-1">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--chrome-ink-soft)] mb-1">
               <span>Capacity Utilization</span>
               <span>{progressPct}%</span>
             </div>
-            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-zinc-800 overflow-hidden">
+            <div className="w-full h-2 rounded-full bg-[var(--chrome-control)] overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
                 style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
@@ -77,14 +77,14 @@ export default function MetricCard({
       </div>
 
       {subMetrics.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/80 grid grid-cols-2 gap-2">
+        <div className="mt-4 pt-3 border-t border-[var(--chrome-hairline)] grid grid-cols-2 gap-2">
           {subMetrics.map((sm) => (
             <div key={sm.label} className="flex flex-col">
-              <span className="text-[10px] text-slate-400 dark:text-zinc-500 uppercase font-semibold">
+              <span className="text-[10px] text-[var(--chrome-ink-soft)] uppercase font-semibold">
                 {sm.label}
               </span>
               <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                <span className="text-xs font-bold text-[var(--chrome-ink)]">
                   {sm.value}
                 </span>
                 {sm.change && (
@@ -94,7 +94,7 @@ export default function MetricCard({
                         ? "text-emerald-500"
                         : sm.changeType === "negative"
                         ? "text-rose-500"
-                        : "text-slate-400"
+                        : "text-[var(--chrome-ink-soft)]"
                     }`}
                   >
                     {sm.change}

@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   RefreshCw,
   Search,
+  Filter,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
@@ -46,11 +47,11 @@ const MOCK_LEADERBOARD: LeaderboardPlayer[] = [
     name: "Kethan Kumar",
     avatar: "👑",
     game: "Word Building",
-    eloRating: 2150,
-    wins: 142,
+    eloRating: 3250,
+    wins: 284,
     losses: 22,
-    winRate: "86.5%",
-    longestStreak: 18,
+    winRate: "92.8%",
+    longestStreak: 28,
     season: "Season 2",
     isVerified: true,
   },
@@ -61,11 +62,11 @@ const MOCK_LEADERBOARD: LeaderboardPlayer[] = [
     name: "Swathi Pillai",
     avatar: "🥈",
     game: "Word Building",
-    eloRating: 2040,
-    wins: 118,
-    losses: 29,
-    winRate: "80.2%",
-    longestStreak: 12,
+    eloRating: 3040,
+    wins: 218,
+    losses: 39,
+    winRate: "84.8%",
+    longestStreak: 16,
     season: "Season 2",
     isVerified: true,
   },
@@ -76,67 +77,82 @@ const MOCK_LEADERBOARD: LeaderboardPlayer[] = [
     name: "Meera Nair",
     avatar: "🥉",
     game: "Ludo",
-    eloRating: 1980,
-    wins: 97,
-    losses: 35,
-    winRate: "73.5%",
-    longestStreak: 9,
+    eloRating: 2890,
+    wins: 197,
+    losses: 45,
+    winRate: "81.4%",
+    longestStreak: 12,
     season: "Season 2",
     isVerified: true,
   },
   {
     rank: 4,
-    prevRank: 6,
+    prevRank: 4,
     id: "p-04",
     name: "Rahul Verma",
     avatar: "⚡",
     game: "Ludo",
-    eloRating: 1890,
-    wins: 92,
-    losses: 41,
-    winRate: "69.1%",
-    longestStreak: 7,
-    season: "Season 2",
-    isVerified: true,
-  },
-  {
-    rank: 5,
-    prevRank: 4,
-    id: "p-05",
-    name: "Miss Lakshmi",
-    avatar: "🎯",
-    game: "UNO",
-    eloRating: 1820,
-    wins: 110,
-    losses: 54,
-    winRate: "67.0%",
+    eloRating: 2450,
+    wins: 142,
+    losses: 61,
+    winRate: "69.9%",
     longestStreak: 8,
     season: "Season 2",
     isVerified: true,
   },
   {
+    rank: 4,
+    prevRank: 8,
+    id: "p-05",
+    name: "Sir Krishna (Tied #4)",
+    avatar: "🎯",
+    game: "Ludo",
+    eloRating: 2450,
+    wins: 140,
+    losses: 59,
+    winRate: "70.3%",
+    longestStreak: 9,
+    season: "Season 2",
+    isVerified: true,
+  },
+  {
     rank: 6,
-    prevRank: 5,
+    prevRank: 2,
     id: "p-06",
-    name: "Tanmay Joshi",
-    avatar: "🔥",
-    game: "Rummy",
-    eloRating: 1790,
-    wins: 81,
-    losses: 46,
-    winRate: "63.7%",
-    longestStreak: 6,
+    name: "Miss Lakshmi (Slump)",
+    avatar: "📉",
+    game: "UNO",
+    eloRating: 2180,
+    wins: 110,
+    losses: 84,
+    winRate: "56.7%",
+    longestStreak: 4,
     season: "Season 2",
     isVerified: true,
   },
   {
     rank: 7,
-    prevRank: 8,
+    prevRank: 5,
     id: "p-07",
+    name: "Tanmay Joshi",
+    avatar: "🔥",
+    game: "Rummy",
+    eloRating: 1990,
+    wins: 81,
+    losses: 66,
+    winRate: "55.1%",
+    longestStreak: 6,
+    season: "Season 2",
+    isVerified: true,
+  },
+  {
+    rank: 8,
+    prevRank: 9,
+    id: "p-08",
     name: "Divya Balan",
     avatar: "🌟",
     game: "Word Building",
-    eloRating: 1760,
+    eloRating: 1860,
     wins: 78,
     losses: 44,
     winRate: "63.9%",
@@ -145,9 +161,9 @@ const MOCK_LEADERBOARD: LeaderboardPlayer[] = [
     isVerified: true,
   },
   {
-    rank: 8,
+    rank: 9,
     prevRank: 7,
-    id: "p-08",
+    id: "p-09",
     name: "Arjun Das",
     avatar: "🚀",
     game: "Dots & Boxes",
@@ -158,6 +174,21 @@ const MOCK_LEADERBOARD: LeaderboardPlayer[] = [
     longestStreak: 7,
     season: "Season 2",
     isVerified: true,
+  },
+  {
+    rank: 10,
+    prevRank: 10,
+    id: "p-10",
+    name: "Guest_9921 (Provisional 🔰)",
+    avatar: "🌱",
+    game: "RPS",
+    eloRating: 1200,
+    wins: 3,
+    losses: 1,
+    winRate: "75.0%",
+    longestStreak: 3,
+    season: "Season 2",
+    isVerified: false,
   },
 ];
 
@@ -304,6 +335,54 @@ export default function AdminLeaderboardsPage() {
     },
   ];
 
+  const isSearchActive = search.trim() !== "";
+  const isFilterActive = gameFilter !== "all" || seasonFilter !== "all";
+
+  const emptyTitle = MOCK_LEADERBOARD.length === 0
+    ? "No leaderboard standings available"
+    : isSearchActive
+    ? "No ranked players found"
+    : isFilterActive
+    ? "No standings match selected filters"
+    : "No records found";
+
+  const emptyDesc = MOCK_LEADERBOARD.length === 0
+    ? "There are currently no competitive match results or ELO calculations on record."
+    : isSearchActive
+    ? `No ranked players match "${search}". Try searching by a different name or game.`
+    : isFilterActive
+    ? "No players meet the active game and season filter criteria."
+    : "There are currently no items matching your criteria.";
+
+  const emptyIcon = isSearchActive ? (
+    <Search className="w-6 h-6" />
+  ) : isFilterActive ? (
+    <Filter className="w-6 h-6" />
+  ) : (
+    <Trophy className="w-6 h-6" />
+  );
+
+  const emptyAction = isSearchActive ? (
+    <button
+      type="button"
+      onClick={() => setSearch("")}
+      className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors cursor-pointer"
+    >
+      Clear Search
+    </button>
+  ) : isFilterActive ? (
+    <button
+      type="button"
+      onClick={() => {
+        setGameFilter("all");
+        setSeasonFilter("all");
+      }}
+      className="px-3.5 py-1.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] transition-colors cursor-pointer"
+    >
+      Reset Filters
+    </button>
+  ) : undefined;
+
   return (
     <AdminLayout>
       <PageHeader
@@ -331,7 +410,7 @@ export default function AdminLeaderboardsPage() {
       )}
 
       {/* Top 3 Champions Podium Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6">
         {/* 2nd Place Silver */}
         <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col items-center text-center relative overflow-hidden order-2 md:order-1">
           <div className="w-12 h-12 rounded-full bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] flex items-center justify-center text-2xl mb-2">
@@ -348,31 +427,31 @@ export default function AdminLeaderboardsPage() {
         </div>
 
         {/* 1st Place Gold Champion */}
-        <div className="p-6 rounded-2xl bg-[var(--chrome-panel)] border-2 border-amber-500 shadow-md flex flex-col items-center text-center relative overflow-hidden order-1 md:order-2">
+        <div className="p-6 rounded-2xl bg-gradient-to-b from-amber-500/15 via-[var(--chrome-panel)] to-[var(--chrome-panel)] border-2 border-amber-500/40 shadow-xs flex flex-col items-center text-center relative overflow-hidden order-1 md:order-2">
           <div className="absolute top-2 right-2">
-            <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 font-black text-[10px] uppercase shadow-xs">
-              CHAMPION
+            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-zinc-950 font-black text-[10px] uppercase shadow-xs">
+              Champion
             </span>
           </div>
-          <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-500 flex items-center justify-center text-3xl mb-2 shadow-md">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-yellow-400 border-2 border-amber-300 flex items-center justify-center text-3xl mb-2 shadow-xs text-zinc-950">
             👑
           </div>
-          <span className="text-[11px] uppercase font-black text-amber-500">Rank #1 Gold</span>
+          <span className="text-xs uppercase font-extrabold text-amber-600 dark:text-amber-400">Rank #1 Champion</span>
           <h3 className="font-black text-[var(--chrome-ink)] text-lg mt-0.5">
             {top3[0]?.name}
           </h3>
-          <span className="text-xs text-[var(--chrome-ink-soft)] font-medium">{top3[0]?.game}</span>
-          <div className="mt-3 px-4 py-1.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono font-black text-sm border border-amber-500/40">
+          <span className="text-xs text-[var(--chrome-ink-soft)]">{top3[0]?.game} Division</span>
+          <div className="mt-3 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 font-mono font-black text-zinc-950 text-xs shadow-xs">
             {top3[0]?.eloRating} ELO ({top3[0]?.winRate} Win Rate)
           </div>
         </div>
 
         {/* 3rd Place Bronze */}
-        <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col items-center text-center relative overflow-hidden order-3 md:order-3">
-          <div className="w-12 h-12 rounded-full bg-amber-900/15 border-2 border-amber-800 flex items-center justify-center text-2xl mb-2">
+        <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col items-center text-center relative overflow-hidden order-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] flex items-center justify-center text-2xl mb-2">
             🥉
           </div>
-          <span className="text-[11px] uppercase font-bold text-amber-700 dark:text-amber-500">Rank #3 Bronze</span>
+          <span className="text-[11px] uppercase font-bold text-[var(--chrome-ink-soft)]">Rank #3 Bronze</span>
           <h3 className="font-extrabold text-[var(--chrome-ink)] text-base mt-0.5">
             {top3[2]?.name}
           </h3>
@@ -404,6 +483,10 @@ export default function AdminLeaderboardsPage() {
         columns={columns}
         data={filteredPlayers}
         onRowClick={(row) => setSelectedPlayer(row)}
+        emptyMessage={emptyTitle}
+        emptyDescription={emptyDesc}
+        emptyIcon={emptyIcon}
+        emptyAction={emptyAction}
       />
 
       {/* Player Detail Drawer */}

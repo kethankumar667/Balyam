@@ -13,11 +13,14 @@ import {
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
 import StatCard from "../../../components/admin/stat-card";
+import FilterBar, { type FilterOption } from "../../../components/admin/filter-bar";
+import EmptyState from "../../../components/admin/empty-state";
 import SearchBar from "../../../components/admin/search-bar";
 import StatusBadge from "../../../components/admin/status-badge";
 import DetailDrawer from "../../../components/admin/detail-drawer";
 import InfoCard from "../../../components/admin/info-card";
 import MockDataBanner from "../../../components/admin/mock-data-banner";
+import { Search, Filter } from "lucide-react";
 
 interface FeatureFlag {
   id: string;
@@ -112,15 +115,42 @@ const INITIAL_FLAGS: FeatureFlag[] = [
 export default function AdminFeatureFlagsPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>(INITIAL_FLAGS);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedFlag, setSelectedFlag] = useState<FeatureFlag | null>(null);
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
 
-  const filteredFlags = flags.filter(
-    (f) =>
+  const filteredFlags = flags.filter((f) => {
+    const matchesSearch =
       f.name.toLowerCase().includes(search.toLowerCase()) ||
       f.key.toLowerCase().includes(search.toLowerCase()) ||
-      f.gameScope.toLowerCase().includes(search.toLowerCase())
-  );
+      f.gameScope.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "enabled" && f.isEnabled) ||
+      (statusFilter === "disabled" && !f.isEnabled) ||
+      (statusFilter === "production" && f.environment === "production") ||
+      (statusFilter === "canary" && f.environment === "canary");
+    return matchesSearch && matchesStatus;
+  });
+
+  const isSearchActive = search.trim() !== "";
+  const isFilterActive = statusFilter !== "all";
+
+  const filters: FilterOption[] = [
+    {
+      id: "status",
+      label: "State & Env",
+      value: statusFilter,
+      options: [
+        { label: "All Flags", value: "all" },
+        { label: "Enabled Only", value: "enabled" },
+        { label: "Disabled Only", value: "disabled" },
+        { label: "Production", value: "production" },
+        { label: "Canary", value: "canary" },
+      ],
+      onChange: setStatusFilter,
+    },
+  ];
 
   const handleToggle = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -163,6 +193,8 @@ export default function AdminFeatureFlagsPage() {
         return f;
       })
     );
+    setSaveAlert(`Preview updated locally — rollout set to ${pct}%. No changes were sent to the server.`);
+    setTimeout(() => setSaveAlert(null), 3000);
   };
 
   const activeCount = flags.filter((f) => f.isEnabled).length;
@@ -171,8 +203,8 @@ export default function AdminFeatureFlagsPage() {
   return (
     <AdminLayout>
       <PageHeader
-        title="Dynamic Feature Flags"
-        description="Safely roll out game mechanics, trigger circuit breakers, and tune rollout percentages across production and canary tiers."
+        title="Feature Flags & Rollouts"
+        description="Safely gate gameplay capabilities, roll out live experiments gradually, and manage emergency circuit breakers."
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Feature Flags" }]}
         actions={
           <button
@@ -188,7 +220,7 @@ export default function AdminFeatureFlagsPage() {
         }
       />
       <span id="create-flag-unavailable" className="sr-only">
-        Not available in this preview — this page uses local demonstration data only, and no flag can be created.
+        Not available in this preview — this page uses local demonstration data only, and new flags cannot be created.
       </span>
 
       <MockDataBanner kind="mock" />
@@ -200,7 +232,7 @@ export default function AdminFeatureFlagsPage() {
       )}
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatCard
           title="Active Feature Toggles"
           value={`${activeCount} / ${flags.length}`}
@@ -221,95 +253,145 @@ export default function AdminFeatureFlagsPage() {
         />
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-4">
+      {/* Search & Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center justify-between">
         <SearchBar
           value={search}
           onChange={setSearch}
           placeholder="Search by flag name, key, or game scope..."
         />
+        <FilterBar
+          filters={filters}
+          onReset={() => setStatusFilter("all")}
+        />
       </div>
 
-      {/* Flags List Cards */}
-      <div className="space-y-3">
-        {filteredFlags.map((flag) => (
-          <div
-            key={flag.id}
-            onClick={() => setSelectedFlag(flag)}
-            className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs hover:border-amber-500/60 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="font-bold text-[var(--chrome-ink)] text-sm">
-                  {flag.name}
-                </span>
-
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                    flag.environment === "production"
-                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                      : flag.environment === "canary"
-                      ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                      : "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] border border-[var(--chrome-border)]"
-                  }`}
-                >
-                  {flag.environment}
-                </span>
-
-                <span className="px-2 py-0.5 rounded bg-[var(--chrome-control)] text-[11px] font-bold text-[var(--chrome-ink)] border border-[var(--chrome-border)]">
-                  {flag.gameScope}
-                </span>
-
-                {flag.isCircuitBreaker && (
-                  <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 text-[10px] font-bold border border-rose-500/30">
-                    CIRCUIT BREAKER
-                  </span>
-                )}
-              </div>
-
-              <p className="text-xs text-[var(--chrome-ink-soft)] mt-1 line-clamp-1">
-                {flag.description}
-              </p>
-
-              <div className="flex items-center gap-3 mt-2 font-mono text-[11px] text-[var(--chrome-ink-soft)]">
-                <span>{flag.key}</span>
-                <span>•</span>
-                <span>Rollout: {flag.rolloutPercentage}%</span>
-                <span>•</span>
-                <span>Updated: {flag.lastModified}</span>
-              </div>
-            </div>
-
-            {/* Toggle & Percentage quick slider */}
-            <div className="flex items-center gap-4 flex-shrink-0 self-end sm:self-auto">
-              <div className="hidden sm:flex flex-col items-end">
-                <span className="text-[10px] uppercase font-bold text-[var(--chrome-ink-soft)]">
-                  Rollout
-                </span>
-                <span className="text-xs font-bold font-mono text-[var(--chrome-ink)]">
-                  {flag.rolloutPercentage}%
-                </span>
-              </div>
-
+      {/* Flags List Cards or Empty States */}
+      {filteredFlags.length === 0 ? (
+        flags.length === 0 ? (
+          <EmptyState
+            title="No feature flags configured"
+            description="No rollout or experiment flags exist in the current configuration."
+            icon={<ToggleLeft className="w-6 h-6" />}
+          />
+        ) : isSearchActive ? (
+          <EmptyState
+            title="No feature flags found"
+            description={`No feature flags match "${search}". Try searching by a different name, key, or game scope.`}
+            icon={<Search className="w-6 h-6" />}
+            action={
               <button
                 type="button"
-                onClick={(e) => handleToggle(flag.id, e)}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                  flag.isEnabled ? "bg-amber-500" : "bg-zinc-300 dark:bg-zinc-700"
-                }`}
-                role="switch"
-                aria-checked={flag.isEnabled}
+                onClick={() => setSearch("")}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors cursor-pointer"
               >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                    flag.isEnabled ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
+                Clear Search
               </button>
+            }
+          />
+        ) : isFilterActive ? (
+          <EmptyState
+            title="No flags match active filter"
+            description="No feature flags meet the active state or environment filter criteria."
+            icon={<Filter className="w-6 h-6" />}
+            action={
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className="px-3.5 py-1.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] transition-colors cursor-pointer"
+              >
+                Reset Filters
+              </button>
+            }
+          />
+        ) : (
+          <EmptyState
+            title="No records found"
+            description="There are currently no feature flags matching your criteria."
+            icon={<ToggleLeft className="w-6 h-6" />}
+          />
+        )
+      ) : (
+        <div className="space-y-3">
+          {filteredFlags.map((flag) => (
+            <div
+              key={flag.id}
+              onClick={() => setSelectedFlag(flag)}
+              className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs hover:border-amber-500/60 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="font-bold text-[var(--chrome-ink)] text-sm">
+                    {flag.name}
+                  </span>
+
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                      flag.environment === "production"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                        : flag.environment === "canary"
+                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                        : "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] border border-[var(--chrome-border)]"
+                    }`}
+                  >
+                    {flag.environment}
+                  </span>
+
+                  <span className="px-2 py-0.5 rounded bg-[var(--chrome-control)] text-[11px] font-bold text-[var(--chrome-ink)] border border-[var(--chrome-border)]">
+                    {flag.gameScope}
+                  </span>
+
+                  {flag.isCircuitBreaker && (
+                    <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 text-[10px] font-bold border border-rose-500/30">
+                      CIRCUIT BREAKER
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-xs text-[var(--chrome-ink-soft)] mt-1 line-clamp-1">
+                  {flag.description}
+                </p>
+
+                <div className="flex items-center gap-3 mt-2 font-mono text-[11px] text-[var(--chrome-ink-soft)]">
+                  <span>{flag.key}</span>
+                  <span>•</span>
+                  <span>Rollout: {flag.rolloutPercentage}%</span>
+                  <span>•</span>
+                  <span>Updated: {flag.lastModified}</span>
+                </div>
+              </div>
+
+              {/* Toggle & Percentage quick slider */}
+              <div className="flex items-center gap-4 flex-shrink-0 self-end sm:self-auto">
+                <div className="hidden sm:flex flex-col items-end">
+                  <span className="text-[10px] uppercase font-bold text-[var(--chrome-ink-soft)]">
+                    Rollout
+                  </span>
+                  <span className="text-xs font-bold font-mono text-[var(--chrome-ink)]">
+                    {flag.rolloutPercentage}%
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => handleToggle(flag.id, e)}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                    flag.isEnabled ? "bg-amber-500" : "bg-zinc-300 dark:bg-zinc-700"
+                  }`}
+                  role="switch"
+                  aria-checked={flag.isEnabled}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      flag.isEnabled ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Feature Detail Drawer */}
       <DetailDrawer

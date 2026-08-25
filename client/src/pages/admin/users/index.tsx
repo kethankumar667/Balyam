@@ -13,6 +13,8 @@ import {
   Gamepad2,
   Mail,
   Calendar,
+  Search,
+  Filter,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
@@ -44,29 +46,29 @@ interface UserRow extends Record<string, unknown> {
 
 const MOCK_25_USERS: UserRow[] = [
   { id: "u-101", name: "Kethan Kumar", email: "kethan@bhalyam.io", role: "admin", status: "active", matchesPlayed: 142, winRate: "68%", eloRating: 1850, joinedDate: "Jan 12, 2026", lastActive: "Just now", favoriteGame: "Word Building" },
-  { id: "u-102", name: "Teacher Padma", email: "padma@bhalyam.io", role: "moderator", status: "active", matchesPlayed: 88, winRate: "54%", eloRating: 1620, joinedDate: "Feb 01, 2026", lastActive: "10 mins ago", favoriteGame: "Word Building" },
-  { id: "u-103", name: "Master Ravi", email: "ravi@bhalyam.io", role: "member", status: "active", matchesPlayed: 45, winRate: "42%", eloRating: 1420, joinedDate: "Feb 14, 2026", lastActive: "2 hrs ago", favoriteGame: "Rummy" },
+  { id: "u-102", name: "Teacher Padma (పద్మ)", email: "padma@bhalyam.io", role: "moderator", status: "active", matchesPlayed: 88, winRate: "54%", eloRating: 1620, joinedDate: "Feb 01, 2026", lastActive: "10 mins ago", favoriteGame: "Word Building" },
+  { id: "u-103", name: "Venkatasubramanian Ramaswamy Krishnamurthy", email: "v.ramaswamy.krishnamurthy@enterprise.co.in", role: "member", status: "active", matchesPlayed: 45, winRate: "42%", eloRating: 1420, joinedDate: "Feb 14, 2026", lastActive: "2 hrs ago", favoriteGame: "Rummy" },
   { id: "u-104", name: "Sir Krishna", email: "krishna@bhalyam.io", role: "member", status: "warning", matchesPlayed: 19, winRate: "35%", eloRating: 1200, joinedDate: "Feb 18, 2026", lastActive: "1 day ago", favoriteGame: "Dots & Boxes" },
-  { id: "u-105", name: "Priya Sharma", email: "priya@gmail.com", role: "member", status: "active", matchesPlayed: 64, winRate: "58%", eloRating: 1540, joinedDate: "Jan 20, 2026", lastActive: "5 mins ago", favoriteGame: "Ludo" },
+  { id: "u-105", name: "राजेश कुमार Sharma 🎯", email: "rajesh.kumar.sharma@gmail.com", role: "member", status: "active", matchesPlayed: 64, winRate: "58%", eloRating: 1540, joinedDate: "Jan 20, 2026", lastActive: "5 mins ago", favoriteGame: "Ludo" },
   { id: "u-106", name: "Rahul Verma", email: "rahul@verma.net", role: "member", status: "active", matchesPlayed: 92, winRate: "61%", eloRating: 1690, joinedDate: "Jan 15, 2026", lastActive: "1 hr ago", favoriteGame: "Ludo" },
   { id: "u-107", name: "Miss Lakshmi", email: "lakshmi@bhalyam.io", role: "moderator", status: "active", matchesPlayed: 110, winRate: "63%", eloRating: 1710, joinedDate: "Jan 08, 2026", lastActive: "3 mins ago", favoriteGame: "UNO" },
-  { id: "u-108", name: "Ananya Iyer", email: "ananya.i@tech.in", role: "member", status: "active", matchesPlayed: 34, winRate: "50%", eloRating: 1380, joinedDate: "Feb 05, 2026", lastActive: "4 hrs ago", favoriteGame: "Snakes & Ladders" },
-  { id: "u-109", name: "Vikram Malhotra", email: "vikram@outlook.com", role: "member", status: "active", matchesPlayed: 73, winRate: "52%", eloRating: 1490, joinedDate: "Jan 25, 2026", lastActive: "Yesterday", favoriteGame: "Rummy" },
+  { id: "u-108", name: "Élodie Müller-François 🎮", email: "elodie.mueller@paris-gaming.fr", role: "member", status: "active", matchesPlayed: 34, winRate: "50%", eloRating: 1380, joinedDate: "Feb 05, 2026", lastActive: "4 hrs ago", favoriteGame: "Snakes & Ladders" },
+  { id: "u-109", name: "Vikram Malhotra", email: "vikram@outlook.com", role: "member", status: "active", matchesPlayed: 248, winRate: "59%", eloRating: 1720, joinedDate: "Mar 14, 2023", lastActive: "Yesterday", favoriteGame: "Rummy" },
   { id: "u-110", name: "Sneha Reddy", email: "sneha.r@gmail.com", role: "member", status: "active", matchesPlayed: 51, winRate: "47%", eloRating: 1350, joinedDate: "Feb 10, 2026", lastActive: "30 mins ago", favoriteGame: "Word Building" },
-  { id: "u-111", name: "Guest_4412", email: "guest-4412@temp.mpg", role: "guest", status: "inactive", matchesPlayed: 4, winRate: "25%", eloRating: 1050, joinedDate: "Today", lastActive: "6 hrs ago", favoriteGame: "Ludo" },
-  { id: "u-112", name: "Guest_8831", email: "guest-8831@temp.mpg", role: "guest", status: "inactive", matchesPlayed: 2, winRate: "0%", eloRating: 980, joinedDate: "Today", lastActive: "12 hrs ago", favoriteGame: "Dots & Boxes" },
+  { id: "u-111", name: "Guest_4412 (Unverified)", email: "guest-4412@temp.mpg", role: "guest", status: "inactive", matchesPlayed: 0, winRate: "0%", eloRating: 1000, joinedDate: "Jan 02, 2024", lastActive: "Never", favoriteGame: "Ludo" },
+  { id: "u-112", name: "Guest_8831 (Dormant)", email: "guest-8831@temp.mpg", role: "guest", status: "inactive", matchesPlayed: 2, winRate: "0%", eloRating: 980, joinedDate: "Nov 12, 2025", lastActive: "N/A", favoriteGame: "Dots & Boxes" },
   { id: "u-113", name: "Arjun Das", email: "arjun.das@corp.com", role: "member", status: "active", matchesPlayed: 85, winRate: "55%", eloRating: 1580, joinedDate: "Jan 18, 2026", lastActive: "20 mins ago", favoriteGame: "Word Building" },
   { id: "u-114", name: "Deepak Choudhury", email: "deepak@live.in", role: "member", status: "active", matchesPlayed: 42, winRate: "45%", eloRating: 1310, joinedDate: "Feb 08, 2026", lastActive: "2 days ago", favoriteGame: "Rummy" },
   { id: "u-115", name: "Meera Nair", email: "meera.nair@kerala.org", role: "member", status: "active", matchesPlayed: 97, winRate: "64%", eloRating: 1740, joinedDate: "Jan 10, 2026", lastActive: "15 mins ago", favoriteGame: "Ludo" },
-  { id: "u-116", name: "Rohan Kapoor", email: "rohan.k@delhi.in", role: "member", status: "critical", matchesPlayed: 28, winRate: "21%", eloRating: 1110, joinedDate: "Feb 12, 2026", lastActive: "3 days ago", favoriteGame: "UNO", isMuted: true },
+  { id: "u-116", name: "Rohan Kapoor (Suspended)", email: "rohan.k@delhi.in", role: "member", status: "critical", matchesPlayed: 28, winRate: "21%", eloRating: 1110, joinedDate: "Feb 12, 2026", lastActive: "3 months ago", favoriteGame: "UNO", isBanned: true, isMuted: true },
   { id: "u-117", name: "Kavita Rao", email: "kavita.rao@blr.in", role: "member", status: "active", matchesPlayed: 60, winRate: "53%", eloRating: 1470, joinedDate: "Jan 28, 2026", lastActive: "50 mins ago", favoriteGame: "Dots & Boxes" },
   { id: "u-118", name: "Suresh Menon", email: "suresh@menon.com", role: "member", status: "active", matchesPlayed: 39, winRate: "41%", eloRating: 1290, joinedDate: "Feb 11, 2026", lastActive: "Yesterday", favoriteGame: "Snakes & Ladders" },
   { id: "u-119", name: "Divya Balan", email: "divya.balan@chennai.in", role: "member", status: "active", matchesPlayed: 78, winRate: "59%", eloRating: 1610, joinedDate: "Jan 22, 2026", lastActive: "12 mins ago", favoriteGame: "Word Building" },
   { id: "u-120", name: "Manish Tiwari", email: "manish.tiwari@up.in", role: "member", status: "warning", matchesPlayed: 15, winRate: "33%", eloRating: 1150, joinedDate: "Feb 17, 2026", lastActive: "1 day ago", favoriteGame: "Ludo" },
-  { id: "u-121", name: "Guest_9921", email: "guest-9921@temp.mpg", role: "guest", status: "inactive", matchesPlayed: 3, winRate: "0%", eloRating: 950, joinedDate: "Today", lastActive: "8 hrs ago", favoriteGame: "RPS" },
+  { id: "u-121", name: "Guest_9921 (New Arrival)", email: "guest-9921@temp.mpg", role: "guest", status: "active", matchesPlayed: 1, winRate: "100%", eloRating: 1050, joinedDate: "Just now", lastActive: "2 mins ago", favoriteGame: "RPS" },
   { id: "u-122", name: "Aditi Sen", email: "aditi.sen@kolkata.in", role: "member", status: "active", matchesPlayed: 56, winRate: "48%", eloRating: 1390, joinedDate: "Feb 03, 2026", lastActive: "40 mins ago", favoriteGame: "UNO" },
   { id: "u-123", name: "Tanmay Joshi", email: "tanmay.j@pune.in", role: "member", status: "active", matchesPlayed: 81, winRate: "57%", eloRating: 1590, joinedDate: "Jan 19, 2026", lastActive: "25 mins ago", favoriteGame: "Rummy" },
-  { id: "u-124", name: "Harish Gupta", email: "harish@gupta.biz", role: "member", status: "active", matchesPlayed: 49, winRate: "46%", eloRating: 1340, joinedDate: "Feb 07, 2026", lastActive: "3 hrs ago", favoriteGame: "Dots & Boxes" },
+  { id: "u-124", name: "సూర్య ప్రకాష్ (Surya 👑)", email: "surya.prakash@hyderabad.in", role: "member", status: "active", matchesPlayed: 112, winRate: "67%", eloRating: 1795, joinedDate: "Jan 03, 2026", lastActive: "Just now", favoriteGame: "Word Building" },
   { id: "u-125", name: "Swathi Pillai", email: "swathi.pillai@trivandrum.in", role: "member", status: "active", matchesPlayed: 104, winRate: "66%", eloRating: 1780, joinedDate: "Jan 05, 2026", lastActive: "5 mins ago", favoriteGame: "Word Building" },
 ];
 
@@ -227,6 +229,54 @@ export default function AdminUsersPage() {
     },
   ];
 
+  const isSearchActive = search.trim() !== "";
+  const isFilterActive = roleFilter !== "all" || statusFilter !== "all";
+
+  const emptyTitle = usersList.length === 0
+    ? "No player accounts registered"
+    : isSearchActive
+    ? "No search results found"
+    : isFilterActive
+    ? "No users match selected filters"
+    : "No records found";
+
+  const emptyDesc = usersList.length === 0
+    ? "There are currently no registered users in the database."
+    : isSearchActive
+    ? `No users match "${search}". Try searching with a different name or email.`
+    : isFilterActive
+    ? "No players meet the active role and status filter criteria."
+    : "There are currently no items matching your criteria.";
+
+  const emptyIcon = isSearchActive ? (
+    <Search className="w-6 h-6" />
+  ) : isFilterActive ? (
+    <Filter className="w-6 h-6" />
+  ) : (
+    <Users className="w-6 h-6" />
+  );
+
+  const emptyAction = isSearchActive ? (
+    <button
+      type="button"
+      onClick={() => setSearch("")}
+      className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors cursor-pointer"
+    >
+      Clear Search
+    </button>
+  ) : isFilterActive ? (
+    <button
+      type="button"
+      onClick={() => {
+        setRoleFilter("all");
+        setStatusFilter("all");
+      }}
+      className="px-3.5 py-1.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] transition-colors cursor-pointer"
+    >
+      Reset Filters
+    </button>
+  ) : undefined;
+
   return (
     <AdminLayout>
       <PageHeader
@@ -259,7 +309,7 @@ export default function AdminUsersPage() {
       )}
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatCard
           title="Total Registered Accounts"
           value="1,248"
@@ -301,6 +351,10 @@ export default function AdminUsersPage() {
         columns={columns}
         data={paginatedUsers}
         onRowClick={(row) => setSelectedUser(row)}
+        emptyMessage={emptyTitle}
+        emptyDescription={emptyDesc}
+        emptyIcon={emptyIcon}
+        emptyAction={emptyAction}
         pagination={{
           currentPage: page,
           totalPages: totalPages || 1,
@@ -325,8 +379,8 @@ export default function AdminUsersPage() {
                 onClick={() => handleToggleMute(selectedUser)}
                 className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 cursor-pointer ${
                   selectedUser.isMuted
-                    ? "bg-amber-500 text-white border-amber-600"
-                    : "bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-200"
+                    ? "bg-amber-500 text-zinc-950 border-amber-600 font-black shadow-xs"
+                    : "bg-[var(--chrome-control)] text-[var(--chrome-ink)] border-[var(--chrome-border)] hover:bg-[var(--chrome-control-hi)]"
                 }`}
               >
                 <VolumeX className="w-3.5 h-3.5" />

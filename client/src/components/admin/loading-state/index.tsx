@@ -13,11 +13,11 @@ export default function LoadingState({
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={`skel-c-${i}`}
-            className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 animate-pulse space-y-3"
+            className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] animate-pulse space-y-3 shadow-2xs"
           >
-            <div className="h-3 w-20 bg-slate-200 dark:bg-zinc-800 rounded" />
-            <div className="h-8 w-28 bg-slate-200 dark:bg-zinc-800 rounded" />
-            <div className="h-2.5 w-36 bg-slate-200 dark:bg-zinc-800 rounded mt-2" />
+            <div className="h-3 w-20 bg-[var(--chrome-control)] rounded" />
+            <div className="h-8 w-28 bg-[var(--chrome-control)] rounded" />
+            <div className="h-2.5 w-36 bg-[var(--chrome-control)] rounded mt-2" />
           </div>
         ))}
       </div>
@@ -27,14 +27,14 @@ export default function LoadingState({
   if (variant === "chart") {
     return (
       <div
-        className={`p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 animate-pulse space-y-4 ${className}`}
+        className={`p-6 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] animate-pulse space-y-4 shadow-2xs ${className}`}
       >
         <div className="flex items-center justify-between">
-          <div className="h-4 w-32 bg-slate-200 dark:bg-zinc-800 rounded" />
-          <div className="h-6 w-20 bg-slate-200 dark:bg-zinc-800 rounded" />
+          <div className="h-4 w-32 bg-[var(--chrome-control)] rounded" />
+          <div className="h-6 w-20 bg-[var(--chrome-control)] rounded" />
         </div>
-        <div className="h-64 w-full bg-slate-100 dark:bg-zinc-800/50 rounded-xl flex items-center justify-center">
-          <span className="text-xs text-slate-400 dark:text-zinc-600 font-medium">
+        <div className="h-64 w-full bg-[var(--chrome-control)]/50 rounded-xl flex items-center justify-center border border-[var(--chrome-hairline)]">
+          <span className="text-xs text-[var(--chrome-ink-soft)] font-medium">
             Loading visual analytics...
           </span>
         </div>
@@ -44,17 +44,17 @@ export default function LoadingState({
 
   return (
     <div
-      className={`rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 overflow-hidden ${className}`}
+      className={`rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] overflow-hidden shadow-2xs ${className}`}
     >
-      <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/30 animate-pulse">
-        <div className="h-4 w-40 bg-slate-200 dark:bg-zinc-800 rounded" />
+      <div className="p-4 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-control)]/40 animate-pulse">
+        <div className="h-4 w-40 bg-[var(--chrome-control)] rounded" />
       </div>
-      <div className="divide-y divide-slate-100 dark:divide-zinc-800/60 p-4 space-y-3 animate-pulse">
+      <div className="divide-y divide-[var(--chrome-hairline)] p-4 space-y-3 animate-pulse">
         {Array.from({ length: rows }).map((_, i) => (
           <div key={`skel-r-${i}`} className="flex items-center justify-between pt-2">
-            <div className="h-4 w-48 bg-slate-200 dark:bg-zinc-800 rounded" />
-            <div className="h-4 w-20 bg-slate-200 dark:bg-zinc-800 rounded" />
-            <div className="h-4 w-16 bg-slate-200 dark:bg-zinc-800 rounded" />
+            <div className="h-4 w-48 bg-[var(--chrome-control)] rounded" />
+            <div className="h-4 w-20 bg-[var(--chrome-control)] rounded" />
+            <div className="h-4 w-16 bg-[var(--chrome-control)] rounded" />
           </div>
         ))}
       </div>
