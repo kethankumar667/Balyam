@@ -7,6 +7,7 @@ interface SearchBarProps {
   placeholder?: string;
   debounceMs?: number;
   loading?: boolean;
+  disabled?: boolean;
   shortcut?: string;
   className?: string;
   onClear?: () => void;
@@ -18,6 +19,7 @@ export default function SearchBar({
   placeholder = "Search...",
   debounceMs = 250,
   loading = false,
+  disabled = false,
   shortcut,
   className = "",
   onClear,
@@ -63,11 +65,13 @@ export default function SearchBar({
         value={internalValue}
         onChange={handleChange}
         placeholder={placeholder}
-        className="w-full pl-9 pr-14 py-2 text-sm rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] text-[var(--chrome-ink)] placeholder-[var(--chrome-ink-soft)] focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-all shadow-2xs"
+        disabled={disabled}
+        aria-disabled={disabled}
+        className="w-full pl-9 pr-14 py-2 text-sm rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] text-[var(--chrome-ink)] placeholder-[var(--chrome-ink-soft)] focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-all shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--chrome-control)]"
       />
 
       <div className="absolute right-2.5 flex items-center gap-1">
-        {internalValue ? (
+        {internalValue && !disabled ? (
           <button
             type="button"
             onClick={handleClear}

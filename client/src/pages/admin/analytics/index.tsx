@@ -36,35 +36,35 @@ import MockDataBanner from "../../../components/admin/mock-data-banner";
 
 const USER_GROWTH_DATA = [
   { month: "Sep", dau: 420, mau: 1200 },
-  { month: "Oct", dau: 650, mau: 1850 },
+  { month: "Oct (Outage)", dau: 180, mau: 1450 }, // Upstream transit drop anomaly
   { month: "Nov", dau: 890, mau: 2400 },
-  { month: "Dec", dau: 1100, mau: 3100 },
-  { month: "Jan", dau: 1280, mau: 3650 },
-  { month: "Feb", dau: 1420, mau: 4120 },
+  { month: "Dec (Holiday Spike)", dau: 2850, mau: 4800 }, // Massive holiday tournament spike
+  { month: "Jan", dau: 1680, mau: 4200 },
+  { month: "Feb (Tournament Finale)", dau: 3420, mau: 5650 }, // Championship finale surge
 ];
 
 const COMPLETION_RATE_DATA = [
   { day: "Mon", completed: 88, abandoned: 12 },
-  { day: "Tue", completed: 91, abandoned: 9 },
+  { day: "Tue (Maint Window)", completed: 24, abandoned: 76 }, // Maintenance drop anomaly
   { day: "Wed", completed: 89, abandoned: 11 },
-  { day: "Thu", completed: 94, abandoned: 6 },
+  { day: "Thu (Zero Drop)", completed: 0, abandoned: 100 }, // ISP gateway cut anomaly
   { day: "Fri", completed: 96, abandoned: 4 },
-  { day: "Sat", completed: 95, abandoned: 5 },
-  { day: "Sun", completed: 97, abandoned: 3 },
+  { day: "Sat (Peak)", completed: 98, abandoned: 2 },
+  { day: "Sun (Championship)", completed: 99, abandoned: 1 },
 ];
 
 const GAME_PIE_DATA = [
-  { name: "Ludo", value: 35, color: "#3b82f6" },
-  { name: "Word Building", value: 25, color: "#8b5cf6" },
-  { name: "Rummy", value: 20, color: "#ec4899" },
-  { name: "Dots & Boxes", value: 12, color: "#10b981" },
-  { name: "Others", value: 8, color: "#f59e0b" },
+  { name: "Ludo", value: 38, color: "#3b82f6" },
+  { name: "Word Building", value: 28, color: "#8b5cf6" },
+  { name: "Rummy", value: 18, color: "#ec4899" },
+  { name: "Dots & Boxes", value: 10, color: "#10b981" },
+  { name: "Hand Cricket & Retro", value: 6, color: "#f59e0b" },
 ];
 
 const RETENTION_COHORTS = [
   { cohort: "Feb 01 - Feb 07", users: 340, d1: "74%", d7: "52%", d14: "44%", d30: "38%" },
-  { cohort: "Feb 08 - Feb 14", users: 410, d1: "78%", d7: "58%", d14: "49%", d30: "42%" },
-  { cohort: "Feb 15 - Feb 21", users: 520, d1: "82%", d7: "64%", d14: "53%", d30: "—" },
+  { cohort: "Feb 08 - Feb 14 (Patch Anomaly)", users: 410, d1: "38%", d7: "22%", d14: "18%", d30: "12%" }, // Client release v1.8 crash regression
+  { cohort: "Feb 15 - Feb 21 (Championship)", users: 890, d1: "92%", d7: "78%", d14: "68%", d30: "—" }, // Viral tournament cohort
   { cohort: "Feb 22 - Present", users: 290, d1: "85%", d7: "—", d14: "—", d30: "—" },
 ];
 

@@ -122,8 +122,11 @@ describe("Admin Matches Page — Search & Filter Empty States", () => {
 
   it("displays 'No matches meet selected filters' on zero-result filter combination", async () => {
     renderRoute(<AdminMatchesPage />);
+    const gameSelect = screen.getByLabelText("Game");
     const statusSelect = screen.getByLabelText("Status");
-    // Abandoned status has 0 entries in mock data
+
+    // Ludo + Abandoned combination has 0 entries
+    fireEvent.change(gameSelect, { target: { value: "Ludo" } });
     fireEvent.change(statusSelect, { target: { value: "abandoned" } });
 
     await waitFor(() => {
@@ -263,24 +266,67 @@ describe("Admin Dashboard, Analytics & Settings Pages — State Transitions", ()
     );
   });
 
-  it("renders AdminDashboardPage and syncs telemetry", () => {
+  it("renders AdminDashboardPage and shows a real refreshing state while syncing telemetry", async () => {
     renderRoute(<AdminDashboardPage />);
     expect(screen.getByText(/Command Center Overview/i)).toBeDefined();
+
     const syncBtn = screen.getByRole("button", { name: /Sync Telemetry/i });
+
+    // The page also fetches on mount (useEffect → fetchDashboardData), so the
+    // icon starts mid-spin from that initial load. Wait for it to settle
+    // before using it as a "not spinning" baseline for the click below.
+    await waitFor(() => {
+      expect(syncBtn.querySelector("svg")?.getAttribute("class")).not.toContain("animate-spin");
+    });
+
     fireEvent.click(syncBtn);
+
+    // setLoading(true) runs synchronously as the first statement in
+    // fetchDashboardData, before the awaited fetch resolves — so the
+    // spin class must be present immediately after the click, not just
+    // "eventually" once the mocked fetch settles.
+    expect(syncBtn.querySelector("svg")?.getAttribute("class")).toContain("animate-spin");
+
+    await waitFor(() => {
+      expect(syncBtn.querySelector("svg")?.getAttribute("class")).not.toContain("animate-spin");
+    });
   });
 
-  it("switches time ranges on AdminAnalyticsPage", () => {
+  it("switches time ranges on AdminAnalyticsPage and visibly re-selects the active range button", async () => {
     renderRoute(<AdminAnalyticsPage />);
-    const buttons = screen.getAllByRole("button", { name: /7D/i });
-    expect(buttons.length).toBeGreaterThan(0);
-    fireEvent.click(buttons[0]);
+
+    const thirtyDayBtn = screen.getByRole("button", { name: "30D" });
+    const sevenDayBtn = screen.getByRole("button", { name: "7D" });
+
+    // Default range is "30d" — confirm it starts as the active (gradient) button.
+    expect(thirtyDayBtn.className).toContain("from-amber-500");
+    expect(sevenDayBtn.className).not.toContain("from-amber-500");
+
+    fireEvent.click(sevenDayBtn);
+
+    // handleTimeRangeChange sets loading synchronously, which swaps the KPI
+    // grid and both charts for LoadingState — confirm that real transition
+    // happens (two chart placeholders render while loading is true).
+    expect(screen.getAllByText("Loading visual analytics...").length).toBeGreaterThan(0);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "7D" }).className).toContain("from-amber-500");
+    });
+    expect(screen.getByRole("button", { name: "30D" }).className).not.toContain("from-amber-500");
   });
 
-  it("switches tabs smoothly on AdminSettingsPage", () => {
+  it("switches tabs smoothly on AdminSettingsPage, swapping General content for Authentication content", async () => {
     renderRoute(<AdminSettingsPage />);
+
+    expect(screen.getByText("General Platform Identity")).toBeDefined();
+    expect(screen.queryByText("Authentication & Session Configuration")).toBeNull();
+
     const authTab = screen.getByRole("button", { name: /Authentication/i });
     fireEvent.click(authTab);
-    expect(authTab).toBeDefined();
+
+    await waitFor(() => {
+      expect(screen.getByText("Authentication & Session Configuration")).toBeDefined();
+    });
+    expect(screen.queryByText("General Platform Identity")).toBeNull();
   });
 });

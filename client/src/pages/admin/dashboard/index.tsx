@@ -48,13 +48,13 @@ interface LiveMatchRow extends Record<string, unknown> {
 
 const TRAFFIC_DATA = [
   { time: "00:00", matches: 6, players: 24 },
-  { time: "03:00", matches: 4, players: 16 },
+  { time: "03:00 (Maint Window)", matches: 0, players: 4 },
   { time: "06:00", matches: 8, players: 38 },
-  { time: "09:00", matches: 14, players: 78 },
-  { time: "12:00", matches: 22, players: 120 },
+  { time: "09:00", matches: 16, players: 92 },
+  { time: "12:00 (Lunch Burst)", matches: 34, players: 184 },
   { time: "15:00", matches: 28, players: 164 },
-  { time: "18:00", matches: 36, players: 210 },
-  { time: "21:00", matches: 42, players: 260 },
+  { time: "18:00", matches: 46, players: 280 },
+  { time: "21:00 (Championship Peak)", matches: 88, players: 520 },
   { time: "Now", matches: 18, players: 142 },
 ];
 
