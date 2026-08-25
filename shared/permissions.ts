@@ -82,6 +82,12 @@ export interface Capabilities {
   viewProfile: boolean;
   /** Access the Social Hub — friends, parties, shared history. Member-only. */
   viewSocial: boolean;
+  /** Access the Operational Admin Console (/admin/*). Admin/Super Admin only. */
+  accessAdminPanel: boolean;
+  /** Bypass game maintenance/coming-soon gates to test and play all catalog items. */
+  bypassMaintenance: boolean;
+  /** Unlock all platform features, experimental modes, and testing sandboxes. */
+  unlockAllFeatures: boolean;
 }
 
 const GUEST: Capabilities = {
@@ -98,6 +104,9 @@ const GUEST: Capabilities = {
   viewLeaderboards: false,
   viewProfile: false,
   viewSocial: false,
+  accessAdminPanel: false,
+  bypassMaintenance: false,
+  unlockAllFeatures: false,
 };
 
 const MEMBER: Capabilities = {
@@ -114,9 +123,32 @@ const MEMBER: Capabilities = {
   viewLeaderboards: true,
   viewProfile: true,
   viewSocial: true,
+  accessAdminPanel: false,
+  bypassMaintenance: false,
+  unlockAllFeatures: false,
+};
+
+const SUPER_ADMIN: Capabilities = {
+  hostSharedRoom: true,
+  joinByCode: true,
+  scanInvite: true,
+  acceptInvite: true,
+  soloVsBots: true,
+  passAndPlay: true,
+  editProfile: true,
+  voiceChat: true,
+  spectate: true,
+  viewTournaments: true,
+  viewLeaderboards: true,
+  viewProfile: true,
+  viewSocial: true,
+  accessAdminPanel: true,
+  bypassMaintenance: true,
+  unlockAllFeatures: true,
 };
 
 export function capabilitiesFor(kind: AccountKind): Capabilities {
+  if (kind === "super_admin" || kind === "admin") return SUPER_ADMIN;
   return kind === "member" ? MEMBER : GUEST;
 }
 

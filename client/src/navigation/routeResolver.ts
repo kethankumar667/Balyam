@@ -144,11 +144,16 @@ export function isItemActive(
   return normalizedCurrent === normalizedTarget || normalizedCurrent.startsWith(`${normalizedTarget}/`);
 }
 
+import { ShieldCheck } from "lucide-react";
+
 export interface ResolveNavigationOptions {
   pathname: string;
   search?: string;
   hash?: string;
   isMember?: boolean;
+  isSuperAdmin?: boolean;
+  unlockAllFeatures?: boolean;
+  accessAdminPanel?: boolean;
   config?: NavigationConfig;
 }
 
@@ -160,10 +165,14 @@ export function resolveNavigation({
   search = "",
   hash = "",
   isMember = false,
+  isSuperAdmin = false,
+  unlockAllFeatures = false,
+  accessAdminPanel = false,
   config = NAVIGATION_CONFIG,
 }: ResolveNavigationOptions): ResolvedNavigationSection {
   const sectionId = determineSection(pathname);
   const section = config[sectionId] || config.home;
+  const isSuperUnlocked = isSuperAdmin || unlockAllFeatures;
 
   const mapItem = (item: NavigationItem): ResolvedNavigationItem => {
     const active = isItemActive(item, pathname, search, hash);
@@ -171,14 +180,19 @@ export function resolveNavigation({
       ? `${item.path}${item.search || ""}${item.hash || ""}`
       : undefined;
 
-    // Show locked/member badge only if member-only and item has no explicit badge
+    // When super admin mode is active, unlock previously disabled features
+    const disabled = isSuperUnlocked ? false : Boolean(item.disabled);
+
     let badge = item.badge;
-    if (item.requiresAuth && !isMember && !badge) {
+    if (isSuperUnlocked && item.disabled) {
+      badge = { text: "Unlocked", variant: "emerald" };
+    } else if (item.requiresAuth && !isMember && !badge) {
       badge = { text: "Member", variant: "amber" };
     }
 
     return {
       ...item,
+      disabled,
       badge,
       active,
       fullHref,
@@ -186,7 +200,23 @@ export function resolveNavigation({
   };
 
   const items = section.items.map(mapItem);
-  const footerItems = section.footerItems?.map(mapItem);
+  const footerItems = section.footerItems?.map(mapItem) || [];
+
+  // If user has admin capabilities and isn't already inside the admin section, offer 1-click admin console navigation
+  if ((accessAdminPanel || isSuperAdmin) && sectionId !== "admin") {
+    const alreadyHasAdmin = items.some((i) => i.path?.startsWith("/admin")) || footerItems.some((i) => i.path?.startsWith("/admin"));
+    if (!alreadyHasAdmin) {
+      footerItems.push({
+        id: "nav-superadmin-console",
+        label: "Admin Console",
+        icon: ShieldCheck,
+        path: "/admin/dashboard",
+        badge: { text: "Super Admin", variant: "amber" },
+        active: pathname.startsWith("/admin"),
+        fullHref: "/admin/dashboard",
+      });
+    }
+  }
 
   return {
     id: section.id,

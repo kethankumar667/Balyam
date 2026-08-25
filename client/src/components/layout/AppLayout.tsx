@@ -2,6 +2,7 @@ import React, { useState, useEffect, createContext, useContext, ReactNode } from
 import { useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import AppHeader from "./AppHeader";
+import FallingPetals from "../../animations/app/FallingPetals";
 import AppSidebar from "./AppSidebar";
 import JoinRoomModal from "../bhalyam/JoinRoomModal";
 import GameRoomSheet from "../bhalyam/GameRoomSheet";
@@ -59,6 +60,13 @@ interface AppLayoutProps {
   customTail?: string;
   /** Whether to show the top breadcrumbs bar (defaults to true) */
   showBreadcrumbs?: boolean;
+  /**
+   * Ambient falling-petals background (see `FallingPetals`). Opt-in per
+   * layout consumer rather than always-on here, so it only shows up on the
+   * pages it was actually asked for instead of silently reaching every
+   * screen that happens to render through `AppLayout`.
+   */
+  showFallingPetals?: boolean;
 }
 
 export default function AppLayout({
@@ -69,6 +77,7 @@ export default function AppLayout({
   breadcrumbs,
   customTail,
   showBreadcrumbs = true,
+  showFallingPetals = false,
 }: AppLayoutProps) {
   const { pathname, search } = useLocation();
   const [theme] = useTheme();
@@ -280,16 +289,20 @@ export default function AppLayout({
             tabIndex={-1}
             className="flex-1 min-w-0 w-full max-w-full h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col touch-pan-y overscroll-y-contain"
           >
-            {chrome && showBreadcrumbs && (
-              <div className="flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
-                <Breadcrumbs
-                  crumbs={breadcrumbs}
-                  customTail={customTail}
-                />
-              </div>
-            )}
-            <div className="w-full min-w-0 flex-1">
-              {children}
+{showFallingPetals && <FallingPetals />}
+<div className="relative z-10 flex-1 min-h-0 flex flex-col">
+  {chrome && showBreadcrumbs && (
+    <div className="flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
+      <Breadcrumbs
+        crumbs={breadcrumbs}
+        customTail={customTail}
+      />
+    </div>
+  )}
+  <div className="w-full min-w-0 flex-1 min-h-0 flex flex-col">
+    {children}
+  </div>
+</div>
             </div>
           </main>
         </div>

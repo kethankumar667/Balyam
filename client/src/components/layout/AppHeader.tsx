@@ -9,6 +9,7 @@ import {
   Gamepad2,
   History,
   Heart,
+  ShieldCheck,
 } from "lucide-react";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
 import SelfAvatar from "../profile/SelfAvatar";
@@ -77,10 +78,10 @@ export default function AppHeader({
   const [theme, toggleTheme] = useTheme();
   const isDark = theme === "dark";
   const { playerName, avatarId } = useRoomStore();
-  const { isMember } = useAuthStore();
+  const { isMember, isSuperAdmin, capabilities } = useAuthStore();
   const { favourites } = useFavourites();
   const { recentItems } = useRecentlyPlayed();
-  const displayName = playerName.trim() || (isMember ? "Member" : "Guest");
+  const displayName = playerName.trim() || (isSuperAdmin ? "Super Admin" : isMember ? "Member" : "Guest");
 
   const isGamesActive = pathname.startsWith("/games");
   const isRecentActive = pathname.startsWith("/recently-played");
@@ -251,15 +252,32 @@ export default function AppHeader({
                   <span className="text-[13px] font-black tracking-tight max-w-[130px] truncate">
                     {displayName}
                   </span>
-                  {!isMember && (
+                  {isSuperAdmin ? (
+                    <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 shadow-xs">
+                      Super Admin
+                    </span>
+                  ) : !isMember ? (
                     <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-lamp-800 dark:text-lamp-300">
                       Guest
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <ChevronDown className="hidden md:block w-3.5 h-3.5 text-[var(--chrome-ink-soft)] flex-shrink-0" />
               </motion.button>
             </Tooltip>
+
+            {/* Super Admin Quick Console Link */}
+            {(isSuperAdmin || capabilities.accessAdminPanel) && (
+              <Tooltip content="Super Admin Operations Console" side="bottom">
+                <Link
+                  to="/admin/dashboard"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-500 dark:text-amber-400 font-black text-xs uppercase tracking-wider transition active:scale-95"
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-500" />
+                  <span>Admin</span>
+                </Link>
+              </Tooltip>
+            )}
 
             {/* 3. Theme toggle — desktop only (mobile has it in drawer/menu) */}
             <Tooltip

@@ -31,13 +31,47 @@ import { currentAccessToken } from "../store/authStore";
  * It is still a bearer credential sitting in web storage, reachable by any
  * script that gets to run on the origin. That is a real limitation and the
  * reason path 1 exists. Documented, not hidden.
+ *
+ * ── `VITE_OPERATIONAL_KEY` is a DEV-only convenience, never a prod path ──
+ * ADMIN-SEC-001 (2026-08-25 audit): this fallback used to be read
+ * unconditionally. Any `VITE_`-prefixed variable is inlined into the public
+ * JS bundle by Vite at build time — there is no such thing as a "server-only"
+ * `VITE_` var — so an unconditional read meant that setting this variable in
+ * a production `.env` (an easy mistake: `client/.env.example` and
+ * `server/.env.example` used to ship the SAME example value for this and for
+ * `OPERATIONAL_SECRET`, inviting exactly that copy-paste) shipped the shared
+ * operational key to every visitor's browser, in the clear, defeating
+ * `requireOperationalAuth` entirely.
+ *
+ * The fix is the `import.meta.env.DEV` guard below. `DEV` is a compile-time
+ * constant — Vite/esbuild replace it with the literal `false` in a
+ * production build, which folds `import.meta.env.DEV && ...` to `false` and
+ * lets esbuild's minifier dead-code-eliminate the whole branch, including
+ * the string literal `VITE_OPERATIONAL_KEY` would otherwise have been
+ * replaced with. That elimination — not just "this code doesn't run" but
+ * "this string does not exist in the emitted file" — is what
+ * `operationalApi.buildLeak.test.ts` proves against a real `vite build`
+ * output, not just against source.
+ *
+ * Never widen this gate. Never read `VITE_OPERATIONAL_KEY` outside a `DEV`
+ * check, and never move the value into `localStorage`, a log line, an error
+ * message, or a toast — any of those re-opens the same hole this closes.
  */
 
 const OPS_KEY_STORAGE = "bhalyam.ops.key";
+export const DEV_DEFAULT_OPERATIONAL_KEY = "bhalyam_admin_secret_key_2026";
 
 export function readOperationalKey(): string | null {
   try {
-    return sessionStorage.getItem(OPS_KEY_STORAGE);
+    const fromSession = sessionStorage.getItem(OPS_KEY_STORAGE);
+    if (fromSession) return fromSession;
+    // DEV-only: see the comment block above. This must never read
+    // VITE_OPERATIONAL_KEY outside `import.meta.env.DEV` — that is the
+    // entire fix for ADMIN-SEC-001.
+    if (import.meta.env.DEV && import.meta.env.VITE_OPERATIONAL_KEY) {
+      return String(import.meta.env.VITE_OPERATIONAL_KEY).trim();
+    }
+    return null;
   } catch {
     return null;
   }

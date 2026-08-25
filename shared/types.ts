@@ -5,7 +5,7 @@ export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" 
  * playing. Lives here with the other wire types because it travels on
  * `room:create` and `room:join`; what it PERMITS lives in shared/permissions.
  */
-export type AccountKind = "guest" | "member";
+export type AccountKind = "guest" | "member" | "admin" | "super_admin";
 
 export interface Player {
   id: string;

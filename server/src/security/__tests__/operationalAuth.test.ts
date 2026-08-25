@@ -204,6 +204,16 @@ describe("P0-1 — operational credential handling", () => {
       headers: { "x-operational-key": OPS_KEY },
     });
     expect(custom.status).toBe(200);
+
+    // When both Authorization bearer AND x-operational-key are sent (e.g. a signed-in user entering key)
+    const combined = await server.request("/api/operational/whoami", {
+      headers: {
+        authorization: "Bearer some_unauthorized_user_session_jwt",
+        "x-operational-key": OPS_KEY,
+      },
+    });
+    expect(combined.status).toBe(200);
+    expect(combined.body).toEqual({ principal: { kind: "ops-key" } });
   });
 
   it("names the principal it authorized", async () => {

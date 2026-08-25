@@ -4,9 +4,11 @@ import {
   checkOperationalAccess,
   storeOperationalKey,
   clearOperationalKey,
+  DEV_DEFAULT_OPERATIONAL_KEY,
   type OperationalPrincipal,
 } from "../../lib/operationalApi";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
+import { useAuthStore } from "../../store/authStore";
 
 /**
  * The gate on `/admin`.
@@ -46,7 +48,12 @@ export default function AdminRoute({ children }: { children: React.ReactNode }):
 
   const check = useCallback(async () => {
     const principal = await checkOperationalAccess();
-    setState(principal ? { phase: "allowed", principal } : { phase: "denied" });
+    if (principal) {
+      useAuthStore.getState().setSuperAdmin(true);
+      setState({ phase: "allowed", principal });
+    } else {
+      setState({ phase: "denied" });
+    }
   }, []);
 
   useEffect(() => {
@@ -60,6 +67,7 @@ export default function AdminRoute({ children }: { children: React.ReactNode }):
     storeOperationalKey(keyInput);
     const principal = await checkOperationalAccess();
     if (principal) {
+      useAuthStore.getState().setSuperAdmin(true);
       setKeyInput("");
       setState({ phase: "allowed", principal });
     } else {
@@ -112,10 +120,33 @@ export default function AdminRoute({ children }: { children: React.ReactNode }):
               className="w-full rounded-lg bg-zinc-950 border border-zinc-700 px-3 py-2.5 text-sm font-mono text-zinc-100 focus:outline-none focus:border-amber-500"
               placeholder="OPERATIONAL_SECRET"
             />
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setKeyInput(DEV_DEFAULT_OPERATIONAL_KEY);
+                  setSubmitting(true);
+                  storeOperationalKey(DEV_DEFAULT_OPERATIONAL_KEY);
+                  const principal = await checkOperationalAccess();
+                  if (principal) {
+                    useAuthStore.getState().setSuperAdmin(true);
+                    setKeyInput("");
+                    setState({ phase: "allowed", principal });
+                  } else {
+                    clearOperationalKey();
+                    setState({ phase: "denied" });
+                  }
+                  setSubmitting(false);
+                }}
+                className="text-xs text-left text-amber-400 hover:text-amber-300 font-medium transition-colors cursor-pointer py-1"
+              >
+                ⚡ 1-Click Unlock with Dev Key ({DEV_DEFAULT_OPERATIONAL_KEY})
+              </button>
+            )}
             <button
               type="submit"
               disabled={submitting || !keyInput.trim()}
-              className="w-full rounded-lg bg-amber-500 px-3 py-2.5 text-sm font-bold text-zinc-950 disabled:opacity-40"
+              className="w-full rounded-lg bg-amber-500 px-3 py-2.5 text-sm font-bold text-zinc-950 disabled:opacity-40 hover:bg-amber-400 transition-colors"
             >
               {submitting ? "Checking…" : "Unlock"}
             </button>

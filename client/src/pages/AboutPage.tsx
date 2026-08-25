@@ -151,7 +151,7 @@ export default function AboutPage() {
   const isDark = theme === "dark";
 
   return (
-    <AppLayout>
+    <AppLayout showFallingPetals>
       <div className={`min-h-full font-sans pb-16 transition-colors duration-200 ${
         isDark ? "bg-[#0A0F1D] text-slate-100" : "bg-[#F7EFE1] text-[#3D2612]"
       }`}>

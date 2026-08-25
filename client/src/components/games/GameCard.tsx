@@ -2,6 +2,7 @@ import { useState, useEffect, ReactNode } from "react";
 import { Users as UsersIcon, Clock, ArrowRight, User, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "../../lib/useTheme";
+import { useAuthStore } from "../../store/authStore";
 import { useFavourites } from "../../hooks/useFavourites";
 import { useToast } from "../../hooks/useToast";
 import { HapticsManager } from "../../services/HapticsManager";
@@ -93,7 +94,8 @@ export default function GameCard({
   const { isFavourite, toggleFavourite } = useFavourites();
   const { showToast } = useToast();
   const isFav = isFavourite(game.slug);
-  const underMaintenance = isLocked(game);
+  const capabilities = useAuthStore((s) => s.capabilities);
+  const underMaintenance = isLocked(game, capabilities);
   const accent = getGameAccent(game);
   const Glyph = GAME_GLYPHS[game.slug] || StarGameGlyph;
 

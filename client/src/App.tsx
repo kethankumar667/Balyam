@@ -44,7 +44,16 @@ const BrickBreakoutPage = lazy(() => import("./pages/BrickBreakoutPage"));
 const PartyScreen = lazy(() => import("./pages/PartyScreen"));
 const Diagnostics = lazy(() => import("./pages/Diagnostics"));
 const PreviewLudo = lazy(() => import("./pages/PreviewLudo"));
-const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/dashboard"));
+const AdminUsersPage = lazy(() => import("./pages/admin/users"));
+const AdminMatchesPage = lazy(() => import("./pages/admin/matches"));
+const AdminFeatureFlagsPage = lazy(() => import("./pages/admin/feature-flags"));
+const AdminAnnouncementsPage = lazy(() => import("./pages/admin/announcements"));
+const AdminLeaderboardsPage = lazy(() => import("./pages/admin/leaderboards"));
+const AdminAnalyticsPage = lazy(() => import("./pages/admin/analytics"));
+const AdminSystemHealthPage = lazy(() => import("./pages/admin/system-health"));
+const AdminAuditLogsPage = lazy(() => import("./pages/admin/audit-logs"));
+const AdminSettingsPage = lazy(() => import("./pages/admin/settings"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const TournamentsPage = lazy(() => import("./pages/TournamentsPage"));
 const DesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatalogPage"));
@@ -257,6 +266,106 @@ export default function App() {
                 <ProtectedRoute>
                   <AdminRoute>
                     <AdminDashboardPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminDashboardPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminUsersPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/matches"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminMatchesPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/feature-flags"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminFeatureFlagsPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/announcements"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminAnnouncementsPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/leaderboards"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminLeaderboardsPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminAnalyticsPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/system-health"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminSystemHealthPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/audit-logs"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminAuditLogsPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminSettingsPage />
                   </AdminRoute>
                 </ProtectedRoute>
               }
