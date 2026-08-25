@@ -74,13 +74,13 @@ export default function StatCard({
                 {trend.value > 0 ? `${trend.value}%` : `${trend.value}`}
               </span>
               {trend.label && (
-                <span className="text-slate-500 dark:text-slate-400 truncate">
+                <span className="text-[var(--chrome-ink-soft)] truncate">
                   {trend.label}
                 </span>
               )}
             </div>
           ) : subtitle ? (
-            <span className="text-slate-500 dark:text-slate-400 truncate font-medium">
+            <span className="text-[var(--chrome-ink-soft)] truncate font-medium">
               {subtitle}
             </span>
           ) : null}

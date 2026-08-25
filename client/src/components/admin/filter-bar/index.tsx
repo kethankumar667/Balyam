@@ -48,9 +48,10 @@ export default function FilterBar({
         {filters.map((filter) => (
           <div key={filter.id} className="relative">
             <select
+              aria-label={filter.label}
               value={filter.value}
               onChange={(e) => filter.onChange(e.target.value)}
-              className="px-3 py-1.5 text-xs font-bold rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all cursor-pointer"
+              className="px-3 py-1.5 text-xs font-bold rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 transition-all cursor-pointer"
             >
               {filter.options.map((opt) => (
                 <option key={opt.value} value={opt.value}>

@@ -104,7 +104,7 @@ export default function AdminTopbar({
 
   return (
     <header
-      className={`h-24 shrink-0 px-6 sm:px-8 lg:px-10 bg-[var(--chrome-panel)]/95 backdrop-blur-md border-b border-[var(--chrome-border)] flex items-center justify-between gap-4 sticky top-0 z-30 transition-all ${className}`}
+      className={`h-24 shrink-0 px-3.5 sm:px-6 lg:px-8 bg-[var(--chrome-panel)]/95 backdrop-blur-md border-b border-[var(--chrome-border)] flex items-center justify-between gap-3 sm:gap-4 sticky top-0 z-30 transition-all ${className}`}
     >
       {/* Left: Mobile Menu Toggle & Quick Search */}
       <div className="flex items-center gap-3 flex-1 max-w-md lg:max-w-xl">

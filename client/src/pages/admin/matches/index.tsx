@@ -10,6 +10,9 @@ import {
   Trash2,
   RefreshCw,
   Zap,
+  Search,
+  Filter,
+  AlertTriangle,
 } from "lucide-react";
 import {
   AreaChart,
@@ -39,12 +42,23 @@ interface MatchItem extends Record<string, unknown> {
   hostName: string;
   playersCount: number;
   maxPlayers: number;
+  spectatorsCount?: number;
   status: "playing" | "lobby" | "finished" | "abandoned";
   duration: string;
   turnCount: number;
   startedAt: string;
   avgLatencyMs: number;
-  seats: Array<{ seatIndex: number; name: string; score: number; isBot: boolean; ping: number }>;
+  hasDesyncWarning?: boolean;
+  stateAnomalyNote?: string;
+  seats: Array<{
+    seatIndex: number;
+    name: string;
+    score: number;
+    isBot: boolean;
+    ping: number;
+    isDisconnected?: boolean;
+    reconnectSecondsLeft?: number;
+  }>;
 }
 
 const MOCK_MATCH_HISTORY_CHART = [
@@ -64,6 +78,7 @@ const MOCK_MATCHES: MatchItem[] = [
     hostName: "Rahul Sharma",
     playersCount: 4,
     maxPlayers: 4,
+    spectatorsCount: 14,
     status: "playing",
     duration: "14m 20s",
     turnCount: 48,
@@ -71,7 +86,7 @@ const MOCK_MATCHES: MatchItem[] = [
     avgLatencyMs: 34,
     seats: [
       { seatIndex: 0, name: "Rahul Sharma", score: 3, isBot: false, ping: 28 },
-      { seatIndex: 1, name: "Priya Patel", score: 2, isBot: false, ping: 32 },
+      { seatIndex: 1, name: "Priya Patel", score: 2, isBot: false, ping: 0, isDisconnected: true, reconnectSecondsLeft: 22 },
       { seatIndex: 2, name: "Bot Champ", score: 1, isBot: true, ping: 5 },
       { seatIndex: 3, name: "Sir Krishna", score: 4, isBot: false, ping: 42 },
     ],
@@ -83,6 +98,7 @@ const MOCK_MATCHES: MatchItem[] = [
     hostName: "Master Ravi",
     playersCount: 6,
     maxPlayers: 6,
+    spectatorsCount: 8,
     status: "playing",
     duration: "09m 45s",
     turnCount: 22,
@@ -104,6 +120,7 @@ const MOCK_MATCHES: MatchItem[] = [
     hostName: "Kethan Kumar",
     playersCount: 2,
     maxPlayers: 4,
+    spectatorsCount: 1420,
     status: "playing",
     duration: "05m 12s",
     turnCount: 16,
@@ -121,6 +138,7 @@ const MOCK_MATCHES: MatchItem[] = [
     hostName: "Arjun Das",
     playersCount: 3,
     maxPlayers: 4,
+    spectatorsCount: 2,
     status: "lobby",
     duration: "01m 40s",
     turnCount: 0,
@@ -139,6 +157,7 @@ const MOCK_MATCHES: MatchItem[] = [
     hostName: "Tanmay Joshi",
     playersCount: 5,
     maxPlayers: 6,
+    spectatorsCount: 19,
     status: "playing",
     duration: "21m 10s",
     turnCount: 65,
@@ -159,6 +178,7 @@ const MOCK_MATCHES: MatchItem[] = [
     hostName: "Harish Gupta",
     playersCount: 4,
     maxPlayers: 4,
+    spectatorsCount: 0,
     status: "finished",
     duration: "16m 30s",
     turnCount: 52,
@@ -169,6 +189,45 @@ const MOCK_MATCHES: MatchItem[] = [
       { seatIndex: 1, name: "Divya Balan", score: 84, isBot: false, ping: 31 },
       { seatIndex: 2, name: "Suresh Menon", score: 62, isBot: false, ping: 33 },
       { seatIndex: 3, name: "Rohan Kapoor", score: 45, isBot: false, ping: 29 },
+    ],
+  },
+  {
+    id: "m-007",
+    code: "HC9012",
+    game: "Hand Cricket",
+    hostName: "Vikram Malhotra",
+    playersCount: 2,
+    maxPlayers: 2,
+    spectatorsCount: 5,
+    status: "abandoned",
+    duration: "03m 15s",
+    turnCount: 4,
+    startedAt: "21:20:10",
+    avgLatencyMs: 140,
+    stateAnomalyNote: "Match abandoned: Host disconnected unexpectedly during Over #1",
+    seats: [
+      { seatIndex: 0, name: "Vikram Malhotra", score: 6, isBot: false, ping: 0, isDisconnected: true },
+      { seatIndex: 1, name: "Suresh Menon", score: 0, isBot: false, ping: 34 },
+    ],
+  },
+  {
+    id: "m-008",
+    code: "ST4091",
+    game: "Star Game",
+    hostName: "Sir Krishna",
+    playersCount: 2,
+    maxPlayers: 2,
+    spectatorsCount: 0,
+    status: "abandoned",
+    duration: "08m 42s",
+    turnCount: 31,
+    startedAt: "21:05:00",
+    avgLatencyMs: 380,
+    hasDesyncWarning: true,
+    stateAnomalyNote: "Engine desynchronization: Client move #31 arrived before move #30 ACK. In-memory state machine quarantined.",
+    seats: [
+      { seatIndex: 0, name: "Sir Krishna", score: 14, isBot: false, ping: 320, isDisconnected: true },
+      { seatIndex: 1, name: "Manish Tiwari", score: 12, isBot: false, ping: 440, isDisconnected: true },
     ],
   },
 ];
@@ -300,6 +359,54 @@ export default function AdminMatchesPage() {
     },
   ];
 
+  const isSearchActive = search.trim() !== "";
+  const isFilterActive = gameFilter !== "all" || statusFilter !== "all";
+
+  const emptyTitle = matchesList.length === 0
+    ? "No match rooms recorded"
+    : isSearchActive
+    ? "No matching rooms found"
+    : isFilterActive
+    ? "No matches meet selected filters"
+    : "No matches found";
+
+  const emptyDesc = matchesList.length === 0
+    ? "There are currently no active or recent multiplayer game rooms in the engine."
+    : isSearchActive
+    ? `No matches match "${search}". Try searching with a different room code, host, or game.`
+    : isFilterActive
+    ? "No rooms meet the active game and status filter criteria."
+    : "There are currently no items matching your criteria.";
+
+  const emptyIcon = isSearchActive ? (
+    <Search className="w-6 h-6" />
+  ) : isFilterActive ? (
+    <Filter className="w-6 h-6" />
+  ) : (
+    <Gamepad2 className="w-6 h-6" />
+  );
+
+  const emptyAction = isSearchActive ? (
+    <button
+      type="button"
+      onClick={() => setSearch("")}
+      className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors cursor-pointer"
+    >
+      Clear Search
+    </button>
+  ) : isFilterActive ? (
+    <button
+      type="button"
+      onClick={() => {
+        setGameFilter("all");
+        setStatusFilter("all");
+      }}
+      className="px-3.5 py-1.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] transition-colors cursor-pointer"
+    >
+      Reset Filters
+    </button>
+  ) : undefined;
+
   return (
     <AdminLayout>
       <PageHeader
@@ -317,7 +424,7 @@ export default function AdminMatchesPage() {
       )}
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <StatCard
           title="Active Match Rooms"
           value="18"
@@ -348,7 +455,7 @@ export default function AdminMatchesPage() {
       <div className="mb-6">
         <ChartCard
           title="Hourly Match Completion Throughput"
-          subtitle="Realtime tracking of active vs completed matches"
+          subtitle="Finished vs active match volume over the last 6 hours"
         >
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={MOCK_MATCH_HISTORY_CHART}>
@@ -406,6 +513,10 @@ export default function AdminMatchesPage() {
         columns={columns}
         data={filteredMatches}
         onRowClick={(row) => setSelectedMatch(row)}
+        emptyMessage={emptyTitle}
+        emptyDescription={emptyDesc}
+        emptyIcon={emptyIcon}
+        emptyAction={emptyAction}
       />
 
       {/* Match Details Slide-Over Drawer */}
@@ -438,6 +549,15 @@ export default function AdminMatchesPage() {
       >
         {selectedMatch && (
           <div className="space-y-6">
+            {selectedMatch.stateAnomalyNote && (
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-600 dark:text-amber-400 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4" /> State Machine Diagnostic Anomaly
+                </div>
+                <p className="text-[11px] leading-relaxed">{selectedMatch.stateAnomalyNote}</p>
+              </div>
+            )}
+
             <InfoCard
               title="Game Engine Telemetry"
               fields={[
@@ -445,6 +565,8 @@ export default function AdminMatchesPage() {
                 { label: "Turn Counter", value: `${selectedMatch.turnCount} turns` },
                 { label: "Elapsed Time", value: selectedMatch.duration },
                 { label: "Average Ping", value: `${selectedMatch.avgLatencyMs} ms`, isMono: true },
+                { label: "Live Spectators", value: `${selectedMatch.spectatorsCount ?? 0} spectators` },
+                { label: "Engine Status", value: selectedMatch.hasDesyncWarning ? "DESYNC_QUARANTINE" : "SYNCHRONIZED", isMono: true },
               ]}
             />
 
@@ -463,13 +585,18 @@ export default function AdminMatchesPage() {
                         #{seat.seatIndex + 1}
                       </span>
                       <div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-bold text-[var(--chrome-ink)]">
                             {seat.name}
                           </span>
                           {seat.isBot && (
                             <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold px-1.5 rounded">
                               AI BOT
+                            </span>
+                          )}
+                          {seat.isDisconnected && (
+                            <span className="text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold px-1.5 rounded">
+                              DISCONNECTED {seat.reconnectSecondsLeft ? `(${seat.reconnectSecondsLeft}s)` : ""}
                             </span>
                           )}
                         </div>

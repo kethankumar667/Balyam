@@ -54,6 +54,7 @@ const AdminAnalyticsPage = lazy(() => import("./pages/admin/analytics"));
 const AdminSystemHealthPage = lazy(() => import("./pages/admin/system-health"));
 const AdminAuditLogsPage = lazy(() => import("./pages/admin/audit-logs"));
 const AdminSettingsPage = lazy(() => import("./pages/admin/settings"));
+const AdminComponentLibraryPage = lazy(() => import("./pages/admin/component-library"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const TournamentsPage = lazy(() => import("./pages/TournamentsPage"));
 const DesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatalogPage"));
@@ -366,6 +367,16 @@ export default function App() {
                 <ProtectedRoute>
                   <AdminRoute>
                     <AdminSettingsPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/component-library"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminComponentLibraryPage />
                   </AdminRoute>
                 </ProtectedRoute>
               }

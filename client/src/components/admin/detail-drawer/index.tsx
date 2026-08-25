@@ -65,21 +65,21 @@ export default function DetailDrawer({
         aria-hidden="true"
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
         <div
           className={`w-screen ${WIDTH_CLASSES[width]} bg-[var(--chrome-panel)] border-l border-[var(--chrome-border)] shadow-2xl flex flex-col justify-between transform transition-transform duration-300 ease-in-out animate-in slide-in-from-right ${className}`}
         >
           {/* Header */}
-          <div className="p-5 sm:p-6 border-b border-[var(--chrome-border)] flex items-start justify-between gap-4 flex-shrink-0">
+          <div className="p-4 sm:p-6 border-b border-[var(--chrome-border)] flex items-start justify-between gap-4 flex-shrink-0">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-lg font-black text-[var(--chrome-ink)] tracking-tight truncate">
+                <h2 className="text-base sm:text-lg font-black text-[var(--chrome-ink)] tracking-tight truncate">
                   {title}
                 </h2>
                 {badge && <div className="flex-shrink-0">{badge}</div>}
               </div>
               {subtitle && (
-                <p className="text-xs text-[var(--chrome-ink-soft)] mt-1">
+                <p className="text-xs text-[var(--chrome-ink-soft)] mt-1 truncate">
                   {subtitle}
                 </p>
               )}
@@ -96,13 +96,13 @@ export default function DetailDrawer({
           </div>
 
           {/* Body Content */}
-          <div className="flex-1 p-5 sm:p-6 overflow-y-auto space-y-6">
+          <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6">
             {children}
           </div>
 
           {/* Footer Actions */}
           {footer && (
-            <div className="p-4 sm:p-5 border-t border-[var(--chrome-hairline)] bg-[var(--chrome-control)] flex items-center justify-end gap-3 flex-shrink-0">
+            <div className="p-4 sm:p-6 border-t border-[var(--chrome-border)] bg-[var(--chrome-control)]/50 flex-shrink-0">
               {footer}
             </div>
           )}
