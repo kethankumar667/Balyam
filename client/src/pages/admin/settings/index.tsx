@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
+import LoadingState from "../../../components/admin/loading-state";
+import EmptyState from "../../../components/admin/empty-state";
 import MockDataBanner from "../../../components/admin/mock-data-banner";
 
 type SettingsTab =
@@ -27,7 +29,14 @@ type SettingsTab =
 
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const [loading, setLoading] = useState(false);
   const [savedAlert, setSavedAlert] = useState<string | null>(null);
+
+  const handleTabChange = (tab: SettingsTab) => {
+    setLoading(true);
+    setActiveTab(tab);
+    setTimeout(() => setLoading(false), 200);
+  };
 
   // General state
   const [platformName, setPlatformName] = useState("BHALYAM Multiplayer Lounge");
@@ -110,7 +119,7 @@ export default function AdminSettingsPage() {
             <button
               key={t.id}
               type="button"
-              onClick={() => setActiveTab(t.id)}
+              onClick={() => handleTabChange(t.id)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-2 cursor-pointer ${
                 isActive
                   ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 font-black shadow-xs"
@@ -125,13 +134,17 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* Content Form Container */}
-      <div className="p-6 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs max-w-4xl">
-        {/* Tab 1: General */}
-        {activeTab === "general" && (
-          <div className="space-y-6">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--chrome-ink)]">
-              General Platform Identity
-            </h3>
+      <div className="p-4 sm:p-6 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs max-w-4xl">
+        {loading ? (
+          <LoadingState variant="table" rows={4} />
+        ) : (
+          <>
+            {/* Tab 1: General */}
+            {activeTab === "general" && (
+              <div className="space-y-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--chrome-ink)]">
+                  General Platform Identity
+                </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -484,7 +497,9 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         )}
-      </div>
-    </AdminLayout>
+      </>
+    )}
+  </div>
+</AdminLayout>
   );
 }

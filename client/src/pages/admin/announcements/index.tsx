@@ -11,12 +11,14 @@ import {
   CheckCircle2,
   Trash2,
   Eye,
+  Search,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
 import StatCard from "../../../components/admin/stat-card";
 import DataTable, { type Column } from "../../../components/admin/data-table";
 import StatusBadge from "../../../components/admin/status-badge";
+import SearchBar from "../../../components/admin/search-bar";
 import DetailDrawer from "../../../components/admin/detail-drawer";
 import InfoCard from "../../../components/admin/info-card";
 import MockDataBanner from "../../../components/admin/mock-data-banner";
@@ -91,9 +93,53 @@ export default function AdminAnnouncementsPage() {
   const [newAudience, setNewAudience] = useState<AnnouncementItem["targetAudience"]>("all");
   const [actionAlert, setActionAlert] = useState<string | null>(null);
 
-  const filteredAnnouncements = announcements.filter(
-    (a) => activeTab === "all" || a.status === activeTab
-  );
+  const [search, setSearch] = useState("");
+
+  const filteredAnnouncements = announcements.filter((a) => {
+    const matchesSearch =
+      a.title.toLowerCase().includes(search.toLowerCase()) ||
+      a.message.toLowerCase().includes(search.toLowerCase()) ||
+      a.author.toLowerCase().includes(search.toLowerCase());
+    const matchesTab = activeTab === "all" || a.status === activeTab;
+    return matchesSearch && matchesTab;
+  });
+
+  const isSearchActive = search.trim() !== "";
+  const isFilterActive = activeTab !== "all";
+
+  const emptyTitle = announcements.length === 0
+    ? "No announcements created"
+    : isSearchActive
+    ? "No announcements found"
+    : isFilterActive
+    ? `No ${activeTab} announcements`
+    : "No records found";
+
+  const emptyDesc = announcements.length === 0
+    ? "There are currently no broadcasts or system notices configured."
+    : isSearchActive
+    ? `No announcements match "${search}". Try searching by a different title or keyword.`
+    : isFilterActive
+    ? `There are currently no announcements in the ${activeTab} state.`
+    : "There are currently no items matching your criteria.";
+
+  const emptyAction = isSearchActive ? (
+    <button
+      type="button"
+      onClick={() => setSearch("")}
+      className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors cursor-pointer"
+    >
+      Clear Search
+    </button>
+  ) : isFilterActive ? (
+    <button
+      type="button"
+      onClick={() => setActiveTab("all")}
+      className="px-3.5 py-1.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] transition-colors cursor-pointer"
+    >
+      Show All Announcements
+    </button>
+  ) : undefined;
 
   const handleCreateAnnouncement = (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,7 +276,7 @@ export default function AdminAnnouncementsPage() {
       )}
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatCard
           title="Active Live Banners"
           value="2 Published"
@@ -252,7 +298,7 @@ export default function AdminAnnouncementsPage() {
       </div>
 
       {/* Live Preview Card */}
-      <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-amber-500/35 mb-6 shadow-xs">
+      <div className="p-4 sm:p-5 rounded-2xl bg-[var(--chrome-panel)] border border-amber-500/35 mb-6 shadow-xs">
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
             <Eye className="w-4 h-4 text-amber-500" />
@@ -278,22 +324,31 @@ export default function AdminAnnouncementsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 mb-4 border-b border-[var(--chrome-hairline)] pb-2">
-        {(["all", "published", "scheduled", "draft"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-              activeTab === tab
-                ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 font-black shadow-xs"
-                : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)]"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      {/* Toolbar: Search and Filter Tabs */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center justify-between">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search announcements by title, message, author..."
+        />
+
+        {/* Tabs */}
+        <div className="flex items-center gap-1.5 border-b sm:border-b-0 border-[var(--chrome-hairline)] pb-2 sm:pb-0 overflow-x-auto">
+          {(["all", "published", "scheduled", "draft"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0 ${
+                activeTab === tab
+                  ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 font-black shadow-xs"
+                  : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)]"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Announcements Table */}
@@ -301,6 +356,10 @@ export default function AdminAnnouncementsPage() {
         columns={columns}
         data={filteredAnnouncements}
         onRowClick={(row) => setSelectedAnnouncement(row)}
+        emptyMessage={emptyTitle}
+        emptyDescription={emptyDesc}
+        emptyIcon={isSearchActive ? <Search className="w-6 h-6" /> : <Radio className="w-6 h-6" />}
+        emptyAction={emptyAction}
       />
 
       {/* Announcement Detail & Create Drawers */}

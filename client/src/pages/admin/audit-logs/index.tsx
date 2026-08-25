@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   FileCode,
   Calendar,
+  Filter,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
@@ -195,6 +196,51 @@ export default function AdminAuditLogsPage() {
     },
   ];
 
+  const isSearchActive = search.trim() !== "";
+  const isFilterActive = severityFilter !== "all";
+
+  const emptyTitle = MOCK_AUDIT_LOGS.length === 0
+    ? "No audit logs recorded"
+    : isSearchActive
+    ? "No audit logs found"
+    : isFilterActive
+    ? "No logs match selected severity"
+    : "No records found";
+
+  const emptyDesc = MOCK_AUDIT_LOGS.length === 0
+    ? "There are currently no security or administrative actions logged in the cluster."
+    : isSearchActive
+    ? `No audit logs match "${search}". Try searching by a different actor, action code, or IP.`
+    : isFilterActive
+    ? "No audit events match the active severity filter criteria."
+    : "There are currently no items matching your criteria.";
+
+  const emptyIcon = isSearchActive ? (
+    <Search className="w-6 h-6" />
+  ) : isFilterActive ? (
+    <Filter className="w-6 h-6" />
+  ) : (
+    <Shield className="w-6 h-6" />
+  );
+
+  const emptyAction = isSearchActive ? (
+    <button
+      type="button"
+      onClick={() => setSearch("")}
+      className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors cursor-pointer"
+    >
+      Clear Search
+    </button>
+  ) : isFilterActive ? (
+    <button
+      type="button"
+      onClick={() => setSeverityFilter("all")}
+      className="px-3.5 py-1.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] transition-colors cursor-pointer"
+    >
+      Reset Filters
+    </button>
+  ) : undefined;
+
   return (
     <AdminLayout>
       <PageHeader
@@ -222,7 +268,7 @@ export default function AdminAuditLogsPage() {
       )}
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatCard
           title="Total Audit Events (24h)"
           value="1,420 Events"
@@ -261,6 +307,10 @@ export default function AdminAuditLogsPage() {
         columns={columns}
         data={filteredLogs}
         onRowClick={(row) => setActiveLog(row)}
+        emptyMessage={emptyTitle}
+        emptyDescription={emptyDesc}
+        emptyIcon={emptyIcon}
+        emptyAction={emptyAction}
       />
 
       {/* Event Detail Drawer */}

@@ -49,7 +49,7 @@ export default function SearchBar({
   };
 
   return (
-    <div className={`relative flex items-center min-w-[220px] max-w-md w-full ${className}`}>
+    <div className={`relative flex items-center min-w-0 sm:min-w-[220px] max-w-md w-full ${className}`}>
       <div className="absolute left-3 text-[var(--chrome-ink-soft)] pointer-events-none flex items-center">
         {loading ? (
           <Loader2 className="w-4 h-4 animate-spin text-amber-500" />

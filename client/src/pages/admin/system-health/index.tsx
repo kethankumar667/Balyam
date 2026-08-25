@@ -26,6 +26,8 @@ import PageHeader from "../../../components/admin/page-header";
 import StatCard from "../../../components/admin/stat-card";
 import StatusBadge from "../../../components/admin/status-badge";
 import ChartCard from "../../../components/admin/chart-card";
+import LoadingState from "../../../components/admin/loading-state";
+import EmptyState from "../../../components/admin/empty-state";
 import MockDataBanner from "../../../components/admin/mock-data-banner";
 
 const MEMORY_CHART_DATA = [
@@ -132,32 +134,36 @@ export default function AdminSystemHealthPage() {
       )}
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          title="Overall Platform Health"
-          value="100% OPERATIONAL"
-          icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-          subtitle="All 5 core engines online"
-        />
-        <StatCard
-          title="Node Heap Allocated"
-          value="142 MB"
-          icon={<Cpu className="w-5 h-5 text-amber-500" />}
-          subtitle="Total Heap: 256 MB"
-        />
-        <StatCard
-          title="Process RSS Resident"
-          value="205 MB"
-          icon={<HardDrive className="w-5 h-5 text-orange-500" />}
-          subtitle="Target < 512 MB"
-        />
-        <StatCard
-          title="Event Loop Delay"
-          value="1.2 ms"
-          icon={<Zap className="w-5 h-5 text-amber-500" />}
-          subtitle="Zero thread starvation"
-        />
-      </div>
+      {isScanning ? (
+        <LoadingState variant="cards" className="mb-6" />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <StatCard
+            title="Overall Platform Health"
+            value="100% OPERATIONAL"
+            icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+            subtitle="All 5 core engines online"
+          />
+          <StatCard
+            title="Node Heap Allocated"
+            value="142 MB"
+            icon={<Cpu className="w-5 h-5 text-amber-500" />}
+            subtitle="Total Heap: 256 MB"
+          />
+          <StatCard
+            title="Process RSS Resident"
+            value="205 MB"
+            icon={<HardDrive className="w-5 h-5 text-orange-500" />}
+            subtitle="Target < 512 MB"
+          />
+          <StatCard
+            title="Event Loop Delay"
+            value="1.2 ms"
+            icon={<Zap className="w-5 h-5 text-amber-500" />}
+            subtitle="Zero thread starvation"
+          />
+        </div>
+      )}
 
       {/* Subsystem Health Cards Grid */}
       <div className="space-y-3 mb-6">
@@ -165,11 +171,11 @@ export default function AdminSystemHealthPage() {
           Core Subsystems Fleet Status
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {SUBSYSTEMS.map((sub) => (
             <div
               key={sub.name}
-              className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col justify-between"
+              className="p-4 sm:p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
@@ -193,7 +199,7 @@ export default function AdminSystemHealthPage() {
       </div>
 
       {/* Memory AreaChart + API Latency Matrix */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Heap Memory Chart */}
         <ChartCard
           title="Node.js Process Memory Footprint"
@@ -234,7 +240,7 @@ export default function AdminSystemHealthPage() {
         </ChartCard>
 
         {/* API Endpoint Latency Matrix */}
-        <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col justify-between">
+        <div className="p-4 sm:p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col justify-between">
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
               Socket & REST Latency Distribution
@@ -244,7 +250,7 @@ export default function AdminSystemHealthPage() {
             </p>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
+              <table className="w-full text-xs text-left min-w-[360px] sm:min-w-full">
                 <thead>
                   <tr className="border-b border-[var(--chrome-hairline)] text-[var(--chrome-ink-soft)] font-bold uppercase tracking-wider text-[10px]">
                     <th className="pb-2">Route</th>

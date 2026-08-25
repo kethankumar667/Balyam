@@ -39,13 +39,13 @@ export default function ChartCard({
 
   return (
     <div
-      className={`p-5 sm:p-6 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col justify-between ${className}`}
+      className={`p-4 sm:p-6 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col justify-between ${className}`}
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--chrome-ink)]">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--chrome-ink)]">
               {title}
             </h3>
             {badge}
@@ -57,7 +57,7 @@ export default function ChartCard({
           )}
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           {timeRanges.length > 0 && (
             <div className="flex items-center p-0.5 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-xs">
               {timeRanges.map((tr) => (
@@ -81,7 +81,7 @@ export default function ChartCard({
       </div>
 
       {/* Chart Canvas Area */}
-      <div className="w-full flex-1 min-h-[220px]">{children}</div>
+      <div className="w-full flex-1 min-h-[200px] sm:min-h-[220px] overflow-hidden">{children}</div>
 
       {/* Optional Footer Metric summary */}
       {footer && (

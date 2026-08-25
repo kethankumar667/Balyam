@@ -30,6 +30,8 @@ import PageHeader from "../../../components/admin/page-header";
 import StatCard from "../../../components/admin/stat-card";
 import MetricCard from "../../../components/admin/metric-card";
 import ChartCard from "../../../components/admin/chart-card";
+import LoadingState from "../../../components/admin/loading-state";
+import EmptyState from "../../../components/admin/empty-state";
 import MockDataBanner from "../../../components/admin/mock-data-banner";
 
 const USER_GROWTH_DATA = [
@@ -68,6 +70,13 @@ const RETENTION_COHORTS = [
 
 export default function AdminAnalyticsPage() {
   const [timeRange, setTimeRange] = useState("30d");
+  const [loading, setLoading] = useState(false);
+
+  const handleTimeRangeChange = (range: string) => {
+    setLoading(true);
+    setTimeRange(range);
+    setTimeout(() => setLoading(false), 300);
+  };
 
   return (
     <AdminLayout>
@@ -75,60 +84,88 @@ export default function AdminAnalyticsPage() {
         title="Telemetry & Growth Analytics"
         description="Comprehensive analysis of player acquisition, match completion rates, game retention cohorts, and token economics."
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Analytics" }]}
+        actions={
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)]">
+            {(["7d", "30d", "90d"] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => handleTimeRangeChange(r)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer ${
+                  timeRange === r
+                    ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 font-black shadow-xs"
+                    : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)]"
+                }`}
+              >
+                {r.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        }
       />
 
       <MockDataBanner kind="mock" />
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          title="Daily Active Players (DAU)"
-          value="1,420"
-          icon={<Users className="w-5 h-5 text-amber-500" />}
-          trend={{ value: 14.8, direction: "up", label: "vs last month" }}
-        />
-        <StatCard
-          title="Monthly Active Players (MAU)"
-          value="4,120"
-          icon={<TrendingUp className="w-5 h-5 text-emerald-500" />}
-          trend={{ value: 22.4, direction: "up", label: "vs last quarter" }}
-        />
-        <StatCard
-          title="Match Completion Ratio"
-          value="93.8%"
-          icon={<Gamepad2 className="w-5 h-5 text-orange-500" />}
-          subtitle="Low abandonment rate"
-        />
-        <StatCard
-          title="Average Session Length"
-          value="24.5 mins"
-          icon={<Coins className="w-5 h-5 text-amber-500" />}
-          subtitle="3.2 matches / player"
-        />
-      </div>
+      {loading ? (
+        <LoadingState variant="cards" className="mb-6" />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <StatCard
+            title="Daily Active Players (DAU)"
+            value="1,420"
+            icon={<Users className="w-5 h-5 text-amber-500" />}
+            trend={{ value: 14.8, direction: "up", label: "vs last month" }}
+          />
+          <StatCard
+            title="Monthly Active Players (MAU)"
+            value="4,120"
+            icon={<TrendingUp className="w-5 h-5 text-emerald-500" />}
+            trend={{ value: 22.4, direction: "up", label: "vs last quarter" }}
+          />
+          <StatCard
+            title="Match Completion Ratio"
+            value="93.8%"
+            icon={<Gamepad2 className="w-5 h-5 text-orange-500" />}
+            subtitle="Low abandonment rate"
+          />
+          <StatCard
+            title="Average Session Length"
+            value="24.5 mins"
+            icon={<Coins className="w-5 h-5 text-amber-500" />}
+            subtitle="3.2 matches / player"
+          />
+        </div>
+      )}
 
       {/* Charts Grid Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* User Growth Line Chart */}
-        <ChartCard
-          title="Player Growth Trajectory (DAU / MAU)"
-          subtitle="Monthly active player cohort expansion"
-        >
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={USER_GROWTH_DATA}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
-              <XAxis dataKey="month" stroke="#7A5E45" fontSize={11} />
-              <YAxis stroke="#7A5E45" fontSize={11} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#131926",
-                  borderColor: "#66799A",
-                  borderRadius: 12,
-                  fontSize: 12,
-                  color: "#F1F5F9",
-                }}
-              />
-              <Legend />
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+          <LoadingState variant="chart" />
+          <LoadingState variant="chart" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+          {/* User Growth Line Chart */}
+          <ChartCard
+            title="Player Growth Trajectory (DAU / MAU)"
+            subtitle="Monthly active player cohort expansion"
+          >
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={USER_GROWTH_DATA}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
+                <XAxis dataKey="month" stroke="#7A5E45" fontSize={11} />
+                <YAxis stroke="#7A5E45" fontSize={11} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#131926",
+                    borderColor: "#66799A",
+                    borderRadius: 12,
+                    fontSize: 12,
+                    color: "#F1F5F9",
+                  }}
+                />
+                <Legend />
               <Line
                 type="monotone"
                 dataKey="dau"
@@ -141,9 +178,9 @@ export default function AdminAnalyticsPage() {
                 type="monotone"
                 dataKey="mau"
                 name="MAU (Monthly Active)"
-                stroke="#10b981"
+                stroke="#10B981"
                 strokeWidth={3}
-                dot={{ r: 4, fill: "#10b981" }}
+                dot={{ r: 4, fill: "#10B981" }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -154,7 +191,7 @@ export default function AdminAnalyticsPage() {
           title="Daily Match Completion %"
           subtitle="Finished matches vs early rage-quit/abandonment"
         >
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={COMPLETION_RATE_DATA}>
               <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
               <XAxis dataKey="day" stroke="#7A5E45" fontSize={11} />
@@ -172,30 +209,31 @@ export default function AdminAnalyticsPage() {
                 type="monotone"
                 dataKey="completed"
                 name="Completed (%)"
-                stroke="#10b981"
-                fill="#10b981"
+                stroke="#10B981"
+                fill="#10B981"
                 fillOpacity={0.2}
               />
               <Area
                 type="monotone"
                 dataKey="abandoned"
                 name="Abandoned (%)"
-                stroke="#ef4444"
-                fill="#ef4444"
+                stroke="#EF4444"
+                fill="#EF4444"
                 fillOpacity={0.15}
               />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
       </div>
+    )}
 
-      {/* Row 2: Catalog Game Share + Retention Heat Map */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Game Mode Share Pie */}
+      {/* Grid Row 2: Distribution Pie & Cohort Table */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Game Mode Pie Chart */}
         <div>
           <ChartCard
-            title="Catalog Session Distribution"
-            subtitle="Percentage of matches by game genre"
+            title="Player Time Share"
+            subtitle="Percentage of total play time"
           >
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
@@ -242,7 +280,7 @@ export default function AdminAnalyticsPage() {
         </div>
 
         {/* Retention Cohort Table */}
-        <div className="lg:col-span-2 p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs">
+        <div className="lg:col-span-2 p-4 sm:p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs">
           <div className="mb-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--chrome-ink)]">
               Player Retention Cohort Matrix
@@ -253,7 +291,7 @@ export default function AdminAnalyticsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
+            <table className="w-full text-xs text-left min-w-[440px] sm:min-w-full">
               <thead>
                 <tr className="border-b border-[var(--chrome-hairline)] text-[var(--chrome-ink-soft)] font-bold uppercase tracking-wider text-[10px]">
                   <th className="pb-2.5">Weekly Cohort</th>

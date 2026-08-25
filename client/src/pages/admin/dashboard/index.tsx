@@ -33,6 +33,7 @@ import DataTable, { type Column } from "../../../components/admin/data-table";
 import StatusBadge from "../../../components/admin/status-badge";
 import ActivityTimeline, { type TimelineItem } from "../../../components/admin/activity-timeline";
 import SectionHeader from "../../../components/admin/section-header";
+import EmptyState from "../../../components/admin/empty-state";
 import MockDataBanner from "../../../components/admin/mock-data-banner";
 import { operationalFetch } from "../../../lib/operationalApi";
 
@@ -287,7 +288,7 @@ export default function AdminDashboardPage() {
       )}
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         {stats.map((stat) => (
           <StatCard
             key={stat.title}
@@ -302,14 +303,14 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Visual Analytics Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
         {/* 24h Area Chart: Concurrency & Matches */}
         <div className="lg:col-span-2">
           <ChartCard
             title="Realtime Player Concurrency (24h)"
             subtitle="Hourly active WebSocket sessions and game match concurrency"
           >
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={TRAFFIC_DATA}>
                 <defs>
                   <linearGradient id="colorPlayers" x1="0" y1="0" x2="0" y2="1">
@@ -362,7 +363,7 @@ export default function AdminDashboardPage() {
             title="Catalog Popularity"
             subtitle="Live room distribution by game title"
           >
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={240}>
               <BarChart data={GAME_DISTRIBUTION} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
                 <XAxis type="number" stroke="#7A5E45" fontSize={10} />
@@ -384,7 +385,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Revenue & Economy + Quick Actions Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
         <MetricCard
           title="Virtual Token Economy"
           mainValue="128,450"
@@ -412,13 +413,13 @@ export default function AdminDashboardPage() {
         />
 
         {/* Quick Operations Box */}
-        <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col justify-between">
+        <div className="p-4 sm:p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col justify-between">
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
               Administrative Quick Actions
             </h3>
             <p className="text-[11px] text-[var(--chrome-ink-soft)] mb-3">
-              One-click operational triggers for the in-memory engine.
+              Demonstration triggers simulating operational commands in local preview mode.
             </p>
           </div>
 
@@ -463,18 +464,33 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Main Grid: Active Matches Table + Activity Stream */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 space-y-3">
           <SectionHeader
             title="Live Match Rooms"
             badge={<span className="text-xs text-[var(--chrome-ink-soft)] font-medium">(5 of 18 active)</span>}
           />
-          <DataTable columns={columns} data={recentMatches} loading={loading} />
+          <DataTable
+            columns={columns}
+            data={recentMatches}
+            loading={loading}
+            emptyMessage="No active match rooms"
+            emptyDescription="There are currently no active multiplayer sessions running in the lounge."
+            emptyIcon={<Gamepad2 className="w-6 h-6" />}
+          />
         </div>
 
         <div className="space-y-3">
           <SectionHeader title="Realtime System Events" />
-          <ActivityTimeline items={recentTimeline} />
+          {recentTimeline.length > 0 ? (
+            <ActivityTimeline items={recentTimeline} />
+          ) : (
+            <EmptyState
+              title="No system activity"
+              description="No recent server events or failovers have been recorded."
+              icon={<Activity className="w-6 h-6" />}
+            />
+          )}
         </div>
       </div>
     </AdminLayout>

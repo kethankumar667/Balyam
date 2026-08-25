@@ -10,6 +10,8 @@ import {
   Trash2,
   RefreshCw,
   Zap,
+  Search,
+  Filter,
 } from "lucide-react";
 import {
   AreaChart,
@@ -300,6 +302,54 @@ export default function AdminMatchesPage() {
     },
   ];
 
+  const isSearchActive = search.trim() !== "";
+  const isFilterActive = gameFilter !== "all" || statusFilter !== "all";
+
+  const emptyTitle = matchesList.length === 0
+    ? "No match rooms recorded"
+    : isSearchActive
+    ? "No matching rooms found"
+    : isFilterActive
+    ? "No matches meet selected filters"
+    : "No matches found";
+
+  const emptyDesc = matchesList.length === 0
+    ? "There are currently no active or recent multiplayer game rooms in the engine."
+    : isSearchActive
+    ? `No matches match "${search}". Try searching with a different room code, host, or game.`
+    : isFilterActive
+    ? "No rooms meet the active game and status filter criteria."
+    : "There are currently no items matching your criteria.";
+
+  const emptyIcon = isSearchActive ? (
+    <Search className="w-6 h-6" />
+  ) : isFilterActive ? (
+    <Filter className="w-6 h-6" />
+  ) : (
+    <Gamepad2 className="w-6 h-6" />
+  );
+
+  const emptyAction = isSearchActive ? (
+    <button
+      type="button"
+      onClick={() => setSearch("")}
+      className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors cursor-pointer"
+    >
+      Clear Search
+    </button>
+  ) : isFilterActive ? (
+    <button
+      type="button"
+      onClick={() => {
+        setGameFilter("all");
+        setStatusFilter("all");
+      }}
+      className="px-3.5 py-1.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] transition-colors cursor-pointer"
+    >
+      Reset Filters
+    </button>
+  ) : undefined;
+
   return (
     <AdminLayout>
       <PageHeader
@@ -317,7 +367,7 @@ export default function AdminMatchesPage() {
       )}
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <StatCard
           title="Active Match Rooms"
           value="18"
@@ -348,7 +398,7 @@ export default function AdminMatchesPage() {
       <div className="mb-6">
         <ChartCard
           title="Hourly Match Completion Throughput"
-          subtitle="Realtime tracking of active vs completed matches"
+          subtitle="Finished vs active match volume over the last 6 hours"
         >
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={MOCK_MATCH_HISTORY_CHART}>
@@ -406,6 +456,10 @@ export default function AdminMatchesPage() {
         columns={columns}
         data={filteredMatches}
         onRowClick={(row) => setSelectedMatch(row)}
+        emptyMessage={emptyTitle}
+        emptyDescription={emptyDesc}
+        emptyIcon={emptyIcon}
+        emptyAction={emptyAction}
       />
 
       {/* Match Details Slide-Over Drawer */}

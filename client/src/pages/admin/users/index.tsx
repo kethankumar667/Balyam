@@ -13,6 +13,8 @@ import {
   Gamepad2,
   Mail,
   Calendar,
+  Search,
+  Filter,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
@@ -227,6 +229,54 @@ export default function AdminUsersPage() {
     },
   ];
 
+  const isSearchActive = search.trim() !== "";
+  const isFilterActive = roleFilter !== "all" || statusFilter !== "all";
+
+  const emptyTitle = usersList.length === 0
+    ? "No player accounts registered"
+    : isSearchActive
+    ? "No search results found"
+    : isFilterActive
+    ? "No users match selected filters"
+    : "No records found";
+
+  const emptyDesc = usersList.length === 0
+    ? "There are currently no registered users in the database."
+    : isSearchActive
+    ? `No users match "${search}". Try searching with a different name or email.`
+    : isFilterActive
+    ? "No players meet the active role and status filter criteria."
+    : "There are currently no items matching your criteria.";
+
+  const emptyIcon = isSearchActive ? (
+    <Search className="w-6 h-6" />
+  ) : isFilterActive ? (
+    <Filter className="w-6 h-6" />
+  ) : (
+    <Users className="w-6 h-6" />
+  );
+
+  const emptyAction = isSearchActive ? (
+    <button
+      type="button"
+      onClick={() => setSearch("")}
+      className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors cursor-pointer"
+    >
+      Clear Search
+    </button>
+  ) : isFilterActive ? (
+    <button
+      type="button"
+      onClick={() => {
+        setRoleFilter("all");
+        setStatusFilter("all");
+      }}
+      className="px-3.5 py-1.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] transition-colors cursor-pointer"
+    >
+      Reset Filters
+    </button>
+  ) : undefined;
+
   return (
     <AdminLayout>
       <PageHeader
@@ -259,7 +309,7 @@ export default function AdminUsersPage() {
       )}
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatCard
           title="Total Registered Accounts"
           value="1,248"
@@ -301,6 +351,10 @@ export default function AdminUsersPage() {
         columns={columns}
         data={paginatedUsers}
         onRowClick={(row) => setSelectedUser(row)}
+        emptyMessage={emptyTitle}
+        emptyDescription={emptyDesc}
+        emptyIcon={emptyIcon}
+        emptyAction={emptyAction}
         pagination={{
           currentPage: page,
           totalPages: totalPages || 1,
@@ -325,8 +379,8 @@ export default function AdminUsersPage() {
                 onClick={() => handleToggleMute(selectedUser)}
                 className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 cursor-pointer ${
                   selectedUser.isMuted
-                    ? "bg-amber-500 text-white border-amber-600"
-                    : "bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border-slate-300 dark:border-zinc-700 hover:bg-slate-200"
+                    ? "bg-amber-500 text-zinc-950 border-amber-600 font-black shadow-xs"
+                    : "bg-[var(--chrome-control)] text-[var(--chrome-ink)] border-[var(--chrome-border)] hover:bg-[var(--chrome-control-hi)]"
                 }`}
               >
                 <VolumeX className="w-3.5 h-3.5" />

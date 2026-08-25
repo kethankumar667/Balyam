@@ -17,6 +17,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   emptyDescription?: string;
   emptyIcon?: ReactNode;
+  emptyAction?: ReactNode;
   pagination?: {
     currentPage: number;
     totalPages: number;
@@ -35,6 +36,7 @@ export default function DataTable<T extends Record<string, unknown>>({
   emptyMessage = "No records found",
   emptyDescription = "Try adjusting your search or filter criteria.",
   emptyIcon,
+  emptyAction,
   pagination,
   onRowClick,
   className = "",
@@ -43,15 +45,15 @@ export default function DataTable<T extends Record<string, unknown>>({
     <div
       className={`w-full rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs overflow-hidden flex flex-col ${className}`}
     >
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm border-collapse">
+      <div className="overflow-x-auto w-full">
+        <table className="w-full text-left text-sm border-collapse min-w-[520px] sm:min-w-full">
           <thead>
             <tr className="border-b border-[var(--chrome-border)] bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] text-xs font-bold uppercase tracking-wider">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   style={{ width: col.width }}
-                  className={`px-4 py-3.5 ${
+                  className={`px-3.5 sm:px-4 py-3 sm:py-3.5 ${
                     col.align === "center"
                       ? "text-center"
                       : col.align === "right"
@@ -69,7 +71,7 @@ export default function DataTable<T extends Record<string, unknown>>({
               Array.from({ length: 5 }).map((_, rIdx) => (
                 <tr key={`skel-row-${rIdx}`} className="animate-pulse">
                   {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3.5">
+                    <td key={col.key} className="px-3.5 sm:px-4 py-3 sm:py-3.5">
                       <div className="h-4 bg-[var(--chrome-control)] rounded-md w-3/4" />
                     </td>
                   ))}
@@ -88,6 +90,7 @@ export default function DataTable<T extends Record<string, unknown>>({
                     <p className="text-xs text-[var(--chrome-ink-soft)] mt-1">
                       {emptyDescription}
                     </p>
+                    {emptyAction && <div className="mt-4">{emptyAction}</div>}
                   </div>
                 </td>
               </tr>
@@ -108,7 +111,7 @@ export default function DataTable<T extends Record<string, unknown>>({
                     return (
                       <td
                         key={col.key}
-                        className={`px-4 py-3.5 text-[var(--chrome-ink)] font-medium ${
+                        className={`px-3.5 sm:px-4 py-3 sm:py-3.5 text-[var(--chrome-ink)] font-medium ${
                           col.align === "center"
                             ? "text-center"
                             : col.align === "right"
@@ -128,8 +131,8 @@ export default function DataTable<T extends Record<string, unknown>>({
       </div>
 
       {pagination && pagination.totalPages > 1 && (
-        <div className="px-4 py-3 border-t border-[var(--chrome-hairline)] bg-[var(--chrome-control)] flex items-center justify-between gap-3 text-xs text-[var(--chrome-ink-soft)]">
-          <div>
+        <div className="px-3.5 sm:px-4 py-3 border-t border-[var(--chrome-hairline)] bg-[var(--chrome-control)] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--chrome-ink-soft)]">
+          <div className="text-center sm:text-left">
             Showing{" "}
             <span className="font-bold text-[var(--chrome-ink)]">
               {(pagination.currentPage - 1) * pagination.pageSize + 1}
@@ -158,7 +161,7 @@ export default function DataTable<T extends Record<string, unknown>>({
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <span className="px-2 font-bold text-[var(--chrome-ink)]">
+            <span className="px-2 py-1 font-bold text-[var(--chrome-ink)]">
               {pagination.currentPage} / {pagination.totalPages}
             </span>
 

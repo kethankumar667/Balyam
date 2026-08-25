@@ -44,7 +44,7 @@ export default function AdminLayout({
         />
 
         {/* Dynamic Page Content Canvas — the one scrollable region */}
-        <main className={`flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 ${className}`}>
+        <main className={`flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 lg:p-8 ${className}`}>
           <div className="max-w-7xl w-full mx-auto">{children}</div>
         </main>
       </div>
