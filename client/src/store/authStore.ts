@@ -9,6 +9,23 @@ import { saveAccountDetails, clearAccountDetails } from "../lib/accountGenerator
 import { clearGuestIdentity } from "../lib/playerIdentity";
 
 /**
+ * The name Supabase itself already knows for this person, if any.
+ *
+ * Signup and Google OAuth both write to `user_metadata`, but under
+ * different keys (`display_name` from our own signup form, `full_name` or
+ * `name` from Google) — checked in that order because `display_name` is
+ * the one the person actually chose, when it exists. Used to seed a brand
+ * new `profiles` row so the identity Supabase already has for someone is
+ * never discarded in favor of whatever this device's local guest nickname
+ * happened to be.
+ */
+export function metadataDisplayName(meta: Record<string, unknown> | null | undefined): string | null {
+  if (!meta) return null;
+  const name = meta.display_name ?? meta.full_name ?? meta.name;
+  return typeof name === "string" && name.trim() ? name.trim() : null;
+}
+
+/**
  * Whether this browser is a guest or a member.
  *
  * ── Two backings, one shape ───────────────────────────────────────────
@@ -311,7 +328,7 @@ function applySession(session: Session | null): void {
     saveAccountDetails({
       firstName: meta.first_name || "",
       lastName: meta.last_name || "",
-      displayName: meta.display_name || session.user.email?.split("@")[0] || "Player",
+      displayName: metadataDisplayName(meta) || session.user.email?.split("@")[0] || "Player",
       email: session.user.email || "",
       dob: meta.dob || "",
       gender: meta.gender || "",
@@ -370,20 +387,28 @@ function applyGuest(): void {
  * On sign-in, the server does, when it has anything to say. That is the
  * reason the row exists: sign in on a phone after setting your name on a
  * laptop and you should still be you, not "Player 3". Where the row is empty
- * — a brand-new account, or one made before this table did — the device's
- * values go up instead, so nothing is lost in the trade.
+ * — a brand-new account, or one made before this table did — a name Supabase
+ * already knows for this person (signup's `display_name`, or Google's
+ * `full_name`/`name`) goes up instead. Only once neither source has a name
+ * does this device's current, possibly-unrelated guest nickname get pushed
+ * up — otherwise the first sign-in on a browser that happened to have
+ * "Jetpacker" typed in from local guest play would overwrite the real name
+ * permanently, and every later sign-in would keep re-pulling it back down.
  *
  * ── Why the loop does not run away ────────────────────────────────────
  * Pulling the profile writes to `useRoomStore`, and writes to `useRoomStore`
  * are what trigger a push. `lastSynced` breaks the cycle: a change that
  * matches what we just read is not a change worth sending back.
  */
-async function startProfileSync(userId: string): Promise<void> {
+async function startProfileSync(
+  userId: string,
+  meta: Record<string, unknown> | null | undefined,
+): Promise<void> {
   stopProfileSync?.();
 
   const room = useRoomStore.getState();
   const local = {
-    displayName: room.playerName.trim() || null,
+    displayName: metadataDisplayName(meta) || room.playerName.trim() || null,
     avatarId: room.avatarId,
     bio: room.bio.trim() || null,
     region: room.region.trim() || null,
@@ -488,7 +513,7 @@ if (isSupabaseConfigured) {
       const userId = session?.user?.id ?? null;
       if (userId && userId !== syncedUserId) {
         syncedUserId = userId;
-        void startProfileSync(userId);
+        void startProfileSync(userId, session?.user?.user_metadata);
       } else if (!userId && syncedUserId) {
         syncedUserId = null;
         stopProfileSync?.();
