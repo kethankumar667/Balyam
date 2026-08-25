@@ -289,20 +289,19 @@ export default function AppLayout({
             tabIndex={-1}
             className="flex-1 min-w-0 w-full max-w-full h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col touch-pan-y overscroll-y-contain"
           >
-{showFallingPetals && <FallingPetals />}
-<div className="relative z-10 flex-1 min-h-0 flex flex-col">
-  {chrome && showBreadcrumbs && (
-    <div className="flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
-      <Breadcrumbs
-        crumbs={breadcrumbs}
-        customTail={customTail}
-      />
-    </div>
-  )}
-  <div className="w-full min-w-0 flex-1 min-h-0 flex flex-col">
-    {children}
-  </div>
-</div>
+            {showFallingPetals && <FallingPetals />}
+            <div className="relative z-10 flex-1 min-h-0 flex flex-col">
+              {chrome && showBreadcrumbs && (
+                <div className="flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
+                  <Breadcrumbs
+                    crumbs={breadcrumbs}
+                    customTail={customTail}
+                  />
+                </div>
+              )}
+              <div className="w-full min-w-0 flex-1 min-h-0 flex flex-col">
+                {children}
+              </div>
             </div>
           </main>
         </div>
