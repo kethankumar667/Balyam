@@ -1,4 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import AppHeader from "./AppHeader";
 import FallingPetals from "../../animations/app/FallingPetals";
@@ -78,6 +79,7 @@ export default function AppLayout({
   showBreadcrumbs = true,
   showFallingPetals = false,
 }: AppLayoutProps) {
+  const { pathname, search } = useLocation();
   const [theme] = useTheme();
   const isDark = theme === "dark";
 
@@ -88,6 +90,34 @@ export default function AppLayout({
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileInitialView, setProfileInitialView] = useState<"profile" | "notifications">("profile");
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  // Automatically close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname, search]);
+
+  // Close on Escape key press
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen]);
+
+  // Lock body scroll when mobile menu is open to prevent touch events from being swallowed
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [mobileMenuOpen]);
 
   /**
    * `INITIAL_NOTIFICATIONS` is dummy design/dev-reference data (see its own
@@ -168,7 +198,7 @@ export default function AppLayout({
         )}
 
         {/* Layout Body Container */}
-        <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 flex overflow-hidden relative min-w-0 w-full max-w-full">
           {/* Desktop Left Sidebar (Permanently fixed, never scrolls with page) */}
           {chrome && sidebar && (
             <div className="hidden lg:block h-full flex-shrink-0">
@@ -198,14 +228,26 @@ export default function AppLayout({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] lg:hidden"
+                  onTouchStart={() => setMobileMenuOpen(false)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Close navigation menu"
+                  className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px] lg:hidden cursor-pointer touch-none"
                 />
                 <motion.div
-                  initial={{ x: -280 }}
+                  initial={{ x: -320 }}
                   animate={{ x: 0 }}
-                  exit={{ x: -280 }}
-                  transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                  className="fixed top-0 bottom-0 left-0 z-50 w-76 sm:w-80 max-w-[86vw] h-full shadow-2xl lg:hidden"
+                  exit={{ x: -320 }}
+                  transition={{ type: "spring", damping: 26, stiffness: 260 }}
+                  drag="x"
+                  dragConstraints={{ left: -320, right: 0 }}
+                  dragElastic={0.05}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.x < -60 || info.velocity.x < -250) {
+                      setMobileMenuOpen(false);
+                    }
+                  }}
+                  className="fixed top-0 bottom-0 left-0 z-50 w-76 sm:w-80 max-w-[86vw] h-full shadow-2xl lg:hidden touch-pan-y"
                 >
                   <AppSidebar
                     onOpenJoin={() => {
@@ -244,19 +286,23 @@ export default function AppLayout({
           {/* Main Scrollable Viewport (ONLY this scrolls!) */}
           <main
             id="app-main-scroll"
-            className="flex-1 h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col"
+            tabIndex={-1}
+            className="flex-1 min-w-0 w-full max-w-full h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col touch-pan-y overscroll-y-contain"
           >
-            {showFallingPetals && <FallingPetals />}
-            <div className="relative z-10 flex-1 min-h-0 flex flex-col">
-              {chrome && showBreadcrumbs && (
-                <Breadcrumbs
-                  crumbs={breadcrumbs}
-                  customTail={customTail}
-                />
-              )}
-              <div className="flex-1 min-h-0 flex flex-col">
-                {children}
-              </div>
+{showFallingPetals && <FallingPetals />}
+<div className="relative z-10 flex-1 min-h-0 flex flex-col">
+  {chrome && showBreadcrumbs && (
+    <div className="flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
+      <Breadcrumbs
+        crumbs={breadcrumbs}
+        customTail={customTail}
+      />
+    </div>
+  )}
+  <div className="w-full min-w-0 flex-1 min-h-0 flex flex-col">
+    {children}
+  </div>
+</div>
             </div>
           </main>
         </div>

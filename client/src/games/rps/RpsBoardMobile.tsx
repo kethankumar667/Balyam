@@ -78,7 +78,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           </span>
           <button
             onClick={() => setSkin("broadcast")}
-            className="px-2 py-1 rounded text-xs font-bold"
+            className="min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition active:scale-95 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a2952]"
             style={{
               background: "#FBF5E0",
               border: "1.5px solid rgba(46,40,25,0.5)",
@@ -92,7 +92,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           {props.onLeave && (
             <button
               onClick={props.onLeave}
-              className="px-2 py-1 rounded text-xs font-bold"
+              className="min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition active:scale-95 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a2952]"
               style={{
                 background: "#FBF5E0",
                 border: "1.5px solid rgba(46,40,25,0.5)",

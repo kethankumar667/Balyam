@@ -618,7 +618,7 @@ export function NotebookMarginDoodles() {
  * that board is fewer cells, not a bigger hitbox.
  */
 function hitThicknessFor(cellPx: number): number {
-  return Math.max(20, Math.min(30, Math.round(cellPx * 0.7)));
+  return Math.max(24, Math.min(36, Math.round(cellPx * 0.75)));
 }
 
 function CandidateLine({
@@ -648,6 +648,7 @@ function CandidateLine({
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
       disabled={!canPlay}
+      className="focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/80 rounded-xs"
       style={{
         position: "absolute",
         left,

@@ -276,12 +276,126 @@ function LudoPlayerCard({
   const rim = COLOR_HEX_DARK[seat.color];
   const tint = COLOR_HEX[seat.color];
   const offline = !seat.online;
-  const avatarPx = dense ? 28 : isManyPlayers ? 30 : 34;
+  const avatarPx = ultra ? 26 : dense ? 28 : isManyPlayers ? 28 : 34;
 
   // Turn timer.
   const timedKey = seat.active && !offline ? (deadline ?? null) : null;
   const secondsLeft = useTurnSecondsLeft(timedKey);
   const showTimer = timedKey != null;
+
+  // Ultra-compact card layout for 7-8 players on small mobile screens
+  if (ultra) {
+    return (
+      <div
+        ref={(el) => registerCard?.(seat.pid, el)}
+        onClick={onTarget && !isSelf ? () => onTarget(seat.pid) : undefined}
+        role={onTarget && !isSelf ? "button" : undefined}
+        tabIndex={onTarget && !isSelf ? 0 : undefined}
+        title={onTarget && !isSelf ? `React at ${seat.name}` : undefined}
+        className={`ludo-card-in relative w-full min-w-0 rounded-xl p-1.5 flex flex-col items-center justify-between gap-1 transition-all ${
+          onTarget && !isSelf ? "cursor-pointer" : ""
+        }`}
+        style={{
+          background: seat.isWinner
+            ? "linear-gradient(135deg, #FFFDF0 0%, #FEF9C3 100%)"
+            : seat.active
+            ? `linear-gradient(135deg, #FFFFFF 0%, ${tint}18 100%)`
+            : "#FFFDF8",
+          border: `1.5px solid ${
+            seat.isWinner
+              ? "#E0AE3B"
+              : seat.active
+              ? tint
+              : isSelf
+              ? "#E0AE3B"
+              : "rgba(200, 166, 107, 0.45)"
+          }`,
+          boxShadow: seat.isWinner
+            ? "0 0 0 2px #E0AE3B, 0 4px 10px rgba(224,174,59,0.25)"
+            : seat.active
+            ? `0 0 0 1.5px ${tint}, 0 4px 12px ${tint}30`
+            : "0 1px 4px rgba(0,0,0,0.04)",
+          opacity: offline ? 0.65 : 1,
+          filter: offline ? "grayscale(0.45)" : undefined,
+          animationDelay: `${Math.min(index, 8) * 40}ms`,
+        }}
+      >
+        {/* Top: Avatar + Tokens Badge or Active Timer */}
+        <div className="relative flex items-center justify-center w-full">
+          <div
+            className={`rounded-full p-0.5 transition-all flex items-center justify-center ${
+              seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs" : ""
+            }`}
+            style={{
+              background: seat.active
+                ? `linear-gradient(135deg, ${tint}, ${rim})`
+                : `${tint}35`,
+            }}
+          >
+            <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
+              <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
+            </div>
+          </div>
+
+          {/* Online status indicator */}
+          <span
+            className={`absolute -bottom-0.5 right-1/4 w-2 h-2 rounded-full z-10 ${
+              offline ? "ludo-reconnect" : ""
+            }`}
+            style={{
+              background: seat.online ? "#10B981" : "#F59E0B",
+              border: "1px solid #FFFDF8",
+            }}
+          />
+
+          {/* Floating turn indicator when active */}
+          {seat.active && !offline && (
+            <span
+              className="absolute -top-2 -right-1 font-mono font-black text-[9px] px-1 py-0.2 rounded-full bg-amber-500 text-white shadow-xs border border-amber-300 animate-pulse"
+            >
+              {showTimer ? `${secondsLeft}s` : "Turn"}
+            </span>
+          )}
+
+          {/* Winner Crown */}
+          {seat.isWinner && (
+            <span className="absolute -top-2.5 -left-1 text-[11px] leading-none" aria-hidden>
+              👑
+            </span>
+          )}
+        </div>
+
+        {/* Bottom: Name & Token Count */}
+        <div className="w-full min-w-0 flex flex-col items-center gap-0.5 text-center">
+          <div className="flex items-center justify-center gap-0.5 w-full min-w-0">
+            <span
+              className="truncate font-extrabold uppercase text-[10.5px] leading-tight text-stone-900 max-w-full"
+              style={{ color: rim }}
+              title={`${seat.name}${seat.isBot ? " (bot)" : ""}`}
+            >
+              {seat.name}
+            </span>
+            {isSelf && (
+              <span className="text-[7.5px] font-black px-1 rounded bg-amber-200 text-amber-900 shrink-0">
+                You
+              </span>
+            )}
+          </div>
+
+          {/* Tokens home notation */}
+          <span
+            className="font-mono font-black text-[9px] tabular-nums px-1 rounded leading-none text-stone-600"
+            style={{
+              background: seat.tokensHome > 0 ? `${tint}20` : "rgba(109,67,35,0.06)",
+              color: seat.tokensHome > 0 ? rim : "#6D4C3D",
+            }}
+          >
+            🏠 {seat.tokensHome}/4
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -300,8 +414,8 @@ function LudoPlayerCard({
           : undefined
       }
       title={onTarget && !isSelf ? `React at ${seat.name}` : undefined}
-      className={`ludo-card-in relative flex-1 min-w-0 rounded-2xl flex items-center justify-between gap-2.5 transition-all ${
-        isManyPlayers ? "px-2.5 py-1.5 min-h-[46px]" : "px-3.5 py-2 min-h-[52px]"
+      className={`ludo-card-in relative flex-1 min-w-0 rounded-2xl flex items-center justify-between gap-2 transition-all ${
+        isManyPlayers ? "px-2.5 py-1.5 min-h-[44px]" : "px-3 py-2 min-h-[50px]"
       } ${
         onTarget && !isSelf ? "cursor-pointer" : ""
       }`}
@@ -333,7 +447,7 @@ function LudoPlayerCard({
       }}
     >
       {/* Left: Avatar Hub */}
-      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <div className="relative flex-shrink-0 flex items-center justify-center">
           <div
             className={`rounded-full p-0.5 transition-all flex items-center justify-center ${
@@ -367,7 +481,7 @@ function LudoPlayerCard({
         {/* Center: Player Name & Tokens Progress */}
         <div className="min-w-0 flex-1 flex flex-col justify-center gap-0.5">
           {/* Row 1: Name + Role Badges */}
-          <div className="flex items-center gap-1.5 min-w-0 leading-tight">
+          <div className="flex items-center gap-1 min-w-0 leading-tight">
             {seat.isWinner && <span className="flex-shrink-0 text-xs leading-none" aria-hidden>👑</span>}
             {!seat.isWinner && seat.rank != null && (
               <span
@@ -386,7 +500,7 @@ function LudoPlayerCard({
             </span>
             {isSelf && (
               <span
-                className="flex-shrink-0 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider leading-none text-amber-950 shadow-2xs"
+                className="flex-shrink-0 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider leading-none text-amber-950 shadow-2xs"
                 style={{ background: "linear-gradient(135deg, #FDE047, #F59E0B)" }}
               >
                 You
@@ -415,48 +529,41 @@ function LudoPlayerCard({
               title={`${seat.tokensHome}/4 tokens reached home`}
             >
               {isManyPlayers ? (
-                /* Numeric notation for 5-8 players */
+                /* Numeric notation for 5-6 players */
                 <span
-                  className="inline-flex items-center gap-1 font-mono font-black text-[10px] tabular-nums px-1.5 py-0.5 rounded leading-none"
+                  className="inline-flex items-center gap-1 font-mono font-black text-[9.5px] tabular-nums px-1.5 py-0.5 rounded leading-none"
                   style={{
                     background: seat.tokensHome > 0 ? `${tint}20` : "rgba(109,67,35,0.08)",
                     color: seat.tokensHome > 0 ? rim : "#6D4C3D",
                     border: `1px solid ${seat.tokensHome > 0 ? `${tint}40` : "rgba(109,67,35,0.15)"}`,
                   }}
                 >
-                  <span className="text-[9px]">🏠</span>
+                  <span className="text-[8.5px]">🏠</span>
                   <span>{seat.tokensHome}/4</span>
                 </span>
               ) : (
                 /* Elegant token dots notation for 2-4 players */
-                <div className="flex items-center gap-1.5">
-                  <div className="flex items-center gap-1">
-                    {[0, 1, 2, 3].map((i) => {
-                      const isHome = i < seat.tokensHome;
-                      return (
-                        <span
-                          key={i}
-                          className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 transition-all ${
-                            isHome ? "scale-110 shadow-xs" : "opacity-40"
-                          }`}
-                          style={{
-                            background: isHome
-                              ? `linear-gradient(135deg, ${tint}, ${rim})`
-                              : "#CBD5E1",
-                            border: isHome
-                              ? "1px solid rgba(255,255,255,0.9)"
-                              : "1px solid rgba(148,163,184,0.4)",
-                            boxShadow: isHome ? `0 0 6px ${tint}80` : undefined,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <span
-                    className="font-mono font-extrabold text-[9.5px] tabular-nums text-stone-500"
-                  >
-                    {seat.tokensHome}/4
-                  </span>
+                <div className="flex items-center gap-1">
+                  {[0, 1, 2, 3].map((i) => {
+                    const isHome = i < seat.tokensHome;
+                    return (
+                      <span
+                        key={i}
+                        className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all ${
+                          isHome ? "scale-110 shadow-xs" : "opacity-40"
+                        }`}
+                        style={{
+                          background: isHome
+                            ? `linear-gradient(135deg, ${tint}, ${rim})`
+                            : "#CBD5E1",
+                          border: isHome
+                            ? "1px solid rgba(255,255,255,0.9)"
+                            : "1px solid rgba(148,163,184,0.4)",
+                          boxShadow: isHome ? `0 0 6px ${tint}80` : undefined,
+                        }}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -464,55 +571,51 @@ function LudoPlayerCard({
         </div>
       </div>
 
-      {/* Right: Status & Turn Countdown Hub */}
-      <div className="flex-shrink-0 flex items-center justify-end">
-        {seat.isWinner ? (
-          <span
-            className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 text-amber-950 border border-amber-300"
-            style={{ background: "linear-gradient(135deg, #FDE047, #F59E0B)" }}
-          >
-            <span>🏆</span>
-            <span>Won</span>
-          </span>
-        ) : seat.active && !offline ? (
-          <div
-            className={`text-[11px] font-black uppercase tracking-wide px-3 py-1 rounded-full shadow-sm flex items-center gap-1.5 border transition-all ${
-              showTimer && secondsLeft <= 5
-                ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-red-300 animate-pulse shadow-red-500/30"
-                : "text-amber-950 border-amber-300/80 shadow-amber-500/20"
-            }`}
-            style={{
-              background:
-                showTimer && secondsLeft <= 5
-                  ? undefined
-                  : "linear-gradient(135deg, #FDE047 0%, #F59E0B 100%)",
-            }}
-            title={showTimer ? `${secondsLeft}s left in this turn` : "Active turn"}
-          >
-            <span className="text-xs leading-none" aria-hidden>🎲</span>
-            <span className="tabular-nums font-mono font-black">
-              {showTimer ? `${secondsLeft}s` : "Turn"}
+      {/* Right: Status & Turn Countdown Hub — ONLY rendered for active turn or finished ranks to eliminate clutter */}
+      {(seat.isWinner || (seat.active && !offline) || seat.rank != null) && (
+        <div className="flex-shrink-0 flex items-center justify-end">
+          {seat.isWinner ? (
+            <span
+              className="text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 text-amber-950 border border-amber-300"
+              style={{ background: "linear-gradient(135deg, #FDE047, #F59E0B)" }}
+            >
+              <span>🏆</span>
+              <span>Won</span>
             </span>
-          </div>
-        ) : seat.rank != null ? (
-          <span
-            className="text-[9.5px] font-extrabold px-2 py-0.5 rounded-full text-stone-600 bg-stone-200/80 border border-stone-300"
-          >
-            {ordinal(seat.rank)}
-          </span>
-        ) : (
-          <span
-            className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full text-stone-500 bg-stone-100 border border-stone-200"
-          >
-            Waiting
-          </span>
-        )}
-      </div>
+          ) : seat.active && !offline ? (
+            <div
+              className={`text-[10px] font-black uppercase tracking-wide px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 border transition-all ${
+                showTimer && secondsLeft <= 5
+                  ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-red-300 animate-pulse shadow-red-500/30"
+                  : "text-amber-950 border-amber-300/80 shadow-amber-500/20"
+              }`}
+              style={{
+                background:
+                  showTimer && secondsLeft <= 5
+                    ? undefined
+                    : "linear-gradient(135deg, #FDE047 0%, #F59E0B 100%)",
+              }}
+              title={showTimer ? `${secondsLeft}s left in this turn` : "Active turn"}
+            >
+              <span className="text-[10px] leading-none" aria-hidden>🎲</span>
+              <span className="tabular-nums font-mono font-black">
+                {showTimer ? `${secondsLeft}s` : "Turn"}
+              </span>
+            </div>
+          ) : seat.rank != null ? (
+            <span
+              className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full text-stone-600 bg-stone-200/80 border border-stone-300"
+            >
+              {ordinal(seat.rank)}
+            </span>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
 
-/** A row (or column) of player cards. */
+/** A row (or column) of player cards with responsive layouts for 2 to 8 players. */
 export function LudoPlayerCards({
   state,
   players,
@@ -532,11 +635,13 @@ export function LudoPlayerCards({
 }) {
   const seats = orderedSeats(state, players, selfId);
   if (seats.length === 0) return null;
-  const isManyPlayers = seats.length >= 5;
+  const count = seats.length;
+  const isManyPlayers = count >= 5;
+  const isUltra = count >= 7;
 
   if (orientation === "col") {
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 w-full">
         {seats.map((s, i) => (
           <LudoPlayerCard
             key={s.pid}
@@ -544,6 +649,7 @@ export function LudoPlayerCards({
             deadline={state.turnDeadline}
             index={i}
             isManyPlayers={isManyPlayers}
+            ultra={false}
             registerCard={registerCard}
             onTarget={onTarget}
             isSelf={s.pid === selfId}
@@ -553,42 +659,104 @@ export function LudoPlayerCards({
     );
   }
 
-  if (row === "grid" || (row === "all" && seats.length > 2)) {
-    const mid = Math.ceil(seats.length / 2);
-    const row1 = seats.slice(0, mid);
-    const row2 = seats.slice(mid);
-    return (
-      <div className="flex flex-col gap-2 w-full max-w-[36rem] px-1">
-        <div className="grid grid-flow-col auto-cols-fr gap-2 sm:gap-2.5">
-          {row1.map((s, i) => (
+  // Responsive Grid Layout for Mobile and Boards
+  if (row === "grid" || row === "all") {
+    // 2 Players: 1 row of 2 spacious cards
+    if (count === 2) {
+      return (
+        <div className="grid grid-cols-2 gap-2 w-full max-w-[36rem] px-1">
+          {seats.map((s, i) => (
             <LudoPlayerCard
               key={s.pid}
               seat={s}
               deadline={state.turnDeadline}
               index={i}
-              isManyPlayers={isManyPlayers}
+              isManyPlayers={false}
               registerCard={registerCard}
               onTarget={onTarget}
               isSelf={s.pid === selfId}
             />
           ))}
         </div>
-        {row2.length > 0 && (
-          <div className="grid grid-flow-col auto-cols-fr gap-2 sm:gap-2.5">
-            {row2.map((s, i) => (
-              <LudoPlayerCard
-                key={s.pid}
-                seat={s}
-                deadline={state.turnDeadline}
-                index={mid + i}
-                isManyPlayers={isManyPlayers}
-                registerCard={registerCard}
-                onTarget={onTarget}
-                isSelf={s.pid === selfId}
-              />
-            ))}
-          </div>
-        )}
+      );
+    }
+
+    // 3 Players: 1 row of 3 cards
+    if (count === 3) {
+      return (
+        <div className="grid grid-cols-3 gap-1.5 w-full max-w-[36rem] px-1">
+          {seats.map((s, i) => (
+            <LudoPlayerCard
+              key={s.pid}
+              seat={s}
+              deadline={state.turnDeadline}
+              index={i}
+              isManyPlayers={true}
+              registerCard={registerCard}
+              onTarget={onTarget}
+              isSelf={s.pid === selfId}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    // 4 Players: 2x2 grid (generous ~175px width per card on mobile!)
+    if (count === 4) {
+      return (
+        <div className="grid grid-cols-2 gap-2 w-full max-w-[36rem] px-1">
+          {seats.map((s, i) => (
+            <LudoPlayerCard
+              key={s.pid}
+              seat={s}
+              deadline={state.turnDeadline}
+              index={i}
+              isManyPlayers={false}
+              registerCard={registerCard}
+              onTarget={onTarget}
+              isSelf={s.pid === selfId}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    // 5 or 6 Players: 2 rows of 3 columns
+    if (count === 5 || count === 6) {
+      return (
+        <div className="grid grid-cols-3 gap-1.5 w-full max-w-[36rem] px-1">
+          {seats.map((s, i) => (
+            <LudoPlayerCard
+              key={s.pid}
+              seat={s}
+              deadline={state.turnDeadline}
+              index={i}
+              isManyPlayers={true}
+              registerCard={registerCard}
+              onTarget={onTarget}
+              isSelf={s.pid === selfId}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    // 7 or 8 Players: 2 rows of 4 columns with ultra-compact vertical cards
+    return (
+      <div className="grid grid-cols-4 gap-1 sm:gap-1.5 w-full max-w-[36rem] px-1">
+        {seats.map((s, i) => (
+          <LudoPlayerCard
+            key={s.pid}
+            seat={s}
+            deadline={state.turnDeadline}
+            index={i}
+            isManyPlayers={true}
+            ultra={true}
+            registerCard={registerCard}
+            onTarget={onTarget}
+            isSelf={s.pid === selfId}
+          />
+        ))}
       </div>
     );
   }
@@ -597,7 +765,7 @@ export function LudoPlayerCards({
   const perRow = Math.max(1, shown.length);
   const cardW = `calc((100% - ${(perRow - 1) * 0.5}rem) / ${perRow})`;
   return (
-    <div className="flex justify-center gap-2">
+    <div className="flex justify-center gap-1.5 w-full">
       {shown.map((s, i) => (
         <div key={s.pid} className="min-w-0" style={{ width: cardW, display: "flex" }}>
           <LudoPlayerCard
@@ -605,6 +773,7 @@ export function LudoPlayerCards({
             deadline={state.turnDeadline}
             index={i}
             isManyPlayers={isManyPlayers}
+            ultra={isUltra}
             registerCard={registerCard}
             onTarget={onTarget}
             isSelf={s.pid === selfId}
