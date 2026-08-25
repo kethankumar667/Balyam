@@ -206,7 +206,12 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   setPlayerName: (name) => {
     if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
       try {
-        localStorage.setItem(STORED_NAME_KEY, name);
+        // Matches setAvatarId's pattern just below: an empty value removes
+        // the key rather than storing an empty string. Storing "" meant
+        // signOut()'s full localStorage.clear() always had exactly one key
+        // written straight back afterward.
+        if (name) localStorage.setItem(STORED_NAME_KEY, name);
+        else localStorage.removeItem(STORED_NAME_KEY);
       } catch {}
     }
     set({ playerName: name });

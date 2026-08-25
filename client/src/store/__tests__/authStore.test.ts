@@ -1,5 +1,18 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { metadataDisplayName, useAuthStore } from "../authStore";
+
+function fakeStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (k: string) => map.get(k) ?? null,
+    setItem: (k: string, v: string) => map.set(k, String(v)),
+    removeItem: (k: string) => map.delete(k),
+    clear: () => map.clear(),
+    get size() {
+      return map.size;
+    },
+  };
+}
 
 describe("metadataDisplayName", () => {
   it("prefers display_name (our own signup form) when present", () => {
@@ -79,5 +92,60 @@ describe("grantAdminAccess", () => {
     const state = useAuthStore.getState();
     expect(state.email).toBe("kethankumargontla@gmail.com");
     expect(state.userId).toBe("12e092a4-d712-4bfc-8222-a5a6f37e4ec9");
+  });
+});
+
+describe("signOut", () => {
+  let localMock: ReturnType<typeof fakeStorage>;
+  let sessionMock: ReturnType<typeof fakeStorage>;
+
+  beforeEach(() => {
+    localMock = fakeStorage();
+    sessionMock = fakeStorage();
+    vi.stubGlobal("localStorage", localMock);
+    vi.stubGlobal("sessionStorage", sessionMock);
+
+    // Unrelated keys a shared device would have accumulated — recently
+    // played, favourites, a feature flag override, an admin ops key —
+    // none of which authStore itself knows the names of.
+    localMock.setItem("bhalyam.recentlyPlayed", "[...]");
+    localMock.setItem("bhalyam.favourites", "[...]");
+    localMock.setItem("bhalyam.ff.some-flag", "true");
+    sessionMock.setItem("bhalyam.ops.key", "some-admin-key");
+
+    useAuthStore.setState({
+      kind: "super_admin",
+      email: "kethankumargontla@gmail.com",
+      since: 12345,
+      userId: "12e092a4-d712-4bfc-8222-a5a6f37e4ec9",
+      isMember: true,
+      isAdmin: true,
+      isSuperAdmin: true,
+    });
+  });
+
+  it("regression: wipes every localStorage and sessionStorage key on this device, not just the ones authStore itself writes", async () => {
+    await useAuthStore.getState().signOut();
+    expect(localMock.size).toBe(0);
+    expect(sessionMock.size).toBe(0);
+  });
+
+  it("resets auth state to a signed-out guest", async () => {
+    await useAuthStore.getState().signOut();
+    const state = useAuthStore.getState();
+    expect(state.kind).toBe("guest");
+    expect(state.isMember).toBe(false);
+    expect(state.isAdmin).toBe(false);
+    expect(state.isSuperAdmin).toBe(false);
+    expect(state.userId).toBeNull();
+    expect(state.email).toBeNull();
+  });
+
+  it("does not throw when storage is unavailable (private browsing)", async () => {
+    const deny = () => {
+      throw new Error("storage disabled");
+    };
+    vi.stubGlobal("localStorage", { getItem: deny, setItem: deny, removeItem: deny, clear: deny });
+    await expect(useAuthStore.getState().signOut()).resolves.toBeUndefined();
   });
 });

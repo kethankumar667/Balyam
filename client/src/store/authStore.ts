@@ -295,16 +295,39 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     if (supabase) {
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     }
+
+    // A deliberate sign-out — unlike a routine "no session" resolution on
+    // page load (see applyGuest below) — is the one moment someone has
+    // actually asked this device to stop being this account. Wiping every
+    // key rather than the handful this module knows about is deliberate:
+    // this app has ~35 files writing to localStorage (recently played,
+    // favourites, connection logs, onboarding progress, feature flags...),
+    // and a device this app runs on is routinely shared — a school
+    // friend group passing one phone around. Leaving any of that behind
+    // for the next guest session is the wrong default for a shared device,
+    // even though it also means resetting some genuinely device-only
+    // preferences (theme, audio volume, language) that have nothing to do
+    // with the account. That trade was made deliberately, on request, in
+    // favor of "sign out means a clean device" over "remember my dark mode
+    // across accounts."
+    try {
+      localStorage.clear();
+    } catch {
+      /* private browsing, or storage otherwise unavailable — nothing to clear */
+    }
+    try {
+      sessionStorage.clear();
+    } catch {
+      /* same */
+    }
+    // Storage is already empty; these also reset in-memory module state
+    // (clearGuestIdentity's pending-registration cache) that a storage
+    // clear alone wouldn't touch.
     saveLocalAccount(GUEST);
     clearAccountDetails();
     try {
       clearGuestIdentity();
     } catch {}
-    // A deliberate sign-out, unlike a routine "no session" resolution on page
-    // load (see applyGuest below), is the one moment the player has actually
-    // asked to stop being this account — so the device identity resets with
-    // it rather than quietly carrying the old name/avatar into the next
-    // guest session.
     useRoomStore.getState().setPlayerName("");
     useRoomStore.getState().setAvatarId(null);
     set({
