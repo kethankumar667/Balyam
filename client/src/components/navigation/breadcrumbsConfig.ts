@@ -164,17 +164,9 @@ export function resolveBreadcrumbs(pathname: string, search: string = ""): Bread
     return crumbs;
   }
 
-  // 7. Auth Pages
-  if (cleanPath === "/login") {
-    crumbs.push({ label: "Account", path: "/login" });
-    crumbs.push({ label: "Sign In" });
-    return crumbs;
-  }
-
-  if (cleanPath === "/signup") {
-    crumbs.push({ label: "Account", path: "/signup" });
-    crumbs.push({ label: "Create Account" });
-    return crumbs;
+  // 7. Auth Pages (Breadcrumbs hidden on login and signup)
+  if (cleanPath === "/login" || cleanPath === "/signup") {
+    return [];
   }
 
   if (cleanPath === "/forgot-password") {
