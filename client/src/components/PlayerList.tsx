@@ -65,14 +65,14 @@ export default function PlayerList({
             <div className="flex items-center gap-1.5">
               {p.isAutoPlaying && (
                 <span
-                  className="text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                  className="text-[11px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-300"
                   title="Auto-playing"
                 >
                   Auto
                 </span>
               )}
               {p.isHost && (
-                <span className="text-[9px] font-extrabold uppercase tracking-wider bg-orange-500/10 text-[#EA5A1F] dark:text-orange-400 border border-[#EA5A1F]/30 rounded-full px-2 py-0.5">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider bg-orange-500/10 text-[#EA5A1F] dark:text-orange-400 border border-[#EA5A1F]/30 rounded-full px-2 py-0.5">
                   Host
                 </span>
               )}
@@ -88,10 +88,11 @@ export default function PlayerList({
               {p.id !== selfId && onTapPlayer && (
                 <button
                   type="button"
-                  className="text-[#8A6D4B] hover:text-[#EA5A1F]"
+                  className="min-w-[44px] min-h-[44px] -my-2 -mr-1.5 flex items-center justify-center text-[#8A6D4B] hover:text-[#EA5A1F] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] rounded-lg cursor-pointer"
                   title={`React at ${p.name}`}
+                  aria-label={`React at ${p.name}`}
                 >
-                  <Target size={14} aria-hidden />
+                  <Target size={16} aria-hidden />
                 </button>
               )}
             </div>

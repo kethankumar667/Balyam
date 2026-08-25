@@ -84,7 +84,7 @@ describe("Rummy Open-Deck Pickup Rule Enforcement (real reconcileLayout module)"
     expect(result[1].cardIds).toEqual(["c_kc"]);
   });
 
-  it("appendIncomingCards: a closed-deck draw (openPickupId null) still aligns with a matching-suit group as before", () => {
+  it("appendIncomingCards: all incoming draws (open or closed deck) start in their own dedicated group and never corrupt pure sequences", () => {
     const groups: MeldGroup[] = [{ id: "group_1", cardIds: ["c_4s", "c_5s", "c_6s"] }];
     const byId = new Map<string, Card>([
       ["c_4s", c("c_4s", "4", "S")],
@@ -95,8 +95,9 @@ describe("Rummy Open-Deck Pickup Rule Enforcement (real reconcileLayout module)"
 
     const result = appendIncomingCards(groups, ["c_7s"], byId, null, testGroupId);
 
-    expect(result.length).toBe(1);
-    expect(result[0].cardIds).toEqual(["c_4s", "c_5s", "c_6s", "c_7s"]);
+    expect(result.length).toBe(2);
+    expect(result[0].cardIds).toEqual(["c_4s", "c_5s", "c_6s"]);
+    expect(result[1].cardIds).toEqual(["c_7s"]);
   });
 
   it("appendIncomingCards: allows player to manually reorganize the open-deck card after pickup (a later pass with no new incoming ids leaves manual grouping untouched)", () => {
@@ -148,13 +149,6 @@ describe("Rummy Open-Deck Pickup Rule Enforcement (real reconcileLayout module)"
   });
 
   describe("applyHintSuggestion (Smart Hint approval)", () => {
-    // Regression coverage for the exact bug reported: a card taken from the
-    // open deck was sometimes ending up inside an existing meld after the
-    // player approved a Smart Hint suggestion, because `suggestArrangement`
-    // (the hint's optimizer) has no concept of the open-deck pickup and will
-    // happily fold it into whatever pure sequence/set it best fits. Callers
-    // must exclude the pickup before generating a suggestion; this function
-    // is responsible for always re-adding it back as its own isolated group.
     it("keeps the open-deck pickup in its own dedicated group, separate from every suggested meld", () => {
       const suggestionGroups: Card[][] = [
         [c("c_4s", "4", "S"), c("c_5s", "5", "S"), c("c_6s", "6", "S")],
@@ -199,24 +193,17 @@ describe("Rummy Open-Deck Pickup Rule Enforcement (real reconcileLayout module)"
       ["c_8c", c("c_8c", "8", "C")],
       ["c_9c", c("c_9c", "9", "C")],
       ["c_10c", c("c_10c", "T", "C")],
-      ["c_7c_2", c("c_7c_2", "7", "C")], // second physical copy (double deck) — same rank/suit, distinct id
+      ["c_7c_2", c("c_7c_2", "7", "C")],
       ["c_4s", c("c_4s", "4", "S")],
       ["c_5s", c("c_5s", "5", "S")],
       ["c_6s", c("c_6s", "6", "S")],
       ["c_pickup_s", c("c_pickup_s", "9", "S")],
     ]);
 
-    // Regression coverage for the exact bug reported with screenshots: a
-    // player dismissed ("✕") the lone-card meld holding their just-drawn
-    // open-deck card — a natural "clean this up" tap on what looks like a
-    // stray card — and it silently landed inside their existing pure
-    // sequence of the same suit, turning "7♣ 8♣ 9♣ 10♣ (Pure run ✓)" into
-    // "7♣ 8♣ 9♣ 10♣ 7♣ (Not a meld)" with no way to tell which 7♣ was new.
-    it("keeps the open-deck pickup out of a same-suit meld when its own group is dismissed", () => {
+    it("keeps dismissed cards out of existing melds when a group is dismissed", () => {
       const groups: MeldGroup[] = [
         { id: "pure_run", cardIds: ["c_7c", "c_8c", "c_9c", "c_10c"] },
       ];
-      // The lone-card group being dismissed holds only the pickup.
       const result = redistributeCards(groups, ["c_7c_2"], byId2, "c_7c_2", testGroupId);
 
       expect(result[0].cardIds).toEqual(["c_7c", "c_8c", "c_9c", "c_10c"]);
@@ -225,26 +212,16 @@ describe("Rummy Open-Deck Pickup Rule Enforcement (real reconcileLayout module)"
       expect(result[1].cardIds).toEqual(["c_7c_2"]);
     });
 
-    it("still suit-matches every other dismissed card normally, only exempting the pickup", () => {
+    it("dismissing cards creates new standalone groups without corrupting other melds", () => {
       const groups: MeldGroup[] = [
         { id: "spades", cardIds: ["c_4s", "c_5s"] },
       ];
-      // Dismissing a mixed group: one ordinary spade card (should suit-match
-      // into the existing spades group) plus the open-deck pickup (should
-      // never join it, even though it's also a spade).
       const result = redistributeCards(groups, ["c_6s", "c_pickup_s"], byId2, "c_pickup_s", testGroupId);
 
-      expect(result[0].cardIds).toEqual(["c_4s", "c_5s", "c_6s"]);
+      expect(result[0].cardIds).toEqual(["c_4s", "c_5s"]);
       expect(result[0].cardIds).not.toContain("c_pickup_s");
-      expect(result[1].cardIds).toEqual(["c_pickup_s"]);
-    });
-
-    it("is a pure passthrough (no extra group) when there was no open-deck pickup among the dismissed cards", () => {
-      const groups: MeldGroup[] = [{ id: "spades", cardIds: ["c_4s", "c_5s"] }];
-      const result = redistributeCards(groups, ["c_6s"], byId2, null, testGroupId);
-
-      expect(result.length).toBe(1);
-      expect(result[0].cardIds).toEqual(["c_4s", "c_5s", "c_6s"]);
+      expect(result[0].cardIds).not.toContain("c_6s");
+      expect(result.length).toBe(3);
     });
   });
 });

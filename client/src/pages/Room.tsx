@@ -99,9 +99,11 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
         <button
           onClick={onClose}
           aria-label="Dismiss"
-          className="w-6 h-6 rounded-full flex items-center justify-center bg-rose-950 hover:bg-rose-900 text-rose-200 font-extrabold flex-shrink-0"
+          className="relative p-2.5 -m-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full"
         >
-          ✕
+          <span className="w-6 h-6 rounded-full flex items-center justify-center bg-rose-950 hover:bg-rose-900 text-rose-200 font-extrabold text-xs">
+            ✕
+          </span>
         </button>
       </div>
     </div>
@@ -954,6 +956,7 @@ export default function Room() {
                   selfId={playerId}
                   onChooseLudoColor={(c) => getSocket().emit("room:chooseColor", c)}
                   onChooseCoinColor={(c) => getSocket().emit("room:chooseCoinColor", c)}
+                  onChoosePenColor={(c) => getSocket().emit("room:choosePenColor", c)}
                 />
               )}
 

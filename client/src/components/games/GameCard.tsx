@@ -127,7 +127,7 @@ export default function GameCard({
       whileHover="hover"
       whileTap="tap"
       transition={bhalyamSpring}
-      className={`group relative w-full rounded-[26px] overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border shadow-md ${
+      className={`group relative w-full min-w-0 max-w-full rounded-[26px] overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border shadow-md touch-pan-y ${
         isDark ? "border-white/10" : "border-black/10"
       } ${className}`}
       style={{
@@ -135,21 +135,21 @@ export default function GameCard({
       }}
     >
       {/* Top row: Mode badge, Category & Favourite Toggle */}
-      <div className="flex items-center justify-between gap-2 z-10">
+      <div className="flex items-center justify-between gap-2 z-10 w-full min-w-0">
         <span
-          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 shrink-0 ${
             isSolo
               ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
               : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
           }`}
         >
-          {isSolo ? <User className="w-3 h-3" /> : <UsersIcon className="w-3 h-3" />}
-          <span>{isSolo ? "Single Player" : "Multiplayer"}</span>
+          {isSolo ? <User className="w-3 h-3 shrink-0" /> : <UsersIcon className="w-3 h-3 shrink-0" />}
+          <span className="truncate">{isSolo ? "Single Player" : "Multiplayer"}</span>
         </span>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           {categoryTag && (
-            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-mute">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-mute truncate max-w-[90px] sm:max-w-[120px]">
               {categoryTag}
             </span>
           )}
@@ -170,7 +170,7 @@ export default function GameCard({
                 showToast(nowFav ? `${game.title} added to favourites` : `${game.title} removed from favourites`);
               }}
               aria-label={isFav ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
-              className={`p-1.5 rounded-full transition-colors cursor-pointer ${
+              className={`p-1.5 rounded-full transition-colors cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center ${
                 isFav
                   ? "bg-rose-500/20 text-rose-500 hover:bg-rose-500/30"
                   : "bg-black/5 dark:bg-white/10 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10"
@@ -183,7 +183,7 @@ export default function GameCard({
       </div>
 
       {/* Hero illustration */}
-      <div className="relative my-3 h-28 sm:h-32 flex items-center justify-center">
+      <div className="relative my-3 h-28 sm:h-32 flex items-center justify-center w-full min-w-0">
         <div
           className="absolute w-28 h-28 rounded-full blur-2xl pointer-events-none opacity-40 group-hover:scale-115 transition-transform duration-300"
           style={{ background: btnFrom }}
@@ -197,24 +197,24 @@ export default function GameCard({
       </div>
 
       {/* Game info */}
-      <div className="text-center px-1 space-y-1">
-        <h3 className="font-display font-black text-xl sm:text-2xl text-ink-hi leading-tight tracking-tight">
+      <div className="text-center px-1 space-y-1 w-full min-w-0">
+        <h3 className="font-display font-black text-xl sm:text-2xl text-ink-hi leading-tight tracking-tight truncate">
           {game.title}
         </h3>
-        <p className="font-script italic text-sm text-ink-mid line-clamp-1">
+        <p className="font-script italic text-sm text-ink-mid line-clamp-1 truncate">
           {game.nostalgiaQuote ?? game.blurb}
         </p>
       </div>
 
       {/* Metadata indicators */}
-      <div className="flex items-center justify-center gap-3 text-xs font-semibold text-ink-mid my-2.5">
-        <div className="flex items-center gap-1">
-          <UsersIcon className="w-3.5 h-3.5" />
+      <div className="flex items-center justify-center gap-2.5 sm:gap-3 text-xs font-semibold text-ink-mid my-2.5 w-full min-w-0">
+        <div className="flex items-center gap-1 shrink-0">
+          <UsersIcon className="w-3.5 h-3.5 shrink-0" />
           <span>{game.playerRange ?? "2–8 Players"}</span>
         </div>
         <span className="text-ink-mute opacity-60">•</span>
-        <div className="flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5" />
+        <div className="flex items-center gap-1 shrink-0">
+          <Clock className="w-3.5 h-3.5 shrink-0" />
           <span>{game.duration ?? "10–20 min"}</span>
         </div>
       </div>
@@ -230,7 +230,7 @@ export default function GameCard({
         onClick={underMaintenance ? undefined : onSelect}
         disabled={underMaintenance}
         aria-label={`Play ${game.title}`}
-        className={`w-full min-h-[44px] py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider text-white transition-[filter,box-shadow] duration-200 cursor-pointer shadow-md ${
+        className={`w-full min-w-0 min-h-[44px] py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider text-white transition-[filter,box-shadow] duration-200 cursor-pointer shadow-md ${
           underMaintenance
             ? "bg-zinc-600 opacity-60 cursor-not-allowed"
             : "hover:brightness-110 hover:shadow-lg"
@@ -241,7 +241,7 @@ export default function GameCard({
         }}
       >
         <span>{underMaintenance ? "Coming Soon" : "Play Now"}</span>
-        <ArrowRight className="w-4 h-4" />
+        <ArrowRight className="w-4 h-4 shrink-0" />
       </motion.button>
     </motion.article>
   );
