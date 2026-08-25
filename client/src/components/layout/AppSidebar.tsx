@@ -265,6 +265,16 @@ export default function AppSidebar({
           <ul role="list" className="space-y-1">
             {section.items.map(renderItem)}
           </ul>
+
+          {/* Footer items — e.g. the one-click Admin Console entry
+              routeResolver injects for an admin/super-admin account, kept
+              visually separate from the main list rather than mixed in
+              with Games/Rooms/Favorites. */}
+          {section.footerItems && section.footerItems.length > 0 && (
+            <ul role="list" className="space-y-1 mt-3 pt-3 border-t border-[var(--chrome-border)]">
+              {section.footerItems.map(renderItem)}
+            </ul>
+          )}
         </nav>
 
         {/* Theme toggle — mobile drawer only; desktop already carries one in

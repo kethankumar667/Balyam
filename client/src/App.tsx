@@ -8,6 +8,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import ConsentModal from "./components/privacy/ConsentModal";
 import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import { getSocket } from "./lib/socket";
+import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 
 // ── Lazy-loaded pages & routes (code-split) ──
@@ -151,6 +152,7 @@ export default function App() {
     enforceConsentOnLoad();
     getSocket();
   }, []);
+  useAdminAutoCheck();
 
   return (
     <ErrorBoundary>

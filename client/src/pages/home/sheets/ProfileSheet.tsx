@@ -14,6 +14,7 @@ import {
   Sparkles,
   Pencil,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { findAvatar } from "../../../lib/avatars";
 import SeatAvatar from "../../../components/profile/SeatAvatar";
@@ -114,6 +115,8 @@ export function ProfileSheet({
   const avatar = findAvatar(avatarId);
   const named = playerName.trim().length > 0;
   const signedIn = useAuthStore((s) => s.isMember);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
   const [theme] = useTheme();
   const isDark = theme === "dark";
 
@@ -129,7 +132,12 @@ export function ProfileSheet({
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  if (view === "notifications") {
+  // Defense in depth: the bell icon that sets initialView="notifications"
+  // lives in the sidebar/header nav, which doesn't itself know whether the
+  // viewer is signed in. A guest landing here (view === "notifications")
+  // falls through to the profile card below instead of the notifications
+  // feed — same guard as the drill-in row's visibility just above.
+  if (view === "notifications" && signedIn) {
     return (
       <SheetShell
         open={open}
@@ -245,54 +253,58 @@ export function ProfileSheet({
         {/* Notifications — migrated in from the old standalone bell sheet.
             Lives as a drill-in row here instead of its own dialog; the
             badge is the same "number/dot" unread signal the header bell
-            used to carry alone. */}
-        <motion.button
-          type="button"
-          whileHover={{ x: 2 }}
-          whileTap={{ scale: 0.98 }}
-          transition={bhalyamSpring}
-          onClick={() => setView("notifications")}
-          className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-left cursor-pointer
-                     bg-white border border-[#E8D8BE] hover:bg-[#FFF8EE]
-                     focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60"
-        >
-          <span className="relative w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#FFF8EE] text-[#2A221B] border border-[#E8D8BE]">
-            {unreadCount > 0 ? (
-              <motion.span
-                initial={{ rotate: 0 }}
-                animate={{ rotate: [0, -12, 10, -6, 0] }}
-                transition={{ duration: 0.6, ease: "easeInOut", delay: 0.15 }}
-              >
-                <BellRing className="w-5 h-5 text-amber-500" />
-              </motion.span>
-            ) : (
-              <Bell className="w-5 h-5 text-[#7B5024]" />
-            )}
-            <AnimatePresence>
-              {unreadCount > 0 && (
+            used to carry alone. Member-only: a guest has no invites, no
+            gang, no XP streaks — the mock feed's unread badge showing over
+            "Add your name" advertised activity a guest account cannot have. */}
+        {signedIn && (
+          <motion.button
+            type="button"
+            whileHover={{ x: 2 }}
+            whileTap={{ scale: 0.98 }}
+            transition={bhalyamSpring}
+            onClick={() => setView("notifications")}
+            className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-left cursor-pointer
+                       bg-white border border-[#E8D8BE] hover:bg-[#FFF8EE]
+                       focus:outline-none focus:ring-2 focus:ring-bhalyam-gold-dark/60"
+          >
+            <span className="relative w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#FFF8EE] text-[#2A221B] border border-[#E8D8BE]">
+              {unreadCount > 0 ? (
                 <motion.span
-                  key="profile-notif-badge"
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  transition={bhalyamSpring}
-                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs ring-2 ring-white"
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: [0, -12, 10, -6, 0] }}
+                  transition={{ duration: 0.6, ease: "easeInOut", delay: 0.15 }}
                 >
-                  {unreadCount > 9 ? "9+" : unreadCount}
+                  <BellRing className="w-5 h-5 text-amber-500" />
                 </motion.span>
+              ) : (
+                <Bell className="w-5 h-5 text-[#7B5024]" />
               )}
-            </AnimatePresence>
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-extrabold text-[15px] leading-tight text-[#2A221B]">
-              Notifications
+              <AnimatePresence>
+                {unreadCount > 0 && (
+                  <motion.span
+                    key="profile-notif-badge"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={bhalyamSpring}
+                    className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs ring-2 ring-white"
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </span>
-            <span className="block text-[11px] mt-0.5 font-semibold text-[#7B5024]">
-              {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
+            <span className="min-w-0 flex-1">
+              <span className="block font-extrabold text-[15px] leading-tight text-[#2A221B]">
+                Notifications
+              </span>
+              <span className="block text-[11px] mt-0.5 font-semibold text-[#7B5024]">
+                {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
+              </span>
             </span>
-          </span>
-          <ChevronRight className="w-4 h-4 text-[#7B5024] flex-shrink-0" />
-        </motion.button>
+            <ChevronRight className="w-4 h-4 text-[#7B5024] flex-shrink-0" />
+          </motion.button>
+        )}
 
       {signedIn ? (
         <div className="space-y-3">
@@ -301,9 +313,16 @@ export function ProfileSheet({
               <div className="text-[11px] uppercase tracking-[0.22em] font-extrabold text-[#7B5024]">
                 Your Membership
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-black">
-                Active Member
-              </span>
+              {isSuperAdmin ? (
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-400 text-amber-900 text-[11px] font-black inline-flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  Super Admin
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-black">
+                  Active Member
+                </span>
+              )}
             </div>
             <Link
               to="/profile"
@@ -317,6 +336,20 @@ export function ProfileSheet({
               <UserIcon className="w-4 h-4" />
               Account &amp; settings
             </Link>
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={onClose}
+                className="w-full h-11 rounded-full bg-zinc-900 border border-zinc-800 text-amber-400
+                           font-extrabold text-sm inline-flex items-center justify-center gap-2
+                           hover:bg-zinc-800 active:scale-[0.99]
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70
+                           transition-[background-color,transform] duration-200"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Admin Console
+              </Link>
+            )}
           </div>
 
           <button

@@ -179,6 +179,32 @@ describe("Route Resolver & Context-Aware Navigation", () => {
     });
   });
 
+  describe("Admin Console footer entry", () => {
+    it("does not appear for an ordinary signed-in member", () => {
+      const home = resolveNavigation({ pathname: "/", isMember: true });
+      expect(home.footerItems?.some((i) => i.id === "nav-superadmin-console")).toBeFalsy();
+    });
+
+    it("appears, with a Super Admin badge, once isSuperAdmin is true", () => {
+      const home = resolveNavigation({ pathname: "/", isMember: true, isSuperAdmin: true });
+      const entry = home.footerItems?.find((i) => i.id === "nav-superadmin-console");
+      expect(entry).toBeDefined();
+      expect(entry?.fullHref).toBe("/admin/dashboard");
+      expect(entry?.badge?.text).toBe("Super Admin");
+    });
+
+    it("also appears via capabilities.accessAdminPanel, independent of isSuperAdmin", () => {
+      const home = resolveNavigation({ pathname: "/", isMember: true, accessAdminPanel: true });
+      expect(home.footerItems?.some((i) => i.id === "nav-superadmin-console")).toBe(true);
+    });
+
+    it("does not duplicate itself while already inside the admin section", () => {
+      const admin = resolveNavigation({ pathname: "/admin/dashboard", isMember: true, isSuperAdmin: true });
+      const count = (admin.footerItems ?? []).filter((i) => i.id === "nav-superadmin-console").length;
+      expect(count).toBe(0);
+    });
+  });
+
   describe("NAVIGATION_CONFIG Schema Integrity", () => {
     it("ensures all sections have unique item IDs", () => {
       const allIds = new Set<string>();

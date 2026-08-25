@@ -49,7 +49,9 @@ export default function AdminRoute({ children }: { children: React.ReactNode }):
   const check = useCallback(async () => {
     const principal = await checkOperationalAccess();
     if (principal) {
-      useAuthStore.getState().setSuperAdmin(true);
+      useAuthStore
+        .getState()
+        .grantAdminAccess(principal.kind === "admin-user" ? principal : {});
       setState({ phase: "allowed", principal });
     } else {
       setState({ phase: "denied" });
@@ -67,7 +69,9 @@ export default function AdminRoute({ children }: { children: React.ReactNode }):
     storeOperationalKey(keyInput);
     const principal = await checkOperationalAccess();
     if (principal) {
-      useAuthStore.getState().setSuperAdmin(true);
+      useAuthStore
+        .getState()
+        .grantAdminAccess(principal.kind === "admin-user" ? principal : {});
       setKeyInput("");
       setState({ phase: "allowed", principal });
     } else {
@@ -129,7 +133,9 @@ export default function AdminRoute({ children }: { children: React.ReactNode }):
                   storeOperationalKey(DEV_DEFAULT_OPERATIONAL_KEY);
                   const principal = await checkOperationalAccess();
                   if (principal) {
-                    useAuthStore.getState().setSuperAdmin(true);
+                    useAuthStore
+        .getState()
+        .grantAdminAccess(principal.kind === "admin-user" ? principal : {});
                     setKeyInput("");
                     setState({ phase: "allowed", principal });
                   } else {

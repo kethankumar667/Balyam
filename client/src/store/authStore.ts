@@ -89,6 +89,18 @@ interface AuthStore extends StoredAccount {
   signInSuperAdmin: () => void;
   /** Dynamically toggle Super Admin state. */
   setSuperAdmin: (enabled: boolean) => void;
+  /**
+   * The server confirmed operational access — grant it without discarding
+   * who is actually signed in.
+   *
+   * `setSuperAdmin(true)` predates a real admin allowlist: it always writes
+   * a hardcoded `superadmin@bhalyam.io` placeholder, which was harmless
+   * while it only ever ran for a local demo toggle. `AdminRoute` reusing it
+   * for a REAL verified admin session meant passing the server's check
+   * silently overwrote that person's actual email in the store. This keeps
+   * whatever email/userId this session already has.
+   */
+  grantAdminAccess: (principal: { userId?: string; email?: string | null }) => void;
   signOut: () => Promise<void>;
 }
 
@@ -184,7 +196,7 @@ function initialState(): StoredAccount & { userId: string | null; ready: boolean
 
 const initial = initialState();
 
-export const useAuthStore = create<AuthStore>((set) => ({
+export const useAuthStore = create<AuthStore>((set, get) => ({
   ...initial,
   capabilities: capabilitiesFor(initial.kind),
   isMember: initial.kind === "member" || initial.kind === "admin" || initial.kind === "super_admin",
@@ -257,6 +269,25 @@ export const useAuthStore = create<AuthStore>((set) => ({
         ready: true,
       });
     }
+  },
+
+  grantAdminAccess: (principal) => {
+    const current = get();
+    const next: StoredAccount = {
+      kind: "super_admin",
+      email: principal.email ?? current.email,
+      since: current.since ?? Date.now(),
+    };
+    saveLocalAccount(next);
+    set({
+      ...next,
+      userId: principal.userId ?? current.userId,
+      capabilities: capabilitiesFor("super_admin"),
+      isMember: true,
+      isAdmin: true,
+      isSuperAdmin: true,
+      ready: true,
+    });
   },
 
   signOut: async () => {

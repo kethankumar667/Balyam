@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { metadataDisplayName } from "../authStore";
+import { describe, it, expect, beforeEach } from "vitest";
+import { metadataDisplayName, useAuthStore } from "../authStore";
 
 describe("metadataDisplayName", () => {
   it("prefers display_name (our own signup form) when present", () => {
@@ -37,5 +37,47 @@ describe("metadataDisplayName", () => {
     const localGuestNickname = "Jetpacker";
     const resolved = metadataDisplayName(meta) || localGuestNickname;
     expect(resolved).toBe("Kethan Kumar");
+  });
+});
+
+describe("grantAdminAccess", () => {
+  beforeEach(() => {
+    useAuthStore.setState({
+      kind: "member",
+      email: "kethankumargontla@gmail.com",
+      since: 12345,
+      userId: "12e092a4-d712-4bfc-8222-a5a6f37e4ec9",
+      isMember: true,
+      isAdmin: false,
+      isSuperAdmin: false,
+    });
+  });
+
+  it("regression: does not overwrite the real signed-in email with the old hardcoded 'superadmin@bhalyam.io' placeholder", () => {
+    // This is the exact bug setSuperAdmin(true) had: AdminRoute called it
+    // after a REAL admin session passed server verification, and it always
+    // wrote a fake email, discarding who was actually signed in.
+    useAuthStore.getState().grantAdminAccess({
+      userId: "12e092a4-d712-4bfc-8222-a5a6f37e4ec9",
+      email: "kethankumargontla@gmail.com",
+    });
+    expect(useAuthStore.getState().email).toBe("kethankumargontla@gmail.com");
+    expect(useAuthStore.getState().email).not.toBe("superadmin@bhalyam.io");
+  });
+
+  it("grants super_admin kind and flips isAdmin/isSuperAdmin/isMember", () => {
+    useAuthStore.getState().grantAdminAccess({ userId: "u1", email: "a@b.com" });
+    const state = useAuthStore.getState();
+    expect(state.kind).toBe("super_admin");
+    expect(state.isAdmin).toBe(true);
+    expect(state.isSuperAdmin).toBe(true);
+    expect(state.isMember).toBe(true);
+  });
+
+  it("falls back to whatever email/userId the store already had when the principal carries none (the ops-key path)", () => {
+    useAuthStore.getState().grantAdminAccess({});
+    const state = useAuthStore.getState();
+    expect(state.email).toBe("kethankumargontla@gmail.com");
+    expect(state.userId).toBe("12e092a4-d712-4bfc-8222-a5a6f37e4ec9");
   });
 });
