@@ -19,6 +19,8 @@ export function useNavigation(actions?: NavigationActions): {
 } {
   const location = useLocation();
   const isMember = useAuthStore((s) => s.isMember);
+  const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
+  const capabilities = useAuthStore((s) => s.capabilities);
 
   const section = useMemo(() => {
     return resolveNavigation({
@@ -26,8 +28,11 @@ export function useNavigation(actions?: NavigationActions): {
       search: location.search,
       hash: location.hash,
       isMember,
+      isSuperAdmin,
+      unlockAllFeatures: capabilities.unlockAllFeatures,
+      accessAdminPanel: capabilities.accessAdminPanel,
     });
-  }, [location.pathname, location.search, location.hash, isMember]);
+  }, [location.pathname, location.search, location.hash, isMember, isSuperAdmin, capabilities]);
 
   const handleAction = (action?: NavItemAction, param?: string) => {
     if (!action || !actions) return;

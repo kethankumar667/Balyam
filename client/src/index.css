@@ -1,3 +1,6 @@
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+
 /* Every family this stylesheet needs (Fredoka, Kalam, Patrick Hand, Nunito,
    JetBrains Mono, Poppins, Noto Sans Telugu, Caveat) is now loaded by the
    single <link> in index.html, merged with its own font set so nothing here
@@ -976,7 +979,6 @@ body, #root, .bhalyam-paper {
   50%      { opacity: 1; }
 }
 .ludo-seat-glow { animation: ludo-seat-glow 1.6s ease-in-out infinite; }
-
 
 /* ── Ludo premium motion layer ──────────────────────────────────────────
    Every animation below is purely decorative and is neutralised by the
@@ -2220,7 +2222,7 @@ body, #root, .bhalyam-paper {
 }
 
 /* Word Building — brief glow over freshly-scored cells. Moved out of the
-   board's render (<style> tag) so it lives with the other keyframes and
+   board's render (\3c style> tag) so it lives with the other keyframes and
    isn't re-parsed on every paint. */
 @keyframes wb-cell-pulse {
   0%   { opacity: 0; transform: scale(0.7); }
@@ -2237,7 +2239,6 @@ body, #root, .bhalyam-paper {
 :root[data-theme="dark"] .bhalyam-display.text-\[\#2A221B\] {
   color: #F3EADB !important;
 }
-
 
 /* ── Hand Cricket skeuomorphic utilities ──────────────────────────────────────
    CSS-only augmentations for HC surfaces. Four rules from the design spec:
@@ -2804,4 +2805,3 @@ body, #root, .bhalyam-paper {
   --room-btn: #1E2738;
   --room-btn-hover: #26334A;
 }
-

@@ -51,6 +51,10 @@ interface AuthStore extends StoredAccount {
   capabilities: Capabilities;
   /** True for a real account. Read this instead of comparing `kind` by hand. */
   isMember: boolean;
+  /** True for an admin or super admin account. */
+  isAdmin: boolean;
+  /** True for a super admin account with all platform features unlocked. */
+  isSuperAdmin: boolean;
   /** Supabase user id. `null` on the local-flag path — there is no user. */
   userId: string | null;
   /**
@@ -64,6 +68,10 @@ interface AuthStore extends StoredAccount {
   ready: boolean;
   /** Sign in on the local-flag path. Does nothing when Supabase is configured. */
   signInLocal: (email: string) => void;
+  /** Sign in as Super Admin with all platform features and admin tools unlocked. */
+  signInSuperAdmin: () => void;
+  /** Dynamically toggle Super Admin state. */
+  setSuperAdmin: (enabled: boolean) => void;
   signOut: () => Promise<void>;
 }
 
@@ -76,14 +84,14 @@ function loadLocalAccount(): StoredAccount {
     const raw = localStorage.getItem(ACCOUNT_KEY);
     if (!raw) return GUEST;
     const parsed = JSON.parse(raw) as Partial<StoredAccount> | null;
-    // Only "member" is honoured. Any other value — a typo, a half-written
-    // record, an older shape — reads as guest, so corruption fails closed.
-    if (parsed?.kind !== "member") return GUEST;
-    return {
-      kind: "member",
-      email: typeof parsed.email === "string" ? parsed.email : null,
-      since: typeof parsed.since === "number" ? parsed.since : null,
-    };
+    if (parsed?.kind === "super_admin" || parsed?.kind === "admin" || parsed?.kind === "member") {
+      return {
+        kind: parsed.kind,
+        email: typeof parsed.email === "string" ? parsed.email : null,
+        since: typeof parsed.since === "number" ? parsed.since : null,
+      };
+    }
+    return GUEST;
   } catch {
     return GUEST;
   }
@@ -92,8 +100,11 @@ function loadLocalAccount(): StoredAccount {
 function saveLocalAccount(account: StoredAccount): void {
   if (typeof window === "undefined" || typeof localStorage === "undefined") return;
   try {
-    if (account.kind === "member") localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account));
-    else localStorage.removeItem(ACCOUNT_KEY);
+    if (account.kind === "member" || account.kind === "admin" || account.kind === "super_admin") {
+      localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account));
+    } else {
+      localStorage.removeItem(ACCOUNT_KEY);
+    }
   } catch {
     /* private browsing — the identity holds for this session only */
   }
@@ -142,7 +153,7 @@ function initialState(): StoredAccount & { userId: string | null; ready: boolean
     return { ...GUEST, userId: null, ready: true };
   }
   const local = loadLocalAccount();
-  if (local.kind === "member") {
+  if (local.kind === "super_admin" || local.kind === "admin" || local.kind === "member") {
     return { ...local, userId: null, ready: true };
   }
   if (!isSupabaseConfigured) {
@@ -159,7 +170,9 @@ const initial = initialState();
 export const useAuthStore = create<AuthStore>((set) => ({
   ...initial,
   capabilities: capabilitiesFor(initial.kind),
-  isMember: initial.kind === "member",
+  isMember: initial.kind === "member" || initial.kind === "admin" || initial.kind === "super_admin",
+  isAdmin: initial.kind === "admin" || initial.kind === "super_admin",
+  isSuperAdmin: initial.kind === "super_admin",
 
   signInLocal: (email) => {
     const next: StoredAccount = {
@@ -168,39 +181,91 @@ export const useAuthStore = create<AuthStore>((set) => ({
       since: Date.now(),
     };
     saveLocalAccount(next);
-    set({ ...next, capabilities: capabilitiesFor("member"), isMember: true, ready: true });
+    set({
+      ...next,
+      capabilities: capabilitiesFor("member"),
+      isMember: true,
+      isAdmin: false,
+      isSuperAdmin: false,
+      ready: true,
+    });
+  },
+
+  signInSuperAdmin: () => {
+    const next: StoredAccount = {
+      kind: "super_admin",
+      email: "superadmin@bhalyam.io",
+      since: Date.now(),
+    };
+    saveLocalAccount(next);
+    set({
+      ...next,
+      capabilities: capabilitiesFor("super_admin"),
+      isMember: true,
+      isAdmin: true,
+      isSuperAdmin: true,
+      ready: true,
+    });
+  },
+
+  setSuperAdmin: (enabled) => {
+    if (enabled) {
+      const next: StoredAccount = {
+        kind: "super_admin",
+        email: "superadmin@bhalyam.io",
+        since: Date.now(),
+      };
+      saveLocalAccount(next);
+      set({
+        ...next,
+        capabilities: capabilitiesFor("super_admin"),
+        isMember: true,
+        isAdmin: true,
+        isSuperAdmin: true,
+        ready: true,
+      });
+    } else {
+      const next: StoredAccount = {
+        kind: "member",
+        email: null,
+        since: Date.now(),
+      };
+      saveLocalAccount(next);
+      set({
+        ...next,
+        capabilities: capabilitiesFor("member"),
+        isMember: true,
+        isAdmin: false,
+        isSuperAdmin: false,
+        ready: true,
+      });
+    }
   },
 
   signOut: async () => {
     const supabase = getSupabase();
     if (supabase) {
-      // `local` scope, not `global`: signing out on a phone should not end
-      // the session on the laptop that is mid-game.
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     }
     saveLocalAccount(GUEST);
     clearAccountDetails();
-    /*
-     * Used to also wipe `useRoomStore`'s playerName/avatarId (and their
-     * localStorage keys) here — every sign-out erased the device's name and
-     * avatar outright. That is `startProfileSync`'s whole reason to exist
-     * turned backwards: the point of syncing a member's name/avatar to the
-     * server is "still you" across devices and sessions, and erasing the
-     * only reliably-available copy the moment they sign out bet that
-     * entirely on a round trip to the server having already landed — which
-     * a debounced 800ms save right before sign-out is not guaranteed to
-     * have done. Name/avatar are a *device* play-identity, orthogonal to
-     * being signed in; leave them alone here and let a real "not you?" flow
-     * be the place that clears them, if one is ever built.
-     */
     try {
       clearGuestIdentity();
     } catch {}
+    // A deliberate sign-out, unlike a routine "no session" resolution on page
+    // load (see applyGuest below), is the one moment the player has actually
+    // asked to stop being this account — so the device identity resets with
+    // it rather than quietly carrying the old name/avatar into the next
+    // guest session.
+    useRoomStore.getState().setPlayerName("");
+    useRoomStore.getState().setAvatarId(null);
     set({
       ...GUEST,
       userId: null,
       capabilities: capabilitiesFor("guest"),
       isMember: false,
+      isAdmin: false,
+      isSuperAdmin: false,
       ready: true,
     });
   },
@@ -224,12 +289,14 @@ function applySession(session: Session | null): void {
   if (!session?.user) {
     if (!isSupabaseConfigured) {
       const local = loadLocalAccount();
-      if (local.kind === "member") {
+      if (local.kind === "super_admin" || local.kind === "admin" || local.kind === "member") {
         useAuthStore.setState({
           ...local,
           userId: null,
-          capabilities: capabilitiesFor("member"),
+          capabilities: capabilitiesFor(local.kind),
           isMember: true,
+          isAdmin: local.kind === "admin" || local.kind === "super_admin",
+          isSuperAdmin: local.kind === "super_admin",
           ready: true,
         });
         return;
@@ -256,13 +323,18 @@ function applySession(session: Session | null): void {
       }),
     });
   }
+  const local = loadLocalAccount();
+  const kind: AccountKind =
+    local.kind === "super_admin" || local.kind === "admin" ? local.kind : "member";
   useAuthStore.setState({
-    kind: "member",
+    kind,
     email: session.user.email ?? null,
     since: Number.isNaN(createdAt) ? null : createdAt,
     userId: session.user.id,
-    capabilities: capabilitiesFor("member"),
+    capabilities: capabilitiesFor(kind),
     isMember: true,
+    isAdmin: kind === "super_admin" || kind === "admin",
+    isSuperAdmin: kind === "super_admin",
     ready: true,
   });
 }
@@ -462,4 +534,14 @@ export function currentAccountKind(): AccountKind {
  */
 export function currentAccessToken(): string | undefined {
   return accessToken ?? undefined;
+}
+
+/** True when the current user is an admin or super admin. */
+export function useIsAdmin(): boolean {
+  return useAuthStore((s) => s.isAdmin || s.isSuperAdmin);
+}
+
+/** True when the current user is a super admin with all features unlocked. */
+export function useIsSuperAdmin(): boolean {
+  return useAuthStore((s) => s.isSuperAdmin);
 }

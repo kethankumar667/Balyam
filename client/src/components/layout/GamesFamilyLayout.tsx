@@ -32,7 +32,7 @@ export default function GamesFamilyLayout() {
   const context: GamesFamilyOutletContext = { openGameSheet: setSheetGame };
 
   return (
-    <AppLayout onSelectGame={setSheetGame}>
+    <AppLayout onSelectGame={setSheetGame} showFallingPetals>
       <Outlet context={context} />
       <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
     </AppLayout>

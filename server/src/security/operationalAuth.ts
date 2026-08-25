@@ -174,57 +174,70 @@ export function requireOperationalAuth(req: Request, res: Response, next: NextFu
     return;
   }
 
-  const provided = presentedCredential(req);
-  if (!provided) {
-    refuse(req, res, "no credential presented");
-    return;
-  }
+  const customHeader = req.headers["x-operational-key"];
+  const customKey = typeof customHeader === "string" ? customHeader.trim() : null;
 
-  if (secretsMatch(provided, secret)) {
+  const authHeader = req.headers["authorization"];
+  const bearer =
+    typeof authHeader === "string" && authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7).trim()
+      : null;
+
+  // 1. If custom key is provided and matches the operational secret -> allow
+  if (customKey && secretsMatch(customKey, secret)) {
     req.operationalPrincipal = { kind: "ops-key" };
     next();
     return;
   }
 
-  // Not the ops key. It may still be an admin's session token — but only if an
-  // allowlist exists to check it against. With no allowlist there is nothing
-  // the token could prove, so refuse now rather than paying for a verification
-  // whose answer cannot matter.
-  if (adminUserIds.length === 0) {
-    refuse(req, res, "credential did not match the operational key");
+  // 2. If bearer token matches the operational secret directly -> allow
+  if (bearer && secretsMatch(bearer, secret)) {
+    req.operationalPrincipal = { kind: "ops-key" };
+    next();
     return;
   }
 
-  void (async () => {
-    try {
-      const account = await verifyAccessToken(provided);
-      if (!account) {
-        refuse(req, res, "session token did not verify");
-        return;
+  // 3. If bearer token is provided and an admin allowlist exists -> verify session token
+  if (bearer && adminUserIds.length > 0) {
+    void (async () => {
+      try {
+        const account = await verifyAccessToken(bearer);
+        if (!account) {
+          refuse(req, res, "session token did not verify");
+          return;
+        }
+        if (!adminUserIds.includes(account.userId)) {
+          refuse(req, res, `verified user ${account.userId} is not on the admin allowlist`);
+          return;
+        }
+        req.operationalPrincipal = {
+          kind: "admin-user",
+          userId: account.userId,
+          email: account.email,
+        };
+        next();
+      } catch (err) {
+        // Never surface the cause. A verification that threw is a refusal like
+        // any other from the caller's side.
+        logger.error({
+          message: `Operational auth check threw for ${req.method} ${req.path}: ${String(err)}`,
+          module: "SECURITY",
+        });
+        res.status(401).json({
+          error: "Unauthorized",
+          message: "Valid operational credentials are required for this endpoint.",
+        });
       }
-      if (!adminUserIds.includes(account.userId)) {
-        refuse(req, res, `verified user ${account.userId} is not on the admin allowlist`);
-        return;
-      }
-      req.operationalPrincipal = {
-        kind: "admin-user",
-        userId: account.userId,
-        email: account.email,
-      };
-      next();
-    } catch (err) {
-      // Never surface the cause. A verification that threw is a refusal like
-      // any other from the caller's side.
-      logger.error({
-        message: `Operational auth check threw for ${req.method} ${req.path}: ${String(err)}`,
-        module: "SECURITY",
-      });
-      res.status(401).json({
-        error: "Unauthorized",
-        message: "Valid operational credentials are required for this endpoint.",
-      });
-    }
-  })();
+    })();
+    return;
+  }
+
+  if (!customKey && !bearer) {
+    refuse(req, res, "no credential presented");
+    return;
+  }
+
+  refuse(req, res, "credential did not match the operational key");
 }
 
 export interface OperationalConfigProblem {

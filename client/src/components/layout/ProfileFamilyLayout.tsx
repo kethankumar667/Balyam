@@ -200,7 +200,7 @@ export default function ProfileFamilyLayout() {
   };
 
   return (
-    <AppLayout>
+    <AppLayout showFallingPetals>
       <ProfileLayout
         profile={profile}
         isMember={isMember}

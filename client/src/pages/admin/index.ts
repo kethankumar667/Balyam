@@ -1,0 +1,10 @@
+export { default as AdminDashboardPage } from "./dashboard";
+export { default as AdminUsersPage } from "./users";
+export { default as AdminMatchesPage } from "./matches";
+export { default as AdminFeatureFlagsPage } from "./feature-flags";
+export { default as AdminAnnouncementsPage } from "./announcements";
+export { default as AdminLeaderboardsPage } from "./leaderboards";
+export { default as AdminAnalyticsPage } from "./analytics";
+export { default as AdminSystemHealthPage } from "./system-health";
+export { default as AdminAuditLogsPage } from "./audit-logs";
+export { default as AdminSettingsPage } from "./settings";

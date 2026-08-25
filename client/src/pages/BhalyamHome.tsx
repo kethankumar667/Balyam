@@ -7,6 +7,7 @@ import { usePlayerSnapshot } from "../hooks/usePlayerSnapshot";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
 import AppLayout from "../components/layout/AppLayout";
+import FallingPetals from "../animations/app/FallingPetals";
 import WhatAreWePlayingSection from "../components/bhalyam/WhatAreWePlayingSection";
 import { Hero } from "./home/Hero";
 import { PlayYourWaySection } from "./home/PlayYourWaySection";
@@ -57,7 +58,8 @@ export default function BhalyamHome() {
   return (
     <AppLayout onSelectGame={setSheetGame}>
       <div className="bhalyam-home bhalyam-font min-h-full bhalyam-paper flex flex-col">
-        <div className="mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-4 pb-12 flex-1">
+        <FallingPetals />
+        <div className="relative z-10 mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-4 pb-12 flex-1">
           <Hero
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}

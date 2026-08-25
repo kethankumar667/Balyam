@@ -142,11 +142,16 @@ export interface BhalyamGameCard {
 
 /**
  * A tile is "locked" — click-disabled — only when it's under maintenance AND
- * not explicitly kept accessible, so a game can wear the badge and still be
- * playable. No game sets either flag today; this is the switch for taking one
- * offline without deleting it from the catalogue.
+ * not explicitly kept accessible. Super admins and users with bypassMaintenance
+ * capability have all games unlocked.
  */
-export function isLocked(g: BhalyamGameCard): boolean {
+export function isLocked(
+  g: BhalyamGameCard,
+  capabilities?: { bypassMaintenance?: boolean; unlockAllFeatures?: boolean } | null,
+): boolean {
+  if (capabilities?.bypassMaintenance || capabilities?.unlockAllFeatures) {
+    return false;
+  }
   return g.maintenance === true && g.accessible !== true;
 }
 

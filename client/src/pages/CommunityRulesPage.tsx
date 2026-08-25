@@ -131,7 +131,7 @@ export default function CommunityRulesPage() {
   };
 
   return (
-    <AppLayout>
+    <AppLayout showFallingPetals>
       <div className="min-h-screen bhalyam-paper py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto space-y-12">
           {/* ── Hero ── */}

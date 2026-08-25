@@ -1,8 +1,55 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
-export default defineConfig({
+/**
+ * ADMIN-SEC-001 — refuse to produce a build artifact that could carry
+ * `VITE_OPERATIONAL_KEY`.
+ *
+ * Gating the one place application code *reads* this variable
+ * (`import.meta.env.DEV` in `client/src/lib/operationalApi.ts`) is
+ * necessary but not sufficient. Vite performs plain textual substitution
+ * for a *statically analyzable* reference like `import.meta.env.FOO`, which
+ * a production minifier can dead-code-eliminate inside an `if (false)`
+ * branch — but this app also does a genuinely useful DYNAMIC lookup,
+ * `import.meta.env[\`VITE_FF_${key}\`]` in `client/src/lib/featureFlags.ts`,
+ * to support arbitrary feature-flag overrides. Vite cannot statically
+ * resolve a computed key, so whenever ANY file in the bundle does that, Vite
+ * falls back to synthesizing the *entire* resolved `import.meta.env` as a
+ * real object literal — every `VITE_`-prefixed variable it found, including
+ * `VITE_OPERATIONAL_KEY`, regardless of which files reference which keys or
+ * under what condition. Proven against a real build by
+ * `scripts/verify-no-secret-leak.mjs` — the object was found verbatim in
+ * the emitted chunk, keyed alongside `MODE`/`DEV`/`PROD`, even with the
+ * `DEV`-gated read in place.
+ *
+ * So the only watertight guarantee is refusing to build at all while this
+ * variable is set — the same "absence of configuration is a refusal, never
+ * a pass" posture `server/src/security/operationalAuth.ts` already takes
+ * for `OPERATIONAL_SECRET`. Extracted as a pure function so it can be unit
+ * tested without invoking a real Vite build.
+ */
+export function assertNoOperationalKeyInBuild(
+  env: Record<string, string | undefined>,
+  command: "build" | "serve",
+): void {
+  if (command !== "build") return;
+  if (!env.VITE_OPERATIONAL_KEY) return;
+  throw new Error(
+    "Refusing to build: VITE_OPERATIONAL_KEY is set. This variable is a local-development-only " +
+      "convenience — Vite embeds its value in the public production bundle regardless of any " +
+      "DEV-only guard in application code (see client/src/lib/operationalApi.ts and " +
+      "scripts/verify-no-secret-leak.mjs). Unset VITE_OPERATIONAL_KEY before running `vite build`. " +
+      "Production admin access must go through a signed-in Supabase session on the server's " +
+      "ADMIN_USER_IDS allowlist, or a caller presenting the real OPERATIONAL_SECRET directly to the " +
+      "server — never through this client-side variable.",
+  );
+}
+
+export default defineConfig(({ mode, command }) => {
+  assertNoOperationalKeyInBuild(loadEnv(mode, process.cwd(), ""), command);
+
+  return {
   plugins: [react()],
   resolve: {
     alias: {
@@ -123,4 +170,5 @@ export default defineConfig({
     // exists to prevent — so it needs the real file contents.
     css: true,
   },
+  };
 });

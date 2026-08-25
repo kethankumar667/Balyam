@@ -5,6 +5,7 @@ import { ArrowRight, Users as UsersLucideIcon, Clock } from "lucide-react";
 import { RevealOnScroll, RevealItem } from "../../components/RevealOnScroll";
 import { bhalyamSpring, tileHover } from "../../lib/motion";
 import { useTheme } from "../../lib/useTheme";
+import { useAuthStore } from "../../store/authStore";
 import CategoryFilter, {
   filterGames,
   type GameFilter,
@@ -165,7 +166,8 @@ export function GameTile({
 
   const [theme] = useTheme();
   const isDark = theme === "dark";
-  const underMaintenance = isLocked(game);
+  const capabilities = useAuthStore((s) => s.capabilities);
+  const underMaintenance = isLocked(game, capabilities);
   const accent = getGameAccent(game);
   const btnFrom = game.btnGradient?.from ?? accent.from;
   const btnTo = game.btnGradient?.to ?? accent.to;

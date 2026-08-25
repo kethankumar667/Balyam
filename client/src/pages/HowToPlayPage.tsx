@@ -200,7 +200,7 @@ export default function HowToPlayPage() {
   const [joinModalOpen, setJoinModalOpen] = useState(false);
 
   return (
-    <AppLayout>
+    <AppLayout showFallingPetals>
       <div className="min-h-screen bhalyam-paper py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto space-y-12">
           {/* ── Page Hero ── */}

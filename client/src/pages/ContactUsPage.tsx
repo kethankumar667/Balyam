@@ -630,7 +630,7 @@ export default function ContactUsPage() {
                       <input
                         type="email"
                         required
-                        placeholder="kethan@example.com"
+                        placeholder="you@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full bg-white dark:bg-[#151A2E] border border-[#EFEAE2] dark:border-[#222A44] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C] shadow-2xs font-medium"

@@ -39,6 +39,7 @@ import CommunicationPanel from "../components/room/CommunicationPanel";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
 import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
+import FallingPetals from "../animations/app/FallingPetals";
 import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
 import { GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
@@ -857,9 +858,10 @@ export default function Room() {
               : "bhalyam-font bhalyam-paper min-h-screen px-3.5 py-3 sm:px-6 sm:py-5 pb-[max(3rem,calc(env(safe-area-inset-bottom)+1.5rem))]"
         }
       >
+      {roomState.phase === "lobby" && <FallingPetals />}
       <div
         className={
-          FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
+          (FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
             ? // No space-y here — the board fills the whole inner area
               // and any lastError banner overlays it via fixed positioning.
               "mx-auto h-full max-w-none"
@@ -867,7 +869,11 @@ export default function Room() {
               ? // Ludo in play wants the full desktop width so the board can
                 // be large between its side rails (max-w-6xl squeezed it).
                 "mx-auto space-y-3 sm:space-y-4 max-w-[110rem]"
-              : "mx-auto space-y-3 sm:space-y-4 max-w-6xl"
+              : "mx-auto space-y-3 sm:space-y-4 max-w-6xl") +
+          // FallingPetals is a fixed, z-0 background layer during the lobby —
+          // give the lobby content explicit stacking so it paints above the
+          // petals instead of losing to CSS's positioned-over-static default.
+          (roomState.phase === "lobby" ? " relative z-10" : "")
         }
       >
         {roomState.phase === "lobby" ? (
