@@ -53,28 +53,47 @@ interface ProfileRow {
  * Returns `null` both when there is no row and when the read fails. The
  * caller's response is the same either way — keep whatever this device
  * already had — and a profile fetch is never worth blocking sign-in over.
+ *
+ * ── Two queries, not one ──────────────────────────────────────────────
+ * `display_name` and `avatar_id` have existed since the very first
+ * migration; the other eight columns arrived later, in migrations that a
+ * given Supabase project might not have applied yet. A single `select`
+ * asking for all ten is one Postgres statement — one missing column fails
+ * the *entire* query, silently returning `null` for a row that actually has
+ * a perfectly good name and avatar sitting in it. Reading the two
+ * load-bearing columns in their own request means a project that hasn't
+ * run the later migrations still gets name/avatar sync; it only loses the
+ * newer optional fields, instead of losing everything.
  */
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const supabase = getSupabase();
   if (!supabase) return null;
 
-  const { data, error } = await supabase
+  const core = await supabase
     .from("profiles")
-    .select("display_name, avatar_id, first_name, last_name, email, dob, gender, account_id, bio, region")
+    .select("display_name, avatar_id")
     .eq("id", userId)
-    .maybeSingle<ProfileRow>();
-  if (error || !data) return null;
+    .maybeSingle<Pick<ProfileRow, "display_name" | "avatar_id">>();
+  if (core.error || !core.data) return null;
+
+  const extended = await supabase
+    .from("profiles")
+    .select("first_name, last_name, email, dob, gender, account_id, bio, region")
+    .eq("id", userId)
+    .maybeSingle<Omit<ProfileRow, "display_name" | "avatar_id">>();
+  const extra = extended.error ? null : extended.data;
+
   return {
-    displayName: data.display_name,
-    avatarId: data.avatar_id,
-    firstName: data.first_name,
-    lastName: data.last_name,
-    email: data.email,
-    dob: data.dob,
-    gender: data.gender,
-    accountId: data.account_id,
-    bio: data.bio,
-    region: data.region,
+    displayName: core.data.display_name,
+    avatarId: core.data.avatar_id,
+    firstName: extra?.first_name,
+    lastName: extra?.last_name,
+    email: extra?.email,
+    dob: extra?.dob,
+    gender: extra?.gender,
+    accountId: extra?.account_id,
+    bio: extra?.bio,
+    region: extra?.region,
   };
 }
 
