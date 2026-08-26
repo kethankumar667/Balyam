@@ -108,7 +108,7 @@ export default function AdminAnalyticsPage() {
 
       {/* KPI Stats */}
       {loading ? (
-        <LoadingState variant="cards" className="mb-6" />
+        <LoadingState variant="cards" label="Loading analytics data" className="mb-6" />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <StatCard
@@ -141,8 +141,8 @@ export default function AdminAnalyticsPage() {
       {/* Charts Grid Row 1 */}
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
-          <LoadingState variant="chart" />
-          <LoadingState variant="chart" />
+          <LoadingState variant="chart" label="Loading player growth chart" />
+          <LoadingState variant="chart" label="Loading match completion chart" />
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">

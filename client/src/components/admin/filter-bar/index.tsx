@@ -7,6 +7,14 @@ export interface FilterOption {
   value: string;
   options: Array<{ label: string; value: string }>;
   onChange: (val: string) => void;
+  /**
+   * Accessible name override — e.g. "Filter by game". Defaults to
+   * `Filter by ${label}` rather than the bare visible label ("Game"),
+   * since a screen reader announcing just "Game, combobox" out of context
+   * says less than the visible text already implies from its position
+   * next to "Filters".
+   */
+  ariaLabel?: string;
 }
 
 interface FilterBarProps {
@@ -48,7 +56,7 @@ export default function FilterBar({
         {filters.map((filter) => (
           <div key={filter.id} className="relative">
             <select
-              aria-label={filter.label}
+              aria-label={filter.ariaLabel ?? `Filter by ${filter.label}`}
               value={filter.value}
               onChange={(e) => filter.onChange(e.target.value)}
               className="px-3 py-1.5 text-xs font-bold rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 transition-all cursor-pointer"
@@ -69,6 +77,7 @@ export default function FilterBar({
         <button
           type="button"
           onClick={onReset}
+          aria-label="Reset filters"
           className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] rounded-lg hover:bg-[var(--chrome-control)] transition-colors"
         >
           <RotateCcw className="w-3 h-3 text-amber-500" />

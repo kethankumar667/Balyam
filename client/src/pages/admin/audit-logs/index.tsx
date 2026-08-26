@@ -371,6 +371,7 @@ export default function AdminAuditLogsPage() {
           value={search}
           onChange={setSearch}
           placeholder="Search by actor, action code, IP, or resource..."
+          ariaLabel="Search audit logs"
         />
         <FilterBar
           filters={filters}

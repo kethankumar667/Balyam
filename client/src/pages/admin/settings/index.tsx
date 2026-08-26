@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   Sliders,
   Shield,
@@ -28,6 +28,40 @@ type SettingsTab =
   | "maintenance";
 
 export default function AdminSettingsPage() {
+  // ADMIN Phase 2 §8: every <label> across this page's 8 tabs sat next to
+  // its input visually but had no htmlFor/id association, and the 5
+  // toggle switches had no label of any kind (only a nearby heading a
+  // sighted user infers from proximity). One base id, suffixed per field,
+  // rather than a useId() call per field — same guarantee, far less
+  // boilerplate across this many fields.
+  const fid = useId();
+  const ids = {
+    platformName: `${fid}-platform-name`,
+    locale: `${fid}-locale`,
+    guestPlayLabel: `${fid}-guest-play-label`,
+    guestPlayDesc: `${fid}-guest-play-desc`,
+    jwtExpiry: `${fid}-jwt-expiry`,
+    googleAuth: `${fid}-google-auth`,
+    turnTime: `${fid}-turn-time`,
+    disconnectGrace: `${fid}-disconnect-grace`,
+    autoFillLabel: `${fid}-autofill-label`,
+    autoFillDesc: `${fid}-autofill-desc`,
+    startingTokens: `${fid}-starting-tokens`,
+    winReward: `${fid}-win-reward`,
+    discordWebhook: `${fid}-discord-webhook`,
+    slackLabel: `${fid}-slack-label`,
+    slackDesc: `${fid}-slack-desc`,
+    rateLimit: `${fid}-rate-limit`,
+    hmacAlgo: `${fid}-hmac-algo`,
+    hmacLabel: `${fid}-hmac-label`,
+    hmacDesc: `${fid}-hmac-desc`,
+    accentColorText: `${fid}-accent-color-text`,
+    loungeMode: `${fid}-lounge-mode`,
+    maintenanceNotice: `${fid}-maintenance-notice`,
+    maintenanceLabel: `${fid}-maintenance-label`,
+    maintenanceDesc: `${fid}-maintenance-desc`,
+  };
+
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [loading, setLoading] = useState(false);
   const [savedAlert, setSavedAlert] = useState<string | null>(null);
@@ -136,7 +170,7 @@ export default function AdminSettingsPage() {
       {/* Content Form Container */}
       <div className="p-4 sm:p-6 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs max-w-4xl">
         {loading ? (
-          <LoadingState variant="table" rows={4} />
+          <LoadingState variant="table" rows={4} label="Loading settings" />
         ) : (
           <>
             {/* Tab 1: General */}
@@ -148,10 +182,11 @@ export default function AdminSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.platformName} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Platform Public Title
                 </label>
                 <input
+                  id={ids.platformName}
                   type="text"
                   value={platformName}
                   onChange={(e) => setPlatformName(e.target.value)}
@@ -160,10 +195,11 @@ export default function AdminSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.locale} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Default Regional Locale
                 </label>
                 <select
+                  id={ids.locale}
                   value={defaultLocale}
                   onChange={(e) => setDefaultLocale(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink)]"
@@ -178,10 +214,10 @@ export default function AdminSettingsPage() {
 
             <div className="pt-4 border-t border-[var(--chrome-hairline)] flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-[var(--chrome-ink)]">
+                <h4 id={ids.guestPlayLabel} className="text-xs font-bold text-[var(--chrome-ink)]">
                   Allow Guest Pass & Play Mode
                 </h4>
-                <p className="text-xs text-[var(--chrome-ink-soft)]">
+                <p id={ids.guestPlayDesc} className="text-xs text-[var(--chrome-ink-soft)]">
                   Enable anonymous multiplayer matches without mandatory login.
                 </p>
               </div>
@@ -189,6 +225,8 @@ export default function AdminSettingsPage() {
                 type="checkbox"
                 checked={allowGuestPlay}
                 onChange={(e) => setAllowGuestPlay(e.target.checked)}
+                aria-labelledby={ids.guestPlayLabel}
+                aria-describedby={ids.guestPlayDesc}
                 className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
               />
             </div>
@@ -208,25 +246,29 @@ export default function AdminSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.jwtExpiry} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   JWT Expiry Duration
                 </label>
                 <input
+                  id={ids.jwtExpiry}
                   type="text"
                   defaultValue="604800 (7 Days)"
                   disabled
+                  aria-disabled="true"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink-soft)] font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.googleAuth} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Social Google Auth
                 </label>
                 <input
+                  id={ids.googleAuth}
                   type="text"
                   defaultValue="Enabled (OAuth 2.0 PKCE)"
                   disabled
+                  aria-disabled="true"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink-soft)] font-mono"
                 />
               </div>
@@ -243,10 +285,11 @@ export default function AdminSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.turnTime} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Default Turn Countdown (seconds)
                 </label>
                 <input
+                  id={ids.turnTime}
                   type="number"
                   value={defaultTurnTime}
                   onChange={(e) => setDefaultTurnTime(Number(e.target.value))}
@@ -255,10 +298,11 @@ export default function AdminSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.disconnectGrace} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Disconnect Grace Period (ms)
                 </label>
                 <input
+                  id={ids.disconnectGrace}
                   type="number"
                   value={disconnectGraceMs}
                   onChange={(e) => setDisconnectGraceMs(Number(e.target.value))}
@@ -269,10 +313,10 @@ export default function AdminSettingsPage() {
 
             <div className="pt-4 border-t border-[var(--chrome-hairline)] flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-[var(--chrome-ink)]">
+                <h4 id={ids.autoFillLabel} className="text-xs font-bold text-[var(--chrome-ink)]">
                   Auto-Fill Vacant Seats with AI Bots
                 </h4>
-                <p className="text-xs text-[var(--chrome-ink-soft)]">
+                <p id={ids.autoFillDesc} className="text-xs text-[var(--chrome-ink-soft)]">
                   Automatically allocate bots if public matchmaking exceeds 30s.
                 </p>
               </div>
@@ -280,6 +324,8 @@ export default function AdminSettingsPage() {
                 type="checkbox"
                 checked={autoFillBots}
                 onChange={(e) => setAutoFillBots(e.target.checked)}
+                aria-labelledby={ids.autoFillLabel}
+                aria-describedby={ids.autoFillDesc}
                 className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
               />
             </div>
@@ -295,10 +341,11 @@ export default function AdminSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.startingTokens} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Starting Wallet Tokens (New Player)
                 </label>
                 <input
+                  id={ids.startingTokens}
                   type="number"
                   value={startingTokens}
                   onChange={(e) => setStartingTokens(Number(e.target.value))}
@@ -307,10 +354,11 @@ export default function AdminSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.winReward} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Match Victory Reward
                 </label>
                 <input
+                  id={ids.winReward}
                   type="number"
                   value={winRewardTokens}
                   onChange={(e) => setWinRewardTokens(Number(e.target.value))}
@@ -329,10 +377,11 @@ export default function AdminSettingsPage() {
             </h3>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+              <label htmlFor={ids.discordWebhook} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                 Discord Operations Webhook URL
               </label>
               <input
+                id={ids.discordWebhook}
                 type="url"
                 value={discordWebhook}
                 onChange={(e) => setDiscordWebhook(e.target.value)}
@@ -342,10 +391,10 @@ export default function AdminSettingsPage() {
 
             <div className="pt-4 border-t border-[var(--chrome-hairline)] flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-[var(--chrome-ink)]">
+                <h4 id={ids.slackLabel} className="text-xs font-bold text-[var(--chrome-ink)]">
                   Critical Error Slack Notifications
                 </h4>
-                <p className="text-xs text-[var(--chrome-ink-soft)]">
+                <p id={ids.slackDesc} className="text-xs text-[var(--chrome-ink-soft)]">
                   Post unhandled exception alerts directly to internal monitoring channels.
                 </p>
               </div>
@@ -353,6 +402,8 @@ export default function AdminSettingsPage() {
                 type="checkbox"
                 checked={slackAlerts}
                 onChange={(e) => setSlackAlerts(e.target.checked)}
+                aria-labelledby={ids.slackLabel}
+                aria-describedby={ids.slackDesc}
                 className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
               />
             </div>
@@ -368,10 +419,11 @@ export default function AdminSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.rateLimit} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Max Socket Events / Min per IP
                 </label>
                 <input
+                  id={ids.rateLimit}
                   type="number"
                   value={rateLimitMax}
                   onChange={(e) => setRateLimitMax(Number(e.target.value))}
@@ -380,13 +432,15 @@ export default function AdminSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.hmacAlgo} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   HMAC Signature Algorithm
                 </label>
                 <input
+                  id={ids.hmacAlgo}
                   type="text"
                   defaultValue="SHA-256 (Node Crypto)"
                   disabled
+                  aria-disabled="true"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink-soft)] font-mono"
                 />
               </div>
@@ -394,10 +448,10 @@ export default function AdminSettingsPage() {
 
             <div className="pt-4 border-t border-[var(--chrome-hairline)] flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-[var(--chrome-ink)]">
+                <h4 id={ids.hmacLabel} className="text-xs font-bold text-[var(--chrome-ink)]">
                   Strict HMAC Seat Token Verification
                 </h4>
-                <p className="text-xs text-[var(--chrome-ink-soft)]">
+                <p id={ids.hmacDesc} className="text-xs text-[var(--chrome-ink-soft)]">
                   Drop game move dispatches if seat token signature validation fails.
                 </p>
               </div>
@@ -405,6 +459,8 @@ export default function AdminSettingsPage() {
                 type="checkbox"
                 checked={enforceHmac}
                 onChange={(e) => setEnforceHmac(e.target.checked)}
+                aria-labelledby={ids.hmacLabel}
+                aria-describedby={ids.hmacDesc}
                 className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
               />
             </div>
@@ -420,7 +476,7 @@ export default function AdminSettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.accentColorText} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Primary Accent Color (HEX)
                 </label>
                 <div className="flex items-center gap-2">
@@ -428,9 +484,11 @@ export default function AdminSettingsPage() {
                     type="color"
                     value={accentColor}
                     onChange={(e) => setAccentColor(e.target.value)}
+                    aria-label="Pick primary accent color visually"
                     className="w-9 h-9 rounded-lg border border-[var(--chrome-border)] cursor-pointer p-0.5"
                   />
                   <input
+                    id={ids.accentColorText}
                     type="text"
                     value={accentColor}
                     onChange={(e) => setAccentColor(e.target.value)}
@@ -440,10 +498,11 @@ export default function AdminSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+                <label htmlFor={ids.loungeMode} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                   Default Lounge Mode
                 </label>
                 <select
+                  id={ids.loungeMode}
                   value={darkThemeDefault ? "dark" : "light"}
                   onChange={(e) => setDarkThemeDefault(e.target.value === "dark")}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink)]"
@@ -468,10 +527,11 @@ export default function AdminSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
+              <label htmlFor={ids.maintenanceNotice} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] mb-1">
                 Maintenance Banner Message
               </label>
               <textarea
+                id={ids.maintenanceNotice}
                 rows={3}
                 value={maintenanceNotice}
                 onChange={(e) => setMaintenanceNotice(e.target.value)}
@@ -481,10 +541,10 @@ export default function AdminSettingsPage() {
 
             <div className="pt-4 border-t border-[var(--chrome-hairline)] flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-[var(--chrome-ink)]">
+                <h4 id={ids.maintenanceLabel} className="text-xs font-bold text-[var(--chrome-ink)]">
                   Activate Maintenance Mode (Drain Mode)
                 </h4>
-                <p className="text-xs text-[var(--chrome-ink-soft)]">
+                <p id={ids.maintenanceDesc} className="text-xs text-[var(--chrome-ink-soft)]">
                   Block room creation and show lobby notice.
                 </p>
               </div>
@@ -492,6 +552,8 @@ export default function AdminSettingsPage() {
                 type="checkbox"
                 checked={maintenanceActive}
                 onChange={(e) => setMaintenanceActive(e.target.checked)}
+                aria-labelledby={ids.maintenanceLabel}
+                aria-describedby={ids.maintenanceDesc}
                 className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
               />
             </div>

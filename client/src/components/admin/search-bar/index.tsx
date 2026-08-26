@@ -5,6 +5,15 @@ interface SearchBarProps {
   value?: string;
   onChange?: (val: string) => void;
   placeholder?: string;
+  /**
+   * The accessible name — e.g. "Search users". Placeholder text disappears
+   * the moment there's a value and isn't reliably exposed as a name by
+   * every AT/browser combination, so it can't stand in for a real label on
+   * its own. Falls back to `placeholder` when omitted rather than being
+   * required, so a caller mid-migration still gets SOME name, just not the
+   * page-specific one.
+   */
+  ariaLabel?: string;
   debounceMs?: number;
   loading?: boolean;
   disabled?: boolean;
@@ -17,6 +26,7 @@ export default function SearchBar({
   value: controlledValue,
   onChange,
   placeholder = "Search...",
+  ariaLabel,
   debounceMs = 250,
   loading = false,
   disabled = false,
@@ -65,6 +75,7 @@ export default function SearchBar({
         value={internalValue}
         onChange={handleChange}
         placeholder={placeholder}
+        aria-label={ariaLabel ?? placeholder}
         disabled={disabled}
         aria-disabled={disabled}
         className="w-full pl-9 pr-14 py-2 text-sm rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] text-[var(--chrome-ink)] placeholder-[var(--chrome-ink-soft)] focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-all shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--chrome-control)]"

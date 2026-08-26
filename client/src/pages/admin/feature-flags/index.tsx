@@ -140,6 +140,7 @@ export default function AdminFeatureFlagsPage() {
     {
       id: "status",
       label: "State & Env",
+      ariaLabel: "Filter by environment",
       value: statusFilter,
       options: [
         { label: "All Flags", value: "all" },
@@ -259,6 +260,7 @@ export default function AdminFeatureFlagsPage() {
           value={search}
           onChange={setSearch}
           placeholder="Search by flag name, key, or game scope..."
+          ariaLabel="Search feature flags"
         />
         <FilterBar
           filters={filters}
@@ -317,7 +319,27 @@ export default function AdminFeatureFlagsPage() {
             <div
               key={flag.id}
               onClick={() => setSelectedFlag(flag)}
-              className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs hover:border-amber-500/60 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              // This page renders its own cards rather than the shared
+              // DataTable component (ADMIN-A11Y-001's fix doesn't reach
+              // here for that reason) — same keyboard-access pattern
+              // applied directly: tabIndex/role/aria-label/keydown.
+              tabIndex={0}
+              role="button"
+              aria-label={`Open feature flag ${flag.key}`}
+              onKeyDown={(e) => {
+                // Guard against the nested toggle switch below: it's its
+                // own focusable button, and Enter/Space pressed on IT
+                // bubbles a keydown up to this div too. Only react when
+                // the card itself is what's focused — e.currentTarget,
+                // not a descendant via e.target — so toggling the switch
+                // via keyboard doesn't ALSO pop the drawer open underneath.
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedFlag(flag);
+                }
+              }}
+              className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs hover:border-amber-500/60 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
@@ -375,11 +397,12 @@ export default function AdminFeatureFlagsPage() {
                 <button
                   type="button"
                   onClick={(e) => handleToggle(flag.id, e)}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-amber-400 ${
                     flag.isEnabled ? "bg-amber-500" : "bg-zinc-300 dark:bg-zinc-700"
                   }`}
                   role="switch"
                   aria-checked={flag.isEnabled}
+                  aria-label={`${flag.isEnabled ? "Disable" : "Enable"} ${flag.name}`}
                 >
                   <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
@@ -466,6 +489,8 @@ export default function AdminFeatureFlagsPage() {
                 onChange={(e) =>
                   handleRolloutChange(selectedFlag.id, Number(e.target.value))
                 }
+                aria-label={`Canary rollout allocation for ${selectedFlag.name}`}
+                aria-valuetext={`${selectedFlag.rolloutPercentage}% of player base`}
                 className="w-full h-2 bg-[var(--chrome-control-hi)] rounded-lg appearance-none cursor-pointer accent-amber-500"
               />
 

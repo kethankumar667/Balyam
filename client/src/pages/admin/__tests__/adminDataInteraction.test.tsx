@@ -189,7 +189,7 @@ describe("Admin Console — No Search Results & Actionable Recovery", () => {
 describe("Admin Console — Dropdown Filtering & Reset Functionality", () => {
   it("Matches Page: filters by game type and resets filters", async () => {
     renderRoute(<AdminMatchesPage />);
-    const gameSelect = screen.getByLabelText("Game");
+    const gameSelect = screen.getByLabelText("Filter by Game");
 
     fireEvent.change(gameSelect, { target: { value: "Ludo" } });
 
@@ -208,7 +208,7 @@ describe("Admin Console — Dropdown Filtering & Reset Functionality", () => {
 
   it("Feature Flags Page: filters by environment (production vs canary)", async () => {
     renderRoute(<AdminFeatureFlagsPage />);
-    const envSelect = screen.getByLabelText("State & Env");
+    const envSelect = screen.getByLabelText("Filter by environment");
 
     fireEvent.change(envSelect, { target: { value: "canary" } });
 
@@ -220,7 +220,7 @@ describe("Admin Console — Dropdown Filtering & Reset Functionality", () => {
 
   it("Leaderboards Page: filters by game type and resets filters", async () => {
     renderRoute(<AdminLeaderboardsPage />);
-    const gameSelect = screen.getByLabelText("Game");
+    const gameSelect = screen.getByLabelText("Filter by Game");
 
     fireEvent.change(gameSelect, { target: { value: "Word Building" } });
 
@@ -231,7 +231,7 @@ describe("Admin Console — Dropdown Filtering & Reset Functionality", () => {
 
   it("Audit Logs Page: filters by severity level", async () => {
     renderRoute(<AdminAuditLogsPage />);
-    const severitySelect = screen.getByLabelText("Severity");
+    const severitySelect = screen.getByLabelText("Filter by Severity");
 
     fireEvent.change(severitySelect, { target: { value: "critical" } });
 

@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 
@@ -24,6 +24,22 @@ export default function PageHeader({
   actions,
   className = "",
 }: PageHeaderProps) {
+  // ADMIN Phase 2 §4: after a sidebar navigation, focus lands on the new
+  // page's own heading rather than staying on the old sidebar link, or
+  // (worse, for a keyboard/screen-reader user) staying nowhere meaningful
+  // and requiring them to Tab all the way from the top again.
+  //
+  // A plain mount effect is correct here, not a pathname-watching one:
+  // each /admin/* route is its own top-level <Route element>, so
+  // navigating between admin pages unmounts the old page (and its
+  // PageHeader) and mounts a brand new one — there's no persistent layout
+  // route this component survives across. Every mount of THIS component
+  // already IS a navigation event.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   return (
     <div
       className={`flex flex-col gap-3 pb-5 mb-6 border-b border-[var(--chrome-border)] ${className}`}
@@ -48,6 +64,7 @@ export default function PageHeader({
                   </Link>
                 ) : (
                   <span
+                    aria-current={isLast ? "page" : undefined}
                     className={
                       isLast
                         ? "text-[var(--chrome-ink)] font-bold"
@@ -67,7 +84,11 @@ export default function PageHeader({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-            <h1 className="text-lg sm:text-2xl font-black tracking-tight text-[var(--chrome-ink)] break-words">
+            <h1
+              ref={headingRef}
+              tabIndex={-1}
+              className="text-lg sm:text-2xl font-black tracking-tight text-[var(--chrome-ink)] break-words rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400"
+            >
               {title}
             </h1>
             {badge && <div className="flex-shrink-0">{badge}</div>}

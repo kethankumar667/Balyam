@@ -336,6 +336,7 @@ export default function AdminUsersPage() {
           value={search}
           onChange={setSearch}
           placeholder="Search by name, email, or favorite game..."
+          ariaLabel="Search users"
         />
         <FilterBar
           filters={filters}

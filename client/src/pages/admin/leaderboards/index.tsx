@@ -468,6 +468,7 @@ export default function AdminLeaderboardsPage() {
           value={search}
           onChange={setSearch}
           placeholder="Search by player name or game..."
+          ariaLabel="Search leaderboards"
         />
         <FilterBar
           filters={filters}

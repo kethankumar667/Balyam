@@ -116,8 +116,8 @@ describe("Admin Component Showcase Page (/admin/component-library)", () => {
     fireEvent.click(screen.getByRole("button", { name: /filterbar/i }));
 
     expect(screen.getByText("5. FilterBar")).toBeDefined();
-    expect(screen.getByLabelText("Game Tile")).toBeDefined();
-    expect(screen.getByLabelText("User Status")).toBeDefined();
+    expect(screen.getByLabelText("Filter by Game Tile")).toBeDefined();
+    expect(screen.getByLabelText("Filter by User Status")).toBeDefined();
   });
 
   it("renders DataTable across Default, Loading, Empty, and Error states", () => {

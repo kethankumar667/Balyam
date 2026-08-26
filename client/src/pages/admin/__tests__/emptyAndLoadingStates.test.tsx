@@ -82,8 +82,8 @@ describe("Admin Users Page — Search & Filter Empty States", () => {
 
   it("displays 'No users match selected filters' and resets filters on Reset Filters click", async () => {
     renderRoute(<AdminUsersPage />);
-    const roleSelect = screen.getByLabelText("Role");
-    const statusSelect = screen.getByLabelText("Status");
+    const roleSelect = screen.getByLabelText("Filter by Role");
+    const statusSelect = screen.getByLabelText("Filter by Status");
 
     // Guest + Warning combination has 0 entries in mock data
     fireEvent.change(roleSelect, { target: { value: "guest" } });
@@ -122,8 +122,8 @@ describe("Admin Matches Page — Search & Filter Empty States", () => {
 
   it("displays 'No matches meet selected filters' on zero-result filter combination", async () => {
     renderRoute(<AdminMatchesPage />);
-    const gameSelect = screen.getByLabelText("Game");
-    const statusSelect = screen.getByLabelText("Status");
+    const gameSelect = screen.getByLabelText("Filter by Game");
+    const statusSelect = screen.getByLabelText("Filter by Status");
 
     // Ludo + Abandoned combination has 0 entries
     fireEvent.change(gameSelect, { target: { value: "Ludo" } });
@@ -162,7 +162,7 @@ describe("Admin Feature Flags Page — Search & Filter Empty States", () => {
 
   it("supports filtering by state and environment", async () => {
     renderRoute(<AdminFeatureFlagsPage />);
-    const stateSelect = screen.getByLabelText("State & Env");
+    const stateSelect = screen.getByLabelText("Filter by environment");
     fireEvent.change(stateSelect, { target: { value: "canary" } });
 
     await waitFor(() => {
@@ -218,7 +218,7 @@ describe("Admin Leaderboards Page — Search & Filter Empty States", () => {
 
   it("displays 'No standings match selected filters' when filter produces 0 rows", async () => {
     renderRoute(<AdminLeaderboardsPage />);
-    const seasonSelect = screen.getByLabelText("Season");
+    const seasonSelect = screen.getByLabelText("Filter by Season");
     // Season 1 (Archived) has 0 entries in mock data
     fireEvent.change(seasonSelect, { target: { value: "Season 1" } });
 

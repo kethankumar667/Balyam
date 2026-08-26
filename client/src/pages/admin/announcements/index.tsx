@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   Radio,
   Plus,
@@ -83,6 +83,14 @@ const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
 ];
 
 export default function AdminAnnouncementsPage() {
+  // ADMIN Phase 2 §8: real id/htmlFor pairs for the create-announcement
+  // form's labels, instead of a <label> that sits next to its input
+  // visually but is never programmatically tied to it.
+  const titleFieldId = useId();
+  const messageFieldId = useId();
+  const categoryFieldId = useId();
+  const audienceFieldId = useId();
+
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(MOCK_ANNOUNCEMENTS);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementItem | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "published" | "scheduled" | "draft">("all");
@@ -330,6 +338,7 @@ export default function AdminAnnouncementsPage() {
           value={search}
           onChange={setSearch}
           placeholder="Search announcements by title, message, author..."
+          ariaLabel="Search announcements"
         />
 
         {/* Tabs */}
@@ -445,12 +454,14 @@ export default function AdminAnnouncementsPage() {
       >
         <form onSubmit={handleCreateAnnouncement} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
+            <label htmlFor={titleFieldId} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
               Banner Headline
             </label>
             <input
+              id={titleFieldId}
               type="text"
               required
+              aria-required="true"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="e.g. Word Building Weekend Championship"
@@ -459,11 +470,13 @@ export default function AdminAnnouncementsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
+            <label htmlFor={messageFieldId} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
               Detailed Description
             </label>
             <textarea
+              id={messageFieldId}
               required
+              aria-required="true"
               rows={4}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
@@ -474,10 +487,11 @@ export default function AdminAnnouncementsPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
+              <label htmlFor={categoryFieldId} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
                 Category
               </label>
               <select
+                id={categoryFieldId}
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as AnnouncementItem["type"])}
                 className="w-full px-3 py-2 rounded-xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink)]"
@@ -490,10 +504,11 @@ export default function AdminAnnouncementsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
+              <label htmlFor={audienceFieldId} className="block text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
                 Target Audience
               </label>
               <select
+                id={audienceFieldId}
                 value={newAudience}
                 onChange={(e) => setNewAudience(e.target.value as AnnouncementItem["targetAudience"])}
                 className="w-full px-3 py-2 rounded-xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink)]"

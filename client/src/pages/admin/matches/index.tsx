@@ -498,6 +498,7 @@ export default function AdminMatchesPage() {
           value={search}
           onChange={setSearch}
           placeholder="Search by room code, host, or game title..."
+          ariaLabel="Search matches"
         />
         <FilterBar
           filters={filters}
