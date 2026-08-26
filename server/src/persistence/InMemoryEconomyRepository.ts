@@ -1,0 +1,1174 @@
+import {
+  type CoinLedgerEntryRecord,
+  type CoinWalletRecord,
+  type CommitMatchEntryInput,
+  type EconomyConfigurationRecord,
+  type EconomyOperationResult,
+  type EconomyPrizeScheduleRecord,
+  type EconomyRepository,
+  type IssueGuestVoucherInput,
+  type MatchEconomySettlementRecord,
+  type ParticipantIdentityKind,
+  type PlayerIdentityKind,
+  type RewardVoucherRecord,
+  type SettleMatchEconomyInput,
+  type SettlementParticipantInput,
+  type SettlementReconciliation,
+  type VoucherStatusView,
+  type WalletLedgerEntryType,
+  type WorldBankSnapshot,
+  IdentityNotFoundError,
+  InsufficientFundsError,
+  InvalidIdentityIdError,
+  InvalidIdentityKindError,
+  InvalidSeatConfigurationError,
+  InvalidVoucherHashError,
+  MatchAlreadySettledError,
+  MatchNotCommittedError,
+  MatchNotFoundError,
+  OnlyMembersCanRedeemError,
+  SettlementConservationViolationError,
+  UnsupportedSeatCountError,
+  VoucherAlreadyRedeemedError,
+  VoucherCodeCollisionError,
+  VoucherNotActiveError,
+  VoucherNotFoundError,
+  WalletFrozenError,
+  WalletNotFoundError,
+} from "./EconomyRepository.js";
+
+/**
+ * `EconomyRepository`, in memory.
+ *
+ * ── What this file is for ────────────────────────────────────────────────
+ * The implementation the shared contract suite and every future
+ * `EconomyService` unit test run against, and what `npm run dev` gets with
+ * no Supabase project. It is NOT a durability story — everything here dies
+ * with the process. It exists to make `SupabaseEconomyRepository`'s
+ * behavior provable and swappable, per
+ * `docs/economy/economy-v1-phase1-implementation-package.md` §1.
+ *
+ * ── Concurrency model — read this before touching lock keys ─────────────
+ * This is a DETERMINISTIC SINGLE-PROCESS SIMULATION. It makes NO claim of
+ * PostgreSQL row-lock parity — there is exactly one JS heap, one thread, and
+ * no true parallelism to defend against. What genuinely matters here is
+ * narrower and different: several public methods call ANOTHER public method
+ * internally (`commitMatchEntry` calls `ensureWallet`; `settleMatchEconomy`
+ * calls `ensureWallet` per credited member; `redeemRewardVoucher` calls
+ * `ensureWallet` for the redeemer) — and each of those internal calls is a
+ * real `await`, a real suspension point. Without per-key serialization, two
+ * `Promise.all`-issued calls sharing a key COULD interleave at exactly that
+ * point and both observe "not yet applied." `KeyedMutex` below exists
+ * specifically to close that window — it is necessary because these methods
+ * compose, not because this file is pretending to be Postgres.
+ *
+ * Lock-ordering discipline (deadlock-free by construction, not by luck):
+ * match/voucher-scoped locks may acquire a wallet-scoped lock as a child;
+ * a wallet-scoped lock's own critical section never acquires anything else.
+ * Wallet locks are always leaves. No two top-level operations ever want
+ * each other's lock in the opposite order.
+ *
+ * ── Atomicity ─────────────────────────────────────────────────────────────
+ * `settleMatchEconomy` is the one method whose critical section can fail
+ * partway through a multi-participant loop. It snapshots every structure it
+ * might touch before the loop starts and restores all of them, verbatim, on
+ * ANY thrown error — there is no ambient transaction to fall back on in
+ * plain JS, so this is done explicitly. Every other mutating method is
+ * wrapped the same way for defense in depth, even though their own
+ * validation-before-mutation ordering makes a genuine partial write
+ * essentially unreachable in practice.
+ *
+ * ── Defensive cloning ─────────────────────────────────────────────────────
+ * Every record that crosses this class's public boundary — in or out — is
+ * cloned with `structuredClone`, the same convention
+ * `InMemoryProgressionRepository.ts` already uses. No caller can mutate this
+ * store by holding onto a returned reference, and no caller-supplied object
+ * is stored by reference either.
+ */
+
+/* ═══════════════════════════ Internal-only types ═════════════════════════
+ * Not exported from EconomyRepository.ts (frozen, out of scope to modify) —
+ * these mirror real Economy V1 tables that the public interface doesn't
+ * expose a read method for (world_bank_ledger, match_economy_participants),
+ * plus the per-settlement prize-schedule snapshot the real
+ * `settle_match_economy` RPC consults instead of the LIVE schedule, which
+ * `match_economy_settlements.prize_schedule_snapshot` stores and the public
+ * `MatchEconomySettlementRecord` DTO does not surface. See "Contract
+ * mismatches discovered" in this phase's completion report.
+ */
+
+type WorldBankAffectedBalance =
+  | "base_fee_revenue"
+  | "bot_prize_revenue"
+  | "guest_escrow_liability"
+  | "total_voucher_redeemed";
+
+type WorldBankLedgerEntryType =
+  | "BASE_FEE_REVENUE"
+  | "SOLO_ENTRY_COLLECTION"
+  | "BOT_PRIZE_REVENUE"
+  | "GUEST_ESCROW_DEPOSIT"
+  | "GUEST_ESCROW_REDEMPTION"
+  | "ADMIN_CORRECTION";
+
+interface WorldBankLedgerEntry {
+  id: number;
+  affectedBalance: WorldBankAffectedBalance;
+  amount: string;
+  balanceBefore: string;
+  balanceAfter: string;
+  entryType: WorldBankLedgerEntryType;
+  sourceKind: string;
+  sourceId: string;
+  idempotencyKey: string;
+  description: string;
+  createdAt: number;
+}
+
+type ParticipantPayoutStatus = "PAID_WALLET" | "ESCROWED_VOUCHER" | "BOT_TO_WORLD_BANK" | "NO_PRIZE";
+
+interface MatchEconomyParticipantRecord {
+  matchId: string;
+  identityId: string;
+  identityKind: ParticipantIdentityKind;
+  placement: number;
+  prizeCoins: string;
+  payoutStatus: ParticipantPayoutStatus;
+  voucherId: string | null;
+  createdAt: number;
+}
+
+interface SettlementSnapshot {
+  costPerSeat: string;
+  schedule: EconomyPrizeScheduleRecord;
+}
+
+/** A deep, immutable-in-spirit view of every table this store owns — for test inspection only. */
+export interface EconomyRepositorySnapshot {
+  identities: Array<{ identityId: string; kind: PlayerIdentityKind }>;
+  configuration: EconomyConfigurationRecord;
+  prizeSchedules: EconomyPrizeScheduleRecord[];
+  wallets: CoinWalletRecord[];
+  walletLedger: CoinLedgerEntryRecord[];
+  worldBank: WorldBankSnapshot;
+  worldBankLedger: WorldBankLedgerEntry[];
+  settlements: MatchEconomySettlementRecord[];
+  participants: MatchEconomyParticipantRecord[];
+  vouchers: RewardVoucherRecord[];
+  idempotencyLog: Array<{ idempotencyKey: string; operation: string }>;
+}
+
+/** Test-only surface. Never reachable through a variable typed as plain `EconomyRepository`. */
+export interface EconomyRepositoryTestFixture {
+  seedIdentity(identityId: string, kind: PlayerIdentityKind): void;
+  seedConfiguration(config: EconomyConfigurationRecord, schedules: EconomyPrizeScheduleRecord[]): void;
+  /** Seeds the identity too, if not already known. Defaults fill any field the caller omits. */
+  seedWallet(wallet: { identityId: string; identityKind: PlayerIdentityKind } & Partial<CoinWalletRecord>): CoinWalletRecord;
+  setFrozen(identityId: string, isFrozen: boolean): void;
+  snapshot(): EconomyRepositorySnapshot;
+  reset(): void;
+}
+
+/* ═══════════════════════════ Small helpers ════════════════════════════════ */
+
+function clone<T>(value: T): T {
+  return structuredClone(value);
+}
+
+function toBig(amount: string): bigint {
+  return BigInt(amount);
+}
+
+function fromBig(amount: bigint): string {
+  return amount.toString();
+}
+
+const HEX64 = /^[0-9a-f]{64}$/;
+
+/**
+ * A FIFO queue per key, not a true OS mutex — see the file header. Released
+ * in a `finally`, so a throw inside `fn` never leaves the key permanently
+ * locked. Different keys never wait on each other.
+ */
+class KeyedMutex {
+  private readonly tails = new Map<string, Promise<void>>();
+
+  async runExclusive<T>(key: string, fn: () => Promise<T> | T): Promise<T> {
+    const previousTail = this.tails.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const myTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const chained = previousTail.then(() => myTail);
+    this.tails.set(key, chained);
+
+    await previousTail;
+    try {
+      return await fn();
+    } finally {
+      release();
+      if (this.tails.get(key) === chained) {
+        this.tails.delete(key);
+      }
+    }
+  }
+}
+
+/* ═══════════════════════════ The implementation ═══════════════════════════ */
+
+const DEFAULT_CONFIG: EconomyConfigurationRecord = {
+  id: "active",
+  version: 1,
+  guestStarterCoins: "2000",
+  memberStarterCoins: "5000",
+  seatCostCoins: "100",
+  isActive: true,
+};
+
+/** Mirrors the migration's own seed data exactly — Section 10 of the migration. */
+const DEFAULT_SCHEDULES: EconomyPrizeScheduleRecord[] = [
+  { seatCount: 1, collectedCoins: "100", firstPlaceCoins: "0", secondPlaceCoins: "0", thirdPlaceCoins: "0", worldBankCoins: "100" },
+  { seatCount: 2, collectedCoins: "200", firstPlaceCoins: "150", secondPlaceCoins: "0", thirdPlaceCoins: "0", worldBankCoins: "50" },
+  { seatCount: 3, collectedCoins: "300", firstPlaceCoins: "150", secondPlaceCoins: "100", thirdPlaceCoins: "0", worldBankCoins: "50" },
+  { seatCount: 4, collectedCoins: "400", firstPlaceCoins: "175", secondPlaceCoins: "125", thirdPlaceCoins: "50", worldBankCoins: "50" },
+  { seatCount: 5, collectedCoins: "500", firstPlaceCoins: "200", secondPlaceCoins: "150", thirdPlaceCoins: "100", worldBankCoins: "50" },
+];
+
+export class InMemoryEconomyRepository implements EconomyRepository {
+  readonly kind = "memory" as const;
+
+  /** Not part of Economy V1's own schema — a minimal stand-in for the `player_identities` table this repository reads but does not own. Test-seeded only; see `ensureWallet`'s contract. */
+  private identities = new Map<string, PlayerIdentityKind>();
+  private configuration: EconomyConfigurationRecord = clone(DEFAULT_CONFIG);
+  private prizeSchedules = new Map<number, EconomyPrizeScheduleRecord>();
+  private wallets = new Map<string, CoinWalletRecord>();
+  private walletLedger: CoinLedgerEntryRecord[] = [];
+  private nextWalletLedgerId = 1;
+  private worldBank: WorldBankSnapshot = {
+    baseFeeRevenue: "0",
+    botPrizeRevenue: "0",
+    guestEscrowLiability: "0",
+    totalVoucherRedeemed: "0",
+  };
+  private worldBankLedger: WorldBankLedgerEntry[] = [];
+  private nextWorldBankLedgerId = 1;
+  private settlements = new Map<string, MatchEconomySettlementRecord>();
+  private settlementSnapshots = new Map<string, SettlementSnapshot>();
+  private participants: MatchEconomyParticipantRecord[] = [];
+  private vouchers = new Map<string, RewardVoucherRecord>();
+  private voucherIdByCodeHash = new Map<string, string>();
+  /** Diagnostic only — see the completion report's "Idempotency implementation" section. Applied/not-applied is always determined by row state, never by this map. */
+  private idempotencyLog = new Map<string, string>();
+
+  private readonly mutex = new KeyedMutex();
+
+  constructor() {
+    for (const schedule of DEFAULT_SCHEDULES) {
+      this.prizeSchedules.set(schedule.seatCount, clone(schedule));
+    }
+  }
+
+  /* ── the test fixture — never reachable via a plain EconomyRepository-typed reference ── */
+
+  get testFixture(): EconomyRepositoryTestFixture {
+    return {
+      seedIdentity: (identityId, kind) => this.identities.set(identityId, kind),
+      seedConfiguration: (config, schedules) => {
+        this.configuration = clone(config);
+        this.prizeSchedules = new Map(schedules.map((s) => [s.seatCount, clone(s)]));
+      },
+      seedWallet: (wallet) => {
+        this.identities.set(wallet.identityId, wallet.identityKind);
+        const now = Date.now();
+        const record: CoinWalletRecord = {
+          identityId: wallet.identityId,
+          identityKind: wallet.identityKind,
+          balance: wallet.balance ?? "0",
+          version: wallet.version ?? 0,
+          lifetimeGranted: wallet.lifetimeGranted ?? "0",
+          lifetimeEarned: wallet.lifetimeEarned ?? "0",
+          lifetimeSpent: wallet.lifetimeSpent ?? "0",
+          lifetimeRefunded: wallet.lifetimeRefunded ?? "0",
+          starterGranted: wallet.starterGranted ?? false,
+          isFrozen: wallet.isFrozen ?? false,
+          updatedAt: wallet.updatedAt ?? now,
+        };
+        this.assertWalletReconciles(record);
+        this.wallets.set(wallet.identityId, record);
+        return clone(record);
+      },
+      setFrozen: (identityId, isFrozen) => {
+        const wallet = this.wallets.get(identityId);
+        if (!wallet) throw new WalletNotFoundError(`Cannot freeze ${identityId}: no wallet exists`);
+        this.wallets.set(identityId, { ...wallet, isFrozen, updatedAt: Date.now() });
+      },
+      snapshot: () => ({
+        identities: [...this.identities.entries()].map(([identityId, kind]) => ({ identityId, kind })),
+        configuration: clone(this.configuration),
+        prizeSchedules: [...this.prizeSchedules.values()].map(clone),
+        wallets: [...this.wallets.values()].map(clone),
+        walletLedger: this.walletLedger.map(clone),
+        worldBank: clone(this.worldBank),
+        worldBankLedger: this.worldBankLedger.map(clone),
+        settlements: [...this.settlements.values()].map(clone),
+        participants: this.participants.map(clone),
+        vouchers: [...this.vouchers.values()].map(clone),
+        idempotencyLog: [...this.idempotencyLog.entries()].map(([idempotencyKey, operation]) => ({ idempotencyKey, operation })),
+      }),
+      reset: () => this.resetState(),
+    };
+  }
+
+  private resetState(): void {
+    this.identities = new Map();
+    this.configuration = clone(DEFAULT_CONFIG);
+    this.prizeSchedules = new Map(DEFAULT_SCHEDULES.map((s) => [s.seatCount, clone(s)]));
+    this.wallets = new Map();
+    this.walletLedger = [];
+    this.nextWalletLedgerId = 1;
+    this.worldBank = { baseFeeRevenue: "0", botPrizeRevenue: "0", guestEscrowLiability: "0", totalVoucherRedeemed: "0" };
+    this.worldBankLedger = [];
+    this.nextWorldBankLedgerId = 1;
+    this.settlements = new Map();
+    this.settlementSnapshots = new Map();
+    this.participants = [];
+    this.vouchers = new Map();
+    this.voucherIdByCodeHash = new Map();
+    this.idempotencyLog = new Map();
+  }
+
+  /* ═══════════════════════════ reads ═══════════════════════════════════ */
+
+  async ping(): Promise<void> {
+    // Always reachable — there is no external store to fail to reach.
+  }
+
+  async getWallet(identityId: string): Promise<CoinWalletRecord | null> {
+    const wallet = this.wallets.get(identityId);
+    return wallet ? clone(wallet) : null;
+  }
+
+  async listLedger(
+    walletId: string,
+    opts?: { limit?: number; offset?: number },
+  ): Promise<CoinLedgerEntryRecord[]> {
+    const limit = Math.min(Math.max(opts?.limit ?? 20, 0), 100);
+    const offset = Math.max(opts?.offset ?? 0, 0);
+    const rows = this.walletLedger
+      .filter((entry) => entry.walletId === walletId)
+      .sort((a, b) => b.createdAt - a.createdAt || b.id - a.id)
+      .slice(offset, offset + limit);
+    return rows.map(clone);
+  }
+
+  async getSettlement(matchId: string): Promise<MatchEconomySettlementRecord | null> {
+    const settlement = this.settlements.get(matchId);
+    return settlement ? clone(settlement) : null;
+  }
+
+  async getWorldBankSnapshot(): Promise<WorldBankSnapshot> {
+    return clone(this.worldBank);
+  }
+
+  async getVoucherStatus(codeHash: string): Promise<VoucherStatusView | null> {
+    const voucherId = this.voucherIdByCodeHash.get(codeHash);
+    if (!voucherId) return null;
+    const voucher = this.vouchers.get(voucherId);
+    if (!voucher) return null;
+    return { status: voucher.status, coinAmount: voucher.coinAmount };
+  }
+
+  async getActiveConfiguration(): Promise<EconomyConfigurationRecord> {
+    return clone(this.configuration);
+  }
+
+  async getPrizeSchedule(seatCount: number): Promise<EconomyPrizeScheduleRecord | null> {
+    const schedule = this.prizeSchedules.get(seatCount);
+    return schedule ? clone(schedule) : null;
+  }
+
+  async reconcileSettlement(matchId: string): Promise<SettlementReconciliation> {
+    const settlement = this.settlements.get(matchId);
+    if (!settlement) {
+      throw new MatchNotFoundError(`No settlement exists for matchId ${matchId}`);
+    }
+    const disbursed =
+      toBig(settlement.totalWalletRewarded) +
+      toBig(settlement.totalGuestEscrow) +
+      toBig(settlement.totalBotCollection) +
+      toBig(settlement.totalWorldBankCut) +
+      toBig(settlement.totalRefunded);
+    const collected = toBig(settlement.totalCollected);
+    const isBalanced =
+      (settlement.status === "COMMITTED" && disbursed === 0n) ||
+      (settlement.status !== "COMMITTED" && collected === disbursed);
+    return {
+      matchId: settlement.matchId,
+      status: settlement.status,
+      isBalanced,
+      collected: fromBig(collected),
+      disbursed: fromBig(disbursed),
+      delta: fromBig(collected - disbursed),
+      details: {
+        walletRewarded: settlement.totalWalletRewarded,
+        guestEscrow: settlement.totalGuestEscrow,
+        botCollection: settlement.totalBotCollection,
+        worldBankCut: settlement.totalWorldBankCut,
+        refunded: settlement.totalRefunded,
+      },
+    };
+  }
+
+  async listStaleCommittedSettlements(olderThanMs: number): Promise<MatchEconomySettlementRecord[]> {
+    const cutoff = Date.now() - olderThanMs;
+    return [...this.settlements.values()]
+      .filter((s) => s.status === "COMMITTED" && s.createdAt < cutoff)
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map(clone);
+  }
+
+  /* ═══════════════════════════ mutations ═══════════════════════════════ */
+
+  async ensureWallet(identityId: string): Promise<CoinWalletRecord> {
+    return this.mutex.runExclusive(`wallet:${identityId}`, () => this.ensureWalletLocked(identityId));
+  }
+
+  async grantStarterCoins(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    return this.mutex.runExclusive(`wallet:${identityId}`, () =>
+      this.withRollback(() => this.grantStarterCoinsLocked(identityId)),
+    );
+  }
+
+  async commitMatchEntry(
+    input: CommitMatchEntryInput,
+  ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
+    return this.mutex.runExclusive(`match:${input.matchId}`, () =>
+      this.withRollback(() => this.commitMatchEntryLocked(input)),
+    );
+  }
+
+  async settleMatchEconomy(
+    input: SettleMatchEconomyInput,
+  ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
+    return this.mutex.runExclusive(`match:${input.matchId}`, () =>
+      this.withRollback(() => this.settleMatchEconomyLocked(input)),
+    );
+  }
+
+  async refundMatchEntry(
+    matchId: string,
+    reason: string,
+  ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
+    return this.mutex.runExclusive(`match:${matchId}`, () =>
+      this.withRollback(() => this.refundMatchEntryLocked(matchId, reason)),
+    );
+  }
+
+  async issueGuestVoucher(
+    input: IssueGuestVoucherInput,
+  ): Promise<EconomyOperationResult<RewardVoucherRecord>> {
+    return this.mutex.runExclusive(`voucher:${input.voucherId}`, () =>
+      this.withRollback(() => this.issueGuestVoucherLocked(input)),
+    );
+  }
+
+  async redeemRewardVoucher(
+    codeHash: string,
+    memberIdentityId: string,
+  ): Promise<EconomyOperationResult<RewardVoucherRecord>> {
+    return this.mutex.runExclusive(`voucher-code:${codeHash}`, () =>
+      this.withRollback(() => this.redeemRewardVoucherLocked(codeHash, memberIdentityId)),
+    );
+  }
+
+  /* ═══════════════════════════ locked implementations ═══════════════════
+   * Everything below assumes its caller already holds the relevant mutex
+   * key and runs entirely synchronously (no internal `await` other than the
+   * one nested nested-mutex call `ensureWalletLocked` itself never makes —
+   * it IS the leaf). Never call these directly from outside the `runExclusive`
+   * wrappers above.
+   */
+
+  private ensureWalletLocked(identityId: string): CoinWalletRecord {
+    if (!identityId || identityId.trim().length === 0) {
+      throw new InvalidIdentityIdError("identity_id cannot be null or empty");
+    }
+    const kind = this.identities.get(identityId);
+    if (!kind) {
+      throw new IdentityNotFoundError(`Player identity ${identityId} is not registered`);
+    }
+    let wallet = this.wallets.get(identityId);
+    if (!wallet) {
+      const now = Date.now();
+      wallet = {
+        identityId,
+        identityKind: kind,
+        balance: "0",
+        version: 0,
+        lifetimeGranted: "0",
+        lifetimeEarned: "0",
+        lifetimeSpent: "0",
+        lifetimeRefunded: "0",
+        starterGranted: false,
+        isFrozen: false,
+        updatedAt: now,
+      };
+      this.wallets.set(identityId, wallet);
+      this.grantStarterCoinsLocked(identityId);
+      wallet = this.wallets.get(identityId)!;
+    }
+    return clone(wallet);
+  }
+
+  private grantStarterCoinsLocked(identityId: string): EconomyOperationResult<CoinWalletRecord> {
+    const idempotencyKey = `starter-grant:${identityId}`;
+    const wallet = this.wallets.get(identityId);
+    if (!wallet) {
+      throw new WalletNotFoundError(`Wallet for ${identityId} does not exist`);
+    }
+    if (wallet.starterGranted) {
+      this.logIdempotency(idempotencyKey, "grant_starter_coins");
+      return { applied: false, operation: "grant_starter_coins", idempotencyKey, result: clone(wallet) };
+    }
+
+    const grantAmount = toBig(
+      wallet.identityKind === "guest" ? this.configuration.guestStarterCoins : this.configuration.memberStarterCoins,
+    );
+    const updated = this.creditWallet(wallet, grantAmount, {
+      entryType: "STARTER_GRANT",
+      sourceKind: "starter_grant",
+      sourceId: identityId,
+      idempotencyKey,
+      description: `Authoritative starter grant (${wallet.identityKind})`,
+      lifetimeField: "lifetimeGranted",
+    });
+    updated.starterGranted = true;
+    this.wallets.set(identityId, updated);
+    this.logIdempotency(idempotencyKey, "grant_starter_coins");
+    return { applied: true, operation: "grant_starter_coins", idempotencyKey, result: clone(updated) };
+  }
+
+  private commitMatchEntryLocked(
+    input: CommitMatchEntryInput,
+  ): EconomyOperationResult<MatchEconomySettlementRecord> {
+    const idempotencyKey = `match-entry:${input.matchId}`;
+    const existing = this.settlements.get(input.matchId);
+    if (existing) {
+      this.logIdempotency(idempotencyKey, "commit_match_entry");
+      return { applied: false, operation: "commit_match_entry", idempotencyKey, result: clone(existing) };
+    }
+
+    // Bundled exactly as the real RPC bundles it: the 1-5 range check and
+    // the human+bot arithmetic check share ONE error, InvalidSeatConfigurationError
+    // — see "Contract mismatches discovered". UnsupportedSeatCountError is
+    // reserved for an in-range seat count with no matching schedule row.
+    if (
+      input.seatCount < 1 ||
+      input.seatCount > 5 ||
+      input.humanSeatCount < 0 ||
+      input.botSeatCount < 0 ||
+      input.seatCount !== input.humanSeatCount + input.botSeatCount
+    ) {
+      throw new InvalidSeatConfigurationError(
+        "seat_count must be between 1 and 5 and match human + bot counts",
+      );
+    }
+
+    this.ensureWalletLocked(input.hostIdentityId);
+
+    const schedule = this.prizeSchedules.get(input.seatCount);
+    if (!schedule) {
+      throw new UnsupportedSeatCountError(`No prize schedule for ${input.seatCount} seats`);
+    }
+
+    const totalCost = toBig(input.seatCount.toString()) * toBig(this.configuration.seatCostCoins);
+    const hostWallet = this.wallets.get(input.hostIdentityId)!;
+
+    if (hostWallet.isFrozen) {
+      throw new WalletFrozenError(`Host ${input.hostIdentityId} cannot commit a match entry while frozen`);
+    }
+    if (toBig(hostWallet.balance) < totalCost) {
+      throw new InsufficientFundsError(
+        `Host balance ${hostWallet.balance} is less than required commitment ${fromBig(totalCost)}`,
+      );
+    }
+
+    const entryType: WalletLedgerEntryType = input.isSolo
+      ? "SOLO_ENTRY_DEBIT"
+      : input.botSeatCount > 0 && input.humanSeatCount <= 1
+        ? "BOT_ENTRY_DEBIT"
+        : "ROOM_ENTRY_DEBIT";
+
+    const debited = this.debitWallet(hostWallet, totalCost, {
+      entryType,
+      sourceKind: "match",
+      sourceId: input.matchId,
+      idempotencyKey,
+      description: `Match commitment: ${input.seatCount} seats (${input.roomCode ?? "SOLO"})`,
+      lifetimeField: "lifetimeSpent",
+    });
+    this.wallets.set(input.hostIdentityId, debited);
+
+    const now = Date.now();
+    const settlement: MatchEconomySettlementRecord = {
+      matchId: input.matchId,
+      roomCode: input.roomCode ?? "SOLO",
+      hostIdentityId: input.hostIdentityId,
+      seatCount: input.seatCount,
+      humanSeatCount: input.humanSeatCount,
+      botSeatCount: input.botSeatCount,
+      costPerSeat: this.configuration.seatCostCoins,
+      totalCollected: fromBig(totalCost),
+      totalWalletRewarded: "0",
+      totalGuestEscrow: "0",
+      totalBotCollection: "0",
+      totalWorldBankCut: "0",
+      totalRefunded: "0",
+      refundReason: null,
+      status: "COMMITTED",
+      settledAt: null,
+      createdAt: now,
+    };
+    this.settlements.set(input.matchId, settlement);
+    this.settlementSnapshots.set(input.matchId, {
+      costPerSeat: this.configuration.seatCostCoins,
+      schedule: clone(schedule),
+    });
+
+    this.logIdempotency(idempotencyKey, "commit_match_entry");
+    return { applied: true, operation: "commit_match_entry", idempotencyKey, result: clone(settlement) };
+  }
+
+  private settleMatchEconomyLocked(
+    input: SettleMatchEconomyInput,
+  ): EconomyOperationResult<MatchEconomySettlementRecord> {
+    const idempotencyKey = `match-settlement:${input.matchId}`;
+    const settlement = this.settlements.get(input.matchId);
+    if (!settlement) {
+      throw new MatchNotCommittedError(`Match settlement ${input.matchId} not found`);
+    }
+    if (settlement.status === "SETTLED" || settlement.status === "REFUNDED") {
+      this.logIdempotency(idempotencyKey, "settle_match_economy");
+      return { applied: false, operation: "settle_match_economy", idempotencyKey, result: clone(settlement) };
+    }
+
+    if (!input.isValidRanking) {
+      return this.applyRefundLocked(
+        settlement,
+        idempotencyKey,
+        input.refundReason ?? "Invalid or tied authoritative result",
+      );
+    }
+
+    const snapshot = this.settlementSnapshots.get(input.matchId);
+    const schedule = snapshot?.schedule ?? this.prizeSchedules.get(settlement.seatCount);
+    if (!schedule) {
+      // Unreachable via any path this repository itself creates — every
+      // COMMITTED settlement always has a snapshot. Guarded defensively
+      // rather than asserted with a non-null assertion.
+      throw new UnsupportedSeatCountError(`No prize schedule snapshot for match ${input.matchId}`);
+    }
+    const isSolo = settlement.seatCount === 1;
+    const prizeByPlacement = (placement: number): bigint => {
+      if (placement === 1) return toBig(schedule.firstPlaceCoins);
+      if (placement === 2) return toBig(schedule.secondPlaceCoins);
+      if (placement === 3) return toBig(schedule.thirdPlaceCoins);
+      return 0n;
+    };
+
+    let totalWalletRewarded = 0n;
+    let totalGuestEscrow = 0n;
+    let totalBotCollection = 0n;
+
+    for (const participant of input.participants) {
+      const prize = prizeByPlacement(participant.placement);
+
+      if (participant.identityKind === "member") {
+        if (prize > 0n) {
+          this.ensureWalletLocked(participant.identityId);
+          const wallet = this.wallets.get(participant.identityId)!;
+          const credited = this.creditWallet(wallet, prize, {
+            entryType: "MATCH_PRIZE_CREDIT",
+            sourceKind: "match",
+            sourceId: input.matchId,
+            idempotencyKey: `${idempotencyKey}:credit:${participant.identityId}`,
+            description: `Match placement ${participant.placement} prize`,
+            lifetimeField: "lifetimeEarned",
+          });
+          this.wallets.set(participant.identityId, credited);
+          totalWalletRewarded += prize;
+          this.recordParticipant(input.matchId, participant, prize, "PAID_WALLET", null);
+        } else {
+          this.recordParticipant(input.matchId, participant, 0n, "NO_PRIZE", null);
+        }
+      } else if (participant.identityKind === "guest") {
+        if (prize > 0n) {
+          if (!participant.voucherCodeHash || !HEX64.test(participant.voucherCodeHash)) {
+            throw new InvalidVoucherHashError(
+              "Guest prize requires a 64-hex-character voucher code hash",
+            );
+          }
+          if (this.voucherIdByCodeHash.has(participant.voucherCodeHash)) {
+            throw new VoucherCodeCollisionError(
+              "A voucher with this code hash already exists",
+            );
+          }
+          const voucherId = this.generateVoucherId();
+          const now = Date.now();
+          const voucher: RewardVoucherRecord = {
+            id: voucherId,
+            codeHash: participant.voucherCodeHash,
+            coinAmount: fromBig(prize),
+            matchId: input.matchId,
+            issuedToGuestId: participant.identityId,
+            status: "ACTIVE",
+            redeemedByMemberId: null,
+            redeemedAt: null,
+            createdAt: now,
+          };
+          this.vouchers.set(voucherId, voucher);
+          this.voucherIdByCodeHash.set(participant.voucherCodeHash, voucherId);
+
+          this.moveWorldBank("guestEscrowLiability", prize, {
+            entryType: "GUEST_ESCROW_DEPOSIT",
+            sourceKind: "match",
+            sourceId: input.matchId,
+            idempotencyKey: `${idempotencyKey}:escrow:${participant.identityId}`,
+            description: "Guest match prize placed in bearer voucher escrow",
+          });
+
+          totalGuestEscrow += prize;
+          this.recordParticipant(input.matchId, participant, prize, "ESCROWED_VOUCHER", voucherId);
+        } else {
+          this.recordParticipant(input.matchId, participant, 0n, "NO_PRIZE", null);
+        }
+      } else if (participant.identityKind === "bot") {
+        if (prize > 0n) {
+          this.moveWorldBank("botPrizeRevenue", prize, {
+            entryType: "BOT_PRIZE_REVENUE",
+            sourceKind: "match",
+            sourceId: input.matchId,
+            idempotencyKey: `${idempotencyKey}:bot:${participant.placement}`,
+            description: `Bot placement ${participant.placement} prize collection`,
+          });
+          totalBotCollection += prize;
+          this.recordParticipant(input.matchId, participant, prize, "BOT_TO_WORLD_BANK", null);
+        } else {
+          this.recordParticipant(input.matchId, participant, 0n, "NO_PRIZE", null);
+        }
+      } else {
+        // Unreachable through the TypeScript-typed interface — reachable
+        // only if a caller constructs this input from untyped/external
+        // data. See EconomyRepository.ts's own note on this exact gap.
+        throw new InvalidIdentityKindError(
+          `Participant identityKind must be member, guest, or bot (got ${String(participant.identityKind)})`,
+        );
+      }
+    }
+
+    let totalWorldBankCut = 0n;
+    const worldBankCut = toBig(schedule.worldBankCoins);
+    if (worldBankCut > 0n) {
+      this.moveWorldBank("baseFeeRevenue", worldBankCut, {
+        entryType: isSolo ? "SOLO_ENTRY_COLLECTION" : "BASE_FEE_REVENUE",
+        sourceKind: "match",
+        sourceId: input.matchId,
+        idempotencyKey: `${idempotencyKey}:world-bank`,
+        description: isSolo ? "Solo session fee collection" : `Base room house cut (${settlement.seatCount} seats)`,
+      });
+      totalWorldBankCut = worldBankCut;
+    }
+
+    const disbursed = totalWalletRewarded + totalGuestEscrow + totalBotCollection + totalWorldBankCut;
+    if (toBig(settlement.totalCollected) !== disbursed) {
+      throw new SettlementConservationViolationError(
+        `Collected ${settlement.totalCollected} does not equal disbursed ${fromBig(disbursed)}`,
+      );
+    }
+
+    const now = Date.now();
+    const updated: MatchEconomySettlementRecord = {
+      ...settlement,
+      totalWalletRewarded: fromBig(totalWalletRewarded),
+      totalGuestEscrow: fromBig(totalGuestEscrow),
+      totalBotCollection: fromBig(totalBotCollection),
+      totalWorldBankCut: fromBig(totalWorldBankCut),
+      status: "SETTLED",
+      settledAt: now,
+    };
+    this.settlements.set(input.matchId, updated);
+
+    this.logIdempotency(idempotencyKey, "settle_match_economy");
+    return { applied: true, operation: "settle_match_economy", idempotencyKey, result: clone(updated) };
+  }
+
+  private refundMatchEntryLocked(
+    matchId: string,
+    reason: string,
+  ): EconomyOperationResult<MatchEconomySettlementRecord> {
+    const idempotencyKey = `match-refund:${matchId}`;
+    const settlement = this.settlements.get(matchId);
+    if (!settlement) {
+      throw new MatchNotCommittedError(`Match settlement ${matchId} not found`);
+    }
+    if (settlement.status === "REFUNDED") {
+      this.logIdempotency(idempotencyKey, "refund_match_entry");
+      return { applied: false, operation: "refund_match_entry", idempotencyKey, result: clone(settlement) };
+    }
+    if (settlement.status === "SETTLED") {
+      throw new MatchAlreadySettledError(`Settled match ${matchId} cannot be refunded`);
+    }
+    return this.applyRefundLocked(settlement, idempotencyKey, reason);
+  }
+
+  /** Shared by `refundMatchEntry` and `settleMatchEconomy`'s invalid-ranking path — mirrors `economy_apply_refund` in the migration. Assumes the caller already holds the `match:${matchId}` lock. */
+  private applyRefundLocked(
+    settlement: MatchEconomySettlementRecord,
+    idempotencyKey: string,
+    reason: string,
+  ): EconomyOperationResult<MatchEconomySettlementRecord> {
+    const hostWallet = this.wallets.get(settlement.hostIdentityId);
+    if (!hostWallet) {
+      throw new WalletNotFoundError(`Host wallet ${settlement.hostIdentityId} does not exist`);
+    }
+    const refundAmount = toBig(settlement.totalCollected);
+    const credited = this.creditWallet(hostWallet, refundAmount, {
+      entryType: "MATCH_REFUND",
+      sourceKind: "match",
+      sourceId: settlement.matchId,
+      idempotencyKey,
+      description: `Refund match commitment: ${reason}`,
+      lifetimeField: "lifetimeRefunded",
+    });
+    this.wallets.set(settlement.hostIdentityId, credited);
+
+    const now = Date.now();
+    const updated: MatchEconomySettlementRecord = {
+      ...settlement,
+      totalRefunded: fromBig(refundAmount),
+      status: "REFUNDED",
+      refundReason: reason,
+      settledAt: now,
+    };
+    this.settlements.set(settlement.matchId, updated);
+
+    this.logIdempotency(idempotencyKey, "refund_match_entry");
+    return { applied: true, operation: "refund_match_entry", idempotencyKey, result: clone(updated) };
+  }
+
+  private issueGuestVoucherLocked(
+    input: IssueGuestVoucherInput,
+  ): EconomyOperationResult<RewardVoucherRecord> {
+    const idempotencyKey = `voucher-issue:${input.voucherId}`;
+    if (!HEX64.test(input.codeHash)) {
+      throw new InvalidVoucherHashError("Code hash must be exactly 64 hex characters");
+    }
+    if (toBig(input.coinAmount) <= 0n) {
+      throw new InvalidVoucherHashError("Voucher coin amount must be greater than zero");
+    }
+
+    const existing = this.vouchers.get(input.voucherId);
+    if (existing) {
+      this.logIdempotency(idempotencyKey, "issue_guest_voucher");
+      return { applied: false, operation: "issue_guest_voucher", idempotencyKey, result: clone(existing) };
+    }
+
+    if (this.voucherIdByCodeHash.has(input.codeHash)) {
+      throw new VoucherCodeCollisionError("A voucher with this code hash already exists");
+    }
+    if (!this.identities.has(input.issuedToGuestId)) {
+      throw new IdentityNotFoundError(`Player identity ${input.issuedToGuestId} is not registered`);
+    }
+
+    const now = Date.now();
+    const voucher: RewardVoucherRecord = {
+      id: input.voucherId,
+      codeHash: input.codeHash,
+      coinAmount: input.coinAmount,
+      matchId: input.matchId,
+      issuedToGuestId: input.issuedToGuestId,
+      status: "ACTIVE",
+      redeemedByMemberId: null,
+      redeemedAt: null,
+      createdAt: now,
+    };
+    this.vouchers.set(input.voucherId, voucher);
+    this.voucherIdByCodeHash.set(input.codeHash, input.voucherId);
+
+    this.logIdempotency(idempotencyKey, "issue_guest_voucher");
+    return { applied: true, operation: "issue_guest_voucher", idempotencyKey, result: clone(voucher) };
+  }
+
+  private redeemRewardVoucherLocked(
+    codeHash: string,
+    memberIdentityId: string,
+  ): EconomyOperationResult<RewardVoucherRecord> {
+    // Real RPC note: redeem_reward_voucher raises `VOUCHER_INVALID` for a
+    // malformed hash while issue_guest_voucher/settle_match_economy raise
+    // `INVALID_VOUCHER_HASH` for the same shape failure — this repository
+    // deliberately normalizes both to InvalidVoucherHashError. See
+    // "Contract mismatches discovered".
+    if (!HEX64.test(codeHash)) {
+      throw new InvalidVoucherHashError("Malformed code hash");
+    }
+
+    const kind = this.identities.get(memberIdentityId);
+    if (kind !== "member") {
+      // Checked BEFORE voucher lookup, deliberately — never discloses
+      // whether codeHash exists to a non-member caller.
+      throw new OnlyMembersCanRedeemError(
+        `Identity ${memberIdentityId} is not a registered member`,
+      );
+    }
+
+    const voucherId = this.voucherIdByCodeHash.get(codeHash);
+    const voucher = voucherId ? this.vouchers.get(voucherId) : undefined;
+    if (!voucher) {
+      throw new VoucherNotFoundError("No active voucher matches this code hash");
+    }
+
+    const idempotencyKey = `voucher-redeem:${voucher.id}:${memberIdentityId}`;
+    if (voucher.status === "REDEEMED") {
+      if (voucher.redeemedByMemberId === memberIdentityId) {
+        this.logIdempotency(idempotencyKey, "redeem_reward_voucher");
+        return { applied: false, operation: "redeem_reward_voucher", idempotencyKey, result: clone(voucher) };
+      }
+      throw new VoucherAlreadyRedeemedError("Voucher has already been claimed by another member");
+    }
+    if (voucher.status !== "ACTIVE") {
+      throw new VoucherNotActiveError(`Voucher status is ${voucher.status}`);
+    }
+
+    this.ensureWalletLocked(memberIdentityId);
+    const memberWallet = this.wallets.get(memberIdentityId)!;
+    if (memberWallet.isFrozen) {
+      throw new WalletFrozenError(`Member ${memberIdentityId} cannot redeem a voucher while frozen`);
+    }
+
+    const amount = toBig(voucher.coinAmount);
+    const credited = this.creditWallet(memberWallet, amount, {
+      entryType: "VOUCHER_REDEMPTION",
+      sourceKind: "voucher",
+      sourceId: voucher.id,
+      idempotencyKey,
+      description: `Redeemed guest reward voucher (${voucher.id})`,
+      lifetimeField: "lifetimeEarned",
+    });
+    this.wallets.set(memberIdentityId, credited);
+
+    this.moveWorldBank("guestEscrowLiability", -amount, {
+      entryType: "GUEST_ESCROW_REDEMPTION",
+      sourceKind: "voucher",
+      sourceId: voucher.id,
+      idempotencyKey: `${idempotencyKey}:escrow`,
+      description: "Escrow liability released on redemption",
+    });
+    this.worldBank.totalVoucherRedeemed = fromBig(toBig(this.worldBank.totalVoucherRedeemed) + amount);
+
+    const now = Date.now();
+    const updatedVoucher: RewardVoucherRecord = {
+      ...voucher,
+      status: "REDEEMED",
+      redeemedByMemberId: memberIdentityId,
+      redeemedAt: now,
+    };
+    this.vouchers.set(voucher.id, updatedVoucher);
+
+    this.logIdempotency(idempotencyKey, "redeem_reward_voucher");
+    return { applied: true, operation: "redeem_reward_voucher", idempotencyKey, result: clone(updatedVoucher) };
+  }
+
+  /* ═══════════════════════════ shared mutation primitives ═══════════════ */
+
+  private creditWallet(
+    wallet: CoinWalletRecord,
+    amount: bigint,
+    ledger: {
+      entryType: WalletLedgerEntryType;
+      sourceKind: string;
+      sourceId: string;
+      idempotencyKey: string;
+      description: string;
+      lifetimeField: "lifetimeGranted" | "lifetimeEarned" | "lifetimeRefunded";
+    },
+  ): CoinWalletRecord {
+    const balanceBefore = toBig(wallet.balance);
+    const balanceAfter = balanceBefore + amount;
+    const versionBefore = wallet.version;
+    const updated: CoinWalletRecord = {
+      ...wallet,
+      balance: fromBig(balanceAfter),
+      version: versionBefore + 1,
+      [ledger.lifetimeField]: fromBig(toBig(wallet[ledger.lifetimeField]) + amount),
+      updatedAt: Date.now(),
+    };
+    this.assertWalletReconciles(updated);
+    this.appendWalletLedger(wallet.identityId, amount, balanceBefore, balanceAfter, versionBefore, ledger);
+    return updated;
+  }
+
+  private debitWallet(
+    wallet: CoinWalletRecord,
+    amount: bigint,
+    ledger: {
+      entryType: WalletLedgerEntryType;
+      sourceKind: string;
+      sourceId: string;
+      idempotencyKey: string;
+      description: string;
+      lifetimeField: "lifetimeSpent";
+    },
+  ): CoinWalletRecord {
+    const balanceBefore = toBig(wallet.balance);
+    const balanceAfter = balanceBefore - amount;
+    if (balanceAfter < 0n) {
+      // Defensive — INSUFFICIENT_FUNDS should already have prevented this.
+      throw new InsufficientFundsError(`Debit of ${fromBig(amount)} would take ${wallet.identityId} negative`);
+    }
+    const versionBefore = wallet.version;
+    const updated: CoinWalletRecord = {
+      ...wallet,
+      balance: fromBig(balanceAfter),
+      version: versionBefore + 1,
+      lifetimeSpent: fromBig(toBig(wallet.lifetimeSpent) + amount),
+      updatedAt: Date.now(),
+    };
+    this.assertWalletReconciles(updated);
+    this.appendWalletLedger(wallet.identityId, -amount, balanceBefore, balanceAfter, versionBefore, ledger);
+    return updated;
+  }
+
+  private appendWalletLedger(
+    walletId: string,
+    amount: bigint,
+    balanceBefore: bigint,
+    balanceAfter: bigint,
+    versionBefore: number,
+    meta: { entryType: WalletLedgerEntryType; sourceKind: string; sourceId: string; idempotencyKey: string; description: string },
+  ): void {
+    const entry: CoinLedgerEntryRecord = {
+      id: this.nextWalletLedgerId++,
+      walletId,
+      amount: fromBig(amount),
+      balanceBefore: fromBig(balanceBefore),
+      balanceAfter: fromBig(balanceAfter),
+      walletVersionBefore: versionBefore,
+      walletVersionAfter: versionBefore + 1,
+      entryType: meta.entryType,
+      sourceKind: meta.sourceKind,
+      sourceId: meta.sourceId,
+      idempotencyKey: meta.idempotencyKey,
+      description: meta.description,
+      createdAt: Date.now(),
+    };
+    this.walletLedger.push(entry);
+  }
+
+  private moveWorldBank(
+    balance: keyof WorldBankSnapshot,
+    amount: bigint,
+    meta: { entryType: WorldBankLedgerEntryType; sourceKind: string; sourceId: string; idempotencyKey: string; description: string },
+  ): void {
+    const before = toBig(this.worldBank[balance]);
+    const after = before + amount;
+    this.worldBank[balance] = fromBig(after);
+    const affected: WorldBankAffectedBalance =
+      balance === "baseFeeRevenue"
+        ? "base_fee_revenue"
+        : balance === "botPrizeRevenue"
+          ? "bot_prize_revenue"
+          : balance === "guestEscrowLiability"
+            ? "guest_escrow_liability"
+            : "total_voucher_redeemed";
+    this.worldBankLedger.push({
+      id: this.nextWorldBankLedgerId++,
+      affectedBalance: affected,
+      amount: fromBig(amount),
+      balanceBefore: fromBig(before),
+      balanceAfter: fromBig(after),
+      entryType: meta.entryType,
+      sourceKind: meta.sourceKind,
+      sourceId: meta.sourceId,
+      idempotencyKey: meta.idempotencyKey,
+      description: meta.description,
+      createdAt: Date.now(),
+    });
+  }
+
+  private recordParticipant(
+    matchId: string,
+    participant: SettlementParticipantInput,
+    prize: bigint,
+    payoutStatus: ParticipantPayoutStatus,
+    voucherId: string | null,
+  ): void {
+    this.participants.push({
+      matchId,
+      identityId: participant.identityId,
+      identityKind: participant.identityKind,
+      placement: participant.placement,
+      prizeCoins: fromBig(prize),
+      payoutStatus,
+      voucherId,
+      createdAt: Date.now(),
+    });
+  }
+
+  private generateVoucherId(): string {
+    return `vch_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}${(this.nextWorldBankLedgerId++).toString(36)}`;
+  }
+
+  private logIdempotency(idempotencyKey: string, operation: string): void {
+    if (!this.idempotencyLog.has(idempotencyKey)) {
+      this.idempotencyLog.set(idempotencyKey, operation);
+    }
+  }
+
+  private assertWalletReconciles(wallet: CoinWalletRecord): void {
+    const computed =
+      toBig(wallet.lifetimeGranted) + toBig(wallet.lifetimeEarned) + toBig(wallet.lifetimeRefunded) - toBig(wallet.lifetimeSpent);
+    if (computed !== toBig(wallet.balance) || toBig(wallet.balance) < 0n) {
+      throw new InsufficientFundsError(
+        `Internal invariant violated for wallet ${wallet.identityId}: balance ${wallet.balance} does not reconcile`,
+      );
+    }
+  }
+
+  /* ═══════════════════════════ atomic rollback ═══════════════════════════
+   * Snapshots every structure a mutating method could touch, runs it, and
+   * restores all of them verbatim on ANY thrown error before re-throwing —
+   * a manual stand-in for a database transaction, since plain JS has none.
+   * Cheap: every snapshot is a shallow copy of a Map/array reference or a
+   * spread of the single WorldBankSnapshot object, never a deep clone —
+   * safe ONLY because every stored record is replaced wholesale on mutation,
+   * never mutated in place. See the file header.
+   */
+  private withRollback<T>(fn: () => T): T {
+    const wallets = new Map(this.wallets);
+    const walletLedgerLength = this.walletLedger.length;
+    const worldBank = { ...this.worldBank };
+    const worldBankLedgerLength = this.worldBankLedger.length;
+    const settlements = new Map(this.settlements);
+    const settlementSnapshots = new Map(this.settlementSnapshots);
+    const participantsLength = this.participants.length;
+    const vouchers = new Map(this.vouchers);
+    const voucherIdByCodeHash = new Map(this.voucherIdByCodeHash);
+    const identities = new Map(this.identities);
+
+    try {
+      return fn();
+    } catch (err) {
+      this.wallets = wallets;
+      this.walletLedger.length = walletLedgerLength;
+      this.worldBank = worldBank;
+      this.worldBankLedger.length = worldBankLedgerLength;
+      this.settlements = settlements;
+      this.settlementSnapshots = settlementSnapshots;
+      this.participants.length = participantsLength;
+      this.vouchers = vouchers;
+      this.voucherIdByCodeHash = voucherIdByCodeHash;
+      this.identities = identities;
+      throw err;
+    }
+  }
+}

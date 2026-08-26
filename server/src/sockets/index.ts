@@ -5,6 +5,7 @@ import { globalRateLimiter } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
 import { buildIceConfig } from "../lib/iceServers.js";
 import { resolveAccountKind } from "../lib/supabaseAuth.js";
+import { resolveIdentity } from "../rooms/economyIdentity.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 
 /**
@@ -61,6 +62,13 @@ export function registerSocketHandlers(
   socket.on("room:create", async (payload, ack) => {
     try {
       const hostKind = await resolveAccountKind(payload.hostKind, payload.accessToken);
+      // A SEPARATE resolution, deliberately: resolveAccountKind trusts the
+      // client's claimed kind when verification is off (a dev convenience
+      // that's safe for a display label, never for who gets debited) —
+      // resolveIdentity does not. Same underlying verifyAccessToken call,
+      // so a shared cache hit makes this effectively free when it isn't the
+      // very first request for this token. See economyIdentity.ts.
+      const { identityId } = await resolveIdentity(payload.accessToken);
       const { code, playerId, seatToken, state } = rooms.createRoom(
         socket.id,
         payload.name,
@@ -82,7 +90,8 @@ export function registerSocketHandlers(
         payload.blockBlastOptions,
         payload.spaceWarOptions,
         payload.avatar,
-        hostKind
+        hostKind,
+        identityId
       );
       // `seatToken` goes to this socket's ack only — never into a broadcast.
       ack({ ok: true, code, playerId, seatToken, state });
@@ -95,6 +104,8 @@ export function registerSocketHandlers(
   socket.on("room:join", async (payload, ack) => {
     try {
       const accountKind = await resolveAccountKind(payload.accountKind, payload.accessToken);
+      // See the matching comment in room:create above.
+      const { identityId } = await resolveIdentity(payload.accessToken);
       const result = rooms.joinRoom(
         socket.id,
         payload.name,
@@ -102,7 +113,8 @@ export function registerSocketHandlers(
         payload.playerId,
         payload.seatToken,
         payload.avatar,
-        accountKind
+        accountKind,
+        identityId
       );
       if (!result.ok) {
         ack({ ok: false, error: result.error });
@@ -171,7 +183,14 @@ export function registerSocketHandlers(
   });
 
   socket.on("room:startGame", () => {
-    rooms.startGame(socket.id);
+    // The economy-gated entry point (Economy V1 Phase 7) — see
+    // RoomManager.requestGameStart's own doc comment. Fires an in-process
+    // async call from a sync socket handler, matching this file's existing
+    // convention for room:create/room:join above (both `async` handlers
+    // already); this one stays a plain handler since nothing here needs to
+    // await it — requestGameStart owns its own success/failure signaling
+    // via room:state/room:error broadcasts, not this callback's return.
+    void rooms.requestGameStart(socket.id);
   });
 
   socket.on("chat:send", ({ text }) => {

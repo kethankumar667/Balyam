@@ -96,6 +96,19 @@ export interface Player {
    * the browser claims, and nothing here is load-bearing for privacy.
    */
   isGuest?: boolean;
+  /**
+   * The durable, server-verified identity Economy V1 debits/credits — a
+   * Supabase `userId` for a verified member, `null` for anyone else (a
+   * guest, a bot, a pass-and-play local seat). Set once, at seat-creation
+   * time, from a verified session token; never taken from client input
+   * afterward, and never reassigned.
+   *
+   * SERVER-ONLY: never put this on `RoomPublicState` or any broadcast —
+   * it is a durable account identifier, a materially bigger privacy/
+   * correlation surface than the ephemeral, per-room `Player.id` every
+   * other field here is keyed on. See `rooms/economyIdentity.ts`.
+   */
+  identityId?: string | null;
 }
 
 export interface ChatMessage {

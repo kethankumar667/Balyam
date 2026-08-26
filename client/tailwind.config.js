@@ -48,6 +48,25 @@ export default {
         warning: "var(--color-warning)",
         danger:  "var(--color-danger)",
         info:    "var(--color-info)",
+        economy: {
+          coin: "var(--economy-coin)",
+          "coin-highlight": "var(--economy-coin-highlight)",
+          "coin-shadow": "var(--economy-coin-shadow)",
+          "wallet-surface": "var(--economy-wallet-surface)",
+          "wallet-surface-elev": "var(--economy-wallet-surface-elev)",
+          "pool-surface": "var(--economy-pool-surface)",
+          credit: "var(--economy-credit)",
+          "credit-bg": "var(--economy-credit-bg)",
+          debit: "var(--economy-debit)",
+          "debit-bg": "var(--economy-debit-bg)",
+          escrow: "var(--economy-escrow)",
+          "escrow-bg": "var(--economy-escrow-bg)",
+          "world-bank": "var(--economy-world-bank)",
+          "world-bank-bg": "var(--economy-world-bank-bg)",
+          pending: "var(--economy-pending)",
+          failed: "var(--economy-failed)",
+          refunded: "var(--economy-refunded)",
+        },
 
         /**
          * The half-steps the DLS was written against.

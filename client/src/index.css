@@ -225,6 +225,30 @@
   --chrome-accent:     #C2410C;
   --chrome-active-bg:  #FFF2D6;
   --chrome-active-ink: #B45309;
+
+  /* ── BHALYAM Economy V1 Semantic Tokens (Light Default) ────────────── */
+  --economy-coin:                #B45309;
+  --economy-coin-highlight:      #D97706;
+  --economy-coin-shadow:         #78350F;
+  --economy-wallet-surface:      #FFFDF7;
+  --economy-wallet-surface-elev: #FAF2DF;
+  --economy-pool-surface:        #F2E4CB;
+  --economy-credit:              #047857;
+  --economy-credit-bg:           rgba(4, 120, 87, 0.08);
+  --economy-debit:               #B45309;
+  --economy-debit-bg:            rgba(180, 83, 9, 0.08);
+  --economy-escrow:              #6D28D9;
+  --economy-escrow-bg:           rgba(109, 40, 217, 0.08);
+  --economy-world-bank:          #4338CA;
+  --economy-world-bank-bg:       rgba(67, 56, 202, 0.08);
+  --economy-pending:             #0369A1;
+  --economy-failed:              #B91C1C;
+  --economy-refunded:            #BE185D;
+  --economy-focus-ring:          0 0 0 2px var(--economy-wallet-surface), 0 0 0 4px #7B2F0E;
+  --economy-table-halo:          rgba(180, 83, 9, 0.12);
+  --economy-podium-gold:         linear-gradient(180deg, #FDE68A 0%, #D97706 60%, #92400E 100%);
+  --economy-podium-silver:       linear-gradient(180deg, #F8FAFC 0%, #94A3B8 60%, #475569 100%);
+  --economy-podium-bronze:       linear-gradient(180deg, #FFEDD5 0%, #EA580C 60%, #7C2D12 100%);
 }
 
 :root[data-theme="dark"] {
@@ -273,6 +297,30 @@
   --chrome-accent:     #FBBF24;
   --chrome-active-bg:  #1F2937;
   --chrome-active-ink: #FBBF24;
+
+  /* ── BHALYAM Economy V1 Semantic Tokens (Dark Lounge Default) ─────── */
+  --economy-coin:                #D4AF37;
+  --economy-coin-highlight:      #FBE48A;
+  --economy-coin-shadow:         #997915;
+  --economy-wallet-surface:      #131824;
+  --economy-wallet-surface-elev: #1C2333;
+  --economy-pool-surface:        #0E131F;
+  --economy-credit:              #10B981;
+  --economy-credit-bg:           rgba(16, 185, 129, 0.10);
+  --economy-debit:               #F59E0B;
+  --economy-debit-bg:            rgba(245, 158, 11, 0.10);
+  --economy-escrow:              #8B5CF6;
+  --economy-escrow-bg:           rgba(139, 92, 246, 0.12);
+  --economy-world-bank:          #6366F1;
+  --economy-world-bank-bg:       rgba(99, 102, 241, 0.10);
+  --economy-pending:             #38BDF8;
+  --economy-failed:              #EF4444;
+  --economy-refunded:            #EC4899;
+  --economy-focus-ring:          0 0 0 2px var(--economy-wallet-surface), 0 0 0 4px #D4AF37;
+  --economy-table-halo:          rgba(212, 175, 55, 0.14);
+  --economy-podium-gold:         linear-gradient(180deg, #FBE48A 0%, #D4AF37 60%, #997915 100%);
+  --economy-podium-silver:       linear-gradient(180deg, #F1F5F9 0%, #94A3B8 60%, #475569 100%);
+  --economy-podium-bronze:       linear-gradient(180deg, #FED7AA 0%, #EA580C 60%, #7C2D12 100%);
 }
 
 html, body, #root {

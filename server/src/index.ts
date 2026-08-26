@@ -24,6 +24,8 @@ import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
 import { guestTokenDurability } from "./auth/guestToken.js";
 import { initialiseProgressionStore, persistenceStatus } from "./persistence/index.js";
+import { initialiseEconomyStore, economyStoreStatus } from "./economy/index.js";
+import type { EconomyService } from "./economy/EconomyService.js";
 import { hydrateProgression } from "./persistence/hydrate.js";
 import { progressionSync } from "./persistence/ProgressionSync.js";
 import { profileRouter } from "./profile/ProfileController.js";
@@ -152,6 +154,11 @@ app.get("/health", (_req, res) => {
     // a store that has started refusing writes, which is otherwise invisible
     // until the next restart throws the data away.
     progression: { ...persistenceStatus(), sync: progressionSync.status() },
+    // Same "durable vs in-memory" story as progression, plus the queued
+    // settlement/refund counters — a rising `failed` count here means real
+    // matches are finishing without their settlement/refund landing; see
+    // EconomySettlementQueue's own doc comment for the reconciliation path.
+    economy: { ...economyStoreStatus(), queue: roomManager.economySettlementQueueStatus() },
     memory: {
       heapUsedMb: Math.round((memoryUsage.heapUsed / 1024 / 1024) * 100) / 100,
       heapTotalMb: Math.round((memoryUsage.heapTotal / 1024 / 1024) * 100) / 100,
@@ -181,7 +188,34 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
   pingTimeout: 10_000,
 });
 
-const roomManager = new RoomManager(io);
+/**
+ * Economy V1's boot-time wiring — the one thing Phase 5/6 deliberately left
+ * undone ("constructor injection only, no `economyRepository()`-style
+ * factory"). Resolved before `RoomManager` is constructed, top-level await,
+ * because RoomManager needs a live `EconomyService` INSTANCE at
+ * construction time, not merely a later readiness check — unlike
+ * progression, whose readiness `boot()` awaits further down but whose
+ * repository selection doesn't gate anything else at module-load time.
+ *
+ * Same failure shape as `assertOperationalAuthConfigured()` above: any
+ * throw here (a misconfigured production deployment — see
+ * `economy/index.ts`'s own refusal-to-start guard) aborts startup loudly,
+ * rather than letting a partially-configured process come up and silently
+ * run Economy V1 in memory.
+ */
+let economyService: EconomyService | undefined;
+try {
+  const economyBoot = await initialiseEconomyStore();
+  economyService = economyBoot.service ?? undefined;
+} catch (err) {
+  logger.error({
+    message: `Startup aborted: ${err instanceof Error ? err.message : String(err)}`,
+    module: "SERVER",
+  });
+  process.exit(1);
+}
+
+const roomManager = new RoomManager(io, economyService);
 
 /**
  * Operational surface. The gate lives ON this router (see
@@ -406,14 +440,22 @@ function shutdown(signal: string): void {
    * stop. Found by `scripts/persistence/verifyDurability.mjs`, which asserts
    * the flush line appears in the log.
    */
-  void progressionSync
-    .drain()
-    .catch(() => undefined)
-    .then(() => {
+  void Promise.all([
+    progressionSync.drain().catch(() => undefined),
+    // Same reasoning as progressionSync's drain, for the same reason:
+    // a queued settleMatchEconomy/refundMatchEntry call dropped on exit is
+    // a match whose money never resolves until list_stale_committed_settlements
+    // surfaces it for manual reconciliation — draining first closes that
+    // window for every ordinary deploy.
+    roomManager.drainEconomySettlementQueue().catch(() => undefined),
+  ]).then(() => {
       const sync = progressionSync.status();
+      const economyQueue = roomManager.economySettlementQueueStatus();
       logger.info({
         message:
           `Progression writes flushed (${sync.written} written, ${sync.failed} failed). ` +
+          `Economy settlement queue flushed (${economyQueue?.settled ?? 0} settled, ` +
+          `${economyQueue?.refunded ?? 0} refunded, ${economyQueue?.failed ?? 0} failed). ` +
           "HTTP and Socket servers closed.",
         module: "SERVER",
       });

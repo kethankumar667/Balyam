@@ -1,0 +1,553 @@
+{
+  "verifiedAt": "2026-08-26T14:16:17.056Z",
+  "engine": "PostgreSQL 17.5 on x86_64-windows",
+  "scope": "SCHEMA + FUNCTION-LOGIC + PRIVILEGE-BOUNDARY + CONCURRENCY verification against a real local PostgreSQL, with the real project's inherited default privilege reproduced before the migration is applied. Does NOT cover PostgREST transport, a real Supabase service_role key, or EconomyRepository (not built). This is self-authored verification and does not itself constitute independent re-audit approval.",
+  "migration": "20260826000000_economy_v1.sql",
+  "checks": [
+    {
+      "section": "setup",
+      "name": "database reachable and answering queries",
+      "passed": true,
+      "evidence": "PostgreSQL 17.5 on x86_64-windows"
+    },
+    {
+      "section": "setup",
+      "name": "Supabase auth.users / auth.uid() stubs created",
+      "passed": true,
+      "evidence": "local stand-ins only"
+    },
+    {
+      "section": "setup",
+      "name": "prerequisite progression migration applies (player_identities exists)",
+      "passed": true,
+      "evidence": ""
+    },
+    {
+      "section": "setup",
+      "name": "production-like default privilege reproduced BEFORE applying the economy migration",
+      "passed": true,
+      "evidence": "mirrors the exact ALTER DEFAULT PRIVILEGES already run against the real project on 2026-08-26"
+    },
+    {
+      "section": "migration",
+      "name": "Economy V1 migration applies cleanly despite the pre-existing default privilege",
+      "passed": true,
+      "evidence": "no errors"
+    },
+    {
+      "section": "migration",
+      "name": "Economy V1 migration is idempotent (re-runnable)",
+      "passed": true,
+      "evidence": "second apply changed nothing"
+    },
+    {
+      "section": "schema",
+      "name": "all 9 Economy V1 tables exist",
+      "passed": true,
+      "evidence": "9 present"
+    },
+    {
+      "section": "schema",
+      "name": "world_bank_accounts is a true singleton with four separate balances",
+      "passed": true,
+      "evidence": "{\"id\":\"primary\",\"name\":\"BHALYAM World Bank Treasury\",\"base_fee_revenue\":\"0\",\"bot_prize_revenue\":\"0\",\"guest_escrow_liability\":\"0\",\"total_voucher_redeemed\":\"0\",\"created_at\":\"2026-08-26T14:16:12.613Z\",\"updated_at\":\"2026-08-26T14:16:12.613Z\"}"
+    },
+    {
+      "section": "schema",
+      "name": "coin_ledger_entries has balance_before, wallet_version_before, wallet_version_after",
+      "passed": true,
+      "evidence": "id, wallet_id, amount, balance_before, balance_after, wallet_version_before, wallet_version_after, entry_type, source_kind, source_id, idempotency_key, description, metadata, created_at"
+    },
+    {
+      "section": "schema",
+      "name": "coin_ledger_entries.entry_type no longer includes GUEST_PRIZE_ESCROW",
+      "passed": true,
+      "evidence": "GUEST_PRIZE_ESCROW removed from the wallet ledger's entry_type enum"
+    },
+    {
+      "section": "identity-provisioning",
+      "name": "ensure_wallet REJECTS a guest-shaped identity_id with no player_identities row, rather than silently creating one",
+      "passed": true,
+      "evidence": "IDENTITY_NOT_FOUND: player identity guest_90ca4f0bd404bbea079ffa07e4de1b2a is not registered"
+    },
+    {
+      "section": "identity-provisioning",
+      "name": "no player_identities row was created as a side effect of the rejected call",
+      "passed": true,
+      "evidence": "rowCount=0"
+    },
+    {
+      "section": "identity-provisioning",
+      "name": "ensure_wallet REJECTS a non-guest-shaped identity_id with no player_identities row the same way",
+      "passed": true,
+      "evidence": "IDENTITY_NOT_FOUND: player identity 92bcb651-0c1d-4505-bfd1-a92d0309a355 is not registered"
+    },
+    {
+      "section": "privileges",
+      "name": "service_role cannot UPDATE coin_wallets.balance directly",
+      "passed": true,
+      "evidence": "permission denied for table coin_wallets"
+    },
+    {
+      "section": "privileges",
+      "name": "service_role cannot INSERT into coin_ledger_entries directly",
+      "passed": true,
+      "evidence": "permission denied for table coin_ledger_entries"
+    },
+    {
+      "section": "privileges",
+      "name": "service_role cannot UPDATE match_economy_settlements directly",
+      "passed": true,
+      "evidence": "permission denied for table match_economy_settlements"
+    },
+    {
+      "section": "privileges",
+      "name": "service_role cannot INSERT into reward_vouchers directly",
+      "passed": true,
+      "evidence": "permission denied for table reward_vouchers"
+    },
+    {
+      "section": "privileges",
+      "name": "service_role cannot UPDATE world_bank_accounts directly",
+      "passed": true,
+      "evidence": "permission denied for table world_bank_accounts"
+    },
+    {
+      "section": "privileges",
+      "name": "no forged mutation actually reached the wallet balance",
+      "passed": true,
+      "evidence": "balance=2000"
+    },
+    {
+      "section": "privileges",
+      "name": "service_role CAN still call approved RPC functions (business-logic error, not a permission error)",
+      "passed": true,
+      "evidence": "ONLY_MEMBERS_CAN_REDEEM_VOUCHERS: identity guest_6246ad15259b2778dfde102385848b62 is not a registered member"
+    },
+    {
+      "section": "privileges",
+      "name": "no economy function is EXECUTE-able by anon or authenticated",
+      "passed": true,
+      "evidence": "all blocked"
+    },
+    {
+      "section": "privileges",
+      "name": "every top-level economy function grants EXECUTE to service_role",
+      "passed": true,
+      "evidence": "all granted"
+    },
+    {
+      "section": "privileges",
+      "name": "internal-only helpers (economy_apply_refund, prevent_ledger_mutation) are not directly callable, even by service_role",
+      "passed": true,
+      "evidence": "[false,false]"
+    },
+    {
+      "section": "ledger",
+      "name": "a ledger row whose balance_after != balance_before + amount is rejected by the CHECK constraint",
+      "passed": true,
+      "evidence": "new row for relation \"coin_ledger_entries\" violates check constraint \"coin_ledger_balance_transition\""
+    },
+    {
+      "section": "ledger",
+      "name": "a ledger row whose wallet_version_after != wallet_version_before + 1 is rejected",
+      "passed": true,
+      "evidence": "new row for relation \"coin_ledger_entries\" violates check constraint \"coin_ledger_version_transition\""
+    },
+    {
+      "section": "idempotency",
+      "name": "grant_starter_coins replay returns applied=false with the ORIGINAL result, not a bare row",
+      "passed": true,
+      "evidence": "{\"result\":{\"balance\":\"2000\",\"version\":1,\"is_frozen\":false,\"updated_at\":\"2026-08-26T19:46:12.749607+05:30\",\"identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"identity_kind\":\"guest\",\"lifetime_spent\":\"0\",\"lifetime_earned\":\"0\",\"starter_granted\":true,\"lifetime_granted\":\"2000\",\"lifetime_refunded\":\"0\"},\"applied\":false,\"operation\":\"grant_starter_coins\",\"idempotencyKey\":\"starter-grant:guest_6246ad15259b2778dfde102385848b62\"}"
+    },
+    {
+      "section": "idempotency",
+      "name": "commit_match_entry returns {applied:true, operation, idempotencyKey, result}",
+      "passed": true,
+      "evidence": "{\"result\":{\"status\":\"COMMITTED\",\"match_id\":\"m_VERIFY_1787753773417_81804b\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-26T19:46:13.418223+05:30\",\"seat_count\":5,\"settled_at\":null,\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":4,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"0\",\"total_wallet_rewarded\":\"0\"},\"applied\":true,\"operation\":\""
+    },
+    {
+      "section": "idempotency",
+      "name": "commit_match_entry replay returns applied=false, no second debit",
+      "passed": true,
+      "evidence": "{\"result\":{\"status\":\"COMMITTED\",\"match_id\":\"m_VERIFY_1787753773417_81804b\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-26T19:46:13.418223+05:30\",\"seat_count\":5,\"settled_at\":null,\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":4,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"0\",\"total_wallet_rewarded\":\"0\"},\"applied\":false,\"operation\":"
+    },
+    {
+      "section": "idempotency",
+      "name": "host balance unchanged by the commit replay (2000 - 500 = 1500)",
+      "passed": true,
+      "evidence": "balance=1500"
+    },
+    {
+      "section": "settlement",
+      "name": "settle_match_economy returns applied=true with the standardized contract",
+      "passed": true,
+      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773417_81804b\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-26T19:46:13.418223+05:30\",\"seat_count\":5,\"settled_at\":\"2026-08-26T19:46:13.434583+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":4,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"100\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":"
+    },
+    {
+      "section": "settlement",
+      "name": "member winner credited 200, guest escrowed 150, bot collection 100, base cut 50",
+      "passed": true,
+      "evidence": "{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773417_81804b\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-26T19:46:13.418223+05:30\",\"seat_count\":5,\"settled_at\":\"2026-08-26T19:46:13.434583+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":4,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"100\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":\"200\"}"
+    },
+    {
+      "section": "settlement",
+      "name": "guest winner's wallet balance was NOT touched (no wallet ledger row for a guest prize)",
+      "passed": true,
+      "evidence": "balance=null"
+    },
+    {
+      "section": "settlement",
+      "name": "coin_ledger_entries has ZERO rows for the guest's prize (Phase 2: wallet ledger represents wallet mutations only)",
+      "passed": true,
+      "evidence": "0 row(s)"
+    },
+    {
+      "section": "settlement",
+      "name": "World Bank's three earned/liability balances are independently correct after settlement",
+      "passed": true,
+      "evidence": "{\"base_fee_revenue\":\"50\",\"bot_prize_revenue\":\"100\",\"guest_escrow_liability\":\"150\",\"total_voucher_redeemed\":\"0\"}"
+    },
+    {
+      "section": "settlement",
+      "name": "world_bank_ledger uses BASE_FEE_REVENUE, GUEST_ESCROW_DEPOSIT, and BOT_PRIZE_REVENUE as distinct entry types (never merged)",
+      "passed": true,
+      "evidence": "GUEST_ESCROW_DEPOSIT, BOT_PRIZE_REVENUE, BASE_FEE_REVENUE"
+    },
+    {
+      "section": "solo",
+      "name": "a 1-seat (solo) settlement tags its World Bank collection SOLO_ENTRY_COLLECTION, not BASE_FEE_REVENUE",
+      "passed": true,
+      "evidence": "entry_type=SOLO_ENTRY_COLLECTION, applied=true"
+    },
+    {
+      "section": "refund",
+      "name": "settle_match_economy(is_valid_ranking=false) refunds internally, without a separate caller-side detection step",
+      "passed": true,
+      "evidence": "{\"result\":{\"status\":\"REFUNDED\",\"match_id\":\"m_VERIFY_1787753773459_c52512\",\"room_code\":\"ROOM3\",\"created_at\":\"2026-08-26T19:46:13.462227+05:30\",\"seat_count\":5,\"settled_at\":\"2026-08-26T19:46:13.46448+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":\"Tied placements, no valid ranking\",\"bot_seat_count\":1,\"total_refunded\":\"500\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_cc994fb197bfa12231f5349d6e80e61c\",\"human_seat_count\":4,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":"
+    },
+    {
+      "section": "refund",
+      "name": "host balance fully restored",
+      "passed": true,
+      "evidence": "1500 -> 2000"
+    },
+    {
+      "section": "wallet",
+      "name": "lifetime_spent still reflects the original spend (500), NOT decremented by the refund",
+      "passed": true,
+      "evidence": "{\"lifetime_spent\":\"500\",\"lifetime_refunded\":\"500\"}"
+    },
+    {
+      "section": "wallet",
+      "name": "lifetime_refunded tracks the refund separately (500)",
+      "passed": true,
+      "evidence": "{\"lifetime_spent\":\"500\",\"lifetime_refunded\":\"500\"}"
+    },
+    {
+      "section": "frozen",
+      "name": "a frozen wallet CANNOT commit a match entry (spend)",
+      "passed": true,
+      "evidence": "WALLET_FROZEN: host guest_35607a45a734f42cfdd35e79fdb2e58d cannot commit a match entry while frozen"
+    },
+    {
+      "section": "frozen",
+      "name": "setup: a real voucher was issued for the frozen-redemption test",
+      "passed": true,
+      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773473_b2f376\",\"room_code\":\"ROOM_FV\",\"created_at\":\"2026-08-26T19:46:13.474197+05:30\",\"seat_count\":2,\"settled_at\":\"2026-08-26T19:46:13.476277+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"200\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":1,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":"
+    },
+    {
+      "section": "frozen",
+      "name": "a frozen wallet CANNOT redeem a voucher that would otherwise be perfectly valid",
+      "passed": true,
+      "evidence": "WALLET_FROZEN: member 8d976d17-1eb4-4091-a139-9ee1faeee6e0 cannot redeem a voucher while frozen"
+    },
+    {
+      "section": "frozen",
+      "name": "the voucher itself remains ACTIVE — the frozen rejection did not partially consume it",
+      "passed": true,
+      "evidence": "status=ACTIVE"
+    },
+    {
+      "section": "frozen",
+      "name": "a frozen wallet MAY still receive a match reward (settle_match_economy does not check is_frozen for credits)",
+      "passed": true,
+      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773480_f345d6\",\"room_code\":\"ROOM_FR\",\"created_at\":\"2026-08-26T19:46:13.481102+05:30\",\"seat_count\":2,\"settled_at\":\"2026-08-26T19:46:13.482428+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"200\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":1,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":\"1"
+    },
+    {
+      "section": "frozen",
+      "name": "a frozen wallet MAY still receive a refund",
+      "passed": true,
+      "evidence": "{\"result\":{\"status\":\"REFUNDED\",\"match_id\":\"m_VERIFY_1787753773483_a8f531\",\"room_code\":\"ROOM_FRF\",\"created_at\":\"2026-08-26T19:46:13.484674+05:30\",\"seat_count\":1,\"settled_at\":\"2026-08-26T19:46:13.486617+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":\"test\",\"bot_seat_count\":0,\"total_refunded\":\"100\",\"total_collected\":\"100\",\"host_identity_id\":\"guest_35607a45a734f42cfdd35e79fdb2e58d\",\"human_seat_count\":1,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"0\",\"total_wallet_rewarde"
+    },
+    {
+      "section": "vouchers",
+      "name": "first voucher with a fresh code_hash issues successfully",
+      "passed": true,
+      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773488_3c7f6b\",\"room_code\":\"ROOMV1\",\"created_at\":\"2026-08-26T19:46:13.488885+05:30\",\"seat_count\":2,\"settled_at\":\"2026-08-26T19:46:13.490851+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"200\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":1,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":\""
+    },
+    {
+      "section": "vouchers",
+      "name": "a SECOND voucher reusing the same code_hash is a hard failure (unique violation), never a silent update",
+      "passed": true,
+      "evidence": "duplicate key value violates unique constraint \"reward_vouchers_code_hash_key\""
+    },
+    {
+      "section": "vouchers",
+      "name": "the original voucher row is untouched by the failed collision attempt",
+      "passed": true,
+      "evidence": "owner=guest_b8c6ec873945a53da316bd878455de3c"
+    },
+    {
+      "section": "vouchers",
+      "name": "a malformed (non-64-hex) code_hash is rejected",
+      "passed": true,
+      "evidence": "INVALID_VOUCHER_HASH: code hash must be exactly 64 hex characters"
+    },
+    {
+      "section": "invalid-participants",
+      "name": "a member participant whose identityId has no player_identities row is rejected (IDENTITY_NOT_FOUND), not silently provisioned",
+      "passed": true,
+      "evidence": "IDENTITY_NOT_FOUND: player identity 2e4d128f-f1bf-4d97-9138-ecd70fbaa7a5 is not registered"
+    },
+    {
+      "section": "invalid-participants",
+      "name": "the settlement for the rejected member input remains COMMITTED, not partially SETTLED",
+      "passed": true,
+      "evidence": "status=COMMITTED"
+    },
+    {
+      "section": "invalid-participants",
+      "name": "a guest participant whose identityId has no player_identities row is rejected (foreign key violation on reward_vouchers)",
+      "passed": true,
+      "evidence": "insert or update on table \"reward_vouchers\" violates foreign key constraint \"reward_vouchers_issued_to_guest_id_fkey\""
+    },
+    {
+      "section": "invalid-participants",
+      "name": "a bot participant with an out-of-range placement (99) is rejected by match_economy_participants' own CHECK constraint",
+      "passed": true,
+      "evidence": "new row for relation \"match_economy_participants\" violates check constraint \"match_economy_participants_placement_check\""
+    },
+    {
+      "section": "invalid-participants",
+      "name": "[Correction 1] a participant with an unrecognized identityKind ('alien') is rejected with INVALID_IDENTITY_KIND, not silently skipped",
+      "passed": true,
+      "evidence": "INVALID_IDENTITY_KIND: participant identityKind must be member, guest, or bot (got alien)"
+    },
+    {
+      "section": "invalid-participants",
+      "name": "[Correction 3] the failing settlement call itself raises INVALID_IDENTITY_KIND (setup for the rollback assertions below)",
+      "passed": true,
+      "evidence": "INVALID_IDENTITY_KIND: participant identityKind must be member, guest, or bot (got alien)"
+    },
+    {
+      "section": "invalid-participants",
+      "name": "[Correction 3] the FIRST (valid) participant's wallet credit was rolled back — balance unchanged despite being processed before the failure",
+      "passed": true,
+      "evidence": "before=5000, after=5000"
+    },
+    {
+      "section": "invalid-participants",
+      "name": "[Correction 3] no coin_ledger_entries row was left behind for the rolled-back credit",
+      "passed": true,
+      "evidence": "before=1, after=1"
+    },
+    {
+      "section": "invalid-participants",
+      "name": "[Correction 3] no match_economy_participants rows exist for the failed settlement — not even for the valid participant processed first",
+      "passed": true,
+      "evidence": "0 row(s)"
+    },
+    {
+      "section": "invalid-participants",
+      "name": "[Correction 3] the settlement itself remains COMMITTED with zero disbursed, as if settlement was never attempted",
+      "passed": true,
+      "evidence": "{\"status\":\"COMMITTED\",\"total_wallet_rewarded\":\"0\"}"
+    },
+    {
+      "section": "concurrency",
+      "name": "8 concurrent starter-grant calls: exactly one applied=true, balance credited once",
+      "passed": true,
+      "evidence": "1 applied, balance=2000"
+    },
+    {
+      "section": "concurrency",
+      "name": "8 concurrent commit_match_entry calls for the SAME match: exactly one applied=true, debited once (2000-200=1800)",
+      "passed": true,
+      "evidence": "1 applied, balance=1800"
+    },
+    {
+      "section": "concurrency",
+      "name": "8 concurrent settle_match_economy calls for the SAME match: exactly one applied=true, exactly one voucher issued",
+      "passed": true,
+      "evidence": "1 applied, 1 voucher(s), outcomes=[false,false,true,false,false,false,false,false]"
+    },
+    {
+      "section": "concurrency",
+      "name": "8 concurrent refund_match_entry calls for the SAME match: exactly one applied=true, credited once",
+      "passed": true,
+      "evidence": "1 applied, balance=2000"
+    },
+    {
+      "section": "concurrency",
+      "name": "8 concurrent redeem_reward_voucher calls for the SAME voucher: exactly one applied=true, credited once",
+      "passed": true,
+      "evidence": "1 applied, balance=5150"
+    },
+    {
+      "section": "settlement",
+      "name": "voucher redemption decreases guest_escrow_liability by EXACTLY the voucher amount, once, despite 8 concurrent attempts",
+      "passed": true,
+      "evidence": "before=600, after=450, voucherAmount=150"
+    },
+    {
+      "section": "settlement",
+      "name": "voucher redemption increases total_voucher_redeemed by EXACTLY the voucher amount, once",
+      "passed": true,
+      "evidence": "before=0, after=150, voucherAmount=150"
+    },
+    {
+      "section": "settlement",
+      "name": "exactly one GUEST_ESCROW_REDEMPTION world_bank_ledger row exists, moving guest_escrow_liability by -voucherAmount",
+      "passed": true,
+      "evidence": "{\"affected_balance\":\"guest_escrow_liability\",\"amount\":\"-150\"}"
+    },
+    {
+      "section": "identity",
+      "name": "a player_identities row with economy history CANNOT be physically deleted (RESTRICT, not CASCADE)",
+      "passed": true,
+      "evidence": "update or delete on table \"player_identities\" violates foreign key constraint \"coin_wallets_identity_id_fkey\" on table \"coin_wallets\""
+    },
+    {
+      "section": "identity",
+      "name": "personal data (player_profiles.display_name) CAN still be anonymized while economy history remains intact and valid",
+      "passed": true,
+      "evidence": "{\"display_name\":\"Anonymized Player\"}"
+    },
+    {
+      "section": "identity",
+      "name": "the wallet/ledger FK reference to the (now-anonymized) identity is still valid — nothing broke",
+      "passed": true,
+      "evidence": "{\"balance\":\"700\"}"
+    },
+    {
+      "section": "constraints",
+      "name": "a negative balance is refused",
+      "passed": true,
+      "evidence": "23514 coin_wallets_balance_check"
+    },
+    {
+      "section": "constraints",
+      "name": "balance drifting from lifetime_* counters is refused (coin_wallets_balance_reconciles)",
+      "passed": true,
+      "evidence": "23514 coin_wallets_balance_reconciles"
+    },
+    {
+      "section": "constraints",
+      "name": "a second world_bank_accounts row is refused (singleton)",
+      "passed": true,
+      "evidence": "23514 world_bank_singleton"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "sanity check: Number() truly corrupts the unsafe odd value above 2^53 (this is the bug the remediation closes)",
+      "passed": true,
+      "evidence": "Number(\"9007199254740993\") stringifies to \"9007199254740992\""
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "bigint::text cast round-trip is exact for 0",
+      "passed": true,
+      "evidence": "in=0, out=0"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "bigint::text cast round-trip is exact for 1",
+      "passed": true,
+      "evidence": "in=1, out=1"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "bigint::text cast round-trip is exact for -1",
+      "passed": true,
+      "evidence": "in=-1, out=-1"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "bigint::text cast round-trip is exact for 9007199254740991",
+      "passed": true,
+      "evidence": "in=9007199254740991, out=9007199254740991"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "bigint::text cast round-trip is exact for 9007199254740992",
+      "passed": true,
+      "evidence": "in=9007199254740992, out=9007199254740992"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "bigint::text cast round-trip is exact for 9007199254740993",
+      "passed": true,
+      "evidence": "in=9007199254740993, out=9007199254740993"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "bigint::text cast round-trip is exact for 9223372036854775807",
+      "passed": true,
+      "evidence": "in=9223372036854775807, out=9223372036854775807"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "bigint::text cast round-trip is exact for -9223372036854775808",
+      "passed": true,
+      "evidence": "in=-9223372036854775808, out=-9223372036854775808"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "coin_wallets_safe emits the exact bigint-maximum balance as a text string, not a rounded number",
+      "passed": true,
+      "evidence": "balance=9223372036854775807 (string)"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "coin_wallets_safe emits the exact bigint-maximum version and lifetime_granted as text strings too",
+      "passed": true,
+      "evidence": "version=9223372036854775807, lifetime_granted=9223372036854775807"
+    },
+    {
+      "section": "bigint-boundary",
+      "name": "coin_ledger_entries_safe emits the largest constructible negative amount and its balance_before as exact text",
+      "passed": true,
+      "evidence": "{\"amount\":\"-9223372036854775807\",\"balance_before\":\"9223372036854775807\",\"balance_after\":\"0\"}"
+    },
+    {
+      "section": "rollback",
+      "name": "the database carries real transaction history before rollback is attempted (not an empty schema)",
+      "passed": true,
+      "evidence": "{\"economy_configurations\":1,\"economy_prize_schedules\":5,\"world_bank_accounts\":1,\"world_bank_ledger\":12,\"coin_wallets\":13,\"coin_ledger_entries\":34,\"reward_vouchers\":4,\"match_economy_settlements\":15,\"match_economy_participants\":7}"
+    },
+    {
+      "section": "rollback",
+      "name": "rollback executes cleanly against a POPULATED database, not just an empty one",
+      "passed": true,
+      "evidence": "all objects dropped in dependency order"
+    },
+    {
+      "section": "rollback",
+      "name": "no economy tables remain after rollback",
+      "passed": true,
+      "evidence": "clean"
+    },
+    {
+      "section": "rollback",
+      "name": "migration re-applies after a rollback (forward/back/forward cycle)",
+      "passed": true,
+      "evidence": "succeeded"
+    }
+  ],
+  "passed": true,
+  "counts": {
+    "total": 90,
+    "failed": 0
+  }
+}

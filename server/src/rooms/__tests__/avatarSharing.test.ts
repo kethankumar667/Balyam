@@ -78,7 +78,7 @@ const ALSO_REAL = AVATAR_FILES[1];
  * parameters sit BEYOND the one being targeted.
  */
 /** Parameters declared after `avatar`. Bump when another is appended. */
-const PARAMS_AFTER_AVATAR = 1; // hostKind
+const PARAMS_AFTER_AVATAR = 2; // hostKind, identityId (Economy V1 integration)
 
 function hostWithAvatar(rooms: RoomManager, socket: string, name: string, avatar: unknown) {
   // socketId, name, game, …gap…, avatar, then whatever follows avatar.

@@ -31,7 +31,12 @@ export function isValidLifecycleTransition(
     case "READY_CHECK":
       return to === "WAITING_FOR_PLAYERS" || to === "STARTING" || to === "IN_PROGRESS" || to === "ABANDONED" || to === "CLOSED";
     case "STARTING":
-      return to === "IN_PROGRESS" || to === "ABANDONED" || to === "CLOSED";
+      // Rollback edge (Economy V1 integration): a rejected entry commitment
+      // (insufficient funds, frozen wallet, an infrastructure failure) must
+      // return the room to READY_CHECK, not strand it in STARTING forever —
+      // transitionLifecycle() silently no-ops on an invalid target, so
+      // without this edge the room's lifecycleState would simply never move.
+      return to === "READY_CHECK" || to === "IN_PROGRESS" || to === "ABANDONED" || to === "CLOSED";
     case "IN_PROGRESS":
       return to === "PAUSED" || to === "RECOVERING" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
     case "PAUSED":
