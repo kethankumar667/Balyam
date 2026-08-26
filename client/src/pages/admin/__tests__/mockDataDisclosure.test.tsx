@@ -18,7 +18,10 @@ import AdminSettingsPage from "../settings";
  *
  * Two things are proven here, per route:
  *  1. The mock-data disclosure (`MockDataBanner`) is present and says the
- *     right thing — "mock" everywhere except Dashboard, which gets "mixed".
+ *     right thing — "mock" for every route still fully local. Dashboard DB
+ *     Phase 1 (see dashboardDbIntegration.test.tsx) made Dashboard's own
+ *     metrics real, so it no longer carries this banner at all and is
+ *     covered separately, not in `mockRoutes` below.
  *  2. None of the PREVIOUS fabricated-success phrases this audit found can
  *     be produced by actually triggering the action — not just "the string
  *     isn't on the page before you click anything" (trivially true of any
@@ -86,30 +89,6 @@ describe("Admin console — mock-data disclosure banner (ADMIN-DATA-001)", () =>
       screen.getByText(/nothing is saved, exported, broadcast, or sent to a server/i),
     ).toBeDefined();
   });
-
-  describe("Dashboard", () => {
-    beforeEach(() => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn().mockResolvedValue({
-          status: 200,
-          ok: true,
-          json: async () => ({ status: "HEALTHY" }),
-        }),
-      );
-    });
-
-    afterEach(() => {
-      vi.unstubAllGlobals();
-    });
-
-    it("shows the mixed-status disclosure, not the fully-mock one", () => {
-      renderRoute(<AdminDashboardPage />);
-      expect(screen.getByText(/partially live/i)).toBeDefined();
-      expect(screen.getByText(/system-status indicator above is live/i)).toBeDefined();
-      expect(screen.queryByText(/design preview.*mock data/i)).toBeNull();
-    });
-  });
 });
 
 describe("Admin console — corrected action feedback (ADMIN-DATA-001)", () => {
@@ -160,7 +139,25 @@ describe("Admin console — corrected action feedback (ADMIN-DATA-001)", () => {
   it("Dashboard quick actions each report a local demonstration, not a real operation", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ status: "HEALTHY" }) }),
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/admin/dashboard/summary")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+              progression: { kind: "memory", durable: false, reachable: true, detail: "test stub" },
+              kpis: { totalRegisteredUsers: 0, activeUsersLast24h: 0, matchesCompletedToday: 0 },
+              matchTrend: [],
+              recentMatches: [],
+            }),
+          };
+        }
+        if (url.includes("/api/operational/rooms")) {
+          return { status: 200, ok: true, json: async () => ({ rooms: [] }) };
+        }
+        return { status: 200, ok: true, json: async () => ({ status: "HEALTHY", uptimeSec: 0 }) };
+      }),
     );
     const { container } = renderRoute(<AdminDashboardPage />);
 

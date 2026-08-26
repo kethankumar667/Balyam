@@ -9,6 +9,7 @@ import type {
   MatchPage,
   MatchParticipantRecord,
   MatchSummaryRecord,
+  MatchTrendBucket,
   PartyInvitationRecord,
   PartyRecord,
   ProfileRecord,
@@ -888,4 +889,110 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
       createdAt: ms(r.created_at),
     }));
   }
+
+  /* ── dashboard aggregates ── */
+
+  async countRegisteredMembers(): Promise<number> {
+    return this.db.count("player_identities", "kind=eq.member");
+  }
+
+  async countActiveIdentitiesSince(sinceMs: number): Promise<number> {
+    return this.db.count("player_identities", `last_seen_at=gte.${iso(sinceMs)}`);
+  }
+
+  async countMatchesFinishedSince(sinceMs: number): Promise<number> {
+    return this.db.count("match_summaries", `finished_at=gte.${iso(sinceMs)}`);
+  }
+
+  /**
+   * No `GROUP BY` through PostgREST without a view — this pulls just the one
+   * column needed for the trailing window and buckets it here, the same trade
+   * `totalXp` above makes for a `SUM`.
+   */
+  async matchTrend(days: number): Promise<MatchTrendBucket[]> {
+    const startOfWindow = startOfUtcDay(new Date());
+    startOfWindow.setUTCDate(startOfWindow.getUTCDate() - (days - 1));
+
+    const rows = await this.db.select<{ finished_at: string }>(
+      "match_summaries",
+      `finished_at=gte.${startOfWindow.toISOString()}&select=finished_at`,
+    );
+
+    const buckets = new Map<string, number>();
+    for (let i = 0; i < days; i++) {
+      buckets.set(dayKey(new Date(startOfWindow.getTime() + i * DAY_MS)), 0);
+    }
+    for (const r of rows) {
+      const day = r.finished_at.slice(0, 10);
+      if (buckets.has(day)) buckets.set(day, (buckets.get(day) ?? 0) + 1);
+    }
+    return [...buckets.entries()].map(([date, count]) => ({ date, count }));
+  }
+
+  /**
+   * The most recent finished matches across every player. Two reads, not an
+   * embedded one — same reasoning as `listMatchesForPlayer` above: portable to
+   * plain PostgreSQL, which is what makes this method verifiable at all.
+   */
+  async listRecentMatches(limit: number): Promise<MatchSummaryRecord[]> {
+    const summaries = await this.db.select<{
+      id: string;
+      room_code: string;
+      game: string;
+      started_at: string;
+      finished_at: string;
+      duration_ms: number;
+      winner_id: string | null;
+      participant_count: number;
+    }>("match_summaries", `order=finished_at.desc&limit=${limit}`);
+    if (summaries.length === 0) return [];
+
+    const ids = summaries.map((s) => s.id);
+    const participants = await this.db.select<{
+      match_id: string;
+      player_id: string;
+      display_name: string | null;
+      avatar: string | null;
+      is_winner: boolean;
+      is_bot: boolean;
+      placement: number | null;
+    }>("match_participants", `match_id=in.(${ids.map((id) => encodeURIComponent(id)).join(",")})`);
+
+    const byMatch = new Map<string, MatchParticipantRecord[]>();
+    for (const p of participants) {
+      const list = byMatch.get(p.match_id) ?? [];
+      list.push({
+        playerId: p.player_id,
+        displayName: p.display_name,
+        avatar: p.avatar,
+        isWinner: p.is_winner,
+        isBot: p.is_bot,
+        placing: p.placement,
+      });
+      byMatch.set(p.match_id, list);
+    }
+
+    return summaries.map((m) => ({
+      id: m.id,
+      roomCode: m.room_code,
+      game: m.game,
+      startedAt: ms(m.started_at),
+      finishedAt: ms(m.finished_at),
+      durationMs: Number(m.duration_ms),
+      winnerId: m.winner_id,
+      participants: byMatch.get(m.id) ?? [],
+    }));
+  }
+}
+
+const DAY_MS = 86_400_000;
+
+function startOfUtcDay(d: Date): Date {
+  const copy = new Date(d);
+  copy.setUTCHours(0, 0, 0, 0);
+  return copy;
+}
+
+function dayKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
 }

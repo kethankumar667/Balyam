@@ -1,18 +1,5 @@
-import { useEffect, useState } from "react";
-import {
-  Users,
-  Gamepad2,
-  Activity,
-  Cpu,
-  RefreshCw,
-  Coins,
-  TrendingUp,
-  Flame,
-  Radio,
-  Bot,
-  Trash2,
-  ExternalLink,
-} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Users, Gamepad2, Activity, UserCheck, RefreshCw, Radio, Bot, Trash2, TrendingUp } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -27,153 +14,202 @@ import {
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
 import StatCard from "../../../components/admin/stat-card";
-import MetricCard from "../../../components/admin/metric-card";
 import ChartCard from "../../../components/admin/chart-card";
 import DataTable, { type Column } from "../../../components/admin/data-table";
 import StatusBadge from "../../../components/admin/status-badge";
-import ActivityTimeline, { type TimelineItem } from "../../../components/admin/activity-timeline";
 import SectionHeader from "../../../components/admin/section-header";
 import EmptyState from "../../../components/admin/empty-state";
-import MockDataBanner from "../../../components/admin/mock-data-banner";
-import { operationalFetch } from "../../../lib/operationalApi";
+import { operationalFetch, OperationalAuthError } from "../../../lib/operationalApi";
 
-interface LiveMatchRow extends Record<string, unknown> {
+/**
+ * Dashboard DB Integration — Phase 1.
+ *
+ * ── Three independent data sources, three independent failure states ─────
+ * KPIs/trend/recent-matches come from Supabase (`/api/admin/dashboard/summary`).
+ * Live rooms and the derived Active Matches / Connected Players numbers come
+ * from `RoomManager`, unchanged (`/api/operational/rooms`). Server health is
+ * `/api/operational/health`, also unchanged. Each is fetched and rendered on
+ * its own — a Supabase outage must not blank the live-rooms table, and a
+ * rooms-endpoint hiccup must not blank the KPI cards. That independence is
+ * what "partial dataset" means on this page: some sections real, one
+ * unavailable, never zeros standing in for either.
+ */
+
+interface RoomSummary extends Record<string, unknown> {
   code: string;
   game: string;
-  host: string;
-  playersCount: number;
-  phase: string;
-  uptime: string;
+  lifecycleState: string;
+  playerCount: number;
+  humanCount: number;
+  hasTakeover: boolean;
 }
 
-const TRAFFIC_DATA = [
-  { time: "00:00", matches: 6, players: 24 },
-  { time: "03:00 (Maint Window)", matches: 0, players: 4 },
-  { time: "06:00", matches: 8, players: 38 },
-  { time: "09:00", matches: 16, players: 92 },
-  { time: "12:00 (Lunch Burst)", matches: 34, players: 184 },
-  { time: "15:00", matches: 28, players: 164 },
-  { time: "18:00", matches: 46, players: 280 },
-  { time: "21:00 (Championship Peak)", matches: 88, players: 520 },
-  { time: "Now", matches: 18, players: 142 },
-];
+interface MatchTrendBucket {
+  date: string;
+  count: number;
+}
 
-const GAME_DISTRIBUTION = [
-  { name: "Ludo", sessions: 48, fill: "#3b82f6" },
-  { name: "Word Building", sessions: 36, fill: "#8b5cf6" },
-  { name: "Rummy", sessions: 32, fill: "#ec4899" },
-  { name: "Dots & Boxes", sessions: 24, fill: "#10b981" },
-  { name: "Snakes & Ladders", sessions: 20, fill: "#f59e0b" },
-  { name: "UNO", sessions: 18, fill: "#ef4444" },
-];
+interface MatchParticipant {
+  playerId: string;
+  displayName?: string | null;
+  isWinner: boolean;
+  isBot: boolean;
+}
+
+interface RecentMatch extends Record<string, unknown> {
+  id: string;
+  roomCode: string;
+  game: string;
+  finishedAt: number;
+  durationMs: number;
+  winnerId?: string | null;
+  participants: MatchParticipant[];
+}
+
+interface DashboardSummary {
+  progression: { kind: "memory" | "supabase"; durable: boolean; reachable: boolean; detail: string };
+  kpis: {
+    totalRegisteredUsers: number;
+    activeUsersLast24h: number;
+    matchesCompletedToday: number;
+  };
+  matchTrend: MatchTrendBucket[];
+  recentMatches: RecentMatch[];
+}
+
+interface HealthReport {
+  status: "HEALTHY" | "WARNING" | "CRITICAL";
+  uptimeSec: number;
+}
+
+const LIFECYCLE_LABEL: Record<string, string> = {
+  CREATED: "created",
+  WAITING_FOR_PLAYERS: "waiting",
+  READY_CHECK: "ready check",
+  STARTING: "starting",
+  IN_PROGRESS: "playing",
+  RECOVERING: "recovering",
+  PAUSED: "paused",
+  COMPLETED: "completed",
+  ABANDONED: "abandoned",
+  CLOSED: "closed",
+};
+
+function formatDuration(ms: number): string {
+  const totalSec = Math.round(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}m ${s.toString().padStart(2, "0")}s`;
+}
+
+function errorMessage(err: unknown): string {
+  if (err instanceof OperationalAuthError) return "Not authorized for the operational API.";
+  if (err instanceof Error) return err.message;
+  return "Request failed.";
+}
+
+/**
+ * A 200 response is not the same claim as "this is a `DashboardSummary`". A
+ * shape that doesn't hold `kpis`/`matchTrend`/`recentMatches` gets treated as
+ * a failure rather than rendered with holes — `summary?.kpis.x` would throw
+ * on a response missing `kpis` entirely, and the fallback for a throw inside
+ * a render is a blank page, not an honest "unavailable" card.
+ */
+function isDashboardSummary(value: unknown): value is DashboardSummary {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Partial<DashboardSummary>;
+  return Boolean(v.kpis) && Array.isArray(v.matchTrend) && Array.isArray(v.recentMatches) && Boolean(v.progression);
+}
 
 export default function AdminDashboardPage() {
-  const [loading, setLoading] = useState(false);
-  const [systemStatus, setSystemStatus] = useState<"healthy" | "warning" | "critical">("healthy");
-  const [onlineSockets, setOnlineSockets] = useState(142);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+
+  const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
+  const [roomsError, setRoomsError] = useState<string | null>(null);
+  const [roomsLoading, setRoomsLoading] = useState(true);
+
+  const [health, setHealth] = useState<HealthReport | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    try {
-      const res = await operationalFetch<{ status: string }>("/health");
-      if (res && res.status === "HEALTHY") {
-        setSystemStatus("healthy");
-      }
-    } catch {
-      setSystemStatus("healthy");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchAll = useCallback(async () => {
+    setSummaryLoading(true);
+    setRoomsLoading(true);
+
+    await Promise.all([
+      operationalFetch<DashboardSummary>("/api/admin/dashboard/summary")
+        .then((data) => {
+          if (!isDashboardSummary(data)) {
+            throw new Error("Server returned an unexpected response shape.");
+          }
+          setSummary(data);
+          setSummaryError(null);
+        })
+        .catch((err) => {
+          setSummary(null);
+          setSummaryError(errorMessage(err));
+        })
+        .finally(() => setSummaryLoading(false)),
+
+      operationalFetch<{ rooms: RoomSummary[] }>("/api/operational/rooms")
+        .then((data) => {
+          if (!Array.isArray(data?.rooms)) {
+            throw new Error("Server returned an unexpected response shape.");
+          }
+          setRooms(data.rooms);
+          setRoomsError(null);
+        })
+        .catch((err) => {
+          setRooms(null);
+          setRoomsError(errorMessage(err));
+        })
+        .finally(() => setRoomsLoading(false)),
+
+      operationalFetch<HealthReport>("/api/operational/health")
+        .then((data) => {
+          setHealth(data);
+          setHealthError(null);
+        })
+        .catch((err) => {
+          setHealth(null);
+          setHealthError(errorMessage(err));
+        }),
+    ]);
+  }, []);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    fetchAll();
+  }, [fetchAll]);
 
   const showActionToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const stats = [
-    {
-      title: "Live Match Rooms",
-      value: "18",
-      icon: <Gamepad2 className="w-5 h-5" />,
-      trend: { value: 14.2, direction: "up" as const, label: "vs last hr" },
-    },
-    {
-      title: "Connected Players",
-      value: `${onlineSockets}`,
-      icon: <Users className="w-5 h-5" />,
-      trend: { value: 8.5, direction: "up" as const, label: "vs peak" },
-    },
-    {
-      title: "Socket Gateway SLA",
-      value: "99.98%",
-      icon: <Activity className="w-5 h-5" />,
-      subtitle: "Zero frame drops",
-    },
-    {
-      title: "Node Memory (Heap)",
-      value: "142 MB",
-      icon: <Cpu className="w-5 h-5" />,
-      subtitle: "Limit: 512 MB",
-    },
-  ];
+  const loading = summaryLoading || roomsLoading;
 
-  const recentMatches: LiveMatchRow[] = [
-    {
-      code: "LU7890",
-      game: "Ludo",
-      host: "Rahul Sharma",
-      playersCount: 4,
-      phase: "playing",
-      uptime: "12m 40s",
-    },
-    {
-      code: "RM4521",
-      game: "Rummy",
-      host: "Priya Patel",
-      playersCount: 6,
-      phase: "playing",
-      uptime: "08m 15s",
-    },
-    {
-      code: "WB1092",
-      game: "Word Building",
-      host: "Kethan",
-      playersCount: 2,
-      phase: "playing",
-      uptime: "04m 20s",
-    },
-    {
-      code: "DB3311",
-      game: "Dots & Boxes",
-      host: "Sir Krishna",
-      playersCount: 4,
-      phase: "lobby",
-      uptime: "01m 10s",
-    },
-    {
-      code: "UN9902",
-      game: "UNO",
-      host: "Miss Lakshmi",
-      playersCount: 5,
-      phase: "playing",
-      uptime: "19m 50s",
-    },
-  ];
+  // "Never replace failure with Healthy" — a health-fetch failure reads as
+  // critical, not as the default. A genuinely healthy server has to say so.
+  const systemStatus: "healthy" | "warning" | "critical" = healthError
+    ? "critical"
+    : health
+    ? (health.status.toLowerCase() as "healthy" | "warning" | "critical")
+    : "warning";
 
-  const columns: Column<LiveMatchRow>[] = [
+  // Real, derived from the same rooms fetch the Live Rooms table uses — not a
+  // separate fabricated number.
+  const activeMatchesCount = rooms?.filter((r) => r.lifecycleState === "IN_PROGRESS").length ?? null;
+  const connectedPlayers = rooms?.reduce((sum, r) => sum + r.playerCount, 0) ?? undefined;
+
+  const roomColumns: Column<RoomSummary>[] = [
     {
       key: "code",
       header: "Room Code",
       render: (row) => (
-        <span className="font-mono font-bold text-amber-500 dark:text-amber-400">
-          {row.code}
-        </span>
+        <span className="font-mono font-bold text-amber-500 dark:text-amber-400">{row.code}</span>
       ),
     },
     {
@@ -182,87 +218,123 @@ export default function AdminDashboardPage() {
       render: (row) => <span className="font-semibold text-[var(--chrome-ink)]">{row.game}</span>,
     },
     {
-      key: "host",
-      header: "Host",
-      render: (row) => <span className="text-[var(--chrome-ink-soft)]">{row.host}</span>,
-    },
-    {
-      key: "playersCount",
+      key: "playerCount",
       header: "Players",
       align: "center",
       render: (row) => (
         <span className="px-2 py-0.5 rounded-md bg-[var(--chrome-control)] text-[var(--chrome-ink)] text-xs font-bold border border-[var(--chrome-border)]">
-          {row.playersCount}
+          {row.humanCount}
+          {row.playerCount !== row.humanCount ? ` (+${row.playerCount - row.humanCount} bot)` : ""}
         </span>
       ),
     },
     {
-      key: "phase",
+      key: "lifecycleState",
       header: "Phase",
       render: (row) => (
         <StatusBadge
-          status={row.phase === "playing" ? "active" : "pending"}
-          label={row.phase}
+          status={row.lifecycleState === "IN_PROGRESS" ? "active" : "pending"}
+          label={LIFECYCLE_LABEL[row.lifecycleState] ?? row.lifecycleState.toLowerCase()}
           size="sm"
         />
       ),
     },
     {
-      key: "uptime",
-      header: "Uptime",
+      key: "hasTakeover",
+      header: "Takeover",
       align: "right",
-      render: (row) => <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">{row.uptime}</span>,
+      render: (row) =>
+        row.hasTakeover ? (
+          <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">Active</span>
+        ) : (
+          <span className="text-[11px] text-[var(--chrome-ink-soft)]">—</span>
+        ),
     },
   ];
 
-  const recentTimeline: TimelineItem[] = [
+  const recentMatchColumns: Column<RecentMatch>[] = [
     {
-      id: "t-1",
-      title: "New tournament room initialized",
-      description: "Room #LU7890 created with 4 seats",
-      timestamp: "2 mins ago",
-      actor: { name: "System" },
+      key: "roomCode",
+      header: "Room Code",
+      render: (row) => (
+        <span className="font-mono font-bold text-amber-500 dark:text-amber-400">{row.roomCode}</span>
+      ),
     },
     {
-      id: "t-2",
-      title: "Emergency bot failover triggered",
-      description: "Auto-substituted seat 3 in Room #RM4521",
-      timestamp: "7 mins ago",
-      iconBg: "bg-amber-500 text-zinc-950",
-      actor: { name: "BotScheduler" },
+      key: "game",
+      header: "Game",
+      render: (row) => <span className="font-semibold text-[var(--chrome-ink)] capitalize">{row.game}</span>,
     },
     {
-      id: "t-3",
-      title: "Admin configuration updated",
-      description: "Rate limit threshold set to 120 req/min",
-      timestamp: "22 mins ago",
-      actor: { name: "SuperAdmin" },
+      key: "participants",
+      header: "Winner",
+      render: (row) => {
+        const winner = row.participants.find((p) => p.isWinner);
+        return (
+          <span className="text-[var(--chrome-ink-soft)]">
+            {winner?.displayName ?? (row.winnerId ? row.winnerId : "—")}
+          </span>
+        );
+      },
     },
     {
-      id: "t-4",
-      title: "Word Building dictionary loaded",
-      description: "250,000 words indexed with frequency scores",
-      timestamp: "1 hr ago",
-      actor: { name: "EngineWorker" },
+      key: "participantCount",
+      header: "Players",
+      align: "center",
+      render: (row) => (
+        <span className="px-2 py-0.5 rounded-md bg-[var(--chrome-control)] text-[var(--chrome-ink)] text-xs font-bold border border-[var(--chrome-border)]">
+          {row.participants.length}
+        </span>
+      ),
+    },
+    {
+      key: "durationMs",
+      header: "Duration",
+      align: "right",
+      render: (row) => (
+        <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">{formatDuration(row.durationMs)}</span>
+      ),
+    },
+    {
+      key: "finishedAt",
+      header: "Finished",
+      align: "right",
+      render: (row) => (
+        <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">
+          {new Date(row.finishedAt).toLocaleString()}
+        </span>
+      ),
     },
   ];
+
+  // Real, from the same rooms fetch — replaces what used to be a fabricated
+  // "Catalog Popularity" bar chart with an identical-looking one backed by
+  // the actual live room list.
+  const liveRoomsByGame = (() => {
+    if (!rooms) return [];
+    const counts = new Map<string, number>();
+    for (const r of rooms) counts.set(r.game, (counts.get(r.game) ?? 0) + 1);
+    return [...counts.entries()]
+      .map(([name, sessions]) => ({ name, sessions }))
+      .sort((a, b) => b.sessions - a.sessions);
+  })();
 
   return (
     <AdminLayout
-      onRefresh={fetchDashboardData}
+      onRefresh={fetchAll}
       isRefreshing={loading}
       systemStatus={systemStatus}
-      onlineSockets={onlineSockets}
+      onlineSockets={connectedPlayers}
     >
       <PageHeader
         title="Command Center Overview"
-        description="Realtime overview of active matches, socket cluster telemetry, platform revenue, and quick actions."
+        description="Realtime overview of active matches and durable platform metrics, backed by Supabase."
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Dashboard" }]}
         actions={
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={fetchDashboardData}
+              onClick={fetchAll}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-zinc-950 font-black text-xs shadow-xs transition-all cursor-pointer active:scale-95"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -272,226 +344,245 @@ export default function AdminDashboardPage() {
         }
       />
 
-      <MockDataBanner kind="mixed" />
-
       {toastMessage && (
         <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center justify-between animate-in fade-in">
           <span>✓ {toastMessage}</span>
-          <button
-            type="button"
-            onClick={() => setToastMessage(null)}
-            className="text-xs hover:underline"
-          >
+          <button type="button" onClick={() => setToastMessage(null)} className="text-xs hover:underline">
             Dismiss
           </button>
         </div>
       )}
 
+      {summaryError && (
+        <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+          Supabase-backed metrics are unavailable right now: {summaryError} The Live Rooms and Server Health
+          sections below are unaffected — they do not depend on Supabase.
+        </div>
+      )}
+      {!summaryError && summary && !summary.progression.durable && (
+        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold">
+          Progression is running in memory, not Supabase ({summary.progression.detail}). The numbers below are
+          real for this process, but will not survive a restart.
+        </div>
+      )}
+
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        {stats.map((stat) => (
-          <StatCard
-            key={stat.title}
-            title={stat.title}
-            value={stat.value}
-            icon={stat.icon}
-            trend={stat.trend}
-            subtitle={stat.subtitle}
-            loading={loading}
-          />
-        ))}
+        <StatCard
+          title="Total Registered Users"
+          value={summaryError ? "—" : summary?.kpis.totalRegisteredUsers ?? "—"}
+          icon={<Users className="w-5 h-5" />}
+          subtitle={summaryError ? "Unavailable" : "Real accounts, not guests"}
+          loading={summaryLoading}
+        />
+        <StatCard
+          title="Active Users (24h)"
+          value={summaryError ? "—" : summary?.kpis.activeUsersLast24h ?? "—"}
+          icon={<UserCheck className="w-5 h-5" />}
+          subtitle={summaryError ? "Unavailable" : "Members and guests"}
+          loading={summaryLoading}
+        />
+        <StatCard
+          title="Matches Completed Today"
+          value={summaryError ? "—" : summary?.kpis.matchesCompletedToday ?? "—"}
+          icon={<TrendingUp className="w-5 h-5" />}
+          subtitle={summaryError ? "Unavailable" : "Since 00:00 UTC"}
+          loading={summaryLoading}
+        />
+        <StatCard
+          title="Active Matches"
+          value={roomsError ? "—" : activeMatchesCount ?? "—"}
+          icon={<Gamepad2 className="w-5 h-5" />}
+          subtitle={roomsError ? "Unavailable" : "Rooms in progress right now"}
+          loading={roomsLoading}
+        />
       </div>
 
-      {/* Visual Analytics Charts Row */}
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-        {/* 24h Area Chart: Concurrency & Matches */}
         <div className="lg:col-span-2">
           <ChartCard
-            title="Realtime Player Concurrency (24h)"
-            subtitle="Hourly active WebSocket sessions and game match concurrency"
+            title="Completed Matches Trend"
+            subtitle="Matches finished per day, trailing 7 days (UTC)"
+            timeRanges={[]}
           >
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={TRAFFIC_DATA}>
-                <defs>
-                  <linearGradient id="colorPlayers" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.0} />
-                  </linearGradient>
-                  <linearGradient id="colorMatches" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#E85D04" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#E85D04" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
-                <XAxis dataKey="time" stroke="#7A5E45" fontSize={11} />
-                <YAxis stroke="#7A5E45" fontSize={11} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#131926",
-                    borderColor: "#66799A",
-                    borderRadius: 12,
-                    fontSize: 12,
-                    color: "#F1F5F9",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="players"
-                  name="Connected Players"
-                  stroke="#F59E0B"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorPlayers)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="matches"
-                  name="Active Rooms"
-                  stroke="#E85D04"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorMatches)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {summaryError ? (
+              <EmptyState
+                title="Trend unavailable"
+                description={summaryError}
+                icon={<TrendingUp className="w-6 h-6" />}
+              />
+            ) : summary && summary.matchTrend.every((b) => b.count === 0) ? (
+              <EmptyState
+                title="No completed matches yet"
+                description="Once matches finish, this chart fills in day by day."
+                icon={<TrendingUp className="w-6 h-6" />}
+              />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <AreaChart data={summary?.matchTrend ?? []}>
+                  <defs>
+                    <linearGradient id="colorMatchTrend" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
+                  <XAxis dataKey="date" stroke="#7A5E45" fontSize={11} />
+                  <YAxis stroke="#7A5E45" fontSize={11} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#131926",
+                      borderColor: "#66799A",
+                      borderRadius: 12,
+                      fontSize: 12,
+                      color: "#F1F5F9",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    name="Completed Matches"
+                    stroke="#F59E0B"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorMatchTrend)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </ChartCard>
         </div>
 
-        {/* Game Mode Distribution Bar Chart */}
         <div>
-          <ChartCard
-            title="Catalog Popularity"
-            subtitle="Live room distribution by game title"
-          >
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={GAME_DISTRIBUTION} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
-                <XAxis type="number" stroke="#7A5E45" fontSize={10} />
-                <YAxis dataKey="name" type="category" stroke="#7A5E45" fontSize={11} width={85} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#131926",
-                    borderColor: "#66799A",
-                    borderRadius: 12,
-                    fontSize: 12,
-                    color: "#F1F5F9",
-                  }}
-                />
-                <Bar dataKey="sessions" radius={[0, 6, 6, 0]} fill="#F59E0B" />
-              </BarChart>
-            </ResponsiveContainer>
+          <ChartCard title="Live Rooms by Game" subtitle="Right now, from active rooms" timeRanges={[]}>
+            {roomsError ? (
+              <EmptyState
+                title="Unavailable"
+                description={roomsError}
+                icon={<Gamepad2 className="w-6 h-6" />}
+              />
+            ) : liveRoomsByGame.length === 0 ? (
+              <EmptyState
+                title="No active rooms"
+                description="Nobody is currently in a match."
+                icon={<Gamepad2 className="w-6 h-6" />}
+              />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={liveRoomsByGame} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
+                  <XAxis type="number" stroke="#7A5E45" fontSize={10} allowDecimals={false} />
+                  <YAxis dataKey="name" type="category" stroke="#7A5E45" fontSize={11} width={85} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#131926",
+                      borderColor: "#66799A",
+                      borderRadius: 12,
+                      fontSize: 12,
+                      color: "#F1F5F9",
+                    }}
+                  />
+                  <Bar dataKey="sessions" radius={[0, 6, 6, 0]} fill="#F59E0B" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </ChartCard>
         </div>
       </div>
 
-      {/* Revenue & Economy + Quick Actions Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
-        <MetricCard
-          title="Virtual Token Economy"
-          mainValue="128,450"
-          subtitle="Tokens Circulating"
-          progressPct={72}
-          progressColor="bg-amber-500"
-          icon={<Coins className="w-4 h-4 text-amber-500" />}
-          subMetrics={[
-            { label: "24h Volume", value: "14,200", change: "+12%", changeType: "positive" },
-            { label: "Store Spend", value: "8,950", change: "+5%", changeType: "positive" },
-          ]}
-        />
-
-        <MetricCard
-          title="Bot Automation Fleet"
-          mainValue="26 / 32"
-          subtitle="Bot Workers Scheduled"
-          progressPct={81}
-          progressColor="bg-amber-600"
-          icon={<Bot className="w-4 h-4 text-amber-500" />}
-          subMetrics={[
-            { label: "Turn Fallbacks", value: "14", change: "0 errors", changeType: "neutral" },
-            { label: "Avg AI Decision", value: "820ms", change: "-40ms", changeType: "positive" },
-          ]}
-        />
-
-        {/* Quick Operations Box */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs flex flex-col justify-between">
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-1">
-              Administrative Quick Actions
-            </h3>
-            <p className="text-[11px] text-[var(--chrome-ink-soft)] mb-3">
-              Demonstration triggers simulating operational commands in local preview mode.
-            </p>
+      {/* Quick Operations Row — unchanged: every button already discloses,
+          at the moment it is clicked, that it performs no real action. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <button
+          type="button"
+          onClick={() => showActionToast("Local demonstration only — no broadcast was sent to any players.")}
+          className="p-4 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs text-left hover:border-amber-500/40 transition-colors cursor-pointer flex items-center gap-3"
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+            <Radio className="w-4 h-4 text-amber-500" />
           </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => showActionToast("Local demonstration only — no broadcast was sent to any players.")}
-              className="px-2.5 py-2 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Radio className="w-3.5 h-3.5 text-amber-500" />
-              <span>Broadcast</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => showActionToast("Local demonstration only — no rooms were reclaimed on any server.")}
-              className="px-2.5 py-2 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-              <span>Clean Rooms</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => showActionToast("Local demonstration only — no bot workers were restarted.")}
-              className="px-2.5 py-2 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Bot className="w-3.5 h-3.5 text-amber-500" />
-              <span>Restart Bots</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => showActionToast("Local demonstration only — no audit report was generated.")}
-              className="px-2.5 py-2 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/25 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Audit Run</span>
-            </button>
+          <span className="text-xs font-bold text-[var(--chrome-ink)]">Broadcast</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => showActionToast("Local demonstration only — no rooms were reclaimed on any server.")}
+          className="p-4 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs text-left hover:border-amber-500/40 transition-colors cursor-pointer flex items-center gap-3"
+        >
+          <div className="w-9 h-9 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] flex items-center justify-center flex-shrink-0">
+            <Trash2 className="w-4 h-4 text-rose-500" />
           </div>
-        </div>
+          <span className="text-xs font-bold text-[var(--chrome-ink)]">Clean Rooms</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => showActionToast("Local demonstration only — no bot workers were restarted.")}
+          className="p-4 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs text-left hover:border-amber-500/40 transition-colors cursor-pointer flex items-center gap-3"
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+            <Bot className="w-4 h-4 text-amber-500" />
+          </div>
+          <span className="text-xs font-bold text-[var(--chrome-ink)]">Restart Bots</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => showActionToast("Local demonstration only — no audit report was generated.")}
+          className="p-4 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs text-left hover:border-amber-500/40 transition-colors cursor-pointer flex items-center gap-3"
+        >
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-4 h-4 text-emerald-500" />
+          </div>
+          <span className="text-xs font-bold text-[var(--chrome-ink)]">Audit Run</span>
+        </button>
       </div>
 
-      {/* Main Grid: Active Matches Table + Activity Stream */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="lg:col-span-2 space-y-3">
-          <SectionHeader
-            title="Live Match Rooms"
-            badge={<span className="text-xs text-[var(--chrome-ink-soft)] font-medium">(5 of 18 active)</span>}
+      {/* Live Rooms */}
+      <div className="space-y-3 mb-6">
+        <SectionHeader
+          title="Live Rooms"
+          badge={
+            !roomsError && rooms ? (
+              <span className="text-xs text-[var(--chrome-ink-soft)] font-medium">({rooms.length} active)</span>
+            ) : undefined
+          }
+        />
+        {roomsError ? (
+          <EmptyState
+            title="Live rooms unavailable"
+            description={roomsError}
+            icon={<Gamepad2 className="w-6 h-6" />}
           />
+        ) : (
           <DataTable
-            columns={columns}
-            data={recentMatches}
-            loading={loading}
-            emptyMessage="No active match rooms"
+            columns={roomColumns}
+            data={rooms ?? []}
+            loading={roomsLoading}
+            emptyMessage="No active rooms"
             emptyDescription="There are currently no active multiplayer sessions running in the lounge."
             emptyIcon={<Gamepad2 className="w-6 h-6" />}
           />
-        </div>
+        )}
+      </div>
 
-        <div className="space-y-3">
-          <SectionHeader title="Realtime System Events" />
-          {recentTimeline.length > 0 ? (
-            <ActivityTimeline items={recentTimeline} />
-          ) : (
-            <EmptyState
-              title="No system activity"
-              description="No recent server events or failovers have been recorded."
-              icon={<Activity className="w-6 h-6" />}
-            />
-          )}
-        </div>
+      {/* Recent Matches */}
+      <div className="space-y-3">
+        <SectionHeader title="Recent Matches" />
+        {summaryError ? (
+          <EmptyState
+            title="Recent matches unavailable"
+            description={summaryError}
+            icon={<Activity className="w-6 h-6" />}
+          />
+        ) : (
+          <DataTable
+            columns={recentMatchColumns}
+            data={summary?.recentMatches ?? []}
+            loading={summaryLoading}
+            emptyMessage="No matches recorded yet"
+            emptyDescription="Finished matches will appear here as players complete them."
+            emptyIcon={<Activity className="w-6 h-6" />}
+          />
+        )}
       </div>
     </AdminLayout>
   );

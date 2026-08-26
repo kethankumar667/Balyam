@@ -240,6 +240,13 @@ export interface MatchPage {
   total: number;
 }
 
+/** One bucket of the completed-match trend: a UTC calendar day and how many matches finished in it. */
+export interface MatchTrendBucket {
+  /** YYYY-MM-DD, UTC. */
+  date: string;
+  count: number;
+}
+
 export interface ProgressionRepository {
   /** Which implementation this is. Reported by `/health`, logged at boot. */
   readonly kind: "memory" | "supabase";
@@ -316,6 +323,31 @@ export interface ProgressionRepository {
   /* audit */
   recordRewardDecision(record: RewardAuditRecord): Promise<void>;
   listRewardAudit(playerId: string, limit?: number): Promise<RewardAuditRecord[]>;
+
+  /**
+   * Admin-wide aggregates. Unlike everything above, these are not scoped to
+   * one player — they exist for the operations console, not for a player's own
+   * screens, and answer "how many" and "which recently" across everybody.
+   */
+
+  /** How many `player_identities` rows are real accounts (`kind = 'member'`), not guests. */
+  countRegisteredMembers(): Promise<number>;
+
+  /** How many identities — member or guest — were seen at or after `sinceMs`. */
+  countActiveIdentitiesSince(sinceMs: number): Promise<number>;
+
+  /** How many matches finished at or after `sinceMs`. */
+  countMatchesFinishedSince(sinceMs: number): Promise<number>;
+
+  /**
+   * Completed-match counts bucketed by UTC calendar day, oldest first, for the
+   * trailing `days` days including today. A day with zero matches still gets a
+   * bucket — the caller never has to fabricate a gap.
+   */
+  matchTrend(days: number): Promise<MatchTrendBucket[]>;
+
+  /** The most recently finished matches, across every player, newest first. */
+  listRecentMatches(limit: number): Promise<MatchSummaryRecord[]>;
 }
 
 /**

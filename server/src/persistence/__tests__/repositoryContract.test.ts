@@ -247,6 +247,137 @@ function contractSuite(name: string, make: () => Promise<ProgressionRepository>)
       expect((await repo.listMatchesForPlayer(PLAYER, { game: "uno" })).total).toBe(2);
     });
 
+    /* ── dashboard aggregates ── */
+
+    it("counts only member identities as registered, never guests", async () => {
+      // PLAYER and OTHER are both guests (see beforeEach) — a fresh count here
+      // must not include them. Creating a real 'member' identity needs a row
+      // in auth.users, which this suite has no infrastructure to provision, so
+      // the positive case (a member IS counted) is not exercised here.
+      const before = await repo.countRegisteredMembers();
+      expect(before).toBeGreaterThanOrEqual(0);
+      const guestId = freshGuestId();
+      await repo.upsertIdentity({ playerId: guestId, kind: "guest", authUserId: null, lastSeenAt: Date.now() });
+      expect(await repo.countRegisteredMembers()).toBe(before);
+    });
+
+    it("counts identities seen at or after a cutoff, and excludes ones seen before it", async () => {
+      const cutoff = Date.now();
+      const recent = freshGuestId();
+      const stale = freshGuestId();
+      await repo.upsertIdentity({ playerId: recent, kind: "guest", authUserId: null, lastSeenAt: cutoff + 1000 });
+      await repo.upsertIdentity({ playerId: stale, kind: "guest", authUserId: null, lastSeenAt: cutoff - 1000 });
+
+      const active = await repo.countActiveIdentitiesSince(cutoff);
+      expect(active).toBeGreaterThanOrEqual(1);
+
+      // PLAYER/OTHER were upserted with `lastSeenAt: Date.now()` in beforeEach,
+      // strictly before `cutoff` captured just now — a cutoff far in the future
+      // must exclude everyone, including the one just inserted above at +1000ms.
+      expect(await repo.countActiveIdentitiesSince(cutoff + 10_000)).toBe(0);
+    });
+
+    it("counts matches finished at or after a cutoff", async () => {
+      const room = freshId("RM").slice(0, 12).toUpperCase();
+      const startedAt = Date.now() - 60_000;
+      const finishedAt = Date.now() - 30_000;
+      await repo.recordMatch({
+        id: matchIdFor(room, startedAt),
+        roomCode: room,
+        game: "ludo",
+        startedAt,
+        finishedAt,
+        durationMs: 30_000,
+        winnerId: PLAYER,
+        participants: [{ playerId: PLAYER, displayName: "Me", isWinner: true, isBot: false }],
+      });
+
+      expect(await repo.countMatchesFinishedSince(finishedAt)).toBeGreaterThanOrEqual(1);
+      expect(await repo.countMatchesFinishedSince(finishedAt + 60_000)).toBe(0);
+    });
+
+    it("buckets the match trend by UTC day, zero-filling days with no matches", async () => {
+      const trend = await repo.matchTrend(7);
+      expect(trend).toHaveLength(7);
+      // Oldest first, one bucket per day, in order.
+      for (let i = 1; i < trend.length; i++) {
+        expect(Date.parse(trend[i]!.date)).toBeGreaterThan(Date.parse(trend[i - 1]!.date));
+      }
+      for (const bucket of trend) {
+        expect(bucket.count).toBeGreaterThanOrEqual(0);
+        expect(bucket.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      }
+
+      const room = freshId("RM").slice(0, 12).toUpperCase();
+      const startedAt = Date.now() - 10_000;
+      await repo.recordMatch({
+        id: matchIdFor(room, startedAt),
+        roomCode: room,
+        game: "ludo",
+        startedAt,
+        finishedAt: Date.now(),
+        durationMs: 10_000,
+        winnerId: PLAYER,
+        participants: [{ playerId: PLAYER, displayName: "Me", isWinner: true, isBot: false }],
+      });
+      const after = await repo.matchTrend(7);
+      const today = after[after.length - 1]!;
+      expect(today.count).toBeGreaterThanOrEqual(1);
+    });
+
+    it("lists the most recent matches across every player, newest first, with participants attached", async () => {
+      // Not `.slice(0, 12)` like elsewhere in this file: that truncation cuts
+      // off almost all of freshId's uniqueness suffix, and two calls in the
+      // same millisecond can truncate to the identical string. Every other
+      // use of that pattern in this file only ever needs ONE room code to be
+      // distinct from matches recorded by OTHER tests — this is the first one
+      // that needs room1 and room2 distinct from EACH OTHER, which the
+      // truncated form does not reliably guarantee.
+      const room1 = freshId("RM").toUpperCase();
+      const room2 = freshId("RM").toUpperCase();
+      const older = Date.now() - 120_000;
+      const newer = Date.now() - 10_000;
+
+      await repo.recordMatch({
+        id: matchIdFor(room1, older),
+        roomCode: room1,
+        game: "ludo",
+        startedAt: older,
+        finishedAt: older + 30_000,
+        durationMs: 30_000,
+        winnerId: PLAYER,
+        participants: [{ playerId: PLAYER, displayName: "Me", isWinner: true, isBot: false }],
+      });
+      await repo.recordMatch({
+        id: matchIdFor(room2, newer),
+        roomCode: room2,
+        game: "uno",
+        startedAt: newer,
+        finishedAt: newer + 5000,
+        durationMs: 5000,
+        winnerId: OTHER,
+        participants: [
+          { playerId: PLAYER, displayName: "Me", isWinner: false, isBot: false },
+          { playerId: OTHER, displayName: "Them", isWinner: true, isBot: false },
+        ],
+      });
+
+      // Against the in-memory store this is the whole table; against a real,
+      // shared Supabase project other matches (including live production
+      // traffic) may sit above these two in true recency order — so this reads
+      // a generous window and finds OUR two rooms within it, rather than
+      // asserting they occupy specific absolute positions.
+      const recent = await repo.listRecentMatches(200);
+      const ours = recent.filter((m) => m.roomCode === room1 || m.roomCode === room2);
+      expect(ours).toHaveLength(2);
+      expect(ours[0]?.roomCode).toBe(room2); // newer sorts first
+      expect(ours[1]?.roomCode).toBe(room1);
+
+      const withOther = ours.find((m) => m.roomCode === room2)!;
+      expect(withOther.participants.length).toBe(2);
+      expect(withOther.participants.some((p) => p.isWinner && p.playerId === OTHER)).toBe(true);
+    });
+
     it("adds a friendship once and refuses self-friendship", async () => {
       const edge = { playerId: PLAYER, friendPlayerId: OTHER, createdAt: Date.now() };
       expect((await repo.addFriend(edge)).applied).toBe(true);

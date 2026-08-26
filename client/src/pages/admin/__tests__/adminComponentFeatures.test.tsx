@@ -27,16 +27,30 @@ describe("Admin Console — Route Rendering (All 10 Admin Pages)", () => {
   it("renders /admin/dashboard with header and telemetry charts", () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        status: 200,
-        ok: true,
-        json: async () => ({ status: "HEALTHY" }),
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/admin/dashboard/summary")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+              progression: { kind: "memory", durable: false, reachable: true, detail: "test stub" },
+              kpis: { totalRegisteredUsers: 0, activeUsersLast24h: 0, matchesCompletedToday: 0 },
+              matchTrend: [],
+              recentMatches: [],
+            }),
+          };
+        }
+        if (url.includes("/api/operational/rooms")) {
+          return { status: 200, ok: true, json: async () => ({ rooms: [] }) };
+        }
+        return { status: 200, ok: true, json: async () => ({ status: "HEALTHY", uptimeSec: 0 }) };
       }),
     );
     renderRoute(<AdminDashboardPage />);
     expect(screen.getByText("Command Center Overview")).toBeDefined();
-    expect(screen.getByText("Realtime Player Concurrency (24h)")).toBeDefined();
-    expect(screen.getByText("Catalog Popularity")).toBeDefined();
+    expect(screen.getByText("Completed Matches Trend")).toBeDefined();
+    expect(screen.getByText("Live Rooms by Game")).toBeDefined();
     vi.unstubAllGlobals();
   });
 

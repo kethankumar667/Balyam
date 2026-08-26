@@ -19,6 +19,7 @@ import {
   operationalAuthStatus,
 } from "./security/operationalAuth.js";
 import { createOperationalRouter } from "./observability/OperationalController.js";
+import { createDashboardRouter } from "./admin/DashboardController.js";
 import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
 import { guestTokenDurability } from "./auth/guestToken.js";
@@ -188,6 +189,13 @@ const roomManager = new RoomManager(io);
  * can be reached — and no telemetry gathered — before authorization passes.
  */
 app.use("/api/operational", createOperationalRouter({ roomManager, io, startTime }));
+
+/**
+ * Admin dashboard's Supabase-backed metrics. Same gate, separate router: this
+ * one reads `ProgressionRepository`, never `RoomManager` — see
+ * admin/DashboardController.ts for why that boundary matters.
+ */
+app.use("/api/admin/dashboard", createDashboardRouter());
 
 /**
  * Last stop for anything a handler threw.
