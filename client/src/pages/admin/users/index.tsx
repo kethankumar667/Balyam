@@ -351,6 +351,7 @@ export default function AdminUsersPage() {
         columns={columns}
         data={paginatedUsers}
         onRowClick={(row) => setSelectedUser(row)}
+        getRowAriaLabel={(row) => `Open details for user ${row.name}`}
         emptyMessage={emptyTitle}
         emptyDescription={emptyDesc}
         emptyIcon={emptyIcon}

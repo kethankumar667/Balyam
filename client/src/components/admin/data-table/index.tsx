@@ -26,6 +26,16 @@ interface DataTableProps<T> {
     onPageChange: (page: number) => void;
   };
   onRowClick?: (item: T) => void;
+  /**
+   * The accessible name announced for a clickable row — e.g.
+   * `(user) => \`Open details for user ${user.name}\`` — ADMIN-A11Y-001.
+   *
+   * Required for a real accessible name (a bare index like "Row 3" tells a
+   * screen reader user nothing they could act on); when omitted, rows fall
+   * back to a generic "Open row N details" so the table is still keyboard-
+   * operable and announced, just without row-specific content.
+   */
+  getRowAriaLabel?: (item: T, index: number) => string;
   className?: string;
 }
 
@@ -39,6 +49,7 @@ export default function DataTable<T extends Record<string, unknown>>({
   emptyAction,
   pagination,
   onRowClick,
+  getRowAriaLabel,
   className = "",
 }: DataTableProps<T>) {
   return (
@@ -99,8 +110,37 @@ export default function DataTable<T extends Record<string, unknown>>({
                 <tr
                   key={`row-${rowIdx}`}
                   onClick={() => onRowClick?.(row)}
+                  // ADMIN-A11Y-001: a row that opens something on click must
+                  // be reachable and activatable the same way with a
+                  // keyboard — tabIndex puts it in tab order, role="button"
+                  // tells assistive tech what it does (a <tr> has no native
+                  // interactive semantics of its own), and the keydown
+                  // handler is what actually makes Enter/Space work; neither
+                  // key triggers a click on a non-form element by default.
+                  tabIndex={onRowClick ? 0 : undefined}
+                  role={onRowClick ? "button" : undefined}
+                  aria-label={
+                    onRowClick
+                      ? getRowAriaLabel?.(row, rowIdx) ?? `Open row ${rowIdx + 1} details`
+                      : undefined
+                  }
+                  onKeyDown={
+                    onRowClick
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            // Space's default action is scrolling the page —
+                            // without this the row would both activate AND
+                            // scroll out from under the just-opened drawer.
+                            e.preventDefault();
+                            onRowClick(row);
+                          }
+                        }
+                      : undefined
+                  }
                   className={`transition-colors hover:bg-[var(--chrome-control)]/70 ${
-                    onRowClick ? "cursor-pointer" : ""
+                    onRowClick
+                      ? "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400"
+                      : ""
                   }`}
                 >
                   {columns.map((col) => {
@@ -151,25 +191,41 @@ export default function DataTable<T extends Record<string, unknown>>({
             entries
           </div>
 
+          {/* ADMIN-A11Y-003: icon-only buttons had no accessible name at
+              all — a screen reader announced "button", not what it does.
+              aria-label supplies the name; aria-disabled is added alongside
+              the native `disabled` because some AT/browser combinations
+              announce disabled state more reliably from the ARIA attribute
+              than from the DOM property alone. The page-count span is
+              wrapped in aria-live so a page change is announced without the
+              user having to go find it again after each click. */}
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               disabled={pagination.currentPage <= 1}
+              aria-disabled={pagination.currentPage <= 1}
+              aria-label="Previous page"
               onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
-              className="p-1.5 rounded-lg border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="p-1.5 rounded-lg border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] disabled:opacity-40 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <span className="px-2 py-1 font-bold text-[var(--chrome-ink)]">
+            <span
+              className="px-2 py-1 font-bold text-[var(--chrome-ink)]"
+              aria-live="polite"
+              aria-label={`Page ${pagination.currentPage} of ${pagination.totalPages}`}
+            >
               {pagination.currentPage} / {pagination.totalPages}
             </span>
 
             <button
               type="button"
               disabled={pagination.currentPage >= pagination.totalPages}
+              aria-disabled={pagination.currentPage >= pagination.totalPages}
+              aria-label="Next page"
               onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
-              className="p-1.5 rounded-lg border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="p-1.5 rounded-lg border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] disabled:opacity-40 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

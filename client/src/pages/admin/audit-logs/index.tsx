@@ -383,6 +383,7 @@ export default function AdminAuditLogsPage() {
         columns={columns}
         data={filteredLogs}
         onRowClick={(row) => setActiveLog(row)}
+        getRowAriaLabel={(row) => `Open details for audit log entry by ${row.actorName}`}
         emptyMessage={emptyTitle}
         emptyDescription={emptyDesc}
         emptyIcon={emptyIcon}

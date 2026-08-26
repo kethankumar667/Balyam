@@ -356,6 +356,7 @@ export default function AdminAnnouncementsPage() {
         columns={columns}
         data={filteredAnnouncements}
         onRowClick={(row) => setSelectedAnnouncement(row)}
+        getRowAriaLabel={(row) => `Open details for announcement ${row.title}`}
         emptyMessage={emptyTitle}
         emptyDescription={emptyDesc}
         emptyIcon={isSearchActive ? <Search className="w-6 h-6" /> : <Radio className="w-6 h-6" />}

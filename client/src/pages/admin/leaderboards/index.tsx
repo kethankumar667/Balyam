@@ -483,6 +483,7 @@ export default function AdminLeaderboardsPage() {
         columns={columns}
         data={filteredPlayers}
         onRowClick={(row) => setSelectedPlayer(row)}
+        getRowAriaLabel={(row) => `Open details for player ${row.name}`}
         emptyMessage={emptyTitle}
         emptyDescription={emptyDesc}
         emptyIcon={emptyIcon}

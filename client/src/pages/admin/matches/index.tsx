@@ -513,6 +513,7 @@ export default function AdminMatchesPage() {
         columns={columns}
         data={filteredMatches}
         onRowClick={(row) => setSelectedMatch(row)}
+        getRowAriaLabel={(row) => `Open details for match ${row.code}`}
         emptyMessage={emptyTitle}
         emptyDescription={emptyDesc}
         emptyIcon={emptyIcon}
