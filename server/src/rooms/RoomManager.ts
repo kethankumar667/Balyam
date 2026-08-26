@@ -94,6 +94,12 @@ import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
 import { BlockBlastEngine } from "../games/blockblast/BlockBlastEngine.js";
 import { SpaceWarEngine } from "../games/spacewar/SpaceWarEngine.js";
+import type { EconomyService } from "../economy/EconomyService.js";
+import { EconomyServiceError } from "../economy/EconomyService.js";
+import { EconomyRepositoryError, InsufficientFundsError, WalletFrozenError } from "../persistence/EconomyRepository.js";
+import { resolveIdentity } from "./economyIdentity.js";
+import { extractRankedParticipants } from "./economyPlacements.js";
+import { EconomySettlementQueue } from "./economySettlementQueue.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -223,7 +229,7 @@ const LUDO_COLOR_ORDER: ReadonlyArray<LudoColor> = [
   "red", "green", "yellow", "blue", "purple", "cyan", "orange", "brown",
 ];
 
-interface Room {
+export interface Room {
   code: string;
   game: GameKind;
   phase: "lobby" | "playing" | "finished";
@@ -297,6 +303,22 @@ interface Room {
   rematchStartTimer: NodeJS.Timeout | null;
   /** Idempotency action registry: actionKey -> timestamp */
   processedActionIds: Map<string, number>;
+  /**
+   * The Economy V1 match id currently funded for this room, or `null`
+   * between matches. Set only after `commitMatchEntry` succeeds; cleared
+   * once settlement/refund has been queued for it. `null` for the whole
+   * life of a room whose `economyService` is not configured (see the
+   * constructor) — economy-gating is entirely inert in that case.
+   */
+  currentMatchId: string | null;
+  /**
+   * In-memory guard against firing `commitMatchEntry` twice for the same
+   * start attempt — e.g. a double-click or a duplicate socket emit racing
+   * `requestGameStart`'s own `await`. Distinct from the RPC's own
+   * idempotency key: this stops the SECOND call from ever being attempted,
+   * rather than relying on the database to make it harmless once it lands.
+   */
+  economyCommitPending: boolean;
 }
 
 /**
@@ -359,7 +381,32 @@ export class RoomManager {
    */
   private spectatorToRoom = new Map<string, string>();
 
-  constructor(private io: IO) {}
+  /**
+   * `null` when this RoomManager was constructed without an `EconomyService`
+   * — every one of the ~100 pre-existing RoomManager test files, plus any
+   * local dev run with no Economy V1 store configured. In that state, every
+   * economy hook below is a complete no-op and `startGame`/`finalizeMatch`/
+   * `abandonRoom` behave EXACTLY as they did before this integration —
+   * matching how `persistence/index.ts`'s progression store degrades when
+   * unconfigured. In production, `server/src/index.ts` always constructs a
+   * real one (see `economy/index.ts`'s own boot-time refusal-to-start
+   * guard) — this is a test/dev degradation path, not a production one.
+   */
+  private readonly settlementQueue: EconomySettlementQueue | null;
+
+  constructor(private io: IO, private readonly economyService?: EconomyService) {
+    this.settlementQueue = economyService ? new EconomySettlementQueue(economyService) : null;
+  }
+
+  /** For /health and graceful shutdown — see server/src/index.ts. */
+  economySettlementQueueStatus(): ReturnType<EconomySettlementQueue["status"]> | null {
+    return this.settlementQueue?.status() ?? null;
+  }
+
+  /** Waits for every queued settlement/refund — called on graceful shutdown. */
+  async drainEconomySettlementQueue(): Promise<void> {
+    await this.settlementQueue?.drain();
+  }
 
   getRoomCount(): number {
     return this.rooms.size;
@@ -438,7 +485,10 @@ export class RoomManager {
       game: room.game,
       phase: room.phase,
       lifecycleState: room.lifecycleState,
-      players: Array.from(room.players.values()),
+      // `identityId` is server-only (Economy V1's durable account identifier
+      // — see its doc comment in shared/types.ts) and must never reach a
+      // broadcast; every OTHER field is intentionally passed through as-is.
+      players: Array.from(room.players.values()).map(({ identityId: _identityId, ...rest }) => rest),
       // Players are told when they are on a screen. Being displayed in a
       // room without knowing it is not something to discover later.
       spectatorCount: room.spectators.size,
@@ -529,7 +579,16 @@ export class RoomManager {
      */
     avatar?: string,
     /** Appended for the same reason as `avatar` above. */
-    hostKind?: AccountKind
+    hostKind?: AccountKind,
+    /**
+     * Appended for the same reason as `avatar`/`hostKind` above. The
+     * server-verified durable id behind `hostKind === "member"` — see
+     * `rooms/economyIdentity.ts`. `null`/absent for a guest (by product
+     * decision, guests never resolve one) or when Economy V1 isn't in play
+     * at all; either way, `Player.identityId` simply stays unset and this
+     * room behaves exactly as it did before this integration.
+     */
+    identityId?: string | null
   ): { code: string; playerId: string; seatToken: string; state: RoomPublicState } {
     const createStart = performance.now();
     let code = generateRoomCode();
@@ -562,6 +621,7 @@ export class RoomManager {
       // Dropped unless it names a file we actually ship — see shared/avatars.ts.
       avatar: sanitizeAvatar(avatar),
       ...(hostIsGuest ? { isGuest: true } : {}),
+      identityId: identityId ?? null,
     };
 
     const room: Room = {
@@ -610,6 +670,8 @@ export class RoomManager {
       rematchTimer: null,
       rematchStartTimer: null,
       processedActionIds: new Map(),
+      currentMatchId: null,
+      economyCommitPending: false,
     };
     this.rooms.set(code, room);
     this.socketToRoom.set(socketId, code);
@@ -648,7 +710,9 @@ export class RoomManager {
     existingPlayerId?: string,
     seatToken?: string,
     avatar?: string,
-    accountKind?: AccountKind
+    accountKind?: AccountKind,
+    /** Same rules as `createRoom`'s `identityId` — see there. Only applied to a genuinely NEW seat; a reclaimed seat keeps whatever identity it was joined with originally. */
+    identityId?: string | null
   ): { ok: true; playerId: string; seatToken: string; state: RoomPublicState } | { ok: false; error: string } {
     const joinStart = performance.now();
     const room = this.rooms.get(code.toUpperCase());
@@ -762,6 +826,7 @@ export class RoomManager {
       avatar: sanitizeAvatar(avatar),
       // Explicit "guest" only, matching `hostKind` in createRoom above.
       ...(accountKind === "guest" ? { isGuest: true } : {}),
+      identityId: identityId ?? null,
     };
     room.players.set(playerId, player);
     room.socketToPlayer.set(socketId, playerId);
@@ -790,6 +855,14 @@ export class RoomManager {
     const playerId = room.socketToPlayer.get(socketId);
     if (!playerId) return;
 
+    // Captured before deletion, for the economy settlement path ONLY (see
+    // the finalizeMatch(room, departedParticipant) call below): a forfeit
+    // completes the match via this exact departure, but `hasHumanPlayer`/
+    // `reassignHost`/`room.engine.removePlayer` below all correctly need
+    // this player ALREADY gone from `room.players` — so the deletion order
+    // itself is untouched, and this snapshot is how the settlement roster
+    // still adds up to the committed seat count without them.
+    const departingPlayer = room.players.get(playerId);
     room.players.delete(playerId);
     room.socketToPlayer.delete(socketId);
     this.socketToRoom.delete(socketId);
@@ -833,7 +906,7 @@ export class RoomManager {
       // unreachable (it's gated on phase === "finished"). Finalize it the
       // same way every other completion path does (see
       // MULTIPLAYER-RELIABILITY-BASELINE.md gap G14).
-      this.finalizeMatch(room);
+      this.finalizeMatch(room, departingPlayer);
     } else {
       this.broadcastRoomState(room);
       // The engine has moved the turn off the departed seat — push that, and
@@ -1135,9 +1208,153 @@ export class RoomManager {
     this.broadcastRoomState(room);
   }
 
+  /** Safe, generic message for a caller — never a repository/service `.message`, which can be internal-detail-bearing even for a typed class. */
+  private economyErrorMessage(err: unknown): string {
+    if (err instanceof InsufficientFundsError) return "You don't have enough coins to start this match.";
+    if (err instanceof WalletFrozenError) return "Your wallet is currently frozen.";
+    return "Could not start the match right now. Try again.";
+  }
+
+  /**
+   * The economy-gated entry point for starting a match — Option A of
+   * `docs/economy/roommanager-async-boundary-proposal.md`, implemented as
+   * approved: `startGame` below stays fully synchronous and unchanged;
+   * this is a new, narrow, ASYNC pre-commit step that runs before it, and
+   * is the ONLY path `sockets/index.ts`'s `room:startGame` handler calls
+   * in production. `startRematch` (line ~3260) has its own analogous
+   * gate for the same reason — a rematch is a new match under the
+   * existing economy design (no "free replay" concept exists anywhere in
+   * Economy V1's schema or rules).
+   *
+   * When `economyService` is not configured (see the constructor), this
+   * is a pure pass-through: `startGame(socketId)` runs immediately,
+   * exactly as before this integration — every pre-existing RoomManager
+   * test that calls `startGame` directly is unaffected.
+   *
+   * When it IS configured:
+   *   1. The SAME cheap checks `startGame` itself performs (host, seat
+   *      limits, all-ready) run first — a request that would fail
+   *      `startGame` anyway never reaches a paid commit attempt.
+   *   2. The host must have a resolved member identity. A guest host is
+   *      refused here, by product decision (2026-08-27) — see
+   *      `economyIdentity.ts`'s doc comment for the full reasoning (no
+   *      guest-token channel exists through the socket layer today).
+   *   3. `lifecycleState` -> `STARTING` (an existing, valid transition),
+   *      and `commitMatchEntry` is awaited.
+   *   4. Success: `currentMatchId` is set, then the existing synchronous
+   *      `startGame(socketId)` runs, completing the transition to
+   *      `IN_PROGRESS` exactly as it always has.
+   *   5. Failure: `lifecycleState` rolls back to `READY_CHECK` (the one
+   *      rollback edge added to `shared/lifecycle.ts` for this),
+   *      `startGame` never runs, no participant loses coins (the debit
+   *      either fully applied or didn't — `commitMatchEntry` has no
+   *      partial-effect state), and no settlement record exists.
+   *
+   * `room.economyCommitPending` guards the whole async window against a
+   * second `requestGameStart` racing this one for the same room. A real,
+   * separate interleaving risk remains and is deliberately NOT solved by
+   * a bigger lock: another socket event for this SAME room (a player
+   * leaving, an abandonment) can run during the `await` below, since
+   * Node's event loop is free to process other callbacks while this one
+   * is suspended. If that happens, `startGame`'s own re-validation may
+   * then refuse to actually start the match even though the commit
+   * already succeeded. This is financially safe, not merely tolerated:
+   * `abandonRoom`'s refund guard checks `room.currentMatchId !== null`
+   * directly (not `room.phase === "playing"`), so a committed-but-never-
+   * started match still gets refunded when the room is torn down.
+   */
+  async requestGameStart(socketId: string): Promise<void> {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+
+    if (!this.economyService) {
+      this.startGame(socketId);
+      return;
+    }
+
+    if (player.id !== room.hostId) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only host can start");
+      return;
+    }
+    const { min, max } = getGameLimits(room.game);
+    const playersList = Array.from(room.players.values());
+    if (playersList.length < min) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", `Need at least ${min} players`);
+      return;
+    }
+    if (playersList.length > max) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", `Max ${max} players`);
+      return;
+    }
+    if (!playersList.every((p) => p.isReady)) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "All players must be ready");
+      return;
+    }
+    if (room.economyCommitPending) return;
+
+    if (!player.identityId) {
+      this.io.sockets.sockets.get(socketId)?.emit(
+        "room:error",
+        "Only a signed-in account can start a paid match. Sign in to host, or ask a member to host instead.",
+      );
+      return;
+    }
+
+    room.economyCommitPending = true;
+    this.transitionLifecycle(room, "STARTING", "Committing match entry");
+    const humanSeatCount = playersList.filter((p) => !p.isBot).length;
+    const botSeatCount = playersList.length - humanSeatCount;
+    const matchId = `m_${room.code}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    try {
+      const result = await this.economyService.commitMatchEntry({
+        matchId,
+        roomCode: room.code,
+        hostIdentityId: player.identityId,
+        seatCount: playersList.length,
+        humanSeatCount,
+        botSeatCount,
+        isSolo: playersList.length === 1,
+      });
+      room.currentMatchId = result.settlement.matchId;
+      this.startGame(socketId);
+    } catch (err) {
+      this.transitionLifecycle(room, "READY_CHECK", "Entry commitment failed");
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", this.economyErrorMessage(err));
+      logger.warn({
+        message: `commitMatchEntry failed for room ${room.code}: ${err instanceof Error ? err.name : String(err)}`,
+        module: "ECONOMY_ROOM",
+        roomCode: room.code,
+      });
+    } finally {
+      room.economyCommitPending = false;
+    }
+  }
+
+  /**
+   * The post-commit step (see `requestGameStart` above). Fully synchronous,
+   * fully unchanged from before this integration — every existing caller
+   * (production, now routed through `requestGameStart`; every pre-existing
+   * test, calling this directly) sees identical behavior.
+   */
   startGame(socketId: string): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
+    // The one bypass check that must live HERE, not only in
+    // `requestGameStart`: without it, a caller that skips the pre-commit
+    // gate and invokes this method directly would start a real match with
+    // no economy commitment at all whenever `economyService` IS configured
+    // — exactly the "alternate emit" bypass Phase 2's "no bypasses" rule
+    // exists to close. Inert (this branch never taken) for the ~100
+    // pre-existing tests that construct RoomManager without an
+    // EconomyService — see the constructor's own doc comment.
+    if (this.economyService && !room.currentMatchId) {
+      this.io.sockets.sockets.get(socketId)?.emit(
+        "room:error",
+        "This match has not been paid for yet. Use requestGameStart, not startGame, when Economy V1 is enabled.",
+      );
+      return;
+    }
     if (player.id !== room.hostId) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only host can start");
       return;
@@ -1346,7 +1563,17 @@ export class RoomManager {
    * must stop it themselves before calling this — this method does not
    * know about timers it didn't set.
    */
-  private finalizeMatch(room: Room): void {
+  /**
+   * `departedPlayer`: set only by `leaveRoom`'s forfeit-completion call
+   * site, where the departing player has ALREADY been removed from
+   * `room.players` by the time this runs (every other check in that
+   * function needs them already gone — see the capture site's own
+   * comment). Used for economy settlement only (`queueMatchSettlement`) —
+   * `profileService`/`recentPlayersService` below are unchanged, matching
+   * their existing, already-shipped, non-economy behavior of recording
+   * whoever is still seated at the moment the match ends.
+   */
+  private finalizeMatch(room: Room, departedPlayer?: Player): void {
     room.phase = "finished";
     this.transitionLifecycle(room, "COMPLETED", "Match finished");
     serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine as any).getWinner?.() ?? null);
@@ -1378,6 +1605,7 @@ export class RoomManager {
     } catch (err) {
       logger.warn({ message: `Failed to record match in profile/ranking service: ${String(err)}`, module: "PROFILE" });
     }
+    this.queueMatchSettlement(room, departedPlayer);
     for (const p of room.players.values()) p.isReady = false;
     this.clearTurnTimer(room);
     this.broadcastRoomState(room);
@@ -1387,6 +1615,43 @@ export class RoomManager {
     // persistence). Generic across every game for the same reason as the
     // move-rejection log above.
     console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
+  }
+
+  /**
+   * The one and only settlement call site — every `finalizeMatch` caller
+   * (all 6, see `roommanager-integration-map.md`) routes through here.
+   * Calls `EconomyService.settleMatchEconomy` only, never
+   * `EconomyRepository` — queued (see `EconomySettlementQueue`'s own doc
+   * comment for why), so `finalizeMatch` itself stays fully synchronous.
+   *
+   * No-op when `economyService` isn't configured, or when this room never
+   * had a committed match (`currentMatchId` is `null` — a room whose game
+   * started before economy gating was configured, or one that finished
+   * via a path that never reached `requestGameStart`, e.g. a test calling
+   * `startGame` directly).
+   */
+  private queueMatchSettlement(room: Room, departedPlayer?: Player): void {
+    if (!this.settlementQueue || !room.currentMatchId) return;
+    const matchId = room.currentMatchId;
+    room.currentMatchId = null; // the slot is free the moment this is queued — a rematch mints its own fresh matchId
+
+    // A forfeit-by-leaving completes the match with the departing player
+    // ALREADY removed from `room.players` (see `leaveRoom`) — added back
+    // here, for settlement extraction only, so the roster still matches the
+    // committed seat count instead of coming up one short.
+    const rosterForSettlement = departedPlayer ? new Map(room.players).set(departedPlayer.id, departedPlayer) : room.players;
+
+    const { isValidRanking, participants, reason } = extractRankedParticipants({
+      game: room.game,
+      players: rosterForSettlement,
+      engine: room.engine,
+    });
+
+    this.settlementQueue.queueSettlement(
+      isValidRanking
+        ? { matchId, isValidRanking: true, participants }
+        : { matchId, isValidRanking: false, participants: [], refundReason: reason ?? "Ranking unavailable or ambiguous" },
+    );
   }
 
   /**
@@ -1791,6 +2056,7 @@ export class RoomManager {
   private abandonRoom(room: Room): void {
     room.phase = "finished";
     this.transitionLifecycle(room, "ABANDONED", "All humans departed");
+    this.queueMatchRefund(room, "Room abandoned mid-match — all human players departed");
     serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_abandoned");
     metricsCollector.onRoomAbandoned(room.game);
     this.clearTurnTimer(room);
@@ -1805,6 +2071,30 @@ export class RoomManager {
     serverLifecycleRegistry.cleanupRoom(room.code);
     metricsCollector.onRoomClosed(room.game);
     this.rooms.delete(room.code);
+  }
+
+  /**
+   * The one and only refund call site for room-teardown cancellation
+   * (`abandonRoom`'s 3 call sites — see `roommanager-integration-map.md`).
+   * Calls `EconomyService.refundMatchEntry` only, queued for the same
+   * "no player-visible action is waiting on this" reason settlement is
+   * (`EconomySettlementQueue`'s doc comment).
+   *
+   * Guards on `currentMatchId !== null` rather than `room.phase ===
+   * "playing"` deliberately — a match committed via `requestGameStart` but
+   * never actually started (the interleaving edge case documented on that
+   * method) still owes a refund even though `phase` never became
+   * `"playing"`. `MatchAlreadySettledError` (a real race: the match
+   * finished in the gap between whatever triggered abandonment and this
+   * call executing) is not a bug — `EconomySettlementQueue` logs it as a
+   * failed queue item like any other rejection; the settlement already has
+   * a legitimate `SETTLED` outcome and nothing further is owed.
+   */
+  private queueMatchRefund(room: Room, reason: string): void {
+    if (!this.settlementQueue || !room.currentMatchId) return;
+    const matchId = room.currentMatchId;
+    room.currentMatchId = null;
+    this.settlementQueue.queueRefund(matchId, reason);
   }
 
   /** True while at least one seated player is a real human (not a bot). */
@@ -2733,6 +3023,9 @@ export class RoomManager {
       if (!stillRoom) return;
       const stillPlayer = stillRoom.players.get(playerId);
       if (stillPlayer && !stillPlayer.isConnected) {
+        // Captured before deletion — same reasoning as leaveRoom's own
+        // departingPlayer snapshot, for the same economy settlement reason.
+        const droppedPlayer = stillRoom.players.get(playerId);
         // The seat is going away entirely, so everything tracking it goes too.
         this.forgetSeatTimers(stillRoom, playerId);
         stillRoom.players.delete(playerId);
@@ -2765,7 +3058,7 @@ export class RoomManager {
           // grace-expiry reap can also be what tips a 1v1 forfeit or a
           // multiplayer walkover, and room.phase must not stay "playing"
           // forever once the engine already knows the match is over.
-          this.finalizeMatch(stillRoom);
+          this.finalizeMatch(stillRoom, droppedPlayer);
         } else {
           this.broadcastRoomState(stillRoom);
           this.resumeTable(stillRoom);
@@ -3093,7 +3386,12 @@ export class RoomManager {
     };
     this.clearRematchTimers(room);
     room.rematchStartTimer = setTimeout(() => {
-      this.startRematch(room);
+      // A `setTimeout` callback, not an awaited call site — nothing is
+      // relying on this completing synchronously, so (unlike `startGame`)
+      // making the gate async here required no caller-impact analysis at
+      // all. See `requestRematchStart`'s own doc comment for why a rematch
+      // needs its own commitment in the first place.
+      void this.requestRematchStart(room);
     }, REMATCH_COUNTDOWN_MS);
     this.broadcastRematch(room);
   }
@@ -3117,10 +3415,91 @@ export class RoomManager {
     }, 2_500);
   }
 
+  /**
+   * The economy-gated entry point for a rematch — same reasoning and shape
+   * as `requestGameStart`, for the same reason: a rematch plays a full new
+   * round for the SAME prize schedule and stakes as the original match, and
+   * nothing in Economy V1's schema or rules treats a rematch as exempt or
+   * "already paid for." Skipping this gate would be exactly the kind of
+   * alternate-emit bypass Phase 2's "no bypasses, no alternate emits" rules
+   * out.
+   *
+   * `room.hostId` funds the rematch (same host who funded the original
+   * entry, or whoever `reassignHost` elected since — see that method's own
+   * doc comment on why the CURRENT host, not the original one, is
+   * authoritative going forward).
+   */
+  private async requestRematchStart(room: Room): Promise<void> {
+    if (room.rematch.status !== "accepted") return;
+
+    if (!this.economyService) {
+      this.startRematch(room);
+      return;
+    }
+
+    const host = room.players.get(room.hostId);
+    if (!host) {
+      this.cancelRematch(room, null);
+      return;
+    }
+    if (!host.identityId) {
+      this.io.to(room.code).emit(
+        "room:error",
+        "Only a signed-in account can start a paid rematch. Sign in to host, or ask a member to host instead.",
+      );
+      this.cancelRematch(room, null);
+      return;
+    }
+    if (room.economyCommitPending) return;
+
+    room.economyCommitPending = true;
+    const playersList = Array.from(room.players.values());
+    const humanSeatCount = playersList.filter((p) => !p.isBot).length;
+    const botSeatCount = playersList.length - humanSeatCount;
+    const matchId = `m_${room.code}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    try {
+      const result = await this.economyService.commitMatchEntry({
+        matchId,
+        roomCode: room.code,
+        hostIdentityId: host.identityId,
+        seatCount: playersList.length,
+        humanSeatCount,
+        botSeatCount,
+        isSolo: playersList.length === 1,
+      });
+      room.currentMatchId = result.settlement.matchId;
+      this.startRematch(room);
+    } catch (err) {
+      this.io.to(room.code).emit("room:error", this.economyErrorMessage(err));
+      logger.warn({
+        message: `commitMatchEntry failed for rematch in room ${room.code}: ${err instanceof Error ? err.name : String(err)}`,
+        module: "ECONOMY_ROOM",
+        roomCode: room.code,
+      });
+      this.cancelRematch(room, null);
+    } finally {
+      room.economyCommitPending = false;
+    }
+  }
+
   /** Actually start a new round — wraps the same flow as startGame() but skips
-   *  the ready-check (everyone has already opted in via the rematch vote). */
+   *  the ready-check (everyone has already opted in via the rematch vote).
+   *  Post-commit step (see `requestRematchStart` above) when economy is
+   *  configured; the direct, unchanged entry point when it isn't. */
   private startRematch(room: Room): void {
     if (room.rematch.status !== "accepted") return;
+    // Same bypass check as `startGame`'s own, for the same reason: a direct
+    // call here (skipping `requestRematchStart`) must not be able to start
+    // a paid rematch for free. Inert when `economyService` isn't configured.
+    if (this.economyService && !room.currentMatchId) {
+      this.io.to(room.code).emit(
+        "room:error",
+        "This rematch has not been paid for yet. Use requestRematchStart, not startRematch, when Economy V1 is enabled.",
+      );
+      this.cancelRematch(room, null);
+      return;
+    }
     const playersList = Array.from(room.players.values());
     try {
       const engine = createEngine(room.game);

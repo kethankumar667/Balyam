@@ -425,9 +425,11 @@ describe("P0-1 — the real server refuses to boot misconfigured", () => {
           ADMIN_API_KEY: "",
           ADMIN_USER_IDS: "",
           // This suite is about the OPERATIONAL guard. Production now also
-          // refuses to boot without durable progression (P0-3), and leaving
-          // that on would make every case here fail for the other reason.
+          // refuses to boot without durable progression (P0-3) or durable
+          // Economy V1 persistence (Phase 7), and leaving either on would
+          // make every case here fail for the wrong reason.
           ALLOW_EPHEMERAL_PROGRESSION: "true",
+          ALLOW_EPHEMERAL_ECONOMY: "true",
           ...env,
         },
       });

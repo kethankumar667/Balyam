@@ -13,6 +13,7 @@ import {
   X,
   Shield,
   Sparkles,
+  Landmark,
 } from "lucide-react";
 import BhalyamLogo from "../../bhalyam/BhalyamLogo";
 
@@ -25,6 +26,7 @@ export interface NavItem {
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Economy", href: "/admin/economy", icon: Landmark },
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "Matches", href: "/admin/matches", icon: Gamepad2 },
   { label: "Feature Flags", href: "/admin/feature-flags", icon: Flag },

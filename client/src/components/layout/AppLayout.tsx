@@ -13,6 +13,7 @@ import { MenuSheet } from "../../pages/home/sheets/MenuSheet";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";
+import { WalletDrawer } from "../economy/WalletDrawer";
 
 interface AppLayoutContextType {
   openJoin: () => void;
@@ -20,6 +21,7 @@ interface AppLayoutContextType {
   openSettings: () => void;
   openProfile: () => void;
   openNotifications: () => void;
+  openWallet: () => void;
 }
 
 const AppLayoutContext = createContext<AppLayoutContextType>({
@@ -28,6 +30,7 @@ const AppLayoutContext = createContext<AppLayoutContextType>({
   openSettings: () => {},
   openProfile: () => {},
   openNotifications: () => {},
+  openWallet: () => {},
 });
 
 export const useAppLayout = () => useContext(AppLayoutContext);
@@ -85,6 +88,7 @@ export default function AppLayout({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -165,13 +169,11 @@ export default function AppLayout({
       setProfileInitialView("profile");
       setProfileOpen(true);
     },
-    // Notifications now live inside the Profile sheet's own "notifications"
-    // view instead of a separate dialog — this just opens that sheet
-    // straight to that page.
     openNotifications: () => {
       setProfileInitialView("notifications");
       setProfileOpen(true);
     },
+    openWallet: () => setWalletOpen(true),
   };
 
   return (
@@ -192,11 +194,9 @@ export default function AppLayout({
               setProfileOpen(true);
             }}
             onOpenSettings={() => setSettingsOpen(true)}
+            onOpenWallet={() => setWalletOpen(true)}
             onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
             onSelectGame={handleSelectGame}
-            /* The header used to hardcode `3` while this component held the
-               real list — a badge that could never be cleared by reading
-               anything. Now it counts, and renders nothing at zero. */
             unreadCount={notifications.filter((n) => n.unread).length}
           />
         )}
@@ -331,6 +331,10 @@ export default function AppLayout({
             setProfileOpen(false);
             setJoinOpen(true);
           }}
+        />
+        <WalletDrawer
+          isOpen={walletOpen}
+          onClose={() => setWalletOpen(false)}
         />
       </div>
     </AppLayoutContext.Provider>
