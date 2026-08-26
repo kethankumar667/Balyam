@@ -56,7 +56,13 @@ It is re-runnable — every statement is guarded, so applying it twice changes
 nothing.
 
 **Rollback** (destructive; take a backup first):
-`supabase/migrations/20260818000000_progression_persistence_rollback.sql`.
+`supabase/rollbacks/20260818000000_progression_persistence_rollback.sql`. Kept
+outside `supabase/migrations/` deliberately — a rollback script sharing its
+forward migration's version timestamp collides with the CLI's own migration
+history table the moment `supabase db push` tries to apply it as the very next
+migration, aborting mid-transaction. Run a rollback manually against the SQL
+Editor (or `psql`) when you actually need one; never let it sit in the
+migrations directory.
 
 ---
 

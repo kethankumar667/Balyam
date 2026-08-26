@@ -48,7 +48,7 @@ const { Client } = pkg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATION = path.join(ROOT, "supabase/migrations/20260818000000_progression_persistence.sql");
-const ROLLBACK = path.join(ROOT, "supabase/migrations/20260818000000_progression_persistence_rollback.sql");
+const ROLLBACK = path.join(ROOT, "supabase/rollbacks/20260818000000_progression_persistence_rollback.sql");
 const RECEIPT = path.join(ROOT, "docs/remediation/persistence-schema-verification.json");
 
 const PORT = Number(process.env.VERIFY_PG_PORT) || 55433;

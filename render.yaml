@@ -21,6 +21,12 @@ services:
         sync: false
       - key: SUPABASE_JWT_SECRET
         sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # Service-role (secret) key — required for durable progression. NOT the anon key. Never commit the real value.
+      - key: OPERATIONAL_SECRET
+        sync: false # Required in production — server refuses to boot without it. Generate fresh per deployment, never reuse the local dev placeholder.
+      - key: SESSION_SECRET
+        sync: false # Signs guest tokens. Without it, a restart signs every guest out and orphans their progression.
 
   # ── BHALYAM Frontend (React 18 + Vite SPA) ─────────────────────────────────
   - type: web
