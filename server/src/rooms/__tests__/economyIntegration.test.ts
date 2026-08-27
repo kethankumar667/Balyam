@@ -515,25 +515,144 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.totalWalletRewarded).toBe("0"); // the winner is a guest, so no member wallet was credited
     });
 
-    it("preserves the standing rule that guests cannot HOST even once their identity resolves", async () => {
+    it("allows a guest host with 1 bot to start a paid match, deducts 200 coins, and transitions to playing", async () => {
       const { repo, service } = freshEconomy();
-      repo.testFixture.seedIdentity("guest_phase4_host_attempt", "guest");
+      repo.testFixture.seedIdentity("guest_bot_host_1", "guest");
+      repo.testFixture.seedWallet({
+        identityId: "guest_bot_host_1",
+        identityKind: "guest",
+        balance: "2000",
+        lifetimeGranted: "2000",
+        starterGranted: true,
+      });
       const { io } = makeIo();
       const rooms = new RoomManager(io, service);
 
-      // A guest with a REAL, Phase-4-resolved identityId — the exact case
-      // that could have silently reopened guest hosting if `requestGameStart`
-      // still gated purely on `!player.identityId`.
-      const host = createRoomAs(rooms, "s_g", "GuestHost", "rps", "guest", "guest_phase4_host_attempt");
+      const host = createRoomAs(rooms, "s_g", "GuestHost", "rps", "guest", "guest_bot_host_1");
       rooms.addBot("s_g", "Botty");
       rooms.setReady("s_g", true);
 
       await rooms.requestGameStart("s_g");
 
       const room = peek(rooms, host.code);
-      expect(room.currentMatchId).toBeNull(); // never committed
-      expect(room.phase).not.toBe("playing");
-      void service;
+      expect(room.phase).toBe("playing");
+      expect(room.currentMatchId).not.toBeNull();
+
+      const wallet = await service.getWallet("guest_bot_host_1");
+      expect(wallet.balance).toBe("1800"); // 2000 - 200 (1 human + 1 bot = 2 seats @ 100)
+    });
+
+    it("allows a guest host with maximum supported bots (e.g. Ludo 4 seats) to start and deducts 400 coins", async () => {
+      const { repo, service } = freshEconomy();
+      repo.testFixture.seedIdentity("guest_ludo_host", "guest");
+      repo.testFixture.seedWallet({
+        identityId: "guest_ludo_host",
+        identityKind: "guest",
+        balance: "2000",
+        lifetimeGranted: "2000",
+        starterGranted: true,
+      });
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_g", "GuestHost", "ludo", "guest", "guest_ludo_host");
+      rooms.addBot("s_g", "Bot 1");
+      rooms.addBot("s_g", "Bot 2");
+      rooms.addBot("s_g", "Bot 3");
+      rooms.setReady("s_g", true);
+
+      await rooms.requestGameStart("s_g");
+
+      const room = peek(rooms, host.code);
+      expect(room.phase).toBe("playing");
+      expect(room.currentMatchId).not.toBeNull();
+
+      const wallet = await service.getWallet("guest_ludo_host");
+      expect(wallet.balance).toBe("1600"); // 2000 - 400 (1 human + 3 bots = 4 seats @ 100)
+    });
+
+    it("allows a guest host to fund and start a rematch against bots", async () => {
+      const { repo, service } = freshEconomy();
+      repo.testFixture.seedIdentity("guest_rematch_host", "guest");
+      repo.testFixture.seedWallet({
+        identityId: "guest_rematch_host",
+        identityKind: "guest",
+        balance: "2000",
+        lifetimeGranted: "2000",
+        starterGranted: true,
+      });
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_g", "GuestHost", "rps", "guest", "guest_rematch_host");
+      rooms.addBot("s_g", "Botty");
+      rooms.setReady("s_g", true);
+
+      await rooms.requestGameStart("s_g");
+      expect(peek(rooms, host.code).phase).toBe("playing");
+
+      // Play match to completion: Guest "rock" beats bot "scissors"
+      const originalRandom = Math.random;
+      Math.random = () => 0.8; // bot auto-throw is scissors
+      try {
+        for (let round = 0; round < 10; round++) {
+          rooms.applyMove("s_g", "choose", { choice: "rock" });
+          vi.advanceTimersByTime(2100);
+        }
+      } finally {
+        Math.random = originalRandom;
+      }
+      await drainRoomEconomy(rooms);
+      expect(peek(rooms, host.code).phase).toBe("finished");
+
+      // Now request rematch — sole human requester with bots auto-accepts and transitions to playing
+      rooms.requestRematch("s_g");
+      await vi.advanceTimersByTimeAsync(3000);
+
+      const room = peek(rooms, host.code);
+      expect(room.phase).toBe("playing");
+      expect(room.currentMatchId).not.toBeNull();
+
+      const wallet = await service.getWallet("guest_rematch_host");
+      expect(wallet.balance).toBe("1600"); // 2000 - 200 (first match) - 200 (rematch) = 1600
+    });
+
+    it("rejects a guest attempting to host a match when another real human player is present", async () => {
+      const { repo, service } = freshEconomy();
+      repo.testFixture.seedIdentity("guest_human_host", "guest");
+      repo.testFixture.seedIdentity("guest_human_joiner", "guest");
+      const { io, socketEmits } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_g1", "GuestHost", "rps", "guest", "guest_human_host");
+      joinRoomAs(rooms, "s_g2", "GuestOther", host.code, "guest", "guest_human_joiner");
+      rooms.setReady("s_g1", true);
+      rooms.setReady("s_g2", true);
+
+      await rooms.requestGameStart("s_g1");
+
+      const room = peek(rooms, host.code);
+      expect(room.phase).toBe("lobby");
+      expect(room.currentMatchId).toBeNull();
+      expect(socketEmits.some((e) => e.event === "room:error" && String(e.data).includes("Only a signed-in account can host"))).toBe(true);
+    });
+
+    it("rejects match start if the host has no resolved identityId (missing or unprovisioned)", async () => {
+      const { repo, service } = freshEconomy();
+      const { io, socketEmits } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      // Host with null identityId (e.g. unverified/unprovisioned guest token)
+      const host = createRoomAs(rooms, "s_anon", "Anonymous", "rps", "guest", null);
+      rooms.addBot("s_anon", "Botty");
+      rooms.setReady("s_anon", true);
+
+      await rooms.requestGameStart("s_anon");
+
+      const room = peek(rooms, host.code);
+      expect(room.phase).toBe("lobby");
+      expect(room.currentMatchId).toBeNull();
+      expect(socketEmits.some((e) => e.event === "room:error" && String(e.data).includes("identity not resolved"))).toBe(true);
     });
   });
 });
