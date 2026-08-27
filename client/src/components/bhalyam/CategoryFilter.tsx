@@ -287,12 +287,12 @@ export default function CategoryFilter({
                               isDark
                                 ? `focus-visible:ring-offset-[#111927] focus-visible:ring-amber-400 ${
                                     active
-                                      ? "text-white font-black"
+                                      ? "text-stone-950 font-black"
                                       : "text-zinc-300 font-bold hover:text-white hover:bg-white/10"
                                   }`
                                 : `focus-visible:ring-offset-[#FCF8EF] focus-visible:ring-amber-500 ${
                                     active
-                                      ? "text-white font-black"
+                                      ? "text-stone-950 font-black"
                                       : "text-[#5C4532] font-extrabold hover:text-[#2A1D13] hover:bg-[#F2E4CF]"
                                   }`
                             }`}

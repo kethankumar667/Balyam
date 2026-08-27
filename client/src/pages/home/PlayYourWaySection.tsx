@@ -24,14 +24,14 @@ export function PlayYourWaySection({
         <button
           type="button"
           onClick={onPlayFriends}
-          className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group ${
+          className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#131926] motion-reduce:hover:transform-none ${
             isDark
               ? "bg-[#131926] border-white/10 hover:border-amber-500/40"
               : "bg-[#FFFDF7] border-[#ECD9BA] hover:border-amber-500/50"
           }`}
         >
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform motion-reduce:transform-none">
               <UsersLucideIcon className="w-6 h-6" />
             </div>
             <div className="min-w-0">
@@ -52,14 +52,14 @@ export function PlayYourWaySection({
         <button
           type="button"
           onClick={onPlayBots}
-          className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group ${
+          className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#131926] motion-reduce:hover:transform-none ${
             isDark
               ? "bg-[#131926] border-white/10 hover:border-emerald-500/40"
               : "bg-[#FFFDF7] border-[#ECD9BA] hover:border-emerald-500/50"
           }`}
         >
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform motion-reduce:transform-none">
               <Gamepad2 className="w-6 h-6" />
             </div>
             <div className="min-w-0">

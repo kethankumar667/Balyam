@@ -6,6 +6,7 @@ import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
 import { findAvatar } from "../lib/avatars";
 import CountUp from "./CountUp";
+import { SettlementView } from "./economy/SettlementView";
 
 export interface RankedPlayerResult {
   id: string;
@@ -25,6 +26,7 @@ export interface BhalyamResultModalProps {
   onLeave?: () => void;
   title?: string;
   pointsLabel?: string;
+  matchId?: string;
 }
 
 export default function BhalyamResultModal({
@@ -38,6 +40,7 @@ export default function BhalyamResultModal({
   onLeave,
   title,
   pointsLabel,
+  matchId,
 }: BhalyamResultModalProps) {
   const isSelfWinner = winnerId != null && winnerId === selfId;
   const displayWinnerName = winnerName ?? (winnerId ? players.find((p) => p.id === winnerId)?.name : "Winner") ?? "Winner";
@@ -234,6 +237,13 @@ export default function BhalyamResultModal({
             </div>
           </div>
         </div>
+
+        {/* AUTHORITATIVE SETTLEMENT MOTION VIEW */}
+        {matchId && (
+          <div className="relative z-10 my-3">
+            <SettlementView matchId={matchId} />
+          </div>
+        )}
 
         {/* BOTTOM ACTION BUTTONS */}
         <div className="relative z-10 mt-5 pt-1 space-y-2.5">

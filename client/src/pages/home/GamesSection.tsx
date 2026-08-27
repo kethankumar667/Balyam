@@ -99,50 +99,69 @@ export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =
       />
 
       <p
-        className="mb-3 sm:mb-4 text-[13px] font-semibold text-[#5D4B3F]"
+        className="mb-3 sm:mb-4 text-[13px] font-semibold text-[#5D4B3F] dark:text-slate-400"
         aria-live="polite"
       >
         {matches.length === 0
-          ? "Nothing here yet. Try another filter."
+          ? "No games found in this category."
           : shown.length < matches.length
           ? `Showing ${shown.length} of ${matches.length} games.`
           : `${matches.length} game${matches.length === 1 ? "" : "s"}.`}
       </p>
 
-      <RevealOnScroll
-        key={filter.category}
-        as="ul"
-        staggerChildren
-        amount={0.08}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 list-none"
-      >
-        {/* `as="li"` rather than an inner `<li>`: the wrapper carries the
-            stagger variants, so it must BE the list item — an inner `<li>`
-            produced ul > div > li and orphaned every tile. */}
-        {shown.map((game) => (
-          <RevealItem as="li" key={game.slug}>
-            <GameTile
-              game={game}
-              onSelect={() => onSelect(game.slug)}
-              compact
-            />
-          </RevealItem>
-        ))}
-      </RevealOnScroll>
+      {matches.length === 0 ? (
+        <div className="p-8 sm:p-12 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-center space-y-3">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 text-2xl">
+            🎲
+          </div>
+          <h3 className="text-base font-extrabold text-ink-hi dark:text-text-hi">No Games in this Filter</h3>
+          <p className="text-xs text-ink-lo dark:text-text-lo max-w-sm mx-auto">
+            Try switching to another category or explore all childhood classics.
+          </p>
+          <button
+            type="button"
+            onClick={() => setFilter({ category: "all" })}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-md transition active:scale-95 cursor-pointer min-h-[44px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+          >
+            Show All Games
+          </button>
+        </div>
+      ) : (
+        <RevealOnScroll
+          key={filter.category}
+          as="ul"
+          staggerChildren
+          amount={0.08}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 list-none"
+        >
+          {/* `as="li"` rather than an inner `<li>`: the wrapper carries the
+              stagger variants, so it must BE the list item — an inner `<li>`
+              produced ul > div > li and orphaned every tile. */}
+          {shown.map((game) => (
+            <RevealItem as="li" key={game.slug}>
+              <GameTile
+                game={game}
+                onSelect={() => onSelect(game.slug)}
+                compact
+              />
+            </RevealItem>
+          ))}
+        </RevealOnScroll>
+      )}
 
       {/* "View all games" overflow link */}
       <div className="mt-4 sm:mt-5 flex justify-center">
         <Link
           to={filtered ? `/games?c=${filter.category}` : "/games"}
-          className="inline-flex items-center gap-2 rounded-full px-5 py-2.5
+          className="inline-flex items-center gap-2 rounded-full px-6 py-3 min-h-[44px]
                      bg-[#FFFDF7] dark:bg-[#1E2739] border border-[#ECD9BA] dark:border-[#66799A] text-[var(--chrome-ink)] font-extrabold text-[14px]
                      hover:bg-[#FAF2DF] dark:hover:bg-[#27324A] active:translate-y-px
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
+                     focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0A0F1D]
                      shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
-                     transition-colors duration-200"
+                     transition-all duration-200"
         >
           {filtered ? "View all in this filter" : "View all games"}
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     </section>
