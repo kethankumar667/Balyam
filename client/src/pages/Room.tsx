@@ -43,6 +43,9 @@ import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
 import FallingPetals from "../animations/app/FallingPetals";
 import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
+import { EconomyMotionOrchestrator, useEconomyMotion } from "../components/economy/motion";
+import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
+import BhalyamResultModal from "../components/BhalyamResultModal";
 import { GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
 import type { GameKind, Player, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
@@ -520,9 +523,45 @@ export default function Room() {
   //   1. For Rummy and UNO, stash a sessionStorage flag the board reads
   //      exactly once on mount as the single source of truth for whether
   //      to play the shuffle + deal opener.
-  //   2. For ALL games, fire a "game start" haptic so the host (and every
-  //      other player) feels a confirmation buzz the moment dealing
-  //      begins. Mirrors the audio cue but works in silent mode.
+  const economyMotion = useEconomyMotion();
+  // Stable across renders (see useEconomyMotion.ts: each is a useCallback
+  // with its own stable deps, and this component never passes soundHooks/
+  // onPhaseChange/onSequenceComplete options) — destructured so effect
+  // dependency arrays name exactly what they use, instead of the whole
+  // `economyMotion` object (a fresh reference every render, which made
+  // every effect below re-run on every unrelated re-render of this page).
+  const { phase: economyPhase, cancelMotion, startAwaitingAuthority, triggerCommitmentSequence, resetMotion } = economyMotion;
+
+  // Cancel economy motion on error toast
+  useEffect(() => {
+    if (lastError) {
+      cancelMotion(lastError);
+    }
+  }, [lastError, cancelMotion]);
+
+  // Neutral anticipation while server commits match entry (authoritative lifecycleState: STARTING)
+  useEffect(() => {
+    if (roomState?.lifecycleState === "STARTING" && economyPhase === "idle") {
+      startAwaitingAuthority();
+    }
+  }, [roomState?.lifecycleState, economyPhase, startAwaitingAuthority]);
+
+  // Hand control from the live-match ceremony (this orchestrator) to the
+  // authoritative, HTTP-fetched SettlementView once a match concludes — the
+  // two must never both be mid-animation for the same match. Resetting here
+  // means the orchestrator is idle (renders nothing) by the time
+  // BhalyamResultModal/SettlementView takes over.
+  const prevPhaseForMotionResetRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevPhaseForMotionResetRef.current;
+    const next = roomState?.phase;
+    if (next === "finished" && prev !== "finished") {
+      resetMotion();
+    }
+    prevPhaseForMotionResetRef.current = next;
+  }, [roomState?.phase, resetMotion]);
+
+  // Detect the lobby → playing transition.
   const [showMatchCountdown, setShowMatchCountdown] = useState(false);
   const [showAllReadyBanner, setShowAllReadyBanner] = useState(false);
 
@@ -530,8 +569,26 @@ export default function Room() {
   useEffect(() => {
     const prev = prevRoomPhaseRef.current;
     const next = roomState?.phase;
-    if (next === "playing" && prev === "lobby") {
+    // A rematch goes "finished" -> "playing" directly (RoomManager.
+    // startRematch sets `phase` straight to "playing", it never passes
+    // back through "lobby") — both are real match starts.
+    if (isMatchStartTransition(prev, next)) {
       setShowMatchCountdown(true);
+      if (roomState) {
+        // Real amounts, straight off the authoritative broadcast — never a
+        // client-side guess, never fired ahead of the server's own commit.
+        // `null` means either economy isn't configured for this deployment
+        // or the match bypassed requestGameStart's commit step — either
+        // way, nothing authoritative to animate, so nothing fires. A
+        // room-code-based fallback id is deliberately NOT used here: the
+        // code is stable across a room's entire lifetime including every
+        // rematch, which would silently suppress the ceremony on the
+        // second and every later match in the room.
+        const commitment = buildCommitmentPayload(roomState, playerId);
+        if (commitment) {
+          triggerCommitmentSequence(commitment);
+        }
+      }
       try {
         HapticsManager.getInstance().gameStart();
       } catch {
@@ -555,7 +612,7 @@ export default function Room() {
       }
     }
     prevRoomPhaseRef.current = next;
-  }, [roomState?.phase, roomState?.game, code]);
+  }, [roomState, code, playerId, triggerCommitmentSequence]);
 
   const allPlayersReady = useMemo(() => {
     if (!roomState || roomState.phase !== "lobby" || roomState.players.length < 2) return false;
@@ -751,6 +808,7 @@ export default function Room() {
   }
 
   function leaveRoom() {
+    economyMotion.resetMotion();
     if (isFullscreenActive()) void exitFullscreen();
     destroyVoiceSession();
     recoveryManager.detachRoom();
@@ -837,6 +895,16 @@ export default function Room() {
   const gameOverWinnerName = gameOverWinnerId
     ? (roomState?.players.find((p) => p.id === gameOverWinnerId)?.name ?? null)
     : null;
+
+  const rankedPlayers = useMemo(() => {
+    if (!roomState) return [];
+    return roomState.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      score: p.id === gameOverWinnerId ? 100 : 0,
+      avatar: p.avatar,
+    }));
+  }, [roomState, gameOverWinnerId]);
 
   // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
   // needs the same "no inline banners, no extra padding" treatment Rummy gets.
@@ -1012,6 +1080,8 @@ export default function Room() {
           </div>
         ) : (
           <div
+            id="game-board-container"
+            data-pot-target="true"
             className={
               FULL_BLEED_GAMES.has(roomState.game)
                 ? "h-full"
@@ -1369,6 +1439,17 @@ export default function Room() {
         <EveryoneReadyBanner onComplete={() => setShowAllReadyBanner(false)} />
       )}
 
+      {/* Authoritative Economy Motion Orchestrator */}
+      <EconomyMotionOrchestrator
+        phase={economyMotion.phase}
+        commitment={economyMotion.activeCommitment}
+        settlement={economyMotion.activeSettlement}
+        refund={economyMotion.activeRefund}
+        escrow={economyMotion.activeEscrow}
+        errorMessage={economyMotion.errorMessage}
+        onGameStartComplete={() => {}}
+      />
+
       {showGameOver && gameOverDeadlineMs > 0 && (
         <GameOverScreen
           players={roomState.players}
@@ -1380,17 +1461,16 @@ export default function Room() {
         />
       )}
 
-      {/* Generic scorecard modal — 90 s window for games without their own
-          scorecard (Ludo, SnL, UNO, Word Building, Dots & Boxes, etc.).
-          Rummy / RPS / HandCricket are excluded — they own their scorecard. */}
+      {/* Match result & settlement modal — displays ranked outcomes and authoritative settlement */}
       {showScorecard && !showGameOver && roomState && !GAMES_WITH_OWN_SCORECARD.has(roomState.game) && (
-        <GenericScorecardModal
+        <BhalyamResultModal
           players={roomState.players}
+          rankedPlayers={rankedPlayers}
           selfId={playerId}
-          winnerName={gameOverWinnerName}
+          winnerName={gameOverWinnerName ?? undefined}
           winnerId={gameOverWinnerId}
-          gameName={gameOverGameName}
-          deadlineMs={scorecardDeadlineMs}
+          matchId={deriveTerminalMatchId(roomState)}
+          title={gameOverGameName ? `${gameOverGameName} Results` : "Match Results"}
           onClose={triggerGameOver}
           onLeave={leaveRoom}
         />

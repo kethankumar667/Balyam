@@ -312,6 +312,21 @@ export interface Room {
    */
   currentMatchId: string | null;
   /**
+   * The most recently concluded match's id — see RoomPublicState.lastMatchId
+   * for the full contract. Set (from `currentMatchId`) in the same
+   * synchronous step that clears it, in `queueMatchSettlement`/
+   * `queueMatchRefund`; reset to `null` when a new match (or rematch)
+   * commits.
+   */
+  lastMatchId: string | null;
+  /**
+   * Real per-seat cost and total pot for the CURRENTLY committed match —
+   * see RoomPublicState.committedCostPerSeat/committedTotalPot. Mirrors
+   * `currentMatchId`'s lifetime exactly.
+   */
+  committedCostPerSeat: string | null;
+  committedTotalPot: string | null;
+  /**
    * In-memory guard against firing `commitMatchEntry` twice for the same
    * start attempt — e.g. a double-click or a duplicate socket emit racing
    * `requestGameStart`'s own `await`. Distinct from the RPC's own
@@ -546,6 +561,10 @@ export class RoomManager {
       bingoHistory: room.bingoHistory,
       ludoHistory: room.ludoHistory,
       sealed: room.sealed,
+      currentMatchId: room.currentMatchId ?? null,
+      lastMatchId: room.lastMatchId ?? null,
+      committedCostPerSeat: room.committedCostPerSeat ?? null,
+      committedTotalPot: room.committedTotalPot ?? null,
     };
   }
 
@@ -715,6 +734,9 @@ export class RoomManager {
       rematchStartTimer: null,
       processedActionIds: new Map(),
       currentMatchId: null,
+      lastMatchId: null,
+      committedCostPerSeat: null,
+      committedTotalPot: null,
       economyCommitPending: false,
     };
     this.rooms.set(code, room);
@@ -1359,6 +1381,14 @@ export class RoomManager {
         isSolo: playersList.length === 1,
       });
       room.currentMatchId = result.settlement.matchId;
+      // A fresh commit means any previous match's terminal id is now stale
+      // — the results modal for THAT match should already be closed, and a
+      // reconnect from here on should recover THIS match once it concludes,
+      // not the old one. Real amounts for the commitment motion sequence,
+      // straight from the authoritative commit result — never guessed.
+      room.lastMatchId = null;
+      room.committedCostPerSeat = result.settlement.costPerSeat;
+      room.committedTotalPot = result.settlement.totalCollected;
       this.startGame(socketId);
     } catch (err) {
       this.transitionLifecycle(room, "READY_CHECK", "Entry commitment failed");
@@ -1675,7 +1705,17 @@ export class RoomManager {
   private queueMatchSettlement(room: Room, departedPlayer?: Player): void {
     if (!this.settlementQueue || !room.currentMatchId) return;
     const matchId = room.currentMatchId;
+    // `lastMatchId` is set BEFORE `currentMatchId` is cleared, in this same
+    // synchronous step — so it is present in the very broadcast that
+    // reports this match finished (finalizeMatch calls this, then
+    // broadcastRoomState, with no async gap between them). Without this,
+    // the client's `roomState` transitions straight from "the real
+    // matchId" to "null" in one hop, and never has a chance to look up
+    // this match's settlement — the exact bug this field exists to close.
+    room.lastMatchId = matchId;
     room.currentMatchId = null; // the slot is free the moment this is queued — a rematch mints its own fresh matchId
+    room.committedCostPerSeat = null;
+    room.committedTotalPot = null;
 
     // A forfeit-by-leaving completes the match with the departing player
     // ALREADY removed from `room.players` (see `leaveRoom`) — added back
@@ -2135,7 +2175,19 @@ export class RoomManager {
   private queueMatchRefund(room: Room, reason: string): void {
     if (!this.settlementQueue || !room.currentMatchId) return;
     const matchId = room.currentMatchId;
+    // See the matching comment in `queueMatchSettlement` — same ordering
+    // requirement, same reason. Note: `abandonRoom` (this function's only
+    // caller) deletes the room with no broadcast of its own once this
+    // returns, since abandonment only fires after every human has already
+    // left — there is no live client in this specific room to receive
+    // `lastMatchId` via a room broadcast. It is still set here, correctly,
+    // for any other current or future caller that DOES broadcast
+    // afterward, and so the room object itself is correct right up to
+    // deletion (verifiable directly, not just by broadcast side-effect).
+    room.lastMatchId = matchId;
     room.currentMatchId = null;
+    room.committedCostPerSeat = null;
+    room.committedTotalPot = null;
     this.settlementQueue.queueRefund(matchId, reason);
   }
 
@@ -3510,6 +3562,14 @@ export class RoomManager {
         isSolo: playersList.length === 1,
       });
       room.currentMatchId = result.settlement.matchId;
+      // A fresh commit means any previous match's terminal id is now stale
+      // — the results modal for THAT match should already be closed, and a
+      // reconnect from here on should recover THIS match once it concludes,
+      // not the old one. Real amounts for the commitment motion sequence,
+      // straight from the authoritative commit result — never guessed.
+      room.lastMatchId = null;
+      room.committedCostPerSeat = result.settlement.costPerSeat;
+      room.committedTotalPot = result.settlement.totalCollected;
       this.startRematch(room);
     } catch (err) {
       this.io.to(room.code).emit("room:error", this.economyErrorMessage(err));

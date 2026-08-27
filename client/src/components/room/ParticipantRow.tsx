@@ -44,6 +44,8 @@ export default function ParticipantRow({
 
   return (
     <motion.div
+      data-seat-id={player.id}
+      id={`seat-${player.id}`}
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, y: -10 }}

@@ -10,4 +10,3 @@ export * from "./CoinTransferLayer";
 export * from "./useEconomyMotion";
 export * from "./useElementAnchor";
 export * from "./EconomyMotionOrchestrator";
-export * from "./EconomyMotionShowcase";
