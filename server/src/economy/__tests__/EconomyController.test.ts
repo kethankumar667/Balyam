@@ -104,7 +104,14 @@ describe("GET /api/economy/wallet", () => {
     // ALICE has a verifiable token but was never seeded into player_identities.
     const res = await server.request("/api/economy/wallet", { token: mintMemberToken(ALICE) });
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ error: "IdentityNotFound", message: "No registered identity was found for this account." });
+    // Phase 2 added a correlationId to every error response (structured
+    // diagnostics) — asserted as "a string", not a fixed value, since it's a
+    // fresh UUID per request.
+    expect(res.body).toEqual({
+      error: "IdentityNotFound",
+      message: "No registered identity was found for this account.",
+      correlationId: expect.any(String),
+    });
   });
 });
 
@@ -334,6 +341,64 @@ describe("GET /api/economy/world-bank", () => {
     const body = res.body as { worldBank: { baseFeeRevenue: string; guestEscrowLiability: string } };
     expect(body.worldBank.baseFeeRevenue).toBe("0");
     expect(body.worldBank.guestEscrowLiability).toBe("0");
+  });
+});
+
+/* ═══════════════════ member wallet — the proven production ledger sequence ═══════════════════
+ * Regression for a real incident: production showed STARTER_GRANT(+5000) →
+ * BOT_ENTRY_DEBIT(-400) → MATCH_REFUND(+400), a real ledger proving a final
+ * balance of 5000 — while the wallet UI displayed 0. That was root-caused as
+ * an HTTP/client-side failure (Phase 1), not a backend arithmetic bug — this
+ * test exists to keep the BACKEND half of that proof pinned: real starter
+ * grant, real bot-match debit, real refund, read back through the exact same
+ * `GET /wallet` route the UI calls.
+ */
+describe("GET /api/economy/wallet — the proven production ledger sequence", () => {
+  it("returns 5000 after a real starter grant, a real bot-match debit, and a real refund", async () => {
+    repo.testFixture.seedIdentity(ALICE, "member");
+
+    // First touch of any kind grants the starter bonus — captured BEFORE the
+    // debit so the assertions below are real arithmetic, not a tautology.
+    const beforeDebit = await server.request("/api/economy/wallet", { token: mintMemberToken(ALICE) });
+    const starterGrant = BigInt((beforeDebit.body as { wallet: { balance: string } }).wallet.balance);
+    expect(starterGrant).toBe(5000n); // the actual proven production member starter grant
+
+    // 1 human + 1 bot — the exact seat shape production's BOT_ENTRY_DEBIT came from.
+    // The cost itself is read from the quote, not hardcoded: it comes from
+    // `economy_configurations`, which this in-memory fixture seeds with its
+    // own defaults independent of production's — the invariant under test is
+    // the ARITHMETIC (starter grant, minus a real debit, plus a real refund,
+    // nets back to the exact starter amount), not one specific cost number.
+    const quote = await server.request("/api/economy/checkout/quote", {
+      method: "POST", token: mintMemberToken(ALICE),
+      body: JSON.stringify({ seatCount: 2, humanSeatCount: 1, botSeatCount: 1 }),
+    });
+    expect(quote.status).toBe(200);
+    const cost = BigInt((quote.body as { quote: { totalCommitment: string } }).quote.totalCommitment);
+    expect(cost).toBeGreaterThan(0n);
+
+    const matchId = "m_proven_ledger_sequence";
+    const commit = await server.request("/api/economy/checkout/commit", {
+      method: "POST", token: mintMemberToken(ALICE),
+      body: JSON.stringify({ matchId, roomCode: "R1", seatCount: 2, humanSeatCount: 1, botSeatCount: 1, isSolo: false }),
+    });
+    expect(commit.status).toBe(201);
+
+    const afterDebit = await server.request("/api/economy/wallet", { token: mintMemberToken(ALICE) });
+    expect(BigInt((afterDebit.body as { wallet: { balance: string } }).wallet.balance)).toBe(starterGrant - cost);
+
+    // Refunds are RoomManager-internal (no HTTP route), so this calls the
+    // service directly — the exact call `queueMatchRefund` makes.
+    await service.refundMatchEntry(matchId, "Room abandoned mid-match — all human players departed");
+
+    const afterRefund = await server.request("/api/economy/wallet", { token: mintMemberToken(ALICE) });
+    expect((afterRefund.body as { wallet: { balance: string } }).wallet.balance).toBe(starterGrant.toString());
+
+    const ledger = await server.request("/api/economy/wallet/ledger", { token: mintMemberToken(ALICE) });
+    const entries = (ledger.body as { entries: { entryType: string; amount: string }[] }).entries;
+    // Newest first — MATCH_REFUND, BOT_ENTRY_DEBIT, STARTER_GRANT.
+    expect(entries.map((e) => e.entryType)).toEqual(["MATCH_REFUND", "BOT_ENTRY_DEBIT", "STARTER_GRANT"]);
+    expect(entries.map((e) => BigInt(e.amount))).toEqual([cost, -cost, starterGrant]);
   });
 });
 

@@ -3,6 +3,7 @@ import { logger } from "../lib/logger.js";
 import { verifyAccessToken } from "../lib/supabaseAuth.js";
 import { verifyGuestToken } from "./guestToken.js";
 import { operationalAuthConfig } from "../security/operationalAuth.js";
+import { progressionRepository } from "../persistence/index.js";
 
 /**
  * Who the server believes is making this request.
@@ -65,6 +66,92 @@ function bearer(req: Request): string | null {
 }
 
 /**
+ * Guest identities become `player_identities` rows here, on first
+ * authenticated use — not at `POST /api/auth/guest` (that route stays
+ * stateless and unrate-limited by design, see `AuthController.ts`), and not
+ * inside `ensure_wallet()` (the economy migration deliberately reverted that
+ * once already — see `20260826000000_economy_v1.sql`'s own comment: "this
+ * function NEVER writes to player_identities, for guests or members").
+ * Reuses `ProgressionRepository.upsertIdentity` — the same, already-tested
+ * write path `identitySeen()`/`profileSaved()` use — rather than a second
+ * implementation of the same insert.
+ *
+ * ── Why this must be awaited, not fired-and-forgotten ─────────────────────
+ * `ProgressionSync.identitySeen()` is a serial, write-behind QUEUE: calling
+ * it and immediately calling `ensure_wallet()` in the same request would
+ * race the queue and could still 404 on a guest's very first request. This
+ * bypasses that queue and writes directly through `progressionRepository()`,
+ * awaited, so the row provably exists before `next()` hands the request to
+ * a route that might need it.
+ *
+ * ── Bounded memoization, not an unbounded process-level Set ───────────────
+ * Once written, a guest's row never needs to be written again — but the
+ * bound exists anyway (matches `supabaseAuth.ts`'s verification-cache
+ * eviction shape) because a long-lived process must not grow this map once
+ * per guest, forever. Eviction is safe to the point of being uninteresting:
+ * `upsertIdentity` is a `player_id`-keyed upsert, so re-provisioning an
+ * evicted-but-already-row-having guest is an idempotent no-op write, never a
+ * correctness problem — only one avoidable round trip, at most.
+ *
+ * ── Concurrency ─────────────────────────────────────────────────────────
+ * Two requests racing on the SAME brand-new guest id share one in-flight
+ * write via `inFlight`, so a burst of simultaneous first requests (e.g. a
+ * page mounting several economy-aware components at once) issues one upsert,
+ * not several. Even without that, the upsert itself is safe to run
+ * concurrently — `player_id` is the primary key and the write is a
+ * conflict-tolerant upsert, not a plain insert that could collide.
+ *
+ * A failed write is deliberately NOT memoized as "done": the next request
+ * from the same guest retries it, so a transient outage self-heals without a
+ * server restart, and a guest is never permanently stuck unprovisioned by
+ * one bad moment.
+ */
+const GUEST_IDENTITY_CACHE_MAX = 2000;
+const provisionedGuestIds = new Map<string, true>();
+const inFlightGuestProvisioning = new Map<string, Promise<void>>();
+
+function rememberProvisioned(guestId: string): void {
+  if (!provisionedGuestIds.has(guestId) && provisionedGuestIds.size >= GUEST_IDENTITY_CACHE_MAX) {
+    const oldest = provisionedGuestIds.keys().next();
+    if (!oldest.done) provisionedGuestIds.delete(oldest.value);
+  }
+  provisionedGuestIds.set(guestId, true);
+}
+
+/** Test seam — the module-level caches would otherwise carry state between cases. */
+export function clearGuestIdentityProvisioningCache(): void {
+  provisionedGuestIds.clear();
+  inFlightGuestProvisioning.clear();
+}
+
+export async function ensureGuestIdentityProvisioned(guestId: string): Promise<void> {
+  if (provisionedGuestIds.has(guestId)) return;
+
+  const existing = inFlightGuestProvisioning.get(guestId);
+  if (existing) {
+    await existing;
+    return;
+  }
+
+  const write = (async () => {
+    await progressionRepository().upsertIdentity({
+      playerId: guestId,
+      kind: "guest",
+      authUserId: null,
+      lastSeenAt: Date.now(),
+    });
+    rememberProvisioned(guestId);
+  })();
+
+  inFlightGuestProvisioning.set(guestId, write);
+  try {
+    await write;
+  } finally {
+    inFlightGuestProvisioning.delete(guestId);
+  }
+}
+
+/**
  * Resolve the caller, if they presented anything resolvable.
  *
  * Deliberately does NOT reject. Mounted globally so that every downstream
@@ -86,8 +173,22 @@ export function attachPlayerIdentity(req: Request, _res: Response, next: NextFun
 
   const guestId = verifyGuestToken(token);
   if (guestId) {
-    req.player = { kind: "guest", playerId: guestId };
-    next();
+    void (async () => {
+      try {
+        await ensureGuestIdentityProvisioned(guestId);
+      } catch (err) {
+        // Provisioning is not memoized on failure (see the comment above),
+        // so the next request from this guest simply retries it. The guest
+        // still gets treated as themself for THIS request — a transient
+        // write failure must not be indistinguishable from an invalid token.
+        logger.warn({
+          message: `Guest identity provisioning failed for a resolved guest token: ${String(err)}`,
+          module: "AUTH",
+        });
+      }
+      req.player = { kind: "guest", playerId: guestId };
+      next();
+    })();
     return;
   }
 

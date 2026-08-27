@@ -4,6 +4,7 @@ import { generateActionId, getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
 import { currentAccessToken, currentAccountKind, useAuthStore } from "../store/authStore";
+import { currentGuestToken } from "../lib/playerIdentity";
 import {
   enterFullscreen,
   exitFullscreen,
@@ -389,6 +390,7 @@ export default function Room() {
           // lands after signing in should arrive as a member.
           accountKind: currentAccountKind(),
           accessToken: currentAccessToken(),
+          guestToken: currentGuestToken(),
         },
         (res) => {
           joinInFlightRef.current = false;

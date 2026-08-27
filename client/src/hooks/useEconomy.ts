@@ -12,27 +12,71 @@ import {
 import { useAuthStore } from "../store/authStore";
 
 /**
+ * The five states a wallet display can honestly be in.
+ *
+ * ── Why this exists (root-caused, not speculative) ────────────────────────
+ * The previous version of this hook collapsed every failure into
+ * `wallet?.balance ?? "0"` — a 401 from an unverified token, a 404 from a
+ * schema that was not yet deployed, and a genuinely empty wallet all
+ * rendered as the identical "0" the player sees. That is indistinguishable
+ * from correct, which is exactly why a proven production balance of 5000
+ * once showed as 0 with nothing in the UI to say why. `loading` and `loaded`
+ * are the ordinary path; `zero` is a real, confirmed balance of 0 (not an
+ * error in disguise); `error` is a definite answer FROM the server (a
+ * mapped `EconomyClientError` — auth, not-found, validation); `unavailable`
+ * is "we could not complete the request at all" (network failure, timeout,
+ * a malformed response) and carries no claim about the real balance either
+ * way.
+ */
+export type WalletStatus = "loading" | "loaded" | "zero" | "error" | "unavailable";
+
+export interface WalletState {
+  wallet: CoinWalletRecord | null;
+  status: WalletStatus;
+  /** Server-authoritative balance, or `null` whenever it is not actually known — never a fallback "0". */
+  balance: string | null;
+  isLoading: boolean;
+  /** User-safe message for `error`/`unavailable` states. Never a raw exception or stack trace. */
+  error: string | null;
+  /** Present only for `error` (a server-mapped failure) — safe to show, useful for support. */
+  correlationId: string | null;
+  refetch: () => Promise<void>;
+}
+
+/**
  * Hook to read and manage the caller's server-authoritative wallet.
  * Strictly adheres to server-authoritative balances (optimistic updates forbidden).
  */
-export function useWallet() {
+export function useWallet(): WalletState {
   const [wallet, setWallet] = useState<CoinWalletRecord | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [status, setStatus] = useState<WalletStatus>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [correlationId, setCorrelationId] = useState<string | null>(null);
   const authReady = useAuthStore((s) => s.ready);
   const userId = useAuthStore((s) => s.userId);
 
   const fetchWallet = useCallback(async () => {
-    setIsLoading(true);
+    setStatus("loading");
     setError(null);
+    setCorrelationId(null);
     try {
       const data = await getEconomyWallet();
       setWallet(data.wallet);
+      setStatus(data.wallet.balance === "0" ? "zero" : "loaded");
     } catch (err) {
-      const msg = err instanceof EconomyClientError ? err.message : "Failed to load wallet";
-      setError(msg);
-    } finally {
-      setIsLoading(false);
+      setWallet(null);
+      if (err instanceof EconomyClientError) {
+        // The server answered, definitively: sign-in required, identity not
+        // found, request rejected. Never the same visual state as a real 0.
+        setStatus("error");
+        setError(err.message);
+        setCorrelationId(err.correlationId);
+      } else {
+        // No definite answer at all — offline, timed out, DNS failure. The
+        // real balance might be fine; the connection to find out is not.
+        setStatus("unavailable");
+        setError("Wallet is temporarily unavailable. Check your connection and try again.");
+      }
     }
   }, []);
 
@@ -43,9 +87,11 @@ export function useWallet() {
 
   return {
     wallet,
-    balance: wallet?.balance ?? "0",
-    isLoading,
+    status,
+    balance: wallet?.balance ?? null,
+    isLoading: status === "loading",
     error,
+    correlationId,
     refetch: fetchWallet,
   };
 }

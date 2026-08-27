@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { Router, type Request, type Response } from "express";
 import { callerId, requireIdentity, requireMember } from "../auth/identity.js";
 import { requireOperationalAuth } from "../security/operationalAuth.js";
@@ -106,7 +107,40 @@ function safeErrorCode(err: unknown): string {
   return "UNKNOWN";
 }
 
+/**
+ * One correlation id per request, for tying a client-visible failure (Phase
+ * 2's hardened `useWallet()`) back to this exact server-side log line without
+ * a support back-and-forth. Accepts an inbound `x-correlation-id` so a future
+ * client can supply its own; generates one otherwise. Cached on the request
+ * via a `WeakMap` rather than a type augmentation — this file is the only
+ * reader, so a global `Request.correlationId` field is not worth adding.
+ */
+const correlationIds = new WeakMap<Request, string>();
+function correlationId(req: Request): string {
+  const existing = correlationIds.get(req);
+  if (existing) return existing;
+  const header = req.headers["x-correlation-id"];
+  const id = typeof header === "string" && header.trim().length > 0 ? header.trim() : randomUUID();
+  correlationIds.set(req, id);
+  return id;
+}
+
+/**
+ * Structured diagnostics for every economy request, success or failure.
+ *
+ * Deliberately logs `identityId` (a Supabase `sub` UUID or a `guest_<random>`
+ * id — never a secret, already logged elsewhere in this codebase, e.g.
+ * `auth/identity.ts`'s ownership-refusal warnings) and the response status,
+ * so a report like "the UI showed 0 but the ledger proves 5000" is
+ * diagnosable from this one log line: which identity resolved (or didn't),
+ * what the server actually answered, and how long it took. Never logs the
+ * bearer token, the `Authorization` header, or any request/response body —
+ * `errorCode` is always one of `mapEconomyError`'s stable PascalCase slugs
+ * (see the catalogue above), never a raw exception message.
+ */
 function logOutcome(
+  req: Request,
+  res: Response,
   endpoint: string,
   operation: string,
   matchId: string | null,
@@ -117,9 +151,13 @@ function logOutcome(
   const payload = {
     message: `${endpoint} ${outcome === "ok" ? "completed" : "failed"}`,
     module: "ECONOMY_API",
+    correlationId: correlationId(req),
     endpoint,
     operation,
     matchId,
+    identityKind: req.player?.kind ?? null,
+    identityId: req.player?.playerId ?? null,
+    status: res.statusCode,
     outcome,
     durationCategory: durationCategory(Date.now() - startedAt),
     ...(errorCode ? { errorCode } : {}),
@@ -249,9 +287,9 @@ function mapEconomyError(err: unknown): ApiError {
   return GENERIC_INFRA_ERROR;
 }
 
-function sendError(res: Response, err: unknown): ApiError {
+function sendError(req: Request, res: Response, err: unknown): ApiError {
   const mapped = mapEconomyError(err);
-  res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  res.status(mapped.status).json({ error: mapped.error, message: mapped.message, correlationId: correlationId(req) });
   return mapped;
 }
 
@@ -296,10 +334,10 @@ export function createEconomyRouter(service: EconomyService): Router {
     try {
       const wallet = await service.getWallet(callerId(req));
       res.json({ wallet });
-      logOutcome("GET /wallet", "getWallet", null, startedAt, "ok");
+      logOutcome(req, res, "GET /wallet", "getWallet", null, startedAt, "ok");
     } catch (err) {
-      const mapped = sendError(res, err);
-      logOutcome("GET /wallet", "getWallet", null, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /wallet", "getWallet", null, startedAt, "error", mapped.error);
     }
   });
 
@@ -318,10 +356,10 @@ export function createEconomyRouter(service: EconomyService): Router {
       // total count, so "hasMore" is a heuristic (a full page MIGHT mean
       // more exist), never an authoritative count — documented, not hidden.
       res.json({ entries, hasMore: entries.length === rawLimit && rawLimit > 0 });
-      logOutcome("GET /wallet/ledger", "getLedger", null, startedAt, "ok");
+      logOutcome(req, res, "GET /wallet/ledger", "getLedger", null, startedAt, "ok");
     } catch (err) {
-      const mapped = sendError(res, err);
-      logOutcome("GET /wallet/ledger", "getLedger", null, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /wallet/ledger", "getLedger", null, startedAt, "error", mapped.error);
     }
   });
 
@@ -340,10 +378,10 @@ export function createEconomyRouter(service: EconomyService): Router {
         seatCount, humanSeatCount, botSeatCount,
       });
       res.json({ quote });
-      logOutcome("POST /checkout/quote", "quoteMatchCheckout", null, startedAt, "ok");
+      logOutcome(req, res, "POST /checkout/quote", "quoteMatchCheckout", null, startedAt, "ok");
     } catch (err) {
-      const mapped = sendError(res, err);
-      logOutcome("POST /checkout/quote", "quoteMatchCheckout", null, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "POST /checkout/quote", "quoteMatchCheckout", null, startedAt, "error", mapped.error);
     }
   });
 
@@ -387,10 +425,10 @@ export function createEconomyRouter(service: EconomyService): Router {
         hostIdentityId: callerId(req), seatCount, humanSeatCount, botSeatCount, isSolo,
       });
       res.status(result.applied ? 201 : 200).json({ applied: result.applied, settlement: result.settlement });
-      logOutcome("POST /checkout/commit", "commitMatchEntry", matchId, startedAt, "ok");
+      logOutcome(req, res, "POST /checkout/commit", "commitMatchEntry", matchId, startedAt, "ok");
     } catch (err) {
-      const mapped = sendError(res, err);
-      logOutcome("POST /checkout/commit", "commitMatchEntry", matchId, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "POST /checkout/commit", "commitMatchEntry", matchId, startedAt, "error", mapped.error);
     }
   });
 
@@ -416,10 +454,10 @@ export function createEconomyRouter(service: EconomyService): Router {
     try {
       const settlements = await service.listStaleCommittedSettlements(rawOlderThanMs);
       res.json({ settlements });
-      logOutcome("GET /settlements/stale", "listStaleCommittedSettlements", null, startedAt, "ok");
+      logOutcome(req, res, "GET /settlements/stale", "listStaleCommittedSettlements", null, startedAt, "ok");
     } catch (err) {
-      const mapped = sendError(res, err);
-      logOutcome("GET /settlements/stale", "listStaleCommittedSettlements", null, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /settlements/stale", "listStaleCommittedSettlements", null, startedAt, "error", mapped.error);
     }
   });
 
@@ -442,19 +480,19 @@ export function createEconomyRouter(service: EconomyService): Router {
       const settlement = await service.getSettlement(matchId);
       if (!settlement) {
         res.status(404).json({ error: "MatchNotFound", message: "No settlement exists for this match." });
-        logOutcome("GET /settlements/:matchId", "getSettlement", matchId, startedAt, "error", "MatchNotFound");
+        logOutcome(req, res, "GET /settlements/:matchId", "getSettlement", matchId, startedAt, "error", "MatchNotFound");
         return;
       }
       if (settlement.hostIdentityId !== callerId(req)) {
         res.status(403).json({ error: "Forbidden", message: "That is not your record." });
-        logOutcome("GET /settlements/:matchId", "getSettlement", matchId, startedAt, "error", "Forbidden");
+        logOutcome(req, res, "GET /settlements/:matchId", "getSettlement", matchId, startedAt, "error", "Forbidden");
         return;
       }
       res.json({ settlement });
-      logOutcome("GET /settlements/:matchId", "getSettlement", matchId, startedAt, "ok");
+      logOutcome(req, res, "GET /settlements/:matchId", "getSettlement", matchId, startedAt, "ok");
     } catch (err) {
-      const mapped = sendError(res, err);
-      logOutcome("GET /settlements/:matchId", "getSettlement", matchId, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /settlements/:matchId", "getSettlement", matchId, startedAt, "error", mapped.error);
     }
   });
 
@@ -465,10 +503,10 @@ export function createEconomyRouter(service: EconomyService): Router {
     try {
       const reconciliation = await service.reconcileSettlement(matchId);
       res.json({ reconciliation });
-      logOutcome("GET /settlements/:matchId/reconcile", "reconcileSettlement", matchId, startedAt, "ok");
+      logOutcome(req, res, "GET /settlements/:matchId/reconcile", "reconcileSettlement", matchId, startedAt, "ok");
     } catch (err) {
-      const mapped = sendError(res, err);
-      logOutcome("GET /settlements/:matchId/reconcile", "reconcileSettlement", matchId, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /settlements/:matchId/reconcile", "reconcileSettlement", matchId, startedAt, "error", mapped.error);
     }
   });
 
@@ -496,7 +534,7 @@ export function createEconomyRouter(service: EconomyService): Router {
       const result = await service.redeemVoucher(code, memberIdentityId);
       const wallet = await service.getWallet(memberIdentityId);
       res.json({ applied: result.applied, voucher: result.voucher, newBalance: wallet.balance });
-      logOutcome("POST /vouchers/redeem", "redeemVoucher", null, startedAt, "ok");
+      logOutcome(req, res, "POST /vouchers/redeem", "redeemVoucher", null, startedAt, "ok");
     } catch (err) {
       if (
         err instanceof VoucherNotFoundError ||
@@ -505,11 +543,11 @@ export function createEconomyRouter(service: EconomyService): Router {
         err instanceof InvalidVoucherHashError
       ) {
         res.status(422).json({ error: "VoucherNotRedeemable", message: "This code isn't valid or has already been used." });
-        logOutcome("POST /vouchers/redeem", "redeemVoucher", null, startedAt, "error", safeErrorCode(err));
+        logOutcome(req, res, "POST /vouchers/redeem", "redeemVoucher", null, startedAt, "error", safeErrorCode(err));
         return;
       }
-      const mapped = sendError(res, err);
-      logOutcome("POST /vouchers/redeem", "redeemVoucher", null, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "POST /vouchers/redeem", "redeemVoucher", null, startedAt, "error", mapped.error);
     }
   });
 
@@ -533,27 +571,27 @@ export function createEconomyRouter(service: EconomyService): Router {
       const status = await service.getVoucherStatus(rawCode);
       if (!status) {
         res.status(404).json({ error: "VoucherNotFound", message: "No voucher matches this code." });
-        logOutcome("GET /vouchers/:voucherId", "getVoucherStatus", null, startedAt, "error", "VoucherNotFound");
+        logOutcome(req, res, "GET /vouchers/:voucherId", "getVoucherStatus", null, startedAt, "error", "VoucherNotFound");
         return;
       }
       res.json({ voucher: status });
-      logOutcome("GET /vouchers/:voucherId", "getVoucherStatus", null, startedAt, "ok");
+      logOutcome(req, res, "GET /vouchers/:voucherId", "getVoucherStatus", null, startedAt, "ok");
     } catch (err) {
-      const mapped = sendError(res, err);
-      logOutcome("GET /vouchers/:voucherId", "getVoucherStatus", null, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /vouchers/:voucherId", "getVoucherStatus", null, startedAt, "error", mapped.error);
     }
   });
 
   /** GET /world-bank — platform treasury figures; admin/audit surface, not player data. */
-  router.get("/world-bank", requireOperationalAuth, async (_req: Request, res: Response) => {
+  router.get("/world-bank", requireOperationalAuth, async (req: Request, res: Response) => {
     const startedAt = Date.now();
     try {
       const worldBank = await service.getWorldBankSnapshot();
       res.json({ worldBank });
-      logOutcome("GET /world-bank", "getWorldBankSnapshot", null, startedAt, "ok");
+      logOutcome(req, res, "GET /world-bank", "getWorldBankSnapshot", null, startedAt, "ok");
     } catch (err) {
-      const mapped = sendError(res, err);
-      logOutcome("GET /world-bank", "getWorldBankSnapshot", null, startedAt, "error", mapped.error);
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /world-bank", "getWorldBankSnapshot", null, startedAt, "error", mapped.error);
     }
   });
 

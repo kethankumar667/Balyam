@@ -17,6 +17,7 @@ import {
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
+import { currentGuestToken } from "../../lib/playerIdentity";
 import SignInWall from "../auth/SignInWall";
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
 import {
@@ -438,6 +439,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           // Decides whether the server opens a shareable table or seals it.
           hostKind: currentAccountKind(),
           accessToken: currentAccessToken(),
+          guestToken: currentGuestToken(),
           snlOptions: game === "snl" ? { difficulty } : undefined,
           rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
           hcOptions:
@@ -558,6 +560,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         // sealed room is exactly right — nothing is being shared anyway.
         hostKind: currentAccountKind(),
         accessToken: currentAccessToken(),
+        guestToken: currentGuestToken(),
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
           game === "wordbuilding"
@@ -649,6 +652,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         avatar: avatarId ?? undefined,
         accountKind: currentAccountKind(),
         accessToken: currentAccessToken(),
+        guestToken: currentGuestToken(),
         ...(seatFor(code) ?? {}),
       },
       (res) => {

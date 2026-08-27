@@ -477,6 +477,65 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(alice.balance).toBe("4950"); // 4800 + 150 — the forfeit win settled correctly, not refunded
     });
   });
+
+  describe("Phase 4 — guest socket identity resolves through to settlement", () => {
+    it("a guest with a resolved identityId (a valid guest token) settles as a real participant and receives a voucher, not a forced refund", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      repo.testFixture.seedIdentity("guest_phase4_g1", "guest");
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      // The identityId here is exactly what Phase 4's `resolveIdentity` now
+      // produces for a guest presenting a VALID, verified guest token — not a
+      // client-supplied claim (RoomManager itself never verifies tokens; that
+      // happens upstream in `sockets/index.ts` before this identityId is
+      // ever handed to `joinRoom`, mirroring `createRoomAs`/`joinRoomAs`'s
+      // existing arity-safe pattern for members).
+      joinRoomAs(rooms, "s_g", "GuestPlayer", host.code, "guest", "guest_phase4_g1");
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_g", true);
+
+      await rooms.requestGameStart("s_a"); // Alice, a member, hosts — guests still cannot host (see below)
+      const matchId = peek(rooms, host.code).currentMatchId;
+      expect(matchId).not.toBeNull();
+
+      playRpsToCompletion(rooms, "s_g", "s_a"); // the GUEST wins — proves guest wallet/voucher wiring, not just host accounting
+      await drainRoomEconomy(rooms);
+
+      expect(peek(rooms, host.code).currentMatchId).toBeNull(); // cleared once settlement is queued+processed
+
+      const alice = await service.getWallet(MEMBER_A);
+      expect(alice.balance).toBe("4800"); // 5000 - 200 committed, NOT refunded — proves isValidRanking was true, not forced false
+
+      const settlement = await service.getSettlement(matchId!);
+      expect(settlement?.status).toBe("SETTLED"); // not REFUNDED — a resolved guest identity let this settle for real
+      expect(settlement?.totalGuestEscrow).toBe("150"); // 1st-place prize, paid into escrow (a guest never gets a wallet credit)
+      expect(settlement?.totalWalletRewarded).toBe("0"); // the winner is a guest, so no member wallet was credited
+    });
+
+    it("preserves the standing rule that guests cannot HOST even once their identity resolves", async () => {
+      const { repo, service } = freshEconomy();
+      repo.testFixture.seedIdentity("guest_phase4_host_attempt", "guest");
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      // A guest with a REAL, Phase-4-resolved identityId — the exact case
+      // that could have silently reopened guest hosting if `requestGameStart`
+      // still gated purely on `!player.identityId`.
+      const host = createRoomAs(rooms, "s_g", "GuestHost", "rps", "guest", "guest_phase4_host_attempt");
+      rooms.addBot("s_g", "Botty");
+      rooms.setReady("s_g", true);
+
+      await rooms.requestGameStart("s_g");
+
+      const room = peek(rooms, host.code);
+      expect(room.currentMatchId).toBeNull(); // never committed
+      expect(room.phase).not.toBe("playing");
+      void service;
+    });
+  });
 });
 
 /** Waits for RoomManager's internal settlement/refund queue to finish. */

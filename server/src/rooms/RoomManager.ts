@@ -1292,7 +1292,13 @@ export class RoomManager {
     }
     if (room.economyCommitPending) return;
 
-    if (!player.identityId) {
+    // `player.isGuest` is checked explicitly, NOT inferred from a missing
+    // `identityId` — Economy V1 Phase 4 gave guests a resolvable identityId
+    // too (for settlement participation), so this guard can no longer rely
+    // on identity resolution as a side-channel for "guests cannot host."
+    // That is a standing, separate product rule (2026-08-27 decision) and
+    // must keep failing guests even once their identity resolves.
+    if (player.isGuest || !player.identityId) {
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
         "Only a signed-in account can start a paid match. Sign in to host, or ask a member to host instead.",
@@ -3442,7 +3448,10 @@ export class RoomManager {
       this.cancelRematch(room, null);
       return;
     }
-    if (!host.identityId) {
+    // See the matching comment in `requestGameStart` — `isGuest` is the
+    // explicit rule; `identityId` alone stopped being sufficient once guests
+    // could resolve one too.
+    if (host.isGuest || !host.identityId) {
       this.io.to(room.code).emit(
         "room:error",
         "Only a signed-in account can start a paid rematch. Sign in to host, or ask a member to host instead.",

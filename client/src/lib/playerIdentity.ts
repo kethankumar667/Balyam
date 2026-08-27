@@ -85,6 +85,20 @@ function storedGuest(): PlayerCredential | null {
 }
 
 /**
+ * The stored guest bearer token, if this browser already has one — never
+ * mints a fresh one. Mirrors `authStore.ts`'s `currentAccessToken()`: a
+ * synchronous read for call sites (room:create/room:join's socket payloads)
+ * that build a plain object rather than awaiting a credential. A guest with
+ * no token yet (their very first action on the site, before anything else
+ * has called `getPlayerCredential()`) simply sends none — Economy V1's
+ * socket identity resolution already treats a missing/unverifiable guest
+ * token as `identityId: null`, exactly as it did before this existed.
+ */
+export function currentGuestToken(): string | undefined {
+  return storedGuest()?.token;
+}
+
+/**
  * In-flight mint, shared.
  *
  * Four pages can mount at once and each would otherwise ask for its own guest

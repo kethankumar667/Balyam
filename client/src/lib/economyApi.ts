@@ -153,12 +153,15 @@ export interface EconomyApiError {
 export class EconomyClientError extends Error {
   readonly status: number;
   readonly code: string;
+  /** Ties this failure back to the exact server-side log line, when the server supplied one. */
+  readonly correlationId: string | null;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, correlationId: string | null = null) {
     super(message);
     this.name = "EconomyClientError";
     this.status = status;
     this.code = code;
+    this.correlationId = correlationId;
   }
 }
 
@@ -171,16 +174,33 @@ async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let errorSlug = "UnknownError";
     let errorMessage = `Request failed with status ${res.status}`;
+    let correlationId: string | null = null;
     try {
-      const data = (await res.json()) as { error?: string; message?: string };
+      const data = (await res.json()) as { error?: string; message?: string; correlationId?: string };
       if (data.error) errorSlug = data.error;
       if (data.message) errorMessage = data.message;
+      if (data.correlationId) correlationId = data.correlationId;
     } catch {
       /* non-json error body */
     }
-    throw new EconomyClientError(res.status, errorSlug, errorMessage);
+    throw new EconomyClientError(res.status, errorSlug, errorMessage, correlationId);
   }
   return (await res.json()) as T;
+}
+
+/**
+ * A wallet response that survived `handleResponse` (a 2xx status) but does not
+ * actually have the shape `CoinWalletRecord` requires — a contract break
+ * between client and server, not a normal error the backend told us about.
+ * Caught explicitly rather than let a malformed `balance` render as a
+ * misleadingly-confident number (see Phase 1's root-cause investigation:
+ * a silent shape mismatch is exactly the kind of failure that looks like
+ * "the wallet is empty" instead of "something is broken").
+ */
+function isCoinWalletRecord(value: unknown): value is CoinWalletRecord {
+  if (!value || typeof value !== "object") return false;
+  const w = value as Record<string, unknown>;
+  return typeof w.identityId === "string" && typeof w.balance === "string" && typeof w.version === "number";
 }
 
 /**
@@ -188,7 +208,11 @@ async function handleResponse<T>(res: Response): Promise<T> {
  */
 export async function getEconomyWallet(): Promise<{ wallet: CoinWalletRecord }> {
   const res = await apiFetch("/api/economy/wallet");
-  return handleResponse<{ wallet: CoinWalletRecord }>(res);
+  const body = await handleResponse<{ wallet: unknown }>(res);
+  if (!isCoinWalletRecord(body.wallet)) {
+    throw new EconomyClientError(res.status, "MalformedResponse", "The wallet response did not match the expected shape.");
+  }
+  return { wallet: body.wallet };
 }
 
 /**

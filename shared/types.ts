@@ -2385,6 +2385,17 @@ export interface CreateRoomPayload {
    * setup this project depends on.
    */
   accessToken?: string;
+  /**
+   * The signed bearer token from `POST /api/auth/guest` (`lib/playerIdentity.ts`
+   * on the client), sent only when there is no member session. Lets Economy V1
+   * resolve a guest's durable `identityId` for a match this room ends up
+   * settling — a guest still cannot HOST a paid match (see
+   * `RoomManager.requestGameStart`'s own guest check, which is independent of
+   * whether an identity resolves), but a resolvable identity is what lets a
+   * guest be correctly named as a PARTICIPANT when a member hosts. Verified
+   * server-side exactly like `accessToken`; never trusted as a bare id.
+   */
+  guestToken?: string;
 }
 
 export interface SetTokenNicknamesPayload {
@@ -2412,6 +2423,8 @@ export interface JoinRoomPayload {
   accountKind?: AccountKind;
   /** The session that proves it. Same rules as `CreateRoomPayload.accessToken`. */
   accessToken?: string;
+  /** Same rules as `CreateRoomPayload.guestToken`. */
+  guestToken?: string;
 }
 
 export interface ChatSendPayload {

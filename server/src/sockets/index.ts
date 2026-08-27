@@ -68,7 +68,7 @@ export function registerSocketHandlers(
       // resolveIdentity does not. Same underlying verifyAccessToken call,
       // so a shared cache hit makes this effectively free when it isn't the
       // very first request for this token. See economyIdentity.ts.
-      const { identityId } = await resolveIdentity(payload.accessToken);
+      const { identityId } = await resolveIdentity(payload.accessToken, payload.guestToken);
       const { code, playerId, seatToken, state } = rooms.createRoom(
         socket.id,
         payload.name,
@@ -105,7 +105,7 @@ export function registerSocketHandlers(
     try {
       const accountKind = await resolveAccountKind(payload.accountKind, payload.accessToken);
       // See the matching comment in room:create above.
-      const { identityId } = await resolveIdentity(payload.accessToken);
+      const { identityId } = await resolveIdentity(payload.accessToken, payload.guestToken);
       const result = rooms.joinRoom(
         socket.id,
         payload.name,
