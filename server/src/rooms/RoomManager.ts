@@ -343,6 +343,50 @@ function emptyRematchState(): RematchState {
   };
 }
 
+interface HostEconomyEligibility {
+  eligible: boolean;
+  error?: string;
+}
+
+/**
+ * Checks whether the host is eligible to commit a match entry in Economy V1.
+ *
+ * Product Rules:
+ *  - An unresolved identityId (null/empty) is rejected: there is no wallet to debit.
+ *  - A guest may play solo or against any number of bots (`soloVsBots: true`).
+ *  - A guest CANNOT host multiplayer matches containing other real human players (`hasOtherHumanPlayers === true`).
+ *  - A registered member may host bot-only, mixed, or all-human matches.
+ */
+function checkHostEconomyEligibility(
+  host: Player,
+  playersList: Player[],
+  isRematch = false,
+): HostEconomyEligibility {
+  if (!host.identityId || host.identityId.trim().length === 0) {
+    return {
+      eligible: false,
+      error: isRematch
+        ? "Host identity not resolved. Please sign in or refresh."
+        : "Player identity not resolved. Please refresh or sign in.",
+    };
+  }
+
+  const hasOtherHumanPlayers = playersList.some(
+    (candidate) => !candidate.isBot && candidate.id !== host.id,
+  );
+
+  if (host.isGuest && hasOtherHumanPlayers) {
+    return {
+      eligible: false,
+      error: isRematch
+        ? "Only a signed-in account can host rematches with other players. Sign in to host, or ask a member to host instead."
+        : "Only a signed-in account can host matches with other players. Sign in to host, or ask a member to host instead.",
+    };
+  }
+
+  return { eligible: true };
+}
+
 type IO = Server<ClientToServerEvents, ServerToClientEvents>;
 
 export class RoomManager {
@@ -1292,17 +1336,9 @@ export class RoomManager {
     }
     if (room.economyCommitPending) return;
 
-    // `player.isGuest` is checked explicitly, NOT inferred from a missing
-    // `identityId` — Economy V1 Phase 4 gave guests a resolvable identityId
-    // too (for settlement participation), so this guard can no longer rely
-    // on identity resolution as a side-channel for "guests cannot host."
-    // That is a standing, separate product rule (2026-08-27 decision) and
-    // must keep failing guests even once their identity resolves.
-    if (player.isGuest || !player.identityId) {
-      this.io.sockets.sockets.get(socketId)?.emit(
-        "room:error",
-        "Only a signed-in account can start a paid match. Sign in to host, or ask a member to host instead.",
-      );
+    const eligibility = checkHostEconomyEligibility(player, playersList, false);
+    if (!eligibility.eligible) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", eligibility.error!);
       return;
     }
 
@@ -1316,7 +1352,7 @@ export class RoomManager {
       const result = await this.economyService.commitMatchEntry({
         matchId,
         roomCode: room.code,
-        hostIdentityId: player.identityId,
+        hostIdentityId: player.identityId!,
         seatCount: playersList.length,
         humanSeatCount,
         botSeatCount,
@@ -3448,21 +3484,17 @@ export class RoomManager {
       this.cancelRematch(room, null);
       return;
     }
-    // See the matching comment in `requestGameStart` — `isGuest` is the
-    // explicit rule; `identityId` alone stopped being sufficient once guests
-    // could resolve one too.
-    if (host.isGuest || !host.identityId) {
-      this.io.to(room.code).emit(
-        "room:error",
-        "Only a signed-in account can start a paid rematch. Sign in to host, or ask a member to host instead.",
-      );
+
+    const playersList = Array.from(room.players.values());
+    const eligibility = checkHostEconomyEligibility(host, playersList, true);
+    if (!eligibility.eligible) {
+      this.io.to(room.code).emit("room:error", eligibility.error!);
       this.cancelRematch(room, null);
       return;
     }
     if (room.economyCommitPending) return;
 
     room.economyCommitPending = true;
-    const playersList = Array.from(room.players.values());
     const humanSeatCount = playersList.filter((p) => !p.isBot).length;
     const botSeatCount = playersList.length - humanSeatCount;
     const matchId = `m_${room.code}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -3471,7 +3503,7 @@ export class RoomManager {
       const result = await this.economyService.commitMatchEntry({
         matchId,
         roomCode: room.code,
-        hostIdentityId: host.identityId,
+        hostIdentityId: host.identityId!,
         seatCount: playersList.length,
         humanSeatCount,
         botSeatCount,
