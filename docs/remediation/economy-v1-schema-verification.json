@@ -1,5 +1,5 @@
 {
-  "verifiedAt": "2026-08-26T14:16:17.056Z",
+  "verifiedAt": "2026-08-27T04:13:40.704Z",
   "engine": "PostgreSQL 17.5 on x86_64-windows",
   "scope": "SCHEMA + FUNCTION-LOGIC + PRIVILEGE-BOUNDARY + CONCURRENCY verification against a real local PostgreSQL, with the real project's inherited default privilege reproduced before the migration is applied. Does NOT cover PostgREST transport, a real Supabase service_role key, or EconomyRepository (not built). This is self-authored verification and does not itself constitute independent re-audit approval.",
   "migration": "20260826000000_economy_v1.sql",
@@ -50,7 +50,7 @@
       "section": "schema",
       "name": "world_bank_accounts is a true singleton with four separate balances",
       "passed": true,
-      "evidence": "{\"id\":\"primary\",\"name\":\"BHALYAM World Bank Treasury\",\"base_fee_revenue\":\"0\",\"bot_prize_revenue\":\"0\",\"guest_escrow_liability\":\"0\",\"total_voucher_redeemed\":\"0\",\"created_at\":\"2026-08-26T14:16:12.613Z\",\"updated_at\":\"2026-08-26T14:16:12.613Z\"}"
+      "evidence": "{\"id\":\"primary\",\"name\":\"BHALYAM World Bank Treasury\",\"base_fee_revenue\":\"0\",\"bot_prize_revenue\":\"0\",\"guest_escrow_liability\":\"0\",\"total_voucher_redeemed\":\"0\",\"created_at\":\"2026-08-27T04:13:36.427Z\",\"updated_at\":\"2026-08-27T04:13:36.427Z\"}"
     },
     {
       "section": "schema",
@@ -68,7 +68,7 @@
       "section": "identity-provisioning",
       "name": "ensure_wallet REJECTS a guest-shaped identity_id with no player_identities row, rather than silently creating one",
       "passed": true,
-      "evidence": "IDENTITY_NOT_FOUND: player identity guest_90ca4f0bd404bbea079ffa07e4de1b2a is not registered"
+      "evidence": "IDENTITY_NOT_FOUND: player identity guest_799ab849950b177d43ab78a4c606c0e4 is not registered"
     },
     {
       "section": "identity-provisioning",
@@ -80,7 +80,7 @@
       "section": "identity-provisioning",
       "name": "ensure_wallet REJECTS a non-guest-shaped identity_id with no player_identities row the same way",
       "passed": true,
-      "evidence": "IDENTITY_NOT_FOUND: player identity 92bcb651-0c1d-4505-bfd1-a92d0309a355 is not registered"
+      "evidence": "IDENTITY_NOT_FOUND: player identity 0a022c7d-b119-49df-b99a-89aa5c08159c is not registered"
     },
     {
       "section": "privileges",
@@ -122,7 +122,7 @@
       "section": "privileges",
       "name": "service_role CAN still call approved RPC functions (business-logic error, not a permission error)",
       "passed": true,
-      "evidence": "ONLY_MEMBERS_CAN_REDEEM_VOUCHERS: identity guest_6246ad15259b2778dfde102385848b62 is not a registered member"
+      "evidence": "ONLY_MEMBERS_CAN_REDEEM_VOUCHERS: identity guest_f9f1f52cc8cd0051259c818ff3941805 is not a registered member"
     },
     {
       "section": "privileges",
@@ -158,19 +158,19 @@
       "section": "idempotency",
       "name": "grant_starter_coins replay returns applied=false with the ORIGINAL result, not a bare row",
       "passed": true,
-      "evidence": "{\"result\":{\"balance\":\"2000\",\"version\":1,\"is_frozen\":false,\"updated_at\":\"2026-08-26T19:46:12.749607+05:30\",\"identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"identity_kind\":\"guest\",\"lifetime_spent\":\"0\",\"lifetime_earned\":\"0\",\"starter_granted\":true,\"lifetime_granted\":\"2000\",\"lifetime_refunded\":\"0\"},\"applied\":false,\"operation\":\"grant_starter_coins\",\"idempotencyKey\":\"starter-grant:guest_6246ad15259b2778dfde102385848b62\"}"
+      "evidence": "{\"result\":{\"balance\":\"2000\",\"version\":1,\"is_frozen\":false,\"updated_at\":\"2026-08-27T09:43:36.695083+05:30\",\"identity_id\":\"guest_f9f1f52cc8cd0051259c818ff3941805\",\"identity_kind\":\"guest\",\"lifetime_spent\":\"0\",\"lifetime_earned\":\"0\",\"starter_granted\":true,\"lifetime_granted\":\"2000\",\"lifetime_refunded\":\"0\"},\"applied\":false,\"operation\":\"grant_starter_coins\",\"idempotencyKey\":\"starter-grant:guest_f9f1f52cc8cd0051259c818ff3941805\"}"
     },
     {
       "section": "idempotency",
       "name": "commit_match_entry returns {applied:true, operation, idempotencyKey, result}",
       "passed": true,
-      "evidence": "{\"result\":{\"status\":\"COMMITTED\",\"match_id\":\"m_VERIFY_1787753773417_81804b\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-26T19:46:13.418223+05:30\",\"seat_count\":5,\"settled_at\":null,\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":4,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"0\",\"total_wallet_rewarded\":\"0\"},\"applied\":true,\"operation\":\""
+      "evidence": "{\"result\":{\"status\":\"COMMITTED\",\"match_id\":\"m_VERIFY_1787804017477_ce9705\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-27T09:43:37.477742+05:30\",\"seat_count\":5,\"settled_at\":null,\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_f9f1f52cc8cd0051259c818ff3941805\",\"human_seat_count\":4,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"0\",\"total_wallet_rewarded\":\"0\"},\"applied\":true,\"operation\":\""
     },
     {
       "section": "idempotency",
       "name": "commit_match_entry replay returns applied=false, no second debit",
       "passed": true,
-      "evidence": "{\"result\":{\"status\":\"COMMITTED\",\"match_id\":\"m_VERIFY_1787753773417_81804b\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-26T19:46:13.418223+05:30\",\"seat_count\":5,\"settled_at\":null,\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":4,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"0\",\"total_wallet_rewarded\":\"0\"},\"applied\":false,\"operation\":"
+      "evidence": "{\"result\":{\"status\":\"COMMITTED\",\"match_id\":\"m_VERIFY_1787804017477_ce9705\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-27T09:43:37.477742+05:30\",\"seat_count\":5,\"settled_at\":null,\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_f9f1f52cc8cd0051259c818ff3941805\",\"human_seat_count\":4,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"0\",\"total_wallet_rewarded\":\"0\"},\"applied\":false,\"operation\":"
     },
     {
       "section": "idempotency",
@@ -182,13 +182,13 @@
       "section": "settlement",
       "name": "settle_match_economy returns applied=true with the standardized contract",
       "passed": true,
-      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773417_81804b\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-26T19:46:13.418223+05:30\",\"seat_count\":5,\"settled_at\":\"2026-08-26T19:46:13.434583+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":4,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"100\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":"
+      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787804017477_ce9705\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-27T09:43:37.477742+05:30\",\"seat_count\":5,\"settled_at\":\"2026-08-27T09:43:37.493666+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_f9f1f52cc8cd0051259c818ff3941805\",\"human_seat_count\":4,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"100\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":"
     },
     {
       "section": "settlement",
       "name": "member winner credited 200, guest escrowed 150, bot collection 100, base cut 50",
       "passed": true,
-      "evidence": "{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773417_81804b\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-26T19:46:13.418223+05:30\",\"seat_count\":5,\"settled_at\":\"2026-08-26T19:46:13.434583+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":4,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"100\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":\"200\"}"
+      "evidence": "{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787804017477_ce9705\",\"room_code\":\"ROOM1\",\"created_at\":\"2026-08-27T09:43:37.477742+05:30\",\"seat_count\":5,\"settled_at\":\"2026-08-27T09:43:37.493666+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_f9f1f52cc8cd0051259c818ff3941805\",\"human_seat_count\":4,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"100\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":\"200\"}"
     },
     {
       "section": "settlement",
@@ -224,7 +224,7 @@
       "section": "refund",
       "name": "settle_match_economy(is_valid_ranking=false) refunds internally, without a separate caller-side detection step",
       "passed": true,
-      "evidence": "{\"result\":{\"status\":\"REFUNDED\",\"match_id\":\"m_VERIFY_1787753773459_c52512\",\"room_code\":\"ROOM3\",\"created_at\":\"2026-08-26T19:46:13.462227+05:30\",\"seat_count\":5,\"settled_at\":\"2026-08-26T19:46:13.46448+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":\"Tied placements, no valid ranking\",\"bot_seat_count\":1,\"total_refunded\":\"500\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_cc994fb197bfa12231f5349d6e80e61c\",\"human_seat_count\":4,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":"
+      "evidence": "{\"result\":{\"status\":\"REFUNDED\",\"match_id\":\"m_VERIFY_1787804017521_e7435d\",\"room_code\":\"ROOM3\",\"created_at\":\"2026-08-27T09:43:37.523023+05:30\",\"seat_count\":5,\"settled_at\":\"2026-08-27T09:43:37.524865+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":\"Tied placements, no valid ranking\",\"bot_seat_count\":1,\"total_refunded\":\"500\",\"total_collected\":\"500\",\"host_identity_id\":\"guest_a051ad2ca3678a4714f9ea8fe8b3f124\",\"human_seat_count\":4,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\""
     },
     {
       "section": "refund",
@@ -248,19 +248,19 @@
       "section": "frozen",
       "name": "a frozen wallet CANNOT commit a match entry (spend)",
       "passed": true,
-      "evidence": "WALLET_FROZEN: host guest_35607a45a734f42cfdd35e79fdb2e58d cannot commit a match entry while frozen"
+      "evidence": "WALLET_FROZEN: host guest_ce9eacc3c6fe22a58fe6017c92994c38 cannot commit a match entry while frozen"
     },
     {
       "section": "frozen",
       "name": "setup: a real voucher was issued for the frozen-redemption test",
       "passed": true,
-      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773473_b2f376\",\"room_code\":\"ROOM_FV\",\"created_at\":\"2026-08-26T19:46:13.474197+05:30\",\"seat_count\":2,\"settled_at\":\"2026-08-26T19:46:13.476277+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"200\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":1,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":"
+      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787804017536_42d053\",\"room_code\":\"ROOM_FV\",\"created_at\":\"2026-08-27T09:43:37.537179+05:30\",\"seat_count\":2,\"settled_at\":\"2026-08-27T09:43:37.538649+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"200\",\"host_identity_id\":\"guest_f9f1f52cc8cd0051259c818ff3941805\",\"human_seat_count\":1,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":"
     },
     {
       "section": "frozen",
       "name": "a frozen wallet CANNOT redeem a voucher that would otherwise be perfectly valid",
       "passed": true,
-      "evidence": "WALLET_FROZEN: member 8d976d17-1eb4-4091-a139-9ee1faeee6e0 cannot redeem a voucher while frozen"
+      "evidence": "WALLET_FROZEN: member c27d54c9-cff4-4dda-98c8-65f8d3e83f71 cannot redeem a voucher while frozen"
     },
     {
       "section": "frozen",
@@ -272,19 +272,19 @@
       "section": "frozen",
       "name": "a frozen wallet MAY still receive a match reward (settle_match_economy does not check is_frozen for credits)",
       "passed": true,
-      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773480_f345d6\",\"room_code\":\"ROOM_FR\",\"created_at\":\"2026-08-26T19:46:13.481102+05:30\",\"seat_count\":2,\"settled_at\":\"2026-08-26T19:46:13.482428+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"200\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":1,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":\"1"
+      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787804017543_3022a9\",\"room_code\":\"ROOM_FR\",\"created_at\":\"2026-08-27T09:43:37.543372+05:30\",\"seat_count\":2,\"settled_at\":\"2026-08-27T09:43:37.545411+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"200\",\"host_identity_id\":\"guest_f9f1f52cc8cd0051259c818ff3941805\",\"human_seat_count\":1,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":\"1"
     },
     {
       "section": "frozen",
       "name": "a frozen wallet MAY still receive a refund",
       "passed": true,
-      "evidence": "{\"result\":{\"status\":\"REFUNDED\",\"match_id\":\"m_VERIFY_1787753773483_a8f531\",\"room_code\":\"ROOM_FRF\",\"created_at\":\"2026-08-26T19:46:13.484674+05:30\",\"seat_count\":1,\"settled_at\":\"2026-08-26T19:46:13.486617+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":\"test\",\"bot_seat_count\":0,\"total_refunded\":\"100\",\"total_collected\":\"100\",\"host_identity_id\":\"guest_35607a45a734f42cfdd35e79fdb2e58d\",\"human_seat_count\":1,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"0\",\"total_wallet_rewarde"
+      "evidence": "{\"result\":{\"status\":\"REFUNDED\",\"match_id\":\"m_VERIFY_1787804017547_420cdd\",\"room_code\":\"ROOM_FRF\",\"created_at\":\"2026-08-27T09:43:37.548453+05:30\",\"seat_count\":1,\"settled_at\":\"2026-08-27T09:43:37.550255+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":\"test\",\"bot_seat_count\":0,\"total_refunded\":\"100\",\"total_collected\":\"100\",\"host_identity_id\":\"guest_ce9eacc3c6fe22a58fe6017c92994c38\",\"human_seat_count\":1,\"total_guest_escrow\":\"0\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"0\",\"total_wallet_rewarde"
     },
     {
       "section": "vouchers",
       "name": "first voucher with a fresh code_hash issues successfully",
       "passed": true,
-      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787753773488_3c7f6b\",\"room_code\":\"ROOMV1\",\"created_at\":\"2026-08-26T19:46:13.488885+05:30\",\"seat_count\":2,\"settled_at\":\"2026-08-26T19:46:13.490851+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"200\",\"host_identity_id\":\"guest_6246ad15259b2778dfde102385848b62\",\"human_seat_count\":1,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":\""
+      "evidence": "{\"result\":{\"status\":\"SETTLED\",\"match_id\":\"m_VERIFY_1787804017552_ca4083\",\"room_code\":\"ROOMV1\",\"created_at\":\"2026-08-27T09:43:37.55267+05:30\",\"seat_count\":2,\"settled_at\":\"2026-08-27T09:43:37.55515+05:30\",\"cost_per_seat\":\"100\",\"refund_reason\":null,\"bot_seat_count\":1,\"total_refunded\":\"0\",\"total_collected\":\"200\",\"host_identity_id\":\"guest_f9f1f52cc8cd0051259c818ff3941805\",\"human_seat_count\":1,\"total_guest_escrow\":\"150\",\"total_bot_collection\":\"0\",\"total_world_bank_cut\":\"50\",\"total_wallet_rewarded\":\"0\""
     },
     {
       "section": "vouchers",
@@ -296,7 +296,7 @@
       "section": "vouchers",
       "name": "the original voucher row is untouched by the failed collision attempt",
       "passed": true,
-      "evidence": "owner=guest_b8c6ec873945a53da316bd878455de3c"
+      "evidence": "owner=guest_1aa11378f600f13176a3b71a6d60a278"
     },
     {
       "section": "vouchers",
@@ -308,7 +308,7 @@
       "section": "invalid-participants",
       "name": "a member participant whose identityId has no player_identities row is rejected (IDENTITY_NOT_FOUND), not silently provisioned",
       "passed": true,
-      "evidence": "IDENTITY_NOT_FOUND: player identity 2e4d128f-f1bf-4d97-9138-ecd70fbaa7a5 is not registered"
+      "evidence": "IDENTITY_NOT_FOUND: player identity 6d7e0827-4fe0-4f6c-9179-5976bd94cea7 is not registered"
     },
     {
       "section": "invalid-participants",
@@ -380,7 +380,7 @@
       "section": "concurrency",
       "name": "8 concurrent settle_match_economy calls for the SAME match: exactly one applied=true, exactly one voucher issued",
       "passed": true,
-      "evidence": "1 applied, 1 voucher(s), outcomes=[false,false,true,false,false,false,false,false]"
+      "evidence": "1 applied, 1 voucher(s), outcomes=[false,false,false,false,false,false,false,true]"
     },
     {
       "section": "concurrency",
