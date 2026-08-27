@@ -180,6 +180,41 @@ export interface RoomPublicState {
    * invitation that silently fails for whoever you send it to.
    */
   sealed: boolean;
+  /**
+   * Server-authoritative match identifier for Economy V1 commitments,
+   * settlement distribution, and motion sequence deduplication.
+   * Null while in the lobby before a match begins; populated upon successful commitMatchEntry.
+   *
+   * Cleared the moment settlement/refund is QUEUED (see RoomManager's
+   * queueMatchSettlement/queueMatchRefund) — which happens in the SAME
+   * synchronous call, before the SAME broadcast, that reports the match as
+   * finished/abandoned. A client that reads `currentMatchId` to look up a
+   * just-concluded match's settlement will always find it already null.
+   * Use `lastMatchId` for that instead.
+   */
+  currentMatchId?: string | null;
+  /**
+   * The most recently concluded match's id in this room — settlement,
+   * refund, and escrow lookups after `currentMatchId` is cleared.
+   *
+   * Set in the same synchronous step that clears `currentMatchId` (so it
+   * is always present in the broadcast that announces a match finished or
+   * was abandoned), and reset to `null` the moment a NEW match (including
+   * a rematch) successfully commits — a stale id from a previous match
+   * must never be readable once a new one is underway. Null until this
+   * room's first match concludes.
+   */
+  lastMatchId?: string | null;
+  /**
+   * The exact per-seat cost and total pot from the CURRENTLY committed
+   * match (mirrors `currentMatchId`'s lifetime exactly: both set together
+   * on a successful commit, both cleared together when settlement/refund
+   * is queued). Broadcast so the commitment motion sequence can animate
+   * real, authoritative amounts — never a client-side guess or a stale
+   * quote. Null whenever `currentMatchId` is null.
+   */
+  committedCostPerSeat?: string | null;
+  committedTotalPot?: string | null;
 }
 
 /**

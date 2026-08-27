@@ -135,6 +135,32 @@ export function useEconomyMotion(options: UseEconomyMotionOptions = {}) {
   );
 
   /**
+   * 2.5 Trigger Game Start Ceremony (Chapter 2) directly on authoritative room state transition.
+   */
+  const triggerGameStartSequence = useCallback(
+    (sequenceId?: string) => {
+      if (sequenceId && completedSequencesRef.current.has(sequenceId)) {
+        return;
+      }
+      clearTimers();
+      setErrorMessage(null);
+      changePhase("game_starting");
+
+      const duration = reduceMotion ? 400 : 2000;
+      const t = window.setTimeout(() => {
+        changePhase("complete");
+        if (sequenceId) {
+          recordCompletedSequence(sequenceId);
+          onSequenceComplete?.(sequenceId);
+        }
+      }, duration);
+
+      activeTimersRef.current.push(t);
+    },
+    [clearTimers, changePhase, reduceMotion, recordCompletedSequence, onSequenceComplete],
+  );
+
+  /**
    * 3. Trigger Authoritative Settlement Sequence (Chapter 3)
    */
   const triggerSettlementSequence = useCallback(
@@ -255,6 +281,7 @@ export function useEconomyMotion(options: UseEconomyMotionOptions = {}) {
     errorMessage,
     startAwaitingAuthority,
     triggerCommitmentSequence,
+    triggerGameStartSequence,
     triggerSettlementSequence,
     triggerRefundSequence,
     triggerEscrowSequence,

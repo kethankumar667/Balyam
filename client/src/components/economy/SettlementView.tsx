@@ -3,7 +3,7 @@ import { Trophy, RefreshCw, AlertCircle, ShieldAlert, Award, Landmark, RotateCcw
 import { CoinAmount } from "./CoinAmount";
 import { EconomySkeleton } from "./EconomySkeleton";
 import { EconomyStatusBanner } from "./EconomyStatusBanner";
-import { RefundSequence, SettlementSequence } from "./motion";
+import { RefundSequence, SettlementSequence, EscrowSequence } from "./motion";
 import { getMatchSettlement, type MatchEconomySettlementRecord, EconomyClientError } from "../../lib/economyApi";
 
 export interface SettlementViewProps {
@@ -133,6 +133,16 @@ export const SettlementView: React.FC<SettlementViewProps> = ({
           worldBankFeeAmount: settlement.totalWorldBankCut,
         }}
       />
+
+      {settlement.totalGuestEscrow && settlement.totalGuestEscrow !== "0" && (
+        <EscrowSequence
+          payload={{
+            sequenceId: `settlement-escrow-${settlement.matchId}`,
+            matchId: settlement.matchId,
+            voucherAmount: settlement.totalGuestEscrow,
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-sans">
         <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">

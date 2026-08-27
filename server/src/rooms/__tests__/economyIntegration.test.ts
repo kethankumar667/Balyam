@@ -654,6 +654,238 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(room.currentMatchId).toBeNull();
       expect(socketEmits.some((e) => e.event === "room:error" && String(e.data).includes("identity not resolved"))).toBe(true);
     });
+
+    it("exposes currentMatchId in RoomPublicState broadcast upon game start", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      const { io, roomEmits } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      rooms.addBot("s_a", "Botty");
+      rooms.setReady("s_a", true);
+
+      // In lobby, public state has currentMatchId: null
+      const lobbyBroadcast = roomEmits.find((e) => e.event === "room:state")?.data as { currentMatchId?: string | null };
+      expect(lobbyBroadcast.currentMatchId).toBeNull();
+
+      await rooms.requestGameStart("s_a");
+
+      // In playing phase, public state broadcasts currentMatchId string
+      const room = peek(rooms, host.code);
+      expect(room.currentMatchId).toMatch(/^m_/);
+
+      const roomStateEmits = roomEmits.filter((e) => e.event === "room:state");
+      const lastBroadcast = roomStateEmits[roomStateEmits.length - 1].data as { currentMatchId?: string | null };
+      expect(lastBroadcast.currentMatchId).toBe(room.currentMatchId);
+    });
+  });
+
+  describe("lastMatchId — the terminal-match-id contract fix", () => {
+    it("playing -> finished: the SAME broadcast that reports the match finished already carries the completed match id, with currentMatchId already null", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io, roomEmits } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      const committedMatchId = peek(rooms, host.code).currentMatchId!;
+      expect(committedMatchId).toMatch(/^m_/);
+
+      playRpsToCompletion(rooms, "s_a", "s_b");
+      await drainRoomEconomy(rooms);
+
+      // The bug this closes: reading currentMatchId from the "finished"
+      // broadcast used to always find it already null, with no way back to
+      // the match that just concluded. lastMatchId is the fix.
+      const roomStateEmits = roomEmits.filter((e) => e.event === "room:state");
+      const finishedBroadcast = roomStateEmits[roomStateEmits.length - 1].data as {
+        phase: string;
+        currentMatchId: string | null;
+        lastMatchId: string | null;
+      };
+      expect(finishedBroadcast.phase).toBe("finished");
+      expect(finishedBroadcast.currentMatchId).toBeNull();
+      expect(finishedBroadcast.lastMatchId).toBe(committedMatchId);
+
+      // And the settlement it points to is genuinely fetchable — proves
+      // "currentMatchId can be cleared while settlement remains accessible".
+      const settlement = await service.getSettlement(finishedBroadcast.lastMatchId!);
+      expect(settlement?.status).toBe("SETTLED");
+    });
+
+    it("abandonment: the room object carries the refunded match's terminal id up until the room is deleted (no live broadcast recipient exists by the time abandonment fires — see the fix's own report)", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      rooms.addBot("s_a", "Botty");
+      rooms.setReady("s_a", true);
+      await rooms.requestGameStart("s_a");
+
+      // Captured by reference BEFORE the last human leaves — abandonRoom
+      // deletes the room from RoomManager's own map, but does not destroy
+      // this object; its fields are still readable after deletion.
+      const roomRef = peek(rooms, host.code);
+      const committedMatchId = roomRef.currentMatchId!;
+
+      rooms.leaveRoom("s_a"); // last human leaves -> abandonRoom
+      await drainRoomEconomy(rooms);
+
+      expect(roomRef.currentMatchId).toBeNull();
+      expect(roomRef.lastMatchId).toBe(committedMatchId);
+
+      const settlement = await service.getSettlement(committedMatchId);
+      expect(settlement?.status).toBe("REFUNDED");
+      expect(settlement?.totalRefunded).toBe("200");
+    });
+
+    it("rematch: commits a NEW matchId and resets lastMatchId — a stale terminal id from the previous match never leaks into the new one's broadcasts", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      const { io, roomEmits } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      rooms.addBot("s_a", "Botty");
+      rooms.setReady("s_a", true);
+      await rooms.requestGameStart("s_a");
+      const firstMatchId = peek(rooms, host.code).currentMatchId!;
+
+      rooms.leaveRoom("s_a"); // solo human forfeits -> abandonRoom, room destroyed
+      await drainRoomEconomy(rooms);
+
+      // A fresh room for the "second match in the same room" case, since
+      // the solo-forfeit path above destroys the room. Re-seat the same
+      // identity to prove the SEQUENCE of matches, not just one commit.
+      seedMember(repo, MEMBER_B, "5000");
+      const { io: io2, roomEmits: roomEmits2 } = makeIo();
+      const rooms2 = new RoomManager(io2, service);
+      const host2 = createRoomAs(rooms2, "s_c", "Carol", "rps", "member", MEMBER_B);
+      rooms2.addBot("s_c", "Botty");
+      rooms2.setReady("s_c", true);
+      await rooms2.requestGameStart("s_c");
+      const secondMatchId = peek(rooms2, host2.code).currentMatchId!;
+
+      expect(secondMatchId).not.toBe(firstMatchId);
+
+      const broadcast = roomEmits2.filter((e) => e.event === "room:state").pop()!.data as {
+        currentMatchId: string | null;
+        lastMatchId: string | null;
+      };
+      expect(broadcast.currentMatchId).toBe(secondMatchId);
+      expect(broadcast.lastMatchId).toBeNull(); // no stale terminal id from an unrelated room/match
+
+      void roomEmits; // unused in this test beyond the first room's setup
+    });
+
+    it("a genuine same-room rematch resets lastMatchId back to null the moment the new match commits, even though the previous match's terminal id was just populated", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io, roomEmits } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+      const firstMatchId = peek(rooms, host.code).currentMatchId!;
+
+      playRpsToCompletion(rooms, "s_a", "s_b");
+      await drainRoomEconomy(rooms);
+      expect(peek(rooms, host.code).lastMatchId).toBe(firstMatchId);
+
+      // Both accept a rematch — same room, same code, real "finished -> playing".
+      rooms.requestRematch("s_a");
+      rooms.respondRematch("s_b", "accept");
+      await vi.advanceTimersByTimeAsync(3000);
+
+      const room = peek(rooms, host.code);
+      expect(room.phase).toBe("playing");
+      expect(room.currentMatchId).not.toBeNull();
+      expect(room.currentMatchId).not.toBe(firstMatchId); // a genuinely new commit
+      expect(room.lastMatchId).toBeNull(); // the old terminal id is now stale and must not leak forward
+
+      const lastBroadcast = roomEmits.filter((e) => e.event === "room:state").pop()!.data as {
+        currentMatchId: string | null;
+        lastMatchId: string | null;
+      };
+      expect(lastBroadcast.currentMatchId).toBe(room.currentMatchId);
+      expect(lastBroadcast.lastMatchId).toBeNull();
+    });
+
+    it("reconnect during the terminal (finished) state recovers the same match id — a seat reclaim never touches lastMatchId", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      const bobJoin = joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      playRpsToCompletion(rooms, "s_a", "s_b");
+      await drainRoomEconomy(rooms);
+      const terminalMatchId = peek(rooms, host.code).lastMatchId;
+      expect(terminalMatchId).not.toBeNull();
+
+      // Bob reconnects with a NEW socket, reclaiming his original seat via
+      // playerId + seatToken — the real reconnect path (RecoveryManager /
+      // Room.tsx's own rejoin), not a brand-new join.
+      expect(bobJoin.ok).toBe(true);
+      const reclaimed = bobJoin.ok
+        ? rooms.joinRoom("s_b_new", "Bob", host.code, bobJoin.playerId, bobJoin.seatToken, undefined, "member", MEMBER_B)
+        : null;
+      expect(reclaimed?.ok).toBe(true);
+
+      expect(peek(rooms, host.code).lastMatchId).toBe(terminalMatchId);
+    });
+
+    it("commitment broadcast: committedCostPerSeat/committedTotalPot are the REAL authoritative amounts from the commit result, present exactly while currentMatchId is set", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io, roomEmits } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      const room = peek(rooms, host.code);
+      expect(room.committedCostPerSeat).toBe("100"); // matches the 200-total / 2-seat commitment this suite pins elsewhere
+      expect(room.committedTotalPot).toBe("200");
+
+      const lastBroadcast = roomEmits.filter((e) => e.event === "room:state").pop()!.data as {
+        committedCostPerSeat: string | null;
+        committedTotalPot: string | null;
+      };
+      expect(lastBroadcast.committedCostPerSeat).toBe("100");
+      expect(lastBroadcast.committedTotalPot).toBe("200");
+
+      playRpsToCompletion(rooms, "s_a", "s_b");
+      await drainRoomEconomy(rooms);
+
+      // Cleared alongside currentMatchId once settlement is queued.
+      const finished = peek(rooms, host.code);
+      expect(finished.committedCostPerSeat).toBeNull();
+      expect(finished.committedTotalPot).toBeNull();
+    });
   });
 });
 

@@ -110,6 +110,8 @@ export const WalletBalanceChip: React.FC<WalletBalanceChipProps> = ({
   if (isInteractive) {
     return (
       <button
+        id="host-wallet-chip"
+        data-wallet-chip="true"
         type="button"
         onClick={onClick}
         className={`${baseStyles} ${className}`}
@@ -122,6 +124,8 @@ export const WalletBalanceChip: React.FC<WalletBalanceChipProps> = ({
 
   return (
     <div
+      id="host-wallet-chip"
+      data-wallet-chip="true"
       role="status"
       className={`${baseStyles} ${className}`}
       aria-label={accessibleLabel}
