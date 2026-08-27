@@ -15,3 +15,4 @@ export * from "./CheckoutSheet";
 export * from "./SettlementView";
 export * from "./VoucherRedemptionModal";
 export * from "./fixtures";
+export * from "./motion";

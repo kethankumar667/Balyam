@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet,
@@ -9,12 +9,10 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ShieldCheck,
-  Award,
-  Layers,
   ChevronRight,
-  Info,
+  AlertCircle,
 } from "lucide-react";
-import { CoinAmount } from "./CoinAmount";
+import { CoinAmount, AshthaKonaCoinIcon } from "./CoinAmount";
 import { CoinDelta, type CoinDeltaType } from "./CoinDelta";
 import { EconomySkeleton } from "./EconomySkeleton";
 import { EconomyActionButton } from "./EconomyActionButton";
@@ -58,16 +56,92 @@ function mapEntryToDeltaType(entryType: string): { type: CoinDeltaType; label: s
  */
 export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) => {
   const isMember = useAuthStore((s) => s.isMember);
-  const { wallet, balance, isLoading: walletLoading, error: walletError, refetch: refetchWallet } = useWallet();
-  const { entries, isLoading: ledgerLoading, hasMore, error: ledgerError, refetch: refetchLedger, loadMore } = useLedger();
+  const {
+    wallet,
+    balance,
+    status: walletStatus,
+    isLoading: walletLoading,
+    error: walletError,
+    correlationId,
+    refetch: refetchWallet,
+  } = useWallet();
+  const {
+    entries,
+    isLoading: ledgerLoading,
+    hasMore,
+    error: ledgerError,
+    refetch: refetchLedger,
+    loadMore,
+  } = useLedger();
 
   const [selectedEntry, setSelectedEntry] = useState<CoinLedgerEntryRecord | null>(null);
   const [voucherModalOpen, setVoucherModalOpen] = useState(false);
+
+  const drawerRef = React.useRef<HTMLElement | null>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const previousActiveElementRef = React.useRef<HTMLElement | null>(null);
+
+  // Focus management: capture previous focus, set initial focus on open, restore on close
+  useEffect(() => {
+    if (isOpen) {
+      previousActiveElementRef.current = document.activeElement as HTMLElement | null;
+      const timer = setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 50);
+      return () => {
+        clearTimeout(timer);
+        previousActiveElementRef.current?.focus();
+      };
+    }
+  }, [isOpen]);
+
+  // Keyboard trap and Escape key listener for WCAG 2.1 AA dialog compliance
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (selectedEntry) {
+          setSelectedEntry(null);
+        } else {
+          onClose();
+        }
+        return;
+      }
+
+      if (e.key === "Tab" && drawerRef.current) {
+        const focusableElements = drawerRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose, selectedEntry]);
 
   const handleRefreshAll = () => {
     void refetchWallet();
     void refetchLedger();
   };
+
+  const isRefreshing = walletLoading || ledgerLoading;
+  const isWalletError = walletStatus === "error" || walletStatus === "unavailable" || Boolean(walletError);
 
   return (
     <>
@@ -87,23 +161,28 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
 
             {/* Slide-in Drawer */}
             <motion.aside
+              ref={drawerRef}
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 320, damping: 30 }}
               role="dialog"
               aria-modal="true"
-              aria-label="Coin Wallet and Ledger"
+              aria-labelledby="wallet-drawer-title"
+              aria-describedby="wallet-drawer-subtitle"
               className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-[#FAF8F5] dark:bg-[#0D121F] border-l border-amber-600/20 dark:border-amber-400/15 shadow-2xl flex flex-col font-sans text-ink-hi dark:text-text-hi"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-black/10 dark:border-white/10 bg-white/50 dark:bg-black/20 backdrop-blur-sm">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
                     <Wallet className="w-5 h-5" aria-hidden="true" />
                   </div>
                   <div>
-                    <h2 className="text-base font-extrabold text-ink-hi dark:text-text-hi flex items-center gap-2">
+                    <h2
+                      id="wallet-drawer-title"
+                      className="text-base font-extrabold text-ink-hi dark:text-text-hi flex items-center gap-2"
+                    >
                       Coin Wallet
                       {isMember && (
                         <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
@@ -111,7 +190,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                         </span>
                       )}
                     </h2>
-                    <span className="text-[11px] text-ink-lo dark:text-text-lo">
+                    <span id="wallet-drawer-subtitle" className="text-[11px] text-ink-lo dark:text-text-lo">
                       Server-Authoritative Ledger
                     </span>
                   </div>
@@ -122,15 +201,19 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                     type="button"
                     onClick={handleRefreshAll}
                     aria-label="Refresh wallet data"
-                    className="p-2 rounded-full text-ink-lo hover:text-ink-hi dark:text-text-lo dark:hover:text-text-hi hover:bg-black/5 dark:hover:bg-white/5 transition"
+                    disabled={isRefreshing}
+                    className="p-2 rounded-full text-ink-lo hover:text-ink-hi dark:text-text-lo dark:hover:text-text-hi hover:bg-black/5 dark:hover:bg-white/5 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw
+                      className={`w-4 h-4 ${isRefreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
+                    />
                   </button>
                   <button
+                    ref={closeButtonRef}
                     type="button"
                     onClick={onClose}
                     aria-label="Close wallet drawer"
-                    className="p-2 rounded-full text-ink-lo hover:text-ink-hi dark:text-text-lo dark:hover:text-text-hi hover:bg-black/5 dark:hover:bg-white/5 transition"
+                    className="p-2 rounded-full text-ink-lo hover:text-ink-hi dark:text-text-lo dark:hover:text-text-hi hover:bg-black/5 dark:hover:bg-white/5 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -154,9 +237,37 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
 
                   {walletLoading ? (
                     <EconomySkeleton variant="wallet" className="my-2" />
-                  ) : walletError ? (
-                    <div className="py-2 text-xs text-red-600 dark:text-red-400">
-                      {walletError}
+                  ) : isWalletError ? (
+                    <div className="my-2 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-ink-hi dark:text-text-hi space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-red-600 dark:text-red-400">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span>Wallet Unavailable</span>
+                      </div>
+                      <p className="text-xs text-ink-mid dark:text-text-mid">
+                        {walletError || "Unable to retrieve server-authoritative balance. Please check your connection."}
+                      </p>
+                      {correlationId && (
+                        <div className="text-[10px] font-mono text-ink-lo dark:text-text-lo bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-md inline-block">
+                          Ref: {correlationId}
+                        </div>
+                      )}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={handleRefreshAll}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-300 text-xs font-bold transition active:scale-95 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>Retry Connection</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : balance === "0" ? (
+                    <div className="my-1">
+                      <CoinAmount amount="0" size="hero" className="font-black text-ink-hi dark:text-text-hi" />
+                      <p className="mt-1.5 text-[11px] text-ink-lo dark:text-text-lo">
+                        Your wallet balance is 0. Play matches or redeem a reward voucher to earn coins.
+                      </p>
                     </div>
                   ) : (
                     <div className="my-1">
@@ -165,11 +276,11 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                   )}
 
                   {/* Actions & Vouchers */}
-                  <div className="mt-4 pt-3 border-t border-black/10 dark:border-white/10 flex items-center justify-between">
+                  <div className="mt-4 pt-3 border-t border-black/10 dark:border-white/10 flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => setVoucherModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs shadow-md transition active:scale-95 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs shadow-md transition active:scale-95 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
                     >
                       <Ticket className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>Redeem Voucher</span>
@@ -183,7 +294,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                 </div>
 
                 {/* Lifetime Stats */}
-                {wallet && (
+                {wallet && !isWalletError && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-center">
                       <span className="text-[10px] text-ink-lo dark:text-text-lo block">Granted</span>
@@ -191,15 +302,27 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                     </div>
                     <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-center">
                       <span className="text-[10px] text-ink-lo dark:text-text-lo block">Earned</span>
-                      <CoinAmount amount={wallet.lifetimeEarned} size="sm" className="font-bold text-xs text-emerald-700 dark:text-emerald-400" />
+                      <CoinAmount
+                        amount={wallet.lifetimeEarned}
+                        size="sm"
+                        className="font-bold text-xs text-emerald-700 dark:text-emerald-400"
+                      />
                     </div>
                     <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-center">
                       <span className="text-[10px] text-ink-lo dark:text-text-lo block">Spent</span>
-                      <CoinAmount amount={wallet.lifetimeSpent} size="sm" className="font-bold text-xs text-amber-700 dark:text-amber-400" />
+                      <CoinAmount
+                        amount={wallet.lifetimeSpent}
+                        size="sm"
+                        className="font-bold text-xs text-amber-700 dark:text-amber-400"
+                      />
                     </div>
                     <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-center">
                       <span className="text-[10px] text-ink-lo dark:text-text-lo block">Refunded</span>
-                      <CoinAmount amount={wallet.lifetimeRefunded} size="sm" className="font-bold text-xs text-pink-700 dark:text-pink-400" />
+                      <CoinAmount
+                        amount={wallet.lifetimeRefunded}
+                        size="sm"
+                        className="font-bold text-xs text-pink-700 dark:text-pink-400"
+                      />
                     </div>
                   </div>
                 )}
@@ -219,13 +342,26 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                       <EconomySkeleton variant="generic" className="h-16" count={3} />
                     </div>
                   ) : ledgerError ? (
-                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400 text-center">
-                      {ledgerError}
+                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400 text-center space-y-2">
+                      <p>{ledgerError}</p>
+                      <button
+                        type="button"
+                        onClick={() => void refetchLedger()}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-300 text-xs font-bold transition active:scale-95 cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Retry Ledger</span>
+                      </button>
                     </div>
                   ) : entries.length === 0 ? (
-                    <div className="p-6 rounded-2xl bg-black/5 dark:bg-white/5 text-center space-y-1">
-                      <p className="text-xs font-semibold text-ink-mid dark:text-text-mid">No Transactions Yet</p>
-                      <p className="text-[11px] text-ink-lo dark:text-text-lo">Your match entries and rewards will appear here.</p>
+                    <div className="p-6 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-center space-y-2">
+                      <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                        <AshthaKonaCoinIcon size={20} />
+                      </div>
+                      <p className="text-xs font-bold text-ink-hi dark:text-text-hi">No Transactions Yet</p>
+                      <p className="text-[11px] text-ink-lo dark:text-text-lo max-w-xs mx-auto">
+                        Your match fees, victory payouts, and redeemed vouchers will appear in this ledger.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -303,7 +439,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                         <button
                           type="button"
                           onClick={() => setSelectedEntry(null)}
-                          className="p-1 rounded-full text-ink-lo hover:text-ink-hi dark:text-text-lo dark:hover:text-text-hi"
+                          className="p-1 rounded-full text-ink-lo hover:text-ink-hi dark:text-text-lo dark:hover:text-text-hi focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -316,7 +452,11 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                         </div>
                         <div className="flex justify-between py-1 border-b border-black/5 dark:border-white/5">
                           <span className="text-ink-lo dark:text-text-lo">Amount:</span>
-                          <CoinDelta delta={selectedEntry.amount} type={mapEntryToDeltaType(selectedEntry.entryType).type} size="sm" />
+                          <CoinDelta
+                            delta={selectedEntry.amount}
+                            type={mapEntryToDeltaType(selectedEntry.entryType).type}
+                            size="sm"
+                          />
                         </div>
                         <div className="flex justify-between py-1 border-b border-black/5 dark:border-white/5">
                           <span className="text-ink-lo dark:text-text-lo">Balance Before:</span>
@@ -333,7 +473,9 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                         {selectedEntry.sourceId && (
                           <div className="flex justify-between py-1 border-b border-black/5 dark:border-white/5">
                             <span className="text-ink-lo dark:text-text-lo">Source ID:</span>
-                            <span className="font-mono text-ink-hi dark:text-text-hi truncate max-w-[160px]">{selectedEntry.sourceId}</span>
+                            <span className="font-mono text-ink-hi dark:text-text-hi truncate max-w-[160px]">
+                              {selectedEntry.sourceId}
+                            </span>
                           </div>
                         )}
                         <div className="pt-1 text-[11px] text-ink-lo dark:text-text-lo">

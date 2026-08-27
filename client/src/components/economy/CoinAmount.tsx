@@ -6,9 +6,10 @@ export interface CoinAmountProps {
   /**
    * Canonical decimal string representing the coin amount (e.g. "5000", "9007199254740993").
    * Strictly strings only — never accepts numbers or floating-point primitives to ensure
-   * zero precision loss across 64-bit BigInt boundaries.
+   * zero precision loss across 64-bit BigInt boundaries. `null`/`undefined` renders as
+   * "---" (`formatCoinString`'s "unavailable" case) rather than a misleading "0".
    */
-  amount: string;
+  amount: string | null | undefined;
   size?: CoinAmountSize;
   showIcon?: boolean;
   iconPosition?: "left" | "right";

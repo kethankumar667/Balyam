@@ -111,7 +111,7 @@ export default function WhatAreWePlayingSection({
                     <button
                       type="button"
                       onClick={() => onSelectGame(g.slug)}
-                      className="hover:underline text-left flex w-full min-h-[44px] items-center gap-1.5 transition-colors cursor-pointer group/btn"
+                      className="hover:underline text-left flex w-full min-h-[44px] items-center gap-1.5 transition-colors cursor-pointer group/btn focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 rounded-md px-1"
                     >
                       <span className="opacity-60 group-hover/btn:opacity-100 text-amber-500">•</span>
                       <span>{g.name}</span>
@@ -229,7 +229,7 @@ export default function WhatAreWePlayingSection({
           <button
             type="button"
             onClick={onOpenCreateRoom}
-            className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#047857] hover:bg-[#065F46] active:scale-95 text-white font-extrabold text-sm sm:text-[14px] shadow-md transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
+            className="w-full sm:w-auto px-6 py-3 min-h-[44px] rounded-2xl bg-[#047857] hover:bg-[#065F46] active:scale-95 text-white font-extrabold text-sm sm:text-[14px] shadow-md transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0E1527]"
           >
             <Plus className="w-4.5 h-4.5" />
             <span>Create Room</span>

@@ -98,9 +98,9 @@ export function Hero({
               <button
                 type="button"
                 onClick={onOpenJoin}
-                className="w-full sm:w-auto py-3.5 px-6 sm:px-8 rounded-full flex items-center justify-center gap-2.5 font-black text-[15px] sm:text-[16px] bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 shadow-lg active:scale-95 transition cursor-pointer flex-shrink-0 min-h-[48px]"
+                className="w-full sm:w-auto py-3.5 px-6 sm:px-8 rounded-full flex items-center justify-center gap-2.5 font-black text-[15px] sm:text-[16px] bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-lg shadow-amber-950/20 active:scale-98 hover:shadow-xl transition-all cursor-pointer flex-shrink-0 min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0A0F1D]"
               >
-                <DoorOpen className="w-5 h-5 text-stone-950" />
+                <DoorOpen className="w-5 h-5 text-stone-950 shrink-0" aria-hidden="true" />
                 <span>Join Room with a code</span>
               </button>
               <span className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-[#6E5D4E]"}`}>

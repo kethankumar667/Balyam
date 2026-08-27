@@ -89,27 +89,43 @@ describe("Economy V1 Presentational Components Suite", () => {
   // ── 3. WalletBalanceChip ─────────────────────────────────────────────────
 
   describe("WalletBalanceChip", () => {
-    it("renders balance string and responds to keyboard Enter and Space", () => {
+    it("renders verified positive balance string as an interactive button with accessible label", () => {
       const onClick = vi.fn();
       render(<WalletBalanceChip balance="5000" onClick={onClick} isMember={true} />);
 
       const chip = screen.getByRole("button");
-      expect(chip.getAttribute("tabindex")).toBe("0");
       expect(screen.getByText("5,000")).toBeDefined();
       expect(screen.getByText("VIP")).toBeDefined();
+      expect(chip.getAttribute("aria-label")).toContain("5000 coins");
 
-      fireEvent.keyDown(chip, { key: "Enter" });
+      fireEvent.click(chip);
       expect(onClick).toHaveBeenCalledTimes(1);
-
-      fireEvent.keyDown(chip, { key: " " });
-      expect(onClick).toHaveBeenCalledTimes(2);
     });
 
-    it("renders loading skeleton with aria-busy", () => {
+    it("renders verified zero balance truthfully", () => {
+      render(<WalletBalanceChip balance="0" isMember={false} />);
+      expect(screen.getByText("0")).toBeDefined();
+      expect(screen.getByRole("status").getAttribute("aria-label")).toContain("0 coins");
+    });
+
+    it("renders unavailable/error state as non-numeric dashes instead of zero", () => {
+      render(<WalletBalanceChip balance={null} syncStatus="error" onClick={() => {}} />);
+      expect(screen.getByText("---")).toBeDefined();
+      expect(screen.queryByText("0")).toBeNull();
+      const btn = screen.getByRole("button");
+      expect(btn.getAttribute("aria-label")).toContain("Coin balance unavailable");
+    });
+
+    it("renders loading skeleton with aria-busy without displaying numeric digits", () => {
       render(<WalletBalanceChip balance="0" isLoading={true} />);
       const skeleton = screen.getByLabelText("Loading coin balance");
       expect(skeleton).toBeDefined();
       expect(skeleton.querySelector("[aria-busy='true']")).not.toBeNull();
+    });
+
+    it("renders large 64-bit BigInt balance without truncation", () => {
+      render(<WalletBalanceChip balance="9223372036854775807" isMember={true} />);
+      expect(screen.getByText("9,223,372,036,854,775,807")).toBeDefined();
     });
   });
 

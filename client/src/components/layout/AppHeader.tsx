@@ -60,7 +60,13 @@ export default function AppHeader({
   const { isMember, isSuperAdmin, capabilities } = useAuthStore();
   const { favourites } = useFavourites();
   const { recentItems } = useRecentlyPlayed();
-  const { balance, isLoading: walletLoading } = useWallet();
+  const { balance, isLoading: walletLoading, status: walletStatus } = useWallet();
+  const walletSyncStatus =
+    walletStatus === "error" || walletStatus === "unavailable"
+      ? "error"
+      : walletLoading && walletStatus !== "loading"
+        ? "syncing"
+        : "synced";
   const displayName = playerName.trim() || (isSuperAdmin ? "Super Admin" : isMember ? "Member" : "Guest");
 
   const isGamesActive = pathname.startsWith("/games");
@@ -182,6 +188,7 @@ export default function AppHeader({
             <WalletBalanceChip
               balance={balance}
               isLoading={walletLoading}
+              syncStatus={walletSyncStatus}
               isMember={isMember}
               onClick={onOpenWallet}
             />
@@ -212,7 +219,8 @@ export default function AppHeader({
                 className="relative min-h-[44px] min-w-[44px] w-11 md:w-auto flex items-center gap-0 md:gap-2.5 px-0 md:px-3
                            justify-center rounded-full border transition-colors cursor-pointer flex-shrink-0
                            bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink)]
-                           hover:bg-[var(--chrome-control-hi)]"
+                           hover:bg-[var(--chrome-control-hi)] focus-visible:outline-hidden focus-visible:ring-2
+                           focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111927]"
               >
                 <div className="relative w-7 h-7 rounded-full overflow-hidden border border-[var(--chrome-border)] flex items-center justify-center flex-shrink-0 bg-[var(--chrome-active-bg)]">
                   <SeatAvatar

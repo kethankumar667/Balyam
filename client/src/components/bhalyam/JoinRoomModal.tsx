@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
+import { currentGuestToken } from "../../lib/playerIdentity";
 import SignInWall from "../auth/SignInWall";
 import Modal from "../Modal";
 import { ArrowRightIcon } from "./icons";
@@ -164,6 +165,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
           avatar: avatarId ?? undefined,
           accountKind: currentAccountKind(),
           accessToken: currentAccessToken(),
+          guestToken: currentGuestToken(),
           ...(seatFor(c) ?? {}),
         },
         (timeoutErr: unknown, res: JoinAck) => {

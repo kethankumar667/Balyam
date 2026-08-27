@@ -99,6 +99,118 @@ describe("Economy V1 UI Integration Suite", () => {
         expect(screen.getByText("Starter Grant")).toBeDefined();
       });
     });
+
+    it("conforms to WCAG 2.1 AA dialog accessibility (labelledby, describedby, escape, and modal semantics)", async () => {
+      const onClose = vi.fn();
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          wallet: {
+            identityId: "user-123",
+            identityKind: "member",
+            balance: "5000",
+            version: 1,
+            lifetimeGranted: "5000",
+            lifetimeEarned: "0",
+            lifetimeSpent: "0",
+            lifetimeRefunded: "0",
+            starterGranted: true,
+            isFrozen: false,
+            updatedAt: 1787700000000,
+          },
+        }),
+      } as Response);
+
+      const trigger = document.createElement("button");
+      document.body.appendChild(trigger);
+      trigger.focus();
+      expect(document.activeElement).toBe(trigger);
+
+      const { unmount } = render(
+        <MemoryRouter>
+          <WalletDrawer isOpen={true} onClose={onClose} />
+        </MemoryRouter>,
+      );
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.getAttribute("aria-modal")).toBe("true");
+      expect(dialog.getAttribute("aria-labelledby")).toBe("wallet-drawer-title");
+      expect(dialog.getAttribute("aria-describedby")).toBe("wallet-drawer-subtitle");
+      expect(screen.getByText("Coin Wallet").id).toBe("wallet-drawer-title");
+      expect(screen.getByText("Server-Authoritative Ledger").id).toBe("wallet-drawer-subtitle");
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      unmount();
+      expect(document.activeElement).toBe(trigger);
+      document.body.removeChild(trigger);
+    });
+
+    it("renders truthful error state with retry connection on fetch failure", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: "ServiceUnavailable",
+          message: "Database connection failed",
+          correlationId: "req-err-404",
+        }),
+      } as Response);
+
+      render(
+        <MemoryRouter>
+          <WalletDrawer isOpen={true} onClose={() => {}} />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Wallet Unavailable")).toBeDefined();
+        expect(screen.getByText("Retry Connection")).toBeDefined();
+        expect(screen.getByText("Ref: req-err-404")).toBeDefined();
+      });
+    });
+
+    it("renders truthful zero balance without displaying dashes or false errors", async () => {
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/api/economy/wallet/ledger")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ entries: [], hasMore: false }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            wallet: {
+              identityId: "user-guest",
+              identityKind: "guest",
+              balance: "0",
+              version: 1,
+              lifetimeGranted: "0",
+              lifetimeEarned: "0",
+              lifetimeSpent: "0",
+              lifetimeRefunded: "0",
+              starterGranted: false,
+              isFrozen: false,
+              updatedAt: 1787700000000,
+            },
+          }),
+        } as Response);
+      });
+
+      render(
+        <MemoryRouter>
+          <WalletDrawer isOpen={true} onClose={() => {}} />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText(/Your wallet balance is 0/i)).toBeDefined();
+        expect(screen.getByText("No Transactions Yet")).toBeDefined();
+      });
+    });
   });
 
   // ── 3. CheckoutSheet Experience ─────────────────────────────────────────

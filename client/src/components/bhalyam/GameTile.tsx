@@ -124,14 +124,14 @@ export const GameTile = memo(function GameTile({
         aria-disabled={!isAvailable}
         className={`group relative flex items-center justify-between p-3 rounded-2xl bg-[var(--auth-card)] border border-[var(--auth-card-edge)] transition-all duration-300 select-none ${
           isAvailable
-            ? "hover:border-amber-500/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:scale-[0.98]"
+            ? "hover:border-amber-500/70 hover:shadow-md hover:-translate-y-0.5 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0A0F1D] active:scale-[0.98] motion-reduce:hover:transform-none"
             : "opacity-60 cursor-not-allowed"
         } ${className}`}
       >
         <div className="flex items-center gap-3 min-w-0">
           {/* Compact Mini Artwork */}
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm relative overflow-hidden"
+            className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs relative overflow-hidden"
             style={{
               background: `linear-gradient(135deg, ${game.accent.from}, ${game.accent.to})`,
             }}
@@ -159,12 +159,12 @@ export const GameTile = memo(function GameTile({
             </div>
             <div className="flex items-center gap-2 text-[11px] font-mono text-[var(--auth-ink-soft)] mt-0.5">
               <span className="flex items-center gap-1">
-                <Users className="w-3 h-3" />
+                <Users className="w-3 h-3 text-amber-500" />
                 {game.minPlayers === game.maxPlayers ? game.minPlayers : `${game.minPlayers}–${game.maxPlayers}`}
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
+                <Clock className="w-3 h-3 text-sky-500" />
                 {game.playTime.split(" ")[0]}
               </span>
             </div>
@@ -178,7 +178,7 @@ export const GameTile = memo(function GameTile({
               type="button"
               onClick={handleFavoriteClick}
               aria-label={isFavorite ? `Remove ${game.name} from favorites` : `Add ${game.name} to favorites`}
-              className={`p-2 rounded-xl transition min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer ${
+              className={`p-2.5 rounded-xl transition min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 isFavorite
                   ? "text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"
                   : "text-[var(--auth-ink-soft)] hover:text-rose-500 hover:bg-black/5 dark:hover:bg-white/5"
@@ -188,7 +188,7 @@ export const GameTile = memo(function GameTile({
             </button>
           )}
 
-          <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-stone-950 flex items-center justify-center transition-colors">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-stone-950 flex items-center justify-center transition-all shadow-2xs">
             <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
           </div>
         </div>
@@ -208,7 +208,7 @@ export const GameTile = memo(function GameTile({
         aria-disabled={!isAvailable}
         className={`group relative rounded-3xl bg-[var(--auth-card)] border border-[var(--auth-card-edge)] overflow-hidden transition-all duration-300 select-none flex flex-col justify-between ${
           isAvailable
-            ? "hover:border-amber-500/70 hover:shadow-xl hover:-translate-y-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:scale-[0.99]"
+            ? "hover:border-amber-500/70 hover:shadow-xl hover:-translate-y-1 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0A0F1D] active:scale-[0.99] motion-reduce:hover:transform-none"
             : "opacity-60 cursor-not-allowed"
         } ${className}`}
       >
@@ -242,7 +242,7 @@ export const GameTile = memo(function GameTile({
                 type="button"
                 onClick={handleFavoriteClick}
                 aria-label={isFavorite ? `Remove ${game.name} from favorites` : `Add ${game.name} to favorites`}
-                className={`p-2 rounded-full backdrop-blur-md transition min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer border ${
+                className={`p-2.5 rounded-full backdrop-blur-md transition min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer border focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 ${
                   isFavorite
                     ? "bg-rose-500/25 border-rose-500/50 text-rose-400"
                     : "bg-black/30 border-white/10 text-white/80 hover:text-rose-400 hover:bg-black/50"
@@ -254,7 +254,7 @@ export const GameTile = memo(function GameTile({
           </div>
 
           {/* Main Iconic Glyph */}
-          <div className="relative transform group-hover:scale-110 transition-transform duration-500 z-10 flex flex-col items-center">
+          <div className="relative transform group-hover:scale-110 transition-transform duration-500 z-10 flex flex-col items-center motion-reduce:transform-none">
             <GameGlyph id={game.id} className="w-20 h-20 sm:w-24 sm:h-24 drop-shadow-[0_10px_20px_rgba(0,0,0,0.4)]" />
           </div>
 
@@ -285,7 +285,7 @@ export const GameTile = memo(function GameTile({
               </p>
             </div>
 
-            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0 shadow-md group-hover:bg-amber-400 transition-transform group-hover:scale-105">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0 shadow-md group-hover:bg-amber-400 transition-transform group-hover:scale-105 motion-reduce:transform-none">
               <Play className="w-4 h-4 fill-current ml-0.5" />
             </div>
           </div>
@@ -324,7 +324,7 @@ export const GameTile = memo(function GameTile({
       aria-disabled={!isAvailable}
       className={`group relative rounded-3xl bg-[var(--auth-card)] border border-[var(--auth-card-edge)] overflow-hidden transition-all duration-300 select-none flex flex-col justify-between ${
         isAvailable
-          ? "hover:border-amber-500/70 hover:shadow-lg hover:-translate-y-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:scale-[0.98]"
+          ? "hover:border-amber-500/70 hover:shadow-lg hover:-translate-y-1 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0A0F1D] active:scale-[0.98] motion-reduce:hover:transform-none"
           : "opacity-65 cursor-not-allowed"
       } ${className}`}
     >
@@ -365,19 +365,19 @@ export const GameTile = memo(function GameTile({
               type="button"
               onClick={handleFavoriteClick}
               aria-label={isFavorite ? `Remove ${game.name} from favorites` : `Add ${game.name} to favorites`}
-              className={`p-2 rounded-full backdrop-blur-md transition min-w-[34px] min-h-[34px] flex items-center justify-center cursor-pointer border ${
+              className={`p-2.5 rounded-full backdrop-blur-md transition min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer border focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 isFavorite
                   ? "bg-rose-500/25 border-rose-500/50 text-rose-400"
                   : "bg-black/30 border-white/10 text-white/80 hover:text-rose-400 hover:bg-black/50"
               }`}
             >
-              <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-current" : ""}`} />
+              <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
             </button>
           )}
         </div>
 
         {/* Center Artwork Glyph */}
-        <div className="relative transform group-hover:scale-110 transition-transform duration-300 z-10">
+        <div className="relative transform group-hover:scale-110 transition-transform duration-300 z-10 motion-reduce:transform-none">
           <GameGlyph id={game.id} className="w-16 h-16 sm:w-18 sm:h-18 drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)]" />
         </div>
 

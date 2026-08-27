@@ -3,6 +3,7 @@ import { Trophy, RefreshCw, AlertCircle, ShieldAlert, Award, Landmark, RotateCcw
 import { CoinAmount } from "./CoinAmount";
 import { EconomySkeleton } from "./EconomySkeleton";
 import { EconomyStatusBanner } from "./EconomyStatusBanner";
+import { RefundSequence, SettlementSequence } from "./motion";
 import { getMatchSettlement, type MatchEconomySettlementRecord, EconomyClientError } from "../../lib/economyApi";
 
 export interface SettlementViewProps {
@@ -88,18 +89,15 @@ export const SettlementView: React.FC<SettlementViewProps> = ({
 
   if (settlement.status === "REFUNDED") {
     return (
-      <div className={`p-5 rounded-3xl border border-pink-500/30 bg-pink-500/10 font-sans space-y-3 ${className}`}>
-        <div className="flex items-center gap-2 text-pink-700 dark:text-pink-400">
-          <RotateCcw className="w-5 h-5" aria-hidden="true" />
-          <h3 className="text-base font-bold">Match Entry Refunded</h3>
-        </div>
-        <p className="text-xs text-ink-lo dark:text-text-lo leading-relaxed">
-          {settlement.refundReason || "The match was refunded to the host wallet."}
-        </p>
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/40 dark:bg-black/20">
-          <span className="text-xs font-semibold text-ink-mid dark:text-text-mid">Total Refunded</span>
-          <CoinAmount amount={settlement.totalRefunded} size="md" className="font-bold text-pink-700 dark:text-pink-400" />
-        </div>
+      <div className={`space-y-4 ${className}`}>
+        <RefundSequence
+          payload={{
+            sequenceId: `settlement-refund-${settlement.matchId}`,
+            matchId: settlement.matchId,
+            refundAmount: settlement.totalRefunded,
+            reason: settlement.refundReason || "The match was refunded to the host wallet.",
+          }}
+        />
       </div>
     );
   }
@@ -119,7 +117,24 @@ export const SettlementView: React.FC<SettlementViewProps> = ({
         </span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+      <SettlementSequence
+        payload={{
+          sequenceId: `settlement-payout-${settlement.matchId}`,
+          matchId: settlement.matchId,
+          totalPotAmount: settlement.totalCollected,
+          winners: [
+            {
+              playerId: "winner-authoritative",
+              name: "Match Winner",
+              payoutAmount: settlement.totalWalletRewarded,
+              isSelf: false,
+            },
+          ],
+          worldBankFeeAmount: settlement.totalWorldBankCut,
+        }}
+      />
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-sans">
         <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
           <span className="text-[10px] text-ink-lo dark:text-text-lo block">Total Pot</span>
           <CoinAmount amount={settlement.totalCollected} size="sm" className="font-bold" />
