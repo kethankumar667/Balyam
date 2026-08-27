@@ -25,6 +25,7 @@ import { authRouter } from "./auth/AuthController.js";
 import { guestTokenDurability } from "./auth/guestToken.js";
 import { initialiseProgressionStore, persistenceStatus } from "./persistence/index.js";
 import { initialiseEconomyStore, economyStoreStatus } from "./economy/index.js";
+import { createEconomyRouter } from "./economy/EconomyController.js";
 import type { EconomyService } from "./economy/EconomyService.js";
 import { hydrateProgression } from "./persistence/hydrate.js";
 import { progressionSync } from "./persistence/ProgressionSync.js";
@@ -216,6 +217,22 @@ try {
 }
 
 const roomManager = new RoomManager(io, economyService);
+
+/**
+ * Economy V1's HTTP surface (wallet, ledger, checkout, vouchers,
+ * settlements — see EconomyController.ts). Built and fully tested in
+ * Phase 6 via its own `startTestServer` harness, but never actually
+ * mounted onto the real app — every `/api/economy/*` request in
+ * production was falling through to Express's default 404 with no route
+ * registered at all. Guarded on `economyService` being defined for the
+ * same reason `RoomManager`'s constructor takes it as optional: a
+ * deployment with no economy store configured (dev, no service-role key)
+ * still boots, just without this surface, exactly like `/health`'s
+ * `economy` block already tolerates.
+ */
+if (economyService) {
+  app.use("/api/economy", createEconomyRouter(economyService));
+}
 
 /**
  * Operational surface. The gate lives ON this router (see
