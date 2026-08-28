@@ -25,7 +25,7 @@ interface WorldBankTabProps {
 export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
   if (isLoading && !worldBank) {
     return (
-      <div className="space-y-6">
+      <div role="status" aria-label="Loading World Bank reserves" className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <EconomySkeleton variant="generic" className="h-32" count={6} />
         </div>
@@ -35,7 +35,10 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
 
   if (!worldBank) {
     return (
-      <div className="p-12 text-center text-xs text-[var(--chrome-ink-soft)] bg-[var(--chrome-panel)] rounded-2xl border border-[var(--chrome-border)]">
+      <div
+        role="status"
+        className="p-12 text-center text-xs text-[var(--chrome-ink-soft)] bg-[var(--chrome-panel)] rounded-2xl border border-[var(--chrome-border)]"
+      >
         World Bank snapshot unavailable.
       </div>
     );
@@ -48,7 +51,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
-              <Landmark className="w-6 h-6" />
+              <Landmark className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] block">
@@ -62,14 +65,14 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" />
+              <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Solvency Fully Guaranteed</span>
             </span>
           </div>
         </div>
 
         <div className="pt-2 border-t border-[var(--chrome-hairline)] grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
+          <div className="min-w-0">
             <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase block">
               Treasury Reserve Balance
             </span>

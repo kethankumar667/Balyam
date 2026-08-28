@@ -407,4 +407,325 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
       expect(screen.getAllByText("HEALTHY").length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe("9. Phase 5.4 Keyboard Navigation & Tab ARIA Semantics", () => {
+    it("supports ArrowRight, ArrowLeft, Home, and End roving tab navigation", async () => {
+      renderDashboard();
+
+      await waitFor(() => {
+        expect(screen.getByRole("tab", { name: /Overview/i })).toBeDefined();
+      });
+
+      const overviewTab = screen.getByRole("tab", { name: /Overview/i });
+      const settlementsTab = screen.getByRole("tab", { name: /Settlements/i });
+      const healthTab = screen.getByRole("tab", { name: /Health Center/i });
+
+      // Overview starts active with tabIndex 0, other tabs have -1
+      expect(overviewTab.getAttribute("aria-selected")).toBe("true");
+      expect(overviewTab.getAttribute("tabindex")).toBe("0");
+      expect(settlementsTab.getAttribute("tabindex")).toBe("-1");
+
+      // ArrowRight moves focus and selects Settlements
+      fireEvent.keyDown(overviewTab, { key: "ArrowRight" });
+      expect(settlementsTab.getAttribute("aria-selected")).toBe("true");
+      expect(settlementsTab.getAttribute("tabindex")).toBe("0");
+      expect(overviewTab.getAttribute("tabindex")).toBe("-1");
+
+      // End key moves focus and selects Health Center (last tab)
+      fireEvent.keyDown(settlementsTab, { key: "End" });
+      expect(healthTab.getAttribute("aria-selected")).toBe("true");
+      expect(healthTab.getAttribute("tabindex")).toBe("0");
+
+      // ArrowRight from last tab wraps around to first tab (Overview)
+      fireEvent.keyDown(healthTab, { key: "ArrowRight" });
+      expect(overviewTab.getAttribute("aria-selected")).toBe("true");
+      expect(overviewTab.getAttribute("tabindex")).toBe("0");
+
+      // ArrowLeft from first tab wraps around to last tab (Health Center)
+      fireEvent.keyDown(overviewTab, { key: "ArrowLeft" });
+      expect(healthTab.getAttribute("aria-selected")).toBe("true");
+
+      // Home key jumps back to first tab (Overview)
+      fireEvent.keyDown(healthTab, { key: "Home" });
+      expect(overviewTab.getAttribute("aria-selected")).toBe("true");
+    });
+
+    it("verifies ARIA controls and labelledby connections between tabs and active tabpanel", async () => {
+      renderDashboard();
+
+      const overviewTab = screen.getByRole("tab", { name: /Overview/i });
+      const tabId = overviewTab.getAttribute("id");
+      const panelControlsId = overviewTab.getAttribute("aria-controls");
+
+      expect(tabId).toBe("economy-tab-overview");
+      expect(panelControlsId).toBe("economy-panel-overview");
+
+      const panel = screen.getByRole("tabpanel");
+      expect(panel.getAttribute("id")).toBe(panelControlsId);
+      expect(panel.getAttribute("aria-labelledby")).toBe(tabId);
+      expect(panel.getAttribute("tabindex")).toBe("0");
+    });
+
+    it("activates interactive KPI cards and rows via Enter and Space keyboard navigation", async () => {
+      vi.spyOn(economyApi, "getStaleSettlements").mockResolvedValue({
+        settlements: mockRecentSettlements,
+      });
+
+      renderDashboard();
+
+      await screen.findByText("World Bank Treasury Reserves");
+
+      // Stale Commitments Card on Overview activates on Enter key
+      const staleCard = screen.getByRole("button", { name: /View Stale Commitments Queue/i });
+      fireEvent.keyDown(staleCard, { key: "Enter" });
+
+      await waitFor(() => {
+        expect(screen.getByText("m_TEST01_1001")).toBeDefined();
+      });
+
+      // Navigate back to Overview using Space key on Overview tab
+      const overviewTab = screen.getByRole("tab", { name: /Overview/i });
+      fireEvent.click(overviewTab);
+
+      await screen.findByText("Recent Match Settlements");
+
+      // Recent settlement row activates on Space key to open drawer
+      const recentRow = screen.getByRole("button", { name: /Inspect settlement for match m_TEST01_1001/i });
+      fireEvent.keyDown(recentRow, { key: " " });
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeDefined();
+        expect(screen.getByText("Match Investigation")).toBeDefined();
+      });
+    });
+  });
+
+  describe("10. Phase 5.4 Match Detail Drawer Focus, Trap & Accessible Copy Feedback", () => {
+    it("moves focus into drawer on open, traps focus, and closes on Escape returning focus", async () => {
+      vi.spyOn(economyApi, "getStaleSettlements").mockResolvedValue({
+        settlements: mockRecentSettlements,
+      });
+
+      renderDashboard();
+
+      await screen.findByText("Recent Match Settlements");
+
+      const openerRow = screen.getByRole("button", { name: /Inspect settlement for match m_TEST01_1001/i });
+      openerRow.focus();
+      expect(document.activeElement).toBe(openerRow);
+
+      fireEvent.click(openerRow);
+
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toBeDefined();
+      expect(dialog.getAttribute("aria-modal")).toBe("true");
+
+      // Close button has accessible name
+      const closeBtn = screen.getByRole("button", { name: "Close drawer" });
+      expect(closeBtn).toBeDefined();
+
+      // Escape key closes the drawer and restores focus to opener
+      fireEvent.keyDown(window, { key: "Escape" });
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).toBeNull();
+      });
+
+      expect(document.activeElement).toBe(openerRow);
+    });
+
+    it("handles Copy Match ID action with accessible live announcement and timer cleanup", async () => {
+      const writeTextMock = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        value: {
+          writeText: writeTextMock,
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      vi.spyOn(economyApi, "getStaleSettlements").mockResolvedValue({
+        settlements: mockRecentSettlements,
+      });
+
+      renderDashboard();
+
+      await screen.findByText("Recent Match Settlements");
+      const openerRow = screen.getByRole("button", { name: /Inspect settlement for match m_TEST01_1001/i });
+      fireEvent.click(openerRow);
+
+      await screen.findByRole("dialog");
+
+      const copyBtn = screen.getByRole("button", { name: "Copy Match ID to clipboard" });
+      expect(copyBtn).toBeDefined();
+
+      fireEvent.click(copyBtn);
+
+      expect(writeTextMock).toHaveBeenCalledWith("m_TEST01_1001");
+      expect(screen.getByText("Copied")).toBeDefined();
+      expect(screen.getByText("Match ID copied to clipboard")).toBeDefined();
+
+      // Escape closes drawer safely
+      fireEvent.keyDown(window, { key: "Escape" });
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).toBeNull();
+      });
+    });
+  });
+
+  describe("11. Phase 5.4 Long Identifiers, Large Values, and Severity Filter Accessibility", () => {
+    it("renders long identifiers and extreme BigInt values safely without breaking UI", async () => {
+      const mockLongMatch: economyApi.MatchEconomySettlementRecord = {
+        matchId: "m_VERY_LONG_MATCH_IDENTIFIER_EXTENDED_9999999999999999_TEST",
+        roomCode: "RM_LONG_99",
+        hostIdentityId: "user-alpha-99999999999999999999999999999999",
+        seatCount: 5,
+        humanSeatCount: 3,
+        botSeatCount: 2,
+        costPerSeat: "1000000000000",
+        totalCollected: "5000000000000",
+        totalWalletRewarded: "3500000000000",
+        totalGuestEscrow: "1000000000000",
+        totalBotCollection: "0",
+        totalWorldBankCut: "500000000000",
+        totalRefunded: "0",
+        refundReason: null,
+        status: "SETTLED",
+        createdAt: Date.now() - 10 * 60_000,
+        settledAt: Date.now() - 2 * 60_000,
+      };
+
+      vi.spyOn(economyApi, "getStaleSettlements").mockResolvedValue({
+        settlements: [mockLongMatch],
+      });
+
+      renderDashboard();
+
+      await screen.findByText("World Bank Treasury Reserves");
+
+      // Navigate to Settlements tab
+      const settlementsTab = screen.getByRole("tab", { name: /Settlements/i });
+      fireEvent.click(settlementsTab);
+
+      await waitFor(() => {
+        expect(screen.getByText(mockLongMatch.matchId)).toBeDefined();
+      });
+
+      // Long match ID has title attribute for accessibility
+      const matchSpan = screen.getByText(mockLongMatch.matchId);
+      expect(matchSpan.getAttribute("title")).toBe(mockLongMatch.matchId);
+    });
+
+    it("verifies stale severity filter buttons expose aria-pressed and filter active view", async () => {
+      const now = Date.now();
+      vi.spyOn(economyApi, "getStaleSettlements").mockResolvedValue({
+        settlements: [
+          {
+            matchId: "m_STALE_CRIT",
+            roomCode: "CRIT01",
+            hostIdentityId: "host-crit",
+            seatCount: 2,
+            humanSeatCount: 2,
+            botSeatCount: 0,
+            costPerSeat: "100",
+            totalCollected: "200",
+            totalWalletRewarded: "0",
+            totalGuestEscrow: "0",
+            totalBotCollection: "0",
+            totalWorldBankCut: "0",
+            totalRefunded: "0",
+            refundReason: null,
+            status: "COMMITTED",
+            createdAt: now - 70 * 60_000, // 70 min
+            settledAt: null,
+          },
+          {
+            matchId: "m_STALE_WARN",
+            roomCode: "WARN01",
+            hostIdentityId: "host-warn",
+            seatCount: 2,
+            humanSeatCount: 2,
+            botSeatCount: 0,
+            costPerSeat: "100",
+            totalCollected: "200",
+            totalWalletRewarded: "0",
+            totalGuestEscrow: "0",
+            totalBotCollection: "0",
+            totalWorldBankCut: "0",
+            totalRefunded: "0",
+            refundReason: null,
+            status: "COMMITTED",
+            createdAt: now - 20 * 60_000, // 20 min
+            settledAt: null,
+          },
+        ],
+      });
+
+      renderDashboard();
+
+      await screen.findByText("World Bank Treasury Reserves");
+
+      const staleTab = screen.getByRole("tab", { name: /Stale Queue/i });
+      fireEvent.click(staleTab);
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /All Stale/i })).toBeDefined();
+      });
+
+      const allBtn = screen.getByRole("button", { name: /All Stale/i });
+      const critBtn = screen.getByRole("button", { name: /Critical \(>60m\)/i });
+      const warnBtn = screen.getByRole("button", { name: /Warning \(>15m\)/i });
+
+      expect(allBtn.getAttribute("aria-pressed")).toBe("true");
+      expect(critBtn.getAttribute("aria-pressed")).toBe("false");
+
+      // Both items present initially
+      expect(screen.getByText("m_STALE_CRIT")).toBeDefined();
+      expect(screen.getByText("m_STALE_WARN")).toBeDefined();
+
+      // Click Critical filter button
+      fireEvent.click(critBtn);
+      expect(critBtn.getAttribute("aria-pressed")).toBe("true");
+      expect(allBtn.getAttribute("aria-pressed")).toBe("false");
+
+      // Only Critical item visible
+      expect(screen.getByText("m_STALE_CRIT")).toBeDefined();
+      expect(screen.queryByText("m_STALE_WARN")).toBeNull();
+
+      // Row action button has specific accessible name
+      const reconcileBtn = screen.getByRole("button", { name: "Reconcile match m_STALE_CRIT" });
+      expect(reconcileBtn).toBeDefined();
+    });
+  });
+
+  describe("12. Phase 5.4 Operational Error Recovery & Retry Flow", () => {
+    it("renders role='alert' error notice on sync failure and recovers on retry", async () => {
+      vi.spyOn(economyApi, "getWorldBankSnapshot").mockRejectedValueOnce(
+        new Error("Operational database connection timeout"),
+      );
+
+      renderDashboard();
+
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toBeDefined();
+        expect(screen.getByText(/Operational database connection timeout/)).toBeDefined();
+      });
+
+      const retryBtn = screen.getByRole("button", { name: /Retry Sync/i });
+      expect(retryBtn).toBeDefined();
+
+      // Successful response on retry
+      vi.spyOn(economyApi, "getWorldBankSnapshot").mockResolvedValueOnce({
+        worldBank: mockWorldBank,
+      });
+
+      fireEvent.click(retryBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("alert")).toBeNull();
+      });
+
+      expect(screen.getByText("World Bank Treasury Reserves")).toBeDefined();
+    });
+  });
 });

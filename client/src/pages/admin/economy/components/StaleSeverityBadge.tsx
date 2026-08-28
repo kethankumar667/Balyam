@@ -12,10 +12,12 @@ export function StaleSeverityBadge({ ageMs, className = "" }: StaleSeverityBadge
   if (minutes >= 60) {
     return (
       <span
+        role="status"
+        aria-label={`Stale commitment severity: CRITICAL (stuck for ${minutes} minutes, exceeds 60m threshold)`}
         className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/40 animate-pulse ${className}`}
         title={`Stuck for ${minutes}m (> 60m threshold) — Critical operator attention required`}
       >
-        <AlertCircle className="w-3 h-3" />
+        <AlertCircle className="w-3 h-3" aria-hidden="true" />
         <span>&gt;60m CRITICAL</span>
       </span>
     );
@@ -24,10 +26,12 @@ export function StaleSeverityBadge({ ageMs, className = "" }: StaleSeverityBadge
   if (minutes >= 15) {
     return (
       <span
+        role="status"
+        aria-label={`Stale commitment severity: WARNING (stuck for ${minutes} minutes, exceeds 15m threshold)`}
         className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40 ${className}`}
         title={`Stuck for ${minutes}m (> 15m threshold) — Elevated warning`}
       >
-        <AlertTriangle className="w-3 h-3" />
+        <AlertTriangle className="w-3 h-3" aria-hidden="true" />
         <span>&gt;15m WARNING</span>
       </span>
     );
@@ -36,10 +40,12 @@ export function StaleSeverityBadge({ ageMs, className = "" }: StaleSeverityBadge
   if (minutes >= 5) {
     return (
       <span
+        role="status"
+        aria-label={`Stale commitment severity: NOTICE (stuck for ${minutes} minutes, exceeds 5m threshold)`}
         className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-yellow-500/10 text-yellow-800 dark:text-yellow-300 border border-yellow-500/30 ${className}`}
         title={`Stuck for ${minutes}m (> 5m threshold) — Notice`}
       >
-        <Clock className="w-3 h-3" />
+        <Clock className="w-3 h-3" aria-hidden="true" />
         <span>&gt;5m NOTICE</span>
       </span>
     );
@@ -47,9 +53,11 @@ export function StaleSeverityBadge({ ageMs, className = "" }: StaleSeverityBadge
 
   return (
     <span
+      role="status"
+      aria-label={`Stale commitment severity: NOMINAL (stuck for ${minutes} minutes, under 5m threshold)`}
       className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] border border-[var(--chrome-border)] ${className}`}
     >
-      <Clock className="w-3 h-3" />
+      <Clock className="w-3 h-3" aria-hidden="true" />
       <span>&lt;5m NOMINAL</span>
     </span>
   );

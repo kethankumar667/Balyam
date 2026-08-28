@@ -69,9 +69,15 @@ export function SettlementMonitorTab({
     } else if (sortBy === "oldest") {
       list.sort((a, b) => a.createdAt - b.createdAt);
     } else if (sortBy === "amount_desc") {
-      list.sort((a, b) => BigInt(b.totalCollected) > BigInt(a.totalCollected) ? 1 : -1);
+      list.sort((a, b) => {
+        const diff = BigInt(b.totalCollected) - BigInt(a.totalCollected);
+        return diff > 0n ? 1 : diff < 0n ? -1 : 0;
+      });
     } else if (sortBy === "amount_asc") {
-      list.sort((a, b) => BigInt(a.totalCollected) > BigInt(b.totalCollected) ? 1 : -1);
+      list.sort((a, b) => {
+        const diff = BigInt(a.totalCollected) - BigInt(b.totalCollected);
+        return diff > 0n ? 1 : diff < 0n ? -1 : 0;
+      });
     }
     return list;
   }, [filteredSettlements, sortBy]);
@@ -108,11 +114,14 @@ export function SettlementMonitorTab({
       key: "matchId",
       header: "Match ID & Room",
       render: (item) => (
-        <div className="space-y-0.5">
-          <span className="font-mono font-bold text-xs text-[var(--chrome-ink)] block">
+        <div className="space-y-0.5 min-w-0">
+          <span
+            className="font-mono font-bold text-xs text-[var(--chrome-ink)] block truncate max-w-[180px] sm:max-w-xs"
+            title={item.matchId}
+          >
             {item.matchId}
           </span>
-          <span className="text-[11px] text-[var(--chrome-ink-soft)] font-mono">
+          <span className="text-[11px] text-[var(--chrome-ink-soft)] font-mono block truncate">
             Room {item.roomCode || "—"} • Host: {item.hostIdentityId?.slice(0, 12)}...
           </span>
         </div>
@@ -176,7 +185,7 @@ export function SettlementMonitorTab({
       kind: "computed",
       key: "conservation",
       header: "Conservation",
-      render: (item) => (
+      render: (_item) => (
         // Not actually verified here — this list has no per-row
         // reconciliation data (that requires a separate call per match,
         // via `reconcileMatchSettlement`, made only in Match Audit).
@@ -208,6 +217,7 @@ export function SettlementMonitorTab({
         <div className="flex-1 max-w-md">
           <SearchBar
             placeholder="Search by match ID, room code, or host..."
+            ariaLabel="Search match settlements by ID, room code, or host"
             value={searchQuery}
             onChange={(val) => {
               setSearchQuery(val);
@@ -219,8 +229,8 @@ export function SettlementMonitorTab({
         <div className="flex flex-wrap items-center gap-2">
           <FilterBar filters={filterConfig} />
 
-          <div className="flex items-center gap-1.5 h-10 px-3 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink)]">
-            <ArrowUpDown className="w-3.5 h-3.5 text-[var(--chrome-ink-soft)]" />
+          <div className="flex items-center gap-1.5 h-10 px-3 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink)] focus-within:ring-2 focus-within:ring-amber-500">
+            <ArrowUpDown className="w-3.5 h-3.5 text-[var(--chrome-ink-soft)]" aria-hidden="true" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}

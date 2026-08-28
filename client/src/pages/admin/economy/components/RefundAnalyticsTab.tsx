@@ -104,21 +104,21 @@ export function RefundAnalyticsTab({ settlements, onSelectMatch }: RefundAnalyti
           title="Settlement Success Rate"
           value={`${settlementRate}%`}
           subtitle="Matches successfully distributed to players"
-          icon={<ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+          icon={<ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />}
         />
 
         <StatCard
           title="Refund Rate"
           value={`${refundRate}%`}
           subtitle="Compensating returns to host wallet"
-          icon={<RotateCcw className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+          icon={<RotateCcw className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />}
         />
 
         <StatCard
           title="Forfeiture Rate"
           value={`${forfeitureRate}%`}
           subtitle="Mid-match abandonments captured to World Bank"
-          icon={<AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+          icon={<AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />}
         />
       </div>
 
@@ -127,11 +127,17 @@ export function RefundAnalyticsTab({ settlements, onSelectMatch }: RefundAnalyti
         title="Settlement, Refund & Forfeiture Volume"
         subtitle="Daily distribution of match economy terminal outcomes"
         headerAction={
-          <div className="flex items-center gap-1 bg-[var(--chrome-control)] p-1 rounded-xl border border-[var(--chrome-border)] text-xs font-bold text-[var(--chrome-ink)]">
+          <div
+            role="group"
+            aria-label="Analytics timeframe range"
+            className="flex items-center gap-1 bg-[var(--chrome-control)] p-1 rounded-xl border border-[var(--chrome-border)] text-xs font-bold text-[var(--chrome-ink)]"
+          >
             <button
               type="button"
               onClick={() => setTimeframe("7d")}
-              className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+              aria-pressed={timeframe === "7d"}
+              aria-label="Last 7 days analytics timeframe"
+              className={`px-2.5 py-1 rounded-lg transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 timeframe === "7d" ? "bg-[var(--chrome-panel)] shadow-2xs text-[var(--chrome-ink)]" : "text-[var(--chrome-ink-soft)]"
               }`}
             >
@@ -140,7 +146,9 @@ export function RefundAnalyticsTab({ settlements, onSelectMatch }: RefundAnalyti
             <button
               type="button"
               onClick={() => setTimeframe("14d")}
-              className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+              aria-pressed={timeframe === "14d"}
+              aria-label="Last 14 days analytics timeframe"
+              className={`px-2.5 py-1 rounded-lg transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 timeframe === "14d" ? "bg-[var(--chrome-panel)] shadow-2xs text-[var(--chrome-ink)]" : "text-[var(--chrome-ink-soft)]"
               }`}
             >
@@ -149,7 +157,9 @@ export function RefundAnalyticsTab({ settlements, onSelectMatch }: RefundAnalyti
             <button
               type="button"
               onClick={() => setTimeframe("30d")}
-              className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+              aria-pressed={timeframe === "30d"}
+              aria-label="Last 30 days analytics timeframe"
+              className={`px-2.5 py-1 rounded-lg transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 timeframe === "30d" ? "bg-[var(--chrome-panel)] shadow-2xs text-[var(--chrome-ink)]" : "text-[var(--chrome-ink-soft)]"
               }`}
             >
@@ -158,7 +168,10 @@ export function RefundAnalyticsTab({ settlements, onSelectMatch }: RefundAnalyti
           </div>
         }
       >
-        <div className="h-72 w-full pt-4">
+        <div className="h-72 w-full pt-4 min-w-0">
+          <div className="sr-only">
+            Trend chart displaying daily counts of settled, refunded, and forfeited match outcomes over {timeframe}.
+          </div>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
@@ -235,12 +248,24 @@ export function RefundAnalyticsTab({ settlements, onSelectMatch }: RefundAnalyti
             exceptionEvents.map((item) => (
               <div
                 key={item.matchId}
+                role="button"
+                tabIndex={0}
+                aria-label={`Inspect exception for match ${item.matchId}`}
                 onClick={() => onSelectMatch(item.matchId)}
-                className="p-4 flex items-center justify-between hover:bg-[var(--chrome-control)]/50 transition cursor-pointer text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelectMatch(item.matchId);
+                  }
+                }}
+                className="p-4 flex items-center justify-between hover:bg-[var(--chrome-control)]/50 transition cursor-pointer text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset"
               >
                 <div className="space-y-1 min-w-0 pr-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-[var(--chrome-ink)] truncate">
+                    <span
+                      className="font-mono font-bold text-[var(--chrome-ink)] truncate max-w-[180px] sm:max-w-xs block"
+                      title={item.matchId}
+                    >
                       {item.matchId}
                     </span>
                     <StatusBadge

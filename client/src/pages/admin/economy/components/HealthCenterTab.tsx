@@ -144,9 +144,10 @@ export function HealthCenterTab({
             <button
               type="button"
               onClick={onRefresh}
-              className="h-10 px-3.5 rounded-xl bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+              aria-label="Run automated health diagnostics audit"
+              className="h-10 px-3.5 rounded-xl bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold transition cursor-pointer flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Run Audit</span>
             </button>
           </div>
@@ -172,16 +173,16 @@ export function HealthCenterTab({
             >
               <div className="flex items-start gap-3 min-w-0">
                 {check.status === "HEALTHY" ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
                 ) : check.status === "WARNING" ? (
-                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
                 ) : check.status === "NOT_MONITORED" ? (
-                  <Info className="w-5 h-5 text-[var(--chrome-ink-soft)] shrink-0 mt-0.5" />
+                  <Info className="w-5 h-5 text-[var(--chrome-ink-soft)] shrink-0 mt-0.5" aria-hidden="true" />
                 ) : (
-                  <AlertOctagon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <AlertOctagon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
                 )}
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-[var(--chrome-ink)] text-xs">{check.name}</span>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
@@ -198,7 +199,7 @@ export function HealthCenterTab({
                     </span>
                   </div>
                   <p className="text-[11px] text-[var(--chrome-ink-soft)]">{check.description}</p>
-                  <p className="text-[11px] font-mono font-medium text-[var(--chrome-ink)] pt-0.5">
+                  <p className="text-[11px] font-mono font-medium text-[var(--chrome-ink)] pt-0.5 break-words">
                     {check.detail}
                   </p>
                 </div>
@@ -208,7 +209,8 @@ export function HealthCenterTab({
                 <button
                   type="button"
                   onClick={check.action}
-                  className="h-8 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition cursor-pointer shrink-0 self-start sm:self-center"
+                  aria-label={`${check.actionLabel} for ${check.name}`}
+                  className="h-8 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition cursor-pointer shrink-0 self-start sm:self-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 >
                   {check.actionLabel}
                 </button>

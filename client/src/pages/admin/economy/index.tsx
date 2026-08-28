@@ -76,14 +76,18 @@ export default function AdminEconomyPage() {
   const [inspectMatchId, setInspectMatchId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
-  const fetchOperationalData = useCallback(async () => {
+  const tabRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
+
+  const fetchOperationalData = useCallback(async (isMounted: () => boolean = () => true) => {
     setIsLoading(true);
     setError(null);
     try {
       const [wbRes, staleRes] = await Promise.all([
-        getWorldBankSnapshot().catch(() => ({ worldBank: null })),
-        getStaleSettlements(300_000).catch(() => ({ settlements: [] })), // > 5m threshold
+        getWorldBankSnapshot(),
+        getStaleSettlements(300_000), // > 5m threshold
       ]);
+
+      if (!isMounted()) return;
 
       if (wbRes.worldBank) {
         setWorldBank(wbRes.worldBank);
@@ -100,14 +104,21 @@ export default function AdminEconomyPage() {
       // consuming tab already has a real "no data" empty state built in.
       setRecentSettlements(stale);
     } catch (err) {
+      if (!isMounted()) return;
       setError(err instanceof Error ? err.message : "Failed to load operational economy data");
     } finally {
-      setIsLoading(false);
+      if (isMounted()) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    void fetchOperationalData();
+    let mounted = true;
+    void fetchOperationalData(() => mounted);
+    return () => {
+      mounted = false;
+    };
   }, [fetchOperationalData]);
 
   const handleOpenMatchDrawer = (matchId: string) => {
@@ -136,8 +147,32 @@ export default function AdminEconomyPage() {
     { id: "health", label: "Health Center", icon: Activity },
   ];
 
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
+    let targetIndex = -1;
+
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      targetIndex = (currentIndex + 1) % navTabs.length;
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      targetIndex = (currentIndex - 1 + navTabs.length) % navTabs.length;
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      targetIndex = 0;
+    } else if (e.key === "End") {
+      e.preventDefault();
+      targetIndex = navTabs.length - 1;
+    }
+
+    if (targetIndex >= 0) {
+      const nextTab = navTabs[targetIndex];
+      setActiveTab(nextTab.id);
+      tabRefs.current[targetIndex]?.focus();
+    }
+  };
+
   return (
-    <AdminLayout onRefresh={fetchOperationalData} isRefreshing={isLoading}>
+    <AdminLayout onRefresh={() => fetchOperationalData()} isRefreshing={isLoading}>
       <div className="space-y-6">
         {/* Page Header */}
         <PageHeader
@@ -145,7 +180,7 @@ export default function AdminEconomyPage() {
           description="Operational dashboard for monitoring World Bank reserves, match settlements, stale commitments, and ledger integrity."
           badge={
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-              <Landmark className="w-3.5 h-3.5" />
+              <Landmark className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Economy V1 Active</span>
             </span>
           }
@@ -157,35 +192,49 @@ export default function AdminEconomyPage() {
             title="Operational Sync Notice"
             description={error}
             actionText="Retry Sync"
-            onAction={fetchOperationalData}
+            onAction={() => fetchOperationalData()}
           />
         )}
 
-        {/* Sub-Navigation Tabs */}
+        {/* Sub-Navigation Tabs with Roving TabIndex & Full Keyboard Semantics */}
         <div
           role="tablist"
           aria-label="Economy Dashboard Modules"
+          aria-orientation="horizontal"
           className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--chrome-border)] scrollbar-none"
         >
-          {navTabs.map((tab) => {
+          {navTabs.map((tab, idx) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                ref={(el) => {
+                  tabRefs.current[idx] = el;
+                }}
+                id={`economy-tab-${tab.id}`}
                 role="tab"
                 aria-selected={isActive}
+                aria-controls={`economy-panel-${tab.id}`}
+                tabIndex={isActive ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                onKeyDown={(e) => handleTabKeyDown(e, idx)}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400 ${
                   isActive
                     ? "bg-[var(--chrome-active-bg)] text-[var(--chrome-active-ink)] shadow-2xs border border-[var(--chrome-active-ink)]"
                     : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)] border border-transparent"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? "text-[var(--chrome-active-ink)]" : "text-[var(--chrome-ink-soft)]"}`} />
+                <Icon
+                  className={`w-4 h-4 ${isActive ? "text-[var(--chrome-active-ink)]" : "text-[var(--chrome-ink-soft)]"}`}
+                  aria-hidden="true"
+                />
                 <span>{tab.label}</span>
                 {tab.badge !== undefined && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-red-500 text-white">
+                  <span
+                    className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-red-500 text-white"
+                    aria-label={`${tab.badge} stale commitments pending`}
+                  >
                     {tab.badge}
                   </span>
                 )}
@@ -194,8 +243,14 @@ export default function AdminEconomyPage() {
           })}
         </div>
 
-        {/* Tab Content Rendering */}
-        <div className="pt-2">
+        {/* Tab Content Rendering with Accessible Tabpanel Container */}
+        <div
+          id={`economy-panel-${activeTab}`}
+          role="tabpanel"
+          tabIndex={0}
+          aria-labelledby={`economy-tab-${activeTab}`}
+          className="pt-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 rounded-xl"
+        >
           {activeTab === "overview" && (
             <OverviewTab
               worldBank={worldBank}
@@ -219,7 +274,7 @@ export default function AdminEconomyPage() {
             <StaleMonitorTab
               staleSettlements={staleSettlements}
               isLoading={isLoading}
-              onRefresh={fetchOperationalData}
+              onRefresh={() => fetchOperationalData()}
               onSelectMatch={handleOpenMatchDrawer}
             />
           )}
@@ -245,7 +300,7 @@ export default function AdminEconomyPage() {
             <HealthCenterTab
               worldBank={worldBank}
               staleSettlements={staleSettlements}
-              onRefresh={fetchOperationalData}
+              onRefresh={() => fetchOperationalData()}
               onNavigateTab={(tabId) => setActiveTab(tabId as EconomyTabId)}
             />
           )}

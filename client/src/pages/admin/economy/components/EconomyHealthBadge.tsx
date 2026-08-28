@@ -18,12 +18,16 @@ export function EconomyHealthBadge({
   size = "md",
   className = "",
 }: EconomyHealthBadgeProps) {
+  const ariaLabel = `Economy Health Status: ${status}${showScore ? `, score ${score} out of 100` : ""}`;
+
   if (status === "HEALTHY") {
     return (
       <span
+        role="status"
+        aria-label={ariaLabel}
         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 ${className}`}
       >
-        <ShieldCheck className={size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} />
+        <ShieldCheck className={size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} aria-hidden="true" />
         <span>HEALTHY</span>
         {showScore && <span className="font-mono ml-1 opacity-80">({score}/100)</span>}
       </span>
@@ -33,9 +37,11 @@ export function EconomyHealthBadge({
   if (status === "WARNING") {
     return (
       <span
+        role="status"
+        aria-label={ariaLabel}
         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/40 ${className}`}
       >
-        <AlertTriangle className={size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} />
+        <AlertTriangle className={size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} aria-hidden="true" />
         <span>WARNING</span>
         {showScore && <span className="font-mono ml-1 opacity-80">({score}/100)</span>}
       </span>
@@ -44,9 +50,11 @@ export function EconomyHealthBadge({
 
   return (
     <span
+      role="status"
+      aria-label={ariaLabel}
       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-700 dark:text-red-400 border border-red-500/50 animate-pulse ${className}`}
     >
-      <AlertOctagon className={size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} />
+      <AlertOctagon className={size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} aria-hidden="true" />
       <span>CRITICAL</span>
       {showScore && <span className="font-mono ml-1 opacity-80">({score}/100)</span>}
     </span>

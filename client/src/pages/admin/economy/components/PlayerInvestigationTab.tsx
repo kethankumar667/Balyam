@@ -32,22 +32,24 @@ export function PlayerInvestigationTab() {
           description="Not yet available — no admin-scoped endpoint exists for looking up another player's wallet by identity ID"
         />
 
-        <form onSubmit={handleSearch} className="flex gap-2">
+        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-[var(--chrome-ink-soft)] absolute left-3.5 top-3.5" />
+            <Search className="w-4 h-4 text-[var(--chrome-ink-soft)] absolute left-3.5 top-3.5" aria-hidden="true" />
             <input
+              id="player-search-input"
               type="text"
               value={searchIdentityId}
               onChange={(e) => setSearchIdentityId(e.target.value)}
               placeholder="Enter Player Identity ID (e.g., aaaa-1111-... or guest_8921a)..."
               aria-label="Player identity ID"
+              aria-describedby="player-lookup-desc"
               className="w-full h-11 pl-10 pr-4 rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-xs font-mono text-[var(--chrome-ink)] focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
           <button
             type="submit"
             disabled={!searchIdentityId.trim()}
-            className="h-11 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs disabled:opacity-50 transition cursor-pointer shrink-0"
+            className="h-11 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs disabled:opacity-50 transition cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
             Lookup Player
           </button>
@@ -55,10 +57,15 @@ export function PlayerInvestigationTab() {
       </div>
 
       {/* Not-available notice, shown once a search is attempted or on first load */}
-      <div className="p-8 text-center text-xs text-[var(--chrome-ink-soft)] bg-[var(--chrome-panel)] rounded-2xl border border-[var(--chrome-border)] space-y-2">
-        <Info className="w-8 h-8 text-[var(--chrome-ink-soft)] mx-auto opacity-60" />
+      <div
+        id="player-lookup-desc"
+        role="status"
+        aria-live="polite"
+        className="p-8 text-center text-xs text-[var(--chrome-ink-soft)] bg-[var(--chrome-panel)] rounded-2xl border border-[var(--chrome-border)] space-y-2"
+      >
+        <Info className="w-8 h-8 text-[var(--chrome-ink-soft)] mx-auto opacity-60" aria-hidden="true" />
         <h4 className="font-bold text-sm text-[var(--chrome-ink)]">Player Lookup Not Yet Available</h4>
-        <p className="max-w-md mx-auto leading-relaxed">
+        <p className="max-w-md mx-auto leading-relaxed break-words">
           {hasSearched
             ? `No admin-scoped endpoint exists yet to retrieve wallet or ledger data for "${searchIdentityId.trim()}" — only a signed-in identity's own wallet is queryable today.`
             : "This tool will let an operator look up any player's wallet balance, starter grant status, and ledger history by identity ID once a real admin-scoped lookup endpoint is wired up server-side."}

@@ -58,11 +58,14 @@ export function StaleMonitorTab({
       key: "matchId",
       header: "Match ID & Room",
       render: (item) => (
-        <div className="space-y-0.5">
-          <span className="font-mono font-bold text-xs text-[var(--chrome-ink)] block">
+        <div className="space-y-0.5 min-w-0">
+          <span
+            className="font-mono font-bold text-xs text-[var(--chrome-ink)] block truncate max-w-[180px] sm:max-w-xs"
+            title={item.matchId}
+          >
             {item.matchId}
           </span>
-          <span className="text-[11px] text-[var(--chrome-ink-soft)] font-mono">
+          <span className="text-[11px] text-[var(--chrome-ink-soft)] font-mono block truncate">
             Room {item.roomCode || "—"} • Host: {item.hostIdentityId?.slice(0, 14)}...
           </span>
         </div>
@@ -114,14 +117,16 @@ export function StaleMonitorTab({
       render: (item) => (
         <button
           type="button"
+          aria-label={`Reconcile match ${item.matchId}`}
+          title={`Reconcile match ${item.matchId}`}
           onClick={(e) => {
             e.stopPropagation();
             onSelectMatch(item.matchId);
           }}
-          className="h-8 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition cursor-pointer inline-flex items-center gap-1"
+          className="h-8 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition cursor-pointer inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         >
           <span>Reconcile</span>
-          <ExternalLink className="w-3 h-3" />
+          <ExternalLink className="w-3 h-3" aria-hidden="true" />
         </button>
       ),
     },
@@ -131,8 +136,11 @@ export function StaleMonitorTab({
     <div className="space-y-6">
       {/* Alert Header if Critical Stale Commitments exist */}
       {count60m > 0 && (
-        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 flex items-start gap-3 shadow-2xs">
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+        <div
+          role="alert"
+          className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 flex items-start gap-3 shadow-2xs"
+        >
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
           <div>
             <h4 className="font-extrabold text-sm">Critical Stale Commitments Detected</h4>
             <p className="text-xs mt-0.5">
@@ -148,7 +156,7 @@ export function StaleMonitorTab({
           type="button"
           onClick={() => setSelectedSeverity("ALL")}
           aria-pressed={selectedSeverity === "ALL"}
-          className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
+          className={`p-4 rounded-2xl border text-left transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
             selectedSeverity === "ALL"
               ? "bg-[var(--chrome-active-bg)] border-[var(--chrome-active-ink)] shadow-2xs"
               : "bg-[var(--chrome-panel)] hover:bg-[var(--chrome-control)] border-[var(--chrome-border)]"
@@ -165,7 +173,7 @@ export function StaleMonitorTab({
           type="button"
           onClick={() => setSelectedSeverity("60m")}
           aria-pressed={selectedSeverity === "60m"}
-          className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
+          className={`p-4 rounded-2xl border text-left transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
             selectedSeverity === "60m"
               ? "bg-red-500/15 border-red-500 shadow-2xs text-red-700 dark:text-red-300"
               : "bg-[var(--chrome-panel)] hover:bg-[var(--chrome-control)] border-[var(--chrome-border)]"
@@ -173,7 +181,7 @@ export function StaleMonitorTab({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase">Critical (&gt;60m)</span>
-            <AlertCircle className="w-4 h-4 text-red-500" />
+            <AlertCircle className="w-4 h-4 text-red-500" aria-hidden="true" />
           </div>
           <span className="text-2xl font-black font-mono text-red-700 dark:text-red-400 mt-1 block">
             {count60m}
@@ -185,7 +193,7 @@ export function StaleMonitorTab({
           type="button"
           onClick={() => setSelectedSeverity("15m")}
           aria-pressed={selectedSeverity === "15m"}
-          className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
+          className={`p-4 rounded-2xl border text-left transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
             selectedSeverity === "15m"
               ? "bg-amber-500/15 border-amber-500 shadow-2xs text-amber-800 dark:text-amber-300"
               : "bg-[var(--chrome-panel)] hover:bg-[var(--chrome-control)] border-[var(--chrome-border)]"
@@ -193,7 +201,7 @@ export function StaleMonitorTab({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase">Warning (&gt;15m)</span>
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" />
           </div>
           <span className="text-2xl font-black font-mono text-amber-700 dark:text-amber-400 mt-1 block">
             {count15m}
@@ -205,7 +213,7 @@ export function StaleMonitorTab({
           type="button"
           onClick={() => setSelectedSeverity("5m")}
           aria-pressed={selectedSeverity === "5m"}
-          className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
+          className={`p-4 rounded-2xl border text-left transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
             selectedSeverity === "5m"
               ? "bg-yellow-500/15 border-yellow-500 shadow-2xs text-yellow-800 dark:text-yellow-300"
               : "bg-[var(--chrome-panel)] hover:bg-[var(--chrome-control)] border-[var(--chrome-border)]"
@@ -213,7 +221,7 @@ export function StaleMonitorTab({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase">Notice (&gt;5m)</span>
-            <Clock className="w-4 h-4 text-yellow-500" />
+            <Clock className="w-4 h-4 text-yellow-500" aria-hidden="true" />
           </div>
           <span className="text-2xl font-black font-mono text-yellow-800 dark:text-yellow-300 mt-1 block">
             {count5m}
@@ -229,7 +237,7 @@ export function StaleMonitorTab({
         loading={isLoading}
         emptyMessage="Zero Stale Commitments"
         emptyDescription="All committed match entries have reached terminal settlement, refund, or forfeiture within SLA."
-        emptyIcon={<CheckCircle2 className="w-8 h-8 text-emerald-500" />}
+        emptyIcon={<CheckCircle2 className="w-8 h-8 text-emerald-500" aria-hidden="true" />}
         onRowClick={(item) => onSelectMatch(item.matchId)}
         getRowAriaLabel={(item) =>
           `Inspect stale settlement for match ${item.matchId}`

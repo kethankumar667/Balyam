@@ -90,14 +90,15 @@ export function OverviewTab({
           <button
             type="button"
             onClick={() => onNavigateTab("health")}
-            className="h-9 px-3.5 rounded-xl bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] border border-[var(--chrome-border)] text-xs font-bold text-[var(--chrome-ink)] transition cursor-pointer"
+            className="h-9 px-3.5 rounded-xl bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] border border-[var(--chrome-border)] text-xs font-bold text-[var(--chrome-ink)] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
             Health Diagnostics
           </button>
           <button
             type="button"
             onClick={() => onNavigateTab("stale")}
-            className={`h-9 px-3.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            aria-label={`View Stale Queue: ${staleSettlements.length} items`}
+            className={`h-9 px-3.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
               staleSettlements.length > 0
                 ? "bg-red-500/10 hover:bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30"
                 : "bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] text-[var(--chrome-ink)] border-[var(--chrome-border)]"
@@ -124,7 +125,7 @@ export function OverviewTab({
           </div>
         ) : worldBank ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-amber-600/30 shadow-2xs space-y-1">
+            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-amber-600/30 shadow-2xs space-y-1 min-w-0">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
                 Treasury Reserve
               </span>
@@ -138,7 +139,7 @@ export function OverviewTab({
               </span>
             </div>
 
-            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1">
+            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
                 Lifetime Platform Rake
               </span>
@@ -152,7 +153,7 @@ export function OverviewTab({
               </span>
             </div>
 
-            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1">
+            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
                 Active Escrow Liability
               </span>
@@ -166,7 +167,7 @@ export function OverviewTab({
               </span>
             </div>
 
-            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1">
+            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
                 Starter Grants Distributed
               </span>
@@ -199,26 +200,35 @@ export function OverviewTab({
             title="Total Settled"
             value={settledCount}
             subtitle="Matches successfully paid out"
-            icon={<ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+            icon={<ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />}
           />
 
           <StatCard
             title="Total Refunded"
             value={refundedCount}
             subtitle="Compensating returns to host"
-            icon={<RotateCcw className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+            icon={<RotateCcw className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />}
           />
 
           <StatCard
             title="Abandonment Forfeitures"
             value={forfeitedCount}
             subtitle="Mid-match abandonments captured"
-            icon={<AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+            icon={<AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />}
           />
 
           <div
+            role="button"
+            tabIndex={0}
+            aria-label={`View Stale Commitments Queue: ${staleSettlements.length} pending commitments`}
             onClick={() => onNavigateTab("stale")}
-            className={`p-5 rounded-2xl border shadow-2xs space-y-1 cursor-pointer transition ${
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onNavigateTab("stale");
+              }
+            }}
+            className={`p-5 rounded-2xl border shadow-2xs space-y-1 cursor-pointer transition focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
               staleSettlements.length > 0
                 ? "bg-red-500/5 hover:bg-red-500/10 border-red-500/30"
                 : "bg-[var(--chrome-panel)] hover:bg-[var(--chrome-control)] border-[var(--chrome-border)]"
@@ -228,7 +238,10 @@ export function OverviewTab({
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider">
                 Stale Commitments
               </span>
-              <Clock className={`w-4 h-4 ${staleSettlements.length > 0 ? "text-red-500 animate-pulse" : "text-[var(--chrome-ink-soft)]"}`} />
+              <Clock
+                className={`w-4 h-4 ${staleSettlements.length > 0 ? "text-red-500 animate-pulse" : "text-[var(--chrome-ink-soft)]"}`}
+                aria-hidden="true"
+              />
             </div>
             <div className="flex items-baseline gap-2">
               <span className={`text-2xl font-black font-mono ${staleSettlements.length > 0 ? "text-red-600 dark:text-red-400" : "text-[var(--chrome-ink)]"}`}>
@@ -259,10 +272,11 @@ export function OverviewTab({
             <button
               type="button"
               onClick={() => onNavigateTab("settlements")}
-              className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+              aria-label="View all match settlements"
+              className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded-md px-1"
             >
               <span>View All</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
 
@@ -275,12 +289,24 @@ export function OverviewTab({
               recentSettlements.slice(0, 6).map((item) => (
                 <div
                   key={item.matchId}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Inspect settlement for match ${item.matchId}`}
                   onClick={() => onSelectMatch(item.matchId)}
-                  className="p-4 flex items-center justify-between hover:bg-[var(--chrome-control)]/50 transition cursor-pointer text-xs"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectMatch(item.matchId);
+                    }
+                  }}
+                  className="p-4 flex items-center justify-between hover:bg-[var(--chrome-control)]/50 transition cursor-pointer text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset"
                 >
                   <div className="space-y-0.5 min-w-0 pr-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-[var(--chrome-ink)] truncate">
+                      <span
+                        className="font-mono font-bold text-[var(--chrome-ink)] truncate max-w-[200px] sm:max-w-xs block"
+                        title={item.matchId}
+                      >
                         {item.matchId}
                       </span>
                       <StatusBadge
@@ -297,7 +323,7 @@ export function OverviewTab({
                         size="sm"
                       />
                     </div>
-                    <span className="text-[11px] text-[var(--chrome-ink-soft)] block font-mono">
+                    <span className="text-[11px] text-[var(--chrome-ink-soft)] block font-mono truncate">
                       Room {item.roomCode || "—"} • {item.seatCount} seats ({item.humanSeatCount}H/{item.botSeatCount}B) • {formatTimeAgo(item.createdAt)}
                     </span>
                   </div>
@@ -324,7 +350,7 @@ export function OverviewTab({
           <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-4">
             <div className="space-y-3">
               <div className="flex items-start gap-2.5 text-xs">
-                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <span className="font-bold text-[var(--chrome-ink)] block">Mathematical Conservation</span>
                   <span className="text-[11px] text-[var(--chrome-ink-soft)]">
@@ -335,9 +361,9 @@ export function OverviewTab({
 
               <div className="flex items-start gap-2.5 text-xs">
                 {staleSettlements.length === 0 ? (
-                  <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
                 ) : (
-                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
                 )}
                 <div>
                   <span className="font-bold text-[var(--chrome-ink)] block">Commitment Queue Health</span>
@@ -350,7 +376,7 @@ export function OverviewTab({
               </div>
 
               <div className="flex items-start gap-2.5 text-xs">
-                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <span className="font-bold text-[var(--chrome-ink)] block">Guest Escrow Solvency</span>
                   <span className="text-[11px] text-[var(--chrome-ink-soft)]">
@@ -360,7 +386,7 @@ export function OverviewTab({
               </div>
 
               <div className="flex items-start gap-2.5 text-xs">
-                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <span className="font-bold text-[var(--chrome-ink)] block">Cryptographic Security</span>
                   <span className="text-[11px] text-[var(--chrome-ink-soft)]">
@@ -373,7 +399,7 @@ export function OverviewTab({
             <button
               type="button"
               onClick={() => onNavigateTab("health")}
-              className="w-full py-2.5 rounded-xl bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] text-[var(--chrome-ink)] text-xs font-bold border border-[var(--chrome-border)] transition cursor-pointer text-center"
+              className="w-full py-2.5 rounded-xl bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] text-[var(--chrome-ink)] text-xs font-bold border border-[var(--chrome-border)] transition cursor-pointer text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             >
               Open Health Center & Diagnostics
             </button>
