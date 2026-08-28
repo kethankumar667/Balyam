@@ -719,6 +719,31 @@ export class EconomyService {
     return { applied: outcome.applied, settlement: outcome.result };
   }
 
+  /* ═══════════════════════ abandonment forfeiture ═════════════════════════
+   * Player-fault abandonment of an economically active, actually-playing
+   * match with no eligible signed-in successor remaining — see
+   * `RoomManager.abandonRoom`'s "Economic routing" doc comment. Deliberately
+   * the same shape as `refundMatchEntry` (matchId + a required, non-empty
+   * reason; never an amount — the repository derives the forfeited total
+   * from the settlement's own `total_collected`, exactly like
+   * `commit_match_entry` derives `host_identity_id` from its own input, but
+   * here there is no caller-supplied value to trust in the first place).
+   */
+  async forfeitMatchEntry(matchId: string, reason: string): Promise<CommitMatchEntryResult> {
+    const startedAt = this.now();
+    if (matchId.trim().length === 0) {
+      throw new InvalidRequestError("matchId must not be empty");
+    }
+    if (reason.trim().length === 0) {
+      throw new InvalidRequestError("A forfeiture without a reason is an audit gap");
+    }
+    const outcome = await this.withRetry("forfeitMatchEntry", matchId, () =>
+      this.repository.forfeitMatchEntry(matchId, reason),
+    );
+    this.logOutcome("forfeitMatchEntry", matchId, startedAt, outcome.applied);
+    return { applied: outcome.applied, settlement: outcome.result };
+  }
+
   /* ═══════════════════════ vouchers ═══════════════════════════════════════
    * Both methods below accept a RAW code and hash it internally — the same
    * boundary choice blueprint §2.6 makes for redemption, extended here to

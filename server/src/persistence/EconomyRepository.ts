@@ -41,7 +41,7 @@
 export type PlayerIdentityKind = "member" | "guest";
 export type ParticipantIdentityKind = "member" | "guest" | "bot";
 export type VoucherStatus = "ACTIVE" | "REDEEMED" | "CANCELLED";
-export type MatchSettlementStatus = "COMMITTED" | "SETTLED" | "REFUNDED";
+export type MatchSettlementStatus = "COMMITTED" | "SETTLED" | "REFUNDED" | "ABANDONMENT_FORFEITED";
 
 /**
  * The eight wallet-ledger entry types Economy V1 actually writes.
@@ -137,22 +137,42 @@ export interface MatchEconomySettlementRecord {
   totalWorldBankCut: string;
   totalRefunded: string;
   refundReason: string | null;
-  /** One-way, terminal: COMMITTED -> SETTLED or COMMITTED -> REFUNDED, never reversed. */
+  /**
+   * Present only once `status === "ABANDONMENT_FORFEITED"`. Deliberately a
+   * SEPARATE field from `refundReason` — a forfeiture and a refund are two
+   * different, mutually exclusive terminal causes, and conflating their
+   * reason text would make it impossible to tell which one happened from
+   * the reason string alone.
+   */
+  totalForfeited: string;
+  forfeitureReason: string | null;
+  /**
+   * One-way, terminal: COMMITTED -> SETTLED, COMMITTED -> REFUNDED, or
+   * COMMITTED -> ABANDONMENT_FORFEITED — never reversed, and never crossed
+   * (a settled match can never become refunded or forfeited, etc.). See
+   * `forfeitMatchEntry`'s own doc comment for the full terminal-exclusivity
+   * matrix.
+   */
   status: MatchSettlementStatus;
   settledAt: number | null;
   createdAt: number;
 }
 
 /**
- * Four independent, non-fungible balances — never merged into one aggregate
+ * Five independent, non-fungible balances — never merged into one aggregate
  * figure. `guestEscrowLiability` is money BHALYAM is HOLDING, not money
- * BHALYAM HAS; the other three are BHALYAM's own revenue/counters.
+ * BHALYAM HAS; the other four are BHALYAM's own revenue/counters.
+ * `abandonmentForfeitureRevenue` is neither a service fee nor a bot prize —
+ * it is the ENTIRE committed pool of a match a human abandoned after
+ * commitment with no eligible signed-in successor remaining, never merged
+ * into `baseFeeRevenue` or `botPrizeRevenue`.
  */
 export interface WorldBankSnapshot {
   baseFeeRevenue: string;
   botPrizeRevenue: string;
   guestEscrowLiability: string;
   totalVoucherRedeemed: string;
+  abandonmentForfeitureRevenue: string;
 }
 
 export interface EconomyConfigurationRecord {
@@ -186,6 +206,7 @@ export interface SettlementReconciliation {
     botCollection: string;
     worldBankCut: string;
     refunded: string;
+    forfeited: string;
   };
 }
 
@@ -334,9 +355,17 @@ export class InvalidIdentityKindError extends SettlementError {
 export class MatchNotCommittedError extends SettlementError {
   readonly code = "MATCH_NOT_COMMITTED";
 }
-/** `refundMatchEntry` called against a settlement that reached `SETTLED` before this call arrived — a genuine race, not a bug. */
+/** `refundMatchEntry` or `forfeitMatchEntry` called against a settlement that reached `SETTLED` before this call arrived — a genuine race, not a bug. */
 export class MatchAlreadySettledError extends SettlementError {
   readonly code = "MATCH_ALREADY_SETTLED";
+}
+/** `forfeitMatchEntry` called against a settlement that was already `REFUNDED` — a refund and a forfeiture are different, mutually exclusive terminal causes; never silently merged. */
+export class MatchAlreadyRefundedError extends SettlementError {
+  readonly code = "MATCH_ALREADY_REFUNDED";
+}
+/** `refundMatchEntry` called against a settlement that was already `ABANDONMENT_FORFEITED` — the committed pool already moved to World Bank; refunding on top would double-move it. */
+export class MatchAlreadyForfeitedError extends SettlementError {
+  readonly code = "MATCH_ALREADY_FORFEITED";
 }
 /** Computed disbursement does not equal total collected — a caller-side placement-extraction bug, not a database defect. */
 export class SettlementConservationViolationError extends SettlementError {
@@ -466,8 +495,36 @@ export interface EconomyRepository {
     input: SettleMatchEconomyInput,
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>>;
 
-  /** Keyed by `matchId`. Standalone from `settleMatchEconomy`'s internal invalid-ranking path. */
+  /**
+   * Keyed by `matchId`. Standalone from `settleMatchEconomy`'s internal
+   * invalid-ranking path. Throws `MatchAlreadyForfeitedError` if the
+   * settlement already reached `ABANDONMENT_FORFEITED` — refunding a
+   * forfeited match would double-move the same pool.
+   */
   refundMatchEntry(
+    matchId: string,
+    reason: string,
+  ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>>;
+
+  /**
+   * Keyed by `matchId`. Player-fault abandonment of an economically active
+   * match with no eligible signed-in successor remaining — see
+   * `RoomManager.abandonRoom`'s "Economic routing" doc comment. Moves the
+   * ENTIRE `total_collected` pool to the dedicated
+   * `abandonmentForfeitureRevenue` World Bank balance; the economic owner
+   * (`hostIdentityId`) is never credited, and no participant row, wallet
+   * credit, or voucher is ever created by this method. Deliberately takes
+   * no amount — the forfeited total is always derived from the settlement's
+   * own `totalCollected`, never a caller-supplied value.
+   *
+   * A settlement already `ABANDONMENT_FORFEITED` replays `applied:false`
+   * with the original result (idempotent, not an error). Throws
+   * `MatchAlreadySettledError` if the settlement already reached `SETTLED`,
+   * or `MatchAlreadyRefundedError` if it already reached `REFUNDED` — both
+   * are different, mutually exclusive terminal causes reached by a
+   * different action entirely, never silently resolved into a forfeiture.
+   */
+  forfeitMatchEntry(
     matchId: string,
     reason: string,
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>>;

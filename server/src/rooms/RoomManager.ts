@@ -1318,16 +1318,21 @@ export class RoomManager {
    *
    * `room.economyCommitPending` guards the whole async window against a
    * second `requestGameStart` racing this one for the same room. A real,
-   * separate interleaving risk remains and is deliberately NOT solved by
-   * a bigger lock: another socket event for this SAME room (a player
-   * leaving, an abandonment) can run during the `await` below, since
-   * Node's event loop is free to process other callbacks while this one
-   * is suspended. If that happens, `startGame`'s own re-validation may
-   * then refuse to actually start the match even though the commit
-   * already succeeded. This is financially safe, not merely tolerated:
-   * `abandonRoom`'s refund guard checks `room.currentMatchId !== null`
-   * directly (not `room.phase === "playing"`), so a committed-but-never-
-   * started match still gets refunded when the room is torn down.
+   * separate interleaving risk remains and is NOT solved by a bigger lock:
+   * another socket event for this SAME room (a player leaving, an
+   * abandonment) can run during the `await` below, since Node's event loop
+   * is free to process other callbacks while this one is suspended. If
+   * that happens and the room gets TORN DOWN (deleted from `this.rooms`)
+   * during the await, `abandonRoom`'s own refund guard — which checks
+   * `room.currentMatchId !== null`, not `room.phase === "playing"` — CANNOT
+   * help: it already ran, on a room that had no commitment yet, and
+   * nothing will ever call it again on this now-deleted room once the
+   * commit lands. This was a real, confirmed gap (see
+   * `queueCompensatingRefundForOrphanedCommit`), closed by the explicit
+   * re-validation immediately after the `await` resolves, below — the
+   * commit's continuation NEVER trusts the captured `room` reference
+   * without first confirming it is still the live, current room for this
+   * exact start attempt.
    */
   async requestGameStart(socketId: string): Promise<void> {
     const { room, player } = this.lookup(socketId);
@@ -1380,6 +1385,23 @@ export class RoomManager {
         botSeatCount,
         isSolo: playersList.length === 1,
       });
+      // The commit just performed a REAL wallet debit — verified BEFORE
+      // touching `room` or calling `startGame` at all. `room.lifecycleState
+      // === "STARTING"` is the exact marker THIS call set immediately
+      // before the await; nothing else in this class ever sets it, so it
+      // staying unchanged is proof no interleaved event (a departure, an
+      // abandonment, a room replacement reusing the same code) invalidated
+      // this specific start attempt while the await was in flight. See
+      // `queueCompensatingRefundForOrphanedCommit`'s own doc comment for
+      // why a stale `room` reference can never be trusted to notice this
+      // on its own once it's been torn down.
+      const freshRoom = this.rooms.get(room.code);
+      const stillValid = freshRoom === room && room.lifecycleState === "STARTING";
+      if (!stillValid) {
+        const reason = !freshRoom ? "room_deleted" : freshRoom !== room ? "room_replaced" : `lifecycle_${room.lifecycleState}`;
+        this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestGameStart", reason);
+        return;
+      }
       room.currentMatchId = result.settlement.matchId;
       // A fresh commit means any previous match's terminal id is now stale
       // — the results modal for THAT match should already be closed, and a
@@ -1737,12 +1759,37 @@ export class RoomManager {
   }
 
   /**
+   * True only for a seat that could legitimately become the OPERATIONAL
+   * host of an economically active (committed) match: signed in, not a
+   * bot, not a pass-and-play local seat, not a guest, with a server-
+   * verified `identityId`. This mirrors `checkHostEconomyEligibility`'s
+   * own standing product rule for who may START a paid match with other
+   * humans present — enforced again here at succession time, so a guest
+   * or bot can never inherit a match they could never have started.
+   * Economic ownership (`host_identity_id` in `match_economy_settlements`)
+   * is untouched either way; this only ever changes who operationally
+   * runs the room.
+   */
+  private isEligibleSignedInSuccessor(p: Player): boolean {
+    return !p.isBot && !p.isLocal && !p.isGuest && !!p.identityId && p.identityId.trim().length > 0;
+  }
+
+  /**
    * Failover / host election when a host departs or is reaped.
-   * Prioritizes:
+   *
+   * Pre-commitment (no economically active match — `room.currentMatchId
+   * === null`), the existing lobby behavior is unchanged: a guest may
+   * still inherit an unpaid lobby exactly as before this fix. Prioritizes:
    * 1. Active, connected member player (not a bot, not a guest, not away)
    * 2. Active, connected guest player (seals the room as guests cannot gather)
    * 3. Any remaining human player
-   * If no human players remain, transitions room towards abandonment.
+   *
+   * For an ECONOMICALLY ACTIVE match, only an eligible signed-in human
+   * (`isEligibleSignedInSuccessor`) may become host — a guest or bot must
+   * never inherit a match funded by the departed host's wallet. If no
+   * such candidate remains, this is player-fault abandonment and routes
+   * through `abandonRoom`, which forfeits the committed pool instead of
+   * continuing the match under an ineligible host.
    */
   private reassignHost(room: Room, departingPlayerId: string): void {
     if (room.hostId !== departingPlayerId) return;
@@ -1751,39 +1798,46 @@ export class RoomManager {
       (p) => p.id !== departingPlayerId && !p.isLocal && !p.isBot
     );
 
-    if (remainingSeats.length === 0) {
-      if (!this.hasHumanPlayer(room)) {
+    const economicallyActive = room.currentMatchId !== null;
+
+    const nextHost = economicallyActive
+      ? remainingSeats.find((p) => this.isEligibleSignedInSuccessor(p) && !p.awayUntil) ??
+        remainingSeats.find((p) => this.isEligibleSignedInSuccessor(p))
+      : remainingSeats.find((p) => !p.isGuest && !p.awayUntil) ??
+        remainingSeats.find((p) => !p.awayUntil) ??
+        remainingSeats.find((p) => !p.isGuest) ??
+        remainingSeats[0];
+
+    if (!nextHost) {
+      // Economically active with no eligible signed-in successor is
+      // always player-fault abandonment, regardless of what non-eligible
+      // seats (guests, bots) remain — Examples 2/3/6. Pre-commitment,
+      // preserve the exact existing behavior: abandon only when literally
+      // no human (bot-only-blind `hasHumanPlayer`) seat remains at all.
+      if (economicallyActive || !this.hasHumanPlayer(room)) {
         this.abandonRoom(room);
       }
       return;
     }
 
-    const nextHost =
-      remainingSeats.find((p) => !p.isGuest && !p.awayUntil) ??
-      remainingSeats.find((p) => !p.awayUntil) ??
-      remainingSeats.find((p) => !p.isGuest) ??
-      remainingSeats[0];
-
-    if (nextHost) {
-      room.hostId = nextHost.id;
-      for (const p of room.players.values()) {
-        p.isHost = p.id === nextHost.id;
-      }
-      logger.info({
-        message: `Host failover: reallocated room ${room.code} host from ${departingPlayerId} to ${nextHost.name} (${nextHost.id})`,
-        module: "ROOM_MANAGER",
-        roomCode: room.code,
-        playerId: nextHost.id,
-      });
-      const msg: ChatMessage = {
-        id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        playerId: "system",
-        playerName: "BHALYAM Lounge",
-        text: `👑 ${nextHost.name} is now the room host.`,
-        ts: Date.now(),
-      };
-      this.io.to(room.code).emit("chat:message", msg);
+    room.hostId = nextHost.id;
+    for (const p of room.players.values()) {
+      p.isHost = p.id === nextHost.id;
     }
+    logger.info({
+      message: `Host failover: reallocated room ${room.code} host from ${departingPlayerId} to ${nextHost.name} (${nextHost.id})`,
+      module: "ROOM_MANAGER",
+      roomCode: room.code,
+      playerId: nextHost.id,
+    });
+    const msg: ChatMessage = {
+      id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      playerId: "system",
+      playerName: "BHALYAM Lounge",
+      text: `👑 ${nextHost.name} is now the room host.`,
+      ts: Date.now(),
+    };
+    this.io.to(room.code).emit("chat:message", msg);
   }
 
   setTokenNicknames(socketId: string, nicknames: Record<string, string>): void {
@@ -2134,11 +2188,57 @@ export class RoomManager {
    *
    * Setting `phase = "finished"` also makes any in-flight bot-move closures bail
    * (they guard on `phase === "playing"`), so no stray timers fire after delete.
+   *
+   * ── Economic routing (refund vs. forfeiture) ────────────────────────────
+   * `wasPlaying` is captured BEFORE `phase` is overwritten below, and is the
+   * same `phase === "playing"` signal `handleDisconnect`'s own `inMatch`
+   * check already uses everywhere else in this file.
+   *  - `currentMatchId === null` (nothing was ever committed): no economic
+   *    action is owed either way — `queueMatchRefund` is a safe no-op here
+   *    via its own guard, preserved unchanged from before this fix.
+   *  - `currentMatchId !== null && wasPlaying`: an economically active
+   *    match was actually underway and a human's departure (voluntary or
+   *    disconnect-grace expiry) left no eligible signed-in successor —
+   *    player-fault abandonment. Forfeits the FULL committed pool to World
+   *    Bank; the economic owner is never refunded.
+   *  - `currentMatchId !== null && !wasPlaying`: the narrow commit-but-
+   *    never-started race `queueMatchRefund`'s own doc comment describes
+   *    (another event interleaved during `requestGameStart`'s `await`, so
+   *    `startGame`'s own re-validation refused to transition `phase`).
+   *    Nobody ever played anything — this is a stuck commitment, not a
+   *    player forfeiting a live match, so it still refunds, exactly as
+   *    documented there before this fix existed.
+   *
+   * ── Guard: a room whose match ALREADY concluded naturally ───────────────
+   * `finalizeMatch` (natural completion, engine.isOver()) and this function
+   * are the ONLY two places that ever set `room.phase = "finished"`, and
+   * `finalizeMatch` ALWAYS runs `queueMatchSettlement` synchronously in the
+   * same step, which unconditionally clears `currentMatchId` before this
+   * function could ever see it non-null for a concluded room. So `wasPlaying`
+   * alone is not the fix here: without this guard, EVERY completed match
+   * would still hit `transitionLifecycle(room, "ABANDONED", ...)` the moment
+   * the last player leaves (a real transition — COMPLETED -> ABANDONED is
+   * valid per `shared/lifecycle.ts`) and would inflate
+   * `metricsCollector.onRoomAbandoned` for every ordinary match completion,
+   * not just genuine abandonments. `isMatchAlreadyConcluded` checks BOTH
+   * `phase` and `lifecycleState` together (the task's own guidance: neither
+   * alone is trusted in isolation) and routes to `closeConcludedRoom`
+   * instead — ordinary teardown, never a second economic outcome. See that
+   * method's own doc comment for what it preserves.
    */
   private abandonRoom(room: Room): void {
+    if (this.isMatchAlreadyConcluded(room)) {
+      this.closeConcludedRoom(room);
+      return;
+    }
+    const wasPlaying = room.phase === "playing";
     room.phase = "finished";
     this.transitionLifecycle(room, "ABANDONED", "All humans departed");
-    this.queueMatchRefund(room, "Room abandoned mid-match — all human players departed");
+    if (room.currentMatchId !== null && wasPlaying) {
+      this.queueMatchForfeiture(room, "Room abandoned mid-match after commitment — no eligible signed-in successor remained");
+    } else {
+      this.queueMatchRefund(room, "Room abandoned mid-match — all human players departed");
+    }
     serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_abandoned");
     metricsCollector.onRoomAbandoned(room.game);
     this.clearTurnTimer(room);
@@ -2156,11 +2256,70 @@ export class RoomManager {
   }
 
   /**
-   * The one and only refund call site for room-teardown cancellation
-   * (`abandonRoom`'s 3 call sites — see `roommanager-integration-map.md`).
-   * Calls `EconomyService.refundMatchEntry` only, queued for the same
-   * "no player-visible action is waiting on this" reason settlement is
-   * (`EconomySettlementQueue`'s doc comment).
+   * True once this room's match ALREADY reached a terminal, naturally-
+   * completed outcome (`finalizeMatch` already ran and queued its one
+   * settlement) — checked using `phase` and `lifecycleState` TOGETHER,
+   * neither trusted alone: `phase` is the finer-grained, always-current
+   * signal (only ever `"finished"` via `finalizeMatch`, since this class
+   * deletes a room from `this.rooms` the moment it tears one down, so no
+   * later caller can observe a phase this function itself set), while
+   * `lifecycleState` is checked too in case `transitionLifecycle` ever
+   * silently no-ops on an unexpected prior state (it does, by design — see
+   * `shared/lifecycle.ts`) and leaves `lifecycleState` stale relative to
+   * `phase`. Either signal alone being `"finished"`/`"COMPLETED"` is
+   * sufficient: a still-forfeitable, actually-active match can never have
+   * either value, because `finalizeMatch` clears `currentMatchId`
+   * unconditionally in the same synchronous step that sets both.
+   */
+  private isMatchAlreadyConcluded(room: Room): boolean {
+    return room.phase === "finished" || room.lifecycleState === "COMPLETED";
+  }
+
+  /**
+   * Ordinary teardown for a room whose match already concluded naturally
+   * BEFORE the last player left — reached only via `abandonRoom`'s own
+   * guard (see `isMatchAlreadyConcluded`). Deliberately does NOT:
+   *  - transition lifecycle to `ABANDONED` (COMPLETED is not ABANDONED —
+   *    it goes straight to CLOSED, a transition `shared/lifecycle.ts`
+   *    already allows),
+   *  - call `queueMatchRefund` or `queueMatchForfeiture` (the match's one
+   *    settlement already happened in `finalizeMatch`; `currentMatchId` is
+   *    already `null`, so there is nothing left to reclassify),
+   *  - count towards `metricsCollector.onRoomAbandoned` (this is routine
+   *    post-match cleanup, not an abandonment event for ops dashboards to
+   *    alert on).
+   * Everything else `abandonRoom` does for genuine abandonment — timers,
+   * `serverLifecycleRegistry` cleanup, room-map deletion, the CLOSED
+   * metric — still runs identically here, so nothing leaks or lingers just
+   * because the room happens to already be finished rather than freshly
+   * abandoned.
+   */
+  private closeConcludedRoom(room: Room): void {
+    serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_closed_after_completion");
+    this.clearTurnTimer(room);
+    this.clearDealGateTimers(room);
+    this.stopSimulation(room);
+    this.clearRematchTimers(room);
+    for (const t of room.cleanupTimers.values()) clearTimeout(t);
+    room.cleanupTimers.clear();
+    for (const t of room.takeoverTimers.values()) clearTimeout(t);
+    room.takeoverTimers.clear();
+    this.transitionLifecycle(room, "CLOSED", "Room destroyed after completion");
+    serverLifecycleRegistry.cleanupRoom(room.code);
+    metricsCollector.onRoomClosed(room.game);
+    this.rooms.delete(room.code);
+  }
+
+  /**
+   * The refund call site for room-teardown cancellation — reached from
+   * `abandonRoom` only for a commitment that never actually reached a
+   * live match (see `abandonRoom`'s own "Economic routing" doc comment)
+   * or that was never committed at all, in which case this is a safe
+   * no-op via the `currentMatchId` guard below. Player-fault abandonment
+   * of an ACTUALLY PLAYING committed match routes to `queueMatchForfeiture`
+   * instead — see `abandonRoom`. Calls `EconomyService.refundMatchEntry`
+   * only, queued for the same "no player-visible action is waiting on
+   * this" reason settlement is (`EconomySettlementQueue`'s doc comment).
    *
    * Guards on `currentMatchId !== null` rather than `room.phase ===
    * "playing"` deliberately — a match committed via `requestGameStart` but
@@ -2189,6 +2348,69 @@ export class RoomManager {
     room.committedCostPerSeat = null;
     room.committedTotalPot = null;
     this.settlementQueue.queueRefund(matchId, reason);
+  }
+
+  /**
+   * Player-fault abandonment forfeiture — the sibling of `queueMatchRefund`
+   * for a committed match that was ACTUALLY PLAYING when the last eligible
+   * human departed and no eligible signed-in successor remained (see
+   * `abandonRoom`'s "Economic routing" doc comment for the exact split).
+   * Same ordering/no-live-broadcast-recipient reasoning as
+   * `queueMatchRefund` applies identically here — only the destination RPC
+   * differs. Calls `EconomyService.forfeitMatchEntry` only, which derives
+   * the forfeited amount from the settlement's own `total_collected`
+   * server-side; nothing here ever passes an amount.
+   */
+  private queueMatchForfeiture(room: Room, reason: string): void {
+    if (!this.settlementQueue || !room.currentMatchId) return;
+    const matchId = room.currentMatchId;
+    room.lastMatchId = matchId;
+    room.currentMatchId = null;
+    room.committedCostPerSeat = null;
+    room.committedTotalPot = null;
+    this.settlementQueue.queueForfeiture(matchId, reason);
+  }
+
+  /**
+   * The compensating close for a commit that succeeded AFTER the room that
+   * requested it was already torn down, replaced, or otherwise moved past
+   * the exact request the commit was for — the one gap neither
+   * `queueMatchRefund` nor `queueMatchForfeiture` can close on their own,
+   * because both operate on a `room` object and take their guard
+   * (`room.currentMatchId !== null`) from IT. A commit's own continuation
+   * (`requestGameStart`/`requestRematchStart`, after their `await
+   * commitMatchEntry(...)`) is the ONLY code that still holds the matchId
+   * a moment like this needs — once that continuation returns without
+   * acting, NOTHING else in this class will ever see this matchId again:
+   * the room is gone from `this.rooms`, so no future departure, disconnect,
+   * or abandonment path can find it to trigger settlement, refund, or
+   * forfeiture. `commitMatchEntry` already performed a REAL wallet debit;
+   * the match never reached active play (this fires strictly BEFORE
+   * `startGame`/`startRematch` would have run), so a refund — never a
+   * forfeiture — is the only outcome consistent with existing policy
+   * ("committed but never active" always refunds). `queueRefund` is
+   * idempotent by construction (keyed on `matchId`), so this is safe even
+   * if some future caller ever reached it more than once for the same
+   * match.
+   */
+  private queueCompensatingRefundForOrphanedCommit(
+    matchId: string,
+    roomCode: string,
+    operation: "requestGameStart" | "requestRematchStart",
+    reason: string,
+  ): void {
+    logger.warn({
+      message: `${operation} committed match ${matchId} (room ${roomCode}) but the room was invalidated before the commit resolved (${reason}) — queuing a compensating refund so the debit does not stay permanently stuck`,
+      module: "ECONOMY_ROOM",
+      roomCode,
+      matchId,
+      operation,
+      reason,
+    });
+    this.settlementQueue?.queueRefund(
+      matchId,
+      `Commit succeeded after ${operation} was invalidated (${reason}) — the match never reached active play`,
+    );
   }
 
   /** True while at least one seated player is a real human (not a bot). */
@@ -3561,6 +3783,25 @@ export class RoomManager {
         botSeatCount,
         isSolo: playersList.length === 1,
       });
+      // Same re-validation as `requestGameStart`, adapted to the rematch
+      // flow's own "is this specific request still current" marker:
+      // `room.rematch.status === "accepted"` (rematch has no `STARTING`
+      // lifecycle transition of its own — `startRematch` reads THIS field
+      // as its own first line, so it is the exact, always-current signal
+      // for "this rematch attempt hasn't been superseded, cancelled, or
+      // torn down since the countdown fired"). `requestRematchStart` is
+      // MORE exposed to this race than `requestGameStart`: it is invoked
+      // from a bare `setTimeout` callback closing over `room` directly (no
+      // socketId re-lookup at all), and `startRematch` takes `room`
+      // directly too — neither has any natural stale-reference guard of
+      // its own the way `startGame`'s `this.lookup(socketId)` does.
+      const freshRoom = this.rooms.get(room.code);
+      const stillValid = freshRoom === room && room.rematch.status === "accepted";
+      if (!stillValid) {
+        const reason = !freshRoom ? "room_deleted" : freshRoom !== room ? "room_replaced" : `rematch_${room.rematch.status}`;
+        this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestRematchStart", reason);
+        return;
+      }
       room.currentMatchId = result.settlement.matchId;
       // A fresh commit means any previous match's terminal id is now stale
       // — the results modal for THAT match should already be closed, and a

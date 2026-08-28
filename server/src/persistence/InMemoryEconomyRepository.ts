@@ -23,6 +23,8 @@ import {
   InvalidIdentityKindError,
   InvalidSeatConfigurationError,
   InvalidVoucherHashError,
+  MatchAlreadyForfeitedError,
+  MatchAlreadyRefundedError,
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
@@ -101,7 +103,8 @@ type WorldBankAffectedBalance =
   | "base_fee_revenue"
   | "bot_prize_revenue"
   | "guest_escrow_liability"
-  | "total_voucher_redeemed";
+  | "total_voucher_redeemed"
+  | "abandonment_forfeiture_revenue";
 
 type WorldBankLedgerEntryType =
   | "BASE_FEE_REVENUE"
@@ -109,7 +112,8 @@ type WorldBankLedgerEntryType =
   | "BOT_PRIZE_REVENUE"
   | "GUEST_ESCROW_DEPOSIT"
   | "GUEST_ESCROW_REDEMPTION"
-  | "ADMIN_CORRECTION";
+  | "ADMIN_CORRECTION"
+  | "ABANDONMENT_FORFEITURE";
 
 interface WorldBankLedgerEntry {
   id: number;
@@ -249,6 +253,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     botPrizeRevenue: "0",
     guestEscrowLiability: "0",
     totalVoucherRedeemed: "0",
+    abandonmentForfeitureRevenue: "0",
   };
   private worldBankLedger: WorldBankLedgerEntry[] = [];
   private nextWorldBankLedgerId = 1;
@@ -326,7 +331,13 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     this.wallets = new Map();
     this.walletLedger = [];
     this.nextWalletLedgerId = 1;
-    this.worldBank = { baseFeeRevenue: "0", botPrizeRevenue: "0", guestEscrowLiability: "0", totalVoucherRedeemed: "0" };
+    this.worldBank = {
+      baseFeeRevenue: "0",
+      botPrizeRevenue: "0",
+      guestEscrowLiability: "0",
+      totalVoucherRedeemed: "0",
+      abandonmentForfeitureRevenue: "0",
+    };
     this.worldBankLedger = [];
     this.nextWorldBankLedgerId = 1;
     this.settlements = new Map();
@@ -397,7 +408,8 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       toBig(settlement.totalGuestEscrow) +
       toBig(settlement.totalBotCollection) +
       toBig(settlement.totalWorldBankCut) +
-      toBig(settlement.totalRefunded);
+      toBig(settlement.totalRefunded) +
+      toBig(settlement.totalForfeited);
     const collected = toBig(settlement.totalCollected);
     const isBalanced =
       (settlement.status === "COMMITTED" && disbursed === 0n) ||
@@ -415,6 +427,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
         botCollection: settlement.totalBotCollection,
         worldBankCut: settlement.totalWorldBankCut,
         refunded: settlement.totalRefunded,
+        forfeited: settlement.totalForfeited,
       },
     };
   }
@@ -461,6 +474,15 @@ export class InMemoryEconomyRepository implements EconomyRepository {
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
     return this.mutex.runExclusive(`match:${matchId}`, () =>
       this.withRollback(() => this.refundMatchEntryLocked(matchId, reason)),
+    );
+  }
+
+  async forfeitMatchEntry(
+    matchId: string,
+    reason: string,
+  ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
+    return this.mutex.runExclusive(`match:${matchId}`, () =>
+      this.withRollback(() => this.forfeitMatchEntryLocked(matchId, reason)),
     );
   }
 
@@ -625,6 +647,8 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       totalWorldBankCut: "0",
       totalRefunded: "0",
       refundReason: null,
+      totalForfeited: "0",
+      forfeitureReason: null,
       status: "COMMITTED",
       settledAt: null,
       createdAt: now,
@@ -647,7 +671,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     if (!settlement) {
       throw new MatchNotCommittedError(`Match settlement ${input.matchId} not found`);
     }
-    if (settlement.status === "SETTLED" || settlement.status === "REFUNDED") {
+    if (settlement.status === "SETTLED" || settlement.status === "REFUNDED" || settlement.status === "ABANDONMENT_FORFEITED") {
       this.logIdempotency(idempotencyKey, "settle_match_economy");
       return { applied: false, operation: "settle_match_economy", idempotencyKey, result: clone(settlement) };
     }
@@ -818,7 +842,62 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     if (settlement.status === "SETTLED") {
       throw new MatchAlreadySettledError(`Settled match ${matchId} cannot be refunded`);
     }
+    if (settlement.status === "ABANDONMENT_FORFEITED") {
+      throw new MatchAlreadyForfeitedError(`Forfeited match ${matchId} cannot be refunded`);
+    }
     return this.applyRefundLocked(settlement, idempotencyKey, reason);
+  }
+
+  /**
+   * Player-fault abandonment forfeiture — mirrors the migration's
+   * `forfeit_match_entry` exactly: same terminal-status precedence as
+   * `refundMatchEntryLocked` (self-replay is idempotent, either OTHER
+   * terminal is a hard error), moves the entire `total_collected` pool to
+   * `abandonmentForfeitureRevenue`, and never touches any wallet,
+   * participant row, or voucher. Assumes the caller already holds the
+   * `match:${matchId}` lock.
+   */
+  private forfeitMatchEntryLocked(
+    matchId: string,
+    reason: string,
+  ): EconomyOperationResult<MatchEconomySettlementRecord> {
+    const idempotencyKey = `match-forfeit:${matchId}`;
+    const settlement = this.settlements.get(matchId);
+    if (!settlement) {
+      throw new MatchNotCommittedError(`Match settlement ${matchId} not found`);
+    }
+    if (settlement.status === "ABANDONMENT_FORFEITED") {
+      this.logIdempotency(idempotencyKey, "forfeit_match_entry");
+      return { applied: false, operation: "forfeit_match_entry", idempotencyKey, result: clone(settlement) };
+    }
+    if (settlement.status === "SETTLED") {
+      throw new MatchAlreadySettledError(`Settled match ${matchId} cannot be forfeited`);
+    }
+    if (settlement.status === "REFUNDED") {
+      throw new MatchAlreadyRefundedError(`Refunded match ${matchId} cannot be forfeited`);
+    }
+
+    const forfeitAmount = toBig(settlement.totalCollected);
+    this.moveWorldBank("abandonmentForfeitureRevenue", forfeitAmount, {
+      entryType: "ABANDONMENT_FORFEITURE",
+      sourceKind: "match",
+      sourceId: matchId,
+      idempotencyKey,
+      description: `Match abandoned after commitment: ${reason}`,
+    });
+
+    const now = Date.now();
+    const updated: MatchEconomySettlementRecord = {
+      ...settlement,
+      totalForfeited: fromBig(forfeitAmount),
+      status: "ABANDONMENT_FORFEITED",
+      forfeitureReason: reason,
+      settledAt: now,
+    };
+    this.settlements.set(matchId, updated);
+
+    this.logIdempotency(idempotencyKey, "forfeit_match_entry");
+    return { applied: true, operation: "forfeit_match_entry", idempotencyKey, result: clone(updated) };
   }
 
   /** Shared by `refundMatchEntry` and `settleMatchEconomy`'s invalid-ranking path — mirrors `economy_apply_refund` in the migration. Assumes the caller already holds the `match:${matchId}` lock. */
@@ -1079,7 +1158,9 @@ export class InMemoryEconomyRepository implements EconomyRepository {
           ? "bot_prize_revenue"
           : balance === "guestEscrowLiability"
             ? "guest_escrow_liability"
-            : "total_voucher_redeemed";
+            : balance === "abandonmentForfeitureRevenue"
+              ? "abandonment_forfeiture_revenue"
+              : "total_voucher_redeemed";
     this.worldBankLedger.push({
       id: this.nextWorldBankLedgerId++,
       affectedBalance: affected,

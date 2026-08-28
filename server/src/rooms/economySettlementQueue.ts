@@ -39,6 +39,7 @@ export interface EconomySettlementQueueStatus {
   pending: number;
   settled: number;
   refunded: number;
+  forfeited: number;
   failed: number;
   lastError: string | null;
   lastErrorAt: number | null;
@@ -49,6 +50,7 @@ export class EconomySettlementQueue {
   private pending = 0;
   private settled = 0;
   private refunded = 0;
+  private forfeited = 0;
   private failed = 0;
   private lastError: string | null = null;
   private lastErrorAt: number | null = null;
@@ -110,11 +112,35 @@ export class EconomySettlementQueue {
     });
   }
 
+  /**
+   * Queue `forfeit_match_entry` for a committed, actually-playing match
+   * abandoned by player fault (voluntary departure or disconnect-grace
+   * expiry) with no eligible signed-in successor remaining — see
+   * `RoomManager.abandonRoom`'s "Economic routing" doc comment for the
+   * exact refund-vs-forfeiture split. `matchId` doubles as the idempotency
+   * key, same as `queueRefund`/`queueSettlement`. Never carries an amount —
+   * `forfeitMatchEntry` derives the forfeited total from the settlement's
+   * own `total_collected` server-side.
+   */
+  queueForfeiture(matchId: string, reason: string): void {
+    this.enqueue("forfeitMatchEntry", matchId, async () => {
+      const result = await this.economyService.forfeitMatchEntry(matchId, reason);
+      this.forfeited += 1;
+      logger.info({
+        message: `Match ${matchId} forfeited to World Bank (applied=${result.applied})`,
+        module: "ECONOMY_ROOM",
+        matchId,
+      });
+      return result;
+    });
+  }
+
   status(): EconomySettlementQueueStatus {
     return {
       pending: this.pending,
       settled: this.settled,
       refunded: this.refunded,
+      forfeited: this.forfeited,
       failed: this.failed,
       lastError: this.lastError,
       lastErrorAt: this.lastErrorAt,

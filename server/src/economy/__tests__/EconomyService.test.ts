@@ -138,6 +138,9 @@ class ScriptedFailureRepository implements EconomyRepository {
   refundMatchEntry(matchId: string, reason: string): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
     return this.invoke("refundMatchEntry", () => this.inner.refundMatchEntry(matchId, reason));
   }
+  forfeitMatchEntry(matchId: string, reason: string): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
+    return this.invoke("forfeitMatchEntry", () => this.inner.forfeitMatchEntry(matchId, reason));
+  }
   issueGuestVoucher(input: IssueGuestVoucherInput): Promise<EconomyOperationResult<RewardVoucherRecord>> {
     return this.invoke("issueGuestVoucher", () => this.inner.issueGuestVoucher(input));
   }

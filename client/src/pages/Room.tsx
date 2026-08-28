@@ -43,7 +43,7 @@ import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
 import FallingPetals from "../animations/app/FallingPetals";
 import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
-import { EconomyMotionOrchestrator, useEconomyMotion } from "../components/economy/motion";
+import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
 import BhalyamResultModal from "../components/BhalyamResultModal";
 import { GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
@@ -532,6 +532,11 @@ export default function Room() {
   // every effect below re-run on every unrelated re-render of this page).
   const { phase: economyPhase, cancelMotion, startAwaitingAuthority, triggerCommitmentSequence, resetMotion } = economyMotion;
 
+  // Real screen position of the lobby wallet chip (RoomHeader), so the
+  // coin-departure flight in the commitment ceremony below launches from
+  // the actual wallet the coins are leaving, not a hardcoded screen corner.
+  const hostWalletAnchor = useElementAnchor({ elementId: "host-wallet-chip" });
+
   // Cancel economy motion on error toast
   useEffect(() => {
     if (lastError) {
@@ -573,21 +578,27 @@ export default function Room() {
     // startRematch sets `phase` straight to "playing", it never passes
     // back through "lobby") — both are real match starts.
     if (isMatchStartTransition(prev, next)) {
-      setShowMatchCountdown(true);
-      if (roomState) {
-        // Real amounts, straight off the authoritative broadcast — never a
-        // client-side guess, never fired ahead of the server's own commit.
-        // `null` means either economy isn't configured for this deployment
-        // or the match bypassed requestGameStart's commit step — either
-        // way, nothing authoritative to animate, so nothing fires. A
-        // room-code-based fallback id is deliberately NOT used here: the
-        // code is stable across a room's entire lifetime including every
-        // rematch, which would silently suppress the ceremony on the
-        // second and every later match in the room.
-        const commitment = buildCommitmentPayload(roomState, playerId);
-        if (commitment) {
-          triggerCommitmentSequence(commitment);
-        }
+      // Real amounts, straight off the authoritative broadcast — never a
+      // client-side guess, never fired ahead of the server's own commit.
+      // `null` means either economy isn't configured for this deployment
+      // or the match bypassed requestGameStart's commit step — either
+      // way, nothing authoritative to animate. A room-code-based fallback
+      // id is deliberately NOT used here: the code is stable across a
+      // room's entire lifetime including every rematch, which would
+      // silently suppress the ceremony on the second and every later
+      // match in the room.
+      const commitment = roomState ? buildCommitmentPayload(roomState, playerId, hostWalletAnchor) : null;
+      if (commitment) {
+        // Economy-gated match: the coin-flight + "MATCH COMMENCED" +
+        // pot-total + 3-2-1-PLAY ceremony (EconomyMotionOrchestrator /
+        // GameStartSequence) owns the full countdown for this match.
+        // Showing the generic BhalyamMatchCountdown at the same time
+        // would stack two competing full-screen "3..2..1" overlays.
+        triggerCommitmentSequence(commitment);
+      } else {
+        // No authoritative commit to animate — the generic countdown
+        // remains the only ceremony for this match.
+        setShowMatchCountdown(true);
       }
       try {
         HapticsManager.getInstance().gameStart();
@@ -612,7 +623,7 @@ export default function Room() {
       }
     }
     prevRoomPhaseRef.current = next;
-  }, [roomState, code, playerId, triggerCommitmentSequence]);
+  }, [roomState, code, playerId, triggerCommitmentSequence, hostWalletAnchor]);
 
   const allPlayersReady = useMemo(() => {
     if (!roomState || roomState.phase !== "lobby" || roomState.players.length < 2) return false;
@@ -1447,7 +1458,7 @@ export default function Room() {
         refund={economyMotion.activeRefund}
         escrow={economyMotion.activeEscrow}
         errorMessage={economyMotion.errorMessage}
-        onGameStartComplete={() => {}}
+        onGameStartComplete={resetMotion}
       />
 
       {showGameOver && gameOverDeadlineMs > 0 && (

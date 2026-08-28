@@ -5,6 +5,10 @@ import { GAME_DISPLAY_NAMES } from "@shared/catalog";
 import RoomNameEditor from "../RoomNameEditor";
 import RummyRoomHistory from "../nostalgia/RummyRoomHistory";
 import LeaveRoomModal from "./LeaveRoomModal";
+import { WalletBalanceChip } from "../economy/WalletBalanceChip";
+import { useWallet } from "../../hooks/useEconomy";
+import { useAuthStore } from "../../store/authStore";
+import { useAppLayout } from "../layout/AppLayout";
 
 export default function RoomHeader({
   roomState,
@@ -16,6 +20,18 @@ export default function RoomHeader({
   onLeave: () => void;
 }) {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const { balance, isLoading: walletLoading, status: walletStatus } = useWallet();
+  const { isMember } = useAuthStore();
+  const { openWallet } = useAppLayout();
+  // Same derivation AppHeader uses for its global chip — kept identical so
+  // the lobby chip (this screen has no chrome, so AppHeader isn't mounted)
+  // reads the same way a returning player already recognizes.
+  const walletSyncStatus =
+    walletStatus === "error" || walletStatus === "unavailable"
+      ? "error"
+      : walletLoading && walletStatus !== "loading"
+        ? "syncing"
+        : "synced";
 
   return (
     <>
@@ -51,6 +67,17 @@ export default function RoomHeader({
         </div>
 
         <div className="shrink-0 flex items-center gap-2">
+          {/* Coin wallet balance — this room screen carries no chrome, so
+              AppHeader's global chip never mounts; this is the only wallet
+              visibility a player has before committing coins to the match. */}
+          <WalletBalanceChip
+            balance={balance}
+            isLoading={walletLoading}
+            syncStatus={walletSyncStatus}
+            isMember={isMember}
+            onClick={openWallet}
+          />
+
           {/* Leave room action with minimum 44px touch target */}
           <button
             type="button"

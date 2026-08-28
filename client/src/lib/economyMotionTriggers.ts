@@ -1,5 +1,5 @@
 import type { Player, RoomPublicState } from "@shared/types";
-import type { MatchCommitmentMotionPayload, ParticipantSeatTarget } from "../components/economy/motion";
+import type { MatchCommitmentMotionPayload, ParticipantSeatTarget, Point2D } from "../components/economy/motion";
 
 /**
  * Pure derivation logic for wiring Economy V1's motion sequences to real
@@ -57,6 +57,7 @@ type CommitmentRoomState = Pick<
 export function buildCommitmentPayload(
   roomState: CommitmentRoomState,
   selfId?: string | null,
+  hostWalletPoint?: Point2D,
 ): MatchCommitmentMotionPayload | null {
   const { currentMatchId, committedCostPerSeat, committedTotalPot } = roomState;
   if (!currentMatchId || !committedCostPerSeat || !committedTotalPot) return null;
@@ -77,5 +78,6 @@ export function buildCommitmentPayload(
     amountPerSeat: committedCostPerSeat,
     totalPotAmount: committedTotalPot,
     seats,
+    hostWalletPoint,
   };
 }

@@ -10,6 +10,8 @@ import {
   InvalidIdentityKindError,
   InvalidSeatConfigurationError,
   InvalidVoucherHashError,
+  MatchAlreadyForfeitedError,
+  MatchAlreadyRefundedError,
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
@@ -711,6 +713,132 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         const replay = await ctx.repo.refundMatchEntry(matchId, "different reason");
         expect(replay.applied).toBe(false);
         expect(replay.result.refundReason).toBe("original reason");
+      });
+
+      it("rejects with MatchAlreadyForfeitedError when the match already reached ABANDONMENT_FORFEITED", async () => {
+        const host = freshId("guest");
+        ctx.seedIdentity(host, "guest");
+        await ctx.repo.ensureWallet(host);
+        const matchId = freshId("m");
+        await ctx.repo.commitMatchEntry({
+          matchId, roomCode: null, hostIdentityId: host,
+          seatCount: 1, humanSeatCount: 1, botSeatCount: 0, isSolo: true,
+        });
+        await ctx.repo.forfeitMatchEntry(matchId, "abandoned");
+        await expect(ctx.repo.refundMatchEntry(matchId, "too late")).rejects.toBeInstanceOf(MatchAlreadyForfeitedError);
+      });
+    });
+
+    /* ── forfeitMatchEntry ── */
+    describe("forfeitMatchEntry", () => {
+      it("moves the FULL committed amount to World Bank and does NOT touch the host wallet at all", async () => {
+        const host = freshId("guest");
+        ctx.seedIdentity(host, "guest");
+        await ctx.repo.ensureWallet(host);
+        const matchId = freshId("m");
+        await ctx.repo.commitMatchEntry({
+          matchId, roomCode: null, hostIdentityId: host,
+          seatCount: 1, humanSeatCount: 1, botSeatCount: 0, isSolo: true,
+        });
+        // Captured AFTER commit's own entry-fee debit — forfeiture must not
+        // move the wallet AT ALL from here, neither crediting (a refund)
+        // nor debiting further.
+        const beforeForfeit = await ctx.repo.getWallet(host);
+        const wbBefore = await ctx.repo.getWorldBankSnapshot();
+        const outcome = await ctx.repo.forfeitMatchEntry(matchId, "no eligible signed-in successor");
+        expect(outcome.applied).toBe(true);
+        expect(outcome.result.status).toBe("ABANDONMENT_FORFEITED");
+        expect(outcome.result.totalForfeited).toBe("100");
+        expect(outcome.result.totalRefunded).toBe("0");
+
+        const after = await ctx.repo.getWallet(host);
+        expect(after?.balance).toBe(beforeForfeit?.balance); // never credited — no refund
+        expect(after?.lifetimeRefunded).toBe(beforeForfeit?.lifetimeRefunded); // unchanged
+
+        const wbAfter = await ctx.repo.getWorldBankSnapshot();
+        expect(BigInt(wbAfter.abandonmentForfeitureRevenue) - BigInt(wbBefore.abandonmentForfeitureRevenue)).toBe(100n);
+      });
+
+      it("rejects with MatchNotCommittedError when no settlement exists for the matchId", async () => {
+        await expect(ctx.repo.forfeitMatchEntry(freshId("never_committed"), "x")).rejects.toBeInstanceOf(
+          MatchNotCommittedError,
+        );
+      });
+
+      it("rejects with MatchAlreadySettledError when the match reached SETTLED before this call arrived", async () => {
+        const host = freshId("guest");
+        ctx.seedIdentity(host, "guest");
+        await ctx.repo.ensureWallet(host);
+        const matchId = freshId("m");
+        await ctx.repo.commitMatchEntry({
+          matchId, roomCode: null, hostIdentityId: host,
+          seatCount: 1, humanSeatCount: 1, botSeatCount: 0, isSolo: true,
+        });
+        await ctx.repo.settleMatchEconomy({ matchId, isValidRanking: true, participants: [] });
+        await expect(ctx.repo.forfeitMatchEntry(matchId, "too late")).rejects.toBeInstanceOf(MatchAlreadySettledError);
+      });
+
+      it("rejects with MatchAlreadyRefundedError when the match already reached REFUNDED", async () => {
+        const host = freshId("guest");
+        ctx.seedIdentity(host, "guest");
+        await ctx.repo.ensureWallet(host);
+        const matchId = freshId("m");
+        await ctx.repo.commitMatchEntry({
+          matchId, roomCode: null, hostIdentityId: host,
+          seatCount: 1, humanSeatCount: 1, botSeatCount: 0, isSolo: true,
+        });
+        await ctx.repo.refundMatchEntry(matchId, "cancelled");
+        await expect(ctx.repo.forfeitMatchEntry(matchId, "too late")).rejects.toBeInstanceOf(MatchAlreadyRefundedError);
+      });
+
+      it("returns applied:false with the ORIGINAL settlement on replay of an already-forfeited match — no double World Bank credit", async () => {
+        const host = freshId("guest");
+        ctx.seedIdentity(host, "guest");
+        await ctx.repo.ensureWallet(host);
+        const matchId = freshId("m");
+        await ctx.repo.commitMatchEntry({
+          matchId, roomCode: null, hostIdentityId: host,
+          seatCount: 1, humanSeatCount: 1, botSeatCount: 0, isSolo: true,
+        });
+        await ctx.repo.forfeitMatchEntry(matchId, "original reason");
+        const wbAfterFirst = await ctx.repo.getWorldBankSnapshot();
+        const replay = await ctx.repo.forfeitMatchEntry(matchId, "different reason");
+        expect(replay.applied).toBe(false);
+        expect(replay.result.forfeitureReason).toBe("original reason");
+        const wbAfterReplay = await ctx.repo.getWorldBankSnapshot();
+        expect(wbAfterReplay.abandonmentForfeitureRevenue).toBe(wbAfterFirst.abandonmentForfeitureRevenue);
+      });
+
+      it("settleMatchEconomy on an already-forfeited match is a safe no-op (applied:false, status stays ABANDONMENT_FORFEITED)", async () => {
+        const host = freshId("guest");
+        ctx.seedIdentity(host, "guest");
+        await ctx.repo.ensureWallet(host);
+        const matchId = freshId("m");
+        await ctx.repo.commitMatchEntry({
+          matchId, roomCode: null, hostIdentityId: host,
+          seatCount: 1, humanSeatCount: 1, botSeatCount: 0, isSolo: true,
+        });
+        await ctx.repo.forfeitMatchEntry(matchId, "abandoned");
+        const settleAttempt = await ctx.repo.settleMatchEconomy({ matchId, isValidRanking: true, participants: [] });
+        expect(settleAttempt.applied).toBe(false);
+        expect(settleAttempt.result.status).toBe("ABANDONMENT_FORFEITED");
+      });
+
+      it("creates no match_economy_participants-equivalent side effects — no prize, voucher, or bot revenue", async () => {
+        const host = freshId("guest");
+        ctx.seedIdentity(host, "guest");
+        await ctx.repo.ensureWallet(host);
+        const matchId = freshId("m");
+        await ctx.repo.commitMatchEntry({
+          matchId, roomCode: null, hostIdentityId: host,
+          seatCount: 1, humanSeatCount: 1, botSeatCount: 0, isSolo: true,
+        });
+        const wbBefore = await ctx.repo.getWorldBankSnapshot();
+        await ctx.repo.forfeitMatchEntry(matchId, "abandoned");
+        const wbAfter = await ctx.repo.getWorldBankSnapshot();
+        expect(wbAfter.botPrizeRevenue).toBe(wbBefore.botPrizeRevenue);
+        expect(wbAfter.guestEscrowLiability).toBe(wbBefore.guestEscrowLiability);
+        expect(wbAfter.baseFeeRevenue).toBe(wbBefore.baseFeeRevenue);
       });
     });
 

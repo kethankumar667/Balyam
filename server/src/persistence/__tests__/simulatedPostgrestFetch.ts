@@ -151,7 +151,8 @@ function encodeSettlement(s: {
   matchId: string; roomCode: string; hostIdentityId: string; seatCount: number; humanSeatCount: number;
   botSeatCount: number; costPerSeat: string; totalCollected: string; totalWalletRewarded: string;
   totalGuestEscrow: string; totalBotCollection: string; totalWorldBankCut: string; totalRefunded: string;
-  refundReason: string | null; status: string; settledAt: number | null; createdAt: number;
+  refundReason: string | null; totalForfeited: string; forfeitureReason: string | null;
+  status: string; settledAt: number | null; createdAt: number;
 }): unknown {
   return {
     match_id: s.matchId,
@@ -168,6 +169,8 @@ function encodeSettlement(s: {
     total_world_bank_cut: bigText(s.totalWorldBankCut),
     total_refunded: bigText(s.totalRefunded),
     refund_reason: s.refundReason,
+    total_forfeited: bigText(s.totalForfeited),
+    forfeiture_reason: s.forfeitureReason,
     status: s.status,
     settled_at: iso(s.settledAt),
     created_at: iso(s.createdAt),
@@ -266,6 +269,11 @@ async function dispatchRpc(
       return { ...r, result: encodeSettlement(r.result) };
     }
 
+    case "forfeit_match_entry": {
+      const r = await backend.forfeitMatchEntry(args.p_match_id as string, args.p_reason as string);
+      return { ...r, result: encodeSettlement(r.result) };
+    }
+
     case "issue_guest_voucher": {
       const r = await backend.issueGuestVoucher({
         voucherId: args.p_voucher_id as string,
@@ -298,6 +306,7 @@ async function dispatchRpc(
             bot_collection: bigText(r.details.botCollection),
             world_bank_cut: bigText(r.details.worldBankCut),
             refunded: bigText(r.details.refunded),
+            forfeited: bigText(r.details.forfeited),
           },
         },
       ];
@@ -351,6 +360,7 @@ async function dispatchSelect(
           bot_prize_revenue: bigText(snapshot.botPrizeRevenue),
           guest_escrow_liability: bigText(snapshot.guestEscrowLiability),
           total_voucher_redeemed: bigText(snapshot.totalVoucherRedeemed),
+          abandonment_forfeiture_revenue: bigText(snapshot.abandonmentForfeitureRevenue),
         },
       ];
     }

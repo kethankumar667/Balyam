@@ -507,6 +507,16 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             setFormError(res.error ?? "Failed to create room");
             return;
           }
+          // Synchronize the authoritative room state BEFORE navigating —
+          // same ordering `joinRoom`/`startPassAndPlay` already use just
+          // below. Without this, the store could still hold a PREVIOUS
+          // room's roomState when `/room/${res.code}` mounts: Room.tsx's
+          // own `if (!roomState) return <ConnectingScreen />` guard only
+          // checks for null, not "does this roomState belong to this
+          // room" — so a stale roomState combined with the freshly-set NEW
+          // playerId (never a player in the OLD room) renders immediately
+          // and can throw, straight into the global ErrorBoundary.
+          if (res.state) useRoomStore.getState().setRoomState(res.state);
           if (res.playerId) setPlayerId(res.playerId);
           if (res.code && res.playerId && res.seatToken) {
             rememberSeat(res.code, res.playerId, res.seatToken);

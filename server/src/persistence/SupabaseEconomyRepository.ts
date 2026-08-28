@@ -7,6 +7,8 @@ import {
   InvalidIdentityKindError,
   InvalidSeatConfigurationError,
   InvalidVoucherHashError,
+  MatchAlreadyForfeitedError,
+  MatchAlreadyRefundedError,
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
@@ -180,6 +182,8 @@ interface SettlementRow {
   total_world_bank_cut: string;
   total_refunded: string;
   refund_reason: string | null;
+  total_forfeited: string;
+  forfeiture_reason: string | null;
   status: MatchSettlementStatus;
   settled_at: string | null;
   created_at: string;
@@ -190,6 +194,7 @@ interface WorldBankRow {
   bot_prize_revenue: string;
   guest_escrow_liability: string;
   total_voucher_redeemed: string;
+  abandonment_forfeiture_revenue: string;
 }
 
 interface ConfigRow {
@@ -223,6 +228,7 @@ interface ReconcileRow {
     bot_collection: string;
     world_bank_cut: string;
     refunded: string;
+    forfeited: string;
   };
 }
 
@@ -300,6 +306,8 @@ function toSettlement(row: SettlementRow): MatchEconomySettlementRecord {
     totalWorldBankCut: bigStr(row.total_world_bank_cut),
     totalRefunded: bigStr(row.total_refunded),
     refundReason: row.refund_reason,
+    totalForfeited: bigStr(row.total_forfeited),
+    forfeitureReason: row.forfeiture_reason,
     status: row.status,
     settledAt: row.settled_at ? ms(row.settled_at) : null,
     createdAt: ms(row.created_at),
@@ -312,6 +320,7 @@ function toWorldBank(row: WorldBankRow): WorldBankSnapshot {
     botPrizeRevenue: bigStr(row.bot_prize_revenue),
     guestEscrowLiability: bigStr(row.guest_escrow_liability),
     totalVoucherRedeemed: bigStr(row.total_voucher_redeemed),
+    abandonmentForfeitureRevenue: bigStr(row.abandonment_forfeiture_revenue),
   };
 }
 
@@ -351,6 +360,7 @@ function toReconciliation(row: ReconcileRow): SettlementReconciliation {
       botCollection: bigStr(row.details.bot_collection),
       worldBankCut: bigStr(row.details.world_bank_cut),
       refunded: bigStr(row.details.refunded),
+      forfeited: bigStr(row.details.forfeited),
     },
   };
 }
@@ -386,6 +396,8 @@ const ERROR_TOKEN_MAP: ReadonlyArray<[RegExp, new (message: string) => Error]> =
   [/\bINVALID_IDENTITY_KIND:/, InvalidIdentityKindError],
   [/\bMATCH_NOT_COMMITTED:/, MatchNotCommittedError],
   [/\bMATCH_ALREADY_SETTLED:/, MatchAlreadySettledError],
+  [/\bMATCH_ALREADY_REFUNDED:/, MatchAlreadyRefundedError],
+  [/\bMATCH_ALREADY_FORFEITED:/, MatchAlreadyForfeitedError],
   [/\bSETTLEMENT_CONSERVATION_VIOLATION:/, SettlementConservationViolationError],
   [/\bMATCH_NOT_FOUND:/, MatchNotFoundError],
   [/\bONLY_MEMBERS_CAN_REDEEM_VOUCHERS:/, OnlyMembersCanRedeemError],
@@ -584,6 +596,17 @@ export class SupabaseEconomyRepository implements EconomyRepository {
     reason: string,
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
     const envelope = await this.rpc<RawEnvelope<SettlementRow>>("refund_match_entry", {
+      p_match_id: matchId,
+      p_reason: reason,
+    });
+    return { ...envelope, result: toSettlement(envelope.result) };
+  }
+
+  async forfeitMatchEntry(
+    matchId: string,
+    reason: string,
+  ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
+    const envelope = await this.rpc<RawEnvelope<SettlementRow>>("forfeit_match_entry", {
       p_match_id: matchId,
       p_reason: reason,
     });
