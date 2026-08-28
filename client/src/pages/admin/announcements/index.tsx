@@ -23,7 +23,7 @@ import DetailDrawer from "../../../components/admin/detail-drawer";
 import InfoCard from "../../../components/admin/info-card";
 import MockDataBanner from "../../../components/admin/mock-data-banner";
 
-interface AnnouncementItem extends Record<string, unknown> {
+interface AnnouncementItem {
   id: string;
   title: string;
   message: string;

@@ -169,10 +169,24 @@ interface CacheEntry {
  * into a stampede against it. Failures are cached too, briefly — long enough
  * to absorb a retry loop, short enough that fixing the cause does not need a
  * server restart.
+ *
+ * A verified token is cached for 5 minutes, not 60 seconds — a Supabase
+ * access token is normally valid for ~1 hour, so nothing about a real token
+ * changes on the old 60s horizon, and that short a window meant EVERY
+ * authenticated request more than a minute after the last one (landing on
+ * a fresh page load being the common case) paid a full round trip to
+ * Supabase's auth API before anything else could proceed — the dominant
+ * cost behind the wallet chip's visible loading delay, compounded further
+ * by Render's free-tier cold starts, which this cannot fix. The trade-off
+ * this widens: a revoked/frozen account's cached "verified" result can now
+ * stay trusted up to 5 minutes after revocation instead of 1 — accepted
+ * deliberately, since nothing here gates anything already in progress (see
+ * this file's own header: a failed verification only stops opening a NEW
+ * shareable room, never ejects anyone already in one).
  */
 const cache = new Map<string, CacheEntry>();
 const CACHE_MAX = 500;
-const CACHE_OK_MS = 60_000;
+const CACHE_OK_MS = 5 * 60_000;
 const CACHE_FAIL_MS = 15_000;
 
 function cacheKey(token: string): string {

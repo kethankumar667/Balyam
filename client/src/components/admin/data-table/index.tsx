@@ -39,7 +39,7 @@ interface DataTableProps<T> {
   className?: string;
 }
 
-export default function DataTable<T extends Record<string, unknown>>({
+export default function DataTable<T>({
   columns,
   data,
   loading = false,
@@ -144,9 +144,14 @@ export default function DataTable<T extends Record<string, unknown>>({
                   }`}
                 >
                   {columns.map((col) => {
+                    const rawValue =
+                      typeof row === "object" && row !== null && col.key in row
+                        ? (row as Record<string, unknown>)[col.key]
+                        : undefined;
+
                     const cellContent = col.render
                       ? col.render(row, rowIdx)
-                      : (row[col.key] as ReactNode);
+                      : (rawValue as ReactNode);
 
                     return (
                       <td

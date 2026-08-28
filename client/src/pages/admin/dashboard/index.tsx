@@ -35,7 +35,7 @@ import { operationalFetch, OperationalAuthError } from "../../../lib/operational
  * unavailable, never zeros standing in for either.
  */
 
-interface RoomSummary extends Record<string, unknown> {
+interface RoomSummary {
   code: string;
   game: string;
   lifecycleState: string;
@@ -56,7 +56,7 @@ interface MatchParticipant {
   isBot: boolean;
 }
 
-interface RecentMatch extends Record<string, unknown> {
+interface RecentMatch {
   id: string;
   roomCode: string;
   game: string;

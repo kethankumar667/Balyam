@@ -95,7 +95,7 @@ const MOCK_CHART_POINTS = [
   { time: "Now", value: 490 },
 ];
 
-interface SampleRow extends Record<string, unknown> {
+interface SampleRow {
   id: string;
   name: string;
   game: string;

@@ -23,7 +23,7 @@ import DetailDrawer from "../../../components/admin/detail-drawer";
 import InfoCard from "../../../components/admin/info-card";
 import MockDataBanner from "../../../components/admin/mock-data-banner";
 
-interface LeaderboardPlayer extends Record<string, unknown> {
+interface LeaderboardPlayer {
   rank: number;
   prevRank: number;
   id: string;

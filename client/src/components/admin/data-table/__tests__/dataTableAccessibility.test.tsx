@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import DataTable, { type Column } from "../index";
 
-interface Row extends Record<string, unknown> {
+interface Row {
   id: string;
   name: string;
 }

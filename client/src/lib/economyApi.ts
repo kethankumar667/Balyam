@@ -19,7 +19,7 @@ export type WalletLedgerEntryType =
   | "MATCH_REFUND"
   | "ADMIN_ADJUSTMENT";
 
-export interface CoinWalletRecord extends Record<string, unknown> {
+export interface CoinWalletRecord {
   identityId: string;
   identityKind: PlayerIdentityKind;
   /** Decimal string, always. */
@@ -34,7 +34,7 @@ export interface CoinWalletRecord extends Record<string, unknown> {
   updatedAt: number;
 }
 
-export interface CoinLedgerEntryRecord extends Record<string, unknown> {
+export interface CoinLedgerEntryRecord {
   id: number;
   walletId: string;
   amount: string;
@@ -84,7 +84,7 @@ export interface CommitMatchEntryRequest {
   isSolo: boolean;
 }
 
-export interface MatchEconomySettlementRecord extends Record<string, unknown> {
+export interface MatchEconomySettlementRecord {
   matchId: string;
   roomCode: string;
   hostIdentityId: string;
