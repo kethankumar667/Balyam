@@ -334,6 +334,14 @@ export interface Room {
    * rather than relying on the database to make it harmless once it lands.
    */
   economyCommitPending: boolean;
+  /**
+   * Explicit operation token identifying the specific in-flight commit request
+   * (initial match or rematch). Set immediately before `commitMatchEntry` and
+   * cleared in `finally`. Used after `await commitMatchEntry` to deterministically
+   * verify that the completed commit belongs to THIS exact start attempt and has
+   * not been superseded by another operation on the room.
+   */
+  pendingCommitOperationId: string | null;
 }
 
 /**
@@ -738,6 +746,7 @@ export class RoomManager {
       committedCostPerSeat: null,
       committedTotalPot: null,
       economyCommitPending: false,
+      pendingCommitOperationId: null,
     };
     this.rooms.set(code, room);
     this.socketToRoom.set(socketId, code);
@@ -949,6 +958,7 @@ export class RoomManager {
     if (room.hostId === playerId) {
       this.reassignHost(room, playerId);
     }
+    if (!this.rooms.has(code)) return;
     if (room.engine) room.engine.removePlayer(playerId);
     // If the leaver was part of a pending rematch vote, cancel it —
     // proceeding would either deadlock (waiting on someone who's gone) or
@@ -1369,11 +1379,13 @@ export class RoomManager {
       return;
     }
 
+    const matchId = `m_${room.code}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const operationId = `op_start_${matchId}`;
+    room.pendingCommitOperationId = operationId;
     room.economyCommitPending = true;
     this.transitionLifecycle(room, "STARTING", "Committing match entry");
     const humanSeatCount = playersList.filter((p) => !p.isBot).length;
     const botSeatCount = playersList.length - humanSeatCount;
-    const matchId = `m_${room.code}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     try {
       const result = await this.economyService.commitMatchEntry({
@@ -1386,19 +1398,46 @@ export class RoomManager {
         isSolo: playersList.length === 1,
       });
       // The commit just performed a REAL wallet debit — verified BEFORE
-      // touching `room` or calling `startGame` at all. `room.lifecycleState
-      // === "STARTING"` is the exact marker THIS call set immediately
-      // before the await; nothing else in this class ever sets it, so it
-      // staying unchanged is proof no interleaved event (a departure, an
-      // abandonment, a room replacement reusing the same code) invalidated
-      // this specific start attempt while the await was in flight. See
-      // `queueCompensatingRefundForOrphanedCommit`'s own doc comment for
-      // why a stale `room` reference can never be trusted to notice this
-      // on its own once it's been torn down.
+      // touching `room` or calling `startGame` at all. We re-fetch the room
+      // from the authoritative `this.rooms` map and validate that:
+      //  1. The room still exists in `this.rooms`.
+      //  2. It is the exact same room instance (not a recreated/replaced room under the same code).
+      //  3. This start operation is still the active, non-superseded one (`pendingCommitOperationId`).
+      //  4. The initiating player is still in the room and is still the host.
+      //  5. The room lifecycle is still `STARTING` and phase is still `lobby`.
+      //  6. The seated roster is the EXACT same set of participants — not just the
+      //     same count — and every one of them is still ready.
+      // If ANY of these invariants failed, the start cannot proceed safely. Because
+      // the real debit already succeeded, we immediately queue an idempotent
+      // compensating refund so the funds are never permanently stuck in COMMITTED.
       const freshRoom = this.rooms.get(room.code);
-      const stillValid = freshRoom === room && room.lifecycleState === "STARTING";
+      const isSameInstance = freshRoom === room;
+      const isOperationCurrent = freshRoom?.pendingCommitOperationId === operationId;
+      const isHostValid = freshRoom?.hostId === player.id && freshRoom?.players.get(player.id)?.isHost === true;
+      const isLifecycleValid = freshRoom?.lifecycleState === "STARTING" && freshRoom?.phase === "lobby";
+      // Identity, not just count: a same-size swap (a committed human
+      // leaves, a bot — or anyone else — fills the vacated seat) must not
+      // read as "unchanged" just because the numbers still line up. Equal
+      // cardinality plus one-way containment (every CURRENT id was part of
+      // what was committed) is sufficient to prove the two sets are
+      // identical, since a same-size set can't be a strict subset.
+      const committedPlayerIds = new Set(playersList.map((p) => p.id));
+      const isRosterValid =
+        freshRoom !== undefined &&
+        freshRoom.players.size === committedPlayerIds.size &&
+        Array.from(freshRoom.players.keys()).every((id) => committedPlayerIds.has(id)) &&
+        Array.from(freshRoom.players.values()).every((p) => p.isReady);
+
+      const stillValid = isSameInstance && isOperationCurrent && isHostValid && isLifecycleValid && isRosterValid;
       if (!stillValid) {
-        const reason = !freshRoom ? "room_deleted" : freshRoom !== room ? "room_replaced" : `lifecycle_${room.lifecycleState}`;
+        let reason = "invalidated";
+        if (!freshRoom) reason = "room_deleted";
+        else if (!isSameInstance) reason = "room_replaced";
+        else if (!isOperationCurrent) reason = "operation_superseded";
+        else if (!isHostValid) reason = "host_changed";
+        else if (!isLifecycleValid) reason = `lifecycle_${freshRoom.lifecycleState}_phase_${freshRoom.phase}`;
+        else if (!isRosterValid) reason = "roster_changed";
+
         this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestGameStart", reason);
         return;
       }
@@ -1421,6 +1460,9 @@ export class RoomManager {
         roomCode: room.code,
       });
     } finally {
+      if (room.pendingCommitOperationId === operationId) {
+        room.pendingCommitOperationId = null;
+      }
       room.economyCommitPending = false;
     }
   }
@@ -2407,10 +2449,32 @@ export class RoomManager {
       operation,
       reason,
     });
-    this.settlementQueue?.queueRefund(
-      matchId,
-      `Commit succeeded after ${operation} was invalidated (${reason}) — the match never reached active play`,
-    );
+    if (!this.settlementQueue) {
+      logger.error({
+        message: `Cannot queue compensating refund for match ${matchId} (room ${roomCode}): settlementQueue is not configured`,
+        module: "ECONOMY_ROOM",
+        roomCode,
+        matchId,
+        operation,
+        reason,
+      });
+      return;
+    }
+    try {
+      this.settlementQueue.queueRefund(
+        matchId,
+        `Commit succeeded after ${operation} was invalidated (${reason}) — the match never reached active play`,
+      );
+    } catch (err) {
+      logger.error({
+        message: `Failed to queue compensating refund for match ${matchId} (room ${roomCode}): ${err instanceof Error ? err.message : String(err)}`,
+        module: "ECONOMY_ROOM",
+        roomCode,
+        matchId,
+        operation,
+        reason,
+      });
+    }
   }
 
   /** True while at least one seated player is a real human (not a bot). */
@@ -3369,6 +3433,7 @@ export class RoomManager {
         if (stillRoom.hostId === playerId) {
           this.reassignHost(stillRoom, playerId);
         }
+        if (!this.rooms.has(code)) return;
         if (stillRoom.engine?.isOver()) {
           // Same reasoning as the explicit-leave path above (see G14): a
           // grace-expiry reap can also be what tips a 1v1 forfeit or a
@@ -3766,12 +3831,23 @@ export class RoomManager {
       this.cancelRematch(room, null);
       return;
     }
+    // Reentrancy gate — same reasoning as `requestGameStart`'s own check
+    // just before it sets `pendingCommitOperationId`. Without this, two
+    // overlapping calls (only reachable today via the `rematchStartTimer`
+    // path being re-armed while a prior commit is still in flight) would
+    // each generate their own operation id and both reach
+    // `commitMatchEntry` — two real wallet debits for one rematch, with
+    // the token check only catching the collision AFTER both debits have
+    // already happened. Checked BEFORE the token is minted so the second
+    // caller never touches `pendingCommitOperationId` or the economy
+    // service at all.
     if (room.economyCommitPending) return;
-
+    const matchId = `m_${room.code}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const operationId = `op_rematch_${matchId}`;
+    room.pendingCommitOperationId = operationId;
     room.economyCommitPending = true;
     const humanSeatCount = playersList.filter((p) => !p.isBot).length;
     const botSeatCount = playersList.length - humanSeatCount;
-    const matchId = `m_${room.code}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     try {
       const result = await this.economyService.commitMatchEntry({
@@ -3783,22 +3859,34 @@ export class RoomManager {
         botSeatCount,
         isSolo: playersList.length === 1,
       });
-      // Same re-validation as `requestGameStart`, adapted to the rematch
-      // flow's own "is this specific request still current" marker:
-      // `room.rematch.status === "accepted"` (rematch has no `STARTING`
-      // lifecycle transition of its own — `startRematch` reads THIS field
-      // as its own first line, so it is the exact, always-current signal
-      // for "this rematch attempt hasn't been superseded, cancelled, or
-      // torn down since the countdown fired"). `requestRematchStart` is
-      // MORE exposed to this race than `requestGameStart`: it is invoked
-      // from a bare `setTimeout` callback closing over `room` directly (no
-      // socketId re-lookup at all), and `startRematch` takes `room`
-      // directly too — neither has any natural stale-reference guard of
-      // its own the way `startGame`'s `this.lookup(socketId)` does.
+      // Same comprehensive re-validation as `requestGameStart`, adapted to the rematch
+      // flow: verifies room instance, active operation token, host presence and role,
+      // rematch state (`accepted`), phase (`finished`), and roster identity (not just count).
       const freshRoom = this.rooms.get(room.code);
-      const stillValid = freshRoom === room && room.rematch.status === "accepted";
+      const isSameInstance = freshRoom === room;
+      const isOperationCurrent = freshRoom?.pendingCommitOperationId === operationId;
+      const isHostValid = freshRoom?.hostId === host.id && freshRoom?.players.has(host.id);
+      const isRematchValid = freshRoom?.rematch.status === "accepted" && freshRoom?.phase === "finished";
+      // Same "count plus one-way containment proves set equality" reasoning
+      // as `requestGameStart` — a same-size swap during the await (a
+      // committed participant leaves, someone else fills the seat) must
+      // not read as an unchanged roster.
+      const committedPlayerIds = new Set(playersList.map((p) => p.id));
+      const isRosterValid =
+        freshRoom !== undefined &&
+        freshRoom.players.size === committedPlayerIds.size &&
+        Array.from(freshRoom.players.keys()).every((id) => committedPlayerIds.has(id));
+
+      const stillValid = isSameInstance && isOperationCurrent && isHostValid && isRematchValid && isRosterValid;
       if (!stillValid) {
-        const reason = !freshRoom ? "room_deleted" : freshRoom !== room ? "room_replaced" : `rematch_${room.rematch.status}`;
+        let reason = "invalidated";
+        if (!freshRoom) reason = "room_deleted";
+        else if (!isSameInstance) reason = "room_replaced";
+        else if (!isOperationCurrent) reason = "operation_superseded";
+        else if (!isHostValid) reason = "host_changed";
+        else if (!isRematchValid) reason = `rematch_${freshRoom.rematch.status}_phase_${freshRoom.phase}`;
+        else if (!isRosterValid) reason = "roster_changed";
+
         this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestRematchStart", reason);
         return;
       }
@@ -3821,6 +3909,9 @@ export class RoomManager {
       });
       this.cancelRematch(room, null);
     } finally {
+      if (room.pendingCommitOperationId === operationId) {
+        room.pendingCommitOperationId = null;
+      }
       room.economyCommitPending = false;
     }
   }

@@ -1758,6 +1758,214 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     const stale = await repo.listStaleCommittedSettlements(0);
     expect(stale).toHaveLength(0);
   });
+
+  it("rematch commit: disconnect-grace expiry occurs while a rematch's commitMatchEntry is pending -> exactly one compensating refund", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    rooms.addBot("s_a", "Botty");
+    rooms.setReady("s_a", true);
+    await rooms.requestGameStart("s_a");
+    playToNaturalCompletion(rooms, "s_a");
+    await drainRoomEconomy(rooms);
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+
+    rooms.requestRematch("s_a");
+
+    const { gate, committed, spy: commitSpy } = gateCommitMatchEntry(service);
+    const refundSpy = vi.spyOn(service, "refundMatchEntry");
+    const forfeitSpy = vi.spyOn(service, "forfeitMatchEntry");
+
+    vi.advanceTimersByTime(3000); // fires the countdown -> requestRematchStart
+    await committed;
+
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4750");
+
+    rooms.handleDisconnect("s_a");
+    vi.advanceTimersByTime(11 * 60_000); // disconnect grace expires -> room abandoned
+    expect((rooms as unknown as { rooms: Map<string, Room> }).rooms.has(host.code)).toBe(false);
+
+    gate.resolve();
+    await drainRoomEconomy(rooms);
+
+    const matchId = (commitSpy.mock.calls[0][0] as { matchId: string }).matchId;
+    expect(refundSpy).toHaveBeenCalledTimes(1);
+    expect(forfeitSpy).not.toHaveBeenCalled();
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+    expect((await service.getSettlement(matchId))?.status).toBe("REFUNDED");
+  });
+
+  it("host departure with remaining human successor while commit is pending -> host changed, commit refunded, game not started with mismatched host", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B, "1000");
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+
+    const { gate, committed, spy: commitSpy } = gateCommitMatchEntry(service);
+    const refundSpy = vi.spyOn(service, "refundMatchEntry");
+
+    const startPromise = rooms.requestGameStart("s_a");
+    await committed;
+
+    // Alice leaves while commit is pending. Bob is remaining human, so room is NOT deleted, but host is reassigned to Bob
+    rooms.leaveRoom("s_a");
+    const liveRoom = peek(rooms, host.code);
+    expect(liveRoom.hostId).not.toBe("s_a"); // host reassigned
+
+    gate.resolve();
+    await startPromise;
+    await drainRoomEconomy(rooms);
+
+    const matchId = (commitSpy.mock.calls[0][0] as { matchId: string }).matchId;
+    expect(refundSpy).toHaveBeenCalledTimes(1); // Alice's debit refunded
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5000");
+    expect((await service.getWallet(MEMBER_B)).balance).toBe("1000"); // Bob untouched
+    expect(liveRoom.phase).not.toBe("playing"); // Game did not start under invalidated commit
+    expect(liveRoom.currentMatchId).toBeNull();
+  });
+
+  it("superseded start-operation token is rejected and refunded if pendingCommitOperationId was altered", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    rooms.addBot("s_a", "Botty");
+    rooms.setReady("s_a", true);
+
+    const { gate, committed, spy: commitSpy } = gateCommitMatchEntry(service);
+    const refundSpy = vi.spyOn(service, "refundMatchEntry");
+
+    const startPromise = rooms.requestGameStart("s_a");
+    await committed;
+
+    // Simulate an operation ID mismatch (e.g. superseded by another operation)
+    const liveRoom = peek(rooms, host.code);
+    liveRoom.pendingCommitOperationId = "op_superseded_token";
+
+    gate.resolve();
+    await startPromise;
+    await drainRoomEconomy(rooms);
+
+    const matchId = (commitSpy.mock.calls[0][0] as { matchId: string }).matchId;
+    expect(refundSpy).toHaveBeenCalledTimes(1);
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5000");
+    expect((await service.getSettlement(matchId))?.status).toBe("REFUNDED");
+    expect(liveRoom.currentMatchId).toBeNull();
+  });
+
+  it("roster change while commit is pending -> commit refunded, game does not start with mismatched seat count", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B, "1000");
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rummy", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+    rooms.addBot("s_a", "Botty");
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+
+    const { gate, committed, spy: commitSpy } = gateCommitMatchEntry(service);
+    const refundSpy = vi.spyOn(service, "refundMatchEntry");
+
+    const startPromise = rooms.requestGameStart("s_a");
+    await committed;
+
+    // Bob leaves while commit is pending (3 players -> 2 players)
+    rooms.leaveRoom("s_b");
+    const liveRoom = peek(rooms, host.code);
+    expect(liveRoom.players.size).toBe(2);
+
+    gate.resolve();
+    await startPromise;
+    await drainRoomEconomy(rooms);
+
+    const matchId = (commitSpy.mock.calls[0][0] as { matchId: string }).matchId;
+    expect(refundSpy).toHaveBeenCalledTimes(1);
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5000");
+    expect(liveRoom.phase).toBe("lobby");
+    expect(liveRoom.currentMatchId).toBeNull();
+  });
+
+  it("same-size roster swap (human leaves, bot fills the seat) during pending commit -> commit refunded, game does not start with a different participant than was billed", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B, "1000");
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+
+    const { gate, committed, spy: commitSpy } = gateCommitMatchEntry(service);
+    const refundSpy = vi.spyOn(service, "refundMatchEntry");
+
+    const startPromise = rooms.requestGameStart("s_a");
+    await committed;
+
+    // Bob (a real, committed human) leaves; a bot fills the vacated seat.
+    // Roster SIZE returns to what it was at commit time, and the bot is
+    // ready by default — a count+readiness-only check cannot distinguish
+    // this from "nothing changed", even though the match was priced for
+    // 2 humans (humanSeatCount=2, botSeatCount=0) and would now start as
+    // 1 human + 1 bot.
+    rooms.leaveRoom("s_b");
+    rooms.addBot("s_a", "Botty");
+    const liveRoom = peek(rooms, host.code);
+    expect(liveRoom.players.size).toBe(2);
+    expect(Array.from(liveRoom.players.values()).every((p) => p.isReady)).toBe(true);
+
+    gate.resolve();
+    await startPromise;
+    await drainRoomEconomy(rooms);
+
+    const matchId = (commitSpy.mock.calls[0][0] as { matchId: string }).matchId;
+    expect(refundSpy).toHaveBeenCalledTimes(1);
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5000");
+    expect(liveRoom.phase).not.toBe("playing");
+    expect(liveRoom.currentMatchId).toBeNull();
+    expect((await service.getSettlement(matchId))?.status).toBe("REFUNDED");
+  });
+
+  it("requestRematchStart reentrancy: two overlapping triggers on the same accepted rematch reach commitMatchEntry at most once", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    rooms.addBot("s_a", "Botty");
+    rooms.setReady("s_a", true);
+    await rooms.requestGameStart("s_a");
+    playToNaturalCompletion(rooms, "s_a");
+    await drainRoomEconomy(rooms);
+
+    const liveRoom = peek(rooms, host.code);
+    rooms.requestRematch("s_a"); // bot auto-accepts -> status becomes "accepted" synchronously
+    expect(liveRoom.rematch.status).toBe("accepted");
+
+    const commitSpy = vi.spyOn(service, "commitMatchEntry");
+    const rm = rooms as unknown as { requestRematchStart(room: Room): Promise<void> };
+
+    // Two overlapping triggers on the SAME accepted rematch, neither
+    // awaited before the second fires — exactly the window the reentrancy
+    // guard exists to close. Before the fix, both reached
+    // `commitMatchEntry` (two real wallet debits for one rematch).
+    const p1 = rm.requestRematchStart(liveRoom);
+    const p2 = rm.requestRematchStart(liveRoom);
+    await Promise.all([p1, p2]);
+    await drainRoomEconomy(rooms);
+
+    expect(commitSpy).toHaveBeenCalledTimes(1);
+  });
 });
 
 /** Waits for RoomManager's internal settlement/refund queue to finish. */
