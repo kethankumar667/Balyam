@@ -129,6 +129,7 @@ export default function AdminUsersPage() {
 
   const columns: Column<UserRow>[] = [
     {
+      kind: "property",
       key: "name",
       header: "Player Account",
       render: (row) => (
@@ -148,6 +149,7 @@ export default function AdminUsersPage() {
       ),
     },
     {
+      kind: "property",
       key: "role",
       header: "Role",
       render: (row) => (
@@ -167,17 +169,20 @@ export default function AdminUsersPage() {
       ),
     },
     {
+      kind: "property",
       key: "status",
       header: "Status",
       render: (row) => <StatusBadge status={row.status} size="sm" />,
     },
     {
+      kind: "property",
       key: "matchesPlayed",
       header: "Matches",
       align: "center",
       render: (row) => <span className="font-bold text-[var(--chrome-ink)]">{row.matchesPlayed}</span>,
     },
     {
+      kind: "property",
       key: "eloRating",
       header: "ELO Rating",
       align: "right",
@@ -188,11 +193,13 @@ export default function AdminUsersPage() {
       ),
     },
     {
+      kind: "property",
       key: "favoriteGame",
       header: "Favorite",
       render: (row) => <span className="text-xs text-[var(--chrome-ink-soft)] font-medium">{row.favoriteGame}</span>,
     },
     {
+      kind: "property",
       key: "lastActive",
       header: "Last Active",
       align: "right",

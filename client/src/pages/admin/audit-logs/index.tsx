@@ -204,11 +204,13 @@ export default function AdminAuditLogsPage() {
 
   const columns: Column<AuditLogEntry>[] = [
     {
+      kind: "property",
       key: "timestamp",
       header: "Timestamp",
       render: (row) => <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">{row.timestamp}</span>,
     },
     {
+      kind: "property",
       key: "actorName",
       header: "Actor",
       render: (row) => (
@@ -219,6 +221,7 @@ export default function AdminAuditLogsPage() {
       ),
     },
     {
+      kind: "property",
       key: "actionCode",
       header: "Action Event",
       render: (row) => (
@@ -228,6 +231,7 @@ export default function AdminAuditLogsPage() {
       ),
     },
     {
+      kind: "property",
       key: "severity",
       header: "Severity",
       render: (row) => (
@@ -245,11 +249,13 @@ export default function AdminAuditLogsPage() {
       ),
     },
     {
+      kind: "property",
       key: "resourceId",
       header: "Resource Target",
       render: (row) => <span className="text-xs font-mono text-[var(--chrome-ink-soft)]">{row.resourceId}</span>,
     },
     {
+      kind: "property",
       key: "ipAddress",
       header: "IP Address",
       align: "right",

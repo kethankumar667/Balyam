@@ -182,6 +182,7 @@ export default function AdminAnnouncementsPage() {
 
   const columns: Column<AnnouncementItem>[] = [
     {
+      kind: "property",
       key: "title",
       header: "Announcement Content",
       render: (row) => (
@@ -224,6 +225,7 @@ export default function AdminAnnouncementsPage() {
       ),
     },
     {
+      kind: "property",
       key: "status",
       header: "Status",
       render: (row) => (
@@ -241,11 +243,13 @@ export default function AdminAnnouncementsPage() {
       ),
     },
     {
+      kind: "property",
       key: "author",
       header: "Author",
       render: (row) => <span className="text-xs text-[var(--chrome-ink-soft)] font-medium">{row.author}</span>,
     },
     {
+      kind: "property",
       key: "publishedAt",
       header: "Timestamp",
       align: "right",

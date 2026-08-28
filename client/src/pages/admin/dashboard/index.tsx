@@ -206,6 +206,7 @@ export default function AdminDashboardPage() {
 
   const roomColumns: Column<RoomSummary>[] = [
     {
+      kind: "property",
       key: "code",
       header: "Room Code",
       render: (row) => (
@@ -213,11 +214,13 @@ export default function AdminDashboardPage() {
       ),
     },
     {
+      kind: "property",
       key: "game",
       header: "Game",
       render: (row) => <span className="font-semibold text-[var(--chrome-ink)]">{row.game}</span>,
     },
     {
+      kind: "property",
       key: "playerCount",
       header: "Players",
       align: "center",
@@ -229,6 +232,7 @@ export default function AdminDashboardPage() {
       ),
     },
     {
+      kind: "property",
       key: "lifecycleState",
       header: "Phase",
       render: (row) => (
@@ -240,6 +244,7 @@ export default function AdminDashboardPage() {
       ),
     },
     {
+      kind: "property",
       key: "hasTakeover",
       header: "Takeover",
       align: "right",
@@ -254,6 +259,7 @@ export default function AdminDashboardPage() {
 
   const recentMatchColumns: Column<RecentMatch>[] = [
     {
+      kind: "property",
       key: "roomCode",
       header: "Room Code",
       render: (row) => (
@@ -261,11 +267,13 @@ export default function AdminDashboardPage() {
       ),
     },
     {
+      kind: "property",
       key: "game",
       header: "Game",
       render: (row) => <span className="font-semibold text-[var(--chrome-ink)] capitalize">{row.game}</span>,
     },
     {
+      kind: "property",
       key: "participants",
       header: "Winner",
       render: (row) => {
@@ -278,6 +286,11 @@ export default function AdminDashboardPage() {
       },
     },
     {
+      // Computed: RecentMatch has no `participantCount` field — this
+      // renders `participants.length`. A property column with
+      // `key: "participantCount"` would previously have silently rendered
+      // blank forever (no such property exists); now it fails to compile.
+      kind: "computed",
       key: "participantCount",
       header: "Players",
       align: "center",
@@ -288,6 +301,7 @@ export default function AdminDashboardPage() {
       ),
     },
     {
+      kind: "property",
       key: "durationMs",
       header: "Duration",
       align: "right",
@@ -296,6 +310,7 @@ export default function AdminDashboardPage() {
       ),
     },
     {
+      kind: "property",
       key: "finishedAt",
       header: "Finished",
       align: "right",

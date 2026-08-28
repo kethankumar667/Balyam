@@ -54,6 +54,7 @@ export function StaleMonitorTab({
 
   const columns: Column<MatchEconomySettlementRecord>[] = [
     {
+      kind: "property",
       key: "matchId",
       header: "Match ID & Room",
       render: (item) => (
@@ -68,11 +69,15 @@ export function StaleMonitorTab({
       ),
     },
     {
+      // Computed: "severity" is not a real field — it's derived from age.
+      kind: "computed",
       key: "severity",
       header: "Stale Severity",
       render: (item) => <StaleSeverityBadge ageMs={now - item.createdAt} />,
     },
     {
+      // Computed: "age" is not a real field — derived from createdAt vs now.
+      kind: "computed",
       key: "age",
       header: "Committed Age",
       render: (item) => (
@@ -85,6 +90,9 @@ export function StaleMonitorTab({
       ),
     },
     {
+      // Computed: combines totalCollected, seatCount, costPerSeat; no
+      // single "amount" field exists on the row.
+      kind: "computed",
       key: "amount",
       header: "Committed Amount",
       align: "right",
@@ -98,6 +106,8 @@ export function StaleMonitorTab({
       ),
     },
     {
+      // Computed: classic synthetic action-button column — no backing field.
+      kind: "computed",
       key: "actions",
       header: "Action",
       align: "right",

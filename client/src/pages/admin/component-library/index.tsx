@@ -126,6 +126,7 @@ export default function AdminComponentLibraryPage() {
 
   const sampleColumns: Column<SampleRow>[] = [
     {
+      kind: "property",
       key: "name",
       header: "User / Handle",
       render: (row) => (
@@ -137,8 +138,9 @@ export default function AdminComponentLibraryPage() {
         </div>
       ),
     },
-    { key: "game", header: "Favorite Game" },
+    { kind: "property", key: "game", header: "Favorite Game" },
     {
+      kind: "property",
       key: "role",
       header: "Role",
       render: (row) => (
@@ -148,11 +150,13 @@ export default function AdminComponentLibraryPage() {
       ),
     },
     {
+      kind: "property",
       key: "status",
       header: "Status",
       render: (row) => <StatusBadge status={row.status} size="sm" />,
     },
     {
+      kind: "property",
       key: "elo",
       header: "ELO Rating",
       align: "right",
@@ -1238,8 +1242,8 @@ export default function AdminComponentLibraryPage() {
               </span>
               <DataTable
                 columns={[
-                  { key: "name", header: "Player" },
-                  { key: "elo", header: "ELO Standings", align: "right" },
+                  { kind: "property", key: "name", header: "Player" },
+                  { kind: "property", key: "elo", header: "ELO Standings", align: "right" },
                 ]}
                 data={SAMPLE_ROWS.slice(0, 2)}
               />

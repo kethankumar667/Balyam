@@ -104,6 +104,7 @@ export function SettlementMonitorTab({
 
   const columns: Column<MatchEconomySettlementRecord>[] = [
     {
+      kind: "property",
       key: "matchId",
       header: "Match ID & Room",
       render: (item) => (
@@ -118,6 +119,7 @@ export function SettlementMonitorTab({
       ),
     },
     {
+      kind: "property",
       key: "status",
       header: "Status",
       render: (item) => (
@@ -137,6 +139,10 @@ export function SettlementMonitorTab({
       ),
     },
     {
+      // Computed: no single `seats` field exists on
+      // MatchEconomySettlementRecord — this combines seatCount,
+      // humanSeatCount, and botSeatCount.
+      kind: "computed",
       key: "seats",
       header: "Seat Config",
       render: (item) => (
@@ -149,6 +155,9 @@ export function SettlementMonitorTab({
       ),
     },
     {
+      // Computed: combines totalCollected and costPerSeat into one cell;
+      // no single `amount` field exists on the row.
+      kind: "computed",
       key: "amount",
       header: "Total Collected",
       align: "right",
@@ -162,6 +171,9 @@ export function SettlementMonitorTab({
       ),
     },
     {
+      // Computed: "conservation" is not a real field — it is the honest,
+      // UNAUDITED badge below, not derived from a property at all.
+      kind: "computed",
       key: "conservation",
       header: "Conservation",
       render: (item) => (
@@ -174,6 +186,7 @@ export function SettlementMonitorTab({
       ),
     },
     {
+      kind: "property",
       key: "createdAt",
       header: "Created / Settled",
       align: "right",

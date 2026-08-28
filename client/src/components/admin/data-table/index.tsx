@@ -1,14 +1,53 @@
 import { type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Inbox } from "lucide-react";
 
-export interface Column<T> {
-  key: string;
+interface ColumnBase<T> {
   header: string | ReactNode;
-  render?: (item: T, index: number) => ReactNode;
   width?: string;
   align?: "left" | "center" | "right";
   sortable?: boolean;
 }
+
+/**
+ * A column backed by a real field on the row. `key` is checked against
+ * `keyof T` — a typo, or a field that was renamed on the DTO and not here,
+ * fails to compile instead of silently rendering blank. `render` is
+ * optional: omit it and the raw property value renders directly.
+ */
+export interface PropertyColumn<T> extends ColumnBase<T> {
+  kind: "property";
+  key: keyof T;
+  render?: (item: T, index: number) => ReactNode;
+}
+
+/**
+ * A column with no single backing field — an action button, a badge
+ * synthesized from several fields, anything computed. `key` only needs to
+ * be a stable, unique string for React's row-key purposes; it is
+ * deliberately NOT checked against `keyof T` (a column literally titled
+ * "actions" or "conservation" has no real property to match). `render` is
+ * REQUIRED — there is no property to fall back to, so nothing here can
+ * ever attempt the unsafe `row[someArbitraryString]` access that used to
+ * require widening `DataTable`'s own generic to `Record<string, unknown>`.
+ */
+export interface ComputedColumn<T> extends ColumnBase<T> {
+  kind: "computed";
+  key: string;
+  render: (item: T, index: number) => ReactNode;
+}
+
+/**
+ * `kind` is a required, explicit literal on BOTH variants — not inferred
+ * from whether `render` is present — precisely so this union cannot
+ * "collapse": a bare `{ key: string, render? }` shape would let a
+ * `keyof T` key structurally satisfy the computed branch too (`keyof T` is
+ * always assignable to `string`), silently accepting a property column
+ * with a stale/wrong render and no compile-time proof `key` ever matched a
+ * real field. The two `kind` literals are mutually exclusive discriminants
+ * TypeScript can always use to pick the right branch, independent of
+ * everything else on the object.
+ */
+export type Column<T> = PropertyColumn<T> | ComputedColumn<T>;
 
 interface DataTableProps<T> {
   columns: Column<T>[];
@@ -62,7 +101,7 @@ export default function DataTable<T>({
             <tr className="border-b border-[var(--chrome-border)] bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] text-xs font-bold uppercase tracking-wider">
               {columns.map((col) => (
                 <th
-                  key={col.key}
+                  key={String(col.key)}
                   style={{ width: col.width }}
                   className={`px-3.5 sm:px-4 py-3 sm:py-3.5 ${
                     col.align === "center"
@@ -82,7 +121,7 @@ export default function DataTable<T>({
               Array.from({ length: 5 }).map((_, rIdx) => (
                 <tr key={`skel-row-${rIdx}`} className="animate-pulse">
                   {columns.map((col) => (
-                    <td key={col.key} className="px-3.5 sm:px-4 py-3 sm:py-3.5">
+                    <td key={String(col.key)} className="px-3.5 sm:px-4 py-3 sm:py-3.5">
                       <div className="h-4 bg-[var(--chrome-control)] rounded-md w-3/4" />
                     </td>
                   ))}
@@ -144,18 +183,28 @@ export default function DataTable<T>({
                   }`}
                 >
                   {columns.map((col) => {
-                    const rawValue =
-                      typeof row === "object" && row !== null && col.key in row
-                        ? (row as Record<string, unknown>)[col.key]
-                        : undefined;
-
-                    const cellContent = col.render
-                      ? col.render(row, rowIdx)
-                      : (rawValue as ReactNode);
+                    // `col.kind` narrows the union before anything touches
+                    // `row` — no cast of `row` itself is ever needed. A
+                    // computed column always carries its own `render`
+                    // (enforced at the type level, not by this check), so
+                    // the property-with-no-renderer branch is the ONLY
+                    // place a raw value is read off `row`, and by then
+                    // `col.key` has been narrowed to a genuine `keyof T`.
+                    // `row[col.key]` is `T[keyof T]` — the real union of
+                    // this row's own field value types, never `unknown`;
+                    // the cast below only asserts that union is renderable
+                    // React content, not that `row` has some arbitrary
+                    // shape TypeScript couldn't otherwise verify.
+                    const cellContent =
+                      col.kind === "computed"
+                        ? col.render(row, rowIdx)
+                        : col.render
+                          ? col.render(row, rowIdx)
+                          : (row[col.key] as ReactNode);
 
                     return (
                       <td
-                        key={col.key}
+                        key={String(col.key)}
                         className={`px-3.5 sm:px-4 py-3 sm:py-3.5 text-[var(--chrome-ink)] font-medium ${
                           col.align === "center"
                             ? "text-center"

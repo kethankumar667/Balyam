@@ -215,6 +215,7 @@ export default function AdminLeaderboardsPage() {
 
   const columns: Column<LeaderboardPlayer>[] = [
     {
+      kind: "property",
       key: "rank",
       header: "Rank",
       align: "center",
@@ -253,6 +254,7 @@ export default function AdminLeaderboardsPage() {
       },
     },
     {
+      kind: "property",
       key: "name",
       header: "Player Name",
       render: (row) => (
@@ -266,11 +268,13 @@ export default function AdminLeaderboardsPage() {
       ),
     },
     {
+      kind: "property",
       key: "game",
       header: "Game Title",
       render: (row) => <span className="font-semibold text-[var(--chrome-ink-soft)]">{row.game}</span>,
     },
     {
+      kind: "property",
       key: "eloRating",
       header: "ELO Rating",
       align: "right",
@@ -281,6 +285,7 @@ export default function AdminLeaderboardsPage() {
       ),
     },
     {
+      kind: "property",
       key: "winRate",
       header: "Win Rate",
       align: "right",
@@ -296,6 +301,7 @@ export default function AdminLeaderboardsPage() {
       ),
     },
     {
+      kind: "property",
       key: "longestStreak",
       header: "Win Streak",
       align: "center",

@@ -263,6 +263,7 @@ export default function AdminMatchesPage() {
 
   const columns: Column<MatchItem>[] = [
     {
+      kind: "property",
       key: "code",
       header: "Room Code",
       render: (row) => (
@@ -272,16 +273,19 @@ export default function AdminMatchesPage() {
       ),
     },
     {
+      kind: "property",
       key: "game",
       header: "Game Title",
       render: (row) => <span className="font-bold text-[var(--chrome-ink)]">{row.game}</span>,
     },
     {
+      kind: "property",
       key: "hostName",
       header: "Room Host",
       render: (row) => <span className="text-[var(--chrome-ink-soft)]">{row.hostName}</span>,
     },
     {
+      kind: "property",
       key: "playersCount",
       header: "Occupancy",
       align: "center",
@@ -292,6 +296,7 @@ export default function AdminMatchesPage() {
       ),
     },
     {
+      kind: "property",
       key: "status",
       header: "Match Status",
       render: (row) => (
@@ -311,12 +316,14 @@ export default function AdminMatchesPage() {
       ),
     },
     {
+      kind: "property",
       key: "duration",
       header: "Duration",
       align: "right",
       render: (row) => <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">{row.duration}</span>,
     },
     {
+      kind: "property",
       key: "avgLatencyMs",
       header: "Mesh Ping",
       align: "right",

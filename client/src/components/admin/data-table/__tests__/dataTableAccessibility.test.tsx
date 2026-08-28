@@ -13,7 +13,7 @@ const ROWS: Row[] = [
 ];
 
 const COLUMNS: Column<Row>[] = [
-  { key: "name", header: "Name" },
+  { kind: "property", key: "name", header: "Name" },
 ];
 
 describe("DataTable — keyboard accessibility (ADMIN-A11Y-001)", () => {
