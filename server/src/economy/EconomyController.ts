@@ -231,10 +231,16 @@ function mapEconomyError(err: unknown): ApiError {
     return { status: 422, error: "VoucherNotRedeemable", message: "This code isn't valid or has already been used." };
   }
   if (err instanceof InvalidSeatConfigurationError) {
-    return { status: 422, error: "InvalidSeatConfiguration", message: "seatCount must be between 1 and 5 and match humanSeatCount + botSeatCount." };
+    return { status: 422, error: "InvalidSeatConfiguration", message: "seatCount must be a positive integer matching humanSeatCount + botSeatCount." };
   }
   if (err instanceof UnsupportedSeatCountError) {
-    return { status: 422, error: "UnsupportedSeatCount", message: "seatCount must be between 1 and 5." };
+    // Truthful, actionable, and specific to the actual failure — a
+    // structurally-fine seat count with no approved economy schedule yet
+    // — never the old hardcoded "must be between 1 and 5" text, which
+    // both baked economy policy into a second location AND was wrong
+    // outright for any catalog game whose OWN maximum already exceeded 5
+    // (see economyCapacityContract.ts for the full incident writeup).
+    return { status: 422, error: "UnsupportedSeatCount", message: "This table size is not yet supported by the game economy." };
   }
   if (err instanceof InvalidIdentityKindError) {
     return { status: 422, error: "InvalidIdentityKind", message: "A participant's identityKind must be member, guest, or bot." };

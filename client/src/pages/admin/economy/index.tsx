@@ -2,55 +2,79 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Landmark,
   ShieldCheck,
-  RefreshCw,
+  RotateCcw,
+  AlertTriangle,
   Clock,
   Search,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
-  DollarSign,
+  User,
+  Activity,
+  BarChart3,
+  RefreshCw,
   Layers,
   Sparkles,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
-import StatCard from "../../../components/admin/stat-card";
-import SectionHeader from "../../../components/admin/section-header";
-import StatusBadge from "../../../components/admin/status-badge";
-import { CoinAmount } from "../../../components/economy/CoinAmount";
-import { EconomySkeleton } from "../../../components/economy/EconomySkeleton";
 import { EconomyStatusBanner } from "../../../components/economy/EconomyStatusBanner";
 import {
   getWorldBankSnapshot,
   getStaleSettlements,
-  reconcileMatchSettlement,
-  getMatchSettlement,
   type WorldBankSnapshot,
   type MatchEconomySettlementRecord,
-  type SettlementReconciliation,
 } from "../../../lib/economyApi";
-import { formatTimeAgo } from "../../../lib/formatTimeAgo";
+
+// Modular Tabs
+import OverviewTab from "./components/OverviewTab";
+import SettlementMonitorTab from "./components/SettlementMonitorTab";
+import StaleMonitorTab from "./components/StaleMonitorTab";
+import WorldBankTab from "./components/WorldBankTab";
+import RefundAnalyticsTab from "./components/RefundAnalyticsTab";
+import PlayerInvestigationTab from "./components/PlayerInvestigationTab";
+import MatchInvestigationTab from "./components/MatchInvestigationTab";
+import HealthCenterTab from "./components/HealthCenterTab";
+import MatchDetailDrawer from "./components/MatchDetailDrawer";
+
+export type EconomyTabId =
+  | "overview"
+  | "settlements"
+  | "stale"
+  | "world-bank"
+  | "analytics"
+  | "player"
+  | "match"
+  | "health";
+
+interface TabDefinition {
+  id: EconomyTabId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: number | string;
+}
 
 /**
- * BHALYAM Admin Economy Control & Audit Center.
+ * BHALYAM Phase 5 — Economy Operations & Observability Console.
  *
  * Requirements:
- * - Read-only operational views (World Bank Treasury, Stale Settlements, Settlement Reconciliation).
- * - Zero mutation controls or manual balance override buttons.
- * - BigInt-safe string formatting throughout.
+ * 1. Economy Overview (KPI Cards, World Bank, Health score)
+ * 2. Match Settlement Monitor (Table with search, sort, filter, pagination)
+ * 3. Stale Settlement Monitor (>5m, >15m, >60m severity alerts)
+ * 4. World Bank Dashboard (Base fee, Bot prize, Abandonment, Escrow, Redemptions)
+ * 5. Refund & Forfeiture Analytics (Charts, rate metrics)
+ * 6. Player Economy Investigation (Identity lookup, wallet balance, ledger entries)
+ * 7. Match Investigation Page (Timeline UI, participants, conservation check)
+ * 8. Economy Health Center (Badges HEALTHY/WARNING/CRITICAL, 5 operational checks)
  */
 export default function AdminEconomyPage() {
+  const [activeTab, setActiveTab] = useState<EconomyTabId>("overview");
   const [worldBank, setWorldBank] = useState<WorldBankSnapshot | null>(null);
   const [staleSettlements, setStaleSettlements] = useState<MatchEconomySettlementRecord[]>([]);
+  const [recentSettlements, setRecentSettlements] = useState<MatchEconomySettlementRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Settlement Search & Reconcile Audit
-  const [searchMatchId, setSearchMatchId] = useState<string>("");
-  const [inspectSettlement, setInspectSettlement] = useState<MatchEconomySettlementRecord | null>(null);
-  const [inspectReconciliation, setInspectReconciliation] = useState<SettlementReconciliation | null>(null);
-  const [inspectLoading, setInspectLoading] = useState<boolean>(false);
-  const [inspectError, setInspectError] = useState<string | null>(null);
+  // Match Investigation Drawer State
+  const [inspectMatchId, setInspectMatchId] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
   const fetchOperationalData = useCallback(async () => {
     setIsLoading(true);
@@ -58,12 +82,25 @@ export default function AdminEconomyPage() {
     try {
       const [wbRes, staleRes] = await Promise.all([
         getWorldBankSnapshot().catch(() => ({ worldBank: null })),
-        getStaleSettlements().catch(() => ({ settlements: [] })),
+        getStaleSettlements(300_000).catch(() => ({ settlements: [] })), // > 5m threshold
       ]);
-      setWorldBank(wbRes.worldBank);
-      setStaleSettlements(staleRes.settlements);
+
+      if (wbRes.worldBank) {
+        setWorldBank(wbRes.worldBank);
+      }
+
+      const stale = staleRes.settlements || [];
+      setStaleSettlements(stale);
+      // There is no "list all settlements" endpoint yet — the stale queue
+      // (still-COMMITTED entries past the threshold) is the only real,
+      // server-backed settlement data this dashboard has access to. It is
+      // NOT a general settlement history: a healthy economy will correctly
+      // show this — and everything derived from it — as empty, which is
+      // the honest state. Never substitute fabricated rows here; each
+      // consuming tab already has a real "no data" empty state built in.
+      setRecentSettlements(stale);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load operational economy data.");
+      setError(err instanceof Error ? err.message : "Failed to load operational economy data");
     } finally {
       setIsLoading(false);
     }
@@ -73,45 +110,43 @@ export default function AdminEconomyPage() {
     void fetchOperationalData();
   }, [fetchOperationalData]);
 
-  const handleInspectMatch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanId = searchMatchId.trim();
-    if (!cleanId) return;
-
-    setInspectLoading(true);
-    setInspectError(null);
-    setInspectSettlement(null);
-    setInspectReconciliation(null);
-
-    try {
-      const [settleRes, reconRes] = await Promise.all([
-        getMatchSettlement(cleanId).catch(() => null),
-        reconcileMatchSettlement(cleanId).catch(() => null),
-      ]);
-
-      if (!settleRes && !reconRes) {
-        setInspectError(`No settlement found for match ID: ${cleanId}`);
-      } else {
-        if (settleRes) setInspectSettlement(settleRes.settlement);
-        if (reconRes) setInspectReconciliation(reconRes.reconciliation);
-      }
-    } catch (err) {
-      setInspectError("Failed to inspect match settlement.");
-    } finally {
-      setInspectLoading(false);
-    }
+  const handleOpenMatchDrawer = (matchId: string) => {
+    setInspectMatchId(matchId);
+    setIsDrawerOpen(true);
   };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setInspectMatchId(null);
+  };
+
+  const navTabs: TabDefinition[] = [
+    { id: "overview", label: "Overview", icon: Landmark },
+    { id: "settlements", label: "Settlements", icon: ShieldCheck },
+    {
+      id: "stale",
+      label: "Stale Queue",
+      icon: Clock,
+      badge: staleSettlements.length > 0 ? staleSettlements.length : undefined,
+    },
+    { id: "world-bank", label: "World Bank", icon: Landmark },
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
+    { id: "player", label: "Player Lookup", icon: User },
+    { id: "match", label: "Match Audit", icon: Search },
+    { id: "health", label: "Health Center", icon: Activity },
+  ];
 
   return (
     <AdminLayout onRefresh={fetchOperationalData} isRefreshing={isLoading}>
       <div className="space-y-6">
+        {/* Page Header */}
         <PageHeader
-          title="Economy & Treasury"
-          description="Read-only operational view of BHALYAM World Bank reserves, stale settlements, and ledger conservation."
+          title="Economy & Treasury Console"
+          description="Operational dashboard for monitoring World Bank reserves, match settlements, stale commitments, and ledger integrity."
           badge={
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
               <Landmark className="w-3.5 h-3.5" />
-              <span>Treasury Active</span>
+              <span>Economy V1 Active</span>
             </span>
           }
         />
@@ -119,176 +154,109 @@ export default function AdminEconomyPage() {
         {error && (
           <EconomyStatusBanner
             status="failed"
-            title="Operational Data Hiccup"
+            title="Operational Sync Notice"
             description={error}
-            actionText="Retry"
+            actionText="Retry Sync"
             onAction={fetchOperationalData}
           />
         )}
 
-        {/* 1. World Bank KPIs */}
-        <section className="space-y-3">
-          <SectionHeader
-            title="World Bank Treasury Reserves"
-            description="Central liquidity pool and protocol treasury metrics"
-          />
-
-          {isLoading && !worldBank ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <EconomySkeleton variant="generic" className="h-28" count={4} />
-            </div>
-          ) : worldBank ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl bg-white dark:bg-[#131824] border border-amber-600/20 shadow-xs space-y-1">
-                <span className="text-xs font-bold text-ink-lo dark:text-text-lo uppercase tracking-wider">
-                  Treasury Balance
-                </span>
-                <CoinAmount amount={worldBank.balance} size="xl" className="font-extrabold text-amber-600 dark:text-amber-400" />
-                <span className="text-[11px] text-ink-lo dark:text-text-lo block">Current Protocol Reserve</span>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white dark:bg-[#131824] border border-black/5 dark:border-white/5 shadow-xs space-y-1">
-                <span className="text-xs font-bold text-ink-lo dark:text-text-lo uppercase tracking-wider">
-                  Lifetime Collected
-                </span>
-                <CoinAmount amount={worldBank.lifetimeCollected} size="lg" className="font-bold text-emerald-700 dark:text-emerald-400" />
-                <span className="text-[11px] text-ink-lo dark:text-text-lo block">Match Entry House Cuts</span>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white dark:bg-[#131824] border border-black/5 dark:border-white/5 shadow-xs space-y-1">
-                <span className="text-xs font-bold text-ink-lo dark:text-text-lo uppercase tracking-wider">
-                  Active Escrow
-                </span>
-                <CoinAmount amount={worldBank.activeEscrowBalance} size="lg" className="font-bold text-purple-700 dark:text-purple-400" />
-                <span className="text-[11px] text-ink-lo dark:text-text-lo block">{worldBank.activeVoucherCount} Unclaimed Vouchers</span>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white dark:bg-[#131824] border border-black/5 dark:border-white/5 shadow-xs space-y-1">
-                <span className="text-xs font-bold text-ink-lo dark:text-text-lo uppercase tracking-wider">
-                  Lifetime Grants
-                </span>
-                <CoinAmount amount={worldBank.lifetimeGrants} size="lg" className="font-bold text-indigo-700 dark:text-indigo-400" />
-                <span className="text-[11px] text-ink-lo dark:text-text-lo block">Starter Grant Allocations</span>
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 rounded-2xl bg-black/5 dark:bg-white/5 text-center text-xs text-ink-lo">
-              World Bank snapshot unavailable.
-            </div>
-          )}
-        </section>
-
-        {/* 2. Settlement Inspector & Conservation Audit */}
-        <section className="space-y-3">
-          <SectionHeader
-            title="Settlement Inspector & Reconciliation"
-            description="Search and verify mathematical conservation for any match settlement"
-          />
-
-          <div className="p-5 rounded-2xl bg-white dark:bg-[#131824] border border-black/5 dark:border-white/5 shadow-xs space-y-4">
-            <form onSubmit={handleInspectMatch} className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-ink-lo dark:text-text-lo absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  value={searchMatchId}
-                  onChange={(e) => setSearchMatchId(e.target.value)}
-                  placeholder="Enter Match ID (e.g. match_17877...)"
-                  className="w-full h-11 pl-10 pr-4 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-black/20 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
+        {/* Sub-Navigation Tabs */}
+        <div
+          role="tablist"
+          aria-label="Economy Dashboard Modules"
+          className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--chrome-border)] scrollbar-none"
+        >
+          {navTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
               <button
-                type="submit"
-                disabled={inspectLoading || !searchMatchId.trim()}
-                className="h-11 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs disabled:opacity-50 transition cursor-pointer"
+                key={tab.id}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  isActive
+                    ? "bg-[var(--chrome-active-bg)] text-[var(--chrome-active-ink)] shadow-2xs border border-[var(--chrome-active-ink)]"
+                    : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)] border border-transparent"
+                }`}
               >
-                {inspectLoading ? "Inspecting..." : "Inspect"}
-              </button>
-            </form>
-
-            {inspectError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400">
-                {inspectError}
-              </div>
-            )}
-
-            {inspectSettlement && (
-              <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs">Match #{inspectSettlement.matchId}</span>
-                  <StatusBadge status={inspectSettlement.status === "SETTLED" ? "success" : "pending"} label={inspectSettlement.status} />
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  <div>
-                    <span className="text-ink-lo block text-[10px]">Collected</span>
-                    <CoinAmount amount={inspectSettlement.totalCollected} size="sm" />
-                  </div>
-                  <div>
-                    <span className="text-ink-lo block text-[10px]">Prizes Rewarded</span>
-                    <CoinAmount amount={inspectSettlement.totalWalletRewarded} size="sm" />
-                  </div>
-                  <div>
-                    <span className="text-ink-lo block text-[10px]">Guest Escrow</span>
-                    <CoinAmount amount={inspectSettlement.totalGuestEscrow} size="sm" />
-                  </div>
-                  <div>
-                    <span className="text-ink-lo block text-[10px]">World Bank Fee</span>
-                    <CoinAmount amount={inspectSettlement.totalWorldBankCut} size="sm" />
-                  </div>
-                </div>
-
-                {inspectReconciliation && (
-                  <div className="mt-3 pt-3 border-t border-black/10 dark:border-white/10 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      {inspectReconciliation.isConserved ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4 text-red-500" />
-                      )}
-                      <span className="font-bold">
-                        Conservation Audit: {inspectReconciliation.isConserved ? "PASSED (100% Conserved)" : "DISCREPANCY DETECTED"}
-                      </span>
-                    </div>
-                    <span className="font-mono text-ink-lo">{inspectReconciliation.detail}</span>
-                  </div>
+                <Icon className={`w-4 h-4 ${isActive ? "text-[var(--chrome-active-ink)]" : "text-[var(--chrome-ink-soft)]"}`} />
+                <span>{tab.label}</span>
+                {tab.badge !== undefined && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-red-500 text-white">
+                    {tab.badge}
+                  </span>
                 )}
-              </div>
-            )}
-          </div>
-        </section>
+              </button>
+            );
+          })}
+        </div>
 
-        {/* 3. Stale Settlements Audit */}
-        <section className="space-y-3">
-          <SectionHeader
-            title="Stale Committed Settlements"
-            description="Matches that reached COMMITTED state over 1 hour ago without terminal settlement"
-          />
+        {/* Tab Content Rendering */}
+        <div className="pt-2">
+          {activeTab === "overview" && (
+            <OverviewTab
+              worldBank={worldBank}
+              staleSettlements={staleSettlements}
+              recentSettlements={recentSettlements}
+              isLoading={isLoading}
+              onSelectMatch={handleOpenMatchDrawer}
+              onNavigateTab={(tabId) => setActiveTab(tabId as EconomyTabId)}
+            />
+          )}
 
-          <div className="rounded-2xl bg-white dark:bg-[#131824] border border-black/5 dark:border-white/5 shadow-xs overflow-hidden">
-            {staleSettlements.length === 0 ? (
-              <div className="p-8 text-center space-y-1">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-                <h4 className="text-sm font-bold text-ink-hi dark:text-text-hi">Zero Stale Settlements</h4>
-                <p className="text-xs text-ink-lo dark:text-text-lo">
-                  All committed match entries have been settled or refunded on time.
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-black/5 dark:divide-white/5">
-                {staleSettlements.map((stale) => (
-                  <div key={stale.matchId} className="p-4 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-mono font-bold block">{stale.matchId}</span>
-                      <span className="text-[10px] text-ink-lo">Created {formatTimeAgo(stale.createdAt)}</span>
-                    </div>
-                    <CoinAmount amount={stale.totalCollected} size="sm" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+          {activeTab === "settlements" && (
+            <SettlementMonitorTab
+              settlements={recentSettlements}
+              isLoading={isLoading}
+              onSelectMatch={handleOpenMatchDrawer}
+            />
+          )}
+
+          {activeTab === "stale" && (
+            <StaleMonitorTab
+              staleSettlements={staleSettlements}
+              isLoading={isLoading}
+              onRefresh={fetchOperationalData}
+              onSelectMatch={handleOpenMatchDrawer}
+            />
+          )}
+
+          {activeTab === "world-bank" && (
+            <WorldBankTab worldBank={worldBank} isLoading={isLoading} />
+          )}
+
+          {activeTab === "analytics" && (
+            <RefundAnalyticsTab
+              settlements={recentSettlements}
+              onSelectMatch={handleOpenMatchDrawer}
+            />
+          )}
+
+          {activeTab === "player" && <PlayerInvestigationTab />}
+
+          {activeTab === "match" && (
+            <MatchInvestigationTab initialMatchId={inspectMatchId || ""} />
+          )}
+
+          {activeTab === "health" && (
+            <HealthCenterTab
+              worldBank={worldBank}
+              staleSettlements={staleSettlements}
+              onRefresh={fetchOperationalData}
+              onNavigateTab={(tabId) => setActiveTab(tabId as EconomyTabId)}
+            />
+          )}
+        </div>
+
+        {/* Slide-over Match Detail Drawer */}
+        <MatchDetailDrawer
+          matchId={inspectMatchId}
+          isOpen={isDrawerOpen}
+          onClose={handleCloseDrawer}
+        />
       </div>
     </AdminLayout>
   );

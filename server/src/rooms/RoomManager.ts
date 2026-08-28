@@ -96,7 +96,12 @@ import { BlockBlastEngine } from "../games/blockblast/BlockBlastEngine.js";
 import { SpaceWarEngine } from "../games/spacewar/SpaceWarEngine.js";
 import type { EconomyService } from "../economy/EconomyService.js";
 import { EconomyServiceError } from "../economy/EconomyService.js";
-import { EconomyRepositoryError, InsufficientFundsError, WalletFrozenError } from "../persistence/EconomyRepository.js";
+import {
+  EconomyRepositoryError,
+  InsufficientFundsError,
+  WalletFrozenError,
+  UnsupportedSeatCountError,
+} from "../persistence/EconomyRepository.js";
 import { resolveIdentity } from "./economyIdentity.js";
 import { extractRankedParticipants } from "./economyPlacements.js";
 import { EconomySettlementQueue } from "./economySettlementQueue.js";
@@ -1284,10 +1289,22 @@ export class RoomManager {
     this.broadcastRoomState(room);
   }
 
-  /** Safe, generic message for a caller — never a repository/service `.message`, which can be internal-detail-bearing even for a typed class. */
+  /**
+   * Safe, generic message for a caller — never a repository/service
+   * `.message`, which can be internal-detail-bearing even for a typed
+   * class. Every KNOWN configuration failure gets its own truthful,
+   * actionable line here; only a genuinely unclassified error falls
+   * through to the generic retry text. `UnsupportedSeatCountError` is the
+   * fix for the 2026-08-28 P0 incident: a ready, fully-staffed table
+   * (e.g. 6-seat Rummy — catalog-legal, economy-unsupported) used to fall
+   * through to "Try again", which was actively false — retrying changes
+   * nothing about an unsupported table size. See
+   * `economy/economyCapacityContract.ts` for the full root cause.
+   */
   private economyErrorMessage(err: unknown): string {
     if (err instanceof InsufficientFundsError) return "You don't have enough coins to start this match.";
     if (err instanceof WalletFrozenError) return "Your wallet is currently frozen.";
+    if (err instanceof UnsupportedSeatCountError) return "This table size is not yet supported by the game economy.";
     return "Could not start the match right now. Try again.";
   }
 

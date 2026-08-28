@@ -19,6 +19,7 @@ import {
   VoucherCodeCollisionError,
 } from "../persistence/EconomyRepository.js";
 import { generateRawVoucherCode, hashVoucherCode } from "./voucherCrypto.js";
+import { isStructurallyValidSeatConfiguration } from "./economyCapacityContract.js";
 
 /**
  * BHALYAM Economy V1 Phase 5 — the server-authoritative orchestration layer
@@ -426,15 +427,16 @@ export class EconomyService {
    */
   async quoteMatchCheckout(input: MatchCheckoutQuoteInput): Promise<MatchCheckoutQuote> {
     const startedAt = this.now();
-    if (
-      input.seatCount < 1 ||
-      input.seatCount > 5 ||
-      input.humanSeatCount < 0 ||
-      input.botSeatCount < 0 ||
-      input.seatCount !== input.humanSeatCount + input.botSeatCount
-    ) {
+    // Structural validity only (seat math, sanity bound) — NEVER a
+    // hardcoded economy-policy ceiling here. Whether this exact seatCount
+    // is actually financially supported is decided by the prize-schedule
+    // lookup immediately below, which is the sole authority: this used to
+    // ALSO hardcode `seatCount > 5`, duplicating (and, for the 2026-08-28
+    // P0 incident, silently drifting from) the catalog's own per-game
+    // maximums in shared/catalog.ts. See economyCapacityContract.ts.
+    if (!isStructurallyValidSeatConfiguration(input.seatCount, input.humanSeatCount, input.botSeatCount)) {
       throw new InvalidSeatConfigurationError(
-        "seatCount must be between 1 and 5 and match humanSeatCount + botSeatCount",
+        "seatCount must be a positive integer matching humanSeatCount + botSeatCount",
       );
     }
 
@@ -484,18 +486,18 @@ export class EconomyService {
     if (request.matchId.trim().length === 0) {
       throw new InvalidRequestError("matchId must not be empty");
     }
-    // Mirrors the database's own CHECK exactly (economy-v1.md §2.3/blueprint
-    // §2.3) — a faster failure for the common caller bug, never a substitute
-    // for the repository's own enforcement.
-    if (
-      request.seatCount < 1 ||
-      request.seatCount > 5 ||
-      request.humanSeatCount < 0 ||
-      request.botSeatCount < 0 ||
-      request.seatCount !== request.humanSeatCount + request.botSeatCount
-    ) {
+    // Same split as quoteMatchCheckout above: structural validity only.
+    // Mirrors the database's own structural CHECK exactly (see
+    // commit_match_entry in 20260826000000_economy_v1.sql, relaxed
+    // alongside this in <migration>) — a faster failure for the common
+    // caller bug, never a substitute for the repository's own enforcement.
+    // Economic support for this exact seatCount is decided entirely by
+    // whether commitMatchEntry's repository call below finds a schedule —
+    // this must NEVER re-add a hardcoded upper bound (that duplication is
+    // exactly what caused the 2026-08-28 P0 incident).
+    if (!isStructurallyValidSeatConfiguration(request.seatCount, request.humanSeatCount, request.botSeatCount)) {
       throw new InvalidSeatConfigurationError(
-        "seatCount must be between 1 and 5 and match humanSeatCount + botSeatCount",
+        "seatCount must be a positive integer matching humanSeatCount + botSeatCount",
       );
     }
 

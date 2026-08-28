@@ -19,6 +19,7 @@ import {
   InsufficientFundsError,
   InvalidSeatConfigurationError,
   MatchNotCommittedError,
+  UnsupportedSeatCountError,
   VoucherCodeCollisionError,
   WalletFrozenError,
 } from "../../persistence/EconomyRepository.js";
@@ -214,15 +215,26 @@ describe("EconomyService — quoteMatchCheckout", () => {
     expect(quote.prizeDistribution).toEqual({ firstPlace: "200", secondPlace: "150", thirdPlace: "100" });
   });
 
-  it("rejects an unsupported seat count without ever reaching the repository's schedule lookup", async () => {
+  it("rejects a structurally invalid seat count (zero) before ever reaching the repository's schedule lookup", async () => {
     const repo = freshRepo();
     const service = freshService(repo);
     await expect(
-      service.quoteMatchCheckout({ hostIdentityId: "host_x", seatCount: 7, humanSeatCount: 7, botSeatCount: 0 }),
-    ).rejects.toBeInstanceOf(InvalidSeatConfigurationError);
-    await expect(
       service.quoteMatchCheckout({ hostIdentityId: "host_x", seatCount: 0, humanSeatCount: 0, botSeatCount: 0 }),
     ).rejects.toBeInstanceOf(InvalidSeatConfigurationError);
+  });
+
+  it("a structurally valid but economy-unsupported seat count (P0 fix: catalog games above 5 seats) is rejected via the real schedule lookup, never a hardcoded upper bound", async () => {
+    const repo = freshRepo();
+    const service = freshService(repo);
+    const scheduleSpy = vi.spyOn(repo, "getPrizeSchedule");
+    // 7 is well within the catalog's own largest maximum (Tambola, 12) —
+    // structurally this is a perfectly normal seat count. It must reach
+    // the real schedule lookup and be rejected ONLY because no schedule
+    // exists for it yet, not because of a second hardcoded ceiling.
+    await expect(
+      service.quoteMatchCheckout({ hostIdentityId: "host_x", seatCount: 7, humanSeatCount: 7, botSeatCount: 0 }),
+    ).rejects.toBeInstanceOf(UnsupportedSeatCountError);
+    expect(scheduleSpy).toHaveBeenCalledWith(7);
   });
 
   it("an affordable checkout: hasSufficientFunds true, shortfall null", async () => {

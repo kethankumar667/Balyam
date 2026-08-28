@@ -7,7 +7,7 @@ import { operationalFetch } from "./operationalApi";
 export type PlayerIdentityKind = "member" | "guest";
 export type ParticipantIdentityKind = "member" | "guest" | "bot";
 export type VoucherStatus = "ACTIVE" | "REDEEMED" | "CANCELLED";
-export type MatchSettlementStatus = "COMMITTED" | "SETTLED" | "REFUNDED";
+export type MatchSettlementStatus = "COMMITTED" | "SETTLED" | "REFUNDED" | "ABANDONMENT_FORFEITED";
 
 export type WalletLedgerEntryType =
   | "STARTER_GRANT"
@@ -19,7 +19,7 @@ export type WalletLedgerEntryType =
   | "MATCH_REFUND"
   | "ADMIN_ADJUSTMENT";
 
-export interface CoinWalletRecord {
+export interface CoinWalletRecord extends Record<string, unknown> {
   identityId: string;
   identityKind: PlayerIdentityKind;
   /** Decimal string, always. */
@@ -34,7 +34,7 @@ export interface CoinWalletRecord {
   updatedAt: number;
 }
 
-export interface CoinLedgerEntryRecord {
+export interface CoinLedgerEntryRecord extends Record<string, unknown> {
   id: number;
   walletId: string;
   amount: string;
@@ -84,7 +84,7 @@ export interface CommitMatchEntryRequest {
   isSolo: boolean;
 }
 
-export interface MatchEconomySettlementRecord {
+export interface MatchEconomySettlementRecord extends Record<string, unknown> {
   matchId: string;
   roomCode: string;
   hostIdentityId: string;

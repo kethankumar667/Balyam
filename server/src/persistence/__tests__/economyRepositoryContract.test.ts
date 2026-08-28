@@ -415,16 +415,19 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         ).rejects.toBeInstanceOf(InvalidSeatConfigurationError);
       });
 
-      it("rejects with InvalidSeatConfigurationError (not UnsupportedSeatCountError) for a seatCount outside 1-5 — see the Phase 2 finding on how these two are actually bundled", async () => {
+      it("rejects with UnsupportedSeatCountError (not InvalidSeatConfigurationError) for a structurally valid seat count with no approved schedule — P0 fix: this must reach the real schedule lookup, never a hardcoded upper bound", async () => {
         const host = freshId("guest");
         ctx.seedIdentity(host, "guest");
         await ctx.repo.ensureWallet(host);
+        // 7 is well within the catalog's own largest maximum (Tambola, 12)
+        // — structurally ordinary. It has no approved economy schedule
+        // yet, which is the ONLY reason this must be rejected.
         await expect(
           ctx.repo.commitMatchEntry({
             matchId: freshId("m"), roomCode: null, hostIdentityId: host,
             seatCount: 7, humanSeatCount: 7, botSeatCount: 0, isSolo: false,
           }),
-        ).rejects.toBeInstanceOf(InvalidSeatConfigurationError);
+        ).rejects.toBeInstanceOf(UnsupportedSeatCountError);
       });
 
       it("rejects with IdentityNotFoundError when the host identity does not exist", async () => {

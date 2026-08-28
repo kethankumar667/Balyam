@@ -436,7 +436,7 @@ describe("Economy V1 UI Integration Suite", () => {
       await waitFor(() => {
         expect(screen.getByText("World Bank Treasury Reserves")).toBeDefined();
         expect(screen.getByText("100,000")).toBeDefined();
-        expect(screen.getByText("Zero Stale Settlements")).toBeDefined();
+        expect(screen.getByText("All commitments settled on time")).toBeDefined();
       });
     });
   });

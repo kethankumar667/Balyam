@@ -38,6 +38,7 @@ import {
   WalletFrozenError,
   WalletNotFoundError,
 } from "./EconomyRepository.js";
+import { isStructurallyValidSeatConfiguration } from "../economy/economyCapacityContract.js";
 
 /**
  * `EconomyRepository`, in memory.
@@ -580,19 +581,18 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       return { applied: false, operation: "commit_match_entry", idempotencyKey, result: clone(existing) };
     }
 
-    // Bundled exactly as the real RPC bundles it: the 1-5 range check and
-    // the human+bot arithmetic check share ONE error, InvalidSeatConfigurationError
-    // — see "Contract mismatches discovered". UnsupportedSeatCountError is
-    // reserved for an in-range seat count with no matching schedule row.
-    if (
-      input.seatCount < 1 ||
-      input.seatCount > 5 ||
-      input.humanSeatCount < 0 ||
-      input.botSeatCount < 0 ||
-      input.seatCount !== input.humanSeatCount + input.botSeatCount
-    ) {
+    // Bundled exactly as the real RPC bundles it: the structural-sanity
+    // check and the human+bot arithmetic check share ONE error,
+    // InvalidSeatConfigurationError — see "Contract mismatches
+    // discovered". UnsupportedSeatCountError (below) is reserved for a
+    // structurally-fine seat count with no matching schedule row — this
+    // must never re-add a hardcoded upper bound of its own (economy V1's
+    // approved seat counts live in ONE place, economyCapacityContract.ts,
+    // precisely because a second hardcoded copy of that number here is
+    // what caused the 2026-08-28 P0 incident).
+    if (!isStructurallyValidSeatConfiguration(input.seatCount, input.humanSeatCount, input.botSeatCount)) {
       throw new InvalidSeatConfigurationError(
-        "seat_count must be between 1 and 5 and match human + bot counts",
+        "seat_count must be a positive integer matching human + bot counts",
       );
     }
 

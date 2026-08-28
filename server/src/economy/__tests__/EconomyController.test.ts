@@ -161,11 +161,24 @@ describe("POST /api/economy/checkout/quote", () => {
     expect((res.body as { error: string }).error).toBe("InvalidRequest");
   });
 
-  it("service-layer failure propagation: an out-of-range seatCount maps to 422 InvalidSeatConfiguration", async () => {
+  it("service-layer failure propagation: a structurally valid seatCount with no approved economy schedule maps to 422 UnsupportedSeatCount with a truthful message (P0 fix: never a hardcoded upper bound)", async () => {
     seedHost(ALICE, "1000");
+    // 7 is well within the catalog's own largest maximum (Tambola, 12) —
+    // structurally ordinary, just not economically supported yet.
     const res = await server.request("/api/economy/checkout/quote", {
       method: "POST", token: mintMemberToken(ALICE),
       body: JSON.stringify({ seatCount: 7, humanSeatCount: 7, botSeatCount: 0 }),
+    });
+    expect(res.status).toBe(422);
+    expect((res.body as { error: string }).error).toBe("UnsupportedSeatCount");
+    expect((res.body as { message: string }).message).toBe("This table size is not yet supported by the game economy.");
+  });
+
+  it("checkout quote validation: a genuinely structural mismatch (seatCount 0) still maps to 422 InvalidSeatConfiguration", async () => {
+    seedHost(ALICE, "1000");
+    const res = await server.request("/api/economy/checkout/quote", {
+      method: "POST", token: mintMemberToken(ALICE),
+      body: JSON.stringify({ seatCount: 0, humanSeatCount: 0, botSeatCount: 0 }),
     });
     expect(res.status).toBe(422);
     expect((res.body as { error: string }).error).toBe("InvalidSeatConfiguration");

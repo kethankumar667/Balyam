@@ -1968,6 +1968,138 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
   });
 });
 
+describe("P0 seat-capacity contract (2026-08-28 production incident regression)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("reproduces the exact incident: Indian Rummy, host + 5 bots (6/6), all ready, Start Game — rejected truthfully before any debit, never the generic retry message", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    const { io, socketEmits } = makeIo();
+    const rooms = new RoomManager(io, service);
+
+    const host = createRoomAs(rooms, "s_a", "Alice", "rummy", "member", MEMBER_A);
+    for (let i = 0; i < 5; i++) rooms.addBot("s_a", `Bot${i}`);
+    rooms.setReady("s_a", true);
+
+    const liveRoom = peek(rooms, host.code);
+    expect(liveRoom.players.size).toBe(6);
+    expect(Array.from(liveRoom.players.values()).every((p) => p.isReady)).toBe(true);
+
+    const commitSpy = vi.spyOn(service, "commitMatchEntry");
+    const refundSpy = vi.spyOn(service, "refundMatchEntry");
+    const forfeitSpy = vi.spyOn(service, "forfeitMatchEntry");
+
+    await rooms.requestGameStart("s_a");
+
+    // Exactly one commitment attempt — never silently retried, never
+    // silently skipped.
+    expect(commitSpy).toHaveBeenCalledTimes(1);
+    expect(commitSpy).toHaveBeenCalledWith(expect.objectContaining({ seatCount: 6, humanSeatCount: 1, botSeatCount: 5 }));
+
+    // No InvalidSeatConfigurationError path: RoomManager's error mapping
+    // for the actual thrown UnsupportedSeatCountError is truthful and
+    // SPECIFIC — this is the literal message text the host must see.
+    const errorEmit = socketEmits.find((e) => e.socketId === "s_a" && e.event === "room:error");
+    expect(errorEmit?.data).toBe("This table size is not yet supported by the game economy.");
+    expect(errorEmit?.data).not.toBe("Could not start the match right now. Try again.");
+
+    // The game must NOT have started.
+    expect(liveRoom.phase).toBe("lobby");
+    expect(liveRoom.lifecycleState).toBe("READY_CHECK");
+    expect(liveRoom.currentMatchId).toBeNull();
+
+    // No debit ever happened — commitMatchEntry threw before touching the
+    // wallet (UnsupportedSeatCountError is raised before ensure_wallet /
+    // any balance mutation in every layer: EconomyService, the repository,
+    // and — for the real Supabase path — commit_match_entry itself).
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5000");
+
+    // No compensating action is owed, because nothing was ever committed:
+    // no refund, no forfeiture, no settlement row for any match in this room.
+    await drainRoomEconomy(rooms);
+    expect(refundSpy).not.toHaveBeenCalled();
+    expect(forfeitSpy).not.toHaveBeenCalled();
+  });
+
+  it("checkout (quoteMatchCheckout) and commitment (commitMatchEntry) agree on the same 6-seat Rummy configuration — both reject, identically, before debit", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+
+    await expect(
+      service.quoteMatchCheckout({ hostIdentityId: MEMBER_A, seatCount: 6, humanSeatCount: 1, botSeatCount: 5 }),
+    ).rejects.toMatchObject({ code: "UNSUPPORTED_SEAT_COUNT" });
+
+    await expect(
+      service.commitMatchEntry({
+        matchId: "m_checkout_parity_test", roomCode: "PARITY", hostIdentityId: MEMBER_A,
+        seatCount: 6, humanSeatCount: 1, botSeatCount: 5, isSolo: false,
+      }),
+    ).rejects.toMatchObject({ code: "UNSUPPORTED_SEAT_COUNT" });
+
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5000");
+  });
+
+  it("six REAL human participants (no bots) hits the identical rejection — the gap is about seat count, not roster composition", async () => {
+    const { repo, service } = freshEconomy();
+    const memberIds = [
+      MEMBER_A, MEMBER_B, MEMBER_C,
+      "dddddddd-1111-2222-3333-444444444444",
+      "eeeeeeee-1111-2222-3333-444444444444",
+      "ffffffff-1111-2222-3333-444444444444",
+    ];
+    for (const id of memberIds) seedMember(repo, id);
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+
+    const host = createRoomAs(rooms, "s_1", "P1", "rummy", "member", memberIds[0]);
+    for (let i = 1; i < 6; i++) joinRoomAs(rooms, `s_${i + 1}`, `P${i + 1}`, host.code, "member", memberIds[i]);
+    for (let i = 0; i < 6; i++) rooms.setReady(`s_${i + 1}`, true);
+
+    const liveRoom = peek(rooms, host.code);
+    expect(liveRoom.players.size).toBe(6);
+
+    const commitSpy = vi.spyOn(service, "commitMatchEntry");
+    await rooms.requestGameStart("s_1");
+
+    expect(commitSpy).toHaveBeenCalledWith(expect.objectContaining({ seatCount: 6, humanSeatCount: 6, botSeatCount: 0 }));
+    expect(liveRoom.phase).toBe("lobby");
+    expect(liveRoom.currentMatchId).toBeNull();
+    for (const id of memberIds) {
+      expect((await service.getWallet(id)).balance).toBe("5000");
+    }
+  });
+
+  it("a supported 5-seat match is completely unaffected by this fix: checkout succeeds, commit succeeds exactly once, the game starts, and the host is debited correctly", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+
+    const host = createRoomAs(rooms, "s_a", "Alice", "rummy", "member", MEMBER_A);
+    for (let i = 0; i < 4; i++) rooms.addBot("s_a", `Bot${i}`);
+    rooms.setReady("s_a", true);
+
+    const liveRoom = peek(rooms, host.code);
+    expect(liveRoom.players.size).toBe(5);
+
+    const quote = await service.quoteMatchCheckout({ hostIdentityId: MEMBER_A, seatCount: 5, humanSeatCount: 1, botSeatCount: 4 });
+    expect(quote.hasSufficientFunds).toBe(true);
+
+    const commitSpy = vi.spyOn(service, "commitMatchEntry");
+    await rooms.requestGameStart("s_a");
+
+    expect(commitSpy).toHaveBeenCalledTimes(1);
+    expect(liveRoom.phase).toBe("playing");
+    expect(liveRoom.currentMatchId).not.toBeNull();
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4500"); // 5000 - (5 seats * 100)
+  });
+});
+
 /** Waits for RoomManager's internal settlement/refund queue to finish. */
 async function drainRoomEconomy(rooms: RoomManager): Promise<void> {
   await rooms.drainEconomySettlementQueue();
