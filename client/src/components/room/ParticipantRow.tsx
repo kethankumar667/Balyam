@@ -51,7 +51,11 @@ export default function ParticipantRow({
       exit={{ opacity: 0, scale: 0.95, y: -10 }}
       transition={{ duration: 0.28, ease: "backOut" }}
       className={`flex items-center justify-between gap-2.5 p-3 rounded-2xl border transition-all ${
-        isMe
+        player.isReady
+          ? isMe
+            ? "bg-[#FFFDF8] dark:bg-[#161F2E] border-emerald-400 dark:border-emerald-500/80 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/30"
+            : "bg-white/95 dark:bg-[#121927] border-emerald-400/70 dark:border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.12)]"
+          : isMe
           ? "bg-[#FFFDF8] dark:bg-[#161F2E] border-amber-300/80 dark:border-amber-500/50 shadow-xs ring-1 ring-amber-400/20"
           : "bg-white/90 dark:bg-[#121927] border-[#EEDBCA] dark:border-slate-800/80 hover:border-amber-200 dark:hover:border-slate-700 shadow-xs"
       }`}

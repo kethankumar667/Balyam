@@ -237,3 +237,68 @@ describe("Economy V1 Database Migration Static Structure", () => {
     expect(ensureFn).toContain("IDENTITY_NOT_FOUND");
   });
 });
+
+describe("Phase 6A: Settlement Event Auditing Migration Structure", () => {
+  const rootDir = path.resolve(__dirname, "../../../..");
+  const eventsMigrationPath = path.join(rootDir, "supabase/migrations/20260830000000_economy_settlement_events.sql");
+
+  const eventsSql = fs.readFileSync(eventsMigrationPath, "utf8");
+
+  it("ensures Phase 6A migration file exists on disk", () => {
+    expect(fs.existsSync(eventsMigrationPath)).toBe(true);
+  });
+
+  it("defines settlement_events table with strict RLS and immutability", () => {
+    expect(eventsSql).toContain("create table if not exists public.settlement_events");
+    expect(eventsSql).toContain("references public.match_economy_settlements(match_id) on delete restrict");
+    expect(eventsSql).toContain("unique (match_id, sequence_number)");
+    expect(eventsSql).toContain("alter table public.settlement_events enable row level security;");
+    expect(eventsSql).toContain("alter table public.settlement_events force row level security;");
+    expect(eventsSql).toContain("revoke all on table public.settlement_events from public, anon, authenticated;");
+    expect(eventsSql).toContain("revoke insert, update, delete on table public.settlement_events from service_role;");
+  });
+
+  it("backs the immutability claim with a real trigger, not REVOKE alone", () => {
+    // REVOKE only restricts the roles it names — it does not bind the table
+    // owner and does not survive a future migration re-granting the
+    // privilege. coin_ledger_entries/world_bank_ledger both back their own
+    // "immutable" claim with a BEFORE UPDATE OR DELETE trigger that raises
+    // unconditionally; this asserts settlement_events reuses that same
+    // prevent_ledger_mutation() function rather than relying on REVOKE alone
+    // (verified functionally, against a real Postgres, in
+    // scripts/economy/verifySettlementEvents.mjs §2).
+    expect(eventsSql).toContain("before update or delete on public.settlement_events");
+    expect(eventsSql).toContain("execute function public.prevent_ledger_mutation()");
+  });
+
+  it("defines safe view and grants SELECT to service_role", () => {
+    expect(eventsSql).toContain("create or replace view public.settlement_events_safe");
+    expect(eventsSql).toContain("grant select on public.settlement_events_safe to service_role;");
+  });
+
+  it("defines emit_settlement_event helper with SECURITY DEFINER", () => {
+    expect(eventsSql).toContain("create or replace function public.emit_settlement_event");
+    expect(eventsSql).toContain("security definer");
+    expect(eventsSql).toContain("revoke all on function public.emit_settlement_event");
+    expect(eventsSql).toContain("grant execute on function public.emit_settlement_event to service_role;");
+  });
+
+  it("defines list_settlement_events read RPC", () => {
+    expect(eventsSql).toContain("create or replace function public.list_settlement_events");
+    expect(eventsSql).toContain("security definer");
+    expect(eventsSql).toContain("grant execute on function public.list_settlement_events to service_role;");
+  });
+
+  it("integrates emit_settlement_event into all settlement state transitions", () => {
+    expect(eventsSql).toContain("MATCH_COMMITTED");
+    expect(eventsSql).toContain("MATCH_COMMITMENT_REPLAYED");
+    expect(eventsSql).toContain("MATCH_SETTLED");
+    expect(eventsSql).toContain("MATCH_SETTLEMENT_REPLAYED");
+    expect(eventsSql).toContain("MATCH_REFUNDED");
+    expect(eventsSql).toContain("MATCH_REFUND_REPLAYED");
+    expect(eventsSql).toContain("MATCH_FORFEITED");
+    expect(eventsSql).toContain("MATCH_FORFEITURE_REPLAYED");
+    expect(eventsSql).toContain("SETTLEMENT_RACE_LOST");
+    expect(eventsSql).toContain("RECONCILIATION_AUDITED");
+  });
+});

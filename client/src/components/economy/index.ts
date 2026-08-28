@@ -14,5 +14,7 @@ export * from "./WalletDrawer";
 export * from "./CheckoutSheet";
 export * from "./SettlementView";
 export * from "./VoucherRedemptionModal";
+export * from "./LobbyPrizePool";
+export * from "./LobbyCoinFlight";
 export * from "./fixtures";
 export * from "./motion";

@@ -8,10 +8,14 @@ import {
   type EconomyRepository,
   type IssueGuestVoucherInput,
   type MatchEconomySettlementRecord,
+  type MatchSettlementStatus,
   type ParticipantIdentityKind,
   type PlayerIdentityKind,
   type RewardVoucherRecord,
   type SettleMatchEconomyInput,
+  type SettlementEventRecord,
+  type SettlementEventType,
+  type SettlementInitiatorKind,
   type SettlementParticipantInput,
   type SettlementReconciliation,
   type VoucherStatusView,
@@ -160,6 +164,7 @@ export interface EconomyRepositorySnapshot {
   settlements: MatchEconomySettlementRecord[];
   participants: MatchEconomyParticipantRecord[];
   vouchers: RewardVoucherRecord[];
+  settlementEvents: SettlementEventRecord[];
   idempotencyLog: Array<{ idempotencyKey: string; operation: string }>;
 }
 
@@ -263,6 +268,8 @@ export class InMemoryEconomyRepository implements EconomyRepository {
   private participants: MatchEconomyParticipantRecord[] = [];
   private vouchers = new Map<string, RewardVoucherRecord>();
   private voucherIdByCodeHash = new Map<string, string>();
+  private settlementEvents: SettlementEventRecord[] = [];
+  private nextSettlementEventId = 1;
   /** Diagnostic only — see the completion report's "Idempotency implementation" section. Applied/not-applied is always determined by row state, never by this map. */
   private idempotencyLog = new Map<string, string>();
 
@@ -319,6 +326,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
         settlements: [...this.settlements.values()].map(clone),
         participants: this.participants.map(clone),
         vouchers: [...this.vouchers.values()].map(clone),
+        settlementEvents: this.settlementEvents.map(clone),
         idempotencyLog: [...this.idempotencyLog.entries()].map(([idempotencyKey, operation]) => ({ idempotencyKey, operation })),
       }),
       reset: () => this.resetState(),
@@ -346,6 +354,8 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     this.participants = [];
     this.vouchers = new Map();
     this.voucherIdByCodeHash = new Map();
+    this.settlementEvents = [];
+    this.nextSettlementEventId = 1;
     this.idempotencyLog = new Map();
   }
 
@@ -415,6 +425,38 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     const isBalanced =
       (settlement.status === "COMMITTED" && disbursed === 0n) ||
       (settlement.status !== "COMMITTED" && collected === disbursed);
+
+    const details = {
+      walletRewarded: settlement.totalWalletRewarded,
+      guestEscrow: settlement.totalGuestEscrow,
+      botCollection: settlement.totalBotCollection,
+      worldBankCut: settlement.totalWorldBankCut,
+      refunded: settlement.totalRefunded,
+      forfeited: settlement.totalForfeited,
+    };
+
+    this.emitSettlementEvent(
+      matchId,
+      "RECONCILIATION_AUDITED",
+      settlement.status,
+      settlement.status,
+      "reconcile_match_settlement",
+      `reconcile:${matchId}`,
+      true,
+      false,
+      false,
+      "operator",
+      null,
+      "Settlement balance reconciliation audit executed",
+      {
+        isBalanced,
+        collected: fromBig(collected),
+        disbursed: fromBig(disbursed),
+        delta: fromBig(collected - disbursed),
+        details,
+      },
+    );
+
     return {
       matchId: settlement.matchId,
       status: settlement.status,
@@ -422,14 +464,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       collected: fromBig(collected),
       disbursed: fromBig(disbursed),
       delta: fromBig(collected - disbursed),
-      details: {
-        walletRewarded: settlement.totalWalletRewarded,
-        guestEscrow: settlement.totalGuestEscrow,
-        botCollection: settlement.totalBotCollection,
-        worldBankCut: settlement.totalWorldBankCut,
-        refunded: settlement.totalRefunded,
-        forfeited: settlement.totalForfeited,
-      },
+      details,
     };
   }
 
@@ -438,6 +473,13 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     return [...this.settlements.values()]
       .filter((s) => s.status === "COMMITTED" && s.createdAt < cutoff)
       .sort((a, b) => a.createdAt - b.createdAt)
+      .map(clone);
+  }
+
+  async listSettlementEvents(matchId: string): Promise<SettlementEventRecord[]> {
+    return this.settlementEvents
+      .filter((e) => e.matchId === matchId)
+      .sort((a, b) => (a.sequenceNumber !== b.sequenceNumber ? a.sequenceNumber - b.sequenceNumber : a.id - b.id))
       .map(clone);
   }
 
@@ -577,6 +619,24 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     const idempotencyKey = `match-entry:${input.matchId}`;
     const existing = this.settlements.get(input.matchId);
     if (existing) {
+      this.emitSettlementEvent(
+        input.matchId,
+        "MATCH_COMMITMENT_REPLAYED",
+        existing.status,
+        existing.status,
+        "commit_match_entry",
+        idempotencyKey,
+        false,
+        true,
+        false,
+        "system",
+        input.hostIdentityId,
+        "Idempotent match commitment replay",
+        {
+          seatCount: existing.seatCount,
+          totalCollected: existing.totalCollected,
+        },
+      );
       this.logIdempotency(idempotencyKey, "commit_match_entry");
       return { applied: false, operation: "commit_match_entry", idempotencyKey, result: clone(existing) };
     }
@@ -659,6 +719,31 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       schedule: clone(schedule),
     });
 
+    this.emitSettlementEvent(
+      input.matchId,
+      "MATCH_COMMITTED",
+      null,
+      "COMMITTED",
+      "commit_match_entry",
+      idempotencyKey,
+      true,
+      false,
+      false,
+      "system",
+      input.hostIdentityId,
+      null,
+      {
+        roomCode: input.roomCode ?? "SOLO",
+        hostIdentityId: input.hostIdentityId,
+        seatCount: input.seatCount,
+        humanSeatCount: input.humanSeatCount,
+        botSeatCount: input.botSeatCount,
+        costPerSeat: this.configuration.seatCostCoins,
+        totalCollected: fromBig(totalCost),
+        isSolo: input.isSolo,
+      },
+    );
+
     this.logIdempotency(idempotencyKey, "commit_match_entry");
     return { applied: true, operation: "commit_match_entry", idempotencyKey, result: clone(settlement) };
   }
@@ -672,6 +757,47 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       throw new MatchNotCommittedError(`Match settlement ${input.matchId} not found`);
     }
     if (settlement.status === "SETTLED" || settlement.status === "REFUNDED" || settlement.status === "ABANDONMENT_FORFEITED") {
+      if (settlement.status === "SETTLED") {
+        this.emitSettlementEvent(
+          input.matchId,
+          "MATCH_SETTLEMENT_REPLAYED",
+          "SETTLED",
+          "SETTLED",
+          "settle_match_economy",
+          idempotencyKey,
+          false,
+          true,
+          false,
+          "system",
+          settlement.hostIdentityId,
+          "Idempotent match settlement replay",
+          {
+            totalWalletRewarded: settlement.totalWalletRewarded,
+            totalGuestEscrow: settlement.totalGuestEscrow,
+            totalBotCollection: settlement.totalBotCollection,
+            totalWorldBankCut: settlement.totalWorldBankCut,
+          },
+        );
+      } else {
+        this.emitSettlementEvent(
+          input.matchId,
+          "SETTLEMENT_RACE_LOST",
+          settlement.status,
+          settlement.status,
+          "settle_match_economy",
+          idempotencyKey,
+          false,
+          false,
+          true,
+          "system",
+          settlement.hostIdentityId,
+          `Settlement attempt arrived after match had already reached terminal state: ${settlement.status}`,
+          {
+            terminalStatus: settlement.status,
+            totalCollected: settlement.totalCollected,
+          },
+        );
+      }
       this.logIdempotency(idempotencyKey, "settle_match_economy");
       return { applied: false, operation: "settle_match_economy", idempotencyKey, result: clone(settlement) };
     }
@@ -822,6 +948,28 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     };
     this.settlements.set(input.matchId, updated);
 
+    this.emitSettlementEvent(
+      input.matchId,
+      "MATCH_SETTLED",
+      "COMMITTED",
+      "SETTLED",
+      "settle_match_economy",
+      idempotencyKey,
+      true,
+      false,
+      false,
+      "system",
+      settlement.hostIdentityId,
+      null,
+      {
+        totalWalletRewarded: fromBig(totalWalletRewarded),
+        totalGuestEscrow: fromBig(totalGuestEscrow),
+        totalBotCollection: fromBig(totalBotCollection),
+        totalWorldBankCut: fromBig(totalWorldBankCut),
+        totalCollected: settlement.totalCollected,
+      },
+    );
+
     this.logIdempotency(idempotencyKey, "settle_match_economy");
     return { applied: true, operation: "settle_match_economy", idempotencyKey, result: clone(updated) };
   }
@@ -836,6 +984,24 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       throw new MatchNotCommittedError(`Match settlement ${matchId} not found`);
     }
     if (settlement.status === "REFUNDED") {
+      this.emitSettlementEvent(
+        matchId,
+        "MATCH_REFUND_REPLAYED",
+        "REFUNDED",
+        "REFUNDED",
+        "refund_match_entry",
+        idempotencyKey,
+        false,
+        true,
+        false,
+        "system",
+        settlement.hostIdentityId,
+        "Idempotent match refund replay",
+        {
+          totalRefunded: settlement.totalRefunded,
+          refundReason: settlement.refundReason,
+        },
+      );
       this.logIdempotency(idempotencyKey, "refund_match_entry");
       return { applied: false, operation: "refund_match_entry", idempotencyKey, result: clone(settlement) };
     }
@@ -867,6 +1033,24 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       throw new MatchNotCommittedError(`Match settlement ${matchId} not found`);
     }
     if (settlement.status === "ABANDONMENT_FORFEITED") {
+      this.emitSettlementEvent(
+        matchId,
+        "MATCH_FORFEITURE_REPLAYED",
+        "ABANDONMENT_FORFEITED",
+        "ABANDONMENT_FORFEITED",
+        "forfeit_match_entry",
+        idempotencyKey,
+        false,
+        true,
+        false,
+        "system",
+        settlement.hostIdentityId,
+        "Idempotent match forfeiture replay",
+        {
+          totalForfeited: settlement.totalForfeited,
+          forfeitureReason: settlement.forfeitureReason,
+        },
+      );
       this.logIdempotency(idempotencyKey, "forfeit_match_entry");
       return { applied: false, operation: "forfeit_match_entry", idempotencyKey, result: clone(settlement) };
     }
@@ -895,6 +1079,26 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       settledAt: now,
     };
     this.settlements.set(matchId, updated);
+
+    this.emitSettlementEvent(
+      matchId,
+      "MATCH_FORFEITED",
+      "COMMITTED",
+      "ABANDONMENT_FORFEITED",
+      "forfeit_match_entry",
+      idempotencyKey,
+      true,
+      false,
+      false,
+      "system",
+      settlement.hostIdentityId,
+      reason,
+      {
+        totalForfeited: fromBig(forfeitAmount),
+        hostIdentityId: settlement.hostIdentityId,
+        forfeitureReason: reason,
+      },
+    );
 
     this.logIdempotency(idempotencyKey, "forfeit_match_entry");
     return { applied: true, operation: "forfeit_match_entry", idempotencyKey, result: clone(updated) };
@@ -930,6 +1134,25 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       settledAt: now,
     };
     this.settlements.set(settlement.matchId, updated);
+
+    this.emitSettlementEvent(
+      settlement.matchId,
+      "MATCH_REFUNDED",
+      settlement.status,
+      "REFUNDED",
+      "economy_apply_refund",
+      idempotencyKey,
+      true,
+      false,
+      false,
+      "system",
+      settlement.hostIdentityId,
+      reason,
+      {
+        totalRefunded: fromBig(refundAmount),
+        hostIdentityId: settlement.hostIdentityId,
+      },
+    );
 
     this.logIdempotency(idempotencyKey, "refund_match_entry");
     return { applied: true, operation: "refund_match_entry", idempotencyKey, result: clone(updated) };
@@ -1199,6 +1422,45 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     return `vch_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}${(this.nextWorldBankLedgerId++).toString(36)}`;
   }
 
+  private emitSettlementEvent(
+    matchId: string,
+    eventType: SettlementEventType,
+    previousStatus: MatchSettlementStatus | null,
+    currentStatus: MatchSettlementStatus,
+    operation: string,
+    idempotencyKey: string,
+    applied: boolean,
+    isReplay: boolean,
+    raceLost: boolean,
+    initiatorKind: SettlementInitiatorKind = "system",
+    initiatorId: string | null = null,
+    reason: string | null = null,
+    payload: Record<string, unknown> = {},
+  ): SettlementEventRecord {
+    const existingCount = this.settlementEvents.filter((e) => e.matchId === matchId).length;
+    const sequenceNumber = existingCount + 1;
+    const event: SettlementEventRecord = {
+      id: this.nextSettlementEventId++,
+      matchId,
+      sequenceNumber,
+      eventType,
+      previousStatus,
+      currentStatus,
+      operation,
+      idempotencyKey,
+      applied,
+      isReplay,
+      raceLost,
+      initiatorKind,
+      initiatorId,
+      reason,
+      payload: clone(payload),
+      createdAt: Date.now(),
+    };
+    this.settlementEvents.push(event);
+    return clone(event);
+  }
+
   private logIdempotency(idempotencyKey: string, operation: string): void {
     if (!this.idempotencyLog.has(idempotencyKey)) {
       this.idempotencyLog.set(idempotencyKey, operation);
@@ -1235,6 +1497,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     const vouchers = new Map(this.vouchers);
     const voucherIdByCodeHash = new Map(this.voucherIdByCodeHash);
     const identities = new Map(this.identities);
+    const settlementEventsLength = this.settlementEvents.length;
 
     try {
       return fn();
@@ -1249,6 +1512,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       this.vouchers = vouchers;
       this.voucherIdByCodeHash = voucherIdByCodeHash;
       this.identities = identities;
+      this.settlementEvents.length = settlementEventsLength;
       throw err;
     }
   }

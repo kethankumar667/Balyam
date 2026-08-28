@@ -11,6 +11,7 @@ import {
   type MatchEconomySettlementRecord,
   type RewardVoucherRecord,
   type SettleMatchEconomyInput,
+  type SettlementEventRecord,
   type SettlementReconciliation,
   type VoucherStatusView,
   type WorldBankSnapshot,
@@ -123,6 +124,9 @@ class ScriptedFailureRepository implements EconomyRepository {
   }
   listStaleCommittedSettlements(olderThanMs: number): Promise<MatchEconomySettlementRecord[]> {
     return this.invoke("listStaleCommittedSettlements", () => this.inner.listStaleCommittedSettlements(olderThanMs));
+  }
+  listSettlementEvents(matchId: string): Promise<SettlementEventRecord[]> {
+    return this.invoke("listSettlementEvents", () => this.inner.listSettlementEvents(matchId));
   }
   ensureWallet(identityId: string): Promise<CoinWalletRecord> {
     return this.invoke("ensureWallet", () => this.inner.ensureWallet(identityId));

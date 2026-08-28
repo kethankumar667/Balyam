@@ -1456,6 +1456,20 @@ export class RoomManager {
         else if (!isRosterValid) reason = "roster_changed";
 
         this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestGameStart", reason);
+        // The commit succeeded but this start attempt was invalidated, so
+        // `currentMatchId` (below) is never set for it — the client-visible
+        // lock state correctly never fires. But `lifecycleState` was set to
+        // "STARTING" before the commit even resolved (see above), and
+        // nothing else on this path reverts it: without this, the lobby is
+        // left showing a "securing table" pending state indefinitely after
+        // a compensating refund, even though nothing is actually pending
+        // any more. Only reverted when the room still exists, is still the
+        // same instance, and is still sitting in the exact "STARTING" state
+        // this call put it in — never when some other operation has
+        // legitimately already moved it on.
+        if (freshRoom && isSameInstance && freshRoom.lifecycleState === "STARTING") {
+          this.transitionLifecycle(freshRoom, "READY_CHECK", `Match commit orphaned before game start (${reason})`);
+        }
         return;
       }
       room.currentMatchId = result.settlement.matchId;

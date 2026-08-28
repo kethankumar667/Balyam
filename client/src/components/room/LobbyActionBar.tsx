@@ -5,6 +5,7 @@ export default function LobbyActionBar({
   startGameDisabledReason,
   readyCount,
   totalCount,
+  commitmentCoins,
   onToggleReady,
   onStartGame,
   variant = "desktop-panel",
@@ -15,11 +16,21 @@ export default function LobbyActionBar({
   startGameDisabledReason: string | null;
   readyCount: number;
   totalCount: number;
+  /**
+   * The authoritative, server-quoted total commitment for this table — the
+   * SAME quote `LobbyPrizePool` displays. `undefined`/`null` means no
+   * authoritative figure is available yet (still loading, or an
+   * unsupported seat count); the button then shows a plain "Start Game"
+   * with no invented amount, never a locally computed guess.
+   */
+  commitmentCoins?: string | null;
   onToggleReady: () => void;
   onStartGame: () => void;
   variant?: "sticky-mobile" | "desktop-panel";
 }) {
   const readyRatioText = `${readyCount} of ${totalCount} ready`;
+  const hasCost = commitmentCoins !== undefined && commitmentCoins !== null;
+  const startLabel = hasCost ? `Start Game (🪙 ${commitmentCoins})` : "Start Game";
 
   if (variant === "sticky-mobile") {
     return (
@@ -60,14 +71,15 @@ export default function LobbyActionBar({
                 onClick={onStartGame}
                 disabled={!canStart}
                 aria-disabled={!canStart}
-                className={`flex-1 min-h-[48px] px-4 py-2.5 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                aria-label={canStart ? startLabel : "Start Game disabled"}
+                className={`flex-1 min-h-[48px] px-4 py-2.5 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 ${
                   canStart
                     ? "bg-gradient-to-r from-[#EA5A1F] to-[#D84F17] hover:from-[#F06A32] hover:to-[#EA5A1F] text-white shadow-orange-900/30 cursor-pointer ring-2 ring-orange-500/30 animate-pulse"
                     : "bg-[#EFE4D2] dark:bg-slate-800 text-[#8C7A67] dark:text-slate-500 cursor-not-allowed border border-[#E1CFB1] dark:border-slate-700"
                 }`}
               >
                 <span className="text-xs">▶</span>
-                <span>Start Game</span>
+                <span>{startLabel}</span>
               </button>
             )}
           </div>
@@ -114,6 +126,7 @@ export default function LobbyActionBar({
             onClick={onStartGame}
             disabled={!canStart}
             aria-disabled={!canStart}
+            aria-label={canStart ? startLabel : "Start Game disabled"}
             className={`w-full min-h-[48px] px-6 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
               canStart
                 ? "bg-gradient-to-r from-[#EA5A1F] to-[#D84F17] hover:from-[#F06A32] hover:to-[#EA5A1F] text-white shadow-orange-900/30 cursor-pointer ring-4 ring-orange-500/20 animate-pulse"
@@ -121,7 +134,7 @@ export default function LobbyActionBar({
             }`}
           >
             <span className="text-xs">▶</span>
-            <span>Start Game</span>
+            <span>{startLabel}</span>
           </button>
         )}
       </div>

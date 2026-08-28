@@ -210,6 +210,40 @@ export interface SettlementReconciliation {
   };
 }
 
+export type SettlementEventType =
+  | "MATCH_COMMITTED"
+  | "MATCH_COMMITMENT_REPLAYED"
+  | "MATCH_SETTLED"
+  | "MATCH_SETTLEMENT_REPLAYED"
+  | "MATCH_REFUNDED"
+  | "MATCH_REFUND_REPLAYED"
+  | "MATCH_FORFEITED"
+  | "MATCH_FORFEITURE_REPLAYED"
+  | "SETTLEMENT_RACE_LOST"
+  | "RECONCILIATION_AUDITED"
+  | "STALE_SETTLEMENT_DETECTED";
+
+export type SettlementInitiatorKind = "system" | "operator" | "player";
+
+export interface SettlementEventRecord {
+  id: number;
+  matchId: string;
+  sequenceNumber: number;
+  eventType: SettlementEventType;
+  previousStatus: MatchSettlementStatus | null;
+  currentStatus: MatchSettlementStatus;
+  operation: string;
+  idempotencyKey: string;
+  applied: boolean;
+  isReplay: boolean;
+  raceLost: boolean;
+  initiatorKind: SettlementInitiatorKind;
+  initiatorId: string | null;
+  reason: string | null;
+  payload: Record<string, unknown>;
+  createdAt: number;
+}
+
 /**
  * Faithful pass-through of the database's own idempotency envelope
  * (`economy-v1.md` §6a). `applied: false` is a normal, successful outcome —
@@ -454,6 +488,13 @@ export interface EconomyRepository {
    * automatically at any layer, in this repository or above it.
    */
   listStaleCommittedSettlements(olderThanMs: number): Promise<MatchEconomySettlementRecord[]>;
+
+  /**
+   * Returns the chronological, immutable audit trail of all settlement lifecycle
+   * state transitions, idempotent replays, race losses, and reconciliation checks
+   * for the given match.
+   */
+  listSettlementEvents(matchId: string): Promise<SettlementEventRecord[]>;
 
   /* ── mutations ── */
 

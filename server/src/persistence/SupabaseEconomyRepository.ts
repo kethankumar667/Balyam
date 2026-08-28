@@ -34,6 +34,9 @@ import {
   type PlayerIdentityKind,
   type RewardVoucherRecord,
   type SettleMatchEconomyInput,
+  type SettlementEventRecord,
+  type SettlementEventType,
+  type SettlementInitiatorKind,
   type SettlementReconciliation,
   type VoucherStatus,
   type VoucherStatusView,
@@ -232,6 +235,25 @@ interface ReconcileRow {
   };
 }
 
+interface SettlementEventRow {
+  id: number;
+  match_id: string;
+  sequence_number: number;
+  event_type: SettlementEventType;
+  previous_status: MatchSettlementStatus | null;
+  current_status: MatchSettlementStatus;
+  operation: string;
+  idempotency_key: string;
+  applied: boolean;
+  is_replay: boolean;
+  race_lost: boolean;
+  initiator_kind: SettlementInitiatorKind;
+  initiator_id: string | null;
+  reason: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
 /** The database's own `{applied, operation, idempotencyKey, result}` envelope — camelCase keys, unlike every nested row's own snake_case columns. See `economy-v1.md` §6a. */
 interface RawEnvelope<TResult> {
   applied: boolean;
@@ -362,6 +384,27 @@ function toReconciliation(row: ReconcileRow): SettlementReconciliation {
       refunded: bigStr(row.details.refunded),
       forfeited: bigStr(row.details.forfeited),
     },
+  };
+}
+
+function toSettlementEvent(row: SettlementEventRow): SettlementEventRecord {
+  return {
+    id: row.id,
+    matchId: row.match_id,
+    sequenceNumber: row.sequence_number,
+    eventType: row.event_type,
+    previousStatus: row.previous_status,
+    currentStatus: row.current_status,
+    operation: row.operation,
+    idempotencyKey: row.idempotency_key,
+    applied: row.applied,
+    isReplay: row.is_replay,
+    raceLost: row.race_lost,
+    initiatorKind: row.initiator_kind,
+    initiatorId: row.initiator_id,
+    reason: row.reason,
+    payload: row.payload ?? {},
+    createdAt: ms(row.created_at),
   };
 }
 
@@ -543,6 +586,14 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       p_older_than: `${seconds} seconds`,
     });
     return rows.map(toSettlement);
+  }
+
+  async listSettlementEvents(matchId: string): Promise<SettlementEventRecord[]> {
+    const rows = await this.select<SettlementEventRow>(
+      "settlement_events_safe",
+      `match_id=eq.${encodeURIComponent(matchId)}&order=sequence_number.asc,id.asc`,
+    );
+    return rows.map(toSettlementEvent);
   }
 
   /* ═══════════════════════════ mutations ═══════════════════════════════ */

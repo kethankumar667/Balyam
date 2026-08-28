@@ -44,6 +44,10 @@ import FallingPetals from "../animations/app/FallingPetals";
 import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
 import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
+import { LobbyPrizePool } from "../components/economy/LobbyPrizePool";
+import { LobbyCoinFlight, type CoinParticle } from "../components/economy/LobbyCoinFlight";
+import { useCheckoutQuote } from "../hooks/useEconomy";
+import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
 import BhalyamResultModal from "../components/BhalyamResultModal";
 import { GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
@@ -570,6 +574,74 @@ export default function Room() {
   const [showMatchCountdown, setShowMatchCountdown] = useState(false);
   const [showAllReadyBanner, setShowAllReadyBanner] = useState(false);
 
+  // Phase 7F: Lobby coin particles and seat transition tracking
+  const [lobbyParticles, setLobbyParticles] = useState<CoinParticle[]>([]);
+  const prevPlayerIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (roomState?.phase !== "lobby") {
+      prevPlayerIdsRef.current = new Set(roomState?.players.map((p) => p.id) ?? []);
+      return;
+    }
+    const currentIds = new Set(roomState.players.map((p) => p.id));
+    const prevIds = prevPlayerIdsRef.current;
+
+    // Detect newly joined players / bots
+    const joinedPlayers = roomState.players.filter((p) => !prevIds.has(p.id));
+    if (joinedPlayers.length > 0 && prevIds.size > 0) {
+      const potElement = typeof document !== "undefined" ? document.getElementById("lobby-prize-pool-card") : null;
+      const potRect = potElement?.getBoundingClientRect();
+      const targetX = potRect ? potRect.left + potRect.width / 2 : (typeof window !== "undefined" ? window.innerWidth / 2 : 200);
+      const targetY = potRect ? potRect.top + potRect.height / 2 : 120;
+
+      const newParticles: CoinParticle[] = joinedPlayers.slice(0, 4).map((p) => {
+        const seatEl = typeof document !== "undefined" ? document.getElementById(`seat-${p.id}`) : null;
+        const seatRect = seatEl?.getBoundingClientRect();
+        const startX = seatRect ? seatRect.left + 30 : (typeof window !== "undefined" ? window.innerWidth / 2 : 200);
+        const startY = seatRect ? seatRect.top + 30 : (typeof window !== "undefined" ? window.innerHeight / 2 : 200);
+
+        return {
+          id: `particle-${p.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          startX,
+          startY,
+          targetX,
+          targetY,
+          createdAt: Date.now(),
+        };
+      });
+
+      if (newParticles.length > 0) {
+        setLobbyParticles((prev) => [...prev.slice(-3), ...newParticles]);
+      }
+    }
+
+    prevPlayerIdsRef.current = currentIds;
+  }, [roomState?.players, roomState?.phase]);
+
+  const handleCompleteLobbyParticle = useCallback((id: string) => {
+    setLobbyParticles((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  // Phase 7F: authoritative lobby checkout quote — the ONLY source for seat
+  // cost and prize distribution shown pre-commit. Never computed locally;
+  // see lib/lobbyEconomy.ts's own doc comment for why. Fetched for every
+  // lobby participant (the quote is identity-independent: cost/prizes are a
+  // pure function of seat count, not of whose wallet is checked), gated to
+  // the lobby phase with at least one seat filled.
+  const lobbyHumanSeatCount = roomState?.players.filter((p) => !p.isBot).length ?? 0;
+  const lobbyBotSeatCount = roomState?.players.filter((p) => p.isBot).length ?? 0;
+  const lobbySeatCount = lobbyHumanSeatCount + lobbyBotSeatCount;
+  const { quote: lobbyQuote, isLoading: isLobbyQuoteLoading } = useCheckoutQuote(
+    roomState?.phase === "lobby" && lobbySeatCount > 0
+      ? { seatCount: lobbySeatCount, humanSeatCount: lobbyHumanSeatCount, botSeatCount: lobbyBotSeatCount }
+      : null,
+  );
+  // "Locked" requires the server to have actually confirmed the commit
+  // succeeded (`currentMatchId` populated) — NOT merely that Start Game was
+  // clicked (`lifecycleState === "STARTING"` fires before the commit RPC
+  // even resolves). See deriveLobbyLockPhase's own doc comment.
+  const lobbyLockPhase = deriveLobbyLockPhase(Boolean(roomState?.currentMatchId), roomState?.lifecycleState);
+
   const prevRoomPhaseRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const prev = prevRoomPhaseRef.current;
@@ -1018,6 +1090,17 @@ export default function Room() {
                 />
               )}
 
+              {/* Live Match Prize Pool (Phase 7F) */}
+              <LobbyPrizePool
+                seatCount={viewModel.totalPlayersCount}
+                readyCount={viewModel.readyPlayersCount}
+                allReady={viewModel.allReady}
+                quote={lobbyQuote}
+                isQuoteLoading={isLobbyQuoteLoading}
+                lockPhase={lobbyLockPhase}
+                isHost={selfIsHost}
+              />
+
               <ParticipantPanel
                 players={roomState.players}
                 maxPlayers={viewModel.maxPlayers}
@@ -1060,6 +1143,7 @@ export default function Room() {
                   startGameDisabledReason={viewModel.startGameDisabledReason}
                   readyCount={viewModel.readyPlayersCount}
                   totalCount={viewModel.totalPlayersCount}
+                  commitmentCoins={lobbyQuote?.totalCommitment ?? null}
                   onToggleReady={toggleReady}
                   onStartGame={startGame}
                   variant="sticky-mobile"
@@ -1076,6 +1160,7 @@ export default function Room() {
                 startGameDisabledReason={viewModel.startGameDisabledReason}
                 readyCount={viewModel.readyPlayersCount}
                 totalCount={viewModel.totalPlayersCount}
+                commitmentCoins={lobbyQuote?.totalCommitment ?? null}
                 onToggleReady={toggleReady}
                 onStartGame={startGame}
                 variant="desktop-panel"
@@ -1448,6 +1533,14 @@ export default function Room() {
       {/* Everyone Ready Banner in Lobby */}
       {showAllReadyBanner && (
         <EveryoneReadyBanner onComplete={() => setShowAllReadyBanner(false)} />
+      )}
+
+      {/* Phase 7F: Lobby Coin Flight Particles */}
+      {roomState?.phase === "lobby" && (
+        <LobbyCoinFlight
+          particles={lobbyParticles}
+          onCompleteParticle={handleCompleteLobbyParticle}
+        />
       )}
 
       {/* Authoritative Economy Motion Orchestrator */}
