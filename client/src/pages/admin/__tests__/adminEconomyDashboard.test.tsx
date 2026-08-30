@@ -14,15 +14,11 @@ global.ResizeObserver = class ResizeObserver {
 
 describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
   const mockWorldBank: economyApi.WorldBankSnapshot = {
-    systemAccountId: "world-bank-001",
-    balance: "1250000",
-    lifetimeCollected: "450000",
-    activeEscrowBalance: "35000",
-    activeVoucherCount: 14,
-    lifetimeGrants: "980000",
-    lifetimeVoucherClaims: "120000",
-    lifetimeGuestEscrowDeposits: "155000",
-    updatedAt: Date.now(),
+    baseFeeRevenue: "450000",
+    botPrizeRevenue: "35000",
+    abandonmentForfeitureRevenue: "14000",
+    guestEscrowLiability: "120000",
+    totalVoucherRedeemed: "155000",
   };
 
   const mockRecentSettlements: economyApi.MatchEconomySettlementRecord[] = [
@@ -159,8 +155,8 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
 
       expect(screen.getByText("BHALYAM Economy Health & Operations")).toBeDefined();
       expect(screen.getByText("HEALTHY")).toBeDefined();
-      expect(screen.getByText("Active Escrow Liability")).toBeDefined();
-      expect(screen.getByText("Starter Grants Distributed")).toBeDefined();
+      expect(screen.getByText("Guest Escrow Liability")).toBeDefined();
+      expect(screen.getByText("Vouchers Redeemed")).toBeDefined();
     });
 
     it("renders settlement statistics (Settled, Refunded, Abandonment Forfeitures)", async () => {
@@ -263,7 +259,7 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
   });
 
   describe("4. World Bank Dashboard Module (Module 4)", () => {
-    it("renders Treasury Solvency Hero and 6 revenue & liability pillars", async () => {
+    it("renders Treasury Solvency Hero and 5 revenue & liability pillars", async () => {
       renderDashboard();
 
       await screen.findByText("World Bank Treasury Reserves");

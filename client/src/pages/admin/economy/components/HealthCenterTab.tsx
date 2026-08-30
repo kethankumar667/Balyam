@@ -50,12 +50,18 @@ export function HealthCenterTab({
   }
 
   // Escrow solvency is the one other check with a real, live signal to
-  // compute from — `worldBank.balance`/`activeEscrowBalance` are real
-  // fields from the real `getWorldBankSnapshot()` response. BigInt, not
-  // Number, for the same reason every other coin comparison in this
+  // compute from. `worldBank.guestEscrowLiability` is a real field from
+  // `getWorldBankSnapshot()`; "reserve" here is the sum of the platform's
+  // three real REVENUE balances (baseFeeRevenue + botPrizeRevenue +
+  // abandonmentForfeitureRevenue) — never merged with the liability itself,
+  // same non-fungibility rule the schema enforces everywhere else. BigInt,
+  // not Number, for the same reason every other coin comparison in this
   // codebase is: these are arbitrary-precision decimal strings.
+  const totalRevenue = worldBank
+    ? BigInt(worldBank.baseFeeRevenue) + BigInt(worldBank.botPrizeRevenue) + BigInt(worldBank.abandonmentForfeitureRevenue)
+    : null;
   const escrowSolvent =
-    worldBank !== null ? BigInt(worldBank.balance) >= BigInt(worldBank.activeEscrowBalance) : null;
+    worldBank !== null && totalRevenue !== null ? totalRevenue >= BigInt(worldBank.guestEscrowLiability) : null;
 
   type CheckStatus = "HEALTHY" | "WARNING" | "CRITICAL" | "NOT_MONITORED";
 
@@ -91,10 +97,10 @@ export function HealthCenterTab({
       name: "Guest Escrow Treasury Solvency",
       description: "Verifies that World Bank reserves exceed outstanding unredeemed guest voucher liabilities.",
       status: worldBank === null ? "NOT_MONITORED" : escrowSolvent ? "HEALTHY" : "CRITICAL",
-      detail: worldBank
+      detail: worldBank && totalRevenue !== null
         ? escrowSolvent
-          ? `Reserve (${worldBank.balance} 🪙) covers Escrow Liability (${worldBank.activeEscrowBalance} 🪙).`
-          : `Reserve (${worldBank.balance} 🪙) is BELOW Escrow Liability (${worldBank.activeEscrowBalance} 🪙) — investigate immediately.`
+          ? `Revenue (${totalRevenue} 🪙) covers Escrow Liability (${worldBank.guestEscrowLiability} 🪙).`
+          : `Revenue (${totalRevenue} 🪙) is BELOW Escrow Liability (${worldBank.guestEscrowLiability} 🪙) — investigate immediately.`
         : "World Bank snapshot unavailable — cannot evaluate reserve coverage.",
     },
     {

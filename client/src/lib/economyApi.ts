@@ -121,17 +121,20 @@ export interface VoucherStatusView {
   coinAmount: string;
 }
 
+/**
+ * Matches `WorldBankSnapshot` in `server/src/persistence/EconomyRepository.ts`
+ * exactly — five independent, non-fungible balances, never merged into one
+ * aggregate. `guestEscrowLiability` is money BHALYAM is HOLDING, not money
+ * BHALYAM HAS. This previously had a completely different (and entirely
+ * fictional) shape here — every admin World Bank figure silently rendered
+ * as `undefined` regardless of what was actually in the treasury.
+ */
 export interface WorldBankSnapshot {
-  systemAccountId: string;
-  /** Decimal string balance of the central bank. */
-  balance: string;
-  lifetimeCollected: string;
-  lifetimeGrants: string;
-  lifetimeGuestEscrowDeposits: string;
-  lifetimeVoucherClaims: string;
-  activeVoucherCount: number;
-  activeEscrowBalance: string;
-  updatedAt: number;
+  baseFeeRevenue: string;
+  botPrizeRevenue: string;
+  guestEscrowLiability: string;
+  totalVoucherRedeemed: string;
+  abandonmentForfeitureRevenue: string;
 }
 
 export interface SettlementReconciliation {

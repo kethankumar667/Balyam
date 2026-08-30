@@ -403,15 +403,11 @@ describe("Economy V1 UI Integration Suite", () => {
             ok: true,
             json: async () => ({
               worldBank: {
-                systemAccountId: "world-bank-001",
-                balance: "100000",
-                lifetimeCollected: "50000",
-                lifetimeGrants: "25000",
-                lifetimeGuestEscrowDeposits: "10000",
-                lifetimeVoucherClaims: "5000",
-                activeVoucherCount: 2,
-                activeEscrowBalance: "5000",
-                updatedAt: 1787700000000,
+                baseFeeRevenue: "80000",
+                botPrizeRevenue: "15000",
+                abandonmentForfeitureRevenue: "5000",
+                guestEscrowLiability: "5000",
+                totalVoucherRedeemed: "3000",
               },
             }),
           } as Response);

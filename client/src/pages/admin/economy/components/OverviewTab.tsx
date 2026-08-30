@@ -65,6 +65,19 @@ export function OverviewTab({
   const refundedCount = recentSettlements.filter((s) => s.status === "REFUNDED").length;
   const forfeitedCount = recentSettlements.filter((s) => s.status === "ABANDONMENT_FORFEITED").length;
 
+  // Total protocol REVENUE only — excludes guestEscrowLiability, which is a
+  // liability BHALYAM owes guests, not revenue BHALYAM earned. See
+  // WorldBankSnapshot's own doc comment for why the four balances are never
+  // merged into one; this is a derived display total of real fields, not a
+  // new invented figure.
+  const totalRevenue = worldBank
+    ? (
+        BigInt(worldBank.baseFeeRevenue) +
+        BigInt(worldBank.botPrizeRevenue) +
+        BigInt(worldBank.abandonmentForfeitureRevenue)
+      ).toString()
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Top Banner: Health Status & Operational Posture */}
@@ -127,24 +140,24 @@ export function OverviewTab({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-amber-600/30 shadow-2xs space-y-1 min-w-0">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
-                Treasury Reserve
+                Total Protocol Revenue
               </span>
               <CoinAmount
-                amount={worldBank.balance}
+                amount={totalRevenue ?? "0"}
                 size="xl"
                 className="font-black text-amber-600 dark:text-amber-400"
               />
               <span className="text-[11px] text-[var(--chrome-ink-soft)] block">
-                Current Protocol Solvency Balance
+                Base fees + bot prize rake + forfeitures
               </span>
             </div>
 
             <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
-                Lifetime Platform Rake
+                Base Fee Revenue
               </span>
               <CoinAmount
-                amount={worldBank.lifetimeCollected}
+                amount={worldBank.baseFeeRevenue}
                 size="lg"
                 className="font-bold text-emerald-700 dark:text-emerald-400"
               />
@@ -155,29 +168,29 @@ export function OverviewTab({
 
             <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
-                Active Escrow Liability
+                Guest Escrow Liability
               </span>
               <CoinAmount
-                amount={worldBank.activeEscrowBalance}
+                amount={worldBank.guestEscrowLiability}
                 size="lg"
                 className="font-bold text-purple-700 dark:text-purple-400"
               />
               <span className="text-[11px] text-[var(--chrome-ink-soft)] block">
-                {worldBank.activeVoucherCount} Unclaimed Bearer Vouchers
+                Held for guests, not protocol revenue
               </span>
             </div>
 
             <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
-                Starter Grants Distributed
+                Vouchers Redeemed
               </span>
               <CoinAmount
-                amount={worldBank.lifetimeGrants}
+                amount={worldBank.totalVoucherRedeemed}
                 size="lg"
                 className="font-bold text-indigo-700 dark:text-indigo-400"
               />
               <span className="text-[11px] text-[var(--chrome-ink-soft)] block">
-                Onboarding Starter Grants
+                Escrow converted into member balances
               </span>
             </div>
           </div>

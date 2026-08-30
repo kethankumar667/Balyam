@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Landmark,
   ShieldCheck,
@@ -7,12 +7,9 @@ import {
   AlertTriangle,
   Gift,
   Lock,
-  ArrowDownRight,
-  ArrowUpRight,
   Info,
 } from "lucide-react";
 import SectionHeader from "../../../../components/admin/section-header";
-import StatCard from "../../../../components/admin/stat-card";
 import { CoinAmount } from "../../../../components/economy/CoinAmount";
 import { EconomySkeleton } from "../../../../components/economy/EconomySkeleton";
 import type { WorldBankSnapshot } from "../../../../lib/economyApi";
@@ -23,6 +20,27 @@ interface WorldBankTabProps {
 }
 
 export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
+  // Total protocol REVENUE only — baseFeeRevenue + botPrizeRevenue +
+  // abandonmentForfeitureRevenue. Deliberately excludes
+  // guestEscrowLiability: that balance is money BHALYAM is HOLDING for a
+  // guest, not money BHALYAM HAS, and this schema's own design (see
+  // WorldBankSnapshot's doc comment) never merges the two. A client-side
+  // sum of the three real revenue fields for display is not the same
+  // mistake the schema was fixed to avoid — it's a derived total of real,
+  // already-authoritative numbers, not a new number invented from nothing.
+  const totalRevenue = useMemo(() => {
+    if (!worldBank) return null;
+    try {
+      return (
+        BigInt(worldBank.baseFeeRevenue) +
+        BigInt(worldBank.botPrizeRevenue) +
+        BigInt(worldBank.abandonmentForfeitureRevenue)
+      ).toString();
+    } catch {
+      return null;
+    }
+  }, [worldBank]);
+
   if (isLoading && !worldBank) {
     return (
       <div role="status" aria-label="Loading World Bank reserves" className="space-y-6">
@@ -71,18 +89,18 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
           </div>
         </div>
 
-        <div className="pt-2 border-t border-[var(--chrome-hairline)] grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="pt-2 border-t border-[var(--chrome-hairline)] grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="min-w-0">
             <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase block">
-              Treasury Reserve Balance
+              Total Protocol Revenue
             </span>
             <CoinAmount
-              amount={worldBank.balance}
+              amount={totalRevenue ?? "0"}
               size="xl"
               className="font-black text-amber-600 dark:text-amber-400 mt-0.5"
             />
             <span className="text-[11px] text-[var(--chrome-ink-soft)] mt-0.5 block">
-              Unencumbered protocol reserve
+              Base fees + bot prize rake + abandonment forfeitures
             </span>
           </div>
 
@@ -91,32 +109,18 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
               Outstanding Escrow Liability
             </span>
             <CoinAmount
-              amount={worldBank.activeEscrowBalance}
+              amount={worldBank.guestEscrowLiability}
               size="lg"
               className="font-bold text-purple-700 dark:text-purple-400 mt-0.5"
             />
             <span className="text-[11px] text-[var(--chrome-ink-soft)] mt-0.5 block">
-              {worldBank.activeVoucherCount} guest bearer voucher(s)
-            </span>
-          </div>
-
-          <div>
-            <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase block">
-              Lifetime Grants Distributed
-            </span>
-            <CoinAmount
-              amount={worldBank.lifetimeGrants}
-              size="lg"
-              className="font-bold text-indigo-700 dark:text-indigo-400 mt-0.5"
-            />
-            <span className="text-[11px] text-[var(--chrome-ink-soft)] mt-0.5 block">
-              Total starter allocations granted
+              Held for guests until voucher redemption — not protocol revenue
             </span>
           </div>
         </div>
       </div>
 
-      {/* 2. Inflow Stream Breakdown (The 4 Non-Fungible Pillars) */}
+      {/* 2. Inflow Stream Breakdown (each field maps 1:1 to a real, independent world_bank_accounts balance) */}
       <section className="space-y-3">
         <SectionHeader
           title="Treasury Inflow & Revenue Streams"
@@ -124,7 +128,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Pillar 1: Base Fee Revenue */}
+          {/* Base Fee Revenue */}
           <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider">
@@ -135,7 +139,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
               </div>
             </div>
             <CoinAmount
-              amount={worldBank.lifetimeCollected}
+              amount={worldBank.baseFeeRevenue}
               size="lg"
               className="font-bold text-emerald-700 dark:text-emerald-400"
             />
@@ -144,7 +148,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
             </p>
           </div>
 
-          {/* Pillar 2: Bot Prize Revenue */}
+          {/* Bot Prize Revenue */}
           <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider">
@@ -155,7 +159,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
               </div>
             </div>
             <CoinAmount
-              amount={worldBank.lifetimeCollected}
+              amount={worldBank.botPrizeRevenue}
               size="lg"
               className="font-bold text-blue-700 dark:text-blue-400"
             />
@@ -164,7 +168,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
             </p>
           </div>
 
-          {/* Pillar 3: Abandonment Forfeiture Revenue */}
+          {/* Abandonment Forfeiture Revenue */}
           <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider">
@@ -175,7 +179,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
               </div>
             </div>
             <CoinAmount
-              amount="0"
+              amount={worldBank.abandonmentForfeitureRevenue}
               size="lg"
               className="font-bold text-red-700 dark:text-red-400"
             />
@@ -184,7 +188,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
             </p>
           </div>
 
-          {/* Pillar 4: Guest Escrow Liability */}
+          {/* Guest Escrow Liability */}
           <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider">
@@ -195,7 +199,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
               </div>
             </div>
             <CoinAmount
-              amount={worldBank.activeEscrowBalance}
+              amount={worldBank.guestEscrowLiability}
               size="lg"
               className="font-bold text-purple-700 dark:text-purple-400"
             />
@@ -204,7 +208,7 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
             </p>
           </div>
 
-          {/* Pillar 5: Voucher Redemptions */}
+          {/* Voucher Redemptions */}
           <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider">
@@ -215,32 +219,12 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
               </div>
             </div>
             <CoinAmount
-              amount={worldBank.lifetimeVoucherClaims}
+              amount={worldBank.totalVoucherRedeemed}
               size="lg"
               className="font-bold text-amber-700 dark:text-amber-400"
             />
             <p className="text-[11px] text-[var(--chrome-ink-soft)] leading-relaxed">
               Total lifetime escrow successfully redeemed into member balances upon account verification.
-            </p>
-          </div>
-
-          {/* Pillar 6: Escrow Inflows */}
-          <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider">
-                Lifetime Escrow Deposits
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                <ArrowDownRight className="w-4 h-4" />
-              </div>
-            </div>
-            <CoinAmount
-              amount={worldBank.lifetimeGuestEscrowDeposits}
-              size="lg"
-              className="font-bold text-indigo-700 dark:text-indigo-400"
-            />
-            <p className="text-[11px] text-[var(--chrome-ink-soft)] leading-relaxed">
-              Cumulative lifetime escrow generated for guest match winners since protocol inception.
             </p>
           </div>
         </div>
