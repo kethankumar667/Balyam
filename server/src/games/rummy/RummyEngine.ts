@@ -39,6 +39,17 @@ interface InternalState {
   finalHands: Record<string, Card[]>;
   finalMelds: Record<string, string[][]>;
   droppedPlayers: Set<string>;
+  /**
+   * Players force-removed by RoomManager's auto-play turn cap. Mechanically
+   * a superset behavior of `droppedPlayers` (same round-exit consequences —
+   * see `quitPlayer`) plus permanent match-wide exclusion via
+   * `eliminatedInMatch`, so a quit seat is never dealt back into a later
+   * pool-mode round. Kept separate from `droppedPlayers` — never reset at
+   * a round boundary the way that set is — so the client can render a
+   * distinct "Quit" state for the rest of the match, not "Dropped" (which
+   * implies a choice the player never made).
+   */
+  quitPlayers: Set<string>;
   turnDeadline: number | null;
   /**
    * When phase === "arranging", the wall-clock ms at which the 15-second
@@ -322,6 +333,7 @@ export class RummyEngine implements GameEngine {
       finalHands: {},
       finalMelds: {},
       droppedPlayers: new Set(),
+      quitPlayers: new Set(),
       turnDeadline: null,
       arrangeDeadline: null,
       deadlineOwnerId: null,
@@ -780,6 +792,7 @@ export class RummyEngine implements GameEngine {
       turnDeadline: this.s.turnDeadline,
       arrangeDeadline: this.s.phase === "arranging" ? this.s.arrangeDeadline : null,
       droppedPlayers: [...this.s.droppedPlayers],
+      quitPlayers: [...this.s.quitPlayers],
       matchMode: this.s.matchMode,
       cumulativeScores: Object.fromEntries(this.s.cumulativeScores),
       eliminatedInMatch: [...this.s.eliminatedInMatch],
@@ -844,7 +857,7 @@ export class RummyEngine implements GameEngine {
     if (this.s.phase !== "playing") return [];
     const current = this.s.playerOrder[this.s.turnIndex];
     if (!current) return [];
-    if (this.s.droppedPlayers.has(current)) return [];
+    if (this.s.droppedPlayers.has(current) || this.s.quitPlayers.has(current)) return [];
     return [current];
   }
 
@@ -879,5 +892,34 @@ export class RummyEngine implements GameEngine {
       }
       this.updateMatchScoresAfterRound();
     }
+  }
+
+  /**
+   * Forced removal via RoomManager's auto-play turn cap — NOT the same as
+   * `removePlayer` above, which purges the seat's hand entirely for a
+   * genuine disconnect-grace expiry.
+   *
+   * Reuses `handleDrop`'s own mechanics wholesale — droppedPlayers, the
+   * round's dropScore, round-ending-on-last-active — because a forced quit
+   * and a voluntary drop have identical consequences for the CURRENT
+   * round: this seat takes no further part in it, but stays scored and
+   * visible. Also marked in the separate `quitPlayers` set (so the client
+   * can distinguish "forced out" from "chose to fold") and permanently
+   * excluded from `eliminatedInMatch` so a pool-mode match never deals
+   * this seat back in for a later round.
+   *
+   * Only safe to call when this seat is the CURRENT actor (`handleDrop`,
+   * like every other move, requires it) — true whenever RoomManager calls
+   * this, since it only fires in place of what would have been this seat's
+   * own auto-played turn.
+   */
+  quitPlayer(playerId: string): void {
+    if (this.s.phase !== "playing") return;
+    if (this.s.playerOrder[this.s.turnIndex] !== playerId) return;
+    if (this.s.droppedPlayers.has(playerId) || this.s.quitPlayers.has(playerId)) return;
+
+    this.s.quitPlayers.add(playerId);
+    this.handleDrop({ playerId, type: "drop" });
+    this.s.eliminatedInMatch.add(playerId);
   }
 }

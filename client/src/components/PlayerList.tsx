@@ -63,6 +63,14 @@ export default function PlayerList({
 
             {/* Badges */}
             <div className="flex items-center gap-1.5">
+              {p.hasQuit && (
+                <span
+                  className="text-[11px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 bg-slate-500/20 text-slate-600 dark:text-slate-300"
+                  title="Quit — the table played their turns for too long and moved on without them"
+                >
+                  Quit
+                </span>
+              )}
               {p.isAutoPlaying && (
                 <span
                   className="text-[11px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-300"

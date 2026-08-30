@@ -876,7 +876,7 @@ export default function RummyBoardDesktop({
     layout.ungrouped.length + layout.groups.reduce((s, g) => s + g.cardIds.length, 0);
 
   /* ─── Drop announcement — a card slams down when anyone drops the round ─── */
-  const [dropAnnounce, setDropAnnounce] = useState<{ name: string; mine: boolean } | null>(null);
+  const [dropAnnounce, setDropAnnounce] = useState<{ name: string; mine: boolean; quit: boolean } | null>(null);
   const prevDroppedRef = useRef<string[]>(state.droppedPlayers);
   useEffect(() => {
     const prev = new Set(prevDroppedRef.current);
@@ -884,7 +884,11 @@ export default function RummyBoardDesktop({
     prevDroppedRef.current = state.droppedPlayers;
     if (added.length === 0) return;
     const id = added[added.length - 1];
-    setDropAnnounce({ name: id === selfId ? "You" : nameOf(id), mine: id === selfId });
+    setDropAnnounce({
+      name: id === selfId ? "You" : nameOf(id),
+      mine: id === selfId,
+      quit: state.quitPlayers.includes(id),
+    });
     const t = window.setTimeout(() => setDropAnnounce(null), 2600);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1043,6 +1047,7 @@ export default function RummyBoardDesktop({
                 isTurn={state.turnPlayerId === id && state.phase === "playing"}
                 handSize={state.handSizes[id] ?? 0}
                 dropped={state.droppedPlayers.includes(id)}
+                quit={state.quitPlayers.includes(id)}
                 eliminated={state.eliminatedInMatch.includes(id)}
                 connected={players.find((p) => p.id === id)?.isConnected ?? true}
                 autoPlaying={players.find((p) => p.id === id)?.isAutoPlaying === true}
@@ -1358,7 +1363,9 @@ export default function RummyBoardDesktop({
       </div>
 
       {/* Drop announcement — a card slams down when a player drops. */}
-      {dropAnnounce && <DropAnnounce name={dropAnnounce.name} mine={dropAnnounce.mine} />}
+      {dropAnnounce && (
+        <DropAnnounce name={dropAnnounce.name} mine={dropAnnounce.mine} quit={dropAnnounce.quit} />
+      )}
 
       {/* Drop confirm */}
       {confirmDrop && (
@@ -1736,7 +1743,7 @@ function DeskGatingScreen({
  * Centre-screen "dropped" flourish — a face-down card slams onto the table with
  * the player's name. Pointer-events-none, self-dismissing; purely cosmetic.
  */
-function DropAnnounce({ name, mine }: { name: string; mine: boolean }) {
+function DropAnnounce({ name, mine, quit }: { name: string; mine: boolean; quit: boolean }) {
   return (
     <div
       className="fixed inset-0 z-[59] flex items-center justify-center pointer-events-none"
@@ -1764,7 +1771,9 @@ function DropAnnounce({ name, mine }: { name: string; mine: boolean }) {
             boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
           }}
         >
-          {mine ? "You dropped" : `${name} dropped`}
+          {quit
+            ? (mine ? "You quit" : `${name} quit`)
+            : (mine ? "You dropped" : `${name} dropped`)}
         </div>
       </div>
     </div>
@@ -1858,6 +1867,7 @@ function SidePlayersRail({
           const isSelf = id === selfId;
           const isTurn = state.turnPlayerId === id && state.phase === "playing";
           const dropped = state.droppedPlayers.includes(id);
+          const quit = state.quitPlayers.includes(id);
           const out = state.eliminatedInMatch.includes(id);
           const conn = players.find((p) => p.id === id)?.isConnected ?? true;
           const autoPlaying = players.find((p) => p.id === id)?.isAutoPlaying === true;
@@ -1874,9 +1884,12 @@ function SidePlayersRail({
               </span>
               <span className="rm-roster__name">
                 {isSelf ? `${nameOf(id)} (You)` : nameOf(id)}
-                {dropped && <span className="rm-roster__tag">dropped</span>}
-                {out && !dropped && <span className="rm-roster__tag">out</span>}
-                {autoPlaying && !dropped && !out && (
+                {/* quit outranks dropped — same round-exit mechanics, but a
+                    forced removal, never a choice the player made. */}
+                {quit && <span className="rm-roster__tag">quit</span>}
+                {dropped && !quit && <span className="rm-roster__tag">dropped</span>}
+                {out && !dropped && !quit && <span className="rm-roster__tag">out</span>}
+                {autoPlaying && !dropped && !out && !quit && (
                   <span className="rm-roster__tag rm-roster__tag--auto">auto</span>
                 )}
               </span>
@@ -1958,6 +1971,7 @@ function SeatCard({
   isTurn,
   handSize,
   dropped,
+  quit,
   eliminated,
   connected,
   autoPlaying,
@@ -1979,6 +1993,9 @@ function SeatCard({
   turnAction?: RummyTurnAction;
   handSize: number;
   dropped: boolean;
+  /** Force-removed by the server's auto-play turn cap — distinct from a
+   *  voluntary `dropped`: this player never chose to fold. */
+  quit: boolean;
   eliminated: boolean;
   connected: boolean;
   autoPlaying: boolean;
@@ -1991,7 +2008,7 @@ function SeatCard({
   isTargetActive?: boolean;
   onCloseTarget?: () => void;
 }) {
-  const out = dropped || eliminated;
+  const out = dropped || quit || eliminated;
   const avatarOption = findAvatar(avatar);
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => setImgFailed(false), [avatarOption?.src]);
@@ -2004,7 +2021,12 @@ function SeatCard({
    * apart. Two lines saying the same thing is worse than one, because the
    * reader has to check whether they actually differ.
    */
-  const sub = dropped
+  const sub = quit
+    // Outranks `dropped` — a quit seat IS also recorded in droppedPlayers
+    // (same round-exit mechanics), but this is a forced removal, not a
+    // choice, and must read as such.
+    ? "Quit"
+    : dropped
     ? "Dropped"
     : eliminated
     ? "Eliminated"

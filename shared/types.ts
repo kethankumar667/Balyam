@@ -109,6 +109,21 @@ export interface Player {
    * other field here is keyed on. See `rooms/economyIdentity.ts`.
    */
   identityId?: string | null;
+  /**
+   * True once this seat has been force-removed from active play after
+   * exhausting its auto-play turn allowance (see `quitReason`) — distinct
+   * from `isAutoPlaying`, which is a temporary, reversible state a
+   * reconnect ends. `hasQuit` never reverts: the seat stays visible in the
+   * roster (and, for games with per-seat game-state preservation, in the
+   * board itself) for the rest of the match so the table has a record of
+   * who left and why, but never acts again. See RoomManager's
+   * `forceQuitAutoPlayedSeat`.
+   */
+  hasQuit?: boolean;
+  /** Why `hasQuit` is true. Only one reason exists today; the field is a
+   *  union (not a boolean) so a future distinct quit path doesn't have to
+   *  overload this one's meaning. */
+  quitReason?: "auto_play_limit";
 }
 
 export interface ChatMessage {
@@ -246,6 +261,14 @@ export interface LudoMatchRecap {
   /** Wall-clock length of the match, ms. */
   durationMs: number;
   ts: number;
+  /**
+   * Players force-removed by RoomManager's auto-play turn cap. Their tokens
+   * stop moving from that point on (frozen where they stood, never sent
+   * home or captured further) but stay on the board and in `finishOrder`
+   * placement for the rest of the match, rather than being purged — see
+   * `LudoEngine.quitPlayer`.
+   */
+  quitPlayers: string[];
 }
 
 /** One row of the room's UNO "photo album" — a finished round's recap. UNO only. */
@@ -287,6 +310,14 @@ export interface RummyRoundRecap {
   finalMelds: Record<string, string[][]>;
   /** Set when the round ended because a player was removed (disconnect grace expired), not by play. */
   endedByDisconnect: string | null;
+  /**
+   * Every player force-removed by the auto-play turn cap during this round
+   * — not just the one (if any) whose removal happened to end it. A player
+   * quitting mid-round while others keep playing previously left no trace
+   * anywhere in the recap; this is that trace. See RummyPublicState's own
+   * `quitPlayers` field and RoomManager's `forceQuitAutoPlayedSeat`.
+   */
+  quitPlayers: string[];
 }
 
 /** Pool-match winner crowned for a room's table name. Rummy only. */
@@ -374,6 +405,15 @@ export interface RummyPublicState {
   playerOrder: string[];
   /** Players who used DROP — still seen in UI but no longer take turns. */
   droppedPlayers: string[];
+  /**
+   * Players force-removed by RoomManager's auto-play turn cap, not by their
+   * own choice — mechanically dropped from the current round exactly like
+   * `droppedPlayers` (still scored, round continues), and additionally
+   * excluded from every later round of a pool match. Kept as its own list
+   * (rather than merged into `droppedPlayers`) so the client can render a
+   * distinct "Quit" state instead of implying the player chose to fold.
+   */
+  quitPlayers: string[];
   winnerId?: string | null;
   scores?: Record<string, number>;
   finalHands?: Record<string, Card[]>;
@@ -578,6 +618,10 @@ export interface LudoState {
    * ends once `playerOrder.length - 1` players are in here.
    */
   finishOrder: string[];
+  /** Seats force-removed by the auto-play turn cap — tokens/stats stay in
+   *  every field above exactly where they were; only turn rotation skips
+   *  them. See `LudoEngine.quitPlayer`. */
+  quitPlayers: string[];
   winnerId: string | null;
   finishedCount: Record<string, number>;
   /** Mandatory Capture: per-player flag — must be true before tokens can enter home stretch. */

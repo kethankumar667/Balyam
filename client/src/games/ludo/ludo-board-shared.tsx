@@ -396,6 +396,14 @@ export function BoardSVG({
         /** The server is playing this seat. Shown to EVERYONE: a table needs
          *  to know why a player keeps moving without being there. */
         const autoPlaying = seat?.isAutoPlaying === true;
+        /** Permanently out via the auto-play turn cap — distinct from
+         *  `autoPlaying`, which is temporary and ends on reconnect. Shares
+         *  the same badge layout (left-aligned icon, shifted name) since
+         *  both mean "this seat isn't really here", but the tooltip and
+         *  icon differ: nobody is playing FOR a quit seat, the table has
+         *  simply moved on without it. */
+        const hasQuit = seat?.hasQuit === true;
+        const showAwayBadge = autoPlaying || hasQuit;
         return (
           <g key={color} opacity={inactive ? 0.45 : 1}>
             {/* Outer colored frame with rounded corner */}
@@ -496,24 +504,40 @@ export function BoardSVG({
                     because the pad is where tokens park and a badge there
                     would sit under one. Left end, so the name still centres
                     close to where it always did. */}
-                {autoPlaying && (
+                {showAwayBadge && (
                   <g transform="translate(-1.95 0)">
-                    <title>{name} is away — the table is playing their turns</title>
+                    <title>
+                      {hasQuit
+                        ? `${name} quit — the table played their turns for too long and moved on without them`
+                        : `${name} is away — the table is playing their turns`}
+                    </title>
                     <circle r={0.3} fill="#ffffff" opacity={0.92} />
-                    <g stroke={CHD(color)} strokeWidth={0.055} fill="none" strokeLinecap="round">
-                      {/* antenna */}
-                      <path d="M0 -0.235 v -0.075" />
-                      <circle cx={0} cy={-0.3} r={0.045} fill={CHD(color)} stroke="none" />
-                      {/* head */}
-                      <rect x={-0.17} y={-0.19} width={0.34} height={0.3} rx={0.08} />
-                    </g>
-                    {/* eyes */}
-                    <circle cx={-0.07} cy={-0.05} r={0.037} fill={CHD(color)} />
-                    <circle cx={0.07} cy={-0.05} r={0.037} fill={CHD(color)} />
+                    {hasQuit ? (
+                      // A simple "×" rather than the robot face — nobody is
+                      // playing FOR this seat, it's just permanently skipped.
+                      <g stroke={CHD(color)} strokeWidth={0.06} strokeLinecap="round">
+                        <path d="M-0.13 -0.13 L0.13 0.13 M0.13 -0.13 L-0.13 0.13" />
+                      </g>
+                    ) : (
+                      <g stroke={CHD(color)} strokeWidth={0.055} fill="none" strokeLinecap="round">
+                        {/* antenna */}
+                        <path d="M0 -0.235 v -0.075" />
+                        <circle cx={0} cy={-0.3} r={0.045} fill={CHD(color)} stroke="none" />
+                        {/* head */}
+                        <rect x={-0.17} y={-0.19} width={0.34} height={0.3} rx={0.08} />
+                      </g>
+                    )}
+                    {!hasQuit && (
+                      <>
+                        {/* eyes */}
+                        <circle cx={-0.07} cy={-0.05} r={0.037} fill={CHD(color)} />
+                        <circle cx={0.07} cy={-0.05} r={0.037} fill={CHD(color)} />
+                      </>
+                    )}
                   </g>
                 )}
                 <text
-                  x={autoPlaying ? 0.15 : -0.15}
+                  x={showAwayBadge ? 0.15 : -0.15}
                   y={0.17}
                   textAnchor="middle"
                   fontSize="0.5"
@@ -521,7 +545,7 @@ export function BoardSVG({
                   fill="#ffffff"
                   style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
                 >
-                  {name.slice(0, autoPlaying ? 10 : 12)}
+                  {name.slice(0, showAwayBadge ? 10 : 12)}
                 </text>
                 {/* The "N/4" home-progress pill that used to sit here was
                     removed at the user's request: the seat cards already

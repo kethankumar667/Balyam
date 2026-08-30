@@ -302,8 +302,13 @@ describe("RoomManager — disconnect takeover", () => {
     vi.advanceTimersByTime(21_000); // Ludo turn timer is 20s
     expect(alice.isAutoPlaying).not.toBe(true);
 
-    // Round the table until it is her turn again, and let that one lapse too.
-    vi.advanceTimersByTime(90_000);
+    // Round the table until it is her turn again, and let that one lapse
+    // too. Small steps, stopping the instant she goes auto — a single large
+    // advance risks running past AUTO_PLAY_TURN_CAP and quitting her before
+    // this test's own assertion (that she IS taken over) gets to run.
+    for (let i = 0; i < 400 && !alice.isAutoPlaying; i++) {
+      vi.advanceTimersByTime(250);
+    }
     expect(alice.isAutoPlaying).toBe(true);
     expect(alice.autoPlayReason).toBe("idle");
     expect(alice.isConnected).toBe(true); // still connected — that is the point
@@ -325,7 +330,11 @@ describe("RoomManager — disconnect takeover", () => {
     {
       const { rooms, code, broadcasts } = seatThree();
       const idle = playerOf(rooms, code, "Alice");
-      vi.advanceTimersByTime(120_000); // let two of their turns lapse
+      // Small steps, stopping the instant she goes auto — see the identical
+      // reasoning a few tests up (AUTO_PLAY_TURN_CAP).
+      for (let i = 0; i < 400 && !idle.isAutoPlaying; i++) {
+        vi.advanceTimersByTime(250);
+      }
       expect(idle.isAutoPlaying).toBe(true); // server agrees…
       expect(asBroadcast(broadcasts, "Alice")?.isAutoPlaying).toBe(true); // …and so do the clients
       expect(asBroadcast(broadcasts, "Alice")?.autoPlayReason).toBe("idle");
@@ -336,7 +345,11 @@ describe("RoomManager — disconnect takeover", () => {
     const { rooms, code, chat } = seatThree();
     const alice = playerOf(rooms, code, "Alice");
 
-    vi.advanceTimersByTime(120_000);
+    // Small steps, stopping the instant she goes auto — see the identical
+    // reasoning a few tests up (AUTO_PLAY_TURN_CAP).
+    for (let i = 0; i < 400 && !alice.isAutoPlaying; i++) {
+      vi.advanceTimersByTime(250);
+    }
     expect(alice.isAutoPlaying).toBe(true);
 
     /**
@@ -383,7 +396,15 @@ describe("RoomManager — disconnect takeover", () => {
     const { rooms, code, chat } = seatThree();
     const alice = playerOf(rooms, code, "Alice");
 
-    vi.advanceTimersByTime(120_000);
+    // Advance in small steps and stop the INSTANT she goes auto — this test
+    // is about the reclaim, not about how long she stays auto for. A single
+    // large advance (the old 120_000ms) risks running past
+    // AUTO_PLAY_TURN_CAP's own turn allowance and having her force-quit
+    // before the reclaim this test exists to check ever gets a chance to
+    // run — a different feature entirely.
+    for (let i = 0; i < 400 && !alice.isAutoPlaying; i++) {
+      vi.advanceTimersByTime(250);
+    }
     expect(alice.isAutoPlaying).toBe(true);
 
     // Not a move — just proof somebody is at the keyboard. Deliberately NOT
@@ -401,7 +422,12 @@ describe("RoomManager — disconnect takeover", () => {
     const { rooms, code } = seatThree();
     const bob = playerOf(rooms, code, "Bob");
 
-    vi.advanceTimersByTime(120_000);
+    // Same reasoning as the test above — stop advancing the instant he goes
+    // auto, so AUTO_PLAY_TURN_CAP doesn't quit him before this test's own
+    // reclaim assertion gets to run.
+    for (let i = 0; i < 400 && !bob.isAutoPlaying; i++) {
+      vi.advanceTimersByTime(250);
+    }
     expect(bob.isAutoPlaying).toBe(true);
 
     rooms.noteSocketActivity("sockB");

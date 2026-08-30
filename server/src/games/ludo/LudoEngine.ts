@@ -42,6 +42,14 @@ interface Internal {
   finishedCount: Map<string, number>;
   /** Seats that are all-home, in finishing order: 1st, 2nd, 3rd ... */
   finishOrder: string[];
+  /**
+   * Seats force-removed by RoomManager's auto-play turn cap. Unlike
+   * `removePlayer` (a full purge of every per-player table — see that
+   * method's own doc comment), a quit seat's tokens and stats stay in
+   * every one of these maps exactly where they were: only turn rotation
+   * changes (`advanceTurn` skips them, same as an already-finished seat).
+   */
+  quitPlayers: Set<string>;
   winnerId: string | null;
   hasCaptured: Map<string, boolean>;
   lastEvent: LudoEvent | null;
@@ -241,6 +249,7 @@ export class LudoEngine implements GameEngine {
       playerOrder: order,
       finishedCount: new Map(order.map((p) => [p, 0])),
       finishOrder: [],
+      quitPlayers: new Set(),
       winnerId: null,
       hasCaptured: new Map(order.map((p) => [p, false])),
       lastEvent: null,
@@ -542,10 +551,15 @@ export class LudoEngine implements GameEngine {
     for (let step = 1; step <= order.length; step++) {
       const idx = (this.s.turnIndex + step) % order.length;
       const pid = order[idx];
-      // Skip seats that have left (no tokens) AND seats that have already
-      // placed — a finished player has four tokens, all home, so without this
-      // the table would hand them a dead turn every single lap.
-      if (this.s.tokens.has(pid) && !this.s.finishOrder.includes(pid)) {
+      // Skip seats that have left (no tokens), seats that have already
+      // placed (a finished player has four tokens, all home, so without
+      // this the table would hand them a dead turn every single lap), and
+      // seats that quit (still on the board, but never act again).
+      if (
+        this.s.tokens.has(pid) &&
+        !this.s.finishOrder.includes(pid) &&
+        !this.s.quitPlayers.has(pid)
+      ) {
         this.s.turnIndex = idx;
         return;
       }
@@ -590,6 +604,7 @@ export class LudoEngine implements GameEngine {
       playerOrder: this.s.playerOrder,
       winnerId: this.s.winnerId,
       finishOrder: [...this.s.finishOrder],
+      quitPlayers: [...this.s.quitPlayers],
       finishedCount,
       hasCaptured,
       lastEvent: this.s.lastEvent,
@@ -731,6 +746,41 @@ export class LudoEngine implements GameEngine {
       this.s.movableTokenIds = [];
       this.s.consecutiveSixes = 0;
       this.s.turnDeadline = null;
+    }
+  }
+
+  /**
+   * Forced removal via RoomManager's auto-play turn cap — NOT the same as
+   * `removePlayer` above. That method purges every trace of the seat
+   * (deliberately, per its own doc comment) for a genuine disconnect-grace
+   * expiry. This one leaves the seat's tokens and every per-player stat
+   * exactly where they stood: `getPublicState` still projects them, the
+   * board still shows their pieces, `LudoMatchRecap` still names them.
+   * The only real change is `advanceTurn` now skips this seat forever.
+   *
+   * Idempotent, and a no-op for a seat that has already left entirely
+   * (`removePlayer`) or already finished (nothing to quit out of).
+   */
+  quitPlayer(playerId: string): void {
+    if (this.s.phase !== "playing") return;
+    if (!this.s.tokens.has(playerId)) return;
+    if (this.s.finishOrder.includes(playerId)) return;
+    if (this.s.quitPlayers.has(playerId)) return;
+
+    this.s.quitPlayers.add(playerId);
+
+    const wasCurrent = this.currentPid() === playerId;
+    if (wasCurrent) this.advanceTurn();
+
+    // Same "last one standing wins" rule `removePlayer` already uses:
+    // once fewer than 2 seats can still take a turn, the match is over.
+    const stillActive = this.s.playerOrder.filter(
+      (id) => this.s.tokens.has(id) && !this.s.finishOrder.includes(id) && !this.s.quitPlayers.has(id),
+    );
+    if (stillActive.length < 2 && this.s.phase === "playing") {
+      this.s.phase = "finished";
+      this.s.winnerId = this.s.winnerId ?? stillActive[0] ?? null;
+      this.s.endedAt = Date.now();
     }
   }
 

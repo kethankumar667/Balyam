@@ -151,6 +151,23 @@ const TAKEOVER_GRACE_MS = 10_000;
  * simply playing clears it — there is nothing to dismiss.
  */
 const IDLE_STRIKES_BEFORE_TAKEOVER = 2;
+/**
+ * How many full TURNS the server will play on an IDLE seat's behalf before
+ * that seat is force-quit from the match. Deliberately IDLE-only, not
+ * disconnect — see `isIdleAutoDriven`'s own doc comment for the economic
+ * reason a disconnected seat must keep using its existing, separate
+ * MATCH_GRACE_PERIOD_MS (10-minute) path instead.
+ *
+ * An idle takeover (connected, just not acting) had NO bound at all before
+ * this — a present-but-slow player could sit on autopilot for an entire
+ * match. This is the first mechanism that ends one without the player
+ * acting or a socket ever dropping.
+ *
+ * Counted in real TURNS via `lastAutoTurnActor`, not sub-moves — a naive
+ * per-sub-move counter would force-quit a Ludo seat (roll + move = 2
+ * sub-moves/turn) at 2.5 real turns, half of what this constant says.
+ */
+const AUTO_PLAY_TURN_CAP = 5;
 /** How long the host's rematch request stays open before auto-cancelling. */
 const REMATCH_REQUEST_WINDOW_MS = 30_000;
 /** Countdown shown to everyone after all responses are in before the new game auto-starts. */
@@ -264,6 +281,27 @@ export interface Room {
   /** Sub-moves the server has played for each taken-over seat, so the player
    *  can be told what they missed when they come back. */
   autoPlayedFor: Map<string, number>;
+  /**
+   * TURNS the server has played for each taken-over seat since its current
+   * takeover began — reset on reconnect (`releaseTakeover`) and on the
+   * idle-clear path (`noteActivity`), so each fresh disconnect/idle episode
+   * gets its own full `AUTO_PLAY_TURN_CAP` allowance rather than the count
+   * accumulating across a player's whole time in the room. Deliberately
+   * separate from `autoPlayedFor` (sub-moves, never reset, purely
+   * informational for `greetReturningPlayer`) — this one gates real
+   * consequences and must not inherit that field's known bug.
+   */
+  autoTurnsPlayed: Map<string, number>;
+  /**
+   * The seat id `scheduleBotMoveIfNeeded` most recently applied an
+   * auto-move for. A turn boundary for turn-counting purposes is "the next
+   * auto-move fires for a DIFFERENT seat than this one" — consecutive
+   * sub-moves for the same seat (Ludo roll→move, Rummy draw→discard) are
+   * one turn, not two. Cleared by `noteActivity` on any real socket
+   * activity so a genuine intervening human turn is never mistaken for a
+   * continuation of the same auto-play seat's turn.
+   */
+  lastAutoTurnActor: string | null;
   turnTimer: NodeJS.Timeout | null;
   /** Rummy/UNO only: safety-net timer while the very first turn's clock
    *  waits on every player's needsRotation to clear. See scheduleInitialTurnTimer. */
@@ -719,6 +757,8 @@ export class RoomManager {
       takeoverTimers: new Map(),
       idleStrikes: new Map(),
       autoPlayedFor: new Map(),
+      autoTurnsPlayed: new Map(),
+      lastAutoTurnActor: null,
       turnTimer: null,
       dealGateWaitTimer: null,
       dealGateAnimTimer: null,
@@ -2031,6 +2071,26 @@ export class RoomManager {
         // are not something anybody needs reporting back to them.
         if (this.isAutoDriven(room, botId)) {
           room.autoPlayedFor.set(botId, (room.autoPlayedFor.get(botId) ?? 0) + 1);
+
+          // The turn cap only ever applies to an IDLE takeover — see
+          // `isIdleAutoDriven`'s own doc comment for why a disconnect must
+          // not be pre-empted by it.
+          if (this.isIdleAutoDriven(room, botId)) {
+            // A new TURN for this seat starts exactly when the auto-move
+            // actor changes from whatever it was last time — consecutive
+            // sub-moves for the SAME seat (roll→move, draw→discard) are one
+            // turn, not two. See `lastAutoTurnActor`'s own doc comment.
+            const isNewTurn = room.lastAutoTurnActor !== botId;
+            room.lastAutoTurnActor = botId;
+            if (isNewTurn) {
+              const turns = (room.autoTurnsPlayed.get(botId) ?? 0) + 1;
+              room.autoTurnsPlayed.set(botId, turns);
+              if (turns > AUTO_PLAY_TURN_CAP) {
+                this.forceQuitAutoPlayedSeat(room, botId);
+                return;
+              }
+            }
+          }
         }
         apply.call(engine, botId);
       }
@@ -2555,6 +2615,33 @@ export class RoomManager {
   }
 
   /**
+   * Is this seat auto-driven for being IDLE, specifically — as opposed to a
+   * genuine socket disconnect?
+   *
+   * `AUTO_PLAY_TURN_CAP` only ever fires for this case. A disconnect already
+   * has its own correct, economically-aware termination path: up to
+   * `MATCH_GRACE_PERIOD_MS` (10 minutes), then the grace-expiry reaper —
+   * which, critically, also runs the "no eligible signed-in successor"
+   * forfeiture check a mid-match gameplay quit has no way to know about (a
+   * guest or bot cannot legitimately inherit the ORIGINAL host's economic
+   * commitment). Ending a disconnected host's takeover early via the turn
+   * cap would let the match reach an ordinary settlement instead of that
+   * forfeiture — real money routed differently than the existing, tested
+   * rule requires. An IDLE seat (connected, just not acting) was never on
+   * any such timer, so the turn cap is pure upside there: it closes a real
+   * gap (previously unbounded) rather than racing an existing one.
+   */
+  private isIdleAutoDriven(room: Room, playerId: string): boolean {
+    const p = room.players.get(playerId);
+    if (!p || p.isBot) return false;
+    if (p.isLocal) {
+      const host = room.players.get(room.hostId);
+      return !!host?.isAutoPlaying && host.autoPlayReason === "idle";
+    }
+    return p.isAutoPlaying === true && p.autoPlayReason === "idle";
+  }
+
+  /**
    * Promote a disconnect into a takeover once the blip window has passed.
    * Idempotent: re-arming for a seat that is already covered is a no-op.
    */
@@ -2566,8 +2653,8 @@ export class RoomManager {
       stillRoom.takeoverTimers.delete(playerId);
       const p = stillRoom.players.get(playerId);
       // Reconnected inside the window — nothing to do, which is the case this
-      // grace period exists for.
-      if (!p || p.isConnected || p.isBot) return;
+      // grace period exists for. A quit seat is permanent — never re-armed.
+      if (!p || p.isConnected || p.isBot || p.hasQuit) return;
       p.isAutoPlaying = true;
       p.autoPlayReason = "disconnected";
       this.systemMessage(
@@ -2591,7 +2678,7 @@ export class RoomManager {
    */
   private armTakeoversForAbsentSeats(room: Room): void {
     for (const p of room.players.values()) {
-      if (p.isBot || p.isConnected) continue;
+      if (p.isBot || p.isConnected || p.hasQuit) continue;
       this.armTakeover(room, p.id);
     }
   }
@@ -2630,7 +2717,7 @@ export class RoomManager {
     let promoted = false;
     for (const pid of stalled) {
       const p = room.players.get(pid);
-      if (!p || p.isBot || p.isAutoPlaying) continue;
+      if (!p || p.isBot || p.isAutoPlaying || p.hasQuit) continue;
       const strikes = (room.idleStrikes.get(pid) ?? 0) + 1;
       room.idleStrikes.set(pid, strikes);
       if (strikes < IDLE_STRIKES_BEFORE_TAKEOVER) continue;
@@ -2689,6 +2776,10 @@ export class RoomManager {
     if (!p?.isAutoPlaying || p.autoPlayReason !== "idle") return;
     p.isAutoPlaying = false;
     delete p.autoPlayReason;
+    // A fresh episode next time this seat goes idle deserves its own full
+    // AUTO_PLAY_TURN_CAP allowance, not whatever was left over from this one.
+    room.autoTurnsPlayed.delete(playerId);
+    if (room.lastAutoTurnActor === playerId) room.lastAutoTurnActor = null;
     this.systemMessage(room, `${p.name} is back — they have the table again.`);
     this.broadcastRoomState(room);
   }
@@ -2707,6 +2798,8 @@ export class RoomManager {
     }
     room.idleStrikes.delete(playerId);
     room.autoPlayedFor.delete(playerId);
+    room.autoTurnsPlayed.delete(playerId);
+    if (room.lastAutoTurnActor === playerId) room.lastAutoTurnActor = null;
   }
 
   /** Hand the seat back. Called the instant a socket reclaims it. */
@@ -2723,6 +2816,10 @@ export class RoomManager {
     if (!p?.isAutoPlaying) return;
     p.isAutoPlaying = false;
     delete p.autoPlayReason;
+    // A fresh episode next time this seat disconnects deserves its own full
+    // AUTO_PLAY_TURN_CAP allowance, not whatever was left over from this one.
+    room.autoTurnsPlayed.delete(playerId);
+    if (room.lastAutoTurnActor === playerId) room.lastAutoTurnActor = null;
     this.systemMessage(room, `${p.name} is back — they have the table again.`);
   }
 
@@ -2750,6 +2847,68 @@ export class RoomManager {
       text: `Welcome back — ${turns} played for you while you were away.`,
       ts: Date.now(),
     });
+  }
+
+  /**
+   * The auto-play turn cap has been reached (`AUTO_PLAY_TURN_CAP`
+   * consecutive turns played by the server on this seat's behalf) — force
+   * the seat out of active play. Called from `scheduleBotMoveIfNeeded` in
+   * place of applying what would have been the seat's next auto-move.
+   *
+   * Two very different outcomes depending on what the engine supports:
+   *
+   *   - Engines with `quitPlayer` (Rummy, Ludo) — a non-destructive quit.
+   *     The seat's game state (hand, tokens, stats) stays exactly where it
+   *     was; only turn rotation changes. The player stays in `room.players`
+   *     with `hasQuit: true` so the roster, the board, and the eventual
+   *     settlement/history all still name them — the "trace persists to
+   *     match end" requirement this whole feature exists for.
+   *
+   *   - Everything else — the same full-purge `removePlayer` an expired
+   *     10-minute disconnect grace period already uses (see `leaveRoom`),
+   *     just triggered sooner. The player is deleted from `room.players`
+   *     and a snapshot is handed to `finalizeMatch` for the economy
+   *     settlement roster, exactly like `leaveRoom` does. For a 2-seat
+   *     game this ends the match immediately as a forfeit to the opponent
+   *     — `removePlayer`'s own existing behavior, nothing new here.
+   */
+  private forceQuitAutoPlayedSeat(room: Room, playerId: string): void {
+    const engine = room.engine;
+    const player = room.players.get(playerId);
+    if (!engine || !player) return;
+
+    player.isAutoPlaying = false;
+    delete player.autoPlayReason;
+    player.hasQuit = true;
+    player.quitReason = "auto_play_limit";
+    this.forgetSeatTimers(room, playerId);
+    room.autoTurnsPlayed.delete(playerId);
+    if (room.lastAutoTurnActor === playerId) room.lastAutoTurnActor = null;
+
+    this.systemMessage(room, `${player.name} was away too long and has quit the match.`);
+
+    const quittable = engine as unknown as { quitPlayer?: (id: string) => void };
+    let departedSnapshot: Player | undefined;
+    if (typeof quittable.quitPlayer === "function") {
+      quittable.quitPlayer(playerId);
+    } else {
+      departedSnapshot = { ...player };
+      room.players.delete(playerId);
+      if (!this.hasHumanPlayer(room)) {
+        this.abandonRoom(room);
+        return;
+      }
+      if (room.hostId === playerId) this.reassignHost(room, playerId);
+      engine.removePlayer(playerId);
+    }
+
+    this.broadcastRoomState(room);
+
+    if (engine.isOver()) {
+      this.finalizeMatch(room, departedSnapshot);
+      return;
+    }
+    this.resumeTable(room);
   }
 
   /**
@@ -3582,6 +3741,7 @@ export class RoomManager {
       finalHands: state.finalHands ?? {},
       finalMelds: state.finalMelds ?? {},
       endedByDisconnect: state.endedByDisconnect ?? null,
+      quitPlayers: state.quitPlayers ?? [],
     });
     if (room.history.length > MAX_RUMMY_HISTORY) room.history.shift();
 
@@ -3675,6 +3835,7 @@ export class RoomManager {
       finishOrder: [...state.finishOrder],
       playerOrder: [...state.playerOrder],
       playerNames: names,
+      quitPlayers: [...state.quitPlayers],
       finishedCount: { ...state.finishedCount },
       rollCount: { ...state.stats.rollCount },
       captureCount: { ...state.stats.captureCount },

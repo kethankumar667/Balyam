@@ -3336,7 +3336,9 @@ function PoolBetweenRounds({
                         letterSpacing: "0.06em",
                       }}
                     >
-                      ⏏ Dropped
+                      {/* quit outranks dropped — same round-exit mechanics,
+                          but a forced removal, never a choice the player made. */}
+                      {state.quitPlayers.includes(id) ? "⏏ Quit" : "⏏ Dropped"}
                     </span>
                   )}
                 </td>
@@ -3491,7 +3493,7 @@ function EndGameCard({
                           color: "#f87171",
                         }}
                       >
-                        ⏏ Dropped
+                        {state.quitPlayers.includes(id) ? "⏏ Quit" : "⏏ Dropped"}
                       </span>
                     )}
                   </td>

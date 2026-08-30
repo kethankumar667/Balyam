@@ -175,6 +175,10 @@ type LudoSeatMeta = {
    *  is not taken over), and an optional field there breaks the type
    *  predicate that filters colourless seats out of the list. */
   autoReason: "disconnected" | "idle" | undefined;
+  /** Force-removed by the server's auto-play turn cap. Tokens stay on the
+   *  board exactly where they were — this seat is simply never handed a
+   *  turn again. Distinct from `autoPlaying`: this never reverts. */
+  hasQuit: boolean;
   tokensHome: number;
   active: boolean;
   /** Won the finished game — gets the gold winner treatment. */
@@ -215,6 +219,7 @@ function orderedSeats(state: LudoState, players: Player[], selfId?: string | nul
         isBot: p?.isBot === true,
         autoPlaying: p?.isAutoPlaying === true,
         autoReason: p?.autoPlayReason,
+        hasQuit: p?.hasQuit === true,
         tokensHome: state.finishedCount?.[pid] ?? 0,
         active: state.turnPlayerId === pid && state.phase !== "finished",
         isWinner: state.phase === "finished" && state.winnerId === pid,
@@ -315,8 +320,8 @@ function LudoPlayerCard({
             : seat.active
             ? `0 0 0 1.5px ${tint}, 0 4px 12px ${tint}30`
             : "0 1px 4px rgba(0,0,0,0.04)",
-          opacity: offline ? 0.65 : 1,
-          filter: offline ? "grayscale(0.45)" : undefined,
+          opacity: offline || seat.hasQuit ? 0.65 : 1,
+          filter: offline || seat.hasQuit ? "grayscale(0.45)" : undefined,
           animationDelay: `${Math.min(index, 8) * 40}ms`,
         }}
       >
@@ -441,8 +446,8 @@ function LudoPlayerCard({
           : isSelf
           ? "0 0 0 1.5px #E0AE3B40, 0 2px 6px rgba(0,0,0,0.06)"
           : "0 2px 6px rgba(0,0,0,0.04)",
-        opacity: offline ? 0.65 : 1,
-        filter: offline ? "grayscale(0.45)" : undefined,
+        opacity: offline || seat.hasQuit ? 0.65 : 1,
+        filter: offline || seat.hasQuit ? "grayscale(0.45)" : undefined,
         animationDelay: `${Math.min(index, 8) * 45}ms`,
       }}
     >
@@ -509,8 +514,16 @@ function LudoPlayerCard({
             {seat.isBot && <span className="flex-shrink-0 text-[10px] opacity-70" title="Bot">🤖</span>}
           </div>
 
-          {/* Row 2: Tokens Home Progress or Away Status */}
-          {offline || seat.autoPlaying ? (
+          {/* Row 2: Tokens Home Progress, Away Status, or Quit */}
+          {seat.hasQuit ? (
+            <div
+              className="text-[9.5px] font-extrabold truncate leading-none flex items-center gap-1 text-stone-500"
+              title="Quit — the table played their turns for too long and moved on without them"
+            >
+              <span>⏏</span>
+              <span>Quit</span>
+            </div>
+          ) : offline || seat.autoPlaying ? (
             <div
               className="text-[9.5px] font-extrabold truncate leading-none flex items-center gap-1 text-amber-700"
             >
