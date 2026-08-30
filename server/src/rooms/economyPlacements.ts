@@ -34,6 +34,17 @@ import type { SettlementParticipantOutcome } from "../economy/EconomyService.js"
  *     already-broadcast field (`LudoState.finishOrder`) recording exact
  *     finish order; the one seat never added to it (the game ends at
  *     `playerOrder.length - 1` finishers) is last place.
+ *   - Rummy, 3+ seats, `matchMode: "single"` only: `scores` (a real,
+ *     already-broadcast `Record<string, number>`, populated exactly when
+ *     `RummyEngine.isOver()` is true for single mode) gives one point
+ *     value per seat, lower is better, winner always 0. Sorted ascending,
+ *     with any tie at a paid position (1st/2nd/3rd) rejected rather than
+ *     arbitrarily broken — see `rummySingleRoundRanking`'s own comment for
+ *     the real tie scenarios (invalid declare, cascading disconnects) this
+ *     guards against. Pool101/pool201 remain `isValidRanking: false`: a
+ *     pool match's real ranking is elimination order across many rounds,
+ *     not one round's own scores, and reconstructing that correctly is
+ *     separate, not-yet-done work.
  *   - Everything else at 3+ seats: `isValidRanking: false` — refund, not a
  *     guess. This is the documented, correct behavior for an ambiguous
  *     ranking (game-settlement-map.md Rule 2), not a shortcut dressed up
@@ -124,6 +135,45 @@ function ludoFinishOrder(engine: GameEngine): string[] | null {
   return [...finishOrder, ...remaining];
 }
 
+/**
+ * Rummy, single-round mode (`matchMode: "single"`) only — pool101/pool201
+ * are a real multi-round elimination match where the settlement-relevant
+ * ranking is elimination order across many rounds, not this round's own
+ * `scores`; that is genuinely separate, harder work (see this file's
+ * header) and is deliberately left `isValidRanking: false` for now.
+ *
+ * For single mode, `RummyEngine.isOver()` returns true exactly when
+ * `phase === "finished"`, which is exactly when `getPublicState().scores`
+ * is populated (RummyEngine.ts's own `getPublicState`) — one score per
+ * seat, lower is better, winner is always 0 (standard Indian Rummy points
+ * scoring). Sorting by score ascending gives the full placement order.
+ *
+ * A tie is possible and real — e.g. an invalid declare scores every
+ * opponent 0, and a cascade of mid-round disconnects can score every
+ * remaining non-winner the same fixed penalty (both seen directly in
+ * RummyEngine.ts). Per the documented V1 rule ("any placement ambiguity at
+ * a paid position is not a valid ranked result"), a tie between the score
+ * at position i and i+1, for any i whose position or the one after it is
+ * still paid (1st/2nd/3rd — DEFAULT_SCHEDULES never pays 4th+), makes the
+ * whole ranking invalid rather than arbitrarily broken.
+ */
+function rummySingleRoundRanking(engine: GameEngine, seatIds: string[]): string[] | null {
+  const state = engine.getPublicState() as { matchMode?: unknown; scores?: unknown };
+  if (state.matchMode !== "single") return null;
+  const scores = state.scores as Record<string, number> | undefined;
+  if (!scores || !seatIds.every((id) => typeof scores[id] === "number")) return null;
+
+  const ranked = [...seatIds].sort((a, b) => scores[a]! - scores[b]!);
+
+  // Boundaries 0-1, 1-2, 2-3 cover every pair needed to confirm 1st, 2nd,
+  // and 3rd are each unambiguously distinct from their neighbor.
+  for (let i = 0; i < Math.min(3, ranked.length - 1); i++) {
+    if (scores[ranked[i]!] === scores[ranked[i + 1]!]) return null;
+  }
+
+  return ranked;
+}
+
 export function extractRankedParticipants(input: PlacementExtractionInput): PlacementExtractionResult {
   const { game, players, engine } = input;
   if (!engine) {
@@ -145,6 +195,8 @@ export function extractRankedParticipants(input: PlacementExtractionInput): Plac
     if (finish && finish.length === seatIds.length) {
       order = finish;
     }
+  } else if (game === "rummy") {
+    order = rummySingleRoundRanking(engine, seatIds);
   }
 
   if (!order) {
