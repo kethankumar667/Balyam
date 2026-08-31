@@ -21,6 +21,9 @@ const mockSampleRooms: OperationalRoomSummary[] = [
       id: "p_1",
       name: "Rahul",
       isGuest: false,
+      isConnected: true,
+      isAway: false,
+      inGrace: false,
     },
     playerCount: 3,
     humanCount: 3,
@@ -29,6 +32,32 @@ const mockSampleRooms: OperationalRoomSummary[] = [
     hasTakeover: false,
     sealed: false,
     disconnectedCount: 0,
+    players: [
+      {
+        id: "p_1",
+        name: "Rahul",
+        playerType: "human",
+        accountType: "member",
+        isHost: true,
+        isConnected: true,
+        isEligibleForRejoin: false,
+        awaySince: null,
+        awayUntil: null,
+        remainingGraceMs: null,
+        isAutoPlaying: false,
+        autoPlayReason: null,
+        autoTurnsPlayed: 0,
+        autoTurnCap: 5,
+        idleStrikes: 0,
+        seatStatus: "active",
+      },
+    ],
+    diagnostics: {
+      currentTurnPlayerName: "Rahul",
+      isOver: false,
+      matchDurationMs: 120_000,
+      matchStatus: "In Progress",
+    },
   },
   {
     code: "XK992",
@@ -42,6 +71,9 @@ const mockSampleRooms: OperationalRoomSummary[] = [
       id: "p_2",
       name: "Ananya",
       isGuest: true,
+      isConnected: true,
+      isAway: false,
+      inGrace: false,
     },
     playerCount: 4,
     humanCount: 3,
@@ -50,6 +82,50 @@ const mockSampleRooms: OperationalRoomSummary[] = [
     hasTakeover: true,
     sealed: true,
     disconnectedCount: 1,
+    players: [
+      {
+        id: "p_2",
+        name: "Ananya",
+        playerType: "human",
+        accountType: "guest",
+        isHost: true,
+        isConnected: true,
+        isEligibleForRejoin: false,
+        awaySince: null,
+        awayUntil: null,
+        remainingGraceMs: null,
+        isAutoPlaying: false,
+        autoPlayReason: null,
+        autoTurnsPlayed: 0,
+        autoTurnCap: 5,
+        idleStrikes: 0,
+        seatStatus: "active",
+      },
+      {
+        id: "p_disconnected",
+        name: "Vikram",
+        playerType: "human",
+        accountType: "member",
+        isHost: false,
+        isConnected: false,
+        isEligibleForRejoin: true,
+        awaySince: Date.now() - 30_000,
+        awayUntil: Date.now() + 60_000,
+        remainingGraceMs: 60_000,
+        isAutoPlaying: true,
+        autoPlayReason: "disconnected",
+        autoTurnsPlayed: 1,
+        autoTurnCap: 5,
+        idleStrikes: 0,
+        seatStatus: "auto_playing",
+      },
+    ],
+    diagnostics: {
+      currentTurnPlayerName: "Vikram",
+      isOver: false,
+      matchDurationMs: 300_000,
+      matchStatus: "In Progress",
+    },
   },
 ];
 
@@ -80,7 +156,9 @@ const mockTickPayload: PlatformTickPayload = {
         playerId: "p_disconnected",
         playerName: "Vikram",
         isGuest: false,
+        isHost: false,
         awaySince: Date.now() - 30_000,
+        awayUntil: Date.now() + 60_000,
         awayDurationMs: 30_000,
         gracePeriodMs: 90_000,
         remainingGraceMs: 60_000,
@@ -89,6 +167,7 @@ const mockTickPayload: PlatformTickPayload = {
         autoPlayReason: "disconnected",
         idleStrikes: 0,
         autoTurnsPlayed: 1,
+        autoTurnCap: 5,
       },
     ],
   },
@@ -162,12 +241,12 @@ describe("Admin Live Monitoring Dashboard — Phase 1 Test Suite", () => {
     expect(screen.getAllByText("Takeover").length).toBeGreaterThan(0);
   });
 
-  it("6. LiveRecoveryPanel displays disconnected seats in grace period", () => {
+  it("6. LiveRecoveryPanel displays disconnected seats in grace period with recovery details", () => {
     render(<LiveRecoveryPanel />);
-    expect(screen.getByText("Recovery Sentinel")).toBeDefined();
+    expect(screen.getByText("Advanced Recovery Sentinel")).toBeDefined();
     expect(screen.getByText("Vikram")).toBeDefined();
     expect(screen.getByText(/Room: #XK992/i)).toBeDefined();
-    expect(screen.getByText("Auto-Play")).toBeDefined();
+    expect(screen.getByText(/Auto Playing/i)).toBeDefined();
   });
 
   // Test 7 (1,000-room "virtualization" check) removed from this file: it

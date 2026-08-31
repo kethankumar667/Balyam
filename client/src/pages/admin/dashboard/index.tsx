@@ -22,6 +22,7 @@ import GlobalHealthStrip from "../../../components/admin/live-monitoring/GlobalH
 import LiveRoomFilters from "../../../components/admin/live-monitoring/LiveRoomFilters";
 import LiveRoomMatrix from "../../../components/admin/live-monitoring/LiveRoomMatrix";
 import LiveRecoveryPanel from "../../../components/admin/live-monitoring/LiveRecoveryPanel";
+import RoomInspectorDrawer from "../../../components/admin/live-monitoring/RoomInspectorDrawer";
 import ConnectionStatusBadge from "../../../components/admin/live-monitoring/ConnectionStatusBadge";
 import { operationalFetch, OperationalAuthError } from "../../../lib/operationalApi";
 import { subscribeAdminLiveStream, refreshAdminLive, resetAdminLiveStream } from "../../../lib/operationalStream";
@@ -569,6 +570,9 @@ export default function AdminDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Room Inspector Drawer */}
+      <RoomInspectorDrawer />
     </AdminLayout>
   );
 }

@@ -37,7 +37,10 @@ import type {
   DisconnectedSeatSummary,
   OperationalRecoverySummary,
   PlatformHealthCounters,
+  OperationalPlayerSummary,
+  OperationalMatchDiagnostics,
 } from "@shared/types.js";
+import { deriveSeatStatus } from "@shared/operational.js";
 import {
   COIN_COLORS,
   DOTSBOXES_COLORS,
@@ -698,7 +701,9 @@ export class RoomManager {
             playerId: player.id,
             playerName: player.name,
             isGuest: Boolean(player.isGuest),
+            isHost: room.hostId === player.id,
             awaySince: player.awaySince,
+            awayUntil: player.awayUntil,
             awayDurationMs,
             gracePeriodMs,
             remainingGraceMs,
@@ -707,6 +712,7 @@ export class RoomManager {
             autoPlayReason: player.autoPlayReason ?? null,
             idleStrikes,
             autoTurnsPlayed,
+            autoTurnCap: AUTO_PLAY_TURN_CAP,
           });
         }
       }
@@ -728,6 +734,47 @@ export class RoomManager {
       const isRunningMatch = room.phase === "playing" || room.lifecycleState === "IN_PROGRESS" || room.lifecycleState === "RECOVERING" || room.lifecycleState === "PAUSED";
       const matchDurationMs = room.matchStartedAt && isRunningMatch ? Math.max(0, now - room.matchStartedAt) : 0;
 
+      const players: OperationalPlayerSummary[] = Array.from(room.players.values()).map((p) => {
+        const remainingGraceMs = p.awayUntil ? Math.max(0, p.awayUntil - now) : null;
+        const idleStrikes = room.idleStrikes.get(p.id) ?? 0;
+        const autoTurnsPlayed = room.autoTurnsPlayed.get(p.id) ?? 0;
+        const isEligibleForRejoin = remainingGraceMs !== null && remainingGraceMs > 0;
+
+        return {
+          id: p.id,
+          name: p.name,
+          playerType: p.isBot ? "bot" : "human",
+          accountType: p.isBot ? "bot" : (p.isGuest ? "guest" : "member"),
+          isHost: room.hostId === p.id,
+          isConnected: Boolean(p.isConnected),
+          isEligibleForRejoin,
+          awaySince: p.awaySince ?? null,
+          awayUntil: p.awayUntil ?? null,
+          remainingGraceMs,
+          isAutoPlaying: Boolean(p.isAutoPlaying),
+          autoPlayReason: p.autoPlayReason ?? null,
+          autoTurnsPlayed,
+          autoTurnCap: AUTO_PLAY_TURN_CAP,
+          idleStrikes,
+          seatStatus: deriveSeatStatus({
+            isConnected: Boolean(p.isConnected),
+            isAutoPlaying: Boolean(p.isAutoPlaying),
+            idleStrikes,
+            hasQuit: Boolean(p.hasQuit),
+          }),
+        };
+      });
+
+      const pendingActorId = room.engine?.pendingActors ? room.engine.pendingActors()[0] ?? null : null;
+      const currentTurnPlayer = pendingActorId ? room.players.get(pendingActorId) : null;
+
+      const diagnostics: OperationalMatchDiagnostics = {
+        currentTurnPlayerName: currentTurnPlayer?.name ?? null,
+        isOver: Boolean(room.engine?.isOver()),
+        matchDurationMs,
+        matchStatus: room.phase === "playing" ? (room.engine?.isOver() ? "Finished" : "In Progress") : room.phase,
+      };
+
       return {
         code: room.code,
         game: room.game,
@@ -740,6 +787,9 @@ export class RoomManager {
           id: room.hostId,
           name: hostPlayer?.name ?? "Host",
           isGuest: Boolean(hostPlayer?.isGuest),
+          isConnected: Boolean(hostPlayer?.isConnected),
+          isAway: Boolean(!hostPlayer?.isConnected && !hostPlayer?.isBot),
+          inGrace: Boolean(hostPlayer?.awayUntil && hostPlayer.awayUntil > now),
         },
         playerCount: room.players.size,
         humanCount,
@@ -748,6 +798,8 @@ export class RoomManager {
         hasTakeover: room.takeoverTimers.size > 0,
         sealed: room.sealed,
         disconnectedCount,
+        players,
+        diagnostics,
       };
     });
   }
