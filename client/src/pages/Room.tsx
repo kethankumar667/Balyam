@@ -34,10 +34,11 @@ import CoinColorPicker from "../components/CoinColorPicker";
 import RoomHeader from "../components/room/RoomHeader";
 import LeaveRoomModal from "../components/room/LeaveRoomModal";
 import RoomShareCard from "../components/room/RoomShareCard";
-import ParticipantPanel from "../components/room/ParticipantPanel";
 import CompactColorSelector from "../components/room/CompactColorSelector";
 import LobbyActionBar from "../components/room/LobbyActionBar";
 import CommunicationPanel from "../components/room/CommunicationPanel";
+import RoomLobbyRoster from "../components/room/RoomLobbyRoster";
+import type { JoinEvent } from "../hooks/useJoinAnimationTracker";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
 import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
@@ -594,49 +595,37 @@ export default function Room() {
   const [showMatchCountdown, setShowMatchCountdown] = useState(false);
   const [showAllReadyBanner, setShowAllReadyBanner] = useState(false);
 
-  // Phase 7F: Lobby coin particles and seat transition tracking
+  // Phase 7F: Lobby coin particles — derived from the unified join tracker's
+  // `onLobbyJoin` feed (see RoomLobbyRoster below), not from a second,
+  // independent player-array diff.
   const [lobbyParticles, setLobbyParticles] = useState<CoinParticle[]>([]);
-  const prevPlayerIdsRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (roomState?.phase !== "lobby") {
-      prevPlayerIdsRef.current = new Set(roomState?.players.map((p) => p.id) ?? []);
-      return;
+  const handleLobbyJoin = useCallback((joined: JoinEvent[]) => {
+    const potElement = typeof document !== "undefined" ? document.getElementById("lobby-prize-pool-card") : null;
+    const potRect = potElement?.getBoundingClientRect();
+    const targetX = potRect ? potRect.left + potRect.width / 2 : (typeof window !== "undefined" ? window.innerWidth / 2 : 200);
+    const targetY = potRect ? potRect.top + potRect.height / 2 : 120;
+
+    const newParticles: CoinParticle[] = joined.slice(0, 4).map((p) => {
+      const seatEl = typeof document !== "undefined" ? document.getElementById(`seat-${p.playerId}`) : null;
+      const seatRect = seatEl?.getBoundingClientRect();
+      const startX = seatRect ? seatRect.left + 30 : (typeof window !== "undefined" ? window.innerWidth / 2 : 200);
+      const startY = seatRect ? seatRect.top + 30 : (typeof window !== "undefined" ? window.innerHeight / 2 : 200);
+
+      return {
+        id: `particle-${p.playerId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        startX,
+        startY,
+        targetX,
+        targetY,
+        createdAt: Date.now(),
+      };
+    });
+
+    if (newParticles.length > 0) {
+      setLobbyParticles((prev) => [...prev.slice(-3), ...newParticles]);
     }
-    const currentIds = new Set(roomState.players.map((p) => p.id));
-    const prevIds = prevPlayerIdsRef.current;
-
-    // Detect newly joined players / bots
-    const joinedPlayers = roomState.players.filter((p) => !prevIds.has(p.id));
-    if (joinedPlayers.length > 0 && prevIds.size > 0) {
-      const potElement = typeof document !== "undefined" ? document.getElementById("lobby-prize-pool-card") : null;
-      const potRect = potElement?.getBoundingClientRect();
-      const targetX = potRect ? potRect.left + potRect.width / 2 : (typeof window !== "undefined" ? window.innerWidth / 2 : 200);
-      const targetY = potRect ? potRect.top + potRect.height / 2 : 120;
-
-      const newParticles: CoinParticle[] = joinedPlayers.slice(0, 4).map((p) => {
-        const seatEl = typeof document !== "undefined" ? document.getElementById(`seat-${p.id}`) : null;
-        const seatRect = seatEl?.getBoundingClientRect();
-        const startX = seatRect ? seatRect.left + 30 : (typeof window !== "undefined" ? window.innerWidth / 2 : 200);
-        const startY = seatRect ? seatRect.top + 30 : (typeof window !== "undefined" ? window.innerHeight / 2 : 200);
-
-        return {
-          id: `particle-${p.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          startX,
-          startY,
-          targetX,
-          targetY,
-          createdAt: Date.now(),
-        };
-      });
-
-      if (newParticles.length > 0) {
-        setLobbyParticles((prev) => [...prev.slice(-3), ...newParticles]);
-      }
-    }
-
-    prevPlayerIdsRef.current = currentIds;
-  }, [roomState?.players, roomState?.phase]);
+  }, []);
 
   const handleCompleteLobbyParticle = useCallback((id: string) => {
     setLobbyParticles((prev) => prev.filter((p) => p.id !== id));
@@ -1121,16 +1110,20 @@ export default function Room() {
                 isHost={selfIsHost}
               />
 
-              <ParticipantPanel
+              <RoomLobbyRoster
+                roomCode={code}
                 players={roomState.players}
                 maxPlayers={viewModel.maxPlayers}
                 selfId={playerId}
                 isHost={selfIsHost}
                 game={roomState.game}
+                enabled={roomState.phase === "lobby"}
+                hasCriticalBannerAbove={linkDown}
                 onAddBot={(name, diff) => { getSocket().emit("room:addBot", name, diff); }}
                 onRemoveBot={(id) => { getSocket().emit("room:removeBot", id); }}
                 onRemoveLocalPlayer={(id) => { getSocket().emit("room:removeLocalPlayer", id); }}
                 onRenameBot={(id, newName) => { getSocket().emit("room:renameBot", id, newName); }}
+                onLobbyJoin={handleLobbyJoin}
               />
 
               {viewModel.colorPickerKind && (

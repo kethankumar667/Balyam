@@ -1,5 +1,6 @@
 import type { Player } from "@shared/types";
-import { Users, Crown, Check, Target } from "lucide-react";
+import { Users, Crown, Check, Target, Bot } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import SeatAvatar from "./profile/SeatAvatar";
 
 export default function PlayerList({
@@ -11,6 +12,8 @@ export default function PlayerList({
   selfId: string | null;
   onTapPlayer?: (id: string) => void;
 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
       <div className="flex items-center justify-between">
@@ -24,8 +27,11 @@ export default function PlayerList({
         className="space-y-1.5 overflow-y-auto pr-1 custom-scrollbar max-h-[14rem]"
       >
         {players.map((p) => (
-          <li
+          <motion.li
             key={p.id}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.25 }}
             onClick={p.id !== selfId && onTapPlayer ? () => onTapPlayer(p.id) : undefined}
             role={p.id !== selfId && onTapPlayer ? "button" : undefined}
             tabIndex={p.id !== selfId && onTapPlayer ? 0 : undefined}
@@ -57,6 +63,11 @@ export default function PlayerList({
               {p.isHost && (
                 <span className="text-amber-500" title="Room Host">
                   <Crown size={13} aria-hidden />
+                </span>
+              )}
+              {p.isBot && (
+                <span className="text-cyan-600 dark:text-cyan-400" title="AI Bot">
+                  <Bot size={13} aria-hidden />
                 </span>
               )}
             </div>
@@ -104,7 +115,7 @@ export default function PlayerList({
                 </button>
               )}
             </div>
-          </li>
+          </motion.li>
         ))}
       </ul>
 

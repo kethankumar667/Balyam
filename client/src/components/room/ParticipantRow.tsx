@@ -1,6 +1,6 @@
 import type { Player } from "@shared/types";
 import { Crown, Bot } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion, type Transition } from "framer-motion";
 import SeatAvatar from "../profile/SeatAvatar";
 import ParticipantActionMenu from "./ParticipantActionMenu";
 import { ReadyCheckmarkPencil } from "../../animations/app/ReadyCheckmarkDraw";
@@ -12,6 +12,7 @@ export default function ParticipantRow({
   player,
   selfId,
   isHost,
+  isNewlyJoined = false,
   onRemoveBot,
   onRemoveLocalPlayer,
   onRenameBot,
@@ -19,11 +20,13 @@ export default function ParticipantRow({
   player: Player;
   selfId: string | null;
   isHost: boolean;
+  isNewlyJoined?: boolean;
   onRemoveBot?: (botId: string) => void;
   onRemoveLocalPlayer?: (localId: string) => void;
   onRenameBot?: (botId: string, newName: string) => void;
 }) {
   const isMe = player.id === selfId;
+  const reduceMotion = useReducedMotion();
 
   // Derive color swatch if set
   let colorBadgeHex: string | null = null;
@@ -42,14 +45,57 @@ export default function ParticipantRow({
     }
   }
 
+  // Animation parameters tailored for human vs bot join distinction
+  const isBot = Boolean(player.isBot);
+  const initialMotion = reduceMotion
+    ? { opacity: 0 }
+    : isNewlyJoined
+    ? isBot
+      ? { opacity: 0, scale: 0.82 }
+      : { opacity: 0, x: 28, scale: 0.96 }
+    : { opacity: 0, y: 10, scale: 0.98 };
+
+  const animateMotion = reduceMotion
+    ? { opacity: 1 }
+    : isNewlyJoined
+    ? isBot
+      ? {
+          opacity: 1,
+          scale: [0.82, 1.05, 1],
+          boxShadow: [
+            "0 0 0 rgba(6,182,212,0)",
+            "0 0 24px rgba(6,182,212,0.45)",
+            "0 0 0 rgba(6,182,212,0)",
+          ],
+        }
+      : {
+          opacity: 1,
+          x: 0,
+          scale: 1,
+          boxShadow: [
+            "0 0 0 rgba(16,185,129,0)",
+            "0 0 24px rgba(16,185,129,0.45)",
+            "0 0 0 rgba(16,185,129,0)",
+          ],
+        }
+    : { opacity: 1, y: 0, scale: 1 };
+
+  const transitionMotion: Transition = isNewlyJoined
+    ? isBot
+      ? { duration: 0.45, ease: "easeOut" }
+      : { duration: 0.4, type: "spring", stiffness: 380, damping: 26 }
+    : { duration: 0.28, ease: "backOut" };
+
   return (
     <motion.div
       data-seat-id={player.id}
+      data-is-bot={isBot ? "true" : "false"}
+      data-is-new={isNewlyJoined ? "true" : "false"}
       id={`seat-${player.id}`}
-      initial={{ opacity: 0, y: 10, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={initialMotion}
+      animate={animateMotion}
       exit={{ opacity: 0, scale: 0.95, y: -10 }}
-      transition={{ duration: 0.28, ease: "backOut" }}
+      transition={transitionMotion}
       className={`flex items-center justify-between gap-2.5 p-3 rounded-2xl border transition-all ${
         player.isReady
           ? isMe

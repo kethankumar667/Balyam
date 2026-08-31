@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import type { BotDifficulty, GameKind, Player } from "@shared/types";
 import ParticipantRow from "./ParticipantRow";
 import BotManagementDialog from "./BotManagementDialog";
@@ -10,6 +11,7 @@ export default function ParticipantPanel({
   selfId,
   isHost,
   game,
+  newPlayerIds,
   onAddBot,
   onRemoveBot,
   onRemoveLocalPlayer,
@@ -20,6 +22,7 @@ export default function ParticipantPanel({
   selfId: string | null;
   isHost: boolean;
   game: GameKind;
+  newPlayerIds?: Set<string>;
   onAddBot: (name?: string, difficulty?: BotDifficulty) => Promise<void> | void;
   onRemoveBot?: (botId: string) => void;
   onRemoveLocalPlayer?: (localId: string) => void;
@@ -104,17 +107,20 @@ export default function ParticipantPanel({
 
         {/* Unified Player List Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {players.map((player) => (
-            <ParticipantRow
-              key={player.id}
-              player={player}
-              selfId={selfId}
-              isHost={isHost}
-              onRemoveBot={onRemoveBot}
-              onRemoveLocalPlayer={onRemoveLocalPlayer}
-              onRenameBot={onRenameBot}
-            />
-          ))}
+          <AnimatePresence>
+            {players.map((player) => (
+              <ParticipantRow
+                key={player.id}
+                player={player}
+                selfId={selfId}
+                isHost={isHost}
+                isNewlyJoined={newPlayerIds?.has(player.id)}
+                onRemoveBot={onRemoveBot}
+                onRemoveLocalPlayer={onRemoveLocalPlayer}
+                onRenameBot={onRenameBot}
+              />
+            ))}
+          </AnimatePresence>
         </div>
       </section>
 
