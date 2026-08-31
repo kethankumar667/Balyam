@@ -32,6 +32,7 @@ import SignInWall from "../components/auth/SignInWall";
 import LudoColorPicker from "../components/LudoColorPicker";
 import CoinColorPicker from "../components/CoinColorPicker";
 import RoomHeader from "../components/room/RoomHeader";
+import LeaveRoomModal from "../components/room/LeaveRoomModal";
 import RoomShareCard from "../components/room/RoomShareCard";
 import ParticipantPanel from "../components/room/ParticipantPanel";
 import CompactColorSelector from "../components/room/CompactColorSelector";
@@ -43,6 +44,7 @@ import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
 import FallingPetals from "../animations/app/FallingPetals";
 import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
+import { clearActiveSession } from "../core/recovery/recoveryStorage";
 import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
 import { LobbyPrizePool } from "../components/economy/LobbyPrizePool";
 import { LobbyCoinFlight, type CoinParticle } from "../components/economy/LobbyCoinFlight";
@@ -355,6 +357,19 @@ export default function Room() {
    *  distinguishable from one that is trying and being refused. */
   const [linkAttempts, setLinkAttempts] = useState(0);
 
+  /**
+   * Confirm-before-leave for every in-game "Leave" affordance that is NOT
+   * RoomHeader's own (lobby-only) button — RoomHeader owns its own confirm
+   * modal internally and calls `leaveRoom` directly as its post-confirm
+   * action. Every OTHER leave entry point — the generic mid-match header
+   * button below, and every per-game board's own Leave control — must go
+   * through `requestLeaveConfirmation` instead of `leaveRoom` directly, so
+   * there is exactly one confirmation surface (`LeaveRoomModal` below) for
+   * all of them. A game board never gets a direct reference to `leaveRoom`.
+   */
+  const [showInGameLeaveModal, setShowInGameLeaveModal] = useState(false);
+  const requestLeaveConfirmation = useCallback(() => setShowInGameLeaveModal(true), []);
+
   useEffect(() => {
     if (!code) {
       navigate("/");
@@ -425,6 +440,11 @@ export default function Room() {
                 : res.error ?? "Could not join room";
             setError(msg);
             reset();
+            // The room is confirmed gone (or this seat is), so a stored
+            // recovery session for it would only offer a Rejoin that fails
+            // again the same way. Clear it so the outside-of-room Rejoin
+            // banner stops surfacing a dead room.
+            clearActiveSession();
             setTimeout(() => navigate("/"), 4000);
             return;
           }
@@ -1047,7 +1067,7 @@ export default function Room() {
               }
             >
               <button
-                onClick={leaveRoom}
+                onClick={requestLeaveConfirmation}
                 className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-slate-200 px-3.5 py-1.5 rounded-lg shadow-lg transition font-medium"
               >
                 Leave
@@ -1197,7 +1217,7 @@ export default function Room() {
                     messages={messages}
                     roomCode={roomState.code}
                     roomPhase={roomState.phase}
-                    onLeave={leaveRoom}
+                    onLeave={requestLeaveConfirmation}
                     onScorecardClose={triggerGameOver}
                   />
                 )}
@@ -1209,7 +1229,7 @@ export default function Room() {
                   selfId={playerId}
                   messages={messages}
                   roomCode={roomState.code}
-                  onLeave={leaveRoom}
+                  onLeave={requestLeaveConfirmation}
                   history={roomState.history}
                   champion={roomState.champion}
                   onScorecardClose={triggerGameOver}
@@ -1237,7 +1257,7 @@ export default function Room() {
                         messages={messages}
                         roomCode={roomState.code}
                         roomPhase={roomState.phase}
-                        onLeave={leaveRoom}
+                        onLeave={requestLeaveConfirmation}
                         onScorecardClose={triggerGameOver}
                       />
                     </PassPhoneGate>
@@ -1280,7 +1300,7 @@ export default function Room() {
                   messages={messages}
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
-                  onLeave={leaveRoom}
+                  onLeave={requestLeaveConfirmation}
                   onScorecardClose={triggerGameOver}
                 />
               )}
@@ -1293,7 +1313,7 @@ export default function Room() {
                   messages={messages}
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
-                  onLeave={leaveRoom}
+                  onLeave={requestLeaveConfirmation}
                   history={roomState.unoHistory}
                   champion={roomState.unoChampion}
                   onScorecardClose={triggerGameOver}
@@ -1321,7 +1341,7 @@ export default function Room() {
                         messages={messages}
                         roomCode={roomState.code}
                         roomPhase={roomState.phase}
-                        onLeave={leaveRoom}
+                        onLeave={requestLeaveConfirmation}
                         onScorecardClose={triggerGameOver}
                       />
                     </PassPhoneGate>
@@ -1350,7 +1370,7 @@ export default function Room() {
                         messages={messages}
                         roomCode={roomState.code}
                         roomPhase={roomState.phase}
-                        onLeave={leaveRoom}
+                        onLeave={requestLeaveConfirmation}
                       />
                     </PassPhoneGate>
                   );
@@ -1365,6 +1385,7 @@ export default function Room() {
                   roomCode={roomState.code}
                   messages={messages}
                   roomPhase={roomState.phase}
+                  onRequestLeave={requestLeaveConfirmation}
                 />
               )}
 
@@ -1376,7 +1397,7 @@ export default function Room() {
                   messages={messages}
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
-                  onLeave={leaveRoom}
+                  onLeave={requestLeaveConfirmation}
                   onScorecardClose={triggerGameOver}
                 />
               )}
@@ -1426,7 +1447,7 @@ export default function Room() {
                   messages={messages}
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
-                  onLeave={leaveRoom}
+                  onLeave={requestLeaveConfirmation}
                   onMove={sendMove}
                 />
               )}
@@ -1579,6 +1600,12 @@ export default function Room() {
           onLeave={leaveRoom}
         />
       )}
+
+      <LeaveRoomModal
+        isOpen={showInGameLeaveModal}
+        onClose={() => setShowInGameLeaveModal(false)}
+        onConfirm={leaveRoom}
+      />
         </div>
       </div>
     </AppLayout>

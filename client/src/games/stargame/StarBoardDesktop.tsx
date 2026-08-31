@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 import { useStarBoard } from "./useStarBoard";
 import type { StarBoardModel, StarBoardProps } from "./useStarBoard";
 import GameTutorial, { TutorialButton, useTutorialGate } from "../../components/GameTutorial";
@@ -9,7 +8,6 @@ import FloatingReactionsLayer from "../../components/reactions/FloatingReactions
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { StarBurstOverlay, StarWinnerCelebration } from "./StarAnimations";
 import { STARGAME_TUTORIAL } from "../tutorials";
-import { getSocket } from "../../lib/socket";
 import {
   Chit,
   DeadlinePill,
@@ -59,7 +57,6 @@ export default function StarBoardDesktop(props: StarBoardProps) {
     STARGAME_TUTORIAL.key,
     (!m.iNeedToSelect && !m.iNeedToPass) || m.deadline == null,
   );
-  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
   // Self-tick once per second so the live DeadlinePill counts down
@@ -122,12 +119,6 @@ export default function StarBoardDesktop(props: StarBoardProps) {
     navigator.clipboard.writeText(props.roomCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleLeaveRoom = () => {
-    const s = getSocket();
-    s.emit("room:leave");
-    navigate("/");
   };
 
   const rankedSeats = [...m.seats].sort(
@@ -198,7 +189,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           <RoundProgress round={m.round} total={m.totalRounds} />
           <button
             type="button"
-            onClick={handleLeaveRoom}
+            onClick={props.onRequestLeave}
             aria-label="Exit room"
             className="h-8 w-8 rounded-full bg-[#0D1428] border border-[#1E294B] text-zinc-300 hover:text-white hover:bg-[#1A2342] flex items-center justify-center text-xs font-bold transition shadow-sm"
           >
@@ -222,7 +213,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           />
           <button
             type="button"
-            onClick={handleLeaveRoom}
+            onClick={props.onRequestLeave}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/40 text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 text-xs font-bold transition shadow-sm cursor-pointer"
           >
             <span aria-hidden>🚪</span>
