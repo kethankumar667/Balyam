@@ -113,7 +113,7 @@ export const SettlementSequence: React.FC<SettlementSequenceProps> = ({
                   {w.name} {w.isSelf && "(You)"}
                 </span>
                 <span className="text-[10px] text-ink-lo dark:text-text-lo">
-                  Winner Rank #{idx + 1}
+                  {w.subtitle ?? `Winner Rank #${idx + 1}`}
                 </span>
               </div>
             </div>

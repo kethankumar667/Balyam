@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Crown, RotateCcw } from "lucide-react";
 import type { Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
@@ -7,6 +7,7 @@ import { useRoomStore } from "../store/roomStore";
 import { findAvatar } from "../lib/avatars";
 import CountUp from "./CountUp";
 import { SettlementView } from "./economy/SettlementView";
+import { fireFireworksBurst } from "../animations/particles/comicBursts";
 
 export interface RankedPlayerResult {
   id: string;
@@ -42,8 +43,15 @@ export default function BhalyamResultModal({
   pointsLabel,
   matchId,
 }: BhalyamResultModalProps) {
+  const reduceMotion = useReducedMotion();
   const isSelfWinner = winnerId != null && winnerId === selfId;
   const displayWinnerName = winnerName ?? (winnerId ? players.find((p) => p.id === winnerId)?.name : "Winner") ?? "Winner";
+
+  useEffect(() => {
+    if (!reduceMotion) {
+      fireFireworksBurst({ intensity: isSelfWinner ? 0.95 : 0.75 });
+    }
+  }, [reduceMotion, isSelfWinner]);
 
   const rematch = useRoomStore((s) => s.rematch);
   const roomState = useRoomStore((s) => s.roomState);
@@ -190,6 +198,18 @@ export default function BhalyamResultModal({
                 const isWinnerRow = p.id === winnerId || index === 0;
                 const avatarOpt = p.avatar ? findAvatar(p.avatar) : null;
                 const rankNum = index + 1;
+                // A placement badge only means something when this score is
+                // genuinely higher than every player ranked below it, and
+                // distinct from the player ranked immediately above it — the
+                // generic (non-game-specific) scorecard fallback gives every
+                // non-winner an identical score, so without both checks
+                // "Runner-Up"/"3rd" would be assigned by arbitrary seat
+                // order rather than any real placement (the last row's
+                // "everyone below" check is vacuously true with nobody left
+                // to compare against, which the tie-with-previous check catches).
+                const hasDistinctPlacement =
+                  (index === 0 || p.score !== rankedPlayers[index - 1].score) &&
+                  rankedPlayers.slice(index + 1).every((other) => other.score < p.score);
 
                 return (
                   <div
@@ -226,6 +246,16 @@ export default function BhalyamResultModal({
                       <span>{p.name}</span>
                       {p.id === selfId && <span className="text-xs text-[#7C6652] font-semibold">(you)</span>}
                       {isWinnerRow && <Crown className="w-4 h-4 text-amber-600 fill-amber-500/30 flex-shrink-0" aria-hidden />}
+                      {rankNum === 2 && !isWinnerRow && hasDistinctPlacement && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-200/80 text-slate-700">
+                          Runner-Up
+                        </span>
+                      )}
+                      {rankNum === 3 && !isWinnerRow && hasDistinctPlacement && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-200/60 text-amber-800">
+                          3rd
+                        </span>
+                      )}
                     </span>
 
                     <span className={`tabular-nums shrink-0 font-black ${isWinnerRow ? "text-amber-800 text-sm" : "text-[#7C6652]"}`}>
@@ -236,6 +266,11 @@ export default function BhalyamResultModal({
               })}
             </div>
           </div>
+        </div>
+
+        {/* Screen Reader Live Announcement */}
+        <div className="sr-only" role="status" aria-live="polite">
+          {isSelfWinner ? "You won the match!" : `${displayWinnerName} won the match.`}
         </div>
 
         {/* AUTHORITATIVE SETTLEMENT MOTION VIEW */}

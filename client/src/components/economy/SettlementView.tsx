@@ -124,10 +124,18 @@ export const SettlementView: React.FC<SettlementViewProps> = ({
           totalPotAmount: settlement.totalCollected,
           winners: [
             {
-              playerId: "winner-authoritative",
-              name: "Match Winner",
+              // Aggregate across every member/bot wallet a placement
+              // schedule (1st/2nd/3rd) paid — never one named individual's
+              // amount. No participant-level payout record is available
+              // client-side to attribute this to a specific person; doing
+              // so anyway would misstate a 3-recipient sum as one player's
+              // credit. See docs/ai-review-checklist.md §3 Security /
+              // truthful-amount review.
+              playerId: "wallet-prizes-aggregate",
+              name: "Wallet Prizes Distributed",
               payoutAmount: settlement.totalWalletRewarded,
               isSelf: false,
+              subtitle: "Aggregate coins credited across all winning wallets",
             },
           ],
           worldBankFeeAmount: settlement.totalWorldBankCut,
