@@ -33,6 +33,10 @@ import type {
   ChessOptions,
   BlockBlastOptions,
   SpaceWarOptions,
+  OperationalRoomSummary,
+  DisconnectedSeatSummary,
+  OperationalRecoverySummary,
+  PlatformHealthCounters,
 } from "@shared/types.js";
 import {
   COIN_COLORS,
@@ -69,6 +73,7 @@ import { serverEventStore } from "../events/ServerEventStore.js";
 import { serverLifecycleRegistry } from "../reliability/LifecycleRegistry.js";
 import { serverResourceTracker } from "../reliability/ResourceTracker.js";
 import { metricsCollector } from "../observability/MetricsCollector.js";
+import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { performanceMonitor } from "../observability/PerformanceMonitor.js";
 import { profileService } from "../profile/ProfileService.js";
 import { rankingService } from "../ranking/RankingService.js";
@@ -257,6 +262,7 @@ export interface Room {
   phase: "lobby" | "playing" | "finished";
   lifecycleState: RoomLifecycleState;
   createdAt: number;
+  matchStartedAt: number | null;
   hostId: string;
   /** Host-chosen table name ("Friday Rummy Nights") — null until set via room:setName. */
   name: string | null;
@@ -569,22 +575,181 @@ export class RoomManager {
     };
   }
 
-  getOperationalRoomSummaries(): Array<{
-    code: string;
-    game: GameKind;
-    lifecycleState: RoomLifecycleState;
-    playerCount: number;
-    humanCount: number;
-    hasTakeover: boolean;
-  }> {
-    return Array.from(this.rooms.values()).map((room) => ({
-      code: room.code,
-      game: room.game,
-      lifecycleState: room.lifecycleState,
-      playerCount: room.players.size,
-      humanCount: Array.from(room.players.values()).filter((p) => !p.isBot).length,
-      hasTakeover: room.takeoverTimers.size > 0,
-    }));
+  getOperationalDetailedStats(): PlatformHealthCounters {
+    let recovering = 0;
+    let paused = 0;
+    let inProgress = 0;
+    let lobby = 0;
+    let onlineHumans = 0;
+    let activeBots = 0;
+    let disconnectedUsers = 0;
+    let rejoinEligibleUsers = 0;
+
+    const now = Date.now();
+
+    for (const room of this.rooms.values()) {
+      switch (room.lifecycleState) {
+        case "RECOVERING":
+          recovering++;
+          break;
+        case "PAUSED":
+          paused++;
+          break;
+        case "IN_PROGRESS":
+          inProgress++;
+          break;
+        case "WAITING_FOR_PLAYERS":
+        case "READY_CHECK":
+        case "STARTING":
+        case "CREATED":
+          lobby++;
+          break;
+      }
+
+      for (const player of room.players.values()) {
+        if (player.isBot) {
+          activeBots++;
+        } else if (player.isConnected) {
+          onlineHumans++;
+        } else {
+          disconnectedUsers++;
+          // Authoritative: `player.awayUntil` is the exact deadline
+          // `handleDisconnect` armed its `setTimeout` with. Never recompute
+          // a grace duration from CURRENT room composition here — the real
+          // timer was armed once, from conditions at disconnect time, and
+          // those conditions (e.g. whether another human is still around)
+          // can legitimately change before the timer fires without moving
+          // the deadline it's actually going to fire on.
+          if (player.awayUntil !== undefined && player.awayUntil > now) {
+            rejoinEligibleUsers++;
+          }
+        }
+      }
+    }
+
+    /**
+     * Completed-outcome recovery rate. `recovery.sessions_started_total` is
+     * NOT part of this formula on purpose — an active, unresolved grace
+     * session is neither a success nor a failure yet, and the audited
+     * requirement is explicit that unresolved sessions must not appear in
+     * the denominator. `null` (not a numeric sentinel) is the "nothing has
+     * resolved yet" case — the previous version defaulted to a fake 100%
+     * whenever the (never-incremented) old denominator was zero, which is
+     * exactly the fabricated-metric defect this replaces.
+     *
+     * Process-local, in-memory, resets to 0/0 (-> null) on every server
+     * restart — same lifetime as every other counter in `metricsRegistry`.
+     * In a multi-instance deployment each instance reports only its own
+     * process's outcomes; there is no cross-instance aggregation.
+     */
+    const recoverySucceeded = metricsRegistry.getCounter("recovery.sessions_succeeded_total");
+    const recoveryExpired = metricsRegistry.getCounter("recovery.sessions_expired_total");
+    const recoveryResolved = recoverySucceeded + recoveryExpired;
+    const recoverySuccessRate = recoveryResolved > 0 ? Math.round((recoverySucceeded / recoveryResolved) * 100) : null;
+
+    const hostMigrationCount = metricsRegistry.getCounter("rooms.host_migrations_total");
+
+    const createdTotal = metricsRegistry.getCounter("rooms.created_total");
+    const abandonedTotal = metricsRegistry.getCounter("rooms.abandoned_total");
+    const abandonmentRate = createdTotal > 0 ? Math.round((abandonedTotal / createdTotal) * 100) : 0;
+
+    return {
+      onlineHumans,
+      activeBots,
+      activeRooms: this.rooms.size,
+      runningMatches: inProgress,
+      disconnectedUsers,
+      rejoinEligibleUsers,
+      connectedSockets: this.socketToRoom.size + this.spectatorToRoom.size,
+      lobbyRooms: lobby,
+      recoveringRooms: recovering,
+      pausedRooms: paused,
+      recoverySuccessRate,
+      hostMigrationCount,
+      abandonmentRate,
+    };
+  }
+
+  getOperationalRecoverySummary(): OperationalRecoverySummary {
+    const seats: DisconnectedSeatSummary[] = [];
+    const now = Date.now();
+
+    for (const room of this.rooms.values()) {
+      for (const player of room.players.values()) {
+        if (
+          !player.isBot &&
+          !player.isConnected &&
+          player.awaySince !== undefined &&
+          player.awayUntil !== undefined
+        ) {
+          const awayDurationMs = now - player.awaySince;
+          // Authoritative deadline, not a live recompute — see the matching
+          // comment in `getOperationalDetailedStats`. `gracePeriodMs` here is
+          // the duration derived from the same two timestamps `handleDisconnect`
+          // set together at disconnect time, not from current room state.
+          const remainingGraceMs = Math.max(0, player.awayUntil - now);
+          const gracePeriodMs = Math.max(0, player.awayUntil - player.awaySince);
+          const idleStrikes = room.idleStrikes.get(player.id) ?? 0;
+          const autoTurnsPlayed = room.autoTurnsPlayed.get(player.id) ?? 0;
+
+          seats.push({
+            roomCode: room.code,
+            game: room.game,
+            playerId: player.id,
+            playerName: player.name,
+            isGuest: Boolean(player.isGuest),
+            awaySince: player.awaySince,
+            awayDurationMs,
+            gracePeriodMs,
+            remainingGraceMs,
+            isEligibleForRejoin: remainingGraceMs > 0,
+            isAutoPlaying: Boolean(player.isAutoPlaying),
+            autoPlayReason: player.autoPlayReason ?? null,
+            idleStrikes,
+            autoTurnsPlayed,
+          });
+        }
+      }
+    }
+
+    return {
+      activeGraceCount: seats.length,
+      seats,
+    };
+  }
+
+  getOperationalRoomSummaries(): OperationalRoomSummary[] {
+    const now = Date.now();
+    return Array.from(this.rooms.values()).map((room) => {
+      const hostPlayer = room.players.get(room.hostId);
+      const humanCount = Array.from(room.players.values()).filter((p) => !p.isBot).length;
+      const botCount = Array.from(room.players.values()).filter((p) => p.isBot).length;
+      const disconnectedCount = Array.from(room.players.values()).filter((p) => !p.isConnected && !p.isBot).length;
+      const isRunningMatch = room.phase === "playing" || room.lifecycleState === "IN_PROGRESS" || room.lifecycleState === "RECOVERING" || room.lifecycleState === "PAUSED";
+      const matchDurationMs = room.matchStartedAt && isRunningMatch ? Math.max(0, now - room.matchStartedAt) : 0;
+
+      return {
+        code: room.code,
+        game: room.game,
+        lifecycleState: room.lifecycleState,
+        phase: room.phase,
+        createdAt: room.createdAt,
+        matchStartedAt: room.matchStartedAt ?? null,
+        matchDurationMs,
+        host: {
+          id: room.hostId,
+          name: hostPlayer?.name ?? "Host",
+          isGuest: Boolean(hostPlayer?.isGuest),
+        },
+        playerCount: room.players.size,
+        humanCount,
+        botCount,
+        spectatorCount: room.spectators.size,
+        hasTakeover: room.takeoverTimers.size > 0,
+        sealed: room.sealed,
+        disconnectedCount,
+      };
+    });
   }
 
   private toPublicState(room: Room): RoomPublicState {
@@ -744,6 +909,7 @@ export class RoomManager {
       phase: "lobby",
       lifecycleState: (getGameLimits(game)?.min ?? 2) <= 1 ? "READY_CHECK" : "WAITING_FOR_PLAYERS",
       createdAt: Date.now(),
+      matchStartedAt: null,
       hostId: playerId,
       name: null,
       history: [],
@@ -854,6 +1020,32 @@ export class RoomManager {
           roomCode: room.code,
           playerId: existingPlayerId,
         });
+      }
+      /**
+       * One completed-recovery-session accounting, separate from the
+       * pre-existing `metricsCollector.onSeatReclaim`/`onRecoverySuccess`
+       * calls above (untouched — other readers depend on those). Those fire
+       * on ANY successful reclaim, including a socket re-emitting `room:join`
+       * while already connected, which is why `recovery.success_total` was
+       * never a trustworthy numerator for a success RATE. This counts a
+       * completed success exactly once per genuine disconnect episode: only
+       * when the seat was actually away (`!player.isConnected`) AND still
+       * within the exact deadline `handleDisconnect` armed
+       * (`player.awayUntil`, never recomputed from current room state — see
+       * `getOperationalDetailedStats`). Reading `player.isConnected` here,
+       * before it flips to `true` two lines down, is what makes a second,
+       * redundant reclaim call for an already-connected seat correctly not
+       * count again — there is nothing left to read that would satisfy this
+       * guard once the session has already resolved.
+       */
+      if (
+        !player.isBot &&
+        !player.isConnected &&
+        player.awaySince !== undefined &&
+        player.awayUntil !== undefined &&
+        Date.now() <= player.awayUntil
+      ) {
+        metricsRegistry.increment("recovery.sessions_succeeded_total");
       }
       player.isConnected = true;
       // A reclaim can carry a new avatar — they may have changed it on the
@@ -1643,6 +1835,7 @@ export class RoomManager {
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
+      room.matchStartedAt = Date.now();
       this.transitionLifecycle(room, "IN_PROGRESS", "Game started");
       serverTimelineRecorder.recordGameStarted(room.code, room.game, playersList.length);
       metricsCollector.onMatchStarted(room.game, playersList.length);
@@ -1937,6 +2130,7 @@ export class RoomManager {
     for (const p of room.players.values()) {
       p.isHost = p.id === nextHost.id;
     }
+    metricsRegistry.increment("rooms.host_migrations_total");
     logger.info({
       message: `Host failover: reallocated room ${room.code} host from ${departingPlayerId} to ${nextHost.name} (${nextHost.id})`,
       module: "ROOM_MANAGER",
@@ -3517,9 +3711,18 @@ export class RoomManager {
 
     const player = room.players.get(playerId);
     if (player) {
+      const wasConnected = player.isConnected;
       player.isConnected = false;
       player.awaySince = Date.now();
       player.awayUntil = Date.now() + GRACE_PERIOD_MS;
+      // One recovery session, started exactly once per genuine connect ->
+      // disconnect transition. `wasConnected` excludes a socket that
+      // disconnects while already marked away (this handler running twice
+      // for the same seat), and `!isBot` excludes the seats that never carry
+      // a live socket in the first place.
+      if (wasConnected && !player.isBot) {
+        metricsRegistry.increment("recovery.sessions_started_total");
+      }
     }
     room.socketToPlayer.delete(socketId);
     this.socketToRoom.delete(socketId);
@@ -3593,6 +3796,16 @@ export class RoomManager {
       if (!stillRoom) return;
       const stillPlayer = stillRoom.players.get(playerId);
       if (stillPlayer && !stillPlayer.isConnected) {
+        // One completed-recovery-session outcome, the "expired" sibling of
+        // the success accounting in `joinRoom`'s reclaim branch — this path
+        // and that one are mutually exclusive by construction: whichever
+        // happens first (reclaim before this timer fires, or this timer
+        // firing first) is what settles the session, and `forgetSeatTimers`
+        // below is exactly what stops the other one from ever running for
+        // this seat again.
+        if (!stillPlayer.isBot) {
+          metricsRegistry.increment("recovery.sessions_expired_total");
+        }
         // Captured before deletion — same reasoning as leaveRoom's own
         // departingPlayer snapshot, for the same economy settlement reason.
         const droppedPlayer = stillRoom.players.get(playerId);
@@ -4147,6 +4360,7 @@ export class RoomManager {
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
+      room.matchStartedAt = Date.now();
       this.emitRummyBotTells(room);
       // Mark everyone "ready" so any UI that checks readiness behaves
       // correctly post-restart.

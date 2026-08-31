@@ -95,7 +95,7 @@ export function clearOperationalKey(): void {
   }
 }
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
   const session = currentAccessToken();
   if (session) headers["Authorization"] = `Bearer ${session}`;

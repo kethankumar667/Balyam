@@ -2817,3 +2817,5 @@ export interface ClientToServerEvents {
   "room:spectate": (code: string, ack: (res: { ok: boolean; error?: string }) => void) => void;
   "room:stopSpectate": () => void;
 }
+
+export * from "./operational.js";
