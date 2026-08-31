@@ -21,6 +21,8 @@ export interface StarBoardProps {
   messages: ChatMessage[];
   roomCode: string;
   roomPhase: string;
+  /** Opens the shared leave-confirmation modal instead of leaving immediately. */
+  onRequestLeave: () => void;
 }
 
 /** One seat: server public projection merged with lobby roster metadata. */
