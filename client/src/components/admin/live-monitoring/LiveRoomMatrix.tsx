@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Copy, Check, Clock, Bot, Users, Play, ArrowUpDown } from "lucide-react";
+import { Copy, Check, Clock, Bot, Users, Play, ArrowUpDown, Eye } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import StatusBadge from "../status-badge";
 import EmptyState from "../empty-state";
@@ -47,6 +47,7 @@ export default function LiveRoomMatrix() {
   const isLoading = useAdminLiveStore((s) => s.isLoading && s.rooms.length === 0);
   const filters = useAdminLiveStore((s) => s.filters);
   const setSorting = useAdminLiveStore((s) => s.setSorting);
+  const inspectRoom = useAdminLiveStore((s) => s.inspectRoom);
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -253,12 +254,15 @@ export default function LiveRoomMatrix() {
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
+                <th scope="col" className="py-3 px-4 text-right">
+                  <span>Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--chrome-hairline)] text-xs">
               {desktopPaddingTop > 0 && (
                 <tr>
-                  <td colSpan={8} style={{ height: `${desktopPaddingTop}px` }} />
+                  <td colSpan={9} style={{ height: `${desktopPaddingTop}px` }} />
                 </tr>
               )}
               {(isVirtualDesktopActive ? virtualDesktopRows.map((vr) => processedRooms[vr.index]!) : processedRooms).map((room) => {
@@ -388,12 +392,25 @@ export default function LiveRoomMatrix() {
                         <span className="text-[var(--chrome-ink-soft)] font-normal">—</span>
                       )}
                     </td>
+
+                    {/* Action: Inspect */}
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => inspectRoom(room.code)}
+                        aria-label={`Inspect room ${room.code}`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--chrome-control)] hover:bg-amber-500/15 text-[var(--chrome-ink-soft)] hover:text-amber-600 dark:hover:text-amber-400 font-semibold text-xs border border-[var(--chrome-border)] hover:border-amber-500/30 transition-all cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Inspect</span>
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
               {desktopPaddingBottom > 0 && (
                 <tr>
-                  <td colSpan={8} style={{ height: `${desktopPaddingBottom}px` }} />
+                  <td colSpan={9} style={{ height: `${desktopPaddingBottom}px` }} />
                 </tr>
               )}
             </tbody>
@@ -443,7 +460,7 @@ export default function LiveRoomMatrix() {
                   }
                   className="p-4 space-y-3 border-b border-[var(--chrome-hairline)]"
                 >
-                  {/* Header row: Code, Game, Status */}
+                  {/* Header row: Code, Game, Status & Inspect */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <button
@@ -457,7 +474,18 @@ export default function LiveRoomMatrix() {
                       <span className="font-bold text-xs text-[var(--chrome-ink)] capitalize">{room.game}</span>
                     </div>
 
-                    <StatusBadge status={statusConfig.badgeStatus} label={statusConfig.label} size="sm" />
+                    <div className="flex items-center gap-1.5">
+                      <StatusBadge status={statusConfig.badgeStatus} label={statusConfig.label} size="sm" />
+                      <button
+                        type="button"
+                        onClick={() => inspectRoom(room.code)}
+                        aria-label={`Inspect room ${room.code}`}
+                        className="px-2 py-0.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-bold border border-amber-500/30 inline-flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>Inspect</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Detail row: Host, Players, Bots */}

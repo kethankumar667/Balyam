@@ -31,7 +31,14 @@ function makeRooms(count: number): OperationalRoomSummary[] {
     createdAt: Date.now() - 100_000,
     matchStartedAt: Date.now() - 50_000,
     matchDurationMs: 50_000,
-    host: { id: `p_${i}`, name: `Player_${i}`, isGuest: false },
+    host: {
+      id: `p_${i}`,
+      name: `Player_${i}`,
+      isGuest: false,
+      isConnected: true,
+      isAway: false,
+      inGrace: false,
+    },
     playerCount: 2,
     humanCount: 2,
     botCount: 0,
@@ -39,6 +46,13 @@ function makeRooms(count: number): OperationalRoomSummary[] {
     hasTakeover: false,
     sealed: false,
     disconnectedCount: 0,
+    players: [],
+    diagnostics: {
+      currentTurnPlayerName: `Player_${i}`,
+      isOver: false,
+      matchDurationMs: 50_000,
+      matchStatus: "In Progress",
+    },
   }));
 }
 

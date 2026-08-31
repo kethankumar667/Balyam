@@ -6,6 +6,7 @@ import type {
   PlatformTickPayload,
   GameKind,
   RoomLifecycleState,
+  RecoveryStatus,
 } from "@shared/types";
 
 export type StreamConnectionStatus = "connected" | "reconnecting" | "offline";
@@ -15,6 +16,16 @@ export interface AdminLiveFilterState {
   gameFilter: GameKind | "all";
   lifecycleFilter: RoomLifecycleState | "all";
   sortBy: "code" | "game" | "age" | "duration" | "players" | "lifecycleState";
+  sortDirection: "asc" | "desc";
+}
+
+export interface RecoveryFiltersState {
+  searchQuery: string;
+  gameFilter: GameKind | "all";
+  statusFilter: RecoveryStatus | "all";
+  hostOnly: boolean;
+  autoPlayOnly: boolean;
+  sortBy: "urgency" | "grace" | "disconnectDuration" | "roomCode";
   sortDirection: "asc" | "desc";
 }
 
@@ -32,6 +43,8 @@ export interface AdminLiveState {
    *  `retryAdminLiveConnection`), never a timer. */
   isUnauthorized: boolean;
   filters: AdminLiveFilterState;
+  selectedRoomCode: string | null;
+  recoveryFilters: RecoveryFiltersState;
 
   // Actions
   ingestTick: (payload: PlatformTickPayload) => void;
@@ -51,7 +64,33 @@ export interface AdminLiveState {
   setLifecycleFilter: (state: RoomLifecycleState | "all") => void;
   setSorting: (sortBy: AdminLiveFilterState["sortBy"], sortDirection?: "asc" | "desc") => void;
   resetFilters: () => void;
+
+  // Room Inspector Actions
+  inspectRoom: (code: string) => void;
+  closeInspector: () => void;
+
+  // Recovery Sentinel Filter Actions
+  setRecoverySearchQuery: (query: string) => void;
+  setRecoveryGameFilter: (game: GameKind | "all") => void;
+  setRecoveryStatusFilter: (status: RecoveryStatus | "all") => void;
+  setRecoveryHostOnly: (hostOnly: boolean) => void;
+  setRecoveryAutoPlayOnly: (autoPlayOnly: boolean) => void;
+  setRecoverySorting: (
+    sortBy: RecoveryFiltersState["sortBy"],
+    sortDirection?: "asc" | "desc"
+  ) => void;
+  resetRecoveryFilters: () => void;
 }
+
+const DEFAULT_RECOVERY_FILTERS: RecoveryFiltersState = {
+  searchQuery: "",
+  gameFilter: "all",
+  statusFilter: "all",
+  hostOnly: false,
+  autoPlayOnly: false,
+  sortBy: "urgency",
+  sortDirection: "asc",
+};
 
 export const useAdminLiveStore = create<AdminLiveState>((set) => ({
   platform: null,
@@ -69,6 +108,8 @@ export const useAdminLiveStore = create<AdminLiveState>((set) => ({
     sortBy: "age",
     sortDirection: "desc",
   },
+  selectedRoomCode: null,
+  recoveryFilters: DEFAULT_RECOVERY_FILTERS,
 
   ingestTick: (payload) =>
     set({
@@ -97,6 +138,8 @@ export const useAdminLiveStore = create<AdminLiveState>((set) => ({
       isLoading: true,
       error: null,
       isUnauthorized: false,
+      selectedRoomCode: null,
+      recoveryFilters: DEFAULT_RECOVERY_FILTERS,
     }),
   setSearchQuery: (searchQuery) =>
     set((state) => ({ filters: { ...state.filters, searchQuery } })),
@@ -125,5 +168,37 @@ export const useAdminLiveStore = create<AdminLiveState>((set) => ({
         sortBy: "age",
         sortDirection: "desc",
       },
+    })),
+
+  // Room Inspector
+  inspectRoom: (selectedRoomCode) => set({ selectedRoomCode }),
+  closeInspector: () => set({ selectedRoomCode: null }),
+
+  // Recovery Sentinel Filters
+  setRecoverySearchQuery: (searchQuery) =>
+    set((state) => ({ recoveryFilters: { ...state.recoveryFilters, searchQuery } })),
+  setRecoveryGameFilter: (gameFilter) =>
+    set((state) => ({ recoveryFilters: { ...state.recoveryFilters, gameFilter } })),
+  setRecoveryStatusFilter: (statusFilter) =>
+    set((state) => ({ recoveryFilters: { ...state.recoveryFilters, statusFilter } })),
+  setRecoveryHostOnly: (hostOnly) =>
+    set((state) => ({ recoveryFilters: { ...state.recoveryFilters, hostOnly } })),
+  setRecoveryAutoPlayOnly: (autoPlayOnly) =>
+    set((state) => ({ recoveryFilters: { ...state.recoveryFilters, autoPlayOnly } })),
+  setRecoverySorting: (sortBy, sortDirection) =>
+    set((state) => ({
+      recoveryFilters: {
+        ...state.recoveryFilters,
+        sortBy,
+        sortDirection:
+          sortDirection ??
+          (state.recoveryFilters.sortBy === sortBy && state.recoveryFilters.sortDirection === "asc"
+            ? "desc"
+            : "asc"),
+      },
+    })),
+  resetRecoveryFilters: () =>
+    set(() => ({
+      recoveryFilters: DEFAULT_RECOVERY_FILTERS,
     })),
 }));

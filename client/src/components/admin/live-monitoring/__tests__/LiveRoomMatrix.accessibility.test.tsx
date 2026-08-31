@@ -13,7 +13,14 @@ const sampleRoom: OperationalRoomSummary = {
   createdAt: Date.now() - 60_000,
   matchStartedAt: Date.now() - 30_000,
   matchDurationMs: 30_000,
-  host: { id: "p_1", name: "Asha", isGuest: false },
+  host: {
+    id: "p_1",
+    name: "Asha",
+    isGuest: false,
+    isConnected: true,
+    isAway: false,
+    inGrace: false,
+  },
   playerCount: 2,
   humanCount: 2,
   botCount: 0,
@@ -21,6 +28,13 @@ const sampleRoom: OperationalRoomSummary = {
   hasTakeover: false,
   sealed: false,
   disconnectedCount: 0,
+  players: [],
+  diagnostics: {
+    currentTurnPlayerName: "Asha",
+    isOver: false,
+    matchDurationMs: 30_000,
+    matchStatus: "In Progress",
+  },
 };
 
 beforeEach(() => {
