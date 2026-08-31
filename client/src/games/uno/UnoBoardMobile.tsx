@@ -240,7 +240,6 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
       to?: { left: string; top: string };
     }>
   >([]);
-  const [confirmLeave, setConfirmLeave] = useState(false);
   const [reactionImpacts, setReactionImpacts] = useState<
     Array<{
       id: string;
@@ -375,7 +374,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
               )
             )}
             <button
-              onClick={() => setConfirmLeave(true)}
+              onClick={onLeave}
               aria-label="Leave Game"
               title="Leave Room"
               className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-200 hover:text-white bg-red-950/85 hover:bg-red-600/90 border border-amber-500/40 hover:border-amber-400 transition-all shadow-md active:scale-95 cursor-pointer ml-auto"
@@ -834,48 +833,6 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
 
         {tut.open && (
           <GameTutorial slides={UNO_TUTORIAL.slides} storageKey={UNO_TUTORIAL.key} accent={UNO_TUTORIAL.accent} onClose={() => tut.setOpen(false)} />
-        )}
-
-        {confirmLeave && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-            <div
-              className="w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl flex flex-col items-center gap-4 animate-scale-up"
-              style={{
-                background: "linear-gradient(165deg, #2A0808 0%, #170404 100%)",
-                border: "2px solid rgba(247,218,139,0.7)",
-                boxShadow: "0 20px 50px rgba(0,0,0,0.9), 0 0 30px rgba(220,38,38,0.4)",
-              }}
-            >
-              <div className="w-14 h-14 rounded-2xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-2xl shadow-inner">
-                🚪
-              </div>
-              <div>
-                <h3 className="text-lg font-black uppercase tracking-wide text-white font-display">
-                  Leave Match?
-                </h3>
-                <p className="text-xs text-amber-200/80 mt-1">
-                  Leaving now will forfeit your seat. Your current hand will be folded.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 w-full mt-2">
-                <button
-                  onClick={() => setConfirmLeave(false)}
-                  className="flex-1 py-2.5 rounded-full text-xs font-black uppercase tracking-wider text-amber-100 bg-white/10 hover:bg-white/20 border border-white/20 active:scale-95 transition cursor-pointer"
-                >
-                  Stay & Play
-                </button>
-                <button
-                  onClick={() => {
-                    setConfirmLeave(false);
-                    onLeave?.();
-                  }}
-                  className="flex-1 py-2.5 rounded-full text-xs font-black uppercase tracking-wider text-white bg-gradient-to-r from-red-600 to-red-700 hover:brightness-110 border border-red-400 active:scale-95 transition shadow-lg cursor-pointer"
-                >
-                  Leave Room
-                </button>
-              </div>
-            </div>
-          </div>
         )}
 
         {m.isChallengeTarget && m.pendingChallenge && (
