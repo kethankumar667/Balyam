@@ -31,6 +31,120 @@ import { leakDetector } from "../reliability/LeakDetector.js";
  * table, the event store or the leak detector.
  */
 
+/**
+ * Singleton Telemetry Broadcast Hub.
+ *
+ * ── Scalability Architecture ──────────────────────────────────────────
+ * Rather than spawning an independent `setInterval` per connected admin
+ * client (which causes O(N) full room table traversals and JSON serializations
+ * per second), this hub maintains a single, shared 1000ms broadcast tick.
+ *
+ * It computes telemetry ONCE and serializes the SSE data frame ONCE per second.
+ * The formatted buffer is then fanned out to all active `Response` streams.
+ * When 0 admins are connected, the timer stops completely (zero idle CPU cost).
+ *
+ * ── TCP Backpressure Handling ─────────────────────────────────────────
+ * If a client's write buffer is full (`res.write()` returns false), the hub
+ * respects the stream state and drains gracefully, preventing unbounded
+ * memory buffering on slow or suspended network connections.
+ */
+export class TelemetryBroadcastHub {
+  private activeClients = new Set<Response>();
+  private pausedClients = new Set<Response>();
+  private interval: NodeJS.Timeout | null = null;
+  private roomManager: RoomManager | null = null;
+  private lastFormattedMessage: string | null = null;
+
+  public init(roomManager: RoomManager): void {
+    this.roomManager = roomManager;
+  }
+
+  public register(res: Response): void {
+    this.activeClients.add(res);
+
+    // Owned here rather than left entirely to the caller's `req.on("close")`:
+    // a response can fail (broken pipe, reset connection) without the
+    // request itself ever firing `close`. `.once` on both — a response only
+    // errors or closes once in its lifetime, and `deregister` is idempotent
+    // (`Set.delete` on an absent entry is a no-op), so whichever of these,
+    // the caller's own `req.on("close")`, or a failed write in `broadcast()`
+    // fires first is the only one that does anything.
+    res.once("error", () => this.deregister(res));
+    res.once("close", () => this.deregister(res));
+
+    // If we have a cached message from this tick, send it immediately
+    if (this.lastFormattedMessage) {
+      try {
+        res.write(this.lastFormattedMessage);
+      } catch {
+        this.deregister(res);
+        return;
+      }
+    } else {
+      // Force initial tick
+      this.broadcast();
+    }
+
+    if (!this.interval && this.activeClients.size > 0) {
+      this.interval = setInterval(() => this.broadcast(), 1000);
+    }
+  }
+
+  public deregister(res: Response): void {
+    this.activeClients.delete(res);
+    this.pausedClients.delete(res);
+
+    if (this.activeClients.size === 0 && this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+      this.lastFormattedMessage = null;
+    }
+  }
+
+  public getSubscriberCount(): number {
+    return this.activeClients.size;
+  }
+
+  private broadcast(): void {
+    if (!this.roomManager || this.activeClients.size === 0) return;
+
+    try {
+      const stats = this.roomManager.getOperationalDetailedStats();
+      const rooms = this.roomManager.getOperationalRoomSummaries();
+      const recovery = this.roomManager.getOperationalRecoverySummary();
+      const payload = {
+        timestamp: Date.now(),
+        platform: stats,
+        rooms,
+        recovery,
+      };
+      this.lastFormattedMessage = `event: platform_tick\ndata: ${JSON.stringify(payload)}\n\n`;
+    } catch {
+      return;
+    }
+
+    for (const res of this.activeClients) {
+      if (this.pausedClients.has(res)) {
+        continue; // Wait for drain
+      }
+
+      try {
+        const canWriteMore = res.write(this.lastFormattedMessage);
+        if (!canWriteMore) {
+          this.pausedClients.add(res);
+          res.once("drain", () => {
+            this.pausedClients.delete(res);
+          });
+        }
+      } catch {
+        this.deregister(res);
+      }
+    }
+  }
+}
+
+export const telemetryBroadcastHub = new TelemetryBroadcastHub();
+
 export interface OperationalRouterDeps {
   roomManager: RoomManager;
   io: Server<ClientToServerEvents, ServerToClientEvents>;
@@ -40,6 +154,7 @@ export interface OperationalRouterDeps {
 
 export function createOperationalRouter(deps: OperationalRouterDeps): Router {
   const { roomManager, io, startTime } = deps;
+  telemetryBroadcastHub.init(roomManager);
   const router = Router();
 
   // The gate, first and on the router itself.
@@ -68,11 +183,30 @@ export function createOperationalRouter(deps: OperationalRouterDeps): Router {
     res.json(telemetryAggregator.getSnapshot(roomManager, startTime));
   });
 
+  router.get("/stream", (req: Request, res: Response) => {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-store, no-cache",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    res.write("retry: 3000\n\n");
+
+    telemetryBroadcastHub.register(res);
+
+    req.on("close", () => {
+      telemetryBroadcastHub.deregister(res);
+    });
+  });
+
   router.get("/recovery", (_req: Request, res: Response) => {
     const snapshot = telemetryAggregator.getSnapshot(roomManager, startTime);
+    const liveRecovery = roomManager.getOperationalRecoverySummary();
     res.json({
       recovery: snapshot.recovery,
       recoveringRooms: snapshot.rooms.byLifecycle["RECOVERING"] || 0,
+      activeGraceCount: liveRecovery.activeGraceCount,
+      seats: liveRecovery.seats,
       timestamp: snapshot.timestamp,
     });
   });
@@ -82,7 +216,14 @@ export function createOperationalRouter(deps: OperationalRouterDeps): Router {
   });
 
   router.get("/rooms", (_req: Request, res: Response) => {
-    res.json({ rooms: roomManager.getOperationalRoomSummaries() });
+    // `platform` added alongside the pre-existing `rooms` field (never
+    // removed) so the REST fallback poller can show the same real
+    // recovery/host-migration/abandonment counters the SSE stream already
+    // does, instead of the hardcoded placeholder values it used before.
+    res.json({
+      rooms: roomManager.getOperationalRoomSummaries(),
+      platform: roomManager.getOperationalDetailedStats(),
+    });
   });
 
   router.get("/timeline/:code", (req: Request, res: Response) => {
