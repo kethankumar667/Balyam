@@ -73,6 +73,11 @@ export interface MatchSettlementWinnerPayout {
   payoutAmount: string; // Strictly string
   isSelf: boolean;
   targetPoint?: Point2D;
+  /** Overrides the default "Winner Rank #N" line. Required whenever a row
+   *  is an aggregate across multiple recipients rather than one individual
+   *  payout — "Winner Rank #N" would otherwise misstate an aggregate as a
+   *  single person's amount. */
+  subtitle?: string;
 }
 
 export interface MatchSettlementMotionPayload {
