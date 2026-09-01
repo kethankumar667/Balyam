@@ -119,7 +119,7 @@ function buildParticipants(order: string[], players: ReadonlyMap<string, Player>
  * clients. Returns `undefined` when neither is present, which correctly
  * falls through to `isValidRanking: false` below — never a guess.
  */
-function getWinnerId(engine: GameEngine): string | null | undefined {
+export function getWinnerId(engine: GameEngine): string | null | undefined {
   const viaMethod = (engine as unknown as { getWinner?: () => string | null | undefined }).getWinner?.();
   if (viaMethod !== undefined) return viaMethod;
   const state = engine.getPublicState() as { winnerId?: string | null } | null | undefined;
