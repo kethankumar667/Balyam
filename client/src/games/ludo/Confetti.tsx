@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+import { useReducedMotion } from "../../hooks/useReducedMotion";
 
 const PALETTE = ["#ef4444", "#10b981", "#f59e0b", "#3b82f6", "#a855f7", "#ec4899"];
 
 export default function Confetti({ count = 80 }: { count?: number }) {
+  const reduceMotion = useReducedMotion();
   const pieces = useMemo(
     () =>
       Array.from({ length: count }, (_, i) => ({
@@ -14,6 +16,7 @@ export default function Confetti({ count = 80 }: { count?: number }) {
       })),
     [count]
   );
+  if (reduceMotion) return null;
   return (
     <div className="pointer-events-none fixed inset-0 z-30 overflow-hidden">
       {pieces.map((p, i) => (

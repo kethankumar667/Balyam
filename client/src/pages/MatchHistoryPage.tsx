@@ -1,89 +1,15 @@
-import { useState, useEffect } from "react";
-import { Link, useOutletContext } from "react-router-dom";
-import { History, Gamepad2, Trophy, XCircle, Equal, Clock } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Link, useOutletContext, useNavigate } from "react-router-dom";
+import { History, Gamepad2, Trophy, XCircle, Equal, Clock, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 import { apiFetch } from "../lib/playerIdentity";
 import MemberLockedGate from "../components/auth/MemberLockedGate";
 import MatchHistoryList from "../features/profile/MatchHistoryList";
 import Modal from "../components/Modal";
+import EmptyState from "../components/games/EmptyState";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 
 import type { MatchHistoryItem, MatchDetailRecord } from "@shared/profile/MatchHistory";
 import type { GameKind } from "@shared/types";
-
-const DEMO_MATCHES: MatchHistoryItem[] = [
-  {
-    matchId: "m_hc_101",
-    roomCode: "HC6021",
-    game: "handcricket",
-    startedAt: 1787341800000 - 522000,
-    finishedAt: 1787341800000, // Aug 22, 2026 10:30 PM
-    durationMs: 522000, // 08:42
-    result: "WIN",
-    participants: [
-      { playerId: "p_me", name: "kethan", isWinner: true, score: 6 },
-      { playerId: "bot_1", name: "Pintu", isWinner: false, isBot: true, score: 4 },
-    ],
-    replayAvailable: true,
-  },
-  {
-    matchId: "m_ludo_102",
-    roomCode: "LU9102",
-    game: "ludo",
-    startedAt: 1787337300000 - 983000,
-    finishedAt: 1787337300000, // Aug 22, 2026 09:15 PM
-    durationMs: 983000, // 16:23
-    result: "WIN",
-    participants: [
-      { playerId: "p_me", name: "kethan", isWinner: true },
-      { playerId: "bot_1", name: "Aman", isWinner: false, isBot: true },
-      { playerId: "bot_2", name: "Neha", isWinner: false, isBot: true },
-      { playerId: "bot_3", name: "Rohan", isWinner: false, isBot: true },
-    ],
-    replayAvailable: true,
-  },
-  {
-    matchId: "m_rummy_103",
-    roomCode: "RU4921",
-    game: "rummy",
-    startedAt: 1787333100000 - 738000,
-    finishedAt: 1787333100000, // Aug 22, 2026 08:05 PM
-    durationMs: 738000, // 12:18
-    result: "LOSS",
-    participants: [
-      { playerId: "p_me", name: "kethan", isWinner: false, score: 125 },
-      { playerId: "bot_1", name: "Chintu", isWinner: true, isBot: true, score: 200 },
-    ],
-    replayAvailable: true,
-  },
-  {
-    matchId: "m_snl_104",
-    roomCode: "SN8412",
-    game: "snl",
-    startedAt: 1787331000000 - 842000,
-    finishedAt: 1787331000000, // Aug 22, 2026 07:30 PM
-    durationMs: 842000, // 14:02
-    result: "DRAW",
-    participants: [
-      { playerId: "p_me", name: "kethan", isWinner: false },
-      { playerId: "bot_1", name: "Monica", isWinner: false, isBot: true },
-    ],
-    replayAvailable: false,
-  },
-  {
-    matchId: "m_uno_105",
-    roomCode: "UN5913",
-    game: "uno",
-    startedAt: 1787327100000 - 438000,
-    finishedAt: 1787327100000, // Aug 22, 2026 06:25 PM
-    durationMs: 438000, // 07:18
-    result: "WIN",
-    participants: [
-      { playerId: "p_me", name: "kethan", isWinner: true, score: 108 },
-      { playerId: "bot_1", name: "Pintu", isWinner: false, isBot: true, score: 56 },
-    ],
-    replayAvailable: true,
-  },
-];
 
 /**
  * Data, the Edit Profile / Avatar Picker modals, and the `<ProfileLayout>`
@@ -95,66 +21,91 @@ const DEMO_MATCHES: MatchHistoryItem[] = [
  */
 export default function MatchHistoryPage() {
   const { profile, stats, isMember, effectivePlayerId } = useOutletContext<ProfileFamilyOutletContext>();
+  const navigate = useNavigate();
 
   const [matches, setMatches] = useState<MatchHistoryItem[]>([]);
   const [totalMatches, setTotalMatches] = useState(0);
   const [selectedGame, setSelectedGame] = useState<GameKind | undefined>();
+  const [activeDetailItem, setActiveDetailItem] = useState<MatchHistoryItem | null>(null);
   const [selectedMatchDetail, setSelectedMatchDetail] = useState<MatchDetailRecord | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailFetchError, setDetailFetchError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!effectivePlayerId) return;
 
-    async function fetchMatches() {
-      try {
-        const matchRes = await apiFetch(
-          `/api/profile/${effectivePlayerId}/matches${selectedGame ? `?game=${selectedGame}` : ""}`
-        ).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    let cancelled = false;
 
+    async function fetchMatches() {
+      setLoading(true);
+      setFetchError(false);
+      try {
+        const res = await apiFetch(
+          `/api/profile/${effectivePlayerId}/matches${selectedGame ? `?game=${selectedGame}` : ""}`
+        );
+        if (cancelled) return;
+        if (!res.ok) throw new Error("Match fetch failed");
+        const matchRes = await res.json();
         if (matchRes?.matches && matchRes.matches.length > 0) {
           setMatches(matchRes.matches);
           setTotalMatches(matchRes.total || matchRes.matches.length);
         } else {
-          // Default to populated matches matching the reference mock
-          setMatches(DEMO_MATCHES);
-          setTotalMatches(DEMO_MATCHES.length);
+          setMatches([]);
+          setTotalMatches(0);
         }
       } catch (err) {
-        console.warn("Could not load match history:", err);
+        if (!cancelled) {
+          console.warn("Could not load match history:", err);
+          setFetchError(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchMatches();
-  }, [effectivePlayerId, selectedGame]);
+    return () => {
+      cancelled = true;
+    };
+  }, [effectivePlayerId, selectedGame, retryCount]);
 
-  const handleViewMatchDetail = async (matchId: string) => {
+  const fetchMatchDetail = useCallback(async (matchId: string) => {
+    if (detailLoading) return;
+    setDetailLoading(true);
+    setDetailFetchError(false);
     try {
       const res = await apiFetch(`/api/profile/${effectivePlayerId}/matches/${matchId}`);
-      if (res.ok) {
-        const data = await res.json();
+      if (!res.ok) throw new Error("Match detail fetch failed");
+      const data = await res.json();
+      if (data?.match) {
         setSelectedMatchDetail(data.match);
       } else {
-        const local = matches.find((m) => m.matchId === matchId);
-        if (local) {
-          setSelectedMatchDetail({
-            ...local,
-            movesCount: 24,
-            recoveryCount: 0,
-            timelineEventsCount: 42,
-          });
-        }
+        throw new Error("Invalid match payload");
       }
     } catch {
-      const local = matches.find((m) => m.matchId === matchId);
-      if (local) {
-        setSelectedMatchDetail({
-          ...local,
-          movesCount: 24,
-          recoveryCount: 0,
-          timelineEventsCount: 42,
-        });
-      }
+      setDetailFetchError(true);
+    } finally {
+      setDetailLoading(false);
     }
-  };
+  }, [detailLoading, effectivePlayerId]);
+
+  const handleOpenMatchDetail = useCallback((matchId: string) => {
+    const summary = matches.find((m) => m.matchId === matchId) ?? null;
+    setActiveDetailItem(summary);
+    setSelectedMatchDetail(null);
+    setDetailFetchError(false);
+    fetchMatchDetail(matchId);
+  }, [fetchMatchDetail, matches]);
+
+  const handleCloseDetailModal = useCallback(() => {
+    setActiveDetailItem(null);
+    setSelectedMatchDetail(null);
+    setDetailFetchError(false);
+    setDetailLoading(false);
+  }, []);
 
   if (!isMember) {
     return <MemberLockedGate feature="profile" />;
@@ -162,14 +113,14 @@ export default function MatchHistoryPage() {
 
   if (!profile) return null;
 
-  const effectiveTotalMatches = stats?.totalMatches || totalMatches || matches.length || 10;
-  const effectiveWins = stats?.wins !== undefined && stats.wins > 0 ? stats.wins : 6;
-  const effectiveLosses = stats?.losses !== undefined && stats.losses > 0 ? stats.losses : 3;
-  const effectiveDraws = stats?.draws !== undefined && stats.draws > 0 ? stats.draws : 1;
-  const effectiveWinRate = stats?.winRate || Math.round((effectiveWins / effectiveTotalMatches) * 100) || 60;
-  const effectiveLossRate = Math.round((effectiveLosses / effectiveTotalMatches) * 100) || 30;
-  const effectiveDrawRate = Math.round((effectiveDraws / effectiveTotalMatches) * 100) || 10;
-  const totalMins = stats?.totalPlayTimeMinutes || 165;
+  const effectiveTotalMatches = stats?.totalMatches ?? totalMatches ?? matches.length;
+  const effectiveWins = stats?.wins !== undefined ? stats.wins : 0;
+  const effectiveLosses = stats?.losses !== undefined ? stats.losses : 0;
+  const effectiveDraws = stats?.draws !== undefined ? stats.draws : 0;
+  const effectiveWinRate = effectiveTotalMatches > 0 ? (stats?.winRate ?? Math.round((effectiveWins / effectiveTotalMatches) * 100)) : 0;
+  const effectiveLossRate = effectiveTotalMatches > 0 ? Math.round((effectiveLosses / effectiveTotalMatches) * 100) : 0;
+  const effectiveDrawRate = effectiveTotalMatches > 0 ? Math.round((effectiveDraws / effectiveTotalMatches) * 100) : 0;
+  const totalMins = stats?.totalPlayTimeMinutes ?? 0;
   const hours = Math.floor(totalMins / 60);
   const mins = totalMins % 60;
   const playTimeStr = `${hours}h ${mins}m`;
@@ -292,21 +243,67 @@ export default function MatchHistoryPage() {
         </div>
       </div>
 
-      {/* ── Match History List & Side Cards ── */}
-      <MatchHistoryList
-        matches={matches}
-        total={totalMatches}
-        selectedGame={selectedGame}
-        onSelectGame={(g) => setSelectedGame(g)}
-        onViewMatchDetail={handleViewMatchDetail}
-        stats={stats}
-      />
+      {/* ── Match History List / Loading / Error / Empty State ── */}
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 animate-pulse flex items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                <div className="space-y-2">
+                  <div className="w-32 h-4 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="w-20 h-3 bg-slate-200 dark:bg-slate-800 rounded" />
+                </div>
+              </div>
+              <div className="w-16 h-7 bg-slate-200 dark:bg-slate-800 rounded-full" />
+            </div>
+          ))}
+        </div>
+      ) : fetchError ? (
+        <div className="p-8 text-center bg-white dark:bg-[#151A2E] border border-rose-500/20 rounded-3xl space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center text-xl mx-auto">
+            ⚠️
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Couldn't load match history</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              We had trouble communicating with the server. Please check your connection and try again.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRetryCount((c) => c + 1)}
+            className="px-5 py-2.5 rounded-full bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs shadow-sm transition cursor-pointer min-h-[44px]"
+          >
+            Retry
+          </button>
+        </div>
+      ) : matches.length === 0 && !selectedGame ? (
+        <EmptyState
+          title="No matches played yet"
+          description="Play games with friends or bots to build your match history."
+          resetLabel="Explore Games"
+          onReset={() => navigate("/games")}
+        />
+      ) : (
+        <MatchHistoryList
+          matches={matches}
+          total={totalMatches}
+          selectedGame={selectedGame}
+          onSelectGame={(g) => setSelectedGame(g)}
+          onViewMatchDetail={handleOpenMatchDetail}
+          stats={stats}
+        />
+      )}
 
       {/* Match Detail Modal */}
-      {selectedMatchDetail && (
+      {(activeDetailItem || selectedMatchDetail) && (
         <Modal
-          open={Boolean(selectedMatchDetail)}
-          onClose={() => setSelectedMatchDetail(null)}
+          open={Boolean(activeDetailItem || selectedMatchDetail)}
+          onClose={handleCloseDetailModal}
           ariaLabel="Match Scorecard Details"
           panelClassName="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 shadow-2xl max-w-lg w-full text-left"
         >
@@ -316,23 +313,27 @@ export default function MatchHistoryPage() {
                 <span className="text-xl">🎮</span>
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white capitalize">
-                    {selectedMatchDetail.game} Match Details
+                    {selectedMatchDetail?.game ?? activeDetailItem?.game} Match Details
                   </h3>
                   <span className="text-xs text-slate-400 font-mono">
-                    #{selectedMatchDetail.roomCode}
+                    #{selectedMatchDetail?.roomCode ?? activeDetailItem?.roomCode}
                   </span>
                 </div>
               </div>
               <span
                 className={`text-xs font-bold px-3 py-1 rounded-full ${
-                  selectedMatchDetail.result === "WIN"
+                  (selectedMatchDetail?.result ?? activeDetailItem?.result) === "WIN"
                     ? "bg-[#F0FDF4] text-[#16A34A]"
-                    : selectedMatchDetail.result === "LOSS"
+                    : (selectedMatchDetail?.result ?? activeDetailItem?.result) === "LOSS"
                     ? "bg-[#FEF2F2] text-[#DC2626]"
                     : "bg-[#EFF6FF] text-[#2563EB]"
                 }`}
               >
-                {selectedMatchDetail.result === "WIN" ? "Victory" : selectedMatchDetail.result === "LOSS" ? "Defeat" : "Draw"}
+                {(selectedMatchDetail?.result ?? activeDetailItem?.result) === "WIN"
+                  ? "Victory"
+                  : (selectedMatchDetail?.result ?? activeDetailItem?.result) === "LOSS"
+                  ? "Defeat"
+                  : "Draw"}
               </span>
             </div>
 
@@ -340,8 +341,8 @@ export default function MatchHistoryPage() {
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Participants & Scorecard
               </h4>
-              <div className="space-y-2">
-                {selectedMatchDetail.participants.map((p, idx) => (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {(selectedMatchDetail?.participants ?? activeDetailItem?.participants ?? []).map((p, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-[#F3EFE9] dark:border-[#252D4A]"
@@ -371,9 +372,53 @@ export default function MatchHistoryPage() {
               </div>
             </div>
 
+            {/* Authoritative Timeline / Match Stats */}
+            {selectedMatchDetail && (
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                <div className="font-bold text-amber-900 dark:text-amber-300">Match Timeline Summary</div>
+                <div className="flex justify-between">
+                  <span>Total Moves:</span>
+                  <span className="font-mono font-bold">{selectedMatchDetail.movesCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Timeline Events:</span>
+                  <span className="font-mono font-bold">{selectedMatchDetail.timelineEventsCount}</span>
+                </div>
+              </div>
+            )}
+
+            {detailLoading && (
+              <div className="flex items-center justify-center gap-2 py-3 text-xs text-slate-500 font-medium">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                <span>Loading detailed scorecard timeline...</span>
+              </div>
+            )}
+
+            {detailFetchError && (
+              <div
+                role="alert"
+                className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300 flex items-center justify-between gap-2"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-500" />
+                  <span className="truncate">Could not load detailed scorecard timeline.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => activeDetailItem && fetchMatchDetail(activeDetailItem.matchId)}
+                  disabled={detailLoading}
+                  className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] transition flex items-center gap-1 cursor-pointer flex-shrink-0 disabled:opacity-50"
+                  aria-label="Retry loading match details"
+                >
+                  <RefreshCw className={`w-3 h-3 ${detailLoading ? "animate-spin" : ""}`} />
+                  <span>Retry</span>
+                </button>
+              </div>
+            )}
+
             <div className="pt-2">
               <button
-                onClick={() => setSelectedMatchDetail(null)}
+                onClick={handleCloseDetailModal}
                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-md cursor-pointer hover:from-amber-600 hover:to-orange-600 transition"
               >
                 Close Scorecard

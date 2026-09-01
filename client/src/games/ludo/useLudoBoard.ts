@@ -44,9 +44,7 @@ export interface LudoBoardProps {
   onLeave?: () => void;
   /**
    * Called once the player dismisses Ludo's own results card. Room.tsx wires
-   * this to `triggerGameOver`, the same contract Rummy/UNO/Bingo use — without
-   * it, suppressing the generic scorecard for Ludo would strand the table on a
-   * finished board with no way forward.
+   * this to `handleScorecardClose`, returning the player cleanly to the table/lobby.
    */
   onScorecardClose?: () => void;
 }
@@ -615,8 +613,7 @@ export function useLudoBoard({
    *
    * It opens AFTER the winner celebration rather than on the same frame,
    * so the confetti is not immediately buried. Dismissing it calls
-   * `onScorecardClose` -> `triggerGameOver`, so the auto-leave countdown
-   * and the rematch hand-off still happen exactly as for every other game.
+   * `onScorecardClose` -> `handleScorecardClose`, returning the player cleanly to the table/lobby.
    *
    * The card itself is kept and still renders when `showEndCard` is set, so a
    * "view recap" entry point can be wired up without rebuilding it.

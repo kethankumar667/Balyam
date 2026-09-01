@@ -80,6 +80,18 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
    * taking two seats.
    */
   const busyRef = useRef(false);
+  const activeAttemptRef = useRef<number>(0);
+  const timeoutTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      activeAttemptRef.current += 1;
+      if (timeoutTimerRef.current !== null) {
+        window.clearTimeout(timeoutTimerRef.current);
+        timeoutTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const caps = useCapabilities();
   /**
@@ -88,7 +100,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
    * scanner stays open to them. So for a guest this modal is not a form: it
    * is a scanner with a name on it, and the code only ever arrives from a
    * camera. `code` state is shared by both paths, which is why the scan
-   * handler below is the sole writer of it when `joinByCode` is off.
+   * action can simply call `joinWithCode` with the scanned text.
    */
   const canType = caps.joinByCode;
 
@@ -145,53 +157,55 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
     setFormError(null);
     setPlayerName(n);
 
-    /**
-     * A join that never answers.
-     *
-     * `socket.emit` with an ack buffers silently while the socket is down —
-     * and the server sleeps on its host after idle, so the first join of the
-     * evening routinely lands during a cold start. The callback then fires
-     * whenever the server wakes, or never, and the button sat on "Joining…"
-     * the whole time with nothing to read. `.timeout()` turns that into an
-     * answer we can put on screen.
-     */
-    getSocket()
-      .timeout(JOIN_TIMEOUT_MS)
-      .emit(
-        "room:join",
-        {
-          name: n,
-          code: c,
-          avatar: avatarId ?? undefined,
-          accountKind: currentAccountKind(),
-          accessToken: currentAccessToken(),
-          guestToken: currentGuestToken(),
-          ...(seatFor(c) ?? {}),
-        },
-        (timeoutErr: unknown, res: JoinAck) => {
-          busyRef.current = false;
-          setBusy(false);
-          if (timeoutErr) {
-            setFormError(
-              "The server is taking a while to answer — it may be waking up. Try again in a moment.",
-            );
-            return;
-          }
-          if (!res?.ok) {
-            // Server-side errors ("Room not found", "Game already in progress")
-            // map most naturally to the code field — they reject the specific
-            // room the user tried to join. Show inline under the code box.
-            setCodeError(res?.error ?? "Couldn't join that room");
-            codeInputRef.current?.focus();
-            return;
-          }
-          if (res.state) useRoomStore.getState().setRoomState(res.state);
-          if (res.playerId) setPlayerId(res.playerId);
-          if (res.playerId && res.seatToken) rememberSeat(c, res.playerId, res.seatToken);
-          onClose();
-          navigate(`/room/${c}`);
-        },
+    const attemptId = ++activeAttemptRef.current;
+    if (timeoutTimerRef.current !== null) {
+      window.clearTimeout(timeoutTimerRef.current);
+    }
+
+    timeoutTimerRef.current = window.setTimeout(() => {
+      if (activeAttemptRef.current !== attemptId) return;
+      activeAttemptRef.current += 1;
+      busyRef.current = false;
+      setBusy(false);
+      setFormError(
+        "The server is taking a while to answer — it may be waking up. Try again in a moment.",
       );
+    }, JOIN_TIMEOUT_MS);
+
+    getSocket().emit(
+      "room:join",
+      {
+        name: n,
+        code: c,
+        avatar: avatarId ?? undefined,
+        accountKind: currentAccountKind(),
+        accessToken: currentAccessToken(),
+        guestToken: currentGuestToken(),
+        ...(seatFor(c) ?? {}),
+      },
+      (res: JoinAck) => {
+        if (activeAttemptRef.current !== attemptId) return;
+        if (timeoutTimerRef.current !== null) {
+          window.clearTimeout(timeoutTimerRef.current);
+          timeoutTimerRef.current = null;
+        }
+        busyRef.current = false;
+        setBusy(false);
+        if (!res?.ok) {
+          // Server-side errors ("Room not found", "Game already in progress")
+          // map most naturally to the code field — they reject the specific
+          // room the user tried to join. Show inline under the code box.
+          setCodeError(res?.error ?? "Couldn't join that room");
+          codeInputRef.current?.focus();
+          return;
+        }
+        if (res.state) useRoomStore.getState().setRoomState(res.state);
+        if (res.playerId) setPlayerId(res.playerId);
+        if (res.playerId && res.seatToken) rememberSeat(c, res.playerId, res.seatToken);
+        onClose();
+        navigate(`/room/${c}`);
+      },
+    );
   }
 
   function handleSubmit(e?: React.FormEvent) {
@@ -316,6 +330,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               id="join-name"
               type="text"
               value={name}
+              disabled={busy}
               onChange={(e) => {
                 setName(e.target.value);
                 if (nameError) setNameError(null);
@@ -328,7 +343,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               className={`w-full min-h-[44px] px-3 rounded-xl
                          bg-bhalyam-cream-soft dark:bg-[var(--surface-0)] border-2
                          text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/40 dark:placeholder:text-slate-500
-                         font-semibold
+                         font-semibold disabled:opacity-60 disabled:cursor-not-allowed
                          focus:outline-none focus:ring-2
                          transition-all duration-200
                          ${nameError
@@ -341,9 +356,10 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
           <div className="flex justify-end -mb-1">
             <button
               type="button"
+              disabled={busy}
               onClick={() => setScannerOpen(true)}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-bhalyam-wood dark:text-amber-400
-                         hover:text-bhalyam-wood-dark dark:hover:text-amber-300 active:scale-95 transition cursor-pointer"
+                         hover:text-bhalyam-wood-dark dark:hover:text-amber-300 active:scale-95 disabled:opacity-50 transition cursor-pointer"
             >
               <ScanIcon className="w-4 h-4 text-[#EA5A1F]" />
               Scan QR Code
@@ -364,6 +380,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                 id="join-code"
                 type="text"
                 value={code}
+                disabled={busy}
                 onChange={(e) => handleCodeChange(e.target.value)}
                 placeholder="ABC123"
                 maxLength={ROOM_CODE_LENGTH}
@@ -379,6 +396,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                            bg-bhalyam-cream-soft dark:bg-[var(--surface-0)] border-2
                            text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/30 dark:placeholder:text-slate-600
                            font-mono font-black text-2xl tracking-[0.45em] text-center
+                           disabled:opacity-60 disabled:cursor-not-allowed
                            focus:outline-none focus:ring-2
                            transition-all duration-200
                            ${codeError
@@ -387,11 +405,12 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
               />
               <button
                 type="button"
+                disabled={busy}
                 onClick={() => setScannerOpen(true)}
                 title="Scan QR Code"
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] rounded-xl
                            bg-bhalyam-cream-warm dark:bg-[#1E2738] hover:bg-bhalyam-cream-edge dark:hover:bg-[#2A374F] active:scale-95
-                           inline-flex items-center justify-center text-bhalyam-wood-dark dark:text-slate-200 transition cursor-pointer"
+                           disabled:opacity-50 inline-flex items-center justify-center text-bhalyam-wood-dark dark:text-slate-200 transition cursor-pointer"
               >
                 <ScanIcon className="w-5 h-5 text-[#EA5A1F]" />
               </button>

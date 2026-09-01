@@ -118,11 +118,19 @@ export function PlayerJourneyDashboard({
                     isDark ? "bg-white/5 border-white/10" : "bg-[#FAF2DF] border-[#ECD9BA]"
                   }`}>
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-200 border-2 border-amber-400 p-1 flex-shrink-0 flex items-center justify-center shadow-inner">
-                      <img
-                        src={TILE_ART_BY_GAME[lastGameCard.slug]}
-                        alt={lastGameCard.title}
-                        className="w-full h-full object-contain"
-                      />
+                      <picture className="w-full h-full flex items-center justify-center">
+                        <source type="image/avif" srcSet={TILE_ART_BY_GAME[lastGameCard.slug].replace(/\.(png|jpg|jpeg)$/i, '.avif')} />
+                        <source type="image/webp" srcSet={TILE_ART_BY_GAME[lastGameCard.slug].replace(/\.(png|jpg|jpeg)$/i, '.webp')} />
+                        <img
+                          src={TILE_ART_BY_GAME[lastGameCard.slug]}
+                          alt={lastGameCard.title}
+                          width={64}
+                          height={64}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-contain"
+                        />
+                      </picture>
                     </div>
                     <div className="min-w-0 flex-1">
                       <h4 className={`font-display font-black text-[20px] leading-tight truncate ${

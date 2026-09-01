@@ -97,11 +97,14 @@ export default function SeatTargetReactionWheel({
           WebkitBackdropFilter: "blur(12px)",
           pointerEvents: "auto",
         }}
+        role="region"
+        aria-label={targetPlayerName ? `Reactions for ${targetPlayerName}` : "Reactions picker"}
         onClick={(e) => e.stopPropagation()}
       >
         {emojis.map((emoji) => (
           <motion.button
             key={emoji}
+            type="button"
             whileHover={{ scale: 1.35, y: -2 }}
             whileTap={{ scale: 0.85 }}
             onClick={(e) => {
@@ -110,6 +113,7 @@ export default function SeatTargetReactionWheel({
             }}
             className="w-8 h-8 sm:w-9 sm:h-9 text-lg sm:text-xl flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors cursor-pointer select-none"
             title={targetPlayerName ? `Throw ${emoji} at ${targetPlayerName}` : `Throw ${emoji}`}
+            aria-label={targetPlayerName ? `Throw ${emoji} at ${targetPlayerName}` : `Throw ${emoji}`}
           >
             {emoji}
           </motion.button>

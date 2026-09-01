@@ -2,6 +2,7 @@ import { confetti } from "@tsparticles/confetti";
 import type { UnoColor } from "@shared/types";
 import type { FeltAnchor } from "../helpers/types";
 import { anchorToPercentXY } from "../helpers/geometry";
+import { getPrefersReducedMotion } from "../helpers/useReducedMotion";
 
 /**
  * "Comic dust" burst — the muted grey/brown puff + a couple of pale
@@ -10,11 +11,8 @@ import { anchorToPercentXY } from "../helpers/geometry";
  * animation whose story calls for "dust" or "debris" (+2 Flying
  * Slippers, Skip's banana-peel slide, +4 Meteor Strike's crater).
  *
- * `disableForReducedMotion` is on by default in `@tsparticles/confetti`
- * (same precedent `uno-confetti.ts` already documents), so callers don't
- * need a separate matchMedia gate for the particle burst itself — only
- * for the surrounding GSAP/react-spring motion, which this module has no
- * say over.
+ * Explicit `getPrefersReducedMotion()` checks guard every burst so that
+ * zero JS particle computations run when reduced motion is preferred.
  */
 const COMIC_DUST_COLORS = ["#C9B79C", "#A98F6B", "#8A7256", "#F5EFE0"];
 
@@ -28,7 +26,7 @@ export interface ComicBurstOptions {
  *  landed here" cue. */
 export function fireComicDustBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
   void confetti({
     count: Math.round(26 * intensity),
@@ -65,7 +63,7 @@ const METEOR_DEBRIS_COLORS = ["#3D2B1F", "#5C4030", "#2B2118"];
 
 export function fireMeteorImpactBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
 
   // Smoke — slow, lingering, wide spread.
@@ -119,7 +117,7 @@ const PAINT_COLOR_HEX: Record<UnoColor, string> = {
 
 export function firePaintSplash(anchor: FeltAnchor, color: UnoColor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
   void confetti({
     count: Math.round(30 * intensity),
@@ -141,7 +139,7 @@ const CELEBRATION_STAR_COLORS = ["#FFD966", "#FFF9F0", "#F7B84A"];
 
 export function fireStarSparkleBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
   void confetti({
     count: Math.round(36 * intensity),
@@ -167,7 +165,7 @@ const CARD_CHIP_COLORS = ["#D22B27", "#3AA03A", "#1C6DD0", "#E8B100", "#FFF9F0"]
  *  "raining cards on you" rather than an explosion. */
 export function fireFallingCardsBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
   void confetti({
     count: Math.round(22 * intensity),
@@ -187,7 +185,7 @@ export function fireFallingCardsBurst(anchor: FeltAnchor, opts: ComicBurstOption
  *  (high velocity, standard gravity, so they arc away and drop). */
 export function fireFlyingCardsBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
   void confetti({
     count: Math.round(28 * intensity),
@@ -209,7 +207,7 @@ export function fireFlyingCardsBurst(anchor: FeltAnchor, opts: ComicBurstOptions
  *  replacement — see WinnerCelebration.tsx). */
 export function fireFireworksBurst(opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const x = 20 + Math.random() * 60;
   const y = 15 + Math.random() * 25;
   void confetti({
@@ -233,7 +231,7 @@ const DARK_SMOKE_COLORS = ["#1A1420", "#3A2A4A", "#241B2E", "#5C4A70"];
 
 export function fireDarkSmokeBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
   void confetti({
     count: Math.round(30 * intensity),
@@ -254,7 +252,7 @@ export function fireDarkSmokeBurst(anchor: FeltAnchor, opts: ComicBurstOptions =
  *  balloon bursting rather than paint spreading. */
 export function fireInkPopBurst(anchor: FeltAnchor, color: UnoColor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
   void confetti({
     count: Math.round(24 * intensity),
@@ -275,7 +273,7 @@ const ENERGY_COLORS = ["#7DF9FF", "#FFFFFF", "#39C5FF"];
 
 export function fireEnergyBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
   void confetti({
     count: Math.round(26 * intensity),
@@ -296,7 +294,7 @@ const ELECTRIC_SPARK_COLORS = ["#FFE066", "#FFFFFF", "#FFC300"];
 
 export function fireElectricSparkBurst(anchor: FeltAnchor, opts: ComicBurstOptions = {}): void {
   const intensity = opts.intensity ?? 1;
-  if (intensity <= 0) return;
+  if (intensity <= 0 || getPrefersReducedMotion()) return;
   const { x, y } = anchorToPercentXY(anchor);
   void confetti({
     count: Math.round(20 * intensity),

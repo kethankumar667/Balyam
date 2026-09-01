@@ -108,19 +108,26 @@ export function getChitDotColor(value: string): string {
 export function StarRoomBackdrop() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: "url('/illustrations/Stargame/stargame-room.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          // Tuned by eye against a live screenshot. At 0.40 the room was
-          // technically present and visually absent — no point shipping art
-          // nobody can see. This is the most it can carry before the side
-          // rails start fighting it for attention.
-          opacity: 0.72,
-        }}
-      />
+      <picture className="absolute inset-0 w-full h-full">
+        <source type="image/avif" srcSet="/illustrations/Stargame/stargame-room.avif" />
+        <source type="image/webp" srcSet="/illustrations/Stargame/stargame-room.webp" />
+        <img
+          src="/illustrations/Stargame/stargame-room.png"
+          alt=""
+          width={1920}
+          height={1080}
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover object-center"
+          style={{
+            // Tuned by eye against a live screenshot. At 0.40 the room was
+            // technically present and visually absent — no point shipping art
+            // nobody can see. This is the most it can carry before the side
+            // rails start fighting it for attention.
+            opacity: 0.72,
+          }}
+        />
+      </picture>
       {/* Scrim. Lightest over the centre, where the table wants the room to
           show through, and heaviest at the edges, where the rails sit. */}
       <div

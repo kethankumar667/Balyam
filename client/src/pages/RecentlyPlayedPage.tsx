@@ -17,9 +17,6 @@ export default function RecentlyPlayedPage() {
   const navigate = useNavigate();
   const { recentItems } = useRecentlyPlayed();
 
-  useEffect(() => {
-    document.title = "Recently Played · BHALYAM";
-  }, []);
 
   // Newest-first, exactly as RecentlyPlayedManager stored it — resolved
   // against the live catalog so a game that's been re-themed or locked

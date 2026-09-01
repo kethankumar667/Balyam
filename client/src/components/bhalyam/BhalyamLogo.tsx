@@ -76,20 +76,24 @@ export default function BhalyamLogo({
           : undefined,
       }}
     >
-      <img
-        // `key` forces a fresh request when we step through the chain on error.
-        key={srcIdx}
-        src={LOGO_SRC_CHAIN[srcIdx]}
-        alt={decorative ? "" : "BHALYAM"}
-        width={size}
-        height={size}
-        decoding="async"
-        // Preload the icon eagerly when used in headers so it doesn't pop
-        // in after first paint; on hero usage the cache will already be hot.
-        loading="eager"
-        onError={() => setSrcIdx((i) => i + 1)}
-        className="w-full h-full object-cover scale-[1.06] origin-center"
-      />
+      <picture>
+        <source type="image/avif" srcSet="/Bhalyam-logo.avif" />
+        <source type="image/webp" srcSet="/Bhalyam-logo.webp" />
+        <img
+          // `key` forces a fresh request when we step through the chain on error.
+          key={srcIdx}
+          src={LOGO_SRC_CHAIN[srcIdx]}
+          alt={decorative ? "" : "BHALYAM"}
+          width={size}
+          height={size}
+          decoding="async"
+          // Preload the icon eagerly when used in headers so it doesn't pop
+          // in after first paint; on hero usage the cache will already be hot.
+          loading="eager"
+          onError={() => setSrcIdx((i) => i + 1)}
+          className="w-full h-full object-cover scale-[1.06] origin-center"
+        />
+      </picture>
     </span>
   );
 }

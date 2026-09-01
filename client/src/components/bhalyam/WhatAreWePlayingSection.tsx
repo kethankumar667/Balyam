@@ -91,12 +91,19 @@ export default function WhatAreWePlayingSection({
             {/* Top Scrapbook Image Container */}
             <div className="space-y-3">
               <div className="relative w-full h-44 sm:h-48 rounded-xl sm:rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 shadow-xs bg-[#FBF6E9] dark:bg-[#15110B] flex items-center justify-center">
-                <img
-                  src={sc.image}
-                  alt={sc.title}
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
+                <picture className="w-full h-full">
+                  <source type="image/avif" srcSet={sc.image.replace(/\.(png|jpg|jpeg)$/i, '.avif')} />
+                  <source type="image/webp" srcSet={sc.image.replace(/\.(png|jpg|jpeg)$/i, '.webp')} />
+                  <img
+                    src={sc.image}
+                    alt={sc.title}
+                    width={400}
+                    height={240}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                </picture>
               </div>
 
               {/* Title */}
@@ -142,12 +149,19 @@ export default function WhatAreWePlayingSection({
         {/* Left: Illustration + Emotional Heading */}
         <div className="flex items-center gap-4 text-left w-full lg:w-auto">
           <div className="relative w-28 h-20 sm:w-36 sm:h-22 rounded-2xl overflow-hidden border-2 border-amber-400/50 shadow-md flex-shrink-0 bg-amber-100 dark:bg-amber-950/40">
-            <img
-              src="/images/nostalgia/gang-reunion.jpg"
-              alt="Gang Reunion"
-              loading="lazy"
-              className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-            />
+            <picture className="w-full h-full">
+              <source type="image/avif" srcSet="/images/nostalgia/gang-reunion.avif" />
+              <source type="image/webp" srcSet="/images/nostalgia/gang-reunion.webp" />
+              <img
+                src="/images/nostalgia/gang-reunion.jpg"
+                alt="Gang Reunion"
+                width={144}
+                height={88}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+              />
+            </picture>
           </div>
 
           <div className="leading-tight">
@@ -166,11 +180,19 @@ export default function WhatAreWePlayingSection({
           {/* Step 1: Create a room */}
           <div className="flex flex-col items-center gap-1.5 group">
             <div className="w-11 h-11 rounded-xl overflow-hidden border border-amber-400/50 shadow-xs bg-[#FAF5E6] dark:bg-amber-950/30 flex items-center justify-center">
-              <img
-                src="/images/nostalgia/create-room-icon.png"
-                alt="Create Room"
-                className="w-full h-full object-cover"
-              />
+              <picture className="w-full h-full">
+                <source type="image/avif" srcSet="/images/nostalgia/create-room-icon.avif" />
+                <source type="image/webp" srcSet="/images/nostalgia/create-room-icon.webp" />
+                <img
+                  src="/images/nostalgia/create-room-icon.png"
+                  alt="Create Room"
+                  width={44}
+                  height={44}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
+              </picture>
             </div>
             <span className="whitespace-nowrap">Create a room</span>
           </div>
@@ -180,11 +202,19 @@ export default function WhatAreWePlayingSection({
           {/* Step 2: Share the code */}
           <div className="flex flex-col items-center gap-1.5 group">
             <div className="w-11 h-11 rounded-xl overflow-hidden border border-purple-400/50 shadow-xs bg-[#FAF5E6] dark:bg-purple-950/30 flex items-center justify-center">
-              <img
-                src="/images/nostalgia/share-code-icon.png"
-                alt="Share Code"
-                className="w-full h-full object-cover"
-              />
+              <picture className="w-full h-full">
+                <source type="image/avif" srcSet="/images/nostalgia/share-code-icon.avif" />
+                <source type="image/webp" srcSet="/images/nostalgia/share-code-icon.webp" />
+                <img
+                  src="/images/nostalgia/share-code-icon.png"
+                  alt="Share Code"
+                  width={44}
+                  height={44}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
+              </picture>
             </div>
             <span className="whitespace-nowrap">Share the code</span>
           </div>

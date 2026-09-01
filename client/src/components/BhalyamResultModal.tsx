@@ -89,7 +89,7 @@ export default function BhalyamResultModal({
           onClick={onClose}
           type="button"
           aria-label="Close"
-          className="absolute top-4 right-4 sm:top-5 sm:right-5 w-8 h-8 rounded-full bg-[#EFE5D2] hover:bg-[#E2D5BE] active:scale-95 flex items-center justify-center text-[#735F4C] text-sm font-black transition z-20 shadow-xs cursor-pointer"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-[#EFE5D2] hover:bg-[#E2D5BE] focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none active:scale-95 flex items-center justify-center text-[#735F4C] text-sm font-black transition z-20 shadow-xs cursor-pointer"
         >
           ✕
         </button>

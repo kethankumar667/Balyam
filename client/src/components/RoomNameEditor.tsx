@@ -37,6 +37,7 @@ export default function RoomNameEditor({
   if (editing) {
     return (
       <input
+        id="room-name-input"
         autoFocus
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -46,6 +47,7 @@ export default function RoomNameEditor({
           if (e.key === "Escape") setEditing(false);
         }}
         placeholder="Name this table…"
+        aria-label="Room name"
         maxLength={40}
         className="font-script text-lg bg-transparent border-b border-dashed border-[#C9A876]
                    text-[#2B3550] focus:outline-none px-1 min-w-[10ch]"
@@ -59,6 +61,7 @@ export default function RoomNameEditor({
       <button
         type="button"
         onClick={startEdit}
+        aria-label="Name this table"
         className="inline-flex items-center gap-1 text-sm font-semibold text-[#8A6D4B] dark:text-slate-400 hover:text-[#EA5A1F] dark:hover:text-amber-400 transition underline underline-offset-4 decoration-dashed decoration-[#C9A876] cursor-pointer"
       >
         <Pencil size={14} aria-hidden />
@@ -73,6 +76,7 @@ export default function RoomNameEditor({
       onClick={isHost ? startEdit : undefined}
       disabled={!isHost}
       title={isHost ? "Click to rename" : undefined}
+      aria-label={isHost ? `Rename table: ${name}` : `Table name: ${name}`}
       className={`font-script text-xl text-[#2B3550] dark:text-amber-300 ${
         isHost ? "hover:text-[#EA5A1F] cursor-text" : "cursor-default"
       }`}

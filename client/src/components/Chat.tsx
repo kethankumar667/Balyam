@@ -147,11 +147,13 @@ export default function Chat({
       >
         <div className="flex items-center gap-1.5 sm:gap-2 max-w-full relative">
           <input
+            id="chat-message-input"
             ref={inputRef}
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Type a message..."
+            aria-label="Type a message"
             maxLength={500}
             autoComplete="off"
             className="flex-1 min-w-0 min-h-[44px] bg-white dark:bg-[#0F1420] border border-[#EEDBCA] dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-[#2B3550] dark:text-slate-100 placeholder-[#8A6D4B]/70 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#EA5A1F] focus:ring-2 focus:ring-[#EA5A1F]/30 transition"

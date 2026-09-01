@@ -7,6 +7,7 @@ import type {
   HcCategory,
   HcFormat,
   HcMode,
+  RoomPublicState,
   RummyMatchMode,
   SnlDifficulty,
 } from "@shared/types";
@@ -57,6 +58,8 @@ import {
  * handling are 1:1 copies of the original Lobby behaviour so functionality
  * is identical.
  * ───────────────────────────────────────────────────────────────────────── */
+
+const JOIN_TIMEOUT_MS = 20_000;
 
 export interface GameRoomSheetProps {
   /** Which game the user tapped. `null` means closed. */
@@ -346,6 +349,19 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const activeAttemptRef = useRef<number>(0);
+  const timeoutTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      activeAttemptRef.current += 1;
+      if (timeoutTimerRef.current !== null) {
+        window.clearTimeout(timeoutTimerRef.current);
+        timeoutTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const isSolo = game ? ["snake", "roadrash", "spacewar"].includes(game) : false;
 
   const caps = useCapabilities();
@@ -426,8 +442,23 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       onClose();
       return;
     }
+
+    const attemptId = ++activeAttemptRef.current;
+    if (timeoutTimerRef.current !== null) {
+      window.clearTimeout(timeoutTimerRef.current);
+    }
+
     setBusy(true);
     setPlayerName(n);
+    timeoutTimerRef.current = window.setTimeout(() => {
+      if (activeAttemptRef.current !== attemptId) return;
+      activeAttemptRef.current += 1;
+      setBusy(false);
+      setFormError(
+        "The server is taking a while to answer — it may be waking up. Try again in a moment.",
+      );
+    }, JOIN_TIMEOUT_MS);
+
     try {
       const socket = getSocket();
       socket.emit(
@@ -501,10 +532,15 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 }
               : undefined,
         },
-        (res) => {
+        (res: { ok: boolean; code?: string; playerId?: string; seatToken?: string; state?: RoomPublicState; error?: string }) => {
+          if (activeAttemptRef.current !== attemptId) return;
+          if (timeoutTimerRef.current !== null) {
+            window.clearTimeout(timeoutTimerRef.current);
+            timeoutTimerRef.current = null;
+          }
           setBusy(false);
-          if (!res.ok || !res.code) {
-            setFormError(res.error ?? "Failed to create room");
+          if (!res?.ok || !res?.code) {
+            setFormError(res?.error ?? "Failed to create room");
             return;
           }
           // Synchronize the authoritative room state BEFORE navigating —
@@ -531,6 +567,11 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         },
       );
     } catch (err) {
+      if (activeAttemptRef.current !== attemptId) return;
+      if (timeoutTimerRef.current !== null) {
+        window.clearTimeout(timeoutTimerRef.current);
+        timeoutTimerRef.current = null;
+      }
       setBusy(false);
       setFormError(err instanceof Error ? err.message : "Failed to create room");
     }
@@ -557,8 +598,24 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       return;
     }
     if (!game) return;
+
+    const attemptId = ++activeAttemptRef.current;
+    if (timeoutTimerRef.current !== null) {
+      window.clearTimeout(timeoutTimerRef.current);
+    }
+
     setBusy(true);
     setPlayerName(n);
+
+    timeoutTimerRef.current = window.setTimeout(() => {
+      if (activeAttemptRef.current !== attemptId) return;
+      activeAttemptRef.current += 1;
+      setBusy(false);
+      setFormError(
+        "The server is taking a while to answer — it may be waking up. Try again in a moment.",
+      );
+    }, JOIN_TIMEOUT_MS);
+
     const socket = getSocket();
     socket.emit(
       "room:create",
@@ -600,12 +657,16 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 theme: snakeTheme,
               }
             : undefined,
-
       },
-      (res) => {
-        if (!res.ok || !res.code) {
+      (res: { ok: boolean; code?: string; playerId?: string; seatToken?: string; state?: RoomPublicState; error?: string }) => {
+        if (activeAttemptRef.current !== attemptId) return;
+        if (timeoutTimerRef.current !== null) {
+          window.clearTimeout(timeoutTimerRef.current);
+          timeoutTimerRef.current = null;
+        }
+        if (!res?.ok || !res?.code) {
           setBusy(false);
-          setFormError(res.error ?? "Failed to create room");
+          setFormError(res?.error ?? "Failed to create room");
           return;
         }
         if (res.state) useRoomStore.getState().setRoomState(res.state);
@@ -623,8 +684,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         // the resulting room:state broadcast, then mark the host ready and
         // start. Room.tsx will pick up the state and render the game.
         setTimeout(() => {
+          if (activeAttemptRef.current !== attemptId) return;
           socket.emit("room:setReady", true);
           setTimeout(() => {
+            if (activeAttemptRef.current !== attemptId) return;
             socket.emit("room:startGame");
             setBusy(false);
             if (game) RecentlyPlayedManager.recordRecentlyPlayed(game);
@@ -651,8 +714,24 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     setCodeError(nextCodeError);
     setFormError(null);
     if (nextNameError || nextCodeError) return;
+
+    const attemptId = ++activeAttemptRef.current;
+    if (timeoutTimerRef.current !== null) {
+      window.clearTimeout(timeoutTimerRef.current);
+    }
+
     setBusy(true);
     setPlayerName(n);
+
+    timeoutTimerRef.current = window.setTimeout(() => {
+      if (activeAttemptRef.current !== attemptId) return;
+      activeAttemptRef.current += 1;
+      setBusy(false);
+      setFormError(
+        "The server is taking a while to answer — it may be waking up. Try again in a moment.",
+      );
+    }, JOIN_TIMEOUT_MS);
+
     const socket = getSocket();
     socket.emit(
       "room:join",
@@ -665,13 +744,18 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         guestToken: currentGuestToken(),
         ...(seatFor(code) ?? {}),
       },
-      (res) => {
+      (res: { ok: boolean; code?: string; playerId?: string; seatToken?: string; state?: RoomPublicState; error?: string }) => {
+        if (activeAttemptRef.current !== attemptId) return;
+        if (timeoutTimerRef.current !== null) {
+          window.clearTimeout(timeoutTimerRef.current);
+          timeoutTimerRef.current = null;
+        }
         setBusy(false);
-        if (!res.ok) {
+        if (!res?.ok) {
           // Server-side join failure ("Room not found", "Game already in
           // progress", "Room is full") almost always points at the code
           // field — that's the rejected room.
-          setCodeError(res.error ?? "Failed to join");
+          setCodeError(res?.error ?? "Failed to join");
           return;
         }
         if (res.state) useRoomStore.getState().setRoomState(res.state);
@@ -759,6 +843,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 id="grs-name"
                 type="text"
                 value={name}
+                disabled={busy}
                 onChange={(e) => {
                   setName(e.target.value);
                   if (nameError) setNameError(null);
@@ -770,7 +855,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 className={`w-full min-h-[46px] px-3.5 rounded-2xl
                            bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2
                            text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
-                           font-bold text-sm
+                           font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed
                            focus:outline-none focus:ring-4
                            transition-all duration-200
                            ${nameError
@@ -1198,6 +1283,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                       id="grs-code"
                       type="text"
                       value={joinCode}
+                      disabled={busy}
                       onChange={(e) => {
                         setJoinCode(e.target.value.toUpperCase());
                         if (codeError) setCodeError(null);
@@ -1210,6 +1296,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                                  bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2 border-dashed
                                  text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
                                  font-mono font-black tracking-[0.35em] text-center text-base
+                                 disabled:opacity-60 disabled:cursor-not-allowed
                                  focus:outline-none focus:ring-4
                                  transition-all duration-200
                                  ${codeError

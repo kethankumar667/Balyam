@@ -35,14 +35,39 @@ export function Hero({
           className="relative"
           style={{ background: isDark ? "#0A0F1D" : "#FAF2DF" }}
         >
-          <img
-            key={heroImage}
-            src={heroImage}
-            alt="Childhood games lounge"
-            className="bhalyam-hero-drift absolute inset-0 w-full h-full object-cover object-right opacity-95"
-            loading="eager"
-            onError={() => setFailed(true)}
-          />
+          <picture className="absolute inset-0 w-full h-full pointer-events-none">
+            <source
+              media="(max-width: 640px)"
+              type="image/avif"
+              srcSet={isDark ? (failed ? "/bhalyam-hero-sm.avif" : "/bhalyam-dark-hero-sm.avif") : (failed ? "/bhalyam-hero-sm.avif" : "/bhalyam-hero-clean-sm.avif")}
+            />
+            <source
+              media="(max-width: 640px)"
+              type="image/webp"
+              srcSet={isDark ? (failed ? "/bhalyam-hero-sm.webp" : "/bhalyam-dark-hero-sm.webp") : (failed ? "/bhalyam-hero-sm.webp" : "/bhalyam-hero-clean-sm.webp")}
+            />
+            <source
+              type="image/avif"
+              srcSet={isDark ? (failed ? "/bhalyam-hero.avif" : "/bhalyam-dark-hero.avif") : (failed ? "/bhalyam-hero.avif" : "/bhalyam-hero-clean.avif")}
+            />
+            <source
+              type="image/webp"
+              srcSet={isDark ? (failed ? "/bhalyam-hero.webp" : "/bhalyam-dark-hero.webp") : (failed ? "/bhalyam-hero.webp" : "/bhalyam-hero-clean.webp")}
+            />
+            <img
+              key={heroImage}
+              src={heroImage}
+              alt="Childhood games lounge"
+              width={1448}
+              height={1086}
+              className="bhalyam-hero-drift absolute inset-0 w-full h-full object-cover object-right opacity-95"
+              loading="eager"
+              decoding="async"
+              // @ts-expect-error fetchpriority in React 18
+              fetchpriority="high"
+              onError={() => setFailed(true)}
+            />
+          </picture>
           {/* Soft linear fade on left half to keep text readable */}
           <div
             className="absolute inset-0 pointer-events-none"

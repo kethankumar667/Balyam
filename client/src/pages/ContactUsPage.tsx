@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Gamepad2,
@@ -214,12 +214,36 @@ export default function ContactUsPage() {
   const [submittedTicket, setSubmittedTicket] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedTicket, setCopiedTicket] = useState(false);
+  const categoryRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const handleCategoryChange = (newCat: HelpCategory) => {
     setCategory(newCat);
     const defaults = ISSUE_TYPES_BY_CATEGORY[newCat];
     if (defaults && defaults.length > 0) {
       setIssueType(defaults[0]);
+    }
+  };
+
+  const handleCategoryKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let nextIndex: number | null = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      nextIndex = (index + 1) % CATEGORY_CARDS.length;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      nextIndex = (index - 1 + CATEGORY_CARDS.length) % CATEGORY_CARDS.length;
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === "End") {
+      e.preventDefault();
+      nextIndex = CATEGORY_CARDS.length - 1;
+    }
+
+    if (nextIndex !== null) {
+      const nextCat = CATEGORY_CARDS[nextIndex];
+      handleCategoryChange(nextCat.id);
+      categoryRefs.current[nextIndex]?.focus();
     }
   };
 
@@ -299,7 +323,7 @@ export default function ContactUsPage() {
                 <CheckCircle2 className="w-9 h-9" />
               </div>
 
-              <div className="space-y-2">
+              <div role="status" aria-live="polite" className="space-y-2">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                   Message Received! 🎒
                 </h2>
@@ -323,6 +347,7 @@ export default function ContactUsPage() {
                   onClick={handleCopyTicket}
                   className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition cursor-pointer"
                   title="Copy reference code"
+                  aria-label="Copy reference code"
                 >
                   {copiedTicket ? (
                     <Check className="w-4 h-4 text-emerald-600" />
@@ -368,16 +393,24 @@ export default function ContactUsPage() {
                 </div>
 
                 {/* 8 Topic Cards Grid (4 columns on Desktop) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {CATEGORY_CARDS.map((cat) => {
+                <div role="radiogroup" aria-label="Help categories" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {CATEGORY_CARDS.map((cat, index) => {
                     const Icon = cat.icon;
                     const isSelected = category === cat.id;
                     return (
                       <button
                         key={cat.id}
+                        ref={(el) => {
+                          categoryRefs.current[index] = el;
+                        }}
                         type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        tabIndex={isSelected ? 0 : -1}
+                        aria-label={`${cat.title}: ${cat.subtitle}`}
                         onClick={() => handleCategoryChange(cat.id)}
-                        className={`p-5 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[140px] ${
+                        onKeyDown={(e) => handleCategoryKeyDown(e, index)}
+                        className={`p-5 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[140px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EA580C] ${
                           isSelected
                             ? "bg-white dark:bg-[#151A2E] border-[#EA580C] ring-2 ring-[#EA580C]/20 shadow-sm"
                             : "bg-white dark:bg-[#151A2E] border-[#EFEAE2] dark:border-[#222A44] hover:border-amber-500/40 hover:shadow-xs"
@@ -429,11 +462,12 @@ export default function ContactUsPage() {
                     {/* Row 1: Game Dropdown & What Went Wrong */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        <label htmlFor="contact-game" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                           Game (if applicable)
                         </label>
                         <div className="relative">
                           <select
+                            id="contact-game"
                             value={selectedGame}
                             onChange={(e) => setSelectedGame(e.target.value)}
                             className="w-full appearance-none bg-white dark:bg-[#151A2E] border border-[#EFEAE2] dark:border-[#222A44] rounded-xl px-3.5 py-2.5 pr-8 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C] shadow-2xs font-medium"
@@ -449,11 +483,12 @@ export default function ContactUsPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        <label htmlFor="contact-issue-type" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                           What went wrong?
                         </label>
                         <div className="relative">
                           <select
+                            id="contact-issue-type"
                             value={issueType}
                             onChange={(e) => setIssueType(e.target.value)}
                             className="w-full appearance-none bg-white dark:bg-[#151A2E] border border-[#EFEAE2] dark:border-[#222A44] rounded-xl px-3.5 py-2.5 pr-8 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#EA580C] focus:ring-1 focus:ring-[#EA580C] shadow-2xs font-medium"
@@ -471,10 +506,11 @@ export default function ContactUsPage() {
 
                     {/* Row 2: Short summary */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <label htmlFor="contact-summary" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                         Short summary
                       </label>
                       <input
+                        id="contact-summary"
                         type="text"
                         required
                         placeholder="Score was incorrect at the end of the match"
@@ -487,12 +523,13 @@ export default function ContactUsPage() {
                     {/* Row 3: Describe the issue in detail */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        <label htmlFor="contact-description" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                           Describe the issue in detail
                         </label>
                       </div>
                       <div className="relative">
                         <textarea
+                          id="contact-description"
                           required
                           rows={4}
                           maxLength={1000}
@@ -509,9 +546,9 @@ export default function ContactUsPage() {
 
                     {/* Row 4: Match / Room details (optional) */}
                     <div className="space-y-2.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
                         Match / Room details <span className="text-slate-400 font-normal">(optional)</span>
-                      </label>
+                      </span>
 
                       {/* Blue info callout strip */}
                       <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#EFF6FF] dark:bg-sky-950/40 border border-[#DBEAFE] dark:border-sky-900/40 text-xs text-[#1E40AF] dark:text-sky-300 font-medium">
@@ -524,10 +561,11 @@ export default function ContactUsPage() {
                       {/* 3 Fields Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          <label htmlFor="contact-room-code" className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
                             Room Code
-                          </span>
+                          </label>
                           <input
+                            id="contact-room-code"
                             type="text"
                             placeholder="ROOM-7X29"
                             value={roomCode}
@@ -537,10 +575,11 @@ export default function ContactUsPage() {
                         </div>
 
                         <div className="space-y-1">
-                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          <label htmlFor="contact-match-id" className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
                             Match ID
-                          </span>
+                          </label>
                           <input
+                            id="contact-match-id"
                             type="text"
                             placeholder="HC-8F42K"
                             value={matchId}
@@ -550,12 +589,13 @@ export default function ContactUsPage() {
                         </div>
 
                         <div className="space-y-1">
-                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          <label htmlFor="contact-date-time" className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
                             Date &amp; Time
-                          </span>
+                          </label>
                           <div className="relative">
                             <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                             <input
+                              id="contact-date-time"
                               type="text"
                               placeholder="Aug 22, 2026 • 10:30 PM"
                               value={dateTime}
@@ -597,6 +637,7 @@ export default function ContactUsPage() {
                               onClick={() => handleRemoveFile(idx)}
                               className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/70 text-white hover:bg-rose-600 transition flex items-center justify-center cursor-pointer"
                               title="Remove attachment"
+                              aria-label={`Remove attachment ${idx + 1}`}
                             >
                               <X className="w-2.5 h-2.5" />
                             </button>
@@ -616,6 +657,7 @@ export default function ContactUsPage() {
                             type="file"
                             accept="image/*"
                             onChange={handleFileUpload}
+                            aria-label="Upload file attachment"
                             className="hidden"
                           />
                         </label>
@@ -624,10 +666,11 @@ export default function ContactUsPage() {
 
                     {/* Row 6: Your email */}
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <label htmlFor="contact-email" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                         Your email
                       </label>
                       <input
+                        id="contact-email"
                         type="email"
                         required
                         placeholder="you@example.com"

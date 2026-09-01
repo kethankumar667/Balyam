@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { captureAndShareScreenshot } from "../lib/screenshot";
+import { toast } from "../hooks/useToast";
 import Modal from "./Modal";
 
 export interface QrCodeModalProps {
@@ -27,7 +28,8 @@ export default function QrCodeModal({
   const [copiedCode, setCopiedCode] = useState(false);
   const copyLinkBtnRef = useRef<HTMLButtonElement>(null);
 
-  const roomUrl = `${window.location.origin}/room/${code}`;
+  const hasValidCode = Boolean(code && code.trim().length > 0);
+  const roomUrl = hasValidCode ? `${window.location.origin}/room/${code.trim()}` : "";
 
   // Focus trap, Escape, focus restoration and body-scroll lock are all
   // owned by <Modal> at the return site below.
@@ -35,22 +37,32 @@ export default function QrCodeModal({
   if (!open) return null;
 
   async function copyLink() {
+    if (!hasValidCode || !roomUrl) {
+      toast.error("No room link to copy");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(roomUrl);
       setCopiedLink(true);
+      toast.success("Room link copied to clipboard");
       window.setTimeout(() => setCopiedLink(false), 1800);
     } catch {
-      // Fallback
+      toast.error("Couldn't copy link");
     }
   }
 
   async function copyCode() {
+    if (!hasValidCode) {
+      toast.error("No room code to copy");
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(code.trim());
       setCopiedCode(true);
+      toast.success("Room code copied to clipboard");
       window.setTimeout(() => setCopiedCode(false), 1800);
     } catch {
-      // Fallback
+      toast.error("Couldn't copy code");
     }
   }
 
@@ -131,18 +143,28 @@ export default function QrCodeModal({
           </button>
         </div>
 
-        {/* QR Code Container */}
+        {/* QR Code Container with Fallback */}
         <div className="p-3 sm:p-4 bg-white rounded-3xl border-2 border-[#EEDBCA] dark:border-amber-400/50 shadow-inner flex flex-col items-center max-w-full overflow-hidden">
-          <QRCodeSVG
-            value={roomUrl}
-            size={180}
-            className="w-full max-w-[180px] h-auto aspect-square"
-            bgColor="#FFFFFF"
-            fgColor="#0F172A"
-            level="M"
-            marginSize={1}
-            title={`BHALYAM Room ${code} QR Code`}
-          />
+          {hasValidCode ? (
+            <QRCodeSVG
+              value={roomUrl}
+              size={180}
+              className="w-full max-w-[180px] h-auto aspect-square"
+              bgColor="#FFFFFF"
+              fgColor="#0F172A"
+              level="M"
+              marginSize={1}
+              title={`BHALYAM Room ${code.trim()} QR Code`}
+            />
+          ) : (
+            <div
+              className="w-[180px] h-[180px] flex items-center justify-center text-xs text-slate-400 font-bold"
+              role="status"
+              aria-label="QR code unavailable"
+            >
+              QR code unavailable
+            </div>
+          )}
         </div>
 
         {/* Instruction */}
@@ -170,11 +192,7 @@ export default function QrCodeModal({
             onClick={async () => {
               const res = await captureAndShareScreenshot();
               if (res.message) {
-                const toast = document.createElement("div");
-                toast.className = "fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900/90 text-white font-bold text-xs shadow-2xl border border-amber-400/40 animate-fade-in";
-                toast.innerText = res.message;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 2500);
+                toast.info(res.message);
               }
             }}
             className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px]

@@ -76,6 +76,8 @@ export default function RematchPanel({
     if (isHost || myResponse === "accept") {
       return (
         <div
+          role="status"
+          aria-live="polite"
           className={`rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3
                       text-center space-y-2 ${className ?? ""}`}
         >
@@ -99,6 +101,8 @@ export default function RematchPanel({
     // Non-host who hasn't responded yet → prompt
     return (
       <div
+        role="status"
+        aria-live="polite"
         className={`rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3
                     space-y-3 ${className ?? ""}`}
       >

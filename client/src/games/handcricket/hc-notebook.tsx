@@ -1835,22 +1835,28 @@ export function HcCountryPickerNotebook({
         />
 
         {/* World Cup trophy — placed in the marked right-side area */}
-        <img
-          src="/illustrations/Handcricket/worldcup.png"
-          alt=""
-          style={{
-            position: "absolute",
-            right: "4%",
-            top: "14%",
-            width: "14%",
-            minWidth: 100,
-            maxWidth: 220,
-            objectFit: "contain",
-            filter: "drop-shadow(4px 8px 18px rgba(0,0,0,0.24))",
-            opacity: 0.95,
-            pointerEvents: "none",
-          }}
-        />
+        <picture>
+          <source type="image/avif" srcSet="/illustrations/Handcricket/worldcup.avif" />
+          <source type="image/webp" srcSet="/illustrations/Handcricket/worldcup.webp" />
+          <img
+            src="/illustrations/Handcricket/worldcup.png"
+            alt=""
+            loading="lazy"
+            decoding="async"
+            style={{
+              position: "absolute",
+              right: "4%",
+              top: "14%",
+              width: "14%",
+              minWidth: 100,
+              maxWidth: 220,
+              objectFit: "contain",
+              filter: "drop-shadow(4px 8px 18px rgba(0,0,0,0.24))",
+              opacity: 0.95,
+              pointerEvents: "none",
+            }}
+          />
+        </picture>
 
         {/* World Cup and star decorations removed per request */}
       </div>

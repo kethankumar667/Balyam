@@ -89,7 +89,7 @@ export default function EditProfileModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-[var(--auth-field)] border border-[var(--auth-field-edge)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] flex items-center justify-center transition"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[var(--auth-field)] border border-[var(--auth-field-edge)] text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] flex items-center justify-center transition cursor-pointer"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
@@ -117,10 +117,12 @@ export default function EditProfileModal({
               }}
               maxLength={24}
               required
+              aria-invalid={nameError ? true : undefined}
+              aria-describedby={nameError ? "editNameError" : undefined}
               className="w-full bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[var(--auth-ink)] focus:outline-none focus:border-amber-500 font-mono transition"
             />
             {nameError && (
-              <p className="text-xs text-rose-500 font-mono flex items-center gap-1 mt-1">
+              <p id="editNameError" role="alert" className="text-xs text-rose-500 font-mono flex items-center gap-1 mt-1">
                 <AlertCircle className="w-3.5 h-3.5" />
                 {nameError}
               </p>

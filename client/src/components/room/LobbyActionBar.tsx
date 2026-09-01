@@ -37,7 +37,7 @@ export default function LobbyActionBar({
       <div className="fixed inset-x-0 bottom-0 z-40 bg-white/95 dark:bg-[#0F1420]/95 backdrop-blur-md border-t border-[#EEDBCA] dark:border-slate-800 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.12)]">
         <div className="max-w-md mx-auto space-y-2">
           {/* Readiness text & reason banner */}
-          <div className="flex items-center justify-between text-xs px-1">
+          <div role="status" aria-live="polite" className="flex items-center justify-between text-xs px-1">
             <span className="font-extrabold text-[#2B3550] dark:text-slate-200 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               {readyRatioText}
@@ -55,6 +55,7 @@ export default function LobbyActionBar({
             <button
               type="button"
               onClick={onToggleReady}
+              aria-pressed={isReady}
               className={`flex-1 min-h-[48px] px-4 py-2.5 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
                 isReady
                   ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 ring-2 ring-amber-400/30"
@@ -100,7 +101,7 @@ export default function LobbyActionBar({
           </h2>
         </div>
 
-        <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+        <span role="status" aria-live="polite" className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
           {readyRatioText}
         </span>
       </div>
@@ -110,6 +111,7 @@ export default function LobbyActionBar({
         <button
           type="button"
           onClick={onToggleReady}
+          aria-pressed={isReady}
           className={`w-full min-h-[48px] px-6 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
             isReady
               ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 ring-4 ring-amber-400/20"

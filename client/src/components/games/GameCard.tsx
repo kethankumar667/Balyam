@@ -266,14 +266,23 @@ function GameArtwork({
     return <>{children}</>;
   }
 
+  const webpSrc = src.replace(/\.(png|jpg|jpeg)$/i, '.webp');
+  const avifSrc = src.replace(/\.(png|jpg|jpeg)$/i, '.avif');
+
   return (
-    <img
-      src={src}
-      alt={`${title} artwork`}
-      className="relative h-24 sm:h-28 w-auto max-w-[85%] object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
-      loading="lazy"
-      decoding="async"
-      onError={() => setFailed(true)}
-    />
+    <picture>
+      <source type="image/avif" srcSet={avifSrc} />
+      <source type="image/webp" srcSet={webpSrc} />
+      <img
+        src={src}
+        alt={`${title} artwork`}
+        width={320}
+        height={320}
+        className="relative h-24 sm:h-28 w-auto max-w-[85%] object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </picture>
   );
 }

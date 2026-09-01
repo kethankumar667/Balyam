@@ -179,11 +179,19 @@ export default function SettingsPage() {
                 {/* 3 Kids Board Game Illustration */}
                 <div className="mt-4 flex items-center justify-between">
                   <div className="w-28 h-20 overflow-hidden">
-                    <img
-                      src="/gangoffriends.png"
-                      alt="Kids playing board game"
-                      className="w-full h-full object-contain"
-                    />
+                    <picture className="w-full h-full">
+                      <source type="image/avif" srcSet="/gangoffriends.avif" />
+                      <source type="image/webp" srcSet="/gangoffriends.webp" />
+                      <img
+                        src="/gangoffriends.png"
+                        alt="Kids playing board game"
+                        width={112}
+                        height={80}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-contain"
+                      />
+                    </picture>
                   </div>
                   {/* Paper Plane Doodle */}
                   <div className="pr-1 rotate-12">

@@ -107,6 +107,7 @@ export default function BotManagementDialog({
               value={botName}
               onChange={(e) => setBotName(e.target.value)}
               placeholder="e.g. TurboBot (or leave blank for random)"
+              aria-label="Bot Nickname (Optional)"
               maxLength={20}
               className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-[#EEDBCA] dark:border-slate-700 bg-white dark:bg-[#0F1420] text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500 focus:outline-none focus:border-[#EA5A1F] focus:ring-2 focus:ring-[#EA5A1F]/20 transition"
             />
@@ -121,6 +122,7 @@ export default function BotManagementDialog({
                   key={name}
                   type="button"
                   onClick={() => pickSuggestion(name)}
+                  aria-label={`Use suggested name ${name}`}
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FFF4E0] dark:bg-slate-800 text-[#796651] dark:text-slate-300 hover:bg-[#EEDBCA] dark:hover:bg-slate-700 transition cursor-pointer"
                 >
                   {name}
@@ -135,12 +137,14 @@ export default function BotManagementDialog({
               <label className="text-xs font-bold uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 block">
                 Bot Difficulty
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2" role="group" aria-label="Bot difficulty options">
                 {(["easy", "medium", "hard"] as BotDifficulty[]).map((d) => (
                   <button
                     key={d}
                     type="button"
                     onClick={() => setDifficulty(d)}
+                    aria-pressed={difficulty === d}
+                    aria-label={`Select ${d} difficulty`}
                     className={`min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold capitalize border transition flex items-center justify-center gap-1 cursor-pointer ${
                       difficulty === d
                         ? "bg-[#EA5A1F] border-[#EA5A1F] text-white shadow-xs"

@@ -288,7 +288,7 @@ export function GameTile({
   );
 }
 
-function GameTileArt({
+export function GameTileArt({
   src,
   title,
   compact,
@@ -321,15 +321,23 @@ function GameTileArt({
   }
 
   const resolvedSrc = retryNonce === 0 ? src : `${src}?retry=${retryNonce}`;
+  const webpSrc = resolvedSrc.replace(/\.(png|jpg|jpeg)(\?.*)?$/i, '.webp$2');
+  const avifSrc = resolvedSrc.replace(/\.(png|jpg|jpeg)(\?.*)?$/i, '.avif$2');
 
   return (
-    <img
-      src={resolvedSrc}
-      alt={`${title} icon`}
-      className="relative h-24 sm:h-28 w-auto max-w-[85%] object-contain drop-shadow-[0_10px_16px_rgba(0,0,0,0.18)] transition-transform duration-300 group-hover:scale-105"
-      loading="lazy"
-      decoding="async"
-      onError={() => setImageFailed(true)}
-    />
+    <picture>
+      <source type="image/avif" srcSet={avifSrc} />
+      <source type="image/webp" srcSet={webpSrc} />
+      <img
+        src={resolvedSrc}
+        alt={`${title} icon`}
+        width={320}
+        height={320}
+        className="relative h-24 sm:h-28 w-auto max-w-[85%] object-contain drop-shadow-[0_10px_16px_rgba(0,0,0,0.18)] transition-transform duration-300 group-hover:scale-105"
+        loading="lazy"
+        decoding="async"
+        onError={() => setImageFailed(true)}
+      />
+    </picture>
   );
 }

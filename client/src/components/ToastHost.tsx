@@ -72,11 +72,11 @@ export default function ToastHost() {
               type="button"
               onClick={() => toastStore.dismiss(t.id)}
               aria-label="Dismiss notification"
-              className="flex-shrink-0 w-6 h-6 rounded-full inline-flex items-center justify-center cursor-pointer
+              className="flex-shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full inline-flex items-center justify-center cursor-pointer
                          bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink-soft)]
-                         hover:bg-[var(--chrome-control-hi)] transition"
+                         hover:bg-[var(--chrome-control-hi)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </motion.div>
         ))}

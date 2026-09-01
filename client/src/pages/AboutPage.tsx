@@ -183,11 +183,19 @@ export default function AboutPage() {
 
                   {/* Founder Photo */}
                   <div className="relative aspect-[4/4.3] w-full rounded-xl overflow-hidden border border-[#D9C29D] shadow-inner bg-[#F5E6CC]">
-                    <img
-                      src="/Founder.png"
-                      alt="Kethan Kumar Gontla — Founder & Creator of Bhalyam"
-                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
-                    />
+                    <picture className="w-full h-full">
+                      <source type="image/avif" srcSet="/Founder.avif" />
+                      <source type="image/webp" srcSet="/Founder.webp" />
+                      <img
+                        src="/Founder.png"
+                        alt="Kethan Kumar Gontla — Founder & Creator of Bhalyam"
+                        width={400}
+                        height={430}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                      />
+                    </picture>
                   </div>
 
                   {/* Caption */}
@@ -313,11 +321,19 @@ export default function AboutPage() {
                       ? "bg-[#1F2B44] border-white/20"
                       : "bg-[#FFFFFF] border-[#E0D0B6]"
                   }`}>
-                    <img
-                      src="/about_carrom_kids.jpg"
-                      alt="Gang of friends playing games together"
-                      className="w-full h-24 sm:h-28 object-cover rounded-lg border border-[#ECD9BA]"
-                    />
+                    <picture className="w-full h-full">
+                      <source type="image/avif" srcSet="/about_carrom_kids.avif" />
+                      <source type="image/webp" srcSet="/about_carrom_kids.webp" />
+                      <img
+                        src="/about_carrom_kids.jpg"
+                        alt="Gang of friends playing games together"
+                        width={210}
+                        height={112}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-24 sm:h-28 object-cover rounded-lg border border-[#ECD9BA]"
+                      />
+                    </picture>
                     
                     {/* Smiley Badge on Polaroid bottom right */}
                     <SmileyBadge className="absolute -bottom-3 -right-3" />
@@ -588,11 +604,19 @@ export default function AboutPage() {
                 {/* 1. Pencil Mug Illustration */}
                 <div className="sm:col-span-3 flex justify-center">
                   <div className="relative group">
-                    <img
-                      src="/Foundersectionasset.png"
-                      alt="BHALYAM Mug with Pencils, Brushes and Dice"
-                      className="w-24 sm:w-28 h-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform"
-                    />
+                    <picture>
+                      <source type="image/avif" srcSet="/Foundersectionasset.avif" />
+                      <source type="image/webp" srcSet="/Foundersectionasset.webp" />
+                      <img
+                        src="/Foundersectionasset.png"
+                        alt="BHALYAM Mug with Pencils, Brushes and Dice"
+                        width={112}
+                        height={112}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-24 sm:w-28 h-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform"
+                      />
+                    </picture>
                   </div>
                 </div>
 

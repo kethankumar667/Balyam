@@ -99,8 +99,10 @@ export default function VoicePanel({
 
           {voice.audioBlocked && (
             <button
+              type="button"
               onClick={voice.retryAudio}
-              className="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 rounded-xl py-2 text-xs font-bold shadow-sm flex items-center justify-center gap-2"
+              aria-label="Tap to enable sound"
+              className="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 rounded-xl py-2 text-xs font-bold shadow-sm flex items-center justify-center gap-2 cursor-pointer"
             >
               <Volume2 size={16} aria-hidden />
               <span>Tap to enable sound</span>
@@ -109,8 +111,11 @@ export default function VoicePanel({
 
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={voice.toggleMute}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition shadow-sm flex items-center justify-center gap-2 ${
+              aria-pressed={voice.muted}
+              aria-label={voice.muted ? "Unmute microphone" : "Mute microphone"}
+              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition shadow-sm flex items-center justify-center gap-2 cursor-pointer ${
                 voice.muted
                   ? "bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950"
                   : "bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700 hover:bg-[#FFF4E0] text-[#2B3550] dark:text-slate-100"
@@ -129,8 +134,10 @@ export default function VoicePanel({
               )}
             </button>
             <button
+              type="button"
               onClick={voice.disconnect}
-              className="bg-slate-200 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950/50 hover:text-red-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl px-4 text-sm font-semibold transition flex items-center gap-1.5"
+              aria-label="Leave voice call"
+              className="bg-slate-200 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950/50 hover:text-red-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl px-4 text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer"
               title="Leave voice"
             >
               <LogOut size={14} aria-hidden />
@@ -188,7 +195,7 @@ export default function VoicePanel({
         </div>
       )}
 
-      {voice.error && <div className="text-red-500 text-xs mt-2">{voice.error}</div>}
+      {voice.error && <div role="alert" className="text-red-500 text-xs mt-2">{voice.error}</div>}
     </div>
   );
 }

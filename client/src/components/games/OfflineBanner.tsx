@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { WifiOff, RefreshCw } from "lucide-react";
+import { getSocket } from "../../lib/socket";
 
 export default function OfflineBanner() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -19,6 +20,20 @@ export default function OfflineBanner() {
 
   if (!isOffline) return null;
 
+  const handleRetry = () => {
+    if (navigator.onLine) {
+      setIsOffline(false);
+      try {
+        const socket = getSocket();
+        if (!socket.connected) socket.connect();
+      } catch {
+        // ignore socket errors in offline mode
+      }
+    } else {
+      setIsOffline(true);
+    }
+  };
+
   return (
     <div
       role="alert"
@@ -31,7 +46,7 @@ export default function OfflineBanner() {
       </div>
       <button
         type="button"
-        onClick={() => window.location.reload()}
+        onClick={handleRetry}
         className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-black transition flex items-center gap-1 cursor-pointer flex-shrink-0"
       >
         <RefreshCw className="w-3 h-3" />

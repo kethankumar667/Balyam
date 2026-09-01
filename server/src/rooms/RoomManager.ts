@@ -1119,6 +1119,13 @@ export class RoomManager {
       // client receives below already shows them in control.
       this.releaseTakeover(room, existingPlayerId);
       this.greetReturningPlayer(socketId, playedForThem);
+      for (const [sId, pId] of room.socketToPlayer.entries()) {
+        if (pId === existingPlayerId && sId !== socketId) {
+          room.socketToPlayer.delete(sId);
+          this.socketToRoom.delete(sId);
+          this.io.sockets.sockets.get(sId)?.leave(room.code);
+        }
+      }
       room.socketToPlayer.set(socketId, existingPlayerId);
       this.socketToRoom.set(socketId, room.code);
       // Now that this seat counts as connected again, restart anything that
@@ -4413,6 +4420,7 @@ export class RoomManager {
       room.engine = engine;
       room.phase = "playing";
       room.matchStartedAt = Date.now();
+      this.transitionLifecycle(room, "IN_PROGRESS", "Rematch started");
       this.emitRummyBotTells(room);
       // Mark everyone "ready" so any UI that checks readiness behaves
       // correctly post-restart.

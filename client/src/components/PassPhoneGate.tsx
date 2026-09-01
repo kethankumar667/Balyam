@@ -51,6 +51,31 @@ export default function PassPhoneGate({
 
   const acknowledged = acknowledgedForId === activePlayerId;
   const showOverlay = shouldGate && !acknowledged;
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!showOverlay) return;
+    buttonRef.current?.focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setAcknowledgedForId(activePlayerId);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showOverlay, activePlayerId]);
 
   return (
     <div className="relative">
@@ -64,8 +89,16 @@ export default function PassPhoneGate({
                      bg-zinc-950/85 backdrop-blur-sm animate-fade-in"
         >
           <button
+            ref={buttonRef}
             type="button"
             onClick={() => setAcknowledgedForId(activePlayerId)}
+            onKeyDown={(e) => {
+              if (e.repeat) return;
+              if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
+                e.preventDefault();
+                setAcknowledgedForId(activePlayerId);
+              }
+            }}
             className="m-4 max-w-md w-full rounded-2xl bg-bhalyam-cream-soft text-bhalyam-wood-dark
                        border-2 border-bhalyam-gold-dark p-6 sm:p-7 text-center cursor-pointer
                        shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]

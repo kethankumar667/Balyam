@@ -28,3 +28,14 @@ export function useReducedMotion(): boolean {
 
   return reduced;
 }
+
+/**
+ * Synchronous query for prefers-reduced-motion, useful in standalone particle
+ * functions, game engine animations, and event handlers outside React render.
+ */
+export function getPrefersReducedMotion(): boolean {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+export default useReducedMotion;

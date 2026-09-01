@@ -80,6 +80,8 @@ export function TurnTimeWarning({
         }}
       >
         <div
+          role="timer"
+          aria-label={`${secondsLeft} seconds remaining on your turn`}
           className="px-3 py-1.5 rounded-full text-sm font-extrabold tabular-nums shadow-2xl flex items-center gap-2"
           style={{
             background: `linear-gradient(135deg, ${color}, #7f1d1d)`,

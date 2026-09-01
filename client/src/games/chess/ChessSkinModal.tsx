@@ -1,6 +1,7 @@
 import React from "react";
 import type { ChessBoardTheme, ChessPieceSet } from "@shared/types";
 import { CHESS_THEMES } from "./chess-shared";
+import Modal from "../../components/Modal";
 
 export default function ChessSkinModal({
   isOpen,
@@ -17,8 +18,6 @@ export default function ChessSkinModal({
   onSelectTheme: (theme: ChessBoardTheme) => void;
   onSelectPieceSet: (set: ChessPieceSet) => void;
 }) {
-  if (!isOpen) return null;
-
   const themes: { id: ChessBoardTheme; name: string; light: string; dark: string }[] = [
     { id: "emerald", name: "Emerald Tournament", light: "#EEEED2", dark: "#769656" },
     { id: "wood", name: "Classic Mahogany", light: "#F0D9B5", dark: "#B58863" },
@@ -34,24 +33,29 @@ export default function ChessSkinModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-md bg-stone-900 border border-amber-500/30 rounded-3xl p-6 shadow-2xl space-y-6 text-stone-100">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🎨</span>
-            <h3 className="text-lg font-black text-amber-400 uppercase tracking-wide">
-              Chess Custom Themes
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400 hover:text-white transition"
-          >
-            ✕
-          </button>
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      ariaLabel="Chess Custom Themes"
+      panelClassName="relative w-full max-w-md bg-stone-900 border border-amber-500/30 rounded-3xl p-6 shadow-2xl space-y-6 text-stone-100 select-none"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">🎨</span>
+          <h3 className="text-lg font-black text-amber-400 uppercase tracking-wide">
+            Chess Custom Themes
+          </h3>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-stone-800 hover:bg-stone-700 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none flex items-center justify-center text-stone-400 hover:text-white transition cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
 
         {/* Board Felt Themes */}
         <div className="space-y-3">
@@ -122,7 +126,6 @@ export default function ChessSkinModal({
         >
           Apply Theme
         </button>
-      </div>
-    </div>
+    </Modal>
   );
 }

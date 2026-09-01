@@ -97,33 +97,37 @@ export default function SocialHubPage() {
           </div>
         </div>
 
-        {/* Friends & Presence Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {friends.map((f) => (
-            <div
-              key={f.id}
-              className="rounded-3xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] p-5 flex items-center justify-between gap-4 shadow-sm"
+        {/* Friends & Presence Cards / Empty State */}
+        {friends.length === 0 ? (
+          <div className="p-8 text-center bg-[var(--chrome-panel)] border border-[var(--chrome-border)] rounded-3xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl mx-auto">
+              👥
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-[var(--chrome-ink)]">No online friends yet</h3>
+              <p className="text-xs text-[var(--chrome-ink-soft)] max-w-sm mx-auto">
+                Invite your friends or share room codes to start building your lounge squad.
+              </p>
+            </div>
+            <Link
+              to="/games"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs shadow-sm transition min-h-[44px]"
             >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="relative w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center font-bold text-amber-500 text-base shrink-0">
-                  {f.avatar}
-                  <span
-                    className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[var(--chrome-panel)] ${
-                      f.status === "in-game"
-                        ? "bg-purple-500"
-                        : f.status === "online"
-                        ? "bg-emerald-500"
-                        : "bg-amber-500"
-                    }`}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-[var(--chrome-ink)] truncate">
-                    {f.name}
-                  </h3>
-                  <p className="text-xs text-[var(--chrome-ink-soft)] flex items-center gap-1.5 mt-0.5 truncate">
+              Explore Games to Play
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {friends.map((f) => (
+              <div
+                key={f.id}
+                className="rounded-3xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] p-5 flex items-center justify-between gap-4 shadow-sm"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="relative w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center font-bold text-amber-500 text-base shrink-0">
+                    {f.avatar}
                     <span
-                      className={`inline-block w-1.5 h-1.5 rounded-full ${
+                      className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[var(--chrome-panel)] ${
                         f.status === "in-game"
                           ? "bg-purple-500"
                           : f.status === "online"
@@ -131,29 +135,45 @@ export default function SocialHubPage() {
                           : "bg-amber-500"
                       }`}
                     />
-                    <span>{f.activity}</span>
-                  </p>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-[var(--chrome-ink)] truncate">
+                      {f.name}
+                    </h3>
+                    <p className="text-xs text-[var(--chrome-ink-soft)] flex items-center gap-1.5 mt-0.5 truncate">
+                      <span
+                        className={`inline-block w-1.5 h-1.5 rounded-full ${
+                          f.status === "in-game"
+                            ? "bg-purple-500"
+                            : f.status === "online"
+                            ? "bg-emerald-500"
+                            : "bg-amber-500"
+                        }`}
+                      />
+                      <span>{f.activity}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleInvite(f.id)}
+                    disabled={invited[f.id]}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs ${
+                      invited[f.id]
+                        ? "bg-emerald-500 text-zinc-950 font-black"
+                        : "bg-amber-500 hover:bg-amber-400 text-zinc-950"
+                    }`}
+                  >
+                    <Swords className="w-3.5 h-3.5" />
+                    <span>{invited[f.id] ? "Invited!" : "Challenge"}</span>
+                  </button>
                 </div>
               </div>
-
-              <div className="shrink-0 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleInvite(f.id)}
-                  disabled={invited[f.id]}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs ${
-                    invited[f.id]
-                      ? "bg-emerald-500 text-zinc-950 font-black"
-                      : "bg-amber-500 hover:bg-amber-400 text-zinc-950"
-                  }`}
-                >
-                  <Swords className="w-3.5 h-3.5" />
-                  <span>{invited[f.id] ? "Invited!" : "Challenge"}</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </AppLayout>
   );

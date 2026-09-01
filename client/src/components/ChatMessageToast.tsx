@@ -55,6 +55,8 @@ export default function ChatMessageToast({
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       className="fixed z-50 pointer-events-none"
       style={{
         bottom: "max(1rem, env(safe-area-inset-bottom))",
@@ -72,7 +74,7 @@ export default function ChatMessageToast({
           boxShadow:
             "0 18px 30px -10px rgba(0,0,0,0.55), 0 0 0 1px rgba(234,90,31,0.18) inset",
         }}
-        aria-label={`New message from ${visible.playerName}`}
+        aria-label={`New message from ${visible.playerName}: ${visible.text}. Tap to dismiss.`}
       >
         <span
           className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-extrabold"

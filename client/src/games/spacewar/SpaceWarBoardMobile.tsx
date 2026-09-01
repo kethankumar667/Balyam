@@ -204,7 +204,7 @@ export default function SpaceWarBoardMobile({
   const hasSpecialCharges = specialCount > 0;
 
   return (
-    <div className="w-full h-full min-h-[calc(100vh-64px)] flex flex-col items-center justify-between bg-[#060810] text-[#00f0ff] p-1.5 sm:p-2.5 select-none touch-none overflow-hidden font-sans">
+    <div className="w-full h-full min-h-[calc(100dvh-64px)] flex flex-col items-center justify-between bg-[#060810] text-[#00f0ff] p-1.5 sm:p-2.5 select-none touch-none overflow-hidden font-sans">
       
       {/* CYBER ARCADE HANDHELD CONSOLE SHELL */}
       <div className="w-full max-w-[460px] h-full flex-1 flex flex-col justify-between items-center bg-gradient-to-b from-[#141728] via-[#1a1d33] to-[#0f1120] border-2 border-[#00f0ff]/30 rounded-3xl p-2.5 sm:p-3 shadow-[0_0_30px_rgba(0,240,255,0.15)] gap-2 overflow-hidden">

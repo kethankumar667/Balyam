@@ -1,6 +1,7 @@
 import React from "react";
 import type { StrikerSkin, BoardFeltSkin } from "@shared/types";
 import { BOARD_SKINS, STRIKER_SKINS } from "./carrom-shared";
+import Modal from "../../components/Modal";
 
 export interface CarromSkinModalProps {
   open: boolean;
@@ -19,24 +20,27 @@ export default function CarromSkinModal({
   onSelectStriker,
   onSelectFelt,
 }: CarromSkinModalProps) {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in select-none">
-      <div className="w-full max-w-lg rounded-3xl bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 border border-amber-500/30 shadow-2xl p-6 flex flex-col gap-6 text-stone-100">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
-          <h2 className="text-lg font-black text-amber-400 uppercase tracking-wide flex items-center gap-2">
-            🎨 Custom Skins & Themes
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-stone-300 font-bold flex items-center justify-center transition cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
+    <Modal
+      open={open}
+      onClose={onClose}
+      ariaLabel="Custom Skins & Themes"
+      panelClassName="w-full max-w-lg rounded-3xl bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 border border-amber-500/30 shadow-2xl p-6 flex flex-col gap-6 text-stone-100 select-none"
+    >
+      {/* Modal Header */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <h2 className="text-lg font-black text-amber-400 uppercase tracking-wide flex items-center gap-2">
+          🎨 Custom Skins & Themes
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none text-stone-300 font-bold flex items-center justify-center transition cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
 
         {/* Striker Skin Selector */}
         <div className="space-y-3">
@@ -122,7 +126,6 @@ export default function CarromSkinModal({
         >
           Apply & Return to Game
         </button>
-      </div>
-    </div>
+    </Modal>
   );
 }

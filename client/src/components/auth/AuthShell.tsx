@@ -31,13 +31,21 @@ export default function AuthShell({
   return (
     <div className="auth-page-shell h-screen max-h-[100dvh] w-full font-sans text-[#5C3717] flex flex-col justify-between overflow-hidden relative bg-[#FAE6CA]">
       {/* Background Image Layer: Hidden on mobile, 40% of screen on desktop */}
-      <div
-        className={`absolute inset-y-0 left-0 hidden lg:block lg:w-[40%] bg-cover bg-[position:15%_center] bg-no-repeat pointer-events-none z-0 lg:border-r lg:border-[#E6D4B5]/50 ${
-          isLogin
-            ? "bg-[url('/LoginBG.png')]"
-            : "bg-[url('/SignupBG.png')]"
-        }`}
-      />
+      <div className="absolute inset-y-0 left-0 hidden lg:block lg:w-[40%] pointer-events-none z-0 lg:border-r lg:border-[#E6D4B5]/50 overflow-hidden">
+        <picture className="w-full h-full">
+          <source type="image/avif" srcSet={isLogin ? "/LoginBG.avif" : "/SignupBG.avif"} />
+          <source type="image/webp" srcSet={isLogin ? "/LoginBG.webp" : "/SignupBG.webp"} />
+          <img
+            src={isLogin ? "/LoginBG.png" : "/SignupBG.png"}
+            alt="Bhalyam Authentication Artwork"
+            width={720}
+            height={1080}
+            loading="eager"
+            decoding="async"
+            className="w-full h-full object-cover object-[15%_center]"
+          />
+        </picture>
+      </div>
 
       {/* Decorative SVG Doodles Background Layer */}
       <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-25">
@@ -70,11 +78,19 @@ export default function AuthShell({
           ) : null}
 
           <Link to="/" className="flex items-center gap-2.5 group">
-            <img
-              src="/FooterBhalyamlogo.png"
-              alt="BHALYAM - Play Together. Remember Forever."
-              className="h-10 sm:h-12 w-auto object-contain transition-transform group-hover:scale-105"
-            />
+            <picture>
+              <source type="image/avif" srcSet="/FooterBhalyamlogo.avif" />
+              <source type="image/webp" srcSet="/FooterBhalyamlogo.webp" />
+              <img
+                src="/FooterBhalyamlogo.png"
+                alt="BHALYAM - Play Together. Remember Forever."
+                width={48}
+                height={48}
+                loading="eager"
+                decoding="async"
+                className="h-10 sm:h-12 w-auto object-contain transition-transform group-hover:scale-105"
+              />
+            </picture>
           </Link>
         </div>
 

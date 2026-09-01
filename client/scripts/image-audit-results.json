@@ -1,0 +1,1551 @@
+[
+  {
+    "path": "bhalyam-hero.png",
+    "sizeBytes": 9224595,
+    "sizeKB": 9008.4,
+    "sizeMB": 8.8,
+    "width": 2752,
+    "height": 1536,
+    "format": "png",
+    "usages": [
+      "pages/home/Hero.tsx"
+    ]
+  },
+  {
+    "path": "hopscotch.png",
+    "sizeBytes": 9120978,
+    "sizeKB": 8907.2,
+    "sizeMB": 8.7,
+    "width": 3516,
+    "height": 1184,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/ChatGPT Image Jul 10, 2026, 08_26_26 AM.png",
+    "sizeBytes": 2969158,
+    "sizeKB": 2899.6,
+    "sizeMB": 2.83,
+    "width": 1024,
+    "height": 1536,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "SignuppageBG.png",
+    "sizeBytes": 2942248,
+    "sizeKB": 2873.3,
+    "sizeMB": 2.81,
+    "width": 1122,
+    "height": 1402,
+    "format": "png",
+    "usages": [
+      "pages/auth/LoginPage.tsx"
+    ]
+  },
+  {
+    "path": "gangoffriends.png",
+    "sizeBytes": 2828855,
+    "sizeKB": 2762.6,
+    "sizeMB": 2.7,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "pages/SettingsPage.tsx"
+    ]
+  },
+  {
+    "path": "StarTile.png",
+    "sizeBytes": 2792312,
+    "sizeKB": 2726.9,
+    "sizeMB": 2.66,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts",
+      "seo/structuredData.ts"
+    ]
+  },
+  {
+    "path": "illustrations/Handcricket/worldcup.png",
+    "sizeBytes": 2756982,
+    "sizeKB": 2692.4,
+    "sizeMB": 2.63,
+    "width": 1024,
+    "height": 1536,
+    "format": "png",
+    "usages": [
+      "games/handcricket/hc-notebook.tsx"
+    ]
+  },
+  {
+    "path": "bhalyam-hero-clean.png",
+    "sizeBytes": 2756471,
+    "sizeKB": 2691.9,
+    "sizeMB": 2.63,
+    "width": 1448,
+    "height": 1086,
+    "format": "png",
+    "usages": [
+      "pages/home/Hero.tsx",
+      "pages/NotFound.tsx"
+    ]
+  },
+  {
+    "path": "RummyTile.png",
+    "sizeBytes": 2745079,
+    "sizeKB": 2680.7,
+    "sizeMB": 2.62,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts",
+      "seo/structuredData.ts"
+    ]
+  },
+  {
+    "path": "Founder.png",
+    "sizeBytes": 2680900,
+    "sizeKB": 2618.1,
+    "sizeMB": 2.56,
+    "width": 1254,
+    "height": 1254,
+    "format": "png",
+    "usages": [
+      "pages/AboutPage.tsx"
+    ]
+  },
+  {
+    "path": "LoginPageBg.png",
+    "sizeBytes": 2570868,
+    "sizeKB": 2510.6,
+    "sizeMB": 2.45,
+    "width": 1086,
+    "height": 1448,
+    "format": "png",
+    "usages": [
+      "pages/auth/SignUpPage.tsx"
+    ]
+  },
+  {
+    "path": "illustrations/Home Hero.png",
+    "sizeBytes": 2535401,
+    "sizeKB": 2476,
+    "sizeMB": 2.42,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "LoginBG.png",
+    "sizeBytes": 2534188,
+    "sizeKB": 2474.8,
+    "sizeMB": 2.42,
+    "width": 1625,
+    "height": 968,
+    "format": "png",
+    "usages": [
+      "components/auth/AuthShell.tsx"
+    ]
+  },
+  {
+    "path": "SignupBG.png",
+    "sizeBytes": 2534188,
+    "sizeKB": 2474.8,
+    "sizeMB": 2.42,
+    "width": 1625,
+    "height": 968,
+    "format": "png",
+    "usages": [
+      "components/auth/AuthShell.tsx"
+    ]
+  },
+  {
+    "path": "illustrations/ChatGPT Image Jul 10, 2026, 08_26_48 AM.png",
+    "sizeBytes": 2469234,
+    "sizeKB": 2411.4,
+    "sizeMB": 2.35,
+    "width": 1378,
+    "height": 1142,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "Bingo Tile.png",
+    "sizeBytes": 2388083,
+    "sizeKB": 2332.1,
+    "sizeMB": 2.28,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts",
+      "seo/structuredData.ts"
+    ]
+  },
+  {
+    "path": "bhalyam-dark-hero.png",
+    "sizeBytes": 2381044,
+    "sizeKB": 2325.2,
+    "sizeMB": 2.27,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "pages/home/Hero.tsx"
+    ]
+  },
+  {
+    "path": "Roadrash Game Tile.png",
+    "sizeBytes": 2336506,
+    "sizeKB": 2281.7,
+    "sizeMB": 2.23,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/ChatGPT Image Jul 10, 2026, 08_26_37 AM.png",
+    "sizeBytes": 2285857,
+    "sizeKB": 2232.3,
+    "sizeMB": 2.18,
+    "width": 1122,
+    "height": 1402,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "Frogger Game Tile.png",
+    "sizeBytes": 2243195,
+    "sizeKB": 2190.6,
+    "sizeMB": 2.14,
+    "width": 1230,
+    "height": 1278,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/ChatGPT Image Jul 10, 2026, 08_26_43 AM.png",
+    "sizeBytes": 2242390,
+    "sizeKB": 2189.8,
+    "sizeMB": 2.14,
+    "width": 1024,
+    "height": 1536,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Room Creation Corner Doodle.png",
+    "sizeBytes": 2237174,
+    "sizeKB": 2184.7,
+    "sizeMB": 2.13,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Connecting Screen Spinner.png",
+    "sizeBytes": 2224650,
+    "sizeKB": 2172.5,
+    "sizeMB": 2.12,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Name Entry Background Vignette.png",
+    "sizeBytes": 2187161,
+    "sizeKB": 2135.9,
+    "sizeMB": 2.09,
+    "width": 1024,
+    "height": 1536,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "images/nostalgia/sunday-afternoon.png",
+    "sizeBytes": 2174221,
+    "sizeKB": 2123.3,
+    "sizeMB": 2.07,
+    "width": 1254,
+    "height": 1254,
+    "format": "png",
+    "usages": [
+      "components/bhalyam/WhatAreWePlayingSection.tsx"
+    ]
+  },
+  {
+    "path": "illustrations/ChatGPT Image Jul 10, 2026, 08_26_55 AM.png",
+    "sizeBytes": 2162597,
+    "sizeKB": 2111.9,
+    "sizeMB": 2.06,
+    "width": 1122,
+    "height": 1402,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "BrickBreakout Game Tile.png",
+    "sizeBytes": 2135794,
+    "sizeKB": 2085.7,
+    "sizeMB": 2.04,
+    "width": 1233,
+    "height": 1275,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "Foundersectionasset.png",
+    "sizeBytes": 2104546,
+    "sizeKB": 2055.2,
+    "sizeMB": 2.01,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "pages/AboutPage.tsx",
+      "pages/auth/LoginPage.tsx"
+    ]
+  },
+  {
+    "path": "Carrom Game Tile.png",
+    "sizeBytes": 2052452,
+    "sizeKB": 2004.3,
+    "sizeMB": 1.96,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "SpacewarTile.png",
+    "sizeBytes": 1976160,
+    "sizeKB": 1929.8,
+    "sizeMB": 1.88,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "UNO Mobile BG.png",
+    "sizeBytes": 1938500,
+    "sizeKB": 1893.1,
+    "sizeMB": 1.85,
+    "width": 1774,
+    "height": 887,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "BrickRacer Game Tile.png",
+    "sizeBytes": 1897861,
+    "sizeKB": 1853.4,
+    "sizeMB": 1.81,
+    "width": 1295,
+    "height": 1214,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "illustrations/Rummy.png",
+    "sizeBytes": 1785827,
+    "sizeKB": 1744,
+    "sizeMB": 1.7,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "Chess Game Tile.png",
+    "sizeBytes": 1749846,
+    "sizeKB": 1708.8,
+    "sizeMB": 1.67,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "RetroCricket Game Tile.png",
+    "sizeBytes": 1733647,
+    "sizeKB": 1693,
+    "sizeMB": 1.65,
+    "width": 1264,
+    "height": 1244,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "BlockBlast Game Tile.png",
+    "sizeBytes": 1706514,
+    "sizeKB": 1666.5,
+    "sizeMB": 1.63,
+    "width": 1254,
+    "height": 1254,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "FooterBhalyamlogo.png",
+    "sizeBytes": 1701813,
+    "sizeKB": 1661.9,
+    "sizeMB": 1.62,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "components/auth/AuthShell.tsx",
+      "pages/auth/LoginPage.tsx",
+      "pages/auth/SignUpPage.tsx"
+    ]
+  },
+  {
+    "path": "Snake Game Tile.png",
+    "sizeBytes": 1660189,
+    "sizeKB": 1621.3,
+    "sizeMB": 1.58,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "Bounce Game Tile.png",
+    "sizeBytes": 1598789,
+    "sizeKB": 1561.3,
+    "sizeMB": 1.52,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "FooterBootom.png",
+    "sizeBytes": 1552131,
+    "sizeKB": 1515.8,
+    "sizeMB": 1.48,
+    "width": 2135,
+    "height": 736,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Cricket bat and ball doodle.png",
+    "sizeBytes": 1518620,
+    "sizeKB": 1483,
+    "sizeMB": 1.45,
+    "width": 1254,
+    "height": 1254,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Games Catalog Shelf.png",
+    "sizeBytes": 1437594,
+    "sizeKB": 1403.9,
+    "sizeMB": 1.37,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Rock Paper Scissor.png",
+    "sizeBytes": 1341349,
+    "sizeKB": 1309.9,
+    "sizeMB": 1.28,
+    "width": 1254,
+    "height": 1254,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Rolling dice and game pawns.png",
+    "sizeBytes": 1308517,
+    "sizeKB": 1277.8,
+    "sizeMB": 1.25,
+    "width": 1254,
+    "height": 1254,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "creator_boy_photo.jpg",
+    "sizeBytes": 1111949,
+    "sizeKB": 1085.9,
+    "sizeMB": 1.06,
+    "width": 1024,
+    "height": 1024,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "about_carrom_kids.jpg",
+    "sizeBytes": 1103512,
+    "sizeKB": 1077.6,
+    "sizeMB": 1.05,
+    "width": 1200,
+    "height": 896,
+    "format": "jpeg",
+    "usages": [
+      "pages/AboutPage.tsx"
+    ]
+  },
+  {
+    "path": "images/nostalgia/gang-reunion.jpg",
+    "sizeBytes": 1083716,
+    "sizeKB": 1058.3,
+    "sizeMB": 1.03,
+    "width": 1376,
+    "height": 768,
+    "format": "jpeg",
+    "usages": [
+      "components/bhalyam/WhatAreWePlayingSection.tsx"
+    ]
+  },
+  {
+    "path": "illustrations/StarGame/stargame-room.png",
+    "sizeBytes": 693061,
+    "sizeKB": 676.8,
+    "sizeMB": 0.66,
+    "width": 1536,
+    "height": 1024,
+    "format": "png",
+    "usages": [
+      "games/stargame/star-shared.tsx"
+    ]
+  },
+  {
+    "path": "about-page-preview.png",
+    "sizeBytes": 489386,
+    "sizeKB": 477.9,
+    "sizeMB": 0.47,
+    "width": 1440,
+    "height": 1200,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "Bhalyam-logo.png",
+    "sizeBytes": 484656,
+    "sizeKB": 473.3,
+    "sizeMB": 0.46,
+    "width": 500,
+    "height": 500,
+    "format": "png",
+    "usages": [
+      "components/bhalyam/BhalyamLogo.tsx",
+      "seo/metadata.ts",
+      "seo/__tests__/seoMetadata.test.ts"
+    ]
+  },
+  {
+    "path": "images/nostalgia/friends-adda.jpg",
+    "sizeBytes": 423621,
+    "sizeKB": 413.7,
+    "sizeMB": 0.4,
+    "width": 880,
+    "height": 880,
+    "format": "jpeg",
+    "usages": [
+      "components/bhalyam/WhatAreWePlayingSection.tsx"
+    ]
+  },
+  {
+    "path": "SamethaluTile.png",
+    "sizeBytes": 416066,
+    "sizeKB": 406.3,
+    "sizeMB": 0.4,
+    "width": 612,
+    "height": 408,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "UNOTile.png",
+    "sizeBytes": 405714,
+    "sizeKB": 396.2,
+    "sizeMB": 0.39,
+    "width": 500,
+    "height": 500,
+    "format": "png",
+    "usages": [
+      "components/bhalyam/FavouritesSection.tsx",
+      "components/bhalyam/RecentlyPlayedSection.tsx",
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts",
+      "seo/structuredData.ts"
+    ]
+  },
+  {
+    "path": "images/nostalgia/share-code-icon.jpg",
+    "sizeBytes": 382546,
+    "sizeKB": 373.6,
+    "sizeMB": 0.36,
+    "width": 499,
+    "height": 499,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "images/nostalgia/share-code-icon.png",
+    "sizeBytes": 382546,
+    "sizeKB": 373.6,
+    "sizeMB": 0.36,
+    "width": 499,
+    "height": 499,
+    "format": "png",
+    "usages": [
+      "components/bhalyam/WhatAreWePlayingSection.tsx"
+    ]
+  },
+  {
+    "path": "images/nostalgia/create-room-icon.jpg",
+    "sizeBytes": 349236,
+    "sizeKB": 341.1,
+    "sizeMB": 0.33,
+    "width": 499,
+    "height": 499,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "images/nostalgia/create-room-icon.png",
+    "sizeBytes": 349236,
+    "sizeKB": 341.1,
+    "sizeMB": 0.33,
+    "width": 499,
+    "height": 499,
+    "format": "png",
+    "usages": [
+      "components/bhalyam/WhatAreWePlayingSection.tsx"
+    ]
+  },
+  {
+    "path": "images/nostalgia/school-break.jpg",
+    "sizeBytes": 347019,
+    "sizeKB": 338.9,
+    "sizeMB": 0.33,
+    "width": 860,
+    "height": 860,
+    "format": "jpeg",
+    "usages": [
+      "components/bhalyam/WhatAreWePlayingSection.tsx"
+    ]
+  },
+  {
+    "path": "UNO Desktop BG.webp",
+    "sizeBytes": 333620,
+    "sizeKB": 325.8,
+    "sizeMB": 0.32,
+    "width": 3840,
+    "height": 2160,
+    "format": "webp",
+    "usages": []
+  },
+  {
+    "path": "telugu cinemalu.png",
+    "sizeBytes": 326888,
+    "sizeKB": 319.2,
+    "sizeMB": 0.31,
+    "width": 612,
+    "height": 408,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "LudoTile.png",
+    "sizeBytes": 324650,
+    "sizeKB": 317,
+    "sizeMB": 0.31,
+    "width": 500,
+    "height": 500,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts",
+      "seo/structuredData.ts"
+    ]
+  },
+  {
+    "path": "illustrations/Handcricket/Boy_cheering.png",
+    "sizeBytes": 289468,
+    "sizeKB": 282.7,
+    "sizeMB": 0.28,
+    "width": 500,
+    "height": 499,
+    "format": "png",
+    "usages": [
+      "games/handcricket/hc-notebook.tsx"
+    ]
+  },
+  {
+    "path": "Tambola.png",
+    "sizeBytes": 276182,
+    "sizeKB": 269.7,
+    "sizeMB": 0.26,
+    "width": 612,
+    "height": 408,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "illustrations/Handcricket/Champions_cup.png",
+    "sizeBytes": 254390,
+    "sizeKB": 248.4,
+    "sizeMB": 0.24,
+    "width": 502,
+    "height": 468,
+    "format": "png",
+    "usages": [
+      "games/handcricket/hc-notebook.tsx"
+    ]
+  },
+  {
+    "path": "images/nostalgia/rainy-evening.jpg",
+    "sizeBytes": 248712,
+    "sizeKB": 242.9,
+    "sizeMB": 0.24,
+    "width": 811,
+    "height": 804,
+    "format": "jpeg",
+    "usages": [
+      "components/bhalyam/WhatAreWePlayingSection.tsx"
+    ]
+  },
+  {
+    "path": "illustrations/Handcricket/stumps.png",
+    "sizeBytes": 240188,
+    "sizeKB": 234.6,
+    "sizeMB": 0.23,
+    "width": 357,
+    "height": 698,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Handcricket/stadium.png",
+    "sizeBytes": 231130,
+    "sizeKB": 225.7,
+    "sizeMB": 0.22,
+    "width": 640,
+    "height": 390,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "S&LTile.png",
+    "sizeBytes": 229832,
+    "sizeKB": 224.4,
+    "sizeMB": 0.22,
+    "width": 612,
+    "height": 408,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts",
+      "seo/structuredData.ts"
+    ]
+  },
+  {
+    "path": "Name-place-thing-animal.png",
+    "sizeBytes": 220677,
+    "sizeKB": 215.5,
+    "sizeMB": 0.21,
+    "width": 612,
+    "height": 408,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "illustrations/Handcricket/Cricket_Helmet.png",
+    "sizeBytes": 211827,
+    "sizeKB": 206.9,
+    "sizeMB": 0.2,
+    "width": 467,
+    "height": 411,
+    "format": "png",
+    "usages": [
+      "games/handcricket/hc-notebook.tsx"
+    ]
+  },
+  {
+    "path": "RPSTile.png",
+    "sizeBytes": 204647,
+    "sizeKB": 199.9,
+    "sizeMB": 0.2,
+    "width": 612,
+    "height": 408,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts",
+      "seo/structuredData.ts"
+    ]
+  },
+  {
+    "path": "illustrations/Handcricket/Gloves.png",
+    "sizeBytes": 191638,
+    "sizeKB": 187.1,
+    "sizeMB": 0.18,
+    "width": 407,
+    "height": 366,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_12.jpg",
+    "sizeBytes": 185062,
+    "sizeKB": 180.7,
+    "sizeMB": 0.18,
+    "width": 291,
+    "height": 444,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_9.jpg",
+    "sizeBytes": 183644,
+    "sizeKB": 179.3,
+    "sizeMB": 0.18,
+    "width": 309,
+    "height": 416,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_8.jpg",
+    "sizeBytes": 181836,
+    "sizeKB": 177.6,
+    "sizeMB": 0.17,
+    "width": 285,
+    "height": 446,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_1.jpg",
+    "sizeBytes": 175280,
+    "sizeKB": 171.2,
+    "sizeMB": 0.17,
+    "width": 283,
+    "height": 419,
+    "format": "jpeg",
+    "usages": [
+      "pages/auth/SignUpPage.tsx"
+    ]
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_11.jpg",
+    "sizeBytes": 172580,
+    "sizeKB": 168.5,
+    "sizeMB": 0.16,
+    "width": 307,
+    "height": 445,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_4.jpg",
+    "sizeBytes": 172356,
+    "sizeKB": 168.3,
+    "sizeMB": 0.16,
+    "width": 308,
+    "height": 421,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_2.jpg",
+    "sizeBytes": 169941,
+    "sizeKB": 166,
+    "sizeMB": 0.16,
+    "width": 296,
+    "height": 420,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Handcricket/pads.png",
+    "sizeBytes": 166199,
+    "sizeKB": 162.3,
+    "sizeMB": 0.16,
+    "width": 422,
+    "height": 346,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "images/nostalgia/temp-school-break.jpg",
+    "sizeBytes": 162791,
+    "sizeKB": 159,
+    "sizeMB": 0.16,
+    "width": 860,
+    "height": 860,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_10.jpg",
+    "sizeBytes": 161843,
+    "sizeKB": 158,
+    "sizeMB": 0.15,
+    "width": 303,
+    "height": 445,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Handcricket/cricket_ball.png",
+    "sizeBytes": 160919,
+    "sizeKB": 157.1,
+    "sizeMB": 0.15,
+    "width": 450,
+    "height": 398,
+    "format": "png",
+    "usages": [
+      "games/handcricket/hc-notebook.tsx"
+    ]
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_11.jpg",
+    "sizeBytes": 160575,
+    "sizeKB": 156.8,
+    "sizeMB": 0.15,
+    "width": 306,
+    "height": 401,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_7.jpg",
+    "sizeBytes": 157869,
+    "sizeKB": 154.2,
+    "sizeMB": 0.15,
+    "width": 286,
+    "height": 434,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_3.jpg",
+    "sizeBytes": 157284,
+    "sizeKB": 153.6,
+    "sizeMB": 0.15,
+    "width": 296,
+    "height": 419,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_8.jpg",
+    "sizeBytes": 151912,
+    "sizeKB": 148.4,
+    "sizeMB": 0.14,
+    "width": 293,
+    "height": 402,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_2.jpg",
+    "sizeBytes": 150729,
+    "sizeKB": 147.2,
+    "sizeMB": 0.14,
+    "width": 290,
+    "height": 394,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_9.jpg",
+    "sizeBytes": 150338,
+    "sizeKB": 146.8,
+    "sizeMB": 0.14,
+    "width": 295,
+    "height": 402,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "HandCricketTile.png",
+    "sizeBytes": 149987,
+    "sizeKB": 146.5,
+    "sizeMB": 0.14,
+    "width": 612,
+    "height": 408,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts"
+    ]
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_5.jpg",
+    "sizeBytes": 149393,
+    "sizeKB": 145.9,
+    "sizeMB": 0.14,
+    "width": 305,
+    "height": 425,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_10.jpg",
+    "sizeBytes": 146207,
+    "sizeKB": 142.8,
+    "sizeMB": 0.14,
+    "width": 290,
+    "height": 401,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_4.jpg",
+    "sizeBytes": 144512,
+    "sizeKB": 141.1,
+    "sizeMB": 0.14,
+    "width": 290,
+    "height": 392,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_1.jpg",
+    "sizeBytes": 143158,
+    "sizeKB": 139.8,
+    "sizeMB": 0.14,
+    "width": 287,
+    "height": 395,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Handcricket/clouds.png",
+    "sizeBytes": 142183,
+    "sizeKB": 138.9,
+    "sizeMB": 0.14,
+    "width": 620,
+    "height": 402,
+    "format": "png",
+    "usages": [
+      "games/handcricket/hc-notebook.tsx"
+    ]
+  },
+  {
+    "path": "Avatars/file_0000000094008208a20f77270605d0d5_3.jpg",
+    "sizeBytes": 139159,
+    "sizeKB": 135.9,
+    "sizeMB": 0.13,
+    "width": 298,
+    "height": 396,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_8.jpg",
+    "sizeBytes": 134909,
+    "sizeKB": 131.7,
+    "sizeMB": 0.13,
+    "width": 307,
+    "height": 346,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_0000000084c48208b1f893419d784cf2_5.jpg",
+    "sizeBytes": 133674,
+    "sizeKB": 130.5,
+    "sizeMB": 0.13,
+    "width": 286,
+    "height": 418,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_2.jpg",
+    "sizeBytes": 131896,
+    "sizeKB": 128.8,
+    "sizeMB": 0.13,
+    "width": 307,
+    "height": 336,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_4.jpg",
+    "sizeBytes": 131527,
+    "sizeKB": 128.4,
+    "sizeMB": 0.13,
+    "width": 310,
+    "height": 337,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_9.jpg",
+    "sizeBytes": 131363,
+    "sizeKB": 128.3,
+    "sizeMB": 0.13,
+    "width": 297,
+    "height": 344,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Dots&boxes.png",
+    "sizeBytes": 129981,
+    "sizeKB": 126.9,
+    "sizeMB": 0.12,
+    "width": 612,
+    "height": 408,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts",
+      "seo/structuredData.ts"
+    ]
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_3.jpg",
+    "sizeBytes": 126917,
+    "sizeKB": 123.9,
+    "sizeMB": 0.12,
+    "width": 307,
+    "height": 336,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "retroradio.png",
+    "sizeBytes": 126643,
+    "sizeKB": 123.7,
+    "sizeMB": 0.12,
+    "width": 746,
+    "height": 335,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_7.jpg",
+    "sizeBytes": 126113,
+    "sizeKB": 123.2,
+    "sizeMB": 0.12,
+    "width": 301,
+    "height": 349,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_6.jpg",
+    "sizeBytes": 125724,
+    "sizeKB": 122.8,
+    "sizeMB": 0.12,
+    "width": 290,
+    "height": 353,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_10.jpg",
+    "sizeBytes": 120341,
+    "sizeKB": 117.5,
+    "sizeMB": 0.11,
+    "width": 304,
+    "height": 343,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_1.jpg",
+    "sizeBytes": 115516,
+    "sizeKB": 112.8,
+    "sizeMB": 0.11,
+    "width": 281,
+    "height": 334,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000b39c8211b590a4382a7e3fc3_5.jpg",
+    "sizeBytes": 115469,
+    "sizeKB": 112.8,
+    "sizeMB": 0.11,
+    "width": 296,
+    "height": 337,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "school bag.png",
+    "sizeBytes": 107718,
+    "sizeKB": 105.2,
+    "sizeMB": 0.1,
+    "width": 746,
+    "height": 335,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "instagram.png",
+    "sizeBytes": 105703,
+    "sizeKB": 103.2,
+    "sizeMB": 0.1,
+    "width": 746,
+    "height": 334,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "illustrations/Handcricket/CricketBat.png",
+    "sizeBytes": 99718,
+    "sizeKB": 97.4,
+    "sizeMB": 0.1,
+    "width": 473,
+    "height": 527,
+    "format": "png",
+    "usages": [
+      "games/handcricket/hc-notebook.tsx"
+    ]
+  },
+  {
+    "path": "illustrations/Handcricket/stars.png",
+    "sizeBytes": 95195,
+    "sizeKB": 93,
+    "sizeMB": 0.09,
+    "width": 490,
+    "height": 402,
+    "format": "png",
+    "usages": [
+      "games/handcricket/hc-notebook.tsx"
+    ]
+  },
+  {
+    "path": "words_building.png",
+    "sizeBytes": 93486,
+    "sizeKB": 91.3,
+    "sizeMB": 0.09,
+    "width": 612,
+    "height": 408,
+    "format": "png",
+    "usages": [
+      "components/games/GameCard.tsx",
+      "pages/home/gameArt.ts",
+      "seo/structuredData.ts"
+    ]
+  },
+  {
+    "path": "booksbottle.png",
+    "sizeBytes": 88894,
+    "sizeKB": 86.8,
+    "sizeMB": 0.08,
+    "width": 746,
+    "height": 334,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "safety shield.png",
+    "sizeBytes": 84624,
+    "sizeKB": 82.6,
+    "sizeMB": 0.08,
+    "width": 746,
+    "height": 335,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "whatsapp.png",
+    "sizeBytes": 79621,
+    "sizeKB": 77.8,
+    "sizeMB": 0.08,
+    "width": 746,
+    "height": 334,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "paperplane.png",
+    "sizeBytes": 74738,
+    "sizeKB": 73,
+    "sizeMB": 0.07,
+    "width": 746,
+    "height": 334,
+    "format": "png",
+    "usages": [
+      "pages/NotFound.tsx"
+    ]
+  },
+  {
+    "path": "dark&Light.png",
+    "sizeBytes": 61842,
+    "sizeKB": 60.4,
+    "sizeMB": 0.06,
+    "width": 746,
+    "height": 334,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "mobile.png",
+    "sizeBytes": 59710,
+    "sizeKB": 58.3,
+    "sizeMB": 0.06,
+    "width": 746,
+    "height": 335,
+    "format": "png",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_9.jpg",
+    "sizeBytes": 59024,
+    "sizeKB": 57.6,
+    "sizeMB": 0.06,
+    "width": 204,
+    "height": 194,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_3.jpg",
+    "sizeBytes": 57936,
+    "sizeKB": 56.6,
+    "sizeMB": 0.06,
+    "width": 205,
+    "height": 207,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_8.jpg",
+    "sizeBytes": 57744,
+    "sizeKB": 56.4,
+    "sizeMB": 0.06,
+    "width": 203,
+    "height": 193,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_2.jpg",
+    "sizeBytes": 57340,
+    "sizeKB": 56,
+    "sizeMB": 0.05,
+    "width": 201,
+    "height": 192,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_4.jpg",
+    "sizeBytes": 56235,
+    "sizeKB": 54.9,
+    "sizeMB": 0.05,
+    "width": 206,
+    "height": 195,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_1.jpg",
+    "sizeBytes": 56063,
+    "sizeKB": 54.7,
+    "sizeMB": 0.05,
+    "width": 203,
+    "height": 194,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_5.jpg",
+    "sizeBytes": 55940,
+    "sizeKB": 54.6,
+    "sizeMB": 0.05,
+    "width": 201,
+    "height": 193,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_14.jpg",
+    "sizeBytes": 55061,
+    "sizeKB": 53.8,
+    "sizeMB": 0.05,
+    "width": 200,
+    "height": 184,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_6.jpg",
+    "sizeBytes": 54761,
+    "sizeKB": 53.5,
+    "sizeMB": 0.05,
+    "width": 201,
+    "height": 194,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_7.jpg",
+    "sizeBytes": 54135,
+    "sizeKB": 52.9,
+    "sizeMB": 0.05,
+    "width": 201,
+    "height": 193,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_10.jpg",
+    "sizeBytes": 53962,
+    "sizeKB": 52.7,
+    "sizeMB": 0.05,
+    "width": 200,
+    "height": 195,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_15.jpg",
+    "sizeBytes": 52591,
+    "sizeKB": 51.4,
+    "sizeMB": 0.05,
+    "width": 200,
+    "height": 190,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_13.jpg",
+    "sizeBytes": 51990,
+    "sizeKB": 50.8,
+    "sizeMB": 0.05,
+    "width": 203,
+    "height": 182,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_12.jpg",
+    "sizeBytes": 51519,
+    "sizeKB": 50.3,
+    "sizeMB": 0.05,
+    "width": 198,
+    "height": 192,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_11.jpg",
+    "sizeBytes": 51320,
+    "sizeKB": 50.1,
+    "sizeMB": 0.05,
+    "width": 200,
+    "height": 193,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_19.jpg",
+    "sizeBytes": 50743,
+    "sizeKB": 49.6,
+    "sizeMB": 0.05,
+    "width": 200,
+    "height": 178,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_16.jpg",
+    "sizeBytes": 49925,
+    "sizeKB": 48.8,
+    "sizeMB": 0.05,
+    "width": 200,
+    "height": 177,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_18.jpg",
+    "sizeBytes": 49411,
+    "sizeKB": 48.3,
+    "sizeMB": 0.05,
+    "width": 201,
+    "height": 177,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_17.jpg",
+    "sizeBytes": 49155,
+    "sizeKB": 48,
+    "sizeMB": 0.05,
+    "width": 198,
+    "height": 178,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "Avatars/file_00000000c1f48208810e59b5535e2d15_20.jpg",
+    "sizeBytes": 45926,
+    "sizeKB": 44.8,
+    "sizeMB": 0.04,
+    "width": 199,
+    "height": 176,
+    "format": "jpeg",
+    "usages": []
+  },
+  {
+    "path": "heart-beat.png",
+    "sizeBytes": 30357,
+    "sizeKB": 29.6,
+    "sizeMB": 0.03,
+    "width": 206,
+    "height": 233,
+    "format": "png",
+    "usages": []
+  }
+]

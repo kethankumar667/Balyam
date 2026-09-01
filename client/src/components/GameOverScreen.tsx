@@ -55,9 +55,11 @@ export default function GameOverScreen({
         onLeave();
       }
     }, 200);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deadlineMs]);
+  }, [deadlineMs, onLeave]);
 
   // Circular progress: full at 100 s → empty at 0 s
   const radius = 38;
@@ -66,6 +68,9 @@ export default function GameOverScreen({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="game-over-title"
       className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-4 overflow-y-auto py-6 px-4"
       style={{
         background:
@@ -86,7 +91,8 @@ export default function GameOverScreen({
 
       {/* Headline + game label */}
       <div className="text-center z-10">
-        <div
+        <h1
+          id="game-over-title"
           className="font-display font-black uppercase tracking-wide"
           style={{
             fontSize: "clamp(34px, 6.5vw, 80px)",
@@ -100,7 +106,7 @@ export default function GameOverScreen({
           }}
         >
           Game Over
-        </div>
+        </h1>
         {gameName && (
           <div
             className="mt-1 text-xs uppercase tracking-[0.25em] font-bold font-mono"

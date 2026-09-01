@@ -44,7 +44,6 @@ export default function GamesPage() {
   }
 
   useEffect(() => {
-    document.title = "All Games · BHALYAM";
     getSocket();
   }, []);
 
@@ -74,8 +73,6 @@ export default function GamesPage() {
 
   return (
     <>
-      <OfflineBanner />
-
       <div className="p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 w-full max-w-[1440px] mx-auto pb-24 min-w-0">
         {/* Page Header */}
         <header className="space-y-1.5 text-left w-full min-w-0">

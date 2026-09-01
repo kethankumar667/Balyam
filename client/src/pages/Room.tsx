@@ -23,7 +23,6 @@ import AppLayout from "../components/layout/AppLayout";
 import RummyRoomHistory from "../components/nostalgia/RummyRoomHistory";
 import RematchPanel from "../components/RematchPanel";
 import BoardPreviewPill from "../components/BoardPreviewPill";
-import GameOverScreen, { AUTO_LEAVE_MS } from "../components/GameOverScreen";
 import PassPhoneGate from "../components/PassPhoneGate";
 import VoicePanel from "../components/VoicePanel";
 import { destroyVoiceSession, useVoiceRoster } from "../lib/voice-session";
@@ -231,7 +230,7 @@ function BotControls({
     </div>
   );
 }
-/** Scorecard is shown for 90 s after a game ends; GameOverScreen follows. */
+/** Scorecard is shown for up to 90 s after a match ends; dismiss returns player to table/lobby. */
 const SCORECARD_WINDOW_MS = 90_000;
 /** Games that render their own end-of-round scorecard modal and call back
  *  via onScorecardClose. GenericScorecardModal is suppressed for these. */
@@ -344,20 +343,6 @@ export default function Room() {
   const joinInFlightRef = useRef(false);
 
   /**
-   * Live socket health, purely for the banner below.
-   *
-   * A dropped connection used to be completely silent: the board simply
-   * stopped responding, with nothing on screen to say whether the game had
-   * frozen, the phone was offline, or the app had crashed. The socket now
-   * retries forever (see lib/socket.ts), so the honest thing to show is that
-   * it is still trying.
-   */
-  const [linkDown, setLinkDown] = useState(false);
-  /** Reconnect attempts since the link dropped. Shown so a stuck client is
-   *  distinguishable from one that is trying and being refused. */
-  const [linkAttempts, setLinkAttempts] = useState(0);
-
-  /**
    * Confirm-before-leave for every in-game "Leave" affordance that is NOT
    * RoomHeader's own (lobby-only) button — RoomHeader owns its own confirm
    * modal internally and calls `leaveRoom` directly as its post-confirm
@@ -370,116 +355,84 @@ export default function Room() {
   const [showInGameLeaveModal, setShowInGameLeaveModal] = useState(false);
   const requestLeaveConfirmation = useCallback(() => setShowInGameLeaveModal(true), []);
 
+  const attemptJoin = useCallback((reason: "initial" | "reconnect"): void => {
+    if (!code || !playerName || mustDeclare) return;
+    if (joinInFlightRef.current) return;
+    joinInFlightRef.current = true;
+    const socket = getSocket();
+    if (!socket.connected) {
+      socket.connect();
+    }
+    const joinName = playerName;
+    const joinCode = code;
+    const seat = seatFor(joinCode);
+    logConn("rejoin_send", `${reason} code=${joinCode} hadSeat=${!!seat}`);
+    socket.emit(
+      "room:join",
+      {
+        name: joinName,
+        code: joinCode,
+        playerId: seat?.playerId,
+        seatToken: seat?.seatToken,
+        avatar: useRoomStore.getState().avatarId ?? undefined,
+        accountKind: currentAccountKind(),
+        accessToken: currentAccessToken(),
+        guestToken: currentGuestToken(),
+      },
+      (res) => {
+        joinInFlightRef.current = false;
+        logConn(
+          "rejoin_ack",
+          `${reason} ok=${res.ok}${res.ok ? "" : ` error=${res.error ?? "?"}`}`,
+        );
+        if (!res.ok) {
+          const msg =
+            res.error === "Room not found"
+              ? "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
+              : res.error ?? "Could not join room";
+          setError(msg);
+          reset();
+          clearActiveSession();
+          setTimeout(() => navigate("/"), 4000);
+          return;
+        }
+        if (res.playerId) {
+          setPlayerId(res.playerId);
+          recoveryManager.attachRoom(joinCode, res.playerId, res.seatToken, joinName, useRoomStore.getState().avatarId ?? undefined);
+        }
+        if (res.playerId && res.seatToken) {
+          rememberSeat(joinCode, res.playerId, res.seatToken);
+        }
+      }
+    );
+  }, [code, playerName, mustDeclare, seatFor, setPlayerId, rememberSeat, setError, reset, navigate]);
+
+  const handleRetryConnection = useCallback(() => {
+    joinInFlightRef.current = false;
+    attemptJoin("reconnect");
+  }, [attemptJoin]);
+
   useEffect(() => {
     if (!code) {
       navigate("/");
       return;
     }
-    // Anyone arriving via a shared link or a fresh browser has no playerName
-    // in their local store. We can NOT silently bounce them to home — they
-    // came here on purpose. Render a name-entry block instead (see early
-    // return below). They'll come back through this effect once they submit.
     if (!playerName) return;
-    // A guest who has not yet announced themselves at this table must not be
-    // seated by the effect behind the gate they are still looking at.
     if (mustDeclare) return;
     const socket = getSocket();
-    const joinName = playerName;
-    const joinCode = code;
-
-    function attemptJoin(reason: "initial" | "reconnect"): void {
-      // Drop overlapping joins until the first ack settles (or a disconnect
-      // clears the flag). Reads the live id off the ref so a reconnect that
-      // lands after the initial join resolved reclaims the seat instead of
-      // joining as a brand-new ghost.
-      if (joinInFlightRef.current) return;
-      joinInFlightRef.current = true;
-      // The credential for THIS room, not whatever id happens to be current.
-      // A seat token only reclaims the room it was issued for.
-      const seat = seatFor(joinCode);
-      logConn("rejoin_send", `${reason} code=${joinCode} hadSeat=${!!seat}`);
-      socket.emit(
-        "room:join",
-        {
-          name: joinName,
-          code: joinCode,
-          playerId: seat?.playerId,
-          seatToken: seat?.seatToken,
-          // Carried on the rejoin too: someone may have changed their avatar
-          // on another tab while this one was reconnecting.
-          avatar: useRoomStore.getState().avatarId ?? undefined,
-          // Read live for the same reason as the avatar above — a rejoin that
-          // lands after signing in should arrive as a member.
-          accountKind: currentAccountKind(),
-          accessToken: currentAccessToken(),
-          guestToken: currentGuestToken(),
-        },
-        (res) => {
-          joinInFlightRef.current = false;
-          // The decisive line: did the socket come back but the ROOM was
-          // gone? That is a completely different failure from never
-          // reconnecting, and the two are indistinguishable from the banner.
-          logConn(
-            "rejoin_ack",
-            `${reason} ok=${res.ok}${res.ok ? "" : ` error=${res.error ?? "?"}`}`,
-          );
-          if (!res.ok) {
-            // The room genuinely no longer exists on the server. This happens
-            // when: the server cold-started (Render free tier sleeps after
-            // 15min idle and wipes in-memory rooms), the host left and the
-            // 90s grace timer fired, or the player was kicked. There's no
-            // automatic recovery — they need a fresh code from a friend. We
-            // show a 4-second toast (used to be 1.6s, which was a confusing
-            // flash) so they actually have time to read the explanation
-            // before the redirect.
-            const msg =
-              res.error === "Room not found"
-                ? reason === "reconnect"
-                  ? "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
-                  : "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
-                : res.error ?? "Could not join room";
-            setError(msg);
-            reset();
-            // The room is confirmed gone (or this seat is), so a stored
-            // recovery session for it would only offer a Rejoin that fails
-            // again the same way. Clear it so the outside-of-room Rejoin
-            // banner stops surfacing a dead room.
-            clearActiveSession();
-            setTimeout(() => navigate("/"), 4000);
-            return;
-          }
-          if (res.playerId) {
-            setPlayerId(res.playerId);
-            recoveryManager.attachRoom(joinCode, res.playerId, res.seatToken, joinName, useRoomStore.getState().avatarId ?? undefined);
-          }
-          if (res.playerId && res.seatToken) {
-            rememberSeat(joinCode, res.playerId, res.seatToken);
-          }
-        }
-      );
-    }
 
     if (!roomState) attemptJoin("initial");
 
     const onConnect = () => {
-      setLinkDown(false);
-      setLinkAttempts(0);
       // Socket reconnect after a disconnect or server restart — re-attach to our room.
       attemptJoin("reconnect");
     };
     const onDisconnect = () => {
-      setLinkDown(true);
-      setLinkAttempts(0);
       // A drop abandons any in-flight join ack (socket.io won't call it), so
       // clear the guard here — otherwise the reconnect rejoin above is blocked
       // forever and the player is stranded on a dead seat.
       joinInFlightRef.current = false;
     };
-    // Count retries so the banner can say whether anything is happening.
-    // "Reconnecting" that never increments means the client gave up; one that
-    // climbs while nothing changes means the server is refusing or asleep.
-    const onAttempt = () => setLinkAttempts((n) => n + 1);
-    socket.io.on("reconnect_attempt", onAttempt);
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("room:state", setRoomState);
@@ -490,7 +443,6 @@ export default function Room() {
     socket.on("rematch:state", setRematch);
 
     return () => {
-      socket.io.off("reconnect_attempt", onAttempt);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("room:state", setRoomState);
@@ -830,65 +782,52 @@ export default function Room() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomState?.phase, roomState?.game]);
 
-  /* ─── Scorecard + GameOverScreen state ───────────────────────────────────
+  /* ─── Scorecard & Result Modal state ──────────────────────────────────────
    * Flow for ALL games after phase → "finished":
-   *   1. Scorecard shows for up to 90 s (GenericScorecardModal for games
-   *      without their own, or the board's own modal for rummy/rps/hc).
-   *   2. On dismiss (user or 90 s auto-fire) → GameOverScreen for 100 s.
-   * A rematch (phase → "playing") cancels all timers and resets both states.
+   *   1. Scorecard/Result modal shows (BhalyamResultModal for games without
+   *      their own, or the board's own modal for rummy/ludo/rps/hc/etc.).
+   *   2. On dismiss (user tap or 90 s auto-fire) → returns cleanly to table/lobby.
+   * A rematch (phase → "playing") resets state and closes open scorecards.
    * ─────────────────────────────────────────────────────────────────────── */
-  const [showGameOver, setShowGameOver] = useState(false);
-  const gameOverDeadlineMsRef = useRef<number | null>(null);
-  const [gameOverDeadlineMs, setGameOverDeadlineMs] = useState<number>(0);
-
   const [showScorecard, setShowScorecard] = useState(false);
   const [scorecardDeadlineMs, setScorecardDeadlineMs] = useState<number>(0);
   const scorecardTimerRef = useRef<number | null>(null);
 
-  /** Dismiss the scorecard and show GameOverScreen. Idempotent. */
-  function triggerGameOver() {
-    if (showGameOver) return;
+  /** Dismiss the scorecard and return user cleanly to table/lobby. */
+  function handleScorecardClose() {
     if (scorecardTimerRef.current != null) {
       window.clearTimeout(scorecardTimerRef.current);
       scorecardTimerRef.current = null;
     }
     setShowScorecard(false);
-    const deadline = Date.now() + AUTO_LEAVE_MS;
-    gameOverDeadlineMsRef.current = deadline;
-    setGameOverDeadlineMs(deadline);
-    setShowGameOver(true);
   }
 
-  const prevPhaseForGameOverRef = useRef<string | undefined>(undefined);
+  const prevPhaseForScorecardRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    const prev = prevPhaseForGameOverRef.current;
+    const prev = prevPhaseForScorecardRef.current;
     const next = roomState?.phase;
-    prevPhaseForGameOverRef.current = next;
+    prevPhaseForScorecardRef.current = next;
 
     if (next === "playing") {
-      // Rematch / next pool round — reset everything.
-      setShowGameOver(false);
+      // Rematch / next round — reset scorecard.
       setShowScorecard(false);
       if (scorecardTimerRef.current != null) {
         window.clearTimeout(scorecardTimerRef.current);
         scorecardTimerRef.current = null;
       }
-      gameOverDeadlineMsRef.current = null;
       return;
     }
     if (next === "finished" && prev !== "finished") {
       // Start 90 s scorecard window for all games.
-      // Games with own scorecards (rummy/rps/hc) call onScorecardClose →
-      // triggerGameOver() which clears this timer early.
+      // Dismissing the scorecard returns player cleanly to the lobby/table.
       const deadline = Date.now() + SCORECARD_WINDOW_MS;
       setScorecardDeadlineMs(deadline);
       setShowScorecard(true);
       scorecardTimerRef.current = window.setTimeout(
-        () => { triggerGameOver(); },
+        () => { handleScorecardClose(); },
         SCORECARD_WINDOW_MS,
       ) as unknown as number;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomState?.phase, roomState?.game]);
 
 
@@ -946,7 +885,7 @@ export default function Room() {
   if (!roomState) {
     return (
       <AppLayout onSelectGame={() => navigate("/")}>
-        <ConnectingScreen code={code} />
+        <ConnectingScreen code={code} onRetry={handleRetryConnection} />
       </AppLayout>
     );
   }
@@ -1096,7 +1035,7 @@ export default function Room() {
         {roomState.phase === "lobby" ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* Left Column (approx 62% - lg:col-span-7 xl:col-span-8) */}
-            <div className="lg:col-span-7 xl:col-span-8 space-y-4 pb-28 lg:pb-0">
+            <div className="lg:col-span-7 xl:col-span-8 space-y-4 pb-40 sm:pb-44 lg:pb-0">
               {roomState.sealed ? (
                 <SignInWall
                   from="room"
@@ -1209,7 +1148,7 @@ export default function Room() {
               onReset={() => window.location.reload()}
             >
               <Suspense fallback={<BoardLoadingFallback gameName={GAME_DISPLAY_NAMES[roomState.game] || roomState.game} />}>
-                {roomState.game === "rps" && gameState != null && !showGameOver && (
+                {roomState.game === "rps" && gameState != null && (
                   <RpsBoard
                     state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
                     players={roomState.players}
@@ -1218,11 +1157,11 @@ export default function Room() {
                     roomCode={roomState.code}
                     roomPhase={roomState.phase}
                     onLeave={requestLeaveConfirmation}
-                    onScorecardClose={triggerGameOver}
+                    onScorecardClose={handleScorecardClose}
                   />
                 )}
 
-              {roomState.game === "rummy" && gameState != null && !showGameOver && (
+              {roomState.game === "rummy" && gameState != null && (
                 <RummyBoard
                   state={gameState as RummyPlayerState}
                   players={roomState.players}
@@ -1232,7 +1171,7 @@ export default function Room() {
                   onLeave={requestLeaveConfirmation}
                   history={roomState.history}
                   champion={roomState.champion}
-                  onScorecardClose={triggerGameOver}
+                  onScorecardClose={handleScorecardClose}
                 />
               )}
 
@@ -1258,7 +1197,7 @@ export default function Room() {
                         roomCode={roomState.code}
                         roomPhase={roomState.phase}
                         onLeave={requestLeaveConfirmation}
-                        onScorecardClose={triggerGameOver}
+                        onScorecardClose={handleScorecardClose}
                       />
                     </PassPhoneGate>
                   );
@@ -1292,7 +1231,7 @@ export default function Room() {
                 })()
               )}
 
-              {roomState.game === "handcricket" && gameState != null && !showGameOver && (
+              {roomState.game === "handcricket" && gameState != null && (
                 <HandCricketBoard
                   state={gameState as HcState}
                   players={roomState.players}
@@ -1301,7 +1240,7 @@ export default function Room() {
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
                   onLeave={requestLeaveConfirmation}
-                  onScorecardClose={triggerGameOver}
+                  onScorecardClose={handleScorecardClose}
                 />
               )}
 
@@ -1316,7 +1255,7 @@ export default function Room() {
                   onLeave={requestLeaveConfirmation}
                   history={roomState.unoHistory}
                   champion={roomState.unoChampion}
-                  onScorecardClose={triggerGameOver}
+                  onScorecardClose={handleScorecardClose}
                 />
               )}
 
@@ -1342,7 +1281,7 @@ export default function Room() {
                         roomCode={roomState.code}
                         roomPhase={roomState.phase}
                         onLeave={requestLeaveConfirmation}
-                        onScorecardClose={triggerGameOver}
+                        onScorecardClose={handleScorecardClose}
                       />
                     </PassPhoneGate>
                   );
@@ -1389,7 +1328,7 @@ export default function Room() {
                 />
               )}
 
-              {roomState.game === "bingo" && gameState != null && !showGameOver && (
+              {roomState.game === "bingo" && gameState != null && (
                 <BingoBoard
                   state={gameState as BingoPlayerState}
                   players={roomState.players}
@@ -1398,7 +1337,7 @@ export default function Room() {
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
                   onLeave={requestLeaveConfirmation}
-                  onScorecardClose={triggerGameOver}
+                  onScorecardClose={handleScorecardClose}
                 />
               )}
 
@@ -1476,46 +1415,10 @@ export default function Room() {
           </div>
         )}
 
-      {linkDown && (
-        <div
-          role="status"
-          aria-live="assertive"
-          className="fixed top-0 inset-x-0 z-[80] flex items-center justify-center gap-2
-                     px-3 py-2 text-[13px] font-bold text-[#FFF3E3]"
-          style={{ background: "#8A5A2B", borderBottom: "1px solid #B4232A" }}
-        >
-          <span
-            aria-hidden
-            className="w-2 h-2 rounded-full bg-[#F2C879] animate-pulse flex-shrink-0"
-          />
-          <span>
-            Connection lost. Reconnecting
-            {linkAttempts > 0 ? ` (attempt ${linkAttempts})` : ""}...
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setLinkAttempts((n) => n + 1);
-              getSocket().connect();
-            }}
-            className="ml-1 rounded-full px-2.5 py-1 text-[12px] font-extrabold
-                       bg-[#FFF3E3] text-[#8A5A2B] active:translate-y-px"
-          >
-            Retry now
-          </button>
-        </div>
-      )}
-
       <ChatMessageToast messages={messages} selfId={playerId} />
 
       <SoundboardLayer players={roomState.players} selfId={playerId} />
 
-      {/* ── GameOverScreen — fixed full-viewport overlay, z-70 ──────────
-          Appears when the game session ends. For non-Rummy games it shows
-          immediately on phase → "finished". For Rummy it shows after the
-          in-board scorecard modal is dismissed (RummyBoard calls the
-          `onScorecardClose` callback above, which calls `triggerGameOver`).
-          A rematch (phase → "playing") hides it and resets the deadline. */}
       {/* "I'm back" — shown ONLY to the player whose seat is being auto-played.
           Any interaction already reclaims the seat silently (see the presence
           effect above), but a player who has just returned to a board that has
@@ -1575,19 +1478,8 @@ export default function Room() {
         onGameStartComplete={resetMotion}
       />
 
-      {showGameOver && gameOverDeadlineMs > 0 && (
-        <GameOverScreen
-          players={roomState.players}
-          selfId={playerId}
-          onLeave={leaveRoom}
-          deadlineMs={gameOverDeadlineMs}
-          winnerName={gameOverWinnerName}
-          gameName={gameOverGameName}
-        />
-      )}
-
       {/* Match result & settlement modal — displays ranked outcomes and authoritative settlement */}
-      {showScorecard && !showGameOver && roomState && !GAMES_WITH_OWN_SCORECARD.has(roomState.game) && (
+      {showScorecard && roomState && !GAMES_WITH_OWN_SCORECARD.has(roomState.game) && (
         <BhalyamResultModal
           players={roomState.players}
           rankedPlayers={rankedPlayers}
@@ -1596,7 +1488,7 @@ export default function Room() {
           winnerId={gameOverWinnerId}
           matchId={deriveTerminalMatchId(roomState)}
           title={gameOverGameName ? `${gameOverGameName} Results` : "Match Results"}
-          onClose={triggerGameOver}
+          onClose={handleScorecardClose}
           onLeave={leaveRoom}
         />
       )}
@@ -1633,7 +1525,27 @@ export default function Room() {
  * rather than "stuck". Pure Tailwind animations (spin / ping / bounce) — no
  * extra keyframes or libraries.
  */
-function ConnectingScreen({ code }: { code?: string }) {
+function ConnectingScreen({ code, onRetry }: { code?: string; onRetry?: () => void }) {
+  const [takingLong, setTakingLong] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setTakingLong(true);
+    }, 12_000);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const handleRetry = () => {
+    setTakingLong(false);
+    if (onRetry) {
+      onRetry();
+    } else {
+      const socket = getSocket();
+      if (!socket.connected) socket.connect();
+    }
+  };
+
   return (
     <div className="bhalyam-font bhalyam-paper min-h-screen flex flex-col items-center justify-center gap-7 p-6 text-center pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="relative h-20 w-20" aria-hidden>
@@ -1658,6 +1570,30 @@ function ConnectingScreen({ code }: { code?: string }) {
         {code && (
           <div className="mt-3 font-mono text-xl font-black tracking-[0.35em] text-[#2B3550]">
             {code.toUpperCase()}
+          </div>
+        )}
+
+        {takingLong && (
+          <div className="mt-6 max-w-sm mx-auto space-y-3 bg-[#FFF4E0] dark:bg-[#1E2738] border border-[#EEDBCA] dark:border-slate-700/80 rounded-2xl p-4 animate-fade-in shadow-sm">
+            <p className="text-xs text-[#8A6D4B] dark:text-slate-300 font-medium leading-relaxed">
+              Connecting is taking longer than usual — the game server may be waking up or your connection is slow.
+            </p>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#EA580C] hover:bg-[#C2410C] text-white shadow-xs transition cursor-pointer min-h-[36px]"
+              >
+                Retry Connection
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-[#796651] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 hover:bg-slate-50 transition cursor-pointer min-h-[36px]"
+              >
+                Return to Lounge
+              </button>
+            </div>
           </div>
         )}
       </div>

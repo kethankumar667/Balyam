@@ -21,9 +21,6 @@ export default function FavoritesPage() {
   // favourite off, which must empty this page live, not just on next visit.
   useFavourites();
 
-  useEffect(() => {
-    document.title = "Favorites · BHALYAM";
-  }, []);
 
   const games = filterGames({ category: "favourites" });
 

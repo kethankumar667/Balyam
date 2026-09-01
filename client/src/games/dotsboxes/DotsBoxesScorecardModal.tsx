@@ -44,6 +44,7 @@ export default function DotsBoxesScorecardModal({
     if (
       open &&
       typeof window !== "undefined" &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches &&
       typeof (window as unknown as { HTMLCanvasElement?: unknown }).HTMLCanvasElement !== "undefined"
     ) {
       const colors = winner?.theme

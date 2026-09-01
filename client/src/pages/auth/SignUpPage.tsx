@@ -196,11 +196,19 @@ export default function SignUpPage() {
          ════════════════════════════════════════════════════════════ */}
       <div className="hidden lg:flex lg:w-[48%] xl:w-[48%] lg:min-h-screen relative flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-hidden lg:border-r-2 border-[#E0CCAC]">
         {/* Full nostalgic background artwork: Gameboy, Polaroid, Pencils, Cassette, Good Old Days button */}
-        <img
-          src="/LoginPageBg.png"
-          alt="Nostalgic Morning Games Desk and Memories"
-          className="absolute inset-0 w-full h-full object-cover object-center"
-        />
+        <picture className="absolute inset-0 w-full h-full pointer-events-none">
+          <source type="image/avif" srcSet="/LoginPageBg.avif" />
+          <source type="image/webp" srcSet="/LoginPageBg.webp" />
+          <img
+            src="/LoginPageBg.png"
+            alt="Nostalgic Morning Games Desk and Memories"
+            width={1122}
+            height={1402}
+            loading="eager"
+            decoding="async"
+            className="w-full h-full object-cover object-center"
+          />
+        </picture>
 
         {/* Soft morning ambient wash overlay for legibility. Explicit stops
             (not the default 0/50/100 from-via-to split) so the light wash
@@ -287,11 +295,19 @@ export default function SignUpPage() {
         <div className="my-auto w-full">
           {/* Bhalyam Logo */}
           <div className="flex justify-center pt-2 pb-2">
-            <img
-              src="/FooterBhalyamlogo.png"
-              alt="BHALYAM - Play Together. Remember Forever."
-              className="h-24 sm:h-28 w-auto object-contain"
-            />
+            <picture>
+              <source type="image/avif" srcSet="/FooterBhalyamlogo.avif" />
+              <source type="image/webp" srcSet="/FooterBhalyamlogo.webp" />
+              <img
+                src="/FooterBhalyamlogo.png"
+                alt="BHALYAM - Play Together. Remember Forever."
+                width={112}
+                height={112}
+                loading="lazy"
+                decoding="async"
+                className="h-24 sm:h-28 w-auto object-contain"
+              />
+            </picture>
           </div>
 
           {/* Top Title with hand-drawn rays & red underline */}
@@ -427,12 +443,16 @@ export default function SignUpPage() {
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                           <input
+                            id="signup-first-name"
                             type="text"
                             value={firstName}
                             onChange={(e) =>
                               handleFirstNameChange(e.target.value)
                             }
                             placeholder="First Name"
+                            aria-label="First Name"
+                            aria-invalid={Boolean(firstNameError)}
+                            aria-describedby={firstNameError ? "signup-first-name-error" : undefined}
                             className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-4 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                               firstNameError
                                 ? "border-[#A82020]"
@@ -442,7 +462,7 @@ export default function SignUpPage() {
                           />
                         </div>
                         {firstNameError && (
-                          <span className="text-[10.5px] font-bold text-[#A82020] block pl-3">
+                          <span id="signup-first-name-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
                             {firstNameError}
                           </span>
                         )}
@@ -452,12 +472,16 @@ export default function SignUpPage() {
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                           <input
+                            id="signup-last-name"
                             type="text"
                             value={lastName}
                             onChange={(e) =>
                               handleLastNameChange(e.target.value)
                             }
                             placeholder="Last Name"
+                            aria-label="Last Name"
+                            aria-invalid={Boolean(lastNameError)}
+                            aria-describedby={lastNameError ? "signup-last-name-error" : undefined}
                             className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-4 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                               lastNameError
                                 ? "border-[#A82020]"
@@ -467,7 +491,7 @@ export default function SignUpPage() {
                           />
                         </div>
                         {lastNameError && (
-                          <span className="text-[10.5px] font-bold text-[#A82020] block pl-3">
+                          <span id="signup-last-name-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
                             {lastNameError}
                           </span>
                         )}
@@ -479,6 +503,7 @@ export default function SignUpPage() {
                       <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                         <input
+                          id="signup-display-name"
                           type="text"
                           value={displayName}
                           onChange={(e) => {
@@ -487,6 +512,9 @@ export default function SignUpPage() {
                             if (displayNameError) setDisplayNameError(null);
                           }}
                           placeholder="Display Name"
+                          aria-label="Display Name"
+                          aria-invalid={Boolean(displayNameError)}
+                          aria-describedby={displayNameError ? "signup-display-name-error" : undefined}
                           className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-10 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                             displayNameError
                               ? "border-[#A82020]"
@@ -505,7 +533,7 @@ export default function SignUpPage() {
                         This is how your name will appear in Bhalyam.
                       </p>
                       {displayNameError && (
-                        <span className="text-[10.5px] font-bold text-[#A82020] block pl-3">
+                        <span id="signup-display-name-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
                           {displayNameError}
                         </span>
                       )}
@@ -514,15 +542,19 @@ export default function SignUpPage() {
                     {/* Row 3: Date of Birth & Gender */}
                     <div className="flex flex-col sm:flex-row gap-3">
                       <div className="flex-1 space-y-1">
-                        <label className="text-[10.5px] font-bold text-[#5C4A32] uppercase tracking-wider pl-1 block">
+                        <label htmlFor="signup-dob" className="text-[10.5px] font-bold text-[#5C4A32] uppercase tracking-wider pl-1 block">
                           Date of Birth
                         </label>
                         <div className="relative">
                           <input
+                            id="signup-dob"
                             type="date"
                             value={dob}
                             max={new Date().toISOString().split("T")[0]}
                             min="1930-01-01"
+                            aria-label="Date of Birth"
+                            aria-invalid={Boolean(dobError)}
+                            aria-describedby={dobError ? "signup-dob-error" : undefined}
                             onChange={(e) => {
                               setDob(e.target.value);
                               if (dobError) setDobError(null);
@@ -536,19 +568,23 @@ export default function SignUpPage() {
                           <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                         </div>
                         {dobError && (
-                          <span className="text-[10.5px] font-bold text-[#A82020] block pl-3">
+                          <span id="signup-dob-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
                             {dobError}
                           </span>
                         )}
                       </div>
 
                       <div className="flex-1 space-y-1">
-                        <label className="text-[10.5px] font-bold text-[#5C4A32] uppercase tracking-wider pl-1 block">
+                        <label htmlFor="signup-gender" className="text-[10.5px] font-bold text-[#5C4A32] uppercase tracking-wider pl-1 block">
                           Gender
                         </label>
                         <div className="relative">
                           <select
+                            id="signup-gender"
                             value={gender}
+                            aria-label="Gender"
+                            aria-invalid={Boolean(genderError)}
+                            aria-describedby={genderError ? "signup-gender-error" : undefined}
                             onChange={(e) => {
                               setGender(
                                 e.target.value as
@@ -578,7 +614,7 @@ export default function SignUpPage() {
                           </div>
                         </div>
                         {genderError && (
-                          <span className="text-[10.5px] font-bold text-[#A82020] block pl-3">
+                          <span id="signup-gender-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
                             {genderError}
                           </span>
                         )}
@@ -626,6 +662,7 @@ export default function SignUpPage() {
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                         <input
+                          id="signup-email"
                           type="email"
                           value={email}
                           onChange={(e) => {
@@ -634,6 +671,9 @@ export default function SignUpPage() {
                             clearNotices();
                           }}
                           placeholder="Email Address"
+                          aria-label="Email Address"
+                          aria-invalid={Boolean(emailError)}
+                          aria-describedby={emailError ? "signup-email-error" : undefined}
                           className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-4 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                             emailError ? "border-[#A82020]" : "border-[#CBD5E1]"
                           }`}
@@ -641,7 +681,7 @@ export default function SignUpPage() {
                         />
                       </div>
                       {emailError && (
-                        <span className="text-[10.5px] font-bold text-[#A82020] block pl-3">
+                        <span id="signup-email-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
                           {emailError}
                         </span>
                       )}
@@ -652,6 +692,7 @@ export default function SignUpPage() {
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                         <input
+                          id="signup-password"
                           type={showPassword ? "text" : "password"}
                           value={password}
                           onChange={(e) => {
@@ -660,6 +701,9 @@ export default function SignUpPage() {
                             clearNotices();
                           }}
                           placeholder="Create Password (8+ characters)"
+                          aria-label="Create Password"
+                          aria-invalid={Boolean(passwordError)}
+                          aria-describedby={passwordError ? "signup-password-error" : undefined}
                           className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-11 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                             passwordError
                               ? "border-[#A82020]"
@@ -683,7 +727,7 @@ export default function SignUpPage() {
                         </button>
                       </div>
                       {passwordError && (
-                        <span className="text-[10.5px] font-bold text-[#A82020] block pl-3">
+                        <span id="signup-password-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
                           {passwordError}
                         </span>
                       )}
@@ -694,6 +738,7 @@ export default function SignUpPage() {
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                         <input
+                          id="signup-confirm-password"
                           type={showConfirmPassword ? "text" : "password"}
                           value={confirmPassword}
                           onChange={(e) => {
@@ -703,6 +748,9 @@ export default function SignUpPage() {
                             clearNotices();
                           }}
                           placeholder="Confirm Password"
+                          aria-label="Confirm Password"
+                          aria-invalid={Boolean(confirmPasswordError)}
+                          aria-describedby={confirmPasswordError ? "signup-confirm-password-error" : undefined}
                           className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-11 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                             confirmPasswordError
                               ? "border-[#A82020]"
@@ -718,8 +766,8 @@ export default function SignUpPage() {
                           className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-[#64748B] hover:text-[#1E293B] cursor-pointer"
                           aria-label={
                             showConfirmPassword
-                              ? "Hide password"
-                              : "Show password"
+                              ? "Hide confirm password"
+                              : "Show confirm password"
                           }
                         >
                           {showConfirmPassword ? (
@@ -730,7 +778,7 @@ export default function SignUpPage() {
                         </button>
                       </div>
                       {confirmPasswordError && (
-                        <span className="text-[10.5px] font-bold text-[#A82020] block pl-3">
+                        <span id="signup-confirm-password-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
                           {confirmPasswordError}
                         </span>
                       )}

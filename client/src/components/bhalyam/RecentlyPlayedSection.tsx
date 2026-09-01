@@ -98,15 +98,22 @@ export default function RecentlyPlayedSection({
             </div>
 
             <div className="my-2 flex items-center justify-center h-16">
-              <img
-                src={game.tileImage || `/UNOTile.png`}
-                alt=""
-                className="h-14 w-auto object-contain drop-shadow-sm"
-                loading="lazy"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = "none";
-                }}
-              />
+              <picture>
+                <source type="image/avif" srcSet={(game.tileImage || `/UNOTile.png`).replace(/\.(png|jpg|jpeg)$/i, '.avif')} />
+                <source type="image/webp" srcSet={(game.tileImage || `/UNOTile.png`).replace(/\.(png|jpg|jpeg)$/i, '.webp')} />
+                <img
+                  src={game.tileImage || `/UNOTile.png`}
+                  alt=""
+                  width={56}
+                  height={56}
+                  className="h-14 w-auto object-contain drop-shadow-sm"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = "none";
+                  }}
+                />
+              </picture>
             </div>
 
             <div>

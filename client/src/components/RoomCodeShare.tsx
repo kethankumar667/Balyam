@@ -5,6 +5,7 @@ import { captureAndShareScreenshot } from "../lib/screenshot";
 import { useAudio } from "../hooks/useAudio";
 import { AUDIO } from "../constants/audio";
 import { useHaptics } from "../hooks/useHaptics";
+import { toast } from "../hooks/useToast";
 
 /**
  * Featured lobby block for the room code.
@@ -205,11 +206,7 @@ export default function RoomCodeShare({
             onClick={async () => {
               const res = await captureAndShareScreenshot();
               if (res.message) {
-                const toast = document.createElement("div");
-                toast.className = "fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900/90 text-white font-bold text-xs shadow-2xl border border-amber-400/40 animate-fade-in";
-                toast.innerText = res.message;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 2500);
+                toast.info(res.message);
               }
             }}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl min-h-[44px]

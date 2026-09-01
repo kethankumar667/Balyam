@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useRecovery } from "./useRecovery";
 import { useRoomStore } from "../../store/roomStore";
@@ -6,10 +7,25 @@ export default function RecoveryBanner() {
   const { connectionState, retryRecovery } = useRecovery();
   const location = useLocation();
   const roomState = useRoomStore((s) => s.roomState);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   const isInRoom = location.pathname.startsWith("/room/") || roomState !== null;
 
-  if (!isInRoom || connectionState === "CONNECTED" || connectionState === "DISCONNECTED") {
+  // Suppress RecoveryBanner if physical network is offline (OfflineBanner is the single authority)
+  if (isOffline || !isInRoom || connectionState === "CONNECTED" || connectionState === "DISCONNECTED") {
     return null;
   }
 

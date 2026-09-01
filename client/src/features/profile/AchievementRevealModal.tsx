@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useRef } from "react";
 import type { Achievement } from "@shared/profile/Achievements";
 import { AchievementRarityBadge, type AchievementRarity } from "../../design-system/icons";
 import { PREMIUM_RARITY_COLORS, GLASSMORPHISM } from "../../design-system/premium";
+import Modal from "../../components/Modal";
 
 interface AchievementRevealModalProps {
   achievement: Achievement | null;
@@ -14,6 +15,8 @@ export const AchievementRevealModal: React.FC<AchievementRevealModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
   if (!isOpen || !achievement) return null;
 
   const getRarity = (ach: Achievement): AchievementRarity => {
@@ -28,14 +31,15 @@ export const AchievementRevealModal: React.FC<AchievementRevealModalProps> = ({
   const colorToken = PREMIUM_RARITY_COLORS[rarity];
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="achModalTitle"
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      initialFocusRef={closeButtonRef}
+      ariaLabelledBy="achModalTitle"
+      panelClassName="max-w-md w-full"
     >
       <div
-        className={`max-w-md w-full rounded-3xl p-6 sm:p-8 ${GLASSMORPHISM.modal} shadow-2xl text-center space-y-6 relative overflow-hidden border`}
+        className={`w-full rounded-3xl p-6 sm:p-8 ${GLASSMORPHISM.modal} shadow-2xl text-center space-y-6 relative overflow-hidden border`}
         style={{ borderColor: `${colorToken.primary}88` }}
       >
         {/* Rarity ambient aura */}
@@ -85,12 +89,14 @@ export const AchievementRevealModal: React.FC<AchievementRevealModalProps> = ({
         </div>
 
         <button
+          ref={closeButtonRef}
+          type="button"
           onClick={onClose}
-          className="w-full bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold py-2.5 rounded-2xl text-xs transition"
+          className="w-full min-h-[44px] bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold py-2.5 rounded-2xl text-xs transition cursor-pointer"
         >
           Close
         </button>
       </div>
-    </div>
+    </Modal>
   );
 };

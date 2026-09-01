@@ -50,11 +50,22 @@ async function prerender() {
   const templateHtml = fs.readFileSync(templatePath, "utf-8");
 
   // Define public routes to prerender
-  const routesToPrerender = [
+  const fallbackRoutes = [
     "/",
     "/games",
     "/about",
+    "/how-to-play",
+    "/support",
+    "/contact",
     "/privacy",
+    "/terms",
+    "/safety",
+    "/community-rules",
+    "/leaderboard",
+    "/tournaments",
+    "/social",
+    "/favorites",
+    "/recently-played",
     "/login",
     "/signup",
     "/forgot-password",
@@ -66,13 +77,19 @@ async function prerender() {
     "/brickblocks",
     "/tetris",
     "/breakout",
+    "/design-system",
   ];
+
+  const routesToPrerender =
+    publicRoutesMetadata && Object.keys(publicRoutesMetadata).length > 0
+      ? Object.keys(publicRoutesMetadata)
+      : fallbackRoutes;
 
   console.log(`✨ [Prerender] Generating static HTML for ${routesToPrerender.length} public routes...`);
 
   for (const url of routesToPrerender) {
     try {
-      const { appHtml, metadata } = render(url);
+      const { appHtml, metadata, jsonLdString } = render(url);
 
       let html = templateHtml;
 
@@ -93,6 +110,19 @@ async function prerender() {
           );
         } else {
           html = html.replace("</head>", `  <meta name="description" content="${metadata.description}" />\n  </head>`);
+        }
+      }
+
+      // Update keywords
+      if (metadata?.keywords && metadata.keywords.length > 0) {
+        const keywordsStr = metadata.keywords.join(", ");
+        if (/<meta\s+name=["']keywords["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+name=["']keywords["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta name="keywords" content="${keywordsStr}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta name="keywords" content="${keywordsStr}" />\n  </head>`);
         }
       }
 
@@ -122,6 +152,101 @@ async function prerender() {
         }
       }
 
+      // OpenGraph Site Name & Locale
+      const ogSiteName = metadata?.ogSiteName || "BHALYAM · బాల్యం";
+      if (/<meta\s+property=["']og:site_name["']/i.test(html)) {
+        html = html.replace(
+          /<meta\s+property=["']og:site_name["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+          `<meta property="og:site_name" content="${ogSiteName}" />`
+        );
+      } else {
+        html = html.replace("</head>", `  <meta property="og:site_name" content="${ogSiteName}" />\n  </head>`);
+      }
+
+      const ogLocale = metadata?.ogLocale || "en_US";
+      if (/<meta\s+property=["']og:locale["']/i.test(html)) {
+        html = html.replace(
+          /<meta\s+property=["']og:locale["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+          `<meta property="og:locale" content="${ogLocale}" />`
+        );
+      } else {
+        html = html.replace("</head>", `  <meta property="og:locale" content="${ogLocale}" />\n  </head>`);
+      }
+
+      if (metadata?.ogImage) {
+        if (/<meta\s+property=["']og:image["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+property=["']og:image["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta property="og:image" content="${metadata.ogImage}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta property="og:image" content="${metadata.ogImage}" />\n  </head>`);
+        }
+
+        // WhatsApp, Facebook, LinkedIn secure_url, dimensions & MIME type
+        const ogImageSecure = metadata.ogImage;
+        const ogImageType = metadata?.ogImageType || (metadata.ogImage.endsWith(".png") ? "image/png" : "image/jpeg");
+        const ogImageWidth = metadata?.ogImageWidth || "1200";
+        const ogImageHeight = metadata?.ogImageHeight || "630";
+        const ogImageAlt = metadata?.ogImageAlt || metadata?.ogTitle || metadata?.title || "BHALYAM";
+
+        if (/<meta\s+property=["']og:image:secure_url["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+property=["']og:image:secure_url["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta property="og:image:secure_url" content="${ogImageSecure}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta property="og:image:secure_url" content="${ogImageSecure}" />\n  </head>`);
+        }
+
+        if (/<meta\s+property=["']og:image:type["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+property=["']og:image:type["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta property="og:image:type" content="${ogImageType}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta property="og:image:type" content="${ogImageType}" />\n  </head>`);
+        }
+
+        if (/<meta\s+property=["']og:image:width["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+property=["']og:image:width["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta property="og:image:width" content="${ogImageWidth}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta property="og:image:width" content="${ogImageWidth}" />\n  </head>`);
+        }
+
+        if (/<meta\s+property=["']og:image:height["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+property=["']og:image:height["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta property="og:image:height" content="${ogImageHeight}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta property="og:image:height" content="${ogImageHeight}" />\n  </head>`);
+        }
+
+        if (/<meta\s+property=["']og:image:alt["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+property=["']og:image:alt["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta property="og:image:alt" content="${ogImageAlt}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta property="og:image:alt" content="${ogImageAlt}" />\n  </head>`);
+        }
+      }
+
+      if (metadata?.ogType) {
+        if (/<meta\s+property=["']og:type["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+property=["']og:type["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta property="og:type" content="${metadata.ogType}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta property="og:type" content="${metadata.ogType}" />\n  </head>`);
+        }
+      }
+
       if (metadata?.canonical) {
         if (/<link\s+rel=["']canonical["']/i.test(html)) {
           html = html.replace(
@@ -143,12 +268,87 @@ async function prerender() {
         }
       }
 
-      // Add Twitter card if absent
-      if (!/<meta\s+name=["']twitter:card["']/i.test(html)) {
+      // Add Twitter card, site, creator, and tags
+      const twitterCard = metadata?.twitterCard || "summary_large_image";
+      if (/<meta\s+name=["']twitter:card["']/i.test(html)) {
         html = html.replace(
-          "</head>",
-          `  <meta name="twitter:card" content="summary_large_image" />\n  </head>`
+          /<meta\s+name=["']twitter:card["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+          `<meta name="twitter:card" content="${twitterCard}" />`
         );
+      } else {
+        html = html.replace("</head>", `  <meta name="twitter:card" content="${twitterCard}" />\n  </head>`);
+      }
+
+      const twitterSite = metadata?.twitterSite || "@bhalyam";
+      if (/<meta\s+name=["']twitter:site["']/i.test(html)) {
+        html = html.replace(
+          /<meta\s+name=["']twitter:site["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+          `<meta name="twitter:site" content="${twitterSite}" />`
+        );
+      } else {
+        html = html.replace("</head>", `  <meta name="twitter:site" content="${twitterSite}" />\n  </head>`);
+      }
+
+      const twitterCreator = metadata?.twitterCreator || "@bhalyam";
+      if (/<meta\s+name=["']twitter:creator["']/i.test(html)) {
+        html = html.replace(
+          /<meta\s+name=["']twitter:creator["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+          `<meta name="twitter:creator" content="${twitterCreator}" />`
+        );
+      } else {
+        html = html.replace("</head>", `  <meta name="twitter:creator" content="${twitterCreator}" />\n  </head>`);
+      }
+
+      const twitterTitle = metadata?.twitterTitle || metadata?.ogTitle || metadata?.title;
+      if (twitterTitle) {
+        if (/<meta\s+name=["']twitter:title["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+name=["']twitter:title["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta name="twitter:title" content="${twitterTitle}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta name="twitter:title" content="${twitterTitle}" />\n  </head>`);
+        }
+      }
+
+      const twitterDesc = metadata?.twitterDescription || metadata?.ogDescription || metadata?.description;
+      if (twitterDesc) {
+        if (/<meta\s+name=["']twitter:description["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+name=["']twitter:description["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta name="twitter:description" content="${twitterDesc}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta name="twitter:description" content="${twitterDesc}" />\n  </head>`);
+        }
+      }
+
+      const twitterImg = metadata?.twitterImage || metadata?.ogImage;
+      if (twitterImg) {
+        if (/<meta\s+name=["']twitter:image["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+name=["']twitter:image["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta name="twitter:image" content="${twitterImg}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta name="twitter:image" content="${twitterImg}" />\n  </head>`);
+        }
+
+        const twitterImgAlt = metadata?.twitterImageAlt || metadata?.ogImageAlt || twitterTitle || "BHALYAM";
+        if (/<meta\s+name=["']twitter:image:alt["']/i.test(html)) {
+          html = html.replace(
+            /<meta\s+name=["']twitter:image:alt["']\s+content=["'][\s\S]*?["']\s*\/?>/i,
+            `<meta name="twitter:image:alt" content="${twitterImgAlt}" />`
+          );
+        } else {
+          html = html.replace("</head>", `  <meta name="twitter:image:alt" content="${twitterImgAlt}" />\n  </head>`);
+        }
+      }
+
+      // Inject Schema.org JSON-LD structured data into <head>
+      if (jsonLdString) {
+        const jsonLdTag = `  <script type="application/ld+json" id="bhalyam-jsonld">\n${jsonLdString}\n  </script>`;
+        html = html.replace("</head>", `${jsonLdTag}\n  </head>`);
       }
 
       // Target path

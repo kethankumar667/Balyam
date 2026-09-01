@@ -81,7 +81,7 @@ export default function RejoinBanner() {
           type="button"
           onClick={handleDismiss}
           aria-label="Dismiss rejoin notice"
-          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/20 active:scale-95 transition cursor-pointer"
+          className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-full hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:outline-none active:scale-95 transition cursor-pointer"
         >
           ✕
         </button>

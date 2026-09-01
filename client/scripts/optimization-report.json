@@ -1,0 +1,408 @@
+{
+  "summary": {
+    "totalOriginalMB": "74.99",
+    "totalOptimizedMB": "5.23",
+    "savedMB": "69.76",
+    "overallPct": "93.0"
+  },
+  "details": {
+    "heroes": [
+      {
+        "relPath": "bhalyam-hero.png",
+        "originalSize": 9224595,
+        "webpSize": 660078,
+        "avifSize": 730800,
+        "webpSmSize": 64790,
+        "savingsPct": "92.8"
+      },
+      {
+        "relPath": "bhalyam-dark-hero.png",
+        "originalSize": 2381044,
+        "webpSize": 185942,
+        "avifSize": 208086,
+        "webpSmSize": 52898,
+        "savingsPct": "92.2"
+      },
+      {
+        "relPath": "bhalyam-hero-clean.png",
+        "originalSize": 2756471,
+        "webpSize": 264272,
+        "avifSize": 281179,
+        "webpSmSize": 84118,
+        "savingsPct": "90.4"
+      }
+    ],
+    "tiles": [
+      {
+        "relPath": "StarTile.png",
+        "originalSize": 2792312,
+        "webpSize": 83674,
+        "avifSize": 52061,
+        "savingsPct": "98.1"
+      },
+      {
+        "relPath": "RummyTile.png",
+        "originalSize": 2745079,
+        "webpSize": 70286,
+        "avifSize": 42254,
+        "savingsPct": "98.5"
+      },
+      {
+        "relPath": "Bingo Tile.png",
+        "originalSize": 2388083,
+        "webpSize": 87266,
+        "avifSize": 79251,
+        "savingsPct": "96.7"
+      },
+      {
+        "relPath": "Roadrash Game Tile.png",
+        "originalSize": 2336506,
+        "webpSize": 76586,
+        "avifSize": 59366,
+        "savingsPct": "97.5"
+      },
+      {
+        "relPath": "Frogger Game Tile.png",
+        "originalSize": 2243195,
+        "webpSize": 106328,
+        "avifSize": 83978,
+        "savingsPct": "96.3"
+      },
+      {
+        "relPath": "BrickBreakout Game Tile.png",
+        "originalSize": 2135794,
+        "webpSize": 112970,
+        "avifSize": 78650,
+        "savingsPct": "96.3"
+      },
+      {
+        "relPath": "Carrom Game Tile.png",
+        "originalSize": 2052452,
+        "webpSize": 40238,
+        "avifSize": 33691,
+        "savingsPct": "98.4"
+      },
+      {
+        "relPath": "SpacewarTile.png",
+        "originalSize": 1976160,
+        "webpSize": 66834,
+        "avifSize": 51719,
+        "savingsPct": "97.4"
+      },
+      {
+        "relPath": "BrickRacer Game Tile.png",
+        "originalSize": 1897861,
+        "webpSize": 88390,
+        "avifSize": 72223,
+        "savingsPct": "96.2"
+      },
+      {
+        "relPath": "Chess Game Tile.png",
+        "originalSize": 1749846,
+        "webpSize": 42878,
+        "avifSize": 33973,
+        "savingsPct": "98.1"
+      },
+      {
+        "relPath": "RetroCricket Game Tile.png",
+        "originalSize": 1733647,
+        "webpSize": 69314,
+        "avifSize": 53455,
+        "savingsPct": "96.9"
+      },
+      {
+        "relPath": "BlockBlast Game Tile.png",
+        "originalSize": 1706514,
+        "webpSize": 84382,
+        "avifSize": 63154,
+        "savingsPct": "96.3"
+      },
+      {
+        "relPath": "Snake Game Tile.png",
+        "originalSize": 1660189,
+        "webpSize": 36024,
+        "avifSize": 30241,
+        "savingsPct": "98.2"
+      },
+      {
+        "relPath": "Bounce Game Tile.png",
+        "originalSize": 1598789,
+        "webpSize": 45200,
+        "avifSize": 36400,
+        "savingsPct": "97.7"
+      },
+      {
+        "relPath": "SamethaluTile.png",
+        "originalSize": 416066,
+        "webpSize": 65758,
+        "avifSize": 65802,
+        "savingsPct": "84.2"
+      },
+      {
+        "relPath": "UNOTile.png",
+        "originalSize": 405714,
+        "webpSize": 33838,
+        "avifSize": 35239,
+        "savingsPct": "91.7"
+      },
+      {
+        "relPath": "LudoTile.png",
+        "originalSize": 324650,
+        "webpSize": 32418,
+        "avifSize": 33964,
+        "savingsPct": "90.0"
+      },
+      {
+        "relPath": "Tambola.png",
+        "originalSize": 276182,
+        "webpSize": 54910,
+        "avifSize": 40814,
+        "savingsPct": "85.2"
+      },
+      {
+        "relPath": "S&LTile.png",
+        "originalSize": 229832,
+        "webpSize": 34754,
+        "avifSize": 34833,
+        "savingsPct": "84.9"
+      },
+      {
+        "relPath": "Name-place-thing-animal.png",
+        "originalSize": 220677,
+        "webpSize": 41964,
+        "avifSize": 29838,
+        "savingsPct": "86.5"
+      },
+      {
+        "relPath": "RPSTile.png",
+        "originalSize": 204647,
+        "webpSize": 20078,
+        "avifSize": 22080,
+        "savingsPct": "90.2"
+      },
+      {
+        "relPath": "HandCricketTile.png",
+        "originalSize": 149987,
+        "webpSize": 18852,
+        "avifSize": 20413,
+        "savingsPct": "87.4"
+      },
+      {
+        "relPath": "Dots&boxes.png",
+        "originalSize": 129981,
+        "webpSize": 26650,
+        "avifSize": 23337,
+        "savingsPct": "82.0"
+      },
+      {
+        "relPath": "words_building.png",
+        "originalSize": 93486,
+        "webpSize": 17354,
+        "avifSize": 10262,
+        "savingsPct": "89.0"
+      }
+    ],
+    "onboarding": [
+      {
+        "relPath": "images/nostalgia/sunday-afternoon.png",
+        "originalSize": 2174221,
+        "webpSize": 257132,
+        "avifSize": 185197,
+        "savingsPct": "91.5"
+      },
+      {
+        "relPath": "images/nostalgia/gang-reunion.jpg",
+        "originalSize": 1083716,
+        "webpSize": 145314,
+        "avifSize": 149584,
+        "savingsPct": "86.6"
+      },
+      {
+        "relPath": "images/nostalgia/friends-adda.jpg",
+        "originalSize": 423621,
+        "webpSize": 198772,
+        "avifSize": 186512,
+        "savingsPct": "56.0"
+      },
+      {
+        "relPath": "images/nostalgia/share-code-icon.png",
+        "originalSize": 382546,
+        "webpSize": 39318,
+        "avifSize": 36626,
+        "savingsPct": "90.4"
+      },
+      {
+        "relPath": "images/nostalgia/create-room-icon.png",
+        "originalSize": 349236,
+        "webpSize": 32208,
+        "avifSize": 32024,
+        "savingsPct": "90.8"
+      },
+      {
+        "relPath": "images/nostalgia/school-break.jpg",
+        "originalSize": 347019,
+        "webpSize": 146168,
+        "avifSize": 151028,
+        "savingsPct": "57.9"
+      },
+      {
+        "relPath": "images/nostalgia/rainy-evening.jpg",
+        "originalSize": 248712,
+        "webpSize": 149648,
+        "avifSize": 153962,
+        "savingsPct": "39.8"
+      }
+    ],
+    "promo": [
+      {
+        "relPath": "SignuppageBG.png",
+        "originalSize": 2942248,
+        "webpSize": 334022,
+        "avifSize": 331017,
+        "savingsPct": "88.7"
+      },
+      {
+        "relPath": "gangoffriends.png",
+        "originalSize": 2828855,
+        "webpSize": 344048,
+        "avifSize": 156824,
+        "savingsPct": "94.5"
+      },
+      {
+        "relPath": "Founder.png",
+        "originalSize": 2680900,
+        "webpSize": 219682,
+        "avifSize": 266790,
+        "savingsPct": "91.8"
+      },
+      {
+        "relPath": "LoginPageBg.png",
+        "originalSize": 2570868,
+        "webpSize": 220568,
+        "avifSize": 210313,
+        "savingsPct": "91.8"
+      },
+      {
+        "relPath": "LoginBG.png",
+        "originalSize": 2534188,
+        "webpSize": 112972,
+        "avifSize": 144939,
+        "savingsPct": "95.5"
+      },
+      {
+        "relPath": "SignupBG.png",
+        "originalSize": 2534188,
+        "webpSize": 112972,
+        "avifSize": 144939,
+        "savingsPct": "95.5"
+      },
+      {
+        "relPath": "Foundersectionasset.png",
+        "originalSize": 2104546,
+        "webpSize": 187142,
+        "avifSize": 131900,
+        "savingsPct": "93.7"
+      },
+      {
+        "relPath": "FooterBhalyamlogo.png",
+        "originalSize": 1701813,
+        "webpSize": 199764,
+        "avifSize": 133234,
+        "savingsPct": "92.2"
+      },
+      {
+        "relPath": "creator_boy_photo.jpg",
+        "originalSize": 1111949,
+        "webpSize": 260596,
+        "avifSize": 235323,
+        "savingsPct": "78.8"
+      },
+      {
+        "relPath": "about_carrom_kids.jpg",
+        "originalSize": 1103512,
+        "webpSize": 258440,
+        "avifSize": 244043,
+        "savingsPct": "77.9"
+      },
+      {
+        "relPath": "about-page-preview.png",
+        "originalSize": 489386,
+        "webpSize": 109574,
+        "avifSize": 125963,
+        "savingsPct": "77.6"
+      },
+      {
+        "relPath": "Bhalyam-logo.png",
+        "originalSize": 484656,
+        "webpSize": 47680,
+        "avifSize": 48141,
+        "savingsPct": "90.2"
+      }
+    ],
+    "illustrations": [
+      {
+        "relPath": "illustrations/Handcricket/worldcup.png",
+        "originalSize": 2756982,
+        "webpSize": 147190,
+        "avifSize": 83594,
+        "savingsPct": "97.0"
+      },
+      {
+        "relPath": "illustrations/Handcricket/Boy_cheering.png",
+        "originalSize": 289468,
+        "webpSize": 42646,
+        "avifSize": 39928,
+        "savingsPct": "86.2"
+      },
+      {
+        "relPath": "illustrations/Handcricket/Champions_cup.png",
+        "originalSize": 254390,
+        "webpSize": 36268,
+        "avifSize": 36122,
+        "savingsPct": "85.8"
+      },
+      {
+        "relPath": "illustrations/Handcricket/Cricket_Helmet.png",
+        "originalSize": 211827,
+        "webpSize": 31082,
+        "avifSize": 31070,
+        "savingsPct": "85.3"
+      },
+      {
+        "relPath": "illustrations/Handcricket/cricket_ball.png",
+        "originalSize": 160919,
+        "webpSize": 21708,
+        "avifSize": 22851,
+        "savingsPct": "86.5"
+      },
+      {
+        "relPath": "illustrations/Handcricket/CricketBat.png",
+        "originalSize": 99718,
+        "webpSize": 15644,
+        "avifSize": 14479,
+        "savingsPct": "85.5"
+      },
+      {
+        "relPath": "illustrations/Handcricket/clouds.png",
+        "originalSize": 142183,
+        "webpSize": 22386,
+        "avifSize": 20768,
+        "savingsPct": "85.4"
+      },
+      {
+        "relPath": "illustrations/Handcricket/stars.png",
+        "originalSize": 95195,
+        "webpSize": 16074,
+        "avifSize": 17633,
+        "savingsPct": "83.1"
+      },
+      {
+        "relPath": "illustrations/Stargame/stargame-room.png",
+        "originalSize": 693061,
+        "webpSize": 97880,
+        "avifSize": 118599,
+        "savingsPct": "85.9"
+      }
+    ]
+  }
+}

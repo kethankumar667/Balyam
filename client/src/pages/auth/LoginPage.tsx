@@ -41,11 +41,19 @@ export default function LoginPage() {
          ════════════════════════════════════════════════════════════ */}
       <div className="hidden lg:flex lg:w-[48%] xl:w-[48%] lg:min-h-screen relative flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-hidden lg:border-r-2 border-[#E0CCAC]">
         {/* Full nostalgic background artwork: 5 boys sitting on stone ledge overlooking playground */}
-        <img
-          src="/SignuppageBG.png"
-          alt="Nostalgic School Playground and Friends"
-          className="absolute inset-0 w-full h-full object-cover object-center"
-        />
+        <picture className="absolute inset-0 w-full h-full pointer-events-none">
+          <source type="image/avif" srcSet="/SignuppageBG.avif" />
+          <source type="image/webp" srcSet="/SignuppageBG.webp" />
+          <img
+            src="/SignuppageBG.png"
+            alt="Nostalgic School Playground and Friends"
+            width={1122}
+            height={1402}
+            loading="eager"
+            decoding="async"
+            className="w-full h-full object-cover object-center"
+          />
+        </picture>
 
         {/* Soft morning ambient wash overlay for legibility. Explicit stops
             (not the default 0/50/100 from-via-to split) so the light wash
@@ -143,11 +151,19 @@ export default function LoginPage() {
         <div className="my-auto w-full">
           {/* Bhalyam Logo */}
           <div className="flex justify-center -mt-6 pb-2">
-            <img
-              src="/FooterBhalyamlogo.png"
-              alt="BHALYAM - Play Together. Remember Forever."
-              className="h-24 sm:h-28 w-auto object-contain"
-            />
+            <picture>
+              <source type="image/avif" srcSet="/FooterBhalyamlogo.avif" />
+              <source type="image/webp" srcSet="/FooterBhalyamlogo.webp" />
+              <img
+                src="/FooterBhalyamlogo.png"
+                alt="BHALYAM - Play Together. Remember Forever."
+                width={112}
+                height={112}
+                loading="lazy"
+                decoding="async"
+                className="h-24 sm:h-28 w-auto object-contain"
+              />
+            </picture>
           </div>
 
           {/* Top Header */}
@@ -197,6 +213,7 @@ export default function LoginPage() {
                 <div className="relative">
                   <User className="absolute left-4.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#64748B] pointer-events-none" />
                   <input
+                    id="login-email"
                     type="text"
                     value={email}
                     onChange={(e) => {
@@ -205,6 +222,9 @@ export default function LoginPage() {
                       if (error) clearError();
                     }}
                     placeholder="Email or phone number"
+                    aria-label="Email or phone number"
+                    aria-invalid={Boolean(emailError)}
+                    aria-describedby={emailError ? "login-email-error" : undefined}
                     className={`w-full bg-[#EEF2F6]/75 border rounded-full pl-11 pr-4 py-3.5 text-[14px] sm:text-[15px] font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F172A]/20 focus:border-[#0F172A] transition-all shadow-2xs ${
                       emailError ? "border-[#A82020]" : "border-[#CBD5E1]"
                     }`}
@@ -212,7 +232,7 @@ export default function LoginPage() {
                   />
                 </div>
                 {emailError && (
-                  <span className="text-[11px] font-bold text-[#A82020] block pl-3">
+                  <span id="login-email-error" role="alert" className="text-[11px] font-bold text-[#A82020] block pl-3">
                     {emailError}
                   </span>
                 )}
@@ -223,6 +243,7 @@ export default function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-4.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#64748B] pointer-events-none" />
                   <input
+                    id="login-password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => {
@@ -231,6 +252,9 @@ export default function LoginPage() {
                       if (error) clearError();
                     }}
                     placeholder="••••••••••••"
+                    aria-label="Password"
+                    aria-invalid={Boolean(passwordError)}
+                    aria-describedby={passwordError ? "login-password-error" : undefined}
                     className={`w-full bg-[#EEF2F6]/75 border rounded-full pl-11 pr-11 py-3.5 text-[14px] sm:text-[15px] font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F172A]/20 focus:border-[#0F172A] transition-all shadow-2xs ${
                       passwordError ? "border-[#A82020]" : "border-[#CBD5E1]"
                     }`}
@@ -252,7 +276,7 @@ export default function LoginPage() {
                   </button>
                 </div>
                 {passwordError && (
-                  <span className="text-[11px] font-bold text-[#A82020] block pl-3">
+                  <span id="login-password-error" role="alert" className="text-[11px] font-bold text-[#A82020] block pl-3">
                     {passwordError}
                   </span>
                 )}
@@ -341,11 +365,19 @@ export default function LoginPage() {
 
           {/* Founder Section Asset */}
           <div className="flex justify-center pt-4 pb-2">
-            <img
-              src="/Foundersectionasset.png"
-              alt="Bhalyam Founders"
-              className="h-24 sm:h-28 w-auto object-contain opacity-90"
-            />
+            <picture>
+              <source type="image/avif" srcSet="/Foundersectionasset.avif" />
+              <source type="image/webp" srcSet="/Foundersectionasset.webp" />
+              <img
+                src="/Foundersectionasset.png"
+                alt="Bhalyam Founders"
+                width={112}
+                height={112}
+                loading="lazy"
+                decoding="async"
+                className="h-24 sm:h-28 w-auto object-contain opacity-90"
+              />
+            </picture>
           </div>
         </div>
       </div>
