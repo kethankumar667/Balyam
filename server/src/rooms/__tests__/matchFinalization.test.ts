@@ -195,4 +195,184 @@ describe("RoomManager — match finalization is a single, audited path", () => {
     expect(() => vi.advanceTimersByTime(31_000)).not.toThrow();
     expect(roomsMap.has(created.code)).toBe(false);
   });
+
+  describe("Blocker 01 — match winner resolution via shared getWinnerId fallback", () => {
+    it("correctly records WIN for winner and LOSS for loser in a decisive non-DotsBoxes 1v1 match (RPS)", () => {
+      const { io } = makeIo();
+      const rm = new RoomManager(io);
+      const created = rm.createRoom("s_alice", "Alice", "rps");
+      const joined = rm.joinRoom("s_bob", "Bob", created.code);
+      expect(joined.ok).toBe(true);
+
+      const aliceId = created.playerId;
+      const bobId = (joined as { playerId: string }).playerId;
+
+      rm.setReady("s_alice", true);
+      rm.setReady("s_bob", true);
+      rm.startGame("s_alice");
+
+      // Play 10 rounds of RPS where Alice throws rock and Bob throws scissors.
+      // Target is 10. Alice wins 10-0.
+      for (let round = 0; round < 10; round++) {
+        rm.applyMove("s_alice", "choose", { choice: "rock" });
+        rm.applyMove("s_bob", "choose", { choice: "scissors" });
+      }
+
+      const state = rm.getRoomState("s_alice") as unknown as { phase: string; lifecycleState: string } | null;
+      expect(state?.phase).toBe("finished");
+      expect(state?.lifecycleState).toBe("COMPLETED");
+
+      // Verify Alice (Winner)
+      const aliceStats = profileService.getStats(aliceId);
+      expect(aliceStats.totalMatches).toBe(1);
+      expect(aliceStats.wins).toBe(1);
+      expect(aliceStats.losses).toBe(0);
+      expect(aliceStats.draws).toBe(0);
+      expect(aliceStats.currentWinStreak).toBe(1);
+
+      const aliceProfile = profileService.getProfile(aliceId);
+      expect(aliceProfile?.experiencePoints).toBe(50); // 50 XP for WIN
+
+      // Verify Bob (Loser)
+      const bobStats = profileService.getStats(bobId);
+      expect(bobStats.totalMatches).toBe(1);
+      expect(bobStats.wins).toBe(0);
+      expect(bobStats.losses).toBe(1);
+      expect(bobStats.draws).toBe(0);
+      expect(bobStats.currentWinStreak).toBe(0);
+
+      const bobProfile = profileService.getProfile(bobId);
+      expect(bobProfile?.experiencePoints).toBe(15); // 15 XP for LOSS
+    });
+
+    it("correctly records genuine DRAW for both players in a drawn match (Chess agreed draw)", () => {
+      const { io } = makeIo();
+      const rm = new RoomManager(io);
+      const created = rm.createRoom("c_alice", "Alice", "chess");
+      const joined = rm.joinRoom("c_bob", "Bob", created.code);
+      expect(joined.ok).toBe(true);
+
+      const aliceId = created.playerId;
+      const bobId = (joined as { playerId: string }).playerId;
+
+      rm.setReady("c_alice", true);
+      rm.setReady("c_bob", true);
+      rm.startGame("c_alice");
+
+      // Alice offers draw, Bob accepts draw
+      rm.applyMove("c_alice", "offerDraw", {});
+      rm.applyMove("c_bob", "acceptDraw", {});
+
+      const state = rm.getRoomState("c_alice") as unknown as { phase: string; lifecycleState: string } | null;
+      expect(state?.phase).toBe("finished");
+      expect(state?.lifecycleState).toBe("COMPLETED");
+
+      // Verify Alice (Draw)
+      const aliceStats = profileService.getStats(aliceId);
+      expect(aliceStats.totalMatches).toBe(1);
+      expect(aliceStats.wins).toBe(0);
+      expect(aliceStats.losses).toBe(0);
+      expect(aliceStats.draws).toBe(1);
+      expect(aliceStats.currentWinStreak).toBe(0);
+
+      const aliceProfile = profileService.getProfile(aliceId);
+      expect(aliceProfile?.experiencePoints).toBe(25); // 25 XP for DRAW
+
+      // Verify Bob (Draw)
+      const bobStats = profileService.getStats(bobId);
+      expect(bobStats.totalMatches).toBe(1);
+      expect(bobStats.wins).toBe(0);
+      expect(bobStats.losses).toBe(0);
+      expect(bobStats.draws).toBe(1);
+      expect(bobStats.currentWinStreak).toBe(0);
+
+      const bobProfile = profileService.getProfile(bobId);
+      expect(bobProfile?.experiencePoints).toBe(25); // 25 XP for DRAW
+    });
+
+    it("preserves getWinner() derivation for DotsBoxes matches without regression", () => {
+      const { io } = makeIo();
+      const rm = new RoomManager(io);
+      const created = rm.createRoom(
+        "d_alice",
+        "Alice",
+        "dotsboxes",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { boardSize: 5, turnTimerSeconds: 30 }
+      );
+      const joined = rm.joinRoom("d_bob", "Bob", created.code);
+      expect(joined.ok).toBe(true);
+
+      const bobId = (joined as { playerId: string }).playerId;
+
+      rm.setReady("d_alice", true);
+      rm.setReady("d_bob", true);
+      rm.startGame("d_alice");
+
+      // Alice leaves / forfeits, which exercises DotsBoxesEngine.removePlayer() -> getWinner()
+      rm.leaveRoom("d_alice");
+
+      const state = rm.getRoomState("d_bob") as unknown as { phase: string; lifecycleState: string } | null;
+      expect(state?.phase).toBe("finished");
+      expect(state?.lifecycleState).toBe("COMPLETED");
+
+      // Bob is winner via DotsBoxesEngine.getWinner()
+      const bobStats = profileService.getStats(bobId);
+      expect(bobStats.totalMatches).toBe(1);
+      expect(bobStats.wins).toBe(1);
+      expect(bobStats.losses).toBe(0);
+      expect(bobStats.draws).toBe(0);
+
+      const bobProfile = profileService.getProfile(bobId);
+      expect(bobProfile?.experiencePoints).toBe(50); // 50 XP for WIN
+    });
+
+    it("correctly records WIN for winner and LOSS for loser in a decisive chess resignation match", () => {
+      const { io } = makeIo();
+      const rm = new RoomManager(io);
+      const created = rm.createRoom("c_alice", "Alice", "chess");
+      const joined = rm.joinRoom("c_bob", "Bob", created.code);
+      expect(joined.ok).toBe(true);
+
+      const aliceId = created.playerId;
+      const bobId = (joined as { playerId: string }).playerId;
+
+      rm.setReady("c_alice", true);
+      rm.setReady("c_bob", true);
+      rm.startGame("c_alice");
+
+      // Alice resigns while remaining seated in the room -> Bob wins
+      rm.applyMove("c_alice", "resign", {});
+
+      const state = rm.getRoomState("c_alice") as unknown as { phase: string; lifecycleState: string } | null;
+      expect(state?.phase).toBe("finished");
+      expect(state?.lifecycleState).toBe("COMPLETED");
+
+      // Verify Bob (Winner)
+      const bobStats = profileService.getStats(bobId);
+      expect(bobStats.totalMatches).toBe(1);
+      expect(bobStats.wins).toBe(1);
+      expect(bobStats.losses).toBe(0);
+      expect(bobStats.draws).toBe(0);
+      expect(bobStats.currentWinStreak).toBe(1);
+
+      const bobProfile = profileService.getProfile(bobId);
+      expect(bobProfile?.experiencePoints).toBe(50); // 50 XP for WIN
+
+      // Verify Alice (Loser)
+      const aliceStats = profileService.getStats(aliceId);
+      expect(aliceStats.totalMatches).toBe(1);
+      expect(aliceStats.wins).toBe(0);
+      expect(aliceStats.losses).toBe(1);
+      expect(aliceStats.draws).toBe(0);
+      expect(aliceStats.currentWinStreak).toBe(0);
+
+      const aliceProfile = profileService.getProfile(aliceId);
+      expect(aliceProfile?.experiencePoints).toBe(15); // 15 XP for LOSS
+    });
+  });
 });

@@ -111,7 +111,7 @@ import {
   UnsupportedSeatCountError,
 } from "../persistence/EconomyRepository.js";
 import { resolveIdentity } from "./economyIdentity.js";
-import { extractRankedParticipants } from "./economyPlacements.js";
+import { extractRankedParticipants, getWinnerId } from "./economyPlacements.js";
 import { EconomySettlementQueue } from "./economySettlementQueue.js";
 
 const GRACE_PERIOD_MS = 90_000;
@@ -2035,10 +2035,10 @@ export class RoomManager {
   private finalizeMatch(room: Room, departedPlayer?: Player): void {
     room.phase = "finished";
     this.transitionLifecycle(room, "COMPLETED", "Match finished");
-    serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine as any).getWinner?.() ?? null);
+    serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine ? getWinnerId(room.engine) : null) ?? null);
     metricsCollector.onMatchFinished(room.game, 0);
     try {
-      const winnerId = (room.engine as any).getWinner?.() ?? undefined;
+      const winnerId = (room.engine ? getWinnerId(room.engine) : undefined) ?? undefined;
       const participants = Array.from(room.players.values()).map((p) => ({
         playerId: p.id,
         name: p.name,
