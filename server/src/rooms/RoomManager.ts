@@ -2031,8 +2031,27 @@ export class RoomManager {
    * `profileService`/`recentPlayersService` below are unchanged, matching
    * their existing, already-shipped, non-economy behavior of recording
    * whoever is still seated at the moment the match ends.
+   *
+   * ── Terminal-resolution idempotency (Blocker 02) ─────────────────────
+   * A stale timer or closure can reach this method a second time for a
+   * match that already concluded — e.g. a player's disconnect-grace
+   * REMOVAL timer (up to `MATCH_GRACE_PERIOD_MS`) is still pending when the
+   * match instead finishes naturally seconds later via that same player's
+   * auto-play; when the stale timer eventually fires, `engine.isOver()` is
+   * still true and it calls this method again. `queueMatchSettlement`
+   * already guards the WALLET effect (`currentMatchId` is null by then),
+   * but without this guard every non-economic side effect below —
+   * `profileService.recordMatchFinished`, `recentPlayersService.recordMatch`,
+   * `serverTimelineRecorder.recordGameFinished`,
+   * `metricsCollector.onMatchFinished` — would still fire a second time for
+   * the one match. `isMatchAlreadyConcluded` is the exact same check
+   * `abandonRoom` already trusts for the identical purpose (see its own
+   * doc comment) — reused here, not reinvented, so both of this class's
+   * only two terminal-outcome entry points share one source of truth for
+   * "has this room's match already resolved."
    */
   private finalizeMatch(room: Room, departedPlayer?: Player): void {
+    if (this.isMatchAlreadyConcluded(room)) return;
     room.phase = "finished";
     this.transitionLifecycle(room, "COMPLETED", "Match finished");
     serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine ? getWinnerId(room.engine) : null) ?? null);
