@@ -2850,6 +2850,51 @@ export class RoomManager {
   }
 
   /**
+   * True while at least one OTHER human participant in this active match
+   * has an active disconnect-grace window (they dropped, are awaiting reconnect,
+   * and their cleanup timer is running).
+   *
+   * While disconnect grace is active for another seat:
+   * 1. Surviving connected participants must NOT accumulate idle strikes.
+   * 2. Surviving connected participants must NOT be promoted to idle auto-play.
+   * 3. Surviving connected participants must NOT receive timeout-generated automatic moves.
+   */
+  private hasOtherParticipantInActiveDisconnectGrace(
+    room: Room,
+    participantId: string,
+  ): boolean {
+    return [...room.players.values()].some(
+      (p) =>
+        p.id !== participantId &&
+        !p.isBot &&
+        !p.isConnected &&
+        !p.hasQuit &&
+        room.cleanupTimers.has(p.id),
+    );
+  }
+
+  /**
+   * True if a turn/round timeout may generate an automated move for `playerId`.
+   *
+   * - Bots always receive automated moves.
+   * - Disconnected seats covered by disconnect takeover receive automated moves.
+   * - Explicitly idle-promoted seats receive automated moves.
+   * - Connected human survivors must NOT receive timeout-generated automatic moves
+   *   while another participant has an active disconnect-grace window (prevents
+   *   accidental automated game completion racing against disconnect grace).
+   */
+  private canApplyTimeoutMove(room: Room, playerId: string): boolean {
+    const p = room.players.get(playerId);
+    if (!p) return false;
+    if (p.isBot) return true;
+    if (this.isAutoDriven(room, playerId)) return true;
+    if (this.hasOtherParticipantInActiveDisconnectGrace(room, playerId)) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Is this seat currently being driven by the server?
    *
    * Pass-and-play seats have no socket of their own — the host's socket emits
@@ -2971,6 +3016,9 @@ export class RoomManager {
     for (const pid of stalled) {
       const p = room.players.get(pid);
       if (!p || p.isBot || p.isAutoPlaying || p.hasQuit) continue;
+      // Blocker 05: Prevent idle-strike accumulation and auto-play promotion of
+      // surviving participants while another participant has an active disconnect-grace window.
+      if (this.hasOtherParticipantInActiveDisconnectGrace(room, pid)) continue;
       const strikes = (room.idleStrikes.get(pid) ?? 0) + 1;
       room.idleStrikes.set(pid, strikes);
       if (strikes < IDLE_STRIKES_BEFORE_TAKEOVER) continue;
@@ -3429,6 +3477,7 @@ export class RoomManager {
       // round; afterAutoMove broadcasts and arms the next round's timer.
       for (const pid of engine.choosersRemaining()) {
         if (engine.isOver()) break;
+        if (!this.canApplyTimeoutMove(room, pid)) continue;
         engine.applyAutoMove(pid);
       }
       this.afterAutoMove(room, engine.isOver());
@@ -3439,6 +3488,10 @@ export class RoomManager {
       const state = engine.getPublicState();
       if (state.phase !== "playing") return;
       const pid = state.turnPlayerId;
+      if (!this.canApplyTimeoutMove(room, pid)) {
+        this.afterAutoMove(room, false);
+        return;
+      }
       if (state.turnPhase === "rolling") {
         engine.applyMove({ playerId: pid, type: "roll" });
       }
@@ -3462,6 +3515,10 @@ export class RoomManager {
         return;
       }
       if (state.phase !== "playing") return;
+      if (!this.canApplyTimeoutMove(room, state.turnPlayerId)) {
+        this.afterAutoMove(room, false);
+        return;
+      }
       engine.applyAutoMove(state.turnPlayerId);
       this.afterAutoMove(room, engine.isOver());
       return;
@@ -3470,6 +3527,10 @@ export class RoomManager {
       const engine = room.engine;
       const state = engine.getPublicState();
       if (state.phase !== "playing") return;
+      if (!this.canApplyTimeoutMove(room, state.turnPlayerId)) {
+        this.afterAutoMove(room, false);
+        return;
+      }
       engine.applyAutoMove(state.turnPlayerId);
       this.afterAutoMove(room, engine.isOver());
       return;
@@ -3478,6 +3539,10 @@ export class RoomManager {
       const engine = room.engine;
       const state = engine.getPublicState();
       if (state.phase !== "playing") return;
+      if (!this.canApplyTimeoutMove(room, state.turnPlayerId)) {
+        this.afterAutoMove(room, false);
+        return;
+      }
       engine.applyAutoMove(state.turnPlayerId);
       this.afterAutoMove(room, engine.isOver());
       return;
@@ -3485,7 +3550,7 @@ export class RoomManager {
     if (room.engine instanceof StarGameEngine) {
       const engine = room.engine;
       if (engine.isOver()) return;
-      engine.resolveDeadline();
+      engine.resolveDeadline((pid) => this.canApplyTimeoutMove(room, pid));
       this.afterAutoMove(room, engine.isOver());
       return;
     }
@@ -3497,7 +3562,9 @@ export class RoomManager {
       // merely hasn't declared yet (that must stay a social "catch"
       // mechanic, not something the clock does for them).
       const actorId = engine.getTimeoutActor();
-      if (actorId) engine.applyAutoMove(actorId);
+      if (actorId && this.canApplyTimeoutMove(room, actorId)) {
+        engine.applyAutoMove(actorId);
+      }
       this.afterAutoMove(room, engine.isOver());
       return;
     }
@@ -3510,10 +3577,16 @@ export class RoomManager {
         // the same deadline, so everyone still unlocked when it expires gets
         // locked at once. Auto-locking one player per expiry would make an
         // eight-seat table take eight windows to start.
-        for (const pid of engine.pendingActors()) engine.applyAutoMove(pid);
+        for (const pid of engine.pendingActors()) {
+          if (this.canApplyTimeoutMove(room, pid)) {
+            engine.applyAutoMove(pid);
+          }
+        }
       } else {
         const actorId = engine.getTimeoutActor();
-        if (actorId) engine.applyAutoMove(actorId);
+        if (actorId && this.canApplyTimeoutMove(room, actorId)) {
+          engine.applyAutoMove(actorId);
+        }
       }
       this.afterAutoMove(room, engine.isOver());
       return;
@@ -3525,7 +3598,11 @@ export class RoomManager {
     ) {
       const engine = room.engine;
       if (engine.isOver()) return;
-      engine.resolveDeadline();
+      if (engine instanceof NamePlaceAnimalEngine) {
+        engine.resolveDeadline((pid) => this.canApplyTimeoutMove(room, pid));
+      } else {
+        engine.resolveDeadline();
+      }
       this.afterAutoMove(room, engine.isOver());
       return;
     }

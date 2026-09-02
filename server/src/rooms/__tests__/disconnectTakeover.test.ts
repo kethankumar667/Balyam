@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Server } from "socket.io";
 import { RoomManager } from "../RoomManager.js";
 import { mintSeatToken } from "../../lib/seatToken.js";
+import type { LudoEngine } from "../../games/ludo/LudoEngine.js";
 import type {
   ChatMessage,
   ClientToServerEvents,
@@ -90,12 +91,20 @@ const asBroadcast = (broadcasts: RoomPublicState[], name: string): Player | unde
  *  assertions by nature, and the alternative is asserting on broadcast
  *  payloads, which would not distinguish "not taken over" from "not sent". */
 interface PeekRoom {
+  phase?: string;
   players: Map<string, Player>;
+  idleStrikes: Map<string, number>;
+  cleanupTimers: Map<string, NodeJS.Timeout>;
   engine: {
     getPublicState(): {
-      turnPlayerId: string;
+      phase?: string;
+      turnPlayerId?: string;
       turnPhase?: string;
+      scores?: Record<string, number>;
+      history?: unknown[];
       stats?: { rollCount?: Record<string, number> };
+      players?: Array<{ id: string; hasSelected?: boolean; hasSubmitted?: boolean; hasPassed?: boolean }>;
+      allAnswers?: Record<string, unknown> | null;
     };
   };
 }
@@ -246,6 +255,7 @@ describe("RoomManager — disconnect takeover", () => {
       const { rooms, code } = seatThree();
       rooms.handleDisconnect("sockB");
       const before = totalRolls(rooms, code);
+      rooms.applyMove("sockA", "roll", {});
       vi.advanceTimersByTime(90_000);
       expect(totalRolls(rooms, code)).toBeGreaterThan(before);
     }
@@ -535,5 +545,449 @@ describe("RoomManager — disconnect takeover", () => {
 
     const bob = playerOf(rooms, code, "Bob");
     expect(bob.isAutoPlaying).toBe(true);
+  });
+
+  describe("Blocker 05 — disconnect grace vs idle auto-resolution race", () => {
+    it("Test A: does not accumulate idle strikes or promote a surviving idle participant during another participant's disconnect-grace window", () => {
+      const { io } = makeIo();
+      const rooms = new RoomManager(io);
+      const { code } = rooms.createRoom("sockA", "Alice", "ludo");
+      rooms.joinRoom("sockB", "Bob", code);
+      rooms.setReady("sockA", true);
+      rooms.setReady("sockB", true);
+      rooms.startGame("sockA");
+
+      const alice = playerOf(rooms, code, "Alice");
+      const bob = playerOf(rooms, code, "Bob");
+
+      // Alice disconnects during active match
+      rooms.handleDisconnect("sockA");
+      expect(alice.isConnected).toBe(false);
+
+      // Advance past takeover grace (10s) so Alice gets disconnect takeover
+      vi.advanceTimersByTime(11_000);
+      expect(alice.isAutoPlaying).toBe(true);
+      expect(alice.autoPlayReason).toBe("disconnected");
+
+      // Advance time through multiple turn timeouts for Bob (e.g. 5 timeouts = 155s)
+      for (let i = 0; i < 5; i++) {
+        vi.advanceTimersByTime(31_000);
+      }
+
+      // Assert Bob did NOT accumulate any idle strikes during Alice's disconnect-grace window
+      const room = peek(rooms, code);
+      expect(room.idleStrikes.get(bob.id)).toBeUndefined();
+      expect(bob.isConnected).toBe(true);
+      expect(bob.isAutoPlaying).not.toBe(true);
+      expect(bob.autoPlayReason).toBeUndefined();
+    });
+
+    it("Test B: requires a full fresh sequence of idle strikes after a disconnected participant reconnects", () => {
+      // Ludo, with dice pinned to the repository's own established pattern
+      // (see ludo/__tests__/reconnect.test.ts: `setRng(() => 0.99)`, always
+      // a six). A FIXED rng value makes every bonus-turn chain the same
+      // deterministic length on every run — the earlier failures (11/50
+      // isolated) came from leaving Math.random() uncontrolled, which let
+      // Alice's auto-played turns during grace consume a variable number of
+      // sub-cycles and shift whose turn each fixed 31s advance landed on.
+      //
+      // Even with dice pinned, this is still a turn-based game — Bob's
+      // OWN idle-strike opportunities only occur on cycles where it is
+      // genuinely his turn, alternating with Alice's. So this test drives
+      // forward on public state (turnPlayerId), never assuming a fixed
+      // number of cycles lands on him.
+      const { io } = makeIo();
+      const rooms = new RoomManager(io);
+      const { code } = rooms.createRoom("sockA", "Alice", "ludo");
+      const aliceToken = mintSeatToken(code, playerOf(rooms, code, "Alice").id);
+      rooms.joinRoom("sockB", "Bob", code);
+      rooms.setReady("sockA", true);
+      rooms.setReady("sockB", true);
+      rooms.startGame("sockA");
+
+      const alice = playerOf(rooms, code, "Alice");
+      const bob = playerOf(rooms, code, "Bob");
+      const room = peek(rooms, code);
+      (room.engine as unknown as LudoEngine).setRng(() => 0.99);
+
+      // Alice disconnects during active match
+      rooms.handleDisconnect("sockA");
+      expect(alice.isConnected).toBe(false);
+
+      // Advance past takeover grace (10s)
+      vi.advanceTimersByTime(11_000);
+      expect(alice.isAutoPlaying).toBe(true);
+
+      // Bob times out 3 times while Alice is disconnected. Turn parity does
+      // not matter here: canApplyTimeoutMove(bob) is false for as long as
+      // Alice's grace is active, regardless of whose turn it nominally is,
+      // so his turn never resolves and never advances during this window.
+      vi.advanceTimersByTime(31_000);
+      vi.advanceTimersByTime(31_000);
+      vi.advanceTimersByTime(31_000);
+
+      // Verify no strikes accumulated during grace
+      expect(room.idleStrikes.get(bob.id)).toBeUndefined();
+      expect(bob.isAutoPlaying).not.toBe(true);
+
+      // Alice reconnects within grace period
+      const reclaim = rooms.joinRoom("sockA2", "Alice", code, alice.id, aliceToken);
+      expect(reclaim.ok).toBe(true);
+      expect(alice.isConnected).toBe(true);
+      expect(alice.isAutoPlaying).toBe(false);
+
+      // Grace is now clear, so both seats are ordinary idle players again:
+      // whoever's turn it is auto-resolves on their own timeout, exactly
+      // like any idle player with no disconnect involved. Drive forward
+      // deterministically until public state confirms it is genuinely
+      // Bob's turn before asserting anything about his strike count.
+      const MAX_DRIVE_CYCLES = 12;
+      const driveUntilBobsTurn = () => {
+        let cycles = 0;
+        while (room.engine.getPublicState().turnPlayerId !== bob.id) {
+          vi.advanceTimersByTime(31_000);
+          cycles += 1;
+          if (cycles > MAX_DRIVE_CYCLES) {
+            throw new Error("turn did not reach Bob within the expected number of cycles");
+          }
+        }
+      };
+
+      driveUntilBobsTurn();
+
+      // Bob's first genuine post-reconnect timeout opportunity: strike 1,
+      // not yet promoted. This same timeout also resolves his turn (he is
+      // an ordinary eligible idle player now), advancing play onward.
+      vi.advanceTimersByTime(31_000);
+      expect(room.idleStrikes.get(bob.id)).toBe(1);
+      expect(bob.isAutoPlaying).not.toBe(true);
+      expect(bob.autoPlayReason).toBeUndefined();
+
+      // Drive forward again until play genuinely returns to Bob before
+      // triggering his second opportunity.
+      driveUntilBobsTurn();
+
+      // Bob's second genuine post-reconnect timeout: strike 2, promoted to
+      // idle auto-play.
+      vi.advanceTimersByTime(31_000);
+      expect(room.idleStrikes.get(bob.id)).toBe(2);
+      expect(bob.isAutoPlaying).toBe(true);
+      expect(bob.autoPlayReason).toBe("idle");
+    });
+
+    it("Test C: suppresses timeout-generated automatic moves for a connected idle survivor during RPS disconnect grace", () => {
+      const { io } = makeIo();
+      const rooms = new RoomManager(io);
+      const { code } = rooms.createRoom("sockA", "Alice", "rps");
+      rooms.joinRoom("sockB", "Bob", code);
+      rooms.setReady("sockA", true);
+      rooms.setReady("sockB", true);
+      rooms.startGame("sockA");
+
+      const alice = playerOf(rooms, code, "Alice");
+      const bob = playerOf(rooms, code, "Bob");
+
+      // Alice disconnects during active match
+      rooms.handleDisconnect("sockA");
+      expect(alice.isConnected).toBe(false);
+
+      // Advance past takeover grace (10s)
+      vi.advanceTimersByTime(11_000);
+      expect(alice.isAutoPlaying).toBe(true);
+
+      // Advance 10 full 30s round timeouts (300s total)
+      for (let i = 0; i < 10; i++) {
+        vi.advanceTimersByTime(31_000);
+      }
+
+      // Assert Bob received NO auto-moves and match is still active (0 rounds completed)
+      const room = peek(rooms, code);
+      expect(room.phase).toBe("playing");
+      const scores = room.engine.getPublicState().scores;
+      expect(scores?.[alice.id] ?? 0).toBe(0);
+      expect(scores?.[bob.id] ?? 0).toBe(0);
+      expect(bob.isConnected).toBe(true);
+      expect(bob.isAutoPlaying).not.toBe(true);
+
+      // Advance past 600s total (MATCH_GRACE_PERIOD_MS) -> Alice's grace expires -> Alice dropped -> Bob wins by walkover/forfeit
+      vi.advanceTimersByTime(300_000);
+      expect(room.phase).toBe("finished");
+    });
+
+    it("Test D: suppresses timeout-generated automatic moves for a connected idle guest during Ludo disconnect grace with a bot present", () => {
+      const { io } = makeIo();
+      const rooms = new RoomManager(io);
+      const { code } = rooms.createRoom("sockA", "Alice", "ludo");
+      rooms.joinRoom("sockB", "Basil", code);
+      rooms.addBot("sockA", "Botty");
+      rooms.setReady("sockA", true);
+      rooms.setReady("sockB", true);
+      rooms.startGame("sockA");
+
+      const alice = playerOf(rooms, code, "Alice");
+      const basil = playerOf(rooms, code, "Basil");
+      const bot = playerOf(rooms, code, "Botty");
+
+      // Alice disconnects during active match
+      rooms.handleDisconnect("sockA");
+      expect(alice.isConnected).toBe(false);
+
+      // Advance past takeover grace (10s)
+      vi.advanceTimersByTime(11_000);
+      expect(alice.isAutoPlaying).toBe(true);
+
+      // Advance multiple turns (e.g. 10 * 31s = 310s)
+      for (let i = 0; i < 10; i++) {
+        vi.advanceTimersByTime(31_000);
+      }
+
+      // Assert Basil's seat was not auto-moved into an incidental victory
+      const room = peek(rooms, code);
+      expect(room.phase).toBe("playing");
+      expect(basil.isConnected).toBe(true);
+      expect(basil.isAutoPlaying).not.toBe(true);
+
+      // Advance past 600s total -> Alice's grace expires -> Alice is dropped from the room
+      vi.advanceTimersByTime(300_000);
+      expect(room.players.has(alice.id)).toBe(false);
+    });
+
+    it("Test E: preserves explicitly submitted valid moves and state progression by an active connected survivor", () => {
+      const { io } = makeIo();
+      const rooms = new RoomManager(io);
+      const { code } = rooms.createRoom("sockA", "Alice", "rps");
+      rooms.joinRoom("sockB", "Bob", code);
+      rooms.setReady("sockA", true);
+      rooms.setReady("sockB", true);
+      rooms.startGame("sockA");
+
+      const alice = playerOf(rooms, code, "Alice");
+      const bob = playerOf(rooms, code, "Bob");
+
+      // Alice disconnects during active match
+      rooms.handleDisconnect("sockA");
+      expect(alice.isConnected).toBe(false);
+
+      // Advance past takeover grace (10s) so Alice auto-plays
+      vi.advanceTimersByTime(11_000);
+      expect(alice.isAutoPlaying).toBe(true);
+
+      // Bob explicitly submits a real valid move
+      rooms.applyMove("sockB", "choose", { choice: "rock" });
+      vi.advanceTimersByTime(2_000);
+
+      // Verify that Bob is connected, not auto-playing, and his move was accepted
+      expect(bob.isConnected).toBe(true);
+      expect(bob.isAutoPlaying).not.toBe(true);
+      const room = peek(rooms, code);
+      const state = room.engine.getPublicState();
+      expect((state.history ?? []).length).toBeGreaterThan(0);
+    });
+
+    it("Test F: Star Game — suppresses timeout-generated participant action for connected idle survivor during disconnect grace", async () => {
+      const { io } = makeIo();
+      const rooms = new RoomManager(io);
+      const { code } = rooms.createRoom("sockA", "Alice", "stargame");
+      rooms.joinRoom("sockB", "Bob", code);
+      rooms.setReady("sockA", true);
+      rooms.setReady("sockB", true);
+      rooms.startGame("sockA");
+
+      const alice = playerOf(rooms, code, "Alice");
+      const bob = playerOf(rooms, code, "Bob");
+      const room = peek(rooms, code);
+
+      expect(room.engine.getPublicState().phase).toBe("themeSelect");
+
+      // Alice disconnects during themeSelect
+      rooms.handleDisconnect("sockA");
+      expect(alice.isConnected).toBe(false);
+
+      // Advance past 30s themeSelect deadline (31s total)
+      await vi.advanceTimersByTimeAsync(31_000);
+
+      // Assert Bob did NOT receive a generated theme value and phase is still themeSelect
+      const pubState = room.engine.getPublicState();
+      expect(pubState.phase).toBe("themeSelect");
+      const bobPub = pubState.players?.find((p) => p.id === bob.id);
+      expect(bobPub?.hasSelected).toBe(false);
+      expect(bob.isConnected).toBe(true);
+      expect(bob.isAutoPlaying).not.toBe(true);
+
+      // Advance another 30s — verify no 0ms timer explosion and phase remains themeSelect
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(room.engine.getPublicState().phase).toBe("themeSelect");
+
+      // Advance to 600s -> Alice's grace expires -> Alice dropped -> game completes
+      await vi.advanceTimersByTimeAsync(540_000);
+      expect(room.phase).toBe("finished");
+    });
+
+    it("Test G: Star Game — normal deadline auto-action and post-reconnect behavior", async () => {
+      // Control 1: No disconnect grace -> normal timeout auto-selects and advances
+      {
+        const { io } = makeIo();
+        const rooms = new RoomManager(io);
+        const { code } = rooms.createRoom("sockA", "Alice", "stargame");
+        rooms.joinRoom("sockB", "Bob", code);
+        rooms.setReady("sockA", true);
+        rooms.setReady("sockB", true);
+        rooms.startGame("sockA");
+
+        const room = peek(rooms, code);
+        expect(room.engine.getPublicState().phase).toBe("themeSelect");
+
+        await vi.advanceTimersByTimeAsync(31_000);
+        // Phase should advance to shuffle once all players receive values
+        expect(room.engine.getPublicState().phase).not.toBe("themeSelect");
+      }
+
+      // Control 2: Disconnect -> protected during grace -> reconnect -> normal auto-select resumes
+      {
+        const { io } = makeIo();
+        const rooms = new RoomManager(io);
+        const { code } = rooms.createRoom("sockA", "Alice", "stargame");
+        const alice = playerOf(rooms, code, "Alice");
+        const aliceToken = mintSeatToken(code, alice.id);
+        rooms.joinRoom("sockB", "Bob", code);
+        rooms.setReady("sockA", true);
+        rooms.setReady("sockB", true);
+        rooms.startGame("sockA");
+
+        const room = peek(rooms, code);
+        rooms.handleDisconnect("sockA");
+
+        // Protected during grace
+        await vi.advanceTimersByTimeAsync(31_000);
+        expect(room.engine.getPublicState().phase).toBe("themeSelect");
+
+        // Alice reconnects
+        const reclaim = rooms.joinRoom("sockA_re", "Alice", code, alice.id, aliceToken);
+        expect(reclaim.ok).toBe(true);
+        expect(playerOf(rooms, code, "Alice").isConnected).toBe(true);
+
+        // Next deadline timeout now auto-selects and advances
+        await vi.advanceTimersByTimeAsync(31_000);
+        expect(room.engine.getPublicState().phase).not.toBe("themeSelect");
+      }
+    });
+
+    it("Test H: Name Place Animal — suppresses blank auto-submission for connected idle survivor during disconnect grace", async () => {
+      const { io } = makeIo();
+      const rooms = new RoomManager(io);
+      const { code } = rooms.createRoom("sockA", "Alice", "namesplaceanimal");
+      rooms.joinRoom("sockB", "Bob", code);
+      rooms.setReady("sockA", true);
+      rooms.setReady("sockB", true);
+      rooms.startGame("sockA");
+
+      const alice = playerOf(rooms, code, "Alice");
+      const bob = playerOf(rooms, code, "Bob");
+      const room = peek(rooms, code);
+
+      expect(room.engine.getPublicState().phase).toBe("playing");
+
+      // Alice disconnects during playing phase
+      rooms.handleDisconnect("sockA");
+      expect(alice.isConnected).toBe(false);
+
+      // Advance past 30s round deadline (31s total)
+      await vi.advanceTimersByTimeAsync(31_000);
+
+      // Assert Bob did NOT receive a blank auto-submission and round has not transitioned to roundSummary
+      const pubState = room.engine.getPublicState();
+      expect(pubState.phase).toBe("playing");
+      const bobPub = pubState.players?.find((p) => p.id === bob.id);
+      expect(bobPub?.hasSubmitted).toBe(false);
+      expect(bob.isConnected).toBe(true);
+      expect(bob.isAutoPlaying).not.toBe(true);
+
+      // Advance another 30s — verify no 0ms loop and phase remains playing
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(room.engine.getPublicState().phase).toBe("playing");
+
+      // Advance to 600s -> Alice's grace expires -> Alice dropped -> game completes
+      await vi.advanceTimersByTimeAsync(540_000);
+      expect(room.phase).toBe("finished");
+    });
+
+    it("Test I: Name Place Animal — normal deadline auto-submission and post-reconnect behavior", async () => {
+      // Control 1: No disconnect grace -> normal timeout auto-submits and transitions to roundSummary
+      {
+        const { io } = makeIo();
+        const rooms = new RoomManager(io);
+        const { code } = rooms.createRoom("sockA", "Alice", "namesplaceanimal");
+        rooms.joinRoom("sockB", "Bob", code);
+        rooms.setReady("sockA", true);
+        rooms.setReady("sockB", true);
+        rooms.startGame("sockA");
+
+        const room = peek(rooms, code);
+        expect(room.engine.getPublicState().phase).toBe("playing");
+
+        await vi.advanceTimersByTimeAsync(31_000);
+        expect(room.engine.getPublicState().phase).toBe("roundSummary");
+      }
+
+      // Control 2: Disconnect -> protected during grace -> reconnect -> normal auto-submission resumes
+      {
+        const { io } = makeIo();
+        const rooms = new RoomManager(io);
+        const { code } = rooms.createRoom("sockA", "Alice", "namesplaceanimal");
+        const alice = playerOf(rooms, code, "Alice");
+        const aliceToken = mintSeatToken(code, alice.id);
+        rooms.joinRoom("sockB", "Bob", code);
+        rooms.setReady("sockA", true);
+        rooms.setReady("sockB", true);
+        rooms.startGame("sockA");
+
+        const room = peek(rooms, code);
+        rooms.handleDisconnect("sockA");
+
+        // Protected during grace
+        await vi.advanceTimersByTimeAsync(31_000);
+        expect(room.engine.getPublicState().phase).toBe("playing");
+
+        // Alice reconnects
+        const reclaim = rooms.joinRoom("sockA_re", "Alice", code, alice.id, aliceToken);
+        expect(reclaim.ok).toBe(true);
+        expect(playerOf(rooms, code, "Alice").isConnected).toBe(true);
+
+        // Next deadline timeout now auto-submits and transitions to roundSummary
+        await vi.advanceTimersByTimeAsync(31_000);
+        expect(room.engine.getPublicState().phase).toBe("roundSummary");
+      }
+    });
+
+    it("Test J: Name Place Animal — accepts real answer submission from survivor during disconnect grace", async () => {
+      const { io } = makeIo();
+      const rooms = new RoomManager(io);
+      const { code } = rooms.createRoom("sockA", "Alice", "namesplaceanimal");
+      rooms.joinRoom("sockB", "Bob", code);
+      rooms.setReady("sockA", true);
+      rooms.setReady("sockB", true);
+      rooms.startGame("sockA");
+
+      const alice = playerOf(rooms, code, "Alice");
+      const bob = playerOf(rooms, code, "Bob");
+      const room = peek(rooms, code);
+
+      rooms.handleDisconnect("sockA");
+      expect(alice.isConnected).toBe(false);
+
+      // Bob explicitly submits real answers
+      rooms.applyMove("sockB", "submitAnswers", {
+        name: "Alice",
+        place: "America",
+        animal: "Ant",
+        thing: "Apple",
+      });
+
+      const pubState = room.engine.getPublicState();
+      const bobPub = pubState.players?.find((p) => p.id === bob.id);
+      expect(bobPub?.hasSubmitted).toBe(true);
+      expect(bob.isConnected).toBe(true);
+      expect(bob.isAutoPlaying).not.toBe(true);
+    });
   });
 });

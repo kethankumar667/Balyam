@@ -689,17 +689,29 @@ export class StarGameEngine implements GameEngine {
   /** Auto-resolve the current phase when its window lapses (a missing/slow
    *  player never stalls the table). Never invoked for bots — bots act through
    *  applyAutoMove on their own paced schedule. */
-  resolveDeadline(): void {
+  resolveDeadline(canAct?: (playerId: string) => boolean): void {
     switch (this.phase) {
       case "themeSelect": {
         for (const pid of this.seatOrder) {
           if (this.phase !== "themeSelect") break;
-          if (!this.selectedValue.has(pid)) this.handleSelectValue(pid, this.firstFreeValue());
+          if (!this.selectedValue.has(pid)) {
+            if (canAct && !canAct(pid)) continue;
+            this.handleSelectValue(pid, this.firstFreeValue());
+          }
+        }
+        if (this.phase === "themeSelect") {
+          this.deadline = null;
         }
         break;
       }
       case "shuffle": {
-        if (this.starterId) this.handleShuffle(this.starterId);
+        if (this.starterId) {
+          if (!canAct || canAct(this.starterId)) {
+            this.handleShuffle(this.starterId);
+          } else {
+            this.deadline = null;
+          }
+        }
         break;
       }
       case "deal":
@@ -708,20 +720,38 @@ export class StarGameEngine implements GameEngine {
       case "pass": {
         // Sequential relay — force just the current actor, not the table.
         const pid = this.passOrder[this.passTurnIndex];
-        if (pid) this.handlePass(pid);
+        if (pid) {
+          if (!canAct || canAct(pid)) {
+            this.handlePass(pid);
+          } else {
+            this.deadline = null;
+          }
+        }
         break;
       }
       case "star": {
         if (!this.starWinnerId) {
           const first = this.seatOrder.find((pid) => this.isFourOfAKind(pid));
-          if (first) this.handlePressStar(first);
+          if (first) {
+            if (!canAct || canAct(first)) {
+              this.handlePressStar(first);
+            } else {
+              this.deadline = null;
+            }
+          }
         }
         break;
       }
       case "handstack": {
         for (const pid of this.seatOrder) {
           if (this.phase !== "handstack") break;
-          if (pid !== this.starWinnerId && !this.stackOrder.includes(pid)) this.handlePlaceHand(pid);
+          if (pid !== this.starWinnerId && !this.stackOrder.includes(pid)) {
+            if (canAct && !canAct(pid)) continue;
+            this.handlePlaceHand(pid);
+          }
+        }
+        if (this.phase === "handstack") {
+          this.deadline = null;
         }
         break;
       }

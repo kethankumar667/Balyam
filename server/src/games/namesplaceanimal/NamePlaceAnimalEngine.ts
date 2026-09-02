@@ -393,18 +393,23 @@ export class NamePlaceAnimalEngine implements GameEngine {
     this.deadline = null;
   }
 
-  resolveDeadline(): void {
+  resolveDeadline(canAct?: (playerId: string) => boolean): void {
     if (this.phase === "playing") {
-      // Auto-submit for anyone who hasn't submitted
+      // Auto-submit for anyone who hasn't submitted and is eligible
       for (const pid of this.seatOrder) {
         if (!this.submitted.has(pid)) {
+          if (canAct && !canAct(pid)) continue;
           if (!this.answers.has(pid)) {
             this.answers.set(pid, { name: "", place: "", animal: "", thing: "" });
           }
           this.submitted.add(pid);
         }
       }
-      this.evaluateRound();
+      if (this.submitted.size === this.seatOrder.length) {
+        this.evaluateRound();
+      } else {
+        this.deadline = null;
+      }
     } else if (this.phase === "roundSummary") {
       this.advanceAfterSummary();
     }
