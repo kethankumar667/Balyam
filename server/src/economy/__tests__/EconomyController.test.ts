@@ -401,7 +401,8 @@ describe("GET /api/economy/wallet — the proven production ledger sequence", ()
     expect(BigInt((afterDebit.body as { wallet: { balance: string } }).wallet.balance)).toBe(starterGrant - cost);
 
     // Refunds are RoomManager-internal (no HTTP route), so this calls the
-    // service directly — the exact call `queueMatchRefund` makes.
+    // service directly — the exact call `abandonRoom`'s
+    // `attemptAbandonmentPersistence` makes.
     await service.refundMatchEntry(matchId, "Room abandoned mid-match — all human players departed");
 
     const afterRefund = await server.request("/api/economy/wallet", { token: mintMemberToken(ALICE) });

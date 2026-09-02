@@ -1,18 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 import {
+  type ClaimTerminalIntentResult,
   type CoinWalletRecord,
   type CommitMatchEntryInput,
+  type CreateTerminalIntentInput,
+  type CreateTerminalIntentResult,
   type EconomyConfigurationRecord,
   type EconomyOperationResult,
   type EconomyPrizeScheduleRecord,
   type EconomyRepository,
+  type IntentUpdateResult,
   type IssueGuestVoucherInput,
+  type ListTerminalIntentsOptions,
+  type MarkIntentFailedInput,
+  type MarkIntentRetryableInput,
   type MatchEconomySettlementRecord,
   type RewardVoucherRecord,
   type SettleMatchEconomyInput,
   type SettlementEventRecord,
   type SettlementReconciliation,
+  type TerminalIntentRecord,
   type VoucherStatusView,
   type WorldBankSnapshot,
   EconomyInfrastructureError,
@@ -151,6 +159,35 @@ class ScriptedFailureRepository implements EconomyRepository {
   }
   redeemRewardVoucher(codeHash: string, memberIdentityId: string): Promise<EconomyOperationResult<RewardVoucherRecord>> {
     return this.invoke("redeemRewardVoucher", () => this.inner.redeemRewardVoucher(codeHash, memberIdentityId));
+  }
+  createTerminalIntent(input: CreateTerminalIntentInput): Promise<CreateTerminalIntentResult> {
+    return this.invoke("createTerminalIntent", () => this.inner.createTerminalIntent(input));
+  }
+  claimTerminalIntent(workerId: string, leaseSeconds?: number): Promise<ClaimTerminalIntentResult> {
+    return this.invoke("claimTerminalIntent", () => this.inner.claimTerminalIntent(workerId, leaseSeconds));
+  }
+  completeTerminalIntent(intentId: string, workerId: string): Promise<IntentUpdateResult> {
+    return this.invoke("completeTerminalIntent", () => this.inner.completeTerminalIntent(intentId, workerId));
+  }
+  markTerminalIntentRetryable(input: MarkIntentRetryableInput): Promise<IntentUpdateResult> {
+    return this.invoke("markTerminalIntentRetryable", () => this.inner.markTerminalIntentRetryable(input));
+  }
+  markTerminalIntentFailed(input: MarkIntentFailedInput): Promise<IntentUpdateResult> {
+    return this.invoke("markTerminalIntentFailed", () => this.inner.markTerminalIntentFailed(input));
+  }
+  listTerminalIntents(opts?: ListTerminalIntentsOptions): Promise<TerminalIntentRecord[]> {
+    return this.invoke("listTerminalIntents", () => this.inner.listTerminalIntents(opts));
+  }
+  getTerminalIntent(intentId: string): Promise<TerminalIntentRecord | null> {
+    return this.invoke("getTerminalIntent", () => this.inner.getTerminalIntent(intentId));
+  }
+  retryTerminalIntent(intentId: string, operatorId: string, reason?: string): Promise<IntentUpdateResult> {
+    return this.invoke("retryTerminalIntent", () => this.inner.retryTerminalIntent(intentId, operatorId, reason));
+  }
+  requeueExpiredTerminalIntentClaim(intentId: string, operatorId: string, force?: boolean): Promise<IntentUpdateResult> {
+    return this.invoke("requeueExpiredTerminalIntentClaim", () =>
+      this.inner.requeueExpiredTerminalIntentClaim(intentId, operatorId, force),
+    );
   }
 }
 

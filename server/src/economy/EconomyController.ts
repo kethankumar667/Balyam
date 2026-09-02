@@ -19,15 +19,19 @@ import {
   EconomyRepositoryError,
   IdentityNotFoundError,
   InsufficientFundsError,
+  IntentLeaseStillActiveError,
   InvalidIdentityIdError,
   InvalidIdentityKindError,
+  InvalidIntentStateTransitionError,
   InvalidSeatConfigurationError,
+  InvalidTerminalIntentPayloadError,
   InvalidVoucherHashError,
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
   OnlyMembersCanRedeemError,
   SettlementConservationViolationError,
+  TerminalIntentNotFoundError,
   UnsupportedSeatCountError,
   VoucherAlreadyRedeemedError,
   VoucherCodeCollisionError,
@@ -35,6 +39,7 @@ import {
   VoucherNotFoundError,
   WalletFrozenError,
   WalletNotFoundError,
+  type TerminalIntentStatus,
 } from "../persistence/EconomyRepository.js";
 
 /**
@@ -287,6 +292,18 @@ function mapEconomyError(err: unknown): ApiError {
     // wrong.
     return { status: 500, error: "InternalError", message: "Settlement could not be processed due to an internal error." };
   }
+  if (err instanceof TerminalIntentNotFoundError) {
+    return { status: 404, error: "TerminalIntentNotFound", message: "No durable terminal intent exists with this id." };
+  }
+  if (err instanceof InvalidIntentStateTransitionError) {
+    return { status: 409, error: "InvalidIntentStateTransition", message: err.message };
+  }
+  if (err instanceof IntentLeaseStillActiveError) {
+    return { status: 409, error: "IntentLeaseStillActive", message: err.message };
+  }
+  if (err instanceof InvalidTerminalIntentPayloadError) {
+    return { status: 400, error: "InvalidRequest", message: err.message };
+  }
   // A genuinely unmapped error class (should not happen — every
   // EconomyRepositoryError/EconomyServiceError subclass is listed above).
   // Treated exactly like an infrastructure failure: generic, no detail.
@@ -311,6 +328,29 @@ function sendError(req: Request, res: Response, err: unknown): ApiError {
 function isNonEmptyString(v: unknown): v is string {
   return typeof v === "string" && v.trim().length > 0;
 }
+
+/**
+ * A stable, auditable operator identifier for terminal-intent admin
+ * actions (Blocker 06, Phase 11: "never allow an unaudited retry") —
+ * the specific admin user's id when authenticated as one, or the literal
+ * string `"ops-key"` for the shared operational secret (which carries no
+ * per-caller identity of its own; see `requireOperationalAuth`'s own doc
+ * comment). Every terminal-intent audit event this file writes uses this,
+ * never a bare "system".
+ */
+function operatorId(req: Request): string {
+  const principal = req.operationalPrincipal;
+  if (principal?.kind === "admin-user") return principal.userId;
+  return "ops-key";
+}
+
+const VALID_INTENT_STATUSES: ReadonlySet<TerminalIntentStatus> = new Set([
+  "PENDING",
+  "PROCESSING",
+  "RETRYABLE",
+  "COMPLETED",
+  "FAILED",
+]);
 function isPlainInteger(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v);
 }
@@ -598,6 +638,119 @@ export function createEconomyRouter(service: EconomyService): Router {
     } catch (err) {
       const mapped = sendError(req, res, err);
       logOutcome(req, res, "GET /world-bank", "getWorldBankSnapshot", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /* ═══════════════════════ Blocker 06 — durable terminal-intent admin ═════
+   * All five routes below are `requireOperationalAuth`-gated — the same
+   * platform-financial/audit boundary `/world-bank` and `/settlements/stale`
+   * already use, no new admin boundary invented. None accepts a client-
+   * supplied wallet amount, identity kind, or replacement payload — the
+   * ONLY writes these expose are the two narrow, already-audited state
+   * transitions `retryTerminalIntent`/`requeueExpiredTerminalIntentClaim`
+   * already enforce at the repository layer (FAILED -> PENDING only;
+   * PROCESSING with an expired-or-force-overridden lease -> PENDING only).
+   */
+
+  /** GET /terminal-intents — list by status (optional), for operator triage. */
+  router.get("/terminal-intents", requireOperationalAuth, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const rawStatus = req.query.status;
+    if (rawStatus !== undefined && (typeof rawStatus !== "string" || !VALID_INTENT_STATUSES.has(rawStatus as TerminalIntentStatus))) {
+      res.status(400).json({ error: "InvalidRequest", message: "status must be one of PENDING, PROCESSING, RETRYABLE, COMPLETED, FAILED." });
+      return;
+    }
+    const rawLimit = req.query.limit !== undefined ? Number(req.query.limit) : 50;
+    const rawOffset = req.query.offset !== undefined ? Number(req.query.offset) : 0;
+    if (!isNonNegativeInteger(rawLimit) || !isNonNegativeInteger(rawOffset)) {
+      res.status(400).json({ error: "InvalidRequest", message: "limit and offset must be non-negative integers." });
+      return;
+    }
+    try {
+      const intents = await service.listTerminalIntents({
+        status: rawStatus as TerminalIntentStatus | undefined,
+        limit: rawLimit,
+        offset: rawOffset,
+      });
+      res.json({ intents });
+      logOutcome(req, res, "GET /terminal-intents", "listTerminalIntents", null, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /terminal-intents", "listTerminalIntents", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /** GET /terminal-intents/:intentId — inspect one intent, including its full replay payload (no secrets/voucher codes ever live in it — see the migration's own column comment). */
+  router.get("/terminal-intents/:intentId", requireOperationalAuth, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const { intentId } = req.params;
+    try {
+      const intent = await service.getTerminalIntent(intentId);
+      if (!intent) {
+        res.status(404).json({ error: "TerminalIntentNotFound", message: "No durable terminal intent exists with this id." });
+        logOutcome(req, res, "GET /terminal-intents/:intentId", "getTerminalIntent", null, startedAt, "error", "TerminalIntentNotFound");
+        return;
+      }
+      res.json({ intent });
+      logOutcome(req, res, "GET /terminal-intents/:intentId", "getTerminalIntent", intent.matchId, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /terminal-intents/:intentId", "getTerminalIntent", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /** GET /terminal-intents/:intentId/reconcile — the settlement reconciliation view for the intent's own match, so an operator investigating a FAILED intent can see the underlying financial state in the same call. */
+  router.get("/terminal-intents/:intentId/reconcile", requireOperationalAuth, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const { intentId } = req.params;
+    try {
+      const intent = await service.getTerminalIntent(intentId);
+      if (!intent) {
+        res.status(404).json({ error: "TerminalIntentNotFound", message: "No durable terminal intent exists with this id." });
+        logOutcome(req, res, "GET /terminal-intents/:intentId/reconcile", "getTerminalIntent", null, startedAt, "error", "TerminalIntentNotFound");
+        return;
+      }
+      const reconciliation = await service.reconcileSettlement(intent.matchId);
+      res.json({ intent, reconciliation });
+      logOutcome(req, res, "GET /terminal-intents/:intentId/reconcile", "reconcileSettlement", intent.matchId, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /terminal-intents/:intentId/reconcile", "reconcileSettlement", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /** POST /terminal-intents/:intentId/retry — FAILED -> PENDING only, same recorded payload, audited. */
+  router.post("/terminal-intents/:intentId/retry", requireOperationalAuth, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const { intentId } = req.params;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const reason = typeof body.reason === "string" ? body.reason : undefined;
+    try {
+      const outcome = await service.retryTerminalIntent(intentId, operatorId(req), reason);
+      res.json({ updated: outcome.updated, intent: outcome.intent });
+      logOutcome(req, res, "POST /terminal-intents/:intentId/retry", "retryTerminalIntent", outcome.intent.matchId, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "POST /terminal-intents/:intentId/retry", "retryTerminalIntent", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /** POST /terminal-intents/:intentId/requeue — PROCESSING with an expired (or explicitly force-overridden) lease -> PENDING only. */
+  router.post("/terminal-intents/:intentId/requeue", requireOperationalAuth, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const { intentId } = req.params;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (body.force !== undefined && typeof body.force !== "boolean") {
+      res.status(400).json({ error: "InvalidRequest", message: "force must be a boolean when present." });
+      return;
+    }
+    try {
+      const outcome = await service.requeueExpiredTerminalIntentClaim(intentId, operatorId(req), body.force as boolean | undefined);
+      res.json({ updated: outcome.updated, intent: outcome.intent });
+      logOutcome(req, res, "POST /terminal-intents/:intentId/requeue", "requeueExpiredTerminalIntentClaim", outcome.intent.matchId, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "POST /terminal-intents/:intentId/requeue", "requeueExpiredTerminalIntentClaim", null, startedAt, "error", mapped.error);
     }
   });
 

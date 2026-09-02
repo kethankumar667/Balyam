@@ -133,7 +133,13 @@ export function registerSocketHandlers(
   });
 
   socket.on("room:leave", () => {
-    rooms.leaveRoom(socket.id);
+    void rooms.leaveRoom(socket.id).catch((err) => {
+      logger.error({
+        message: `room:leave handler failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "SOCKET",
+        socketId: socket.id,
+      });
+    });
   });
 
   socket.on("room:setReady", (ready) => {
@@ -198,7 +204,13 @@ export function registerSocketHandlers(
   });
 
   socket.on("game:move", ({ type, data, playerId, actionId, requestId }) => {
-    rooms.applyMove(socket.id, type, data, playerId, actionId || requestId);
+    void rooms.applyMove(socket.id, type, data, playerId, actionId || requestId).catch((err) => {
+      logger.error({
+        message: `game:move handler failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "SOCKET",
+        socketId: socket.id,
+      });
+    });
   });
 
   socket.on("room:addLocalPlayer", (name) => {

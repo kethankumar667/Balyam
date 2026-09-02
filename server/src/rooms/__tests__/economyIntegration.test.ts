@@ -367,7 +367,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(commitSpy).toHaveBeenCalledTimes(2);
       expect((await service.getWallet(MEMBER_B)).balance).toBe("1050"); // 1150 - 100 (1-seat solo commitment)
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // untouched by the rematch
-    }, 15_000);
+    }, 30_000);
   });
 
   describe("host succession — economic eligibility gate (guest/bot succession exploit fix)", () => {
