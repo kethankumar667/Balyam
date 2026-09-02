@@ -37,6 +37,7 @@ import CompactColorSelector from "../components/room/CompactColorSelector";
 import LobbyActionBar from "../components/room/LobbyActionBar";
 import CommunicationPanel from "../components/room/CommunicationPanel";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
+import { useTurnNotifications } from "../hooks/useTurnNotifications";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
 import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
 import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
@@ -264,6 +265,7 @@ export default function Room() {
     setPlayerName,
     rememberSeat,
     seatFor,
+    forgetSeat,
     setRoomState,
     setGameState,
     addMessage,
@@ -321,6 +323,14 @@ export default function Room() {
   // change) must release the microphone. Without this the mic indicator
   // stays lit after the player is long gone.
   useEffect(() => destroyVoiceSession, []);
+
+  /**
+   * "It's your turn" notifications while the tab is hidden — system
+   * notification when the player has granted permission, tab-title flash
+   * otherwise. The bell button in the room header exposes
+   * `requestPermission` so the prompt is asked in context, never cold.
+   */
+  const turnNotifications = useTurnNotifications(roomState, gameState, playerId);
 
   // The join effect used to mirror `playerId` into a ref so a reconnect that
   // fired after the first join resolved would rejoin with the REAL id instead
@@ -414,6 +424,9 @@ export default function Room() {
                   : "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
                 : res.error ?? "Could not join room";
             setError(msg);
+            // The stored seat credential is now provably useless — drop it
+            // so the home-screen rejoin banner stops offering a dead room.
+            if (res.error === "Room not found") forgetSeat(joinCode);
             reset();
             setTimeout(() => navigate("/"), 4000);
             return;
@@ -877,6 +890,7 @@ export default function Room() {
             roomState={roomState}
             isHost={selfIsHost}
             onLeave={leaveRoom}
+            turnNotifications={turnNotifications}
           />
         ) : (
           roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && (

@@ -92,6 +92,9 @@ interface RoomStore {
   rememberSeat: (code: string, playerId: string, seatToken: string) => void;
   /** The credential for a room, if this browser holds one. */
   seatFor: (code: string) => SeatCredential | null;
+  /** Drop a stored credential — used when a room is known to be gone
+   * (join refused "Room not found"), so the rejoin banner stops offering it. */
+  forgetSeat: (code: string) => void;
   setRoomState: (state: RoomPublicState | null) => void;
   setGameState: (state: unknown) => void;
   addMessage: (msg: ChatMessage) => void;
@@ -250,6 +253,15 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       return { seats: next };
     }),
   seatFor: (code) => get().seats[code.trim().toUpperCase()] ?? null,
+  forgetSeat: (code) =>
+    set((s) => {
+      const key = code.trim().toUpperCase();
+      if (!(key in s.seats)) return s;
+      const next = { ...s.seats };
+      delete next[key];
+      saveSeats(next);
+      return { seats: next };
+    }),
   setRoomState: (state) => set({ roomState: state }),
   setGameState: (state) => set({ gameState: state }),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages.slice(-199), msg] })),

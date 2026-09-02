@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { RoomPublicState } from "@shared/types";
-import { LogOut } from "lucide-react";
+import { Bell, BellOff, BellRing, LogOut } from "lucide-react";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
 import RoomNameEditor from "../RoomNameEditor";
 import RummyRoomHistory from "../nostalgia/RummyRoomHistory";
@@ -10,12 +10,58 @@ export default function RoomHeader({
   roomState,
   isHost,
   onLeave,
+  turnNotifications,
 }: {
   roomState: RoomPublicState;
   isHost: boolean;
   onLeave: () => void;
+  /** "Your turn" notification controls — see useTurnNotifications. Optional
+   * so non-room call sites (if any) keep compiling; null hides the bell. */
+  turnNotifications?: {
+    permission: NotificationPermission | "unsupported";
+    requestPermission: () => void;
+  } | null;
 }) {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+
+  const bell = (() => {
+    const t = turnNotifications;
+    if (!t || t.permission === "unsupported") return null;
+    if (t.permission === "granted") {
+      return (
+        <span
+          className="hidden sm:inline-flex items-center justify-center gap-1.5 min-h-[44px] text-xs bg-white dark:bg-slate-800 border border-[#EEDBCA] dark:border-slate-700 px-3.5 py-1.5 rounded-full shadow-xs whitespace-nowrap text-[#0F172A] dark:text-slate-100 font-extrabold"
+          title="You'll be notified when it's your turn and the tab is hidden"
+        >
+          <BellRing size={16} aria-hidden />
+          <span>Turn alerts on</span>
+        </span>
+      );
+    }
+    if (t.permission === "denied") {
+      return (
+        <span
+          className="hidden sm:inline-flex items-center justify-center min-h-[44px] text-xs bg-white dark:bg-slate-800 border border-[#EEDBCA] dark:border-slate-700 px-3.5 py-1.5 rounded-full shadow-xs whitespace-nowrap text-[#8A6D4B] dark:text-slate-400 font-extrabold"
+          title="Turn alerts are blocked in your browser settings"
+        >
+          <BellOff size={16} aria-hidden />
+          <span>Alerts blocked</span>
+        </span>
+      );
+    }
+    // "default" — the one state where asking is allowed.
+    return (
+      <button
+        type="button"
+        onClick={t.requestPermission}
+        aria-label="Get notified when it's your turn"
+        className="inline-flex items-center justify-center gap-1.5 min-h-[44px] text-xs bg-white dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-slate-700 border border-[#EEDBCA] dark:border-slate-700 px-3.5 py-1.5 rounded-full transition shadow-xs active:scale-95 cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F]"
+      >
+        <Bell size={16} aria-hidden />
+        <span className="text-[#0F172A] dark:text-slate-100 font-extrabold">Alert me</span>
+      </button>
+    );
+  })();
 
   return (
     <>
@@ -51,6 +97,9 @@ export default function RoomHeader({
         </div>
 
         <div className="shrink-0 flex items-center gap-2">
+          {/* "Your turn" notification opt-in — in the lobby, in context,
+              never a cold prompt. */}
+          {bell}
           {/* Leave room action with minimum 44px touch target */}
           <button
             type="button"

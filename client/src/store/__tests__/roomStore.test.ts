@@ -50,6 +50,23 @@ describe("RoomStore Characterization Suite", () => {
     expect(stored.XYZ789).toEqual({ playerId: "p_222", seatToken: "token_bbb" });
   });
 
+  it("forgets a seat credential on demand (dead-room cleanup)", () => {
+    const store = useRoomStore.getState();
+    store.rememberSeat("ABC123", "p_111", "token_aaa");
+    store.rememberSeat("XYZ789", "p_222", "token_bbb");
+
+    store.forgetSeat("abc123"); // case-insensitive like seatFor()
+
+    expect(store.seatFor("ABC123")).toBeNull();
+    expect(store.seatFor("XYZ789")).not.toBeNull();
+    const stored = JSON.parse(storeMap.get("mpg.seats") || "{}");
+    expect(stored.ABC123).toBeUndefined();
+    expect(stored.XYZ789).toBeDefined();
+
+    // Forgetting an unknown code is a no-op, not an error.
+    expect(() => store.forgetSeat("NOPE00")).not.toThrow();
+  });
+
   it("caps remembered seats to MAX_REMEMBERED_SEATS (12)", () => {
     const store = useRoomStore.getState();
     for (let i = 0; i < 15; i++) {

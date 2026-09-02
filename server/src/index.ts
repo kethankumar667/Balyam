@@ -31,6 +31,7 @@ import { rankingRouter } from "./ranking/RankingController.js";
 import { tournamentRouter, seasonRouter } from "./tournaments/TournamentController.js";
 import socialRouter from "./social/SocialController.js";
 import partyRouter from "./party/PartyController.js";
+import { captureCrash, flushCrashTelemetry } from "./lib/crashTelemetry.js";
 
 /**
  * Refuse to boot a production process that cannot protect its own telemetry.
@@ -205,6 +206,7 @@ app.use((err: unknown, req: express.Request, res: express.Response, _next: expre
     message: `Unhandled error on ${req.method} ${req.path}: ${err instanceof Error ? err.stack ?? err.message : String(err)}`,
     module: "SERVER",
   });
+  captureCrash(err, { path: req.path, method: req.method });
   if (res.headersSent) return;
   res.status(500).json({ error: "Internal Server Error" });
 });
@@ -322,6 +324,7 @@ void boot().catch((err) => {
     message: `Startup aborted: ${err instanceof Error ? err.message : String(err)}`,
     module: "SERVER",
   });
+  captureCrash(err, { handler: "boot" });
   process.exit(1);
 });
 
@@ -401,6 +404,7 @@ function shutdown(signal: string): void {
   void progressionSync
     .drain()
     .catch(() => undefined)
+    .then(() => flushCrashTelemetry())
     .then(() => {
       const sync = progressionSync.status();
       logger.info({
@@ -426,3 +430,49 @@ function shutdown(signal: string): void {
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGHUP", () => shutdown("SIGHUP"));
+
+/**
+ * Crash containment for the two events that kill the whole process by default.
+ *
+ * One unhandled promise rejection — a bot move that threw, a timer callback
+ * with a bug — takes down every live room on this instance, because Node's
+ * default since v20 is `--unhandled-rejections=throw`, which is an
+ * uncaughtException, which is a hard exit. Rejections are also EASY to
+ * introduce silently: a `void somethingAsync()` that nobody awaits and a
+ * `.catch` nobody writes.
+ *
+ * So both handlers LOG AND SURVIVE. A rejection is recorded with its stack
+ * (that's what the logs are for) and the process carries on serving the
+ * players it already has. Crashing "safely" here would still drop ~100% of
+ * in-flight matches to fix a bug affecting one room — the wrong trade.
+ *
+ * `shutdownReason` exists so a graceful exit later can say WHICH crash
+ * surfaced first, for anyone reading the tail of the log. If an
+ * uncaughtException fires we still stay up deliberately: on a host without
+ * room persistence (in-memory rooms) a restart is guaranteed data loss for
+ * every room, while a possibly-inconsistent process is at least able to keep
+ * the matches it already holds. Degraded-but-alive beats empty-but-clean.
+ */
+const crashContext = { lastFatal: null as string | null };
+
+process.on("unhandledRejection", (reason) => {
+  const detail = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
+  crashContext.lastFatal = `unhandledRejection: ${detail}`;
+  logger.error({
+    message: `Unhandled promise rejection (process kept alive): ${detail}`,
+    module: "CRASH",
+  });
+  captureCrash(reason, { handler: "unhandledRejection" });
+  // See the comment above for why this deliberately does NOT rethrow or exit.
+});
+
+process.on("uncaughtException", (err) => {
+  crashContext.lastFatal = `uncaughtException: ${err.name}: ${err.message}`;
+  logger.error({
+    message: `Uncaught exception (process kept alive): ${err.stack ?? err.message}`,
+    module: "CRASH",
+  });
+  captureCrash(err, { handler: "uncaughtException" });
+  // Same reasoning: rooms are in memory, so a restart loses every live match.
+  // A one-time bug in one code path does not justify wiping the whole table.
+});

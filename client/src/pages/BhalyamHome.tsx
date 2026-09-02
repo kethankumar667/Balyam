@@ -7,6 +7,7 @@ import { usePlayerSnapshot } from "../hooks/usePlayerSnapshot";
 import GameRoomSheet from "../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
 import AppLayout from "../components/layout/AppLayout";
+import RejoinBanner from "../components/home/RejoinBanner";
 import WhatAreWePlayingSection from "../components/bhalyam/WhatAreWePlayingSection";
 import { Hero } from "./home/Hero";
 import { PlayYourWaySection } from "./home/PlayYourWaySection";
@@ -37,7 +38,15 @@ import { Footer } from "./home/Footer";
  */
 export default function BhalyamHome() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
-  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(() => {
+    // PWA shortcut "Join a room" (see public/manifest.json) deep-links to
+    // /?join=1 so the code entry opens immediately, saving the tap.
+    try {
+      return new URLSearchParams(window.location.search).has("join");
+    } catch {
+      return false;
+    }
+  });
   const [welcomeOpen, setWelcomeOpen] = useState(() => {
     return !journeyTracker.getState().hasCompletedWelcome;
   });
@@ -58,6 +67,9 @@ export default function BhalyamHome() {
     <AppLayout onSelectGame={setSheetGame}>
       <div className="bhalyam-home bhalyam-font min-h-full bhalyam-paper flex flex-col">
         <div className="mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-4 pb-12 flex-1">
+          {/* One-tap path back into a live match — surfaced from the stored
+              seat credential at the moment of highest intent. */}
+          <RejoinBanner />
           <Hero
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}

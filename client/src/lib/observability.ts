@@ -71,6 +71,15 @@ function recordEvent(
     ringBuffer.shift();
   }
 
+  // Errors also reach the (optional, env-gated) remote sink — see
+  // `sinkToSentry` below. Non-error categories stay local: the ring buffer
+  // already serves their purpose (attaching recent context to a crash
+  // report via `getRecentEvents()`), and shipping every auth/network event
+  // remotely would burn quota and player trust for little diagnostic value.
+  if (category === "ERROR") {
+    sinkToSentry(name, error, data);
+  }
+
   if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
     const style =
       category === "ERROR"
@@ -82,6 +91,59 @@ function recordEvent(
         : "color: #8B5CF6";
     console.log(`%c[${category}] ${name}`, style, event.data ?? "", event.error ?? "");
   }
+}
+
+/**
+ * Remote error sink (Sentry), OFF unless VITE_SENTRY_DSN is set.
+ *
+ * The ring buffer above is in-memory inside the player's tab — it vanishes
+ * with the tab, so after a production crash there is nothing to inspect.
+ * This forwards ERROR-category events to Sentry when configured.
+ *
+ * Constraints, mirroring the server's `crashTelemetry.ts`:
+ *   - No `VITE_SENTRY_DSN` → total no-op, `@sentry/react` is never imported
+ *     and the bundle stays free of the SDK (it is a dynamic import, so it
+ *     also never lands in the initial chunk).
+ *   - Fire-and-forget and self-swallowing: telemetry must never be the
+ *     thing that crashes the app it observes.
+ *   - Loads once on first error; a load failure degrades silently to the
+ *     existing logger path.
+ */
+const SENTRY_DSN: string = import.meta.env.VITE_SENTRY_DSN as string | undefined ?? "";
+let sentryLoadPromise: Promise<boolean> | null = null;
+
+function loadSentry(): Promise<boolean> {
+  if (!SENTRY_DSN) return Promise.resolve(false);
+  if (!sentryLoadPromise) {
+    sentryLoadPromise = import("@sentry/react")
+      .then((Sentry) => {
+        Sentry.init({
+          dsn: SENTRY_DSN,
+          environment: import.meta.env.MODE,
+        });
+        return true;
+      })
+      .catch(() => false);
+  }
+  return sentryLoadPromise;
+}
+
+function sinkToSentry(name: string, error: unknown, data?: Record<string, unknown>): void {
+  if (!SENTRY_DSN) return;
+  void loadSentry()
+    .then((ok) => {
+      if (!ok) return;
+      return import("@sentry/react").then((Sentry) => {
+        if (error instanceof Error) {
+          Sentry.captureException(error, { extra: { ...data, eventName: name } });
+        } else {
+          Sentry.captureMessage(`${name}: ${typeof error === "string" ? error : "unknown"}`, {
+            extra: data,
+          });
+        }
+      });
+    })
+    .catch(() => undefined);
 }
 
 export const telemetry = {
