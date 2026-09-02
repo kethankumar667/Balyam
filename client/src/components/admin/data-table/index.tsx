@@ -253,20 +253,20 @@ export default function DataTable<T>({
               than from the DOM property alone. The page-count span is
               wrapped in aria-live so a page change is announced without the
               user having to go find it again after each click. */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={pagination.currentPage <= 1}
               aria-disabled={pagination.currentPage <= 1}
               aria-label="Previous page"
               onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
-              className="p-1.5 rounded-lg border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] disabled:opacity-40 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400"
+              className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-2 rounded-xl border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400 cursor-pointer"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
             </button>
 
             <span
-              className="px-2 py-1 font-bold text-[var(--chrome-ink)]"
+              className="px-3 py-1 font-bold text-[var(--chrome-ink)] min-h-[44px] inline-flex items-center"
               aria-live="polite"
               aria-label={`Page ${pagination.currentPage} of ${pagination.totalPages}`}
             >
@@ -279,9 +279,9 @@ export default function DataTable<T>({
               aria-disabled={pagination.currentPage >= pagination.totalPages}
               aria-label="Next page"
               onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
-              className="p-1.5 rounded-lg border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] disabled:opacity-40 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400"
+              className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-2 rounded-xl border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400 cursor-pointer"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>

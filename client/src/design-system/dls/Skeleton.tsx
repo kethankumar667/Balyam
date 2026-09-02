@@ -42,6 +42,7 @@ export function ProfileSkeleton({ className = "" }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
+      data-testid="profile-skeleton"
       className={`p-6 sm:p-8 rounded-3xl bg-[var(--auth-card)] border border-[var(--auth-card-edge)] space-y-6 shadow-sm ${className}`}
     >
       {/* Header Avatar & Details */}
@@ -73,7 +74,7 @@ export function ProfileSkeleton({ className = "" }: { className?: string }) {
 /** Leaderboard Rank Card & Table Skeleton */
 export function LeaderboardSkeleton({ className = "" }: { className?: string }) {
   return (
-    <div aria-hidden="true" className={`space-y-4 ${className}`}>
+    <div aria-hidden="true" data-testid="leaderboard-skeleton" className={`space-y-4 ${className}`}>
       {/* Rank Card Skeleton */}
       <div className="p-6 rounded-3xl bg-[var(--auth-card)] border border-[var(--auth-card-edge)] flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
         <div className="flex items-center gap-4">
@@ -171,7 +172,7 @@ export function MatchHistorySkeleton({ count = 4, className = "" }: { count?: nu
  */
 export function GamesGridSkeleton({ count = 6, className = "" }: { count?: number; className?: string }) {
   return (
-    <div aria-hidden="true" className={`space-y-5 ${className}`}>
+    <div aria-hidden="true" data-testid="games-grid-skeleton" className={`space-y-5 ${className}`}>
       <div className="space-y-2">
         <Skeleton variant="text" className="h-3 w-40" />
         <Skeleton variant="text" className="h-8 w-64" />
@@ -199,7 +200,7 @@ export function GamesGridSkeleton({ count = 6, className = "" }: { count?: numbe
 /** Dashboard KPI & Grid Skeleton */
 export function DashboardSkeleton({ className = "" }: { className?: string }) {
   return (
-    <div aria-hidden="true" className={`space-y-6 ${className}`}>
+    <div aria-hidden="true" data-testid="dashboard-skeleton" className={`space-y-6 ${className}`}>
       {/* Top 4 KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
@@ -232,6 +233,170 @@ export function DashboardSkeleton({ className = "" }: { className?: string }) {
           <div key={r} className="flex items-center justify-between py-2 border-b border-zinc-800/40">
             <Skeleton variant="text" className="h-4 w-36" />
             <Skeleton variant="text" className="h-4 w-20" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Tournament Arena & Matchup Bracket Skeleton */
+export function TournamentSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div aria-hidden="true" data-testid="tournament-skeleton" className={`space-y-6 ${className}`}>
+      {/* Super Admin / Announcement Banner Skeleton */}
+      <div className="rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3 w-full max-w-md">
+          <Skeleton variant="rounded" className="w-9 h-9 rounded-xl shrink-0" />
+          <div className="space-y-2 flex-1">
+            <Skeleton variant="text" className="h-4 w-40" />
+            <Skeleton variant="text" className="h-3 w-64" />
+          </div>
+        </div>
+        <Skeleton variant="rounded" className="h-8 w-28 rounded-xl shrink-0" />
+      </div>
+
+      {/* Page Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton variant="text" className="h-8 w-72" />
+          <Skeleton variant="text" className="h-4 w-96" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton variant="rounded" className="h-10 w-36 rounded-xl" />
+          <Skeleton variant="rounded" className="h-10 w-32 rounded-xl" />
+        </div>
+      </div>
+
+      {/* Main Bracket Card Skeleton */}
+      <div className="rounded-3xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] p-6 sm:p-8 space-y-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Skeleton variant="circular" className="w-6 h-6" />
+            <Skeleton variant="text" className="h-5 w-60" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton variant="rounded" className="h-8 w-20 rounded-lg" />
+            <Skeleton variant="rounded" className="h-8 w-32 rounded-lg" />
+          </div>
+        </div>
+
+        {/* Matchup Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="rounded-2xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] p-4 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <Skeleton variant="text" className="h-4 w-24" />
+                <Skeleton variant="rounded" className="h-4 w-14 rounded-full" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--chrome-panel)]">
+                  <Skeleton variant="text" className="h-4 w-28" />
+                  <Skeleton variant="text" className="h-4 w-12" />
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--chrome-panel)]">
+                  <Skeleton variant="text" className="h-4 w-28" />
+                  <Skeleton variant="text" className="h-4 w-12" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Multiplayer Room Layout Skeleton (Eliminates chunk & connect flash) */
+export function RoomSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="room-skeleton"
+      className={`min-h-screen bhalyam-paper flex flex-col justify-between p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto ${className}`}
+    >
+      {/* Top Header Rail */}
+      <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <Skeleton variant="rounded" className="h-9 w-24 rounded-xl" />
+          <Skeleton variant="rounded" className="h-9 w-32 rounded-xl hidden sm:block" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton variant="circular" className="w-10 h-10" />
+          <Skeleton variant="circular" className="w-10 h-10" />
+          <Skeleton variant="rounded" className="h-9 w-20 rounded-xl" />
+        </div>
+      </div>
+
+      {/* Main Game Arena / Felt Table Skeleton */}
+      <div className="my-6 flex-1 flex flex-col items-center justify-center min-h-[380px] p-6 rounded-3xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-sm relative overflow-hidden">
+        {/* Center Game Board / Felt Placeholder */}
+        <div className="w-full max-w-md aspect-square rounded-3xl bg-black/5 dark:bg-white/5 border border-[var(--chrome-border)] flex flex-col items-center justify-center p-8 space-y-4">
+          <Skeleton variant="rounded" className="w-16 h-16 rounded-2xl" />
+          <Skeleton variant="text" className="h-5 w-48" />
+          <Skeleton variant="text" className="h-3 w-36" />
+        </div>
+
+        {/* Surrounding Player Seat Skeletons */}
+        <div className="absolute top-4 left-4 flex items-center gap-2.5 p-2 rounded-2xl bg-[var(--chrome-control)] border border-[var(--chrome-border)]">
+          <Skeleton variant="circular" className="w-9 h-9" />
+          <div className="space-y-1">
+            <Skeleton variant="text" className="h-3 w-20" />
+            <Skeleton variant="rounded" className="h-2 w-12 rounded-full" />
+          </div>
+        </div>
+
+        <div className="absolute top-4 right-4 flex items-center gap-2.5 p-2 rounded-2xl bg-[var(--chrome-control)] border border-[var(--chrome-border)]">
+          <div className="space-y-1 text-right">
+            <Skeleton variant="text" className="h-3 w-20" />
+            <Skeleton variant="rounded" className="h-2 w-12 rounded-full ml-auto" />
+          </div>
+          <Skeleton variant="circular" className="w-9 h-9" />
+        </div>
+      </div>
+
+      {/* Bottom Lobby / Action Bar Skeleton */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-xs">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Skeleton variant="rounded" className="h-11 w-full sm:w-28 rounded-xl" />
+          <Skeleton variant="rounded" className="h-11 w-full sm:w-28 rounded-xl" />
+        </div>
+        <Skeleton variant="rounded" className="h-11 w-full sm:w-44 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+/** Social Hub & Squad Presence Skeleton */
+export function SocialHubSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div aria-hidden="true" data-testid="social-hub-skeleton" className={`space-y-6 ${className}`}>
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton variant="text" className="h-8 w-64" />
+          <Skeleton variant="text" className="h-4 w-80" />
+        </div>
+      </div>
+
+      {/* Grid of Friends / Squad Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="rounded-3xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] p-5 flex items-center justify-between gap-4 shadow-sm"
+          >
+            <div className="flex items-center gap-3.5">
+              <Skeleton variant="rounded" className="w-11 h-11 rounded-2xl shrink-0" />
+              <div className="space-y-1.5">
+                <Skeleton variant="text" className="h-4 w-32" />
+                <Skeleton variant="text" className="h-3 w-40" />
+              </div>
+            </div>
+            <Skeleton variant="rounded" className="h-9 w-24 rounded-xl shrink-0" />
           </div>
         ))}
       </div>

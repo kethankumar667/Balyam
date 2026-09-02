@@ -127,11 +127,13 @@ export default function TournamentsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div role="group" aria-label="Tournament games" className="flex items-center gap-2">
             <button
               type="button"
+              aria-pressed={activeGame === "handcricket"}
+              aria-label="Select Hand Cricket Tournament Cup"
               onClick={() => setActiveGame("handcricket")}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+              className={`min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer ${
                 activeGame === "handcricket"
                   ? "bg-amber-500 text-zinc-950 font-extrabold shadow-sm"
                   : "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] border border-[var(--chrome-border)]"
@@ -141,8 +143,10 @@ export default function TournamentsPage() {
             </button>
             <button
               type="button"
+              aria-pressed={activeGame === "ludo"}
+              aria-label="Select Ludo Masters Tournament Cup"
               onClick={() => setActiveGame("ludo")}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+              className={`min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer ${
                 activeGame === "ludo"
                   ? "bg-amber-500 text-zinc-950 font-extrabold shadow-sm"
                   : "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] border border-[var(--chrome-border)]"
@@ -155,9 +159,9 @@ export default function TournamentsPage() {
 
         {/* Tournament Bracket Card */}
         <div className="rounded-3xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] p-6 sm:p-8 space-y-6 shadow-sm">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <Trophy className="w-5 h-5 text-amber-500" />
+              <Trophy className="w-5 h-5 text-amber-500" aria-hidden="true" />
               <h2 className="text-base font-bold text-[var(--chrome-ink)]">
                 Season 1 Championship: Knockout Finals
               </h2>
@@ -166,18 +170,20 @@ export default function TournamentsPage() {
               <button
                 type="button"
                 onClick={resetTournament}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--chrome-border)] text-xs font-medium text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] transition"
+                aria-label="Reset tournament bracket"
+                className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--chrome-border)] text-xs font-semibold text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] active:scale-95 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Reset
+                <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Reset</span>
               </button>
               <button
                 type="button"
                 onClick={simulateFinals}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold shadow-xs transition"
+                aria-label="Simulate tournament finals match"
+                className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-4.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-zinc-950 text-xs font-black shadow-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                Simulate Match
+                <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+                <span>Simulate Match</span>
               </button>
             </div>
           </div>

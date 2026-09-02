@@ -688,10 +688,10 @@ export default function ContactUsPage() {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="inline-flex items-center justify-center gap-2 bg-[#EA580C] hover:bg-[#C2410C] disabled:opacity-50 text-white font-bold px-8 py-3 rounded-full text-xs sm:text-sm shadow-sm hover:shadow-md transition min-h-[44px] cursor-pointer"
+                        className="inline-flex items-center justify-center gap-2 bg-[#EA580C] hover:bg-[#C2410C] active:scale-95 disabled:opacity-50 text-white font-bold px-8 py-3 rounded-full text-xs sm:text-sm shadow-sm hover:shadow-md transition min-h-[44px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA580C] focus-visible:ring-offset-2"
                       >
                         <span>{isSubmitting ? "Submitting..." : "Send Support Request"}</span>
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-4 h-4" aria-hidden="true" />
                       </button>
 
                       <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-normal">

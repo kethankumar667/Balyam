@@ -102,26 +102,29 @@ export default function LeaderboardPage() {
 
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--chrome-ink-soft)]" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--chrome-ink-soft)]" aria-hidden="true" />
               <input
                 type="text"
                 placeholder="Search player..."
+                aria-label="Search players by name"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-3 py-1.5 rounded-xl text-xs bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-none focus:border-amber-500"
+                className="pl-9 pr-3 py-2.5 min-h-[44px] rounded-xl text-xs bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-colors"
               />
             </div>
           </div>
         </div>
 
         {/* Tier Filter Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div role="group" aria-label="Filter leaderboard by division tier" className="flex items-center gap-2 overflow-x-auto pb-1">
           {["All", "Grandmaster", "Master", "Diamond", "Gold"].map((tier) => (
             <button
               key={tier}
               type="button"
+              aria-pressed={selectedTier === tier}
+              aria-label={`Filter by ${tier} division`}
               onClick={() => setSelectedTier(tier)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer ${
                 selectedTier === tier
                   ? "bg-amber-500 text-zinc-950 font-extrabold shadow-sm"
                   : "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] border border-[var(--chrome-border)]"
@@ -134,7 +137,11 @@ export default function LeaderboardPage() {
 
         {/* Leaderboard Table Card / Empty State */}
         {filtered.length === 0 ? (
-          <div className="p-8 text-center bg-[var(--chrome-panel)] border border-[var(--chrome-border)] rounded-3xl space-y-4">
+          <div
+            role="status"
+            aria-live="polite"
+            className="p-8 text-center bg-[var(--chrome-panel)] border border-[var(--chrome-border)] rounded-3xl space-y-4"
+          >
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl mx-auto">
               🏆
             </div>
@@ -150,7 +157,7 @@ export default function LeaderboardPage() {
                 setSearchTerm("");
                 setSelectedTier("All");
               }}
-              className="px-5 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-sm transition cursor-pointer min-h-[44px]"
+              className="px-5 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-sm transition active:scale-95 cursor-pointer min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             >
               Clear Filters
             </button>
@@ -158,7 +165,7 @@ export default function LeaderboardPage() {
         ) : (
           <div className="rounded-3xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs" aria-label="Global Skill Leaderboard Table">
                 <thead className="border-b border-[var(--chrome-border)] bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] font-mono uppercase text-[10px] tracking-wider">
                   <tr>
                     <th className="py-3.5 px-4 font-bold">Rank</th>

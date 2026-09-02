@@ -1578,18 +1578,18 @@ function ConnectingScreen({ code, onRetry }: { code?: string; onRetry?: () => vo
             <p className="text-xs text-[#8A6D4B] dark:text-slate-300 font-medium leading-relaxed">
               Connecting is taking longer than usual — the game server may be waking up or your connection is slow.
             </p>
-            <div className="flex items-center justify-center gap-2 pt-1">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={handleRetry}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#EA580C] hover:bg-[#C2410C] text-white shadow-xs transition cursor-pointer min-h-[36px]"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold bg-[#EA580C] hover:bg-[#C2410C] active:scale-95 text-white shadow-xs transition cursor-pointer min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 Retry Connection
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-[#796651] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 hover:bg-slate-50 transition cursor-pointer min-h-[36px]"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-[#796651] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 hover:bg-slate-50 active:scale-95 transition cursor-pointer min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 Return to Lounge
               </button>
