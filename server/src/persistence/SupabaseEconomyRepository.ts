@@ -3,9 +3,12 @@ import {
   EconomyInfrastructureError,
   IdentityNotFoundError,
   InsufficientFundsError,
+  IntentLeaseStillActiveError,
   InvalidIdentityIdError,
   InvalidIdentityKindError,
+  InvalidIntentStateTransitionError,
   InvalidSeatConfigurationError,
+  InvalidTerminalIntentPayloadError,
   InvalidVoucherHashError,
   MatchAlreadyForfeitedError,
   MatchAlreadyRefundedError,
@@ -14,6 +17,7 @@ import {
   MatchNotFoundError,
   OnlyMembersCanRedeemError,
   SettlementConservationViolationError,
+  TerminalIntentNotFoundError,
   UnsupportedSeatCountError,
   VoucherAlreadyRedeemedError,
   VoucherCodeCollisionError,
@@ -21,14 +25,21 @@ import {
   VoucherNotFoundError,
   WalletFrozenError,
   WalletNotFoundError,
+  type ClaimTerminalIntentResult,
   type CoinLedgerEntryRecord,
   type CoinWalletRecord,
   type CommitMatchEntryInput,
+  type CreateTerminalIntentInput,
+  type CreateTerminalIntentResult,
   type EconomyConfigurationRecord,
   type EconomyOperationResult,
   type EconomyPrizeScheduleRecord,
   type EconomyRepository,
+  type IntentUpdateResult,
   type IssueGuestVoucherInput,
+  type ListTerminalIntentsOptions,
+  type MarkIntentFailedInput,
+  type MarkIntentRetryableInput,
   type MatchEconomySettlementRecord,
   type MatchSettlementStatus,
   type PlayerIdentityKind,
@@ -38,6 +49,11 @@ import {
   type SettlementEventType,
   type SettlementInitiatorKind,
   type SettlementReconciliation,
+  type TerminalIntentErrorCategory,
+  type TerminalIntentOperationKind,
+  type TerminalIntentPayload,
+  type TerminalIntentRecord,
+  type TerminalIntentStatus,
   type VoucherStatus,
   type VoucherStatusView,
   type WalletLedgerEntryType,
@@ -262,6 +278,43 @@ interface RawEnvelope<TResult> {
   result: TResult;
 }
 
+/**
+ * `economy_terminal_intents` (Blocker 06) — no bigint column, so unlike
+ * every other row shape in this file there is no `_safe` view / text-cast
+ * concern here; the raw row is read straight from `to_jsonb(v_intent)`.
+ */
+interface TerminalIntentRow {
+  id: string;
+  match_id: string;
+  operation_kind: TerminalIntentOperationKind;
+  payload_version: number;
+  payload: TerminalIntentPayload;
+  status: TerminalIntentStatus;
+  attempt_count: number;
+  next_attempt_at: string;
+  claim_owner: string | null;
+  claimed_at: string | null;
+  lease_expires_at: string | null;
+  last_error_code: string | null;
+  last_error_category: TerminalIntentErrorCategory | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+interface CreateIntentEnvelope {
+  created: boolean;
+  conflict: boolean;
+  intent: TerminalIntentRow;
+}
+interface ClaimIntentEnvelope {
+  claimed: boolean;
+  intent: TerminalIntentRow | null;
+}
+interface UpdateIntentEnvelope {
+  updated: boolean;
+  intent: TerminalIntentRow;
+}
+
 /* ═══════════════════════════ Row → DTO mappers ═══════════════════════════ */
 
 function toWallet(row: WalletRow): CoinWalletRecord {
@@ -387,6 +440,27 @@ function toReconciliation(row: ReconcileRow): SettlementReconciliation {
   };
 }
 
+function toTerminalIntent(row: TerminalIntentRow): TerminalIntentRecord {
+  return {
+    id: row.id,
+    matchId: row.match_id,
+    operationKind: row.operation_kind,
+    payloadVersion: row.payload_version,
+    payload: row.payload,
+    status: row.status,
+    attemptCount: row.attempt_count,
+    nextAttemptAt: ms(row.next_attempt_at),
+    claimOwner: row.claim_owner,
+    claimedAt: row.claimed_at ? ms(row.claimed_at) : null,
+    leaseExpiresAt: row.lease_expires_at ? ms(row.lease_expires_at) : null,
+    lastErrorCode: row.last_error_code,
+    lastErrorCategory: row.last_error_category,
+    createdAt: ms(row.created_at),
+    updatedAt: ms(row.updated_at),
+    completedAt: row.completed_at ? ms(row.completed_at) : null,
+  };
+}
+
 function toSettlementEvent(row: SettlementEventRow): SettlementEventRecord {
   return {
     id: row.id,
@@ -444,6 +518,16 @@ const ERROR_TOKEN_MAP: ReadonlyArray<[RegExp, new (message: string) => Error]> =
   [/\bSETTLEMENT_CONSERVATION_VIOLATION:/, SettlementConservationViolationError],
   [/\bMATCH_NOT_FOUND:/, MatchNotFoundError],
   [/\bONLY_MEMBERS_CAN_REDEEM_VOUCHERS:/, OnlyMembersCanRedeemError],
+  [/\bINTENT_NOT_FOUND:/, TerminalIntentNotFoundError],
+  [/\bINVALID_STATE_TRANSITION:/, InvalidIntentStateTransitionError],
+  [/\bLEASE_STILL_ACTIVE:/, IntentLeaseStillActiveError],
+  [/\bINVALID_OPERATION_KIND:/, InvalidTerminalIntentPayloadError],
+  [/\bINVALID_PAYLOAD:/, InvalidTerminalIntentPayloadError],
+  [/\bINVALID_MATCH_ID:/, InvalidTerminalIntentPayloadError],
+  [/\bINVALID_PAYLOAD_VERSION:/, InvalidTerminalIntentPayloadError],
+  [/\bINVALID_WORKER_ID:/, InvalidTerminalIntentPayloadError],
+  [/\bINVALID_LEASE_SECONDS:/, InvalidTerminalIntentPayloadError],
+  [/\bINVALID_OPERATOR:/, InvalidTerminalIntentPayloadError],
 ];
 
 /** Never a custom `raise exception` — a genuine Postgres unique-violation. */
@@ -688,5 +772,102 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       p_member_identity_id: memberIdentityId,
     });
     return { ...envelope, result: toVoucher(envelope.result) };
+  }
+
+  /* ═══════════════════════ durable terminal intents (Blocker 06) ═════════
+   * Each method below is a thin wrapper over exactly one RPC in
+   * `20260901000000_economy_terminal_intents.sql` — same discipline as
+   * every other method in this file (request shaping, response shaping,
+   * error translation; no business logic lives here).
+   */
+
+  async createTerminalIntent(input: CreateTerminalIntentInput): Promise<CreateTerminalIntentResult> {
+    const envelope = await this.rpc<CreateIntentEnvelope>("create_terminal_intent", {
+      p_match_id: input.matchId,
+      p_operation_kind: input.operationKind,
+      // camelCase payload, unmodified — mirrors settle_match_economy's own
+      // p_participants convention (the migration's jsonb consumer reads it
+      // back only via its own tagged-union `payload->>'operationKind'`
+      // discriminant, never destructured into individual RPC parameters).
+      p_payload: input.payload,
+      p_payload_version: input.payloadVersion ?? 1,
+    });
+    return { created: envelope.created, conflict: envelope.conflict, intent: toTerminalIntent(envelope.intent) };
+  }
+
+  async claimTerminalIntent(workerId: string, leaseSeconds = 30): Promise<ClaimTerminalIntentResult> {
+    const envelope = await this.rpc<ClaimIntentEnvelope>("claim_terminal_intent", {
+      p_worker_id: workerId,
+      p_lease_seconds: leaseSeconds,
+    });
+    return {
+      claimed: envelope.claimed,
+      intent: envelope.intent ? toTerminalIntent(envelope.intent) : null,
+    };
+  }
+
+  async completeTerminalIntent(intentId: string, workerId: string): Promise<IntentUpdateResult> {
+    const envelope = await this.rpc<UpdateIntentEnvelope>("complete_terminal_intent", {
+      p_intent_id: intentId,
+      p_worker_id: workerId,
+    });
+    return { updated: envelope.updated, intent: toTerminalIntent(envelope.intent) };
+  }
+
+  async markTerminalIntentRetryable(input: MarkIntentRetryableInput): Promise<IntentUpdateResult> {
+    const envelope = await this.rpc<UpdateIntentEnvelope>("mark_terminal_intent_retryable", {
+      p_intent_id: input.intentId,
+      p_worker_id: input.workerId,
+      p_error_code: input.errorCode,
+      p_error_category: input.errorCategory,
+      p_next_attempt_at: new Date(input.nextAttemptAt).toISOString(),
+    });
+    return { updated: envelope.updated, intent: toTerminalIntent(envelope.intent) };
+  }
+
+  async markTerminalIntentFailed(input: MarkIntentFailedInput): Promise<IntentUpdateResult> {
+    const envelope = await this.rpc<UpdateIntentEnvelope>("mark_terminal_intent_failed", {
+      p_intent_id: input.intentId,
+      p_worker_id: input.workerId,
+      p_error_code: input.errorCode,
+      p_error_category: input.errorCategory,
+    });
+    return { updated: envelope.updated, intent: toTerminalIntent(envelope.intent) };
+  }
+
+  async listTerminalIntents(opts: ListTerminalIntentsOptions = {}): Promise<TerminalIntentRecord[]> {
+    const rows = await this.rpc<TerminalIntentRow[]>("list_terminal_intents", {
+      p_status: opts.status ?? null,
+      p_limit: opts.limit ?? 50,
+      p_offset: opts.offset ?? 0,
+    });
+    return rows.map(toTerminalIntent);
+  }
+
+  async getTerminalIntent(intentId: string): Promise<TerminalIntentRecord | null> {
+    const row = await this.rpc<TerminalIntentRow | null>("get_terminal_intent", { p_intent_id: intentId });
+    return row ? toTerminalIntent(row) : null;
+  }
+
+  async retryTerminalIntent(intentId: string, operatorId: string, reason?: string): Promise<IntentUpdateResult> {
+    const envelope = await this.rpc<UpdateIntentEnvelope>("retry_terminal_intent", {
+      p_intent_id: intentId,
+      p_operator_id: operatorId,
+      p_reason: reason ?? null,
+    });
+    return { updated: envelope.updated, intent: toTerminalIntent(envelope.intent) };
+  }
+
+  async requeueExpiredTerminalIntentClaim(
+    intentId: string,
+    operatorId: string,
+    force = false,
+  ): Promise<IntentUpdateResult> {
+    const envelope = await this.rpc<UpdateIntentEnvelope>("requeue_expired_terminal_intent", {
+      p_intent_id: intentId,
+      p_operator_id: operatorId,
+      p_force: force,
+    });
+    return { updated: envelope.updated, intent: toTerminalIntent(envelope.intent) };
   }
 }

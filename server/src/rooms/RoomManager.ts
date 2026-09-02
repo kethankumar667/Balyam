@@ -102,7 +102,7 @@ import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
 import { BlockBlastEngine } from "../games/blockblast/BlockBlastEngine.js";
 import { SpaceWarEngine } from "../games/spacewar/SpaceWarEngine.js";
-import type { EconomyService } from "../economy/EconomyService.js";
+import type { EconomyService, SettleMatchEconomyRequest } from "../economy/EconomyService.js";
 import { EconomyServiceError } from "../economy/EconomyService.js";
 import {
   EconomyRepositoryError,
@@ -112,7 +112,7 @@ import {
 } from "../persistence/EconomyRepository.js";
 import { resolveIdentity } from "./economyIdentity.js";
 import { extractRankedParticipants, getWinnerId } from "./economyPlacements.js";
-import { EconomySettlementQueue } from "./economySettlementQueue.js";
+import { DurableSettlementWorker } from "../economy/DurableSettlementWorker.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -366,9 +366,9 @@ export interface Room {
   /**
    * The most recently concluded match's id — see RoomPublicState.lastMatchId
    * for the full contract. Set (from `currentMatchId`) in the same
-   * synchronous step that clears it, in `queueMatchSettlement`/
-   * `queueMatchRefund`; reset to `null` when a new match (or rematch)
-   * commits.
+   * synchronous step that clears it, in `attemptSettlementPersistence`/
+   * `attemptAbandonmentPersistence`; reset to `null` when a new match (or
+   * rematch) commits.
    */
   lastMatchId: string | null;
   /**
@@ -394,7 +394,55 @@ export interface Room {
    * not been superseded by another operation on the room.
    */
   pendingCommitOperationId: string | null;
+  /**
+   * Phase 06.1B: Durability-gated terminal lifecycle state machine.
+   * Eliminates the pre-persistence crash window by distinguishing:
+   * - "IDLE": no terminal finalization in flight
+   * - "PERSISTING": authoritative terminal intent is currently being persisted to PostgreSQL
+   * - "PERSISTED": terminal intent has successfully committed to durable storage
+   * - "COMPLETED": post-persistence teardown / completion has finished
+   * - "FAILED": terminal persistence rejected; room and matchId retained for recovery
+   */
+  terminalStatus: RoomTerminalStatus;
+  terminalOutcome: "SETTLEMENT" | "REFUND" | "FORFEITURE" | null;
+  terminalPromise: Promise<void> | null;
+  terminalError: Error | null;
+  /**
+   * Remediation of audit finding P1-2 ("no reachable retry path for
+   * `terminalStatus === 'FAILED'`"). The EXACT, immutable inputs the first
+   * persistence attempt computed — set once, at the same moment as
+   * `terminalOutcome`, and never recomputed or overwritten by a retry.
+   * `retryFailedTerminalPersistence` replays this stored value verbatim; it
+   * never re-derives a ranking, reason, or outcome from (by then possibly
+   * different) live room/engine state. `null` whenever `terminalStatus` is
+   * `IDLE` (reset alongside the other terminal fields on every fresh
+   * commit — see the three reset sites this field was added to).
+   *
+   * In-memory only, exactly like every other `terminal*` field on this
+   * interface — a process restart loses it exactly as it loses
+   * `terminalPromise`. This retry path narrows the window during which a
+   * transient persistence failure requires manual intervention; it does
+   * NOT and cannot survive process termination, and must never be
+   * described as doing so (see the Blocker 06 audit's own "decisive
+   * question" finding — closing that gap is explicitly out of scope here).
+   */
+  terminalPayload: TerminalRetryPayload | null;
 }
+
+export type RoomTerminalStatus = "IDLE" | "PERSISTING" | "PERSISTED" | "COMPLETED" | "FAILED";
+
+/**
+ * The complete, authoritative decision behind one terminal persistence
+ * attempt — exactly what `enqueueSettlement`/`enqueueRefund`/
+ * `enqueueForfeiture` need, nothing more, nothing derived. A discriminated
+ * union (never a bare `matchId`) for the identical reason
+ * `TerminalIntentPayload` (`EconomyRepository.ts`) is one: replay must
+ * never require guessing which operation was intended.
+ */
+export type TerminalRetryPayload =
+  | { kind: "SETTLEMENT"; matchId: string; request: SettleMatchEconomyRequest }
+  | { kind: "REFUND"; matchId: string; reason: string }
+  | { kind: "FORFEITURE"; matchId: string; reason: string };
 
 /**
  * Mint a player id. Server-side only, and the only place ids are made.
@@ -511,20 +559,69 @@ export class RoomManager {
    * real one (see `economy/index.ts`'s own boot-time refusal-to-start
    * guard) — this is a test/dev degradation path, not a production one.
    */
-  private readonly settlementQueue: EconomySettlementQueue | null;
+  /**
+   * Blocker 06 — the durable replacement for `EconomySettlementQueue`
+   * (`economySettlementQueue.ts`, no longer constructed here; see that
+   * file's own header, now marked superseded). `finalizeMatch`/`abandonRoom`
+   * persist a durable, replayable intent through this worker (via
+   * `attemptSettlementPersistence`/`attemptAbandonmentPersistence`) BEFORE
+   * any in-memory dispatch — closing F-1 (Economy V1 certification audit):
+   * a settlement queued only in process memory no longer disappears on a
+   * crash between "match finished" and "settlement RPC actually ran."
+   */
+  private readonly durableWorker: DurableSettlementWorker | null;
 
   constructor(private io: IO, private readonly economyService?: EconomyService) {
-    this.settlementQueue = economyService ? new EconomySettlementQueue(economyService) : null;
+    this.durableWorker = economyService ? new DurableSettlementWorker(economyService) : null;
   }
 
-  /** For /health and graceful shutdown — see server/src/index.ts. */
-  economySettlementQueueStatus(): ReturnType<EconomySettlementQueue["status"]> | null {
-    return this.settlementQueue?.status() ?? null;
+  /**
+   * Starts periodic recovery sweeps for pending/retryable/expired-claim
+   * terminal intents. Call once from the server composition root after
+   * construction (see `index.ts`) — safe to call when economy isn't
+   * configured (no-op). Idempotent.
+   */
+  startEconomyRecovery(): void {
+    this.durableWorker?.start();
   }
 
-  /** Waits for every queued settlement/refund — called on graceful shutdown. */
+  /** Stops periodic recovery sweeps — call on graceful shutdown, before or alongside draining. Leaves all durable work intact. */
+  stopEconomyRecovery(): void {
+    this.durableWorker?.stop();
+  }
+
+  /** For /health — a synchronous, in-process snapshot; see `DurableSettlementWorker.counters()`'s own doc comment for why this is not the database-backed `status()`. */
+  economySettlementQueueStatus(): ReturnType<DurableSettlementWorker["counters"]> | null {
+    return this.durableWorker?.counters() ?? null;
+  }
+
+  /** Processes every currently-durable pending/retryable/expired-claim intent to completion — called on graceful shutdown and directly by tests. */
   async drainEconomySettlementQueue(): Promise<void> {
-    await this.settlementQueue?.drain();
+    const inFlightRoomPromises: Promise<void>[] = [];
+    for (const room of this.rooms.values()) {
+      if (room.terminalPromise) {
+        inFlightRoomPromises.push(room.terminalPromise);
+      }
+    }
+    if (inFlightRoomPromises.length > 0) {
+      await Promise.allSettled(inFlightRoomPromises);
+    }
+    await this.durableWorker?.drain();
+  }
+
+  /** Phase 06.1B: Observable terminal state query for reliability testing and health diagnostics. */
+  getRoomTerminalStatus(code: string): {
+    status: RoomTerminalStatus;
+    outcome: "SETTLEMENT" | "REFUND" | "FORFEITURE" | null;
+    error: string | null;
+  } | null {
+    const room = this.rooms.get(code);
+    if (!room) return null;
+    return {
+      status: room.terminalStatus,
+      outcome: room.terminalOutcome,
+      error: room.terminalError ? room.terminalError.message : null,
+    };
   }
 
   getRoomCount(): number {
@@ -1010,6 +1107,11 @@ export class RoomManager {
       committedTotalPot: null,
       economyCommitPending: false,
       pendingCommitOperationId: null,
+      terminalStatus: "IDLE",
+      terminalOutcome: null,
+      terminalPromise: null,
+      terminalError: null,
+      terminalPayload: null,
     };
     this.rooms.set(code, room);
     this.socketToRoom.set(socketId, code);
@@ -1218,7 +1320,7 @@ export class RoomManager {
     };
   }
 
-  leaveRoom(socketId: string): void {
+  async leaveRoom(socketId: string): Promise<void> {
     const code = this.socketToRoom.get(socketId);
     if (!code) return;
     const room = this.rooms.get(code);
@@ -1247,12 +1349,13 @@ export class RoomManager {
     // than have the engine crown a leftover bot the winner. A remaining HUMAN
     // is still a legit forfeit win, so that path is untouched below.
     if (!this.hasHumanPlayer(room)) {
-      this.abandonRoom(room);
+      await this.abandonRoom(room);
       return;
     }
 
     if (room.hostId === playerId) {
-      this.reassignHost(room, playerId);
+      const p = this.reassignHost(room, playerId);
+      if (p) await p;
     }
     if (!this.rooms.has(code)) return;
     if (room.engine) room.engine.removePlayer(playerId);
@@ -1278,7 +1381,7 @@ export class RoomManager {
       // unreachable (it's gated on phase === "finished"). Finalize it the
       // same way every other completion path does (see
       // MULTIPLAYER-RELIABILITY-BASELINE.md gap G14).
-      this.finalizeMatch(room, departingPlayer);
+      await this.finalizeMatch(room, departingPlayer);
     } else {
       this.broadcastRoomState(room);
       // The engine has moved the turn off the departed seat — push that, and
@@ -1746,7 +1849,7 @@ export class RoomManager {
         else if (!isLifecycleValid) reason = `lifecycle_${freshRoom.lifecycleState}_phase_${freshRoom.phase}`;
         else if (!isRosterValid) reason = "roster_changed";
 
-        this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestGameStart", reason);
+        await this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestGameStart", reason);
         // The commit succeeded but this start attempt was invalidated, so
         // `currentMatchId` (below) is never set for it — the client-visible
         // lock state correctly never fires. But `lifecycleState` was set to
@@ -1772,6 +1875,11 @@ export class RoomManager {
       room.lastMatchId = null;
       room.committedCostPerSeat = result.settlement.costPerSeat;
       room.committedTotalPot = result.settlement.totalCollected;
+      room.terminalStatus = "IDLE";
+      room.terminalOutcome = null;
+      room.terminalPromise = null;
+      room.terminalError = null;
+      room.terminalPayload = null;
       this.startGame(socketId);
     } catch (err) {
       this.transitionLifecycle(room, "READY_CHECK", "Entry commitment failed");
@@ -1911,7 +2019,7 @@ export class RoomManager {
     }
   }
 
-  applyMove(socketId: string, type: string, data: unknown, onBehalfOf?: string, actionId?: string): void {
+  async applyMove(socketId: string, type: string, data: unknown, onBehalfOf?: string, actionId?: string): Promise<void> {
     const moveStart = performance.now();
     const { room, player } = this.lookup(socketId);
     if (!room || !player || !room.engine) return;
@@ -1998,7 +2106,7 @@ export class RoomManager {
     serverTimelineRecorder.recordMoveMade(room.code, effectivePlayerId, room.game, type);
     this.broadcastGameState(room);
     if (room.engine.isOver()) {
-      this.finalizeMatch(room);
+      await this.finalizeMatch(room);
     } else {
       this.scheduleTurnTimer(room);
       this.scheduleBotMoveIfNeeded(room);
@@ -2027,7 +2135,7 @@ export class RoomManager {
    * site, where the departing player has ALREADY been removed from
    * `room.players` by the time this runs (every other check in that
    * function needs them already gone — see the capture site's own
-   * comment). Used for economy settlement only (`queueMatchSettlement`) —
+   * comment). Used for economy settlement only (`attemptSettlementPersistence`) —
    * `profileService`/`recentPlayersService` below are unchanged, matching
    * their existing, already-shipped, non-economy behavior of recording
    * whoever is still seated at the moment the match ends.
@@ -2038,8 +2146,9 @@ export class RoomManager {
    * REMOVAL timer (up to `MATCH_GRACE_PERIOD_MS`) is still pending when the
    * match instead finishes naturally seconds later via that same player's
    * auto-play; when the stale timer eventually fires, `engine.isOver()` is
-   * still true and it calls this method again. `queueMatchSettlement`
-   * already guards the WALLET effect (`currentMatchId` is null by then),
+   * still true and it calls this method again. The `terminalStatus ===
+   * "COMPLETED"` guard at the top of this method already guards the WALLET
+   * effect (a second call is a no-op once the first has completed),
    * but without this guard every non-economic side effect below —
    * `profileService.recordMatchFinished`, `recentPlayersService.recordMatch`,
    * `serverTimelineRecorder.recordGameFinished`,
@@ -2050,10 +2159,7 @@ export class RoomManager {
    * only two terminal-outcome entry points share one source of truth for
    * "has this room's match already resolved."
    */
-  private finalizeMatch(room: Room, departedPlayer?: Player): void {
-    if (this.isMatchAlreadyConcluded(room)) return;
-    room.phase = "finished";
-    this.transitionLifecycle(room, "COMPLETED", "Match finished");
+  private recordPostMatchStats(room: Room): void {
     serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine ? getWinnerId(room.engine) : null) ?? null);
     metricsCollector.onMatchFinished(room.game, 0);
     try {
@@ -2083,63 +2189,108 @@ export class RoomManager {
     } catch (err) {
       logger.warn({ message: `Failed to record match in profile/ranking service: ${String(err)}`, module: "PROFILE" });
     }
-    this.queueMatchSettlement(room, departedPlayer);
-    for (const p of room.players.values()) p.isReady = false;
-    this.clearTurnTimer(room);
-    this.broadcastRoomState(room);
-    // Cheapest possible version of UNO_GAME_PLAN.md §3's "measurable now"
-    // match-completion metric — a queryable log line, not a real
-    // analytics pipeline (still correctly deferred, needs accounts/
-    // persistence). Generic across every game for the same reason as the
-    // move-rejection log above.
-    console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
   }
 
-  /**
-   * The one and only settlement call site — every `finalizeMatch` caller
-   * (all 6, see `roommanager-integration-map.md`) routes through here.
-   * Calls `EconomyService.settleMatchEconomy` only, never
-   * `EconomyRepository` — queued (see `EconomySettlementQueue`'s own doc
-   * comment for why), so `finalizeMatch` itself stays fully synchronous.
-   *
-   * No-op when `economyService` isn't configured, or when this room never
-   * had a committed match (`currentMatchId` is `null` — a room whose game
-   * started before economy gating was configured, or one that finished
-   * via a path that never reached `requestGameStart`, e.g. a test calling
-   * `startGame` directly).
-   */
-  private queueMatchSettlement(room: Room, departedPlayer?: Player): void {
-    if (!this.settlementQueue || !room.currentMatchId) return;
+  private async finalizeMatch(room: Room, departedPlayer?: Player): Promise<void> {
+    if (this.isMatchAlreadyConcluded(room) || room.terminalStatus === "COMPLETED") return;
+    if (room.terminalStatus === "PERSISTING") {
+      if (room.terminalPromise) {
+        await room.terminalPromise;
+      }
+      return;
+    }
+
+    // Freeze turn clock and real-time simulations immediately
+    this.clearTurnTimer(room);
+    this.stopSimulation(room);
+
+    // Non-economy match: complete immediately and synchronously
+    if (!this.durableWorker || !room.currentMatchId) {
+      room.phase = "finished";
+      this.transitionLifecycle(room, "COMPLETED", "Match finished");
+      this.recordPostMatchStats(room);
+      for (const p of room.players.values()) p.isReady = false;
+      this.broadcastRoomState(room);
+      room.terminalStatus = "COMPLETED";
+      console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
+      return;
+    }
+
+    // Economically active match — durability-gated terminal settlement
     const matchId = room.currentMatchId;
-    // `lastMatchId` is set BEFORE `currentMatchId` is cleared, in this same
-    // synchronous step — so it is present in the very broadcast that
-    // reports this match finished (finalizeMatch calls this, then
-    // broadcastRoomState, with no async gap between them). Without this,
-    // the client's `roomState` transitions straight from "the real
-    // matchId" to "null" in one hop, and never has a chance to look up
-    // this match's settlement — the exact bug this field exists to close.
-    room.lastMatchId = matchId;
-    room.currentMatchId = null; // the slot is free the moment this is queued — a rematch mints its own fresh matchId
-    room.committedCostPerSeat = null;
-    room.committedTotalPot = null;
+    room.phase = "finished";
 
-    // A forfeit-by-leaving completes the match with the departing player
-    // ALREADY removed from `room.players` (see `leaveRoom`) — added back
-    // here, for settlement extraction only, so the roster still matches the
-    // committed seat count instead of coming up one short.
     const rosterForSettlement = departedPlayer ? new Map(room.players).set(departedPlayer.id, departedPlayer) : room.players;
-
     const { isValidRanking, participants, reason } = extractRankedParticipants({
       game: room.game,
       players: rosterForSettlement,
       engine: room.engine,
     });
 
-    this.settlementQueue.queueSettlement(
-      isValidRanking
-        ? { matchId, isValidRanking: true, participants }
-        : { matchId, isValidRanking: false, participants: [], refundReason: reason ?? "Ranking unavailable or ambiguous" },
-    );
+    const request: SettleMatchEconomyRequest = isValidRanking
+      ? { matchId, isValidRanking: true as const, participants }
+      : { matchId, isValidRanking: false as const, participants: [], refundReason: reason ?? "Ranking unavailable or ambiguous" };
+
+    // Stored BEFORE the first attempt begins — see `terminalPayload`'s own
+    // doc comment. `retryFailedTerminalPersistence` replays this exact
+    // object; the ranking/reason above is never recomputed on retry.
+    room.terminalOutcome = "SETTLEMENT";
+    room.terminalPayload = { kind: "SETTLEMENT", matchId, request };
+
+    await this.beginTerminalPersistence(room, () => this.attemptSettlementPersistence(room, matchId, request));
+  }
+
+  /**
+   * Shared entry point for every FIRST terminal-persistence attempt
+   * (settlement, refund, forfeiture) — sets `PERSISTING`, wires
+   * `terminalPromise`, and awaits it. `retryFailedTerminalPersistence`
+   * deliberately does NOT go through this method (it starts from `FAILED`,
+   * not from the pre-`PERSISTING` state this assumes) — see that method's
+   * own body for its own, narrower guard.
+   */
+  private async beginTerminalPersistence(room: Room, attempt: () => Promise<void>): Promise<void> {
+    room.terminalStatus = "PERSISTING";
+    const persistPromise = attempt();
+    room.terminalPromise = persistPromise;
+    await persistPromise;
+  }
+
+  /**
+   * The exact settlement persistence attempt — extracted so that both the
+   * original `finalizeMatch` call and `retryFailedTerminalPersistence` run
+   * IDENTICAL logic against whatever `SettleMatchEconomyRequest` they were
+   * given, never a freshly recomputed one. Requirement 4/5 of the P1-2
+   * remediation: retry reuses the exact stored payload and never derives a
+   * new outcome.
+   */
+  private async attemptSettlementPersistence(room: Room, matchId: string, request: SettleMatchEconomyRequest): Promise<void> {
+    try {
+      await this.durableWorker!.enqueueSettlement(request);
+      room.terminalStatus = "PERSISTED";
+
+      // ONLY AFTER durable persistence commits to database:
+      room.lastMatchId = matchId;
+      room.currentMatchId = null;
+      room.committedCostPerSeat = null;
+      room.committedTotalPot = null;
+      this.transitionLifecycle(room, "COMPLETED", "Match finished");
+      this.recordPostMatchStats(room);
+      for (const p of room.players.values()) p.isReady = false;
+      this.broadcastRoomState(room);
+      room.terminalStatus = "COMPLETED";
+      room.terminalPayload = null;
+      console.log(`[match] finished room=${room.code} game=${room.game} players=${room.players.size}`);
+    } catch (err) {
+      room.terminalStatus = "FAILED";
+      room.terminalError = err instanceof Error ? err : new Error(String(err));
+      logger.error({
+        message: `Failed to durably persist a SETTLEMENT intent for match ${matchId} (room ${room.code}): ${err instanceof Error ? err.message : String(err)}. Match finalization incomplete; room preserved for recovery. Retry via retryFailedTerminalPersistence(room) — in-memory only, does not survive a process restart.`,
+        module: "ECONOMY_ROOM",
+        roomCode: room.code,
+        matchId,
+      });
+      throw err;
+    }
   }
 
   /**
@@ -2175,7 +2326,7 @@ export class RoomManager {
    * through `abandonRoom`, which forfeits the committed pool instead of
    * continuing the match under an ineligible host.
    */
-  private reassignHost(room: Room, departingPlayerId: string): void {
+  private reassignHost(room: Room, departingPlayerId: string): Promise<void> | void {
     if (room.hostId !== departingPlayerId) return;
 
     const remainingSeats = [...room.players.values()].filter(
@@ -2199,7 +2350,7 @@ export class RoomManager {
       // preserve the exact existing behavior: abandon only when literally
       // no human (bot-only-blind `hasHumanPlayer`) seat remains at all.
       if (economicallyActive || !this.hasHumanPlayer(room)) {
-        this.abandonRoom(room);
+        return this.abandonRoom(room);
       }
       return;
     }
@@ -2314,68 +2465,76 @@ export class RoomManager {
         ? engine.getBotThinkDelayMs()
         : 1200 + Math.random() * 800;
     setTimeout(() => {
-      if (room.phase !== "playing") return;
-      if (room.engine !== engine) return;
+      void (async () => {
+        if (room.phase !== "playing") return;
+        if (room.engine !== engine) return;
 
-      const apply = engine.applyAutoMove;
-      const actors = engine.pendingActors;
-      if (typeof apply !== "function" || typeof actors !== "function") return;
+        const apply = engine.applyAutoMove;
+        const actors = engine.pendingActors;
+        if (typeof apply !== "function" || typeof actors !== "function") return;
 
-      // Re-checked at FIRE time, not just at schedule time: the whole point of
-      // a takeover is that it ends the instant the player is back, and a
-      // reconnect landing inside this delay must not have their move played
-      // for them a beat later.
-      if (!this.hasConnectedHuman(room)) return;
-      const stillPending = actors.call(engine).filter(
-        (id) => room.players.get(id)?.isBot || this.isAutoDriven(room, id),
-      );
-      const botId = stillPending[0];
-      if (!botId) {
-        // Pending list shifted between scheduling and firing (the human
-        // discarded into a different bot, or the away player reconnected).
-        // Fall through to a fresh pass to pick up whoever is next.
-        this.scheduleBotMoveIfNeeded(room);
-        return;
-      }
+        // Re-checked at FIRE time, not just at schedule time: the whole point of
+        // a takeover is that it ends the instant the player is back, and a
+        // reconnect landing inside this delay must not have their move played
+        // for them a beat later.
+        if (!this.hasConnectedHuman(room)) return;
+        const stillPending = actors.call(engine).filter(
+          (id) => room.players.get(id)?.isBot || this.isAutoDriven(room, id),
+        );
+        const botId = stillPending[0];
+        if (!botId) {
+          // Pending list shifted between scheduling and firing (the human
+          // discarded into a different bot, or the away player reconnected).
+          // Fall through to a fresh pass to pick up whoever is next.
+          this.scheduleBotMoveIfNeeded(room);
+          return;
+        }
 
-      if (!engine.isOver()) {
-        // Count only sub-moves played for a HUMAN's seat — a bot's own turns
-        // are not something anybody needs reporting back to them.
-        if (this.isAutoDriven(room, botId)) {
-          room.autoPlayedFor.set(botId, (room.autoPlayedFor.get(botId) ?? 0) + 1);
+        if (!engine.isOver()) {
+          // Count only sub-moves played for a HUMAN's seat — a bot's own turns
+          // are not something anybody needs reporting back to them.
+          if (this.isAutoDriven(room, botId)) {
+            room.autoPlayedFor.set(botId, (room.autoPlayedFor.get(botId) ?? 0) + 1);
 
-          // The turn cap only ever applies to an IDLE takeover — see
-          // `isIdleAutoDriven`'s own doc comment for why a disconnect must
-          // not be pre-empted by it.
-          if (this.isIdleAutoDriven(room, botId)) {
-            // A new TURN for this seat starts exactly when the auto-move
-            // actor changes from whatever it was last time — consecutive
-            // sub-moves for the SAME seat (roll→move, draw→discard) are one
-            // turn, not two. See `lastAutoTurnActor`'s own doc comment.
-            const isNewTurn = room.lastAutoTurnActor !== botId;
-            room.lastAutoTurnActor = botId;
-            if (isNewTurn) {
-              const turns = (room.autoTurnsPlayed.get(botId) ?? 0) + 1;
-              room.autoTurnsPlayed.set(botId, turns);
-              if (turns > AUTO_PLAY_TURN_CAP) {
-                this.forceQuitAutoPlayedSeat(room, botId);
-                return;
+            // The turn cap only ever applies to an IDLE takeover — see
+            // `isIdleAutoDriven`'s own doc comment for why a disconnect must
+            // not be pre-empted by it.
+            if (this.isIdleAutoDriven(room, botId)) {
+              // A new TURN for this seat starts exactly when the auto-move
+              // actor changes from whatever it was last time — consecutive
+              // sub-moves for the SAME seat (roll→move, draw→discard) are one
+              // turn, not two. See `lastAutoTurnActor`'s own doc comment.
+              const isNewTurn = room.lastAutoTurnActor !== botId;
+              room.lastAutoTurnActor = botId;
+              if (isNewTurn) {
+                const turns = (room.autoTurnsPlayed.get(botId) ?? 0) + 1;
+                room.autoTurnsPlayed.set(botId, turns);
+                if (turns > AUTO_PLAY_TURN_CAP) {
+                  await this.forceQuitAutoPlayedSeat(room, botId);
+                  return;
+                }
               }
             }
           }
+          apply.call(engine, botId);
         }
-        apply.call(engine, botId);
-      }
-      this.broadcastGameState(room);
+        this.broadcastGameState(room);
 
-      if (engine.isOver()) {
-        this.finalizeMatch(room);
-        return;
-      }
-      this.scheduleTurnTimer(room);
-      // Recurse — if the same bot is still mid-turn (draw → discard) this
-      // schedules another paced sub-move; otherwise it picks up the next bot.
-      this.scheduleBotMoveIfNeeded(room);
+        if (engine.isOver()) {
+          await this.finalizeMatch(room);
+          return;
+        }
+        this.scheduleTurnTimer(room);
+        // Recurse — if the same bot is still mid-turn (draw → discard) this
+        // schedules another paced sub-move; otherwise it picks up the next bot.
+        this.scheduleBotMoveIfNeeded(room);
+      })().catch((err) => {
+        logger.error({
+          message: `Bot move execution failed in room ${room.code}: ${err instanceof Error ? err.message : String(err)}`,
+          module: "BOT",
+          roomCode: room.code,
+        });
+      });
     }, delayMs);
   }
 
@@ -2505,66 +2664,74 @@ export class RoomManager {
     const MAX_CATCHUP_STEPS = 4;
 
     room.simTimer = setInterval(() => {
-      // The room may have ended or been torn down between ticks.
-      if (room.phase !== "playing" || !room.engine) {
-        this.stopSimulation(room);
-        return;
-      }
-      const now = Date.now();
-      let steps = Math.floor((now - simulatedUntil) / periodMs);
-      if (steps < 1) return; // woke early; nothing is owed yet
-      if (steps > MAX_CATCHUP_STEPS) {
-        // Long stall (GC, a suspended container). Skip the debt rather than
-        // fast-forwarding the match through it.
-        steps = 1;
-        simulatedUntil = now;
-      } else {
-        simulatedUntil += steps * periodMs;
-      }
-
-      let result;
-      try {
-        for (let i = 0; i < steps; i++) {
-          result = (room.engine as RealtimeEngine).simulateTick();
-          if (result?.isOver || room.engine.isOver()) break;
+      void (async () => {
+        // The room may have ended or been torn down between ticks.
+        if (room.phase !== "playing" || !room.engine) {
+          this.stopSimulation(room);
+          return;
         }
-      } catch (err) {
-        // A crashing simulation must not leave a runaway interval behind.
+        const now = Date.now();
+        let steps = Math.floor((now - simulatedUntil) / periodMs);
+        if (steps < 1) return; // woke early; nothing is owed yet
+        if (steps > MAX_CATCHUP_STEPS) {
+          // Long stall (GC, a suspended container). Skip the debt rather than
+          // fast-forwarding the match through it.
+          steps = 1;
+          simulatedUntil = now;
+        } else {
+          simulatedUntil += steps * periodMs;
+        }
+
+        let result;
+        try {
+          for (let i = 0; i < steps; i++) {
+            result = (room.engine as RealtimeEngine).simulateTick();
+            if (result?.isOver || room.engine.isOver()) break;
+          }
+        } catch (err) {
+          // A crashing simulation must not leave a runaway interval behind.
+          logger.error({
+            message: `Simulation tick failed for ${room.game}: ${String(err)}`,
+            module: "SIMULATION",
+          });
+          this.stopSimulation(room);
+          return;
+        }
+        this.broadcastGameState(room);
+        if (result?.isOver || room.engine.isOver()) {
+          // Same finish sequence every other completion path uses — see
+          // finalizeMatch. stopSimulation is specific to this path (only the
+          // real-time tick loop owns an interval to tear down).
+          this.stopSimulation(room);
+          await this.finalizeMatch(room);
+        } else if (result?.turnPhaseChanged) {
+          // A real-time physics turn (e.g., Carrom strike) just completed and returned to aiming phase.
+          // Re-arm turn timers and trigger bot scheduler so bot/taken-over seats take their turn!
+          this.scheduleTurnTimer(room);
+          this.scheduleBotMoveIfNeeded(room);
+        } else if (this.periodFor(room.engine) !== periodMs) {
+          /**
+           * The engine changed its own pace mid-game.
+           *
+           * Snake speeds up as the snake grows, and that is the entire point
+           * of the speed-progression option — but `setInterval` was armed once
+           * with the opening rate and never revisited, so the game published a
+           * `speedMs` that fell steadily while actually stepping at a fixed
+           * rate forever. Clients interpolate their motion over the published
+           * number, so the two drifted apart and the board stuttered.
+           *
+           * Re-arming is generic rather than Snake-specific: any engine whose
+           * `tickRateHz` is a getter now gets an honest loop.
+           */
+          this.startSimulation(room);
+        }
+      })().catch((err) => {
         logger.error({
-          message: `Simulation tick failed for ${room.game}: ${String(err)}`,
+          message: `Simulation execution failed in room ${room.code}: ${err instanceof Error ? err.message : String(err)}`,
           module: "SIMULATION",
+          roomCode: room.code,
         });
-        this.stopSimulation(room);
-        return;
-      }
-      this.broadcastGameState(room);
-      if (result?.isOver || room.engine.isOver()) {
-        // Same finish sequence every other completion path uses — see
-        // finalizeMatch. stopSimulation is specific to this path (only the
-        // real-time tick loop owns an interval to tear down).
-        this.stopSimulation(room);
-        this.finalizeMatch(room);
-      } else if (result?.turnPhaseChanged) {
-        // A real-time physics turn (e.g., Carrom strike) just completed and returned to aiming phase.
-        // Re-arm turn timers and trigger bot scheduler so bot/taken-over seats take their turn!
-        this.scheduleTurnTimer(room);
-        this.scheduleBotMoveIfNeeded(room);
-      } else if (this.periodFor(room.engine) !== periodMs) {
-        /**
-         * The engine changed its own pace mid-game.
-         *
-         * Snake speeds up as the snake grows, and that is the entire point
-         * of the speed-progression option — but `setInterval` was armed once
-         * with the opening rate and never revisited, so the game published a
-         * `speedMs` that fell steadily while actually stepping at a fixed
-         * rate forever. Clients interpolate their motion over the published
-         * number, so the two drifted apart and the board stuttered.
-         *
-         * Re-arming is generic rather than Snake-specific: any engine whose
-         * `tickRateHz` is a getter now gets an honest loop.
-         */
-        this.startSimulation(room);
-      }
+      });
       // Aim below the period: an over-long OS tick is then corrected by the
       // next wake-up instead of compounding.
     }, Math.max(8, Math.floor(periodMs / 2)));
@@ -2599,16 +2766,17 @@ export class RoomManager {
    * same `phase === "playing"` signal `handleDisconnect`'s own `inMatch`
    * check already uses everywhere else in this file.
    *  - `currentMatchId === null` (nothing was ever committed): no economic
-   *    action is owed either way — `queueMatchRefund` is a safe no-op here
-   *    via its own guard, preserved unchanged from before this fix.
+   *    action is owed either way — the `hasEconomy` check below is false,
+   *    so this function's own economic branch is skipped entirely,
+   *    preserved unchanged from before this fix.
    *  - `currentMatchId !== null && wasPlaying`: an economically active
    *    match was actually underway and a human's departure (voluntary or
    *    disconnect-grace expiry) left no eligible signed-in successor —
    *    player-fault abandonment. Forfeits the FULL committed pool to World
    *    Bank; the economic owner is never refunded.
    *  - `currentMatchId !== null && !wasPlaying`: the narrow commit-but-
-   *    never-started race `queueMatchRefund`'s own doc comment describes
-   *    (another event interleaved during `requestGameStart`'s `await`, so
+   *    never-started race described directly above (another event
+   *    interleaved during `requestGameStart`'s `await`, so
    *    `startGame`'s own re-validation refused to transition `phase`).
    *    Nobody ever played anything — this is a stuck commitment, not a
    *    player forfeiting a live match, so it still refunds, exactly as
@@ -2617,10 +2785,13 @@ export class RoomManager {
    * ── Guard: a room whose match ALREADY concluded naturally ───────────────
    * `finalizeMatch` (natural completion, engine.isOver()) and this function
    * are the ONLY two places that ever set `room.phase = "finished"`, and
-   * `finalizeMatch` ALWAYS runs `queueMatchSettlement` synchronously in the
-   * same step, which unconditionally clears `currentMatchId` before this
-   * function could ever see it non-null for a concluded room. So `wasPlaying`
-   * alone is not the fix here: without this guard, EVERY completed match
+   * `finalizeMatch` sets it synchronously, before any `await` — so
+   * `isMatchAlreadyConcluded(room)` is already true for a concluded room by
+   * the time this function's own top-of-function guard runs, regardless of
+   * whether `currentMatchId` has been cleared yet (that happens later,
+   * inside `attemptSettlementPersistence`, only after its
+   * `enqueueSettlement` call resolves). So `wasPlaying` alone is not the
+   * fix here: without this guard, EVERY completed match
    * would still hit `transitionLifecycle(room, "ABANDONED", ...)` the moment
    * the last player leaves (a real transition — COMPLETED -> ABANDONED is
    * valid per `shared/lifecycle.ts`) and would inflate
@@ -2631,21 +2802,26 @@ export class RoomManager {
    * instead — ordinary teardown, never a second economic outcome. See that
    * method's own doc comment for what it preserves.
    */
-  private abandonRoom(room: Room): void {
-    if (this.isMatchAlreadyConcluded(room)) {
+  private async abandonRoom(room: Room): Promise<void> {
+    if (this.isMatchAlreadyConcluded(room) || room.terminalStatus === "COMPLETED") {
       this.closeConcludedRoom(room);
       return;
     }
-    const wasPlaying = room.phase === "playing";
-    room.phase = "finished";
-    this.transitionLifecycle(room, "ABANDONED", "All humans departed");
-    if (room.currentMatchId !== null && wasPlaying) {
-      this.queueMatchForfeiture(room, "Room abandoned mid-match after commitment — no eligible signed-in successor remained");
-    } else {
-      this.queueMatchRefund(room, "Room abandoned mid-match — all human players departed");
+    if (room.terminalStatus === "PERSISTING") {
+      if (room.terminalPromise) {
+        try {
+          await room.terminalPromise;
+        } catch {
+          return;
+        }
+      }
+      if (this.isMatchAlreadyConcluded(room) || (room.terminalStatus as RoomTerminalStatus) === "COMPLETED") {
+        this.closeConcludedRoom(room);
+      }
+      return;
     }
-    serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_abandoned");
-    metricsCollector.onRoomAbandoned(room.game);
+
+    // Freeze all timers immediately so no background activity continues
     this.clearTurnTimer(room);
     this.clearDealGateTimers(room);
     this.stopSimulation(room);
@@ -2654,10 +2830,153 @@ export class RoomManager {
     room.cleanupTimers.clear();
     for (const t of room.takeoverTimers.values()) clearTimeout(t);
     room.takeoverTimers.clear();
+
+    const wasPlaying = room.phase === "playing";
+    const hasEconomy = Boolean(this.durableWorker && room.currentMatchId !== null);
+
+    if (hasEconomy) {
+      const matchId = room.currentMatchId!;
+      const outcome = wasPlaying ? "FORFEITURE" : "REFUND";
+      const reason = wasPlaying
+        ? "Room abandoned mid-match after commitment — no eligible signed-in successor remained"
+        : "Room abandoned mid-match — all human players departed";
+
+      // Stored BEFORE the first attempt begins — see `terminalPayload`'s
+      // own doc comment. `retryFailedTerminalPersistence` replays this
+      // exact outcome/reason pair; `wasPlaying` is never re-evaluated.
+      room.terminalOutcome = outcome;
+      room.terminalPayload =
+        outcome === "FORFEITURE" ? { kind: "FORFEITURE", matchId, reason } : { kind: "REFUND", matchId, reason };
+
+      await this.beginTerminalPersistence(room, () => this.attemptAbandonmentPersistence(room, matchId, outcome, reason));
+      return;
+    }
+
+    // Non-economy room abandonment:
+    room.phase = "finished";
+    this.transitionLifecycle(room, "ABANDONED", "All humans departed");
+    serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_abandoned");
+    metricsCollector.onRoomAbandoned(room.game);
     this.transitionLifecycle(room, "CLOSED", "Room destroyed");
     serverLifecycleRegistry.cleanupRoom(room.code);
     metricsCollector.onRoomClosed(room.game);
     this.rooms.delete(room.code);
+    room.terminalStatus = "COMPLETED";
+  }
+
+  /**
+   * The exact refund/forfeiture persistence attempt — extracted for the
+   * same reason `attemptSettlementPersistence` is: both the original
+   * `abandonRoom` call and `retryFailedTerminalPersistence` run IDENTICAL
+   * logic against whatever `outcome`/`reason` they were given, never a
+   * freshly recomputed one.
+   */
+  private async attemptAbandonmentPersistence(
+    room: Room,
+    matchId: string,
+    outcome: "REFUND" | "FORFEITURE",
+    reason: string,
+  ): Promise<void> {
+    try {
+      if (outcome === "FORFEITURE") {
+        await this.durableWorker!.enqueueForfeiture(matchId, reason);
+      } else {
+        await this.durableWorker!.enqueueRefund(matchId, reason);
+      }
+      room.terminalStatus = "PERSISTED";
+
+      // ONLY AFTER durable persistence commits to database:
+      room.lastMatchId = matchId;
+      room.currentMatchId = null;
+      room.committedCostPerSeat = null;
+      room.committedTotalPot = null;
+      room.phase = "finished";
+      this.transitionLifecycle(room, "ABANDONED", "All humans departed");
+      serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_abandoned");
+      metricsCollector.onRoomAbandoned(room.game);
+
+      // Now proceed to destructive teardown:
+      this.transitionLifecycle(room, "CLOSED", "Room destroyed");
+      serverLifecycleRegistry.cleanupRoom(room.code);
+      metricsCollector.onRoomClosed(room.game);
+      this.rooms.delete(room.code);
+      room.terminalStatus = "COMPLETED";
+      room.terminalPayload = null;
+    } catch (err) {
+      room.terminalStatus = "FAILED";
+      room.terminalError = err instanceof Error ? err : new Error(String(err));
+      logger.error({
+        message: `Failed to durably persist a ${outcome} intent for match ${matchId} (room ${room.code}): ${err instanceof Error ? err.message : String(err)}. Teardown halted; room retained. Retry via retryFailedTerminalPersistence(room) — in-memory only, does not survive a process restart.`,
+        module: "ECONOMY_ROOM",
+        roomCode: room.code,
+        matchId,
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Remediation of audit finding P1-2 — the actual, reachable
+   * `FAILED -> PERSISTING` transition that was previously missing.
+   *
+   * Guarded on `terminalStatus === "FAILED"` specifically (not the broader
+   * `beginTerminalPersistence` entry every first attempt uses): this is
+   * deliberately the ONLY way to re-enter `PERSISTING` from `FAILED`.
+   * Setting `terminalStatus = "PERSISTING"` here happens synchronously,
+   * before any `await` — exactly like every other terminal-status
+   * transition in this class — so a second, concurrent call to this same
+   * method for the same room sees `PERSISTING`, not `FAILED`, and safely
+   * awaits the SAME `terminalPromise` instead of starting a second attempt
+   * (requirement 8: only one retry can be active).
+   *
+   * Replays `room.terminalPayload` VERBATIM — never recomputes a ranking,
+   * never re-derives a reason, never allows a caller to substitute a
+   * different outcome (requirements 4/5/6). No financial RPC executes
+   * before this method's own persistence call — `attemptSettlementPersistence`/
+   * `attemptAbandonmentPersistence` call `enqueueX` first and only apply
+   * downstream side effects after it resolves, identically to the first
+   * attempt (requirement 11). No duplicate player-facing completion runs:
+   * the success continuation is the SAME code the first attempt would have
+   * run, called at most once per retry, gated the same way (requirement 12).
+   *
+   * In-memory only. `room.terminalPayload` does not survive a process
+   * restart, exactly like `room.terminalPromise` never has — this narrows
+   * the window in which a transient persistence failure requires manual
+   * intervention; it does NOT close the pre-commit process-crash window
+   * (see the Blocker 06 audit's own "decisive question" — out of scope
+   * for this remediation).
+   */
+  async retryFailedTerminalPersistence(room: Room): Promise<void> {
+    if (room.terminalStatus === "PERSISTING") {
+      if (room.terminalPromise) await room.terminalPromise;
+      return;
+    }
+    if (room.terminalStatus !== "FAILED") return;
+    const payload = room.terminalPayload;
+    if (!payload) {
+      // Should not be reachable — every path that sets `terminalStatus =
+      // "FAILED"` first sets `terminalPayload` on the very same room.
+      // Guarded rather than assumed, per this file's own existing
+      // convention of guarding invariants explicitly rather than trusting
+      // them silently elsewhere in this class.
+      logger.error({
+        message: `retryFailedTerminalPersistence called for room ${room.code} with terminalStatus FAILED but no stored terminalPayload — cannot retry without a stored decision.`,
+        module: "ECONOMY_ROOM",
+        roomCode: room.code,
+      });
+      return;
+    }
+
+    room.terminalError = null;
+    room.terminalStatus = "PERSISTING";
+
+    const persistPromise =
+      payload.kind === "SETTLEMENT"
+        ? this.attemptSettlementPersistence(room, payload.matchId, payload.request)
+        : this.attemptAbandonmentPersistence(room, payload.matchId, payload.kind, payload.reason);
+
+    room.terminalPromise = persistPromise;
+    await persistPromise;
   }
 
   /**
@@ -2687,9 +3006,9 @@ export class RoomManager {
    *  - transition lifecycle to `ABANDONED` (COMPLETED is not ABANDONED —
    *    it goes straight to CLOSED, a transition `shared/lifecycle.ts`
    *    already allows),
-   *  - call `queueMatchRefund` or `queueMatchForfeiture` (the match's one
-   *    settlement already happened in `finalizeMatch`; `currentMatchId` is
-   *    already `null`, so there is nothing left to reclassify),
+   *  - call refund or forfeiture (the match's one settlement already happened
+   *    in `finalizeMatch`; `currentMatchId` is already `null`, so there is
+   *    nothing left to reclassify),
    *  - count towards `metricsCollector.onRoomAbandoned` (this is routine
    *    post-match cleanup, not an abandonment event for ops dashboards to
    *    alert on).
@@ -2716,94 +3035,21 @@ export class RoomManager {
   }
 
   /**
-   * The refund call site for room-teardown cancellation — reached from
-   * `abandonRoom` only for a commitment that never actually reached a
-   * live match (see `abandonRoom`'s own "Economic routing" doc comment)
-   * or that was never committed at all, in which case this is a safe
-   * no-op via the `currentMatchId` guard below. Player-fault abandonment
-   * of an ACTUALLY PLAYING committed match routes to `queueMatchForfeiture`
-   * instead — see `abandonRoom`. Calls `EconomyService.refundMatchEntry`
-   * only, queued for the same "no player-visible action is waiting on
-   * this" reason settlement is (`EconomySettlementQueue`'s doc comment).
-   *
-   * Guards on `currentMatchId !== null` rather than `room.phase ===
-   * "playing"` deliberately — a match committed via `requestGameStart` but
-   * never actually started (the interleaving edge case documented on that
-   * method) still owes a refund even though `phase` never became
-   * `"playing"`. `MatchAlreadySettledError` (a real race: the match
-   * finished in the gap between whatever triggered abandonment and this
-   * call executing) is not a bug — `EconomySettlementQueue` logs it as a
-   * failed queue item like any other rejection; the settlement already has
-   * a legitimate `SETTLED` outcome and nothing further is owed.
-   */
-  private queueMatchRefund(room: Room, reason: string): void {
-    if (!this.settlementQueue || !room.currentMatchId) return;
-    const matchId = room.currentMatchId;
-    // See the matching comment in `queueMatchSettlement` — same ordering
-    // requirement, same reason. Note: `abandonRoom` (this function's only
-    // caller) deletes the room with no broadcast of its own once this
-    // returns, since abandonment only fires after every human has already
-    // left — there is no live client in this specific room to receive
-    // `lastMatchId` via a room broadcast. It is still set here, correctly,
-    // for any other current or future caller that DOES broadcast
-    // afterward, and so the room object itself is correct right up to
-    // deletion (verifiable directly, not just by broadcast side-effect).
-    room.lastMatchId = matchId;
-    room.currentMatchId = null;
-    room.committedCostPerSeat = null;
-    room.committedTotalPot = null;
-    this.settlementQueue.queueRefund(matchId, reason);
-  }
-
-  /**
-   * Player-fault abandonment forfeiture — the sibling of `queueMatchRefund`
-   * for a committed match that was ACTUALLY PLAYING when the last eligible
-   * human departed and no eligible signed-in successor remained (see
-   * `abandonRoom`'s "Economic routing" doc comment for the exact split).
-   * Same ordering/no-live-broadcast-recipient reasoning as
-   * `queueMatchRefund` applies identically here — only the destination RPC
-   * differs. Calls `EconomyService.forfeitMatchEntry` only, which derives
-   * the forfeited amount from the settlement's own `total_collected`
-   * server-side; nothing here ever passes an amount.
-   */
-  private queueMatchForfeiture(room: Room, reason: string): void {
-    if (!this.settlementQueue || !room.currentMatchId) return;
-    const matchId = room.currentMatchId;
-    room.lastMatchId = matchId;
-    room.currentMatchId = null;
-    room.committedCostPerSeat = null;
-    room.committedTotalPot = null;
-    this.settlementQueue.queueForfeiture(matchId, reason);
-  }
-
-  /**
    * The compensating close for a commit that succeeded AFTER the room that
    * requested it was already torn down, replaced, or otherwise moved past
    * the exact request the commit was for — the one gap neither
-   * `queueMatchRefund` nor `queueMatchForfeiture` can close on their own,
-   * because both operate on a `room` object and take their guard
-   * (`room.currentMatchId !== null`) from IT. A commit's own continuation
-   * (`requestGameStart`/`requestRematchStart`, after their `await
-   * commitMatchEntry(...)`) is the ONLY code that still holds the matchId
-   * a moment like this needs — once that continuation returns without
-   * acting, NOTHING else in this class will ever see this matchId again:
-   * the room is gone from `this.rooms`, so no future departure, disconnect,
-   * or abandonment path can find it to trigger settlement, refund, or
-   * forfeiture. `commitMatchEntry` already performed a REAL wallet debit;
-   * the match never reached active play (this fires strictly BEFORE
-   * `startGame`/`startRematch` would have run), so a refund — never a
-   * forfeiture — is the only outcome consistent with existing policy
-   * ("committed but never active" always refunds). `queueRefund` is
-   * idempotent by construction (keyed on `matchId`), so this is safe even
-   * if some future caller ever reached it more than once for the same
-   * match.
+   * `finalizeMatch` nor `abandonRoom` can close on their own, because both
+   * operate on a live `room` object and take their guard from IT.
+   * A commit's own continuation (`requestGameStart`/`requestRematchStart`,
+   * after their `await commitMatchEntry(...)`) is the ONLY code that still holds
+   * the matchId a moment like this needs.
    */
-  private queueCompensatingRefundForOrphanedCommit(
+  private async queueCompensatingRefundForOrphanedCommit(
     matchId: string,
     roomCode: string,
     operation: "requestGameStart" | "requestRematchStart",
     reason: string,
-  ): void {
+  ): Promise<void> {
     logger.warn({
       message: `${operation} committed match ${matchId} (room ${roomCode}) but the room was invalidated before the commit resolved (${reason}) — queuing a compensating refund so the debit does not stay permanently stuck`,
       module: "ECONOMY_ROOM",
@@ -2812,9 +3058,9 @@ export class RoomManager {
       operation,
       reason,
     });
-    if (!this.settlementQueue) {
+    if (!this.durableWorker) {
       logger.error({
-        message: `Cannot queue compensating refund for match ${matchId} (room ${roomCode}): settlementQueue is not configured`,
+        message: `Cannot queue compensating refund for match ${matchId} (room ${roomCode}): durableWorker is not configured`,
         module: "ECONOMY_ROOM",
         roomCode,
         matchId,
@@ -2824,19 +3070,20 @@ export class RoomManager {
       return;
     }
     try {
-      this.settlementQueue.queueRefund(
+      await this.durableWorker.enqueueRefund(
         matchId,
         `Commit succeeded after ${operation} was invalidated (${reason}) — the match never reached active play`,
       );
     } catch (err) {
       logger.error({
-        message: `Failed to queue compensating refund for match ${matchId} (room ${roomCode}): ${err instanceof Error ? err.message : String(err)}`,
+        message: `Failed to durably persist a compensating REFUND intent for match ${matchId} (room ${roomCode}): ${err instanceof Error ? err.message : String(err)}`,
         module: "ECONOMY_ROOM",
         roomCode,
         matchId,
         operation,
         reason,
       });
+      throw err;
     }
   }
 
@@ -3192,7 +3439,7 @@ export class RoomManager {
    *     game this ends the match immediately as a forfeit to the opponent
    *     — `removePlayer`'s own existing behavior, nothing new here.
    */
-  private forceQuitAutoPlayedSeat(room: Room, playerId: string): void {
+  private async forceQuitAutoPlayedSeat(room: Room, playerId: string): Promise<void> {
     const engine = room.engine;
     const player = room.players.get(playerId);
     if (!engine || !player) return;
@@ -3215,17 +3462,20 @@ export class RoomManager {
       departedSnapshot = { ...player };
       room.players.delete(playerId);
       if (!this.hasHumanPlayer(room)) {
-        this.abandonRoom(room);
+        await this.abandonRoom(room);
         return;
       }
-      if (room.hostId === playerId) this.reassignHost(room, playerId);
+      if (room.hostId === playerId) {
+        const p = this.reassignHost(room, playerId);
+        if (p) await p;
+      }
       engine.removePlayer(playerId);
     }
 
     this.broadcastRoomState(room);
 
     if (engine.isOver()) {
-      this.finalizeMatch(room, departedSnapshot);
+      await this.finalizeMatch(room, departedSnapshot);
       return;
     }
     this.resumeTable(room);
@@ -3282,6 +3532,18 @@ export class RoomManager {
     });
   }
 
+  private armTurnTimer(room: Room, ms: number): void {
+    room.turnTimer = setTimeout(() => {
+      void this.onTurnTimeout(room).catch((err) => {
+        logger.error({
+          message: `onTurnTimeout failed for room ${room.code}: ${err instanceof Error ? err.message : String(err)}`,
+          module: "TURN_TIMER",
+          roomCode: room.code,
+        });
+      });
+    }, ms);
+  }
+
   private scheduleTurnTimer(room: Room): void {
     this.clearTurnTimer(room);
     if (room.phase !== "playing") return;
@@ -3298,7 +3560,7 @@ export class RoomManager {
       }
       const ms = engine.armRoundDeadline(engine.getRoundTimerSeconds() * 1000);
       this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      this.armTurnTimer(room, ms);
       return;
     }
     if (room.engine instanceof LudoEngine) {
@@ -3306,7 +3568,7 @@ export class RoomManager {
       const ms = Math.max(5, opts.turnTimerSeconds) * 1000;
       room.engine.setTurnDeadline(Date.now() + ms);
       this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      this.armTurnTimer(room, ms);
       return;
     }
     if (room.engine instanceof RummyEngine) {
@@ -3316,10 +3578,7 @@ export class RoomManager {
       if (pub.phase === "arranging") {
         const deadline = room.engine.getArrangeDeadline() ?? Date.now() + 15_000;
         this.broadcastGameState(room);
-        room.turnTimer = setTimeout(
-          () => this.onTurnTimeout(room),
-          Math.max(0, deadline - Date.now()),
-        );
+        this.armTurnTimer(room, Math.max(0, deadline - Date.now()));
         return;
       }
       // Don't schedule between rounds in pool mode (or in a finished single-round game).
@@ -3343,7 +3602,7 @@ export class RoomManager {
       const ms = Math.max(baseMs, carryMs) + animMs;
       room.engine.setTurnDeadline(Date.now() + ms, pub.turnPlayerId);
       this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      this.armTurnTimer(room, ms);
       return;
     }
     if (room.engine instanceof WordBuildingEngine) {
@@ -3357,7 +3616,7 @@ export class RoomManager {
       const ms = Math.max(5, seconds) * 1000;
       room.engine.setTurnDeadline(Date.now() + ms);
       this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      this.armTurnTimer(room, ms);
       return;
     }
     if (room.engine instanceof DotsBoxesEngine) {
@@ -3370,7 +3629,7 @@ export class RoomManager {
       const ms = Math.max(5, seconds) * 1000;
       room.engine.setTurnDeadline(Date.now() + ms);
       this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      this.armTurnTimer(room, ms);
       return;
     }
     if (room.engine instanceof StarGameEngine) {
@@ -3382,7 +3641,7 @@ export class RoomManager {
       }
       const ms = engine.armDeadline(engine.getPhaseTimerSeconds() * 1000);
       this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      this.armTurnTimer(room, ms);
       return;
     }
     if (room.engine instanceof UnoEngine) {
@@ -3396,7 +3655,7 @@ export class RoomManager {
       const ms = Math.max(5, seconds) * 1000;
       engine.setTurnDeadline(Date.now() + ms);
       this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      this.armTurnTimer(room, ms);
       return;
     }
     /**
@@ -3416,10 +3675,7 @@ export class RoomManager {
     if (room.engine instanceof BlockBlastEngine) {
       const deadline = room.engine.getRaceDeadline();
       if (deadline == null || room.engine.isOver()) return;
-      room.turnTimer = setTimeout(
-        () => this.onTurnTimeout(room),
-        Math.max(0, deadline - Date.now()),
-      );
+      this.armTurnTimer(room, Math.max(0, deadline - Date.now()));
       return;
     }
     if (room.engine instanceof BingoEngine) {
@@ -3444,7 +3700,7 @@ export class RoomManager {
         engine.setTurnDeadline(Date.now() + ms);
       }
       this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      this.armTurnTimer(room, ms);
       return;
     }
     // ── Phase-timer engines (quiz / countdown style) ─────────────────────
@@ -3464,12 +3720,12 @@ export class RoomManager {
       }
       const ms = engine.armDeadline(engine.getPhaseTimerSeconds() * 1000);
       this.broadcastGameState(room);
-      room.turnTimer = setTimeout(() => this.onTurnTimeout(room), ms);
+      this.armTurnTimer(room, ms);
       return;
     }
   }
 
-  private onTurnTimeout(room: Room): void {
+  private async onTurnTimeout(room: Room): Promise<void> {
     if (room.phase !== "playing") return;
     /**
      * Same rule as the auto-play scheduler: never resolve turns for a table
@@ -3485,7 +3741,7 @@ export class RoomManager {
     if (room.engine instanceof BlockBlastEngine) {
       const engine = room.engine;
       engine.finishOnDeadline();
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
     if (room.engine instanceof RpsEngine) {
@@ -3499,7 +3755,7 @@ export class RoomManager {
         if (!this.canApplyTimeoutMove(room, pid)) continue;
         engine.applyAutoMove(pid);
       }
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
     if (room.engine instanceof LudoEngine) {
@@ -3508,7 +3764,7 @@ export class RoomManager {
       if (state.phase !== "playing") return;
       const pid = state.turnPlayerId;
       if (!this.canApplyTimeoutMove(room, pid)) {
-        this.afterAutoMove(room, false);
+        await this.afterAutoMove(room, false);
         return;
       }
       if (state.turnPhase === "rolling") {
@@ -3521,7 +3777,7 @@ export class RoomManager {
           engine.applyMove({ playerId: pid, type: "move", data: { tokenId } });
         }
       }
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
     if (room.engine instanceof RummyEngine) {
@@ -3530,16 +3786,16 @@ export class RoomManager {
       // Rearrange window elapsed → score the round on players' actual hands.
       if (state.phase === "arranging") {
         engine.finalizeArrangingRound();
-        this.afterAutoMove(room, engine.isOver());
+        await this.afterAutoMove(room, engine.isOver());
         return;
       }
       if (state.phase !== "playing") return;
       if (!this.canApplyTimeoutMove(room, state.turnPlayerId)) {
-        this.afterAutoMove(room, false);
+        await this.afterAutoMove(room, false);
         return;
       }
       engine.applyAutoMove(state.turnPlayerId);
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
     if (room.engine instanceof WordBuildingEngine) {
@@ -3547,11 +3803,11 @@ export class RoomManager {
       const state = engine.getPublicState();
       if (state.phase !== "playing") return;
       if (!this.canApplyTimeoutMove(room, state.turnPlayerId)) {
-        this.afterAutoMove(room, false);
+        await this.afterAutoMove(room, false);
         return;
       }
       engine.applyAutoMove(state.turnPlayerId);
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
     if (room.engine instanceof DotsBoxesEngine) {
@@ -3559,18 +3815,18 @@ export class RoomManager {
       const state = engine.getPublicState();
       if (state.phase !== "playing") return;
       if (!this.canApplyTimeoutMove(room, state.turnPlayerId)) {
-        this.afterAutoMove(room, false);
+        await this.afterAutoMove(room, false);
         return;
       }
       engine.applyAutoMove(state.turnPlayerId);
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
     if (room.engine instanceof StarGameEngine) {
       const engine = room.engine;
       if (engine.isOver()) return;
       engine.resolveDeadline((pid) => this.canApplyTimeoutMove(room, pid));
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
     if (room.engine instanceof UnoEngine) {
@@ -3584,7 +3840,7 @@ export class RoomManager {
       if (actorId && this.canApplyTimeoutMove(room, actorId)) {
         engine.applyAutoMove(actorId);
       }
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
     if (room.engine instanceof BingoEngine) {
@@ -3607,7 +3863,7 @@ export class RoomManager {
           engine.applyAutoMove(actorId);
         }
       }
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
     // ── Phase-timer engines (quiz / countdown style) ─────────────────────
@@ -3622,15 +3878,15 @@ export class RoomManager {
       } else {
         engine.resolveDeadline();
       }
-      this.afterAutoMove(room, engine.isOver());
+      await this.afterAutoMove(room, engine.isOver());
       return;
     }
   }
 
-  private afterAutoMove(room: Room, isOver: boolean): void {
+  private async afterAutoMove(room: Room, isOver: boolean): Promise<void> {
     this.broadcastGameState(room);
     if (isOver) {
-      this.finalizeMatch(room);
+      await this.finalizeMatch(room);
       return;
     }
     this.scheduleTurnTimer(room);
@@ -3947,63 +4203,73 @@ export class RoomManager {
     });
 
     const timer = setTimeout(() => {
-      const stillRoom = this.rooms.get(code);
-      if (!stillRoom) return;
-      const stillPlayer = stillRoom.players.get(playerId);
-      if (stillPlayer && !stillPlayer.isConnected) {
-        // One completed-recovery-session outcome, the "expired" sibling of
-        // the success accounting in `joinRoom`'s reclaim branch — this path
-        // and that one are mutually exclusive by construction: whichever
-        // happens first (reclaim before this timer fires, or this timer
-        // firing first) is what settles the session, and `forgetSeatTimers`
-        // below is exactly what stops the other one from ever running for
-        // this seat again.
-        if (!stillPlayer.isBot) {
-          metricsRegistry.increment("recovery.sessions_expired_total");
-        }
-        // Captured before deletion — same reasoning as leaveRoom's own
-        // departingPlayer snapshot, for the same economy settlement reason.
-        const droppedPlayer = stillRoom.players.get(playerId);
-        // The seat is going away entirely, so everything tracking it goes too.
-        this.forgetSeatTimers(stillRoom, playerId);
-        stillRoom.players.delete(playerId);
-        // If the departing human was the last human in the room, abandon it —
-        // never let the grace-timeout resolve into a bot being crowned winner.
-        // Only a REMAINING human counts as a forfeit win, so removePlayer runs
-        // solely in that case.
-        if (!this.hasHumanPlayer(stillRoom)) {
+      void (async () => {
+        const stillRoom = this.rooms.get(code);
+        if (!stillRoom) return;
+        const stillPlayer = stillRoom.players.get(playerId);
+        if (stillPlayer && !stillPlayer.isConnected) {
+          // One completed-recovery-session outcome, the "expired" sibling of
+          // the success accounting in `joinRoom`'s reclaim branch — this path
+          // and that one are mutually exclusive by construction: whichever
+          // happens first (reclaim before this timer fires, or this timer
+          // firing first) is what settles the session, and `forgetSeatTimers`
+          // below is exactly what stops the other one from ever running for
+          // this seat again.
+          if (!stillPlayer.isBot) {
+            metricsRegistry.increment("recovery.sessions_expired_total");
+          }
+          // Captured before deletion — same reasoning as leaveRoom's own
+          // departingPlayer snapshot, for the same economy settlement reason.
+          const droppedPlayer = stillRoom.players.get(playerId);
+          // The seat is going away entirely, so everything tracking it goes too.
+          this.forgetSeatTimers(stillRoom, playerId);
+          stillRoom.players.delete(playerId);
+          // If the departing human was the last human in the room, abandon it —
+          // never let the grace-timeout resolve into a bot being crowned winner.
+          // Only a REMAINING human counts as a forfeit win, so removePlayer runs
+          // solely in that case.
+          if (!this.hasHumanPlayer(stillRoom)) {
+            logger.info({
+              message: "Room abandoned - grace window expired with no humans left",
+              module: "RECONNECT",
+              roomCode: stillRoom.code,
+              playerId,
+            });
+            await this.abandonRoom(stillRoom);
+            return;
+          }
           logger.info({
-            message: "Room abandoned - grace window expired with no humans left",
+            message: "Seat dropped - grace window expired",
             module: "RECONNECT",
             roomCode: stillRoom.code,
             playerId,
           });
-          this.abandonRoom(stillRoom);
-          return;
+          if (stillRoom.engine) stillRoom.engine.removePlayer(playerId);
+          if (stillRoom.hostId === playerId) {
+            const p = this.reassignHost(stillRoom, playerId);
+            if (p) await p;
+          }
+          if (!this.rooms.has(code)) return;
+          if (stillRoom.engine?.isOver()) {
+            // Same reasoning as the explicit-leave path above (see G14): a
+            // grace-expiry reap can also be what tips a 1v1 forfeit or a
+            // multiplayer walkover, and room.phase must not stay "playing"
+            // forever once the engine already knows the match is over.
+            await this.finalizeMatch(stillRoom, droppedPlayer);
+          } else {
+            this.broadcastRoomState(stillRoom);
+            this.resumeTable(stillRoom);
+          }
         }
-        logger.info({
-          message: "Seat dropped - grace window expired",
+        stillRoom.cleanupTimers.delete(playerId);
+      })().catch((err) => {
+        logger.error({
+          message: `Disconnect removal timer error in room ${code} for player ${playerId}: ${err instanceof Error ? err.message : String(err)}`,
           module: "RECONNECT",
-          roomCode: stillRoom.code,
+          roomCode: code,
           playerId,
         });
-        if (stillRoom.engine) stillRoom.engine.removePlayer(playerId);
-        if (stillRoom.hostId === playerId) {
-          this.reassignHost(stillRoom, playerId);
-        }
-        if (!this.rooms.has(code)) return;
-        if (stillRoom.engine?.isOver()) {
-          // Same reasoning as the explicit-leave path above (see G14): a
-          // grace-expiry reap can also be what tips a 1v1 forfeit or a
-          // multiplayer walkover, and room.phase must not stay "playing"
-          // forever once the engine already knows the match is over.
-          this.finalizeMatch(stillRoom, droppedPlayer);
-        } else {
-          this.broadcastRoomState(stillRoom);
-          this.resumeTable(stillRoom);
-        }
-      }
-      stillRoom.cleanupTimers.delete(playerId);
+      });
     }, graceMs);
 
     room.cleanupTimers.set(playerId, timer);
@@ -4447,7 +4713,7 @@ export class RoomManager {
         else if (!isRematchValid) reason = `rematch_${freshRoom.rematch.status}_phase_${freshRoom.phase}`;
         else if (!isRosterValid) reason = "roster_changed";
 
-        this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestRematchStart", reason);
+        await this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestRematchStart", reason);
         return;
       }
       room.currentMatchId = result.settlement.matchId;
@@ -4459,6 +4725,11 @@ export class RoomManager {
       room.lastMatchId = null;
       room.committedCostPerSeat = result.settlement.costPerSeat;
       room.committedTotalPot = result.settlement.totalCollected;
+      room.terminalStatus = "IDLE";
+      room.terminalOutcome = null;
+      room.terminalPromise = null;
+      room.terminalError = null;
+      room.terminalPayload = null;
       this.startRematch(room);
     } catch (err) {
       this.io.to(room.code).emit("room:error", this.economyErrorMessage(err));
@@ -4522,6 +4793,11 @@ export class RoomManager {
       // correctly post-restart.
       for (const p of room.players.values()) p.isReady = true;
       room.rematch = emptyRematchState();
+      room.terminalStatus = "IDLE";
+      room.terminalOutcome = null;
+      room.terminalPromise = null;
+      room.terminalError = null;
+      room.terminalPayload = null;
       this.clearRematchTimers(room);
       this.broadcastRoomState(room);
       this.broadcastGameState(room);

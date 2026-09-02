@@ -297,6 +297,131 @@ export interface IssueGuestVoucherInput {
   issuedToGuestId: string;
 }
 
+/* ═══════════════════════ Durable terminal intents (Blocker 06) ════════════
+ *
+ * The durable replacement for the in-memory `EconomySettlementQueue`. See
+ * `supabase/migrations/20260901000000_economy_terminal_intents.sql`'s own
+ * header for the full rationale — in short: `RoomManager` ALREADY decided
+ * which terminal operation a match needs (settlement with an authoritative
+ * ranking, a refund with a reason, or a forfeiture with a reason) by the
+ * time `finalizeMatch`/`abandonRoom` runs. That decision, and everything
+ * needed to replay it, is persisted here BEFORE it is handed off for
+ * asynchronous processing — never just a bare `matchId`, which would force
+ * a recovery path to guess (explicitly forbidden; see the migration's "why
+ * not guess" section).
+ */
+
+export type TerminalIntentOperationKind = "SETTLEMENT" | "REFUND" | "FORFEITURE";
+export type TerminalIntentStatus = "PENDING" | "PROCESSING" | "RETRYABLE" | "COMPLETED" | "FAILED";
+/** Mirrors `EconomyService`'s own existing business-vs-infrastructure retry classification — this table does not invent a second policy. */
+export type TerminalIntentErrorCategory = "BUSINESS" | "INFRASTRUCTURE" | "UNKNOWN";
+
+/**
+ * Structurally identical to `EconomyService.SettlementParticipantOutcome`
+ * (identityId/identityKind/placement) — defined here, at the repository
+ * boundary, rather than imported from the service layer, since this file
+ * must not depend upward on `EconomyService.ts`. `EconomyService`'s own
+ * type is kept in sync by convention (its own file header states the
+ * pairing), not by a shared import, exactly like this file's other
+ * repository-boundary DTOs.
+ */
+export interface TerminalIntentParticipant {
+  identityId: string;
+  identityKind: ParticipantIdentityKind;
+  placement: number;
+}
+
+export interface SettlementIntentPayload {
+  operationKind: "SETTLEMENT";
+  matchId: string;
+  isValidRanking: boolean;
+  participants: TerminalIntentParticipant[];
+  refundReason?: string;
+}
+export interface RefundIntentPayload {
+  operationKind: "REFUND";
+  matchId: string;
+  reason: string;
+}
+export interface ForfeitureIntentPayload {
+  operationKind: "FORFEITURE";
+  matchId: string;
+  reason: string;
+}
+/** The complete, authoritative replay payload — never a bare match id. */
+export type TerminalIntentPayload = SettlementIntentPayload | RefundIntentPayload | ForfeitureIntentPayload;
+
+export interface TerminalIntentRecord {
+  id: string;
+  matchId: string;
+  operationKind: TerminalIntentOperationKind;
+  payloadVersion: number;
+  payload: TerminalIntentPayload;
+  status: TerminalIntentStatus;
+  attemptCount: number;
+  nextAttemptAt: number;
+  claimOwner: string | null;
+  claimedAt: number | null;
+  leaseExpiresAt: number | null;
+  lastErrorCode: string | null;
+  lastErrorCategory: TerminalIntentErrorCategory | null;
+  createdAt: number;
+  updatedAt: number;
+  completedAt: number | null;
+}
+
+export interface CreateTerminalIntentInput {
+  matchId: string;
+  operationKind: TerminalIntentOperationKind;
+  payload: TerminalIntentPayload;
+  payloadVersion?: number;
+}
+
+/**
+ * `created`/`conflict` are mutually exclusive with each other but not with
+ * `applied` elsewhere in this file's convention — this table's idempotency
+ * key IS `matchId` (a `UNIQUE` column), so there is no separate
+ * `idempotencyKey` string to echo back. `conflict: true` means a DIFFERENT
+ * `operationKind` was already recorded for this match — the authoritative
+ * row is never mutated in that case; `intent` is the EXISTING row either way.
+ */
+export interface CreateTerminalIntentResult {
+  created: boolean;
+  conflict: boolean;
+  intent: TerminalIntentRecord;
+}
+
+export interface ClaimTerminalIntentResult {
+  claimed: boolean;
+  intent: TerminalIntentRecord | null;
+}
+
+export interface IntentUpdateResult {
+  updated: boolean;
+  intent: TerminalIntentRecord;
+}
+
+export interface MarkIntentRetryableInput {
+  intentId: string;
+  workerId: string;
+  errorCode: string;
+  errorCategory: TerminalIntentErrorCategory;
+  nextAttemptAt: number;
+}
+
+export interface MarkIntentFailedInput {
+  intentId: string;
+  workerId: string;
+  errorCode: string;
+  errorCategory: TerminalIntentErrorCategory;
+}
+
+export interface ListTerminalIntentsOptions {
+  status?: TerminalIntentStatus;
+  limit?: number;
+  offset?: number;
+}
+
 /* ═══════════════════════════ Error hierarchy ═════════════════════════════
  *
  * Organized by domain (Wallet / Voucher / Settlement / Concurrency /
@@ -334,6 +459,8 @@ export abstract class SettlementError extends EconomyRepositoryError {}
 export abstract class ConcurrencyError extends EconomyRepositoryError {}
 export abstract class AuthorizationError extends EconomyRepositoryError {}
 export abstract class PersistenceError extends EconomyRepositoryError {}
+/** Blocker 06's own domain — durable terminal-intent lifecycle failures. */
+export abstract class TerminalIntentError extends EconomyRepositoryError {}
 
 /** No `player_identities` row exists for the given id — thrown for guests AND members, unconditionally. This repository never auto-provisions an identity (see `ensureWallet`). */
 export class IdentityNotFoundError extends WalletError {
@@ -440,6 +567,23 @@ export class OnlyMembersCanRedeemError extends AuthorizationError {
  */
 export class EconomyInfrastructureError extends PersistenceError {
   readonly code = "INFRASTRUCTURE_ERROR";
+}
+
+/** `intentId` (or `matchId` for `createTerminalIntent`) does not resolve to a row. */
+export class TerminalIntentNotFoundError extends TerminalIntentError {
+  readonly code = "INTENT_NOT_FOUND";
+}
+/** `retryTerminalIntent`/`requeueExpiredTerminalIntentClaim` called against an intent whose current status makes the requested transition illegal (e.g. retrying a PENDING intent). */
+export class InvalidIntentStateTransitionError extends TerminalIntentError {
+  readonly code = "INVALID_STATE_TRANSITION";
+}
+/** `requeueExpiredTerminalIntentClaim` called without `force` against a claim whose lease has not actually expired yet. */
+export class IntentLeaseStillActiveError extends TerminalIntentError {
+  readonly code = "LEASE_STILL_ACTIVE";
+}
+/** `createTerminalIntent`'s `operationKind` is not one of `SETTLEMENT`/`REFUND`/`FORFEITURE`, or `payload` is malformed for that kind. Thrown BEFORE any row is touched. */
+export class InvalidTerminalIntentPayloadError extends TerminalIntentError {
+  readonly code = "INVALID_PAYLOAD";
 }
 
 /* ═══════════════════════════ The repository interface ═══════════════════ */
@@ -588,4 +732,67 @@ export interface EconomyRepository {
     codeHash: string,
     memberIdentityId: string,
   ): Promise<EconomyOperationResult<RewardVoucherRecord>>;
+
+  /* ── durable terminal intents (Blocker 06) ── */
+
+  /**
+   * Keyed by `matchId` (`UNIQUE`, not a separate idempotency string). See
+   * `CreateTerminalIntentResult`'s own doc comment for the three possible
+   * outcomes — a fresh insert, an idempotent replay of the SAME intended
+   * operation, or a `conflict:true` refusal when a DIFFERENT operation kind
+   * was already recorded. Never mutates an existing row.
+   */
+  createTerminalIntent(input: CreateTerminalIntentInput): Promise<CreateTerminalIntentResult>;
+
+  /**
+   * Atomically claims one eligible row (`PENDING`, a due `RETRYABLE`, or a
+   * `PROCESSING` row whose lease has expired) for `workerId`, or
+   * `claimed:false` if nothing is eligible. Row-locking based
+   * (`FOR UPDATE SKIP LOCKED` in the Supabase implementation) — safe under
+   * concurrent callers by construction, never merely by convention.
+   */
+  claimTerminalIntent(workerId: string, leaseSeconds?: number): Promise<ClaimTerminalIntentResult>;
+
+  /**
+   * Marks an intent `COMPLETED`. Deliberately permissive about which
+   * `workerId` calls this — see the migration's own comment: the safety net
+   * against a duplicate financial effect is the underlying
+   * `settleMatchEconomy`/`refundMatchEntry`/`forfeitMatchEntry` call's own
+   * idempotency, not a strict claim-owner match here. Calling this on an
+   * already-`COMPLETED` intent is a safe `updated:false` no-op, never an
+   * error. Throws `TerminalIntentNotFoundError` if `intentId` does not exist.
+   */
+  completeTerminalIntent(intentId: string, workerId: string): Promise<IntentUpdateResult>;
+
+  /** Releases the claim and schedules a future retry — for a classified `INFRASTRUCTURE` failure only. A no-op (`updated:false`) if the intent is already `COMPLETED`. */
+  markTerminalIntentRetryable(input: MarkIntentRetryableInput): Promise<IntentUpdateResult>;
+
+  /** Terminal — for a classified `BUSINESS` failure or a discovered conflicting terminal state. Never auto-retried; see `retryTerminalIntent`. A no-op (`updated:false`) if the intent is already `COMPLETED`. */
+  markTerminalIntentFailed(input: MarkIntentFailedInput): Promise<IntentUpdateResult>;
+
+  /** Operator/observability read — newest first. */
+  listTerminalIntents(opts?: ListTerminalIntentsOptions): Promise<TerminalIntentRecord[]>;
+
+  /** `null` if `intentId` does not exist. */
+  getTerminalIntent(intentId: string): Promise<TerminalIntentRecord | null>;
+
+  /**
+   * Operator-authorized retry: `FAILED` -> `PENDING`, same recorded payload
+   * (never replaced), audited via `settlement_events`. Throws
+   * `InvalidIntentStateTransitionError` for any source status other than
+   * `FAILED`.
+   */
+  retryTerminalIntent(intentId: string, operatorId: string, reason?: string): Promise<IntentUpdateResult>;
+
+  /**
+   * Operator-forced reclaim of a `PROCESSING` intent. Throws
+   * `IntentLeaseStillActiveError` unless the lease has genuinely expired or
+   * `force` is passed, and `InvalidIntentStateTransitionError` for any
+   * source status other than `PROCESSING`.
+   */
+  requeueExpiredTerminalIntentClaim(
+    intentId: string,
+    operatorId: string,
+    force?: boolean,
+  ): Promise<IntentUpdateResult>;
 }

@@ -1,12 +1,19 @@
 import {
+  type ClaimTerminalIntentResult,
   type CoinLedgerEntryRecord,
   type CoinWalletRecord,
   type CommitMatchEntryInput,
+  type CreateTerminalIntentInput,
+  type CreateTerminalIntentResult,
   type EconomyConfigurationRecord,
   type EconomyOperationResult,
   type EconomyPrizeScheduleRecord,
   type EconomyRepository,
+  type IntentUpdateResult,
   type IssueGuestVoucherInput,
+  type ListTerminalIntentsOptions,
+  type MarkIntentFailedInput,
+  type MarkIntentRetryableInput,
   type MatchEconomySettlementRecord,
   type MatchSettlementStatus,
   type ParticipantIdentityKind,
@@ -18,14 +25,18 @@ import {
   type SettlementInitiatorKind,
   type SettlementParticipantInput,
   type SettlementReconciliation,
+  type TerminalIntentRecord,
   type VoucherStatusView,
   type WalletLedgerEntryType,
   type WorldBankSnapshot,
   IdentityNotFoundError,
   InsufficientFundsError,
+  IntentLeaseStillActiveError,
   InvalidIdentityIdError,
   InvalidIdentityKindError,
+  InvalidIntentStateTransitionError,
   InvalidSeatConfigurationError,
+  InvalidTerminalIntentPayloadError,
   InvalidVoucherHashError,
   MatchAlreadyForfeitedError,
   MatchAlreadyRefundedError,
@@ -34,6 +45,7 @@ import {
   MatchNotFoundError,
   OnlyMembersCanRedeemError,
   SettlementConservationViolationError,
+  TerminalIntentNotFoundError,
   UnsupportedSeatCountError,
   VoucherAlreadyRedeemedError,
   VoucherCodeCollisionError,
@@ -185,6 +197,42 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
+/**
+ * Deterministic semantic equality comparison for JSON-serializable payloads.
+ * Matches PostgreSQL's `jsonb = jsonb` semantics:
+ * - Primitives and nulls compared by value.
+ * - Array elements compared element-by-element in order.
+ * - Object properties compared by key-value regardless of property insertion order.
+ * - Undefined properties are omitted / ignored (matching JSON/JSONB serialization).
+ * - Zero `any` usage.
+ */
+function isSemanticJsonEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") {
+    return false;
+  }
+  if (Array.isArray(a) !== Array.isArray(b)) {
+    return false;
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!isSemanticJsonEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  const objA = a as Record<string, unknown>;
+  const objB = b as Record<string, unknown>;
+  const keysA = Object.keys(objA).filter((k) => objA[k] !== undefined);
+  const keysB = Object.keys(objB).filter((k) => objB[k] !== undefined);
+  if (keysA.length !== keysB.length) return false;
+  for (const k of keysA) {
+    if (!Object.prototype.hasOwnProperty.call(objB, k)) return false;
+    if (!isSemanticJsonEqual(objA[k], objB[k])) return false;
+  }
+  return true;
+}
+
 function toBig(amount: string): bigint {
   return BigInt(amount);
 }
@@ -272,6 +320,11 @@ export class InMemoryEconomyRepository implements EconomyRepository {
   private nextSettlementEventId = 1;
   /** Diagnostic only — see the completion report's "Idempotency implementation" section. Applied/not-applied is always determined by row state, never by this map. */
   private idempotencyLog = new Map<string, string>();
+
+  /* ── durable terminal intents (Blocker 06) ── */
+  private terminalIntents = new Map<string, TerminalIntentRecord>();
+  private terminalIntentIdByMatchId = new Map<string, string>();
+  private nextTerminalIntentSeq = 1;
 
   private readonly mutex = new KeyedMutex();
 
@@ -1515,5 +1568,270 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       this.settlementEvents.length = settlementEventsLength;
       throw err;
     }
+  }
+
+  /* ═══════════════════════ durable terminal intents (Blocker 06) ═════════
+   * Mirrors `20260901000000_economy_terminal_intents.sql`'s RPCs field for
+   * field — see that migration's own comments for the reasoning behind each
+   * guard. "NOT a durability story" (this file's own header) applies here
+   * as much as anywhere else: this proves the CLAIM/LEASE/REPLAY LOGIC is
+   * correct, never that a real OS process crash is survived — only a real
+   * Postgres-backed run can prove that (see `SupabaseEconomyRepository`'s
+   * own implementation and the Blocker 06 verification report).
+   *
+   * Every stored record is replaced wholesale on mutation (this file's own
+   * stated convention — see `withRollback`'s comment above), never mutated
+   * in place, so a `TerminalIntentRecord` reference a caller is still
+   * holding never changes out from under it.
+   */
+
+  private mintTerminalIntentId(): string {
+    return `intent_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}${(this.nextTerminalIntentSeq++).toString(36)}`;
+  }
+
+  async createTerminalIntent(input: CreateTerminalIntentInput): Promise<CreateTerminalIntentResult> {
+    if (!input.matchId || input.matchId.trim().length === 0) {
+      throw new InvalidTerminalIntentPayloadError("matchId must not be empty");
+    }
+    if (input.operationKind !== "SETTLEMENT" && input.operationKind !== "REFUND" && input.operationKind !== "FORFEITURE") {
+      throw new InvalidTerminalIntentPayloadError(`operationKind must be SETTLEMENT, REFUND, or FORFEITURE (got ${String(input.operationKind)})`);
+    }
+    if (!input.payload || typeof input.payload !== "object" || input.payload.operationKind !== input.operationKind) {
+      throw new InvalidTerminalIntentPayloadError("payload must be a non-null object whose operationKind matches the requested operationKind");
+    }
+    if (!input.payload.matchId || input.payload.matchId !== input.matchId) {
+      throw new InvalidTerminalIntentPayloadError("payload.matchId must match the requested matchId");
+    }
+    if (input.payloadVersion !== undefined && input.payloadVersion < 1) {
+      throw new InvalidTerminalIntentPayloadError("payloadVersion must be at least 1");
+    }
+
+    return this.mutex.runExclusive(`terminal-intent:${input.matchId}`, () => {
+      const existingId = this.terminalIntentIdByMatchId.get(input.matchId);
+      if (existingId) {
+        const existing = this.terminalIntents.get(existingId)!;
+        const requestedVersion = input.payloadVersion ?? 1;
+        const isIdentical =
+          existing.operationKind === input.operationKind &&
+          existing.payloadVersion === requestedVersion &&
+          isSemanticJsonEqual(existing.payload, input.payload);
+
+        if (isIdentical) {
+          return { created: false, conflict: false, intent: clone(existing) };
+        }
+        return { created: false, conflict: true, intent: clone(existing) };
+      }
+
+      const now = Date.now();
+      const id = this.mintTerminalIntentId();
+      const intent: TerminalIntentRecord = {
+        id,
+        matchId: input.matchId,
+        operationKind: input.operationKind,
+        payloadVersion: input.payloadVersion ?? 1,
+        payload: clone(input.payload),
+        status: "PENDING",
+        attemptCount: 0,
+        nextAttemptAt: now,
+        claimOwner: null,
+        claimedAt: null,
+        leaseExpiresAt: null,
+        lastErrorCode: null,
+        lastErrorCategory: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      };
+      this.terminalIntents.set(id, intent);
+      this.terminalIntentIdByMatchId.set(input.matchId, id);
+      return { created: true, conflict: false, intent: clone(intent) };
+    });
+  }
+
+  async claimTerminalIntent(workerId: string, leaseSeconds = 30): Promise<ClaimTerminalIntentResult> {
+    if (!workerId || workerId.trim().length === 0) {
+      throw new InvalidTerminalIntentPayloadError("workerId must not be empty");
+    }
+    // Synchronous body, no `await` between the eligibility scan and the
+    // claim mutation — Node never preempts synchronous code, so this is
+    // atomic under concurrent `Promise.all` callers without needing the
+    // mutex at all (unlike `createTerminalIntent`, which spans no async gap
+    // either, but is wrapped in the mutex anyway for the SAME defense-in-
+    // depth reasoning every other mutation in this file already applies).
+    return this.mutex.runExclusive("terminal-intent-claim", () => {
+      const now = Date.now();
+      const eligible = [...this.terminalIntents.values()]
+        .filter(
+          (i) =>
+            i.status === "PENDING" ||
+            (i.status === "RETRYABLE" && i.nextAttemptAt <= now) ||
+            (i.status === "PROCESSING" && i.leaseExpiresAt !== null && i.leaseExpiresAt <= now),
+        )
+        .sort((a, b) => a.createdAt - b.createdAt);
+
+      const target = eligible[0];
+      if (!target) return { claimed: false, intent: null };
+
+      const claimed: TerminalIntentRecord = {
+        ...target,
+        status: "PROCESSING",
+        claimOwner: workerId,
+        claimedAt: now,
+        leaseExpiresAt: now + leaseSeconds * 1000,
+        attemptCount: target.attemptCount + 1,
+        lastErrorCode: null,
+        lastErrorCategory: null,
+        updatedAt: now,
+      };
+      this.terminalIntents.set(target.id, claimed);
+      return { claimed: true, intent: clone(claimed) };
+    });
+  }
+
+  async completeTerminalIntent(intentId: string, workerId: string): Promise<IntentUpdateResult> {
+    const existing = this.terminalIntents.get(intentId);
+    if (!existing) throw new TerminalIntentNotFoundError(`Terminal intent ${intentId} does not exist`);
+    if (existing.status === "COMPLETED") {
+      return { updated: false, intent: clone(existing) };
+    }
+    const now = Date.now();
+    const updated: TerminalIntentRecord = {
+      ...existing,
+      status: "COMPLETED",
+      claimOwner: workerId,
+      completedAt: now,
+      leaseExpiresAt: null,
+      updatedAt: now,
+    };
+    this.terminalIntents.set(intentId, updated);
+    return { updated: true, intent: clone(updated) };
+  }
+
+  async markTerminalIntentRetryable(input: MarkIntentRetryableInput): Promise<IntentUpdateResult> {
+    const existing = this.terminalIntents.get(input.intentId);
+    if (!existing) throw new TerminalIntentNotFoundError(`Terminal intent ${input.intentId} does not exist`);
+    if (existing.status === "COMPLETED") {
+      return { updated: false, intent: clone(existing) };
+    }
+    const updated: TerminalIntentRecord = {
+      ...existing,
+      status: "RETRYABLE",
+      claimOwner: null,
+      claimedAt: null,
+      leaseExpiresAt: null,
+      nextAttemptAt: input.nextAttemptAt,
+      lastErrorCode: input.errorCode,
+      lastErrorCategory: input.errorCategory,
+      updatedAt: Date.now(),
+    };
+    this.terminalIntents.set(input.intentId, updated);
+    return { updated: true, intent: clone(updated) };
+  }
+
+  async markTerminalIntentFailed(input: MarkIntentFailedInput): Promise<IntentUpdateResult> {
+    const existing = this.terminalIntents.get(input.intentId);
+    if (!existing) throw new TerminalIntentNotFoundError(`Terminal intent ${input.intentId} does not exist`);
+    if (existing.status === "COMPLETED") {
+      return { updated: false, intent: clone(existing) };
+    }
+    const updated: TerminalIntentRecord = {
+      ...existing,
+      status: "FAILED",
+      claimOwner: null,
+      claimedAt: null,
+      leaseExpiresAt: null,
+      lastErrorCode: input.errorCode,
+      lastErrorCategory: input.errorCategory,
+      updatedAt: Date.now(),
+    };
+    this.terminalIntents.set(input.intentId, updated);
+    return { updated: true, intent: clone(updated) };
+  }
+
+  async listTerminalIntents(opts: ListTerminalIntentsOptions = {}): Promise<TerminalIntentRecord[]> {
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
+    const offset = Math.max(opts.offset ?? 0, 0);
+    const all = [...this.terminalIntents.values()]
+      .filter((i) => !opts.status || i.status === opts.status)
+      .sort((a, b) => b.createdAt - a.createdAt);
+    return all.slice(offset, offset + limit).map(clone);
+  }
+
+  async getTerminalIntent(intentId: string): Promise<TerminalIntentRecord | null> {
+    const existing = this.terminalIntents.get(intentId);
+    return existing ? clone(existing) : null;
+  }
+
+  async retryTerminalIntent(intentId: string, operatorId: string, reason?: string): Promise<IntentUpdateResult> {
+    if (!operatorId || operatorId.trim().length === 0) {
+      throw new InvalidTerminalIntentPayloadError("operatorId is required for an audited retry");
+    }
+    const existing = this.terminalIntents.get(intentId);
+    if (!existing) throw new TerminalIntentNotFoundError(`Terminal intent ${intentId} does not exist`);
+    if (existing.status !== "FAILED") {
+      throw new InvalidIntentStateTransitionError(
+        `Only a FAILED intent may be retried (current status ${existing.status})`,
+      );
+    }
+    const now = Date.now();
+    const updated: TerminalIntentRecord = {
+      ...existing,
+      status: "PENDING",
+      nextAttemptAt: now,
+      lastErrorCode: null,
+      lastErrorCategory: null,
+      updatedAt: now,
+    };
+    this.terminalIntents.set(intentId, updated);
+    this.emitSettlementEvent(
+      existing.matchId,
+      "STALE_SETTLEMENT_DETECTED",
+      this.settlements.get(existing.matchId)?.status ?? null,
+      this.settlements.get(existing.matchId)?.status ?? "COMMITTED",
+      "retryTerminalIntent",
+      `terminal-intent-retry:${existing.id}`,
+      true,
+      false,
+      false,
+      "operator",
+      operatorId,
+      reason ?? "Operator-initiated retry of a failed terminal intent",
+      { intentId: existing.id, operationKind: existing.operationKind },
+    );
+    return { updated: true, intent: clone(updated) };
+  }
+
+  async requeueExpiredTerminalIntentClaim(
+    intentId: string,
+    operatorId: string,
+    force = false,
+  ): Promise<IntentUpdateResult> {
+    if (!operatorId || operatorId.trim().length === 0) {
+      throw new InvalidTerminalIntentPayloadError("operatorId is required for an audited requeue");
+    }
+    const existing = this.terminalIntents.get(intentId);
+    if (!existing) throw new TerminalIntentNotFoundError(`Terminal intent ${intentId} does not exist`);
+    if (existing.status !== "PROCESSING") {
+      throw new InvalidIntentStateTransitionError(
+        `Only a PROCESSING intent may be requeued (current status ${existing.status})`,
+      );
+    }
+    if (!force && existing.leaseExpiresAt !== null && existing.leaseExpiresAt > Date.now()) {
+      throw new IntentLeaseStillActiveError(
+        `Intent ${intentId} lease does not expire until ${new Date(existing.leaseExpiresAt).toISOString()} (pass force to override)`,
+      );
+    }
+    const now = Date.now();
+    const updated: TerminalIntentRecord = {
+      ...existing,
+      status: "PENDING",
+      claimOwner: null,
+      claimedAt: null,
+      leaseExpiresAt: null,
+      nextAttemptAt: now,
+      updatedAt: now,
+    };
+    this.terminalIntents.set(intentId, updated);
+    return { updated: true, intent: clone(updated) };
   }
 }

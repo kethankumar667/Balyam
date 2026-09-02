@@ -1,14 +1,22 @@
 import { logger } from "../lib/logger.js";
 import {
+  type ClaimTerminalIntentResult,
   type CoinLedgerEntryRecord,
   type CoinWalletRecord,
   type CommitMatchEntryInput,
+  type CreateTerminalIntentInput,
+  type CreateTerminalIntentResult,
   type EconomyRepository,
+  type IntentUpdateResult,
+  type ListTerminalIntentsOptions,
+  type MarkIntentFailedInput,
+  type MarkIntentRetryableInput,
   type MatchEconomySettlementRecord,
   type ParticipantIdentityKind,
   type RewardVoucherRecord,
   type SettlementParticipantInput as RepoSettlementParticipantInput,
   type SettlementReconciliation,
+  type TerminalIntentRecord,
   type VoucherStatusView,
   type WorldBankSnapshot,
   EconomyRepositoryError,
@@ -810,5 +818,103 @@ export class EconomyService {
     );
     this.logOutcome("reconcileSettlement", matchId, startedAt, "read");
     return reconciliation;
+  }
+
+  /* ═══════════════════════ durable terminal intents (Blocker 06) ═════════
+   * Thin pass-throughs to `EconomyRepository`, same retry/logging
+   * discipline as every other method above — deliberately NOT a new
+   * business-logic layer. `RoomManager` and `DurableSettlementWorker` both
+   * talk to `EconomyService` only, never `EconomyRepository` directly,
+   * preserving this file's existing single-entry-point role.
+   */
+
+  async createTerminalIntent(input: CreateTerminalIntentInput): Promise<CreateTerminalIntentResult> {
+    const startedAt = this.now();
+    if (input.matchId.trim().length === 0) {
+      throw new InvalidRequestError("matchId must not be empty");
+    }
+    const outcome = await this.withRetry("createTerminalIntent", input.matchId, () =>
+      this.repository.createTerminalIntent(input),
+    );
+    this.logOutcome("createTerminalIntent", input.matchId, startedAt, outcome.created);
+    return outcome;
+  }
+
+  async claimTerminalIntent(workerId: string, leaseSeconds?: number): Promise<ClaimTerminalIntentResult> {
+    const startedAt = this.now();
+    const outcome = await this.withRetry("claimTerminalIntent", null, () =>
+      this.repository.claimTerminalIntent(workerId, leaseSeconds),
+    );
+    this.logOutcome("claimTerminalIntent", outcome.intent?.matchId ?? null, startedAt, outcome.claimed);
+    return outcome;
+  }
+
+  async completeTerminalIntent(intentId: string, workerId: string): Promise<IntentUpdateResult> {
+    const startedAt = this.now();
+    const outcome = await this.withRetry("completeTerminalIntent", null, () =>
+      this.repository.completeTerminalIntent(intentId, workerId),
+    );
+    this.logOutcome("completeTerminalIntent", outcome.intent.matchId, startedAt, outcome.updated);
+    return outcome;
+  }
+
+  async markTerminalIntentRetryable(input: MarkIntentRetryableInput): Promise<IntentUpdateResult> {
+    const startedAt = this.now();
+    const outcome = await this.withRetry("markTerminalIntentRetryable", null, () =>
+      this.repository.markTerminalIntentRetryable(input),
+    );
+    this.logOutcome("markTerminalIntentRetryable", outcome.intent.matchId, startedAt, outcome.updated);
+    return outcome;
+  }
+
+  async markTerminalIntentFailed(input: MarkIntentFailedInput): Promise<IntentUpdateResult> {
+    const startedAt = this.now();
+    const outcome = await this.withRetry("markTerminalIntentFailed", null, () =>
+      this.repository.markTerminalIntentFailed(input),
+    );
+    this.logOutcome("markTerminalIntentFailed", outcome.intent.matchId, startedAt, outcome.updated);
+    return outcome;
+  }
+
+  async listTerminalIntents(opts?: ListTerminalIntentsOptions): Promise<TerminalIntentRecord[]> {
+    const startedAt = this.now();
+    const rows = await this.withRetry("listTerminalIntents", null, () => this.repository.listTerminalIntents(opts));
+    this.logOutcome("listTerminalIntents", null, startedAt, "read");
+    return rows;
+  }
+
+  async getTerminalIntent(intentId: string): Promise<TerminalIntentRecord | null> {
+    const startedAt = this.now();
+    const intent = await this.withRetry("getTerminalIntent", null, () => this.repository.getTerminalIntent(intentId));
+    this.logOutcome("getTerminalIntent", intent?.matchId ?? null, startedAt, "read");
+    return intent;
+  }
+
+  async retryTerminalIntent(intentId: string, operatorId: string, reason?: string): Promise<IntentUpdateResult> {
+    const startedAt = this.now();
+    if (!operatorId || operatorId.trim().length === 0) {
+      throw new InvalidRequestError("operatorId is required for an audited retry");
+    }
+    const outcome = await this.withRetry("retryTerminalIntent", null, () =>
+      this.repository.retryTerminalIntent(intentId, operatorId, reason),
+    );
+    this.logOutcome("retryTerminalIntent", outcome.intent.matchId, startedAt, outcome.updated);
+    return outcome;
+  }
+
+  async requeueExpiredTerminalIntentClaim(
+    intentId: string,
+    operatorId: string,
+    force?: boolean,
+  ): Promise<IntentUpdateResult> {
+    const startedAt = this.now();
+    if (!operatorId || operatorId.trim().length === 0) {
+      throw new InvalidRequestError("operatorId is required for an audited requeue");
+    }
+    const outcome = await this.withRetry("requeueExpiredTerminalIntentClaim", null, () =>
+      this.repository.requeueExpiredTerminalIntentClaim(intentId, operatorId, force),
+    );
+    this.logOutcome("requeueExpiredTerminalIntentClaim", outcome.intent.matchId, startedAt, outcome.updated);
+    return outcome;
   }
 }

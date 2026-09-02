@@ -217,6 +217,21 @@ try {
 }
 
 const roomManager = new RoomManager(io, economyService);
+// Blocker 06: startup recovery. Discovers and processes any PENDING,
+// due-RETRYABLE, or expired-claim PROCESSING terminal intent left behind by
+// a prior process (crash, deploy, OOM kill) BEFORE starting periodic
+// sweeps — see DurableSettlementWorker's own header for why this is safe
+// (every replay is idempotent) and necessary (nothing else recovers this
+// automatically).
+if (economyService) {
+  void roomManager.drainEconomySettlementQueue().catch((err) => {
+    logger.error({
+      message: `Startup economy recovery sweep failed: ${err instanceof Error ? err.message : String(err)}`,
+      module: "SERVER",
+    });
+  });
+}
+roomManager.startEconomyRecovery();
 
 /**
  * Economy V1's HTTP surface (wallet, ledger, checkout, vouchers,
@@ -457,22 +472,27 @@ function shutdown(signal: string): void {
    * stop. Found by `scripts/persistence/verifyDurability.mjs`, which asserts
    * the flush line appears in the log.
    */
+  // Blocker 06: stop periodic recovery before draining, so a sweep firing
+  // mid-shutdown does not race the drain loop below.
+  roomManager.stopEconomyRecovery();
   void Promise.all([
     progressionSync.drain().catch(() => undefined),
-    // Same reasoning as progressionSync's drain, for the same reason:
-    // a queued settleMatchEconomy/refundMatchEntry call dropped on exit is
-    // a match whose money never resolves until list_stale_committed_settlements
-    // surfaces it for manual reconciliation — draining first closes that
-    // window for every ordinary deploy.
+    // Speed, not the durability guarantee, now — see
+    // DurableSettlementWorker's own header. A terminal intent is already
+    // durably persisted (via `attemptSettlementPersistence`/
+    // `attemptAbandonmentPersistence`'s own `enqueueX` calls) long before
+    // shutdown; draining here just finishes processing anything still pending so a
+    // fresh process on the next deploy has less backlog to recover, not
+    // because skipping it would lose anything.
     roomManager.drainEconomySettlementQueue().catch(() => undefined),
   ]).then(() => {
       const sync = progressionSync.status();
-      const economyQueue = roomManager.economySettlementQueueStatus();
+      const economyWorker = roomManager.economySettlementQueueStatus();
       logger.info({
         message:
           `Progression writes flushed (${sync.written} written, ${sync.failed} failed). ` +
-          `Economy settlement queue flushed (${economyQueue?.settled ?? 0} settled, ` +
-          `${economyQueue?.refunded ?? 0} refunded, ${economyQueue?.failed ?? 0} failed). ` +
+          `Economy durable-intent worker drained (${economyWorker?.completed ?? 0} completed, ` +
+          `${economyWorker?.replayed ?? 0} replayed, ${economyWorker?.failed ?? 0} failed). ` +
           "HTTP and Socket servers closed.",
         module: "SERVER",
       });

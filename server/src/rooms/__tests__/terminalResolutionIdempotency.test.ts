@@ -15,22 +15,30 @@ import type { AccountKind, ClientToServerEvents, GameKind, Player, ServerToClien
  * A room/match/economy settlement must reach a terminal outcome exactly
  * once, no matter how many independent pathways become eligible to trigger
  * one (natural completion, disconnect-grace expiry, idle removal,
- * abandonment, host migration). Downstream economy dedup
- * (`currentMatchId` nulling in `queueMatchSettlement`/`queueMatchRefund`/
- * `queueMatchForfeiture`) already prevents a second WALLET effect — this
- * suite is about the layer above that: `finalizeMatch` itself must not
- * re-run its non-economic side effects (profile/ranking stats, the
- * timeline recorder, match-finished metrics) a second time for a match
- * that already concluded.
+ * abandonment, host migration). Downstream economy dedup (`currentMatchId`
+ * nulling, now inline inside `finalizeMatch`/`abandonRoom`'s own
+ * `attemptSettlementPersistence`/`attemptAbandonmentPersistence` — see
+ * `RoomManager.ts`; Phase 06.1B's own durability-gate `terminalStatus`
+ * state machine is a second, independent idempotency layer on top of it)
+ * already prevents a second WALLET effect — this suite is about the layer
+ * above that: `finalizeMatch` itself must not re-run its non-economic side
+ * effects (profile/ranking stats, the timeline recorder, match-finished
+ * metrics) a second time for a match that already concluded.
  *
  * Tests B/G/H reproduce the exact race directly through RoomManager's own
  * public API (disconnect -> auto-play -> natural completion -> a STALE,
  * independently-armed disconnect-grace timer firing afterward) — no mocks
  * of RoomManager's internals. Tests C/D/E/F exercise the full pairwise
- * terminal-outcome matrix by calling the (intentionally private, never a
- * public surface) terminal functions directly, the same reflection
- * technique economyIntegration.test.ts's own "commit-succeeded-but-never-
- * playing" test already uses for precise state construction.
+ * terminal-outcome matrix by calling `finalizeMatch`/`abandonRoom`
+ * themselves — the actual, current, live production methods (intentionally
+ * private, never a public surface) every real caller reaches — directly,
+ * the same reflection technique economyIntegration.test.ts's own
+ * "commit-succeeded-but-never-playing" test already uses for precise state
+ * construction. (Tests E and F previously reflected into three now-removed
+ * compatibility-adapter methods that Phase 06.1B made dead code with zero
+ * production callers — removed entirely as of the Blocker 06 06.1B-audit
+ * P1-1 remediation. Both tests were rewritten to exercise `finalizeMatch`/
+ * `abandonRoom` directly instead.)
  */
 
 function makeIo() {
@@ -127,12 +135,9 @@ function playToNaturalCompletionAgainstAutoDrivenSeat(rooms: RoomManager, winner
  * otherwise reachable deterministically through the public API alone.
  */
 interface PrivateTerminalSurface {
-  finalizeMatch(room: Room, departedPlayer?: Player): void;
-  abandonRoom(room: Room): void;
-  queueMatchSettlement(room: Room, departedPlayer?: Player): void;
-  queueMatchRefund(room: Room, reason: string): void;
-  queueMatchForfeiture(room: Room, reason: string): void;
-  forceQuitAutoPlayedSeat(room: Room, playerId: string): void;
+  finalizeMatch(room: Room, departedPlayer?: Player): Promise<void>;
+  abandonRoom(room: Room): Promise<void>;
+  forceQuitAutoPlayedSeat(room: Room, playerId: string): Promise<void>;
 }
 function priv(rooms: RoomManager): PrivateTerminalSurface {
   return rooms as unknown as PrivateTerminalSurface;
@@ -266,8 +271,25 @@ describe("Blocker 02 — Terminal Resolution Idempotency", () => {
     });
   });
 
-  describe("Test E: forfeiture followed by a refund attempt", () => {
-    it("the first queued terminal economic outcome wins; a second queue attempt for the same match is a safe no-op", async () => {
+  /**
+   * Tests E and F (below) were remediated per the Blocker 06 combined
+   * 06.1B audit's finding P1-1: the original versions reflected into three
+   * compatibility-adapter methods that, as of Phase 06.1B, were never
+   * called from any production code path (`finalizeMatch`/`abandonRoom`
+   * now construct and persist their settlement/refund/forfeiture requests inline — see
+   * `RoomManager.ts`'s own `attemptSettlementPersistence`/
+   * `attemptAbandonmentPersistence`). Those three dead methods have been
+   * removed entirely; these tests now reflect into `finalizeMatch`/
+   * `abandonRoom` themselves — the actual, current, live production
+   * methods every real caller in `RoomManager.ts` reaches (§6 of the
+   * audit's own call graph) — exactly like this file's own pre-existing,
+   * already-accepted Tests C/D/G/H already do for the identical reason
+   * (constructing a precise race precondition is not otherwise reachable
+   * deterministically through the public API alone). No dead method is
+   * referenced anywhere in this file any longer.
+   */
+  describe("Test E: duplicate forfeiture attempts through the real production path", () => {
+    it("the first terminal persistence call wins; a second direct abandonRoom call for the same room is a safe no-op — exactly one financial application", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       const { io } = makeIo();
@@ -282,19 +304,19 @@ describe("Blocker 02 — Terminal Resolution Idempotency", () => {
       const room = peek(rooms, host.code);
       const matchId = room.currentMatchId!;
 
-      priv(rooms).queueMatchForfeiture(room, "first terminal outcome");
-      priv(rooms).queueMatchRefund(room, "stale second attempt");
+      await priv(rooms).abandonRoom(room); // real production forfeiture path — room is playing, no human successor
+      await priv(rooms).abandonRoom(room); // a stale second attempt for the exact same room object
       await rooms.drainEconomySettlementQueue();
 
       expect(forfeitSpy).toHaveBeenCalledTimes(1);
-      expect(refundSpy).not.toHaveBeenCalled(); // currentMatchId already cleared by the forfeiture call
+      expect(refundSpy).not.toHaveBeenCalled();
       const settlement = await service.getSettlement(matchId);
       expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
     });
   });
 
-  describe("Test F: settlement queue uniqueness", () => {
-    it("queueMatchSettlement is a safe no-op on a second call for the same match", async () => {
+  describe("Test F: duplicate settlement attempts through the real production path", () => {
+    it("finalizeMatch persists a settlement intent exactly once for the same room, even across two direct calls", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       seedMember(repo, MEMBER_B);
@@ -309,8 +331,8 @@ describe("Blocker 02 — Terminal Resolution Idempotency", () => {
       await rooms.requestGameStart("s_a");
       const room = peek(rooms, host.code);
 
-      priv(rooms).queueMatchSettlement(room);
-      priv(rooms).queueMatchSettlement(room); // stale second call, same room object
+      await priv(rooms).finalizeMatch(room); // real production settlement path
+      await priv(rooms).finalizeMatch(room); // stale second call, same room object
       await rooms.drainEconomySettlementQueue();
 
       expect(settleSpy).toHaveBeenCalledTimes(1);

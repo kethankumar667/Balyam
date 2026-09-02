@@ -2,6 +2,24 @@ import { logger } from "../lib/logger.js";
 import type { EconomyService, SettleMatchEconomyRequest } from "../economy/EconomyService.js";
 
 /**
+ * SUPERSEDED (Blocker 06 — Economy V1 certification audit finding F-1).
+ *
+ * `RoomManager` no longer constructs this class — see its own
+ * `durableWorker` field and `../economy/DurableSettlementWorker.ts`. The
+ * gap this class could never close on its own is exactly what F-1 named:
+ * `tail` below is a process-local `Promise` chain, so a queued
+ * settlement/refund/forfeiture disappears if the process exits before it
+ * runs. `DurableSettlementWorker` persists the complete, authoritative
+ * intent to a durable table BEFORE any asynchronous dispatch, and recovers
+ * it after a crash/restart/deploy — the guarantee this file's own design
+ * comment below explains why it never had.
+ *
+ * Left in the repository unmodified (not deleted) — a smaller, safer
+ * change than removing a file some other reference might still exist for,
+ * and there is no harm in an unconstructed class remaining on disk. Kept
+ * for historical/comparison reference only; do not construct this class in
+ * new code.
+ *
  * Queued settlement and refund work, after the synchronous room-lifecycle
  * functions that trigger them have already returned.
  *
