@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
+import { PRIVACY_CONTACT_EMAIL, GRIEVANCE_ACK_DAYS, GRIEVANCE_RESOLVE_DAYS } from "../lib/privacy/contact";
 
 const SECTIONS = [
   { id: "who-we-are", title: "1. Who We Are" },
@@ -331,20 +332,29 @@ export default function PrivacyPolicyPage() {
                 <p>
                   If you have any questions, concerns, or data privacy requests, please contact our Data Protection team at:
                 </p>
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-[#F3EFE9] dark:border-[#202740] flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-[#EA580C]" />
-                  <div>
-                    <span className="font-bold text-xs text-slate-900 dark:text-white block">
-                      Email Privacy Team
-                    </span>
-                    <a
-                      href="mailto:privacy@bhalyam.com"
-                      className="text-xs text-[#EA580C] hover:underline font-mono"
-                    >
-                      privacy@bhalyam.com
-                    </a>
+                {PRIVACY_CONTACT_EMAIL ? (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-[#F3EFE9] dark:border-[#202740] flex items-center gap-3">
+                    <Mail className="w-5 h-5 text-[#EA580C]" />
+                    <div>
+                      <span className="font-bold text-xs text-slate-900 dark:text-white block">
+                        Email Privacy Team
+                      </span>
+                      <a
+                        href={`mailto:${PRIVACY_CONTACT_EMAIL}?subject=BHALYAM%20privacy%20request`}
+                        className="text-xs text-[#EA580C] hover:underline font-mono"
+                      >
+                        {PRIVACY_CONTACT_EMAIL}
+                      </a>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                        We reply within {GRIEVANCE_ACK_DAYS} days and aim to resolve within {GRIEVANCE_RESOLVE_DAYS} days.
+                      </span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-[#F3EFE9] dark:border-[#202740] text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    A dedicated privacy contact email address has not been configured yet. Until it is live, you can manage and purge your data directly using our Privacy &amp; Lounge Visibility controls under <Link to="/settings" className="text-[#EA580C] font-semibold hover:underline">Settings</Link> or reach our team via the <Link to="/contact" className="text-[#EA580C] font-semibold hover:underline">Contact Us</Link> page.
+                  </div>
+                )}
               </section>
             </div>
           </div>

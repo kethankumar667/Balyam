@@ -84,6 +84,10 @@ const childEnv = {
   // the second. Without it a restart invalidates every guest, and the restart
   // check would fail for a reason that has nothing to do with the database.
   SESSION_SECRET: process.env.SESSION_SECRET || "persistence-verification-session-secret",
+  // Required for the server to boot in production at all (voucherCrypto.ts's
+  // own startup guard) — this script does not exercise voucher issuance, so
+  // any fixed value works.
+  VOUCHER_HMAC_SECRET: process.env.VOUCHER_HMAC_SECRET || "persistence-verification-voucher-secret",
   CLIENT_ORIGIN: "http://localhost:5173",
 };
 

@@ -81,6 +81,10 @@ const childEnv = (extra = {}) => ({
   SUPABASE_JWT_SECRET: "durability-verification-jwt-secret",
   // Fixed, so guest tokens minted by the first process verify in the second.
   SESSION_SECRET: "durability-verification-session-secret",
+  // Required for the server to boot in production at all (voucherCrypto.ts's
+  // own startup guard) — this script does not exercise voucher issuance, so
+  // any fixed value works.
+  VOUCHER_HMAC_SECRET: "durability-verification-voucher-secret",
   CLIENT_ORIGIN: "http://localhost:5173",
   ALLOW_EPHEMERAL_PROGRESSION: "",
   ...extra,

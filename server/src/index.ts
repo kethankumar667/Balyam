@@ -23,6 +23,7 @@ import { createDashboardRouter } from "./admin/DashboardController.js";
 import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
 import { guestTokenDurability } from "./auth/guestToken.js";
+import { assertVoucherHmacConfigured, voucherHmacDurability } from "./economy/voucherCrypto.js";
 import { initialiseProgressionStore, persistenceStatus } from "./persistence/index.js";
 import { initialiseEconomyStore, economyStoreStatus } from "./economy/index.js";
 import { createEconomyRouter } from "./economy/EconomyController.js";
@@ -51,6 +52,7 @@ import partyRouter from "./party/PartyController.js";
  */
 try {
   assertOperationalAuthConfigured();
+  assertVoucherHmacConfigured();
 } catch (err) {
   logger.error({
     message: `Startup aborted: ${err instanceof Error ? err.message : String(err)}`,
@@ -159,7 +161,14 @@ app.get("/health", (_req, res) => {
     // settlement/refund counters — a rising `failed` count here means real
     // matches are finishing without their settlement/refund landing; see
     // EconomySettlementQueue's own doc comment for the reconciliation path.
-    economy: { ...economyStoreStatus(), queue: roomManager.economySettlementQueueStatus() },
+    // `voucher` is independent of `durable` above: even a Supabase-backed
+    // store can hash new vouchers with an ephemeral key if
+    // VOUCHER_HMAC_SECRET is unset — see voucherCrypto.ts's own header.
+    economy: {
+      ...economyStoreStatus(),
+      queue: roomManager.economySettlementQueueStatus(),
+      voucher: voucherHmacDurability(),
+    },
     memory: {
       heapUsedMb: Math.round((memoryUsage.heapUsed / 1024 / 1024) * 100) / 100,
       heapTotalMb: Math.round((memoryUsage.heapTotal / 1024 / 1024) * 100) / 100,

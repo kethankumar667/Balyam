@@ -29,18 +29,25 @@ async function prerender() {
     throw new Error(`SSR entry not found at: ${ssrEntryPath}`);
   }
 
-  // 2. Load the compiled SSR render function & metadata
-  const { render } = await import(pathToFileURL(ssrEntryPath).href);
-  const metadataModule = await import(
-    pathToFileURL(path.resolve(ssrOutDir, "assets/metadata.js")).href
-  ).catch(async () => {
-    // If bundled into entry-server directly:
-    return await import(pathToFileURL(ssrEntryPath).href);
-  });
+  // 2. Load the compiled SSR render function AND the authoritative public
+  // route catalog from the SAME import — `entry-server.tsx` re-exports
+  // `PRERENDER_ROUTES` from `seo/metadata.ts` for exactly this reason (see
+  // its own comment). One import, one source of truth: no second guessed
+  // chunk path, no silent fallback to a smaller, stale route list. A build
+  // that cannot load the real catalog must fail loudly here rather than
+  // quietly prerendering fewer routes than the app actually has.
+  const { render, PRERENDER_ROUTES } = await import(pathToFileURL(ssrEntryPath).href);
 
-  const publicRoutesMetadata =
-    metadataModule.PUBLIC_ROUTES_METADATA ||
-    (await import("../src/seo/metadata.js").catch(() => null))?.PUBLIC_ROUTES_METADATA;
+  if (!Array.isArray(PRERENDER_ROUTES) || PRERENDER_ROUTES.length === 0) {
+    throw new Error(
+      "Could not load the authoritative public route catalog (PRERENDER_ROUTES) from the " +
+        "compiled SSR entry. Refusing to prerender a silently reduced route set. Check that " +
+        "client/src/entry-server.tsx re-exports PRERENDER_ROUTES from client/src/seo/metadata.ts, " +
+        "and that the SSR build at " +
+        ssrEntryPath +
+        " actually contains it.",
+    );
+  }
 
   // 3. Read template index.html
   const templatePath = path.resolve(distDir, "index.html");
@@ -49,43 +56,12 @@ async function prerender() {
   }
   const templateHtml = fs.readFileSync(templatePath, "utf-8");
 
-  // Define public routes to prerender
-  const fallbackRoutes = [
-    "/",
-    "/games",
-    "/about",
-    "/how-to-play",
-    "/support",
-    "/contact",
-    "/privacy",
-    "/terms",
-    "/safety",
-    "/community-rules",
-    "/leaderboard",
-    "/tournaments",
-    "/social",
-    "/favorites",
-    "/recently-played",
-    "/login",
-    "/signup",
-    "/forgot-password",
-    "/reset-password",
-    "/verify-email",
-    "/nokiacricket",
-    "/snake",
-    "/brickracer",
-    "/brickblocks",
-    "/tetris",
-    "/breakout",
-    "/design-system",
-  ];
+  const routesToPrerender = PRERENDER_ROUTES;
 
-  const routesToPrerender =
-    publicRoutesMetadata && Object.keys(publicRoutesMetadata).length > 0
-      ? Object.keys(publicRoutesMetadata)
-      : fallbackRoutes;
-
-  console.log(`✨ [Prerender] Generating static HTML for ${routesToPrerender.length} public routes...`);
+  console.log(
+    `✨ [Prerender] Generating static HTML for ${routesToPrerender.length} public routes ` +
+      "(authoritative catalog: seo/metadata.ts PUBLIC_ROUTES_METADATA).",
+  );
 
   for (const url of routesToPrerender) {
     try {
