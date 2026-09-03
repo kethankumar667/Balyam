@@ -481,13 +481,15 @@ describe("P0-1 — the real server refuses to boot misconfigured", () => {
     async () => {
       // The second production guard, asserted here because it shares the same
       // boot path: an operational secret alone is no longer enough. A
-      // voucher secret is supplied so this test fails for the progression
-      // reason it's actually about, not the (also-now-fatal) voucher gate.
+      // voucher secret and a session secret are supplied so this test fails
+      // for the progression reason it's actually about, not the (also-now-
+      // fatal) voucher or guest-token-durability gates.
       const { code, output } = await boot({
         NODE_ENV: "production",
         PORT: "4933",
         OPERATIONAL_SECRET: OPS_KEY,
         VOUCHER_HMAC_SECRET: "a-stable-test-voucher-secret",
+        SESSION_SECRET: "a-stable-test-session-secret",
         ALLOW_EPHEMERAL_PROGRESSION: "",
         SUPABASE_SERVICE_ROLE_KEY: "",
       });
@@ -506,6 +508,7 @@ ${output}`).toBe(1);
         PORT: "4932",
         OPERATIONAL_SECRET: OPS_KEY,
         VOUCHER_HMAC_SECRET: "a-stable-test-voucher-secret",
+        SESSION_SECRET: "a-stable-test-session-secret",
       });
       // null == we killed a running server, which is the pass condition here.
       expect(code, `server should have stayed up. Output:\n${output}`).toBe(null);

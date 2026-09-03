@@ -61,6 +61,42 @@ function write(key: string, value: string): void {
   }
 }
 
+/**
+ * Notified whenever the guest id this device answers to changes — minted,
+ * cleared, or silently replaced (the 401 retry in `apiFetch` below).
+ *
+ * ── Why this exists ────────────────────────────────────────────────────
+ * `useWallet()` (`hooks/useEconomy.ts`) used to key its cache by
+ * `authStore`'s `userId` alone, which is `null` for every guest. Swapping
+ * from guest A to guest B — sign-out on a build where "member" was never a
+ * distinct identity (see `authStore.ts`'s `signOut()`), or a token silently
+ * invalidated by a server restart — left `userId` at `null` on both sides of
+ * the swap, so nothing ever told a mounted `useWallet()` that the identity
+ * underneath it had changed. The stale cache entry for guest A's balance
+ * kept rendering until something unrelated (a full page reload) happened to
+ * reset the module. Subscribing to guest-id changes directly closes that
+ * gap: an economy hook can now tell guest A from guest B without needing a
+ * `userId` to differ.
+ */
+const guestIdListeners = new Set<() => void>();
+
+function notifyGuestIdChange(): void {
+  for (const listener of guestIdListeners) listener();
+}
+
+/** Subscribe to guest-id changes. For `useSyncExternalStore` in economy hooks. */
+export function subscribeGuestId(onStoreChange: () => void): () => void {
+  guestIdListeners.add(onStoreChange);
+  return () => {
+    guestIdListeners.delete(onStoreChange);
+  };
+}
+
+/** The current guest id, or `null` if this device has none minted right now. */
+export function getGuestIdSnapshot(): string | null {
+  return read(GUEST_ID_KEY);
+}
+
 /** Drop the stored guest identity. The next call mints a fresh one. */
 export function clearGuestIdentity(): void {
   for (const key of [GUEST_ID_KEY, GUEST_TOKEN_KEY, GUEST_EXP_KEY]) {
@@ -71,6 +107,7 @@ export function clearGuestIdentity(): void {
     }
   }
   pending = null;
+  notifyGuestIdChange();
 }
 
 function storedGuest(): PlayerCredential | null {
@@ -117,6 +154,7 @@ async function mintGuest(): Promise<PlayerCredential | null> {
       write(GUEST_ID_KEY, body.playerId);
       write(GUEST_TOKEN_KEY, body.token);
       write(GUEST_EXP_KEY, String(body.expiresAt));
+      notifyGuestIdChange();
       return { playerId: body.playerId, token: body.token, kind: "guest" as const };
     } catch {
       // Offline, or the server is down. The caller renders its own empty
@@ -144,6 +182,64 @@ export async function getPlayerCredential(): Promise<PlayerCredential | null> {
   if (userId && token) return { playerId: userId, token, kind: "member" };
 
   return storedGuest() ?? (await mintGuest());
+}
+
+export type RoomCredentialResult =
+  | { ok: true; kind: "member"; accessToken: string; guestToken: undefined }
+  | { ok: true; kind: "guest"; accessToken: undefined; guestToken: string }
+  | { ok: false; error: string };
+
+/**
+ * Resolves credentials for room operations (create, join, pass & play).
+ *
+ * For verified members: returns the active member access token without minting a guest token.
+ * For guests (or local fallback): returns a verified stored or freshly minted guest token.
+ * If minting fails: returns a typed failure so callers can abort emissions, clear pending state,
+ * and show an accessible error without losing form input.
+ */
+export async function resolveRoomCredential(): Promise<RoomCredentialResult> {
+  const { userId } = useAuthStore.getState();
+  const token = currentAccessToken();
+  if (userId && token) {
+    return { ok: true, kind: "member", accessToken: token, guestToken: undefined };
+  }
+
+  const credential = storedGuest() ?? (await mintGuest());
+  if (!credential?.token) {
+    return {
+      ok: false,
+      error: "We could not prepare your guest session. Check your connection and try again.",
+    };
+  }
+
+  return { ok: true, kind: "guest", accessToken: undefined, guestToken: credential.token };
+}
+
+/**
+ * The guest token to send on `room:create`/`room:join`, minting one first if
+ * this device doesn't have one yet.
+ *
+ * ── The gap this closes ────────────────────────────────────────────────
+ * `currentGuestToken()` above is a synchronous, never-minting read, by
+ * design, for the socket payload builders that predate this — a guest whose
+ * very first action on the site was creating or joining a room (rather than
+ * visiting a page that mounts `useWallet()`/`usePlayerId()` first) sent no
+ * guest token at all. `resolveIdentity()` (server `rooms/economyIdentity.ts`)
+ * then had nothing to verify and resolved `identityId: null`, so that
+ * player's very first match settled against an unresolvable guest instead of
+ * the same durable id their wallet balance is tracked under. Awaiting a mint
+ * here, at the one moment a socket payload is actually being built, closes
+ * that race without duplicating any identity: `mintGuest()`'s shared
+ * in-flight promise still guarantees one guest id per device even if this
+ * fires alongside another `getPlayerCredential()` caller.
+ *
+ * Returns `undefined` for an already-authenticated member — the server reads
+ * their identity from `accessToken` instead, exactly as before.
+ */
+export async function ensureGuestToken(): Promise<string | undefined> {
+  const res = await resolveRoomCredential();
+  if (!res.ok) return undefined;
+  return res.guestToken;
 }
 
 /**

@@ -1,8 +1,10 @@
 import React from "react";
 import { Activity, Radio, Clock, Globe } from "lucide-react";
+import { useIdentityPresentation } from "../../store/authStore";
 
 interface AccountSummaryCardProps {
-  isMember: boolean;
+  isMember?: boolean;
+  statusLabel?: string;
   lastSeenAt?: number;
   friendCount?: number;
 }
@@ -17,9 +19,35 @@ function formatLastSeen(timestamp: number): string {
 
 export default function AccountSummaryCard({
   isMember,
+  statusLabel,
   lastSeenAt,
   friendCount,
 }: AccountSummaryCardProps) {
+  const presentation = useIdentityPresentation();
+  const effectiveStatus =
+    statusLabel ??
+    (presentation.isVerifiedMember
+      ? "Active Member"
+      : presentation.isLocalFallback
+        ? "Offline Demo Mode"
+        : isMember
+          ? "Active Member"
+          : "Guest Player");
+
+  const badgeStyle =
+    effectiveStatus === "Active Member"
+      ? "bg-[#DCFCE7] text-[#16A34A] border-[#BBF7D0]"
+      : effectiveStatus === "Offline Demo Mode"
+        ? "bg-[#FEF3C7] text-[#D97706] border-[#FDE68A]"
+        : "bg-[#F1F5F9] dark:bg-[#1E293B] text-slate-600 dark:text-slate-300 border-[#E2E8F0] dark:border-[#334155]";
+
+  const iconLetter =
+    effectiveStatus === "Active Member"
+      ? "M"
+      : effectiveStatus === "Offline Demo Mode"
+        ? "D"
+        : "G";
+
   const lastActiveText = lastSeenAt
     ? formatLastSeen(lastSeenAt)
     : "Just now";
@@ -30,14 +58,14 @@ export default function AccountSummaryCard({
       <div className="flex items-center justify-between border-b border-[#F3EFE9] dark:border-[#202740] pb-3.5">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A] flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
-            M
+            {iconLetter}
           </div>
           <h3 className="font-bold text-sm text-slate-900 dark:text-white">
             Account Summary
           </h3>
         </div>
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-semibold border border-[#BBF7D0]">
-          Active Member
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeStyle}`}>
+          {effectiveStatus}
         </span>
       </div>
 
@@ -49,8 +77,8 @@ export default function AccountSummaryCard({
             <Activity className="w-4 h-4 text-[#16A34A]" />
             Account Status
           </span>
-          <span className="font-bold text-[#16A34A]">
-            {isMember ? "Active Member" : "Guest Player"}
+          <span className="font-bold text-slate-900 dark:text-white">
+            {effectiveStatus}
           </span>
         </div>
 

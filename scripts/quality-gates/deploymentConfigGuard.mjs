@@ -95,6 +95,54 @@ export function isDocumented(envContent, varName) {
   return re.test(envContent);
 }
 
+/**
+ * Audits Supabase client configuration across render.yaml frontend section and client/.env.example.
+ * Requires VITE_SUPABASE_URL and at least one of VITE_SUPABASE_ANON_KEY or VITE_SUPABASE_PUBLISHABLE_KEY.
+ */
+export function auditSupabaseClientConfig({ renderFrontendSection, clientEnvContent }) {
+  const issues = [];
+
+  if (renderFrontendSection) {
+    if (!renderFrontendSection.includes("key: VITE_SUPABASE_URL")) {
+      issues.push("bhalyam-frontend missing VITE_SUPABASE_URL declaration in render.yaml.");
+    } else if (!/key:\s*VITE_SUPABASE_URL[\r\n\s]+sync:\s*false/.test(renderFrontendSection)) {
+      issues.push("VITE_SUPABASE_URL must use 'sync: false' in render.yaml.");
+    }
+
+    const hasAnonKey = renderFrontendSection.includes("key: VITE_SUPABASE_ANON_KEY");
+    const hasPublishableKey = renderFrontendSection.includes("key: VITE_SUPABASE_PUBLISHABLE_KEY");
+    if (!hasAnonKey && !hasPublishableKey) {
+      issues.push(
+        "bhalyam-frontend missing Supabase public key declaration in render.yaml (must declare at least one of VITE_SUPABASE_ANON_KEY or VITE_SUPABASE_PUBLISHABLE_KEY).",
+      );
+    } else {
+      if (hasAnonKey && !/key:\s*VITE_SUPABASE_ANON_KEY[\r\n\s]+sync:\s*false/.test(renderFrontendSection)) {
+        issues.push("VITE_SUPABASE_ANON_KEY must use 'sync: false' in render.yaml.");
+      }
+      if (hasPublishableKey && !/key:\s*VITE_SUPABASE_PUBLISHABLE_KEY[\r\n\s]+sync:\s*false/.test(renderFrontendSection)) {
+        issues.push("VITE_SUPABASE_PUBLISHABLE_KEY must use 'sync: false' in render.yaml.");
+      }
+    }
+  }
+
+  if (clientEnvContent !== undefined) {
+    if (!isActivelyDeclared(clientEnvContent, "VITE_SUPABASE_URL")) {
+      issues.push(
+        'client/.env.example does not actively declare "VITE_SUPABASE_URL" (found only as a comment, or not at all — a commented-out example does not count as documentation of a required variable).',
+      );
+    }
+    const hasActiveAnon = isActivelyDeclared(clientEnvContent, "VITE_SUPABASE_ANON_KEY");
+    const hasActivePublishable = isActivelyDeclared(clientEnvContent, "VITE_SUPABASE_PUBLISHABLE_KEY");
+    if (!hasActiveAnon && !hasActivePublishable) {
+      issues.push(
+        'client/.env.example does not actively declare a Supabase public key (at least one of "VITE_SUPABASE_ANON_KEY" or "VITE_SUPABASE_PUBLISHABLE_KEY" must be actively declared).',
+      );
+    }
+  }
+
+  return issues;
+}
+
 export function runDeploymentConfigGuard() {
   const issues = [];
 
@@ -131,6 +179,10 @@ export function runDeploymentConfigGuard() {
     } else if (!/key:\s*VITE_PRIVACY_CONTACT_EMAIL[\r\n\s]+sync:\s*false/.test(frontendSection)) {
       issues.push("VITE_PRIVACY_CONTACT_EMAIL must use 'sync: false' in render.yaml.");
     }
+
+    // Verify frontend Supabase configuration
+    const supabaseRenderIssues = auditSupabaseClientConfig({ renderFrontendSection: frontendSection });
+    issues.push(...supabaseRenderIssues);
   }
 
   // ── 2. Route Rewrites vs the Authoritative Route Catalog ─────────────────
@@ -226,6 +278,10 @@ export function runDeploymentConfigGuard() {
       );
     }
   }
+
+  // Enforce required production Supabase client configuration
+  const supabaseEnvIssues = auditSupabaseClientConfig({ clientEnvContent: clientEnv });
+  issues.push(...supabaseEnvIssues);
 
   const requiredActiveServerVars = [
     "NODE_ENV",

@@ -11,6 +11,7 @@ import {
   extractRewrites,
   isActivelyDeclared,
   isDocumented,
+  auditSupabaseClientConfig,
   runDeploymentConfigGuard,
 } from "../../../scripts/quality-gates/deploymentConfigGuard.mjs";
 
@@ -191,6 +192,120 @@ describe("isActivelyDeclared / isDocumented — active vs. commented vs. comment
   });
 });
 
+describe("auditSupabaseClientConfig — pure validation", () => {
+  const validRenderSectionAnon = `
+    name: bhalyam-frontend
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+  `;
+
+  const validRenderSectionPublishable = `
+    name: bhalyam-frontend
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+  `;
+
+  const validClientEnvAnon = `
+VITE_SUPABASE_URL=https://project.supabase.co
+VITE_SUPABASE_ANON_KEY=anon-key
+  `;
+
+  const validClientEnvPublishable = `
+VITE_SUPABASE_URL=https://project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=publishable-key
+  `;
+
+  it("passes when VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are present and sync: false", () => {
+    const issues = auditSupabaseClientConfig({
+      renderFrontendSection: validRenderSectionAnon,
+      clientEnvContent: validClientEnvAnon,
+    });
+    expect(issues).toEqual([]);
+  });
+
+  it("passes when VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are present and sync: false", () => {
+    const issues = auditSupabaseClientConfig({
+      renderFrontendSection: validRenderSectionPublishable,
+      clientEnvContent: validClientEnvPublishable,
+    });
+    expect(issues).toEqual([]);
+  });
+
+  it("fails when Supabase URL is missing in render.yaml", () => {
+    const section = `
+      name: bhalyam-frontend
+      envVars:
+        - key: VITE_SUPABASE_ANON_KEY
+          sync: false
+    `;
+    const issues = auditSupabaseClientConfig({ renderFrontendSection: section });
+    expect(issues).toContain("bhalyam-frontend missing VITE_SUPABASE_URL declaration in render.yaml.");
+  });
+
+  it("fails when VITE_SUPABASE_URL is not sync: false in render.yaml", () => {
+    const section = `
+      name: bhalyam-frontend
+      envVars:
+        - key: VITE_SUPABASE_URL
+          sync: true
+        - key: VITE_SUPABASE_ANON_KEY
+          sync: false
+    `;
+    const issues = auditSupabaseClientConfig({ renderFrontendSection: section });
+    expect(issues).toContain("VITE_SUPABASE_URL must use 'sync: false' in render.yaml.");
+  });
+
+  it("fails when both supported public keys are missing in render.yaml", () => {
+    const section = `
+      name: bhalyam-frontend
+      envVars:
+        - key: VITE_SUPABASE_URL
+          sync: false
+    `;
+    const issues = auditSupabaseClientConfig({ renderFrontendSection: section });
+    expect(issues.some((i) => i.includes("missing Supabase public key declaration"))).toBe(true);
+  });
+
+  it("fails when only public key exists without URL in render.yaml", () => {
+    const section = `
+      name: bhalyam-frontend
+      envVars:
+        - key: VITE_SUPABASE_ANON_KEY
+          sync: false
+    `;
+    const issues = auditSupabaseClientConfig({ renderFrontendSection: section });
+    expect(issues).toContain("bhalyam-frontend missing VITE_SUPABASE_URL declaration in render.yaml.");
+    expect(issues.filter((i) => i.includes("missing Supabase public key declaration"))).toHaveLength(0);
+  });
+
+  it("fails when URL exists without either public key in render.yaml", () => {
+    const section = `
+      name: bhalyam-frontend
+      envVars:
+        - key: VITE_SUPABASE_URL
+          sync: false
+    `;
+    const issues = auditSupabaseClientConfig({ renderFrontendSection: section });
+    expect(issues.some((i) => i.includes("missing Supabase public key declaration"))).toBe(true);
+  });
+
+  it("fails when variables are mentioned only in comments in client/.env.example", () => {
+    const commentedEnv = `
+# VITE_SUPABASE_URL=https://project.supabase.co
+# VITE_SUPABASE_ANON_KEY=anon-key
+    `;
+    const issues = auditSupabaseClientConfig({ clientEnvContent: commentedEnv });
+    expect(issues.some((i) => i.includes('does not actively declare "VITE_SUPABASE_URL"'))).toBe(true);
+    expect(issues.some((i) => i.includes("does not actively declare a Supabase public key"))).toBe(true);
+  });
+});
+
 describe("runDeploymentConfigGuard — end to end against the real repository", () => {
   it("passes cleanly against the current committed configuration", () => {
     const { ok, issues } = runDeploymentConfigGuard();
@@ -306,6 +421,51 @@ describe("runDeploymentConfigGuard — end to end against an isolated temp copy"
     expect(stderr).toMatch(/brand-new-route-with-no-rewrite/);
 
     fs.writeFileSync(metadataPath, original);
+  });
+
+  it("Case: missing VITE_SUPABASE_URL in render.yaml fails closed", () => {
+    const renderPath = path.join(tmpRoot, "render.yaml");
+    const original = fs.readFileSync(renderPath, "utf8");
+    const mutated = original.replace(/\s*- key: VITE_SUPABASE_URL\r?\n\s*sync: false[^\r\n]*\r?\n?/, "\n");
+    expect(mutated).not.toBe(original);
+    fs.writeFileSync(renderPath, mutated);
+
+    const { code, stderr } = runGuardInTmp();
+    expect(code).toBe(1);
+    expect(stderr).toMatch(/VITE_SUPABASE_URL/);
+
+    fs.writeFileSync(renderPath, original);
+  });
+
+  it("Case: missing both Supabase public keys in render.yaml fails closed", () => {
+    const renderPath = path.join(tmpRoot, "render.yaml");
+    const original = fs.readFileSync(renderPath, "utf8");
+    const mutated = original.replace(/\s*- key: VITE_SUPABASE_ANON_KEY\r?\n\s*sync: false[^\r\n]*\r?\n?/, "\n");
+    expect(mutated).not.toBe(original);
+    fs.writeFileSync(renderPath, mutated);
+
+    const { code, stderr } = runGuardInTmp();
+    expect(code).toBe(1);
+    expect(stderr).toMatch(/Supabase public key/);
+
+    fs.writeFileSync(renderPath, original);
+  });
+
+  it("Case: client/.env.example with commented-out Supabase keys fails closed", () => {
+    const envPath = path.join(tmpRoot, "client/.env.example");
+    const original = fs.readFileSync(envPath, "utf8");
+    const mutated = original.replace(
+      /^VITE_SUPABASE_URL=/m,
+      "# VITE_SUPABASE_URL=",
+    );
+    expect(mutated).not.toBe(original);
+    fs.writeFileSync(envPath, mutated);
+
+    const { code, stderr } = runGuardInTmp();
+    expect(code).toBe(1);
+    expect(stderr).toMatch(/VITE_SUPABASE_URL/);
+
+    fs.writeFileSync(envPath, original);
   });
 
   it("restored: the temp copy passes again after every mutation is reverted", () => {

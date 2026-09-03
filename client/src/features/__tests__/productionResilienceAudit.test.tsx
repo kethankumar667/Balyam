@@ -49,6 +49,14 @@ vi.mock("../../lib/playerIdentity", () => ({
   apiJson: vi.fn(),
   usePlayerId: () => ({ playerId: "p_test_123", ready: true, kind: "member" }),
   currentGuestToken: () => null,
+  ensureGuestToken: () => Promise.resolve(undefined),
+  resolveRoomCredential: () => Promise.resolve({ ok: true, kind: "guest", guestToken: "mock-guest-token" }),
+  // Needed by `useWallet()` (mounted app-wide via AppHeader/WalletDrawer in
+  // AppLayout) since the guest-wallet-consistency fix: it now subscribes to
+  // guest-id changes to catch a guest-to-guest identity swap. No swap is
+  // exercised in this suite, so a static "no guest" snapshot is sufficient.
+  getGuestIdSnapshot: () => null,
+  subscribeGuestId: () => () => {},
 }));
 
 // Mock router navigation & outlet context
@@ -99,6 +107,21 @@ vi.mock("../../store/authStore", () => ({
   currentAccountKind: () => "member",
   currentGuestToken: () => null,
   useCapabilities: () => mockAuthState.capabilities,
+  useIdentityPresentation: () => ({
+    mode: "member",
+    isVerifiedMember: true,
+    isLocalFallback: false,
+    label: "Member",
+    badgeText: "Active Member",
+  }),
+  getIdentityPresentation: () => ({
+    mode: "member",
+    isVerifiedMember: true,
+    isLocalFallback: false,
+    label: "Member",
+    badgeText: "Active Member",
+  }),
+  hasVerifiedMemberIdentity: () => true,
 }));
 
 describe("Production UX Resilience Audit Suite", () => {
@@ -219,7 +242,7 @@ describe("Production UX Resilience Audit Suite", () => {
       vi.useRealTimers();
     });
 
-    it("cancels room create on 20s timeout, re-enables controls, and discards late socket acks", () => {
+    it("cancels room create on 20s timeout, re-enables controls, and discards late socket acks", async () => {
       let lateAckCallback: ((res: unknown) => void) | null = null;
       mockSocketEmit.mockImplementation((event, payload, ack) => {
         if (event === "room:create") {
@@ -238,6 +261,11 @@ describe("Production UX Resilience Audit Suite", () => {
 
       const createBtn = screen.getByRole("button", { name: /create room/i });
       fireEvent.click(createBtn);
+      // `createRoom` now awaits `ensureGuestToken()` (mocked above to resolve
+      // immediately) before emitting — flush that microtask. Fake timers are
+      // active in this block, so this must be a microtask flush, not a real
+      // `waitFor` poll.
+      await act(async () => {});
 
       expect(mockSocketEmit).toHaveBeenCalledWith("room:create", expect.any(Object), expect.any(Function));
 
@@ -268,7 +296,7 @@ describe("Production UX Resilience Audit Suite", () => {
       expect(useRoomStore.getState().playerId).not.toBe("p_late");
     });
 
-    it("cancels join request on 20s timeout in JoinRoomModal and drops late acks", () => {
+    it("cancels join request on 20s timeout in JoinRoomModal and drops late acks", async () => {
       let lateJoinAck: ((res: unknown) => void) | null = null;
       mockSocketEmit.mockImplementation((event, payload, ack) => {
         if (event === "room:join") {
@@ -289,6 +317,9 @@ describe("Production UX Resilience Audit Suite", () => {
       act(() => {
         fireEvent.change(codeInput, { target: { value: "TM9999" } });
       });
+      // `joinWithCode` now awaits `ensureGuestToken()` (mocked above to
+      // resolve immediately) before emitting — flush that microtask.
+      await act(async () => {});
 
       expect(mockSocketEmit).toHaveBeenCalledWith("room:join", expect.any(Object), expect.any(Function));
 
@@ -316,7 +347,7 @@ describe("Production UX Resilience Audit Suite", () => {
       expect(useRoomStore.getState().playerId).not.toBe("p_late_join");
     });
 
-    it("cancels Pass & Play create on 20s timeout and drops late acks", () => {
+    it("cancels Pass & Play create on 20s timeout and drops late acks", async () => {
       let latePassPlayAck: ((res: unknown) => void) | null = null;
       mockSocketEmit.mockImplementation((event, payload, ack) => {
         if (event === "room:create") {
@@ -339,6 +370,9 @@ describe("Production UX Resilience Audit Suite", () => {
 
       const startBtn = screen.getByRole("button", { name: /start pass & play/i });
       fireEvent.click(startBtn);
+      // `startPassAndPlay` now awaits `ensureGuestToken()` (mocked above to
+      // resolve immediately) before emitting — flush that microtask.
+      await act(async () => {});
 
       expect(mockSocketEmit).toHaveBeenCalledWith("room:create", expect.any(Object), expect.any(Function));
 

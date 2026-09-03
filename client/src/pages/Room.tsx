@@ -4,7 +4,7 @@ import { generateActionId, getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
 import { currentAccessToken, currentAccountKind, useAuthStore } from "../store/authStore";
-import { currentGuestToken } from "../lib/playerIdentity";
+import { ensureGuestToken, resolveRoomCredential } from "../lib/playerIdentity";
 import {
   enterFullscreen,
   exitFullscreen,
@@ -355,7 +355,7 @@ export default function Room() {
   const [showInGameLeaveModal, setShowInGameLeaveModal] = useState(false);
   const requestLeaveConfirmation = useCallback(() => setShowInGameLeaveModal(true), []);
 
-  const attemptJoin = useCallback((reason: "initial" | "reconnect"): void => {
+  const attemptJoin = useCallback(async (reason: "initial" | "reconnect"): Promise<void> => {
     if (!code || !playerName || mustDeclare) return;
     if (joinInFlightRef.current) return;
     joinInFlightRef.current = true;
@@ -366,6 +366,16 @@ export default function Room() {
     const joinName = playerName;
     const joinCode = code;
     const seat = seatFor(joinCode);
+    // Fail-closed credential resolution: verified members proceed with their
+    // session token, while guests mint or reuse a signed token. If guest minting
+    // fails, abort without emitting room:join so no unauthenticated seat with
+    // identityId: null is joined.
+    const cred = await resolveRoomCredential();
+    if (!cred.ok) {
+      joinInFlightRef.current = false;
+      setError(cred.error);
+      return;
+    }
     logConn("rejoin_send", `${reason} code=${joinCode} hadSeat=${!!seat}`);
     socket.emit(
       "room:join",
@@ -376,8 +386,8 @@ export default function Room() {
         seatToken: seat?.seatToken,
         avatar: useRoomStore.getState().avatarId ?? undefined,
         accountKind: currentAccountKind(),
-        accessToken: currentAccessToken(),
-        guestToken: currentGuestToken(),
+        accessToken: cred.accessToken ?? currentAccessToken(),
+        guestToken: cred.guestToken,
       },
       (res) => {
         joinInFlightRef.current = false;

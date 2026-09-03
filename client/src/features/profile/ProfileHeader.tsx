@@ -3,6 +3,7 @@ import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import CountUp from "../../components/CountUp";
 import { BarChart2, Star, Trophy } from "lucide-react";
+import { useIdentityPresentation } from "../../store/authStore";
 
 interface ProfileHeaderProps {
   profile: PlayerProfile;
@@ -25,6 +26,7 @@ export default function ProfileHeader({
   favoriteGame,
   badgeLabel,
 }: ProfileHeaderProps) {
+  const identity = useIdentityPresentation();
   const memberDate = new Date(profile.joinedAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -35,7 +37,18 @@ export default function ProfileHeader({
   const currentLevelXp = (profile.level - 1) * 100;
   const progressInLevel = Math.max(0, profile.experiencePoints - currentLevelXp);
   const progressPct = Math.min(100, Math.round((progressInLevel / 100) * 100));
-  const effectiveName = (name ?? profile.displayName ?? "").trim() || (isMember ? "Member" : "Guest");
+  const effectiveName =
+    (name ?? profile.displayName ?? "").trim() ||
+    (identity.isLocalFallback
+      ? "Offline Demo Mode"
+      : identity.isVerifiedMember || isMember
+        ? "Member"
+        : identity.label);
+  const membershipSubtitle = identity.isLocalFallback
+    ? "Offline Demo Mode"
+    : identity.isVerifiedMember || isMember
+      ? `Member since ${memberDate}`
+      : "Guest Player";
   const effectiveAvatar = avatar !== undefined ? avatar ?? undefined : profile.avatar;
 
   if (compact) {
@@ -79,7 +92,7 @@ export default function ProfileHeader({
               )}
             </div>
             <p className="text-[11px] text-stone-400 font-mono">
-              {isMember ? `Member since ${memberDate}` : "Guest Player"} •{" "}
+              {membershipSubtitle} •{" "}
               <span className="text-amber-400 font-bold">{profile.experiencePoints} XP</span>
             </p>
           </div>
@@ -150,7 +163,7 @@ export default function ProfileHeader({
             )}
             <span className="text-slate-500 text-sm">·</span>
             <span className="text-xs text-slate-400 font-medium">
-              {isMember ? `Member since ${memberDate}` : "Guest Player"}
+              {membershipSubtitle}
             </span>
           </div>
 

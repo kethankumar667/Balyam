@@ -20,7 +20,7 @@ import { VoucherRedemptionModal } from "./VoucherRedemptionModal";
 import { useWallet, useLedger } from "../../hooks/useEconomy";
 import { type CoinLedgerEntryRecord } from "../../lib/economyApi";
 import { formatTimeAgo } from "../../lib/formatTimeAgo";
-import { useAuthStore } from "../../store/authStore";
+import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 
 export interface WalletDrawerProps {
   isOpen: boolean;
@@ -56,6 +56,7 @@ function mapEntryToDeltaType(entryType: string): { type: CoinDeltaType; label: s
  */
 export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) => {
   const isMember = useAuthStore((s) => s.isMember);
+  const presentation = useIdentityPresentation();
   const {
     wallet,
     balance,
@@ -184,9 +185,14 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                       className="text-base font-extrabold text-ink-hi dark:text-text-hi flex items-center gap-2"
                     >
                       Coin Wallet
-                      {isMember && (
+                      {presentation.isVerifiedMember && (
                         <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
                           Member
+                        </span>
+                      )}
+                      {presentation.isLocalFallback && (
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                          Offline Demo
                         </span>
                       )}
                     </h2>
