@@ -16,6 +16,8 @@ import DotsBoxesScorecardModal from "./DotsBoxesScorecardModal";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { useTutorialGate, markSeen } from "../../components/GameTutorial";
+import { DOTSBOXES_TUTORIAL } from "../tutorials";
 import {
   MessageSquare,
   RotateCcw,
@@ -63,7 +65,14 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
   } = useDotsBoxesBoard(props);
 
   const [showChatModal, setShowChatModal] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
+  // Auto-opens once per browser on first reaching the board — see the
+  // matching comment in DotsBoxesBoardMobile.tsx.
+  const helpTut = useTutorialGate(DOTSBOXES_TUTORIAL.key, !myTurn || secondsLeft == null);
+  const showHelp = helpTut.open;
+  const closeHelp = () => {
+    markSeen(DOTSBOXES_TUTORIAL.key);
+    helpTut.setOpen(false);
+  };
   const [chatInput, setChatInput] = useState("");
 
   const handleSendChat = (e: React.FormEvent) => {
@@ -131,7 +140,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
 
             <button
               type="button"
-              onClick={() => setShowHelp(true)}
+              onClick={() => helpTut.setOpen(true)}
               className="w-8 h-8 rounded-xl border border-stone-300 bg-white flex items-center justify-center text-stone-700 shadow-xs hover:border-stone-400 active:scale-95 transition-all cursor-pointer"
               title="Help"
             >
@@ -380,7 +389,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
       {showHelp && (
         <Modal
           open={showHelp}
-          onClose={() => setShowHelp(false)}
+          onClose={closeHelp}
           ariaLabel="How to Play"
           mobileSheet={true}
           panelClassName="w-full max-w-md bg-[#FCF8EE] rounded-t-3xl sm:rounded-3xl border-2 border-[#D7C9B1] shadow-2xl p-5 text-stone-900 font-['Patrick_Hand',cursive]"
@@ -391,7 +400,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
             </h3>
             <button
               type="button"
-              onClick={() => setShowHelp(false)}
+              onClick={closeHelp}
               className="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold flex items-center justify-center"
             >
               ✕
