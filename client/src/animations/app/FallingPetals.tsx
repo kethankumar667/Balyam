@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useReducedMotion } from "framer-motion";
 
 /**
@@ -147,9 +147,35 @@ function ItemShape({ kind, size, color }: { kind: ShapeKind; size: number; color
 
 export default function FallingPetals() {
   const reduce = useReducedMotion();
-  const items = useMemo(() => makeItems(), []);
+  /**
+   * `Math.random()`-seeded, and deliberately NOT computed during the initial
+   * render (server or client). Per-item left/size/color/duration/delay/sway/
+   * rotation all come from `makeItems()`'s ~7 `Math.random()` calls per item
+   * — evaluated once during SSR (`entry-server.tsx`'s `renderToString`) and
+   * again, independently, during React's client hydration pass, producing
+   * two DIFFERENT sets of 40 items' worth of mismatched inline `style`
+   * attributes. That was the confirmed cause of the homepage hydration
+   * mismatch (React errors #418/#423) this component was rendering directly
+   * into on every page that includes it.
+   *
+   * The fix: both the server render and the FIRST client render produce the
+   * identical, trivial output (`null`, exactly like the existing
+   * reduced-motion branch below) — nothing to mismatch. The real, randomized
+   * petals are generated only after mount, client-side, via `useEffect`,
+   * exactly like `useReducedMotion()`'s own hydration-safe pattern. This is
+   * the smallest possible client-only boundary: the component is already
+   * `aria-hidden="true"` and `pointer-events-none` — purely decorative, carries
+   * no SEO or accessible content — and its own fall/sway keyframes already
+   * fade each item in from `opacity: 0`, so appearing one tick after mount
+   * instead of on the very first paint is not a visible regression.
+   */
+  const [items, setItems] = useState<FallingItem[] | null>(null);
 
-  if (reduce) return null;
+  useEffect(() => {
+    setItems(makeItems());
+  }, []);
+
+  if (reduce || !items) return null;
 
   return (
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">

@@ -3,9 +3,31 @@ import { WifiOff, RefreshCw } from "lucide-react";
 import { getSocket } from "../../lib/socket";
 
 export default function OfflineBanner() {
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  /**
+   * `false` (never offline) on both the server render and the first client
+   * render — deterministic, and correct for the overwhelming common case.
+   *
+   * `!navigator.onLine` used to be the initializer directly. That reads fine
+   * in a browser, but Node (the SSR/prerender runtime — see
+   * client/scripts/prerender.mjs) has had a global `navigator` object since
+   * Node 21, and that object has no `.onLine` property — so
+   * `navigator.onLine` is `undefined` there, and `!undefined` is `true`.
+   * The server therefore prerendered this banner VISIBLE on every page,
+   * including the homepage, while a real online browser's first hydration
+   * render produced `null` for it — an entire extra subtree only on the
+   * server side, part of the same class of homepage hydration mismatch
+   * (React errors #418/#423) `FallingPetals.tsx` had for a different reason.
+   * `typeof navigator === "undefined"` would NOT have caught this, since the
+   * object genuinely exists in Node now — only `.onLine` is missing.
+   */
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
+    // Corrects to the real, current value now that real browser APIs exist —
+    // handles a page that loads while ALREADY offline, not just a
+    // transition, since the online/offline events only fire on a change.
+    setIsOffline(!navigator.onLine);
+
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
 
