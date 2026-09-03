@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from "vite";
+import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
@@ -135,6 +136,12 @@ export default defineConfig(({ mode, command }) => {
   test: {
     environment: "happy-dom",
     globals: true,
+    // client/e2e/**/*.spec.ts are Playwright staging-smoke specs (run via
+    // `npx playwright test`, config in client/playwright.config.ts) — they
+    // import `test`/`expect` from "playwright/test", not Vitest's globals,
+    // and would otherwise match Vitest's default *.spec.ts pattern and be
+    // silently collected as an empty, failing file.
+    exclude: [...configDefaults.exclude, "e2e/**"],
     /**
      * Real coverage, collected by V8. Thresholds are deliberately absent until
      * the baseline is measured — see docs/remediation/P0-05-QUALITY-GATES.md.
