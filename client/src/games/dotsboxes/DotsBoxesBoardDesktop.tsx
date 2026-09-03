@@ -8,6 +8,8 @@ import DotsBoxesScorecardModal from "./DotsBoxesScorecardModal";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { useTutorialGate, markSeen } from "../../components/GameTutorial";
+import { DOTSBOXES_TUTORIAL } from "../tutorials";
 import { getSocket } from "../../lib/socket";
 
 export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
@@ -41,7 +43,14 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
     comboBanner,
   } = useDotsBoxesBoard(props);
 
-  const [showHelp, setShowHelp] = useState(false);
+  // Auto-opens once per browser on first reaching the board — see the
+  // matching comment in DotsBoxesBoardMobile.tsx.
+  const helpTut = useTutorialGate(DOTSBOXES_TUTORIAL.key, !myTurn || secondsLeft == null);
+  const showHelp = helpTut.open;
+  const closeHelp = () => {
+    markSeen(DOTSBOXES_TUTORIAL.key);
+    helpTut.setOpen(false);
+  };
   const [showSettings, setShowSettings] = useState(false);
   const [chatInput, setChatInput] = useState("");
 
@@ -113,7 +122,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
           )}
           <button
             type="button"
-            onClick={() => setShowHelp(true)}
+            onClick={() => helpTut.setOpen(true)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm hover:border-slate-700"
           >
             <span className="text-sm">?</span>
@@ -470,7 +479,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
       {showHelp && (
         <Modal
           open={showHelp}
-          onClose={() => setShowHelp(false)}
+          onClose={closeHelp}
           ariaLabel="How to Play Dots & Boxes"
           panelClassName="w-full max-w-lg bg-[#0B0E28] border-2 border-slate-700 rounded-3xl shadow-2xl p-6 text-slate-300"
         >
@@ -479,7 +488,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
               <h3 className="text-base font-bold text-white">How to Play Dots &amp; Boxes</h3>
               <button
                 type="button"
-                onClick={() => setShowHelp(false)}
+                onClick={closeHelp}
                 className="text-slate-400 hover:text-white text-sm"
               >
                 ✕

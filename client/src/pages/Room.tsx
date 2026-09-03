@@ -4,7 +4,7 @@ import { generateActionId, getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
 import { currentAccessToken, currentAccountKind, useAuthStore } from "../store/authStore";
-import { currentGuestToken } from "../lib/playerIdentity";
+import { ensureGuestToken, resolveRoomCredential } from "../lib/playerIdentity";
 import {
   enterFullscreen,
   exitFullscreen,
@@ -38,6 +38,7 @@ import CompactColorSelector from "../components/room/CompactColorSelector";
 import LobbyActionBar from "../components/room/LobbyActionBar";
 import CommunicationPanel from "../components/room/CommunicationPanel";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
+import { usePlayerCapability } from "../hooks/usePlayerCapability";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
 import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
 import FallingPetals from "../animations/app/FallingPetals";
@@ -355,7 +356,7 @@ export default function Room() {
   const [showInGameLeaveModal, setShowInGameLeaveModal] = useState(false);
   const requestLeaveConfirmation = useCallback(() => setShowInGameLeaveModal(true), []);
 
-  const attemptJoin = useCallback((reason: "initial" | "reconnect"): void => {
+  const attemptJoin = useCallback(async (reason: "initial" | "reconnect"): Promise<void> => {
     if (!code || !playerName || mustDeclare) return;
     if (joinInFlightRef.current) return;
     joinInFlightRef.current = true;
@@ -366,6 +367,16 @@ export default function Room() {
     const joinName = playerName;
     const joinCode = code;
     const seat = seatFor(joinCode);
+    // Fail-closed credential resolution: verified members proceed with their
+    // session token, while guests mint or reuse a signed token. If guest minting
+    // fails, abort without emitting room:join so no unauthenticated seat with
+    // identityId: null is joined.
+    const cred = await resolveRoomCredential();
+    if (!cred.ok) {
+      joinInFlightRef.current = false;
+      setError(cred.error);
+      return;
+    }
     logConn("rejoin_send", `${reason} code=${joinCode} hadSeat=${!!seat}`);
     socket.emit(
       "room:join",
@@ -376,8 +387,8 @@ export default function Room() {
         seatToken: seat?.seatToken,
         avatar: useRoomStore.getState().avatarId ?? undefined,
         accountKind: currentAccountKind(),
-        accessToken: currentAccessToken(),
-        guestToken: currentGuestToken(),
+        accessToken: cred.accessToken ?? currentAccessToken(),
+        guestToken: cred.guestToken,
       },
       (res) => {
         joinInFlightRef.current = false;
@@ -703,6 +714,27 @@ export default function Room() {
   );
 
   const viewModel = useRoomViewModel(roomState, playerId);
+
+  /**
+   * Client-side preflight responder for the server-authoritative match-start
+   * safety protocol. Listens for `room:startPreflight`, checks visibility and
+   * orientation, and emits the appropriate ack/decline. Also monitors
+   * `visibilitychange` and resize events in the lobby to cancel in-flight
+   * start attempts early rather than waiting for the 5-second timeout.
+   *
+   * Must be mounted for every seat (host and non-host) because the continuous
+   * unavailability monitor applies to all humans, while the preflight ack is
+   * only requested of non-host participants. The hook handles the distinction
+   * internally by only emitting acks in response to server events, which the
+   * server only sends to the non-host participants.
+   */
+  usePlayerCapability({
+    roomCode: code,
+    playerId,
+    game: roomState?.game,
+    phase: roomState?.phase,
+    roomRevision: roomState?.roomRevision,
+  });
 
   /**
    * "I'm back" — reclaim your seat the moment you touch anything.
@@ -1578,18 +1610,18 @@ function ConnectingScreen({ code, onRetry }: { code?: string; onRetry?: () => vo
             <p className="text-xs text-[#8A6D4B] dark:text-slate-300 font-medium leading-relaxed">
               Connecting is taking longer than usual — the game server may be waking up or your connection is slow.
             </p>
-            <div className="flex items-center justify-center gap-2 pt-1">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={handleRetry}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#EA580C] hover:bg-[#C2410C] text-white shadow-xs transition cursor-pointer min-h-[36px]"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold bg-[#EA580C] hover:bg-[#C2410C] active:scale-95 text-white shadow-xs transition cursor-pointer min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 Retry Connection
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-[#796651] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 hover:bg-slate-50 transition cursor-pointer min-h-[36px]"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-[#796651] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 hover:bg-slate-50 active:scale-95 transition cursor-pointer min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 Return to Lounge
               </button>

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
-import { currentGuestToken } from "../../lib/playerIdentity";
+import { ensureGuestToken, resolveRoomCredential } from "../../lib/playerIdentity";
 import SignInWall from "../auth/SignInWall";
 import Modal from "../Modal";
 import { ArrowRightIcon } from "./icons";
@@ -149,7 +149,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
    * keyboard never did, so the same six characters cost an extra deliberate
    * tap depending only on how they arrived.
    */
-  function joinWithCode(rawCode: string, n: string) {
+  async function joinWithCode(rawCode: string, n: string) {
     const c = normalizeRoomCode(rawCode);
     if (busyRef.current) return;
     busyRef.current = true;
@@ -172,6 +172,24 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
       );
     }, JOIN_TIMEOUT_MS);
 
+    // Fail-closed credential resolution: verified members proceed with their
+    // session token, while guests mint or reuse a signed token. If guest minting
+    // fails, abort without emitting room:join so no unauthenticated seat with
+    // identityId: null is created.
+    const cred = await resolveRoomCredential();
+    if (!cred.ok) {
+      if (timeoutTimerRef.current !== null) {
+        window.clearTimeout(timeoutTimerRef.current);
+        timeoutTimerRef.current = null;
+      }
+      activeAttemptRef.current += 1;
+      busyRef.current = false;
+      setBusy(false);
+      setFormError(cred.error);
+      return;
+    }
+    if (activeAttemptRef.current !== attemptId) return;
+
     getSocket().emit(
       "room:join",
       {
@@ -179,8 +197,8 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
         code: c,
         avatar: avatarId ?? undefined,
         accountKind: currentAccountKind(),
-        accessToken: currentAccessToken(),
-        guestToken: currentGuestToken(),
+        accessToken: cred.accessToken ?? currentAccessToken(),
+        guestToken: cred.guestToken,
         ...(seatFor(c) ?? {}),
       },
       (res: JoinAck) => {

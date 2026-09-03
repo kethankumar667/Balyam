@@ -19,7 +19,8 @@
     "test:matrix:landscape": "node scripts/responsive-matrix/runner.mjs --landscape=only --game=all",
     "test:matrix:full": "node scripts/responsive-matrix/runner.mjs --tier=3 --game=all",
     "verify:no-secret-leak": "node scripts/verify-no-secret-leak.mjs",
-    "verify:admin": "npm run typecheck && npm test && npm run build && npm run verify:no-secret-leak"
+    "verify:admin": "npm run typecheck && npm test && npm run build && npm run verify:no-secret-leak",
+    "test:e2e:staging": "playwright test"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

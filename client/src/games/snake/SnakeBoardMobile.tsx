@@ -8,6 +8,10 @@ import { SNAKE_THEME_CHROME, THEME_LABELS, SNAKE_THEMES } from "./snakeChrome";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { useTutorialGate, markSeen } from "../../components/GameTutorial";
+
+/** Same "seen" bookkeeping convention as every other game's tutorial gate. */
+export const SNAKE_RULES_KEY = "snake.tutorial.completed.v1";
 
 export interface SnakeBoardProps {
   state: SnakePublicState;
@@ -21,7 +25,14 @@ export interface SnakeBoardProps {
 }
 
 export default function SnakeBoardMobile({ state, selfId, onMove, players, messages, roomCode, roomPhase }: SnakeBoardProps) {
-  const [showRules, setShowRules] = useState(false);
+  // Auto-opens once per browser the first time this player reaches the
+  // board; manual reopen keeps working via the existing "Rules" button.
+  const rulesTut = useTutorialGate(SNAKE_RULES_KEY);
+  const showRules = rulesTut.open;
+  const closeRules = () => {
+    markSeen(SNAKE_RULES_KEY);
+    rulesTut.setOpen(false);
+  };
   const [activeTheme, setActiveTheme] = useState<SnakeTheme>(state.theme || "nokia-monochrome");
   const [isMuted, setIsMuted] = useState(false);
   const swipeRef = useRef<{ id: number; x: number; y: number } | null>(null);
@@ -111,7 +122,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove, players, messa
               {state.isPaused ? "▶ RESUME" : "⏸ PAUSE"}
             </button>
             <button
-              onClick={() => setShowRules(true)}
+              onClick={() => rulesTut.setOpen(true)}
               className="px-2 py-0.5 rounded-lg bg-[#181a28] text-[#8e9ab5] border border-[#2e344e] text-[9px] font-bold uppercase"
             >
               RULES
@@ -278,7 +289,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove, players, messa
         />
       )}
 
-      <RulesModal open={showRules} onClose={() => setShowRules(false)} />
+      <RulesModal open={showRules} onClose={closeRules} />
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );

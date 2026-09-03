@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { metadataDisplayName, useAuthStore } from "../authStore";
+import {
+  metadataDisplayName,
+  useAuthStore,
+  getIdentityPresentation,
+  hasVerifiedMemberIdentity,
+  setAccessToken,
+} from "../authStore";
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
 import { FavouritesManager } from "../../services/FavouritesManager";
 import { useRoomStore } from "../roomStore";
@@ -179,5 +185,163 @@ describe("signOut", () => {
     };
     vi.stubGlobal("localStorage", { getItem: deny, setItem: deny, removeItem: deny, clear: deny });
     await expect(useAuthStore.getState().signOut()).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * Guest-wallet-consistency remediation (T3/T4).
+ *
+ * Root cause (finding G1): on a build with no Supabase keys configured,
+ * `signInLocal()` flips `kind` to "member" but never sets `userId` — so that
+ * "member" session was reading and spending the SAME guest wallet the whole
+ * time, under different UI chrome. `signOut()` used to wipe the guest
+ * identity unconditionally, which meant "sign out of my local-flag account"
+ * silently deleted the only progress that ever existed. The fix: `signOut()`
+ * only runs the full device wipe when `userId` was actually set, i.e. a
+ * real, distinct identity is genuinely being left.
+ */
+describe("signOut — guest identity boundary (guest-wallet-consistency fix)", () => {
+  let localMock: ReturnType<typeof fakeStorage>;
+  let sessionMock: ReturnType<typeof fakeStorage>;
+
+  beforeEach(() => {
+    localMock = fakeStorage();
+    sessionMock = fakeStorage();
+    vi.stubGlobal("localStorage", localMock);
+    vi.stubGlobal("sessionStorage", sessionMock);
+
+    // The guest identity and progress this device had before "logging in".
+    localMock.setItem("bhalyam.guest.id", "guest_senthil");
+    localMock.setItem("bhalyam.guest.token", "bg1.fake-payload.fake-signature");
+    localMock.setItem("bhalyam.guest.expires", String(Date.now() + 1_000_000));
+    localMock.setItem("mpg.playerName", "Senthil");
+    useRoomStore.setState({ playerId: "guest_senthil", playerName: "Senthil" });
+  });
+
+  it("T4: a local-flag session (signInLocal, no real userId) never held a distinct identity — signing out of it leaves the guest's identity and wallet untouched", async () => {
+    useAuthStore.setState({
+      kind: "member",
+      email: "local-flag@bhalyam.io",
+      since: 12345,
+      userId: null, // signInLocal() never sets this — see authStore.ts
+      isMember: true,
+      isAdmin: false,
+      isSuperAdmin: false,
+    });
+
+    await useAuthStore.getState().signOut();
+
+    // The guest identity survives — this is the T1/T2 persistence contract
+    // (Scenario 1: "Senthil / 1800" across a refresh) actually being upheld,
+    // rather than destroyed by a sign-out that was never leaving it.
+    expect(localMock.getItem("bhalyam.guest.id")).toBe("guest_senthil");
+    expect(localMock.getItem("bhalyam.guest.token")).toBe("bg1.fake-payload.fake-signature");
+    expect(localMock.getItem("mpg.playerName")).toBe("Senthil");
+    expect(useRoomStore.getState().playerName).toBe("Senthil");
+    expect(useRoomStore.getState().playerId).toBe("guest_senthil");
+
+    // The UI still correctly reports "no longer a member" — only the
+    // underlying wallet/identity is spared, never the auth-state transition.
+    const state = useAuthStore.getState();
+    expect(state.kind).toBe("guest");
+    expect(state.isMember).toBe(false);
+    expect(state.userId).toBeNull();
+  });
+
+  it("T3: a real session (userId set) still wipes the device on sign-out — this destroys only the identity actually being left, per the existing shared-device contract", async () => {
+    useAuthStore.setState({
+      kind: "member",
+      email: "real-member@bhalyam.io",
+      since: 12345,
+      userId: "12e092a4-d712-4bfc-8222-a5a6f37e4ec9",
+      isMember: true,
+      isAdmin: false,
+      isSuperAdmin: false,
+    });
+
+    await useAuthStore.getState().signOut();
+
+    expect(localMock.getItem("bhalyam.guest.id")).toBeNull();
+    expect(localMock.getItem("bhalyam.guest.token")).toBeNull();
+    expect(useRoomStore.getState().playerName).toBe("");
+    expect(useRoomStore.getState().playerId).toBeNull();
+  });
+});
+
+describe("Identity Presentation & Truthful Capability Model", () => {
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", fakeStorage());
+    vi.stubGlobal("sessionStorage", fakeStorage());
+    useAuthStore.setState({
+      kind: "guest",
+      email: null,
+      since: null,
+      userId: null,
+      isMember: false,
+      isAdmin: false,
+      isSuperAdmin: false,
+      ready: true,
+    });
+  });
+
+  it("guest identity presents as Guest Player with no verified membership", () => {
+    const state = useAuthStore.getState();
+    const presentation = getIdentityPresentation(state);
+    expect(presentation.mode).toBe("guest");
+    expect(presentation.isVerifiedMember).toBe(false);
+    expect(presentation.isLocalFallback).toBe(false);
+    expect(presentation.label).toBe("Guest");
+    expect(presentation.badgeText).toBe("Guest Player");
+  });
+
+  it("signInLocal assigns truthful local_fallback presentation and does not grant member capabilities", () => {
+    useAuthStore.getState().signInLocal("demo@bhalyam.io");
+    const state = useAuthStore.getState();
+
+    // Local fallback is unverified — cannot masquerade as real member
+    expect(state.userId).toBeNull();
+    expect(state.isMember).toBe(false);
+    expect(state.isAdmin).toBe(false);
+    expect(state.isSuperAdmin).toBe(false);
+
+    // Capabilities must be guest-equivalent (real-member-only features disabled)
+    expect(state.capabilities.viewProfile).toBe(false);
+    expect(state.capabilities.viewTournaments).toBe(false);
+    expect(state.capabilities.viewLeaderboards).toBe(false);
+    expect(state.capabilities.viewSocial).toBe(false);
+
+    // Presentation must be truthful Offline Demo Mode
+    const presentation = getIdentityPresentation(state);
+    expect(presentation.mode).toBe("local_fallback");
+    expect(presentation.isVerifiedMember).toBe(false);
+    expect(presentation.isLocalFallback).toBe(true);
+    expect(presentation.label).toBe("Offline Demo Mode");
+    expect(presentation.badgeText).toBe("Offline Demo Mode");
+    expect(hasVerifiedMemberIdentity(state)).toBe(false);
+  });
+
+  it("super_admin presentation displays Super Admin label while fail-closed predicate denies forged member identity", () => {
+    useAuthStore.getState().signInSuperAdmin();
+    const state = useAuthStore.getState();
+    expect(state.isSuperAdmin).toBe(true);
+
+    const presentation = getIdentityPresentation(state);
+    expect(presentation.mode).toBe("super_admin");
+    expect(presentation.label).toBe("Super Admin");
+    expect(presentation.badgeText).toBe("Super Admin");
+    // Without a real Supabase session (userId + accessToken), client-asserted admin cannot claim verified member identity
+    expect(presentation.isVerifiedMember).toBe(false);
+    expect(hasVerifiedMemberIdentity(state)).toBe(false);
+  });
+
+  it("verified session with admin role is recognized as verified member identity", () => {
+    useAuthStore.getState().grantAdminAccess({ userId: "u_verified_admin", email: "admin@bhalyam.io" });
+    setAccessToken("real_signed_admin_token");
+    const state = useAuthStore.getState();
+
+    const presentation = getIdentityPresentation(state);
+    expect(presentation.mode).toBe("super_admin");
+    expect(presentation.isVerifiedMember).toBe(true);
+    expect(hasVerifiedMemberIdentity(state)).toBe(true);
   });
 });

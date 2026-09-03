@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { logger } from "../lib/logger.js";
 
 /**
  * Bearer voucher code generation and hashing.
@@ -24,8 +25,10 @@ import crypto from "crypto";
  * code a guest is holding hashes to a DIFFERENT value than the one stored at
  * issuance — the voucher becomes unfindable, not corrupted (the underlying
  * `reward_vouchers` row and its escrow liability are untouched; only the
- * lookup-by-hash breaks). `voucherHmacDurability()` reports this so a boot
- * warning can be wired up wherever the equivalent guest-token warning is.
+ * lookup-by-hash breaks). `voucherHmacDurability()` reports this state, and
+ * `assertVoucherHmacConfigured()` (below) is wired into `index.ts`'s startup
+ * sequence exactly like `assertOperationalAuthConfigured()` — a warning in
+ * development, a refusal to start at all in production.
  */
 
 const RAW_CODE_BYTES = 24; // 192 bits — far beyond any realistic brute-force budget
@@ -48,6 +51,38 @@ export function voucherHmacDurability(): { durable: boolean; reason: string } {
           "A restart between issuance and redemption makes an already-issued, unredeemed " +
           "voucher's raw code hash to a different value than the one stored at issuance.",
       };
+}
+
+function isProduction(): boolean {
+  return (process.env.NODE_ENV ?? "").trim().toLowerCase() === "production";
+}
+
+/**
+ * Refuse to boot a production process with no stable voucher-hashing key.
+ *
+ * Mirrors `security/operationalAuth.ts`'s `assertOperationalAuthConfigured()`
+ * and `economy/index.ts`'s `initialiseEconomyStore()` production guard: an
+ * ephemeral key is the normal, harmless default in development (see
+ * `signingKey()` above) and a silent, unrecoverable durability defect in
+ * production — every outstanding, unredeemed voucher becomes permanently
+ * unfindable across the very next restart or redeploy, with no error and no
+ * way to tell which vouchers were affected after the fact. Warns everywhere
+ * else; throws only when `NODE_ENV=production`, so a process that cannot
+ * protect outstanding vouchers never starts accepting traffic. Reports only
+ * `voucherHmacDurability()`'s safe boolean/reason pair — never the secret,
+ * a hash of it, or any part of it, whether present or absent.
+ */
+export function assertVoucherHmacConfigured(): void {
+  const { durable, reason } = voucherHmacDurability();
+  if (durable) return;
+
+  if (!isProduction()) {
+    logger.warn({ message: reason, module: "ECONOMY" });
+    return;
+  }
+
+  logger.error({ message: `Refusing to start in production: ${reason}`, module: "ECONOMY" });
+  throw new Error(`Refusing to start in production: ${reason}`);
 }
 
 /**

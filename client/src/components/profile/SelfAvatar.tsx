@@ -1,6 +1,6 @@
 import SeatAvatar from "./SeatAvatar";
 import { useRoomStore } from "../../store/roomStore";
-import { useAuthStore } from "../../store/authStore";
+import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 
 /**
  * The signed-in-ish player's own face, wherever the app shows their identity.
@@ -30,8 +30,8 @@ export default function SelfAvatar({
 }: SelfAvatarProps) {
   const avatarId = useRoomStore((s) => s.avatarId);
   const playerName = useRoomStore((s) => s.playerName);
-  const isMember = useAuthStore((s) => s.isMember);
-  const displayName = playerName.trim() || (isMember ? "Member" : "Guest");
+  const identity = useIdentityPresentation();
+  const displayName = playerName.trim() || identity.label;
 
   return (
     <SeatAvatar

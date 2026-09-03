@@ -61,7 +61,14 @@ export function useTutorialGate(
   return { open, setOpen };
 }
 
-function markSeen(storageKey: string): void {
+/**
+ * Marks a tutorial/rules deck as seen, so `useTutorialGate` won't auto-open
+ * it again. Exported for boards that show their OWN bespoke rules modal
+ * (Carrom, Chess, Snake, Dots & Boxes) rather than the generic {@link
+ * GameTutorial} slide deck — they still want the same "seen" bookkeeping,
+ * just without adopting the slide-deck UI.
+ */
+export function markSeen(storageKey: string): void {
   try {
     localStorage.setItem(storageKey, "1");
   } catch {

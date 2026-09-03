@@ -103,6 +103,14 @@ interface AuthStore extends StoredAccount {
    * whatever email/userId this session already has.
    */
   grantAdminAccess: (principal: { userId?: string; email?: string | null }) => void;
+  /**
+   * Leave the current account. Wipes this device's data — see the "clean
+   * device" rationale inside the implementation — but ONLY when `userId` is
+   * set, i.e. a real, verified session is actually being left. A local-flag
+   * "member" (no Supabase configured) never held a distinct identity from
+   * the guest wallet already on this device, so signing out of one just
+   * clears the flag and leaves the guest's progress untouched.
+   */
   signOut: () => Promise<void>;
 }
 
@@ -179,6 +187,135 @@ function peekStoredSession(): { email: string | null; userId: string | null } | 
   }
 }
 
+/** Latest access token, kept outside React for the socket payloads below. */
+let accessToken: string | null = null;
+
+/**
+ * Derives capabilities strictly based on authenticated state.
+ *
+ * Local fallback (signInLocal without Supabase) is backed by the local guest
+ * wallet and does not hold a verified backend session, so real-member-only
+ * capabilities (viewProfile, viewTournaments, viewLeaderboards, viewSocial)
+ * remain disabled.
+ */
+function computeCapabilities(kind: AccountKind, userId: string | null): Capabilities {
+  if (kind === "super_admin" || kind === "admin") {
+    return capabilitiesFor(kind);
+  }
+  if (kind === "member" && Boolean(userId) && Boolean(accessToken)) {
+    return capabilitiesFor("member");
+  }
+  return capabilitiesFor("guest");
+}
+
+export type AuthIdentityMode =
+  | "guest"
+  | "local_fallback"
+  | "member"
+  | "admin"
+  | "super_admin";
+
+export interface IdentityPresentation {
+  mode: AuthIdentityMode;
+  /** True ONLY when authenticated with a real Supabase session or verified admin */
+  isVerifiedMember: boolean;
+  /** True when in local fallback mode (signed in without Supabase keys / offline demo) */
+  isLocalFallback: boolean;
+  /** Concise product label: "Guest" | "Offline Demo Mode" | "Member" | "Admin" | "Super Admin" */
+  label: string;
+  /** Status badge text: "Guest Player" | "Offline Demo Mode" | "Active Member" | "Admin" | "Super Admin" */
+  badgeText: string;
+}
+
+/**
+ * Fail-closed verified member predicate.
+ * Returns true ONLY if the current state possesses a real backend Supabase identity
+ * (userId !== null) and an active signed bearer accessToken. Client-asserted admin
+ * flags without backend session verification NEVER satisfy this predicate.
+ */
+export function hasVerifiedMemberIdentity(state = useAuthStore.getState()): boolean {
+  return Boolean(state.userId) && Boolean(currentAccessToken());
+}
+
+export function getIdentityPresentation(state: {
+  kind: AccountKind;
+  userId: string | null;
+  isAdmin?: boolean;
+  isSuperAdmin?: boolean;
+}): IdentityPresentation {
+  const token = currentAccessToken();
+  const isVerified = Boolean(state.userId) && Boolean(token);
+
+  if (state.isSuperAdmin) {
+    return {
+      mode: "super_admin",
+      isVerifiedMember: isVerified,
+      isLocalFallback: false,
+      label: "Super Admin",
+      badgeText: "Super Admin",
+    };
+  }
+  if (state.isAdmin) {
+    return {
+      mode: "admin",
+      isVerifiedMember: isVerified,
+      isLocalFallback: false,
+      label: "Admin",
+      badgeText: "Admin",
+    };
+  }
+  if (isVerified) {
+    return {
+      mode: "member",
+      isVerifiedMember: true,
+      isLocalFallback: false,
+      label: "Member",
+      badgeText: "Active Member",
+    };
+  }
+  if (state.kind === "member" && !state.userId) {
+    return {
+      mode: "local_fallback",
+      isVerifiedMember: false,
+      isLocalFallback: true,
+      label: "Offline Demo Mode",
+      badgeText: "Offline Demo Mode",
+    };
+  }
+  return {
+    mode: "guest",
+    isVerifiedMember: false,
+    isLocalFallback: false,
+    label: "Guest",
+    badgeText: "Guest Player",
+  };
+}
+
+export function useIdentityPresentation(): IdentityPresentation {
+  try {
+    return useAuthStore((s) =>
+      getIdentityPresentation({
+        kind: s.kind,
+        userId: s.userId,
+        isAdmin: s.isAdmin,
+        isSuperAdmin: s.isSuperAdmin,
+      }),
+    );
+  } catch {
+    const s = useAuthStore.getState();
+    return getIdentityPresentation({
+      kind: s.kind,
+      userId: s.userId,
+      isAdmin: s.isAdmin,
+      isSuperAdmin: s.isSuperAdmin,
+    });
+  }
+}
+
+export function useHasVerifiedMember(): boolean {
+  return useAuthStore((s) => hasVerifiedMemberIdentity(s));
+}
+
 function initialState(): StoredAccount & { userId: string | null; ready: boolean } {
   if (typeof window === "undefined" || typeof localStorage === "undefined") {
     return { ...GUEST, userId: null, ready: true };
@@ -200,8 +337,8 @@ const initial = initialState();
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
   ...initial,
-  capabilities: capabilitiesFor(initial.kind),
-  isMember: initial.kind === "member" || initial.kind === "admin" || initial.kind === "super_admin",
+  capabilities: computeCapabilities(initial.kind, initial.userId),
+  isMember: initial.kind === "admin" || initial.kind === "super_admin" || (initial.kind === "member" && Boolean(initial.userId) && Boolean(accessToken)),
   isAdmin: initial.kind === "admin" || initial.kind === "super_admin",
   isSuperAdmin: initial.kind === "super_admin",
 
@@ -214,8 +351,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     saveLocalAccount(next);
     set({
       ...next,
-      capabilities: capabilitiesFor("member"),
-      isMember: true,
+      userId: null,
+      capabilities: computeCapabilities("member", null),
+      isMember: false,
       isAdmin: false,
       isSuperAdmin: false,
       ready: true,
@@ -264,8 +402,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       saveLocalAccount(next);
       set({
         ...next,
-        capabilities: capabilitiesFor("member"),
-        isMember: true,
+        userId: null,
+        capabilities: computeCapabilities("member", null),
+        isMember: false,
         isAdmin: false,
         isSuperAdmin: false,
         ready: true,
@@ -296,6 +435,34 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const supabase = getSupabase();
     if (supabase) {
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    }
+
+    // Whether this device actually held a distinct, verified identity to
+    // leave. `userId` is the exact signal `getPlayerCredential()`
+    // (playerIdentity.ts) uses to decide whether the guest identity is even
+    // consulted for wallet/checkout calls: on a build with no Supabase keys
+    // configured, `signInLocal()` only ever flips the `kind` flag below and
+    // never sets `userId` — so a "member" session here was reading and
+    // spending the SAME guest wallet the entire time, under different UI
+    // chrome. Wiping the device on sign-out is the right call when a real,
+    // separate account is being left (see the full wipe below); it is wrong
+    // here, because there was never another identity to return to — the
+    // guest IS the identity, and destroying it on "sign out" would delete
+    // the only progress that ever existed while presenting itself as an
+    // account transition rather than a guest wallet reset.
+    if (get().userId === null) {
+      saveLocalAccount(GUEST);
+      clearAccountDetails();
+      set({
+        ...GUEST,
+        userId: null,
+        capabilities: capabilitiesFor("guest"),
+        isMember: false,
+        isAdmin: false,
+        isSuperAdmin: false,
+        ready: true,
+      });
+      return;
     }
 
     // A deliberate sign-out — unlike a routine "no session" resolution on
@@ -362,9 +529,6 @@ if (typeof window !== "undefined") {
 
 /* ──────────────────── Session → store, and profile sync ──────────────────── */
 
-/** Latest access token, kept outside React for the socket payloads below. */
-let accessToken: string | null = null;
-
 /** Undoes the roomStore subscription when the player signs out. */
 let stopProfileSync: (() => void) | null = null;
 
@@ -374,14 +538,26 @@ function applySession(session: Session | null): void {
   if (!session?.user) {
     if (!isSupabaseConfigured) {
       const local = loadLocalAccount();
-      if (local.kind === "super_admin" || local.kind === "admin" || local.kind === "member") {
+      if (local.kind === "super_admin" || local.kind === "admin") {
         useAuthStore.setState({
           ...local,
           userId: null,
           capabilities: capabilitiesFor(local.kind),
           isMember: true,
-          isAdmin: local.kind === "admin" || local.kind === "super_admin",
+          isAdmin: true,
           isSuperAdmin: local.kind === "super_admin",
+          ready: true,
+        });
+        return;
+      }
+      if (local.kind === "member") {
+        useAuthStore.setState({
+          ...local,
+          userId: null,
+          capabilities: computeCapabilities("member", null),
+          isMember: false,
+          isAdmin: false,
+          isSuperAdmin: false,
           ready: true,
         });
         return;
@@ -416,7 +592,7 @@ function applySession(session: Session | null): void {
     email: session.user.email ?? null,
     since: Number.isNaN(createdAt) ? null : createdAt,
     userId: session.user.id,
-    capabilities: capabilitiesFor(kind),
+    capabilities: computeCapabilities(kind, session.user.id),
     isMember: true,
     isAdmin: kind === "super_admin" || kind === "admin",
     isSuperAdmin: kind === "super_admin",
@@ -627,6 +803,10 @@ export function currentAccountKind(): AccountKind {
  */
 export function currentAccessToken(): string | undefined {
   return accessToken ?? undefined;
+}
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
 }
 
 /** True when the current user is an admin or super admin. */

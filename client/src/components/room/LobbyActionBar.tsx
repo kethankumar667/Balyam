@@ -56,7 +56,7 @@ export default function LobbyActionBar({
               type="button"
               onClick={onToggleReady}
               aria-pressed={isReady}
-              className={`flex-1 min-h-[48px] px-4 py-2.5 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 min-h-[48px] px-4 py-2.5 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 isReady
                   ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 ring-2 ring-amber-400/30"
                   : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-emerald-900/20 ring-2 ring-emerald-500/30"
@@ -73,7 +73,7 @@ export default function LobbyActionBar({
                 disabled={!canStart}
                 aria-disabled={!canStart}
                 aria-label={canStart ? startLabel : "Start Game disabled"}
-                className={`flex-1 min-h-[48px] px-4 py-2.5 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-h-[48px] px-4 py-2.5 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                   canStart
                     ? "bg-gradient-to-r from-[#EA5A1F] to-[#D84F17] hover:from-[#F06A32] hover:to-[#EA5A1F] text-white shadow-orange-900/30 cursor-pointer ring-2 ring-orange-500/30 animate-pulse"
                     : "bg-[#EFE4D2] dark:bg-slate-800 text-[#8C7A67] dark:text-slate-500 cursor-not-allowed border border-[#E1CFB1] dark:border-slate-700"
@@ -112,7 +112,7 @@ export default function LobbyActionBar({
           type="button"
           onClick={onToggleReady}
           aria-pressed={isReady}
-          className={`w-full min-h-[48px] px-6 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
+          className={`w-full min-h-[48px] px-6 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
             isReady
               ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 ring-4 ring-amber-400/20"
               : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-emerald-900/20 ring-4 ring-emerald-500/20"
@@ -129,7 +129,7 @@ export default function LobbyActionBar({
             disabled={!canStart}
             aria-disabled={!canStart}
             aria-label={canStart ? startLabel : "Start Game disabled"}
-            className={`w-full min-h-[48px] px-6 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+            className={`w-full min-h-[48px] px-6 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
               canStart
                 ? "bg-gradient-to-r from-[#EA5A1F] to-[#D84F17] hover:from-[#F06A32] hover:to-[#EA5A1F] text-white shadow-orange-900/30 cursor-pointer ring-4 ring-orange-500/20 animate-pulse"
                 : "bg-[#EFE4D2] dark:bg-slate-800 text-[#8C7A67] dark:text-slate-500 cursor-not-allowed border border-[#E1CFB1] dark:border-slate-700"
@@ -142,7 +142,12 @@ export default function LobbyActionBar({
       </div>
 
       {isHost && !canStart && (
-        <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium text-center bg-[#FFF4E0]/50 dark:bg-slate-800/40 border border-[#EEDBCA]/60 dark:border-slate-700/60 rounded-xl p-2">
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium text-center bg-[#FFF4E0]/50 dark:bg-slate-800/40 border border-[#EEDBCA]/60 dark:border-slate-700/60 rounded-xl p-2"
+        >
           {startGameDisabledReason}
         </p>
       )}

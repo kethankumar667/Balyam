@@ -19,7 +19,7 @@ import {
 import { findAvatar } from "../../../lib/avatars";
 import SeatAvatar from "../../../components/profile/SeatAvatar";
 import { useRoomStore } from "../../../store/roomStore";
-import { useAuthStore } from "../../../store/authStore";
+import { useAuthStore, useIdentityPresentation } from "../../../store/authStore";
 import { useTheme } from "../../../lib/useTheme";
 import { bhalyamSpring } from "../../../lib/motion";
 import { type BhalyamGameSlug } from "../../../components/bhalyam/data";
@@ -114,9 +114,18 @@ export function ProfileSheet({
   const { playerName, avatarId } = useRoomStore();
   const avatar = findAvatar(avatarId);
   const named = playerName.trim().length > 0;
-  const signedIn = useAuthStore((s) => s.isMember);
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
+  const identity = useIdentityPresentation();
+  // "Has some kind of signed-in identity to show a membership/account panel
+  // for" — true for a verified member AND for local fallback (a local-flag
+  // "member" with no verified backend session), false only for a genuine
+  // guest. `isMember` alone used to mean this; it was narrowed to "verified
+  // member only" for capability/wallet purposes, which silently made this
+  // sheet's local-fallback branch unreachable (the "Offline Demo Mode" badge
+  // and the sign-out button below never rendered for that identity). This is
+  // the one place that broader, pre-existing meaning still belongs.
+  const signedIn = identity.mode !== "guest";
   const [theme] = useTheme();
   const isDark = theme === "dark";
 
@@ -212,7 +221,7 @@ export function ProfileSheet({
             >
               <SeatAvatar
                 avatar={avatarId ?? undefined}
-                name={playerName.trim() || (signedIn ? "Member" : "Guest")}
+                name={playerName.trim() || identity.label}
                 className="w-full h-full"
                 textClassName="text-2xl font-black"
               />
@@ -317,6 +326,10 @@ export function ProfileSheet({
                 <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-400 text-amber-900 text-[11px] font-black inline-flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
                   Super Admin
+                </span>
+              ) : identity.isLocalFallback ? (
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-black">
+                  Offline Demo Mode
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-black">

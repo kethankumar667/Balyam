@@ -199,6 +199,18 @@ export function registerSocketHandlers(
     void rooms.requestGameStart(socket.id);
   });
 
+  socket.on("room:acknowledgeStart", (payload) => {
+    rooms.acknowledgeStart(socket.id, payload);
+  });
+
+  socket.on("room:declineStart", (payload) => {
+    rooms.declineStart(socket.id, payload);
+  });
+
+  socket.on("room:reportUnavailable", (payload) => {
+    rooms.reportUnavailable(socket.id, payload);
+  });
+
   socket.on("chat:send", ({ text }) => {
     rooms.sendChat(socket.id, text);
   });

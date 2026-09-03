@@ -99,7 +99,11 @@ export default function SocialHubPage() {
 
         {/* Friends & Presence Cards / Empty State */}
         {friends.length === 0 ? (
-          <div className="p-8 text-center bg-[var(--chrome-panel)] border border-[var(--chrome-border)] rounded-3xl space-y-4">
+          <div
+            role="status"
+            aria-live="polite"
+            className="p-8 text-center bg-[var(--chrome-panel)] border border-[var(--chrome-border)] rounded-3xl space-y-4"
+          >
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl mx-auto">
               👥
             </div>
@@ -111,7 +115,7 @@ export default function SocialHubPage() {
             </div>
             <Link
               to="/games"
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs shadow-sm transition min-h-[44px]"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-stone-950 font-bold text-xs shadow-sm transition min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               Explore Games to Play
             </Link>
@@ -160,13 +164,14 @@ export default function SocialHubPage() {
                     type="button"
                     onClick={() => handleInvite(f.id)}
                     disabled={invited[f.id]}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs ${
+                    aria-label={invited[f.id] ? `Challenge sent to ${f.name}` : `Challenge ${f.name} to a game`}
+                    className={`inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer ${
                       invited[f.id]
                         ? "bg-emerald-500 text-zinc-950 font-black"
                         : "bg-amber-500 hover:bg-amber-400 text-zinc-950"
                     }`}
                   >
-                    <Swords className="w-3.5 h-3.5" />
+                    <Swords className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>{invited[f.id] ? "Invited!" : "Challenge"}</span>
                   </button>
                 </div>

@@ -122,13 +122,60 @@ export interface AppProps {
   components?: RouteComponents;
 }
 import PremiumGamingLoader from "./components/loading/PremiumGamingLoader";
-import { ProfileSkeleton, LeaderboardSkeleton, GamesGridSkeleton } from "./design-system/dls";
+import {
+  ProfileSkeleton,
+  LeaderboardSkeleton,
+  GamesGridSkeleton,
+  TournamentSkeleton,
+  RoomSkeleton,
+  SocialHubSkeleton,
+  DashboardSkeleton,
+} from "./design-system/dls";
 import AppLayout from "./components/layout/AppLayout";
+import AdminLayout from "./components/admin/admin-layout";
 import GamesFamilyLayout from "./components/layout/GamesFamilyLayout";
 import ProfileFamilyLayout from "./components/layout/ProfileFamilyLayout";
 
 function RouteLoadingFallback() {
   const { pathname } = useLocation();
+
+  if (pathname.startsWith("/room")) {
+    return <RoomSkeleton />;
+  }
+
+  if (pathname.startsWith("/admin")) {
+    return (
+      <AdminLayout>
+        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+          <DashboardSkeleton />
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (pathname.startsWith("/tournaments")) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto space-y-6">
+            <TournamentSkeleton />
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (pathname.startsWith("/social")) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto space-y-6">
+            <SocialHubSkeleton />
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (pathname.startsWith("/profile")) {
     return (

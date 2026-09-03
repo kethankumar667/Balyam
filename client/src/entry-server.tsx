@@ -3,8 +3,18 @@ import ReactDOMServer from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
 import App, { type RouteComponents } from "./App";
 import { AudioProvider } from "./context/AudioContext";
-import { PUBLIC_ROUTES_METADATA } from "./seo/metadata";
+import { PUBLIC_ROUTES_METADATA, PRERENDER_ROUTES } from "./seo/metadata";
 import { getStructuredDataForRoute, serializeJsonLd } from "./seo/structuredData";
+
+/**
+ * Re-exported so `client/scripts/prerender.mjs` can pull the authoritative
+ * public route catalog from the SAME compiled bundle it already imports for
+ * `render()` — no second import path to guess at, no separate list to drift.
+ * `PRERENDER_ROUTES` is `Object.keys(PUBLIC_ROUTES_METADATA)` (see
+ * `seo/metadata.ts`), so this file, the metadata catalog, and the prerender
+ * script all agree by construction.
+ */
+export { PRERENDER_ROUTES };
 
 // Synchronous imports for SSR prerender to resolve all public page content
 import GamesPage from "./pages/GamesPage";

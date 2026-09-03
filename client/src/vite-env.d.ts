@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   /** Newer projects call it "publishable"; older ones call it "anon". Either works. */
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  /** DPDP Section 13 grievance contact email address. Unset by default. */
+  readonly VITE_PRIVACY_CONTACT_EMAIL?: string;
 }
 
 interface ImportMeta {

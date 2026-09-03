@@ -9,6 +9,8 @@ import Chat from "../../components/Chat";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { useTutorialGate, markSeen } from "../../components/GameTutorial";
+import { DOTSBOXES_TUTORIAL } from "../tutorials";
 import { HelpCircle, Settings, BookOpen, Target, Timer, Flag, MessageSquare, RotateCcw, Volume2, VolumeX, LogOut } from "lucide-react";
 
 export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
@@ -43,7 +45,17 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
   } = useDotsBoxesBoard(props);
 
   const [showChat, setShowChat] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
+  // Auto-opens once per browser, the first time this player reaches the
+  // board — same "never over a live turn" gate as RPS/SNL/etc (see
+  // GameTutorial.tsx's useTutorialGate doc). Reuses DOTSBOXES_TUTORIAL's key
+  // even though this modal has its own hand-written content, not that deck's
+  // slides, so the "seen" flag stays a single source of truth per game.
+  const helpTut = useTutorialGate(DOTSBOXES_TUTORIAL.key, !myTurn || secondsLeft == null);
+  const showHelp = helpTut.open;
+  const closeHelp = () => {
+    markSeen(DOTSBOXES_TUTORIAL.key);
+    helpTut.setOpen(false);
+  };
   const [showSettings, setShowSettings] = useState(false);
 
   const turnPlayerName = nameOf(state.turnPlayerId);
@@ -85,7 +97,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
             </button>
             <button
               type="button"
-              onClick={() => setShowHelp(true)}
+              onClick={() => helpTut.setOpen(true)}
               className="w-9 h-9 rounded-xl bg-slate-900/90 border border-slate-700/80 flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition-all cursor-pointer shadow-xs"
               aria-label="Help"
             >
@@ -466,7 +478,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
       {showHelp && (
         <Modal
           open={showHelp}
-          onClose={() => setShowHelp(false)}
+          onClose={closeHelp}
           ariaLabel="How to Play Dots & Boxes"
           mobileSheet
           panelClassName="w-full max-w-lg bg-[#0B0E28] border-2 border-slate-700 rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 text-slate-300"

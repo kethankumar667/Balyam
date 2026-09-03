@@ -38,9 +38,9 @@ export default function EmptyState({
           onClick={onReset}
           className="mt-2 inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-2xl
                      bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-sm shadow-md
-                     transition-all duration-150 cursor-pointer"
+                     transition-all duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
         >
-          <RotateCcw className="w-4 h-4" />
+          <RotateCcw className="w-4 h-4" aria-hidden="true" />
           <span>{resetLabel}</span>
         </button>
       )}

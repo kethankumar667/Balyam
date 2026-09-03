@@ -18,7 +18,7 @@ import {
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
-import { currentGuestToken } from "../../lib/playerIdentity";
+import { ensureGuestToken, resolveRoomCredential } from "../../lib/playerIdentity";
 import SignInWall from "../auth/SignInWall";
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
 import {
@@ -396,7 +396,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setNpaRounds(5);
       setNpaThemePack("classic");
     }
-  }, [game, playerName]);
+  }, [game]);
 
   // Focus trap, Escape, focus restoration and body-scroll lock are all
   // owned by <Modal> at the return site below — this used to reimplement
@@ -426,7 +426,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     return name.trim().slice(0, 20);
   }
 
-  function createRoom() {
+  async function createRoom() {
     const n = trimmedName();
     setNameError(null);
     setCodeError(null);
@@ -460,6 +460,22 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     }, JOIN_TIMEOUT_MS);
 
     try {
+      // Fail-closed credential resolution: verified members proceed with their
+      // session token, while guests mint or reuse a signed token. If guest minting
+      // fails, abort without emitting room:create so no unauthenticated room with
+      // identityId: null is created.
+      const cred = await resolveRoomCredential();
+      if (!cred.ok) {
+        if (timeoutTimerRef.current !== null) {
+          window.clearTimeout(timeoutTimerRef.current);
+          timeoutTimerRef.current = null;
+        }
+        activeAttemptRef.current += 1;
+        setBusy(false);
+        setFormError(cred.error);
+        return;
+      }
+      if (activeAttemptRef.current !== attemptId) return;
       const socket = getSocket();
       socket.emit(
         "room:create",
@@ -469,8 +485,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           avatar: avatarId ?? undefined,
           // Decides whether the server opens a shareable table or seals it.
           hostKind: currentAccountKind(),
-          accessToken: currentAccessToken(),
-          guestToken: currentGuestToken(),
+          accessToken: cred.accessToken ?? currentAccessToken(),
+          guestToken: cred.guestToken,
           snlOptions: game === "snl" ? { difficulty } : undefined,
           rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
           hcOptions:
@@ -584,7 +600,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
    * own color/coin is auto-assigned by the lobby auto-assign code; local
    * seats are auto-assigned colors in `addLocalPlayer` server-side.
    */
-  function startPassAndPlay() {
+  async function startPassAndPlay() {
     const n = trimmedName();
     const filled = localNames.map((s) => s.trim()).filter((s) => s.length > 0);
     setNameError(null);
@@ -616,6 +632,23 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       );
     }, JOIN_TIMEOUT_MS);
 
+    // Fail-closed credential resolution: verified members proceed with their
+    // session token, while guests mint or reuse a signed token. If guest minting
+    // fails, abort without emitting room:create so no unauthenticated room with
+    // identityId: null is created.
+    const cred = await resolveRoomCredential();
+    if (!cred.ok) {
+      if (timeoutTimerRef.current !== null) {
+        window.clearTimeout(timeoutTimerRef.current);
+        timeoutTimerRef.current = null;
+      }
+      activeAttemptRef.current += 1;
+      setBusy(false);
+      setFormError(cred.error);
+      return;
+    }
+    if (activeAttemptRef.current !== attemptId) return;
+
     const socket = getSocket();
     socket.emit(
       "room:create",
@@ -626,8 +659,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         // Pass & Play is open to guests: every seat is on THIS device, so a
         // sealed room is exactly right — nothing is being shared anyway.
         hostKind: currentAccountKind(),
-        accessToken: currentAccessToken(),
-        guestToken: currentGuestToken(),
+        accessToken: cred.accessToken ?? currentAccessToken(),
+        guestToken: cred.guestToken,
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
           game === "wordbuilding"
@@ -698,7 +731,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     );
   }
 
-  function joinRoom() {
+  async function joinRoom() {
     // Belt to the UI's braces. The code field is not rendered for a guest, so
     // reaching here means the capability changed under an open sheet (signed
     // out in another tab) — refuse rather than fire a join the room would
@@ -732,6 +765,23 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       );
     }, JOIN_TIMEOUT_MS);
 
+    // Fail-closed credential resolution: verified members proceed with their
+    // session token, while guests mint or reuse a signed token. If guest minting
+    // fails, abort without emitting room:join so no unauthenticated seat with
+    // identityId: null is created.
+    const cred = await resolveRoomCredential();
+    if (!cred.ok) {
+      if (timeoutTimerRef.current !== null) {
+        window.clearTimeout(timeoutTimerRef.current);
+        timeoutTimerRef.current = null;
+      }
+      activeAttemptRef.current += 1;
+      setBusy(false);
+      setFormError(cred.error);
+      return;
+    }
+    if (activeAttemptRef.current !== attemptId) return;
+
     const socket = getSocket();
     socket.emit(
       "room:join",
@@ -740,8 +790,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         code,
         avatar: avatarId ?? undefined,
         accountKind: currentAccountKind(),
-        accessToken: currentAccessToken(),
-        guestToken: currentGuestToken(),
+        accessToken: cred.accessToken ?? currentAccessToken(),
+        guestToken: cred.guestToken,
         ...(seatFor(code) ?? {}),
       },
       (res: { ok: boolean; code?: string; playerId?: string; seatToken?: string; state?: RoomPublicState; error?: string }) => {

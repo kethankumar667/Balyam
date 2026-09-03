@@ -22,7 +22,8 @@ import { createOperationalRouter } from "./observability/OperationalController.j
 import { createDashboardRouter } from "./admin/DashboardController.js";
 import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
-import { guestTokenDurability } from "./auth/guestToken.js";
+import { assertGuestTokenDurabilityConfigured } from "./auth/guestToken.js";
+import { assertVoucherHmacConfigured, voucherHmacDurability } from "./economy/voucherCrypto.js";
 import { initialiseProgressionStore, persistenceStatus } from "./persistence/index.js";
 import { initialiseEconomyStore, economyStoreStatus } from "./economy/index.js";
 import { createEconomyRouter } from "./economy/EconomyController.js";
@@ -51,6 +52,8 @@ import partyRouter from "./party/PartyController.js";
  */
 try {
   assertOperationalAuthConfigured();
+  assertVoucherHmacConfigured();
+  assertGuestTokenDurabilityConfigured();
 } catch (err) {
   logger.error({
     message: `Startup aborted: ${err instanceof Error ? err.message : String(err)}`,
@@ -159,7 +162,14 @@ app.get("/health", (_req, res) => {
     // settlement/refund counters — a rising `failed` count here means real
     // matches are finishing without their settlement/refund landing; see
     // EconomySettlementQueue's own doc comment for the reconciliation path.
-    economy: { ...economyStoreStatus(), queue: roomManager.economySettlementQueueStatus() },
+    // `voucher` is independent of `durable` above: even a Supabase-backed
+    // store can hash new vouchers with an ephemeral key if
+    // VOUCHER_HMAC_SECRET is unset — see voucherCrypto.ts's own header.
+    economy: {
+      ...economyStoreStatus(),
+      queue: roomManager.economySettlementQueueStatus(),
+      voucher: voucherHmacDurability(),
+    },
     memory: {
       heapUsedMb: Math.round((memoryUsage.heapUsed / 1024 / 1024) * 100) / 100,
       heapTotalMb: Math.round((memoryUsage.heapTotal / 1024 / 1024) * 100) / 100,
@@ -360,15 +370,9 @@ async function boot(): Promise<void> {
       });
     }
 
-    // Guests are now real identities with signed tokens, and the signing key
-    // decides whether they survive a restart. Said at boot for the same reason
-    // as TURN and auth below: an ephemeral key is normal on a dev machine and
-    // serious in production, and nothing else in the running app tells them
-    // apart.
-    const guests = guestTokenDurability();
-    if (!guests.durable) {
-      logger.warn({ message: guests.reason, module: "AUTH" });
-    }
+    // Guest token durability (SESSION_SECRET) is checked and logged earlier,
+    // by `assertGuestTokenDurabilityConfigured()` in the startup gate above —
+    // before this process ever binds a port, and hard in production.
 
     // Say this at every boot. A missing relay is invisible in normal use —
     // voice works on wifi and fails only for players behind a symmetric NAT,

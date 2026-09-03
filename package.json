@@ -21,6 +21,7 @@
     "check:multiplayer": "node scripts/quality-gates/multiplayerResilienceSuite.mjs",
     "check:soak": "node scripts/quality-gates/soakTestRunner.mjs",
     "check:browser": "node scripts/quality-gates/browserCompatibilityAudit.mjs",
+    "check:deployment": "node scripts/quality-gates/deploymentConfigGuard.mjs",
     "release:check": "node scripts/quality-gates/releaseReadinessReport.mjs",
     "enterprise:check": "node scripts/quality-gates/enterpriseReadinessReport.mjs",
     "check:persistence": "node scripts/quality-gates/persistenceVerification.mjs",

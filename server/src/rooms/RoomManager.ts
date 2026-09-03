@@ -60,10 +60,15 @@ import {
   DEFAULT_SNAKE_OPTIONS,
   DEFAULT_BLOCKBLAST_OPTIONS,
   DEFAULT_SPACEWAR_OPTIONS,
+  StartBlockReason,
+  StartPreflightPayload,
+  StartAcknowledgementPayload,
+  PlayerStartReadiness,
+  RoomStartReadiness,
 } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
-import { createEngine, getGameLimits } from "../games/registry.js";
+import { createEngine, getGameLimits, getGameOrientationRequirement } from "../games/registry.js";
 import type { RematchState, CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
 import { SEALED_ROOM_ERROR } from "@shared/permissions.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
@@ -233,6 +238,8 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   spacewar: ["Ace", "Blaster", "Cosmo", "Defender"],
 };
 
+export const PREFLIGHT_TIMEOUT_MS = 5000;
+
 function pickBotName(game: GameKind, idx: number): string {
   const pool = BOT_NAMES_BY_GAME[game];
   return pool[idx % pool.length] ?? `Bot ${idx + 1}`;
@@ -259,11 +266,50 @@ const LUDO_COLOR_ORDER: ReadonlyArray<LudoColor> = [
   "red", "green", "yellow", "blue", "purple", "cyan", "orange", "brown",
 ];
 
+export type StartAttemptStatus =
+  | "COLLECTING_PREFLIGHT"
+  | "READY_TO_COMMIT"
+  | "COMMITTING_ECONOMY"
+  | "READY_TO_START"
+  | "CONSUMED"
+  | "CANCELLED";
+
+export interface PlayerStartAcknowledgement {
+  playerId: string;
+  socketId: string;
+  connectionGeneration: number;
+  roomRevision: number;
+  startAttemptId: string;
+  visible: true;
+  orientationSatisfied: true;
+  acknowledgedAt: number;
+}
+
+export interface StartAttempt {
+  id: string;
+  roomRevision: number;
+  createdAt: number;
+  expiresAt: number;
+  game: GameKind;
+  hostId: string;
+  hostSocketId: string;
+  requiredHumanPlayerIds: ReadonlySet<string>;
+  acknowledgements: Map<string, PlayerStartAcknowledgement>;
+  status: StartAttemptStatus;
+  cancelReason?: string;
+}
+
 export interface Room {
   code: string;
   game: GameKind;
   phase: "lobby" | "playing" | "finished";
   lifecycleState: RoomLifecycleState;
+  /** Monotonically increasing room revision counter */
+  roomRevision: number;
+  /** Active preflight start attempt, if one is currently collecting or committing */
+  activeStartAttempt: StartAttempt | null;
+  /** Timeout timer for current preflight start attempt */
+  startAttemptTimer: NodeJS.Timeout | null;
   createdAt: number;
   matchStartedAt: number | null;
   hostId: string;
@@ -909,6 +955,8 @@ export class RoomManager {
       game: room.game,
       phase: room.phase,
       lifecycleState: room.lifecycleState,
+      roomRevision: room.roomRevision,
+      startReadiness: this.getRoomStartReadiness(room),
       // `identityId` is server-only (Economy V1's durable account identifier
       // — see its doc comment in shared/types.ts) and must never reach a
       // broadcast; every OTHER field is intentionally passed through as-is.
@@ -931,6 +979,85 @@ export class RoomManager {
       committedCostPerSeat: room.committedCostPerSeat ?? null,
       committedTotalPot: room.committedTotalPot ?? null,
     };
+  }
+
+  getRoomStartReadiness(room: Room): RoomStartReadiness {
+    const req = getGameOrientationRequirement(room.game);
+    const attempt = room.activeStartAttempt;
+
+    const participants: PlayerStartReadiness[] = Array.from(room.players.values()).map((p) => {
+      const blockers: StartBlockReason[] = [];
+      if (p.isBot || p.isLocal) {
+        return {
+          playerId: p.id,
+          name: p.name,
+          isHost: p.isHost,
+          isReady: p.isReady,
+          isConnected: true,
+          blockers: [],
+        };
+      }
+      if (!p.isConnected) {
+        blockers.push("DISCONNECTED");
+      }
+      if (p.awaySince !== undefined || room.lifecycleState === "RECOVERING") {
+        blockers.push("RECOVERING");
+      }
+      if (!p.isReady) {
+        blockers.push("NOT_READY");
+      }
+      if (
+        attempt &&
+        (attempt.status === "COLLECTING_PREFLIGHT" ||
+          attempt.status === "READY_TO_COMMIT" ||
+          attempt.status === "COMMITTING_ECONOMY" ||
+          attempt.status === "READY_TO_START")
+      ) {
+        const ack = attempt.acknowledgements.get(p.id);
+        if (!ack) {
+          blockers.push("ACKNOWLEDGEMENT_MISSING");
+        }
+      }
+      return {
+        playerId: p.id,
+        name: p.name,
+        isHost: p.isHost,
+        isReady: p.isReady,
+        isConnected: p.isConnected,
+        blockers,
+      };
+    });
+
+    const limits = getGameLimits(room.game) ?? { min: 2, max: 4 };
+    const countValid = participants.length >= limits.min && participants.length <= limits.max;
+    const canStart = countValid && participants.every((p) => p.blockers.length === 0);
+
+    return {
+      startAttemptId: attempt?.id ?? null,
+      canStart,
+      requiredOrientation: req,
+      participants,
+    };
+  }
+
+  cancelActiveStartAttempt(room: Room, reason: string, emitCancelled = true): void {
+    const attempt = room.activeStartAttempt;
+    if (!attempt) return;
+    if (room.startAttemptTimer) {
+      clearTimeout(room.startAttemptTimer);
+      room.startAttemptTimer = null;
+    }
+    attempt.status = "CANCELLED";
+    attempt.cancelReason = reason;
+    room.activeStartAttempt = null;
+
+    if (emitCancelled) {
+      this.io.to(room.code).emit("room:startCancelled", {
+        startAttemptId: attempt.id,
+        reason,
+      });
+      this.broadcastRoomState(room);
+    }
   }
 
   private transitionLifecycle(room: Room, target: RoomLifecycleState, reason?: string): void {
@@ -1046,6 +1173,7 @@ export class RoomManager {
       isHost: true,
       isReady: false,
       isConnected: true,
+      connectionGeneration: 1,
       // Dropped unless it names a file we actually ship — see shared/avatars.ts.
       avatar: sanitizeAvatar(avatar),
       ...(hostIsGuest ? { isGuest: true } : {}),
@@ -1057,6 +1185,9 @@ export class RoomManager {
       game,
       phase: "lobby",
       lifecycleState: (getGameLimits(game)?.min ?? 2) <= 1 ? "READY_CHECK" : "WAITING_FOR_PLAYERS",
+      roomRevision: 1,
+      activeStartAttempt: null,
+      startAttemptTimer: null,
       createdAt: Date.now(),
       matchStartedAt: null,
       hostId: playerId,
@@ -1202,6 +1333,9 @@ export class RoomManager {
         metricsRegistry.increment("recovery.sessions_succeeded_total");
       }
       player.isConnected = true;
+      player.connectionGeneration = (player.connectionGeneration ?? 0) + 1;
+      room.roomRevision++;
+      this.cancelActiveStartAttempt(room, "seat_reclaimed");
       // A reclaim can carry a new avatar — they may have changed it on the
       // profile page between leaving and coming back. Only overwrite when the
       // incoming value survives validation, so a client that simply omits the
@@ -1295,6 +1429,7 @@ export class RoomManager {
       isHost: false,
       isReady: false,
       isConnected: true,
+      connectionGeneration: 1,
       // Dropped unless it names a file we actually ship — see shared/avatars.ts.
       avatar: sanitizeAvatar(avatar),
       // Explicit "guest" only, matching `hostKind` in createRoom above.
@@ -1302,6 +1437,8 @@ export class RoomManager {
       identityId: identityId ?? null,
     };
     room.players.set(playerId, player);
+    room.roomRevision++;
+    this.cancelActiveStartAttempt(room, "roster_changed");
     room.socketToPlayer.set(socketId, playerId);
     this.socketToRoom.set(socketId, room.code);
     this.io.sockets.sockets.get(socketId)?.join(room.code);
@@ -1337,6 +1474,8 @@ export class RoomManager {
     // still adds up to the committed seat count without them.
     const departingPlayer = room.players.get(playerId);
     room.players.delete(playerId);
+    room.roomRevision++;
+    this.cancelActiveStartAttempt(room, "roster_changed");
     room.socketToPlayer.delete(socketId);
     this.socketToRoom.delete(socketId);
     this.io.sockets.sockets.get(socketId)?.leave(code);
@@ -1551,6 +1690,10 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     player.isReady = ready;
+    room.roomRevision++;
+    if (!ready) {
+      this.cancelActiveStartAttempt(room, "player_unready");
+    }
     if (room.phase === "lobby") {
       const allReady = Array.from(room.players.values()).every((p) => p.isReady || p.isHost || p.isBot);
       this.transitionLifecycle(room, allReady ? "READY_CHECK" : "WAITING_FOR_PLAYERS", "Ready state changed");
@@ -1571,6 +1714,9 @@ export class RoomManager {
     if (!room || !player) return;
     if (player.needsRotation === needsRotation) return;
     player.needsRotation = needsRotation;
+    if (needsRotation && room.activeStartAttempt && room.activeStartAttempt.status === "COLLECTING_PREFLIGHT") {
+      this.cancelActiveStartAttempt(room, "orientation_required");
+    }
     this.broadcastRoomState(room);
     // If the very first turn's clock is holding on this room's rotation
     // gate (see scheduleInitialTurnTimer) and this report just cleared the
@@ -1759,11 +1905,6 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
 
-    if (!this.economyService) {
-      this.startGame(socketId);
-      return;
-    }
-
     if (player.id !== room.hostId) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only host can start");
       return;
@@ -1782,18 +1923,170 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "All players must be ready");
       return;
     }
+    if (!playersList.filter((p) => !p.isBot && !p.isLocal).every((p) => p.isConnected)) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "All players must be connected");
+      return;
+    }
+    if (room.phase !== "lobby") return;
     if (room.economyCommitPending) return;
 
-    const eligibility = checkHostEconomyEligibility(player, playersList, false);
-    if (!eligibility.eligible) {
-      this.io.sockets.sockets.get(socketId)?.emit("room:error", eligibility.error!);
+    // Duplicate start request protection: if an attempt is currently collecting or committing, ignore
+    if (
+      room.activeStartAttempt &&
+      room.activeStartAttempt.status !== "CANCELLED" &&
+      room.activeStartAttempt.status !== "CONSUMED"
+    ) {
       return;
     }
 
+    if (this.economyService) {
+      const eligibility = checkHostEconomyEligibility(player, playersList, false);
+      if (!eligibility.eligible) {
+        this.io.sockets.sockets.get(socketId)?.emit("room:error", eligibility.error!);
+        return;
+      }
+    }
+
+    const otherHumans = playersList.filter((p) => !p.isBot && !p.isLocal && p.id !== player.id);
+    if (otherHumans.length === 0) {
+      // Solo vs bots or pass-and-play local seats: all required remote human conditions are trivially met
+      if (!this.economyService) {
+        this.startGame(socketId);
+        return;
+      }
+      const dummyAttempt: StartAttempt = {
+        id: `att_${room.code}_r${room.roomRevision}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        roomRevision: room.roomRevision,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + PREFLIGHT_TIMEOUT_MS,
+        game: room.game,
+        hostId: room.hostId,
+        hostSocketId: socketId,
+        requiredHumanPlayerIds: new Set([player.id]),
+        acknowledgements: new Map(),
+        status: "READY_TO_COMMIT",
+      };
+      room.activeStartAttempt = dummyAttempt;
+      await this.proceedFromReadyAttempt(room, dummyAttempt);
+      return;
+    }
+
+    const requiredHumans = playersList.filter((p) => !p.isBot && !p.isLocal);
+
+    // Normal multiplayer: challenge all required human participants
+    const startAttemptId = `att_${room.code}_r${room.roomRevision}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const expiresAt = Date.now() + PREFLIGHT_TIMEOUT_MS;
+    const requiredOrientation = getGameOrientationRequirement(room.game);
+
+    const attempt: StartAttempt = {
+      id: startAttemptId,
+      roomRevision: room.roomRevision,
+      createdAt: Date.now(),
+      expiresAt,
+      game: room.game,
+      hostId: room.hostId,
+      hostSocketId: socketId,
+      requiredHumanPlayerIds: new Set(requiredHumans.map((p) => p.id)),
+      acknowledgements: new Map(),
+      status: "COLLECTING_PREFLIGHT",
+    };
+    room.activeStartAttempt = attempt;
+
+    room.startAttemptTimer = setTimeout(() => {
+      if (room.activeStartAttempt?.id === startAttemptId && room.activeStartAttempt.status === "COLLECTING_PREFLIGHT") {
+        this.cancelActiveStartAttempt(room, "preflight_timeout");
+        this.io.sockets.sockets.get(socketId)?.emit("room:error", "Start timed out waiting for players to confirm readiness");
+      }
+    }, PREFLIGHT_TIMEOUT_MS);
+
+    this.io.to(room.code).emit("room:startPreflight", {
+      startAttemptId,
+      roomRevision: room.roomRevision,
+      requiredOrientation,
+      expiresAt,
+    });
+    this.broadcastRoomState(room);
+  }
+
+  async acknowledgeStart(socketId: string, payload: StartAcknowledgementPayload): Promise<void> {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    const attempt = room.activeStartAttempt;
+    if (!attempt || attempt.status !== "COLLECTING_PREFLIGHT") return;
+    if (attempt.id !== payload.startAttemptId) return;
+    if (attempt.roomRevision !== payload.roomRevision) return;
+    if (room.roomRevision !== payload.roomRevision) return;
+    if (!attempt.requiredHumanPlayerIds.has(player.id)) return;
+    if (!player.isConnected) return;
+    if (Date.now() > attempt.expiresAt) {
+      this.cancelActiveStartAttempt(room, "attempt_expired");
+      return;
+    }
+    // Fail-closed verification
+    if (payload.visible !== true || payload.orientationSatisfied !== true) {
+      this.cancelActiveStartAttempt(room, "capability_unsatisfied");
+      return;
+    }
+
+    attempt.acknowledgements.set(player.id, {
+      playerId: player.id,
+      socketId,
+      connectionGeneration: player.connectionGeneration ?? 1,
+      roomRevision: payload.roomRevision,
+      startAttemptId: payload.startAttemptId,
+      visible: true,
+      orientationSatisfied: true,
+      acknowledgedAt: Date.now(),
+    });
+
+    this.broadcastRoomState(room);
+
+    if (attempt.acknowledgements.size === attempt.requiredHumanPlayerIds.size) {
+      if (room.startAttemptTimer) {
+        clearTimeout(room.startAttemptTimer);
+        room.startAttemptTimer = null;
+      }
+      attempt.status = "READY_TO_COMMIT";
+      await this.proceedFromReadyAttempt(room, attempt);
+    }
+  }
+
+  declineStart(socketId: string, payload: { startAttemptId: string; reason: StartBlockReason }): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (room.activeStartAttempt?.id === payload.startAttemptId) {
+      this.cancelActiveStartAttempt(room, payload.reason);
+    }
+  }
+
+  reportUnavailable(socketId: string, payload: { reason: "PAGE_NOT_VISIBLE" | "ORIENTATION_REQUIRED" }): void {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (room.activeStartAttempt) {
+      this.cancelActiveStartAttempt(room, payload.reason);
+    }
+  }
+
+  private async proceedFromReadyAttempt(room: Room, attempt: StartAttempt): Promise<void> {
+    if (room.activeStartAttempt?.id !== attempt.id || attempt.status !== "READY_TO_COMMIT") return;
+
+    if (!this.economyService) {
+      attempt.status = "READY_TO_START";
+      this.executeMatchStart(room, attempt);
+      return;
+    }
+
+    const hostPlayer = room.players.get(attempt.hostId);
+    if (!hostPlayer) {
+      this.cancelActiveStartAttempt(room, "host_missing");
+      return;
+    }
+    const playersList = Array.from(room.players.values());
     const matchId = `m_${room.code}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const operationId = `op_start_${matchId}`;
     room.pendingCommitOperationId = operationId;
     room.economyCommitPending = true;
+    attempt.status = "COMMITTING_ECONOMY";
     this.transitionLifecycle(room, "STARTING", "Committing match entry");
     const humanSeatCount = playersList.filter((p) => !p.isBot).length;
     const botSeatCount = playersList.length - humanSeatCount;
@@ -1802,76 +2095,64 @@ export class RoomManager {
       const result = await this.economyService.commitMatchEntry({
         matchId,
         roomCode: room.code,
-        hostIdentityId: player.identityId!,
+        hostIdentityId: hostPlayer.identityId!,
         seatCount: playersList.length,
         humanSeatCount,
         botSeatCount,
         isSolo: playersList.length === 1,
       });
-      // The commit just performed a REAL wallet debit — verified BEFORE
-      // touching `room` or calling `startGame` at all. We re-fetch the room
-      // from the authoritative `this.rooms` map and validate that:
-      //  1. The room still exists in `this.rooms`.
-      //  2. It is the exact same room instance (not a recreated/replaced room under the same code).
-      //  3. This start operation is still the active, non-superseded one (`pendingCommitOperationId`).
-      //  4. The initiating player is still in the room and is still the host.
-      //  5. The room lifecycle is still `STARTING` and phase is still `lobby`.
-      //  6. The seated roster is the EXACT same set of participants — not just the
-      //     same count — and every one of them is still ready.
-      // If ANY of these invariants failed, the start cannot proceed safely. Because
-      // the real debit already succeeded, we immediately queue an idempotent
-      // compensating refund so the funds are never permanently stuck in COMMITTED.
+
       const freshRoom = this.rooms.get(room.code);
       const isSameInstance = freshRoom === room;
       const isOperationCurrent = freshRoom?.pendingCommitOperationId === operationId;
-      const isHostValid = freshRoom?.hostId === player.id && freshRoom?.players.get(player.id)?.isHost === true;
+      const isAttemptCurrent =
+        freshRoom?.activeStartAttempt?.id === attempt.id &&
+        freshRoom.activeStartAttempt.status === "COMMITTING_ECONOMY";
+      const isRevisionValid = freshRoom?.roomRevision === attempt.roomRevision;
+      const isHostValid = freshRoom?.hostId === attempt.hostId;
       const isLifecycleValid = freshRoom?.lifecycleState === "STARTING" && freshRoom?.phase === "lobby";
-      // Identity, not just count: a same-size swap (a committed human
-      // leaves, a bot — or anyone else — fills the vacated seat) must not
-      // read as "unchanged" just because the numbers still line up. Equal
-      // cardinality plus one-way containment (every CURRENT id was part of
-      // what was committed) is sufficient to prove the two sets are
-      // identical, since a same-size set can't be a strict subset.
       const committedPlayerIds = new Set(playersList.map((p) => p.id));
       const isRosterValid =
         freshRoom !== undefined &&
         freshRoom.players.size === committedPlayerIds.size &&
         Array.from(freshRoom.players.keys()).every((id) => committedPlayerIds.has(id)) &&
-        Array.from(freshRoom.players.values()).every((p) => p.isReady);
+        Array.from(freshRoom.players.values()).every((p) => p.isReady && (p.isBot || p.isLocal || p.isConnected));
 
-      const stillValid = isSameInstance && isOperationCurrent && isHostValid && isLifecycleValid && isRosterValid;
+      const stillValid =
+        isSameInstance &&
+        isOperationCurrent &&
+        isAttemptCurrent &&
+        isRevisionValid &&
+        isHostValid &&
+        isLifecycleValid &&
+        isRosterValid;
       if (!stillValid) {
         let reason = "invalidated";
         if (!freshRoom) reason = "room_deleted";
         else if (!isSameInstance) reason = "room_replaced";
         else if (!isOperationCurrent) reason = "operation_superseded";
+        else if (!isAttemptCurrent) reason = "attempt_invalidated";
+        else if (!isRevisionValid) reason = "revision_changed";
         else if (!isHostValid) reason = "host_changed";
-        else if (!isLifecycleValid) reason = `lifecycle_${freshRoom.lifecycleState}_phase_${freshRoom.phase}`;
+        else if (!isLifecycleValid) reason = `lifecycle_${freshRoom?.lifecycleState}_phase_${freshRoom?.phase}`;
         else if (!isRosterValid) reason = "roster_changed";
 
-        await this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestGameStart", reason);
-        // The commit succeeded but this start attempt was invalidated, so
-        // `currentMatchId` (below) is never set for it — the client-visible
-        // lock state correctly never fires. But `lifecycleState` was set to
-        // "STARTING" before the commit even resolved (see above), and
-        // nothing else on this path reverts it: without this, the lobby is
-        // left showing a "securing table" pending state indefinitely after
-        // a compensating refund, even though nothing is actually pending
-        // any more. Only reverted when the room still exists, is still the
-        // same instance, and is still sitting in the exact "STARTING" state
-        // this call put it in — never when some other operation has
-        // legitimately already moved it on.
+        await this.queueCompensatingRefundForOrphanedCommit(
+          result.settlement.matchId,
+          room.code,
+          "requestGameStart",
+          reason,
+        );
         if (freshRoom && isSameInstance && freshRoom.lifecycleState === "STARTING") {
           this.transitionLifecycle(freshRoom, "READY_CHECK", `Match commit orphaned before game start (${reason})`);
         }
+        if (freshRoom?.activeStartAttempt?.id === attempt.id) {
+          freshRoom.activeStartAttempt = null;
+        }
         return;
       }
+
       room.currentMatchId = result.settlement.matchId;
-      // A fresh commit means any previous match's terminal id is now stale
-      // — the results modal for THAT match should already be closed, and a
-      // reconnect from here on should recover THIS match once it concludes,
-      // not the old one. Real amounts for the commitment motion sequence,
-      // straight from the authoritative commit result — never guessed.
       room.lastMatchId = null;
       room.committedCostPerSeat = result.settlement.costPerSeat;
       room.committedTotalPot = result.settlement.totalCollected;
@@ -1880,10 +2161,15 @@ export class RoomManager {
       room.terminalPromise = null;
       room.terminalError = null;
       room.terminalPayload = null;
-      this.startGame(socketId);
+
+      attempt.status = "READY_TO_START";
+      this.executeMatchStart(room, attempt);
     } catch (err) {
       this.transitionLifecycle(room, "READY_CHECK", "Entry commitment failed");
-      this.io.sockets.sockets.get(socketId)?.emit("room:error", this.economyErrorMessage(err));
+      this.io.sockets.sockets.get(attempt.hostSocketId)?.emit("room:error", this.economyErrorMessage(err));
+      if (room.activeStartAttempt?.id === attempt.id) {
+        room.activeStartAttempt = null;
+      }
       logger.warn({
         message: `commitMatchEntry failed for room ${room.code}: ${err instanceof Error ? err.name : String(err)}`,
         module: "ECONOMY_ROOM",
@@ -1895,6 +2181,16 @@ export class RoomManager {
       }
       room.economyCommitPending = false;
     }
+  }
+
+  private executeMatchStart(room: Room, attempt: StartAttempt): void {
+    if (room.phase !== "lobby") return;
+    if (room.activeStartAttempt?.id !== attempt.id) return;
+    if (attempt.status !== "READY_TO_START") return;
+
+    attempt.status = "CONSUMED";
+    room.activeStartAttempt = null;
+    this.startGame(attempt.hostSocketId);
   }
 
   /**
@@ -2359,6 +2655,8 @@ export class RoomManager {
     for (const p of room.players.values()) {
       p.isHost = p.id === nextHost.id;
     }
+    room.roomRevision++;
+    this.cancelActiveStartAttempt(room, "host_migrated");
     metricsRegistry.increment("rooms.host_migrations_total");
     logger.info({
       message: `Host failover: reallocated room ${room.code} host from ${departingPlayerId} to ${nextHost.name} (${nextHost.id})`,
@@ -4124,8 +4422,10 @@ export class RoomManager {
     if (player) {
       const wasConnected = player.isConnected;
       player.isConnected = false;
+      player.connectionGeneration = (player.connectionGeneration ?? 0) + 1;
       player.awaySince = Date.now();
       player.awayUntil = Date.now() + GRACE_PERIOD_MS;
+      this.cancelActiveStartAttempt(room, "player_disconnected");
       // One recovery session, started exactly once per genuine connect ->
       // disconnect transition. `wasConnected` excludes a socket that
       // disconnects while already marked away (this handler running twice
@@ -4286,7 +4586,7 @@ export class RoomManager {
     return room ? this.toPublicState(room) : null;
   }
 
-  private lookup(socketId: string): { room: Room | null; player: Player | null } {
+  protected lookup(socketId: string): { room: Room | null; player: Player | null } {
     const code = this.socketToRoom.get(socketId);
     if (!code) return { room: null, player: null };
     const room = this.rooms.get(code);

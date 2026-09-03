@@ -8,7 +8,7 @@ import AvatarPicker from "../profile/AvatarPicker";
 import Modal from "../Modal";
 import { ProfileSkeleton } from "../../design-system/dls";
 import { useRoomStore } from "../../store/roomStore";
-import { useAuthStore } from "../../store/authStore";
+import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 import { apiFetch, usePlayerId } from "../../lib/playerIdentity";
 import { ACHIEVEMENT_CATALOG } from "@shared/profile/Achievements";
 
@@ -55,6 +55,7 @@ export interface ProfileFamilyOutletContext {
  */
 export default function ProfileFamilyLayout() {
   const isMember = useAuthStore((s) => s.isMember);
+  const identity = useIdentityPresentation();
   const { pathname } = useLocation();
 
   if (!isMember) {
@@ -106,7 +107,7 @@ export default function ProfileFamilyLayout() {
         } else {
           setProfile({
             playerId: effectivePlayerId ?? "",
-            displayName: currentName || (isMember ? "Member" : "Guest"),
+            displayName: currentName || identity.label,
             avatar: currentAvatar || undefined,
             joinedAt: Date.now() - 86400000 * 7,
             lastSeenAt: Date.now(),
@@ -134,7 +135,7 @@ export default function ProfileFamilyLayout() {
         if (!cancelled) {
           setProfile({
             playerId: effectivePlayerId ?? "",
-            displayName: currentName || (isMember ? "Member" : "Guest"),
+            displayName: currentName || identity.label,
             avatar: currentAvatar || undefined,
             joinedAt: Date.now() - 86400000 * 7,
             lastSeenAt: Date.now(),

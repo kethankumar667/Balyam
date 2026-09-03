@@ -16,7 +16,7 @@ import SelfAvatar from "../profile/SelfAvatar";
 import SeatAvatar from "../profile/SeatAvatar";
 import { useTheme } from "../../lib/useTheme";
 import { useRoomStore } from "../../store/roomStore";
-import { useAuthStore } from "../../store/authStore";
+import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { Button, Tooltip } from "../../design-system/dls";
 import { useFavourites } from "../../hooks/useFavourites";
@@ -58,6 +58,7 @@ export default function AppHeader({
   const isDark = theme === "dark";
   const { playerName, avatarId } = useRoomStore();
   const { isMember, isSuperAdmin, capabilities } = useAuthStore();
+  const identity = useIdentityPresentation();
   const { favourites } = useFavourites();
   const { recentItems } = useRecentlyPlayed();
   const { balance, isLoading: walletLoading, status: walletStatus } = useWallet();
@@ -67,7 +68,7 @@ export default function AppHeader({
       : walletLoading && walletStatus !== "loading"
         ? "syncing"
         : "synced";
-  const displayName = playerName.trim() || (isSuperAdmin ? "Super Admin" : isMember ? "Member" : "Guest");
+  const displayName = playerName.trim() || identity.label;
 
   const isGamesActive = pathname.startsWith("/games");
   const isRecentActive = pathname.startsWith("/recently-played");
@@ -252,7 +253,11 @@ export default function AppHeader({
                     <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 shadow-xs">
                       Super Admin
                     </span>
-                  ) : !isMember ? (
+                  ) : identity.isLocalFallback ? (
+                    <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-lamp-800 dark:text-lamp-300">
+                      Offline Demo Mode
+                    </span>
+                  ) : identity.mode === "guest" ? (
                     <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-lamp-800 dark:text-lamp-300">
                       Guest
                     </span>

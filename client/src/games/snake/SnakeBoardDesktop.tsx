@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { SnakeTheme } from "@shared/types";
 import SnakeCanvas from "./SnakeCanvas";
-import { RulesModal, type SnakeBoardProps } from "./SnakeBoardMobile";
+import { RulesModal, SNAKE_RULES_KEY, type SnakeBoardProps } from "./SnakeBoardMobile";
+import { useTutorialGate, markSeen } from "../../components/GameTutorial";
 import { useHaptics } from "../../hooks/useHaptics";
 import { SNAKE_THEME_CHROME, THEME_LABELS, SNAKE_THEMES } from "./snakeChrome";
 import SeatAvatar from "../../components/profile/SeatAvatar";
@@ -11,7 +12,14 @@ import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 
 export default function SnakeBoardDesktop({ state, selfId, onMove, players, messages, roomCode, roomPhase }: SnakeBoardProps) {
-  const [showRules, setShowRules] = useState(false);
+  // Auto-opens once per browser the first time this player reaches the
+  // board; manual reopen keeps working via the existing "Rules" button.
+  const rulesTut = useTutorialGate(SNAKE_RULES_KEY);
+  const showRules = rulesTut.open;
+  const closeRules = () => {
+    markSeen(SNAKE_RULES_KEY);
+    rulesTut.setOpen(false);
+  };
   const [showControls, setShowControls] = useState(false);
   const [activeTheme, setActiveTheme] = useState<SnakeTheme>(state.theme || "nokia-monochrome");
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -233,7 +241,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players, mess
                 {state.isPaused ? "▶ Resume Game" : "⏸ Pause Game"}
               </button>
               <button
-                onClick={() => setShowRules(true)}
+                onClick={() => rulesTut.setOpen(true)}
                 className={`w-full rounded-2xl py-2.5 text-xs font-extrabold uppercase tracking-wider transition ${chrome.btnSecondary}`}
               >
                 ▶ How to Play
@@ -368,7 +376,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players, mess
         </div>
       </div>
 
-      <RulesModal open={showRules} onClose={() => setShowRules(false)} />
+      <RulesModal open={showRules} onClose={closeRules} />
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );

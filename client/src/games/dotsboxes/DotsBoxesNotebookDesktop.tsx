@@ -20,6 +20,8 @@ import DotsBoxesScorecardModal from "./DotsBoxesScorecardModal";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { useTutorialGate, markSeen } from "../../components/GameTutorial";
+import { DOTSBOXES_TUTORIAL } from "../tutorials";
 import { LogOut, RotateCcw, Volume2, VolumeX, HelpCircle, Trophy } from "lucide-react";
 import { getSocket } from "../../lib/socket";
 
@@ -54,7 +56,14 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
     comboBanner,
   } = useDotsBoxesBoard(props);
 
-  const [showHelp, setShowHelp] = useState(false);
+  // Auto-opens once per browser on first reaching the board — see the
+  // matching comment in DotsBoxesBoardMobile.tsx.
+  const helpTut = useTutorialGate(DOTSBOXES_TUTORIAL.key, !myTurn || secondsLeft == null);
+  const showHelp = helpTut.open;
+  const closeHelp = () => {
+    markSeen(DOTSBOXES_TUTORIAL.key);
+    helpTut.setOpen(false);
+  };
   const [showSettings, setShowSettings] = useState(false);
   const [chatInput, setChatInput] = useState("");
 
@@ -157,7 +166,7 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
 
               <button
                 type="button"
-                onClick={() => setShowHelp(true)}
+                onClick={() => helpTut.setOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border-2 border-stone-300 bg-white/90 text-xs font-bold text-stone-700 hover:text-stone-950 transition-all cursor-pointer shadow-xs"
               >
                 <HelpCircle className="w-4 h-4 text-stone-600" />
@@ -503,7 +512,7 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
       {showHelp && (
         <Modal
           open={showHelp}
-          onClose={() => setShowHelp(false)}
+          onClose={closeHelp}
           ariaLabel="How to Play Dots & Boxes"
           panelClassName="w-full max-w-lg bg-[#FCF8EE] rounded-3xl border-2 border-[#D7C9B1] shadow-2xl overflow-hidden p-6 text-stone-900 font-['Patrick_Hand',cursive]"
         >
@@ -514,7 +523,7 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
               </h3>
               <button
                 type="button"
-                onClick={() => setShowHelp(false)}
+                onClick={closeHelp}
                 className="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold flex items-center justify-center cursor-pointer"
               >
                 ✕

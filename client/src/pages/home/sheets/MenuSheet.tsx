@@ -15,7 +15,7 @@ import {
 import BhalyamLogo from "../../../components/bhalyam/BhalyamLogo";
 import { useTheme } from "../../../lib/useTheme";
 import GlobalSettings from "../../../components/GlobalSettings";
-import { useAuthStore } from "../../../store/authStore";
+import { useAuthStore, useIdentityPresentation } from "../../../store/authStore";
 import { SheetShell, SheetAction } from "./SheetShell";
 
 /**
@@ -34,7 +34,14 @@ export function MenuSheet({
   const navigate = useNavigate();
   const [theme, toggleTheme] = useTheme();
   const [showSettings, setShowSettings] = useState(false);
-  const isMember = useAuthStore((s) => s.isMember);
+  const identity = useIdentityPresentation();
+  // "Has some kind of signed-in identity, so Sign out is the right action" —
+  // true for a verified member AND for local fallback (a local-flag "member"
+  // with no verified backend session), false only for a genuine guest.
+  // `isMember` alone used to gate this; narrowing it to "verified member
+  // only" (for capability/wallet purposes) silently sent a local-fallback
+  // session to "Sign in" here, with no way to find "Sign out" at all.
+  const signedIn = identity.mode !== "guest";
   const email = useAuthStore((s) => s.email);
   const signOut = useAuthStore((s) => s.signOut);
 
@@ -117,7 +124,7 @@ export function MenuSheet({
           icon={<Info className="w-5 h-5" />}
         />
 
-        {isMember ? (
+        {signedIn ? (
           <SheetAction
             label="Sign out / Log out"
             hint={email ? `Signed in as ${email}` : "Log out from this device"}

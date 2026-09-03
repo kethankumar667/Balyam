@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { logger } from "../lib/logger.js";
 
 /**
  * An identity for someone who has not signed up.
@@ -70,6 +71,39 @@ export function guestTokenDurability(): { durable: boolean; reason: string } {
           "SESSION_SECRET is not set, so guest tokens are signed with a per-process key. " +
           "Every restart signs guests out and orphans whatever they had accumulated.",
       };
+}
+
+function isProduction(): boolean {
+  return (process.env.NODE_ENV ?? "").trim().toLowerCase() === "production";
+}
+
+/**
+ * Refuse to boot a production process with no stable guest-signing key.
+ *
+ * Mirrors `security/operationalAuth.ts`'s `assertOperationalAuthConfigured()`
+ * and `economy/voucherCrypto.ts`'s `assertVoucherHmacConfigured()`: an
+ * ephemeral key is the normal, harmless default in development (see
+ * `signingKey()` above) and a silent economy-integrity defect in production —
+ * every outstanding guest wallet becomes permanently unreachable across the
+ * very next restart or redeploy, with no error surfaced anywhere except a log
+ * line nobody is paged on, and the player simply finds themselves starting
+ * over with a fresh starter grant. Warns everywhere else; throws only when
+ * `NODE_ENV=production`, so a process that cannot protect outstanding guest
+ * progress never starts accepting traffic. Reports only
+ * `guestTokenDurability()`'s safe boolean/reason pair — never the secret, a
+ * hash of it, or any part of it, whether present or absent.
+ */
+export function assertGuestTokenDurabilityConfigured(): void {
+  const { durable, reason } = guestTokenDurability();
+  if (durable) return;
+
+  if (!isProduction()) {
+    logger.warn({ message: reason, module: "AUTH" });
+    return;
+  }
+
+  logger.error({ message: `Refusing to start in production: ${reason}`, module: "AUTH" });
+  throw new Error(`Refusing to start in production: ${reason}`);
 }
 
 export interface GuestClaims {

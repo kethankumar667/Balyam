@@ -27,6 +27,8 @@ services:
         sync: false # Required in production — server refuses to boot without it. Generate fresh per deployment, never reuse the local dev placeholder.
       - key: SESSION_SECRET
         sync: false # Signs guest tokens. Without it, a restart signs every guest out and orphans their progression.
+      - key: VOUCHER_HMAC_SECRET
+        sync: false # Hashes Economy V1 voucher codes. Must remain stable across restarts and deploys so outstanding vouchers stay redeemable.
 
   # ── BHALYAM Frontend (React 18 + Vite SPA) ─────────────────────────────────
   - type: web
@@ -94,6 +96,72 @@ services:
       - type: rewrite
         source: /breakout
         destination: /breakout/index.html
+      - type: rewrite
+        source: /how-to-play
+        destination: /how-to-play/index.html
+      - type: rewrite
+        source: /support
+        destination: /support/index.html
+      - type: rewrite
+        source: /contact
+        destination: /contact/index.html
+      - type: rewrite
+        source: /terms
+        destination: /terms/index.html
+      - type: rewrite
+        source: /safety
+        destination: /safety/index.html
+      - type: rewrite
+        source: /community-rules
+        destination: /community-rules/index.html
+      - type: rewrite
+        source: /leaderboard
+        destination: /leaderboard/index.html
+      - type: rewrite
+        source: /tournaments
+        destination: /tournaments/index.html
+      - type: rewrite
+        source: /social
+        destination: /social/index.html
+      - type: rewrite
+        source: /favorites
+        destination: /favorites/index.html
+      - type: rewrite
+        source: /recently-played
+        destination: /recently-played/index.html
+      - type: rewrite
+        source: /design-system
+        destination: /design-system/index.html
+      - type: rewrite
+        source: /cricket2d
+        destination: /cricket2d/index.html
+      - type: rewrite
+        source: /nokiasnake
+        destination: /nokiasnake/index.html
+      - type: rewrite
+        source: /snake2d
+        destination: /snake2d/index.html
+      - type: rewrite
+        source: /roadrash
+        destination: /roadrash/index.html
+      - type: rewrite
+        source: /racer
+        destination: /racer/index.html
+      - type: rewrite
+        source: /bricktetris
+        destination: /bricktetris/index.html
+      - type: rewrite
+        source: /pentix
+        destination: /pentix/index.html
+      - type: rewrite
+        source: /brickbreakout
+        destination: /brickbreakout/index.html
+      - type: rewrite
+        source: /brick-breakout
+        destination: /brick-breakout/index.html
+      - type: rewrite
+        source: /blockbreakout
+        destination: /blockbreakout/index.html
 
       # Single Page Application (SPA) catch-all rewrite for deep links &
       # refreshes. Everything dynamic lands here — /room/:code, /tv/:code,
@@ -121,3 +189,5 @@ services:
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
+      - key: VITE_PRIVACY_CONTACT_EMAIL
+        sync: false # Set to monitored privacy/grievance inbox (e.g. privacy@bhalyam.com)

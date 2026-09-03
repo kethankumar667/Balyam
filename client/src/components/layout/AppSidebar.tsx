@@ -4,7 +4,7 @@ import { ChevronLeft, X, Sun, Moon, Lock } from "lucide-react";
 import { useNavigation } from "../../navigation/useNavigation";
 import type { NavBadge, ResolvedNavigationItem } from "../../navigation/types";
 import { useRoomStore } from "../../store/roomStore";
-import { useAuthStore } from "../../store/authStore";
+import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 import SeatAvatar from "../profile/SeatAvatar";
 import { Tooltip } from "../../design-system/dls";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
@@ -60,8 +60,8 @@ export default function AppSidebar({
   });
 
   const { playerName, avatarId } = useRoomStore();
-  const isMember = useAuthStore((s) => s.isMember);
-  const currentDisplayName = playerName.trim() || (isMember ? "Member" : "Guest");
+  const identity = useIdentityPresentation();
+  const currentDisplayName = playerName.trim() || identity.label;
   const [theme, toggleTheme] = useTheme();
   const isDark = theme === "dark";
 

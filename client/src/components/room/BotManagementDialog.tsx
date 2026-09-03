@@ -145,7 +145,7 @@ export default function BotManagementDialog({
                     onClick={() => setDifficulty(d)}
                     aria-pressed={difficulty === d}
                     aria-label={`Select ${d} difficulty`}
-                    className={`min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold capitalize border transition flex items-center justify-center gap-1 cursor-pointer ${
+                    className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold capitalize border transition flex items-center justify-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:scale-95 ${
                       difficulty === d
                         ? "bg-[#EA5A1F] border-[#EA5A1F] text-white shadow-xs"
                         : "bg-white dark:bg-slate-800 border-[#EEDBCA] dark:border-slate-700 text-[#796651] dark:text-slate-300 hover:bg-[#FFF9EE] dark:hover:bg-slate-700/60"

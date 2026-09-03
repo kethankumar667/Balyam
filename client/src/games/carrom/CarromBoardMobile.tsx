@@ -19,6 +19,10 @@ import CarromSkinModal from "./CarromSkinModal";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { useTutorialGate, markSeen } from "../../components/GameTutorial";
+
+/** Same "seen" bookkeeping convention as every other game's tutorial gate. */
+const CARROM_RULES_KEY = "carrom.tutorial.completed.v1";
 
 export default function CarromBoardMobile({
   state,
@@ -33,7 +37,6 @@ export default function CarromBoardMobile({
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [showSkins, setShowSkins] = useState(false);
-  const [showRules, setShowRules] = useState(false);
   const [unread, setUnread] = useState(0);
   const [localStriker, setLocalStriker] = useState<StrikerSkin>(state.strikerSkin ?? "pearl");
   const [localFelt, setLocalFelt] = useState<BoardFeltSkin>(state.boardSkin ?? "birch");
@@ -42,6 +45,16 @@ export default function CarromBoardMobile({
   const isFlipped = selfSeatIndex === 1;
 
   const myTurn = state.turnPlayerId === selfId && state.phase === "aiming";
+  // Auto-opens once per browser the first time this player reaches the
+  // board (desktop keeps the same rules permanently visible in a column —
+  // see carrom-shared.tsx — so only the mobile popover needed this gate).
+  // Never over a live aiming turn, matching the other games' tutorial gates.
+  const rulesTut = useTutorialGate(CARROM_RULES_KEY, !myTurn);
+  const showRules = rulesTut.open;
+  const closeRules = () => {
+    markSeen(CARROM_RULES_KEY);
+    rulesTut.setOpen(false);
+  };
   const striker = state.pieces.find((p) => p.kind === "striker");
 
   const nameOf = useMemo(() => {
@@ -122,7 +135,7 @@ export default function CarromBoardMobile({
         modeLabel={modeLabel}
         onOpenSkins={() => setShowSkins(true)}
         onLeave={onLeave}
-        onToggleRules={() => setShowRules((v) => !v)}
+        onToggleRules={() => (showRules ? closeRules() : rulesTut.setOpen(true))}
         rulesOpen={showRules}
       />
 
@@ -135,7 +148,7 @@ export default function CarromBoardMobile({
           <CarromRulesList />
           <button
             type="button"
-            onClick={() => setShowRules(false)}
+            onClick={closeRules}
             className="text-[10px] font-bold uppercase px-2 py-1 rounded mt-2 cursor-pointer"
             style={{ background: "#F0DFB8", border: "1px solid #E8D5B5", color: "#6D4323" }}
           >

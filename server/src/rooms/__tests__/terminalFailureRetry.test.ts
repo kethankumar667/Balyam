@@ -1,8 +1,33 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
 import type { Server } from "socket.io";
 import { RoomManager, type Room } from "../RoomManager.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
+
+const origRequestGameStart = RoomManager.prototype.requestGameStart;
+beforeAll(() => {
+  RoomManager.prototype.requestGameStart = async function (socketId: string) {
+    const res = await origRequestGameStart.call(this, socketId);
+    const { room } = (this as any).lookup(socketId);
+    if (room?.activeStartAttempt && room.activeStartAttempt.status === "COLLECTING_PREFLIGHT") {
+      const attempt = room.activeStartAttempt;
+      for (const [sId, pId] of room.socketToPlayer.entries()) {
+        if (attempt.requiredHumanPlayerIds.has(pId)) {
+          await this.acknowledgeStart(sId, {
+            startAttemptId: attempt.id,
+            roomRevision: attempt.roomRevision,
+            visible: true,
+            orientationSatisfied: true,
+          });
+        }
+      }
+    }
+    return res;
+  };
+});
+afterAll(() => {
+  RoomManager.prototype.requestGameStart = origRequestGameStart;
+});
 import {
   type EconomyRepository,
   type IntentUpdateResult,
