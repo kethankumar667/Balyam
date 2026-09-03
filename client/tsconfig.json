@@ -23,6 +23,6 @@
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src", "../shared"],
+  "include": ["src", "../shared", "e2e"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
