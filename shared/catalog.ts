@@ -43,6 +43,36 @@ export function getGameLimits(kind: GameKind): GameLimitSpec {
   return GAME_LIMITS[kind] ?? { min: 2, max: 4 };
 }
 
+export interface GameStartRequirements {
+  requiresOrientation: "landscape" | "portrait" | null;
+  orientationPromptTiers: readonly ("mobile" | "tablet" | "desktop")[];
+}
+
+export const GAME_START_REQUIREMENTS: Record<GameKind, GameStartRequirements> = {
+  rummy: { requiresOrientation: "landscape", orientationPromptTiers: ["mobile"] },
+  uno: { requiresOrientation: "landscape", orientationPromptTiers: ["mobile"] },
+  rps: { requiresOrientation: null, orientationPromptTiers: [] },
+  ludo: { requiresOrientation: null, orientationPromptTiers: [] },
+  snl: { requiresOrientation: null, orientationPromptTiers: [] },
+  handcricket: { requiresOrientation: null, orientationPromptTiers: [] },
+  wordbuilding: { requiresOrientation: null, orientationPromptTiers: [] },
+  dotsboxes: { requiresOrientation: null, orientationPromptTiers: [] },
+  stargame: { requiresOrientation: null, orientationPromptTiers: [] },
+  bingo: { requiresOrientation: null, orientationPromptTiers: [] },
+  namesplaceanimal: { requiresOrientation: null, orientationPromptTiers: [] },
+  tambola: { requiresOrientation: null, orientationPromptTiers: [] },
+  snake: { requiresOrientation: null, orientationPromptTiers: [] },
+  carrom: { requiresOrientation: null, orientationPromptTiers: [] },
+  chess: { requiresOrientation: null, orientationPromptTiers: [] },
+  blockblast: { requiresOrientation: null, orientationPromptTiers: [] },
+  spacewar: { requiresOrientation: null, orientationPromptTiers: [] },
+  roadrash: { requiresOrientation: null, orientationPromptTiers: [] },
+};
+
+export function getGameOrientationRequirement(game: GameKind): "landscape" | "portrait" | null {
+  return GAME_START_REQUIREMENTS[game]?.requiresOrientation ?? null;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
  * Game Taxonomy & Catalogue Types
  * ───────────────────────────────────────────────────────────────────────── */

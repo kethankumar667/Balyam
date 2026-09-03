@@ -38,6 +38,7 @@ import CompactColorSelector from "../components/room/CompactColorSelector";
 import LobbyActionBar from "../components/room/LobbyActionBar";
 import CommunicationPanel from "../components/room/CommunicationPanel";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
+import { usePlayerCapability } from "../hooks/usePlayerCapability";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
 import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
 import FallingPetals from "../animations/app/FallingPetals";
@@ -713,6 +714,27 @@ export default function Room() {
   );
 
   const viewModel = useRoomViewModel(roomState, playerId);
+
+  /**
+   * Client-side preflight responder for the server-authoritative match-start
+   * safety protocol. Listens for `room:startPreflight`, checks visibility and
+   * orientation, and emits the appropriate ack/decline. Also monitors
+   * `visibilitychange` and resize events in the lobby to cancel in-flight
+   * start attempts early rather than waiting for the 5-second timeout.
+   *
+   * Must be mounted for every seat (host and non-host) because the continuous
+   * unavailability monitor applies to all humans, while the preflight ack is
+   * only requested of non-host participants. The hook handles the distinction
+   * internally by only emitting acks in response to server events, which the
+   * server only sends to the non-host participants.
+   */
+  usePlayerCapability({
+    roomCode: code,
+    playerId,
+    game: roomState?.game,
+    phase: roomState?.phase,
+    roomRevision: roomState?.roomRevision,
+  });
 
   /**
    * "I'm back" — reclaim your seat the moment you touch anything.

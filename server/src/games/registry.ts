@@ -59,5 +59,5 @@ export function createEngine(kind: GameKind): GameEngine {
   }
 }
 
-import { getGameLimits } from "@shared/catalog.js";
-export { getGameLimits };
+import { getGameLimits, getGameOrientationRequirement } from "@shared/catalog.js";
+export { getGameLimits, getGameOrientationRequirement };

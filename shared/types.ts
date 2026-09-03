@@ -13,6 +13,8 @@ export interface Player {
   isHost: boolean;
   isReady: boolean;
   isConnected: boolean;
+  /** Monotonically increasing socket connection generation for this seat. Fences out stale sockets. */
+  connectionGeneration?: number;
   awayUntil?: number;
   /** Wall-clock ms at which this seat lost its socket. Absent while connected. */
   awaySince?: number;
@@ -148,6 +150,46 @@ export type RoomLifecycleState =
   | "ABANDONED"
   | "CLOSED";
 
+export type StartBlockReason =
+  | "NOT_READY"
+  | "DISCONNECTED"
+  | "RECOVERING"
+  | "PAGE_NOT_VISIBLE"
+  | "ORIENTATION_REQUIRED"
+  | "REVISION_OUTDATED"
+  | "ACKNOWLEDGEMENT_MISSING"
+  | "ACKNOWLEDGEMENT_EXPIRED";
+
+export interface StartPreflightPayload {
+  startAttemptId: string;
+  roomRevision: number;
+  requiredOrientation: "landscape" | "portrait" | null;
+  expiresAt: number;
+}
+
+export interface StartAcknowledgementPayload {
+  startAttemptId: string;
+  roomRevision: number;
+  visible: true;
+  orientationSatisfied: true;
+}
+
+export interface PlayerStartReadiness {
+  playerId: string;
+  name: string;
+  isHost: boolean;
+  isReady: boolean;
+  isConnected: boolean;
+  blockers: readonly StartBlockReason[];
+}
+
+export interface RoomStartReadiness {
+  startAttemptId: string | null;
+  canStart: boolean;
+  requiredOrientation: "landscape" | "portrait" | null;
+  participants: readonly PlayerStartReadiness[];
+}
+
 export interface RoomPublicState {
   /** Screens attached to this room (Smart TV / Party Mode). */
   spectatorCount?: number;
@@ -156,6 +198,10 @@ export interface RoomPublicState {
   phase: RoomPhase;
   /** Explicit deterministic lifecycle state */
   lifecycleState?: RoomLifecycleState;
+  /** Monotonically increasing room revision counter */
+  roomRevision?: number;
+  /** Authoritative derived start readiness */
+  startReadiness?: RoomStartReadiness;
   players: Player[];
   hostId: string;
   maxPlayers: number;
@@ -2707,6 +2753,10 @@ export interface ServerToClientEvents {
   "room:cursor": (payload: CursorRecvPayload) => void;
   /** Broadcasted whenever rematch state changes for the room. */
   "rematch:state": (state: RematchState) => void;
+  /** Broadcasted to challenge required participants before match start. */
+  "room:startPreflight": (payload: StartPreflightPayload) => void;
+  /** Broadcasted when an in-flight start attempt is cancelled or times out. */
+  "room:startCancelled": (payload: { startAttemptId: string; reason: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -2773,6 +2823,12 @@ export interface ClientToServerEvents {
    */
   "room:awake": () => void;
   "room:startGame": () => void;
+  /** Client acknowledgement for an active start preflight challenge. */
+  "room:acknowledgeStart": (payload: StartAcknowledgementPayload) => void;
+  /** Client decline or block for an active start preflight challenge. */
+  "room:declineStart": (payload: { startAttemptId: string; reason: StartBlockReason }) => void;
+  /** Sent when visibility or orientation becomes invalid while in lobby or starting. */
+  "room:reportUnavailable": (payload: { reason: "PAGE_NOT_VISIBLE" | "ORIENTATION_REQUIRED" }) => void;
   "chat:send": (payload: ChatSendPayload) => void;
   "game:move": (payload: GameMovePayload) => void;
   "webrtc:signal": (payload: WebRTCSignalSendPayload) => void;

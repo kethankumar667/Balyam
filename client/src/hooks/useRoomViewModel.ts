@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { GameKind, Player, RoomPublicState } from "@shared/types";
+import type { GameKind, Player, RoomPublicState, StartBlockReason } from "@shared/types";
 import { GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
 
 export const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = Object.fromEntries(
@@ -89,6 +89,7 @@ export function computeRoomViewModel(
   const canStartGame =
     selfIsHost && roomState.phase === "lobby" && allReady;
 
+
   let startGameDisabledReason: string | null = null;
   if (!selfIsHost) {
     startGameDisabledReason = "Waiting for host to start";
@@ -100,6 +101,41 @@ export function computeRoomViewModel(
     startGameDisabledReason = `Waiting for ${unreadyPlayersCount} player${
       unreadyPlayersCount > 1 ? "s" : ""
     } to be ready`;
+  } else if (roomState.startReadiness && !roomState.startReadiness.canStart) {
+    // Server has an active start attempt in progress — surface the most
+    // informative blocker reason across all participants so the host can act.
+    // Priority (most severe → least): disconnected, recovering, not visible,
+    // orientation required, ack missing/expired, revision outdated.
+    const allBlockers = roomState.startReadiness.participants.flatMap(
+      (p) => p.blockers as StartBlockReason[],
+    );
+    const BLOCKER_PRIORITY: readonly StartBlockReason[] = [
+      "DISCONNECTED",
+      "RECOVERING",
+      "PAGE_NOT_VISIBLE",
+      "ORIENTATION_REQUIRED",
+      "ACKNOWLEDGEMENT_MISSING",
+      "ACKNOWLEDGEMENT_EXPIRED",
+      "NOT_READY",
+      "REVISION_OUTDATED",
+    ];
+    const dominantBlocker = BLOCKER_PRIORITY.find((b) => allBlockers.includes(b));
+    if (dominantBlocker === "DISCONNECTED") {
+      startGameDisabledReason = "A player has disconnected — waiting for them to reconnect";
+    } else if (dominantBlocker === "RECOVERING") {
+      startGameDisabledReason = "A player is reconnecting — please wait";
+    } else if (dominantBlocker === "PAGE_NOT_VISIBLE") {
+      startGameDisabledReason = "Waiting for all players to return to the game";
+    } else if (dominantBlocker === "ORIENTATION_REQUIRED") {
+      startGameDisabledReason = "A player still needs to rotate their device";
+    } else if (
+      dominantBlocker === "ACKNOWLEDGEMENT_MISSING" ||
+      dominantBlocker === "ACKNOWLEDGEMENT_EXPIRED"
+    ) {
+      startGameDisabledReason = "Waiting for all players to confirm readiness";
+    } else {
+      startGameDisabledReason = "Waiting for all players to be ready";
+    }
   }
 
   const noBotSupport = NO_BOT_GAMES.has(game);

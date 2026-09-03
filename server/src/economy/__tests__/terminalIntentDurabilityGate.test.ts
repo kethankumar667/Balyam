@@ -1,8 +1,33 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import type { Server } from "socket.io";
 import { RoomManager, type Room } from "../../rooms/RoomManager.js";
 import { EconomyService } from "../EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
+
+const origRequestGameStart = RoomManager.prototype.requestGameStart;
+beforeAll(() => {
+  RoomManager.prototype.requestGameStart = async function (socketId: string) {
+    const res = await origRequestGameStart.call(this, socketId);
+    const { room } = (this as any).lookup(socketId);
+    if (room?.activeStartAttempt && room.activeStartAttempt.status === "COLLECTING_PREFLIGHT") {
+      const attempt = room.activeStartAttempt;
+      for (const [sId, pId] of room.socketToPlayer.entries()) {
+        if (attempt.requiredHumanPlayerIds.has(pId)) {
+          await this.acknowledgeStart(sId, {
+            startAttemptId: attempt.id,
+            roomRevision: attempt.roomRevision,
+            visible: true,
+            orientationSatisfied: true,
+          });
+        }
+      }
+    }
+    return res;
+  };
+});
+afterAll(() => {
+  RoomManager.prototype.requestGameStart = origRequestGameStart;
+});
 import { DurableSettlementWorker } from "../DurableSettlementWorker.js";
 import type {
   AccountKind,
@@ -442,7 +467,8 @@ describe("Phase 06.1B: Durability-Gated Terminal Intent Persistence", () => {
     let turn = 0;
     Math.random = () => (turn++ % 2 === 0 ? 0.05 : 0.75); // rock vs scissors -> decisive wins
     try {
-      while (!room.engine?.isOver()) {
+      let loopCount = 0;
+      while (room.engine && !room.engine.isOver() && loopCount++ < 50) {
         await (rooms as any).onTurnTimeout(room);
       }
     } finally {

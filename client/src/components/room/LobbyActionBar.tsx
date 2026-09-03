@@ -142,7 +142,12 @@ export default function LobbyActionBar({
       </div>
 
       {isHost && !canStart && (
-        <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium text-center bg-[#FFF4E0]/50 dark:bg-slate-800/40 border border-[#EEDBCA]/60 dark:border-slate-700/60 rounded-xl p-2">
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium text-center bg-[#FFF4E0]/50 dark:bg-slate-800/40 border border-[#EEDBCA]/60 dark:border-slate-700/60 rounded-xl p-2"
+        >
           {startGameDisabledReason}
         </p>
       )}

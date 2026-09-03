@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
 import type { Server } from "socket.io";
 import { RoomManager, type Room } from "../RoomManager.js";
 import { EconomyService } from "../../economy/EconomyService.js";
@@ -6,6 +6,31 @@ import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepo
 import { MatchAlreadyForfeitedError } from "../../persistence/EconomyRepository.js";
 import { metricsCollector } from "../../observability/MetricsCollector.js";
 import type { AccountKind, ClientToServerEvents, GameKind, ServerToClientEvents } from "@shared/types.js";
+
+const origRequestGameStart = RoomManager.prototype.requestGameStart;
+beforeAll(() => {
+  RoomManager.prototype.requestGameStart = async function (socketId: string) {
+    const res = await origRequestGameStart.call(this, socketId);
+    const { room } = this.lookup(socketId);
+    if (room?.activeStartAttempt && room.activeStartAttempt.status === "COLLECTING_PREFLIGHT") {
+      const attempt = room.activeStartAttempt;
+      for (const [sId, pId] of room.socketToPlayer.entries()) {
+        if (attempt.requiredHumanPlayerIds.has(pId)) {
+          await this.acknowledgeStart(sId, {
+            startAttemptId: attempt.id,
+            roomRevision: attempt.roomRevision,
+            visible: true,
+            orientationSatisfied: true,
+          });
+        }
+      }
+    }
+    return res;
+  };
+});
+afterAll(() => {
+  RoomManager.prototype.requestGameStart = origRequestGameStart;
+});
 
 /**
  * BHALYAM Economy V1 Phase 7 — RoomManager integration, end to end.
