@@ -93,7 +93,7 @@ export function computeRoomViewModel(
 
   const hasEnoughPlayers = totalPlayersCount >= minPlayersNeeded;
   const allReady = hasEnoughPlayers && players.every((p) => p.isReady);
-  const isSeatCountSupported = isEconomySupportedSeatCount(totalPlayersCount);
+  const isSeatCountSupported = isEconomySupportedSeatCount(totalPlayersCount, game);
   const canStartGame =
     selfIsHost && roomState.phase === "lobby" && allReady && isSeatCountSupported;
 
@@ -105,8 +105,8 @@ export function computeRoomViewModel(
       minPlayersNeeded > 1 ? "s" : ""
     } to start`;
   } else if (!isSeatCountSupported) {
-    const excess = totalPlayersCount - ECONOMY_MAX_APPROVED_SEAT_COUNT;
-    startGameDisabledReason = `Table size exceeds economy capacity (max ${ECONOMY_MAX_APPROVED_SEAT_COUNT} seats). Remove ${excess} player${excess > 1 ? "s" : ""} to start.`;
+    const excess = totalPlayersCount - maxPlayers;
+    startGameDisabledReason = `Table size exceeds maximum capacity (max ${maxPlayers} seats). Remove ${excess} player${excess > 1 ? "s" : ""} to start.`;
   } else if (!allReady) {
     startGameDisabledReason = `Waiting for ${unreadyPlayersCount} player${
       unreadyPlayersCount > 1 ? "s" : ""

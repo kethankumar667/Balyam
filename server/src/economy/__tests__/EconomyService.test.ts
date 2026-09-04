@@ -267,7 +267,7 @@ describe("EconomyService — quoteMatchCheckout", () => {
   it("a structurally valid but economy-unsupported seat count (P0 fix: catalog games above 5 seats) is rejected via the real schedule lookup, never a hardcoded upper bound", async () => {
     const repo = freshRepo();
     const service = freshService(repo);
-    const scheduleSpy = vi.spyOn(repo, "getPrizeSchedule");
+    const scheduleSpy = vi.spyOn(repo, "getPrizeSchedule").mockResolvedValue(null);
     // 7 is well within the catalog's own largest maximum (Tambola, 12) —
     // structurally this is a perfectly normal seat count. It must reach
     // the real schedule lookup and be rejected ONLY because no schedule

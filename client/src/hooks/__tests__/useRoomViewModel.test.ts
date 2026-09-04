@@ -135,7 +135,7 @@ describe("computeRoomViewModel Characterization Suite", () => {
     expect(vm.colorPickerKind).toBe("dotsboxes");
   });
 
-  it("disables game start for unsupported seat counts (>5 players) with clear corrective reason", () => {
+  it("permits game start for 6-seat Ludo table (within 8-player max) when all ready", () => {
     const mockRoomState: RoomPublicState = {
       code: "LUDO06",
       name: "6-Seat Ludo",
@@ -163,10 +163,46 @@ describe("computeRoomViewModel Characterization Suite", () => {
     const vm = computeRoomViewModel(mockRoomState, "p_1");
     expect(vm.allReady).toBe(true);
     expect(vm.totalPlayersCount).toBe(6);
+    expect(vm.isSeatCountSupported).toBe(true);
+    expect(vm.canStartGame).toBe(true);
+    expect(vm.startGameDisabledReason).toBeNull();
+  });
+
+  it("disables game start when player count exceeds catalog max capacity with clear corrective reason", () => {
+    const mockRoomState: RoomPublicState = {
+      code: "LUDO09",
+      name: "9-Seat Ludo",
+      game: "ludo",
+      phase: "lobby",
+      hostId: "p_1",
+      sealed: false,
+      players: [
+        { id: "p_1", name: "Player 1", isHost: true, isReady: true, isConnected: true },
+        { id: "p_2", name: "Player 2", isHost: false, isReady: true, isConnected: true },
+        { id: "p_3", name: "Player 3", isHost: false, isReady: true, isConnected: true },
+        { id: "p_4", name: "Player 4", isHost: false, isReady: true, isConnected: true },
+        { id: "p_5", name: "Player 5", isHost: false, isReady: true, isConnected: true },
+        { id: "p_6", name: "Player 6", isHost: false, isReady: true, isConnected: true },
+        { id: "p_7", name: "Player 7", isHost: false, isReady: true, isConnected: true },
+        { id: "p_8", name: "Player 8", isHost: false, isReady: true, isConnected: true },
+        { id: "p_9", name: "Player 9", isHost: false, isReady: true, isConnected: true },
+      ],
+      history: [],
+      champion: null,
+      unoHistory: [],
+      unoChampion: null,
+      bingoHistory: [],
+      ludoHistory: [],
+      maxPlayers: 8,
+    };
+
+    const vm = computeRoomViewModel(mockRoomState, "p_1");
+    expect(vm.allReady).toBe(true);
+    expect(vm.totalPlayersCount).toBe(9);
     expect(vm.isSeatCountSupported).toBe(false);
     expect(vm.canStartGame).toBe(false);
     expect(vm.startGameDisabledReason).toBe(
-      "Table size exceeds economy capacity (max 5 seats). Remove 1 player to start."
+      "Table size exceeds maximum capacity (max 8 seats). Remove 1 player to start."
     );
   });
 

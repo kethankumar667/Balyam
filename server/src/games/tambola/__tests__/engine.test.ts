@@ -133,4 +133,14 @@ describe("TambolaEngine", () => {
     const pubPlaying = engine.getPublicState();
     expect(pubPlaying.calledNumbers.length).toBeGreaterThan(1);
   });
+
+  it("accepts up to 12 players and rejects 13 players", () => {
+    const engine = new TambolaEngine();
+    const twelvePlayers = mockPlayers(12);
+    expect(() => engine.init(twelvePlayers)).not.toThrow();
+    expect(engine.getPublicState().players.length).toBe(12);
+
+    const thirteenPlayers = mockPlayers(13);
+    expect(() => engine.init(thirteenPlayers)).toThrow(/Tambola requires 1-12 players/);
+  });
 });

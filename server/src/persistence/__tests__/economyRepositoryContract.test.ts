@@ -24,6 +24,7 @@ import {
   VoucherNotFoundError,
   WalletFrozenError,
   WalletNotFoundError,
+  type EconomyPrizeScheduleRecord,
   type EconomyRepository,
   type ParticipantIdentityKind,
   type PlayerIdentityKind,
@@ -68,6 +69,8 @@ interface SuiteContext {
   setFrozen(identityId: string, isFrozen: boolean): void;
   /** Seeds identity + a wallet row with `starterGranted: false, balance: "0"` — the ONLY way to exercise `grantStarterCoins`'s own first-call success path directly, since `ensureWallet` always grants automatically. */
   seedUngrantedWallet(identityId: string, kind: PlayerIdentityKind): void;
+  removePrizeSchedule(seatCount: number): void;
+  seedPrizeSchedule(schedule: EconomyPrizeScheduleRecord): void;
 }
 
 function freshId(prefix: string): string {
@@ -419,15 +422,23 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         const host = freshId("guest");
         ctx.seedIdentity(host, "guest");
         await ctx.repo.ensureWallet(host);
-        // 7 is well within the catalog's own largest maximum (Tambola, 12)
-        // — structurally ordinary. It has no approved economy schedule
-        // yet, which is the ONLY reason this must be rejected.
-        await expect(
-          ctx.repo.commitMatchEntry({
-            matchId: freshId("m"), roomCode: null, hostIdentityId: host,
-            seatCount: 7, humanSeatCount: 7, botSeatCount: 0, isSolo: false,
-          }),
-        ).rejects.toBeInstanceOf(UnsupportedSeatCountError);
+        const originalSchedule = await ctx.repo.getPrizeSchedule(7);
+        ctx.removePrizeSchedule(7);
+        try {
+          // 7 is well within the catalog's own largest maximum (Tambola, 12)
+          // — structurally ordinary. When no schedule is configured for it,
+          // it must be rejected via the real schedule lookup.
+          await expect(
+            ctx.repo.commitMatchEntry({
+              matchId: freshId("m"), roomCode: null, hostIdentityId: host,
+              seatCount: 7, humanSeatCount: 7, botSeatCount: 0, isSolo: false,
+            }),
+          ).rejects.toBeInstanceOf(UnsupportedSeatCountError);
+        } finally {
+          if (originalSchedule) {
+            ctx.seedPrizeSchedule(originalSchedule);
+          }
+        }
       });
 
       it("rejects with IdentityNotFoundError when the host identity does not exist", async () => {
@@ -1023,6 +1034,8 @@ economyRepositoryContractSuite("InMemoryEconomyRepository", () => {
     seedUngrantedWallet: (id, kind) => {
       fixture.seedWallet({ identityId: id, identityKind: kind, starterGranted: false, balance: "0" });
     },
+    removePrizeSchedule: (seatCount) => fixture.removePrizeSchedule(seatCount),
+    seedPrizeSchedule: (schedule) => fixture.seedPrizeSchedule(schedule),
   };
 });
 
@@ -1052,6 +1065,8 @@ describe("EconomyRepository contract — SupabaseEconomyRepository (simulated Po
       seedUngrantedWallet: (id, kind) => {
         fixture.seedWallet({ identityId: id, identityKind: kind, starterGranted: false, balance: "0" });
       },
+      removePrizeSchedule: (seatCount) => fixture.removePrizeSchedule(seatCount),
+      seedPrizeSchedule: (schedule) => fixture.seedPrizeSchedule(schedule),
     };
   });
 });

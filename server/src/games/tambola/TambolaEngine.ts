@@ -16,7 +16,7 @@ const ARRANGE_TIMER_SECONDS = 30;
 export class TambolaEngine implements GameEngine {
   readonly kind = "tambola" as const;
   readonly minPlayers = 1;
-  readonly maxPlayers = 8;
+  readonly maxPlayers = 12;
 
   private opts: TambolaOptions = { ...DEFAULT_TAMBOLA_OPTIONS };
   private pendingOptions: TambolaOptions | null = null;

@@ -27,10 +27,10 @@ function freshRepo(): InMemoryEconomyRepository {
 describe("economyCapacityContract — verified 1-12 seat matrix", () => {
   const APPROVED = new Set(ECONOMY_APPROVED_SEAT_COUNTS);
 
-  it("ECONOMY_APPROVED_SEAT_COUNTS is exactly {1,2,3,4,5} — no invented values", () => {
-    expect([...ECONOMY_APPROVED_SEAT_COUNTS].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
+  it("ECONOMY_APPROVED_SEAT_COUNTS is exactly 1 through 12", () => {
+    expect([...ECONOMY_APPROVED_SEAT_COUNTS].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     expect(ECONOMY_MIN_SEAT_COUNT).toBe(1);
-    expect(ECONOMY_MAX_APPROVED_SEAT_COUNT).toBe(5);
+    expect(ECONOMY_MAX_APPROVED_SEAT_COUNT).toBe(12);
   });
 
   it("the structural sanity ceiling is derived from the catalog's own highest maximum, not a second hardcoded number", () => {
@@ -41,60 +41,53 @@ describe("economyCapacityContract — verified 1-12 seat matrix", () => {
   });
 
   it.each(Object.entries(GAME_LIMITS) as [GameKind, GameLimitSpec][])(
-    "every seat count from %s's own catalog min through max is classified correctly (approved vs. structurally-valid-but-unsupported)",
-    (game, limits) => {
+    "every seat count from %s's own catalog min through max is classified correctly as approved",
+    (_game, limits) => {
       for (let seatCount = limits.min; seatCount <= limits.max; seatCount++) {
         expect(isStructurallyValidSeatConfiguration(seatCount, seatCount, 0)).toBe(true);
-        const hasApprovedSchedule = APPROVED.has(seatCount);
-        if (seatCount > ECONOMY_MAX_APPROVED_SEAT_COUNT) {
-          expect(hasApprovedSchedule).toBe(false);
-        }
+        expect(APPROVED.has(seatCount)).toBe(true);
       }
     },
   );
 
-  it("Rummy at six seats: structurally valid, economy-unsupported (the exact P0 scenario)", () => {
+  it("Rummy at six seats: structurally valid, economy-approved", () => {
     expect(GAME_LIMITS.rummy.max).toBe(6);
     expect(isStructurallyValidSeatConfiguration(6, 6, 0)).toBe(true);
-    expect(APPROVED.has(6)).toBe(false);
+    expect(APPROVED.has(6)).toBe(true);
   });
 
-  it("every catalog game whose max is exactly 6 seats is unsupported at 6 (SNL, Dots & Boxes, Rummy)", () => {
+  it("every catalog game whose max is exactly 6 seats is supported at 6 (SNL, Dots & Boxes, Rummy)", () => {
     const sixSeatGames = Object.entries(GAME_LIMITS).filter(([, l]) => l.max === 6).map(([g]) => g);
     expect(sixSeatGames.sort()).toEqual(["dotsboxes", "rummy", "snl"].sort());
     for (const game of sixSeatGames) {
       expect(isStructurallyValidSeatConfiguration(6, 6, 0)).toBe(true);
+      expect(APPROVED.has(6)).toBe(true);
     }
   });
 
-  it("every catalog game whose max is exactly 8 seats is unsupported at 8 (Ludo, Word Building, Star Game, Bingo, Names Place Animal, Block Blast)", () => {
+  it("every catalog game whose max is exactly 8 seats is supported at 8 (Ludo, Word Building, Star Game, Bingo, Names Place Animal, Block Blast)", () => {
     const eightSeatGames = Object.entries(GAME_LIMITS).filter(([, l]) => l.max === 8).map(([g]) => g).sort();
     expect(eightSeatGames).toEqual(["bingo", "blockblast", "ludo", "namesplaceanimal", "stargame", "wordbuilding"].sort());
     for (const game of eightSeatGames) {
       expect(isStructurallyValidSeatConfiguration(8, 8, 0)).toBe(true);
-      expect(APPROVED.has(8)).toBe(false);
+      expect(APPROVED.has(8)).toBe(true);
     }
   });
 
-  it("UNO at ten seats: structurally valid, economy-unsupported", () => {
+  it("UNO at ten seats: structurally valid, economy-approved", () => {
     expect(GAME_LIMITS.uno.max).toBe(10);
     expect(isStructurallyValidSeatConfiguration(10, 10, 0)).toBe(true);
-    expect(APPROVED.has(10)).toBe(false);
+    expect(APPROVED.has(10)).toBe(true);
   });
 
-  it("Tambola at twelve seats: structurally valid, economy-unsupported — also the platform's overall sanity ceiling", () => {
+  it("Tambola at twelve seats: structurally valid, economy-approved — also the platform's overall sanity ceiling", () => {
     expect(GAME_LIMITS.tambola.max).toBe(12);
     expect(isStructurallyValidSeatConfiguration(12, 12, 0)).toBe(true);
-    expect(APPROVED.has(12)).toBe(false);
+    expect(APPROVED.has(12)).toBe(true);
     expect(ECONOMY_SEAT_COUNT_SANITY_MAX).toBe(12);
   });
 
   it("one seat above each catalog game's own maximum is structurally invalid only once it exceeds the platform sanity ceiling — otherwise it's the SAME class of rejection as any other unsupported count", () => {
-    // The economy layer is game-agnostic (commitMatchEntry takes no game
-    // parameter) — catalog-vs-game capacity is enforced upstream by
-    // RoomManager's own join/seat limits, verified separately. What this
-    // layer must get right is: anything within the sanity ceiling is
-    // structurally fine and falls through to the real schedule lookup.
     for (const [, limits] of Object.entries(GAME_LIMITS)) {
       const oneAbove = limits.max + 1;
       if (oneAbove <= ECONOMY_SEAT_COUNT_SANITY_MAX) {
@@ -110,22 +103,14 @@ describe("economyCapacityContract — verified 1-12 seat matrix", () => {
 
   it("human + bot must equal total seats regardless of seat count", () => {
     expect(isStructurallyValidSeatConfiguration(4, 2, 1)).toBe(false); // 2+1 != 4
-    expect(isStructurallyValidSeatConfiguration(6, 3, 3)).toBe(true); // structurally fine even though 6 is economy-unsupported
+    expect(isStructurallyValidSeatConfiguration(6, 3, 3)).toBe(true);
     expect(isStructurallyValidSeatConfiguration(1, -1, 2)).toBe(false); // negative human
     expect(isStructurallyValidSeatConfiguration(1, 1, -1)).toBe(false); // negative bot
   });
 
-  it("catalogGamesExceedingEconomyCapacity lists exactly the 11 known-affected games, computed from the catalog — never hand-maintained", () => {
+  it("catalogGamesExceedingEconomyCapacity is empty now that all catalog games (up to Tambola 12) have approved schedules", () => {
     const affected = catalogGamesExceedingEconomyCapacity();
-    const affectedGames = affected.map((a) => a.game).sort();
-    expect(affectedGames).toEqual(
-      [
-        "rummy", "ludo", "snl", "uno", "wordbuilding", "dotsboxes",
-        "stargame", "bingo", "namesplaceanimal", "tambola", "blockblast",
-      ].sort(),
-    );
-    expect(affected.find((a) => a.game === "rummy")?.catalogMax).toBe(6);
-    expect(affected.find((a) => a.game === "tambola")?.catalogMax).toBe(12);
+    expect(affected).toEqual([]);
   });
 });
 
@@ -137,10 +122,10 @@ describe("validateEconomyCapacityContract — drift detection", () => {
     expect(report.fatal).toBe(false);
   });
 
-  it("reports the known catalog/economy gap as informational, never fatal — a healthy deployment today legitimately has this gap", async () => {
+  it("reports the known catalog/economy gap as informational, never fatal — 0 gap now that all catalog games up to 12 are supported", async () => {
     const repo = freshRepo();
     const report = await validateEconomyCapacityContract((seatCount) => repo.getPrizeSchedule(seatCount));
-    expect(report.catalogGamesExceedingEconomyCapacity.length).toBeGreaterThan(0);
+    expect(report.catalogGamesExceedingEconomyCapacity.length).toBe(0);
     expect(report.fatal).toBe(false);
   });
 
@@ -227,7 +212,7 @@ describe("validateEconomyCapacityContract — drift detection", () => {
       const schedule = await repo.getPrizeSchedule(seatCount);
       expect(schedule).not.toBeNull();
     }
-    for (let seatCount = 6; seatCount <= 12; seatCount++) {
+    for (let seatCount = 13; seatCount <= 15; seatCount++) {
       const schedule = await repo.getPrizeSchedule(seatCount);
       expect(schedule).toBeNull();
     }

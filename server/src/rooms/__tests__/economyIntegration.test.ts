@@ -2026,50 +2026,38 @@ describe("P0 seat-capacity contract (2026-08-28 production incident regression)"
     expect(commitSpy).toHaveBeenCalledTimes(1);
     expect(commitSpy).toHaveBeenCalledWith(expect.objectContaining({ seatCount: 6, humanSeatCount: 1, botSeatCount: 5 }));
 
-    // No InvalidSeatConfigurationError path: RoomManager's error mapping
-    // for the actual thrown UnsupportedSeatCountError is truthful and
-    // SPECIFIC — this is the literal message text the host must see.
-    const errorEmit = socketEmits.find((e) => e.socketId === "s_a" && e.event === "room:error");
-    expect(errorEmit?.data).toBe("This table size is not yet supported by the game economy.");
-    expect(errorEmit?.data).not.toBe("Could not start the match right now. Try again.");
+    // The game successfully starts with 6 seats (host + 5 bots)
+    expect(liveRoom.phase).toBe("playing");
+    expect(liveRoom.lifecycleState).toBe("IN_PROGRESS");
+    expect(liveRoom.currentMatchId).not.toBeNull();
 
-    // The game must NOT have started.
-    expect(liveRoom.phase).toBe("lobby");
-    expect(liveRoom.lifecycleState).toBe("READY_CHECK");
-    expect(liveRoom.currentMatchId).toBeNull();
+    // 1 host paying 100 coins
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4400"); // 5000 - (6 seats * 100)
 
-    // No debit ever happened — commitMatchEntry threw before touching the
-    // wallet (UnsupportedSeatCountError is raised before ensure_wallet /
-    // any balance mutation in every layer: EconomyService, the repository,
-    // and — for the real Supabase path — commit_match_entry itself).
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5000");
-
-    // No compensating action is owed, because nothing was ever committed:
-    // no refund, no forfeiture, no settlement row for any match in this room.
     await drainRoomEconomy(rooms);
     expect(refundSpy).not.toHaveBeenCalled();
     expect(forfeitSpy).not.toHaveBeenCalled();
   });
 
-  it("checkout (quoteMatchCheckout) and commitment (commitMatchEntry) agree on the same 6-seat Rummy configuration — both reject, identically, before debit", async () => {
+  it("checkout (quoteMatchCheckout) and commitment (commitMatchEntry) reject for seat count exceeding capacity (13 seats) — both reject, identically, before debit", async () => {
     const { repo, service } = freshEconomy();
     seedMember(repo, MEMBER_A);
 
     await expect(
-      service.quoteMatchCheckout({ hostIdentityId: MEMBER_A, seatCount: 6, humanSeatCount: 1, botSeatCount: 5 }),
-    ).rejects.toMatchObject({ code: "UNSUPPORTED_SEAT_COUNT" });
+      service.quoteMatchCheckout({ hostIdentityId: MEMBER_A, seatCount: 13, humanSeatCount: 1, botSeatCount: 12 }),
+    ).rejects.toMatchObject({ code: "INVALID_SEAT_CONFIGURATION" });
 
     await expect(
       service.commitMatchEntry({
         matchId: "m_checkout_parity_test", roomCode: "PARITY", hostIdentityId: MEMBER_A,
-        seatCount: 6, humanSeatCount: 1, botSeatCount: 5, isSolo: false,
+        seatCount: 13, humanSeatCount: 1, botSeatCount: 12, isSolo: false,
       }),
-    ).rejects.toMatchObject({ code: "UNSUPPORTED_SEAT_COUNT" });
+    ).rejects.toMatchObject({ code: "INVALID_SEAT_CONFIGURATION" });
 
     expect((await service.getWallet(MEMBER_A)).balance).toBe("5000");
   });
 
-  it("six REAL human participants (no bots) hits the identical rejection — the gap is about seat count, not roster composition", async () => {
+  it("six REAL human participants (no bots) in Rummy now succeeds under expanded capacity: checkout succeeds, commit succeeds, and game starts", async () => {
     const { repo, service } = freshEconomy();
     const memberIds = [
       MEMBER_A, MEMBER_B, MEMBER_C,
@@ -2092,11 +2080,8 @@ describe("P0 seat-capacity contract (2026-08-28 production incident regression)"
     await rooms.requestGameStart("s_1");
 
     expect(commitSpy).toHaveBeenCalledWith(expect.objectContaining({ seatCount: 6, humanSeatCount: 6, botSeatCount: 0 }));
-    expect(liveRoom.phase).toBe("lobby");
-    expect(liveRoom.currentMatchId).toBeNull();
-    for (const id of memberIds) {
-      expect((await service.getWallet(id)).balance).toBe("5000");
-    }
+    expect(liveRoom.phase).toBe("playing");
+    expect(liveRoom.currentMatchId).not.toBeNull();
   });
 
   it("a supported 5-seat match is completely unaffected by this fix: checkout succeeds, commit succeeds exactly once, the game starts, and the host is debited correctly", async () => {

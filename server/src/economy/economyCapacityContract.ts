@@ -36,7 +36,7 @@ import type { EconomyPrizeScheduleRecord } from "../persistence/EconomyRepositor
  * owner to approve real payout numbers for each newly-supported seat
  * count first.
  */
-export const ECONOMY_APPROVED_SEAT_COUNTS: readonly number[] = [1, 2, 3, 4, 5];
+export const ECONOMY_APPROVED_SEAT_COUNTS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 export const ECONOMY_MIN_SEAT_COUNT = Math.min(...ECONOMY_APPROVED_SEAT_COUNTS);
 export const ECONOMY_MAX_APPROVED_SEAT_COUNT = Math.max(...ECONOMY_APPROVED_SEAT_COUNTS);

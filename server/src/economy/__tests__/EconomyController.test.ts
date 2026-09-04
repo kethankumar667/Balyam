@@ -163,8 +163,10 @@ describe("POST /api/economy/checkout/quote", () => {
 
   it("service-layer failure propagation: a structurally valid seatCount with no approved economy schedule maps to 422 UnsupportedSeatCount with a truthful message (P0 fix: never a hardcoded upper bound)", async () => {
     seedHost(ALICE, "1000");
+    repo.testFixture.removePrizeSchedule(7);
     // 7 is well within the catalog's own largest maximum (Tambola, 12) —
-    // structurally ordinary, just not economically supported yet.
+    // structurally ordinary. When no schedule is configured for it, it
+    // maps to 422 UnsupportedSeatCount via the real schedule lookup.
     const res = await server.request("/api/economy/checkout/quote", {
       method: "POST", token: mintMemberToken(ALICE),
       body: JSON.stringify({ seatCount: 7, humanSeatCount: 7, botSeatCount: 0 }),

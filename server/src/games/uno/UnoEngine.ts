@@ -103,7 +103,7 @@ export interface InternalUnoState {
 export class UnoEngine implements GameEngine {
   readonly kind = "uno" as const;
   readonly minPlayers = 2;
-  readonly maxPlayers = 8;
+  readonly maxPlayers = 10;
 
   private state!: InternalUnoState;
   /** id -> display name, captured at init() — `lastAction` strings need a

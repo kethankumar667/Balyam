@@ -47,7 +47,7 @@ interface InternalState {
 export class WordBuildingEngine implements GameEngine {
   readonly kind = "wordbuilding" as const;
   readonly minPlayers = 2;
-  readonly maxPlayers = 4;
+  readonly maxPlayers = 8;
 
   private s!: InternalState;
   private pendingOptions: WordBuildingOptions = { ...DEFAULT_WORDBUILDING_OPTIONS };

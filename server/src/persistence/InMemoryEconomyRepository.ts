@@ -184,6 +184,8 @@ export interface EconomyRepositorySnapshot {
 export interface EconomyRepositoryTestFixture {
   seedIdentity(identityId: string, kind: PlayerIdentityKind): void;
   seedConfiguration(config: EconomyConfigurationRecord, schedules: EconomyPrizeScheduleRecord[]): void;
+  removePrizeSchedule(seatCount: number): void;
+  seedPrizeSchedule(schedule: EconomyPrizeScheduleRecord): void;
   /** Seeds the identity too, if not already known. Defaults fill any field the caller omits. */
   seedWallet(wallet: { identityId: string; identityKind: PlayerIdentityKind } & Partial<CoinWalletRecord>): CoinWalletRecord;
   setFrozen(identityId: string, isFrozen: boolean): void;
@@ -290,6 +292,13 @@ const DEFAULT_SCHEDULES: EconomyPrizeScheduleRecord[] = [
   { seatCount: 3, collectedCoins: "300", firstPlaceCoins: "150", secondPlaceCoins: "100", thirdPlaceCoins: "0", worldBankCoins: "50" },
   { seatCount: 4, collectedCoins: "400", firstPlaceCoins: "175", secondPlaceCoins: "125", thirdPlaceCoins: "50", worldBankCoins: "50" },
   { seatCount: 5, collectedCoins: "500", firstPlaceCoins: "200", secondPlaceCoins: "150", thirdPlaceCoins: "100", worldBankCoins: "50" },
+  { seatCount: 6, collectedCoins: "600", firstPlaceCoins: "240", secondPlaceCoins: "144", thirdPlaceCoins: "96", worldBankCoins: "120" },
+  { seatCount: 7, collectedCoins: "700", firstPlaceCoins: "280", secondPlaceCoins: "168", thirdPlaceCoins: "112", worldBankCoins: "140" },
+  { seatCount: 8, collectedCoins: "800", firstPlaceCoins: "320", secondPlaceCoins: "192", thirdPlaceCoins: "128", worldBankCoins: "160" },
+  { seatCount: 9, collectedCoins: "900", firstPlaceCoins: "360", secondPlaceCoins: "216", thirdPlaceCoins: "144", worldBankCoins: "180" },
+  { seatCount: 10, collectedCoins: "1000", firstPlaceCoins: "400", secondPlaceCoins: "240", thirdPlaceCoins: "160", worldBankCoins: "200" },
+  { seatCount: 11, collectedCoins: "1100", firstPlaceCoins: "440", secondPlaceCoins: "264", thirdPlaceCoins: "176", worldBankCoins: "220" },
+  { seatCount: 12, collectedCoins: "1200", firstPlaceCoins: "480", secondPlaceCoins: "288", thirdPlaceCoins: "192", worldBankCoins: "240" },
 ];
 
 export class InMemoryEconomyRepository implements EconomyRepository {
@@ -342,6 +351,12 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       seedConfiguration: (config, schedules) => {
         this.configuration = clone(config);
         this.prizeSchedules = new Map(schedules.map((s) => [s.seatCount, clone(s)]));
+      },
+      removePrizeSchedule: (seatCount) => {
+        this.prizeSchedules.delete(seatCount);
+      },
+      seedPrizeSchedule: (schedule) => {
+        this.prizeSchedules.set(schedule.seatCount, clone(schedule));
       },
       seedWallet: (wallet) => {
         this.identities.set(wallet.identityId, wallet.identityKind);

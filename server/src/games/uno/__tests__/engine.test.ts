@@ -85,8 +85,8 @@ describe("UnoEngine", () => {
       expect(() => engine.init([players[0]!])).toThrow();
     });
 
-    it("should reject more than 8 players", () => {
-      const manyPlayers: Player[] = Array.from({ length: 9 }, (_, i) => ({
+    it("should reject more than 10 players", () => {
+      const manyPlayers: Player[] = Array.from({ length: 11 }, (_, i) => ({
         id: `p${i}`,
         name: `Player ${i}`,
         isBot: false,
