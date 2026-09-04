@@ -111,4 +111,24 @@ describe("LobbyActionBar Component (Phase 7F Upgrade)", () => {
     expect(screen.getByText("Start Game (🪙 200)")).toBeDefined();
     expect(screen.getByText("2 of 2 ready")).toBeDefined();
   });
+
+  it("renders Start Game (Free) when commitmentCoins is '0' (bot practice table)", () => {
+    render(
+      <LobbyActionBar
+        isHost={true}
+        isReady={true}
+        canStart={true}
+        startGameDisabledReason={null}
+        readyCount={8}
+        totalCount={8}
+        commitmentCoins="0"
+        onToggleReady={vi.fn()}
+        onStartGame={vi.fn()}
+        variant="desktop-panel"
+      />
+    );
+
+    expect(screen.getByText("Start Game (Free)")).toBeDefined();
+    expect(screen.getByText("8 of 8 ready")).toBeDefined();
+  });
 });

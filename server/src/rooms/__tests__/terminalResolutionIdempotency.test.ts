@@ -317,14 +317,16 @@ describe("Blocker 02 — Terminal Resolution Idempotency", () => {
     it("the first terminal persistence call wins; a second direct abandonRoom call for the same room is a safe no-op — exactly one financial application", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
       const { io } = makeIo();
       const rooms = new RoomManager(io, service);
       const forfeitSpy = vi.spyOn(service, "forfeitMatchEntry");
       const refundSpy = vi.spyOn(service, "refundMatchEntry");
 
       const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-      rooms.addBot("s_a", "Botty");
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
       rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
       await rooms.requestGameStart("s_a");
       const room = peek(rooms, host.code);
       const matchId = room.currentMatchId!;

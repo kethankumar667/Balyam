@@ -47,8 +47,12 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
 
   return (
     <div
-      className="bhalyam-font bhalyam-paper rounded-2xl p-4 lg:p-5 shadow-2xl flex flex-col gap-3 h-[calc(100svh-0.5rem)] overflow-hidden"
-      style={{ border: "3px solid #6D4323" }}
+      className={`theme-${m.settings.theme} bhalyam-font rounded-2xl p-4 lg:p-5 shadow-2xl flex flex-col gap-3 h-[calc(100svh-0.5rem)] overflow-hidden`}
+      style={{
+        background: "var(--ludo-screen-bg)",
+        border: "3px solid var(--ludo-screen-border)",
+        color: "var(--ludo-card-text)",
+      }}
     >
       <LudoStatusBar
         m={m}

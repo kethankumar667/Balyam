@@ -1945,7 +1945,8 @@ export class RoomManager {
       amountCoins: costPerSeat,
     }));
 
-    const hostSeats = Math.max(1, playersList.length - otherDebits.length);
+    const humanPlayers = playersList.filter((p) => !p.isBot);
+    const hostSeats = Math.max(1, humanPlayers.length - otherDebits.length);
     const hostAmount = (BigInt(hostSeats) * costBig).toString();
 
     const hostDebit: ParticipantDebitSpec = {
@@ -2045,6 +2046,19 @@ export class RoomManager {
       room.activeStartAttempt.status !== "CANCELLED" &&
       room.activeStartAttempt.status !== "CONSUMED"
     ) {
+      return;
+    }
+
+    const botSeats = playersList.filter((p) => p.isBot).length;
+    const humanSeats = playersList.filter((p) => !p.isBot).length;
+    const isBotPractice = botSeats > 0 && humanSeats <= 1;
+
+    if (isBotPractice) {
+      // Free practice match against AI bots: no coins charged, no host wallet commitment required
+      room.currentMatchId = null;
+      room.committedCostPerSeat = null;
+      room.committedTotalPot = null;
+      this.startGame(socketId);
       return;
     }
 
@@ -2321,7 +2335,12 @@ export class RoomManager {
     // exists to close. Inert (this branch never taken) for the ~100
     // pre-existing tests that construct RoomManager without an
     // EconomyService — see the constructor's own doc comment.
-    if (this.economyService && !room.currentMatchId) {
+    const playersList = Array.from(room.players.values());
+    const botSeats = playersList.filter((p) => p.isBot).length;
+    const humanSeats = playersList.filter((p) => !p.isBot).length;
+    const isBotPractice = botSeats > 0 && humanSeats <= 1;
+
+    if (this.economyService && !room.currentMatchId && !isBotPractice) {
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
         "This match has not been paid for yet. Use requestGameStart, not startGame, when Economy V1 is enabled.",
@@ -2333,7 +2352,6 @@ export class RoomManager {
       return;
     }
     const { min, max } = getGameLimits(room.game);
-    const playersList = Array.from(room.players.values());
     if (playersList.length < min) {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", `Need at least ${min} players`);
       return;
@@ -5131,6 +5149,19 @@ export class RoomManager {
     }
 
     const playersList = Array.from(room.players.values());
+    const humanSeatCount = playersList.filter((p) => !p.isBot).length;
+    const botSeatCount = playersList.length - humanSeatCount;
+    const isBotPractice = botSeatCount > 0 && humanSeatCount <= 1;
+
+    if (isBotPractice) {
+      // Free practice rematch against AI bots: no coins charged
+      room.currentMatchId = null;
+      room.committedCostPerSeat = null;
+      room.committedTotalPot = null;
+      this.startRematch(room);
+      return;
+    }
+
     const eligibility = checkHostEconomyEligibility(host, playersList, true);
     if (!eligibility.eligible) {
       this.io.to(room.code).emit("room:error", eligibility.error!);
@@ -5152,8 +5183,6 @@ export class RoomManager {
     const operationId = `op_rematch_${matchId}`;
     room.pendingCommitOperationId = operationId;
     room.economyCommitPending = true;
-    const humanSeatCount = playersList.filter((p) => !p.isBot).length;
-    const botSeatCount = playersList.length - humanSeatCount;
     const participantDebits = this.buildParticipantDebits(host, playersList);
 
     try {
@@ -5235,10 +5264,15 @@ export class RoomManager {
    *  configured; the direct, unchanged entry point when it isn't. */
   private startRematch(room: Room): void {
     if (room.rematch.status !== "accepted") return;
+    const playersList = Array.from(room.players.values());
+    const botSeats = playersList.filter((p) => p.isBot).length;
+    const humanSeats = playersList.filter((p) => !p.isBot).length;
+    const isBotPractice = botSeats > 0 && humanSeats <= 1;
+
     // Same bypass check as `startGame`'s own, for the same reason: a direct
     // call here (skipping `requestRematchStart`) must not be able to start
     // a paid rematch for free. Inert when `economyService` isn't configured.
-    if (this.economyService && !room.currentMatchId) {
+    if (this.economyService && !room.currentMatchId && !isBotPractice) {
       this.io.to(room.code).emit(
         "room:error",
         "This rematch has not been paid for yet. Use requestRematchStart, not startRematch, when Economy V1 is enabled.",
@@ -5246,7 +5280,6 @@ export class RoomManager {
       this.cancelRematch(room, null);
       return;
     }
-    const playersList = Array.from(room.players.values());
     try {
       const engine = createEngine(room.game);
       if (engine instanceof LudoEngine) engine.setOptions(room.ludoOptions);

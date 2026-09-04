@@ -1,4 +1,10 @@
 import { useEffect, useState } from "react";
+import { setTheme } from "../../lib/useTheme";
+
+export function syncDocumentTheme(theme: LudoTheme): void {
+  const isDark = theme === "neon" || theme === "emerald" || theme === "midnight";
+  setTheme(isDark ? "dark" : "light");
+}
 
 /**
  * Board themes.
@@ -86,6 +92,9 @@ export function useLudoSettings(): [
   }, []);
   function update(patch: Partial<LudoSettings>): void {
     _settings = { ..._settings, ...patch };
+    if (patch.theme) {
+      syncDocumentTheme(patch.theme);
+    }
     try {
       localStorage.setItem(KEY, JSON.stringify(_settings));
     } catch {

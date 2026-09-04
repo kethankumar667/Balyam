@@ -21,6 +21,7 @@ import {
   Flag,
 } from "lucide-react";
 import { useTheme } from "../../../lib/useTheme";
+import { useAuthStore } from "../../../store/authStore";
 import StatusBadge from "../status-badge";
 import SearchBar from "../search-bar";
 
@@ -73,6 +74,15 @@ export default function AdminTopbar({
   onlineSockets = 142,
   className = "",
 }: AdminTopbarProps) {
+  const authEmail = useAuthStore((s) => s.email);
+  const authUserId = useAuthStore((s) => s.userId);
+  const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
+
+  const displayEmail = authEmail || "admin@bhalyam.io";
+  const displayRole = isSuperAdmin ? "Super Admin" : "Admin";
+  const displayBadge = isSuperAdmin ? "ROOT" : "OPS";
+  const displayId = authUserId ? `ID: ${authUserId.slice(0, 8)}...` : "ID: SA-001";
+
   const [theme, toggleTheme] = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -267,14 +277,14 @@ export default function AdminTopbar({
             <div className="hidden sm:flex flex-col text-left leading-none">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-[var(--chrome-ink)] tracking-tight">
-                  Super Admin
+                  {displayRole}
                 </span>
                 <span className="text-[8px] font-black uppercase text-amber-700 dark:text-amber-300 bg-amber-500/20 border border-amber-500/40 px-1 py-0.2 rounded font-mono">
-                  ROOT
+                  {displayBadge}
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-[var(--chrome-ink-soft)] truncate max-w-[110px] mt-1">
-                admin@bhalyam.io
+              <span className="text-[10px] font-mono text-[var(--chrome-ink-soft)] truncate max-w-[140px] mt-1" title={displayEmail}>
+                {displayEmail}
               </span>
             </div>
 
@@ -297,8 +307,8 @@ export default function AdminTopbar({
                     <span className="text-xs font-black text-[var(--chrome-ink)] truncate">
                       Super Admin (Root)
                     </span>
-                    <span className="text-[10px] font-mono text-[var(--chrome-ink-soft)] truncate">
-                      admin@bhalyam.io
+                    <span className="text-[10px] font-mono text-[var(--chrome-ink-soft)] truncate" title={displayEmail}>
+                      {displayEmail}
                     </span>
                   </div>
                 </div>
@@ -308,7 +318,7 @@ export default function AdminTopbar({
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Root Access Active
                   </span>
-                  <span className="font-mono text-[var(--chrome-ink-soft)]">ID: SA-001</span>
+                  <span className="font-mono text-[var(--chrome-ink-soft)]" title={authUserId || undefined}>{displayId}</span>
                 </div>
               </div>
 

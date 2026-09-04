@@ -300,7 +300,42 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
   });
 
   describe("6. Player Economy Investigation Module (Module 6)", () => {
-    it("is honest that identity lookup is not yet available, rather than showing fabricated wallet data", async () => {
+    it("renders player lookup and displays live wallet and ledger data upon search", async () => {
+      const mockWallet: economyApi.CoinWalletRecord = {
+        identityId: "user-alpha-1234",
+        identityKind: "member",
+        balance: "2500",
+        version: 3,
+        lifetimeGranted: "5000",
+        lifetimeEarned: "0",
+        lifetimeSpent: "2500",
+        lifetimeRefunded: "0",
+        starterGranted: true,
+        isFrozen: false,
+        updatedAt: Date.now(),
+      };
+
+      vi.spyOn(economyApi, "lookupPlayerWallet").mockResolvedValue({
+        wallet: mockWallet,
+        ledger: [
+          {
+            id: 1,
+            walletId: "user-alpha-1234",
+            amount: "5000",
+            balanceBefore: "0",
+            balanceAfter: "5000",
+            walletVersionBefore: 0,
+            walletVersionAfter: 1,
+            entryType: "STARTER_GRANT",
+            sourceKind: "system",
+            sourceId: "system",
+            idempotencyKey: "starter-1",
+            description: "Starter coin grant",
+            createdAt: Date.now() - 3600000,
+          },
+        ],
+      });
+
       renderDashboard();
 
       await screen.findByText("World Bank Treasury Reserves");
@@ -312,20 +347,20 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
         expect(screen.getByPlaceholderText(/Enter Player Identity ID/i)).toBeDefined();
       });
 
-      // Before any search: explains what the tool will do once it's wired up.
-      expect(screen.getByText("Player Lookup Not Yet Available")).toBeDefined();
+      // Before search: displays "No Player Selected"
+      expect(screen.getByText("No Player Selected")).toBeDefined();
 
       const searchInput = screen.getByPlaceholderText(/Enter Player Identity ID/i);
       fireEvent.change(searchInput, { target: { value: "user-alpha-1234" } });
       fireEvent.submit(searchInput.closest("form")!);
 
-      // After a search: names the identity that was searched, still no
-      // fabricated wallet/ledger data anywhere on the page.
+      // After search: displays live wallet details
       await waitFor(() => {
-        expect(screen.getByText(/user-alpha-1234/)).toBeDefined();
+        expect(screen.getByText("Current Balance")).toBeDefined();
       });
-      expect(screen.queryByText("Current Balance")).toBeNull();
-      expect(screen.queryByText("Coin Ledger Entries")).toBeNull();
+      expect(screen.getAllByText(/user-alpha-1234/).length).toBeGreaterThan(0);
+      expect(screen.getByText("2,500")).toBeDefined();
+      expect(screen.getByText("Manual Wallet Top-Up (Super Admin)")).toBeDefined();
     });
   });
 

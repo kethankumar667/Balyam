@@ -623,6 +623,10 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     );
   }
 
+  async resolveIdentityId(query: string): Promise<string | null> {
+    return query.trim();
+  }
+
   /* ═══════════════════════════ locked implementations ═══════════════════
    * Everything below assumes its caller already holds the relevant mutex
    * key and runs entirely synchronously (no internal `await` other than the

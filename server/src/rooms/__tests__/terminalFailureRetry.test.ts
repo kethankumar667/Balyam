@@ -236,17 +236,20 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
   it("Test B: refund persistence failure, then a successful retry recovers the match", async () => {
     const { repo, service } = freshFailingEconomy(1);
     seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
     const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-    rooms.addBot("s_a", "Botty");
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
     rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
     await rooms.requestGameStart("s_a");
     const matchId = peek(rooms, host.code)!.currentMatchId!;
     // The committed-but-never-played race (requestGameStart's own documented
     // interleaving edge case) — abandonment routes to REFUND, not FORFEITURE.
     peek(rooms, host.code)!.phase = "lobby";
 
+    await rooms.leaveRoom("s_b").catch(() => undefined);
     await rooms.leaveRoom("s_a").catch(() => undefined);
 
     const room = peek(rooms, host.code);
@@ -268,14 +271,18 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
   it("Test C: forfeiture persistence failure, then a successful retry recovers the match", async () => {
     const { repo, service } = freshFailingEconomy(1);
     seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    const host = createRoomAs(rooms, "s_a", "Alice", "ludo", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
     rooms.addBot("s_a", "Botty");
     rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
     await rooms.requestGameStart("s_a");
     const matchId = peek(rooms, host.code)!.currentMatchId!;
 
+    await rooms.leaveRoom("s_b").catch(() => undefined);
     await rooms.leaveRoom("s_a").catch(() => undefined); // last human leaves mid-match -> abandonRoom -> forfeiture
 
     const room = peek(rooms, host.code);
@@ -290,7 +297,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     expect(room!.terminalStatus).toBe("COMPLETED");
     const settlement = await service.getSettlement(matchId);
     expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // never refunded
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // entry fee forfeited, never refunded
     const worldBank = await service.getWorldBankSnapshot();
     expect(worldBank.abandonmentForfeitureRevenue).toBe("200");
   });
@@ -333,13 +340,17 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
   it("Test E: a conflicting terminal outcome cannot replace the already-stored decision", async () => {
     const { repo, service } = freshFailingEconomy(1);
     seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    const host = createRoomAs(rooms, "s_a", "Alice", "ludo", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
     rooms.addBot("s_a", "Botty");
     rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
     await rooms.requestGameStart("s_a");
 
+    await rooms.leaveRoom("s_b").catch(() => undefined);
     await rooms.leaveRoom("s_a").catch(() => undefined);
 
     const room = peek(rooms, host.code)!;
@@ -402,13 +413,17 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
   it("Test G: a successful retry clears the FAILED state and the stored payload", async () => {
     const { repo, service } = freshFailingEconomy(1);
     seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    const host = createRoomAs(rooms, "s_a", "Alice", "ludo", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
     rooms.addBot("s_a", "Botty");
     rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
     await rooms.requestGameStart("s_a");
 
+    await rooms.leaveRoom("s_b").catch(() => undefined);
     await rooms.leaveRoom("s_a").catch(() => undefined);
     const room = peek(rooms, host.code)!;
     expect(room.terminalStatus).toBe("FAILED");
@@ -426,13 +441,17 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
   it("Test H: a retry that fails again remains FAILED, with its stored payload intact for a further retry", async () => {
     const { repo, service } = freshFailingEconomy(2); // fails twice — first attempt AND the first retry attempt
     seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    const host = createRoomAs(rooms, "s_a", "Alice", "ludo", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
     rooms.addBot("s_a", "Botty");
     rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
     await rooms.requestGameStart("s_a");
 
+    await rooms.leaveRoom("s_b").catch(() => undefined);
     await rooms.leaveRoom("s_a").catch(() => undefined);
     const room = peek(rooms, host.code)!;
     expect(room.terminalStatus).toBe("FAILED");

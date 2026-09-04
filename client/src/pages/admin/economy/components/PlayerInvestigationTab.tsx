@@ -17,6 +17,7 @@ import {
   Sparkles,
   History,
   Lock,
+  Code,
 } from "lucide-react";
 import SectionHeader from "../../../../components/admin/section-header";
 import StatusBadge from "../../../../components/admin/status-badge";
@@ -27,6 +28,8 @@ import {
   type CoinLedgerEntryRecord,
   type WalletLedgerEntryType,
 } from "../../../../lib/economyApi";
+import { useAuthStore } from "../../../../store/authStore";
+import { getSupabase } from "../../../../lib/supabase/client";
 
 const QUICK_AMOUNTS = ["500", "1000", "2500", "5000", "10000", "50000"];
 const REASON_PRESETS = [
@@ -36,9 +39,135 @@ const REASON_PRESETS = [
   "Community event tournament prize",
 ];
 
+const MIGRATION_SQL = `-- Migration: 20260906000000_admin_adjust_wallet.sql
+-- Description: Creates public.admin_adjust_wallet(text, bigint, text, text, text)
+-- Run this in Supabase SQL Editor (SQL Editor -> New query -> Paste & Run)
+
+create or replace function public.admin_adjust_wallet(
+  p_identity_id text,
+  p_amount bigint,
+  p_admin_id text,
+  p_reason text,
+  p_idempotency_key text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public, pg_temp
+as $$
+declare
+  v_wallet         public.coin_wallets;
+  v_balance_before bigint;
+  v_version_before bigint;
+  v_existing_entry public.coin_ledger_entries;
+begin
+  -- 1. Argument validation
+  if p_identity_id is null or char_length(trim(p_identity_id)) = 0 then
+    raise exception 'INVALID_IDENTITY_ID: identity_id cannot be null or empty';
+  end if;
+
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'INVALID_AMOUNT: top-up amount must be strictly greater than 0';
+  end if;
+
+  if p_admin_id is null or char_length(trim(p_admin_id)) = 0 then
+    raise exception 'INVALID_ADMIN_ID: admin_id cannot be null or empty';
+  end if;
+
+  if p_idempotency_key is null or char_length(trim(p_idempotency_key)) = 0 then
+    raise exception 'INVALID_IDEMPOTENCY_KEY: idempotency_key cannot be null or empty';
+  end if;
+
+  -- 2. Ensure wallet exists (provisions starter grant if new identity)
+  perform public.ensure_wallet(p_identity_id);
+
+  -- 3. Idempotency check: has this idempotency_key already been applied?
+  select * into v_existing_entry
+  from public.coin_ledger_entries
+  where idempotency_key = p_idempotency_key
+  limit 1;
+
+  if found then
+    select * into v_wallet from public.coin_wallets where identity_id = p_identity_id;
+    return jsonb_build_object(
+      'applied', false,
+      'operation', 'admin_adjust_wallet',
+      'idempotencyKey', p_idempotency_key,
+      'result', public.wallet_to_safe_jsonb(v_wallet)
+    );
+  end if;
+
+  -- 4. Lock the wallet row
+  select * into v_wallet
+  from public.coin_wallets
+  where identity_id = p_identity_id
+  for update;
+
+  if not found then
+    raise exception 'WALLET_NOT_FOUND: wallet for % does not exist', p_identity_id;
+  end if;
+
+  if v_wallet.is_frozen then
+    raise exception 'WALLET_FROZEN: wallet for % is frozen', p_identity_id;
+  end if;
+
+  v_balance_before := v_wallet.balance;
+  v_version_before := v_wallet.version;
+
+  -- 5. Atomic balance update
+  update public.coin_wallets
+  set balance = balance + p_amount,
+      lifetime_granted = lifetime_granted + p_amount,
+      version = version + 1,
+      updated_at = now()
+  where identity_id = p_identity_id
+  returning * into v_wallet;
+
+  -- 6. Insert audit ledger row
+  insert into public.coin_ledger_entries (
+    wallet_id,
+    amount,
+    balance_before,
+    balance_after,
+    wallet_version_before,
+    wallet_version_after,
+    entry_type,
+    source_kind,
+    source_id,
+    idempotency_key,
+    description
+  ) values (
+    p_identity_id,
+    p_amount,
+    v_balance_before,
+    v_wallet.balance,
+    v_version_before,
+    v_wallet.version,
+    'ADMIN_ADJUSTMENT',
+    'admin',
+    p_admin_id,
+    p_idempotency_key,
+    coalesce(nullif(trim(p_reason), ''), 'Admin manual top-up')
+  );
+
+  return jsonb_build_object(
+    'applied', true,
+    'operation', 'admin_adjust_wallet',
+    'idempotencyKey', p_idempotency_key,
+    'result', public.wallet_to_safe_jsonb(v_wallet)
+  );
+end;
+$$;
+
+revoke all on function public.admin_adjust_wallet(text, bigint, text, text, text) from public, anon, authenticated;
+grant execute on function public.admin_adjust_wallet(text, bigint, text, text, text) to service_role;`;
+
 export function PlayerInvestigationTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialId = searchParams.get("identityId") || "";
+
+  const authEmail = useAuthStore((s) => s.email);
+  const authUserId = useAuthStore((s) => s.userId);
 
   const [searchIdentityId, setSearchIdentityId] = useState<string>(initialId);
   const [wallet, setWallet] = useState<CoinWalletRecord | null>(null);
@@ -46,6 +175,7 @@ export function PlayerInvestigationTab() {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
+  const [resolvedEmail, setResolvedEmail] = useState<string | null>(null);
 
   // Top-Up Form State
   const [topupAmount, setTopupAmount] = useState<string>("1000");
@@ -53,15 +183,45 @@ export function PlayerInvestigationTab() {
   const [isSubmittingTopup, setIsSubmittingTopup] = useState<boolean>(false);
   const [topupSuccess, setTopupSuccess] = useState<string | null>(null);
   const [topupError, setTopupError] = useState<string | null>(null);
+  const [copiedSql, setCopiedSql] = useState<boolean>(false);
+  const [showMigrationSql, setShowMigrationSql] = useState<boolean>(false);
 
   const fetchPlayerData = useCallback(async (identityIdToFetch: string) => {
-    const id = identityIdToFetch.trim();
+    let id = identityIdToFetch.trim();
     if (!id) return;
 
     setIsSearching(true);
     setSearchError(null);
     setTopupSuccess(null);
     setTopupError(null);
+
+    // Resolve email if user entered an email address
+    let currentResolvedEmail: string | null = null;
+    if (id.includes("@")) {
+      currentResolvedEmail = id;
+      if (authEmail && id.toLowerCase() === authEmail.toLowerCase() && authUserId) {
+        id = authUserId;
+      } else {
+        const supabase = getSupabase();
+        if (supabase) {
+          try {
+            const { data } = await supabase
+              .from("profiles")
+              .select("id")
+              .ilike("email", id)
+              .maybeSingle();
+            if (data?.id) {
+              id = data.id;
+            }
+          } catch {
+            // ignore, backend will also try to resolve email
+          }
+        }
+      }
+    } else if (authUserId && id === authUserId && authEmail) {
+      currentResolvedEmail = authEmail;
+    }
+    setResolvedEmail(currentResolvedEmail);
 
     try {
       const data = await lookupPlayerWallet(id);
@@ -75,7 +235,7 @@ export function PlayerInvestigationTab() {
     } finally {
       setIsSearching(false);
     }
-  }, []);
+  }, [authEmail, authUserId]);
 
   // Auto-search if identityId query param is present on mount
   useEffect(() => {
@@ -198,8 +358,8 @@ export function PlayerInvestigationTab() {
               type="text"
               value={searchIdentityId}
               onChange={(e) => setSearchIdentityId(e.target.value)}
-              placeholder="Enter Player Identity ID (e.g. member uuid or guest_4a91b)..."
-              aria-label="Player identity ID"
+              placeholder="Enter Player Identity ID (UUID, email, or guest_4a91b)..."
+              aria-label="Player identity ID or email"
               className="w-full h-11 pl-10 pr-4 rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-xs font-mono text-[var(--chrome-ink)] focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -224,7 +384,22 @@ export function PlayerInvestigationTab() {
 
         {/* Quick helper shortcuts */}
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--chrome-ink-soft)] pt-1">
-          <span className="font-medium">Quick Lookup Examples:</span>
+          <span className="font-medium">Quick Lookup:</span>
+          {authEmail && (
+            <button
+              type="button"
+              onClick={() => {
+                const targetId = authUserId || authEmail;
+                setSearchIdentityId(targetId);
+                void fetchPlayerData(targetId);
+              }}
+              className="px-2.5 py-0.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 font-mono font-bold text-amber-700 dark:text-amber-300 transition cursor-pointer flex items-center gap-1"
+              title={`Lookup logged-in account (${authEmail})`}
+            >
+              <UserCheck className="w-3 h-3" />
+              <span>My Account ({authEmail.split("@")[0]})</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -284,6 +459,11 @@ export function PlayerInvestigationTab() {
                       {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   </div>
+                  {resolvedEmail && (
+                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 font-mono text-[11px] font-medium" title="Account Email">
+                      {resolvedEmail}
+                    </span>
+                  )}
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       wallet.identityKind === "member"
@@ -428,9 +608,54 @@ export function PlayerInvestigationTab() {
             )}
 
             {topupError && (
-              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-                <span>{topupError}</span>
+              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span className="font-bold">{topupError}</span>
+                </div>
+
+                {(topupError.includes("admin_adjust_wallet") ||
+                  topupError.includes("PGRST202") ||
+                  topupError.includes("EconomyTemporarilyUnavailable") ||
+                  topupError.includes("difficulties")) && (
+                  <div className="mt-2 pt-2 border-t border-rose-500/20 text-xs space-y-2">
+                    <p className="text-[var(--chrome-ink)]">
+                      <strong>Database Migration Required:</strong> The{" "}
+                      <code className="px-1 py-0.5 rounded bg-zinc-900 text-amber-300 font-mono text-[11px]">
+                        admin_adjust_wallet
+                      </code>{" "}
+                      function is not yet installed in your Supabase database. Run the migration in your Supabase SQL
+                      Editor to enable wallet adjustments.
+                    </p>
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(MIGRATION_SQL);
+                          setCopiedSql(true);
+                          setTimeout(() => setCopiedSql(false), 2500);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                      >
+                        {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedSql ? "Copied Migration SQL!" : "Copy Migration SQL"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowMigrationSql(!showMigrationSql)}
+                        className="px-3 py-1.5 rounded-lg border border-[var(--chrome-border)] bg-[var(--chrome-control)] hover:bg-[var(--chrome-panel)] text-[var(--chrome-ink)] text-xs font-semibold cursor-pointer transition flex items-center gap-1.5"
+                      >
+                        <Code className="w-3.5 h-3.5 text-amber-500" />
+                        <span>{showMigrationSql ? "Hide SQL" : "View SQL"}</span>
+                      </button>
+                    </div>
+                    {showMigrationSql && (
+                      <pre className="mt-2 p-3 rounded-lg bg-zinc-950 text-zinc-200 font-mono text-[10px] overflow-x-auto max-h-60 border border-zinc-800">
+                        {MIGRATION_SQL}
+                      </pre>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

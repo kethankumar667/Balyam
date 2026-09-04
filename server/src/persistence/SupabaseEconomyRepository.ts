@@ -801,14 +801,43 @@ export class SupabaseEconomyRepository implements EconomyRepository {
   async adminAdjustWallet(
     input: AdminAdjustWalletInput,
   ): Promise<EconomyOperationResult<CoinWalletRecord>> {
-    const envelope = await this.rpc<RawEnvelope<WalletRow>>("admin_adjust_wallet", {
-      p_identity_id: input.identityId,
-      p_amount: input.amountCoins,
-      p_admin_id: input.adminPrincipalId,
-      p_reason: input.reason,
-      p_idempotency_key: input.idempotencyKey,
-    });
-    return { ...envelope, result: toWallet(envelope.result) };
+    try {
+      const envelope = await this.rpc<RawEnvelope<WalletRow>>("admin_adjust_wallet", {
+        p_identity_id: input.identityId,
+        p_amount: input.amountCoins,
+        p_admin_id: input.adminPrincipalId,
+        p_reason: input.reason,
+        p_idempotency_key: input.idempotencyKey,
+      });
+      return { ...envelope, result: toWallet(envelope.result) };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("PGRST202") || msg.includes("admin_adjust_wallet")) {
+        throw new EconomyInfrastructureError(
+          "Database function admin_adjust_wallet is missing. Please run migration 20260906000000_admin_adjust_wallet.sql in Supabase SQL Editor.",
+        );
+      }
+      throw err;
+    }
+  }
+
+  async resolveIdentityId(query: string): Promise<string | null> {
+    const trimmed = query.trim();
+    if (!trimmed.includes("@")) {
+      return trimmed;
+    }
+    try {
+      const rows = await this.select<{ id: string }>(
+        "profiles",
+        `email=ilike.${encodeURIComponent(trimmed)}&select=id&limit=1`,
+      );
+      if (rows.length > 0 && rows[0]?.id) {
+        return rows[0].id;
+      }
+    } catch {
+      // ignore
+    }
+    return trimmed;
   }
 
   /* ═══════════════════════ durable terminal intents (Blocker 06) ═════════

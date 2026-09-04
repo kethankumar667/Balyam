@@ -410,6 +410,23 @@ export class EconomyService {
   /* ═══════════════════════ wallet & ledger ═══════════════════════════════ */
 
   /**
+   * Resolves an email or identity string to the underlying canonical identityId.
+   */
+  async resolveIdentity(identityIdOrEmail: string): Promise<string> {
+    const trimmed = identityIdOrEmail.trim();
+    if (!trimmed.includes("@")) return trimmed;
+    if (typeof this.repository.resolveIdentityId === "function") {
+      try {
+        const resolved = await this.repository.resolveIdentityId(trimmed);
+        if (resolved) return resolved;
+      } catch {
+        // fall back to trimmed
+      }
+    }
+    return trimmed;
+  }
+
+  /**
    * Always provisions (idempotent) rather than returning a bare "not found"
    * — blueprint §2.1: a player who hasn't played yet is not an error state.
    */
@@ -451,6 +468,35 @@ export class EconomyService {
       throw new InvalidSeatConfigurationError(
         "seatCount must be a positive integer matching humanSeatCount + botSeatCount",
       );
+    }
+
+    const isBotPractice = input.botSeatCount > 0 && input.humanSeatCount <= 1;
+    if (isBotPractice) {
+      const [config, wallet] = await Promise.all([
+        this.withRetry("quoteMatchCheckout:config", null, () => this.repository.getActiveConfiguration()),
+        this.withRetry("quoteMatchCheckout:wallet", null, () => this.repository.getWallet(input.hostIdentityId)),
+      ]);
+      const hostBalance = wallet ? toBig(wallet.balance) : 0n;
+      const quote: MatchCheckoutQuote = {
+        seatCount: input.seatCount,
+        humanSeatCount: input.humanSeatCount,
+        botSeatCount: input.botSeatCount,
+        costPerSeat: "0",
+        totalCommitment: "0",
+        prizeDistribution: {
+          firstPlace: "0",
+          secondPlace: "0",
+          thirdPlace: "0",
+        },
+        worldBankContribution: "0",
+        hostBalance: fromBig(hostBalance),
+        projectedBalance: fromBig(hostBalance),
+        hasSufficientFunds: true,
+        shortfall: null,
+        configurationVersion: config.version,
+      };
+      this.logOutcome("quoteMatchCheckout", null, startedAt, "read");
+      return quote;
     }
 
     const [config, schedule, wallet] = await Promise.all([

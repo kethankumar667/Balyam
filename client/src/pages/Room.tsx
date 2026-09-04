@@ -49,6 +49,7 @@ import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from ".
 import { LobbyPrizePool, UnsupportedSeatCountCard } from "../components/economy";
 import { LobbyCoinFlight, type CoinParticle } from "../components/economy/LobbyCoinFlight";
 import { useCheckoutQuote } from "../hooks/useEconomy";
+import type { MatchCheckoutQuote } from "../lib/economyApi";
 import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
 import BhalyamResultModal from "../components/BhalyamResultModal";
@@ -58,6 +59,8 @@ import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } f
 import type { BingoPlayerState } from "@shared/types";
 import GameErrorBoundary from "../components/GameErrorBoundary";
 import type { SnakePublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState } from "@shared/types";
+
+import { useLudoSettings, syncDocumentTheme } from "../games/ludo/settings";
 
 // ── Lazy-loaded game boards (code-split per game) ──
 const RpsBoard = lazy(() => import("../games/rps/RpsBoard"));
@@ -614,11 +617,34 @@ export default function Room() {
   const lobbyHumanSeatCount = roomState?.players.filter((p) => !p.isBot).length ?? 0;
   const lobbyBotSeatCount = roomState?.players.filter((p) => p.isBot).length ?? 0;
   const lobbySeatCount = lobbyHumanSeatCount + lobbyBotSeatCount;
+  const isPlayingWithBots = lobbyBotSeatCount > 0 && lobbyHumanSeatCount <= 1;
+
   const { quote: lobbyQuote, isLoading: isLobbyQuoteLoading } = useCheckoutQuote(
-    roomState?.phase === "lobby" && lobbySeatCount > 0 && lobbySeatCount <= ECONOMY_MAX_APPROVED_SEAT_COUNT
+    roomState?.phase === "lobby" && !isPlayingWithBots && lobbySeatCount > 0 && lobbySeatCount <= ECONOMY_MAX_APPROVED_SEAT_COUNT
       ? { seatCount: lobbySeatCount, humanSeatCount: lobbyHumanSeatCount, botSeatCount: lobbyBotSeatCount }
       : null,
   );
+
+  const freeBotQuote: MatchCheckoutQuote = useMemo(() => ({
+    seatCount: lobbySeatCount,
+    humanSeatCount: lobbyHumanSeatCount,
+    botSeatCount: lobbyBotSeatCount,
+    costPerSeat: "0",
+    totalCommitment: "0",
+    prizeDistribution: {
+      firstPlace: "0",
+      secondPlace: "0",
+      thirdPlace: "0",
+    },
+    worldBankContribution: "0",
+    hostBalance: "0",
+    projectedBalance: "0",
+    hasSufficientFunds: true,
+    shortfall: null,
+    configurationVersion: 1,
+  }), [lobbySeatCount, lobbyHumanSeatCount, lobbyBotSeatCount]);
+
+  const effectiveLobbyQuote = isPlayingWithBots ? freeBotQuote : lobbyQuote;
   // "Locked" requires the server to have actually confirmed the commit
   // succeeded (`currentMatchId` populated) — NOT merely that Start Game was
   // clicked (`lifecycleState === "STARTING"` fires before the commit RPC
@@ -988,6 +1014,13 @@ export default function Room() {
   // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
   // needs the same "no inline banners, no extra padding" treatment Rummy gets.
   const ludoInPlay = roomState.game === "ludo" && roomState.phase !== "lobby";
+  const [ludoSettings] = useLudoSettings();
+
+  useEffect(() => {
+    if (ludoInPlay) {
+      syncDocumentTheme(ludoSettings.theme);
+    }
+  }, [ludoInPlay, ludoSettings.theme]);
 
   return (
     /**
@@ -1005,9 +1038,12 @@ export default function Room() {
           FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
             ? "bhalyam-font bhalyam-paper h-full min-h-screen overflow-hidden p-0"
             : ludoInPlay
-              ? "bhalyam-font bhalyam-paper min-h-screen p-1 pb-[max(1rem,env(safe-area-inset-bottom))]"
+              ? `theme-${ludoSettings.theme} bhalyam-font min-h-screen p-1 pb-[max(1rem,env(safe-area-inset-bottom))]`
               : "bhalyam-font bhalyam-paper min-h-screen px-3.5 py-3 sm:px-6 sm:py-5 pb-[max(3rem,calc(env(safe-area-inset-bottom)+1.5rem))]"
         }
+        style={{
+          backgroundColor: ludoInPlay ? "var(--ludo-screen-bg)" : undefined,
+        }}
       >
       {roomState.phase === "lobby" && <FallingPetals />}
       <div
@@ -1125,8 +1161,8 @@ export default function Room() {
                   seatCount={viewModel.totalPlayersCount}
                   readyCount={viewModel.readyPlayersCount}
                   allReady={viewModel.allReady}
-                  quote={lobbyQuote}
-                  isQuoteLoading={isLobbyQuoteLoading}
+                  quote={effectiveLobbyQuote}
+                  isQuoteLoading={isPlayingWithBots ? false : isLobbyQuoteLoading}
                   lockPhase={lobbyLockPhase}
                   isHost={selfIsHost}
                 />
@@ -1179,7 +1215,7 @@ export default function Room() {
                   startGameDisabledReason={viewModel.startGameDisabledReason}
                   readyCount={viewModel.readyPlayersCount}
                   totalCount={viewModel.totalPlayersCount}
-                  commitmentCoins={lobbyQuote?.totalCommitment ?? null}
+                  commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
                   onToggleReady={toggleReady}
                   onStartGame={startGame}
                   variant="sticky-mobile"
@@ -1196,7 +1232,7 @@ export default function Room() {
                 startGameDisabledReason={viewModel.startGameDisabledReason}
                 readyCount={viewModel.readyPlayersCount}
                 totalCount={viewModel.totalPlayersCount}
-                commitmentCoins={lobbyQuote?.totalCommitment ?? null}
+                commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
                 onToggleReady={toggleReady}
                 onStartGame={startGame}
                 variant="desktop-panel"

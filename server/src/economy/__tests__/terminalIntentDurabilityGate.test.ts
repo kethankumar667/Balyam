@@ -259,13 +259,16 @@ describe("Phase 06.1B: Durability-Gated Terminal Intent Persistence", () => {
   it("Test C: Forfeiture persistence gates room teardown", async () => {
     const repo = new GateControlledRepo();
     seedMember(repo, MEMBER_A);
+    const guestB = "guest_test_c";
+    repo.testFixture.seedIdentity(guestB, "guest");
     const service = new EconomyService(repo, { delay: async () => undefined });
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
 
     const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-    rooms.addBot("s_a", "Botty");
+    joinRoomAs(rooms, "s_b", "Casey", host.code, "guest", guestB);
     rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
     await rooms.requestGameStart("s_a");
 
     const room = peek(rooms, host.code);
@@ -275,7 +278,7 @@ describe("Phase 06.1B: Durability-Gated Terminal Intent Persistence", () => {
     const gate = defer<void>();
     repo.gate = gate;
 
-    // Last human departs active playing match -> forfeiture
+    // Host departs active playing match with no eligible signed-in successor -> forfeiture
     const leavePromise = rooms.leaveRoom("s_a");
     await new Promise((r) => setTimeout(r, 20));
 
@@ -298,13 +301,15 @@ describe("Phase 06.1B: Durability-Gated Terminal Intent Persistence", () => {
   it("Test D: Compensating refund persistence gates cleanup on orphaned commit", async () => {
     const repo = new GateControlledRepo();
     seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
     const service = new EconomyService(repo, { delay: async () => undefined });
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
 
     const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-    rooms.addBot("s_a", "Botty");
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
     rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
 
     const origCommit = service.commitMatchEntry.bind(service);
     let committedMatchId: string | null = null;
@@ -327,13 +332,16 @@ describe("Phase 06.1B: Durability-Gated Terminal Intent Persistence", () => {
   it("Test E: Persistence rejection preserves room and prevents destructive teardown", async () => {
     const repo = new GateControlledRepo();
     seedMember(repo, MEMBER_A);
+    const guestB = "guest_test_e";
+    repo.testFixture.seedIdentity(guestB, "guest");
     const service = new EconomyService(repo, { delay: async () => undefined });
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
 
     const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-    rooms.addBot("s_a", "Botty");
+    joinRoomAs(rooms, "s_b", "Casey", host.code, "guest", guestB);
     rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
     await rooms.requestGameStart("s_a");
 
     const room = peek(rooms, host.code);

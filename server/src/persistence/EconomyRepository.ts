@@ -762,6 +762,12 @@ export interface EconomyRepository {
     input: AdminAdjustWalletInput,
   ): Promise<EconomyOperationResult<CoinWalletRecord>>;
 
+  /**
+   * Optional helper to resolve an email address or player identifier to its
+   * canonical identityId (UUID).
+   */
+  resolveIdentityId?(query: string): Promise<string | null>;
+
   /* ── durable terminal intents (Blocker 06) ── */
 
   /**

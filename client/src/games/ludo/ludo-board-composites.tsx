@@ -76,7 +76,11 @@ function LudoLogo() {
  *  `rightSlot` lets the desktop shell dock the room rail inline. */
 export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; state: LudoState; rightSlot?: ReactNode }) {
   const finished = state.phase === "finished";
-  const chipStyle = { background: "#F7E8C4", border: "2px solid #C8A66B", color: "#6D4323" } as const;
+  const chipStyle = {
+    background: "var(--ludo-chip-bg, #F7E8C4)",
+    border: "2px solid var(--ludo-chip-border, #C8A66B)",
+    color: "var(--ludo-chip-text, #6D4323)",
+  } as const;
   const iconChip =
     "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-lg active:scale-95 transition";
   // Icon chip that grows to hold a text label from sm+ (phones stay compact).
@@ -305,7 +309,7 @@ function LudoPlayerCard({
             ? "linear-gradient(135deg, #FFFDF0 0%, #FEF9C3 100%)"
             : seat.active
             ? `linear-gradient(135deg, #FFFFFF 0%, ${tint}18 100%)`
-            : "#FFFDF8",
+            : "var(--ludo-card-bg, #FFFDF8)",
           border: `1.5px solid ${
             seat.isWinner
               ? "#E0AE3B"
@@ -313,7 +317,7 @@ function LudoPlayerCard({
               ? tint
               : isSelf
               ? "#E0AE3B"
-              : "rgba(200, 166, 107, 0.45)"
+              : "var(--ludo-card-border, rgba(200, 166, 107, 0.45))"
           }`,
           boxShadow: seat.isWinner
             ? "0 0 0 2px #E0AE3B, 0 4px 10px rgba(224,174,59,0.25)"
@@ -429,7 +433,7 @@ function LudoPlayerCard({
           ? "linear-gradient(135deg, #FFFDF0 0%, #FEF9C3 100%)"
           : seat.active
           ? `linear-gradient(135deg, #FFFFFF 0%, ${tint}14 100%)`
-          : "#FFFDF8",
+          : "var(--ludo-card-bg, #FFFDF8)",
         border: `2px solid ${
           seat.isWinner
             ? "#E0AE3B"
@@ -437,7 +441,7 @@ function LudoPlayerCard({
             ? tint
             : isSelf
             ? "#E0AE3B"
-            : "rgba(200, 166, 107, 0.45)"
+            : "var(--ludo-card-border, rgba(200, 166, 107, 0.45))"
         }`,
         boxShadow: seat.isWinner
           ? "0 0 0 2px #E0AE3B, 0 4px 14px rgba(224,174,59,0.25)"
@@ -945,14 +949,14 @@ export function LudoMatchFeed({
     return (
       <div
         className="mx-auto flex w-full max-w-[26rem] flex-col gap-0.5 rounded-xl px-2.5 py-1.5"
-        style={{ background: "rgba(247,232,196,0.55)", border: "2px solid #C8A66B" }}
+        style={{ background: "var(--ludo-feed-bg, rgba(247,232,196,0.55))", border: "2px solid var(--ludo-feed-border, #C8A66B)" }}
         aria-live="polite"
       >
         {items.map((f, i) => (
           <div
             key={f.id}
             className="flex items-center gap-1.5 truncate text-[11px] font-bold leading-tight"
-            style={{ color: "#6D4323", opacity: i === 0 ? 1 : 0.6 }}
+            style={{ color: "var(--ludo-feed-text, #6D4323)", opacity: i === 0 ? 1 : 0.6 }}
           >
             <span aria-hidden>{f.emoji}</span>
             <span className="truncate">{f.text}</span>
@@ -965,15 +969,15 @@ export function LudoMatchFeed({
   return (
     <div
       className="w-full rounded-2xl px-2 py-2"
-      style={{ background: "rgba(247,232,196,0.55)", border: "2px solid #C8A66B" }}
+      style={{ background: "var(--ludo-feed-bg, rgba(247,232,196,0.55))", border: "2px solid var(--ludo-feed-border, #C8A66B)" }}
       aria-live="polite"
     >
-      <div className="px-1 pb-1 text-[10px] font-black uppercase tracking-[0.16em]" style={{ color: "#8A6A45" }}>
+      <div className="px-1 pb-1 text-[10px] font-black uppercase tracking-[0.16em]" style={{ color: "var(--ludo-feed-text, #8A6A45)" }}>
         Match feed
       </div>
       <ul className="flex flex-col gap-1">
         {items.length === 0 && (
-          <li className="px-1.5 py-1 text-[11px] font-semibold" style={{ color: "#A08A6B" }}>
+          <li className="px-1.5 py-1 text-[11px] font-semibold" style={{ color: "var(--ludo-feed-text, #A08A6B)", opacity: 0.7 }}>
             {empty}
           </li>
         )}
@@ -982,8 +986,8 @@ export function LudoMatchFeed({
             key={f.id}
             className="flex items-start gap-1.5 rounded-lg px-1.5 py-1 text-[11px] font-semibold leading-snug"
             style={{
-              color: "#6D4323",
-              background: i === 0 ? "rgba(255,255,255,0.75)" : "transparent",
+              color: "var(--ludo-feed-text, #6D4323)",
+              background: i === 0 ? "rgba(255,255,255,0.15)" : "transparent",
               opacity: 1 - i * 0.13,
             }}
           >
@@ -1041,8 +1045,8 @@ export function LudoTurnTower({
           key={m.turnPulse}
           className="ludo-turn-change w-full rounded-2xl px-3 py-2.5 text-center"
           style={{
-            background: mine ? hex : "#F7E8C4",
-            border: `3px solid ${mine ? dark : "#C8A66B"}`,
+            background: mine ? hex : "var(--ludo-panel-bg, #F7E8C4)",
+            border: `3px solid ${mine ? dark : "var(--ludo-panel-border, #C8A66B)"}`,
             boxShadow: mine
               ? `0 0 0 4px ${hex}33, 0 6px 16px rgba(0,0,0,0.18)`
               : "0 3px 10px rgba(0,0,0,0.10)",
@@ -1050,7 +1054,7 @@ export function LudoTurnTower({
         >
           <div
             className="text-[11px] font-black uppercase tracking-[0.18em]"
-            style={{ color: mine ? "#FFFBF0" : "#8A6A45" }}
+            style={{ color: mine ? "#FFFBF0" : "var(--ludo-panel-text, #8A6A45)" }}
           >
             {mine ? "Your turn" : "Now playing"}
           </div>
@@ -1065,7 +1069,7 @@ export function LudoTurnTower({
           )}
           <div
             className="mt-0.5 text-[12px] font-bold"
-            style={{ color: mine ? "#FFFBF0" : "#8A6A45" }}
+            style={{ color: mine ? "#FFFBF0" : "var(--ludo-panel-text, #8A6A45)" }}
           >
             {m.displayTurnPhase === "rolling" ? "Roll the dice" : "Move a token"}
           </div>
@@ -1077,8 +1081,8 @@ export function LudoTurnTower({
             <div
               className="mx-auto mt-1.5 w-fit rounded-full px-2.5 py-0.5 text-[13px] font-black tabular-nums"
               style={{
-                background: urgent ? "#DC2626" : mine ? "rgba(255,255,255,0.9)" : "#EFE0BC",
-                color: urgent ? "#fff" : dark,
+                background: urgent ? "#DC2626" : mine ? "rgba(255,255,255,0.9)" : "var(--ludo-chip-bg, #EFE0BC)",
+                color: urgent ? "#fff" : mine ? dark : "var(--ludo-panel-text, #6D4323)",
               }}
               aria-label={`${secondsLeft} seconds left`}
             >
@@ -1175,9 +1179,9 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
           // Now that the mobile turn callout is gone, this label IS the turn
           // sentence on both shells — so it carries the seat colour too
           // rather than sitting in neutral parchment beside a coloured cup.
-          background: m.displayMyTurn ? cupTint : "#F7E8C4",
-          border: `2px solid ${m.displayMyTurn ? cupDark : "#C8A66B"}`,
-          color: m.displayMyTurn ? "#FFFFFF" : "#6D4323",
+          background: m.displayMyTurn ? cupTint : "var(--ludo-chip-bg, #F7E8C4)",
+          border: `2px solid ${m.displayMyTurn ? cupDark : "var(--ludo-chip-border, #C8A66B)"}`,
+          color: m.displayMyTurn ? "#FFFFFF" : "var(--ludo-chip-text, #6D4323)",
           borderRadius: 6,
         }}
       >
@@ -1220,9 +1224,10 @@ export function LudoBottomBar({
       <span
         className="relative w-11 h-11 rounded-full flex items-center justify-center text-xl shadow-md"
         style={{
-          background: "linear-gradient(135deg, #FFFDF8 0%, #F5E5C0 100%)",
-          border: "2.5px solid #6D4323",
-          boxShadow: "0 4px 10px rgba(109,67,35,0.22)",
+          background: "var(--ludo-nav-bg, linear-gradient(135deg, #FFFDF8 0%, #F5E5C0 100%))",
+          border: "2.5px solid var(--ludo-nav-border, #6D4323)",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.18)",
+          color: "var(--ludo-nav-text, #4A2E18)",
         }}
       >
         {glyph}
@@ -1235,7 +1240,7 @@ export function LudoBottomBar({
           </span>
         )}
       </span>
-      <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "#4A2E18", textShadow: "0 1px 0 rgba(255,255,255,0.8)" }}>{label}</span>
+      <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--ludo-nav-text, #4A2E18)" }}>{label}</span>
     </button>
   );
   return (

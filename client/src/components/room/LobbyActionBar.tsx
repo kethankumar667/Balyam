@@ -29,8 +29,13 @@ export default function LobbyActionBar({
   variant?: "sticky-mobile" | "desktop-panel";
 }) {
   const readyRatioText = `${readyCount} of ${totalCount} ready`;
+  const isFree = commitmentCoins === "0";
   const hasCost = commitmentCoins !== undefined && commitmentCoins !== null;
-  const startLabel = hasCost ? `Start Game (🪙 ${commitmentCoins})` : "Start Game";
+  const startLabel = isFree
+    ? "Start Game (Free)"
+    : hasCost
+    ? `Start Game (🪙 ${commitmentCoins})`
+    : "Start Game";
 
   if (variant === "sticky-mobile") {
     return (

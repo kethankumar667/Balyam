@@ -452,6 +452,35 @@ describe("Admin Wallet Operations (/api/economy/admin/wallet)", () => {
     expect(adminEntry?.amount).toBe("2500");
     expect(adminEntry?.description).toBe("VIP operator bonus");
   });
+
+  it("GET /admin/wallet/:identityId and POST /admin/wallet/adjust resolve email addresses", async () => {
+    repo.testFixture.seedIdentity(ALICE, "member");
+    // Wire custom resolveIdentityId for the test fixture
+    repo.resolveIdentityId = async (query: string) => {
+      if (query === "alice@example.com") return ALICE;
+      return query;
+    };
+
+    const lookupRes = await server.request("/api/economy/admin/wallet/alice@example.com", {
+      headers: { "x-operational-key": OPS_KEY },
+    });
+    expect(lookupRes.status).toBe(200);
+    const lookupBody = lookupRes.body as { wallet: { identityId: string; balance: string } };
+    expect(lookupBody.wallet.identityId).toBe(ALICE);
+
+    const adjustRes = await server.request("/api/economy/admin/wallet/adjust", {
+      method: "POST",
+      headers: { "x-operational-key": OPS_KEY },
+      body: JSON.stringify({
+        identityId: "alice@example.com",
+        amountCoins: "100",
+        reason: "Email resolution test",
+      }),
+    });
+    expect(adjustRes.status).toBe(200);
+    const adjustBody = adjustRes.body as { applied: boolean; result: { identityId: string } };
+    expect(adjustBody.result.identityId).toBe(ALICE);
+  });
 });
 
 /* ═══════════════════ member wallet — the proven production ledger sequence ═══════════════════
@@ -473,7 +502,7 @@ describe("GET /api/economy/wallet — the proven production ledger sequence", ()
     const starterGrant = BigInt((beforeDebit.body as { wallet: { balance: string } }).wallet.balance);
     expect(starterGrant).toBe(5000n); // the actual proven production member starter grant
 
-    // 1 human + 1 bot — the exact seat shape production's BOT_ENTRY_DEBIT came from.
+    // 2 humans — a paid match where totalCommitment > 0.
     // The cost itself is read from the quote, not hardcoded: it comes from
     // `economy_configurations`, which this in-memory fixture seeds with its
     // own defaults independent of production's — the invariant under test is
@@ -481,7 +510,7 @@ describe("GET /api/economy/wallet — the proven production ledger sequence", ()
     // nets back to the exact starter amount), not one specific cost number.
     const quote = await server.request("/api/economy/checkout/quote", {
       method: "POST", token: mintMemberToken(ALICE),
-      body: JSON.stringify({ seatCount: 2, humanSeatCount: 1, botSeatCount: 1 }),
+      body: JSON.stringify({ seatCount: 2, humanSeatCount: 2, botSeatCount: 0 }),
     });
     expect(quote.status).toBe(200);
     const cost = BigInt((quote.body as { quote: { totalCommitment: string } }).quote.totalCommitment);
@@ -490,7 +519,7 @@ describe("GET /api/economy/wallet — the proven production ledger sequence", ()
     const matchId = "m_proven_ledger_sequence";
     const commit = await server.request("/api/economy/checkout/commit", {
       method: "POST", token: mintMemberToken(ALICE),
-      body: JSON.stringify({ matchId, roomCode: "R1", seatCount: 2, humanSeatCount: 1, botSeatCount: 1, isSolo: false }),
+      body: JSON.stringify({ matchId, roomCode: "R1", seatCount: 2, humanSeatCount: 2, botSeatCount: 0, isSolo: false }),
     });
     expect(commit.status).toBe(201);
 
@@ -507,8 +536,8 @@ describe("GET /api/economy/wallet — the proven production ledger sequence", ()
 
     const ledger = await server.request("/api/economy/wallet/ledger", { token: mintMemberToken(ALICE) });
     const entries = (ledger.body as { entries: { entryType: string; amount: string }[] }).entries;
-    // Newest first — MATCH_REFUND, BOT_ENTRY_DEBIT, STARTER_GRANT.
-    expect(entries.map((e) => e.entryType)).toEqual(["MATCH_REFUND", "BOT_ENTRY_DEBIT", "STARTER_GRANT"]);
+    // Newest first — MATCH_REFUND, ROOM_ENTRY_DEBIT, STARTER_GRANT.
+    expect(entries.map((e) => e.entryType)).toEqual(["MATCH_REFUND", "ROOM_ENTRY_DEBIT", "STARTER_GRANT"]);
     expect(entries.map((e) => BigInt(e.amount))).toEqual([cost, -cost, starterGrant]);
   });
 });

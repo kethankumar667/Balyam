@@ -59,16 +59,20 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
 
   const preview = useMemo(() => deriveLobbyEconomyPreview(quote, isQuoteLoading), [quote, isQuoteLoading]);
 
+  const isFreePractice = preview.totalPot === "0" || quote?.totalCommitment === "0" || quote?.costPerSeat === "0";
   const isLocked = lockPhase === "locked";
   const isSecuring = lockPhase === "securing";
-  const isUnavailable = preview.status === "unavailable";
-  const isLoading = preview.status === "loading";
+  const isUnavailable = !isFreePractice && preview.status === "unavailable";
+  const isLoading = !isFreePractice && preview.status === "loading";
 
   const hasSecond = preview.secondPlace !== null && preview.secondPlace !== "0";
   const hasThird = preview.thirdPlace !== null && preview.thirdPlace !== "0";
 
   // Accessible live announcement text for screen readers
   const liveAnnouncement = useMemo(() => {
+    if (isFreePractice) {
+      return `Bot practice table. Free practice against AI bots with no coins charged. ${readyCount} of ${seatCount} ready.`;
+    }
     if (isLocked) {
       return `Match prize pool locked at ${preview.totalPot} coins. Starting game.`;
     }
@@ -85,9 +89,11 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
       return `All ${seatCount} players are ready. Projected match prize pool is ${preview.totalPot} coins.`;
     }
     return `Table prize pool is currently ${preview.totalPot} coins for ${seatCount} seats. ${readyCount} of ${seatCount} players ready.`;
-  }, [isLocked, isSecuring, isUnavailable, isLoading, allReady, preview.totalPot, seatCount, readyCount]);
+  }, [isFreePractice, isLocked, isSecuring, isUnavailable, isLoading, allReady, preview.totalPot, seatCount, readyCount]);
 
-  const regionLabel = isUnavailable
+  const regionLabel = isFreePractice
+    ? "Bot practice table: free practice match"
+    : isUnavailable
     ? "Match prize pool: unavailable"
     : preview.totalPot !== null
     ? `Match prize pool: ${preview.totalPot} coins`
@@ -133,7 +139,9 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
         <div className="flex items-center gap-2">
           <div
             className={`w-7 h-7 rounded-xl flex items-center justify-center shadow-xs ${
-              isLocked
+              isFreePractice
+                ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                : isLocked
                 ? "bg-amber-400 text-stone-950"
                 : isSecuring
                 ? "bg-amber-400/80 text-stone-950"
@@ -142,7 +150,9 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
                 : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
             }`}
           >
-            {isLocked ? (
+            {isFreePractice ? (
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            ) : isLocked ? (
               <Lock className="w-4 h-4" aria-hidden="true" />
             ) : isSecuring ? (
               <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -156,7 +166,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
           </div>
           <div>
             <h2 className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200/90 flex items-center gap-1.5">
-              <span>Match Prize Pool</span>
+              <span>{isFreePractice ? "Bot Practice Table" : "Match Prize Pool"}</span>
               {!isLocked && !isSecuring && (
                 <span className="text-[10px] font-bold text-ink-lo dark:text-text-lo lowercase">
                   ({seatCount} seat{seatCount > 1 ? "s" : ""})
@@ -164,7 +174,9 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
               )}
             </h2>
             <p className="text-[10px] text-ink-lo dark:text-text-lo">
-              {isLocked
+              {isFreePractice
+                ? "Free practice against AI bots · No coins charged"
+                : isLocked
                 ? "Authoritative table stakes secured"
                 : isSecuring
                 ? "Confirming table commitment…"
@@ -179,7 +191,12 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
 
         {/* Status Badge */}
         <div>
-          {isLocked ? (
+          {isFreePractice ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/50 border border-emerald-300/60 dark:border-emerald-700/50 rounded-full px-2.5 py-0.5">
+              <Sparkles className="w-3 h-3 text-emerald-500" />
+              <span>Free Play · {readyCount}/{seatCount} Ready</span>
+            </span>
+          ) : isLocked ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-900 dark:text-amber-200 bg-amber-400/20 dark:bg-amber-400/15 border border-amber-400/50 rounded-full px-2.5 py-0.5 uppercase tracking-wider">
               <Lock className="w-3 h-3" />
               <span>Locked In Play</span>
@@ -207,7 +224,11 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
       <div className="flex items-baseline justify-between p-3.5 rounded-2xl bg-white/80 dark:bg-black/30 border border-[#EEDBCA]/80 dark:border-slate-800 shadow-inner mb-3">
         <div className="flex items-center gap-2">
           <AshthaKonaCoinIcon size={26} className="text-amber-500 drop-shadow-xs shrink-0" />
-          {isUnavailable ? (
+          {isFreePractice ? (
+            <span className="text-xl sm:text-2xl font-black text-emerald-700 dark:text-emerald-400 tracking-tight">
+              Free (0 Coins)
+            </span>
+          ) : isUnavailable ? (
             <span className="text-base sm:text-lg font-black text-ink-lo dark:text-text-lo tracking-tight uppercase">
               Unavailable
             </span>
@@ -227,12 +248,12 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
               aria-hidden="true"
             />
           )}
-          {!isUnavailable && preview.totalPot !== null && (
+          {!isUnavailable && !isFreePractice && preview.totalPot !== null && (
             <span className="text-xs font-bold text-amber-700 dark:text-amber-300">Coins</span>
           )}
         </div>
 
-        {!isUnavailable && (
+        {!isUnavailable && !isFreePractice && (
           <button
             type="button"
             onClick={() => setShowDetails((prev) => !prev)}
@@ -250,7 +271,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
       </div>
 
       {/* Payout Schedule Breakdown Grid — only ever rendered from a real quote */}
-      {!isUnavailable && preview.totalPot !== null && (
+      {!isUnavailable && !isFreePractice && preview.totalPot !== null && (
         <div
           id="prize-schedule-breakdown"
           className={`grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs transition-all duration-200 ${
@@ -312,12 +333,18 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
       )}
 
       {/* Footer Host Note */}
-      {isHost && !isLocked && !isSecuring && !isUnavailable && preview.totalPot !== null && (
+      {isHost && !isLocked && !isSecuring && (!isUnavailable || isFreePractice) && (preview.totalPot !== null || isFreePractice) && (
         <div className="mt-3 pt-2.5 border-t border-[#EEDBCA]/60 dark:border-slate-800 flex items-center gap-1.5 text-[11px] text-[#8A6D4B] dark:text-slate-400">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
-          <span>
-            Host sponsors table commitment (<span className="font-bold text-amber-700 dark:text-amber-300">🪙 {preview.totalPot}</span>) upon starting the match.
-          </span>
+          {isFreePractice ? (
+            <span className="text-emerald-800 dark:text-emerald-300 font-semibold">
+              Playing with bots is free — no coins will be deducted from your wallet.
+            </span>
+          ) : (
+            <span>
+              Host sponsors table commitment (<span className="font-bold text-amber-700 dark:text-amber-300">🪙 {preview.totalPot}</span>) upon starting the match.
+            </span>
+          )}
         </div>
       )}
     </div>

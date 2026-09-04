@@ -172,8 +172,8 @@ export default function InlineRoomRail({
           aria-label="Room actions"
           className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 shadow-lg backdrop-blur"
           style={{
-            background: paper ? "rgba(247,232,196,0.92)" : "rgba(15, 23, 42, 0.75)",
-            border: paper ? "1px solid #C8A66B" : "1px solid rgba(148, 163, 184, 0.18)",
+            background: paper ? "var(--ludo-chip-bg, rgba(247,232,196,0.92))" : "rgba(15, 23, 42, 0.75)",
+            border: paper ? "1px solid var(--ludo-chip-border, #C8A66B)" : "1px solid rgba(148, 163, 184, 0.18)",
           }}
         >
           <InlineButton
@@ -388,12 +388,12 @@ function InlineButton({
   children: React.ReactNode;
 }) {
   const bg = active
-    ? paper ? "#FF8F00" : "#EA5A1F"
-    : paper ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.06)";
-  const color = active ? "#fff" : paper ? "#6D4323" : "#e2e8f0";
+    ? paper ? "var(--ludo-screen-border, #FF8F00)" : "#EA5A1F"
+    : paper ? "var(--ludo-chip-bg, rgba(255,255,255,0.5))" : "rgba(255,255,255,0.06)";
+  const color = active ? "#fff" : paper ? "var(--ludo-chip-text, #6D4323)" : "#e2e8f0";
   const border = active
-    ? paper ? "1px solid #C86D0E" : "1px solid #D84F17"
-    : paper ? "1px solid #C8A66B" : "1px solid rgba(148,163,184,0.18)";
+    ? paper ? "1px solid var(--ludo-screen-border, #C86D0E)" : "1px solid #D84F17"
+    : paper ? "1px solid var(--ludo-chip-border, #C8A66B)" : "1px solid rgba(148,163,184,0.18)";
   return (
     <button
       type="button"

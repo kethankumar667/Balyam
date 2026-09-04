@@ -167,7 +167,7 @@ describe("Per-Player Coin Deduction (Guest and Human Seat Staking)", () => {
     ]);
   });
 
-  it("host covers bot seats: in Host + Guest + 1 Bot match, host pays 200 (100 self + 100 bot) and guest pays 100", async () => {
+  it("bots are not billed to host: in Host + Guest + 1 Bot match, host pays 100 (self only) and guest pays 100", async () => {
     const { repo, service } = freshEconomy();
     seedMember(repo, HOST_MEMBER, "5000");
     seedGuest(repo, GUEST_ID, "2000");
@@ -190,9 +190,9 @@ describe("Per-Player Coin Deduction (Guest and Human Seat Staking)", () => {
     const hostWallet = await service.getWallet(HOST_MEMBER);
     const guestWallet = await service.getWallet(GUEST_ID);
 
-    expect(hostWallet.balance).toBe("4800"); // 5000 - 200 (1 self + 1 bot)
+    expect(hostWallet.balance).toBe("4900"); // 5000 - 100 (1 self; bot is free)
     expect(guestWallet.balance).toBe("1900"); // 2000 - 100
-    expect(room.committedTotalPot).toBe("300"); // 3 seats * 100
+    expect(room.committedTotalPot).toBe("200"); // 2 human seats * 100
   });
 
   it("blocks game start and notifies host with player name when guest has insufficient coins", async () => {

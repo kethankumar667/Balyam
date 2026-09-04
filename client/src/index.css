@@ -1310,6 +1310,25 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #ffffff; --ludo-paper: #ffffff; --ludo-cell: #ffffff;
   --ludo-ink: #23201E; --ludo-star: #ffffff; --ludo-hub: #ffffff;
   --ludo-label: #23201E;
+
+  --ludo-screen-bg: #f8fafc;
+  --ludo-screen-border: #cbd5e1;
+  --ludo-card-bg: #ffffff;
+  --ludo-card-border: #e2e8f0;
+  --ludo-card-text: #0f172a;
+  --ludo-card-subtext: #64748b;
+  --ludo-chip-bg: #ffffff;
+  --ludo-chip-border: #cbd5e1;
+  --ludo-chip-text: #0f172a;
+  --ludo-panel-bg: #ffffff;
+  --ludo-panel-border: #e2e8f0;
+  --ludo-panel-text: #0f172a;
+  --ludo-feed-bg: #ffffff;
+  --ludo-feed-border: #e2e8f0;
+  --ludo-feed-text: #334155;
+  --ludo-nav-bg: #ffffff;
+  --ludo-nav-border: #cbd5e1;
+  --ludo-nav-text: #0f172a;
 }
 
 /* Paper — aged newsprint, the boards these games were printed on. */
@@ -1317,6 +1336,25 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #EFE4CF; --ludo-paper: #F6EFE0; --ludo-cell: #FBF6EA;
   --ludo-ink: #6B563C; --ludo-star: #FFFDF6; --ludo-hub: #F6EFE0;
   --ludo-label: #5A462F;
+
+  --ludo-screen-bg: #EFE4CF;
+  --ludo-screen-border: #6D4323;
+  --ludo-card-bg: #FBF6EA;
+  --ludo-card-border: #D8C7A8;
+  --ludo-card-text: #5A462F;
+  --ludo-card-subtext: #8C7355;
+  --ludo-chip-bg: #F6EFE0;
+  --ludo-chip-border: #6D4323;
+  --ludo-chip-text: #5A462F;
+  --ludo-panel-bg: #FBF6EA;
+  --ludo-panel-border: #D8C7A8;
+  --ludo-panel-text: #5A462F;
+  --ludo-feed-bg: #F6EFE0;
+  --ludo-feed-border: #D8C7A8;
+  --ludo-feed-text: #5A462F;
+  --ludo-nav-bg: #F6EFE0;
+  --ludo-nav-border: #6D4323;
+  --ludo-nav-text: #5A462F;
 }
 
 /* Neon — dark arcade. Seat colours read hot against the violet grid. */
@@ -1324,6 +1362,25 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #0B0824; --ludo-paper: #14103A; --ludo-cell: #1B1650;
   --ludo-ink: #6D28D9; --ludo-star: #F0ABFC; --ludo-hub: #241C6B;
   --ludo-label: #C4B5FD;
+
+  --ludo-screen-bg: #070518;
+  --ludo-screen-border: #6D28D9;
+  --ludo-card-bg: #130E38;
+  --ludo-card-border: #3B2D78;
+  --ludo-card-text: #F3E8FF;
+  --ludo-card-subtext: #C4B5FD;
+  --ludo-chip-bg: #14103A;
+  --ludo-chip-border: #8B5CF6;
+  --ludo-chip-text: #F5F3FF;
+  --ludo-panel-bg: #130E38;
+  --ludo-panel-border: #3B2D78;
+  --ludo-panel-text: #F3E8FF;
+  --ludo-feed-bg: #100C30;
+  --ludo-feed-border: #2E2260;
+  --ludo-feed-text: #DDD6FE;
+  --ludo-nav-bg: #14103A;
+  --ludo-nav-border: #8B5CF6;
+  --ludo-nav-text: #F5F3FF;
 }
 
 /* Emerald — card-table felt. */
@@ -1331,6 +1388,25 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #072B20; --ludo-paper: #0E4534; --ludo-cell: #14624A;
   --ludo-ink: #08301F; --ludo-star: #ECFDF5; --ludo-hub: #0E4534;
   --ludo-label: #A7F3D0;
+
+  --ludo-screen-bg: #041B14;
+  --ludo-screen-border: #059669;
+  --ludo-card-bg: #083326;
+  --ludo-card-border: #0D5C43;
+  --ludo-card-text: #ECFDF5;
+  --ludo-card-subtext: #A7F3D0;
+  --ludo-chip-bg: #0E4534;
+  --ludo-chip-border: #10B981;
+  --ludo-chip-text: #ECFDF5;
+  --ludo-panel-bg: #083326;
+  --ludo-panel-border: #0D5C43;
+  --ludo-panel-text: #ECFDF5;
+  --ludo-feed-bg: #06261C;
+  --ludo-feed-border: #0B4A36;
+  --ludo-feed-text: #D1FAE5;
+  --ludo-nav-bg: #0E4534;
+  --ludo-nav-border: #10B981;
+  --ludo-nav-text: #ECFDF5;
 }
 
 /* Midnight — neutral dark, for players who want low glare without a hue. */
@@ -1338,6 +1414,25 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #10141F; --ludo-paper: #1B2130; --ludo-cell: #253044;
   --ludo-ink: #0B0F18; --ludo-star: #E2E8F0; --ludo-hub: #1B2130;
   --ludo-label: #94A3B8;
+
+  --ludo-screen-bg: #0A0D15;
+  --ludo-screen-border: #334155;
+  --ludo-card-bg: #131A29;
+  --ludo-card-border: #232D42;
+  --ludo-card-text: #F1F5F9;
+  --ludo-card-subtext: #94A3B8;
+  --ludo-chip-bg: #1B2130;
+  --ludo-chip-border: #475569;
+  --ludo-chip-text: #F8FAFC;
+  --ludo-panel-bg: #131A29;
+  --ludo-panel-border: #232D42;
+  --ludo-panel-text: #F1F5F9;
+  --ludo-feed-bg: #0F1522;
+  --ludo-feed-border: #1E273A;
+  --ludo-feed-text: #CBD5E1;
+  --ludo-nav-bg: #1B2130;
+  --ludo-nav-border: #475569;
+  --ludo-nav-text: #F8FAFC;
 }
 
 /* Sunset — warm terracotta, the brightest of the light themes. */
@@ -1345,6 +1440,25 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #F6D9B8; --ludo-paper: #FFF1E0; --ludo-cell: #FFE3C4;
   --ludo-ink: #9A4B23; --ludo-star: #FFFFFF; --ludo-hub: #FFF1E0;
   --ludo-label: #7C3A18;
+
+  --ludo-screen-bg: #F5D3AC;
+  --ludo-screen-border: #9A4B23;
+  --ludo-card-bg: #FFF5EA;
+  --ludo-card-border: #E8B98C;
+  --ludo-card-text: #5A2A10;
+  --ludo-card-subtext: #8C4D26;
+  --ludo-chip-bg: #FFF1E0;
+  --ludo-chip-border: #9A4B23;
+  --ludo-chip-text: #5A2A10;
+  --ludo-panel-bg: #FFF5EA;
+  --ludo-panel-border: #E8B98C;
+  --ludo-panel-text: #5A2A10;
+  --ludo-feed-bg: #FFF1E0;
+  --ludo-feed-border: #E8B98C;
+  --ludo-feed-text: #5A2A10;
+  --ludo-nav-bg: #FFF1E0;
+  --ludo-nav-border: #9A4B23;
+  --ludo-nav-text: #5A2A10;
 }
 
 /* Color-blind: shape patterns layered on top of token bodies */

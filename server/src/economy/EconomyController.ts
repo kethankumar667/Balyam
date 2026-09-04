@@ -760,8 +760,8 @@ export function createEconomyRouter(service: EconomyService): Router {
    */
   router.get("/admin/wallet/:identityId", requireOperationalAuth, async (req: Request, res: Response) => {
     const startedAt = Date.now();
-    const identityId = req.params.identityId;
-    if (!identityId || identityId.trim().length === 0) {
+    const rawIdentityId = req.params.identityId;
+    if (!rawIdentityId || rawIdentityId.trim().length === 0) {
       res.status(400).json({ error: "InvalidRequest", message: "identityId is required." });
       return;
     }
@@ -772,8 +772,9 @@ export function createEconomyRouter(service: EconomyService): Router {
       return;
     }
     try {
-      const wallet = await service.getWallet(identityId.trim());
-      const ledger = await service.getLedger(identityId.trim(), { limit: rawLimit, offset: rawOffset });
+      const identityId = await service.resolveIdentity(rawIdentityId.trim());
+      const wallet = await service.getWallet(identityId);
+      const ledger = await service.getLedger(identityId, { limit: rawLimit, offset: rawOffset });
       res.json({ wallet, ledger });
       logOutcome(req, res, "GET /admin/wallet/:identityId", "adminLookupWallet", null, startedAt, "ok");
     } catch (err) {
@@ -789,12 +790,12 @@ export function createEconomyRouter(service: EconomyService): Router {
   router.post("/admin/wallet/adjust", requireOperationalAuth, async (req: Request, res: Response) => {
     const startedAt = Date.now();
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const identityId = typeof body.identityId === "string" ? body.identityId.trim() : "";
+    const rawIdentityId = typeof body.identityId === "string" ? body.identityId.trim() : "";
     const amountCoins = typeof body.amountCoins === "string" ? body.amountCoins.trim() : "";
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
     const rawIdempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
 
-    if (!identityId) {
+    if (!rawIdentityId) {
       res.status(400).json({ error: "InvalidRequest", message: "identityId is required." });
       return;
     }
@@ -802,11 +803,13 @@ export function createEconomyRouter(service: EconomyService): Router {
       res.status(400).json({ error: "InvalidRequest", message: "amountCoins must be a positive integer string." });
       return;
     }
-    const idempotencyKey = rawIdempotencyKey.length > 0
-      ? rawIdempotencyKey
-      : `admin-adjust:${identityId}:${randomUUID()}`;
 
     try {
+      const identityId = await service.resolveIdentity(rawIdentityId);
+      const idempotencyKey = rawIdempotencyKey.length > 0
+        ? rawIdempotencyKey
+        : `admin-adjust:${identityId}:${randomUUID()}`;
+
       const result = await service.adminAdjustWallet({
         identityId,
         amountCoins,
