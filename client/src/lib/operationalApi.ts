@@ -122,7 +122,43 @@ export class OperationalAuthError extends Error {
 export async function operationalFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${getApiBaseUrl()}${path}`, { headers: authHeaders() });
   if (res.status === 401) throw new OperationalAuthError();
-  if (!res.ok) throw new Error(`Operational request failed: ${res.status}`);
+  if (!res.ok) {
+    let message = `Operational request failed: ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.message) message = data.message;
+      else if (data.error) message = data.error;
+    } catch {
+      // ignore json parse error
+    }
+    throw new Error(message);
+  }
+  return (await res.json()) as T;
+}
+
+/**
+ * One operational POST. Supports sending JSON payload with operational credentials.
+ */
+export async function operationalPost<T>(path: string, body: unknown): Promise<T> {
+  const headers = authHeaders();
+  headers["Content-Type"] = "application/json";
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) throw new OperationalAuthError();
+  if (!res.ok) {
+    let message = `Operational request failed: ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.message) message = data.message;
+      else if (data.error) message = data.error;
+    } catch {
+      // ignore json parse error
+    }
+    throw new Error(message);
+  }
   return (await res.json()) as T;
 }
 

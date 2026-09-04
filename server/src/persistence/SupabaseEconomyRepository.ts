@@ -25,6 +25,7 @@ import {
   VoucherNotFoundError,
   WalletFrozenError,
   WalletNotFoundError,
+  type AdminAdjustWalletInput,
   type ClaimTerminalIntentResult,
   type CoinLedgerEntryRecord,
   type CoinWalletRecord,
@@ -795,6 +796,19 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       p_member_identity_id: memberIdentityId,
     });
     return { ...envelope, result: toVoucher(envelope.result) };
+  }
+
+  async adminAdjustWallet(
+    input: AdminAdjustWalletInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    const envelope = await this.rpc<RawEnvelope<WalletRow>>("admin_adjust_wallet", {
+      p_identity_id: input.identityId,
+      p_amount: input.amountCoins,
+      p_admin_id: input.adminPrincipalId,
+      p_reason: input.reason,
+      p_idempotency_key: input.idempotencyKey,
+    });
+    return { ...envelope, result: toWallet(envelope.result) };
   }
 
   /* ═══════════════════════ durable terminal intents (Blocker 06) ═════════

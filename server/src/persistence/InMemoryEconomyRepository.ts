@@ -1,4 +1,5 @@
 import {
+  type AdminAdjustWalletInput,
   type ClaimTerminalIntentResult,
   type CoinLedgerEntryRecord,
   type CoinWalletRecord,
@@ -611,6 +612,14 @@ export class InMemoryEconomyRepository implements EconomyRepository {
   ): Promise<EconomyOperationResult<RewardVoucherRecord>> {
     return this.mutex.runExclusive(`voucher-code:${codeHash}`, () =>
       this.withRollback(() => this.redeemRewardVoucherLocked(codeHash, memberIdentityId)),
+    );
+  }
+
+  async adminAdjustWallet(
+    input: AdminAdjustWalletInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    return this.mutex.runExclusive(`wallet:${input.identityId}`, () =>
+      this.withRollback(() => this.adminAdjustWalletLocked(input)),
     );
   }
 
@@ -1409,6 +1418,54 @@ export class InMemoryEconomyRepository implements EconomyRepository {
 
     this.logIdempotency(idempotencyKey, "redeem_reward_voucher");
     return { applied: true, operation: "redeem_reward_voucher", idempotencyKey, result: clone(updatedVoucher) };
+  }
+
+  private adminAdjustWalletLocked(
+    input: AdminAdjustWalletInput,
+  ): EconomyOperationResult<CoinWalletRecord> {
+    if (!input.identityId || input.identityId.trim().length === 0) {
+      throw new InvalidIdentityIdError(input.identityId);
+    }
+    const amountBn = toBig(input.amountCoins);
+    if (amountBn <= 0n) {
+      throw new Error("INVALID_AMOUNT: top-up amount must be strictly greater than 0");
+    }
+
+    this.ensureWalletLocked(input.identityId);
+
+    const existing = this.idempotencyLog.get(input.idempotencyKey);
+    if (existing) {
+      const wallet = this.wallets.get(input.identityId)!;
+      return {
+        applied: false,
+        operation: "admin_adjust_wallet",
+        idempotencyKey: input.idempotencyKey,
+        result: clone(wallet),
+      };
+    }
+
+    const wallet = this.wallets.get(input.identityId)!;
+    if (wallet.isFrozen) {
+      throw new WalletFrozenError(`Wallet for ${input.identityId} is frozen`);
+    }
+
+    const updated = this.creditWallet(wallet, amountBn, {
+      entryType: "ADMIN_ADJUSTMENT",
+      sourceKind: "admin",
+      sourceId: input.adminPrincipalId,
+      idempotencyKey: input.idempotencyKey,
+      description: input.reason || "Admin manual top-up",
+      lifetimeField: "lifetimeGranted",
+    });
+
+    this.wallets.set(input.identityId, updated);
+    this.logIdempotency(input.idempotencyKey, "admin_adjust_wallet");
+    return {
+      applied: true,
+      operation: "admin_adjust_wallet",
+      idempotencyKey: input.idempotencyKey,
+      result: clone(updated),
+    };
   }
 
   /* ═══════════════════════════ shared mutation primitives ═══════════════ */

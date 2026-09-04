@@ -1,11 +1,13 @@
 import { logger } from "../lib/logger.js";
 import {
+  type AdminAdjustWalletInput,
   type ClaimTerminalIntentResult,
   type CoinLedgerEntryRecord,
   type CoinWalletRecord,
   type CommitMatchEntryInput,
   type CreateTerminalIntentInput,
   type CreateTerminalIntentResult,
+  type EconomyOperationResult,
   type EconomyRepository,
   type IntentUpdateResult,
   type ListTerminalIntentsOptions,
@@ -22,6 +24,7 @@ import {
   type WorldBankSnapshot,
   EconomyRepositoryError,
   EconomyInfrastructureError,
+  InvalidIdentityIdError,
   InvalidSeatConfigurationError,
   MatchNotCommittedError,
   UnsupportedSeatCountError,
@@ -918,6 +921,46 @@ export class EconomyService {
       this.repository.requeueExpiredTerminalIntentClaim(intentId, operatorId, force),
     );
     this.logOutcome("requeueExpiredTerminalIntentClaim", outcome.intent.matchId, startedAt, outcome.updated);
+    return outcome;
+  }
+
+  /**
+   * Super Admin manual player wallet adjustment.
+   * Ensures positive amount, valid identity, and passes to repository without auto-retry.
+   */
+  async adminAdjustWallet(
+    input: AdminAdjustWalletInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    const startedAt = this.now();
+    if (!input.identityId || typeof input.identityId !== "string" || input.identityId.trim().length === 0) {
+      throw new InvalidIdentityIdError(input.identityId);
+    }
+    let amountBn: bigint;
+    try {
+      amountBn = BigInt(input.amountCoins);
+    } catch {
+      throw new InvalidRequestError("amountCoins must be a valid integer string");
+    }
+    if (amountBn <= 0n) {
+      throw new InvalidRequestError("amountCoins must be strictly greater than 0");
+    }
+    if (!input.adminPrincipalId || input.adminPrincipalId.trim().length === 0) {
+      throw new InvalidRequestError("adminPrincipalId must be provided");
+    }
+    if (!input.idempotencyKey || input.idempotencyKey.trim().length === 0) {
+      throw new InvalidRequestError("idempotencyKey must be provided");
+    }
+
+    const outcome = await this.withoutRetry("adminAdjustWallet", null, () =>
+      this.repository.adminAdjustWallet({
+        identityId: input.identityId.trim(),
+        amountCoins: amountBn.toString(),
+        adminPrincipalId: input.adminPrincipalId.trim(),
+        reason: input.reason?.trim() || "Admin manual top-up",
+        idempotencyKey: input.idempotencyKey.trim(),
+      }),
+    );
+    this.logOutcome("adminAdjustWallet", null, startedAt, outcome.applied ? "applied" : "replay");
     return outcome;
   }
 }

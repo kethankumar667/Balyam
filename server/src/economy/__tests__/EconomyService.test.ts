@@ -899,3 +899,57 @@ describe("EconomyService — zero floating-point coin arithmetic", () => {
     expect(wallet.balance).not.toBe(String(Number("9223372036854775807")));
   });
 });
+
+describe("EconomyService — adminAdjustWallet", () => {
+  it("validates inputs before calling repository", async () => {
+    const repo = freshRepo();
+    const service = freshService(repo);
+
+    await expect(
+      service.adminAdjustWallet({
+        identityId: "",
+        amountCoins: "100",
+        adminPrincipalId: "admin_1",
+        reason: "test",
+        idempotencyKey: "ik-1",
+      }),
+    ).rejects.toThrow();
+
+    await expect(
+      service.adminAdjustWallet({
+        identityId: "player_1",
+        amountCoins: "-100",
+        adminPrincipalId: "admin_1",
+        reason: "test",
+        idempotencyKey: "ik-1",
+      }),
+    ).rejects.toThrow(InvalidRequestError);
+
+    await expect(
+      service.adminAdjustWallet({
+        identityId: "player_1",
+        amountCoins: "abc",
+        adminPrincipalId: "admin_1",
+        reason: "test",
+        idempotencyKey: "ik-1",
+      }),
+    ).rejects.toThrow(InvalidRequestError);
+  });
+
+  it("orchestrates successful adjustment without auto-retry", async () => {
+    const repo = freshRepo();
+    repo.testFixture.seedIdentity("player_topup_svc", "member");
+    const service = freshService(repo);
+
+    const res = await service.adminAdjustWallet({
+      identityId: "player_topup_svc",
+      amountCoins: "3000",
+      adminPrincipalId: "admin_super",
+      reason: "Compensation grant",
+      idempotencyKey: "adj-svc-1",
+    });
+
+    expect(res.applied).toBe(true);
+    expect(res.result.balance).toBe("8000"); // 5000 starter + 3000
+  });
+});

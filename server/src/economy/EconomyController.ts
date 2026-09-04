@@ -754,6 +754,74 @@ export function createEconomyRouter(service: EconomyService): Router {
     }
   });
 
+  /**
+   * GET /admin/wallet/:identityId — operational lookup of any player's wallet and ledger history.
+   * Gated by requireOperationalAuth.
+   */
+  router.get("/admin/wallet/:identityId", requireOperationalAuth, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const identityId = req.params.identityId;
+    if (!identityId || identityId.trim().length === 0) {
+      res.status(400).json({ error: "InvalidRequest", message: "identityId is required." });
+      return;
+    }
+    const rawLimit = req.query.limit !== undefined ? Number(req.query.limit) : 50;
+    const rawOffset = req.query.offset !== undefined ? Number(req.query.offset) : 0;
+    if (!isNonNegativeInteger(rawLimit) || !isNonNegativeInteger(rawOffset)) {
+      res.status(400).json({ error: "InvalidRequest", message: "limit and offset must be non-negative integers." });
+      return;
+    }
+    try {
+      const wallet = await service.getWallet(identityId.trim());
+      const ledger = await service.getLedger(identityId.trim(), { limit: rawLimit, offset: rawOffset });
+      res.json({ wallet, ledger });
+      logOutcome(req, res, "GET /admin/wallet/:identityId", "adminLookupWallet", null, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /admin/wallet/:identityId", "adminLookupWallet", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /**
+   * POST /admin/wallet/adjust — operational manual top-up / adjustment of a player's wallet.
+   * Gated by requireOperationalAuth.
+   */
+  router.post("/admin/wallet/adjust", requireOperationalAuth, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const identityId = typeof body.identityId === "string" ? body.identityId.trim() : "";
+    const amountCoins = typeof body.amountCoins === "string" ? body.amountCoins.trim() : "";
+    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+    const rawIdempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+
+    if (!identityId) {
+      res.status(400).json({ error: "InvalidRequest", message: "identityId is required." });
+      return;
+    }
+    if (!amountCoins || !/^\d+$/.test(amountCoins)) {
+      res.status(400).json({ error: "InvalidRequest", message: "amountCoins must be a positive integer string." });
+      return;
+    }
+    const idempotencyKey = rawIdempotencyKey.length > 0
+      ? rawIdempotencyKey
+      : `admin-adjust:${identityId}:${randomUUID()}`;
+
+    try {
+      const result = await service.adminAdjustWallet({
+        identityId,
+        amountCoins,
+        adminPrincipalId: operatorId(req),
+        reason: reason.length > 0 ? reason : "Admin manual top-up",
+        idempotencyKey,
+      });
+      res.json(result);
+      logOutcome(req, res, "POST /admin/wallet/adjust", "adminAdjustWallet", null, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "POST /admin/wallet/adjust", "adminAdjustWallet", null, startedAt, "error", mapped.error);
+    }
+  });
+
   return router;
 }
 

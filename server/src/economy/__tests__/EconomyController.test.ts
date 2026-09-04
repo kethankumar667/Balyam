@@ -359,6 +359,101 @@ describe("GET /api/economy/world-bank", () => {
   });
 });
 
+/* ═══════════════════════ admin wallet lookup & adjustment (operational auth) ═══ */
+
+describe("Admin Wallet Operations (/api/economy/admin/wallet)", () => {
+  it("GET /admin/wallet/:identityId refused without operational credentials", async () => {
+    const res = await server.request(`/api/economy/admin/wallet/${ALICE}`, { token: mintMemberToken(ALICE) });
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /admin/wallet/:identityId returns wallet and ledger with operational key", async () => {
+    repo.testFixture.seedIdentity(ALICE, "member");
+    const res = await server.request(`/api/economy/admin/wallet/${ALICE}`, {
+      headers: { "x-operational-key": OPS_KEY },
+    });
+    expect(res.status).toBe(200);
+    const body = res.body as { wallet: { balance: string }; ledger: unknown[] };
+    expect(body.wallet).toBeDefined();
+    expect(body.ledger).toBeDefined();
+  });
+
+  it("POST /admin/wallet/adjust refused without operational credentials", async () => {
+    const res = await server.request("/api/economy/admin/wallet/adjust", {
+      method: "POST",
+      token: mintMemberToken(ALICE),
+      body: JSON.stringify({ identityId: ALICE, amountCoins: "1000", reason: "Test top-up" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /admin/wallet/adjust validates required fields", async () => {
+    const res = await server.request("/api/economy/admin/wallet/adjust", {
+      method: "POST",
+      headers: { "x-operational-key": OPS_KEY },
+      body: JSON.stringify({ identityId: "", amountCoins: "1000" }),
+    });
+    expect(res.status).toBe(400);
+
+    const res2 = await server.request("/api/economy/admin/wallet/adjust", {
+      method: "POST",
+      headers: { "x-operational-key": OPS_KEY },
+      body: JSON.stringify({ identityId: ALICE, amountCoins: "-50" }),
+    });
+    expect(res2.status).toBe(400);
+  });
+
+  it("POST /admin/wallet/adjust credits coins and records ledger entry, and is idempotent", async () => {
+    repo.testFixture.seedIdentity(ALICE, "member");
+    const adjustRes = await server.request("/api/economy/admin/wallet/adjust", {
+      method: "POST",
+      headers: { "x-operational-key": OPS_KEY },
+      body: JSON.stringify({
+        identityId: ALICE,
+        amountCoins: "2500",
+        reason: "VIP operator bonus",
+        idempotencyKey: "test-adjust-1",
+      }),
+    });
+    expect(adjustRes.status).toBe(200);
+    const body = adjustRes.body as { applied: boolean; result: { balance: string } };
+    expect(body.applied).toBe(true);
+    // Starter grant is 5000 + 2500 = 7500
+    expect(BigInt(body.result.balance)).toBe(7500n);
+
+    // Replay with the same idempotency key
+    const replayRes = await server.request("/api/economy/admin/wallet/adjust", {
+      method: "POST",
+      headers: { "x-operational-key": OPS_KEY },
+      body: JSON.stringify({
+        identityId: ALICE,
+        amountCoins: "2500",
+        reason: "VIP operator bonus",
+        idempotencyKey: "test-adjust-1",
+      }),
+    });
+    expect(replayRes.status).toBe(200);
+    const replayBody = replayRes.body as { applied: boolean; result: { balance: string } };
+    expect(replayBody.applied).toBe(false);
+    expect(BigInt(replayBody.result.balance)).toBe(7500n);
+
+    // Verify via GET /admin/wallet/:identityId that ledger contains the ADMIN_ADJUSTMENT entry
+    const lookupRes = await server.request(`/api/economy/admin/wallet/${ALICE}`, {
+      headers: { "x-operational-key": OPS_KEY },
+    });
+    expect(lookupRes.status).toBe(200);
+    const lookupBody = lookupRes.body as {
+      wallet: { balance: string };
+      ledger: Array<{ entryType: string; amount: string; description: string }>;
+    };
+    expect(BigInt(lookupBody.wallet.balance)).toBe(7500n);
+    const adminEntry = lookupBody.ledger.find((e) => e.entryType === "ADMIN_ADJUSTMENT");
+    expect(adminEntry).toBeDefined();
+    expect(adminEntry?.amount).toBe("2500");
+    expect(adminEntry?.description).toBe("VIP operator bonus");
+  });
+});
+
 /* ═══════════════════ member wallet — the proven production ledger sequence ═══════════════════
  * Regression for a real incident: production showed STARTER_GRANT(+5000) →
  * BOT_ENTRY_DEBIT(-400) → MATCH_REFUND(+400), a real ledger proving a final

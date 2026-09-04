@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Users,
   UserCheck,
@@ -15,6 +16,7 @@ import {
   Calendar,
   Search,
   Filter,
+  Coins,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
@@ -73,6 +75,7 @@ const MOCK_25_USERS: UserRow[] = [
 ];
 
 export default function AdminUsersPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -459,6 +462,29 @@ export default function AdminUsersPage() {
                   <span className="text-[11px] font-mono">Yesterday</span>
                 </li>
               </ul>
+            </div>
+
+            {/* Player Economy & Coins Top-Up Action */}
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <Coins className="w-4 h-4" />
+                  Player Economy & Coins
+                </h4>
+              </div>
+              <p className="text-xs text-[var(--chrome-ink-soft)] leading-relaxed">
+                Inspect this player's live coin wallet balance, audit transaction ledger history, or manually top up virtual coins.
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(`/admin/economy?tab=player&identityId=${encodeURIComponent(selectedUser.id)}`)
+                }
+                className="w-full h-10 mt-1 flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition cursor-pointer shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                <Coins className="w-4 h-4" />
+                <span>Top-Up Coins / Investigate Wallet</span>
+              </button>
             </div>
           </div>
         )}

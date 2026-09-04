@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Landmark,
   ShieldCheck,
@@ -65,7 +66,36 @@ interface TabDefinition {
  * 8. Economy Health Center (Badges HEALTHY/WARNING/CRITICAL, 5 operational checks)
  */
 export default function AdminEconomyPage() {
-  const [activeTab, setActiveTab] = useState<EconomyTabId>("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") as EconomyTabId | null;
+  const [activeTab, setActiveTab] = useState<EconomyTabId>(() => {
+    if (
+      tabParam &&
+      ["overview", "settlements", "stale", "world-bank", "analytics", "player", "match", "health"].includes(tabParam)
+    ) {
+      return tabParam;
+    }
+    return "overview";
+  });
+
+  useEffect(() => {
+    if (
+      tabParam &&
+      ["overview", "settlements", "stale", "world-bank", "analytics", "player", "match", "health"].includes(tabParam)
+    ) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  const handleTabChange = (newTab: EconomyTabId) => {
+    setActiveTab(newTab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", newTab);
+      return next;
+    });
+  };
+
   const [worldBank, setWorldBank] = useState<WorldBankSnapshot | null>(null);
   const [staleSettlements, setStaleSettlements] = useState<MatchEconomySettlementRecord[]>([]);
   const [recentSettlements, setRecentSettlements] = useState<MatchEconomySettlementRecord[]>([]);
@@ -217,7 +247,7 @@ export default function AdminEconomyPage() {
                 aria-selected={isActive}
                 aria-controls={`economy-panel-${tab.id}`}
                 tabIndex={isActive ? 0 : -1}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 onKeyDown={(e) => handleTabKeyDown(e, idx)}
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400 ${
                   isActive

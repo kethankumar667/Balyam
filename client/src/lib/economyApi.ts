@@ -1,6 +1,6 @@
 import { getApiBaseUrl } from "./socket";
 import { apiFetch } from "./playerIdentity";
-import { operationalFetch } from "./operationalApi";
+import { operationalFetch, operationalPost } from "./operationalApi";
 
 /* ═══════════════════════════ Types & DTOs ══════════════════════════════════ */
 
@@ -318,4 +318,42 @@ export async function reconcileMatchSettlement(
   return operationalFetch<{ reconciliation: SettlementReconciliation }>(
     `/api/economy/settlements/${encodeURIComponent(matchId)}/reconcile`,
   );
+}
+
+/* ═══════════════════════ Admin Operational Wallet Endpoints ═══════════════ */
+
+export interface AdminAdjustWalletRequest {
+  identityId: string;
+  amountCoins: string;
+  reason?: string;
+  idempotencyKey?: string;
+}
+
+export interface AdminAdjustWalletResponse {
+  applied: boolean;
+  operation: string;
+  idempotencyKey: string;
+  result: CoinWalletRecord;
+}
+
+/**
+ * GET /api/economy/admin/wallet/:identityId — operational lookup of any player's wallet and ledger.
+ */
+export async function lookupPlayerWallet(
+  identityId: string,
+  limit = 50,
+  offset = 0,
+): Promise<{ wallet: CoinWalletRecord; ledger: CoinLedgerEntryRecord[] }> {
+  return operationalFetch<{ wallet: CoinWalletRecord; ledger: CoinLedgerEntryRecord[] }>(
+    `/api/economy/admin/wallet/${encodeURIComponent(identityId.trim())}?limit=${limit}&offset=${offset}`,
+  );
+}
+
+/**
+ * POST /api/economy/admin/wallet/adjust — operational manual top-up of a player's wallet.
+ */
+export async function adminAdjustWallet(
+  request: AdminAdjustWalletRequest,
+): Promise<AdminAdjustWalletResponse> {
+  return operationalPost<AdminAdjustWalletResponse>("/api/economy/admin/wallet/adjust", request);
 }

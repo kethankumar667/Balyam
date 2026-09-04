@@ -550,4 +550,54 @@ describe("InMemoryEconomyRepository", () => {
       await expect(repo.getWallet("to_be_reset")).resolves.toBeNull();
     });
   });
+
+  describe("adminAdjustWallet", () => {
+    it("credits player balance and maintains strict reconciliation invariant", async () => {
+      fixture.seedIdentity("player_topup", "member");
+      const res = await repo.adminAdjustWallet({
+        identityId: "player_topup",
+        amountCoins: "1500",
+        adminPrincipalId: "admin_1",
+        reason: "VIP top-up",
+        idempotencyKey: "topup-1",
+      });
+      expect(res.applied).toBe(true);
+      expect(res.operation).toBe("admin_adjust_wallet");
+      // Member starter grant 5000 + 1500 = 6500
+      expect(res.result.balance).toBe("6500");
+      expect(res.result.lifetimeGranted).toBe("6500");
+
+      const ledger = await repo.listLedger("player_topup");
+      expect(ledger[0].entryType).toBe("ADMIN_ADJUSTMENT");
+      expect(ledger[0].amount).toBe("1500");
+      expect(ledger[0].description).toBe("VIP top-up");
+
+      // Idempotency replay
+      const replay = await repo.adminAdjustWallet({
+        identityId: "player_topup",
+        amountCoins: "1500",
+        adminPrincipalId: "admin_1",
+        reason: "VIP top-up",
+        idempotencyKey: "topup-1",
+      });
+      expect(replay.applied).toBe(false);
+      expect(replay.result.balance).toBe("6500");
+    });
+
+    it("rejects adjustment if wallet is frozen", async () => {
+      fixture.seedIdentity("frozen_player", "member");
+      await repo.ensureWallet("frozen_player");
+      fixture.setFrozen("frozen_player", true);
+
+      await expect(
+        repo.adminAdjustWallet({
+          identityId: "frozen_player",
+          amountCoins: "500",
+          adminPrincipalId: "admin_1",
+          reason: "top-up",
+          idempotencyKey: "frozen-1",
+        }),
+      ).rejects.toThrow(WalletFrozenError);
+    });
+  });
 });

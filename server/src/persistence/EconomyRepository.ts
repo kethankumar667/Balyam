@@ -310,6 +310,14 @@ export interface IssueGuestVoucherInput {
   issuedToGuestId: string;
 }
 
+export interface AdminAdjustWalletInput {
+  identityId: string;
+  amountCoins: string;
+  adminPrincipalId: string;
+  reason: string;
+  idempotencyKey: string;
+}
+
 /* ═══════════════════════ Durable terminal intents (Blocker 06) ════════════
  *
  * The durable replacement for the in-memory `EconomySettlementQueue`. See
@@ -745,6 +753,14 @@ export interface EconomyRepository {
     codeHash: string,
     memberIdentityId: string,
   ): Promise<EconomyOperationResult<RewardVoucherRecord>>;
+
+  /**
+   * Super Admin manual top-up / wallet adjustment with ledger auditing and
+   * strict reconciliation invariance.
+   */
+  adminAdjustWallet(
+    input: AdminAdjustWalletInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>>;
 
   /* ── durable terminal intents (Blocker 06) ── */
 
