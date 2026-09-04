@@ -1,4 +1,5 @@
 import { memoryMonitor } from "../reliability/MemoryMonitor.js";
+import { SERVER_LIMITS } from "../reliability/ServerLimits.js";
 import { performanceMonitor } from "./PerformanceMonitor.js";
 import { metricsRegistry } from "./MetricsRegistry.js";
 import { serverResourceTracker } from "../reliability/ResourceTracker.js";
@@ -32,20 +33,39 @@ export class HealthMonitor {
 
     // 1. Memory Health Check
     const memAnalysis = memoryMonitor.getAnalysis();
-    if (memAnalysis.isLeakingSuspected || memAnalysis.heapUsageRatio > 0.90) {
+    if (
+      memAnalysis.isLeakingSuspected ||
+      (memAnalysis.current.heapUsedMb >= SERVER_LIMITS.MIN_HEAP_ALERT_FLOOR_MB &&
+        memAnalysis.heapUsageRatio >= SERVER_LIMITS.HEAP_CRITICAL_THRESHOLD_RATIO)
+    ) {
       checks.push({
         name: "memory_growth",
         status: "CRITICAL",
-        message: `Critical memory pressure: heap at ${Math.round(memAnalysis.heapUsageRatio * 100)}% (${memAnalysis.current.heapUsedMb}MB / ${memAnalysis.current.heapTotalMb}MB)`,
-        metrics: { heapUsedMb: memAnalysis.current.heapUsedMb, ratio: memAnalysis.heapUsageRatio },
+        message: `Critical memory pressure: heap at ${Math.round(memAnalysis.heapUsageRatio * 100)}% (${memAnalysis.current.heapUsedMb}MB / ${memAnalysis.current.heapSizeLimitMb}MB)`,
+        metrics: {
+          heapUsedMb: memAnalysis.current.heapUsedMb,
+          heapSizeLimitMb: memAnalysis.current.heapSizeLimitMb,
+          rssMb: memAnalysis.current.rssMb,
+          ratio: memAnalysis.heapUsageRatio,
+          trend: memAnalysis.growthTrend.trend,
+        },
       });
       activeAlerts.push("Critical Heap Pressure");
-    } else if (memAnalysis.heapUsageRatio > 0.80) {
+    } else if (
+      memAnalysis.current.heapUsedMb >= SERVER_LIMITS.MIN_HEAP_ALERT_FLOOR_MB &&
+      memAnalysis.heapUsageRatio >= SERVER_LIMITS.HEAP_WARNING_THRESHOLD_RATIO
+    ) {
       checks.push({
         name: "memory_growth",
         status: "WARNING",
-        message: `High memory usage: heap at ${Math.round(memAnalysis.heapUsageRatio * 100)}%`,
-        metrics: { heapUsedMb: memAnalysis.current.heapUsedMb, ratio: memAnalysis.heapUsageRatio },
+        message: `High memory usage: heap at ${Math.round(memAnalysis.heapUsageRatio * 100)}% (${memAnalysis.current.heapUsedMb}MB / ${memAnalysis.current.heapSizeLimitMb}MB)`,
+        metrics: {
+          heapUsedMb: memAnalysis.current.heapUsedMb,
+          heapSizeLimitMb: memAnalysis.current.heapSizeLimitMb,
+          rssMb: memAnalysis.current.rssMb,
+          ratio: memAnalysis.heapUsageRatio,
+          trend: memAnalysis.growthTrend.trend,
+        },
       });
       activeAlerts.push("Elevated Heap Usage");
     } else {
@@ -53,7 +73,13 @@ export class HealthMonitor {
         name: "memory_growth",
         status: "HEALTHY",
         message: "Memory utilization within normal parameters",
-        metrics: { heapUsedMb: memAnalysis.current.heapUsedMb, ratio: memAnalysis.heapUsageRatio },
+        metrics: {
+          heapUsedMb: memAnalysis.current.heapUsedMb,
+          heapSizeLimitMb: memAnalysis.current.heapSizeLimitMb,
+          rssMb: memAnalysis.current.rssMb,
+          ratio: memAnalysis.heapUsageRatio,
+          trend: memAnalysis.growthTrend.trend,
+        },
       });
     }
 

@@ -67,19 +67,20 @@ export class LeakDetector {
       items.push({
         severity: "critical",
         category: "memory",
-        message: `Suspected memory leak: heap growing at ${memory.growthRateMbPerMin} MB/min`,
+        message: `Suspected memory leak: heap growing at ${memory.growthRateMbPerMin} MB/min (Trend: ${memory.growthTrend.trend})`,
         count: Math.round(memory.deltaMb),
         details: {
           currentMb: memory.current.heapUsedMb,
           baselineMb: memory.baseline.heapUsedMb,
           growthRateMbPerMin: memory.growthRateMbPerMin,
+          trend: memory.growthTrend.trend,
         },
       });
-    } else if (memory.heapUsageRatio > 0.85) {
+    } else if (memory.heapUsageRatio > 0.85 && memory.current.heapUsedMb >= 128) {
       items.push({
         severity: "high",
         category: "memory",
-        message: `Heap usage high: ${Math.round(memory.heapUsageRatio * 100)}% of total allocation`,
+        message: `Heap usage high: ${Math.round(memory.heapUsageRatio * 100)}% of heap size limit (${memory.current.heapUsedMb}MB / ${memory.current.heapSizeLimitMb}MB)`,
         count: memory.current.heapUsedMb,
       });
     }

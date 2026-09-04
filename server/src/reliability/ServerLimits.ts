@@ -24,11 +24,26 @@ export const SERVER_LIMITS = {
   /** Maximum allowed timer duration before flagging as potential leak (1 hour) */
   MAX_TIMER_DURATION_MS: 3_600_000,
 
-  /** Memory heap warning threshold percentage (0..1) */
-  HEAP_WARNING_THRESHOLD_RATIO: 0.80,
+  /** Memory heap warning threshold percentage against heap_size_limit (0..1) */
+  HEAP_WARNING_THRESHOLD_RATIO: Number(process.env.HEAP_WARNING_THRESHOLD_RATIO) || 0.75,
 
-  /** Memory heap critical threshold percentage (0..1) */
-  HEAP_CRITICAL_THRESHOLD_RATIO: 0.90,
+  /** Memory heap critical threshold percentage against heap_size_limit (0..1) */
+  HEAP_CRITICAL_THRESHOLD_RATIO: Number(process.env.HEAP_CRITICAL_THRESHOLD_RATIO) || 0.85,
+
+  /** RSS warning threshold in MB */
+  RSS_WARNING_THRESHOLD_MB: Number(process.env.RSS_WARNING_THRESHOLD_MB) || 2048,
+
+  /** RSS critical threshold in MB */
+  RSS_CRITICAL_THRESHOLD_MB: Number(process.env.RSS_CRITICAL_THRESHOLD_MB) || 3072,
+
+  /** Minimum heapUsed in MB before ratio-based memory alerts activate (prevents false positives on low heaps) */
+  MIN_HEAP_ALERT_FLOOR_MB: Number(process.env.MIN_HEAP_ALERT_FLOOR_MB) || 128,
+
+  /** Cooldown period in ms between alerts of same/lower severity (default: 5 minutes) */
+  MEMORY_ALERT_COOLDOWN_MS: Number(process.env.MEMORY_ALERT_COOLDOWN_MS) || 300_000,
+
+  /** Consecutive threshold breaches required before firing an alert (default: 2 ticks) */
+  MEMORY_ALERT_CONSECUTIVE_BREACHES: Number(process.env.MEMORY_ALERT_CONSECUTIVE_BREACHES) || 2,
 
   /** Periodic in-process retry interval for rooms in FAILED terminal persistence status (default: 5 seconds) */
   FAILED_TERMINAL_PERSISTENCE_RETRY_INTERVAL_MS:
