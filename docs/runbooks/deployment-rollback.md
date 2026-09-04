@@ -142,7 +142,7 @@ rolled back safely is decided per-migration, not by a blanket policy — check
 | `20260828000000_economy_abandonment_forfeiture.sql` | Yes — `supabase/rollbacks/20260828000000_economy_abandonment_forfeiture_rollback.sql` |
 | `20260829000000_economy_seat_capacity_contract.sql` | Yes — `supabase/rollbacks/20260829000000_economy_seat_capacity_contract_rollback.sql` |
 | `20260830000000_economy_settlement_events.sql` | Yes — `supabase/rollbacks/20260830000000_economy_settlement_events_rollback.sql` |
-| `20260901000000_economy_terminal_intents.sql` | **No** — the newest migration has no rollback script |
+| `20260901000000_economy_terminal_intents.sql` | Yes — `supabase/rollbacks/20260901000000_economy_terminal_intents_rollback.sql` |
 
 Rules:
 

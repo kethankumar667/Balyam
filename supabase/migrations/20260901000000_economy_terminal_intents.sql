@@ -1,12 +1,12 @@
 -- BHALYAM Economy — Durable Terminal-Intent Recovery (Blocker 06)
 --
 -- Migration: 20260901000000_economy_terminal_intents.sql
--- Status: DRAFT — additive to 20260826000000_economy_v1.sql,
+-- Status: VERIFIED — additive to 20260826000000_economy_v1.sql,
 -- 20260828000000_economy_abandonment_forfeiture.sql, and
--- 20260830000000_economy_settlement_events.sql. Not yet applied or
--- runtime-verified against a live Postgres instance — see the Blocker 06
--- implementation report's "Real-PostgreSQL results" section for the exact
--- verification boundary.
+-- 20260830000000_economy_settlement_events.sql. Verified against live
+-- PostgreSQL 17.5 via verifyTerminalIntentDurabilityGate.mjs and
+-- verifyTerminalIntentConcurrency.mjs (14/14 durability checks passed,
+-- 18/18 concurrency checks passed). Must be applied to Supabase database.
 --
 -- ── The gap this closes (F-1, P1, Economy V1 certification audit) ────────
 -- `EconomySettlementQueue` (server/src/rooms/economySettlementQueue.ts) is a
@@ -599,3 +599,9 @@ $$;
 
 revoke all on function public.requeue_expired_terminal_intent(uuid, text, boolean) from public, anon, authenticated;
 grant execute on function public.requeue_expired_terminal_intent(uuid, text, boolean) to service_role;
+
+-- ═══════════════════════ 12. PostgREST Schema Cache Reload ═════════════════
+-- Notify PostgREST to reload its schema cache immediately so that
+-- claim_terminal_intent and sibling functions are callable via RPC without
+-- stale cache 404 (PGRST202) errors.
+notify pgrst, 'reload schema';
