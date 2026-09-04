@@ -52,7 +52,7 @@ import { useCheckoutQuote } from "../hooks/useEconomy";
 import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
 import BhalyamResultModal from "../components/BhalyamResultModal";
-import { GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
+import { ECONOMY_MAX_APPROVED_SEAT_COUNT, GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
 import type { GameKind, Player, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
 import type { BingoPlayerState } from "@shared/types";
@@ -615,7 +615,7 @@ export default function Room() {
   const lobbyBotSeatCount = roomState?.players.filter((p) => p.isBot).length ?? 0;
   const lobbySeatCount = lobbyHumanSeatCount + lobbyBotSeatCount;
   const { quote: lobbyQuote, isLoading: isLobbyQuoteLoading } = useCheckoutQuote(
-    roomState?.phase === "lobby" && lobbySeatCount > 0 && lobbySeatCount <= 5
+    roomState?.phase === "lobby" && lobbySeatCount > 0 && lobbySeatCount <= ECONOMY_MAX_APPROVED_SEAT_COUNT
       ? { seatCount: lobbySeatCount, humanSeatCount: lobbyHumanSeatCount, botSeatCount: lobbyBotSeatCount }
       : null,
   );
