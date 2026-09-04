@@ -8,6 +8,7 @@ import type {
   LudoColor,
   LudoGameOptions,
   Player,
+  RoomPhase,
   RoomPublicState,
   RummyChampion,
   RummyRoundRecap,
@@ -4782,6 +4783,33 @@ export class RoomManager {
   getRoomStateByCode(code: string): RoomPublicState | null {
     const room = this.rooms.get(code.toUpperCase());
     return room ? this.toPublicState(room) : null;
+  }
+
+  /**
+   * Fast room liveness check used by reconnect/rejoin affordances.
+   * Returns alive: true only when the room exists in memory and is either in active play,
+   * in lobby, or in finished state with human players present.
+   * If a playerId is supplied, verifies that the player's seat is still held in the room.
+   */
+  isRoomAlive(
+    code: string,
+    playerId?: string,
+  ): { alive: boolean; game?: GameKind; phase?: RoomPhase; reason?: string } {
+    const room = this.rooms.get(code.toUpperCase());
+    if (!room) {
+      return { alive: false, reason: "NOT_FOUND" };
+    }
+    if (playerId && !room.players.has(playerId)) {
+      return { alive: false, reason: "SEAT_EXPIRED", phase: room.phase };
+    }
+    if (room.phase === "finished" && !this.hasHumanPlayer(room)) {
+      return { alive: false, reason: "CONCLUDED", phase: room.phase };
+    }
+    return {
+      alive: true,
+      game: room.game,
+      phase: room.phase,
+    };
   }
 
   protected lookup(socketId: string): { room: Room | null; player: Player | null } {

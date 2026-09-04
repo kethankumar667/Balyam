@@ -1,63 +1,145 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getActiveSession, type RecoverySession } from "./recoveryStorage";
+import {
+  getActiveSession,
+  clearActiveSession,
+  clearRoomSession,
+  type RecoverySession,
+} from "./recoveryStorage";
+import { checkRoomAlive } from "./roomLiveness";
 import { useRoomStore } from "../../store/roomStore";
 
 /**
- * Persistent "Rejoin Room" affordance for outside the room page.
+ * Persistent "Rejoin Room" affordance outside the room page.
  *
- * `RecoveryBanner` only renders while the player is still sitting on
- * `/room/:code` and only offers a manual retry once that live socket
- * session hits FAILED. It has no reach once the player has actually
- * navigated away (or reopened the app in a new tab/after a restart) —
- * exactly the gap left by an unintentional departure (crash, refresh,
- * network loss, backgrounding, browser/machine restart).
- *
- * This reads the same `recoveryStorage` session `RecoveryManager` already
- * maintains (the one durable, localStorage-backed source of truth for "do I
- * have a seat somewhere") and offers to resume it from anywhere else in the
- * app. `RoomManager.detachRoom()` clears that session on a confirmed
- * intentional leave, so this never appears for that path — only for
- * everything else.
+ * ONLY displays when the room is actively verified to be ALIVE on the server.
+ * If the room is not found, concluded, or the seat has expired, this component
+ * automatically purges the stale session records from localStorage and the room store,
+ * preventing phantom reconnection loops or embarrassing dead re-joins.
  */
 export default function RejoinBanner() {
   const location = useLocation();
   const navigate = useNavigate();
   const [session, setSession] = useState<RecoverySession | null>(null);
+  const [isAlive, setIsAlive] = useState(false);
   const [dismissedRoomId, setDismissedRoomId] = useState<string | null>(null);
+  const [isRejoining, setIsRejoining] = useState(false);
 
   const isInRoom = location.pathname.startsWith("/room/");
 
-  // localStorage has no React subscription of its own. Re-read on every
-  // route change and on window focus — the same "might be worth checking
-  // again" triggers RecoveryManager already uses for live reconnect.
+  // localStorage has no React subscription of its own. Re-read and check liveness
+  // on route changes and on window focus.
   useEffect(() => {
-    setSession(getActiveSession());
-    const onFocus = () => setSession(getActiveSession());
+    if (isInRoom) {
+      setSession(null);
+      setIsAlive(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const verifySession = async () => {
+      const active = getActiveSession();
+      if (!active?.seatToken || !active?.roomId) {
+        if (!cancelled) {
+          setSession(null);
+          setIsAlive(false);
+        }
+        return;
+      }
+
+      const roomId = active.roomId.trim().toUpperCase();
+
+      // Check session-level dismissal
+      try {
+        if (
+          typeof sessionStorage !== "undefined" &&
+          sessionStorage.getItem(`bhalyam.recovery.dismissed.${roomId}`) === "true"
+        ) {
+          if (!cancelled) {
+            setSession(null);
+            setIsAlive(false);
+          }
+          return;
+        }
+      } catch {
+        /* ignore storage access error */
+      }
+
+      // Check server liveness
+      const result = await checkRoomAlive(roomId, active.playerId);
+      if (cancelled) return;
+
+      if (result.alive) {
+        setSession(active);
+        setIsAlive(true);
+      } else {
+        // Room does not exist or seat has expired: purge stale session automatically
+        clearActiveSession();
+        clearRoomSession(roomId);
+        useRoomStore.getState().forgetSeat(roomId);
+        setSession(null);
+        setIsAlive(false);
+      }
+    };
+
+    verifySession();
+
+    const onFocus = () => {
+      verifySession();
+    };
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+    };
   }, [location.pathname]);
 
-  const handleRejoin = useCallback(() => {
-    if (!session?.seatToken) return;
+  const handleRejoin = useCallback(async () => {
+    if (!session?.seatToken || isRejoining) return;
+    setIsRejoining(true);
+
+    const roomId = session.roomId.trim().toUpperCase();
+    // Safety check right before navigating
+    const result = await checkRoomAlive(roomId, session.playerId);
+    if (!result.alive) {
+      clearActiveSession();
+      clearRoomSession(roomId);
+      useRoomStore.getState().forgetSeat(roomId);
+      setSession(null);
+      setIsAlive(false);
+      setIsRejoining(false);
+      return;
+    }
+
     // Hydrate the in-memory room store BEFORE navigating: Room.tsx's join
     // effect reads its seat credential from here (`seatFor`), not from
     // recoveryStorage directly, and its name-entry gate is seeded from the
-    // same lookup on mount. Without this, landing on /room/:code fresh
-    // would look like a stranger arriving, not a seat reclaim.
+    // same lookup on mount.
     const store = useRoomStore.getState();
-    store.rememberSeat(session.roomId, session.playerId, session.seatToken);
+    store.rememberSeat(roomId, session.playerId, session.seatToken);
     store.setPlayerName(session.playerName);
     if (session.avatar) store.setAvatarId(session.avatar);
-    navigate(`/room/${session.roomId}`);
-  }, [session, navigate]);
+    navigate(`/room/${roomId}`);
+  }, [session, isRejoining, navigate]);
 
   const handleDismiss = useCallback(() => {
-    if (session) setDismissedRoomId(session.roomId);
+    if (session) {
+      const roomId = session.roomId.trim().toUpperCase();
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(`bhalyam.recovery.dismissed.${roomId}`, "true");
+        }
+      } catch {
+        /* ignore */
+      }
+      setDismissedRoomId(roomId);
+      setIsAlive(false);
+    }
   }, [session]);
 
-  if (isInRoom || !session?.seatToken) return null;
-  if (dismissedRoomId === session.roomId) return null;
+  if (isInRoom || !session?.seatToken || !isAlive) return null;
+  if (dismissedRoomId === session.roomId.trim().toUpperCase()) return null;
 
   return (
     <div
@@ -73,9 +155,10 @@ export default function RejoinBanner() {
         <button
           type="button"
           onClick={handleRejoin}
-          className="px-3 py-1 bg-white/25 hover:bg-white/40 active:scale-95 rounded-full text-xs font-bold transition min-h-[32px] cursor-pointer"
+          disabled={isRejoining}
+          className="px-3 py-1 bg-white/25 hover:bg-white/40 active:scale-95 rounded-full text-xs font-bold transition min-h-[32px] cursor-pointer disabled:opacity-50"
         >
-          Rejoin Room
+          {isRejoining ? "Checking..." : "Rejoin Room"}
         </button>
         <button
           type="button"

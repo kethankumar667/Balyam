@@ -99,4 +99,30 @@ describe("Room Lifecycle State Machine", () => {
     expect(stats.recoveringRooms).toBe(1);
     expect(stats.totalRooms).toBe(1);
   });
+
+  it("verifies room liveness via isRoomAlive accurately", () => {
+    // Non-existent room
+    expect(roomManager.isRoomAlive("NONEXIST").alive).toBe(false);
+    expect(roomManager.isRoomAlive("NONEXIST").reason).toBe("NOT_FOUND");
+
+    // Active room
+    mockIo.registerSocket("s_host");
+    const { code, state: hostState } = roomManager.createRoom("s_host", "Alice", "ludo");
+    const hostPlayerId = hostState.players[0].id;
+
+    // Alive check without playerId
+    const check1 = roomManager.isRoomAlive(code);
+    expect(check1.alive).toBe(true);
+    expect(check1.game).toBe("ludo");
+    expect(check1.phase).toBe("lobby");
+
+    // Alive check with valid playerId
+    const check2 = roomManager.isRoomAlive(code, hostPlayerId);
+    expect(check2.alive).toBe(true);
+
+    // Alive check with expired/invalid playerId
+    const check3 = roomManager.isRoomAlive(code, "random_p_999");
+    expect(check3.alive).toBe(false);
+    expect(check3.reason).toBe("SEAT_EXPIRED");
+  });
 });

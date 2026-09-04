@@ -2876,6 +2876,11 @@ export interface ClientToServerEvents {
   "room:stopSpectate": () => void;
   /** Host retry of a failed terminal persistence intent. */
   "room:retryTerminalPersistence": () => void;
+  /** Fast room liveness check used to verify if a room is active before displaying rejoin affordances. */
+  "room:checkAlive": (
+    code: string,
+    ack: (res: { alive: boolean; game?: GameKind; phase?: RoomPhase; reason?: string }) => void
+  ) => void;
 }
 
 export * from "./operational.js";

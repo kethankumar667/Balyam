@@ -267,6 +267,18 @@ if (economyService) {
 app.use("/api/operational", createOperationalRouter({ roomManager, io, startTime }));
 
 /**
+ * Fast public room liveness endpoint.
+ * Allows client rejoin/recovery affordances to verify if a room is active
+ * before rendering banners or attempting reconnection.
+ */
+app.get("/api/rooms/:code/alive", (req, res) => {
+  const code = (req.params.code || "").trim().toUpperCase();
+  const playerId = typeof req.query.playerId === "string" ? req.query.playerId : undefined;
+  const result = roomManager.isRoomAlive(code, playerId);
+  res.json(result);
+});
+
+/**
  * Admin dashboard's Supabase-backed metrics. Same gate, separate router: this
  * one reads `ProgressionRepository`, never `RoomManager` — see
  * admin/DashboardController.ts for why that boundary matters.

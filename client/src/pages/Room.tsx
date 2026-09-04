@@ -44,7 +44,7 @@ import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
 import FallingPetals from "../animations/app/FallingPetals";
 import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
-import { clearActiveSession } from "../core/recovery/recoveryStorage";
+import { clearActiveSession, clearRoomSession } from "../core/recovery/recoveryStorage";
 import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
 import { LobbyPrizePool, UnsupportedSeatCountCard } from "../components/economy";
 import { LobbyCoinFlight, type CoinParticle } from "../components/economy/LobbyCoinFlight";
@@ -407,6 +407,8 @@ export default function Room() {
           setError(msg);
           reset();
           clearActiveSession();
+          clearRoomSession(joinCode);
+          useRoomStore.getState().forgetSeat(joinCode);
           setTimeout(() => navigate("/"), 4000);
           return;
         }

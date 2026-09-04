@@ -90,6 +90,8 @@ interface RoomStore {
   setRegion: (region: string) => void;
   /** Store the credential from a `room:create` / `room:join` ack. */
   rememberSeat: (code: string, playerId: string, seatToken: string) => void;
+  /** Discard a stored seat credential when a room concludes or join fails. */
+  forgetSeat: (code: string) => void;
   /** The credential for a room, if this browser holds one. */
   seatFor: (code: string) => SeatCredential | null;
   setRoomState: (state: RoomPublicState | null) => void;
@@ -264,6 +266,15 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       for (const stale of codes.slice(0, Math.max(0, codes.length - MAX_REMEMBERED_SEATS))) {
         delete next[stale];
       }
+      saveSeats(next);
+      return { seats: next };
+    }),
+  forgetSeat: (code) =>
+    set((s) => {
+      const key = code.trim().toUpperCase();
+      if (!s.seats[key]) return s;
+      const next = { ...s.seats };
+      delete next[key];
       saveSeats(next);
       return { seats: next };
     }),

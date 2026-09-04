@@ -264,6 +264,12 @@ export function registerSocketHandlers(
     rooms.stopSpectating(socket.id);
   });
 
+  socket.on("room:checkAlive", (code, ack) => {
+    if (typeof ack !== "function") return;
+    const res = rooms.isRoomAlive(typeof code === "string" ? code : "");
+    ack(res);
+  });
+
   socket.on("net:ping", (ack) => {
     if (typeof ack === "function") ack();
   });
