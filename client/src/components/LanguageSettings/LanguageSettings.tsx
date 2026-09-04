@@ -69,7 +69,7 @@ function LanguageSettingsImpl({
         </header>
       )}
 
-      <p className="text-[11px] text-[var(--room-ink-mute)]">
+      <p className="text-xs text-[var(--room-ink-mute)]">
         {t("language.subtitle")}
       </p>
 

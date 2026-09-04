@@ -56,7 +56,7 @@ export default function MockDataBanner({
         aria-hidden="true"
       />
       <div className="min-w-0">
-        <p className="text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+        <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
           {copy.label}
         </p>
         <p className="mt-0.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">

@@ -232,7 +232,7 @@ export default function AboutPage() {
                 </div>
 
                 {/* Founder Quote */}
-                <blockquote className="font-serif italic text-[15px] sm:text-[16px] text-[#4A3320] dark:text-amber-100/90 leading-snug pl-3 border-l-2 border-[#E85D04]">
+                <blockquote className="font-sans italic text-[15px] sm:text-[16px] text-[#4A3320] dark:text-amber-100/90 leading-snug pl-3 border-l-2 border-[#E85D04]">
                   “I wanted to build the place I wished existed when our school gang grew up.”
                 </blockquote>
 
@@ -368,6 +368,9 @@ export default function AboutPage() {
                   <span>★</span>
                   <span>OUR STORY</span>
                 </div>
+                <h2 className="text-xl sm:text-2xl font-display font-black text-[#2C1D11] dark:text-white">
+                  Our Story
+                </h2>
 
                 <p className="text-sm sm:text-[15px] leading-relaxed text-[#4A3220] dark:text-zinc-200">
                   Bhalyam started as a simple thought: What if all the games we loved as kids could bring us together again?
@@ -399,9 +402,9 @@ export default function AboutPage() {
                       }`}>
                         <span className="text-2xl">💡</span>
                       </div>
-                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                      <h3 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         The Idea
-                      </h4>
+                      </h3>
                       <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         A dream to recreate our childhood playground.
                       </p>
@@ -414,9 +417,9 @@ export default function AboutPage() {
                       }`}>
                         <span className="text-2xl">✏️</span>
                       </div>
-                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                      <h3 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         Built with Passion
-                      </h4>
+                      </h3>
                       <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         Countless sketches, cups of chai and late night coding.
                       </p>
@@ -429,9 +432,9 @@ export default function AboutPage() {
                       }`}>
                         <span className="text-2xl">👦👧</span>
                       </div>
-                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                      <h3 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         Testing with Friends
-                      </h4>
+                      </h3>
                       <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         Friends, school gangs and endless game nights.
                       </p>
@@ -444,9 +447,9 @@ export default function AboutPage() {
                       }`}>
                         <span className="text-2xl">🏆</span>
                       </div>
-                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                      <h3 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         Bhalyam is Born
-                      </h4>
+                      </h3>
                       <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         A platform to relive, reconnect and recreate memories.
                       </p>
@@ -459,9 +462,9 @@ export default function AboutPage() {
                       }`}>
                         <span className="text-2xl">💌</span>
                       </div>
-                      <h4 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
+                      <h3 className="font-sans font-bold text-[13px] sm:text-[14px] text-[#2C1D11] dark:text-white">
                         The Journey Continues
-                      </h4>
+                      </h3>
                       <p className="text-xs text-[#7A5E45] dark:text-zinc-400 leading-snug mt-1 max-w-[130px]">
                         This is just the beginning...
                       </p>

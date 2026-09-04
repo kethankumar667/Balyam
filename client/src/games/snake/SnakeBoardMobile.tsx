@@ -154,7 +154,7 @@ export default function SnakeBoardMobile({ state, selfId, onMove, players, messa
             <SnakeCanvas state={state} selfId={selfId} theme={activeTheme} onEat={onEat} onDeath={onDeath} className="h-full max-h-full aspect-square" />
             {state.isPaused && (
               <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md p-4 text-center rounded-xl">
-                <div className="text-3xl animate-bounce">⏸️</div>
+                <div className="text-3xl animate-pulse">⏸️</div>
                 <h2 className="mt-2 text-lg font-black uppercase tracking-wider text-amber-400">Game Paused</h2>
                 <button
                   onClick={() => onMove("resume")}

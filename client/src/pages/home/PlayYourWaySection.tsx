@@ -14,9 +14,9 @@ export function PlayYourWaySection({
   return (
     <section className="mb-5 sm:mb-6">
       <div className="flex items-center justify-between gap-2 mb-2.5">
-        <span className="text-xs font-black uppercase tracking-[0.2em] text-[#7B2F0E] dark:text-amber-400">
+        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-[#7B2F0E] dark:text-amber-400">
           ✦ PLAY YOUR WAY ✦
-        </span>
+        </h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -127,7 +127,7 @@ export default function GameCard({
       whileHover="hover"
       whileTap="tap"
       transition={bhalyamSpring}
-      className={`group relative w-full min-w-0 max-w-full rounded-[26px] overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border shadow-md touch-pan-y ${
+      className={`group relative w-full min-w-0 max-w-full rounded-2xl overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border shadow-md touch-pan-y ${
         isDark ? "border-white/10" : "border-black/10"
       } ${className}`}
       style={{
@@ -201,7 +201,10 @@ export default function GameCard({
         <h3 className="font-display font-black text-xl sm:text-2xl text-ink-hi leading-tight tracking-tight truncate">
           {game.title}
         </h3>
-        <p className="font-script italic text-sm text-ink-mid line-clamp-1 truncate">
+        <p
+          className="font-script italic text-sm text-ink-mid line-clamp-2"
+          title={game.nostalgiaQuote ?? game.blurb}
+        >
           {game.nostalgiaQuote ?? game.blurb}
         </p>
       </div>

@@ -57,20 +57,20 @@ export function Footer() {
                     <h3 className="font-display font-black text-2xl tracking-tight text-slate-900 dark:text-white group-hover:text-[#EA580C] transition-colors leading-none">
                       BHALYAM
                     </h3>
-                    <p className="text-[11px] font-script font-bold text-[#EA580C] mt-0.5">
+                    <p className="text-xs font-script font-bold text-[#EA580C] mt-0.5">
                       Play Together. Remember Forever.
                     </p>
                   </div>
                 </div>
               </Link>
 
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium max-w-xs">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium max-w-xs">
                 BHALYAM is your digital playground for timeless games, friendly competition, and
                 unforgettable memories with friends and family.
               </p>
 
               {/* Made with ❤️ for 90s Kids Badge */}
-              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#D4A574]/40 dark:border-amber-500/30 bg-white/70 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 text-[11px] font-bold shadow-2xs">
+              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#D4A574]/40 dark:border-amber-500/30 bg-white/70 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 text-xs font-bold shadow-2xs">
                 <span>☆</span>
                 <span>Made with</span>
                 <Heart className="w-3 h-3 text-rose-500 fill-current inline mx-0.5" />
@@ -303,10 +303,10 @@ export function Footer() {
 
               {/* Top: Title & desc */}
               <div className="space-y-1 pr-14">
-                <h5 className="text-sm font-black uppercase tracking-wider text-[#5B21B6] dark:text-[#A78BFA]">
-                  STAY IN THE LOOP
-                </h5>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-snug">
+                <h3 className="text-sm font-bold text-[#5B21B6] dark:text-[#A78BFA]">
+                  Stay in the loop
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-snug">
                   Get updates about new games, events and awesome 90s vibes.
                 </p>
               </div>
@@ -321,25 +321,25 @@ export function Footer() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
                     required
-                    className="bg-transparent text-[11px] text-slate-900 dark:text-white placeholder-slate-400 px-2.5 focus:outline-none flex-1 min-w-0 font-medium"
+                    className="bg-transparent text-xs text-slate-900 dark:text-white placeholder-slate-400 px-2.5 focus:outline-none flex-1 min-w-0 font-medium"
                   />
                   <button
                     type="submit"
-                    className="bg-[#5B21B6] hover:bg-[#4C1D95] text-white text-[11px] font-bold rounded-full px-4 py-2 transition-all shadow-xs flex-shrink-0 flex items-center gap-1 cursor-pointer"
+                    className="bg-[#5B21B6] hover:bg-[#4C1D95] text-white text-xs font-bold rounded-full px-4 py-2 transition-all shadow-xs flex-shrink-0 flex items-center gap-1 cursor-pointer"
                   >
                     <span>Subscribe</span>
                     <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
                 {subscribed && (
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 block">
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-1 block">
                     ✓ Subscribed successfully!
                   </span>
                 )}
               </form>
 
               {/* Micro-tags */}
-              <div className="flex items-center gap-2 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+              <div className="flex items-center gap-2 text-xs font-bold text-purple-700 dark:text-purple-300">
                 <Gamepad2 className="w-3 h-3 shrink-0" />
                 <span>New Games</span>
                 <span>•</span>
@@ -360,8 +360,8 @@ export function Footer() {
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div>
-                <h5 className="text-[11px] font-bold text-slate-900 dark:text-white">Safe &amp; Friendly</h5>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug font-medium">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">Safe &amp; Friendly</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug font-medium">
                   We keep BHALYAM safe and fun for everyone.
                 </p>
               </div>
@@ -373,8 +373,8 @@ export function Footer() {
                 <Users2 className="w-4 h-4" />
               </div>
               <div>
-                <h5 className="text-[11px] font-bold text-slate-900 dark:text-white">Fair Play</h5>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug font-medium">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">Fair Play</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug font-medium">
                   Cheating has no place here. Let's play fair and square.
                 </p>
               </div>
@@ -386,8 +386,8 @@ export function Footer() {
                 <Heart className="w-4 h-4 fill-current" />
               </div>
               <div>
-                <h5 className="text-[11px] font-bold text-slate-900 dark:text-white">Respect Everyone</h5>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug font-medium">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">Respect Everyone</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug font-medium">
                   Be kind, supportive and enjoy together.
                 </p>
               </div>
@@ -399,8 +399,8 @@ export function Footer() {
                 <Gamepad2 className="w-4 h-4" />
               </div>
               <div>
-                <h5 className="text-[11px] font-bold text-slate-900 dark:text-white">Have Fun!</h5>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug font-medium">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">Have Fun!</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug font-medium">
                   Games are better when we play together.
                 </p>
               </div>

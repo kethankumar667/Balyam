@@ -51,8 +51,8 @@ export default function SecurityDataPage() {
         <section className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-3xl p-5 sm:p-6 space-y-4 shadow-sm">
           <div className="flex items-center gap-2.5 border-b border-[var(--auth-field-edge)] pb-3">
             <Lock className="w-4 h-4 text-amber-500" />
-            <h2 className="text-sm font-black uppercase font-mono tracking-wider text-[var(--auth-ink)]">
-              Account Security & Login
+            <h2 className="text-base font-bold text-[var(--auth-ink)]">
+              Account Security &amp; Login
             </h2>
           </div>
 

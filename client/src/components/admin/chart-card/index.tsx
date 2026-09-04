@@ -45,7 +45,7 @@ export default function ChartCard({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--chrome-ink)]">
+            <h3 className="text-xs sm:text-sm font-bold text-[var(--chrome-ink)]">
               {title}
             </h3>
             {badge}

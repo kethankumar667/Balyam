@@ -133,11 +133,11 @@ export function PlayerJourneyDashboard({
                       </picture>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className={`font-display font-black text-[20px] leading-tight truncate ${
+                      <h3 className={`font-display font-black text-[20px] leading-tight truncate ${
                         isDark ? "text-white" : "text-[#1D2C4A]"
                       }`}>
                         {lastGameCard.title}
-                      </h4>
+                      </h3>
                       <div className={`flex items-center gap-2 text-[12px] font-bold mt-0.5 ${
                         isDark ? "text-slate-300" : "text-[#6D5C4D]"
                       }`}>
@@ -270,11 +270,11 @@ export function PlayerJourneyDashboard({
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xl" aria-hidden>👥</span>
-                <h4 className={`font-display font-black text-[18px] ${
+                <h3 className={`font-display font-black text-[18px] ${
                   isDark ? "text-white" : "text-[#1D2C4A]"
                 }`}>
                   Invite Friends, Unlock Perks
-                </h4>
+                </h3>
               </div>
               <p className={`text-[13px] font-medium mb-3 ${
                 isDark ? "text-slate-300" : "text-[#6D5C4D]"

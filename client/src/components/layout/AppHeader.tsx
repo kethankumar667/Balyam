@@ -105,7 +105,7 @@ export default function AppHeader({
                 <span className="bhalyam-display text-[22px] sm:text-[26px] tracking-tight truncate text-[var(--chrome-ink)] group-hover:text-[var(--chrome-accent)] transition-colors">
                   BHALYAM
                 </span>
-                <span className="text-[9px] sm:text-[11px] uppercase tracking-[0.2em] font-extrabold text-[var(--chrome-accent)] mt-0.5 truncate">
+                <span className="text-xs font-bold text-[var(--chrome-accent)] mt-0.5 truncate">
                   Relive Childhood
                 </span>
               </span>

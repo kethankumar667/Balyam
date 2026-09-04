@@ -73,9 +73,9 @@ export default function TermsOfServicePage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Sticky Table of Contents */}
             <div className="lg:col-span-4 sticky top-24 space-y-3 bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 shadow-xs">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">
+              <h2 className="font-bold text-xs uppercase tracking-wider text-slate-400">
                 Terms Sections
-              </h3>
+              </h2>
               <nav className="space-y-1 max-h-[70vh] overflow-y-auto [scrollbar-width:none]">
                 {TERMS_SECTIONS.map((sec) => (
                   <button

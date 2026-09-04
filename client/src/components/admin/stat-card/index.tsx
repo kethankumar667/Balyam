@@ -32,7 +32,10 @@ export default function StatCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] truncate">
+          <p
+            title={title}
+            className="text-xs font-bold text-[var(--chrome-ink-soft)] leading-snug break-words"
+          >
             {title}
           </p>
           {loading ? (
@@ -74,13 +77,13 @@ export default function StatCard({
                 {trend.value > 0 ? `${trend.value}%` : `${trend.value}`}
               </span>
               {trend.label && (
-                <span className="text-[var(--chrome-ink-soft)] truncate">
+                <span className="text-[var(--chrome-ink-soft)] truncate" title={trend.label}>
                   {trend.label}
                 </span>
               )}
             </div>
           ) : subtitle ? (
-            <span className="text-[var(--chrome-ink-soft)] truncate font-medium">
+            <span className="text-[var(--chrome-ink-soft)] font-medium text-xs leading-snug break-words" title={subtitle}>
               {subtitle}
             </span>
           ) : null}

@@ -88,9 +88,9 @@ export function OverviewTab({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-base text-[var(--chrome-ink)]">
+              <h2 className="font-extrabold text-base text-[var(--chrome-ink)]">
                 BHALYAM Economy Health & Operations
-              </h3>
+              </h2>
               <EconomyHealthBadge status={healthStatus} score={healthScore} showScore />
             </div>
             <p className="text-xs text-[var(--chrome-ink-soft)] mt-0.5">
@@ -139,7 +139,7 @@ export function OverviewTab({
         ) : worldBank ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-amber-600/30 shadow-2xs space-y-1 min-w-0">
-              <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+              <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
                 Total Protocol Revenue
               </span>
               <CoinAmount
@@ -147,13 +147,13 @@ export function OverviewTab({
                 size="xl"
                 className="font-black text-amber-600 dark:text-amber-400"
               />
-              <span className="text-[11px] text-[var(--chrome-ink-soft)] block">
+              <span className="text-xs text-[var(--chrome-ink-soft)] block">
                 Base fees + bot prize rake + forfeitures
               </span>
             </div>
 
             <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
-              <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+              <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
                 Base Fee Revenue
               </span>
               <CoinAmount
@@ -161,13 +161,13 @@ export function OverviewTab({
                 size="lg"
                 className="font-bold text-emerald-700 dark:text-emerald-400"
               />
-              <span className="text-[11px] text-[var(--chrome-ink-soft)] block">
+              <span className="text-xs text-[var(--chrome-ink-soft)] block">
                 Match Entry Protocol Rake
               </span>
             </div>
 
             <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
-              <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+              <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
                 Guest Escrow Liability
               </span>
               <CoinAmount
@@ -175,13 +175,13 @@ export function OverviewTab({
                 size="lg"
                 className="font-bold text-purple-700 dark:text-purple-400"
               />
-              <span className="text-[11px] text-[var(--chrome-ink-soft)] block">
+              <span className="text-xs text-[var(--chrome-ink-soft)] block">
                 Held for guests, not protocol revenue
               </span>
             </div>
 
             <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
-              <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+              <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
                 Vouchers Redeemed
               </span>
               <CoinAmount
@@ -189,7 +189,7 @@ export function OverviewTab({
                 size="lg"
                 className="font-bold text-indigo-700 dark:text-indigo-400"
               />
-              <span className="text-[11px] text-[var(--chrome-ink-soft)] block">
+              <span className="text-xs text-[var(--chrome-ink-soft)] block">
                 Escrow converted into member balances
               </span>
             </div>

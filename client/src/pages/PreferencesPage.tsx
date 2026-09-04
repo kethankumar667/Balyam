@@ -176,8 +176,8 @@ export default function PreferencesPage() {
         <section className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-3xl p-5 sm:p-6 space-y-4 shadow-sm">
           <div className="flex items-center gap-2.5 border-b border-[var(--auth-field-edge)] pb-3">
             <Volume2 className="w-4 h-4 text-amber-500" />
-            <h2 className="text-sm font-black uppercase font-mono tracking-wider text-[var(--auth-ink)]">
-              Game Experience & Audio
+            <h2 className="text-base font-bold text-[var(--auth-ink)]">
+              Game Experience &amp; Audio
             </h2>
           </div>
 

@@ -19,7 +19,7 @@ export default function SectionHeader({
     <div className={`flex items-center justify-between gap-4 pb-2 mb-3 ${className}`}>
       <div>
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--chrome-ink)]">
+          <h2 className="text-sm font-bold text-[var(--chrome-ink)]">
             {title}
           </h2>
           {badge}

@@ -147,7 +147,7 @@ export default function AdminSidebar({
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             <span className="font-mono">Bhalyam Ops v2.4</span>
           </div>
-          <p className="text-[11px] text-[var(--chrome-ink-soft)] leading-relaxed">
+          <p className="text-xs text-[var(--chrome-ink-soft)] leading-relaxed">
             Realtime in-memory room management engine active.
           </p>
         </div>

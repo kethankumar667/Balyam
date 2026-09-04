@@ -110,7 +110,8 @@ export default function GamesPage() {
         </div>
 
         {/* Games Grid / Skeletons / Empty State */}
-        <section aria-label="Games Catalog" className="w-full min-w-0">
+        <section aria-labelledby="catalog-heading" className="w-full min-w-0">
+          <h2 id="catalog-heading" className="sr-only">Available Games</h2>
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 w-full min-w-0">
               {Array.from({ length: 8 }).map((_, idx) => (

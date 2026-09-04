@@ -72,7 +72,11 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* ── Quick Summary Cards (Before Legal Text) ── */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <section aria-labelledby="summary-highlights-heading">
+            <h2 id="summary-highlights-heading" className="sr-only">
+              Policy Summary Highlights
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* What we collect */}
             <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 space-y-3 shadow-xs">
               <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center">
@@ -145,14 +149,15 @@ export default function PrivacyPolicyPage() {
               </ul>
             </div>
           </div>
+        </section>
 
           {/* ── Document Layout: Sticky Sidebar TOC + Content ── */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Sticky Table of Contents */}
             <div className="lg:col-span-4 sticky top-24 space-y-3 bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 shadow-xs">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">
+              <h2 className="font-bold text-xs text-slate-400">
                 Table of Contents
-              </h3>
+              </h2>
               <nav className="space-y-1 max-h-[70vh] overflow-y-auto [scrollbar-width:none]">
                 {SECTIONS.map((sec) => (
                   <button

@@ -178,10 +178,10 @@ export default function RecoverySentinel() {
             <UserX className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-xs font-black uppercase tracking-wider text-[var(--chrome-ink)]">
+            <h2 className="text-sm font-bold text-[var(--chrome-ink)]">
               Advanced Recovery Sentinel
             </h2>
-            <p className="text-[11px] text-[var(--chrome-ink-soft)]">
+            <p className="text-xs text-[var(--chrome-ink-soft)]">
               Authoritative player recovery & grace telemetry
             </p>
           </div>
@@ -195,7 +195,7 @@ export default function RecoverySentinel() {
       {/* Summary KPI Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-[10px] font-semibold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
             Active Recoveries
           </span>
           <span className="text-sm sm:text-base font-extrabold text-[var(--chrome-ink)]">
@@ -205,28 +205,28 @@ export default function RecoverySentinel() {
 
         <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+            <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
               Success Rate
             </span>
           </div>
           <span className="text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400">
             {recoverySuccessRate !== null ? `${recoverySuccessRate}%` : "N/A"}
           </span>
-          <span className="text-[9px] text-[var(--chrome-ink-soft)] block">Since server start</span>
+          <span className="text-[10px] text-[var(--chrome-ink-soft)] block">Since server start</span>
         </div>
 
         <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-[10px] font-semibold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
             Expiry Rate
           </span>
           <span className="text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-400">
             {recoveryExpiryRate !== null ? `${recoveryExpiryRate}%` : "N/A"}
           </span>
-          <span className="text-[9px] text-[var(--chrome-ink-soft)] block">Since server start</span>
+          <span className="text-[10px] text-[var(--chrome-ink-soft)] block">Since server start</span>
         </div>
 
         <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-[10px] font-semibold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
             Avg Remaining
           </span>
           <span className="text-sm sm:text-base font-extrabold font-mono text-amber-600 dark:text-amber-400">
@@ -235,7 +235,7 @@ export default function RecoverySentinel() {
         </div>
 
         <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-[10px] font-semibold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
             Longest Active
           </span>
           <span className="text-sm sm:text-base font-extrabold font-mono text-[var(--chrome-ink)]">
@@ -244,7 +244,7 @@ export default function RecoverySentinel() {
         </div>
 
         <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-[10px] font-semibold text-[var(--chrome-ink-soft)] uppercase tracking-wider block">
+          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
             Rejoin Eligible
           </span>
           <span className="text-sm sm:text-base font-extrabold text-sky-600 dark:text-sky-400">

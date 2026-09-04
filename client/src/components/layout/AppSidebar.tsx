@@ -102,10 +102,11 @@ export default function AppSidebar({
             }`}
           />
           <span
+            title={item.label}
             className={`font-bold leading-tight ${
               isDisabled
                 ? "text-xs text-amber-800/70 dark:text-amber-700/60"
-                : "text-sm truncate"
+                : "text-sm whitespace-nowrap"
             }`}
           >
             {item.label}
@@ -251,7 +252,7 @@ export default function AppSidebar({
                   {section.id === "profile" ? currentDisplayName : section.header.title}
                 </h2>
                 {section.header.subtitle && (
-                  <p className="text-[10px] font-semibold text-[var(--chrome-ink-soft)] truncate">
+                  <p className="text-xs font-medium text-[var(--chrome-ink-soft)] truncate" title={section.header.subtitle}>
                     {section.header.subtitle}
                   </p>
                 )}
