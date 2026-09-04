@@ -62,6 +62,30 @@ describe("resolveIdentity", () => {
     expect(result).toEqual({ kind: "member", identityId: sub });
   });
 
+  it("provisions the member's player_identities row as a side effect (same path as the HTTP middleware) — closes the wallet '---' gap", async () => {
+    const sub = "12121212-3434-5656-7878-909090909090";
+    expect(await repo.getIdentity(sub)).toBeNull();
+
+    await resolveIdentity(mintMemberToken(sub), undefined);
+
+    const row = await repo.getIdentity(sub);
+    expect(row?.kind).toBe("member");
+    expect(row?.authUserId).toBe(sub);
+  });
+
+  it("a member provisioning failure degrades to identityId: null — RoomManager already rejects that cleanly rather than naming an identity whose row may not exist", async () => {
+    const sub = "13131313-4545-6767-8989-101010101010";
+    const failing = {
+      upsertIdentity: async () => {
+        throw new Error("simulated outage");
+      },
+    } as unknown as ProgressionRepository;
+    setProgressionRepository(failing);
+
+    const result = await resolveIdentity(mintMemberToken(sub), undefined);
+    expect(result).toEqual({ kind: "member", identityId: null });
+  });
+
   it("resolves a verified guest token to the id embedded in its signature", async () => {
     const { playerId, token } = mintGuestToken();
     const result = await resolveIdentity(undefined, token);

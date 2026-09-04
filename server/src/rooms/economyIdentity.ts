@@ -1,6 +1,6 @@
 import { verifyAccessToken } from "../lib/supabaseAuth.js";
 import { verifyGuestToken } from "../auth/guestToken.js";
-import { ensureGuestIdentityProvisioned } from "../auth/identity.js";
+import { ensureGuestIdentityProvisioned, ensureMemberIdentityProvisioned } from "../auth/identity.js";
 import { logger } from "../lib/logger.js";
 
 /**
@@ -69,6 +69,17 @@ export interface ResolvedIdentity {
  * kind is a socket `room:create`/`room:join` — not an HTTP call — still gets
  * a durable `player_identities` row before this identity is handed to
  * `RoomManager`.
+ *
+ * A verified member token is provisioned the same way, via
+ * `ensureMemberIdentityProvisioned`: a member's session is entirely
+ * client-side (Supabase's own SDK), so a socket `room:create` can just as
+ * easily be their first-ever authenticated touch as an HTTP call is. Unlike
+ * the guest branch, a provisioning failure here degrades to
+ * `identityId: null` rather than naming the member anyway — `RoomManager`
+ * already rejects a null identity cleanly ("there is no wallet to debit"),
+ * which is a cleaner failure than handing it an identityId whose row may not
+ * durably exist yet and letting it fail later, confusingly, inside
+ * `commitMatchEntry`.
  */
 export async function resolveIdentity(
   accessToken: string | null | undefined,
@@ -76,6 +87,15 @@ export async function resolveIdentity(
 ): Promise<ResolvedIdentity> {
   const account = await verifyAccessToken(accessToken);
   if (account) {
+    try {
+      await ensureMemberIdentityProvisioned(account.userId);
+    } catch (err) {
+      logger.warn({
+        message: `Member identity provisioning failed during socket identity resolution: ${String(err)}`,
+        module: "ECONOMY_ROOM",
+      });
+      return { kind: "member", identityId: null };
+    }
     return { kind: "member", identityId: account.userId };
   }
 

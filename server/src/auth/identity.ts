@@ -110,18 +110,20 @@ const GUEST_IDENTITY_CACHE_MAX = 2000;
 const provisionedGuestIds = new Map<string, true>();
 const inFlightGuestProvisioning = new Map<string, Promise<void>>();
 
-function rememberProvisioned(guestId: string): void {
-  if (!provisionedGuestIds.has(guestId) && provisionedGuestIds.size >= GUEST_IDENTITY_CACHE_MAX) {
-    const oldest = provisionedGuestIds.keys().next();
-    if (!oldest.done) provisionedGuestIds.delete(oldest.value);
+function rememberProvisioned(cache: Map<string, true>, max: number, id: string): void {
+  if (!cache.has(id) && cache.size >= max) {
+    const oldest = cache.keys().next();
+    if (!oldest.done) cache.delete(oldest.value);
   }
-  provisionedGuestIds.set(guestId, true);
+  cache.set(id, true);
 }
 
 /** Test seam — the module-level caches would otherwise carry state between cases. */
 export function clearGuestIdentityProvisioningCache(): void {
   provisionedGuestIds.clear();
   inFlightGuestProvisioning.clear();
+  provisionedMemberIds.clear();
+  inFlightMemberProvisioning.clear();
 }
 
 export async function ensureGuestIdentityProvisioned(guestId: string): Promise<void> {
@@ -140,7 +142,7 @@ export async function ensureGuestIdentityProvisioned(guestId: string): Promise<v
       authUserId: null,
       lastSeenAt: Date.now(),
     });
-    rememberProvisioned(guestId);
+    rememberProvisioned(provisionedGuestIds, GUEST_IDENTITY_CACHE_MAX, guestId);
   })();
 
   inFlightGuestProvisioning.set(guestId, write);
@@ -148,6 +150,59 @@ export async function ensureGuestIdentityProvisioned(guestId: string): Promise<v
     await write;
   } finally {
     inFlightGuestProvisioning.delete(guestId);
+  }
+}
+
+/**
+ * The member counterpart of `ensureGuestIdentityProvisioned`, closing the same
+ * gap for real accounts.
+ *
+ * ── The gap this closes ────────────────────────────────────────────────
+ * A member signs up entirely client-side (Supabase's own SDK — the server is
+ * never told). Their first authenticated request is verified fine by
+ * `verifyAccessToken` (the Supabase session is real), but nothing had ever
+ * written their `player_identities` row — that write only happened to fire
+ * from `profileSaved`/`matchFinished`/friend/party/tournament writes
+ * (`ProgressionSync.ts`), none of which run on sign-up. `ensure_wallet()`
+ * (the Postgres function) refuses to create that row itself by design (see
+ * the migration's own §1a comment) and raises `IDENTITY_NOT_FOUND` instead,
+ * which is exactly what a brand-new member's very first wallet fetch hit:
+ * a permanent "---" on the header wallet chip, self-healing only once some
+ * unrelated write (saving a profile, finishing a match) happened to
+ * provision the row.
+ *
+ * Same bounded-memoization and in-flight-dedup shape as the guest version,
+ * and a failed write is likewise NOT memoized as done, so the next request
+ * retries rather than leaving the member permanently unprovisioned.
+ */
+const MEMBER_IDENTITY_CACHE_MAX = 2000;
+const provisionedMemberIds = new Map<string, true>();
+const inFlightMemberProvisioning = new Map<string, Promise<void>>();
+
+export async function ensureMemberIdentityProvisioned(userId: string): Promise<void> {
+  if (provisionedMemberIds.has(userId)) return;
+
+  const existing = inFlightMemberProvisioning.get(userId);
+  if (existing) {
+    await existing;
+    return;
+  }
+
+  const write = (async () => {
+    await progressionRepository().upsertIdentity({
+      playerId: userId,
+      kind: "member",
+      authUserId: userId,
+      lastSeenAt: Date.now(),
+    });
+    rememberProvisioned(provisionedMemberIds, MEMBER_IDENTITY_CACHE_MAX, userId);
+  })();
+
+  inFlightMemberProvisioning.set(userId, write);
+  try {
+    await write;
+  } finally {
+    inFlightMemberProvisioning.delete(userId);
   }
 }
 
@@ -196,6 +251,18 @@ export function attachPlayerIdentity(req: Request, _res: Response, next: NextFun
     try {
       const account = await verifyAccessToken(token);
       if (account) {
+        try {
+          await ensureMemberIdentityProvisioned(account.userId);
+        } catch (err) {
+          // Same reasoning as the guest branch above: not memoized on
+          // failure, so the next request retries it, and the member still
+          // gets treated as themself for THIS request rather than being
+          // silently signed out by a transient write failure.
+          logger.warn({
+            message: `Member identity provisioning failed for a resolved member token: ${String(err)}`,
+            module: "AUTH",
+          });
+        }
         req.player = { kind: "member", playerId: account.userId, email: account.email };
       }
     } catch (err) {

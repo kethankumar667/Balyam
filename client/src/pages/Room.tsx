@@ -924,6 +924,50 @@ export default function Room() {
     navigate("/");
   }
 
+  // Read winnerId from opaque gameState without an inline cast.
+  // After "winnerId" in gameState the property exists but is `unknown`;
+  // a typeof guard narrows it to string before use.
+  const gameOverWinnerIdRaw =
+    gameState && typeof gameState === "object" && "winnerId" in gameState
+      ? gameState.winnerId
+      : null;
+  const gameOverWinnerId =
+    typeof gameOverWinnerIdRaw === "string" ? gameOverWinnerIdRaw : null;
+
+  // These three hooks — and everything above them in this function — must
+  // run on EVERY render, which is why they sit ahead of the two early
+  // `return`s below rather than next to the plain `const`s that use their
+  // results (originally where `gameOverGameName` etc. are still declared).
+  // A hard refresh into a room already in progress mounts this component
+  // with `roomState: null` for at least one render (the join round trip
+  // hasn't resolved yet); these hooks used to be declared AFTER
+  // `if (!roomState) return <ConnectingScreen/>`, so that first render
+  // skipped them entirely. The moment `roomState` populated and this same
+  // instance re-rendered past the guard, React saw more hooks than the
+  // previous render and threw "Rendered more hooks than during the
+  // previous render" — the exact crash behind the "A piece slipped off the
+  // board!" error boundary on reload-during-match.
+  const rankedPlayers = useMemo(() => {
+    if (!roomState) return [];
+    return roomState.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      score: p.id === gameOverWinnerId ? 100 : 0,
+      avatar: p.avatar,
+    }));
+  }, [roomState, gameOverWinnerId]);
+
+  // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
+  // needs the same "no inline banners, no extra padding" treatment Rummy gets.
+  const ludoInPlay = roomState?.game === "ludo" && roomState?.phase !== "lobby";
+  const [ludoSettings] = useLudoSettings();
+
+  useEffect(() => {
+    if (ludoInPlay) {
+      syncDocumentTheme(ludoSettings.theme);
+    }
+  }, [ludoInPlay, ludoSettings.theme]);
+
   // Two ways to land here without being seated yet:
   //   1. No name at all — a shared link opened in a fresh browser, or storage
   //      that was cleared. Nobody can join a table anonymously.
@@ -990,39 +1034,13 @@ export default function Room() {
   const gameOverGameName = roomState
     ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)
     : undefined;
-  // Read winnerId from opaque gameState without an inline cast.
-  // After "winnerId" in gameState the property exists but is `unknown`;
-  // a typeof guard narrows it to string before use.
-  const gameOverWinnerIdRaw =
-    gameState && typeof gameState === "object" && "winnerId" in gameState
-      ? gameState.winnerId
-      : null;
-  const gameOverWinnerId =
-    typeof gameOverWinnerIdRaw === "string" ? gameOverWinnerIdRaw : null;
+  // gameOverWinnerIdRaw/gameOverWinnerId, rankedPlayers, ludoInPlay,
+  // ludoSettings, and the theme-sync effect are declared further up this
+  // function, ahead of the two early `return`s above — see the comment
+  // there.
   const gameOverWinnerName = gameOverWinnerId
     ? (roomState?.players.find((p) => p.id === gameOverWinnerId)?.name ?? null)
     : null;
-
-  const rankedPlayers = useMemo(() => {
-    if (!roomState) return [];
-    return roomState.players.map((p) => ({
-      id: p.id,
-      name: p.name,
-      score: p.id === gameOverWinnerId ? 100 : 0,
-      avatar: p.avatar,
-    }));
-  }, [roomState, gameOverWinnerId]);
-
-  // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
-  // needs the same "no inline banners, no extra padding" treatment Rummy gets.
-  const ludoInPlay = roomState.game === "ludo" && roomState.phase !== "lobby";
-  const [ludoSettings] = useLudoSettings();
-
-  useEffect(() => {
-    if (ludoInPlay) {
-      syncDocumentTheme(ludoSettings.theme);
-    }
-  }, [ludoInPlay, ludoSettings.theme]);
 
   return (
     /**
