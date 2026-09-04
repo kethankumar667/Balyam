@@ -144,6 +144,23 @@ describe("validateEconomyCapacityContract — drift detection", () => {
     // never mutates shared/persisted state, only its own local instance.
   });
 
+  it("missing schedules for expanded seats 6..12 is reported but non-fatal (prevents crash-loop while DB migration is pending)", async () => {
+    const repo = freshRepo();
+    const snapshot = repo.testFixture.snapshot();
+    // Simulate database only having 1..5 seeded (pre-migration state in Supabase)
+    const only1to5 = snapshot.prizeSchedules.filter((s) => s.seatCount <= 5);
+    repo.testFixture.seedConfiguration(snapshot.configuration, only1to5);
+
+    const report = await validateEconomyCapacityContract((seatCount) => repo.getPrizeSchedule(seatCount));
+    expect(report.fatal).toBe(false);
+    expect(report.issues.length).toBe(7); // 6, 7, 8, 9, 10, 11, 12
+    for (let seat = 6; seat <= 12; seat++) {
+      expect(report.issues).toContainEqual(
+        expect.objectContaining({ kind: "MISSING_REQUIRED_SCHEDULE", seatCount: seat }),
+      );
+    }
+  });
+
   it("MUTATION: a non-conserving schedule (allocation != collected) is caught", async () => {
     const repo = freshRepo();
     const snapshot = repo.testFixture.snapshot();

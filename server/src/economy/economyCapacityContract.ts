@@ -208,7 +208,7 @@ export async function validateEconomyCapacityContract(
   return {
     issues,
     catalogGamesExceedingEconomyCapacity: catalogGamesExceedingEconomyCapacity(),
-    fatal: issues.length > 0,
+    fatal: issues.some((issue) => issue.seatCount <= 5 || issue.kind !== "MISSING_REQUIRED_SCHEDULE"),
   };
 }
 
@@ -216,7 +216,10 @@ export async function validateEconomyCapacityContract(
 export function formatEconomyCapacityContractReport(report: EconomyCapacityContractReport): string {
   const lines: string[] = [];
   if (report.issues.length > 0) {
-    lines.push(`Economy capacity contract FAILED (${report.issues.length} issue(s)):`);
+    const header = report.fatal
+      ? `Economy capacity contract FAILED (${report.issues.length} issue(s)):`
+      : `Economy capacity contract WARNING (${report.issues.length} issue(s) — pending database migration for expanded seats 6..12):`;
+    lines.push(header);
     for (const issue of report.issues) {
       lines.push(`  [${issue.kind}] seatCount=${issue.seatCount}: ${issue.detail}`);
     }

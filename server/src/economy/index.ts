@@ -73,7 +73,11 @@ async function assertEconomyCapacityContract(repository: EconomyRepository): Pro
       `Economy V1 capacity contract violation — refusing to start. ${report.issues.length} issue(s) found. See the preceding log line for detail.`,
     );
   }
-  logger.info({ message: summary, module: "ECONOMY" });
+  if (report.issues.length > 0) {
+    logger.warn({ message: summary, module: "ECONOMY" });
+  } else {
+    logger.info({ message: summary, module: "ECONOMY" });
+  }
 }
 
 /**
