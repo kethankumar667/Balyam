@@ -189,6 +189,9 @@ class ScriptedFailureRepository implements EconomyRepository {
       this.inner.requeueExpiredTerminalIntentClaim(intentId, operatorId, force),
     );
   }
+  adminAdjustWallet(input: Parameters<EconomyRepository["adminAdjustWallet"]>[0]) {
+    return this.invoke("adminAdjustWallet", () => this.inner.adminAdjustWallet(input));
+  }
 }
 
 /* ═══════════════════════ wallet & ledger ═════════════════════════════════ */

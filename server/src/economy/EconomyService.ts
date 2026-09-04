@@ -960,7 +960,7 @@ export class EconomyService {
         idempotencyKey: input.idempotencyKey.trim(),
       }),
     );
-    this.logOutcome("adminAdjustWallet", null, startedAt, outcome.applied ? "applied" : "replay");
+    this.logOutcome("adminAdjustWallet", null, startedAt, outcome.applied);
     return outcome;
   }
 }
