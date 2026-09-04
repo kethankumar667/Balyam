@@ -146,6 +146,8 @@ export type RoomLifecycleState =
   | "IN_PROGRESS"
   | "RECOVERING"
   | "PAUSED"
+  | "FINALIZING"
+  | "FINALIZATION_FAILED"
   | "COMPLETED"
   | "ABANDONED"
   | "CLOSED";
@@ -2872,6 +2874,8 @@ export interface ClientToServerEvents {
    */
   "room:spectate": (code: string, ack: (res: { ok: boolean; error?: string }) => void) => void;
   "room:stopSpectate": () => void;
+  /** Host retry of a failed terminal persistence intent. */
+  "room:retryTerminalPersistence": () => void;
 }
 
 export * from "./operational.js";

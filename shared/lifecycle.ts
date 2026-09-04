@@ -10,6 +10,8 @@ export type RoomLifecycleState =
   | "IN_PROGRESS"
   | "RECOVERING"
   | "PAUSED"
+  | "FINALIZING"
+  | "FINALIZATION_FAILED"
   | "COMPLETED"
   | "ABANDONED"
   | "CLOSED";
@@ -38,15 +40,19 @@ export function isValidLifecycleTransition(
       // without this edge the room's lifecycleState would simply never move.
       return to === "READY_CHECK" || to === "IN_PROGRESS" || to === "ABANDONED" || to === "CLOSED";
     case "IN_PROGRESS":
-      return to === "PAUSED" || to === "RECOVERING" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
+      return to === "PAUSED" || to === "RECOVERING" || to === "FINALIZING" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
     case "PAUSED":
       // A match can finish (bot/timeout-driven auto-move) while the table
       // is paused for a solo disconnected human — see RoomManager.finalizeMatch.
-      return to === "IN_PROGRESS" || to === "RECOVERING" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
+      return to === "IN_PROGRESS" || to === "RECOVERING" || to === "FINALIZING" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
     case "RECOVERING":
       // Same reasoning: other seats can keep playing (and finish the match)
       // while one seat is mid-grace-period recovery.
-      return to === "IN_PROGRESS" || to === "PAUSED" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
+      return to === "IN_PROGRESS" || to === "PAUSED" || to === "FINALIZING" || to === "COMPLETED" || to === "ABANDONED" || to === "CLOSED";
+    case "FINALIZING":
+      return to === "COMPLETED" || to === "FINALIZATION_FAILED" || to === "ABANDONED" || to === "CLOSED";
+    case "FINALIZATION_FAILED":
+      return to === "FINALIZING" || to === "COMPLETED" || to === "READY_CHECK" || to === "ABANDONED" || to === "CLOSED";
     case "COMPLETED":
       return to === "READY_CHECK" || to === "STARTING" || to === "IN_PROGRESS" || to === "ABANDONED" || to === "CLOSED";
     case "ABANDONED":

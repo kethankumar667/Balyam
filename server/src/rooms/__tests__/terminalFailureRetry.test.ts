@@ -35,6 +35,9 @@ import {
   type MarkIntentRetryableInput,
 } from "../../persistence/EconomyRepository.js";
 import type { AccountKind, ClientToServerEvents, GameKind, ServerToClientEvents } from "@shared/types.js";
+import { mintGuestToken, newGuestPlayerId } from "../../auth/guestToken.js";
+import { resolveIdentity } from "../economyIdentity.js";
+import { registerSocketHandlers } from "../../sockets/index.js";
 
 /**
  * Remediation of audit finding P1-2 ("no reachable retry path for
@@ -214,6 +217,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
 
     const room = peek(rooms, host.code)!;
     expect(room.terminalStatus).toBe("FAILED");
+    expect(room.lifecycleState).toBe("FINALIZATION_FAILED");
     expect(rooms.getRoomTerminalStatus(host.code)?.status).toBe("FAILED");
     expect(room.terminalPayload).not.toBeNull();
     expect(room.terminalPayload?.kind).toBe("SETTLEMENT");
@@ -222,6 +226,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     await rooms.drainEconomySettlementQueue(); // the retry only durably persists the intent; the worker applies the financial RPC
 
     expect(room.terminalStatus).toBe("COMPLETED");
+    expect(room.lifecycleState).toBe("COMPLETED");
     expect(room.terminalPayload).toBeNull();
     expect(room.currentMatchId).toBeNull();
     expect((await service.getWallet(MEMBER_A)).balance).toBe("4950"); // 5000 - 200 (entry) + 150 (1st place)
@@ -442,5 +447,536 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     // proving the retry path itself is not exhausted after one failed attempt.
     await rooms.retryFailedTerminalPersistence(room);
     expect(room.terminalStatus).toBe("COMPLETED");
+  });
+
+  it("Test I: abandonRoom automatically retries a failed settlement intent on teardown", async () => {
+    const { repo, service } = freshFailingEconomy(1); // fails on match completion, succeeds on abandon retry
+    seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+    await rooms.requestGameStart("s_a");
+
+    await playRpsToCompletion(rooms, "s_a", "s_b");
+    const room = peek(rooms, host.code)!;
+    expect(room.terminalStatus).toBe("FAILED");
+
+    // Bob leaves first, then Alice leaves — triggering abandonRoom on the concluded, failed room
+    await rooms.leaveRoom("s_b");
+    await rooms.leaveRoom("s_a");
+
+    // The retry in abandonRoom succeeded, completing settlement intent persistence before teardown
+    await rooms.drainEconomySettlementQueue();
+    const wallet = await service.getWallet(MEMBER_A);
+    expect(wallet.balance).toBe("4950"); // 5000 - 200 + 150
+  });
+
+  it("Test J: drainEconomySettlementQueue automatically sweeps and retries in-memory rooms in FAILED terminalStatus", async () => {
+    const { repo, service } = freshFailingEconomy(1);
+    seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+    await rooms.requestGameStart("s_a");
+
+    await playRpsToCompletion(rooms, "s_a", "s_b");
+    const room = peek(rooms, host.code)!;
+    expect(room.terminalStatus).toBe("FAILED");
+
+    // Normal queue drain / recovery sweep automatically retries room
+    await rooms.drainEconomySettlementQueue();
+
+    expect(room.terminalStatus).toBe("COMPLETED");
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+  });
+
+  it("Test K (Phase 6): signed-member failure-retry recovers via periodic in-process sweep with verified wallet and ledger state", async () => {
+    const { repo, service } = freshFailingEconomy(1);
+    seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+    await rooms.requestGameStart("s_a");
+
+    await playRpsToCompletion(rooms, "s_a", "s_b"); // Alice wins
+    const room = peek(rooms, host.code)!;
+    expect(room.terminalStatus).toBe("FAILED");
+    expect(room.lifecycleState).toBe("FINALIZATION_FAILED");
+
+    // Periodic in-process sweep runs while process remains alive
+    await rooms.retryAllFailedTerminalRooms();
+
+    // Verify exactly one terminal intent was created
+    const intents = await service.listTerminalIntents({ status: "PENDING" });
+    expect(intents.length).toBe(1);
+    expect(intents[0].operationKind).toBe("SETTLEMENT");
+
+    // Durable worker processes intent
+    await rooms.drainEconomySettlementQueue();
+
+    expect(room.terminalStatus).toBe("COMPLETED");
+    expect(room.lifecycleState).toBe("COMPLETED");
+
+    // Settlement reaches final state
+    const settlement = await service.getSettlement(intents[0].matchId);
+    expect(settlement?.status).toBe("SETTLED");
+    expect(settlement?.totalWalletRewarded).toBe("150");
+
+    // Member wallet receives expected prize
+    const wallet = await service.getWallet(MEMBER_A);
+    expect(wallet.balance).toBe("4950"); // 5000 - 200 (entry) + 150 (1st place)
+
+    // Exactly one MATCH_PRIZE_CREDIT ledger entry exists
+    const ledger = await repo.listLedger(MEMBER_A);
+    const prizeCredits = ledger.filter((l) => l.entryType === "MATCH_PRIZE_CREDIT");
+    expect(prizeCredits.length).toBe(1);
+    expect(prizeCredits[0].amount).toBe("150");
+
+    // Duplicate periodic retry does not add second reward
+    await rooms.retryAllFailedTerminalRooms();
+    await rooms.drainEconomySettlementQueue();
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+    const ledgerAfter = await repo.listLedger(MEMBER_A);
+    expect(ledgerAfter.filter((l) => l.entryType === "MATCH_PRIZE_CREDIT").length).toBe(1);
+
+    // World bank total economy conservation remains sound
+    const wb = await service.getWorldBankSnapshot();
+    expect(wb.baseFeeRevenue).toBe("50"); // 200 collected - 150 prize = 50 cut
+    expect(settlement?.totalWorldBankCut).toBe("50");
+  });
+
+  it("Test L (Phase 7): guest winner failure-retry issues exactly one bearer voucher in escrow without leaking raw codes", async () => {
+    const { repo, service } = freshFailingEconomy(1);
+    seedMember(repo, MEMBER_A);
+    const { playerId: guestId, token: guestToken } = mintGuestToken();
+    repo.testFixture.seedIdentity(guestId, "guest");
+
+    // Verify token resolution through resolveIdentity
+    const resolved = await resolveIdentity(null, guestToken);
+    expect(resolved.kind).toBe("guest");
+    expect(resolved.identityId).toBe(guestId);
+
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "BobGuest", host.code, "guest", resolved.identityId);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+    await rooms.requestGameStart("s_a");
+
+    // Guest wins: "s_b" plays rock, "s_a" plays scissors
+    await playRpsToCompletion(rooms, "s_b", "s_a");
+
+    const room = peek(rooms, host.code)!;
+    expect(room.terminalStatus).toBe("FAILED");
+    expect(room.lifecycleState).toBe("FINALIZATION_FAILED");
+
+    // Periodic retry persists original payload
+    await rooms.retryAllFailedTerminalRooms();
+
+    const intents = await service.listTerminalIntents({ status: "PENDING" });
+    expect(intents.length).toBe(1);
+
+    await rooms.drainEconomySettlementQueue();
+
+    expect(room.terminalStatus).toBe("COMPLETED");
+    const matchId = intents[0].matchId;
+    const settlement = await service.getSettlement(matchId);
+    expect(settlement?.status).toBe("SETTLED");
+    expect(settlement?.totalGuestEscrow).toBe("150");
+    expect(settlement?.totalWalletRewarded).toBe("0");
+
+    // Exactly one guest voucher record created
+    const vouchers = [...(repo as any).vouchers.values()].filter((v: any) => v.matchId === matchId);
+    expect(vouchers.length).toBe(1);
+    expect(vouchers[0].coinAmount).toBe("150");
+    expect(vouchers[0].issuedToGuestId).toBe(guestId);
+    expect(vouchers[0].status).toBe("ACTIVE");
+    expect(vouchers[0].codeHash).toMatch(/^[0-9a-f]{64}$/); // Hash only, no raw code leak
+
+    // Signed participant did NOT incorrectly receive the guest reward
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // 5000 - 200 entry + 0 prize
+
+    // Duplicate worker processing does not create a second voucher
+    await rooms.drainEconomySettlementQueue();
+    const vouchersAfter = [...(repo as any).vouchers.values()].filter((v: any) => v.matchId === matchId);
+    expect(vouchersAfter.length).toBe(1);
+  });
+
+  it("Test L Companion: socket layer 'room:join' resolves guestToken into verified identityId and reaches escrow voucher on retry", async () => {
+    const { repo, service } = freshFailingEconomy(1);
+    seedMember(repo, MEMBER_A);
+    const { playerId: guestId, token: guestToken } = mintGuestToken();
+    repo.testFixture.seedIdentity(guestId, "guest");
+
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+
+    // Mock socket for guest connecting via socket handler
+    const listeners: Record<string, Function> = {};
+    const guestSocket = {
+      id: "s_b",
+      use: () => {},
+      on: (ev: string, handler: Function) => { listeners[ev] = handler; },
+      emit: vi.fn(),
+      join: () => {},
+      leave: () => {},
+    };
+
+    // Wire socket handlers to verify full socket transport boundary
+    registerSocketHandlers(io, guestSocket as any, rooms);
+
+    // Guest joins via socket event "room:join" presenting guestToken
+    let joinAck: any;
+    await listeners["room:join"](
+      {
+        name: "BobGuest",
+        code: host.code,
+        accountKind: "guest",
+        guestToken: guestToken,
+      },
+      (ackResult: any) => { joinAck = ackResult; }
+    );
+
+    expect(joinAck?.ok).toBe(true);
+    const room = peek(rooms, host.code)!;
+    const guestPlayer = room.players.get(joinAck.playerId)!;
+    expect(guestPlayer.isGuest).toBe(true);
+    expect(guestPlayer.identityId).toBe(guestId);
+
+    // Ready up both seats
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+    await rooms.requestGameStart("s_a");
+
+    // Guest wins: "s_b" plays rock, "s_a" plays scissors
+    await playRpsToCompletion(rooms, "s_b", "s_a");
+
+    expect(room.terminalStatus).toBe("FAILED");
+    expect(room.lifecycleState).toBe("FINALIZATION_FAILED");
+
+    // Retry persists original payload
+    await rooms.retryAllFailedTerminalRooms();
+    await rooms.drainEconomySettlementQueue();
+
+    expect(room.terminalStatus).toBe("COMPLETED");
+    const intents = await service.listTerminalIntents();
+    const matchId = intents[0].matchId;
+    const settlement = await service.getSettlement(matchId);
+    expect(settlement?.status).toBe("SETTLED");
+    expect(settlement?.totalGuestEscrow).toBe("150");
+
+    // Exactly one voucher created for the guest who joined via socket event
+    const vouchers = [...(repo as any).vouchers.values()].filter((v: any) => v.matchId === matchId);
+    expect(vouchers.length).toBe(1);
+    expect(vouchers[0].coinAmount).toBe("150");
+    expect(vouchers[0].issuedToGuestId).toBe(guestId);
+    expect(vouchers[0].status).toBe("ACTIVE");
+  });
+
+  describe("Phase 8: Concurrent Cleanup Regression Scenarios", () => {
+    it("Scenario A: two simultaneous abandonRoom calls while status is FAILED converge on single retry attempt", async () => {
+      const { repo, service } = freshFailingEconomy(1); // fails on game completion, retry will succeed
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      await playRpsToCompletion(rooms, "s_a", "s_b");
+      const room = peek(rooms, host.code)!;
+      expect(room.terminalStatus).toBe("FAILED");
+
+      const createIntentSpy = vi.spyOn(service, "createTerminalIntent");
+      // Two callers trigger abandonRoom simultaneously
+      await Promise.all([
+        (rooms as any).abandonRoom(room),
+        (rooms as any).abandonRoom(room),
+      ]);
+
+      // Exactly one retry attempt executed
+      expect(createIntentSpy).toHaveBeenCalledTimes(1);
+      expect(room.terminalStatus).toBe("COMPLETED");
+      // Room closed after successful completion
+      expect(peek(rooms, host.code)).toBeUndefined();
+    });
+
+    it("Scenario B: a second abandonRoom call while the first retry is PERSISTING awaits the same promise without deleting the room", async () => {
+      // Fails twice so retry also fails
+      const { repo, service } = freshFailingEconomy(2);
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      await playRpsToCompletion(rooms, "s_a", "s_b");
+      const room = peek(rooms, host.code)!;
+      expect(room.terminalStatus).toBe("FAILED");
+
+      // First call triggers abandonRoom (which starts retry)
+      const call1 = (rooms as any).abandonRoom(room);
+      expect(room.terminalStatus).toBe("PERSISTING");
+
+      // Second call arrives while PERSISTING
+      const call2 = (rooms as any).abandonRoom(room);
+
+      await Promise.all([call1, call2]);
+
+      // Retry failed: room MUST NOT be deleted!
+      expect(peek(rooms, host.code)).toBeDefined();
+      expect(room.terminalStatus).toBe("FAILED");
+      expect(rooms.getRoomTerminalStatus(host.code)?.status).toBe("FAILED");
+    });
+
+    it("Scenario C: explicit leave racing disconnect-grace expiry converges on the same in-flight persistence", async () => {
+      const { repo, service } = freshFailingEconomy(1);
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      await playRpsToCompletion(rooms, "s_a", "s_b");
+      const room = peek(rooms, host.code)!;
+      expect(room.terminalStatus).toBe("FAILED");
+
+      // Racing leaveRoom calls from both seats
+      await Promise.all([
+        rooms.leaveRoom("s_a"),
+        rooms.leaveRoom("s_b"),
+      ]);
+
+      await rooms.drainEconomySettlementQueue();
+      expect(room.terminalStatus).toBe("COMPLETED");
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+    });
+
+    it("Scenario D: periodic failed-room retry racing host manual retry triggers exactly one persistence attempt", async () => {
+      const { repo, service } = freshFailingEconomy(1);
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      await playRpsToCompletion(rooms, "s_a", "s_b");
+      const room = peek(rooms, host.code)!;
+      expect(room.terminalStatus).toBe("FAILED");
+
+      const createIntentSpy = vi.spyOn(service, "createTerminalIntent");
+      // Periodic retry and host manual retry race simultaneously
+      await Promise.all([
+        rooms.retryAllFailedTerminalRooms(),
+        rooms.requestRetryTerminalPersistence("s_a"),
+      ]);
+
+      expect(createIntentSpy).toHaveBeenCalledTimes(1);
+      await rooms.drainEconomySettlementQueue();
+      expect(room.terminalStatus).toBe("COMPLETED");
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+    });
+
+    it("Scenario E: retry succeeds while a cleanup request is waiting, safely closing room after COMPLETED", async () => {
+      const { repo, service } = freshFailingEconomy(1);
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      await playRpsToCompletion(rooms, "s_a", "s_b");
+      const room = peek(rooms, host.code)!;
+      expect(room.terminalStatus).toBe("FAILED");
+
+      // Bob departs
+      await rooms.leaveRoom("s_b");
+
+      // Host Alice departs, triggering abandonRoom which executes retry
+      await rooms.leaveRoom("s_a");
+
+      // Retry succeeded, room safely closed
+      expect(peek(rooms, host.code)).toBeUndefined();
+      await rooms.drainEconomySettlementQueue();
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+    });
+
+    it("Scenario F: retry fails while a cleanup request is waiting, leaving room visible and recoverable in FAILED status", async () => {
+      const { repo, service } = freshFailingEconomy(2); // Fails twice
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      await playRpsToCompletion(rooms, "s_a", "s_b");
+      const room = peek(rooms, host.code)!;
+      expect(room.terminalStatus).toBe("FAILED");
+
+      // Both players leave, triggering abandonRoom
+      await rooms.leaveRoom("s_b");
+      await rooms.leaveRoom("s_a");
+
+      // The room MUST NOT be deleted!
+      expect(peek(rooms, host.code)).toBeDefined();
+      expect(room.terminalStatus).toBe("FAILED");
+      expect(rooms.getRoomTerminalStatus(host.code)?.status).toBe("FAILED");
+      expect(room.terminalPayload).not.toBeNull();
+
+      // Subsequent manual or periodic retry can still recover once infrastructure recovers
+      await rooms.retryAllFailedTerminalRooms();
+      await rooms.drainEconomySettlementQueue();
+      expect(room.terminalStatus).toBe("COMPLETED");
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+    });
+  });
+
+  describe("Phase 9: Focused Guard Coverage (!room.currentMatchId and room.phase === 'playing' && room.engine?.isOver())", () => {
+    it("Guard A1: startGame is rejected when economy is active and !room.currentMatchId", async () => {
+      const { repo, service } = freshFailingEconomy(0);
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const emittedErrors: string[] = [];
+      const io = {
+        to: () => ({ emit: () => {} }),
+        sockets: {
+          sockets: {
+            get: () => ({
+              join() {},
+              leave() {},
+              emit: (ev: string, msg: string) => {
+                if (ev === "room:error") emittedErrors.push(msg);
+              },
+            }),
+          },
+        },
+      } as unknown as Server<ClientToServerEvents, ServerToClientEvents>;
+
+      const rooms = new RoomManager(io, service);
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+
+      const room = peek(rooms, host.code)!;
+      expect(room.currentMatchId).toBeNull();
+
+      // Malicious or buggy client calls startGame directly without requestGameStart
+      rooms.startGame("s_a");
+
+      expect(room.phase).toBe("lobby");
+      expect(emittedErrors).toContain(
+        "This match has not been paid for yet. Use requestGameStart, not startGame, when Economy V1 is enabled."
+      );
+    });
+
+    it("Guard A2: abandonRoom preserves room and blocks premature close while currentMatchId is present", async () => {
+      const { repo, service } = freshFailingEconomy(2); // will fail on both game completion and first retry
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      const room = peek(rooms, host.code)!;
+      const matchId = room.currentMatchId;
+      expect(matchId).not.toBeNull();
+
+      await playRpsToCompletion(rooms, "s_a", "s_b");
+      expect(room.terminalStatus).toBe("FAILED");
+      // currentMatchId is retained because persistence failed!
+      expect(room.currentMatchId).toBe(matchId);
+
+      // Now players leave, triggering abandonRoom
+      await rooms.leaveRoom("s_b");
+      await rooms.leaveRoom("s_a");
+
+      // Room MUST still be preserved in rooms map because currentMatchId was not cleared
+      expect(peek(rooms, host.code)).toBeDefined();
+      expect(room.terminalStatus).toBe("FAILED");
+      expect(room.currentMatchId).toBe(matchId);
+
+      // Once terminal persistence succeeds, currentMatchId is cleared to null and cleanup can complete
+      await rooms.retryAllFailedTerminalRooms();
+      expect(room.terminalStatus).toBe("COMPLETED");
+      expect(room.currentMatchId).toBeNull();
+    });
+
+    it("Guard B: leaveRoom after match conclusion (phase === 'finished') does not re-invoke finalizeMatch or duplicate settlement", async () => {
+      const { repo, service } = freshFailingEconomy(0); // Succeeds immediately
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B);
+      const { io } = makeIo();
+      const rooms = new RoomManager(io, service);
+      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+
+      await playRpsToCompletion(rooms, "s_a", "s_b");
+
+      const room = peek(rooms, host.code)!;
+      expect(room.phase).toBe("finished");
+      expect(room.terminalStatus).toBe("COMPLETED");
+
+      await rooms.drainEconomySettlementQueue();
+      const intentsBefore = await service.listTerminalIntents();
+      expect(intentsBefore.length).toBe(1);
+
+      // Spy on enqueueSettlement to ensure finalizeMatch is never re-entered
+      const enqueueSpy = vi.spyOn((rooms as any).durableWorker, "enqueueSettlement");
+
+      // Bob leaves room after match already concluded
+      await rooms.leaveRoom("s_b");
+
+      // finalizeMatch was NOT called
+      expect(enqueueSpy).not.toHaveBeenCalled();
+
+      // No new intents or duplicate settlements were created
+      const intentsAfter = await service.listTerminalIntents();
+      expect(intentsAfter.length).toBe(1);
+    });
   });
 });

@@ -46,6 +46,18 @@ describe("shared/lifecycle.ts — RECOVERING and PAUSED can reach COMPLETED", ()
     expect(isValidLifecycleTransition("PAUSED", "COMPLETED")).toBe(true);
   });
 
+  it("supports the complete post-match terminal settlement transition matrix (FINALIZING / FINALIZATION_FAILED / COMPLETED)", () => {
+    expect(isValidLifecycleTransition("IN_PROGRESS", "FINALIZING")).toBe(true);
+    expect(isValidLifecycleTransition("PAUSED", "FINALIZING")).toBe(true);
+    expect(isValidLifecycleTransition("RECOVERING", "FINALIZING")).toBe(true);
+    expect(isValidLifecycleTransition("FINALIZING", "COMPLETED")).toBe(true);
+    expect(isValidLifecycleTransition("FINALIZING", "FINALIZATION_FAILED")).toBe(true);
+    expect(isValidLifecycleTransition("FINALIZATION_FAILED", "FINALIZING")).toBe(true);
+    expect(isValidLifecycleTransition("FINALIZATION_FAILED", "COMPLETED")).toBe(true);
+    expect(isValidLifecycleTransition("FINALIZATION_FAILED", "READY_CHECK")).toBe(true);
+    expect(isValidLifecycleTransition("FINALIZATION_FAILED", "IN_PROGRESS")).toBe(false);
+  });
+
   it("still rejects genuinely illegal transitions", () => {
     expect(isValidLifecycleTransition("COMPLETED", "CREATED")).toBe(false);
     expect(isValidLifecycleTransition("CLOSED", "IN_PROGRESS")).toBe(false);

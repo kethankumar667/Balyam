@@ -46,7 +46,7 @@ import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
 import { clearActiveSession } from "../core/recovery/recoveryStorage";
 import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
-import { LobbyPrizePool } from "../components/economy/LobbyPrizePool";
+import { LobbyPrizePool, UnsupportedSeatCountCard } from "../components/economy";
 import { LobbyCoinFlight, type CoinParticle } from "../components/economy/LobbyCoinFlight";
 import { useCheckoutQuote } from "../hooks/useEconomy";
 import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
@@ -615,7 +615,7 @@ export default function Room() {
   const lobbyBotSeatCount = roomState?.players.filter((p) => p.isBot).length ?? 0;
   const lobbySeatCount = lobbyHumanSeatCount + lobbyBotSeatCount;
   const { quote: lobbyQuote, isLoading: isLobbyQuoteLoading } = useCheckoutQuote(
-    roomState?.phase === "lobby" && lobbySeatCount > 0
+    roomState?.phase === "lobby" && lobbySeatCount > 0 && lobbySeatCount <= 5
       ? { seatCount: lobbySeatCount, humanSeatCount: lobbyHumanSeatCount, botSeatCount: lobbyBotSeatCount }
       : null,
   );
@@ -822,6 +822,7 @@ export default function Room() {
    * A rematch (phase → "playing") resets state and closes open scorecards.
    * ─────────────────────────────────────────────────────────────────────── */
   const [showScorecard, setShowScorecard] = useState(false);
+  const [scorecardDismissed, setScorecardDismissed] = useState(false);
   const [scorecardDeadlineMs, setScorecardDeadlineMs] = useState<number>(0);
   const scorecardTimerRef = useRef<number | null>(null);
 
@@ -832,6 +833,7 @@ export default function Room() {
       scorecardTimerRef.current = null;
     }
     setShowScorecard(false);
+    setScorecardDismissed(true);
   }
 
   const prevPhaseForScorecardRef = useRef<string | undefined>(undefined);
@@ -843,6 +845,7 @@ export default function Room() {
     if (next === "playing") {
       // Rematch / next round — reset scorecard.
       setShowScorecard(false);
+      setScorecardDismissed(false);
       if (scorecardTimerRef.current != null) {
         window.clearTimeout(scorecardTimerRef.current);
         scorecardTimerRef.current = null;
@@ -855,6 +858,7 @@ export default function Room() {
       const deadline = Date.now() + SCORECARD_WINDOW_MS;
       setScorecardDeadlineMs(deadline);
       setShowScorecard(true);
+      setScorecardDismissed(false);
       scorecardTimerRef.current = window.setTimeout(
         () => { handleScorecardClose(); },
         SCORECARD_WINDOW_MS,
@@ -869,6 +873,7 @@ export default function Room() {
   }
 
   function startGame() {
+    if (!viewModel.canStartGame) return;
     // Fire fullscreen synchronously inside the click handler so the
     // request lands within the browser's user-activation window
     // (~1 s on Chrome). The phase-transition effect above is a fallback
@@ -1064,10 +1069,43 @@ export default function Room() {
           <Toast message={lastError} onClose={() => setError(null)} />
         )}
 
-        {roomState.phase === "lobby" ? (
+        {roomState.phase === "lobby" || (roomState.phase === "finished" && scorecardDismissed) ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* Left Column (approx 62% - lg:col-span-7 xl:col-span-8) */}
             <div className="lg:col-span-7 xl:col-span-8 space-y-4 pb-40 sm:pb-44 lg:pb-0">
+              {roomState.lifecycleState === "FINALIZING" && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-semibold shadow-sm"
+                >
+                  <span className="animate-spin inline-block w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full" aria-hidden="true" />
+                  <span>Match completed — finalizing prize settlement and rewards...</span>
+                </div>
+              )}
+              {roomState.lifecycleState === "FINALIZATION_FAILED" && (
+                <div
+                  role="alert"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-900 dark:text-rose-200 text-xs font-medium shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-base" aria-hidden="true">⚠️</span>
+                    <span>Settlement synchronization is pending. Your match results are saved and will be finalized.</span>
+                  </div>
+                  {selfIsHost && (
+                    <button
+                      type="button"
+                      onClick={() => getSocket().emit("room:retryTerminalPersistence")}
+                      className="self-start sm:self-auto px-3 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-lg transition text-xs shadow-sm cursor-pointer"
+                    >
+                      Retry Settlement Sync
+                    </button>
+                  )}
+                </div>
+              )}
+              {roomState.phase === "finished" && (
+                <RematchPanel players={roomState.players} selfId={playerId} className="w-full" />
+              )}
               {roomState.sealed ? (
                 <SignInWall
                   from="room"
@@ -1081,16 +1119,23 @@ export default function Room() {
                 />
               )}
 
-              {/* Live Match Prize Pool (Phase 7F) */}
-              <LobbyPrizePool
-                seatCount={viewModel.totalPlayersCount}
-                readyCount={viewModel.readyPlayersCount}
-                allReady={viewModel.allReady}
-                quote={lobbyQuote}
-                isQuoteLoading={isLobbyQuoteLoading}
-                lockPhase={lobbyLockPhase}
-                isHost={selfIsHost}
-              />
+              {/* Live Match Prize Pool (Phase 7F) or Corrective Notice for Unsupported Seat Count */}
+              {viewModel.isSeatCountSupported ? (
+                <LobbyPrizePool
+                  seatCount={viewModel.totalPlayersCount}
+                  readyCount={viewModel.readyPlayersCount}
+                  allReady={viewModel.allReady}
+                  quote={lobbyQuote}
+                  isQuoteLoading={isLobbyQuoteLoading}
+                  lockPhase={lobbyLockPhase}
+                  isHost={selfIsHost}
+                />
+              ) : (
+                <UnsupportedSeatCountCard
+                  seatCount={viewModel.totalPlayersCount}
+                  isHost={selfIsHost}
+                />
+              )}
 
               <ParticipantPanel
                 players={roomState.players}

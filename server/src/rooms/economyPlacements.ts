@@ -52,15 +52,13 @@ import type { SettlementParticipantOutcome } from "../economy/EconomyService.js"
  *     touching EconomyService, RoomManager's call site, or this file's
  *     exported shape.
  *
- * ── The unresolvable-guest limitation (see roommanager-integration-map.md) ──
+ * ── Guest identity resolution (see economyIdentity.ts) ──
  * `SettlementParticipantOutcome.identityId` is a non-nullable `string` —
- * EconomyService's frozen contract. A guest seat's durable identity cannot
- * be resolved today (no guest-token channel through the socket layer; see
- * `economyIdentity.ts`), so there is no valid string to submit for one, at
- * ANY placement — including a non-paid one, since the array must still
- * name every seat. A match containing any such seat is therefore always
- * `isValidRanking: false`, regardless of who actually won. Documented as
- * the top production risk in the Phase 7 completion report, not hidden.
+ * EconomyService's frozen contract. When a guest joins with a valid guest token
+ * (verified via `verifyGuestToken`), their durable guest identity (`guest_<random>`)
+ * is populated on the player and submitted in `participants`. If a guest seat
+ * has no verified token or failed provisioning, `participantIdFor` returns `null`,
+ * which correctly falls back to `isValidRanking: false` (refund-safe).
  */
 
 export interface PlacementExtractionInput {

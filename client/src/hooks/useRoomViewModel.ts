@@ -1,12 +1,17 @@
 import { useMemo } from "react";
 import type { GameKind, Player, RoomPublicState, StartBlockReason } from "@shared/types";
-import { GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
+import {
+  GAME_LIMITS,
+  NO_BOT_GAMES,
+  ECONOMY_MAX_APPROVED_SEAT_COUNT,
+  isEconomySupportedSeatCount,
+} from "@shared/catalog";
 
 export const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = Object.fromEntries(
   Object.entries(GAME_LIMITS).map(([k, v]) => [k, v.max])
 ) as Record<GameKind, number>;
 
-export { NO_BOT_GAMES };
+export { NO_BOT_GAMES, ECONOMY_MAX_APPROVED_SEAT_COUNT, isEconomySupportedSeatCount };
 
 export interface RoomViewModel {
   maxPlayers: number;
@@ -21,6 +26,7 @@ export interface RoomViewModel {
   totalPlayersCount: number;
   unreadyPlayersCount: number;
   allReady: boolean;
+  isSeatCountSupported: boolean;
   canStartGame: boolean;
   startGameDisabledReason: string | null;
   noBotSupport: boolean;
@@ -49,6 +55,7 @@ export function computeRoomViewModel(
       totalPlayersCount: 0,
       unreadyPlayersCount: 0,
       allReady: false,
+      isSeatCountSupported: true,
       canStartGame: false,
       startGameDisabledReason: null,
       noBotSupport: false,
@@ -86,9 +93,9 @@ export function computeRoomViewModel(
 
   const hasEnoughPlayers = totalPlayersCount >= minPlayersNeeded;
   const allReady = hasEnoughPlayers && players.every((p) => p.isReady);
+  const isSeatCountSupported = isEconomySupportedSeatCount(totalPlayersCount);
   const canStartGame =
-    selfIsHost && roomState.phase === "lobby" && allReady;
-
+    selfIsHost && roomState.phase === "lobby" && allReady && isSeatCountSupported;
 
   let startGameDisabledReason: string | null = null;
   if (!selfIsHost) {
@@ -97,6 +104,9 @@ export function computeRoomViewModel(
     startGameDisabledReason = `Need at least ${minPlayersNeeded} player${
       minPlayersNeeded > 1 ? "s" : ""
     } to start`;
+  } else if (!isSeatCountSupported) {
+    const excess = totalPlayersCount - ECONOMY_MAX_APPROVED_SEAT_COUNT;
+    startGameDisabledReason = `Table size exceeds economy capacity (max ${ECONOMY_MAX_APPROVED_SEAT_COUNT} seats). Remove ${excess} player${excess > 1 ? "s" : ""} to start.`;
   } else if (!allReady) {
     startGameDisabledReason = `Waiting for ${unreadyPlayersCount} player${
       unreadyPlayersCount > 1 ? "s" : ""
@@ -162,6 +172,7 @@ export function computeRoomViewModel(
     totalPlayersCount,
     unreadyPlayersCount,
     allReady,
+    isSeatCountSupported,
     canStartGame,
     startGameDisabledReason,
     noBotSupport,

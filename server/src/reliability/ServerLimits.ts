@@ -29,4 +29,8 @@ export const SERVER_LIMITS = {
 
   /** Memory heap critical threshold percentage (0..1) */
   HEAP_CRITICAL_THRESHOLD_RATIO: 0.90,
+
+  /** Periodic in-process retry interval for rooms in FAILED terminal persistence status (default: 5 seconds) */
+  FAILED_TERMINAL_PERSISTENCE_RETRY_INTERVAL_MS:
+    Number(process.env.FAILED_TERMINAL_PERSISTENCE_RETRY_INTERVAL_MS) || 5_000,
 } as const;

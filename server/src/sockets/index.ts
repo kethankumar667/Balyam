@@ -211,6 +211,16 @@ export function registerSocketHandlers(
     rooms.reportUnavailable(socket.id, payload);
   });
 
+  socket.on("room:retryTerminalPersistence", () => {
+    void rooms.requestRetryTerminalPersistence(socket.id).catch((err) => {
+      logger.error({
+        message: `room:retryTerminalPersistence failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "SOCKET",
+        socketId: socket.id,
+      });
+    });
+  });
+
   socket.on("chat:send", ({ text }) => {
     rooms.sendChat(socket.id, text);
   });

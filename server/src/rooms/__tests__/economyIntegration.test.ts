@@ -897,14 +897,14 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
 
   describe("voucher issuance and redemption lifecycle", () => {
     /**
-     * Guest identity resolution is a known, documented gap (see
-     * economyPlacements.ts's file header and the Phase 7 completion
-     * report) — no guest-token channel exists through the socket layer
-     * today. This test proves the VOUCHER MECHANISM itself (the part
-     * fully built and correct) by seating a "guest" seat with a directly-
-     * supplied identityId, exactly as a future socket-layer fix would
-     * hand RoomManager one. It does not claim this is reachable via a
-     * real socket connection today.
+     * Guest-token socket resolution exists via `server/src/sockets/index.ts`
+     * (using `resolveIdentity()` and `verifyGuestToken()` from `economyIdentity.ts`).
+     * This specific test bypasses the socket layer by seating a guest seat
+     * with a directly-supplied `guestIdentityId` into `RoomManager.joinRoom()`.
+     * This test focuses on the settlement engine and voucher issuance/redemption
+     * lifecycle itself. Complementary socket identity verification and guest
+     * token resolution tests live in `server/src/rooms/__tests__/terminalFailureRetry.test.ts`
+     * and `server/src/auth/__tests__/guestIdentityProvisioning.test.ts`.
      */
     it("a guest winner receives an escrowed voucher, never a wallet credit; a member can then redeem it", async () => {
       const { repo, service } = freshEconomy();

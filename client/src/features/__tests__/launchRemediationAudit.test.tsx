@@ -217,6 +217,66 @@ describe("Launch Remediation — P1-01: Results Flow", () => {
     fireEvent.click(continueBtn);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("safely exits scorecard on Continue and exposes table state during FINALIZING or FINALIZATION_FAILED", () => {
+    function PostMatchHarness({ lifecycleState }: { lifecycleState: string }) {
+      const [showScorecard, setShowScorecard] = useState(true);
+      const [scorecardDismissed, setScorecardDismissed] = useState(false);
+
+      const handleClose = () => {
+        setShowScorecard(false);
+        setScorecardDismissed(true);
+      };
+
+      return (
+        <div>
+          {showScorecard && (
+            <BhalyamResultModal
+              players={samplePlayers}
+              rankedPlayers={sampleRanked}
+              selfId="p1"
+              winnerId="p1"
+              winnerName="Player 1"
+              onClose={handleClose}
+              onLeave={() => {}}
+            />
+          )}
+
+          {scorecardDismissed && (
+            <div data-testid="table-container">
+              {lifecycleState === "FINALIZING" && (
+                <div role="status">Match completed — finalizing prize settlement and rewards...</div>
+              )}
+              {lifecycleState === "FINALIZATION_FAILED" && (
+                <div role="alert">
+                  <span>Settlement synchronization is pending. Your match results are saved and will be finalized.</span>
+                  <button type="button">Retry Settlement Sync</button>
+                </div>
+              )}
+              <div data-testid="rematch-controls">Table Ready for Next Match</div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Case 1: FINALIZING
+    const { unmount } = render(<PostMatchHarness lifecycleState="FINALIZING" />);
+    expect(screen.getByRole("dialog")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("table-container")).toBeDefined();
+    expect(screen.getByRole("status").textContent).toContain("finalizing prize settlement");
+    expect(screen.getByTestId("rematch-controls")).toBeDefined();
+    unmount();
+
+    // Case 2: FINALIZATION_FAILED
+    render(<PostMatchHarness lifecycleState="FINALIZATION_FAILED" />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+    expect(screen.getByRole("alert").textContent).toContain("Settlement synchronization is pending");
+    expect(screen.getByRole("button", { name: /Retry Settlement Sync/i })).toBeDefined();
+    expect(screen.getByTestId("rematch-controls")).toBeDefined();
+  });
 });
 
 describe("Launch Remediation — P1-02: Modal Standardization (Carrom & Chess)", () => {

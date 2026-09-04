@@ -39,6 +39,13 @@ export const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
   "spacewar",
 ]);
 
+export const ECONOMY_APPROVED_SEAT_COUNTS: readonly number[] = [1, 2, 3, 4, 5];
+export const ECONOMY_MAX_APPROVED_SEAT_COUNT = 5;
+
+export function isEconomySupportedSeatCount(seatCount: number): boolean {
+  return seatCount >= 1 && seatCount <= ECONOMY_MAX_APPROVED_SEAT_COUNT;
+}
+
 export function getGameLimits(kind: GameKind): GameLimitSpec {
   return GAME_LIMITS[kind] ?? { min: 2, max: 4 };
 }

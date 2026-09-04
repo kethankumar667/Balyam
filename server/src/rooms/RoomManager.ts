@@ -80,6 +80,7 @@ import { serverTimelineRecorder } from "../events/ServerTimelineRecorder.js";
 import { serverEventStore } from "../events/ServerEventStore.js";
 import { serverLifecycleRegistry } from "../reliability/LifecycleRegistry.js";
 import { serverResourceTracker } from "../reliability/ResourceTracker.js";
+import { SERVER_LIMITS } from "../reliability/ServerLimits.js";
 import { metricsCollector } from "../observability/MetricsCollector.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { performanceMonitor } from "../observability/PerformanceMonitor.js";
@@ -616,6 +617,8 @@ export class RoomManager {
    * crash between "match finished" and "settlement RPC actually ran."
    */
   private readonly durableWorker: DurableSettlementWorker | null;
+  /** Background timer for periodic in-process retries of rooms in FAILED terminal persistence status */
+  private failedTerminalRetryTimer: NodeJS.Timeout | null = null;
 
   constructor(private io: IO, private readonly economyService?: EconomyService) {
     this.durableWorker = economyService ? new DurableSettlementWorker(economyService) : null;
@@ -623,17 +626,75 @@ export class RoomManager {
 
   /**
    * Starts periodic recovery sweeps for pending/retryable/expired-claim
-   * terminal intents. Call once from the server composition root after
-   * construction (see `index.ts`) — safe to call when economy isn't
+   * terminal intents, as well as periodic in-process retries for rooms with
+   * terminalStatus === 'FAILED'. Call once from the server composition root
+   * after construction (see `index.ts`) — safe to call when economy isn't
    * configured (no-op). Idempotent.
    */
   startEconomyRecovery(): void {
     this.durableWorker?.start();
+    this.startFailedTerminalPersistenceRetryLoop();
   }
 
   /** Stops periodic recovery sweeps — call on graceful shutdown, before or alongside draining. Leaves all durable work intact. */
   stopEconomyRecovery(): void {
     this.durableWorker?.stop();
+    this.stopFailedTerminalPersistenceRetryLoop();
+  }
+
+  /**
+   * Starts periodic in-process retries for any active rooms in terminalStatus "FAILED".
+   * Runs during normal process operation while the process is alive.
+   * Replays the exact stored terminalPayload verbatim without recalculating rankings.
+   */
+  startFailedTerminalPersistenceRetryLoop(intervalMs?: number): void {
+    if (this.failedTerminalRetryTimer) return;
+    const interval = intervalMs ?? SERVER_LIMITS.FAILED_TERMINAL_PERSISTENCE_RETRY_INTERVAL_MS;
+    this.failedTerminalRetryTimer = setInterval(() => {
+      void this.retryAllFailedTerminalRooms().catch((err) => {
+        logger.error({
+          message: `Unexpected error in failed terminal persistence retry loop: ${String(err)}`,
+          module: "ECONOMY_ROOM",
+        });
+      });
+    }, interval);
+    this.failedTerminalRetryTimer.unref?.();
+  }
+
+  /**
+   * Stops periodic in-process retries for failed terminal persistence.
+   */
+  stopFailedTerminalPersistenceRetryLoop(): void {
+    if (this.failedTerminalRetryTimer) {
+      clearInterval(this.failedTerminalRetryTimer);
+      this.failedTerminalRetryTimer = null;
+    }
+  }
+
+  /**
+   * Sweeps all in-memory rooms in FAILED terminal status and invokes retryFailedTerminalPersistence.
+   * Only one retry may be active per room (enforced by retryFailedTerminalPersistence's PERSISTING guard).
+   * Catches errors so no unhandled promise rejections occur.
+   */
+  async retryAllFailedTerminalRooms(): Promise<void> {
+    const promises: Promise<void>[] = [];
+    for (const room of this.rooms.values()) {
+      if (room.terminalStatus === "FAILED") {
+        promises.push(
+          this.retryFailedTerminalPersistence(room).catch((err) => {
+            logger.warn({
+              message: `Periodic in-process retry for room ${room.code} (match ${room.terminalPayload?.matchId}) failed: ${err instanceof Error ? err.message : String(err)}. Retrying on subsequent sweep while process remains alive.`,
+              module: "ECONOMY_ROOM",
+              roomCode: room.code,
+              matchId: room.terminalPayload?.matchId,
+            });
+          }),
+        );
+      }
+    }
+    if (promises.length > 0) {
+      await Promise.allSettled(promises);
+    }
   }
 
   /** For /health — a synchronous, in-process snapshot; see `DurableSettlementWorker.counters()`'s own doc comment for why this is not the database-backed `status()`. */
@@ -645,7 +706,9 @@ export class RoomManager {
   async drainEconomySettlementQueue(): Promise<void> {
     const inFlightRoomPromises: Promise<void>[] = [];
     for (const room of this.rooms.values()) {
-      if (room.terminalPromise) {
+      if (room.terminalStatus === "FAILED") {
+        inFlightRoomPromises.push(this.retryFailedTerminalPersistence(room));
+      } else if (room.terminalPromise) {
         inFlightRoomPromises.push(room.terminalPromise);
       }
     }
@@ -1510,7 +1573,7 @@ export class RoomManager {
       // Already counted-down; if a non-host leaves at the last second, the
       // start will still go through with current players.
     }
-    if (room.engine?.isOver()) {
+    if (room.phase === "playing" && room.engine?.isOver()) {
       // The departure itself just ended the match — a 1v1 forfeit-to-
       // opponent (Chess/Carrom/RPS/Hand Cricket's removePlayer) or a
       // multiplayer walkover down to the last seat (Ludo/UNO/SNL/...).
@@ -2495,6 +2558,10 @@ export class RoomManager {
       }
       return;
     }
+    if (room.terminalStatus === "FAILED") {
+      await this.retryFailedTerminalPersistence(room);
+      return;
+    }
 
     // Freeze turn clock and real-time simulations immediately
     this.clearTurnTimer(room);
@@ -2515,6 +2582,9 @@ export class RoomManager {
     // Economically active match — durability-gated terminal settlement
     const matchId = room.currentMatchId;
     room.phase = "finished";
+    this.transitionLifecycle(room, "FINALIZING", "Match finished, finalizing settlement");
+    // Broadcast immediately so clients exit gameplay into finalization / scorecard
+    this.broadcastRoomState(room);
 
     const rosterForSettlement = departedPlayer ? new Map(room.players).set(departedPlayer.id, departedPlayer) : room.players;
     const { isValidRanking, participants, reason } = extractRankedParticipants({
@@ -2579,6 +2649,8 @@ export class RoomManager {
     } catch (err) {
       room.terminalStatus = "FAILED";
       room.terminalError = err instanceof Error ? err : new Error(String(err));
+      this.transitionLifecycle(room, "FINALIZATION_FAILED", "Terminal persistence failed");
+      this.broadcastRoomState(room);
       logger.error({
         message: `Failed to durably persist a SETTLEMENT intent for match ${matchId} (room ${room.code}): ${err instanceof Error ? err.message : String(err)}. Match finalization incomplete; room preserved for recovery. Retry via retryFailedTerminalPersistence(room) — in-memory only, does not survive a process restart.`,
         module: "ECONOMY_ROOM",
@@ -3101,21 +3173,38 @@ export class RoomManager {
    * method's own doc comment for what it preserves.
    */
   private async abandonRoom(room: Room): Promise<void> {
-    if (this.isMatchAlreadyConcluded(room) || room.terminalStatus === "COMPLETED") {
-      this.closeConcludedRoom(room);
-      return;
-    }
     if (room.terminalStatus === "PERSISTING") {
       if (room.terminalPromise) {
         try {
           await room.terminalPromise;
         } catch {
+          // In-flight persistence failed; room transitions to FAILED and MUST remain
+          // retained in this.rooms for subsequent operator or periodic in-process retry.
           return;
         }
       }
-      if (this.isMatchAlreadyConcluded(room) || (room.terminalStatus as RoomTerminalStatus) === "COMPLETED") {
+      if ((room.terminalStatus as RoomTerminalStatus) === "COMPLETED") {
         this.closeConcludedRoom(room);
       }
+      return;
+    }
+
+    if (room.terminalStatus === "FAILED") {
+      try {
+        await this.retryFailedTerminalPersistence(room);
+      } catch {
+        // Retry failed. The room MUST NOT be deleted, torn down, or overwritten with forfeiture/refund!
+        // It remains preserved in this.rooms with status FAILED for subsequent periodic/manual retry.
+        return;
+      }
+      if ((room.terminalStatus as RoomTerminalStatus) === "COMPLETED") {
+        this.closeConcludedRoom(room);
+      }
+      return;
+    }
+
+    if (room.terminalStatus === "COMPLETED" || (this.isMatchAlreadyConcluded(room) && !room.currentMatchId)) {
+      this.closeConcludedRoom(room);
       return;
     }
 
@@ -3203,6 +3292,8 @@ export class RoomManager {
     } catch (err) {
       room.terminalStatus = "FAILED";
       room.terminalError = err instanceof Error ? err : new Error(String(err));
+      this.transitionLifecycle(room, "FINALIZATION_FAILED", "Abandonment persistence failed");
+      this.broadcastRoomState(room);
       logger.error({
         message: `Failed to durably persist a ${outcome} intent for match ${matchId} (room ${room.code}): ${err instanceof Error ? err.message : String(err)}. Teardown halted; room retained. Retry via retryFailedTerminalPersistence(room) — in-memory only, does not survive a process restart.`,
         module: "ECONOMY_ROOM",
@@ -3267,6 +3358,8 @@ export class RoomManager {
 
     room.terminalError = null;
     room.terminalStatus = "PERSISTING";
+    this.transitionLifecycle(room, "FINALIZING", "Retrying terminal persistence");
+    this.broadcastRoomState(room);
 
     const persistPromise =
       payload.kind === "SETTLEMENT"
@@ -3274,7 +3367,25 @@ export class RoomManager {
         : this.attemptAbandonmentPersistence(room, payload.matchId, payload.kind, payload.reason);
 
     room.terminalPromise = persistPromise;
-    await persistPromise;
+    try {
+      await persistPromise;
+    } catch (err) {
+      room.terminalStatus = "FAILED";
+      room.terminalError = err instanceof Error ? err : new Error(String(err));
+      this.transitionLifecycle(room, "FINALIZATION_FAILED", "Terminal persistence retry failed");
+      this.broadcastRoomState(room);
+      throw err;
+    }
+  }
+
+  /**
+   * Host entry point for retrying a failed terminal persistence intent.
+   */
+  async requestRetryTerminalPersistence(socketId: string): Promise<void> {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    if (player.id !== room.hostId) return;
+    await this.retryFailedTerminalPersistence(room);
   }
 
   /**
@@ -3294,7 +3405,12 @@ export class RoomManager {
    * unconditionally in the same synchronous step that sets both.
    */
   private isMatchAlreadyConcluded(room: Room): boolean {
-    return room.phase === "finished" || room.lifecycleState === "COMPLETED";
+    if (room.terminalStatus === "FAILED" || room.terminalStatus === "PERSISTING") {
+      return false;
+    }
+    return (
+      (room.phase === "finished" || room.lifecycleState === "COMPLETED")
+    );
   }
 
   /**
@@ -3317,6 +3433,22 @@ export class RoomManager {
    * abandoned.
    */
   private closeConcludedRoom(room: Room): void {
+    if (room.terminalStatus === "PERSISTING" || room.terminalStatus === "FAILED") {
+      logger.warn({
+        message: `Refusing to close concluded room ${room.code} while terminalStatus is ${room.terminalStatus}`,
+        module: "ECONOMY_ROOM",
+        roomCode: room.code,
+      });
+      return;
+    }
+    if (room.terminalPromise && (room.terminalStatus as RoomTerminalStatus) !== "COMPLETED") {
+      logger.warn({
+        message: `Refusing to close concluded room ${room.code} while terminalPromise is unresolved`,
+        module: "ECONOMY_ROOM",
+        roomCode: room.code,
+      });
+      return;
+    }
     serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_closed_after_completion");
     this.clearTurnTimer(room);
     this.clearDealGateTimers(room);
